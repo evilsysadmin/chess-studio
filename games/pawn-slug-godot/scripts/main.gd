@@ -10,6 +10,14 @@ const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1080.0
+const KNIGHT_GRAVITY := 880.0
+const KNIGHT_LEAP_SPEED := 300.0
+const KNIGHT_LEAP_RANGE := 300.0
+const KNIGHT_NEAR_SPEED_SCALE := 0.25
+const KNIGHT_INITIAL_LEAP_MIN := 0.70
+const KNIGHT_INITIAL_LEAP_MAX := 1.90
+const KNIGHT_LEAP_COOLDOWN_MIN := 2.20
+const KNIGHT_LEAP_COOLDOWN_MAX := 3.60
 const BOSS_X := 4580.0
 const EXTRACTION_X := 5050.0
 const BOSS_TRIGGER_X := BOSS_X - 720.0
@@ -191,6 +199,8 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
             enemy["suppression_shots"] = 0
             enemy["suppression_index"] = 0
             enemy["suppression_shot_cooldown"] = 0.0
+        elif String(enemy["type"]) == "knight":
+            enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
         enemies[index] = enemy
     if boss_spawned and not boss_defeated:
         boss["regular_cooldown"] = 0.65
@@ -221,6 +231,9 @@ func _build_enemy_roster() -> Array[Dictionary]:
             "type": type,
             "x": float(spawn[0]),
             "spawn_x": float(spawn[0]),
+            "y": FLOOR_Y,
+            "vy": 0.0,
+            "on_ground": true,
             "hp": int(stats["hp"]),
             "max_hp": int(stats["hp"]),
             "weapon": _enemy_weapon_for(type, index),
@@ -232,6 +245,8 @@ func _build_enemy_roster() -> Array[Dictionary]:
             enemy["suppression_shots"] = 0
             enemy["suppression_index"] = 0
             enemy["suppression_shot_cooldown"] = 0.0
+        elif type == "knight":
+            enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
         roster.append(enemy)
     return roster
 
@@ -269,7 +284,7 @@ func _sync_enemy_visual(enemy: Dictionary, moving: bool) -> void:
     var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
     visual.sync_state(
         float(enemy["x"]),
-        FLOOR_Y,
+        float(enemy.get("y", FLOOR_Y)),
         direction,
         moving,
         int(enemy["hp"]),
@@ -453,10 +468,31 @@ func _update_enemies(delta: float) -> void:
             enemies[index] = enemy
             continue
 
-        if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
+        if type == "knight":
+            enemy["leap_cooldown"] = maxf(0.0, float(enemy["leap_cooldown"]) - delta)
+
+        var player_active := not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE
+        if player_active:
             var speed := float(stats["speed"])
             var standoff := float(stats["standoff"])
-            if speed > 0.0 and abs_distance > standoff:
+            if type == "knight":
+                var move_direction := 1.0 if distance_x > 0.0 else -1.0
+                var knight_speed := speed if abs_distance > standoff else speed * KNIGHT_NEAR_SPEED_SCALE
+                enemy["x"] = clampf(
+                    float(enemy["x"]) + move_direction * knight_speed * delta,
+                    maxf(0.0, float(enemy["spawn_x"]) - 360.0),
+                    minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
+                )
+                moved = knight_speed > 0.0
+                if (
+                    float(enemy["leap_cooldown"]) <= 0.0
+                    and abs_distance < KNIGHT_LEAP_RANGE
+                    and bool(enemy["on_ground"])
+                ):
+                    enemy["vy"] = -KNIGHT_LEAP_SPEED
+                    enemy["on_ground"] = false
+                    enemy["leap_cooldown"] = randf_range(KNIGHT_LEAP_COOLDOWN_MIN, KNIGHT_LEAP_COOLDOWN_MAX)
+            elif speed > 0.0 and abs_distance > standoff:
                 var move_direction := 1.0 if distance_x > 0.0 else -1.0
                 enemy["x"] = clampf(
                     float(enemy["x"]) + move_direction * speed * delta,
@@ -465,15 +501,67 @@ func _update_enemies(delta: float) -> void:
                 )
                 moved = true
 
-            _sync_enemy_visual(enemy, moved)
-            enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
-            if float(enemy["cooldown"]) <= 0.0:
-                _try_enemy_fire(enemy)
-                enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
-        else:
-            enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
-            _sync_enemy_visual(enemy, false)
+        if type == "knight":
+            _update_knight_vertical(enemy, delta)
+
+        _sync_enemy_visual(enemy, moved)
+        enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
+        if player_active and float(enemy["cooldown"]) <= 0.0:
+            _try_enemy_fire(enemy)
+            enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
         enemies[index] = enemy
+
+func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
+    var foot_y := float(enemy.get("y", FLOOR_Y))
+    var velocity_y := float(enemy.get("vy", 0.0))
+    var on_ground := bool(enemy.get("on_ground", true))
+    var world_x := float(enemy["x"])
+
+    if on_ground and foot_y < FLOOR_Y - 1.0 and not _knight_has_support(world_x, foot_y):
+        on_ground = false
+
+    if not on_ground:
+        var previous_y := foot_y
+        velocity_y += KNIGHT_GRAVITY * delta
+        foot_y += velocity_y * delta
+        if velocity_y >= 0.0:
+            var landing_y := _knight_landing_y(world_x, previous_y, foot_y)
+            if landing_y >= 0.0:
+                foot_y = landing_y
+                velocity_y = 0.0
+                on_ground = true
+
+    enemy["y"] = foot_y
+    enemy["vy"] = velocity_y
+    enemy["on_ground"] = on_ground
+
+func _knight_has_support(world_x: float, foot_y: float) -> bool:
+    if is_equal_approx(foot_y, FLOOR_Y):
+        return true
+    for platform in PLATFORMS:
+        if (
+            absf(foot_y - platform.position.y) <= 2.0
+            and world_x >= platform.position.x
+            and world_x <= platform.position.x + platform.size.x
+        ):
+            return true
+    return false
+
+func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
+    var landing_y := -1.0
+    for platform in PLATFORMS:
+        var top := platform.position.y
+        if (
+            world_x >= platform.position.x
+            and world_x <= platform.position.x + platform.size.x
+            and previous_y <= top
+            and next_y >= top
+        ):
+            if landing_y < 0.0 or top < landing_y:
+                landing_y = top
+    if previous_y <= FLOOR_Y and next_y >= FLOOR_Y and (landing_y < 0.0 or FLOOR_Y < landing_y):
+        landing_y = FLOOR_Y
+    return landing_y
 
 func _update_bishop(enemy: Dictionary, delta: float, distance: float, distance_x: float) -> bool:
     var stats: Dictionary = ENEMY_TYPES["bishop"]
@@ -744,7 +832,8 @@ func _enemy_rect(enemy: Dictionary) -> Rect2:
     var stats: Dictionary = ENEMY_TYPES[String(enemy["type"])]
     var width := float(stats["width"])
     var height := float(stats["height"])
-    return Rect2(Vector2(float(enemy["x"]) - width * 0.5, FLOOR_Y - height), Vector2(width, height))
+    var foot_y := float(enemy.get("y", FLOOR_Y))
+    return Rect2(Vector2(float(enemy["x"]) - width * 0.5, foot_y - height), Vector2(width, height))
 
 func _boss_rect() -> Rect2:
     return Rect2(
@@ -822,7 +911,7 @@ func _draw_pickups() -> void:
                 draw_arc(position + Vector2(7.0, -15.0), 7.0, -PI * 0.85, PI * 0.15, 12, Color("d4c083"), 3.0)
             "medkit":
                 draw_rect(Rect2(position - Vector2(17.0, 13.0), Vector2(34.0, 26.0)), Color("d8d7cf"), true)
-                draw_rect(Rect2(position - Vector2(4.0, 11.0), Vector2(8.0, 22.0)), Color("b94e43"), true)
+                draw_rect(Rect2(position - Vector2(4.0, -11.0), Vector2(8.0, 22.0)), Color("b94e43"), true)
                 draw_rect(Rect2(position - Vector2(11.0, 4.0), Vector2(22.0, 8.0)), Color("b94e43"), true)
 
 func _draw_grenades() -> void:
