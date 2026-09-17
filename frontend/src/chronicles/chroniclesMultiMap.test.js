@@ -25,9 +25,11 @@ describe('Chronicles multi-map campaign', () => {
     const menagerie = chroniclesMapById('menagerie-of-ash');
     const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
     const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
-    expect(menagerie.version).toBe(2);
+    expect(menagerie.version).toBe(3);
     expect(menagerie.enemies).toHaveLength(4);
     expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
+    expect(menagerie.interactables.map((entry) => entry.id)).toContain('ember-scorchmarks');
+    expect(menagerie.treasures.map((entry) => entry.id)).toContain('ember-cache');
     expect(gate.requirements.map((requirement) => requirement.key)).not.toContain('emberWispHp');
   });
 
@@ -94,7 +96,7 @@ describe('Chronicles multi-map campaign', () => {
     expect(next.journal.at(-1)?.id).toBe('gallery-menagerie-crossing');
   });
 
-  it('can finish Menagerie while the optional ember wisp remains alive', () => {
+  it('can finish Menagerie while the optional ember side quest remains untouched', () => {
     const menagerieState = chroniclesMapTransitionState(createChroniclesState(), 'menagerie-of-ash');
     const readyToLeave = {
       ...menagerieState,
@@ -111,6 +113,8 @@ describe('Chronicles multi-map campaign', () => {
     expect(escaped.mapId).toBe('menagerie-of-ash');
     expect(escaped.phase).toBe('escaped');
     expect(escaped.emberWispHp).toBe(4);
+    expect(escaped.inventory).toBeUndefined();
+    expect(escaped.quests).toBeUndefined();
     expect(escaped.message).toMatch(/cruza el portón/i);
     expect(escaped.journal.at(-1)?.id).toBe('menagerie-cleared');
   });
