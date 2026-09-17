@@ -212,7 +212,7 @@ jobs:
       - name: Python advisory inventory (informative)
         if: needs.preflight.outputs.run_security == 'true'
         continue-on-error: true
-        run: make security-fe
+        run: make security-be
   security:
     name: Security · Trivy + Docker
     needs: preflight
