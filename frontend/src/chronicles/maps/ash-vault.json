@@ -1,6 +1,6 @@
 {
   "id": "ash-vault",
-  "version": 1,
+  "version": 2,
   "progressionKey": "ash-vault-01",
   "title": "Cámara de Ceniza",
   "grid": [
@@ -181,7 +181,7 @@
       "id": "ash-vault-exit",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abandonar la Cámara de Ceniza",
+      "openLabel": "Seguir hacia el Archivo del Rey Ciego",
       "lockedLabel": "Examinar salida sellada",
       "requirements": [
         { "key": "cinderWardenHp", "lte": 0, "message": "El custodio de escoria aún mantiene el sello." },
@@ -191,14 +191,14 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "blind-king-archive" }
         ],
-        "message": "La compañía abandona la Cámara de Ceniza con botín que nadie sabía que existía. Contabilidad impecable.",
+        "message": "El pasadizo desemboca en un archivo enterrado. El Ídolo de Obsidiana sigue en la mochila y, por alguna razón, varias paredes parecen reconocerlo.",
         "journal": {
-          "id": "ash-vault-cleared",
-          "title": "Una ruta que no estaba en el plano",
-          "body": "La cámara secreta queda atrás. La compañía sale con un ídolo, quizá ceniza luminosa y una cantidad ofensiva de satisfacción.",
-          "sigil": "XII"
+          "id": "ash-vault-archive-crossing",
+          "title": "La ruta secreta vuelve al mapa",
+          "body": "La compañía sale de la Cámara de Ceniza directamente al Archivo del Rey Ciego, conservando el botín de la desviación.",
+          "sigil": "XIII"
         }
       }
     }
