@@ -55,10 +55,10 @@ export function shouldRefreshMaterialGrade({
 }
 
 export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
-  // The room practicals and directional key now do the modelling work. Keep the
-  // desktop hemisphere as a very low fill so pale ivory preserves self-shadowing;
-  // touch keeps its established readability contract until tuned independently.
-  return coarsePointer ? 1.35 : 0.35;
+  // Keep enough soft room fill to reveal wood, brass and pale surfaces without
+  // erasing the directional modelling. Desktop gets a deliberate lift from the
+  // old near-black ambient grade; touch keeps its established readability level.
+  return coarsePointer ? 1.35 : 0.62;
 }
 
 export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
@@ -67,17 +67,38 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   if (!hemisphere || !hemisphere.parent) {
     hemisphere = scene.children?.find((object) => (
       object?.isHemisphereLight
-      && [0xffefd0, 0xffd8b0].includes(object.color?.getHex?.())
-      && object.groundColor?.getHex?.() === 0x10192b
+      && [0xffefd0, 0xffd8b0, 0xffe4c4].includes(object.color?.getHex?.())
+      && [0x10192b, 0x1b120d].includes(object.groundColor?.getHex?.())
     )) || null;
     if (hemisphere) warRoomHemisphereState.set(scene, hemisphere);
   }
   if (!hemisphere) return null;
   hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
-  if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(0xffd8b0);
+  if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(0xffe4c4);
+  if (typeof hemisphere.groundColor?.setHex === 'function') hemisphere.groundColor.setHex(0x1b120d);
   scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
-  scene.userData.warRoomLightingGrade = 'tungsten-club-v1';
+  scene.userData.warRoomLightingGrade = 'warm-club-v2';
   return hemisphere;
+}
+
+export function warRoomAtmosphereProfile() {
+  return {
+    background: 0x100b08,
+    fog: 0x17100c,
+    grade: 'warm-amber-room-v2',
+  };
+}
+
+export function applyWarRoomAtmosphereGrade(scene) {
+  if (!scene) return null;
+  const profile = warRoomAtmosphereProfile();
+  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
+  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  scene.userData ||= {};
+  scene.userData.warRoomAtmosphereGrade = profile.grade;
+  scene.userData.warRoomBackgroundColor = profile.background;
+  scene.userData.warRoomFogColor = profile.fog;
+  return profile;
 }
 
 export function warRoomKeyLightPose({ whiteSide = true } = {}) {
@@ -94,25 +115,25 @@ export function applyWarRoomKeyLightGrade(scene) {
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
       object?.isDirectionalLight
-      && [0xffe1aa, 0xffc58c].includes(object.color?.getHex?.())
+      && [0xffe1aa, 0xffc58c, 0xffd8ac].includes(object.color?.getHex?.())
     )) || null;
     if (key) warRoomKeyLightState.set(scene, key);
   }
   if (!key) return null;
 
-  // Keep the premium high-side modelling while grading the vertical wash toward
-  // tungsten club-room warmth instead of near-white overhead light. The warmer
-  // key keeps ivory, pale squares and wood cinematic without flattening ebony.
+  // Keep the premium high-side modelling but move the key closer to clean warm
+  // tungsten instead of dense orange. The extra luminance comes from the light
+  // profile and ambient lift, not from tinting every surface amber.
   const whiteSide = (Number(key.position?.z) || 0) >= 0;
   const pose = warRoomKeyLightPose({ whiteSide });
   if (typeof key.position?.set === 'function') key.position.set(pose.x, pose.y, pose.z);
   else if (key.position) Object.assign(key.position, pose);
-  if (typeof key.color?.setHex === 'function') key.color.setHex(0xffc58c);
+  if (typeof key.color?.setHex === 'function') key.color.setHex(0xffd8ac);
 
   scene.userData ||= {};
   scene.userData.warRoomKeyLightPose = 'high-side-v1';
   scene.userData.warRoomKeyLightPosition = pose;
-  scene.userData.warRoomLightingGrade = 'tungsten-club-v1';
+  scene.userData.warRoomLightingGrade = 'warm-club-v2';
   return key;
 }
 
@@ -130,7 +151,7 @@ export function applyWarRoomWarmFillGrade(scene) {
   if (!warm || !warm.parent) {
     warm = scene.children?.find((object) => (
       object?.isPointLight
-      && object.color?.getHex?.() === 0xffa449
+      && [0xffa449, 0xffb45f].includes(object.color?.getHex?.())
     )) || null;
     if (warm) warRoomWarmLightState.set(scene, warm);
   }
@@ -138,13 +159,13 @@ export function applyWarRoomWarmFillGrade(scene) {
 
   // The theme-colored rim already lives behind the opponent rank. Pull the
   // existing warm practical closer to the player's outer quarter so the ivory
-  // receives a broader lateral graze instead of flat front fill. This exposes
-  // bevels and carved profiles without increasing light count or exposure.
+  // receives a broader lateral graze instead of flat front fill. Use a softer
+  // amber than the old orange practical so wood and brass glow without a sepia veil.
   let key = warRoomKeyLightState.get(scene) || null;
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
       object?.isDirectionalLight
-      && [0xffe1aa, 0xffc58c].includes(object.color?.getHex?.())
+      && [0xffe1aa, 0xffc58c, 0xffd8ac].includes(object.color?.getHex?.())
     )) || null;
     if (key) warRoomKeyLightState.set(scene, key);
   }
@@ -152,6 +173,7 @@ export function applyWarRoomWarmFillGrade(scene) {
   const pose = warRoomWarmFillPose({ whiteSide: keyZ >= 0 });
   if (typeof warm.position?.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
   else if (warm.position) Object.assign(warm.position, pose);
+  if (typeof warm.color?.setHex === 'function') warm.color.setHex(0xffb45f);
 
   scene.userData ||= {};
   scene.userData.warRoomRankSeparation = 'lateral-graze-ranks-v3';
@@ -410,6 +432,10 @@ function installWarRoomRenderDiscipline() {
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
     const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const atmosphere = applyWarRoomAtmosphereGrade(scene);
+    if (atmosphere && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
+    }
     const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
     if (hemisphere && this.domElement?.dataset) {
       this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
@@ -417,7 +443,7 @@ function installWarRoomRenderDiscipline() {
     const boardKey = applyWarRoomKeyLightGrade(scene);
     if (boardKey && this.domElement?.dataset) {
       this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
-      this.domElement.dataset.warRoomLightingGrade = 'tungsten-club-v1';
+      this.domElement.dataset.warRoomLightingGrade = 'warm-club-v2';
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
@@ -484,33 +510,33 @@ function installWarRoomRenderDiscipline() {
 installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // The War Room already has fireplace/torch practicals plus the directional key.
-  // One point light stays behind the opponent rank while the warm practical now
-  // grazes the player's ranks from the rear quarter to retain silhouette depth.
-  const baseExposure = coarsePointer ? 1.005 : 1.04;
+  // The room now carries more of the warm luminous grade globally. Keep the
+  // special-state changes readable without letting them drag the whole room back
+  // into the old dim blue-grey presentation.
+  const baseExposure = coarsePointer ? 1.04 : 1.16;
   if (gameOver) {
     return {
-      key: coarsePointer ? 1.52 : 1.26,
-      rim: coarsePointer ? 7.1 : 3.2,
-      warm: coarsePointer ? 3.0 : 1.2,
-      exposure: baseExposure - 0.075,
-      fogDensity: coarsePointer ? 0.0215 : 0.0225,
+      key: coarsePointer ? 1.62 : 1.46,
+      rim: coarsePointer ? 6.4 : 3.0,
+      warm: coarsePointer ? 3.1 : 1.6,
+      exposure: baseExposure - 0.06,
+      fogDensity: coarsePointer ? 0.0185 : 0.0175,
     };
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.32 : 1.74,
-      rim: coarsePointer ? 16.8 : 8.0,
-      warm: coarsePointer ? 4.9 : 2.0,
-      exposure: baseExposure + 0.005,
-      fogDensity: coarsePointer ? 0.019 : 0.0192,
+      key: coarsePointer ? 2.35 : 1.98,
+      rim: coarsePointer ? 15.2 : 7.2,
+      warm: coarsePointer ? 4.9 : 2.5,
+      exposure: baseExposure + 0.01,
+      fogDensity: coarsePointer ? 0.0165 : 0.0148,
     };
   }
   return {
-    key: coarsePointer ? 1.99 : 1.42,
-    rim: coarsePointer ? 13.4 : 6.8,
-    warm: coarsePointer ? 5.2 : 2.15,
+    key: coarsePointer ? 2.02 : 1.72,
+    rim: coarsePointer ? 12.6 : 5.8,
+    warm: coarsePointer ? 5.0 : 2.45,
     exposure: baseExposure,
-    fogDensity: coarsePointer ? 0.0178 : 0.0172,
+    fogDensity: coarsePointer ? 0.0155 : 0.0132,
   };
 }
