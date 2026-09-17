@@ -65,14 +65,14 @@ export function chroniclesTacticsPartyIdleName(memberId) {
 
 export function installChroniclesTacticsPartyBlenderArt(
   models,
-  { coarsePointer = false, reducedMotion = false } = {},
+  { coarsePointer = false, reducedMotion = false, scenePlan = undefined } = {},
 ) {
   if (!models?.get) return () => {};
 
   let cancelled = false;
   const installed = [];
   const fallbackDetailCancels = [];
-  installChroniclesTacticsSceneArt(models, { coarsePointer });
+  installChroniclesTacticsSceneArt(models, { coarsePointer, scenePlan });
 
   const installFallbackDetails = (memberIds) => {
     const requested = memberIds.filter((memberId) => models.get(memberId));
