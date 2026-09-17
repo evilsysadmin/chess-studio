@@ -39,6 +39,24 @@ function visibleWallCells(grid) {
   })));
 }
 
+function exposedWallFaces(grid) {
+  const directions = [
+    { dx: 0, dy: -1, side: 'north' },
+    { dx: 1, dy: 0, side: 'east' },
+    { dx: 0, dy: 1, side: 'south' },
+    { dx: -1, dy: 0, side: 'west' },
+  ];
+  return Object.freeze(grid.flatMap((row, y) => [...row].flatMap((tile, x) => {
+    if (tile !== '#') return [];
+    return directions.flatMap((direction) => {
+      const neighbor = grid[y + direction.dy]?.[x + direction.dx];
+      return neighbor && neighbor !== '#'
+        ? [Object.freeze({ x, y, side: direction.side })]
+        : [];
+    });
+  })));
+}
+
 export function chroniclesIsometricScenePlan(mapOrState = null) {
   const runtimeState = mapOrState?.grid ? null : mapOrState;
   const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
@@ -65,6 +83,7 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
     partyStart,
     floors: visibleFloorCells(renderPlan.grid),
     walls: visibleWallCells(renderPlan.grid),
+    wallFaces: exposedWallFaces(renderPlan.grid),
     enemies: renderPlan.enemies,
     content,
   });
