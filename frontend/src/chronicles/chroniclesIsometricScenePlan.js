@@ -6,6 +6,10 @@ import {
   chroniclesContentDefinition,
   chroniclesContentVisible,
 } from './chroniclesContentRuntime.js';
+import {
+  chroniclesContentActivated,
+  chroniclesContentVisualVisible,
+} from './chroniclesContentVisualState.js';
 import { chroniclesIsometricSceneStyle } from './chroniclesIsometricSceneStyles.js';
 
 function mapCenter(grid) {
@@ -79,13 +83,15 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
     x: Number(map.partyStart?.x ?? center.x),
     y: Number(map.partyStart?.y ?? center.y),
   });
-  const content = Object.freeze(renderPlan.content.map((entry) => Object.freeze({
-    ...entry,
-    visible: chroniclesContentVisible(
-      runtimeState,
-      chroniclesContentDefinition(map, entry.id),
-    ),
-  })));
+  const content = Object.freeze(renderPlan.content.map((entry) => {
+    const definition = chroniclesContentDefinition(map, entry.id);
+    return Object.freeze({
+      ...entry,
+      available: chroniclesContentVisible(runtimeState, definition),
+      activated: chroniclesContentActivated(runtimeState, definition),
+      visible: chroniclesContentVisualVisible(runtimeState, definition),
+    });
+  }));
 
   return Object.freeze({
     mapId: renderPlan.mapId,
