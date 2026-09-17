@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { BASE_STATS, derivedLevel } from './combat.js';
+import { enrichCombatCandidateResponse } from './combatCandidateFacts.js';
 import { chooseCombatCandidate } from './combatExpectedUtility.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
@@ -82,24 +83,24 @@ export function emergencyCombatCpuSuggestion(fen) {
   }
 }
 
-// Transporting a shortlist is deliberately behavior-neutral. Combat only
-// re-ranks it after a later policy stage has attached real Combat facts and
-// marked candidates as ready. Until then the established primary engine move
-// remains authoritative.
+// Sólo una shortlist completamente enriquecida puede cambiar la primaria. Una
+// candidata parcial vuelve a la jugada profunda establecida: fail-safe antes de
+// mezclar hechos de dos posiciones distintas.
 export function selectCombatAwareRemoteSuggestion(remote) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
-  if (!candidates?.length || !candidates.some((candidate) => candidate?.combatReady === true)) return remote;
-  return chooseCombatCandidate(candidates);
+  if (!candidates?.length || !candidates.every((candidate) => candidate?.combatReady === true)) return remote;
+  return chooseCombatCandidate(candidates) || remote;
 }
 
 // Política de disponibilidad del turno CPU: el análisis remoto mejora la
 // calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
 // Este helper hace el fail-open comprobable con tests sin montar React.
-export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition }) {
+export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = null }) {
   let remoteError = null;
   try {
     const response = await analyzePosition(fen, difficulty);
-    const remote = selectCombatAwareRemoteSuggestion(response);
+    const contextual = enrichCombatCandidateResponse(response, { fen, registry, focus });
+    const remote = selectCombatAwareRemoteSuggestion(contextual);
     if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
     return { suggestion: remote, source: 'remote', remoteError: null };
   } catch (error) {
