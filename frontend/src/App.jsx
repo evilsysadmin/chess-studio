@@ -80,7 +80,6 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { PvpChallengeSurface, PvpGameSurface, usePvpAppFlow } from './pvpAppFlow.jsx';
 import { loadPvpMatchSession } from './pvpEnrollment.js';
-import { runGlobalLogout } from './globalLogoutFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -226,6 +225,7 @@ function AppInner({ isAdminUser }) {
   }, [showAccountMenu]);
 
   async function handleGlobalLogout() {
+    const { runGlobalLogout } = await import('./globalLogoutFlow.js');
     await runGlobalLogout({ view, setLogoutError, setLoggingOut, clearSession: logout });
   }
 
