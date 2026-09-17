@@ -15,6 +15,7 @@ const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
 const CANONICAL_PISTOL_RUN_FRAMES := 4
 const CANONICAL_PISTOL_RUN_FPS := 8.0
+const JUMP_VISUAL_SPEED_RANGE := 610.0
 const ACTION_ROWS := {
     "idle": 0,
     "walk": 1,
@@ -34,7 +35,6 @@ const ACTION_FPS := {
     "walk": 10.0,
     "run": CANONICAL_PISTOL_RUN_FPS,
     "crouch": 8.0,
-    "jump": 12.0,
 }
 
 var _body_ready := false
@@ -45,6 +45,7 @@ var _action := "idle"
 var _action_time := 0.0
 var _shoot_age := SHOOT_HOLD_SECONDS
 var _facing := 1.0
+var _vertical_speed := 0.0
 
 func _ready() -> void:
     _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
@@ -56,8 +57,16 @@ func _ready() -> void:
 func body_ready() -> bool:
     return _body_ready
 
-func update_visual(delta: float, movement_axis: float, on_floor: bool, facing: float, fired_now: bool) -> void:
+func update_visual(
+    delta: float,
+    movement_axis: float,
+    on_floor: bool,
+    vertical_speed: float,
+    facing: float,
+    fired_now: bool,
+) -> void:
     _facing = -1.0 if facing < 0.0 else 1.0
+    _vertical_speed = vertical_speed
     if fired_now:
         _shoot_age = 0.0
     else:
@@ -89,7 +98,7 @@ func _apply_body_frame() -> void:
     var count := int(ACTION_COUNTS[_action])
     var frame := 0
     if _action == "jump":
-        frame = mini(count - 1, int(_action_time * float(ACTION_FPS[_action])))
+        frame = _jump_frame_for_speed(_vertical_speed, count)
     else:
         frame = int(_action_time * float(ACTION_FPS[_action])) % count
 
@@ -99,6 +108,19 @@ func _apply_body_frame() -> void:
     )
     # Premium pistol bank is authored facing screen-left.
     _body_sprite.flip_h = _facing > 0.0
+
+# Airborne art follows the real ballistic phase rather than elapsed animation time.
+# Full ascent maps to the first pose, the apex to the middle pose and descent to
+# the last pose. Variable-height jumps therefore remain visually synchronized.
+func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
+    if count <= 1:
+        return 0
+    var phase := clampf(
+        (vertical_speed + JUMP_VISUAL_SPEED_RANGE) / (JUMP_VISUAL_SPEED_RANGE * 2.0),
+        0.0,
+        1.0,
+    )
+    return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
     var show_shoot := _body_ready and _shoot_ready and _shoot_age < SHOOT_HOLD_SECONDS
