@@ -7,19 +7,11 @@ workflow = (ROOT / ".github/workflows/oci-readiness.yml").read_text(encoding="ut
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
 install_source = probe.split("\ndef install_command", 1)[1].split("\ndef _run", 1)[0]
 
-for required_path in (
-    "      - infra/oci/k3s/**",
-    "      - scripts/oci_k3s_bundle.py",
-    "      - scripts/oci_k3s_bundle_publish.py",
-    "      - scripts/oci_k3s_bundle_probe.py",
-    "      - scripts/oci_k3s_readiness_contract.py",
-):
-    assert workflow.count(required_path) >= 2, (
-        f"K3s readiness path must participate in both PR and main-push gates: {required_path.strip()}"
-    )
+assert workflow.count("'infra/oci/k3s/**'") >= 2, "K3s infra must participate in PR + main-push readiness"
+assert workflow.count("'scripts/oci_k3s_*'") >= 2, "K3s scripts must participate in PR + main-push readiness"
 
 publish = workflow.split("\n  publish-k3s:\n", 1)[1]
-assert "    concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false" in publish, (
+assert "concurrency: {group: oci-staging-mutations, cancel-in-progress: false}" in publish, (
     "publish-k3s must share the repository-wide OCI staging mutation mutex"
 )
 assert "python3 scripts/oci_k3s_bundle_publish.py reconcile" in publish
