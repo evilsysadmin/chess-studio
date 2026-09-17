@@ -66,7 +66,7 @@ describe('Chronicles Menagerie ember side quest', () => {
     expect(opened.journal.at(-1)?.id).toBe('ember-cache-opened');
   });
 
-  it('keeps the entire side quest optional for the main Menagerie exit', () => {
+  it('keeps the entire side quest optional for the main campaign continuation', () => {
     const state = {
       ...chroniclesMapTransitionState(createChroniclesState(), 'menagerie-of-ash'),
       x: 4,
@@ -77,10 +77,11 @@ describe('Chronicles Menagerie ember side quest', () => {
       emberWispHp: 4,
     };
 
-    const escaped = chroniclesTacticsUse(state, 'menagerie-gate');
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.emberWispHp).toBe(4);
-    expect(chroniclesInventoryEntries(escaped)).toEqual([]);
-    expect(chroniclesQuestEntries(escaped)).toEqual([]);
+    const next = chroniclesTacticsUse(state, 'menagerie-gate');
+    expect(next.mapId).toBe('blind-king-archive');
+    expect(next.phase).toBe('explore');
+    expect(next.archiveWispHp).toBe(4);
+    expect(chroniclesInventoryEntries(next)).toEqual([]);
+    expect(chroniclesQuestEntries(next)).toEqual([]);
   });
 });
