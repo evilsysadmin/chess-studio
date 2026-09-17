@@ -100,7 +100,7 @@ jobs:
           VAULT_SECRET_KEY: ${{ inputs.secret_key }}
         run: python3 scripts/oci_vault_runtime.py validate-pending --key "$VAULT_SECRET_KEY"
 
-      - name: Compare CURRENT Vault + Git runtime with installed backend.env
+      - name: Compare CURRENT Vault + Git runtime with persisted private runtime source
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-compare-current'
         run: python3 scripts/oci_vault_compare.py compare-current
 
@@ -169,8 +169,11 @@ jobs:
         run: >-
           echo '::warning::Bringup continues after host-contract smoke failure; the immutable deploy itself remains blocking and proves the effective privileged path.'
 
+      # Application release and runtime materialization are deliberately separate.
+      # Deploy/bringup consume the already-installed runtime and only switch the
+      # immutable application SHA; runtime changes remain explicit operations.
       - name: Deploy immutable backend release
         if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'deploy' || inputs.operation == 'bringup')
         env:
           DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
-        run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
+        run: python3 scripts/oci_release_deploy.py deploy --repo-ref "$DEPLOY_REF"
