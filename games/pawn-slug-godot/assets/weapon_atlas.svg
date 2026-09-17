@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="128" viewBox="0 0 1024 128">
+<defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8a949e"/><stop offset=".45" stop-color="#505963"/><stop offset="1" stop-color="#252a30"/></linearGradient>
+  <linearGradient id="polymer" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3b4148"/><stop offset=".52" stop-color="#23282e"/><stop offset="1" stop-color="#111419"/></linearGradient>
+  <linearGradient id="slide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#59616a"/><stop offset=".38" stop-color="#363c43"/><stop offset="1" stop-color="#1f2429"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7a5130"/><stop offset="1" stop-color="#342217"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7c575"/><stop offset="1" stop-color="#7a5225"/></linearGradient>
+  <filter id="s" x="-20%" y="-40%" width="150%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity=".55"/></filter>
+</defs>
+<g filter="url(#s)" stroke="#090b0d" stroke-linejoin="round">
+  <g transform="translate(14 10)">
+    <path d="M45 41 L145 41 Q154 41 160 46 L171 46 L177 51 L174 58 L50 58 Q43 56 40 51Z" fill="url(#slide)" stroke-width="5"/>
+    <rect x="170" y="48" width="20" height="8" rx="3" fill="#171b20" stroke-width="4"/>
+    <path d="M76 58 L139 58 L145 66 L124 69 L86 68Z" fill="url(#polymer)" stroke-width="5"/>
+    <path d="M92 64 L119 65 L114 101 Q112 106 105 106 L87 101Z" fill="url(#polymer)" stroke-width="5"/>
+    <path d="M87 68 Q73 72 75 86 Q78 94 91 92 L102 88" fill="none" stroke="#15191e" stroke-width="7" stroke-linecap="round"/>
+    <path d="M89 77 Q84 82 90 88" fill="none" stroke="#78808a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M104 42 L132 42 L126 51 L103 51Z" fill="#171b1f" stroke-width="3"/>
+    <path d="M53 39 L61 39 L64 44 L51 44Z" fill="#1b2025" stroke-width="3"/>
+    <path d="M147 39 L155 39 L158 44 L145 44Z" fill="#1b2025" stroke-width="3"/>
+    <path d="M58 44 L58 55 M66 44 L66 55 M74 44 L74 55" stroke="#808993" stroke-width="3" stroke-linecap="round"/>
+    <path d="M89 95 L113 98" stroke="#4f5861" stroke-width="3" stroke-linecap="round"/>
+    <path d="M84 62 L143 62" stroke="#59626c" stroke-width="2"/>
+    <circle cx="143" cy="53" r="3.5" fill="#b1bac4" stroke-width="2"/>
+  </g>
+  <g transform="translate(260 8)">
+    <path d="M22 53 L168 47 L176 63 L27 72Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="167" y="46" width="66" height="12" rx="4" fill="#252a30" stroke-width="6"/>
+    <path d="M67 68 L78 105 L99 99 L95 64Z" fill="url(#wood)" stroke-width="6"/>
+    <path d="M112 66 L119 105 L143 101 L139 62Z" fill="url(#brass)" stroke-width="6"/>
+    <path d="M46 55 L13 74 L21 88 L62 69Z" fill="#30353b" stroke-width="6"/>
+  </g>
+  <g transform="translate(514 8)">
+    <path d="M22 57 L185 48 L194 63 L31 74Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="183" y="47" width="55" height="12" rx="4" fill="#272c32" stroke-width="6"/>
+    <path d="M58 69 L22 91 L33 104 L77 76Z" fill="url(#wood)" stroke-width="6"/>
+    <path d="M87 67 L101 104 L121 97 L115 63Z" fill="url(#wood)" stroke-width="6"/>
+  </g>
+  <g transform="translate(766 4)">
+    <rect x="19" y="46" width="178" height="28" rx="13" fill="#4a5149" stroke-width="8"/>
+    <path d="M189 41 L235 58 L190 80Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="64" y="37" width="20" height="47" rx="5" fill="url(#brass)" stroke-width="6"/>
+    <path d="M101 75 L112 108 L130 102 L124 72Z" fill="#2a2f34" stroke-width="6"/>
+    <path d="M31 42 L11 58 L31 78Z" fill="#31373d" stroke-width="6"/>
+  </g>
+</g>
+</svg>
