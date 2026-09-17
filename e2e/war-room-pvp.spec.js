@@ -72,5 +72,23 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+
+  const board = page.locator('[data-board3d-war-room="true"]');
+  await expect(board).toBeVisible({ timeout: 45_000 });
+
+  // A visible shell is not enough: the regression that prompted this guard
+  // left the War Room chrome mounted while the actual duel was effectively
+  // stranded in the canonical side rail. Require a live canvas, the complete
+  // starting army and a board that still owns the PvP room horizontally.
+  const canvas = board.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: 45_000 });
+  await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
+
+  const [roomBox, boardBox] = await Promise.all([warRoom.boundingBox(), board.boundingBox()]);
+  expect(roomBox).not.toBeNull();
+  expect(boardBox).not.toBeNull();
+  expect(boardBox.width / roomBox.width).toBeGreaterThan(0.72);
+  const roomCenter = roomBox.x + roomBox.width / 2;
+  const boardCenter = boardBox.x + boardBox.width / 2;
+  expect(Math.abs(boardCenter - roomCenter) / roomBox.width).toBeLessThan(0.12);
 });
