@@ -50,9 +50,10 @@ describe('HomeCastle3DProps', () => {
   it('places tournament and training props in the left furniture and library zones', () => {
     const tournament = HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament;
     const train = HOME_CASTLE_DESTINATION_PROP_ANCHORS.train;
-    expect(tournament.x).toBeLessThan(-0.8);
-    expect(tournament.x).toBeGreaterThan(-1.1);
-    expect(Math.abs(tournament.y)).toBeLessThan(0.12);
+    expect(tournament.x).toBeLessThan(-1.05);
+    expect(tournament.x).toBeGreaterThan(-1.2);
+    expect(tournament.y).toBeGreaterThan(0.25);
+    expect(tournament.y).toBeLessThan(0.4);
     expect(tournament.z).toBeGreaterThan(0.25);
     expect(train.x).toBeLessThan(-0.2);
     expect(train.x).toBeGreaterThan(-0.5);

@@ -127,15 +127,15 @@
   }
 
   .illustrated-home__destination--tournament.is-diegetic-object {
-    /* Canonical 3D cup anchor: ~24.5% X / 51.9% Y of the 1814×867 stage.
-     * Keep the accessible hitbox centered on the physical object instead of
-     * the old painted-menu coordinate high on the left wall. */
-    left: 20.1%;
-    top: 43.9%;
-    width: 8.8%;
-    min-height: 16%;
+    /* This is the established Torneos slot in the canonical artwork.
+     * Keep copy/accessibility here and move the physical trophy to the slot;
+     * never drag the UI down to a misplaced GLB again. */
+    left: 12.6%;
+    top: 22.2%;
+    width: 15.2%;
+    min-height: 20%;
     justify-content: flex-end;
-    padding-bottom: .65cqw;
+    padding-bottom: .6cqw;
   }
 
   .illustrated-home__destination.is-diegetic-object:hover + .illustrated-home__scene-fragment,
