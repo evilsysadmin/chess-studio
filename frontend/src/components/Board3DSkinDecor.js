@@ -338,23 +338,25 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   const ivoryMaterial = canonicalIvoryMaterial(group);
   if (!ivoryMaterial) return { walnutRims: 0, matteHeads: 0, satinHeads: 0 };
 
-  // A hairline of dark walnut at the widest edge of the plinth gives ivory a
-  // stable silhouette on light squares without turning the base into a brown
-  // pedestal. The human king has a slightly narrower canonical footprint.
+  // Keep the pawn line delicate, but let the officer plinth edge carry a little
+  // more of the rank separation so the body colour can stay in the same ivory family.
   const walnut = makeWhiteBaseWalnutMaterial();
+  const officer = type !== 'p';
   const rimRadius = type === 'k' ? 0.358 : 0.369;
-  const walnutRim = addRing(group, walnut, 0.057, rimRadius, coarsePointer ? 0.009 : 0.0075, coarsePointer);
-  walnutRim.userData.whiteBaseWalnutRim = 'subtle-v1';
+  const rimTube = coarsePointer
+    ? (officer ? 0.0115 : 0.009)
+    : (officer ? 0.0095 : 0.0075);
+  const walnutRim = addRing(group, walnut, 0.057, rimRadius, rimTube, coarsePointer);
+  walnutRim.userData.whiteBaseWalnutRim = officer ? 'officer-defined-v1' : 'subtle-v1';
   walnutRim.castShadow = false;
 
-  // The tactical camera compresses the two white ranks. Give the canonical
-  // studio officers a clearly deeper antique-ivory body so the rear rank stays
-  // readable by value/chroma alone after ACES and the warm practical lights.
-  // Pawns keep the brighter canonical ivory; themed skins keep their own palette.
-  if (type !== 'p' && ivoryMaterial.userData?.skin3DId === 'studio') {
-    ivoryMaterial.color.setHex(0xc09b69);
-    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-deep-ivory-v2';
-    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xc09b69;
+  // The tactical camera compresses both white ranks. Officers use the same warm
+  // ivory hue as the pawn line, simply stepped down in value. This avoids the
+  // previous antique-gold look while keeping enough separation for gameplay.
+  if (officer && ivoryMaterial.userData?.skin3DId === 'studio') {
+    ivoryMaterial.color.setHex(0xc2b190);
+    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-balanced-ivory-v3';
+    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xc2b190;
   }
 
   // Pawns remain dry/matte because their heads form the foreground picket line.
@@ -381,11 +383,11 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   // Do not keep an unused cloned material alive on an unexpected custom piece.
   if (matteHeads === 0) pawnHead?.dispose?.();
   if (satinHeads === 0) officerHead?.dispose?.();
-  group.userData.whitePieceBaseContrast = 'subtle-walnut-rim-v1';
+  group.userData.whitePieceBaseContrast = officer ? 'officer-walnut-rim-v1' : 'subtle-walnut-rim-v1';
   group.userData.whitePieceWalnutRimCount = 1;
   group.userData.whitePieceMatteHeadCount = matteHeads;
   group.userData.whitePieceSatinHeadCount = satinHeads;
-  group.userData.whitePieceReadabilityFinish = 'walnut-pawn-matte-officer-satin-v3';
+  group.userData.whitePieceReadabilityFinish = 'walnut-rank-balanced-ivory-v4';
   return { walnutRims: 1, matteHeads, satinHeads };
 }
 
