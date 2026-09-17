@@ -63,3 +63,20 @@ export function mergeNewerMatch(current, next) {
   const nextRevision = Number(next.revision) || 0;
   return nextRevision >= currentRevision ? next : current;
 }
+
+
+export function projectPvpClock(clock, elapsedMs = 0) {
+  const whiteMs = Math.max(0, Number(clock?.whiteMs) || 0);
+  const blackMs = Math.max(0, Number(clock?.blackMs) || 0);
+  const runningColor = clock?.runningColor === 'w' || clock?.runningColor === 'b'
+    ? clock.runningColor
+    : null;
+  const elapsed = Math.max(0, Number(elapsedMs) || 0);
+  return {
+    whiteMs: runningColor === 'w' ? Math.max(0, whiteMs - elapsed) : whiteMs,
+    blackMs: runningColor === 'b' ? Math.max(0, blackMs - elapsed) : blackMs,
+    runningColor,
+    id: clock?.id || null,
+    incrementMs: Math.max(0, Number(clock?.incrementMs) || 0),
+  };
+}

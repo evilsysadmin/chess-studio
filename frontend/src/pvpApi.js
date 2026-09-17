@@ -59,4 +59,8 @@ export const pvpApi = {
       signal,
     });
   },
+
+  resignMatch(matchId, { signal } = {}) {
+    return jsonRequest(`/matches/${matchId}/resign`, { method: 'POST', signal });
+  },
 };

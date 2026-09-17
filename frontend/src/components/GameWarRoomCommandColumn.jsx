@@ -64,16 +64,32 @@ function WarRoomGuideHelp() {
   );
 }
 
-function WarRoomUtilityMenu({ game, board, controls, zenMode, compactViewport = false }) {
+export function WarRoomUtilityMenu({
+  game,
+  board,
+  controls,
+  zenMode,
+  compactViewport = false,
+  showFocus = true,
+  showRendererToggle = true,
+  showAppearance = true,
+  showZen = true,
+}) {
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
-  const hasAppearance = compactViewport || typeof board?.onCustomize === 'function';
+  const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
+  const hasNonDangerAction = (compactViewport && showFocus)
+    || hasHint
+    || hasUndo
+    || (compactViewport && showRendererToggle)
+    || hasAppearance
+    || (showZen && typeof controls.onToggleZen === 'function');
 
   return (
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
       <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-        {compactViewport && (
+        {compactViewport && showFocus && (
           <button
             type="button"
             role="menuitem"
@@ -108,7 +124,7 @@ function WarRoomUtilityMenu({ game, board, controls, zenMode, compactViewport = 
             Deshacer jugada
           </button>
         )}
-        {compactViewport && (
+        {compactViewport && showRendererToggle && (
           <button
             type="button"
             role="menuitem"
@@ -129,7 +145,7 @@ function WarRoomUtilityMenu({ game, board, controls, zenMode, compactViewport = 
             Apariencia
           </button>
         )}
-        {typeof controls.onToggleZen === 'function' && (
+        {showZen && typeof controls.onToggleZen === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -145,7 +161,7 @@ function WarRoomUtilityMenu({ game, board, controls, zenMode, compactViewport = 
         )}
         {typeof controls.onAbandon === 'function' && (
           <>
-            <span className="game-3d-utility-separator" role="separator" />
+            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
             <button
               type="button"
               role="menuitem"

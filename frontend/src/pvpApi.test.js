@@ -45,6 +45,13 @@ describe('War Room 1v1 API', () => {
     expect(JSON.parse(options.body)).toEqual({ from: 'e7', to: 'e8', promotion: 'q' });
   });
 
+  it('registra una rendición 1v1 con endpoint explícito', async () => {
+    await pvpApi.resignMatch('m-9');
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toContain('/pvp/matches/m-9/resign');
+    expect(options.method).toBe('POST');
+  });
+
   it('sale del roster con DELETE autenticado', async () => {
     global.fetch.mockImplementationOnce(() => Promise.resolve({ ok: true, status: 204 }));
     await pvpApi.leaveRoster();
