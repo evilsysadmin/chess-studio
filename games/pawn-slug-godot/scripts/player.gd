@@ -1,10 +1,11 @@
 extends CharacterBody2D
 
-signal fired(origin: Vector2, direction: float)
+signal fired(origin: Vector2, direction: float, shot: Dictionary)
 signal hurt(current_hp: int, max_hp: int)
 signal died(lives_remaining: int)
 signal respawned(current_hp: int, max_hp: int, lives_remaining: int)
 signal game_over
+signal weapon_changed(weapon_id: String, ammo_remaining: int)
 
 const MatthiasArt := preload("res://scripts/matthias_art.gd")
 const MOVE_SPEED := 330.0
@@ -16,13 +17,59 @@ const JUMP_SPEED := 610.0
 const GRAVITY := 1550.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
-const FIRE_INTERVAL := 0.16
 const MAX_HP := 3
 const STARTING_LIVES := 3
 const HIT_INVULN_SECONDS := 0.85
 const HURT_VISUAL_SECONDS := 0.18
 const DEATH_PAUSE_SECONDS := 0.55
 const RESPAWN_INVULN_SECONDS := 1.8
+const WEAPON_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
+const WEAPONS := {
+    "pistol": {
+        "slot": 1,
+        "trigger": "semi",
+        "ammo": -1,
+        "cadence": 0.380,
+        "damage": 22,
+        "speed": 760.0,
+        "pellets": 1,
+        "spread": 0.0,
+        "explosive": false,
+    },
+    "machinegun": {
+        "slot": 2,
+        "trigger": "auto",
+        "ammo": 180,
+        "cadence": 0.082,
+        "damage": 13,
+        "speed": 860.0,
+        "pellets": 1,
+        "spread": 0.025,
+        "explosive": false,
+    },
+    "shotgun": {
+        "slot": 3,
+        "trigger": "semi",
+        "ammo": 42,
+        "cadence": 0.430,
+        "damage": 13,
+        "speed": 690.0,
+        "pellets": 6,
+        "spread": 0.19,
+        "explosive": false,
+    },
+    "panzerfaust": {
+        "slot": 4,
+        "trigger": "semi",
+        "ammo": 9,
+        "cadence": 0.720,
+        "damage": 92,
+        "speed": 520.0,
+        "pellets": 1,
+        "spread": 0.0,
+        "explosive": true,
+    },
+}
 
 var facing := 1.0
 var fire_cooldown := 0.0
@@ -32,11 +79,19 @@ var invuln_remaining := 0.0
 var hurt_visual_remaining := 0.0
 var dead := false
 var is_game_over := false
+var weapon := "pistol"
+var arsenal := {
+    "pistol": {"unlocked": true, "ammo": -1},
+    "machinegun": {"unlocked": false, "ammo": 0},
+    "shotgun": {"unlocked": false, "ammo": 0},
+    "panzerfaust": {"unlocked": false, "ammo": 0},
+}
 var _death_remaining := 0.0
 var _spawn_position := Vector2.ZERO
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
+var _fire_was_pressed := false
 var _art
 
 func _ready() -> void:
@@ -44,6 +99,7 @@ func _ready() -> void:
     _art = MatthiasArt.new()
     _art.name = "MatthiasArt"
     add_child(_art)
+    _art.set_weapon(weapon)
 
 func _physics_process(delta: float) -> void:
     invuln_remaining = maxf(0.0, invuln_remaining - delta)
@@ -91,11 +147,7 @@ func _physics_process(delta: float) -> void:
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
-    var fired_now := false
-    if _fire_pressed() and fire_cooldown <= 0.0:
-        fire_cooldown = FIRE_INTERVAL
-        fired_now = true
-        fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
+    var fired_now := _update_fire_input()
 
     _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
     _art.update_visual(
@@ -109,6 +161,55 @@ func _physics_process(delta: float) -> void:
         fired_now,
     )
     queue_redraw()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+    if not (event is InputEventKey) or not event.pressed or event.echo:
+        return
+    match event.keycode:
+        KEY_1:
+            select_weapon("pistol")
+        KEY_2:
+            select_weapon("machinegun")
+        KEY_3:
+            select_weapon("shotgun")
+        KEY_4:
+            select_weapon("panzerfaust")
+
+func grant_weapon(id: String, ammo_bonus: int = -1) -> bool:
+    if not WEAPONS.has(id) or id == "pistol":
+        return false
+    var slot: Dictionary = arsenal[id]
+    var default_ammo := int(WEAPONS[id]["ammo"])
+    var granted_ammo := default_ammo if ammo_bonus < 0 else ammo_bonus
+    if not bool(slot["unlocked"]):
+        slot["unlocked"] = true
+        slot["ammo"] = maxi(0, granted_ammo)
+    else:
+        slot["ammo"] = maxi(0, int(slot["ammo"]) + granted_ammo)
+    arsenal[id] = slot
+    select_weapon(id)
+    return true
+
+func select_weapon(id: String) -> bool:
+    if not WEAPONS.has(id):
+        return false
+    var slot: Dictionary = arsenal[id]
+    if not bool(slot["unlocked"]):
+        return false
+    if int(slot["ammo"]) == 0:
+        return false
+    weapon = id
+    fire_cooldown = 0.0
+    _fire_was_pressed = _fire_pressed()
+    _art.set_weapon(weapon)
+    weapon_changed.emit(weapon, current_ammo())
+    return true
+
+func current_ammo() -> int:
+    return int(arsenal[weapon]["ammo"])
+
+func weapon_unlocked(id: String) -> bool:
+    return WEAPONS.has(id) and bool(arsenal[id]["unlocked"])
 
 func can_take_damage() -> bool:
     return not dead and not is_game_over and invuln_remaining <= 0.0
@@ -124,13 +225,54 @@ func take_damage(amount: int = 1) -> bool:
         _begin_death()
     return true
 
+func _update_fire_input() -> bool:
+    var fire_pressed := _fire_pressed()
+    var profile: Dictionary = WEAPONS[weapon]
+    var trigger := String(profile["trigger"])
+    var wants_fire := fire_pressed if trigger == "auto" else fire_pressed and not _fire_was_pressed
+    _fire_was_pressed = fire_pressed
+    if not wants_fire or fire_cooldown > 0.0:
+        return false
+
+    var slot: Dictionary = arsenal[weapon]
+    var ammo := int(slot["ammo"])
+    if ammo == 0:
+        _fallback_to_pistol()
+        return false
+
+    fire_cooldown = float(profile["cadence"])
+    var shot := {
+        "weapon": weapon,
+        "speed": float(profile["speed"]),
+        "damage": int(profile["damage"]),
+        "pellets": int(profile["pellets"]),
+        "spread": float(profile["spread"]),
+        "explosive": bool(profile["explosive"]),
+    }
+    fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing, shot)
+
+    if ammo > 0:
+        ammo -= 1
+        slot["ammo"] = ammo
+        arsenal[weapon] = slot
+        weapon_changed.emit(weapon, ammo)
+        if ammo == 0:
+            _fallback_to_pistol()
+    return true
+
+func _fallback_to_pistol() -> void:
+    if weapon == "pistol":
+        return
+    select_weapon("pistol")
+
 func _begin_death() -> void:
     dead = true
     hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
     lives = maxi(0, lives - 1)
     velocity = Vector2.ZERO
-    fire_cooldown = FIRE_INTERVAL
+    fire_cooldown = float(WEAPONS[weapon]["cadence"])
+    _fire_was_pressed = false
     died.emit(lives)
     if lives <= 0:
         is_game_over = true
@@ -178,6 +320,7 @@ func _respawn() -> void:
     _coyote_remaining = 0.0
     _jump_buffer_remaining = 0.0
     _jump_was_pressed = false
+    _fire_was_pressed = false
     _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
 
