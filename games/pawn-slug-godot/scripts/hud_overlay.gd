@@ -9,7 +9,7 @@ const WEAPON_LABELS := {
 const EXTRACTION_X := 5050.0
 
 var _root: Node
-var _player: Node
+var _player: CharacterBody2D
 var _primary: Label
 var _secondary: Label
 var _objective_panel: ColorRect
@@ -18,7 +18,7 @@ var _last_signature := ""
 
 func _ready() -> void:
     _root = get_parent()
-    _player = _root.get_node_or_null("Player")
+    _player = _root.get_node_or_null("Player") as CharacterBody2D
     _upgrade_existing_panel()
     _build_labels()
     _refresh(true)
@@ -105,8 +105,8 @@ func _refresh(force: bool) -> void:
         ammo,
         int(checkpoint),
         int(round(progress * 100.0)),
-        int(boss_spawned),
-        int(boss_defeated),
+        1 if boss_spawned else 0,
+        1 if boss_defeated else 0,
         boss_hp,
     ]
     if not force and signature == _last_signature:
