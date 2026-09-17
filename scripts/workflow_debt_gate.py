@@ -47,6 +47,7 @@ INVENTORY = {
     'staging-ai-worker.yml': 'delivery-accreditation',
     'staging-bootstrap.yml': 'delivery-escape-hatch',
     'staging-deploy.yml': 'delivery-staging',
+    'staging-pawn-slug-visual.yml': 'visual-staging-evidence',
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
 }
