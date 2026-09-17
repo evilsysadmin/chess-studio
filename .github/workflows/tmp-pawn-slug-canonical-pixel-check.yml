@@ -1,0 +1,32 @@
+name: Temp · Pawn Slug canonical pixel check
+
+on:
+  push:
+    branches:
+      - ops/pawn-slug-canonical-pixel-check
+
+permissions:
+  contents: read
+
+jobs:
+  pixel-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare canonical master pixel hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --quiet pillow
+          python3 - <<'PY'
+          import hashlib
+          import io
+          import urllib.request
+          from PIL import Image
+
+          url = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png'
+          data = urllib.request.urlopen(url, timeout=20).read()
+          image = Image.open(io.BytesIO(data)).convert('RGBA')
+          print('FILE_SHA256=' + hashlib.sha256(data).hexdigest())
+          print('PIXEL_SHA256=' + hashlib.sha256(image.tobytes()).hexdigest())
+          print('SIZE=%dx%d' % image.size)
+          PY
