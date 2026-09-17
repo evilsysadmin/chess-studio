@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  chroniclesActiveQuest,
+  chroniclesInventoryEntries,
+  chroniclesQuestEntries,
+} from '../chronicles/chroniclesContentRuntime.js';
+import {
   CHRONICLES_ATTRIBUTE_CAP,
   CHRONICLES_ATTRIBUTE_DEFINITIONS,
   chroniclesAllowedAttributes,
@@ -12,6 +17,7 @@ import {
   chroniclesTacticsProfile,
 } from '../chroniclesOfMatthiasTactics.js';
 import './ChroniclesTacticsPartyHud.css';
+import './ChroniclesTacticsAdventureSummary.css';
 
 const PARTY_ORDER = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 
@@ -60,6 +66,11 @@ export default function ChroniclesTacticsPartyHud({
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
     [state.party],
   );
+  const activeQuest = chroniclesActiveQuest(state);
+  const inventoryItems = chroniclesInventoryEntries(state);
+  const completedQuestCount = chroniclesQuestEntries(state, 'completed').length;
+  const inventoryCount = inventoryItems.reduce((total, item) => total + Number(item.quantity || 0), 0);
+  const hasAdventureState = Boolean(activeQuest || inventoryItems.length || completedQuestCount);
   const sheetMember = sheetMemberId
     ? party.find((member) => member.id === sheetMemberId) || null
     : null;
@@ -139,6 +150,45 @@ export default function ChroniclesTacticsPartyHud({
           );
         })}
         <small className="chronicles-party-hud__hint">Retrato · ficha de PJ</small>
+
+        {hasAdventureState && (
+          <details className="chronicles-party-hud__adventure">
+            <summary>
+              <span>Botín y encargos</span>
+              <b>{activeQuest ? '1 misión' : 'sin misión'} · {inventoryCount} objeto{inventoryCount === 1 ? '' : 's'}</b>
+            </summary>
+            <div className="chronicles-party-hud__adventure-body">
+              {activeQuest && (
+                <section className="chronicles-party-hud__adventure-section">
+                  <span>Misión activa</span>
+                  <strong>{activeQuest.title}</strong>
+                  {activeQuest.objective && <small>{activeQuest.objective}</small>}
+                </section>
+              )}
+              {inventoryItems.length > 0 && (
+                <section className="chronicles-party-hud__adventure-section">
+                  <span>Mochila</span>
+                  <div className="chronicles-party-hud__inventory">
+                    {inventoryItems.map((item) => (
+                      <span
+                        key={item.id}
+                        className="chronicles-party-hud__inventory-item"
+                        title={item.description || item.name}
+                      >
+                        {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {completedQuestCount > 0 && (
+                <small className="chronicles-party-hud__adventure-complete">
+                  {completedQuestCount} encargo{completedQuestCount === 1 ? '' : 's'} completado{completedQuestCount === 1 ? '' : 's'}
+                </small>
+              )}
+            </div>
+          </details>
+        )}
       </aside>
 
       {sheetMember && sheetProfile && sheetProgress && sheetXpWindow && sheetAbility && (
