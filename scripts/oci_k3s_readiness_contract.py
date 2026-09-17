@@ -10,6 +10,8 @@ service = (ROOT / ".github/workflows/oci-staging-service.yml").read_text(encodin
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
 client = (ROOT / "scripts/oci_k3s_control.py").read_text(encoding="utf-8")
 root_control = (ROOT / "scripts/oci_k3s_control_root.py").read_text(encoding="utf-8")
+status_client = (ROOT / "scripts/oci_k3s_status.py").read_text(encoding="utf-8")
+status_root = (ROOT / "scripts/oci_k3s_status_root.py").read_text(encoding="utf-8")
 provision = (ROOT / "scripts/oci_k3s_capability_provision.sh").read_text(encoding="utf-8")
 sudoers = (ROOT / "infra/oci/runtime/ocarun.sudoers").read_text(encoding="utf-8")
 config = (ROOT / "infra/oci/k3s/config.yaml").read_bytes()
@@ -33,9 +35,9 @@ assert "K3s service unexpectedly exists" not in install_source, (
 )
 assert "sudo --non-interactive" in install_source, "slow path must retain the narrow root installer"
 
-# Lifecycle privilege is intentionally split: the OCI-side client can request
-# only two literal operations, while the root-owned wrapper performs systemd
-# work after proving byte-exact assets/config/unit and resource headroom.
+# Lifecycle privilege remains mutation-only and narrow: the OCI-side client can
+# request only two literal operations, while the root-owned wrapper performs
+# systemd work after proving byte-exact assets/config/unit and resource headroom.
 ast.parse(client)
 ast.parse(root_control)
 config_sha = hashlib.sha256(config).hexdigest()
@@ -62,20 +64,55 @@ assert start_source.index("node_name = _wait_ready()") < start_source.index('_sy
 assert 'rollback("start-failed")' in start_source
 assert "OCI_K3S_START_OK" in root_control and "OCI_K3S_ROLLBACK_OK" in root_control
 
+# Status is intentionally a separate root-owned capability. It has no operation
+# argument, reports health/resources, and must never acquire lifecycle or file
+# mutation primitives merely because it runs as root.
+ast.parse(status_client)
+ast.parse(status_root)
+assert 'WRAPPER = "/usr/local/sbin/chess-studio-k3s-status"' in status_client
+assert 'SUCCESS_MARKER = "OCI_K3S_STATUS_OK"' in status_client
+assert "sudo --non-interactive" in status_client and "systemctl" not in status_client
+assert "CHESS_STUDIO_REPO" not in status_root and "/opt/chess-studio/repo" not in status_root
+assert "OCI_K3S_STATUS_OK" in status_root
+for forbidden in (
+    '"start"',
+    '"stop"',
+    '"restart"',
+    '"enable"',
+    '"disable"',
+    ".mkdir(",
+    ".unlink(",
+    ".write_text(",
+    "os.replace(",
+):
+    assert forbidden not in status_root, f"read-only K3s status probe contains mutation primitive: {forbidden}"
+assert '"is-active"' in status_root and '"is-enabled"' in status_root
+assert '"get", "nodes"' in status_root
+assert '"get", "pods", "-A"' in status_root
+assert '"coredns", "metrics-server"' in status_root
+assert "mem_available_mib=" in status_root and "disk_free_mib=" in status_root and "load1=" in status_root
+
 assert "python3 -S \"$controller\" self-test" in provision
+assert "python3 -S \"$status_probe\" self-test" in provision
 assert 'control_target=/usr/local/sbin/chess-studio-k3s-control' in provision
+assert 'status_target=/usr/local/sbin/chess-studio-k3s-status' in provision
 assert 'install -o root -g root -m 0755 "$controller" "$control_target"' in provision
+assert 'install -o root -g root -m 0755 "$status_probe" "$status_target"' in provision
+assert "OCI_K3S_STATUS_CAPABILITY_READY" in provision
 assert (
     "CHESS_STUDIO_K3S_CONTROL = /usr/local/sbin/chess-studio-k3s-control start, "
     "/usr/local/sbin/chess-studio-k3s-control rollback"
 ) in sudoers
 assert "CHESS_STUDIO_K3S_CONTROL *" not in sudoers
-assert "CHESS_STUDIO_K3S_ASSETS, CHESS_STUDIO_K3S_CONTROL" in sudoers
+assert "CHESS_STUDIO_K3S_STATUS = /usr/local/sbin/chess-studio-k3s-status" in sudoers
+assert "CHESS_STUDIO_K3S_STATUS *" not in sudoers
+assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS" in sudoers
 
 # A successful canonical staging generation automatically ensures the base K3s
 # node only while that generation is still current main. A superseded staging
 # run must finish cleanly without any OCI mutation. Every other service-control
-# operation remains explicit workflow_dispatch-only.
+# mutation remains explicit workflow_dispatch-only. The read-only status probe
+# is allowed automatically only after an admitted K3s ensure.
 assert "workflow_run:" in service
 assert "workflows: [Staging · deploy]" in service
 assert "types: [completed]" in service and "branches: [main]" in service
@@ -91,6 +128,9 @@ assert "group: oci-staging-mutations" in service
 assert "Start or ensure guarded single-node K3s" in service
 assert "python3 scripts/oci_k3s_control.py start" in service
 assert "python3 scripts/oci_k3s_control.py rollback" in service
+assert "Read K3s status and resource snapshot" in service
+assert "python3 scripts/oci_k3s_status.py" in service
+assert "inputs.operation == 'k3s-status'" in service
 assert "Prove Docker staging survived K3s lifecycle change" in service
 assert 'EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || inputs.repo_ref || github.sha }}' in service
 assert '--sha "$EXPECTED_SHA"' in service
@@ -114,4 +154,4 @@ for fragment in manual_only_fragments:
         f"workflow_run must never authorize manual service operation: {fragment}"
     )
 
-print("OCI K3s readiness + guarded lifecycle + auto-ensure + fast-path contract: OK")
+print("OCI K3s readiness + guarded lifecycle + read-only status + auto-ensure + fast-path contract: OK")
