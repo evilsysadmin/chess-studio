@@ -86,4 +86,14 @@ assert "python3 scripts/oci_runtime_config.py sync" in service_control, (
     "runtime-sync must remain the owner of Render-to-OCI runtime synchronization"
 )
 
+# All manual service operations share the same native mutation mutex as the
+# canonical backend deploy and Terraform. Diagnostics may queue briefly, but a
+# recovery/deploy can never race another OCI mutation.
+assert "group: oci-staging-mutations" in service_control, (
+    "OCI service control must share the repository-wide staging mutation mutex"
+)
+assert "group: oci-staging-service-control" not in service_control, (
+    "OCI service control must not use a private mutex that can race staging mutations"
+)
+
 print("OCI staging CORS + runtime deployment contract: OK")
