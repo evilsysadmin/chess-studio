@@ -5,6 +5,7 @@ import {
   CHRONICLES_ISO_PARTY_LAYOUT,
   chroniclesIsoInteractionForHit,
   chroniclesIsoPointerAction,
+  chroniclesIsoUsesLegacyDressing,
   chroniclesIsoWorldForCell,
   chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
@@ -32,6 +33,16 @@ describe('Chronicles canonical isometric viewport', () => {
 
     expect([centre.x, centre.y, centre.z]).toEqual([0, 0, 0]);
     expect([corner.x, corner.y, corner.z]).toEqual([4.9, 0, 2.45]);
+  });
+
+  it('keeps legacy crypt dressing opt-in through the scene style contract', () => {
+    expect(chroniclesIsoUsesLegacyDressing({
+      sceneStyle: { dressing: 'crypt-legacy' },
+    })).toBe(true);
+    expect(chroniclesIsoUsesLegacyDressing({
+      sceneStyle: { dressing: 'none' },
+    })).toBe(false);
+    expect(chroniclesIsoUsesLegacyDressing(null)).toBe(false);
   });
 
   it('keeps the camera straight behind the party with an elevated tactical read', () => {
