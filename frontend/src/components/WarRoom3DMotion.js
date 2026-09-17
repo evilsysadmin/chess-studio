@@ -67,14 +67,16 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   if (!hemisphere || !hemisphere.parent) {
     hemisphere = scene.children?.find((object) => (
       object?.isHemisphereLight
-      && object.color?.getHex?.() === 0xffefd0
+      && [0xffefd0, 0xffd8b0].includes(object.color?.getHex?.())
       && object.groundColor?.getHex?.() === 0x10192b
     )) || null;
     if (hemisphere) warRoomHemisphereState.set(scene, hemisphere);
   }
   if (!hemisphere) return null;
   hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
+  if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(0xffd8b0);
   scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
+  scene.userData.warRoomLightingGrade = 'tungsten-club-v1';
   return hemisphere;
 }
 
@@ -92,23 +94,25 @@ export function applyWarRoomKeyLightGrade(scene) {
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
       object?.isDirectionalLight
-      && object.color?.getHex?.() === 0xffe1aa
+      && [0xffe1aa, 0xffc58c].includes(object.color?.getHex?.())
     )) || null;
     if (key) warRoomKeyLightState.set(scene, key);
   }
   if (!key) return null;
 
-  // Keep the premium warm key, but stop firing it almost straight from the
-  // player's/white side. A higher, more lateral angle keeps ivory readable on
-  // light squares while restoring side modelling and avoiding frontal hotspots.
+  // Keep the premium high-side modelling while grading the vertical wash toward
+  // tungsten club-room warmth instead of near-white overhead light. The warmer
+  // key keeps ivory, pale squares and wood cinematic without flattening ebony.
   const whiteSide = (Number(key.position?.z) || 0) >= 0;
   const pose = warRoomKeyLightPose({ whiteSide });
   if (typeof key.position?.set === 'function') key.position.set(pose.x, pose.y, pose.z);
   else if (key.position) Object.assign(key.position, pose);
+  if (typeof key.color?.setHex === 'function') key.color.setHex(0xffc58c);
 
   scene.userData ||= {};
   scene.userData.warRoomKeyLightPose = 'high-side-v1';
   scene.userData.warRoomKeyLightPosition = pose;
+  scene.userData.warRoomLightingGrade = 'tungsten-club-v1';
   return key;
 }
 
@@ -140,7 +144,7 @@ export function applyWarRoomWarmFillGrade(scene) {
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
       object?.isDirectionalLight
-      && object.color?.getHex?.() === 0xffe1aa
+      && [0xffe1aa, 0xffc58c].includes(object.color?.getHex?.())
     )) || null;
     if (key) warRoomKeyLightState.set(scene, key);
   }
@@ -389,6 +393,7 @@ function installWarRoomRenderDiscipline() {
     const boardKey = applyWarRoomKeyLightGrade(scene);
     if (boardKey && this.domElement?.dataset) {
       this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
+      this.domElement.dataset.warRoomLightingGrade = 'tungsten-club-v1';
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
