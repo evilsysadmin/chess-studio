@@ -29,6 +29,7 @@ import {
   chroniclesTacticsCombatActive,
   chroniclesTacticsResolvePlayerAction,
 } from '../chroniclesTacticsTurnMode.js';
+import { chroniclesTacticsLocationLabel } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
@@ -82,6 +83,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     [selectedMemberId, state],
   );
   const objective = chroniclesObjective(state);
+  const locationLabel = chroniclesTacticsLocationLabel(state);
   const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
   const canAttack = useMemo(
     () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
@@ -232,7 +234,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         console.error('Chronicles of Matthias Tactics renderer failed', error);
         if (!cancelled) {
           setRendererName('THREE.JS · ERROR');
-          setRendererError('La cripta isométrica se ha negado a materializarse.');
+          setRendererError('El escenario isométrico se ha negado a materializarse.');
         }
       });
 
@@ -291,6 +293,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       data-camera="isometric-behind-party"
       data-combat="turn-based"
       data-engagement={inCombat ? 'combat' : 'exploration'}
+      data-map={state.mapId}
       data-phase={state.phase}
       data-turn-phase={state.turnPhase || 'party'}
     >
@@ -298,14 +301,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <div>
           <span className="section-label">EXPERIMENTO RPG · THREE.JS · ISOMÉTRICO</span>
           <h2>Chronicles of Matthias Tactics</h2>
-          <p>RPG táctico isométrico: exploración libre, cuatro clases y combate por turnos cuando la cripta decide ponerse desagradable.</p>
+          <p>RPG táctico isométrico: exploración libre, cuatro clases y combate por turnos cuando el tablero decide ponerse desagradable.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
 
       <div className="chronicles-tactics__frame">
         <aside className="chronicles-tactics__mission" aria-label="Misión">
-          <span className="chronicles-tactics__kicker">CRIPTA 01</span>
+          <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
           <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad. En combate: una acción tuya, una respuesta enemiga.</small>
         </aside>
