@@ -3,14 +3,13 @@ extends Node2D
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(2600.0, 720.0)
 const FLOOR_Y := 610.0
-const BULLET_SPEED := 920.0
 const ENEMY_BULLET_SPEED := 540.0
 const ENEMY_FIRE_INTERVAL := 1.05
 const ENEMY_FIRE_WARMUP := 0.35
 const ENEMY_AGGRO_RANGE := 1080.0
 const ENEMY_BULLET_DAMAGE := 1
 const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
-const ENEMY_MAX_HP := 5
+const ENEMY_MAX_HP := 112
 const ENEMY_POSITION := Vector2(2300.0, 568.0)
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
@@ -35,6 +34,7 @@ func _ready() -> void:
     player.connect("died", Callable(self, "_on_player_died"))
     player.connect("respawned", Callable(self, "_on_player_respawned"))
     player.connect("game_over", Callable(self, "_on_player_game_over"))
+    player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
     _sync_hud()
     _notify_parent("ready")
     queue_redraw()
@@ -51,11 +51,26 @@ func _unhandled_key_input(event: InputEvent) -> void:
         _notify_parent("exit")
         get_viewport().set_input_as_handled()
 
-func _on_player_fired(origin: Vector2, direction: float) -> void:
-    projectiles.append({
-        "position": origin,
-        "direction": direction,
-    })
+func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> void:
+    var speed := float(shot.get("speed", 760.0))
+    var damage := int(shot.get("damage", 1))
+    var pellets := maxi(1, int(shot.get("pellets", 1)))
+    var spread := float(shot.get("spread", 0.0))
+    var explosive := bool(shot.get("explosive", false))
+    var weapon := String(shot.get("weapon", "pistol"))
+    for _pellet in range(pellets):
+        var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
+        var velocity := Vector2(direction, 0.0).rotated(angle) * speed
+        projectiles.append({
+            "position": origin,
+            "velocity": velocity,
+            "damage": damage,
+            "weapon": weapon,
+            "explosive": explosive,
+        })
+
+func _on_player_weapon_changed(_weapon_id: String, _ammo_remaining: int) -> void:
+    _notify_parent("weapon-changed")
 
 func _on_player_hurt(_current_hp: int, _max_hp: int) -> void:
     _sync_hud()
@@ -88,18 +103,24 @@ func _update_projectiles(delta: float) -> void:
     for index in range(projectiles.size() - 1, -1, -1):
         var projectile := projectiles[index]
         var position: Vector2 = projectile["position"]
-        position.x += float(projectile["direction"]) * BULLET_SPEED * delta
+        var velocity: Vector2 = projectile["velocity"]
+        position += velocity * delta
         projectile["position"] = position
         projectiles[index] = projectile
 
         if enemy_hp > 0 and Rect2(ENEMY_POSITION - Vector2(34.0, 44.0), Vector2(68.0, 88.0)).has_point(position):
-            enemy_hp -= 1
+            enemy_hp = maxi(0, enemy_hp - int(projectile["damage"]))
             projectiles.remove_at(index)
             if enemy_hp <= 0:
                 enemy_respawn = 1.25
             continue
 
-        if position.x < -30.0 or position.x > WORLD_SIZE.x + 30.0:
+        if (
+            position.x < -30.0
+            or position.x > WORLD_SIZE.x + 30.0
+            or position.y < -30.0
+            or position.y > WORLD_SIZE.y + 30.0
+        ):
             projectiles.remove_at(index)
 
 func _update_enemy(delta: float) -> void:
@@ -174,8 +195,13 @@ func _draw() -> void:
 
     for projectile in projectiles:
         var position: Vector2 = projectile["position"]
-        draw_circle(position, 5.0, Color("ffd36a"))
-        draw_line(position - Vector2(float(projectile["direction"]) * 18.0, 0.0), position, Color(1.0, 0.72, 0.24, 0.45), 3.0)
+        var velocity: Vector2 = projectile["velocity"]
+        var explosive := bool(projectile["explosive"])
+        var radius := 8.0 if explosive else 5.0
+        var color := Color("ff9d4d") if explosive else Color("ffd36a")
+        var trail := velocity.normalized() * (28.0 if explosive else 18.0)
+        draw_circle(position, radius, color)
+        draw_line(position - trail, position, Color(color.r, color.g, color.b, 0.45), 3.0)
 
     for projectile in enemy_projectiles:
         var position: Vector2 = projectile["position"]
