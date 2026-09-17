@@ -92,6 +92,10 @@ const WEAPON_POSES := {
     },
 }
 
+# SpriteFrames is immutable after construction here, so sharing it across
+# Matthias remounts is safe: playback/frame state belongs to AnimatedSprite2D.
+static var _cached_body_frames: SpriteFrames
+
 var _body_ready := false
 var _weapon := "pistol"
 var _action := "idle"
@@ -120,7 +124,10 @@ func _ready() -> void:
     _build_native_nodes()
     _build_fx_animations()
     _load_weapon_texture()
-    _request_motion_atlas()
+    if _cached_body_frames != null:
+        _install_body_frames(_cached_body_frames)
+    else:
+        _request_motion_atlas()
 
 func body_ready() -> bool:
     return _body_ready
@@ -320,7 +327,13 @@ func _on_motion_atlas_loaded(
         return
 
     var atlas := ImageTexture.create_from_image(image)
-    _body.sprite_frames = _make_sprite_frames(atlas)
+    _cached_body_frames = _make_sprite_frames(atlas)
+    _install_body_frames(_cached_body_frames)
+
+func _install_body_frames(frames: SpriteFrames) -> void:
+    if frames == null or _body == null:
+        return
+    _body.sprite_frames = frames
     _body_ready = true
     _body.visible = true
     _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
