@@ -29,8 +29,10 @@ async function openTactics(page) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
-  const moreModes = await openMoreGameModes(page);
-  await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await openMoreGameModes(page);
+  const tools = page.locator('#illustrated-home-tools');
+  await expect(tools).toBeVisible();
+  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
@@ -134,7 +136,7 @@ for (const capture of CAPTURES) {
       await expect(canvas).toBeVisible();
       await expect(viewport).toBeVisible();
       await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
-      await expect(mode).toHaveAttribute('data-combat', 'realtime');
+      await expect(mode).toHaveAttribute('data-combat', 'turn-based');
       await page.waitForTimeout(500);
 
       const health = await captureTacticsHealth(page);
@@ -142,7 +144,7 @@ for (const capture of CAPTURES) {
       expect(health.canvasCount, `${capture.label}: Tactics canvas`).toBe(1);
       expect(health.partyMemberCount, `${capture.label}: canonical four-member party`).toBe(4);
       expect(health.camera).toBe('isometric-behind-party');
-      expect(health.combat).toBe('realtime');
+      expect(health.combat).toBe('turn-based');
       expect(health.viewport?.width || 0, `${capture.label}: Tactics viewport width`).toBeGreaterThan(0);
       expect(health.viewport?.height || 0, `${capture.label}: Tactics viewport height`).toBeGreaterThan(0);
       expect(health.canvas?.width || 0, `${capture.label}: Tactics canvas width`).toBeGreaterThan(0);
