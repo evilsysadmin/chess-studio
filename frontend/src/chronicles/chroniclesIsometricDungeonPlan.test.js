@@ -4,6 +4,7 @@ import { chroniclesIsometricScenePlan } from './chroniclesIsometricScenePlan.js'
 import {
   CHRONICLES_ISOMETRIC_CELL_SIZE,
   chroniclesIsometricContentByKind,
+  chroniclesIsometricContentsByKind,
   chroniclesIsometricDungeonPlan,
 } from './chroniclesIsometricDungeonPlan.js';
 
@@ -62,6 +63,34 @@ describe('Chronicles isometric dungeon geometry plan', () => {
     expect(chroniclesIsometricContentByKind(menagerie, 'pickup')).toBeNull();
     expect(chroniclesIsometricContentByKind(null, 'lever')).toBeNull();
     expect(chroniclesIsometricContentByKind(crypt, '')).toBeNull();
+    expect(chroniclesIsometricContentsByKind(null, 'lever')).toEqual([]);
+    expect(chroniclesIsometricContentsByKind(crypt, '')).toEqual([]);
+  });
+
+  it('preserves every authored entry when several props share the same visual role', () => {
+    const scenePlan = {
+      mapId: 'synthetic-multi-prop-room',
+      width: 4,
+      height: 3,
+      center: { x: 1.5, y: 1 },
+      floors: [{ x: 0, y: 0, tile: '.' }],
+      walls: [],
+      content: [
+        { id: 'lever-west', kind: 'lever', position: { x: 0, y: 1 }, visible: true },
+        { id: 'lever-east', kind: 'lever', position: { x: 3, y: 1 }, visible: true },
+        { id: 'relic', kind: 'pickup', position: { x: 2, y: 2 }, visible: true },
+      ],
+    };
+    const plan = chroniclesIsometricDungeonPlan(scenePlan, 2);
+    const levers = chroniclesIsometricContentsByKind(plan, 'lever');
+
+    expect(levers.map((entry) => entry.id)).toEqual(['lever-west', 'lever-east']);
+    expect(levers.map((entry) => entry.world)).toEqual([
+      { x: -3, y: 0, z: 0 },
+      { x: 3, y: 0, z: 0 },
+    ]);
+    expect(Object.isFrozen(levers)).toBe(true);
+    expect(chroniclesIsometricContentByKind(plan, 'lever')).toBe(levers[0]);
   });
 
   it('sizes non-square foundations independently and centers projected cells and content', () => {
