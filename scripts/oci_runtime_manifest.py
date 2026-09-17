@@ -141,11 +141,11 @@ def self_test() -> None:
         raise AssertionError("unexpected Vault keys must fail closed")
 
     try:
-        parse_env("JWT_SECRET=must-not-live-here\n")
+        compose_runtime({"JWT_SECRET": "must-not-live-here"}, sample_vault)
     except ValueError:
         pass
     else:
-        raise AssertionError("parser itself accepts generic keys; partition validation must own rejection")
+        raise AssertionError("secret-bearing declarative config must fail partition validation")
 
     try:
         load_declarative(Path(__file__))
