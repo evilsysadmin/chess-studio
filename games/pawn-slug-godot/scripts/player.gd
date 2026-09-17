@@ -1,6 +1,10 @@
 extends CharacterBody2D
 
 signal fired(origin: Vector2, direction: float)
+signal hurt(current_hp: int, max_hp: int)
+signal died(lives_remaining: int)
+signal respawned(current_hp: int, max_hp: int, lives_remaining: int)
+signal game_over
 
 const MatthiasArt := preload("res://scripts/matthias_art.gd")
 const MOVE_SPEED := 330.0
@@ -13,20 +17,38 @@ const GRAVITY := 1550.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
 const FIRE_INTERVAL := 0.16
+const MAX_HP := 3
+const STARTING_LIVES := 3
+const HIT_INVULN_SECONDS := 0.85
+const DEATH_PAUSE_SECONDS := 0.55
+const RESPAWN_INVULN_SECONDS := 1.8
 
 var facing := 1.0
 var fire_cooldown := 0.0
+var hp := MAX_HP
+var lives := STARTING_LIVES
+var invuln_remaining := 0.0
+var dead := false
+var is_game_over := false
+var _death_remaining := 0.0
+var _spawn_position := Vector2.ZERO
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
 var _art
 
 func _ready() -> void:
+    _spawn_position = global_position
     _art = MatthiasArt.new()
     _art.name = "MatthiasArt"
     add_child(_art)
 
 func _physics_process(delta: float) -> void:
+    invuln_remaining = maxf(0.0, invuln_remaining - delta)
+    if dead:
+        _update_dead_state(delta)
+        return
+
     var was_on_floor := is_on_floor()
     var axis := _movement_axis()
     if absf(axis) > 0.08:
@@ -83,6 +105,68 @@ func _physics_process(delta: float) -> void:
         fired_now,
     )
     queue_redraw()
+
+func can_take_damage() -> bool:
+    return not dead and not is_game_over and invuln_remaining <= 0.0
+
+func take_damage(amount: int = 1) -> bool:
+    if amount <= 0 or not can_take_damage():
+        return false
+    hp = maxi(0, hp - amount)
+    invuln_remaining = HIT_INVULN_SECONDS
+    hurt.emit(hp, MAX_HP)
+    if hp <= 0:
+        _begin_death()
+    return true
+
+func _begin_death() -> void:
+    dead = true
+    _death_remaining = DEATH_PAUSE_SECONDS
+    lives = maxi(0, lives - 1)
+    velocity = Vector2.ZERO
+    fire_cooldown = FIRE_INTERVAL
+    died.emit(lives)
+    if lives <= 0:
+        is_game_over = true
+        game_over.emit()
+
+func _update_dead_state(delta: float) -> void:
+    fire_cooldown = maxf(0.0, fire_cooldown - delta)
+    if not is_on_floor():
+        velocity.y += GRAVITY * delta
+    velocity.x = move_toward(velocity.x, 0.0, GROUND_DECEL * delta)
+    move_and_slide()
+
+    if not is_game_over:
+        _death_remaining = maxf(0.0, _death_remaining - delta)
+        if _death_remaining <= 0.0:
+            _respawn()
+            return
+
+    var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
+    _art.update_visual(
+        delta,
+        horizontal_speed_ratio,
+        is_on_floor(),
+        false,
+        false,
+        velocity.y,
+        facing,
+        false,
+    )
+    queue_redraw()
+
+func _respawn() -> void:
+    global_position = _spawn_position
+    velocity = Vector2.ZERO
+    hp = MAX_HP
+    invuln_remaining = RESPAWN_INVULN_SECONDS
+    dead = false
+    _death_remaining = 0.0
+    _coyote_remaining = 0.0
+    _jump_buffer_remaining = 0.0
+    _jump_was_pressed = false
+    respawned.emit(hp, MAX_HP, lives)
 
 func _movement_axis() -> float:
     var axis := 0.0
