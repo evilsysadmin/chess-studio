@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS,
   PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
   PAWN_SLUG_MATTHIAS_R2_ASSETS,
   pawnSlugCanonicalHeadAtlasUrl,
   pawnSlugIntegratedWeaponAtlasUrl,
   pawnSlugIntegratedWeaponId,
+  pawnSlugWeaponHasBakedCanonicalHead,
 } from './pawnSlugMatthiasIntegratedSprites.js';
 
 describe('Pawn Slug integrated Matthias weapon art', () => {
@@ -19,6 +21,18 @@ describe('Pawn Slug integrated Matthias weapon art', () => {
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameWidth).toBe(192);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameHeight).toBe(192);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.separateWeaponOverlay).toBe(false);
+  });
+
+  it('tracks which migrated atlases already bake the canonical head into each frame', () => {
+    expect(PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS).toEqual(['pistol', 'machinegun']);
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.bakedCanonicalHeadWeapons).toBe(
+      PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS,
+    );
+    expect(pawnSlugWeaponHasBakedCanonicalHead('pistol')).toBe(true);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('machinegun')).toBe(true);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('shotgun')).toBe(false);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('panzerfaust')).toBe(false);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('banana')).toBe(true);
   });
 
   it('pins stable R2 logical ids without coupling runtime code to content hashes', () => {

@@ -27,6 +27,7 @@ import {
   pawnSlugCanonicalHeadAtlasWindow,
   pawnSlugCanonicalHeadPose,
   pawnSlugPremiumMatthiasAtlasWindow,
+  pawnSlugWeaponHasBakedCanonicalHead,
 } from './pawnSlugMatthiasIntegratedSprites.js';
 
 describe('Pawn Slug canonical Matthias head art', () => {
@@ -114,7 +115,7 @@ describe('Pawn Slug canonical Matthias head art', () => {
     expect(head.position.y).toBeCloseTo(expectedPose.y);
   });
 
-  it('keeps the canonical face/cap attached and frame-correct through every premium weapon bank', () => {
+  it('keeps canonical face ownership correct while baked weapon banks replace the runtime overlay', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
     sprite.userData.setWeapon('machinegun');
     const head = sprite.userData.canonicalHead.sprite;
@@ -136,7 +137,7 @@ describe('Pawn Slug canonical Matthias head art', () => {
       expect(sprite.userData.canonicalHead.source).toBe('canonical');
       expect(head.parent).toBe(sprite);
       expect(head.material.map).toBe(canonicalTexture);
-      expect(head.material.visible).toBe(true);
+      expect(head.material.visible).toBe(!pawnSlugWeaponHasBakedCanonicalHead(weapon));
       expect(canonicalTexture.repeat.set).toHaveBeenLastCalledWith(expectedWindow.repeatX, expectedWindow.repeatY);
       expect(canonicalTexture.offset.set).toHaveBeenLastCalledWith(expectedWindow.offsetX, expectedWindow.offsetY);
       expect(head.position.x).toBeCloseTo(expectedPose.x);

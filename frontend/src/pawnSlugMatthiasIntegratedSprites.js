@@ -4,6 +4,7 @@ import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 import { r2AssetUrl } from './r2Assets.js';
 
 const WEAPONS = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
+export const PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS = Object.freeze(['pistol', 'machinegun']);
 
 export const PAWN_SLUG_MATTHIAS_R2_ASSETS = Object.freeze({
   canonicalMaster: 'pawnSlug.matthias.canonicalMaster',
@@ -114,6 +115,7 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   browserRenderContract: PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT,
   r2Assets: PAWN_SLUG_MATTHIAS_R2_ASSETS,
   weapons: WEAPONS,
+  bakedCanonicalHeadWeapons: PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS,
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
   columns: 16,
@@ -140,6 +142,10 @@ function canonicalHeadRect(action = 'idle', frameIndex = 0) {
 
 export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
   return WEAPONS.includes(kind) ? kind : 'pistol';
+}
+
+export function pawnSlugWeaponHasBakedCanonicalHead(kind = 'pistol') {
+  return PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS.includes(pawnSlugIntegratedWeaponId(kind));
 }
 
 export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
@@ -227,7 +233,7 @@ export function pawnSlugCanonicalMatthiasRenderStatus(sprite) {
     && atlas?.source === 'primary'
     && sprite?.material?.visible === true
     && sprite?.material?.map === atlas?.texture;
-  const bakedHead = atlas?.weapon === 'pistol' && bodyReady;
+  const bakedHead = pawnSlugWeaponHasBakedCanonicalHead(atlas?.weapon) && bodyReady;
   const headReady = bakedHead || head?.ready === true
     && head?.source === 'canonical'
     && headSprite?.material?.visible === true
@@ -268,7 +274,9 @@ function applyCanonicalHeadPose(sprite) {
   const head = sprite.userData.canonicalHead;
   const headSprite = head?.sprite;
   if (!headSprite) return;
-  headSprite.material.visible = head.ready && sprite.userData.atlas.ready && sprite.userData.atlas.weapon !== 'pistol';
+  headSprite.material.visible = head.ready
+    && sprite.userData.atlas.ready
+    && !pawnSlugWeaponHasBakedCanonicalHead(sprite.userData.atlas.weapon);
   const animation = sprite.userData.animation;
   const pose = pawnSlugCanonicalHeadPose(
     animation.action || 'idle',
