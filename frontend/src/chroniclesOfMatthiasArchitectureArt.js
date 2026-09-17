@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 
 const ROOT_NAME = 'chronicles-tactics-architecture-depth';
 const CELL = 2.45;
@@ -17,16 +17,20 @@ const SIDES = Object.freeze([
   Object.freeze({ key: 'north', dx: 0, dy: -1, nx: 0, nz: -1, yaw: 0 }),
 ]);
 
-function walkable(x, y) {
-  const tile = CHRONICLES_MAP[y]?.[x];
-  return Boolean(tile && tile !== '#');
+export function chroniclesTacticsExposedWallSide(
+  x,
+  y,
+  scenePlan = chroniclesIsometricScenePlan(),
+) {
+  return SIDES.find((side) => (scenePlan?.wallFaces || []).some((face) => (
+    face.x === x && face.y === y && face.side === side.key
+  ))) || null;
 }
 
-export function chroniclesTacticsExposedWallSide(x, y) {
-  return SIDES.find((side) => walkable(x + side.dx, y + side.dy)) || null;
-}
-
-export function chroniclesTacticsArchitectureWallCells(scene) {
+export function chroniclesTacticsArchitectureWallCells(
+  scene,
+  scenePlan = chroniclesIsometricScenePlan(),
+) {
   const cells = [];
   scene?.traverse?.((object) => {
     const match = WALL_NAME.exec(String(object.name || ''));
@@ -35,14 +39,14 @@ export function chroniclesTacticsArchitectureWallCells(scene) {
     if (height && height < 1.8) return;
     const x = Number(match[1]);
     const y = Number(match[2]);
-    const side = chroniclesTacticsExposedWallSide(x, y);
+    const side = chroniclesTacticsExposedWallSide(x, y, scenePlan);
     if (side) cells.push({ x, y, side, wall: object });
   });
   return cells;
 }
 
-function worldForCell(x, y) {
-  return { x: (x - 3) * CELL, z: (y - 3) * CELL };
+function worldForCell(x, y, center = { x: 3, y: 3 }) {
+  return { x: (x - center.x) * CELL, z: (y - center.y) * CELL };
 }
 
 function setBox(mesh, index, dummy, { x, y, z, sx, sy, sz, yaw = 0 }) {
@@ -82,7 +86,7 @@ function buildMasonryInstances(root, wallCells, material, { coarsePointer }) {
   });
 
   CHRONICLES_TACTICS_ARCHES.forEach((arch) => {
-    const world = worldForCell(arch.x, arch.y);
+    const world = worldForCell(arch.x, arch.y, root.userData.chroniclesSceneCenter);
     const dx = Math.cos(arch.yaw) * 1.03;
     const dz = -Math.sin(arch.yaw) * 1.03;
     [-1, 1].forEach((sign) => {
@@ -113,7 +117,7 @@ function buildArchInstances(root, material) {
 
   const dummy = new THREE.Object3D();
   CHRONICLES_TACTICS_ARCHES.forEach((arch, index) => {
-    const world = worldForCell(arch.x, arch.y);
+    const world = worldForCell(arch.x, arch.y, root.userData.chroniclesSceneCenter);
     dummy.position.set(world.x, 1.02, world.z);
     dummy.rotation.set(0, arch.yaw, 0);
     dummy.scale.set(1, 1, 1);
@@ -125,13 +129,17 @@ function buildArchInstances(root, material) {
   return mesh;
 }
 
-export function installChroniclesTacticsArchitectureArt(scene, { coarsePointer = false } = {}) {
+export function installChroniclesTacticsArchitectureArt(scene, {
+  coarsePointer = false,
+  scenePlan = chroniclesIsometricScenePlan(),
+} = {}) {
   if (!scene?.add) return null;
   const existing = scene.getObjectByName(ROOT_NAME);
   if (existing) return existing;
 
   const root = new THREE.Group();
   root.name = ROOT_NAME;
+  root.userData.chroniclesSceneCenter = scenePlan?.center || { x: 3, y: 3 };
   scene.add(root);
 
   const material = new THREE.MeshStandardMaterial({
@@ -141,7 +149,7 @@ export function installChroniclesTacticsArchitectureArt(scene, { coarsePointer =
   });
   material.userData.chroniclesIsoOwned = true;
 
-  const wallCells = chroniclesTacticsArchitectureWallCells(scene);
+  const wallCells = chroniclesTacticsArchitectureWallCells(scene, scenePlan);
   const masonry = buildMasonryInstances(root, wallCells, material, { coarsePointer });
   const arches = buildArchInstances(root, material);
   root.userData.chroniclesArchitectureWallCount = wallCells.length;
