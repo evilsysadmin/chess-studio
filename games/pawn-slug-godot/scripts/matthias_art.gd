@@ -58,6 +58,7 @@ var _recoil_remaining := 0.0
 var _landing_remaining := 0.0
 var _facing := 1.0
 var _vertical_speed := 0.0
+var _on_floor := false
 var _crouching := false
 
 func _ready() -> void:
@@ -82,6 +83,7 @@ func update_visual(
 ) -> void:
     _facing = -1.0 if facing < 0.0 else 1.0
     _vertical_speed = vertical_speed
+    _on_floor = on_floor
     _crouching = crouching and on_floor
     if landed_now:
         _landing_remaining = LANDING_SECONDS
@@ -153,11 +155,12 @@ func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
-    # Canonical authored shoot strip is standing-only, matching the existing web
-    # runtime. Crouched fire keeps the crouch body and only renders muzzle FX.
+    # Canonical authored shoot strip is a grounded standing pose. Crouched or
+    # airborne fire preserves the active body pose and layers recoil + muzzle FX.
     var show_shoot := (
         _body_ready
         and _shoot_ready
+        and _on_floor
         and not _crouching
         and _shoot_age < SHOOT_HOLD_SECONDS
     )
