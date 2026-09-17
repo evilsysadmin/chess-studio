@@ -1,5 +1,4 @@
 name: OCI readiness
-
 on:
   workflow_dispatch:
   pull_request:
@@ -20,13 +19,10 @@ on:
       - 'scripts/oci_k3s_bundle.py'
       - 'scripts/oci_k3s_bundle_publish.py'
       - 'scripts/oci_k3s_bundle_probe.py'
-
-permissions:
-  contents: read
+permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   classify:
     runs-on: ubuntu-24.04
@@ -36,8 +32,7 @@ jobs:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - id: scope
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        env: {BASE_SHA: '${{ github.event.pull_request.base.sha }}'}
         run: python3 -S scripts/oci_readiness_scope.py >> "$GITHUB_OUTPUT"
   staging-cors-contract:
     runs-on: ubuntu-24.04
@@ -60,9 +55,7 @@ jobs:
   terraform:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    env:
-      TF_IN_AUTOMATION: 'true'
-      TF_INPUT: 'false'
+    env: {TF_IN_AUTOMATION: 'true', TF_INPUT: 'false'}
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
