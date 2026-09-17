@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/war-room-premium
-          blender --background --python scripts/blender/build_war_room_premium.py -- \
+          blender --background --python-exit-code 1 --python scripts/blender/build_war_room_premium.py -- \
             --blend /tmp/war-room-premium/war-room-premium.blend \
             --glb /tmp/war-room-premium/war-room-premium-shell.glb \
             --preview /tmp/war-room-premium/war-room-premium-preview.png \
@@ -63,7 +63,7 @@ jobs:
           assert len(data['objects']) >= 195, len(data['objects'])
           PY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: war-room-premium-${{ github.event.pull_request.number || github.run_number }}

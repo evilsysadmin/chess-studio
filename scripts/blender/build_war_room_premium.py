@@ -346,7 +346,14 @@ def add_room(static, mats):
 def build():
     scene = bpy.context.scene
     scene["war_room_contract"] = CONTRACT
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    engine_property = scene.bl_rna.properties["render"].fixed_type.properties["engine"]
+    available_engines = {item.identifier for item in engine_property.enum_items}
+    for candidate in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        if candidate in available_engines:
+            scene.render.engine = candidate
+            break
+    else:
+        raise RuntimeError(f"no supported Eevee engine available: {sorted(available_engines)}")
     scene.render.resolution_x, scene.render.resolution_y = PREVIEW_SIZE
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
