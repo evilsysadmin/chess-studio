@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 4,
+  "version": 5,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -268,13 +268,13 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "iron-foundry" }
         ],
-        "message": "La compañía cruza el portón. Matthias confirma que ninguna de esas criaturas figura en las leyes del ajedrez.",
+        "message": "El portón desemboca en una fundición aún activa. Matthias observa las cadenas, el metal al rojo y pregunta quién demonios dejó encendido el turno de noche.",
         "journal": {
           "id": "menagerie-cleared",
-          "title": "La menagerie queda atrás",
-          "body": "Trasgos, arañas, luces errantes y un sabueso de hueso. La taxonomía ajedrecística ha sido oficialmente despedida.",
+          "title": "De la menagerie a la fundición",
+          "body": "La compañía abandona las jaulas y entra en una Fundición de Hierro Negro que sigue operando sin personal vivo, detalle que recursos humanos no parece considerar urgente.",
           "sigil": "XI"
         }
       }
