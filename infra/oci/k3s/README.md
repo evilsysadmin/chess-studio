@@ -1,6 +1,6 @@
 # K3s bootstrap bundle · OCI staging
 
-Esta carpeta define los inputs y el instalador **offline** del futuro K3s single-node de staging. Todavía no cambia `cloud-init`, no arranca K3s y no hace cutover del backend actual.
+Esta carpeta define los inputs y el instalador **offline** del futuro K3s single-node de staging. Todavía no hace cutover del backend actual.
 
 ## Contrato zero-cost
 
@@ -9,7 +9,7 @@ Esta carpeta define los inputs y el instalador **offline** del futuro K3s single
 - La versión queda fijada en `versions.env`; un bump es un cambio explícito y revisable.
 - El bundle no contiene secretos, tokens de cluster, kubeconfig, credenciales OCI/GitHub/Cloudflare ni configuración de aplicación.
 - `install-k3s-airgap.sh` sólo materializa el binario y el archive de imágenes en sus rutas de K3s. No usa red, no crea identidad de nodo y no inicia `k3s`.
-- El staging actual sigue siendo la ruta de fallback hasta que K3s + Flux superen destroy/recreate y smoke de extremo a extremo.
+- El staging Docker actual sigue siendo la ruta de fallback hasta que K3s + Flux superen destroy/recreate y smoke de extremo a extremo.
 
 ## Versión inicial
 
@@ -28,7 +28,13 @@ El empaquetado normaliza orden, timestamps, UID/GID y modos para que los mismos 
 
 ## Publicación privada e idempotente
 
-Tras mergear a `main` un cambio en la superficie K3s, `OCI readiness` ejecuta `scripts/oci_k3s_bundle_publish.py reconcile` con las credenciales OCI de staging.
+La publicación de assets **no es un side effect de mergear a `main`**. `OCI readiness` queda limitado a validación. Cuando se invoca explícitamente `OCI staging · service control → k3s-start`, esa única operación toma el mutex de mutaciones y, antes de arrancar K3s, ejecuta:
+
+```text
+scripts/oci_k3s_bundle_publish.py reconcile
+scripts/oci_k3s_bundle_probe.py install
+scripts/oci_k3s_control.py start
+```
 
 La publicación reutiliza el bucket privado y no versionado `chess-studio-staging-runtime`; **no crea un tercer bucket**. El publisher reserva únicamente dos nombres estables:
 
@@ -47,22 +53,23 @@ Guardarraíles:
 - el bucket debe seguir `NoPublicAccess`, `Standard` y con versioning `Disabled`;
 - no existe retención histórica implícita: rollback significa reconciliar de nuevo un contrato Git anterior, no acumular blobs.
 
-## Probe desde la A1
+## Instalación verificada desde la A1
 
-Después de reconciliar Object Storage, el mismo workflow ejecuta `scripts/oci_k3s_bundle_probe.py probe`. La A1 usa **instance principal**, no credenciales transportadas por Run Command, para leer `manifest.json` y el bundle privado.
+Tras reconciliar Object Storage, `scripts/oci_k3s_bundle_probe.py install` usa **instance principal**, no credenciales transportadas por Run Command, para leer `manifest.json` y el bundle privado.
 
-El probe:
+La ruta de instalación:
 
-- exige el OCI SDK pinneado que ya mantiene el runtime actual; no hace `pip install` ni descarga dependencias;
+- exige el OCI SDK pinneado que ya mantiene el runtime actual; no hace `pip install` ni descarga dependencias arbitrarias;
 - descarga el bundle únicamente a un fichero temporal;
 - verifica `Content-Length`, SHA-256, arquitectura, versión, layout exacto del tar y coherencia del manifiesto embebido;
+- usa la capacidad root estrecha ya provisionada para materializar sólo los assets revisados;
 - elimina el fichero temporal incluso si falla;
-- no copia K3s a rutas del sistema, no crea estado de cluster y no ejecuta `systemctl`.
+- no inicia K3s por sí misma: el start guardado sigue siendo una fase posterior y separada.
 
-Así demostramos `Git -> Object Storage privado -> A1` antes de permitir que el bootstrap toque el host.
+Así la operación explícita demuestra `Git -> Object Storage privado -> A1 -> assets exactos` inmediatamente antes del lifecycle start que los necesita, sin mantener una automatización mutante paralela en cada merge.
 
 ## Secuencia
 
-`CI bundle -> OCI Object Storage privado -> A1 probe no destructivo -> [siguiente fase] first boot instala assets -> inicializa K3s -> bootstrap Flux -> Flux reconcilia workloads -> Headlamp/Cloudflare Tunnel`.
+`workflow_dispatch k3s-start -> OCI Object Storage privado reconcile -> A1 install verificado -> guarded K3s start -> status -> Docker fallback smoke -> [futuro] Flux reconcilia workloads -> Headlamp/Cloudflare Tunnel`.
 
-El consumo desde `cloud-init` sigue siendo una fase separada y reversible. Hasta que esa ruta demuestre destroy/recreate + smoke, el runtime Docker actual continúa intacto como fallback.
+Hasta que esa ruta demuestre destroy/recreate + smoke, el runtime Docker actual continúa intacto como fallback.
