@@ -72,7 +72,7 @@ describe('War Room white piece readability finish', () => {
     }
   });
 
-  it('separates the studio back rank from the pawn line by ivory value, not only by gloss', () => {
+  it('separates the studio back rank from the pawn line by a deliberate ivory value gap', () => {
     const pawn = buildPiece('p', 'w', 'studio', false);
     const rook = buildPiece('r', 'w', 'studio', false);
     try {
@@ -80,10 +80,16 @@ describe('War Room white piece readability finish', () => {
       const rookBody = baseIvoryMesh(rook);
       expect(pawnBody).toBeTruthy();
       expect(rookBody).toBeTruthy();
-      expect(rookBody.material.userData.whiteOfficerBodyTone).toBe('warm-deep-ivory-v1');
-      expect(rookBody.material.userData.whiteOfficerBodyToneHex).toBe(0xcdb184);
-      expect(rookBody.material.color.getHex()).toBe(0xcdb184);
+      expect(rookBody.material.userData.whiteOfficerBodyTone).toBe('warm-deep-ivory-v2');
+      expect(rookBody.material.userData.whiteOfficerBodyToneHex).toBe(0xc09b69);
+      expect(rookBody.material.color.getHex()).toBe(0xc09b69);
       expect(pawnBody.material.color.getHex()).not.toBe(rookBody.material.color.getHex());
+
+      const pawnHsl = {};
+      const rookHsl = {};
+      pawnBody.material.color.getHSL(pawnHsl);
+      rookBody.material.color.getHSL(rookHsl);
+      expect(pawnHsl.l - rookHsl.l).toBeGreaterThan(0.08);
     } finally {
       disposeObject(pawn);
       disposeObject(rook);
@@ -96,7 +102,7 @@ describe('War Room white piece readability finish', () => {
       const body = baseIvoryMesh(piece);
       expect(body).toBeTruthy();
       expect(body.material.userData.whiteOfficerBodyTone).toBeUndefined();
-      expect(body.material.color.getHex()).not.toBe(0xcdb184);
+      expect(body.material.color.getHex()).not.toBe(0xc09b69);
     } finally {
       disposeObject(piece);
     }
