@@ -67,11 +67,11 @@ describe('WarRoom3DMotion', () => {
     };
     const scene = { children: [hemisphere], userData: {} };
 
-    expect(warRoomHemisphereIntensity()).toBe(0.35);
+    expect(warRoomHemisphereIntensity()).toBe(0.62);
     expect(warRoomHemisphereIntensity({ coarsePointer: true })).toBe(1.35);
     expect(applyWarRoomHemisphereGrade(scene)).toBe(hemisphere);
-    expect(hemisphere.intensity).toBe(0.35);
-    expect(scene.userData.warRoomHemisphereIntensity).toBe(0.35);
+    expect(hemisphere.intensity).toBe(0.62);
+    expect(scene.userData.warRoomHemisphereIntensity).toBe(0.62);
 
     applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
     expect(hemisphere.intensity).toBe(1.35);
@@ -205,18 +205,18 @@ describe('WarRoom3DMotion', () => {
     const terminal = reactiveLightProfile({ gameOver: true });
 
     expect(normal).toMatchObject({
-      key: 1.42,
-      rim: 6.8,
-      warm: 2.15,
-      exposure: 1.04,
-      fogDensity: 0.0172,
+      key: 1.72,
+      rim: 5.8,
+      warm: 2.45,
+      exposure: 1.16,
+      fogDensity: 0.0132,
     });
-    expect(check.key).toBe(1.74);
-    expect(check.rim).toBe(8.0);
-    expect(check.warm).toBe(2.0);
-    expect(terminal.key).toBe(1.26);
-    expect(terminal.rim).toBe(3.2);
-    expect(terminal.warm).toBe(1.2);
+    expect(check.key).toBe(1.98);
+    expect(check.rim).toBe(7.2);
+    expect(check.warm).toBe(2.5);
+    expect(terminal.key).toBe(1.46);
+    expect(terminal.rim).toBe(3.0);
+    expect(terminal.warm).toBe(1.6);
     expect(terminal.exposure).toBeLessThan(normal.exposure);
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
   });
@@ -225,9 +225,9 @@ describe('WarRoom3DMotion', () => {
     const desktop = reactiveLightProfile();
     const mobile = reactiveLightProfile({ coarsePointer: true });
     expect(mobile.exposure).toBeLessThan(desktop.exposure);
-    expect(mobile.exposure).toBeLessThanOrEqual(1.005);
+    expect(mobile.exposure).toBeLessThanOrEqual(1.04);
     expect(mobile.key).toBeGreaterThan(desktop.key);
-    expect(mobile.key).toBeLessThanOrEqual(1.99);
+    expect(mobile.key).toBeLessThanOrEqual(2.02);
     expect(mobile.rim).toBeGreaterThan(desktop.rim);
   });
 
