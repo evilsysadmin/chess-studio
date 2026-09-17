@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           grep -q 'platform="Web"' games/pawn-slug-godot/export_presets.cfg
           grep -q 'variant/thread_support=false' games/pawn-slug-godot/export_presets.cfg
+          grep -q 'vram_texture_compression/for_mobile=false' games/pawn-slug-godot/export_presets.cfg
           grep -q 'renderer/rendering_method="gl_compatibility"' games/pawn-slug-godot/project.godot
           grep -q '_notify_parent("ready")' games/pawn-slug-godot/scripts/main.gd
           grep -q '_notify_parent("exit")' games/pawn-slug-godot/scripts/main.gd
