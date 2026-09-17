@@ -13,6 +13,7 @@ describe('Chronicles isometric scene plan', () => {
     expect(plan.partyStart).toEqual({ x: 1, y: 5 });
     expect(plan.floors).toContainEqual({ x: 3, y: 4, tile: 'S' });
     expect(plan.walls).toContainEqual({ x: 2, y: 2 });
+    expect(plan.wallFaces).toContainEqual({ x: 2, y: 6, side: 'north' });
     expect(plan.content).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'ancient-sigil', kind: 'trigger', position: { x: 3, y: 4 }, visible: true }),
       expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', position: { x: 5, y: 5 }, visible: true }),
@@ -28,6 +29,7 @@ describe('Chronicles isometric scene plan', () => {
     expect(gallery.mapId).toBe('gallery-of-forks');
     expect(gallery.floors).not.toEqual(crypt.floors);
     expect(gallery.walls).not.toEqual(crypt.walls);
+    expect(gallery.wallFaces).not.toEqual(crypt.wallFaces);
     expect(gallery.content.map((entry) => entry.id)).toEqual([
       'gallery-lever',
       'gallery-relic',
