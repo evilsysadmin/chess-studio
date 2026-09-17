@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { chroniclesMapById } from './chroniclesMapCatalog.js';
 import {
   chroniclesIsometricCellToWorld,
+  chroniclesIsometricContentPlan,
   chroniclesIsometricScenePlan,
 } from './chroniclesIsometricScenePlan.js';
 
@@ -24,10 +25,10 @@ describe('Chronicles isometric scene plan', () => {
     expect(plan.walls).toContainEqual({ x: 2, y: 2 });
     expect(plan.wallFaces).toContainEqual({ x: 2, y: 6, side: 'north' });
     expect(plan.content).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'ancient-sigil', kind: 'trigger', position: { x: 3, y: 4 }, visible: true }),
-      expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', position: { x: 5, y: 5 }, visible: true }),
-      expect.objectContaining({ id: 'rune-core', kind: 'pickup', position: { x: 5, y: 4 }, visible: true }),
-      expect.objectContaining({ id: 'black-gate', kind: 'exit', position: { x: 3, y: 1 }, visible: true }),
+      expect.objectContaining({ id: 'ancient-sigil', kind: 'trigger', position: { x: 3, y: 4 }, visible: true, active: false }),
+      expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', position: { x: 5, y: 5 }, visible: true, active: false }),
+      expect.objectContaining({ id: 'rune-core', kind: 'pickup', position: { x: 5, y: 4 }, visible: true, active: false }),
+      expect.objectContaining({ id: 'black-gate', kind: 'exit', position: { x: 3, y: 1 }, visible: true, active: false }),
     ]));
   });
 
@@ -75,29 +76,29 @@ describe('Chronicles isometric scene plan', () => {
     expect(chroniclesIsometricCellToWorld(plan, 0, 0, 2)).toEqual({ x: -4, y: 0, z: -2 });
   });
 
-  it('derives prop visibility from authored when rules instead of renderer flag names', () => {
-    const beforeLever = chroniclesIsometricScenePlan({
+  it('derives live prop visibility and activation from authored rules and action effects', () => {
+    const beforeLever = chroniclesIsometricContentPlan({
       mapId: 'gallery-of-forks',
       galleryLeverPulled: false,
       galleryRelicCollected: false,
     });
-    const afterLever = chroniclesIsometricScenePlan({
+    const afterLever = chroniclesIsometricContentPlan({
       mapId: 'gallery-of-forks',
       galleryLeverPulled: true,
       galleryRelicCollected: false,
     });
-    const afterRelic = chroniclesIsometricScenePlan({
+    const afterRelic = chroniclesIsometricContentPlan({
       mapId: 'gallery-of-forks',
       galleryLeverPulled: true,
       galleryRelicCollected: true,
     });
 
-    const visibility = (plan, id) => plan.content.find((entry) => entry.id === id)?.visible;
-    expect(visibility(beforeLever, 'gallery-lever')).toBe(true);
-    expect(visibility(beforeLever, 'gallery-relic')).toBe(false);
-    expect(visibility(beforeLever, 'gallery-gate')).toBe(true);
-    expect(visibility(afterLever, 'gallery-lever')).toBe(false);
-    expect(visibility(afterLever, 'gallery-relic')).toBe(true);
-    expect(visibility(afterRelic, 'gallery-relic')).toBe(false);
+    const entry = (content, id) => content.find((item) => item.id === id);
+    expect(entry(beforeLever, 'gallery-lever')).toMatchObject({ visible: true, active: false });
+    expect(entry(beforeLever, 'gallery-relic')).toMatchObject({ visible: false, active: false });
+    expect(entry(afterLever, 'gallery-lever')).toMatchObject({ visible: false, active: true });
+    expect(entry(afterLever, 'gallery-relic')).toMatchObject({ visible: true, active: false });
+    expect(entry(afterRelic, 'gallery-lever')).toMatchObject({ visible: false, active: true });
+    expect(entry(afterRelic, 'gallery-relic')).toMatchObject({ visible: false, active: true });
   });
 });
