@@ -18,6 +18,7 @@ import {
   chroniclesIsometricContentByKind,
   chroniclesIsometricDungeonPlan,
 } from './chronicles/chroniclesIsometricDungeonPlan.js';
+import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
 import {
   chroniclesIsometricCellToWorld,
   chroniclesIsometricScenePlan,
@@ -117,9 +118,12 @@ export function chroniclesIsoPointerAction(interaction, hit) {
 }
 
 export function chroniclesIsoWorldObjectState(state) {
+  const content = chroniclesContentVisualStates(state);
+  const firstByKind = (kind) => content.find((entry) => entry.kind === kind) || null;
   return {
-    leverPulled: Boolean(state?.runeCacheOpened),
-    runeCoreVisible: Boolean(state?.runeCacheOpened && !state?.runeCoreCollected),
+    triggerActivated: Boolean(firstByKind('trigger')?.activated),
+    leverActivated: Boolean(firstByKind('lever')?.activated),
+    pickupVisible: Boolean(firstByKind('pickup')?.visible),
   };
 }
 
@@ -842,14 +846,14 @@ export function createChroniclesIsometricGame(host, {
       }
     });
 
-    dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x8c3f0d : 0x160a02);
-    dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.24;
     const worldObjects = chroniclesIsoWorldObjectState(state);
-    dungeon.leverPivot.rotation.z = worldObjects.leverPulled ? -0.74 : 0.58;
+    dungeon.sigilMaterial.emissive.setHex(worldObjects.triggerActivated ? 0x8c3f0d : 0x160a02);
+    dungeon.sigilMaterial.emissiveIntensity = worldObjects.triggerActivated ? 1.25 : 0.24;
+    dungeon.leverPivot.rotation.z = worldObjects.leverActivated ? -0.74 : 0.58;
     dungeon.runeCoreRoot.visible = Boolean(
-      dungeon.runeCoreRoot.userData.chroniclesIsoAuthored && worldObjects.runeCoreVisible,
+      dungeon.runeCoreRoot.userData.chroniclesIsoAuthored && worldObjects.pickupVisible,
     );
-    dungeon.runeMaterial.emissiveIntensity = worldObjects.runeCoreVisible ? 1.7 : 0.25;
+    dungeon.runeMaterial.emissiveIntensity = worldObjects.pickupVisible ? 1.7 : 0.25;
     syncSelection({ immediate: reducedMotion });
     syncInteraction(nextInteraction);
 
