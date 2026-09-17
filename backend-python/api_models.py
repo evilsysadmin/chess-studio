@@ -144,6 +144,7 @@ class AnalyzeRequest(BaseModel):
     fen: str = Field(max_length=128)
     level: float = HINT_STRENGTH
     ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
+    candidate_limit: Optional[int] = Field(default=None, alias="candidateLimit", ge=2, le=5)
 
 
 class AnalyzeMoveRequest(BaseModel):

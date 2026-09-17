@@ -82,12 +82,13 @@ export function emergencyCombatCpuSuggestion(fen) {
   }
 }
 
-// Backward-compatible seam for the future candidate endpoint. Today /analyze
-// returns one move, which passes through unchanged. Once Combat receives a
-// factual candidate set, only this mode will apply the expected-utility policy.
+// Transporting a shortlist is deliberately behavior-neutral. Combat only
+// re-ranks it after a later policy stage has attached real Combat facts and
+// marked candidates as ready. Until then the established primary engine move
+// remains authoritative.
 export function selectCombatAwareRemoteSuggestion(remote) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
-  if (!candidates?.length) return remote;
+  if (!candidates?.length || !candidates.some((candidate) => candidate?.combatReady === true)) return remote;
   return chooseCombatCandidate(candidates);
 }
 

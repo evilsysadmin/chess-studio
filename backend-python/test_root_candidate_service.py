@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import chess
 import pytest
 
@@ -94,3 +96,34 @@ def test_candidate_payload_rejects_move_not_legal_on_root_board():
 
     with pytest.raises(ValueError, match='candidate move must be legal'):
         service.candidate_api_payload(board, candidate)
+
+
+def test_level_shortlist_uses_shallow_bounded_budget(monkeypatch):
+    board = chess.Board()
+    move = chess.Move.from_uci('e2e4')
+    seen = {}
+    monkeypatch.setattr(service, 'settings_for_level', lambda _level: SimpleNamespace(max_depth=6, time_budget_s=2.5))
+
+    def fake_candidates(candidate_board, **kwargs):
+        assert candidate_board is board
+        seen.update(kwargs)
+        return [RootCandidateAnalysis(move, 15.0, None)]
+
+    monkeypatch.setattr(service, 'factual_root_candidates', fake_candidates)
+    payloads = service.factual_candidate_payloads_for_level(board, 100, 5)
+
+    assert seen == {'depth': 3, 'limit': 5, 'budget_s': 0.45}
+    assert payloads[0]['moveKey'] == 'e2e4'
+    assert payloads[0]['chessScoreCp'] == 15.0
+
+
+def test_level_shortlist_timeout_fails_open(monkeypatch):
+    board = chess.Board()
+    monkeypatch.setattr(service, 'settings_for_level', lambda _level: SimpleNamespace(max_depth=3, time_budget_s=0.5))
+    monkeypatch.setattr(
+        service,
+        'factual_root_candidates',
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(TimeoutError()),
+    )
+
+    assert service.factual_candidate_payloads_for_level(board, 50, 5) == []

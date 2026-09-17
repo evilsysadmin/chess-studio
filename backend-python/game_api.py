@@ -20,6 +20,7 @@ from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
 from engine_runtime import run_engine_work
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
+from root_candidate_service import factual_candidate_payloads_for_level
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
 
@@ -200,12 +201,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             await store.create_game(game_id, entry)
         return serialize_game(game_id, entry, board)
 
-
     @router.get("/api/games/{game_id}")
     async def get_game(game_id: str, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
         return serialize_game(game_id, entry, load_stored_game_board(entry))
-
 
     @router.get("/api/games/{game_id}/hint")
     async def hint(game_id: str, username: str = Depends(auth_dependency)):
@@ -222,7 +221,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         return suggestion
-
 
     @router.post("/api/games/{game_id}/undo")
     async def undo(game_id: str, request: Request, username: str = Depends(auth_dependency)):
@@ -281,7 +279,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(409, "La partida cambió mientras deshacías. Recarga el estado y vuelve a intentarlo.")
         return serialize_game(game_id, entry, board)
 
-
     @router.post("/api/analyze")
     @limiter.limit("60/minute", exempt_when=has_valid_api_key)
     @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
@@ -298,8 +295,11 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         suggestion = await run_engine_work(get_cpu_move, board, level, ghost_style)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
+        if body.candidate_limit:
+            candidates = await run_engine_work(factual_candidate_payloads_for_level, board, level, body.candidate_limit)
+            if candidates:
+                return {**suggestion, "candidates": candidates}
         return suggestion
-
 
     @router.post("/api/analyze-move")
     @limiter.limit("180/minute", exempt_when=has_valid_api_key)
@@ -328,7 +328,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         # answer this request. Disabled by default on Render Free.
         maybe_schedule_move_shadow(board.copy(stack=False), level, primary, deterministic_analyze_move)
         return payload
-
 
     @router.post("/api/games/{game_id}/move")
     async def play_move(game_id: str, request: Request, body: MoveRequest, username: str = Depends(auth_dependency)):
@@ -389,7 +388,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                 return serialize_game(game_id, latest, load_stored_game_board(latest))
             raise HTTPException(409, "La partida cambió mientras se procesaba la jugada. Recarga el estado antes de mover otra vez.")
         return serialize_game(game_id, entry, board)
-
 
     @router.delete("/api/games/{game_id}", status_code=204)
     async def delete_game(game_id: str, username: str = Depends(auth_dependency)):

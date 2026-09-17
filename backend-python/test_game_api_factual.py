@@ -155,3 +155,46 @@ def test_analyze_move_invalid_played_move_keeps_legacy_null_eval(monkeypatch):
     assert response.status_code == 200
     assert factual_called is False
     assert response.json()["evalAfterPlayed"] is None
+
+
+def test_analyze_keeps_legacy_shape_without_candidate_limit(monkeypatch):
+    suggestion = {"from": "e2", "to": "e4", "san": "e4", "piece": "p", "promotion": None, "captured": False}
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: suggestion)
+    monkeypatch.setattr(
+        game_api,
+        "factual_candidate_payloads_for_level",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("shortlist must stay opt-in")),
+    )
+
+    response = _client().post(
+        "/api/analyze",
+        json={"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "level": 50},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == suggestion
+
+
+def test_analyze_adds_bounded_candidates_when_requested(monkeypatch):
+    seen = {}
+    suggestion = {"from": "e2", "to": "e4", "san": "e4", "piece": "p", "promotion": None, "captured": False}
+    candidates = [{**suggestion, "moveKey": "e2e4", "chessScoreCp": 18.0, "isLegal": True, "isMate": False}]
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: suggestion)
+
+    def fake_candidates(_board, level, limit):
+        seen.update(level=level, limit=limit)
+        return candidates
+
+    monkeypatch.setattr(game_api, "factual_candidate_payloads_for_level", fake_candidates)
+    response = _client().post(
+        "/api/analyze",
+        json={
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "level": 70,
+            "candidateLimit": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    assert seen == {"level": 70, "limit": 5}
+    assert response.json() == {**suggestion, "candidates": candidates}
