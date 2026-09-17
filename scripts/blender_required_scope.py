@@ -89,6 +89,7 @@ GATES = (
         label="War Room premium art",
         exact_paths=frozenset({
             "scripts/blender/build_war_room_premium.py",
+            "scripts/blender/publish_war_room_v2_staging.py",
             ".github/workflows/war-room-blender-art.yml",
         }),
     ),
