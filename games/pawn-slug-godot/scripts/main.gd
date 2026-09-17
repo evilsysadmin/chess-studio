@@ -1,7 +1,7 @@
 extends Node2D
 
 const VIEW_SIZE := Vector2(1280.0, 720.0)
-const WORLD_SIZE := Vector2(2600.0, 720.0)
+const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
 const ENEMY_BULLET_SPEED := 540.0
 const ENEMY_FIRE_INTERVAL := 1.05
@@ -11,16 +11,29 @@ const ENEMY_BULLET_DAMAGE := 1
 const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const ENEMY_MAX_HP := 112
 const ENEMY_POSITION := Vector2(2300.0, 568.0)
+const PICKUP_RADIUS_X := 44.0
+const PICKUP_Y := 566.0
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
     Rect2(1300.0, 508.0, 320.0, 24.0),
     Rect2(1760.0, 388.0, 280.0, 24.0),
     Rect2(2140.0, 488.0, 240.0, 24.0),
+    Rect2(2580.0, 458.0, 280.0, 24.0),
+    Rect2(3000.0, 388.0, 240.0, 24.0),
+    Rect2(3420.0, 508.0, 320.0, 24.0),
+    Rect2(3860.0, 428.0, 280.0, 24.0),
+    Rect2(4300.0, 498.0, 240.0, 24.0),
+    Rect2(4700.0, 408.0, 320.0, 24.0),
 ]
 
 var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
+var pickups: Array[Dictionary] = [
+    {"x": 920.0, "type": "machinegun", "taken": false},
+    {"x": 2470.0, "type": "shotgun", "taken": false},
+    {"x": 3500.0, "type": "panzerfaust", "taken": false},
+]
 var enemy_hp := ENEMY_MAX_HP
 var enemy_respawn := 0.0
 var enemy_fire_remaining := ENEMY_FIRE_WARMUP
@@ -44,6 +57,7 @@ func _process(delta: float) -> void:
     _update_enemy(delta)
     _update_enemy_fire(delta)
     _update_enemy_projectiles(delta)
+    _update_pickups()
     queue_redraw()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -178,6 +192,22 @@ func _update_enemy_projectiles(delta: float) -> void:
         ):
             enemy_projectiles.remove_at(index)
 
+func _update_pickups() -> void:
+    if player.dead or player.is_game_over:
+        return
+    for index in range(pickups.size()):
+        var pickup := pickups[index]
+        if bool(pickup["taken"]):
+            continue
+        if absf(player.global_position.x - float(pickup["x"])) > PICKUP_RADIUS_X:
+            continue
+        if absf(player.global_position.y - PICKUP_Y) > 80.0:
+            continue
+        if player.grant_weapon(String(pickup["type"])):
+            pickup["taken"] = true
+            pickups[index] = pickup
+            _notify_parent("weapon-pickup")
+
 func _draw() -> void:
     draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("10161d"))
     draw_rect(Rect2(Vector2(0.0, FLOOR_Y), Vector2(WORLD_SIZE.x, WORLD_SIZE.y - FLOOR_Y)), Color("222a2f"))
@@ -191,6 +221,7 @@ func _draw() -> void:
         draw_rect(platform, Color("39434b"), true)
         draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b5883e"), 3.0)
 
+    _draw_pickups()
     _draw_enemy()
 
     for projectile in projectiles:
@@ -209,6 +240,26 @@ func _draw() -> void:
         var trail := velocity.normalized() * 18.0
         draw_circle(position, 5.0, Color("e36d5a"))
         draw_line(position - trail, position, Color(0.9, 0.3, 0.22, 0.5), 3.0)
+
+func _draw_pickups() -> void:
+    for pickup in pickups:
+        if bool(pickup["taken"]):
+            continue
+        var position := Vector2(float(pickup["x"]), PICKUP_Y)
+        var kind := String(pickup["type"])
+        draw_circle(position, 30.0, Color(0.78, 0.61, 0.25, 0.12))
+        draw_rect(Rect2(position - Vector2(25.0, 18.0), Vector2(50.0, 36.0)), Color("4b4a3f"), true)
+        draw_rect(Rect2(position - Vector2(25.0, 18.0), Vector2(50.0, 36.0)), Color("c5a45c"), false, 2.0)
+        match kind:
+            "machinegun":
+                draw_line(position + Vector2(-18.0, 0.0), position + Vector2(19.0, 0.0), Color("d6d9da"), 6.0)
+                draw_line(position + Vector2(5.0, 0.0), position + Vector2(11.0, 11.0), Color("8d6a42"), 5.0)
+            "shotgun":
+                draw_line(position + Vector2(-18.0, -3.0), position + Vector2(18.0, -3.0), Color("d6d9da"), 5.0)
+                draw_line(position + Vector2(-18.0, 4.0), position + Vector2(18.0, 4.0), Color("aa7444"), 5.0)
+            "panzerfaust":
+                draw_line(position + Vector2(-18.0, 0.0), position + Vector2(17.0, 0.0), Color("8e927d"), 9.0)
+                draw_circle(position + Vector2(18.0, 0.0), 7.0, Color("b7a05f"))
 
 func _draw_enemy() -> void:
     if enemy_hp <= 0:
