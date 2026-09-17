@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hydrateHomeCastleTournamentCup } from './HomeCastle3DTournamentAsset.js';
 
 export const HOME_CASTLE_PROP_FOCUS_LERP = 0.18;
 export const HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE = 0.32;
@@ -7,6 +8,8 @@ export const HOME_CASTLE_PROP_FOCUS_BOOST_RATIO = 0.75;
 export const HOME_CASTLE_PROP_FOCUS_LIFT = 0.018;
 export const HOME_CASTLE_PROP_FOCUS_DEPTH = 0.018;
 export const HOME_CASTLE_PROP_FOCUS_TILT = 0.028;
+
+const tournamentHydration = new WeakMap();
 
 function materialTarget(base, focused) {
   if (!focused) return base;
@@ -63,12 +66,39 @@ function applyPhysicalFocus(group, focused, reducedMotion) {
   group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, targetRotationZ, HOME_CASTLE_PROP_FOCUS_LERP);
 }
 
+function ensureTournamentAsset(room, group) {
+  if (
+    room !== 'tournament'
+    || group?.name !== 'home-castle-prop-tournament'
+    || group?.userData?.destination !== 'tournament'
+    || tournamentHydration.has(group)
+  ) {
+    return;
+  }
+
+  const state = { status: 'loading' };
+  tournamentHydration.set(group, state);
+  group.userData.homeCastleTournamentAssetStatus = state.status;
+
+  Promise.resolve()
+    .then(() => hydrateHomeCastleTournamentCup(group))
+    .then((hydrated) => {
+      state.status = hydrated ? 'ready' : 'fallback';
+      group.userData.homeCastleTournamentAssetStatus = state.status;
+    })
+    .catch(() => {
+      state.status = 'fallback';
+      group.userData.homeCastleTournamentAssetStatus = state.status;
+    });
+}
+
 export function applyHomeCastleDestinationPropFocus(
   propsByRoom,
   activeRoom,
   reducedMotion = false,
 ) {
   for (const [room, group] of Object.entries(propsByRoom || {})) {
+    ensureTournamentAsset(room, group);
     const focused = room === activeRoom;
     applyPhysicalFocus(group, focused, reducedMotion);
     for (const material of focusableMaterials(group)) {
