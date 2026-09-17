@@ -44,6 +44,20 @@
 @media (min-width: 1000px) and (pointer: fine) {
   @supports selector(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)) {
     .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      > .illustrated-home__castle-3d.is-ready {
+      pointer-events: auto;
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination.is-diegetic-object {
+      pointer-events: none;
+    }
+
+    .illustrated-home__castle-3d.is-ready:not([data-home-castle-picked='none']) {
+      cursor: pointer;
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
       .illustrated-home__destination > svg {
       opacity: 0.16;
       transform: scale(0.88);
