@@ -19,6 +19,15 @@ const BOSS_HP := 780
 const BOSS_SIZE := Vector2(190.0, 150.0)
 const BOSS_REGULAR_RANGE := 1280.0
 const BOSS_SHELL_RANGE := 1440.0
+const GRENADE_START_SPEED := Vector2(540.0, -600.0)
+const GRENADE_GRAVITY := 1116.0
+const GRENADE_FUSE := 1.35
+const GRENADE_BOUNCE := 0.38
+const GRENADE_FRICTION := 0.72
+const GRENADE_RADIUS := 210.0
+const GRENADE_DAMAGE := 125
+const PANZER_BLAST_RADIUS := 152.0
+const EXPLOSION_VISUAL_SECONDS := 0.28
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
@@ -54,12 +63,17 @@ const ENEMY_FIRE_PROFILES := {
 
 var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
+var thrown_grenades: Array[Dictionary] = []
+var explosion_fx: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
 var enemy_visuals: Dictionary = {}
 var pickups: Array[Dictionary] = [
     {"x": 920.0, "type": "machinegun", "taken": false},
+    {"x": 1810.0, "type": "grenade", "taken": false},
     {"x": 2470.0, "type": "shotgun", "taken": false},
+    {"x": 3300.0, "type": "medkit", "taken": false},
     {"x": 3500.0, "type": "panzerfaust", "taken": false},
+    {"x": 4310.0, "type": "grenade", "taken": false},
 ]
 var boss_spawned := false
 var boss_defeated := false
@@ -76,7 +90,10 @@ func _ready() -> void:
     _build_enemy_visuals()
     _build_extraction_visual()
     player.connect("fired", Callable(self, "_on_player_fired"))
+    player.connect("grenade_thrown", Callable(self, "_on_player_grenade_thrown"))
+    player.connect("grenades_changed", Callable(self, "_on_player_grenades_changed"))
     player.connect("hurt", Callable(self, "_on_player_hurt"))
+    player.connect("healed", Callable(self, "_on_player_healed"))
     player.connect("died", Callable(self, "_on_player_died"))
     player.connect("respawned", Callable(self, "_on_player_respawned"))
     player.connect("game_over", Callable(self, "_on_player_game_over"))
@@ -88,6 +105,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
     _spawn_boss_if_needed()
     _update_projectiles(delta)
+    _update_grenades(delta)
+    _update_explosion_fx(delta)
     _update_enemies(delta)
     _update_boss(delta)
     _update_enemy_projectiles(delta)
@@ -119,12 +138,28 @@ func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> vo
             "explosive": explosive,
         })
 
+func _on_player_grenade_thrown(origin: Vector2, direction: float) -> void:
+    thrown_grenades.append({
+        "position": origin,
+        "velocity": Vector2(GRENADE_START_SPEED.x * direction, GRENADE_START_SPEED.y),
+        "fuse": GRENADE_FUSE,
+        "spin": 0.0,
+    })
+    _notify_parent("grenade-thrown")
+
+func _on_player_grenades_changed(_count: int) -> void:
+    _notify_parent("grenades-changed")
+
 func _on_player_weapon_changed(_weapon_id: String, _ammo_remaining: int) -> void:
     _notify_parent("weapon-changed")
 
 func _on_player_hurt(_current_hp: int, _max_hp: int) -> void:
     _sync_hud()
     _notify_parent("player-hurt")
+
+func _on_player_healed(_current_hp: int, _max_hp: int) -> void:
+    _sync_hud()
+    _notify_parent("player-healed")
 
 func _on_player_died(_lives_remaining: int) -> void:
     enemy_projectiles.clear()
@@ -133,6 +168,7 @@ func _on_player_died(_lives_remaining: int) -> void:
 
 func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int) -> void:
     enemy_projectiles.clear()
+    thrown_grenades.clear()
     for index in range(enemies.size()):
         var enemy := enemies[index]
         if int(enemy["hp"]) <= 0:
@@ -147,6 +183,7 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
 
 func _on_player_game_over() -> void:
     enemy_projectiles.clear()
+    thrown_grenades.clear()
     _sync_hud()
     _notify_parent("gameover")
 
@@ -272,16 +309,23 @@ func _update_projectiles(delta: float) -> void:
                 continue
             if not _enemy_rect(enemy).has_point(position):
                 continue
-            enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
-            enemies[enemy_index] = enemy
+            if bool(projectile["explosive"]):
+                _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
+            else:
+                enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
+                enemies[enemy_index] = enemy
+                _sync_enemy_visual(enemy, false)
             hit_target = true
             break
 
         if not hit_target and boss_spawned and not boss_defeated and _boss_rect().has_point(position):
-            boss["hp"] = maxi(0, int(boss["hp"]) - int(projectile["damage"]))
-            _sync_boss_visual()
-            if int(boss["hp"]) <= 0:
-                _defeat_boss()
+            if bool(projectile["explosive"]):
+                _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
+            else:
+                boss["hp"] = maxi(0, int(boss["hp"]) - int(projectile["damage"]))
+                _sync_boss_visual()
+                if int(boss["hp"]) <= 0:
+                    _defeat_boss()
             hit_target = true
 
         if hit_target:
@@ -295,6 +339,74 @@ func _update_projectiles(delta: float) -> void:
             or position.y > WORLD_SIZE.y + 30.0
         ):
             projectiles.remove_at(index)
+
+func _update_grenades(delta: float) -> void:
+    for index in range(thrown_grenades.size() - 1, -1, -1):
+        var grenade := thrown_grenades[index]
+        var position: Vector2 = grenade["position"]
+        var velocity: Vector2 = grenade["velocity"]
+        grenade["fuse"] = float(grenade["fuse"]) - delta
+        velocity.y += GRENADE_GRAVITY * delta
+        position += velocity * delta
+
+        if position.y >= FLOOR_Y - 8.0 and velocity.y > 0.0:
+            position.y = FLOOR_Y - 8.0
+            velocity.y = -absf(velocity.y) * GRENADE_BOUNCE
+            velocity.x *= GRENADE_FRICTION
+            if absf(velocity.y) < 55.0:
+                velocity.y = 0.0
+
+        grenade["position"] = position
+        grenade["velocity"] = velocity
+        grenade["spin"] = float(grenade["spin"]) + delta * 8.0
+        thrown_grenades[index] = grenade
+
+        if float(grenade["fuse"]) <= 0.0:
+            _explode_player_weapon(position, GRENADE_RADIUS, GRENADE_DAMAGE)
+            thrown_grenades.remove_at(index)
+
+func _explode_player_weapon(position: Vector2, radius: float, damage: int) -> void:
+    _add_explosion_fx(position, radius)
+    for enemy_index in range(enemies.size()):
+        var enemy := enemies[enemy_index]
+        if int(enemy["hp"]) <= 0:
+            continue
+        var distance := position.distance_to(_enemy_rect(enemy).get_center())
+        if distance > radius:
+            continue
+        var applied := _explosion_damage(damage, distance, radius)
+        enemy["hp"] = maxi(0, int(enemy["hp"]) - applied)
+        enemies[enemy_index] = enemy
+        _sync_enemy_visual(enemy, false)
+
+    if boss_spawned and not boss_defeated and not boss.is_empty():
+        var distance := position.distance_to(_boss_rect().get_center())
+        if distance <= radius:
+            boss["hp"] = maxi(0, int(boss["hp"]) - _explosion_damage(damage, distance, radius))
+            _sync_boss_visual()
+            if int(boss["hp"]) <= 0:
+                _defeat_boss()
+
+func _explosion_damage(base_damage: int, distance: float, radius: float) -> int:
+    var falloff := 1.0 - distance / (radius * 1.35)
+    return maxi(1, int(round(float(base_damage) * clampf(falloff, 0.0, 1.0))))
+
+func _add_explosion_fx(position: Vector2, radius: float) -> void:
+    explosion_fx.append({
+        "position": position,
+        "radius": radius,
+        "age": 0.0,
+        "duration": EXPLOSION_VISUAL_SECONDS,
+    })
+
+func _update_explosion_fx(delta: float) -> void:
+    for index in range(explosion_fx.size() - 1, -1, -1):
+        var effect := explosion_fx[index]
+        effect["age"] = float(effect["age"]) + delta
+        if float(effect["age"]) >= float(effect["duration"]):
+            explosion_fx.remove_at(index)
+        else:
+            explosion_fx[index] = effect
 
 func _update_enemies(delta: float) -> void:
     for index in range(enemies.size()):
@@ -413,6 +525,8 @@ func _update_enemy_projectiles(delta: float) -> void:
         enemy_projectiles[index] = projectile
 
         if not player.dead and player_hitbox.has_point(position):
+            if bool(projectile["explosive"]):
+                _add_explosion_fx(position, PANZER_BLAST_RADIUS)
             player.take_damage(1)
             enemy_projectiles.remove_at(index)
             continue
@@ -436,10 +550,23 @@ func _update_pickups() -> void:
             continue
         if absf(player.global_position.y - PICKUP_Y) > 80.0:
             continue
-        if player.grant_weapon(String(pickup["type"])):
-            pickup["taken"] = true
-            pickups[index] = pickup
-            _notify_parent("weapon-pickup")
+
+        var kind := String(pickup["type"])
+        var taken_now := false
+        match kind:
+            "grenade":
+                taken_now = player.grant_grenades(3)
+            "medkit":
+                player.heal(1)
+                taken_now = true
+            _:
+                taken_now = player.grant_weapon(kind)
+
+        if not taken_now:
+            continue
+        pickup["taken"] = true
+        pickups[index] = pickup
+        _notify_parent("%s-pickup" % ("weapon" if kind in ["machinegun", "shotgun", "panzerfaust"] else kind))
 
 func _enforce_boss_arena() -> void:
     if not boss_spawned or boss_defeated or player.global_position.x <= BOSS_ARENA_LEFT:
@@ -504,6 +631,8 @@ func _draw() -> void:
         draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b5883e"), 3.0)
 
     _draw_pickups()
+    _draw_grenades()
+    _draw_explosions()
 
     for projectile in projectiles:
         var position: Vector2 = projectile["position"]
@@ -544,6 +673,34 @@ func _draw_pickups() -> void:
             "panzerfaust":
                 draw_line(position + Vector2(-18.0, 0.0), position + Vector2(17.0, 0.0), Color("8e927d"), 9.0)
                 draw_circle(position + Vector2(18.0, 0.0), 7.0, Color("b7a05f"))
+            "grenade":
+                draw_circle(position, 11.0, Color("536049"))
+                draw_rect(Rect2(position + Vector2(-4.0, -18.0), Vector2(8.0, 8.0)), Color("b6a36a"), true)
+                draw_arc(position + Vector2(7.0, -15.0), 7.0, -PI * 0.85, PI * 0.15, 12, Color("d4c083"), 3.0)
+            "medkit":
+                draw_rect(Rect2(position - Vector2(17.0, 13.0), Vector2(34.0, 26.0)), Color("d8d7cf"), true)
+                draw_rect(Rect2(position - Vector2(4.0, 11.0), Vector2(8.0, 22.0)), Color("b94e43"), true)
+                draw_rect(Rect2(position - Vector2(11.0, 4.0), Vector2(22.0, 8.0)), Color("b94e43"), true)
+
+func _draw_grenades() -> void:
+    for grenade in thrown_grenades:
+        var position: Vector2 = grenade["position"]
+        var fuse := float(grenade["fuse"])
+        var pulse := 0.55 + 0.45 * sin(fuse * 18.0)
+        draw_circle(position, 9.0, Color("46513f"))
+        draw_circle(position + Vector2(4.0, -7.0), 3.0, Color(1.0, 0.48, 0.24, pulse))
+
+func _draw_explosions() -> void:
+    for effect in explosion_fx:
+        var position: Vector2 = effect["position"]
+        var age := float(effect["age"])
+        var duration := float(effect["duration"])
+        var max_radius := float(effect["radius"])
+        var phase := clampf(age / duration, 0.0, 1.0)
+        var radius := lerpf(18.0, minf(max_radius, 92.0), phase)
+        var alpha := 1.0 - phase
+        draw_circle(position, radius * 0.48, Color(1.0, 0.42, 0.16, alpha * 0.28))
+        draw_arc(position, radius, 0.0, TAU, 32, Color(1.0, 0.72, 0.28, alpha * 0.75), 5.0)
 
 func _notify_parent(message_type: String) -> void:
     if not OS.has_feature("web"):
