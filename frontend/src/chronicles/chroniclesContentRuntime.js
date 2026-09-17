@@ -9,9 +9,16 @@ const CARDINAL_DIRECTIONS = Object.freeze([
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
 
+export function chroniclesItemCount(state, itemId) {
+  if (!itemId) return 0;
+  return Math.max(0, Number(state?.inventory?.[itemId] || 0));
+}
+
 export function chroniclesRequirementMet(state, requirement) {
   if (!requirement || typeof requirement !== 'object') return true;
-  const value = state?.[requirement.key];
+  const value = requirement.itemId
+    ? chroniclesItemCount(state, requirement.itemId)
+    : state?.[requirement.key];
   if (Object.prototype.hasOwnProperty.call(requirement, 'equals')) return value === requirement.equals;
   if (Object.prototype.hasOwnProperty.call(requirement, 'lte')) return Number(value) <= Number(requirement.lte);
   if (Object.prototype.hasOwnProperty.call(requirement, 'gte')) return Number(value) >= Number(requirement.gte);
@@ -93,10 +100,25 @@ export function chroniclesContentLockedMessage(state, definition, fallback = '')
   return failure?.message || fallback;
 }
 
+function withItemCount(state, itemId, count) {
+  const inventory = { ...(state?.inventory || {}) };
+  if (count > 0) inventory[itemId] = count;
+  else delete inventory[itemId];
+  return { ...state, inventory };
+}
+
 export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
   return (effects || []).reduce((next, effect) => {
     if (effect.type === 'set' && effect.key) return { ...next, [effect.key]: effect.value };
     if (effect.type === 'transition-map' && effect.mapId) return chroniclesMapTransitionState(next, effect.mapId);
+    if (effect.type === 'grant-item' && effect.itemId) {
+      const amount = Math.max(1, Number(effect.amount || 1));
+      return withItemCount(next, effect.itemId, chroniclesItemCount(next, effect.itemId) + amount);
+    }
+    if (effect.type === 'consume-item' && effect.itemId) {
+      const amount = Math.max(1, Number(effect.amount || 1));
+      return withItemCount(next, effect.itemId, Math.max(0, chroniclesItemCount(next, effect.itemId) - amount));
+    }
     if (effect.type === 'heal-party') {
       const amount = Math.max(0, Number(effect.amount || 0));
       return {
