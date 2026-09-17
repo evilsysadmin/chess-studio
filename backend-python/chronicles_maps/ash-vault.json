@@ -1,0 +1,213 @@
+{
+  "id": "ash-vault",
+  "version": 1,
+  "progressionKey": "ash-vault-01",
+  "title": "Cámara de Ceniza",
+  "grid": [
+    "#########",
+    "#...#..X#",
+    "#.#.#.#.#",
+    "#.......#",
+    "#.###.#.#",
+    "#P......#",
+    "#########"
+  ],
+  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "initialFlags": {
+    "vaultReliquaryOpened": false
+  },
+  "enemies": [
+    {
+      "id": "cinder-warden",
+      "visualType": "gate-jailer",
+      "visualScale": 1.05,
+      "visualMotion": "grounded",
+      "name": "custodio de escoria",
+      "x": 4,
+      "y": 3,
+      "hpKey": "cinderWardenHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          { "x": 4, "y": 3 },
+          { "x": 5, "y": 3 },
+          { "x": 6, "y": 3 },
+          { "x": 5, "y": 3 }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      }
+    },
+    {
+      "id": "soot-mimic",
+      "visualType": "ash-goblin",
+      "visualScale": 1.02,
+      "visualMotion": "grounded",
+      "name": "mímico de hollín",
+      "x": 2,
+      "y": 5,
+      "hpKey": "sootMimicHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "vault-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.95,
+      "visualMotion": "skitter",
+      "name": "araña del relicario",
+      "x": 6,
+      "y": 5,
+      "hpKey": "vaultSpiderHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-roam", "attackReach": 1, "engagedMovement": "cardinal-chase", "engageRange": 3 }
+    },
+    {
+      "id": "vault-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.86,
+      "visualMotion": "hover",
+      "name": "luz del relicario",
+      "x": 6,
+      "y": 1,
+      "hpKey": "vaultWispHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "message": "{attacker} dispersa la luz del relicario con {attack}. Queda una ceniza que sigue brillando por puro rencor.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "luminous-ash",
+            "name": "Ceniza Luminosa",
+            "description": "Polvo frío que conserva un brillo débil. Inútil para la salida, excelente para presumir de decisiones cuestionables.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "warden-inscription",
+      "kind": "lore",
+      "x": 2,
+      "y": 3,
+      "label": "Leer juramento del custodio",
+      "when": [
+        { "questId": "behind-the-ash-wall", "questStatus": "active" }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "advance-quest",
+            "questId": "behind-the-ash-wall",
+            "title": "Tras el muro de ceniza",
+            "description": "El juramento del custodio confirma que el relicario sólo se abre cuando caen sus tres guardianes obligados.",
+            "objective": "Derrota al custodio, al mímico y a la araña; luego abre el relicario.",
+            "order": 40
+          }
+        ],
+        "message": "La inscripción enumera tres guardianes y omite cuidadosamente la luz flotante. Hasta los cultos olvidados sabían distinguir entre obligatorio y opcional.",
+        "journal": {
+          "id": "vault-warden-oath",
+          "title": "El juramento de tres",
+          "body": "El relicario responde a la caída del custodio, el mímico y la araña. La luz del fondo no forma parte del pacto.",
+          "sigil": "III"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "ash-reliquary",
+      "kind": "pickup",
+      "visualType": "ash-reliquary",
+      "x": 7,
+      "y": 3,
+      "label": "Abrir relicario de ceniza",
+      "when": [
+        { "key": "cinderWardenHp", "lte": 0 },
+        { "key": "sootMimicHp", "lte": 0 },
+        { "key": "vaultSpiderHp", "lte": 0 },
+        { "key": "vaultReliquaryOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "vaultReliquaryOpened", "value": true },
+          {
+            "type": "grant-item",
+            "itemId": "obsidian-idol",
+            "name": "Ídolo de Obsidiana",
+            "description": "Una pieza negra y pesada rescatada de una cámara que oficialmente no existía.",
+            "quantity": 1
+          },
+          { "type": "heal-party", "amount": 1 },
+          {
+            "type": "complete-quest",
+            "questId": "behind-the-ash-wall",
+            "title": "Tras el muro de ceniza",
+            "description": "La compañía saqueó el relicario oculto tras la Menagerie.",
+            "objective": "Relicario recuperado.",
+            "order": 40
+          }
+        ],
+        "message": "El relicario se abre. Dentro espera un ídolo de obsidiana, intacto y con la expresión mineral de quien lleva siglos juzgando intrusos.",
+        "journal": {
+          "id": "ash-reliquary-opened",
+          "title": "El ídolo que no figuraba en el inventario",
+          "body": "La compañía recupera un Ídolo de Obsidiana de la cámara secreta. Matthias lo registra como hallazgo arqueológico antes de que alguien diga robo.",
+          "sigil": "◆"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "ash-vault-exit",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abandonar la Cámara de Ceniza",
+      "lockedLabel": "Examinar salida sellada",
+      "requirements": [
+        { "key": "cinderWardenHp", "lte": 0, "message": "El custodio de escoria aún mantiene el sello." },
+        { "key": "sootMimicHp", "lte": 0, "message": "El mímico de hollín sigue defendiendo el relicario." },
+        { "key": "vaultSpiderHp", "lte": 0, "message": "La araña del relicario sigue viva." },
+        { "key": "vaultReliquaryOpened", "equals": true, "message": "Matthias se niega a salir después de abrir una puerta secreta para dejar el relicario intacto." }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "phase", "value": "escaped" }
+        ],
+        "message": "La compañía abandona la Cámara de Ceniza con botín que nadie sabía que existía. Contabilidad impecable.",
+        "journal": {
+          "id": "ash-vault-cleared",
+          "title": "Una ruta que no estaba en el plano",
+          "body": "La cámara secreta queda atrás. La compañía sale con un ídolo, quizá ceniza luminosa y una cantidad ofensiva de satisfacción.",
+          "sigil": "XII"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "ash-vault-entry",
+    "title": "La Cámara de Ceniza",
+    "body": "Detrás de la pared de la Menagerie espera una cámara más ancha, más silenciosa y protegida por criaturas que claramente no recibieron el memorando sobre el cierre.",
+    "sigil": "XII"
+  },
+  "introMessage": "Cámara de Ceniza. Nueve casillas de ancho y ni una sola razón administrativa para estar aquí."
+}
