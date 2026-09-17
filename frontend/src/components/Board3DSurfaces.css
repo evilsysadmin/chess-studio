@@ -4,3 +4,24 @@
   box-sizing: border-box;
   padding: .12rem .22rem 0;
 }
+
+/*
+ * Final War Room presentation grade.
+ *
+ * The Three.js lighting/material stack already carries the physical warm-light
+ * model, but ACES + the dark room palette still lands visually flatter and
+ * greyer than the approved reference once it reaches the browser canvas. Keep
+ * the physical scene intact and apply a restrained display-referred finishing
+ * pass here: a little more luminance, local contrast and chroma, plus a tiny
+ * sepia bias to move the whole room from cool grey to warm club-room amber.
+ * This is intentionally scoped to the War Room canvas only.
+ */
+.game-screen .board-live-row.is-3d-warroom .board3d-main-canvas {
+  filter: brightness(1.055) contrast(1.085) saturate(1.18) sepia(.055);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-screen .board-live-row.is-3d-warroom .board3d-main-canvas {
+    filter: brightness(1.055) contrast(1.085) saturate(1.18) sepia(.055);
+  }
+}
