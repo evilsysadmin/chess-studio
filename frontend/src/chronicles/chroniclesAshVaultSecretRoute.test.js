@@ -19,6 +19,7 @@ describe('Chronicles secret Ash Vault route', () => {
   it('discovers a hidden door, consumes its key and enters a distinct side map', () => {
     expect(chroniclesMapIds()).toContain('ash-vault');
     const vault = chroniclesMapById('ash-vault');
+    expect(vault.version).toBe(2);
     expect(vault.grid).toHaveLength(7);
     expect(vault.grid[0]).toHaveLength(9);
     expect(vault.enemies.map((enemy) => enemy.id)).toEqual([
@@ -73,7 +74,7 @@ describe('Chronicles secret Ash Vault route', () => {
     });
   });
 
-  it('rewards the required encounter and lets the optional vault wisp survive', () => {
+  it('rewards the required encounter, lets the optional wisp survive and rejoins the Archive with the idol', () => {
     let state = chroniclesMapTransitionState(createChroniclesState(), 'ash-vault');
     state = chroniclesApplyContentEffects(state, [{
       type: 'start-quest',
@@ -110,10 +111,18 @@ describe('Chronicles secret Ash Vault route', () => {
     });
 
     state = { ...state, x: 6, y: 1 };
-    const escaped = chroniclesTacticsUse(state, 'ash-vault-exit');
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.vaultWispHp).toBe(5);
-    expect(escaped.journal.at(-1)?.id).toBe('ash-vault-cleared');
+    const archive = chroniclesTacticsUse(state, 'ash-vault-exit');
+    expect(archive.mapId).toBe('blind-king-archive');
+    expect(archive.phase).toBe('explore');
+    expect({ x: archive.x, y: archive.y, direction: archive.direction }).toEqual({ x: 1, y: 7, direction: 1 });
+    expect(archive.vaultWispHp).toBe(0);
+    expect(chroniclesInventoryEntries(archive)).toContainEqual(expect.objectContaining({
+      id: 'obsidian-idol',
+      quantity: 1,
+    }));
+    expect(archive.ledgerWardenHp).toBe(9);
+    expect(archive.blindArchivistHp).toBe(7);
+    expect(archive.journal.at(-1)?.id).toBe('ash-vault-cleared');
   });
 
   it('gives the optional vault light its own non-required trophy loot', () => {
