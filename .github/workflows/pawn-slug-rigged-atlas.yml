@@ -1,0 +1,95 @@
+name: Pawn Slug · Rigged Matthias atlas candidate
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/render_pawn_slug_matthias_rigged_atlas.py'
+      - 'scripts/blender/render_pawn_slug_matthias_rigged_proof.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_common.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
+      - 'scripts/blender/home_matthias_parts.py'
+      - '.github/workflows/pawn-slug-rigged-atlas.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pawn-slug-rigged-atlas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-rigged-atlas:
+    name: Render rigged atlas · ${{ matrix.weapon }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render rigged atlas at 2x
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-rigged-atlas
+          blender --background -noaudio \
+            --python scripts/blender/render_pawn_slug_matthias_rigged_atlas.py \
+            -- --output-dir /tmp/pawn-slug-rigged-atlas --weapon "${{ matrix.weapon }}"
+      - name: Build and validate gameplay-scale candidate
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from PIL import Image
+
+          weapon = os.environ['WEAPON']
+          root = Path('/tmp/pawn-slug-rigged-atlas')
+          source = root / f'matthias_{weapon}_rigged_v1_hi.png'
+          candidate = root / f'matthias_{weapon}_rigged_v1.png'
+          runtime = root / f'matthias_{weapon}_rigged_v1_runtime_96.png'
+          runtime_preview = root / f'matthias_{weapon}_rigged_v1_runtime_96_4x.png'
+          image = Image.open(source).convert('RGBA')
+          assert image.size == (6144, 1920), image.size
+          candidate_image = image.resize((3072, 960), Image.Resampling.LANCZOS)
+          candidate_image.save(candidate, optimize=True)
+          runtime_image = candidate_image.resize((1536, 480), Image.Resampling.LANCZOS)
+          runtime_image.save(runtime, optimize=True)
+          runtime_image.resize((6144, 1920), Image.Resampling.NEAREST).save(runtime_preview, optimize=True)
+
+          counts = (10, 10, 16, 10, 9)
+          min_width = {'pistol': 31, 'machinegun': 42, 'shotgun': 47, 'panzerfaust': 51}[weapon]
+          brightness = []
+          for row, count in enumerate(counts):
+              row_luma = []
+              for col in range(count):
+                  cell = runtime_image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
+                  alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
+                  bbox = alpha.getbbox()
+                  assert bbox is not None, f'empty cell row={row} col={col}'
+                  left, top, right, bottom = bbox
+                  width, height = right - left, bottom - top
+                  assert left > 0 and right < 96 and top > 0 and bottom < 96, f'cell bleed row={row} col={col} bbox={bbox}'
+                  assert width >= min_width, f'collapsed armed silhouette row={row} col={col} width={width}'
+                  assert 50 <= height <= 91, f'bad character height row={row} col={col} height={height}'
+                  luma = [0.2126*r + 0.7152*g + 0.0722*b for r,g,b,a in cell.getdata() if a >= 96]
+                  assert luma, f'no visible pixels row={row} col={col}'
+                  row_luma.append(sum(luma) / len(luma))
+              brightness.append((min(row_luma), max(row_luma)))
+          for row, (darkest, brightest) in enumerate(brightness):
+              assert darkest >= 18.0, f'underexposed row={row} darkest={darkest:.1f}'
+              assert brightest / max(darkest, 1.0) <= 1.95, f'exposure flicker row={row} darkest={darkest:.1f} brightest={brightest:.1f}'
+          PY
+          test -s "/tmp/pawn-slug-rigged-atlas/matthias_${WEAPON}_rigged_v1.blend"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-rigged-atlas-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-rigged-atlas/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
