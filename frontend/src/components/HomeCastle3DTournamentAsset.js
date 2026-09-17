@@ -27,6 +27,42 @@ function sourceMeshesByName(root) {
   return meshes;
 }
 
+function normalizedSourceMatrices(sourceRoot, sources) {
+  sourceRoot?.updateMatrixWorld?.(true);
+
+  const bounds = new THREE.Box3();
+  const meshBounds = new THREE.Box3();
+  let hasBounds = false;
+
+  for (const source of sources) {
+    if (!source?.geometry) continue;
+    source.geometry.computeBoundingBox?.();
+    const geometryBounds = source.geometry.boundingBox;
+    if (!geometryBounds) continue;
+
+    meshBounds.copy(geometryBounds).applyMatrix4(source.matrixWorld);
+    if (!hasBounds) {
+      bounds.copy(meshBounds);
+      hasBounds = true;
+    } else {
+      bounds.union(meshBounds);
+    }
+  }
+
+  if (!hasBounds || bounds.isEmpty()) {
+    return sources.map((source) => source.matrixWorld.clone());
+  }
+
+  const center = bounds.getCenter(new THREE.Vector3());
+  const normalize = new THREE.Matrix4().makeTranslation(
+    -center.x,
+    -bounds.min.y,
+    -center.z,
+  );
+
+  return sources.map((source) => normalize.clone().multiply(source.matrixWorld));
+}
+
 export function decodeHomeCastleGlbPayload(payload, decode = globalThis.atob) {
   if (typeof decode !== 'function') throw new Error('Base64 decoder unavailable');
   const binary = decode(String(payload || '').trim());
@@ -45,20 +81,26 @@ export function applyHomeCastleTournamentAsset(targetGroup, sourceRoot) {
   const sources = TOURNAMENT_SOURCE_MESHES.map((name) => sourcesByName.get(name));
   if (sources.some((source) => !source?.geometry)) return false;
 
+  const normalizedMatrices = normalizedSourceMatrices(sourceRoot, sources);
+
   for (let index = 0; index < TOURNAMENT_SOURCE_MESHES.length; index += 1) {
     const target = targets[index];
     const source = sources[index];
 
     // Keep the live mesh/material objects. The base mesh owns the responsive
     // onBeforeRender driver and the runtime materials are tuned to the room.
-    // Blender/GLB owns silhouette and local transforms only.
+    // Blender owns silhouette and relative transforms, but not scene placement:
+    // normalize the authored GLB around its own footprint so the Home anchor is
+    // the single source of truth for where the trophy lives in the Great Hall.
     target.geometry.copy(source.geometry);
     if (!target.geometry.getAttribute('normal')) {
       target.geometry.computeVertexNormals();
     }
-    target.position.copy(source.position);
-    target.quaternion.copy(source.quaternion);
-    target.scale.copy(source.scale);
+    normalizedMatrices[index].decompose(
+      target.position,
+      target.quaternion,
+      target.scale,
+    );
   }
 
   targetGroup.userData ||= {};
