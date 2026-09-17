@@ -24,6 +24,17 @@ ROLE_ANCHOR = "dynamic-anchor"
 PREVIEW_SIZE = (1600, 900)
 BOARD_Z = 1.12
 
+# Desktop War Room camera parity. These numbers mirror the canonical wide
+# Three.js framing profile (22° vertical FOV, targetY=2.2, targetZ=-0.16,
+# direction cameraY=6.0/cameraZ=10.6). Blender uses Y as room depth and Z as
+# vertical, while the runtime uses Y vertical and Z depth, so the axes are
+# deliberately remapped here rather than art-directed by eye.
+RUNTIME_WIDE_FOV_DEG = 22.0
+RUNTIME_WIDE_HALF_SPAN = 5.38
+RUNTIME_WIDE_PADDING = 1.07
+RUNTIME_WIDE_TARGET = (0.0, 0.16, 2.20)
+RUNTIME_WIDE_DIRECTION = (0.0, -10.6, 6.0)
+
 
 def args():
     parser = argparse.ArgumentParser()
@@ -412,10 +423,23 @@ def build():
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
     cam = bpy.data.objects.new("WR_CAMERA_hero", cam_data)
-    cam.location = (0, -15.9, 12.25)
-    cam_data.lens = 49.0
+
+    vertical_fov = math.radians(RUNTIME_WIDE_FOV_DEG)
+    distance = (RUNTIME_WIDE_HALF_SPAN / math.tan(vertical_fov / 2.0)) * RUNTIME_WIDE_PADDING
+    direction = Vector(RUNTIME_WIDE_DIRECTION).normalized()
+    target = Vector(RUNTIME_WIDE_TARGET)
+    cam.location = target + direction * distance
+
+    # Blender's landscape AUTO sensor fit is horizontal. Convert the runtime's
+    # 22° vertical lens to an equivalent 16:9 focal length instead of merely
+    # copying the Three.js FOV number.
     cam_data.sensor_width = 36.0
-    look_at(cam, (0, 1.05, 1.55))
+    sensor_height = cam_data.sensor_width / (PREVIEW_SIZE[0] / PREVIEW_SIZE[1])
+    cam_data.lens = sensor_height / (2.0 * math.tan(vertical_fov / 2.0))
+    look_at(cam, target)
+    cam["war_room_camera_profile"] = "three-wide-v1"
+    cam["runtime_vertical_fov_deg"] = RUNTIME_WIDE_FOV_DEG
+    cam["runtime_distance"] = round(distance, 5)
     tag(cam)
     static.objects.link(cam)
     scene.camera = cam
@@ -436,6 +460,11 @@ def manifest(path):
         "contract": CONTRACT,
         "preview": {"width": PREVIEW_SIZE[0], "height": PREVIEW_SIZE[1]},
         "board_anchor": {"name": "WR_ANCHOR_board_origin", "top_z": BOARD_Z, "square": 1.0},
+        "camera": {
+            "profile": "three-wide-v1",
+            "vertical_fov_deg": RUNTIME_WIDE_FOV_DEG,
+            "target": list(RUNTIME_WIDE_TARGET),
+        },
         "objects": objects,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
