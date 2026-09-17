@@ -23,7 +23,7 @@ Secrets de repositorio obligatorios:
 
 El workflow valida los cuatro juntos antes de instalar Terraform y nunca imprime sus valores. `OCI_REGION` y `OCI_TFSTATE_BUCKET` son variables opcionales; por defecto usa `eu-frankfurt-1` y `chess-studio-tfstate`.
 
-`OCI_AVAILABILITY_DOMAIN` y `OCI_IMAGE_OCID` son **overrides opcionales**. Sin ellos Terraform descubre el primer AD visible y la imagen Canonical Ubuntu 24.04 más reciente compatible con `VM.Standard.A1.Flex`. El override de AD sirve especialmente para repetir un apply en otro AD si Oracle devuelve `out of host capacity`.
+`OCI_AVAILABILITY_DOMAIN` es el único override de descubrimiento permitido. Sin él Terraform descubre el primer AD visible; la imagen se resuelve siempre como la Canonical Ubuntu 24.04 platform image más reciente compatible con `VM.Standard.A1.Flex`. No se acepta `OCI_IMAGE_OCID`: un override arbitrario podría apuntar a una Custom Image cuyo almacenamiento no forma parte del contrato zero-cost. El override de AD sirve especialmente para repetir un apply en otro AD si Oracle devuelve `out of host capacity`.
 
 Secuencia de adopción:
 
@@ -84,8 +84,11 @@ El workflow obtiene el Object Storage namespace mediante el provider Terraform y
 ## Contratos
 
 - Frankfurt (`eu-frankfurt-1`) por defecto, configurable.
-- `VM.Standard.A1.Flex` únicamente; límites conservadores Always Free.
-- AD e imagen ARM64 se descubren por provider con overrides explícitos disponibles.
+- `VM.Standard.A1.Flex` únicamente; techo conservador zero-cost de 2 OCPU / 12 GiB.
+- boot volume limitado a 50–100 GiB dentro del presupuesto combinado de volúmenes Always Free.
+- AD descubierto por provider con override explícito disponible.
+- imagen ARM64 obligatoriamente descubierta como Canonical Ubuntu 24.04 platform image; Custom Image e `image_ocid` arbitrario quedan fuera del contrato.
+- OCI Flexible Load Balancer fijado a 10 Mbps mientras siga siendo la ruta de ingress del staging actual.
 - cero ingress por defecto; `0.0.0.0/0` para SSH está rechazado.
 - SSH no requiere ni inyecta public key mientras el ingress siga cerrado.
 - `repo_ref` debe ser SHA Git completo de 40 caracteres.
@@ -95,6 +98,7 @@ El workflow obtiene el Object Storage namespace mediante el provider Terraform y
 - backend OCI usa locking nativo; no se desactiva con `-lock=false`.
 - el state bootstrap conserva lineage y conjunto de recursos al migrarse.
 - cambios IaC puros ejecutan OCI readiness pero no despiertan Trivy/Docker/Compose.
+- futuras capas K3s/GitOps no pueden introducir builders A1 temporales, Custom Images facturables ni otros recursos OCI fuera del presupuesto zero-cost sin cambiar explícitamente este contrato.
 
 ## Gate para sustituir Render staging
 
