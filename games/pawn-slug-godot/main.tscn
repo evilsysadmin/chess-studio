@@ -81,6 +81,7 @@ script = ExtResource("2_player")
 shape = SubResource("Rectangle_player")
 
 [node name="Camera2D" type="Camera2D" parent="Player"]
+enabled = true
 position_smoothing_enabled = true
 position_smoothing_speed = 7.0
 limit_left = 0
