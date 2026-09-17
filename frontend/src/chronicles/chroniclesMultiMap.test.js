@@ -25,10 +25,11 @@ describe('Chronicles multi-map campaign', () => {
     const menagerie = chroniclesMapById('menagerie-of-ash');
     const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
     const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
-    expect(menagerie.version).toBe(2);
+    expect(menagerie.version).toBe(3);
     expect(menagerie.enemies).toHaveLength(4);
     expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
     expect(gate.requirements.map((requirement) => requirement.key)).not.toContain('emberWispHp');
+    expect(menagerie.treasures.map((entry) => entry.id)).toContain('menagerie-hidden-reliquary');
   });
 
   it('crosses the Black Gate into Gallery without resetting the surviving party or journal', () => {
