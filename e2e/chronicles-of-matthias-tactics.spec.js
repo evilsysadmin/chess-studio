@@ -28,20 +28,19 @@ async function openTactics(page, { progression = null } = {}) {
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
 }
 
-test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque, clases y habilidades', async ({ page }) => {
+test('Chronicles Tactics · arranca como RPG táctico isométrico con combate por turnos, clases y habilidades', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
 
-  // Exercise the live-combat action immediately. Waiting for the 3D renderer and
-  // a long sequence of UI assertions first lets real-time enemy turns kill the
-  // selected hero on slow CI runners, turning this into a wall-clock race.
+  // Exercise a real combat action immediately. Turn-based combat means the
+  // enemy answers only after this action, never because the CI runner is slow.
   await page.keyboard.press('2');
   const rookCard = mode.locator('[data-member-id="rook"]');
   await expect(rookCard).toHaveClass(/is-selected/);
   await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('1/1');
   // This assertion owns the ability state transition, not browser keyboard delivery.
-  // SwiftShader can starve Playwright keyboard dispatch while the realtime renderer is
-  // busy even though the same React action remains available. Invoke the real button
+  // SwiftShader can starve Playwright keyboard dispatch while the 3D scene is busy,
+  // even though the same React action remains available. Invoke the real button
   // handler directly, as the doctrine test below already does for the same CI reason.
   const classSkill = mode.getByRole('button', { name: 'Habilidad de clase', exact: true });
   await expect(classSkill).toBeEnabled();
@@ -73,8 +72,9 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   });
 
   expect(contract.camera).toBe('isometric-behind-party');
-  expect(contract.combat).toBe('realtime');
-  expect(contract.text).toMatch(/cuatro clases, cuatro geometrías de combate/i);
+  expect(contract.combat).toBe('turn-based');
+  expect(contract.text).toMatch(/exploración libre/i);
+  expect(contract.text).toMatch(/combate por turnos/i);
   expect(contract.text).toMatch(/Espadachín/i);
   expect(contract.text).toMatch(/Taumaturgo/i);
   expect(contract.text).toMatch(/Hostigador/i);
@@ -102,7 +102,6 @@ test('Chronicles Tactics · elegir doctrina desde la ficha consume skill point y
       claimedAwards: [],
     },
   });
-
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const openSheet = mode.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true });
   await expect(openSheet).toBeVisible();

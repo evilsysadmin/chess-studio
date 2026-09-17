@@ -25,7 +25,10 @@ import {
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
 } from '../chroniclesOfMatthiasTactics.js';
-import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
+import {
+  chroniclesTacticsCombatActive,
+  chroniclesTacticsResolvePlayerAction,
+} from '../chroniclesTacticsTurnMode.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
@@ -56,17 +59,6 @@ function createActionState(progression) {
   }, progression);
 }
 
-function enemyPulseMessage(previousMessage, next) {
-  const events = Array.isArray(next.enemyTurnEvents) ? next.enemyTurnEvents : [];
-  const attacks = events.filter((event) => event.type === 'attack');
-  const moves = events.filter((event) => event.type === 'move');
-  if (next.phase === 'defeated') return next.message;
-  if (attacks.length === 1) return 'La cripta contraataca. Un golpe alcanza a la formación.';
-  if (attacks.length > 1) return `La cripta contraataca. ${attacks.length} golpes sacuden a la compañía.`;
-  if (moves.length) return 'Algo se mueve entre la piedra y las antorchas. No parece amistoso.';
-  return previousMessage;
-}
-
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
@@ -95,7 +87,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
     [selectedMemberId, state],
   );
-  const canAct = state.phase !== 'defeated' && state.phase !== 'escaped';
+  const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
+  const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
 
   const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
     const previous = stateRef.current;
@@ -122,20 +115,21 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     const now = performance.now();
     if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
     const legal = chroniclesTacticsLegalMoves(current).find((move) => (
       move.x === current.x + dx && move.y === current.y + dy
     ));
     if (!legal) return;
     const next = chroniclesTacticsMove(current, legal);
-    if (commitState(next)) lastMoveAtRef.current = now;
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    if (commitState(resolved)) lastMoveAtRef.current = now;
   }, [commitState]);
 
   const attackEnemy = useCallback((enemyId = null) => {
     const now = performance.now();
     if (now - lastAttackAtRef.current < 260) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
     const memberId = selectedMemberRef.current;
     const targets = chroniclesTacticsTargets(current, memberId);
     const target = enemyId
@@ -143,21 +137,29 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       : targets[0];
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
-    if (commitState(next, { actorMemberId: memberId, actionKind: 'attack' })) lastAttackAtRef.current = now;
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, { forceCombat: true });
+    if (commitState(resolved, { actorMemberId: memberId, actionKind: 'attack' })) lastAttackAtRef.current = now;
   }, [commitState]);
 
   const useClassAbility = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
     const memberId = selectedMemberRef.current;
-    commitState(chroniclesTacticsAbility(current, memberId), { actorMemberId: memberId, actionKind: 'ability' });
+    const profile = chroniclesTacticsProfile(memberId);
+    const next = chroniclesTacticsAbility(current, memberId);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      forceCombat: profile.abilityKind !== 'heal',
+    });
+    commitState(resolved, { actorMemberId: memberId, actionKind: 'ability' });
   }, [commitState]);
 
   const useContextualAction = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
     const memberId = selectedMemberRef.current;
-    commitState(chroniclesTacticsUse(current), { actorMemberId: memberId, actionKind: 'use' });
+    const next = chroniclesTacticsUse(current);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    commitState(resolved, { actorMemberId: memberId, actionKind: 'use' });
   }, [commitState]);
 
   const allocateAttribute = useCallback((memberId, attributeKey) => {
@@ -281,34 +283,21 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'hidden') return;
-      const current = stateRef.current;
-      if (current.phase === 'defeated' || current.phase === 'escaped') return;
-      const resolved = chroniclesResolveEnemyTurn(current);
-      if (resolved === current) return;
-      commitState({
-        ...resolved,
-        message: enemyPulseMessage(current.message, resolved),
-      });
-    }, 1050);
-    return () => window.clearInterval(timer);
-  }, [commitState]);
-
   return (
     <div
       className="chronicles-tactics"
       data-chronicles-tactics="true"
       data-camera="isometric-behind-party"
-      data-combat="realtime"
+      data-combat="turn-based"
+      data-engagement={inCombat ? 'combat' : 'exploration'}
       data-phase={state.phase}
+      data-turn-phase={state.turnPhase || 'party'}
     >
       <header className="chronicles-tactics__head">
         <div>
           <span className="section-label">EXPERIMENTO RPG · THREE.JS · ISOMÉTRICO</span>
           <h2>Chronicles of Matthias Tactics</h2>
-          <p>Action RPG isométrico: cuatro clases, cuatro geometrías de combate y una cripta con una opinión pésima de todas ellas.</p>
+          <p>RPG táctico isométrico: exploración libre, cuatro clases y combate por turnos cuando la cripta decide ponerse desagradable.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
@@ -317,7 +306,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">CRIPTA 01</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad. En combate: una acción tuya, una respuesta enemiga.</small>
         </aside>
 
         <main className="chronicles-tactics__battlefield">
@@ -325,7 +314,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             <div ref={hostRef} className="chronicles-tactics__three" data-chronicles-tactics-renderer="three" />
             <div className="chronicles-tactics__cinema" aria-hidden="true" />
             <div className="chronicles-tactics__narrator" aria-live="polite">
-              <span>CRÓNICA</span>
+              <span>{inCombat ? `RONDA ${state.round || 1} · TU TURNO` : 'CRÓNICA'}</span>
               <p>{state.message}</p>
             </div>
             {rendererError && <div className="chronicles-tactics__error" role="alert">{rendererError}</div>}
@@ -368,7 +357,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       </div>
 
       <footer className="chronicles-tactics__footer">
-        <span>Motor {rendererName}</span>
+        <span>Motor {rendererName} · {inCombat ? `Combate por turnos · ronda ${state.round || 1}` : 'Exploración libre'}</span>
         <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
