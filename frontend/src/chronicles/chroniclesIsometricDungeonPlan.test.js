@@ -3,6 +3,7 @@ import { chroniclesMapById } from './chroniclesMapCatalog.js';
 import { chroniclesIsometricScenePlan } from './chroniclesIsometricScenePlan.js';
 import {
   CHRONICLES_ISOMETRIC_CELL_SIZE,
+  chroniclesIsometricContentByKind,
   chroniclesIsometricDungeonPlan,
 } from './chroniclesIsometricDungeonPlan.js';
 
@@ -41,6 +42,26 @@ describe('Chronicles isometric dungeon geometry plan', () => {
     ]);
     expect(gallery.content.find((entry) => entry.id === 'gallery-lever')?.world).toEqual({ x: 4.9, y: 0, z: 4.9 });
     expect(gallery.content.find((entry) => entry.id === 'gallery-relic')?.world).toEqual({ x: 4.9, y: 0, z: 2.45 });
+  });
+
+  it('resolves visual content roles by authored kind across maps and fails closed when absent', () => {
+    const crypt = chroniclesIsometricDungeonPlan(chroniclesMapById('crypt-eight-squares'));
+    const gallery = chroniclesIsometricDungeonPlan(chroniclesMapById('gallery-of-forks'));
+    const menagerie = chroniclesIsometricDungeonPlan(chroniclesMapById('menagerie-of-ash'));
+
+    expect(chroniclesIsometricContentByKind(crypt, 'trigger')?.id).toBe('ancient-sigil');
+    expect(chroniclesIsometricContentByKind(crypt, 'lever')?.id).toBe('rune-cache-lever');
+    expect(chroniclesIsometricContentByKind(crypt, 'pickup')?.id).toBe('rune-core');
+
+    expect(chroniclesIsometricContentByKind(gallery, 'trigger')).toBeNull();
+    expect(chroniclesIsometricContentByKind(gallery, 'lever')?.id).toBe('gallery-lever');
+    expect(chroniclesIsometricContentByKind(gallery, 'pickup')?.id).toBe('gallery-relic');
+
+    expect(chroniclesIsometricContentByKind(menagerie, 'trigger')).toBeNull();
+    expect(chroniclesIsometricContentByKind(menagerie, 'lever')).toBeNull();
+    expect(chroniclesIsometricContentByKind(menagerie, 'pickup')).toBeNull();
+    expect(chroniclesIsometricContentByKind(null, 'lever')).toBeNull();
+    expect(chroniclesIsometricContentByKind(crypt, '')).toBeNull();
   });
 
   it('sizes non-square foundations independently and centers projected cells and content', () => {
