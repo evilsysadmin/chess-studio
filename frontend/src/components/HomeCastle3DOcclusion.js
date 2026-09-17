@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyHomeCastleBackgroundCleanPatches } from './HomeCastle3DCleanPatches.js';
 
 function clamp01(value) {
   return THREE.MathUtils.clamp(value, 0, 1);
@@ -34,5 +35,9 @@ export function applyCanonicalHallOcclusion(geometry) {
     colors[(index * 3) + 2] = shade;
   }
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  // Derive lighting from canonical UVs first, then remove the painted pilot prop
+  // from the background. The 3D tournament cup can now own that scene location.
+  applyHomeCastleBackgroundCleanPatches(geometry);
   return geometry;
 }
