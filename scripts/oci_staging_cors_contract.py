@@ -13,6 +13,7 @@ backend_main = backend_main_path.read_text(encoding="utf-8")
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
+tunnel_control = (ROOT / ".github" / "workflows" / "oci-staging-tunnel.yml").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -110,6 +111,21 @@ assert "run: python3 scripts/oci_run_command.py smoke" in service_control, (
 )
 assert "for attempt in $(seq 1 30)" not in service_control, (
     "OCI service smoke must not reintroduce the legacy outer retry loop"
+)
+
+# Tunnel/DNS control-plane state persists independently of code releases and
+# service diagnostics. Reconciliation is explicit and serialized with every
+# other OCI staging mutation instead of spawning after each service-control run.
+assert "workflow_dispatch:" in tunnel_control, "OCI tunnel reconciliation must remain manually invokable"
+assert "workflow_run:" not in tunnel_control, "OCI tunnel reconciliation must not auto-run after service control"
+assert "OCI staging · service control" not in tunnel_control, (
+    "OCI tunnel reconciliation must not depend on service-control completion"
+)
+assert "group: oci-staging-mutations" in tunnel_control, (
+    "OCI tunnel reconciliation must share the repository-wide staging mutation mutex"
+)
+assert "group: oci-staging-cloudflare-tunnel" not in tunnel_control, (
+    "OCI tunnel reconciliation must not use a private mutation mutex"
 )
 
 print("OCI staging CORS + runtime deployment contract: OK")
