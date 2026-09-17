@@ -4,12 +4,19 @@ extends Node2D
 # One body atlas drives locomotion; weapon sprites stay independent and are
 # attached to Marker2D sockets instead of baking four body atlases.
 const MOTION_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
+const PISTOL_SHOOT_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 const FRAME_SIZE := Vector2(96.0, 96.0)
 const ATLAS_COLUMNS := 16
 const ATLAS_ROWS := 5
 const PLAYER_FOOT_Y := 42.0
 const BODY_SCALE := 1.34
+const SHOOT_FRAME_SIZE := Vector2(192.0, 192.0)
+const SHOOT_FRAMES := 2
+const SHOOT_SCALE := BODY_SCALE * 0.5
+const SHOOT_FOOT_OFFSET := Vector2(0.0, -72.0)
+const SHOOT_SECOND_FRAME_AT := 0.075
+const SHOOT_HOLD_SECONDS := 0.18
 const MUZZLE_FLASH_SECONDS := 0.055
 const JUMP_VISUAL_SPEED_RANGE := 610.0
 
@@ -108,17 +115,20 @@ const WEAPON_POSES := {
     },
 }
 
-# SpriteFrames is immutable after construction here, so sharing it across
-# Matthias remounts is safe: playback/frame state belongs to AnimatedSprite2D.
+# SpriteFrames resources are immutable after construction here, so sharing them
+# across Matthias remounts is safe: playback/frame state belongs to each node.
 static var _cached_body_frames: SpriteFrames
+static var _cached_pistol_shoot_frames: SpriteFrames
 
 var _body_ready := false
+var _pistol_shoot_ready := false
 var _weapon := "pistol"
 var _action := "idle"
 var _facing := 1.0
 var _vertical_speed := 0.0
 var _on_floor := false
 var _crouching := false
+var _shoot_age := SHOOT_HOLD_SECONDS
 var _muzzle_remaining := 0.0
 var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
@@ -129,12 +139,14 @@ var _was_dead := false
 var _facing_root: Node2D
 var _fx_root: Node2D
 var _body: AnimatedSprite2D
+var _pistol_shoot: AnimatedSprite2D
 var _weapon_root: Marker2D
 var _weapon_sprite: Sprite2D
 var _muzzle: Marker2D
 var _muzzle_flash: Polygon2D
 var _fx_player: AnimationPlayer
-var _art_request: HTTPRequest
+var _motion_request: HTTPRequest
+var _pistol_shoot_request: HTTPRequest
 
 func _ready() -> void:
     _build_native_nodes()
@@ -144,6 +156,10 @@ func _ready() -> void:
         _install_body_frames(_cached_body_frames)
     else:
         _request_motion_atlas()
+    if _cached_pistol_shoot_frames != null:
+        _install_pistol_shoot_frames(_cached_pistol_shoot_frames)
+    else:
+        _request_pistol_shoot()
 
 func body_ready() -> bool:
     return _body_ready
@@ -157,6 +173,7 @@ func set_weapon(kind: String) -> void:
     _sync_weapon_pose()
     if _body_ready and not _dead:
         _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
+    _sync_shoot_visibility()
 
 func set_combat_state(
     hurt_remaining: float,
@@ -182,6 +199,7 @@ func set_combat_state(
     _was_hurt = hurt_now
     _was_dead = _dead
     _sync_modulate()
+    _sync_shoot_visibility()
 
 func update_visual(
     delta: float,
@@ -204,10 +222,12 @@ func update_visual(
     if fired_now and not _dead and _hurt_remaining <= 0.0:
         _play_recoil_fx()
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
+        if _weapon == "pistol" and not _crouching:
+            _shoot_age = 0.0
+    else:
+        _shoot_age += delta
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
-    if _muzzle_flash != null:
-        _muzzle_flash.visible = _muzzle_remaining > 0.0 and not _dead
 
     var next_action := _resolve_action(horizontal_speed_ratio, on_floor, _crouching)
     if next_action != _action:
@@ -218,6 +238,7 @@ func update_visual(
 
     _sync_weapon_pose()
     _sync_modulate()
+    _sync_shoot_visibility()
 
 func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: bool) -> String:
     if not on_floor:
@@ -247,6 +268,14 @@ func _build_native_nodes() -> void:
     _body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
     _body.visible = false
     _fx_root.add_child(_body)
+
+    _pistol_shoot = AnimatedSprite2D.new()
+    _pistol_shoot.name = "PistolShoot"
+    _pistol_shoot.offset = SHOOT_FOOT_OFFSET
+    _pistol_shoot.scale = Vector2(SHOOT_SCALE, SHOOT_SCALE)
+    _pistol_shoot.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+    _pistol_shoot.visible = false
+    _fx_root.add_child(_pistol_shoot)
 
     _weapon_root = Marker2D.new()
     _weapon_root.name = "WeaponRoot"
@@ -334,14 +363,38 @@ func _sync_weapon_pose() -> void:
     _muzzle.position = pose["muzzle"]
     _muzzle_flash.scale = WEAPON_FLASH_SCALE.get(_weapon, Vector2.ONE)
 
+func _authored_pistol_shoot_active() -> bool:
+    return (
+        _pistol_shoot_ready
+        and _weapon == "pistol"
+        and not _crouching
+        and not _dead
+        and _hurt_remaining <= 0.0
+        and _shoot_age < SHOOT_HOLD_SECONDS
+    )
+
+func _sync_shoot_visibility() -> void:
+    var show_shoot := _authored_pistol_shoot_active()
+    if _body != null:
+        _body.visible = _body_ready and not show_shoot
+    if _weapon_sprite != null:
+        _weapon_sprite.visible = _weapon_sprite.texture != null and not show_shoot
+    if _pistol_shoot != null:
+        _pistol_shoot.visible = show_shoot
+        if show_shoot:
+            _pistol_shoot.animation = "shoot"
+            _pistol_shoot.frame = 0 if _shoot_age < SHOOT_SECOND_FRAME_AT else 1
+    if _muzzle_flash != null:
+        _muzzle_flash.visible = _muzzle_remaining > 0.0 and not _dead and not show_shoot
+
 func _request_motion_atlas() -> void:
-    _art_request = HTTPRequest.new()
-    _art_request.name = "MotionAtlasRequest"
-    add_child(_art_request)
-    _art_request.request_completed.connect(_on_motion_atlas_loaded)
-    if _art_request.request(MOTION_ATLAS_URL) != OK:
-        _art_request.queue_free()
-        _art_request = null
+    _motion_request = HTTPRequest.new()
+    _motion_request.name = "MotionAtlasRequest"
+    add_child(_motion_request)
+    _motion_request.request_completed.connect(_on_motion_atlas_loaded)
+    if _motion_request.request(MOTION_ATLAS_URL) != OK:
+        _motion_request.queue_free()
+        _motion_request = null
 
 func _on_motion_atlas_loaded(
     result: int,
@@ -349,9 +402,9 @@ func _on_motion_atlas_loaded(
     _headers: PackedStringArray,
     bytes: PackedByteArray,
 ) -> void:
-    if _art_request != null:
-        _art_request.queue_free()
-        _art_request = null
+    if _motion_request != null:
+        _motion_request.queue_free()
+        _motion_request = null
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         return
 
@@ -367,6 +420,39 @@ func _on_motion_atlas_loaded(
     _cached_body_frames = _make_sprite_frames(atlas)
     _install_body_frames(_cached_body_frames)
 
+func _request_pistol_shoot() -> void:
+    _pistol_shoot_request = HTTPRequest.new()
+    _pistol_shoot_request.name = "PistolShootRequest"
+    add_child(_pistol_shoot_request)
+    _pistol_shoot_request.request_completed.connect(_on_pistol_shoot_loaded)
+    if _pistol_shoot_request.request(PISTOL_SHOOT_URL) != OK:
+        _pistol_shoot_request.queue_free()
+        _pistol_shoot_request = null
+
+func _on_pistol_shoot_loaded(
+    result: int,
+    response_code: int,
+    _headers: PackedStringArray,
+    bytes: PackedByteArray,
+) -> void:
+    if _pistol_shoot_request != null:
+        _pistol_shoot_request.queue_free()
+        _pistol_shoot_request = null
+    if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        return
+
+    var image := Image.new()
+    if image.load_webp_from_buffer(bytes) != OK:
+        return
+    if image.get_width() != int(SHOOT_FRAME_SIZE.x) * SHOOT_FRAMES:
+        return
+    if image.get_height() != int(SHOOT_FRAME_SIZE.y):
+        return
+
+    var atlas := ImageTexture.create_from_image(image)
+    _cached_pistol_shoot_frames = _make_pistol_shoot_frames(atlas)
+    _install_pistol_shoot_frames(_cached_pistol_shoot_frames)
+
 func _install_body_frames(frames: SpriteFrames) -> void:
     if frames == null or _body == null:
         return
@@ -375,6 +461,16 @@ func _install_body_frames(frames: SpriteFrames) -> void:
     _body.visible = true
     _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
     _play_body_action(_action, true)
+    _sync_shoot_visibility()
+
+func _install_pistol_shoot_frames(frames: SpriteFrames) -> void:
+    if frames == null or _pistol_shoot == null:
+        return
+    _pistol_shoot.sprite_frames = frames
+    _pistol_shoot_ready = true
+    _pistol_shoot.animation = "shoot"
+    _pistol_shoot.pause()
+    _sync_shoot_visibility()
 
 func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
     var frames := SpriteFrames.new()
@@ -394,6 +490,22 @@ func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
                 FRAME_SIZE,
             )
             frames.add_frame(action, frame_texture)
+    return frames
+
+func _make_pistol_shoot_frames(atlas: Texture2D) -> SpriteFrames:
+    var frames := SpriteFrames.new()
+    if frames.has_animation("default"):
+        frames.remove_animation("default")
+    frames.add_animation("shoot")
+    frames.set_animation_loop("shoot", false)
+    for frame_index in range(SHOOT_FRAMES):
+        var frame_texture := AtlasTexture.new()
+        frame_texture.atlas = atlas
+        frame_texture.region = Rect2(
+            Vector2(frame_index * SHOOT_FRAME_SIZE.x, 0.0),
+            SHOOT_FRAME_SIZE,
+        )
+        frames.add_frame("shoot", frame_texture)
     return frames
 
 func _play_body_action(action: String, force_restart := false) -> void:
