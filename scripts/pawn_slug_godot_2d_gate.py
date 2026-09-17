@@ -13,6 +13,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
+ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -31,6 +32,16 @@ REQUIRED_MATTHIAS = (
     "AnimationPlayer",
     "res://assets/weapon_atlas.svg",
     "/pawn-slug/matthias/motion/",
+    "load_webp_from_buffer",
+)
+REQUIRED_ENEMIES = (
+    "Sprite2D",
+    "Marker2D",
+    "HTTPRequest",
+    "res://assets/weapon_atlas.svg",
+    "/pawn-slug/enemies/premium-raster/",
+    "enemy_premium_raster_v5",
+    "load_webp_from_buffer",
 )
 
 
@@ -49,6 +60,16 @@ def source_files() -> list[pathlib.Path]:
     return sorted(files)
 
 
+def validate_contract(path: pathlib.Path, label: str, required: tuple[str, ...], violations: list[str]) -> None:
+    if not path.is_file():
+        violations.append(f"falta {path.relative_to(ROOT)}")
+        return
+    text = path.read_text(encoding="utf-8")
+    for token in required:
+        if token not in text:
+            violations.append(f"{label} perdió contrato 2D requerido: {token}")
+
+
 def validate() -> None:
     if not GODOT_ROOT.is_dir():
         raise GateError(f"No existe Pawn Slug Godot: {GODOT_ROOT}")
@@ -61,13 +82,8 @@ def validate() -> None:
             if token in lowered:
                 violations.append(f"{path.relative_to(ROOT)}: token prohibido {token!r}")
 
-    if not MATTHIAS.is_file():
-        violations.append("falta games/pawn-slug-godot/scripts/matthias_art.gd")
-    else:
-        matthias = MATTHIAS.read_text(encoding="utf-8")
-        for token in REQUIRED_MATTHIAS:
-            if token not in matthias:
-                violations.append(f"matthias_art.gd perdió contrato 2D requerido: {token}")
+    validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
+    validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -77,7 +93,9 @@ def self_test() -> None:
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
-    assert "Marker2D" in REQUIRED_MATTHIAS
+    assert "/pawn-slug/matthias/motion/" in REQUIRED_MATTHIAS
+    assert "HTTPRequest" in REQUIRED_ENEMIES
+    assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     print("OK Pawn Slug Godot 2D gate self-test")
 
 
