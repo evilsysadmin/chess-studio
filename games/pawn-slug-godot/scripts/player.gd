@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
-    _art.update_visual(delta, axis, is_on_floor(), facing, fired_now)
+    _art.update_visual(delta, axis, is_on_floor(), velocity.y, facing, fired_now)
     queue_redraw()
 
 func _movement_axis() -> float:
