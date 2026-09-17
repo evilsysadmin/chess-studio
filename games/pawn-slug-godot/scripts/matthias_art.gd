@@ -15,6 +15,7 @@ const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
 const MUZZLE_FLASH_SECONDS := 0.055
 const MUZZLE_OFFSET := Vector2(65.0, -10.0)
+const CROUCH_MUZZLE_Y_SHIFT := 18.0
 const MUZZLE_RADIUS := 9.0
 const CANONICAL_PISTOL_RUN_FRAMES := 4
 const CANONICAL_PISTOL_RUN_FPS := 8.0
@@ -50,6 +51,7 @@ var _shoot_age := SHOOT_HOLD_SECONDS
 var _muzzle_age := MUZZLE_FLASH_SECONDS
 var _facing := 1.0
 var _vertical_speed := 0.0
+var _crouching := false
 
 func _ready() -> void:
     _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
@@ -65,12 +67,14 @@ func update_visual(
     delta: float,
     movement_axis: float,
     on_floor: bool,
+    crouching: bool,
     vertical_speed: float,
     facing: float,
     fired_now: bool,
 ) -> void:
     _facing = -1.0 if facing < 0.0 else 1.0
     _vertical_speed = vertical_speed
+    _crouching = crouching and on_floor
     if fired_now:
         _shoot_age = 0.0
         _muzzle_age = 0.0
@@ -78,7 +82,7 @@ func update_visual(
         _shoot_age += delta
         _muzzle_age += delta
 
-    var next_action := _resolve_action(movement_axis, on_floor)
+    var next_action := _resolve_action(movement_axis, on_floor, _crouching)
     if next_action != _action:
         _action = next_action
         _action_time = 0.0
@@ -90,9 +94,11 @@ func update_visual(
     _apply_shoot_frame()
     queue_redraw()
 
-func _resolve_action(movement_axis: float, on_floor: bool) -> String:
+func _resolve_action(movement_axis: float, on_floor: bool, crouching: bool) -> String:
     if not on_floor:
         return "jump"
+    if crouching:
+        return "crouch"
     if absf(movement_axis) > 0.65:
         return "run"
     if absf(movement_axis) > 0.08:
@@ -130,7 +136,14 @@ func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
-    var show_shoot := _body_ready and _shoot_ready and _shoot_age < SHOOT_HOLD_SECONDS
+    # Canonical authored shoot strip is standing-only, matching the existing web
+    # runtime. Crouched fire keeps the crouch body and only renders muzzle FX.
+    var show_shoot := (
+        _body_ready
+        and _shoot_ready
+        and not _crouching
+        and _shoot_age < SHOOT_HOLD_SECONDS
+    )
     if _body_sprite:
         _body_sprite.visible = _body_ready and not show_shoot
     if not _shoot_sprite:
@@ -147,8 +160,9 @@ func _apply_shoot_frame() -> void:
 func _draw() -> void:
     if _muzzle_age >= MUZZLE_FLASH_SECONDS:
         return
+    var muzzle_y := MUZZLE_OFFSET.y + (CROUCH_MUZZLE_Y_SHIFT if _crouching else 0.0)
     draw_circle(
-        Vector2(_facing * MUZZLE_OFFSET.x, MUZZLE_OFFSET.y),
+        Vector2(_facing * MUZZLE_OFFSET.x, muzzle_y),
         MUZZLE_RADIUS,
         Color("ffd36a"),
     )

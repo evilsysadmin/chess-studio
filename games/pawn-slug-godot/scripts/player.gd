@@ -4,6 +4,7 @@ signal fired(origin: Vector2, direction: float)
 
 const MatthiasArt := preload("res://scripts/matthias_art.gd")
 const MOVE_SPEED := 330.0
+const CROUCH_SPEED_SCALE := 0.30
 const GROUND_ACCEL := 2200.0
 const AIR_ACCEL := 1350.0
 const GROUND_DECEL := 2800.0
@@ -30,7 +31,9 @@ func _physics_process(delta: float) -> void:
     if absf(axis) > 0.08:
         facing = 1.0 if axis > 0.0 else -1.0
 
-    var target_speed := axis * MOVE_SPEED
+    var crouching := _crouch_pressed() and is_on_floor()
+    var speed_scale := CROUCH_SPEED_SCALE if crouching else 1.0
+    var target_speed := axis * MOVE_SPEED * speed_scale
     var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
     if absf(axis) <= 0.08 and is_on_floor():
         accel = GROUND_DECEL
@@ -48,7 +51,7 @@ func _physics_process(delta: float) -> void:
     else:
         _jump_buffer_remaining = maxf(0.0, _jump_buffer_remaining - delta)
 
-    if _jump_buffer_remaining > 0.0 and _coyote_remaining > 0.0:
+    if _jump_buffer_remaining > 0.0 and _coyote_remaining > 0.0 and not crouching:
         velocity.y = -JUMP_SPEED
         _jump_buffer_remaining = 0.0
         _coyote_remaining = 0.0
@@ -57,6 +60,7 @@ func _physics_process(delta: float) -> void:
     _jump_was_pressed = jump_pressed
 
     move_and_slide()
+    crouching = _crouch_pressed() and is_on_floor()
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
     var fired_now := false
@@ -65,7 +69,7 @@ func _physics_process(delta: float) -> void:
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
-    _art.update_visual(delta, axis, is_on_floor(), velocity.y, facing, fired_now)
+    _art.update_visual(delta, axis, is_on_floor(), crouching, velocity.y, facing, fired_now)
     queue_redraw()
 
 func _movement_axis() -> float:
@@ -81,6 +85,18 @@ func _movement_axis() -> float:
         if absf(joy_axis) > absf(axis):
             axis = joy_axis
     return clampf(axis, -1.0, 1.0)
+
+func _crouch_pressed() -> bool:
+    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+        return true
+    var joypads := Input.get_connected_joypads()
+    if joypads.is_empty():
+        return false
+    var joypad := joypads[0]
+    return (
+        Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_DOWN)
+        or Input.get_joy_axis(joypad, JOY_AXIS_LEFT_Y) > 0.55
+    )
 
 func _jump_pressed() -> bool:
     if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
