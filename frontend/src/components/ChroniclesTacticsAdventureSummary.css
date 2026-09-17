@@ -1,0 +1,94 @@
+.chronicles-party-hud__adventure {
+  margin-top: 0.65rem;
+  border-top: 1px solid rgba(216, 181, 106, 0.2);
+  padding-top: 0.55rem;
+}
+
+.chronicles-party-hud__adventure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  color: rgba(244, 233, 205, 0.88);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chronicles-party-hud__adventure summary::-webkit-details-marker {
+  display: none;
+}
+
+.chronicles-party-hud__adventure summary::before {
+  content: '▸';
+  color: rgba(216, 181, 106, 0.82);
+  transition: transform 140ms ease;
+}
+
+.chronicles-party-hud__adventure[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.chronicles-party-hud__adventure summary span {
+  flex: 1;
+}
+
+.chronicles-party-hud__adventure summary b {
+  color: rgba(216, 181, 106, 0.92);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.chronicles-party-hud__adventure-body {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.6rem 0.15rem 0.1rem;
+}
+
+.chronicles-party-hud__adventure-section {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.chronicles-party-hud__adventure-section > span,
+.chronicles-party-hud__adventure-complete {
+  color: rgba(216, 181, 106, 0.76);
+  font-size: 0.59rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chronicles-party-hud__adventure-section strong {
+  color: rgba(250, 244, 227, 0.94);
+  font-size: 0.75rem;
+}
+
+.chronicles-party-hud__adventure-section small {
+  color: rgba(226, 221, 207, 0.72);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.chronicles-party-hud__inventory {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.chronicles-party-hud__inventory-item {
+  border: 1px solid rgba(216, 181, 106, 0.2);
+  border-radius: 999px;
+  padding: 0.18rem 0.42rem;
+  background: rgba(17, 16, 14, 0.48);
+  color: rgba(241, 232, 208, 0.88);
+  font-size: 0.62rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-party-hud__adventure summary::before {
+    transition: none;
+  }
+}

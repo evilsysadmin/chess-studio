@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  chroniclesActiveQuest,
   chroniclesApplyContentAction,
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
   chroniclesContentInteractions,
   chroniclesContentLockedMessage,
+  chroniclesInventoryEntries,
+  chroniclesQuestEntries,
   chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
 
@@ -115,5 +118,60 @@ describe('Chronicles content runtime', () => {
     ]);
     expect(next.refilled).toBe(true);
     expect(refilled).toHaveBeenCalledOnce();
+  });
+
+  it('tracks authored inventory and quest state across chained adventure effects', () => {
+    const started = chroniclesApplyContentEffects({}, [
+      {
+        type: 'start-quest',
+        questId: 'blind-king-key',
+        title: 'La llave del rey ciego',
+        objective: 'Encuentra la llave ennegrecida',
+        order: 10,
+      },
+      {
+        type: 'grant-item',
+        itemId: 'charred-key',
+        name: 'Llave ennegrecida',
+        description: 'Abre algo que probablemente debía seguir cerrado.',
+      },
+    ]);
+
+    expect(chroniclesActiveQuest(started)).toMatchObject({
+      id: 'blind-king-key',
+      status: 'active',
+      objective: 'Encuentra la llave ennegrecida',
+    });
+    expect(chroniclesInventoryEntries(started)).toEqual([
+      expect.objectContaining({ id: 'charred-key', quantity: 1 }),
+    ]);
+    expect(chroniclesRequirementsMet(started, [
+      { itemId: 'charred-key' },
+      { questId: 'blind-king-key', questStatus: 'active' },
+    ])).toBe(true);
+
+    const advanced = chroniclesApplyContentEffects(started, [
+      {
+        type: 'advance-quest',
+        questId: 'blind-king-key',
+        objective: 'Busca la puerta que no figura en el plano',
+      },
+      { type: 'consume-item', itemId: 'charred-key' },
+      { type: 'complete-quest', questId: 'blind-king-key' },
+    ]);
+
+    expect(chroniclesInventoryEntries(advanced)).toEqual([]);
+    expect(chroniclesActiveQuest(advanced)).toBeNull();
+    expect(chroniclesQuestEntries(advanced, 'completed')).toEqual([
+      expect.objectContaining({
+        id: 'blind-king-key',
+        status: 'completed',
+        objective: 'Busca la puerta que no figura en el plano',
+      }),
+    ]);
+    expect(chroniclesRequirementsMet(advanced, [{ itemId: 'charred-key' }])).toBe(false);
+    expect(chroniclesRequirementsMet(advanced, [
+      { questId: 'blind-king-key', questStatus: 'completed' },
+    ])).toBe(true);
   });
 });

@@ -9,8 +9,46 @@ const CARDINAL_DIRECTIONS = Object.freeze([
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
 
+function inventoryFor(state) {
+  return state?.inventory && typeof state.inventory === 'object' ? state.inventory : {};
+}
+
+function questsFor(state) {
+  return state?.quests && typeof state.quests === 'object' ? state.quests : {};
+}
+
+function positiveQuantity(value, fallback = 1) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : fallback;
+}
+
+export function chroniclesInventoryEntries(state) {
+  return Object.values(inventoryFor(state))
+    .filter((item) => item && positiveQuantity(item.quantity, 0) > 0)
+    .sort((left, right) => String(left.name || left.id).localeCompare(String(right.name || right.id)));
+}
+
+export function chroniclesQuestEntries(state, status = null) {
+  return Object.values(questsFor(state))
+    .filter((quest) => quest && (!status || quest.status === status))
+    .sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
+}
+
+export function chroniclesActiveQuest(state) {
+  return chroniclesQuestEntries(state, 'active')[0] || null;
+}
+
 export function chroniclesRequirementMet(state, requirement) {
   if (!requirement || typeof requirement !== 'object') return true;
+  if (requirement.itemId) {
+    const quantity = positiveQuantity(inventoryFor(state)[requirement.itemId]?.quantity, 0);
+    return quantity >= positiveQuantity(requirement.quantity, 1);
+  }
+  if (requirement.questId) {
+    const quest = questsFor(state)[requirement.questId];
+    const expected = requirement.questStatus || 'active';
+    return quest?.status === expected;
+  }
   const value = state?.[requirement.key];
   if (Object.prototype.hasOwnProperty.call(requirement, 'equals')) return value === requirement.equals;
   if (Object.prototype.hasOwnProperty.call(requirement, 'lte')) return Number(value) <= Number(requirement.lte);
@@ -93,10 +131,67 @@ export function chroniclesContentLockedMessage(state, definition, fallback = '')
   return failure?.message || fallback;
 }
 
+function grantItem(state, effect) {
+  if (!effect.itemId) return state;
+  const inventory = inventoryFor(state);
+  const current = inventory[effect.itemId] || {};
+  const quantity = positiveQuantity(current.quantity, 0) + positiveQuantity(effect.quantity, 1);
+  return {
+    ...state,
+    inventory: {
+      ...inventory,
+      [effect.itemId]: {
+        id: effect.itemId,
+        name: effect.name || current.name || effect.itemId,
+        description: effect.description || current.description || '',
+        quantity,
+      },
+    },
+  };
+}
+
+function consumeItem(state, effect) {
+  if (!effect.itemId) return state;
+  const inventory = inventoryFor(state);
+  const current = inventory[effect.itemId];
+  if (!current) return state;
+  const quantity = Math.max(0, positiveQuantity(current.quantity, 0) - positiveQuantity(effect.quantity, 1));
+  const nextInventory = { ...inventory };
+  if (quantity > 0) nextInventory[effect.itemId] = { ...current, quantity };
+  else delete nextInventory[effect.itemId];
+  return { ...state, inventory: nextInventory };
+}
+
+function updateQuest(state, effect, status) {
+  if (!effect.questId) return state;
+  const quests = questsFor(state);
+  const current = quests[effect.questId] || {};
+  if (current.status === 'completed' && status !== 'completed') return state;
+  return {
+    ...state,
+    quests: {
+      ...quests,
+      [effect.questId]: {
+        id: effect.questId,
+        title: effect.title || current.title || effect.questId,
+        description: effect.description || current.description || '',
+        objective: effect.objective || current.objective || '',
+        order: Number.isFinite(Number(effect.order)) ? Number(effect.order) : Number(current.order || 0),
+        status,
+      },
+    },
+  };
+}
+
 export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
   return (effects || []).reduce((next, effect) => {
     if (effect.type === 'set' && effect.key) return { ...next, [effect.key]: effect.value };
     if (effect.type === 'transition-map' && effect.mapId) return chroniclesMapTransitionState(next, effect.mapId);
+    if (effect.type === 'grant-item') return grantItem(next, effect);
+    if (effect.type === 'consume-item') return consumeItem(next, effect);
+    if (effect.type === 'start-quest') return updateQuest(next, effect, 'active');
+    if (effect.type === 'advance-quest') return updateQuest(next, effect, 'active');
+    if (effect.type === 'complete-quest') return updateQuest(next, effect, 'completed');
     if (effect.type === 'heal-party') {
       const amount = Math.max(0, Number(effect.amount || 0));
       return {
