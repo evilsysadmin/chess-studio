@@ -285,21 +285,21 @@ function makeMatteIvoryHeadMaterial(ivoryMaterial) {
 function makeOfficerSatinIvoryHeadMaterial(ivoryMaterial) {
   const material = ivoryMaterial.clone();
   // Officers sit behind the pawn rank at the tactical camera angle. Keep them
-  // off the PMREM environment, but let the deliberate rear-quarter board light
-  // draw a restrained highlight across mitres, battlements, crowns and the
-  // knight profile instead of flattening every upper silhouette to deep matte.
-  material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.72, 0.72, 0.78);
-  material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.12, 0.09, 0.14);
-  material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.62, 0.56, 0.7);
-  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.26, 0.24, 0.3);
+  // off the PMREM environment, but give their upper silhouettes enough direct-
+  // light response to pick up the approved key/rim as a clean ivory edge. This
+  // is deliberately stronger than v1 while preserving the exact ivory albedo.
+  material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.72, 0.56, 0.64);
+  material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.2, 0.24, 0.3);
+  material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.48, 0.32, 0.4);
+  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.24, 0.34, 0.42);
   material.envMapIntensity = 0;
-  material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.015, 0.01, 0.02);
-  material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.78, 0.74, 0.84);
+  material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.025, 0.04);
+  material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.72, 0.58, 0.68);
   material.userData = {
     ...ivoryMaterial.userData,
     surfaceRole: 'ivory',
-    pieceFinish: 'satin-ivory-officer-head-v1',
-    whiteHeadFinish: 'officer-satin-v1',
+    pieceFinish: 'satin-ivory-officer-head-v2',
+    whiteHeadFinish: 'officer-satin-v2',
   };
   return material;
 }
@@ -348,9 +348,9 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   walnutRim.castShadow = false;
 
   // Pawns remain dry/matte because their heads form the foreground picket line.
-  // Back-rank officers need a restrained direct-light response so their upper
-  // silhouettes read through that line. Both finishes keep the exact ivory
-  // colour and envMapIntensity=0, so this adds modelling rather than brightness.
+  // Back-rank officers receive a stronger but still direct-light-only satin so
+  // crowns, mitres, battlements and the knight profile separate from that line.
+  // Both finishes keep the exact ivory colour and envMapIntensity=0.
   const pawnHead = type === 'p' ? makeMatteIvoryHeadMaterial(ivoryMaterial) : null;
   const officerHead = type === 'p' ? null : makeOfficerSatinIvoryHeadMaterial(ivoryMaterial);
   let matteHeads = 0;
@@ -364,7 +364,7 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
       return;
     }
     child.material = officerHead;
-    child.userData.whiteOfficerHead = 'satin-v1';
+    child.userData.whiteOfficerHead = 'satin-v2';
     satinHeads += 1;
   });
 
@@ -375,7 +375,7 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   group.userData.whitePieceWalnutRimCount = 1;
   group.userData.whitePieceMatteHeadCount = matteHeads;
   group.userData.whitePieceSatinHeadCount = satinHeads;
-  group.userData.whitePieceReadabilityFinish = 'walnut-pawn-matte-officer-satin-v2';
+  group.userData.whitePieceReadabilityFinish = 'walnut-pawn-matte-officer-satin-v3';
   return { walnutRims: 1, matteHeads, satinHeads };
 }
 

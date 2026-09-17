@@ -10,11 +10,11 @@ function meshes(root, predicate) {
 }
 
 describe('War Room white piece readability finish', () => {
-  it('keeps pawn heads matte while giving white officers a restrained direct-light satin', () => {
+  it('keeps pawn heads matte while giving white officers a stronger direct-light satin', () => {
     for (const type of ['p', 'n', 'b', 'r', 'q', 'k']) {
       const piece = buildPiece(type, 'w', 'studio', false);
       try {
-        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-pawn-matte-officer-satin-v2');
+        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-pawn-matte-officer-satin-v3');
         expect(piece.userData.whitePieceWalnutRimCount).toBe(1);
 
         const rims = meshes(piece, (mesh) => mesh.userData?.whiteBaseWalnutRim === 'subtle-v1');
@@ -27,7 +27,7 @@ describe('War Room white piece readability finish', () => {
         const body = meshes(piece, (mesh) => (
           mesh.material?.userData?.surfaceRole === 'ivory'
           && mesh.material?.userData?.whiteHeadFinish !== 'pawn-deep-matte-v2'
-          && mesh.material?.userData?.whiteHeadFinish !== 'officer-satin-v1'
+          && mesh.material?.userData?.whiteHeadFinish !== 'officer-satin-v2'
         ))[0];
         expect(body).toBeTruthy();
 
@@ -47,16 +47,18 @@ describe('War Room white piece readability finish', () => {
         } else {
           expect(piece.userData.whitePieceMatteHeadCount).toBe(0);
           expect(piece.userData.whitePieceSatinHeadCount).toBeGreaterThan(0);
-          const heads = meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead === 'satin-v1');
+          const heads = meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead === 'satin-v2');
           expect(heads.length).toBeGreaterThan(0);
           for (const head of heads) {
-            expect(head.material.userData.pieceFinish).toBe('satin-ivory-officer-head-v1');
-            expect(head.material.roughness).toBeGreaterThanOrEqual(0.72);
-            expect(head.material.roughness).toBeLessThanOrEqual(0.78);
-            expect(head.material.clearcoat).toBeGreaterThanOrEqual(0.09);
-            expect(head.material.clearcoat).toBeLessThanOrEqual(0.14);
-            expect(head.material.specularIntensity).toBeGreaterThanOrEqual(0.24);
-            expect(head.material.specularIntensity).toBeLessThanOrEqual(0.3);
+            expect(head.material.userData.pieceFinish).toBe('satin-ivory-officer-head-v2');
+            expect(head.material.roughness).toBeGreaterThanOrEqual(0.56);
+            expect(head.material.roughness).toBeLessThanOrEqual(0.64);
+            expect(head.material.clearcoat).toBeGreaterThanOrEqual(0.24);
+            expect(head.material.clearcoat).toBeLessThanOrEqual(0.3);
+            expect(head.material.clearcoatRoughness).toBeGreaterThanOrEqual(0.32);
+            expect(head.material.clearcoatRoughness).toBeLessThanOrEqual(0.4);
+            expect(head.material.specularIntensity).toBeGreaterThanOrEqual(0.34);
+            expect(head.material.specularIntensity).toBeLessThanOrEqual(0.42);
             expect(head.material.envMapIntensity).toBe(0);
             expect(head.material.color.getHex()).toBe(body.material.color.getHex());
           }
