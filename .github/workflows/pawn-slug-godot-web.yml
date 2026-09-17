@@ -37,8 +37,12 @@ jobs:
     name: Validate · Pawn Slug Godot contract
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      export_required: ${{ steps.classify.outputs.export_required }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
       - name: Web export stays iframe-safe and single-threaded
@@ -52,10 +56,31 @@ jobs:
           grep -q '_notify_parent("ready")' games/pawn-slug-godot/scripts/main.gd
           grep -q '_notify_parent("exit")' games/pawn-slug-godot/scripts/main.gd
           grep -Fq "frame-src 'self' https://assets.chess-studio.shadowops.dpdns.org" scripts/apply_frontend_csp.mjs
+      - name: Classify export surface
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          export_required=false
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            export_required=true
+          elif [[ "$GITHUB_EVENT_NAME" == 'push' ]]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              changed="$(git diff --name-only HEAD^ HEAD)"
+              printf 'Changed files:\n%s\n' "$changed"
+              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
+                export_required=true
+              fi
+            else
+              export_required=true
+            fi
+          fi
+          echo "export_required=$export_required" >> "$GITHUB_OUTPUT"
+          echo "Pawn Slug Godot export required: $export_required" >> "$GITHUB_STEP_SUMMARY"
 
   build_publish:
     name: Export + publish · Pawn Slug Godot Web
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.validate.outputs.export_required == 'true'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -145,6 +170,36 @@ jobs:
           test -s "$RUNNER_TEMP/pawn-slug-godot-index.html"
           echo "PAWN_SLUG_GODOT_INDEX_URL=$index_url" >> "$GITHUB_ENV"
           echo "Pawn Slug Godot Web published: $index_url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore Godot browser smoke runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
+      - name: Browser handshake smoke
+        timeout-minutes: 2
+        run: node scripts/pawn_slug_godot_live_smoke.mjs
+
+  smoke_existing:
+    name: Smoke existing · Pawn Slug Godot Web
+    if: github.event_name == 'push' && needs.validate.outputs.export_required != 'true'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Resolve current R2 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          pointer='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/current.json'
+          curl -fsS --retry 3 "$pointer?smoke=$GITHUB_SHA" -o "$RUNNER_TEMP/pawn-slug-godot-current.json"
+          index_url="$(python3 -S scripts/pawn_slug_godot_bundle.py verify-pointer \
+            "$RUNNER_TEMP/pawn-slug-godot-current.json")"
+          curl -fsS --retry 3 "$index_url" -o "$RUNNER_TEMP/pawn-slug-godot-index.html"
+          test -s "$RUNNER_TEMP/pawn-slug-godot-index.html"
+          echo "PAWN_SLUG_GODOT_INDEX_URL=$index_url" >> "$GITHUB_ENV"
+          echo "Pawn Slug Godot smoke reused: $index_url" >> "$GITHUB_STEP_SUMMARY"
       - name: Restore Godot browser smoke runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
