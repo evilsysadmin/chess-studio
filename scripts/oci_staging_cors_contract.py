@@ -19,6 +19,9 @@ infra_lab = (ROOT / ".github" / "workflows" / "oci-staging-lab.yml").read_text(e
 k3s_root = (ROOT / "scripts" / "oci_k3s_assets_root.py").read_text(encoding="utf-8")
 k3s_provision = (ROOT / "scripts" / "oci_k3s_capability_provision.sh").read_text(encoding="utf-8")
 k3s_sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(encoding="utf-8")
+k3s_service_prepare = (ROOT / "scripts" / "oci_k3s_service_prepare.py").read_text(encoding="utf-8")
+k3s_config = (ROOT / "infra" / "oci" / "k3s" / "config.yaml").read_text(encoding="utf-8")
+k3s_unit = (ROOT / "infra" / "oci" / "k3s" / "k3s.service").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -170,5 +173,25 @@ assert "CHESS_STUDIO_K3S_ASSETS = /usr/local/sbin/chess-studio-k3s-assets /tmp/c
 assert "CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME, CHESS_STUDIO_K3S_ASSETS" in k3s_sudoers
 for forbidden in ("systemctl", "k3s server", "k3s agent", "curl ", "wget "):
     assert forbidden not in k3s_root, f"K3s asset capability must not contain {forbidden!r}"
+
+# Service preparation is a second inert phase. It can write only the reviewed
+# base config + systemd unit while the cluster is unarmed. The unit itself has a
+# deliberate start-approval fuse. Once armed/active, normal application deploys
+# must become verification-only and may not silently stop or rewrite K3s.
+ast.parse(k3s_service_prepare)
+assert 'python3 -S "$k3s_service_prepare"' in deploy
+assert 'write-kubeconfig-mode: "0600"' in k3s_config
+assert "  - traefik" in k3s_config and "  - servicelb" in k3s_config
+assert "cluster-init" not in k3s_config
+assert "ExecStart=/usr/local/bin/k3s server" in k3s_unit
+assert "ExecStartPre=/usr/bin/test -f /var/lib/chess-studio/K3S_START_APPROVED" in k3s_unit
+assert "WantedBy=multi-user.target" in k3s_unit
+assert "cluster-init" not in k3s_unit
+assert '["systemctl", "daemon-reload"]' in k3s_service_prepare
+assert '["systemctl", "start"' not in k3s_service_prepare
+assert '["systemctl", "enable"' not in k3s_service_prepare
+assert "OCI_K3S_SERVICE_PREPARED" in k3s_service_prepare
+assert "OCI_K3S_SERVICE_ARMED_UNCHANGED" in k3s_service_prepare
+assert "START_APPROVAL.exists()" in k3s_service_prepare
 
 print("OCI staging CORS + runtime deployment contract: OK")

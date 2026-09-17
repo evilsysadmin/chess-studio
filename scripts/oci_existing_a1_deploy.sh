@@ -11,6 +11,7 @@ repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 compose_file="$repo/infra/oci/runtime/docker-compose.yml"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
+k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
@@ -192,8 +193,10 @@ fi
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
 [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
 [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
+[[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
 /bin/bash "$tunnel_connector" --self-test
 /bin/bash "$k3s_capability_provision"
+python3 -S "$k3s_service_prepare"
 
 # CI already built and published the exact linux/arm64 backend image. Pull that
 # immutable artifact before touching the serving container; do not invoke

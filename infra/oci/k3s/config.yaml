@@ -1,0 +1,7 @@
+# Chess Studio OCI staging · single-node K3s
+# Keep the first bootstrap intentionally small. Flux/Headlamp/cloudflared are
+# separate GitOps layers; this file only defines the base cluster.
+write-kubeconfig-mode: "0600"
+disable:
+  - traefik
+  - servicelb
