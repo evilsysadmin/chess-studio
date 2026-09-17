@@ -22,11 +22,20 @@ describe('LabScreen experiment hub', () => {
     const html = renderHub();
 
     expect(html).toContain('ninguno es necesario para disfrutar Chess Studio');
-    expect(html).toContain('CONGELADO · VERTICAL SLICE');
+    expect(html).toContain('POC · GODOT WEB');
     expect(html).toContain('EXPERIMENTAL · EN PULIDO');
     expect(html).toContain('POC · JUGABLE');
     expect(html).toContain('MADURO · HERRAMIENTA');
     expect(html).toContain('EXPERIMENTAL · VARIANTE');
+  });
+
+  it('expone Pawn Slug Godot y mantiene oculto el portal clásico', () => {
+    const html = renderHub();
+
+    expect(html).toContain('lab-workshop-portal--pawnslug-godot');
+    expect(html).toContain('PAWN SLUG GODOT');
+    expect(html).not.toContain('lab-workshop-portal--pawnslug"');
+    expect(html).not.toContain('<strong>Pawn Slug</strong>');
   });
 
   it('usa un contrato común con todos los estados de madurez del producto', () => {
