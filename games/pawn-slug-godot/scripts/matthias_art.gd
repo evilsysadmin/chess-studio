@@ -17,6 +17,9 @@ const MUZZLE_FLASH_SECONDS := 0.055
 const MUZZLE_OFFSET := Vector2(65.0, -10.0)
 const CROUCH_MUZZLE_Y_SHIFT := 18.0
 const MUZZLE_RADIUS := 9.0
+const LANDING_SECONDS := 0.12
+const LANDING_Y_SQUASH := 0.055
+const LANDING_X_STRETCH := 0.035
 const CANONICAL_PISTOL_RUN_FRAMES := 4
 const CANONICAL_PISTOL_RUN_FPS := 8.0
 const JUMP_VISUAL_SPEED_RANGE := 610.0
@@ -49,6 +52,7 @@ var _action := "idle"
 var _action_time := 0.0
 var _shoot_age := SHOOT_HOLD_SECONDS
 var _muzzle_age := MUZZLE_FLASH_SECONDS
+var _landing_remaining := 0.0
 var _facing := 1.0
 var _vertical_speed := 0.0
 var _crouching := false
@@ -68,6 +72,7 @@ func update_visual(
     movement_axis: float,
     on_floor: bool,
     crouching: bool,
+    landed_now: bool,
     vertical_speed: float,
     facing: float,
     fired_now: bool,
@@ -75,6 +80,10 @@ func update_visual(
     _facing = -1.0 if facing < 0.0 else 1.0
     _vertical_speed = vertical_speed
     _crouching = crouching and on_floor
+    if landed_now:
+        _landing_remaining = LANDING_SECONDS
+    else:
+        _landing_remaining = maxf(0.0, _landing_remaining - delta)
     if fired_now:
         _shoot_age = 0.0
         _muzzle_age = 0.0
@@ -92,6 +101,7 @@ func update_visual(
     if _body_ready:
         _apply_body_frame()
     _apply_shoot_frame()
+    _apply_pose_transform()
     queue_redraw()
 
 func _resolve_action(movement_axis: float, on_floor: bool, crouching: bool) -> String:
@@ -157,6 +167,21 @@ func _apply_shoot_frame() -> void:
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
+# Match the web runtime's 120ms landing squash, but recalculate the sprite's Y
+# from its scaled visible height so the feet stay pinned instead of floating.
+func _apply_pose_transform() -> void:
+    var landing := clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
+    var scale_x := ART_SCALE * (1.0 + landing * LANDING_X_STRETCH)
+    var scale_y := ART_SCALE * (1.0 - landing * LANDING_Y_SQUASH)
+    for sprite in [_body_sprite, _shoot_sprite]:
+        if sprite == null:
+            continue
+        sprite.scale = Vector2(scale_x, scale_y)
+        sprite.position = Vector2(
+            0.0,
+            PLAYER_FOOT_Y - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * scale_y,
+        )
+
 func _draw() -> void:
     if _muzzle_age >= MUZZLE_FLASH_SECONDS:
         return
@@ -219,6 +244,7 @@ func _on_art_request_completed(
         _shoot_sprite.texture = texture
         _shoot_ready = true
     _apply_shoot_frame()
+    _apply_pose_transform()
 
 func _valid_body_dimensions(image: Image) -> bool:
     return (
