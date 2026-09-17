@@ -7,6 +7,7 @@ import {
   chroniclesIsoPointerAction,
   chroniclesIsoUsesLegacyDressing,
   chroniclesIsoWorldForCell,
+  chroniclesIsoWorldForContentKind,
   chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
   chroniclesIsometricFovForAspect,
@@ -33,6 +34,22 @@ describe('Chronicles canonical isometric viewport', () => {
 
     expect([centre.x, centre.y, centre.z]).toEqual([0, 0, 0]);
     expect([corner.x, corner.y, corner.z]).toEqual([4.9, 0, 2.45]);
+  });
+
+  it('resolves functional prop positions by authored kind instead of room-specific ids', () => {
+    const plan = {
+      content: [
+        { id: 'gallery-lever', kind: 'lever', world: { x: 4.9, y: 0, z: 4.9 } },
+        { id: 'gallery-relic', kind: 'pickup', world: { x: 4.9, y: 0, z: 2.45 } },
+      ],
+    };
+
+    const lever = chroniclesIsoWorldForContentKind(plan, 'lever');
+    const pickup = chroniclesIsoWorldForContentKind(plan, 'pickup');
+
+    expect([lever.x, lever.y, lever.z]).toEqual([4.9, 0, 4.9]);
+    expect([pickup.x, pickup.y, pickup.z]).toEqual([4.9, 0, 2.45]);
+    expect(chroniclesIsoWorldForContentKind(plan, 'trigger')).toBeNull();
   });
 
   it('keeps legacy crypt dressing opt-in through the scene style contract', () => {
