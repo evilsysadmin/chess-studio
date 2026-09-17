@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SERVICE_WORKFLOW = ROOT / ".github/workflows/oci-staging-service.yml"
 
 TRANSPORT = (("scripts/oci_run_command.py", "--self-test"),)
 RUNTIME = (("scripts/oci_runtime_config.py", "--self-test"),)
@@ -118,6 +119,13 @@ def self_test() -> None:
         for script, argument in commands:
             assert script.startswith("scripts/") and script.endswith(".py")
             assert argument in {"--self-test", "self-test"}
+
+    workflow = SERVICE_WORKFLOW.read_text(encoding="utf-8")
+    assert "python3 scripts/oci_runtime_config.py sync" in workflow
+    assert "Wait for OCI Run Command registration before runtime sync" not in workflow
+    assert "for attempt in $(seq 1 60)" not in workflow
+    assert "retrying in 10s" not in workflow
+    assert "Host/agent registration convergence belongs to the infrastructure apply" in workflow
 
     print("OCI service contract isolation self-test: OK")
 

@@ -75,31 +75,9 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
 
-      - name: Wait for OCI Run Command registration before runtime sync
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 60); do
-            log="${RUNNER_TEMP}/oci-agent-ready-${attempt}.log"
-            set +e
-            python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
-            rc=$?
-            set -e
-
-            if [[ "$rc" -eq 0 ]]; then
-              cat "$log"
-              exit 0
-            fi
-            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 60 ]]; then
-              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/60); retrying in 10s"
-              sleep 10
-              continue
-            fi
-            cat "$log"
-            exit "$rc"
-          done
-
+      # Host/agent registration convergence belongs to the infrastructure apply.
+      # Runtime sync performs one direct transport health check and fails fast if
+      # the already-converged host is unhealthy instead of hiding a 10-minute wait.
       - name: Sync private runtime config
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
         env:
