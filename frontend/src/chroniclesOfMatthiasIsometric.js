@@ -62,7 +62,7 @@ export function chroniclesIsoWorldForCell(x, y, scenePlan = chroniclesIsometricS
   return new THREE.Vector3(world.x, world.y, world.z);
 }
 
-export function chroniclesIsoWorldForContent(geometryPlan, kind) {
+export function chroniclesIsoWorldForContentKind(geometryPlan, kind) {
   const world = chroniclesIsometricContentByKind(geometryPlan, kind)?.world;
   if (!world) return null;
   return new THREE.Vector3(world.x, world.y, world.z);
@@ -328,7 +328,7 @@ function buildIsoDungeon({
     root.add(trim);
   });
 
-  const sigilWorld = chroniclesIsoWorldForContent(geometryPlan, 'trigger');
+  const sigilWorld = chroniclesIsoWorldForContentKind(geometryPlan, 'trigger');
   const sigil = addMesh(
     root,
     new THREE.TorusGeometry(0.62, 0.085, 8, coarsePointer ? 18 : 30),
@@ -340,7 +340,7 @@ function buildIsoDungeon({
   sigil.rotation.x = -Math.PI / 2;
   sigil.visible = Boolean(sigilWorld);
 
-  const leverCell = chroniclesIsoWorldForContent(geometryPlan, 'lever');
+  const leverCell = chroniclesIsoWorldForContentKind(geometryPlan, 'lever');
   const leverRoot = new THREE.Group();
   leverRoot.name = 'chronicles-iso-rune-cache-lever';
   leverRoot.position.set((leverCell?.x ?? 0) + 0.62, 0, (leverCell?.z ?? 0) - 0.56);
@@ -362,7 +362,7 @@ function buildIsoDungeon({
   leverRoot.add(leverPivot);
   root.add(leverRoot);
 
-  const runeCell = chroniclesIsoWorldForContent(geometryPlan, 'pickup');
+  const runeCell = chroniclesIsoWorldForContentKind(geometryPlan, 'pickup');
   const runeCoreRoot = new THREE.Group();
   runeCoreRoot.name = 'chronicles-iso-rune-core';
   runeCoreRoot.position.set((runeCell?.x ?? 0) + 0.42, 0.18, (runeCell?.z ?? 0) + 0.2);
