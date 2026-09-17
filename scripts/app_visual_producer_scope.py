@@ -105,11 +105,6 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/public/matthias-home-canonical.b64",
     }:
         return {"home-matthias"}
-    if lower in {
-        "frontend/public/assets/enemy_atlas_v2.webp",
-        "frontend/public/enemy_atlas_v2.webp",
-    }:
-        return {"experiments-hub"}
     if lower.startswith("frontend/public/"):
         return None
 
@@ -211,7 +206,6 @@ def self_test() -> None:
     assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "chronicles-tactics"
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
-    assert classify(["frontend/public/assets/enemy_atlas_v2.webp"]) == "experiments-hub"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
     assert classify([
         "frontend/src/chroniclesOfMatthiasIsometric.js",
