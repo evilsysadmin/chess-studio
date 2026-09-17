@@ -14,6 +14,7 @@ TRANSPORT = (("scripts/oci_run_command.py", "--self-test"),)
 RUNTIME = (("scripts/oci_runtime_config.py", "--self-test"),)
 VAULT_RUNTIME = (("scripts/oci_vault_runtime.py", "--self-test"),)
 VAULT_COMPARE = (("scripts/oci_vault_compare.py", "--self-test"),)
+VAULT_PREVIEW = (("scripts/oci_vault_preview.py", "--self-test"),)
 VAULT_BOOTSTRAP = (("scripts/oci_vault_bootstrap.py", "--self-test"),)
 BACKEND_DIAG = (("scripts/oci_backend_diagnose.py", "--self-test"),)
 RENDER_MONGO_DIAG = (("scripts/render_mongo_target_diagnose.py", "--self-test"),)
@@ -44,6 +45,7 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "vault-validate": TRANSPORT + VAULT_RUNTIME,
     "vault-validate-pending": TRANSPORT + VAULT_RUNTIME,
     "vault-compare-current": TRANSPORT + VAULT_RUNTIME + VAULT_COMPARE,
+    "vault-preview-current": TRANSPORT + VAULT_RUNTIME + VAULT_PREVIEW,
     "k3s-start": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
     "k3s-status": TRANSPORT + K3S_STATUS,
     "k3s-rollback": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
@@ -61,36 +63,18 @@ def run(operation: str) -> None:
     commands = commands_for(operation)
     print(f"OCI service contracts: operation={operation} checks={len(commands)}")
     for script, argument in commands:
-        subprocess.run(
-            [sys.executable, "-S", script, argument],
-            cwd=ROOT,
-            check=True,
-        )
+        subprocess.run([sys.executable, "-S", script, argument], cwd=ROOT, check=True)
     print(f"OCI service contracts OK: operation={operation}")
 
 
 def self_test() -> None:
     expected = {
-        "diagnose",
-        "backend-diagnose",
-        "mongo-target-diagnose",
-        "mongo-network-diagnose",
-        "reserved-egress",
-        "smoke",
-        "reboot-agent",
-        "deploy",
-        "bringup",
-        "runtime-sync",
-        "vault-bootstrap",
-        "vault-validate",
-        "vault-validate-pending",
-        "vault-compare-current",
-        "k3s-start",
-        "k3s-status",
-        "k3s-rollback",
+        "diagnose", "backend-diagnose", "mongo-target-diagnose", "mongo-network-diagnose",
+        "reserved-egress", "smoke", "reboot-agent", "deploy", "bringup", "runtime-sync",
+        "vault-bootstrap", "vault-validate", "vault-validate-pending", "vault-compare-current",
+        "vault-preview-current", "k3s-start", "k3s-status", "k3s-rollback",
     }
     assert set(OPERATIONS) == expected
-
     assert commands_for("diagnose") == TRANSPORT
     assert commands_for("smoke") == TRANSPORT
     assert commands_for("mongo-target-diagnose") == RENDER_MONGO_DIAG
@@ -98,8 +82,7 @@ def self_test() -> None:
 
     runtime_sync = commands_for("runtime-sync")
     assert runtime_sync == TRANSPORT + RUNTIME
-    assert VAULT_RUNTIME[0] not in runtime_sync
-    assert K3S_STATUS[0] not in runtime_sync
+    assert VAULT_RUNTIME[0] not in runtime_sync and K3S_STATUS[0] not in runtime_sync
 
     vault_validate = commands_for("vault-validate")
     assert vault_validate == TRANSPORT + VAULT_RUNTIME
@@ -107,19 +90,19 @@ def self_test() -> None:
 
     vault_compare = commands_for("vault-compare-current")
     assert vault_compare == TRANSPORT + VAULT_RUNTIME + VAULT_COMPARE
-    assert RUNTIME[0] not in vault_compare
-    assert K3S_CONTROL[0] not in vault_compare
+    assert RUNTIME[0] not in vault_compare and K3S_CONTROL[0] not in vault_compare
+
+    vault_preview = commands_for("vault-preview-current")
+    assert vault_preview == TRANSPORT + VAULT_RUNTIME + VAULT_PREVIEW
+    assert RUNTIME[0] not in vault_preview and K3S_CONTROL[0] not in vault_preview
 
     k3s_status = commands_for("k3s-status")
     assert k3s_status == TRANSPORT + K3S_STATUS
-    assert VAULT_BOOTSTRAP[0] not in k3s_status
-    assert RUNTIME[0] not in k3s_status
+    assert VAULT_BOOTSTRAP[0] not in k3s_status and RUNTIME[0] not in k3s_status
 
     k3s_start = commands_for("k3s-start")
-    assert K3S_CONTROL[0] in k3s_start
-    assert K3S_STATUS[0] in k3s_start
-    assert BACKEND_VERIFY[0] in k3s_start
-    assert VAULT_BOOTSTRAP[0] not in k3s_start
+    assert K3S_CONTROL[0] in k3s_start and K3S_STATUS[0] in k3s_start
+    assert BACKEND_VERIFY[0] in k3s_start and VAULT_BOOTSTRAP[0] not in k3s_start
 
     for operation, commands in OPERATIONS.items():
         assert commands, operation
@@ -135,16 +118,24 @@ def self_test() -> None:
     assert "retrying in 10s" not in workflow
     assert "Host/agent registration convergence belongs to the infrastructure apply" in workflow
     assert "python3 scripts/oci_vault_compare.py compare-current" in workflow
+    assert "python3 scripts/oci_vault_preview.py preview-current" in workflow
 
     concurrency_block = workflow.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
-    assert '"vault-compare-current"' not in concurrency_block, (
-        "Vault runtime comparison is read-only and must not take the staging mutation mutex"
-    )
+    for operation in ("vault-compare-current", "vault-preview-current"):
+        assert f'"{operation}"' not in concurrency_block, (
+            f"{operation} is non-persistent and must not take the staging mutation mutex"
+        )
+
     compare_block = workflow.split(
         "- name: Compare CURRENT Vault + Git runtime with installed backend.env", 1
     )[1].split("\n      - name:", 1)[0]
-    assert "RENDER_API_KEY" not in compare_block
-    assert "runtime-sync" not in compare_block
+    assert "RENDER_API_KEY" not in compare_block and "runtime-sync" not in compare_block
+
+    preview_block = workflow.split(
+        "- name: Build and discard CURRENT Vault + Git runtime preview", 1
+    )[1].split("\n      - name:", 1)[0]
+    assert "RENDER_API_KEY" not in preview_block
+    assert "runtime-sync" not in preview_block and "install-runtime" not in preview_block
 
     print("OCI service contract isolation self-test: OK")
 
