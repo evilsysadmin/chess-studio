@@ -19,6 +19,13 @@ const CROUCH_MUZZLE_Y_SHIFT := 18.0
 const MUZZLE_RADIUS := 9.0
 const RECOIL_SECONDS := 0.11
 const RECOIL_PIXELS := 5.0
+const HURT_VISUAL_SECONDS := 0.18
+const HURT_SHIFT_PIXELS := 12.0
+const HURT_TILT_DEGREES := 6.0
+const DEATH_ROTATION_DEGREES := 82.0
+const DEATH_SHIFT_PIXELS := 10.0
+const DEATH_DROP_PIXELS := 34.0
+const DEATH_SCALE_Y := 0.82
 const LANDING_SECONDS := 0.12
 const LANDING_Y_SQUASH := 0.055
 const LANDING_X_STRETCH := 0.035
@@ -60,6 +67,10 @@ var _facing := 1.0
 var _vertical_speed := 0.0
 var _on_floor := false
 var _crouching := false
+var _hurt_remaining := 0.0
+var _invuln_remaining := 0.0
+var _dead := false
+var _death_progress := 0.0
 
 func _ready() -> void:
     _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
@@ -70,6 +81,21 @@ func _ready() -> void:
 
 func body_ready() -> bool:
     return _body_ready
+
+func set_combat_state(
+    hurt_remaining: float,
+    invuln_remaining: float,
+    dead: bool,
+    death_progress: float,
+) -> void:
+    _hurt_remaining = maxf(0.0, hurt_remaining)
+    _invuln_remaining = maxf(0.0, invuln_remaining)
+    _dead = dead
+    _death_progress = clampf(death_progress, 0.0, 1.0)
+    if _dead or _hurt_remaining > 0.0:
+        _recoil_remaining = 0.0
+        _shoot_age = SHOOT_HOLD_SECONDS
+        _muzzle_age = MUZZLE_FLASH_SECONDS
 
 func update_visual(
     delta: float,
@@ -85,11 +111,11 @@ func update_visual(
     _vertical_speed = vertical_speed
     _on_floor = on_floor
     _crouching = crouching and on_floor
-    if landed_now:
+    if landed_now and not _dead:
         _landing_remaining = LANDING_SECONDS
     else:
         _landing_remaining = maxf(0.0, _landing_remaining - delta)
-    if fired_now:
+    if fired_now and not _dead and _hurt_remaining <= 0.0:
         _shoot_age = 0.0
         _muzzle_age = 0.0
         _recoil_remaining = RECOIL_SECONDS
@@ -109,6 +135,7 @@ func update_visual(
         _apply_body_frame()
     _apply_shoot_frame()
     _apply_pose_transform()
+    _apply_combat_modulate()
     queue_redraw()
 
 # Ground locomotion follows post-physics speed, not raw input. Matthias therefore
@@ -124,18 +151,24 @@ func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: b
         return "walk"
     return "idle"
 
-# Pistol run intentionally uses only the four authored canonical poses at 8 fps,
-# matching pawnSlugMatthiasAuthoredMotion.js instead of racing through filler frames.
+# Death deliberately reuses the canonical crouch sequence until dedicated authored
+# hurt/death strips exist in R2. The identity stays canonical instead of swapping to graybox art.
 func _apply_body_frame() -> void:
-    var count := int(ACTION_COUNTS[_action])
+    var action := _action
     var frame := 0
-    if _action == "jump":
-        frame = _jump_frame_for_speed(_vertical_speed, count)
+    if _dead:
+        action = "crouch"
+        var death_count := int(ACTION_COUNTS[action])
+        frame = clampi(int(floor(_death_progress * float(death_count - 1))), 0, death_count - 1)
     else:
-        frame = int(_action_time * float(ACTION_FPS[_action])) % count
+        var count := int(ACTION_COUNTS[action])
+        if action == "jump":
+            frame = _jump_frame_for_speed(_vertical_speed, count)
+        else:
+            frame = int(_action_time * float(ACTION_FPS[action])) % count
 
     _body_sprite.region_rect = Rect2(
-        Vector2(frame * FRAME_SIZE.x, float(ACTION_ROWS[_action]) * FRAME_SIZE.y),
+        Vector2(frame * FRAME_SIZE.x, float(ACTION_ROWS[action]) * FRAME_SIZE.y),
         FRAME_SIZE,
     )
     # Premium pistol bank is authored facing screen-left.
@@ -155,13 +188,15 @@ func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
-    # Canonical authored shoot strip is a grounded standing pose. Crouched or
-    # airborne fire preserves the active body pose and layers recoil + muzzle FX.
+    # Canonical authored shoot strip is a grounded standing pose. Crouched,
+    # airborne, hurt or dead states preserve the canonical body pose instead.
     var show_shoot := (
         _body_ready
         and _shoot_ready
         and _on_floor
         and not _crouching
+        and not _dead
+        and _hurt_remaining <= 0.0
         and _shoot_age < SHOOT_HOLD_SECONDS
     )
     if _body_sprite:
@@ -177,30 +212,56 @@ func _apply_shoot_frame() -> void:
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
-# Match the web runtime's 120ms landing squash and keep pistol recoil visual-only.
-# Both effects move the canonical sprites while the player's physics body stays untouched.
+# Landing, recoil, hurt and death are visual-only transforms. Physics and collision
+# stay owned by player.gd, so combat feedback cannot alter actual movement rules.
 func _apply_pose_transform() -> void:
-    var landing := clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
+    var landing := 0.0 if _dead else clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
+    var hurt := clampf(_hurt_remaining / HURT_VISUAL_SECONDS, 0.0, 1.0)
+    var death := sin(_death_progress * PI * 0.5) if _dead else 0.0
     var scale_x := ART_SCALE * (1.0 + landing * LANDING_X_STRETCH)
     var scale_y := ART_SCALE * (1.0 - landing * LANDING_Y_SQUASH)
+    scale_y *= lerpf(1.0, DEATH_SCALE_Y, death)
+
     var recoil_x := _recoil_offset_x()
+    var hurt_x := -_facing * HURT_SHIFT_PIXELS * hurt * hurt
+    var death_x := -_facing * DEATH_SHIFT_PIXELS * death
+    var rotation := deg_to_rad(HURT_TILT_DEGREES) * _facing * hurt
+    rotation += deg_to_rad(DEATH_ROTATION_DEGREES) * _facing * death
+
     for sprite in [_body_sprite, _shoot_sprite]:
         if sprite == null:
             continue
         sprite.scale = Vector2(scale_x, scale_y)
+        sprite.rotation = rotation
         sprite.position = Vector2(
-            recoil_x,
-            PLAYER_FOOT_Y - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * scale_y,
+            recoil_x + hurt_x + death_x,
+            PLAYER_FOOT_Y
+                - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * scale_y
+                + DEATH_DROP_PIXELS * death,
         )
 
+func _apply_combat_modulate() -> void:
+    var color := Color.WHITE
+    if _dead:
+        color = Color(0.72, 0.72, 0.72, 1.0)
+    elif _hurt_remaining > 0.0:
+        color = Color(1.0, 0.58, 0.58, 1.0)
+    elif _invuln_remaining > 0.0:
+        var visible_pulse := int(floor(_invuln_remaining * 18.0)) % 2 == 0
+        color = Color(1.0, 1.0, 1.0, 1.0 if visible_pulse else 0.42)
+
+    for sprite in [_body_sprite, _shoot_sprite]:
+        if sprite != null:
+            sprite.modulate = color
+
 func _recoil_offset_x() -> float:
-    if _recoil_remaining <= 0.0:
+    if _dead or _hurt_remaining > 0.0 or _recoil_remaining <= 0.0:
         return 0.0
     var phase := clampf(_recoil_remaining / RECOIL_SECONDS, 0.0, 1.0)
     return -_facing * RECOIL_PIXELS * phase * phase
 
 func _draw() -> void:
-    if _muzzle_age >= MUZZLE_FLASH_SECONDS:
+    if _dead or _hurt_remaining > 0.0 or _muzzle_age >= MUZZLE_FLASH_SECONDS:
         return
     var muzzle_y := MUZZLE_OFFSET.y + (CROUCH_MUZZLE_Y_SHIFT if _crouching else 0.0)
     draw_circle(
@@ -262,6 +323,7 @@ func _on_art_request_completed(
         _shoot_ready = true
     _apply_shoot_frame()
     _apply_pose_transform()
+    _apply_combat_modulate()
 
 func _valid_body_dimensions(image: Image) -> bool:
     return (
