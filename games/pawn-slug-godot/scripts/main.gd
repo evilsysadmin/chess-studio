@@ -471,7 +471,7 @@ func _update_enemies(delta: float) -> void:
         if type == "knight":
             enemy["leap_cooldown"] = maxf(0.0, float(enemy["leap_cooldown"]) - delta)
 
-        var player_active := not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE
+        var player_active: bool = not bool(player.dead) and not bool(player.is_game_over) and abs_distance <= ENEMY_AGGRO_RANGE
         if player_active:
             var speed := float(stats["speed"])
             var standoff := float(stats["standoff"])
