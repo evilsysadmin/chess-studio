@@ -12,7 +12,10 @@ import { installChroniclesTacticsPremiumMaterials } from './chroniclesOfMatthias
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
-export function installChroniclesTacticsSceneArt(models, { coarsePointer = false } = {}) {
+export function installChroniclesTacticsSceneArt(models, {
+  coarsePointer = false,
+  scenePlan = undefined,
+} = {}) {
   if (!models?.get) return null;
   const partyRoot = PARTY_IDS.map((id) => models.get(id)?.parent).find(Boolean) || null;
   const scene = partyRoot?.parent || null;
@@ -25,7 +28,7 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
   const grounding = installChroniclesTacticsPartyGrounding(models, { coarsePointer });
   const readability = installChroniclesTacticsReadabilityArt(models, { coarsePointer });
-  const architecture = installChroniclesTacticsArchitectureArt(scene, { coarsePointer });
+  const architecture = installChroniclesTacticsArchitectureArt(scene, { coarsePointer, scenePlan });
   const sigil = installChroniclesTacticsSigilArt(scene);
   const enemyIntent = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer });
   const damageFeedback = installChroniclesTacticsDamageFeedbackArt(models, { coarsePointer });
