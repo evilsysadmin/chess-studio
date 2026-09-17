@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 
 const CELL = 4;
 const PATCH_TEXTURE_SIZE = 48;
@@ -62,36 +62,6 @@ function patinaMaterial(color, mask, options) {
   });
 }
 
-function exposedWallFaces() {
-  const faces = [];
-  const directions = [
-    { dx: 0, dy: -1, side: 'north' },
-    { dx: 1, dy: 0, side: 'east' },
-    { dx: 0, dy: 1, side: 'south' },
-    { dx: -1, dy: 0, side: 'west' },
-  ];
-  CHRONICLES_MAP.forEach((row, y) => {
-    [...row].forEach((tile, x) => {
-      if (tile !== '#') return;
-      directions.forEach((direction) => {
-        const neighbor = CHRONICLES_MAP[y + direction.dy]?.[x + direction.dx];
-        if (neighbor && neighbor !== '#') faces.push({ x, y, side: direction.side });
-      });
-    });
-  });
-  return faces;
-}
-
-function walkableCells() {
-  const cells = [];
-  CHRONICLES_MAP.forEach((row, y) => {
-    [...row].forEach((tile, x) => {
-      if (tile !== '#') cells.push({ x, y });
-    });
-  });
-  return cells;
-}
-
 function prioritize(items, anchors, keyForItem, keyForAnchor) {
   const rank = new Map(anchors.map((anchor, index) => [keyForAnchor(anchor), index]));
   return items
@@ -100,27 +70,27 @@ function prioritize(items, anchors, keyForItem, keyForAnchor) {
     .map(({ item }) => item);
 }
 
-function prioritizedWallFaces() {
+function prioritizedWallFaces(scenePlan) {
   return prioritize(
-    exposedWallFaces(),
+    scenePlan?.wallFaces || [],
     START_ROUTE_WALLS,
     ({ x, y, side }) => `${x},${y},${side}`,
     ([x, y, side]) => `${x},${y},${side}`,
   );
 }
 
-function prioritizedFloorCells() {
+function prioritizedFloorCells(scenePlan) {
   return prioritize(
-    walkableCells(),
+    scenePlan?.floors || [],
     START_ROUTE_FLOOR,
     ({ x, y }) => `${x},${y}`,
     ([x, y]) => `${x},${y}`,
   );
 }
 
-function wallTransform({ x, y, side }, index) {
-  const wx = (x - 3) * CELL;
-  const wz = (y - 3) * CELL;
+function wallTransform({ x, y, side }, index, center) {
+  const wx = (x - center.x) * CELL;
+  const wz = (y - center.y) * CELL;
   const offset = CELL / 2 + 0.165;
   const yOffset = 0.82 + noise(index, 7) * 1.5;
   if (side === 'north') return { position: [wx, yOffset, wz - offset], rotationY: 0 };
@@ -129,11 +99,11 @@ function wallTransform({ x, y, side }, index) {
   return { position: [wx - offset, yOffset, wz], rotationY: -Math.PI / 2 };
 }
 
-function addWallPatches(root, faces, materials, coarsePointer) {
+function addWallPatches(root, faces, materials, coarsePointer, center) {
   const budget = coarsePointer ? 4 : 9;
   const selected = faces.slice(0, budget);
   selected.forEach((face, index) => {
-    const transform = wallTransform(face, index);
+    const transform = wallTransform(face, index, center);
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(0.96 + noise(index, 11) * 1.12, 0.68 + noise(index, 13) * 0.98),
       materials[index % materials.length],
@@ -150,7 +120,7 @@ function addWallPatches(root, faces, materials, coarsePointer) {
   return selected.length;
 }
 
-function addFloorPatches(root, cells, material, coarsePointer) {
+function addFloorPatches(root, cells, material, coarsePointer, center) {
   const budget = coarsePointer ? 3 : 7;
   const selected = cells.slice(0, budget);
   selected.forEach((cell, index) => {
@@ -160,9 +130,9 @@ function addFloorPatches(root, cells, material, coarsePointer) {
     );
     mesh.name = `chronicles-floor-patina-${index}`;
     mesh.position.set(
-      (cell.x - 3) * CELL + (noise(index, 31) - 0.5) * 0.82,
+      (cell.x - center.x) * CELL + (noise(index, 31) - 0.5) * 0.82,
       0.047,
-      (cell.y - 3) * CELL + (noise(index, 37) - 0.5) * 0.82,
+      (cell.y - center.y) * CELL + (noise(index, 37) - 0.5) * 0.82,
     );
     mesh.rotation.set(-Math.PI / 2, 0, (noise(index, 41) - 0.5) * 1.7);
     mesh.castShadow = false;
@@ -173,7 +143,10 @@ function addFloorPatches(root, cells, material, coarsePointer) {
   return selected.length;
 }
 
-export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
+export function buildChroniclesSurfacePatina({
+  coarsePointer = false,
+  scenePlan = chroniclesIsometricScenePlan(),
+} = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-surface-patina';
 
@@ -208,8 +181,21 @@ export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
     });
   });
 
-  const wallPatchCount = addWallPatches(root, prioritizedWallFaces(), [damp, mineral], coarsePointer);
-  const floorPatchCount = addFloorPatches(root, prioritizedFloorCells(), floor, coarsePointer);
+  const center = scenePlan?.center || { x: 0, y: 0 };
+  const wallPatchCount = addWallPatches(
+    root,
+    prioritizedWallFaces(scenePlan),
+    [damp, mineral],
+    coarsePointer,
+    center,
+  );
+  const floorPatchCount = addFloorPatches(
+    root,
+    prioritizedFloorCells(scenePlan),
+    floor,
+    coarsePointer,
+    center,
+  );
   root.userData.chroniclesSurfacePatinaStats = {
     wallPatchCount,
     floorPatchCount,
