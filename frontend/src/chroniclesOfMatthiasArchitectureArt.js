@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { CHRONICLES_ISOMETRIC_CELL_SIZE } from './chronicles/chroniclesIsometricDungeonPlan.js';
 import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 
 const ROOT_NAME = 'chronicles-tactics-architecture-depth';
-const CELL = 2.45;
+const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 const WALL_NAME = /^chronicles-iso-wall-(\d+)-(\d+)$/;
 
 export const CHRONICLES_TACTICS_ARCHES = Object.freeze([
