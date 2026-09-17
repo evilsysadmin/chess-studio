@@ -5,6 +5,7 @@ import {
 import {
   chroniclesContentDefinition,
   chroniclesContentVisible,
+  chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
 import { chroniclesIsometricSceneStyle } from './chroniclesIsometricSceneStyles.js';
 
@@ -58,6 +59,30 @@ function exposedWallFaces(grid) {
   })));
 }
 
+function contentPlan(runtimeState, map, renderPlan) {
+  return Object.freeze(renderPlan.content.map((entry) => {
+    const definition = chroniclesContentDefinition(map, entry.id);
+    const activeWhen = definition?.visual?.activeWhen;
+    return Object.freeze({
+      ...entry,
+      visible: chroniclesContentVisible(runtimeState, definition),
+      active: Boolean(
+        runtimeState
+        && Array.isArray(activeWhen)
+        && activeWhen.length > 0
+        && chroniclesRequirementsMet(runtimeState, activeWhen),
+      ),
+    });
+  }));
+}
+
+function mapContext(mapOrState) {
+  const runtimeState = mapOrState?.grid ? null : mapOrState;
+  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
+  const renderPlan = chroniclesMapRenderPlan(map);
+  return { runtimeState, map, renderPlan };
+}
+
 export function chroniclesIsometricCellToWorld(scenePlan, x, y, cellSize = 2.45) {
   const centerX = Number(scenePlan?.center?.x ?? 0);
   const centerY = Number(scenePlan?.center?.y ?? 0);
@@ -70,22 +95,18 @@ export function chroniclesIsometricCellToWorld(scenePlan, x, y, cellSize = 2.45)
   });
 }
 
+export function chroniclesIsometricContentPlan(mapOrState = null) {
+  const { runtimeState, map, renderPlan } = mapContext(mapOrState);
+  return contentPlan(runtimeState, map, renderPlan);
+}
+
 export function chroniclesIsometricScenePlan(mapOrState = null) {
-  const runtimeState = mapOrState?.grid ? null : mapOrState;
-  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
-  const renderPlan = chroniclesMapRenderPlan(map);
+  const { runtimeState, map, renderPlan } = mapContext(mapOrState);
   const center = mapCenter(renderPlan.grid);
   const partyStart = Object.freeze({
     x: Number(map.partyStart?.x ?? center.x),
     y: Number(map.partyStart?.y ?? center.y),
   });
-  const content = Object.freeze(renderPlan.content.map((entry) => Object.freeze({
-    ...entry,
-    visible: chroniclesContentVisible(
-      runtimeState,
-      chroniclesContentDefinition(map, entry.id),
-    ),
-  })));
 
   return Object.freeze({
     mapId: renderPlan.mapId,
@@ -99,6 +120,6 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
     walls: visibleWallCells(renderPlan.grid),
     wallFaces: exposedWallFaces(renderPlan.grid),
     enemies: renderPlan.enemies,
-    content,
+    content: contentPlan(runtimeState, map, renderPlan),
   });
 }
