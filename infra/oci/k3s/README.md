@@ -45,11 +45,24 @@ Guardarraíles:
 - prefijo completo `k3s/bootstrap/` <= 350 MiB;
 - cualquier objeto inesperado bajo ese prefijo hace fallar cerrado;
 - el bucket debe seguir `NoPublicAccess`, `Standard` y con versioning `Disabled`;
-- no existe retención histórica implícita: rollback significa reconciliar de nuevo un contrato Git anterior, no acumular blobs;
-- publicar el bundle **no toca la A1**.
+- no existe retención histórica implícita: rollback significa reconciliar de nuevo un contrato Git anterior, no acumular blobs.
+
+## Probe desde la A1
+
+Después de reconciliar Object Storage, el mismo workflow ejecuta `scripts/oci_k3s_bundle_probe.py probe`. La A1 usa **instance principal**, no credenciales transportadas por Run Command, para leer `manifest.json` y el bundle privado.
+
+El probe:
+
+- exige el OCI SDK pinneado que ya mantiene el runtime actual; no hace `pip install` ni descarga dependencias;
+- descarga el bundle únicamente a un fichero temporal;
+- verifica `Content-Length`, SHA-256, arquitectura, versión, layout exacto del tar y coherencia del manifiesto embebido;
+- elimina el fichero temporal incluso si falla;
+- no copia K3s a rutas del sistema, no crea estado de cluster y no ejecuta `systemctl`.
+
+Así demostramos `Git -> Object Storage privado -> A1` antes de permitir que el bootstrap toque el host.
 
 ## Secuencia
 
-`CI bundle -> OCI Object Storage privado -> [siguiente fase] first boot descarga 1 bundle + verifica hash -> instala assets -> inicializa K3s -> bootstrap Flux -> Flux reconcilia workloads -> Headlamp/Cloudflare Tunnel`.
+`CI bundle -> OCI Object Storage privado -> A1 probe no destructivo -> [siguiente fase] first boot instala assets -> inicializa K3s -> bootstrap Flux -> Flux reconcilia workloads -> Headlamp/Cloudflare Tunnel`.
 
 El consumo desde `cloud-init` sigue siendo una fase separada y reversible. Hasta que esa ruta demuestre destroy/recreate + smoke, el runtime Docker actual continúa intacto como fallback.
