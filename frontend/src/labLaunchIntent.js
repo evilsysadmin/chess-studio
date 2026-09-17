@@ -1,8 +1,12 @@
-const LAB_MODES = new Set(['pawnslug']);
+const LAB_MODES = new Set(['pawnslug-godot']);
+const LAB_MODE_ALIASES = new Map([
+  ['pawnslug', 'pawnslug-godot'],
+]);
 let pendingLabMode = null;
 
 export function requestLabLaunch(mode) {
-  pendingLabMode = LAB_MODES.has(mode) ? mode : null;
+  const normalizedMode = LAB_MODE_ALIASES.get(mode) || mode;
+  pendingLabMode = LAB_MODES.has(normalizedMode) ? normalizedMode : null;
 }
 
 export function consumeLabLaunch() {
