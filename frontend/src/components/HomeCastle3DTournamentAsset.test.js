@@ -39,6 +39,7 @@ function createTargetGroup() {
 
 function createSourceScene() {
   const root = new THREE.Group();
+  root.position.set(0.42, -0.31, 0.18);
   SOURCE_NAMES.forEach((name, index) => {
     const geometry = new THREE.BoxGeometry(0.02 + (index * 0.001), 0.03, 0.04);
     geometry.deleteAttribute('normal');
@@ -75,7 +76,14 @@ describe('HomeCastle3D tournament GLB asset', () => {
     expect(group.children).toEqual(originalMeshes);
     expect(group.children[0].onBeforeRender).toBe(responsiveDriver);
     expect(group.children[0].geometry.getAttribute('normal')).toBeTruthy();
-    expect(group.children[2].position.y).toBeCloseTo(0.004);
+
+    group.updateMatrixWorld(true);
+    const hydratedBounds = new THREE.Box3().setFromObject(group);
+    const hydratedCenter = hydratedBounds.getCenter(new THREE.Vector3());
+    expect(hydratedBounds.min.y).toBeCloseTo(0, 6);
+    expect(hydratedCenter.x).toBeCloseTo(0, 6);
+    expect(hydratedCenter.z).toBeCloseTo(0, 6);
+
     expect(group.userData.homeCastleAsset).toBe(HOME_CASTLE_TOURNAMENT_ASSET_ID);
     expect(brass.color.getHex()).toBe(brassColor);
     expect(brass.emissiveIntensity).toBe(0.11);
