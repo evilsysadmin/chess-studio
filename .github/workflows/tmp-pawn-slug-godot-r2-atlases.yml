@@ -4,7 +4,7 @@ on:
   push:
     branches: [tmp/pawn-slug-r2-atlases-v2]
     paths:
-      - .r2-transfer/pawn_slug_godot_atlases_v2.zip.b64
+      - .r2-transfer/READY
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-godot-atlases
-          base64 -d .r2-transfer/pawn_slug_godot_atlases_v2.zip.b64 > /tmp/pawn-slug-godot-atlases.zip
+          cat .r2-transfer/part-* | base64 -d > /tmp/pawn-slug-godot-atlases.zip
           echo 'a02f64cf9f0ec4b46c53ddaac34edd10ee064a6129f4c1ea56092da75138182c  /tmp/pawn-slug-godot-atlases.zip' | sha256sum -c -
           unzip -q /tmp/pawn-slug-godot-atlases.zip -d /tmp/pawn-slug-godot-atlases
           cat <<'SUMS' | sha256sum -c -
@@ -56,4 +56,3 @@ jobs:
           a8c6baf32fd80ccdc9021f63c24fab438051492e922289e76a86ce5e87f16cc2  /tmp/shotgun.png
           77031eb277c7b69b77b0659ed7ddfeb7b00e0099fde0aacd26c5ac779137a1f5  /tmp/bazooka.png
           SUMS
-          echo 'Pawn Slug Godot atlases published and publicly verified.'
