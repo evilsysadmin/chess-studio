@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { combatPositionIssues, derivedLevel, hitChance, isForcedCombatCapture } from './combat.js';
+import { combatSessionContextForFen } from './combatSession.js';
 
 const MATERIAL_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
 export const PRIMARY_CONSISTENCY_CP = 35;
@@ -69,17 +70,21 @@ function candidateCombatFacts(chess, fen, registry, focus, candidate) {
   };
 }
 
-export function enrichCombatCandidateResponse(remote, { fen, registry, focus = null, consistencyCp = PRIMARY_CONSISTENCY_CP } = {}) {
+export function enrichCombatCandidateResponse(remote, { fen, registry = null, focus = null, consistencyCp = PRIMARY_CONSISTENCY_CP } = {}) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
-  if (!candidates?.length || !fen || !registry) return remote;
-  if (combatPositionIssues(fen, registry).length) return remote;
+  if (!candidates?.length || !fen) return remote;
+
+  const persisted = registry ? null : combatSessionContextForFen(fen);
+  const resolvedRegistry = registry || persisted?.registry || null;
+  const resolvedFocus = registry ? focus : (persisted?.focus || null);
+  if (!resolvedRegistry || combatPositionIssues(fen, resolvedRegistry).length) return remote;
 
   let chess;
   try { chess = new Chess(fen); } catch { return remote; }
 
   const enriched = [];
   for (const candidate of candidates) {
-    const facts = candidateCombatFacts(chess, fen, registry, focus, candidate);
+    const facts = candidateCombatFacts(chess, fen, resolvedRegistry, resolvedFocus, candidate);
     if (!facts) return remote;
     enriched.push(facts);
   }
