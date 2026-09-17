@@ -10,7 +10,7 @@ from typing import Optional
 
 import chess
 
-from chess_ai import MATE_SCORE, move_to_dict
+from chess_ai import MATE_SCORE, move_to_dict, settings_for_level
 from engine_analysis import RootCandidateAnalysis, top_root_candidates
 
 
@@ -72,3 +72,20 @@ def candidate_api_payloads(
 ) -> list[dict]:
     """Serialize a best-first candidate set for mode-specific policies."""
     return [candidate_api_payload(board, candidate) for candidate in candidates]
+
+
+def factual_candidate_payloads_for_level(board: chess.Board, level: float, limit: int) -> list[dict]:
+    """Build a short mode-policy shortlist without blocking the primary move.
+
+    This is deliberately shallower and more tightly budgeted than the primary
+    CPU search. A timeout returns no shortlist so callers can fail open to the
+    already-computed normal engine suggestion.
+    """
+    settings = settings_for_level(level)
+    depth = min(3, settings.max_depth)
+    budget_s = min(0.45, max(0.12, settings.time_budget_s * 0.30))
+    try:
+        candidates = factual_root_candidates(board, depth=depth, limit=limit, budget_s=budget_s)
+    except TimeoutError:
+        return []
+    return candidate_api_payloads(board, candidates)
