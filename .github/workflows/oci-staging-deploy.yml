@@ -1,29 +1,21 @@
-name: OCI staging · auto apply
+name: OCI staging · infrastructure apply
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'infra/oci/staging/**'
-      - 'infra/oci/bootstrap/**'
-      - 'infra/oci/Makefile'
-      - 'scripts/oci_auth_contract.py'
-      - 'scripts/oci_bootstrap_recover.py'
-      - 'scripts/oci_bootstrap_state.py'
-      - 'scripts/oci_reserved_egress.py'
-      - 'scripts/oci_staging_lifecycle.sh'
-      - '.github/workflows/oci-staging-deploy.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Infrastructure mutation is intentionally manual. Normal staging releases are
+# owned by staging-deploy.yml and must not race a Terraform apply/host recycle.
 concurrency:
   group: oci-staging-mutations
   cancel-in-progress: false
 
 jobs:
   apply:
-    name: OCI staging · apply main
+    name: OCI staging · apply infrastructure
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -42,49 +34,36 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
+
       - name: Validate OCI credential contract
         run: make -C infra/oci auth
+
       - name: Validate reserved egress reconciler
         run: python3 -S scripts/oci_reserved_egress.py --self-test
+
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.16.0
           terraform_wrapper: false
+
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
-      - name: Apply OCI staging desired state
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            git fetch --no-tags --depth=1 origin main
-            git checkout --detach FETCH_HEAD
-            current_sha="$(git rev-parse HEAD)"
-            log="${RUNNER_TEMP}/oci-staging-apply-${attempt}.log"
 
-            set +e
-            GITHUB_SHA="$current_sha" make -C infra/oci apply 2>&1 | tee "$log"
-            rc=${PIPESTATUS[0]}
-            set -e
+      - name: Apply exact main infrastructure state
+        run: make -C infra/oci apply
 
-            if [[ "$rc" -eq 0 ]]; then
-              exit 0
-            fi
-            if grep -Fq 'OCI staging lifecycle: FAIL · stale SHA:' "$log" && [[ "$attempt" -lt 3 ]]; then
-              echo "main advanced during OCI plan; retrying from latest main"
-              continue
-            fi
-            exit "$rc"
-          done
-      - name: Wait for OCI Run Command before egress cutover
+      # A newly-created/replaced A1 can take a few minutes to register the
+      # Compute Instance Run Command plugin. This belongs to infrastructure
+      # convergence, not to every application release.
+      - name: Wait for OCI Run Command registration after infrastructure change
         shell: bash
         run: |
           set -euo pipefail
           for attempt in $(seq 1 60); do
-            log="${RUNNER_TEMP}/oci-agent-egress-${attempt}.log"
+            log="${RUNNER_TEMP}/oci-agent-registration-${attempt}.log"
             set +e
             python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
             rc=$?
@@ -101,8 +80,6 @@ jobs:
             cat "$log"
             exit "$rc"
           done
+
       - name: Attach and verify existing reserved staging egress
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 scripts/oci_reserved_egress.py
+        run: python3 scripts/oci_reserved_egress.py
