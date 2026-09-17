@@ -144,18 +144,29 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(chroniclesIsoPointerAction(null, { kind: 'cell', x: 2, y: 5 })).toBeNull();
   });
 
-  it('keeps the lever down after use and shows the rune core only until collection', () => {
-    expect(chroniclesIsoWorldObjectState({})).toEqual({
-      leverPulled: false,
-      runeCoreVisible: false,
-    });
-    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true })).toEqual({
-      leverPulled: true,
-      runeCoreVisible: true,
-    });
-    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true, runeCoreCollected: true })).toEqual({
-      leverPulled: true,
-      runeCoreVisible: false,
-    });
+  it('derives lever and pickup visuals from the active map content instead of crypt aliases', () => {
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: false,
+      galleryRelicCollected: false,
+    })).toEqual({ leverPulled: false, runeCoreVisible: false });
+
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: false,
+    })).toEqual({ leverPulled: true, runeCoreVisible: true });
+
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: true,
+    })).toEqual({ leverPulled: true, runeCoreVisible: false });
+
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'crypt-eight-squares',
+      runeCacheOpened: true,
+      runeCoreCollected: false,
+    })).toEqual({ leverPulled: true, runeCoreVisible: true });
   });
 });
