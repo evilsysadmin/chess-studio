@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from './asyncControl.js';
+
 export const LOCAL_GODOT_BOOTSTRAP_URL = '/games/pawn-slug-godot/index.html';
 export const DEFAULT_GODOT_MANIFEST_URL = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/current.json';
 
@@ -46,7 +48,7 @@ export async function resolvePawnSlugGodotUrl({
   try {
     const requestUrl = new URL(manifestUrl);
     requestUrl.searchParams.set('v', String(now()));
-    const response = await fetchImpl(requestUrl.href, {
+    const response = await fetchWithTimeout(fetchImpl, requestUrl.href, {
       cache: 'no-store',
       credentials: 'omit',
     });

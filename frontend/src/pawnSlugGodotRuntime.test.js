@@ -35,10 +35,13 @@ describe('Pawn Slug Godot runtime resolver', () => {
     const result = await resolvePawnSlugGodotUrl({ env: {}, fetchImpl, now: () => 42 });
 
     expect(result).toEqual({ url: VALID_MANIFEST.index, source: 'r2', release: RELEASE });
-    expect(fetchImpl).toHaveBeenCalledWith(`${DEFAULT_GODOT_MANIFEST_URL}?v=42`, {
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][0]).toBe(`${DEFAULT_GODOT_MANIFEST_URL}?v=42`);
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({
       cache: 'no-store',
       credentials: 'omit',
     });
+    expect(fetchImpl.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 
   it('rechaza un index que salga del origen/release esperado', () => {
