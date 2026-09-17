@@ -1,8 +1,9 @@
-import * as THREE from 'three';
 import {
   PAWN_SLUG_SPRITE_META as LEGACY_SPRITE_META,
   animateMatthiasSlugSprite as animateLegacyMatthiasSlugSprite,
   animatePanzerRookSprite as animateLegacyPanzerRookSprite,
+  createMatthiasSlugSprite as createLegacyMatthiasSlugSprite,
+  createWeaponSprite as createLegacyWeaponSprite,
 } from './pawnSlugSpriteCore.js';
 import {
   PAWN_SLUG_ENEMY_RUN_META,
@@ -21,15 +22,6 @@ import {
   PAWN_SLUG_MATTHIAS_RUN_POLISH,
   applyPawnSlugMatthiasRunPolish,
 } from './pawnSlugMatthiasRunPolish.js';
-import {
-  PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
-  createIntegratedMatthiasSlugSprite,
-} from './pawnSlugMatthiasIntegratedSprites.js';
-import {
-  PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
-  applyPawnSlugMatthiasAuthoredMotion,
-  attachPawnSlugMatthiasAuthoredMotion,
-} from './pawnSlugMatthiasAuthoredMotion.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpriteCore.js';
@@ -51,15 +43,16 @@ export const PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT = Object.freeze({
   purpose: 'restore-compact-pre-v5-silhouette-without-changing-hitbox',
 });
 
+export const PAWN_SLUG_MATTHIAS_2D_RUNTIME = Object.freeze({
+  version: 'canonical-r2-motion-v5',
+  bodyAsset: 'pawnSlug.matthias.motion',
+  bodyAuthority: 'single-canonical-matthias',
+  weaponMode: 'separate-attachment',
+  purpose: 'keep-one-matthias-identity-while-weapons-change-independently',
+});
+
 export function applyPawnSlugMatthiasPrimaryAspect(sprite) {
-  // This 0.9 squeeze belongs to the pre-premium raster atlas. The Blender v2
-  // bake has authored proportions and an explicit runtime scale; applying the
-  // old correction makes Matthias small and squat again.
-  if (
-    !sprite
-    || sprite.userData?.pawnSlugIntegratedWeapons
-    || sprite.userData?.atlas?.source !== 'primary'
-  ) return false;
+  if (!sprite || sprite.userData?.atlas?.source !== 'primary') return false;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   sprite.userData.pawnSlugPrimaryAspectScaleY = PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   return true;
@@ -73,21 +66,22 @@ export function createSlugEnemySprite(type = 'pawn') {
   return applyPawnSlugEnemyReadability(createPremiumSlugEnemySprite(type));
 }
 
-// Matthias' selected weapon now lives inside his Blender-authored atlas. Keep a
-// zero-geometry compatibility shell because runtime orchestration still stores a
-// playerWeaponModel, but there is deliberately nothing left to superglue on top.
+// Matthias is one canonical 2D character again. Weapons are independent
+// attachments positioned by pawnSlugRuntimePlayer, so switching equipment can
+// never silently replace his face, cap, uniform or body silhouette.
 export function createWeaponSprite(kind = 'pistol') {
-  const shell = new THREE.Object3D();
-  shell.name = `pawn-slug-integrated-weapon-shell-${kind}`;
-  shell.userData.weaponId = kind;
-  shell.userData.pawnSlugIntegratedWeaponShell = true;
-  shell.userData.setFrame = () => {};
-  shell.userData.setDirection = () => {};
-  return shell;
+  const sprite = createLegacyWeaponSprite(kind);
+  sprite.center?.set(0.5, 0.5);
+  sprite.userData.weaponId = kind;
+  sprite.userData.pawnSlugGripAnchored = true;
+  sprite.userData.pawnSlugSeparateWeaponAttachment = true;
+  return sprite;
 }
 
 export function createMatthiasSlugSprite() {
-  return attachPawnSlugMatthiasAuthoredMotion(createIntegratedMatthiasSlugSprite());
+  const sprite = createLegacyMatthiasSlugSprite();
+  sprite.userData.pawnSlugCanonical2dRuntime = PAWN_SLUG_MATTHIAS_2D_RUNTIME;
+  return sprite;
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
@@ -101,13 +95,8 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   const visualState = walking ? { ...state, running: false } : state;
   animateLegacyMatthiasSlugSprite(sprite, visualState);
   if (walking) sprite.userData.setActionFrame?.('walk', state.walkFrame ?? 0);
-  sprite.userData.setFiring?.(visualState.firing);
   applyPawnSlugMatthiasPremiumMotion(sprite, visualState);
   applyPawnSlugMatthiasRunPolish(sprite, visualState);
-  // Final visual ownership belongs to the canonical authored layer. This is
-  // intentionally last: legacy polish may calculate lean/cadence, but it must
-  // not replace the four real pistol run poses or the R2-backed shoot strip.
-  applyPawnSlugMatthiasAuthoredMotion(sprite, visualState);
   applyPawnSlugMatthiasPrimaryAspect(sprite);
 }
 
@@ -149,11 +138,10 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     ...LEGACY_SPRITE_META.matthias,
     premiumMotion: true,
     runPolish: PAWN_SLUG_MATTHIAS_RUN_POLISH,
-    authoredMotion: PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
     primaryAspect: PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT,
-    integratedWeaponArt: PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
-    weaponGripAnchor: 'baked-into-matthias-atlas',
-    separateWeaponOverlay: false,
+    canonical2dRuntime: PAWN_SLUG_MATTHIAS_2D_RUNTIME,
+    weaponGripAnchor: 'centered-sprite',
+    separateWeaponOverlay: true,
   }),
   enemies: Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
