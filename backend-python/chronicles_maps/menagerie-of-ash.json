@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 4,
+  "version": 5,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -259,7 +259,7 @@
       "id": "menagerie-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Cruzar portón de la menagerie",
+      "openLabel": "Cruzar hacia el Archivo del Rey Ciego",
       "lockedLabel": "Examinar portón",
       "requirements": [
         { "key": "ashGoblinHp", "lte": 0, "message": "El trasgo de ceniza sigue en pie." },
@@ -268,14 +268,14 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "blind-king-archive" }
         ],
-        "message": "La compañía cruza el portón. Matthias confirma que ninguna de esas criaturas figura en las leyes del ajedrez.",
+        "message": "El portón cede. Detrás no hay salida: hay un archivo enterrado, pasillos estrechos y la sensación de que alguien lleva siglos tomando notas.",
         "journal": {
-          "id": "menagerie-cleared",
-          "title": "La menagerie queda atrás",
-          "body": "Trasgos, arañas, luces errantes y un sabueso de hueso. La taxonomía ajedrecística ha sido oficialmente despedida.",
-          "sigil": "XI"
+          "id": "menagerie-archive-crossing",
+          "title": "Del bestiario al archivo",
+          "body": "La compañía deja atrás la Menagerie y entra en el Archivo del Rey Ciego. Matthias declara que pasar de monstruos a burocracia sobrenatural no cuenta como mejora.",
+          "sigil": "XIII"
         }
       }
     }
