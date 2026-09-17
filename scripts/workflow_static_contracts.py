@@ -16,17 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_flux_seam_contracts(root: Path = ROOT) -> None:
-    """Validate the dormant Flux seam without touching the cluster or OCI host."""
-    subprocess.run(
-        [sys.executable, "-S", "scripts/oci_flux_contract.py"],
-        cwd=root,
-        check=True,
-    )
-    subprocess.run(
-        [sys.executable, "-S", "scripts/oci_flux_admission.py", "--self-test"],
-        cwd=root,
-        check=True,
-    )
+    """Validate the dormant Flux seam; network export runs only for matching CI PR diffs."""
+    for args in (
+        ["scripts/oci_flux_contract.py"],
+        ["scripts/oci_flux_admission.py", "--self-test"],
+        ["scripts/oci_flux_export.py", "--self-test"],
+        ["scripts/oci_flux_export.py", "--ci-if-required"],
+    ):
+        subprocess.run([sys.executable, "-S", *args], cwd=root, check=True)
     print("OCI dormant Flux seam contracts OK")
 
 

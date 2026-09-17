@@ -18,9 +18,22 @@ The pinned profile is intentionally limited to:
 
 No Helm controller, notification controller, image automation controller, source-watcher, Headlamp or cloudflared workload is admitted by this seam yet.
 
-`versions.env` is the source of truth for the Flux CLI version, the Linux ARM64 checksum, the exact controller list, namespace and resource admission thresholds.
+`versions.env` is the source of truth for the Flux CLI version, Linux amd64/ARM64 archive checksums, exact controller list, namespace and resource admission thresholds.
 
 Changes to this dormant seam are validated by the protected static preflight: `scripts/workflow_static_contracts.py` runs the Flux contract and admission self-test before any conditional OCI/Terraform work. The seam is deliberately **not** wired into `oci-readiness.yml`, so changing pins, documentation or pure admission logic does not trigger the ARM64 backend smoke or any K3s publication path.
+
+## Protected export contract
+
+The protected static preflight also invokes `scripts/oci_flux_export.py --ci-if-required`. It stays offline and exits immediately for unrelated/local runs, but on a pull request that changes the Flux seam it:
+
+- downloads the pinned Flux CLI archive for the runner architecture and verifies the pinned SHA-256 before extraction;
+- runs `flux install --export` for exactly `source-controller,kustomize-controller` in `flux-system`;
+- uses an intentionally missing `KUBECONFIG`, proving this step does not require cluster access;
+- exports twice and requires byte-identical output;
+- rejects extra Flux controllers, Secrets or any component profile outside the minimal seam;
+- never runs `kubectl`, never installs Flux and never mutates the A1 host.
+
+The amd64 checksum exists for protected GitHub-hosted CI. The ARM64 checksum remains the target-host pin for the OCI A1 path.
 
 ## Admission before any future install
 
@@ -40,9 +53,9 @@ Failure is fail-closed: no Flux mutation should occur.
 When activation is introduced in a separate PR, the intended shape is:
 
 1. obtain the pinned Flux Linux ARM64 CLI and verify its SHA-256;
-2. export manifests for exactly `source-controller,kustomize-controller` in `flux-system`;
-3. validate/dry-run those manifests against the live K3s API;
-4. apply only from an explicit, serialized OCI staging mutation path;
+2. reuse the proven minimal export profile for exactly `source-controller,kustomize-controller` in `flux-system`;
+3. validate the exported manifests against the live K3s API in a separate no-write gate;
+4. install only from an explicit, serialized OCI staging mutation path;
 5. re-run the K3s status/resource probe and Docker staging accreditation;
 6. keep rollback independent of Terraform lifecycle.
 
