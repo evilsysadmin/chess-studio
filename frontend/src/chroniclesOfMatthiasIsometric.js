@@ -86,6 +86,13 @@ export function chroniclesIsoInteractionForHit(interaction, hit) {
   return null;
 }
 
+export function chroniclesIsoPointerAction(interaction, hit) {
+  if (hit?.kind === 'member' && hit.memberId) {
+    return { kind: 'member', memberId: hit.memberId };
+  }
+  return chroniclesIsoInteractionForHit(interaction, hit);
+}
+
 export function chroniclesIsoWorldObjectState(state) {
   return {
     leverPulled: Boolean(state?.runeCacheOpened),
@@ -456,6 +463,7 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
     model.position.set(config.x, 0, config.z);
     model.scale.setScalar(config.scale);
     model.rotation.y = CHRONICLES_ISO_PARTY_FACING;
+    model.userData.chroniclesIsoMemberId = id;
     root.add(model);
     if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
@@ -567,6 +575,9 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
 function descriptorForObject(object) {
   let current = object;
   while (current) {
+    if (current.userData?.chroniclesIsoMemberId) {
+      return { kind: 'member', memberId: current.userData.chroniclesIsoMemberId };
+    }
     if (current.userData?.chroniclesIsoEnemyId) {
       return { kind: 'enemy', enemyId: current.userData.chroniclesIsoEnemyId };
     }
@@ -599,7 +610,12 @@ function disposeScene(root) {
   materials.forEach((material) => material.dispose?.());
 }
 
-export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEnemyClick } = {}) {
+export function createChroniclesIsometricGame(host, {
+  onReady,
+  onCellClick,
+  onEnemyClick,
+  onMemberClick,
+} = {}) {
   if (!host) throw new Error('Chronicles isometric view requires a host element');
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -802,18 +818,23 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     }
   }
 
-  function pickInteraction(event) {
-    if (!latestInteraction?.mode || !latestState) return null;
+  function pickPointerAction(event) {
+    if (!latestState) return null;
     const bounds = renderer.domElement.getBoundingClientRect();
     if (bounds.width <= 0 || bounds.height <= 0) return null;
     pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
+    const visibleParty = [...party.models.values()].filter((model) => model.visible);
     const visibleEnemies = [...enemies.values()].filter((model) => model.visible);
-    const intersections = raycaster.intersectObjects([...visibleEnemies, ...dungeon.floorTargets], true);
+    const intersections = raycaster.intersectObjects([
+      ...visibleParty,
+      ...visibleEnemies,
+      ...dungeon.floorTargets,
+    ], true);
     for (const intersection of intersections) {
       const descriptor = descriptorForObject(intersection.object);
-      const action = chroniclesIsoInteractionForHit(latestInteraction, descriptor);
+      const action = chroniclesIsoPointerAction(latestInteraction, descriptor);
       if (action) return action;
     }
     return null;
@@ -821,9 +842,10 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
   function onPointerUp(event) {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    const action = pickInteraction(event);
+    const action = pickPointerAction(event);
     if (!action) return;
-    if (action.kind === 'cell') onCellClick?.({ x: action.x, y: action.y });
+    if (action.kind === 'member') onMemberClick?.(action.memberId);
+    else if (action.kind === 'cell') onCellClick?.({ x: action.x, y: action.y });
     else if (action.kind === 'enemy') onEnemyClick?.(action.enemyId);
   }
 
