@@ -1,7 +1,9 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import combatHeraldryPayload from '../assets/home3d/combat-heraldry-v1.glb.gz.b64?raw';
+import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 
 export const HOME_CASTLE_COMBAT_ASSET_ID = 'blender-glb:combat-heraldry-v1';
+export const HOME_CASTLE_COMBAT_R2_LOGICAL_ID = 'home.combat.heraldry.runtime';
 
 const COMBAT_MESH_ROLES = Object.freeze([
   Object.freeze({ source: 'combat_mount', target: 'home-castle-combat-mount' }),
@@ -105,8 +107,22 @@ export async function hydrateHomeCastleCombatHeraldry(
     payload = combatHeraldryPayload,
     decode = globalThis.atob,
     decompress = gunzipCombatPayload,
+    assetUrl,
   } = {},
 ) {
+  const remoteRoot = await loadHomeCastleR2Scene({
+    logicalId: HOME_CASTLE_COMBAT_R2_LOGICAL_ID,
+    loader,
+    assetUrl,
+  });
+  if (remoteRoot) {
+    try {
+      if (applyHomeCastleCombatAsset(targetGroup, remoteRoot)) return true;
+    } finally {
+      disposeHomeCastleCombatAssetScene(remoteRoot);
+    }
+  }
+
   const compressed = decodeHomeCastleCombatGlbPayload(payload, decode);
   const buffer = await decompress(compressed);
   const sourceRoot = await parseGlbScene(buffer, loader);
