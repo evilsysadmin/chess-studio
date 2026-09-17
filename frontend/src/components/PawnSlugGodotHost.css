@@ -1,0 +1,84 @@
+.pawn-slug-godot-host {
+  width: min(1500px, 100%);
+  margin: 0 auto;
+  padding: clamp(0.8rem, 2vw, 1.5rem);
+}
+
+.pawn-slug-godot-host__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.pawn-slug-godot-host__header h2 {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.pawn-slug-godot-host__header p {
+  max-width: 68ch;
+  margin: 0;
+  opacity: 0.78;
+}
+
+.pawn-slug-godot-host__frame-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: #07090b;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+}
+
+.pawn-slug-godot-host__status {
+  position: absolute;
+  z-index: 2;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(6, 8, 10, 0.76);
+  backdrop-filter: blur(10px);
+  font-size: 0.76rem;
+  pointer-events: none;
+}
+
+.pawn-slug-godot-host__status span {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  background: #d7a72f;
+  box-shadow: 0 0 0.7rem rgba(215, 167, 47, 0.65);
+}
+
+.pawn-slug-godot-host__status span.is-ready {
+  background: #69c97a;
+  box-shadow: 0 0 0.7rem rgba(105, 201, 122, 0.65);
+}
+
+.pawn-slug-godot-host__frame {
+  display: block;
+  width: 100%;
+  min-height: min(78vh, 860px);
+  border: 0;
+  background: #07090b;
+}
+
+@media (max-width: 700px) {
+  .pawn-slug-godot-host {
+    padding: 0.45rem;
+  }
+
+  .pawn-slug-godot-host__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pawn-slug-godot-host__frame {
+    min-height: 72vh;
+  }
+}
