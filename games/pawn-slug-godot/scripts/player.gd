@@ -146,9 +146,9 @@ func _physics_process(delta: float) -> void:
     crouching = _crouch_pressed() and is_on_floor()
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 
-    fire_cooldown = maxf(0.0, fire_cooldown - delta)
-    var fired_now := _update_fire_input()
-
+    # Pose/facing must be current before the weapon asks its Marker2D for the
+    # projectile origin. Fire FX are applied afterwards with delta=0 so the
+    # body animation advances only once per physics frame.
     _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
     _art.update_visual(
         delta,
@@ -158,8 +158,22 @@ func _physics_process(delta: float) -> void:
         landed_now,
         velocity.y,
         facing,
-        fired_now,
+        false,
     )
+
+    fire_cooldown = maxf(0.0, fire_cooldown - delta)
+    var fired_now := _update_fire_input()
+    if fired_now:
+        _art.update_visual(
+            0.0,
+            horizontal_speed_ratio,
+            is_on_floor(),
+            crouching,
+            false,
+            velocity.y,
+            facing,
+            true,
+        )
     queue_redraw()
 
 func _unhandled_key_input(event: InputEvent) -> void:
