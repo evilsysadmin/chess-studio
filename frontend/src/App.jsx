@@ -56,7 +56,7 @@ const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';
+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
@@ -68,8 +68,7 @@ import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
 import { buildGameCrimeReplayRecord } from './crimeReplay.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
-import { logout, reportLogoutPresence, touchActivity } from './auth.js';
-import { pushProfileToServer } from './profileBackup.js';
+import { logout } from './auth.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
 import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
 import { userFacingError } from './userFacingError.js';
@@ -81,7 +80,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { PvpChallengeSurface, PvpGameSurface, usePvpAppFlow } from './pvpAppFlow.jsx';
 import { loadPvpMatchSession } from './pvpEnrollment.js';
-import { runLogoutLifecycle } from './logoutLifecycle.js';
+import { runGlobalLogout } from './globalLogoutFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -227,20 +226,7 @@ function AppInner({ isAdminUser }) {
   }, [showAccountMenu]);
 
   async function handleGlobalLogout() {
-    setLogoutError(null);
-    setLoggingOut(true);
-    try {
-      await runLogoutLifecycle({
-        saveProfile: () => pushProfileToServer({ throwOnError: true }),
-        closePresence: () => reportLogoutPresence(),
-        restorePresence: () => touchActivity(activityForView(view), document.visibilityState === 'visible'),
-        clearSession: logout,
-      });
-      window.location.reload();
-    } catch {
-      setLogoutError('No se pudo guardar tu progreso. Reintenta cuando vuelva la conexión.');
-      setLoggingOut(false);
-    }
+    await runGlobalLogout({ view, setLogoutError, setLoggingOut, clearSession: logout });
   }
 
 
