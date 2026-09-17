@@ -286,8 +286,7 @@ function makeOfficerSatinIvoryHeadMaterial(ivoryMaterial) {
   const material = ivoryMaterial.clone();
   // Officers sit behind the pawn rank at the tactical camera angle. Keep them
   // off the PMREM environment, but give their upper silhouettes enough direct-
-  // light response to pick up the approved key/rim as a clean ivory edge. This
-  // is deliberately stronger than v1 while preserving the exact ivory albedo.
+  // light response to pick up the approved key/rim as a clean ivory edge.
   material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.72, 0.56, 0.64);
   material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.2, 0.24, 0.3);
   material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.48, 0.32, 0.4);
@@ -301,6 +300,21 @@ function makeOfficerSatinIvoryHeadMaterial(ivoryMaterial) {
     pieceFinish: 'satin-ivory-officer-head-v2',
     whiteHeadFinish: 'officer-satin-v2',
   };
+  return material;
+}
+
+function applyOfficerDirectionalIvoryBodyFinish(material) {
+  // Keep exactly the canonical ivory albedo and separate the back rank with
+  // surface response instead. A moderately tighter direct-light lobe gives the
+  // taller silhouettes readable modelling without turning them glossy or white-hot.
+  material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.78, 0.62, 0.68);
+  material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.2, 0.22, 0.26);
+  material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.48, 0.4, 0.46);
+  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.24, 0.32, 0.38);
+  material.envMapIntensity = 0;
+  material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.02, 0.03);
+  material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.72, 0.66, 0.76);
+  material.userData.whiteOfficerBodyFinish = 'directional-satin-v1';
   return material;
 }
 
@@ -338,31 +352,30 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   const ivoryMaterial = canonicalIvoryMaterial(group);
   if (!ivoryMaterial) return { walnutRims: 0, matteHeads: 0, satinHeads: 0 };
 
-  // Keep the pawn line delicate, but let the officer plinth edge carry a little
-  // more of the rank separation so the body colour can stay in the same ivory family.
+  // Body colour no longer does the heavy lifting. Officers get a slightly clearer
+  // plinth edge while pawns keep the hairline version, preserving one ivory army.
   const walnut = makeWhiteBaseWalnutMaterial();
   const officer = type !== 'p';
   const rimRadius = type === 'k' ? 0.358 : 0.369;
   const rimTube = coarsePointer
-    ? (officer ? 0.0115 : 0.009)
-    : (officer ? 0.0095 : 0.0075);
+    ? (officer ? 0.014 : 0.009)
+    : (officer ? 0.0125 : 0.0075);
   const walnutRim = addRing(group, walnut, 0.057, rimRadius, rimTube, coarsePointer);
-  walnutRim.userData.whiteBaseWalnutRim = officer ? 'officer-defined-v1' : 'subtle-v1';
+  walnutRim.userData.whiteBaseWalnutRim = officer ? 'officer-defined-v2' : 'subtle-v1';
   walnutRim.castShadow = false;
 
-  // The tactical camera compresses both white ranks. Officers use the same warm
-  // ivory hue as the pawn line, simply stepped down in value. This avoids the
-  // previous antique-gold look while keeping enough separation for gameplay.
+  // Studio officers intentionally keep the exact same canonical ivory albedo as
+  // pawns. Readability now comes from the whole-body directional satin plus the
+  // slightly firmer plinth edge, so the ranks separate without looking recoloured.
   if (officer && ivoryMaterial.userData?.skin3DId === 'studio') {
-    ivoryMaterial.color.setHex(0xc2b190);
-    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-balanced-ivory-v3';
-    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xc2b190;
+    applyOfficerDirectionalIvoryBodyFinish(ivoryMaterial);
+    ivoryMaterial.userData.whiteOfficerBodyTone = 'shared-canonical-ivory-v4';
+    ivoryMaterial.userData.whiteOfficerBodyToneHex = ivoryMaterial.color.getHex();
   }
 
   // Pawns remain dry/matte because their heads form the foreground picket line.
-  // Back-rank officers receive a stronger but still direct-light-only satin so
-  // crowns, mitres, battlements and the knight profile separate from that line.
-  // Both finishes keep the exact piece-body ivory colour and envMapIntensity=0.
+  // Back-rank officers receive a stronger direct-light satin on their upper forms
+  // on top of the subtler whole-body satin established above.
   const pawnHead = type === 'p' ? makeMatteIvoryHeadMaterial(ivoryMaterial) : null;
   const officerHead = type === 'p' ? null : makeOfficerSatinIvoryHeadMaterial(ivoryMaterial);
   let matteHeads = 0;
@@ -383,11 +396,11 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   // Do not keep an unused cloned material alive on an unexpected custom piece.
   if (matteHeads === 0) pawnHead?.dispose?.();
   if (satinHeads === 0) officerHead?.dispose?.();
-  group.userData.whitePieceBaseContrast = officer ? 'officer-walnut-rim-v1' : 'subtle-walnut-rim-v1';
+  group.userData.whitePieceBaseContrast = officer ? 'officer-walnut-rim-v2' : 'subtle-walnut-rim-v1';
   group.userData.whitePieceWalnutRimCount = 1;
   group.userData.whitePieceMatteHeadCount = matteHeads;
   group.userData.whitePieceSatinHeadCount = satinHeads;
-  group.userData.whitePieceReadabilityFinish = 'walnut-rank-balanced-ivory-v4';
+  group.userData.whitePieceReadabilityFinish = 'walnut-rank-light-model-v5';
   return { walnutRims: 1, matteHeads, satinHeads };
 }
 
