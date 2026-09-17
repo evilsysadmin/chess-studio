@@ -218,15 +218,16 @@ function addStauntonKnightSculpture(group, accentMaterial, coarsePointer) {
       new THREE.Vector3(0.005, 1.115, -0.082),
     ];
     const curve = new THREE.CatmullRomCurve3(manePoints, false, 'catmullrom', 0.4);
-    addKnightSculptMesh(
+    const mane = addKnightSculptMesh(
       group,
-      new THREE.TubeGeometry(curve, 20, 0.0115, 6, false),
-      mainMaterial,
+      new THREE.TubeGeometry(curve, 20, 0.019, 7, false),
+      accentMaterial,
       [0, 0, 0],
       [1, 1, 1],
       [0, 0, 0],
       'mane-ridge',
     );
+    mane.userData.knightManeFinish = 'gold-crest-v1';
     count += 1;
   }
 
@@ -249,6 +250,7 @@ function addStauntonKnightSculpture(group, accentMaterial, coarsePointer) {
   group.userData.board3DKnightDetailVersion = coarsePointer ? 'classic-staunton-lite-v11' : 'classic-staunton-v11';
   group.userData.board3DKnightPremiumDetailCount = count;
   group.userData.board3DKnightManeProfile = coarsePointer ? 'no-extra-mane-lite-v11' : 'single-rear-ridge-v11';
+  group.userData.board3DKnightManeFinish = coarsePointer ? 'none-lite' : 'gold-crest-v1';
   group.userData.board3DKnightEarProfile = 'single-thin-rear-ear-v11';
   group.userData.board3DKnightBaseAccentProfile = coarsePointer ? 'two-inset-slots-lite-v11' : 'three-inset-slots-v11';
   return count;
@@ -299,6 +301,23 @@ function makeOfficerSatinIvoryHeadMaterial(ivoryMaterial) {
     surfaceRole: 'ivory',
     pieceFinish: 'satin-ivory-officer-head-v2',
     whiteHeadFinish: 'officer-satin-v2',
+  };
+  return material;
+}
+
+function makeShadowedRookBattlementMaterial(sourceMaterial) {
+  const material = sourceMaterial.clone();
+  material.color.multiplyScalar(0.82);
+  material.roughness = Math.max(material.roughness ?? 0.64, 0.7);
+  material.clearcoat = Math.min(material.clearcoat ?? 0.26, 0.18);
+  material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.4, 0.52);
+  material.specularIntensity = Math.min(material.specularIntensity ?? 0.38, 0.3);
+  material.envMapIntensity = 0;
+  material.userData = {
+    ...sourceMaterial.userData,
+    surfaceRole: 'ivory',
+    pieceFinish: 'shadowed-ivory-rook-battlement-v1',
+    whiteRookBattlementFinish: 'shadowed-crenellation-v1',
   };
   return material;
 }
@@ -392,6 +411,20 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
     child.userData.whiteOfficerHead = 'satin-v2';
     satinHeads += 1;
   });
+
+  let shadowedBattlements = 0;
+  if (type === 'r' && ivoryMaterial.userData?.skin3DId === 'studio' && officerHead) {
+    const battlementMaterial = makeShadowedRookBattlementMaterial(officerHead);
+    group.traverse((child) => {
+      if (!child?.isMesh || child.userData?.rookPart !== 'battlement') return;
+      child.material = battlementMaterial;
+      child.userData.whiteRookBattlement = 'shadowed-crenellation-v1';
+      shadowedBattlements += 1;
+    });
+    if (shadowedBattlements === 0) battlementMaterial.dispose?.();
+    group.userData.whiteRookBattlementCount = shadowedBattlements;
+    group.userData.whiteRookCrownContrast = shadowedBattlements === 6 ? 'six-shadowed-crenellations-v1' : 'partial';
+  }
 
   // Do not keep an unused cloned material alive on an unexpected custom piece.
   if (matteHeads === 0) pawnHead?.dispose?.();
