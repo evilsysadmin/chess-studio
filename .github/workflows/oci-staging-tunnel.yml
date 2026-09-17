@@ -1,27 +1,19 @@
 name: OCI staging · Cloudflare Tunnel
 
 on:
-  workflow_run:
-    workflows:
-      - OCI staging · service control
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Tunnel/DNS control-plane state is persistent. Reconcile it only when explicitly
+# requested, and serialize it with every other OCI staging mutation.
 concurrency:
-  group: oci-staging-cloudflare-tunnel
+  group: oci-staging-mutations
   cancel-in-progress: false
 
 jobs:
   reconcile:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     name: OCI staging · expose through Cloudflare
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -36,8 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # workflow_run.head_sha can predate recovery tooling. Tunnel recovery
-          # always uses the trusted implementation merged on main.
+          # Tunnel recovery always uses trusted tooling already merged on main.
           ref: main
           fetch-depth: 1
 
