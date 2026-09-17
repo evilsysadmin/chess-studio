@@ -6,11 +6,16 @@ on:
       - backend-python/Dockerfile
       - backend-python/requirements*.txt
       - infra/oci/runtime/**
+      - infra/oci/k3s/**
       - scripts/oci_arm64_smoke.sh
       - scripts/oci_existing_a1_deploy.sh
       - scripts/oci_runtime_bundle.py
       - scripts/oci_staging_cors_contract.py
       - scripts/oci_readiness_scope.py
+      - scripts/oci_k3s_bundle.py
+      - scripts/oci_k3s_bundle_publish.py
+      - scripts/oci_k3s_bundle_probe.py
+      - scripts/oci_k3s_readiness_contract.py
       - .github/workflows/oci-readiness.yml
   push:
     branches: [main]
@@ -19,6 +24,7 @@ on:
       - scripts/oci_k3s_bundle.py
       - scripts/oci_k3s_bundle_publish.py
       - scripts/oci_k3s_bundle_probe.py
+      - scripts/oci_k3s_readiness_contract.py
 permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
@@ -39,6 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 -S scripts/oci_staging_cors_contract.py
+      - run: python3 -S scripts/oci_k3s_readiness_contract.py
       - run: python3 -S scripts/oci_runtime_bundle.py
       - run: bash -n scripts/oci_existing_a1_deploy.sh
   backend-arm64:
