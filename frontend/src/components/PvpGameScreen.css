@@ -70,3 +70,29 @@
 }
 @media (max-width:520px) { .pvp-war-room__divider { display:none; } .pvp-war-room__opponent-mark { width:27px; height:27px; } .pvp-war-room__duel-pill>strong[role=status] { font-size:.7rem; } .pvp-war-room__result { grid-template-columns:1fr; } .pvp-war-room__result button { grid-column:1; grid-row:auto; margin-top:.45rem; } }
 @media (prefers-reduced-motion:reduce) { .pvp-war-room__duel-pill.is-green .pvp-war-room__light,.pvp-war-room__duel-pill.is-red .pvp-war-room__light,.pvp-war-room__duel-pill.is-amber .pvp-war-room__light { box-shadow:none; } }
+
+.pvp-war-room__duel-pill .game-3d-utility-menu { position:relative; flex:0 0 auto; width:28px; height:28px; margin-left:.08rem; }
+.pvp-war-room__duel-pill .game-3d-utility-menu>summary { width:28px; height:28px; border-radius:999px; }
+.pvp-war-room__duel-pill .game-3d-utility-popover { right:0; left:auto; }
+.pvp-war-room__clocks { display:flex; align-items:center; gap:.24rem; padding-left:.1rem; }
+.pvp-war-room__clock { min-width:48px; display:grid; grid-template-columns:auto auto; align-items:baseline; gap:.2rem; padding:.16rem .28rem; border:1px solid rgba(205,201,192,.1); border-radius:7px; background:rgba(255,255,255,.025); font-variant-numeric:tabular-nums; }
+.pvp-war-room__clock small { max-width:54px; overflow:hidden; color:rgba(233,226,211,.42); font-size:.48rem; line-height:1; text-overflow:ellipsis; white-space:nowrap; text-transform:uppercase; }
+.pvp-war-room__clock b { color:rgba(233,226,211,.78); font-family:var(--font-mono); font-size:.62rem; line-height:1; }
+.pvp-war-room__clock.is-active { border-color:rgba(214,183,121,.26); background:rgba(214,183,121,.055); }
+.pvp-war-room__clock.is-active b { color:#f0dfbb; }
+.pvp-war-room__clock.is-low b { color:#e08b80; }
+.pvp-resign-card { width:min(430px,calc(100vw - 2rem)); }
+.pvp-resign-card h3 { margin:.28rem 0 .55rem; }
+.pvp-resign-card p { margin:0; color:var(--studio-muted); line-height:1.55; }
+.pvp-resign-actions { display:flex; justify-content:flex-end; gap:.55rem; margin-top:1rem; }
+@media (max-width:760px) {
+  .pvp-war-room__clocks { gap:.16rem; }
+  .pvp-war-room__clock { min-width:42px; padding:.13rem .2rem; }
+  .pvp-war-room__clock small { display:none; }
+  .pvp-war-room__clock b { font-size:.58rem; }
+}
+@media (max-width:520px) {
+  .pvp-war-room__identity small { display:none; }
+  .pvp-war-room__duel-pill { gap:.3rem; padding-inline:.42rem; }
+  .pvp-war-room__clock { min-width:39px; }
+}

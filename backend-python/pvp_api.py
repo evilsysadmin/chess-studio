@@ -14,6 +14,9 @@ import pvp_rating as rating_store
 import pvp_store as store
 
 DEFAULT_RATING = rating_store.DEFAULT_RATING
+PVP_TIME_CONTROL_ID = "10+0"
+PVP_INITIAL_MS = 10 * 60 * 1000
+PVP_INCREMENT_MS = 0
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -89,6 +92,54 @@ def _player_color(match: dict, username: str) -> chess.Color | None:
     return None
 
 
+def _clock_snapshot(match: dict, now: datetime | None = None) -> dict:
+    stamp = now or store.utcnow()
+    white_ms = max(0, int(match.get("white_clock_ms", PVP_INITIAL_MS)))
+    black_ms = max(0, int(match.get("black_clock_ms", PVP_INITIAL_MS)))
+    running = match.get("turn", "w") if match.get("status") == "active" else None
+    started = match.get("turn_started_at")
+    if running in {"w", "b"} and isinstance(started, datetime):
+        elapsed_ms = max(0, int((stamp - started).total_seconds() * 1000))
+        if running == "w":
+            white_ms = max(0, white_ms - elapsed_ms)
+        else:
+            black_ms = max(0, black_ms - elapsed_ms)
+    return {
+        "id": PVP_TIME_CONTROL_ID,
+        "whiteMs": white_ms,
+        "blackMs": black_ms,
+        "incrementMs": PVP_INCREMENT_MS,
+        "runningColor": running,
+    }
+
+
+def _timeout_result(flagged_color: str) -> str:
+    return "0-1" if flagged_color == "w" else "1-0"
+
+
+async def _finish_timeout(match_id: str, match: dict, now: datetime | None = None) -> dict | None:
+    if match.get("status") != "active":
+        return match
+    stamp = now or store.utcnow()
+    clock = _clock_snapshot(match, stamp)
+    flagged = "w" if clock["whiteMs"] <= 0 and match.get("turn", "w") == "w" else "b" if clock["blackMs"] <= 0 and match.get("turn") == "b" else None
+    if not flagged:
+        return match
+    return await store.update_match(
+        match_id,
+        expected_revision=int(match.get("revision", 0)),
+        changes={
+            "status": "finished",
+            "result": _timeout_result(flagged),
+            "end_reason": "timeout",
+            "white_clock_ms": clock["whiteMs"],
+            "black_clock_ms": clock["blackMs"],
+            "turn_started_at": None,
+            "updated_at": stamp,
+        },
+    )
+
+
 def _public_match(match: dict, username: str) -> dict:
     color = _player_color(match, username)
     turn = match.get("turn", "w")
@@ -102,6 +153,8 @@ def _public_match(match: dict, username: str) -> dict:
         "turn": turn,
         "status": match.get("status", "active"),
         "result": match.get("result"),
+        "endReason": match.get("end_reason"),
+        "clock": _clock_snapshot(match),
         "history": _serialize(match.get("history") or []),
         "revision": int(match.get("revision", 0)),
         "youAre": "w" if color == chess.WHITE else "b",
@@ -206,6 +259,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "result": None,
             "history": [],
             "revision": 0,
+            "white_clock_ms": PVP_INITIAL_MS,
+            "black_clock_ms": PVP_INITIAL_MS,
+            "turn_started_at": now,
+            "end_reason": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -222,12 +279,49 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         match = await store.get_match(match_id)
         if not match or _player_color(match, username) is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
+        if match.get("status") == "active":
+            timed = await _finish_timeout(match_id, match)
+            if timed is None:
+                match = await store.get_match(match_id) or match
+            else:
+                match = timed
         if match.get("status") == "finished":
-            # Reintento idempotente: si el request que dio mate se cortó tras
-            # guardar la partida pero antes de liquidar Elo, una lectura sana
-            # termina la operación sin poder duplicar ni rebobinar rating.
+            # Reintento idempotente: si el request que dio mate, la bandera o
+            # la rendición se cortó tras guardar la partida pero antes de
+            # liquidar Elo, una lectura sana termina la operación sin duplicar.
             await rating_store.settle_match(match_id, match)
         return {"match": _public_match(match, username), "pollAfterMs": 1250}
+
+    @router.post("/matches/{match_id}/resign")
+    async def resign(match_id: str, username: str = Depends(auth_dependency)):
+        for _attempt in range(3):
+            match = await store.get_match(match_id)
+            color = _player_color(match or {}, username)
+            if not match or color is None:
+                raise HTTPException(404, "Partida 1v1 no encontrada.")
+            if match.get("status") != "active":
+                raise HTTPException(409, "La partida ya ha terminado.")
+
+            now = store.utcnow()
+            clock = _clock_snapshot(match, now)
+            result = "0-1" if color == chess.WHITE else "1-0"
+            updated = await store.update_match(
+                match_id,
+                expected_revision=int(match.get("revision", 0)),
+                changes={
+                    "status": "finished",
+                    "result": result,
+                    "end_reason": "resignation",
+                    "white_clock_ms": clock["whiteMs"],
+                    "black_clock_ms": clock["blackMs"],
+                    "turn_started_at": None,
+                    "updated_at": now,
+                },
+            )
+            if updated:
+                await rating_store.settle_match(match_id, updated)
+                return {"match": _public_match(updated, username)}
+        raise HTTPException(409, "La partida cambió mientras registrábamos la rendición.")
 
     @router.post("/matches/{match_id}/move")
     @limiter.limit("45/minute")
@@ -243,6 +337,15 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             board = chess.Board(match["fen"])
             if board.turn != color:
                 raise HTTPException(409, "No es tu turno.")
+            now = store.utcnow()
+            clock = _clock_snapshot(match, now)
+            mover_clock = clock["whiteMs"] if color == chess.WHITE else clock["blackMs"]
+            if mover_clock <= 0:
+                timed = await _finish_timeout(match_id, match, now)
+                if timed:
+                    await rating_store.settle_match(match_id, timed)
+                    return {"match": _public_match(timed, username)}
+                continue
             uci = f"{body.from_square}{body.to_square}{(body.promotion or '').lower()}"
             try:
                 move = chess.Move.from_uci(uci)
@@ -254,7 +357,6 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             san = board.san(move)
             board.push(move)
             status, result = _match_result(board)
-            now = store.utcnow()
             history = [*(match.get("history") or []), {
                 "ply": len(match.get("history") or []) + 1,
                 "uci": uci,
@@ -270,7 +372,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                     "turn": "w" if board.turn == chess.WHITE else "b",
                     "status": status,
                     "result": result,
+                    "end_reason": None if status == "finished" else match.get("end_reason"),
                     "history": history,
+                    "white_clock_ms": clock["whiteMs"] + (PVP_INCREMENT_MS if color == chess.WHITE and status == "active" else 0),
+                    "black_clock_ms": clock["blackMs"] + (PVP_INCREMENT_MS if color == chess.BLACK and status == "active" else 0),
+                    "turn_started_at": now if status == "active" else None,
                     "updated_at": now,
                 },
             )

@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PromotionModal from './PromotionModal.jsx';
+import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
+import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { checkedKingSquare } from '../boardState.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
@@ -9,6 +11,7 @@ import {
   mergeNewerMatch,
   opponentForMatch,
   playerResult,
+  projectPvpClock,
   selectableMoves,
   uniqueLegalTargets,
 } from '../pvpGameModel.js';
@@ -34,6 +37,10 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const [error, setError] = useState('');
   const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
   const [pendingAnim, setPendingAnim] = useState(null);
+  const [showResignConfirm, setShowResignConfirm] = useState(false);
+  const [resigning, setResigning] = useState(false);
+  const [clockElapsedMs, setClockElapsedMs] = useState(0);
+  const clockAnchorRef = useRef(Date.now());
   const animSeqRef = useRef(0);
   const historyLengthRef = useRef(initialMatch?.history?.length || 0);
   useWarRoomSpatialAmbience({ enabled: true });
@@ -51,6 +58,19 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const orientation = match?.youAre === 'b' ? 'black' : 'white';
   const tone = busy ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
   const turnLabel = busy ? 'Transmitiendo jugada…' : match?.status !== 'active' ? resultText?.title || 'Partida terminada' : match?.yourTurn ? 'Tu turno' : `${opponent?.username || 'Rival'} juega`;
+  const liveClock = useMemo(() => projectPvpClock(match?.clock, clockElapsedMs), [clockElapsedMs, match?.clock]);
+  const yourClockMs = match?.youAre === 'b' ? liveClock.blackMs : liveClock.whiteMs;
+  const rivalClockMs = opponent?.color === 'w' ? liveClock.whiteMs : liveClock.blackMs;
+
+  useEffect(() => {
+    clockAnchorRef.current = Date.now();
+    setClockElapsedMs(0);
+    if (match?.status !== 'active' || !match?.clock?.runningColor) return undefined;
+    const timer = window.setInterval(() => {
+      setClockElapsedMs(Math.max(0, Date.now() - clockAnchorRef.current));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [match?.clock?.blackMs, match?.clock?.runningColor, match?.clock?.whiteMs, match?.revision, match?.status]);
 
   useEffect(() => {
     const refresh = () => setShowCoordinates(getBoardCoordinates());
@@ -145,6 +165,21 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
     if (pending) void submitMove(pending.from, pending.to, piece);
   }
 
+  async function confirmResign() {
+    if (!match?.id || match.status !== 'active' || resigning) return;
+    setResigning(true);
+    setError('');
+    try {
+      const response = await pvpApi.resignMatch(match.id);
+      if (response?.match) setMatch((current) => mergeNewerMatch(current, response.match));
+      setShowResignConfirm(false);
+    } catch (err) {
+      setError(err?.message || 'No se pudo registrar la rendición.');
+    } finally {
+      setResigning(false);
+    }
+  }
+
   if (!match || !opponent) return null;
 
   return (
@@ -187,6 +222,26 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                   <span className="pvp-war-room__divider" aria-hidden="true" />
                   <span className="pvp-war-room__light" aria-hidden="true" />
                   <strong role="status" aria-live="polite">{turnLabel}</strong>
+                  {match.clock && (
+                    <span className="pvp-war-room__clocks" aria-label="Reloj 1 contra 1">
+                      <span className={`pvp-war-room__clock${liveClock.runningColor === match.youAre ? ' is-active' : ''}${yourClockMs <= 10000 ? ' is-low' : ''}`}>
+                        <small>TÚ</small><b>{formatClock(yourClockMs / 1000)}</b>
+                      </span>
+                      <span className={`pvp-war-room__clock${liveClock.runningColor === opponent.color ? ' is-active' : ''}${rivalClockMs <= 10000 ? ' is-low' : ''}`}>
+                        <small>{opponent.username}</small><b>{formatClock(rivalClockMs / 1000)}</b>
+                      </span>
+                    </span>
+                  )}
+                  <WarRoomUtilityMenu
+                    game={match}
+                    board={null}
+                    controls={{ onAbandon: match.status === 'active' ? () => setShowResignConfirm(true) : undefined }}
+                    zenMode={false}
+                    showFocus={false}
+                    showRendererToggle={false}
+                    showAppearance={false}
+                    showZen={false}
+                  />
                 </aside>
 
                 {resultText && (
@@ -201,6 +256,19 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
         </div>
       </div>
 
+      {showResignConfirm && (
+        <div className="modal-backdrop pvp-resign-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !resigning) setShowResignConfirm(false); }}>
+          <div className="army-card pvp-resign-card" role="dialog" aria-modal="true" aria-labelledby="pvp-resign-title">
+            <span className="eyebrow">1 VS 1 · War Room</span>
+            <h3 id="pvp-resign-title">¿Abandonar la partida?</h3>
+            <p>En un duelo humano esto cuenta como rendición y victoria del rival. El rating se liquidará en el servidor.</p>
+            <div className="pvp-resign-actions">
+              <button type="button" className="secondary-btn" disabled={resigning} onClick={() => setShowResignConfirm(false)}>Seguir jugando</button>
+              <button type="button" className="danger-btn" disabled={resigning} onClick={() => void confirmResign()}>{resigning ? 'Registrando…' : 'Rendirse'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {error && <p className="pvp-war-room__error" role="alert">{error}</p>}
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
     </section>

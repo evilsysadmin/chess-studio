@@ -98,6 +98,9 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert match["revision"] == 0
     assert match["whiteRating"] == pvp_api.DEFAULT_RATING
     assert match["blackRating"] == pvp_api.DEFAULT_RATING
+    assert match["clock"]["id"] == "10+0"
+    assert 590_000 <= match["clock"]["whiteMs"] <= 600_000
+    assert 590_000 <= match["clock"]["blackMs"] <= 600_000
 
     white = match["white"]
     black = match["black"]
@@ -180,3 +183,49 @@ def test_challenge_guards_self_absent_opponent_and_wrong_acceptor():
     challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
     wrong = as_user(client, "alice", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
     assert wrong.status_code == 404
+
+
+def test_resignation_is_authoritative_and_settles_rating(monkeypatch):
+    monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+
+    response = as_user(client, "alice", "post", f"/api/pvp/matches/{match['id']}/resign")
+    assert response.status_code == 200
+    payload = response.json()["match"]
+    assert payload["status"] == "finished"
+    assert payload["result"] == "0-1"
+    assert payload["endReason"] == "resignation"
+    assert payload["clock"]["runningColor"] is None
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
+
+    again = as_user(client, "alice", "post", f"/api/pvp/matches/{match['id']}/resign")
+    assert again.status_code == 409
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+
+
+def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
+    monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    match_id = match["id"]
+
+    # Blancas empiezan: simula una pestaña que deja correr más de los 10 min.
+    pvp_store._memory_matches[match_id]["turn_started_at"] = pvp_store.utcnow() - timedelta(seconds=601)
+    flagged = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert flagged.status_code == 200
+    payload = flagged.json()["match"]
+    assert payload["status"] == "finished"
+    assert payload["result"] == "0-1"
+    assert payload["endReason"] == "timeout"
+    assert payload["clock"]["whiteMs"] == 0
+    assert payload["clock"]["runningColor"] is None
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1

@@ -20,6 +20,7 @@ function matchPayload() {
     yourTurn: true,
     createdAt: '2026-09-16T05:00:00Z',
     updatedAt: '2026-09-16T05:00:00Z',
+    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
   };
 }
 
@@ -72,6 +73,11 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(warRoom.getByText('10:00', { exact: true }).first()).toBeVisible();
+  const actions = warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(actions).toBeVisible();
+  await actions.click();
+  await expect(warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
 
   const board = page.locator('[data-board3d-war-room="true"]');
   await expect(board).toBeVisible({ timeout: 45_000 });
