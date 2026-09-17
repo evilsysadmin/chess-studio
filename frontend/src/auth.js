@@ -15,6 +15,7 @@ import { APP_RELEASE } from './release.js';
 import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { setUiLanguage } from './userPreferences.js';
 import { clearMatthiasSessionSignals, queueMatthiasLoginGreeting } from './matthiasSession.js';
+import { clearPvpEnrollment } from './pvpEnrollment.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 const USERNAME_KEY = 'chess-study-auth-username';
@@ -117,6 +118,7 @@ function clearSessionRuntimeState() {
   clearCombatSession();
   clearCombatDebriefSession();
   clearHomePlayNudgeSession();
+  clearPvpEnrollment();
 }
 
 function saveSession(token, username) {

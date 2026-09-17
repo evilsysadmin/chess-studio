@@ -202,3 +202,37 @@
   .home-pvp-roster-link:focus-visible { transform: translateX(-50%); }
   .home-pvp-roster-link__signal { box-shadow: none; }
 }
+.home-pvp-roster-link.is-enrolled {
+  left:auto;
+  right:max(18px,env(safe-area-inset-right));
+  transform:none;
+  width:min(340px,calc(100vw - 36px));
+  min-height:54px;
+  bottom:max(16px,env(safe-area-inset-bottom));
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:.58rem;
+  padding:.48rem .56rem;
+  border-radius:14px;
+}
+.home-pvp-roster-link.is-enrolled:hover,
+.home-pvp-roster-link.is-enrolled:focus-visible { transform:translateY(-3px); }
+.home-pvp-roster-link.is-enrolled:disabled { transform:none; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__emblem { width:36px; height:36px; border-radius:10px; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__copy small { font-size:.48rem; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__copy strong { font-size:.92rem; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__copy>span { font-size:.66rem; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__action { min-height:32px; padding-inline:.45rem; font-size:.5rem; }
+.home-pvp-roster-link.has-challenge { border-color:rgba(221,171,81,.78); }
+.home-pvp-roster-link.has-active-match { border-color:rgba(103,178,119,.54); }
+@media (max-width:620px) {
+  .home-pvp-roster-link.is-enrolled {
+    left:10px;
+    right:10px;
+    width:auto;
+    bottom:max(8px,env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .home-pvp-roster-link.is-enrolled:hover,
+  .home-pvp-roster-link.is-enrolled:focus-visible { transform:none; }
+}

@@ -9,6 +9,7 @@ const ReplayScreen = React.lazy(() => import('./components/ReplayScreen.jsx'));
 const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScreen.jsx'));
 const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
+const PvpAppSurface = React.lazy(() => import('./components/PvpAppSurface.jsx'));
 import { loadCombatHistory } from './combatHistory.js';
 const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
 const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
@@ -189,8 +190,6 @@ function AppInner({ isAdminUser }) {
   const [logoutError, setLogoutError] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
-
-
   useProfileSyncLifecycle(view);
 
   useEffect(() => {
@@ -236,7 +235,6 @@ function AppInner({ isAdminUser }) {
     }
   }
 
-
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
   // Centro de Operaciones. Reconciliamos los contadores demostrables desde
   // Historial una sola vez cuando éste cambia; las funciones sólo escriben si
@@ -281,7 +279,6 @@ function AppInner({ isAdminUser }) {
     onError: setError,
   });
 
-
   // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
   // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
   // que App conozca otra vez todos los detalles de persistencia.
@@ -306,7 +303,6 @@ function AppInner({ isAdminUser }) {
     setLoading,
     setError,
   });
-
 
   useEffect(() => {
     setRating(loadRating());
@@ -368,7 +364,6 @@ function AppInner({ isAdminUser }) {
       gameLaunch.end(launch);
     }
   }
-
 
   function handleExitGame() {
     if (game?.id) {
@@ -770,7 +765,7 @@ function AppInner({ isAdminUser }) {
 
   const statisticalHistoryList = statisticalHistoryRecords(historyList);
 
-  const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
+  const isBoardGameView = view === 'game' || view === 'tournamentGame' || view === 'pvpGame' || combatBattleUiActive;
 
   return (
     <>
@@ -894,6 +889,7 @@ function AppInner({ isAdminUser }) {
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
+        <PvpAppSurface view={view} replaceView={replaceView} />
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
           <div className="route-loading active-session-recovery" role="status">
             {error ? (
@@ -1055,7 +1051,6 @@ function AppInner({ isAdminUser }) {
             isAdminUser={isAdminUser}
           />
         )}
-
 
         {view === 'history' && (
           <HistoryScreen

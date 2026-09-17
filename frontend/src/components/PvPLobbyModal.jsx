@@ -13,7 +13,7 @@ function sortedRoster(rows) {
   });
 }
 
-export default function PvPLobbyModal({ onClose, onMatchReady }) {
+export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = null, onLeaveRoster = null }) {
   useEscapeToClose(onClose);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady }) {
           <div className="pvp-lobby__header-copy">
             <span className="eyebrow">War Room · humano contra humano</span>
             <h2>Roster de duelo</h2>
-            <p>Entra en servicio, elige rival y lanza el reto. El servidor arbitra posición, turno y resultado.</p>
+            <p>Entra en servicio y sigue jugando cualquier modo. Mientras estés enrolado, aparecerás disponible y te avisaremos si alguien te reta.</p>
           </div>
           <div className="pvp-lobby__seal" aria-hidden="true">
             <span>1 VS 1</span>
@@ -125,7 +125,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady }) {
             <div>
               <small>{self ? 'EN SERVICIO' : 'FUERA DEL ROSTER'}</small>
               <strong>{self ? 'Disponible para retos' : 'Entra para jugar 1 contra 1'}</strong>
-              <span>{self ? `${self.username} · visible para otros jugadores` : 'Podrás ver rivales, retar y recibir desafíos.'}</span>
+              <span>{self ? `${self.username} · puedes cerrar esta sala y seguir jugando; los retos llegarán como aviso global` : 'Podrás ver rivales, retar y recibir desafíos.'}</span>
             </div>
           </div>
           {self && (
@@ -136,9 +136,9 @@ export default function PvPLobbyModal({ onClose, onMatchReady }) {
             </div>
           )}
           {self ? (
-            <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('leave', () => pvpApi.leaveRoster())}>{busyKey === 'leave' ? 'Saliendo…' : 'Salir del roster'}</button>
+            <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster())}>{busyKey === 'leave' ? 'Saliendo…' : 'Salir del roster'}</button>
           ) : (
-            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('join', () => pvpApi.joinRoster())}>{busyKey === 'join' ? 'Entrando…' : 'Entrar al roster'}</button>
+            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Entrando…' : 'Entrar al roster'}</button>
           )}
         </section>
 
@@ -180,7 +180,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady }) {
                 {self && rivalCount === 0 && (
                   <div className="pvp-lobby__quiet-note">
                     <span aria-hidden="true">◇</span>
-                    <div><strong>De momento, sólo tú.</strong><p>Cuando entre otro jugador aparecerá aquí listo para recibir un reto.</p></div>
+                    <div><strong>De momento, sólo tú.</strong><p>Puedes cerrar esta sala y jugar normal. Si entra alguien y te reta, Chess Studio te avisará estés donde estés.</p></div>
                   </div>
                 )}
               </>
