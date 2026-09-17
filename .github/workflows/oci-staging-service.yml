@@ -6,7 +6,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, k3s-start, k3s-status, k3s-rollback]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, vault-preview-current, k3s-start, k3s-status, k3s-rollback]
         default: smoke
         required: true
       secret_key:
@@ -24,8 +24,8 @@ permissions:
   contents: read
 
 # Only host/control-plane mutations share the repository-wide OCI mutex with
-# canonical backend deploys, K3s assets and Terraform. Read-only diagnostics get
-# a per-run group so they never queue behind an unrelated release or mutation.
+# canonical backend deploys, K3s assets and Terraform. Read-only/non-persistent
+# diagnostics get a per-run group so they never queue behind an unrelated mutation.
 concurrency:
   group: >-
     ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","vault-bootstrap","k3s-start","k3s-rollback"]'), inputs.operation)
@@ -103,6 +103,10 @@ jobs:
       - name: Compare CURRENT Vault + Git runtime with installed backend.env
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-compare-current'
         run: python3 scripts/oci_vault_compare.py compare-current
+
+      - name: Build and discard CURRENT Vault + Git runtime preview
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-preview-current'
+        run: python3 scripts/oci_vault_preview.py preview-current
 
       - name: Recover stale OCI agent after explicit request
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent'
