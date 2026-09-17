@@ -13,7 +13,7 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
 export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
 
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
-  tournament: Object.freeze({ x: -0.96, y: -0.035, z: 0.29 }),
+  tournament: Object.freeze({ x: -1.1223, y: 0.3204, z: 0.29 }),
   train: Object.freeze({ x: -0.34, y: -0.035, z: 0.3 }),
   play: Object.freeze({ x: 0, y: -0.22, z: 0.31 }),
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
