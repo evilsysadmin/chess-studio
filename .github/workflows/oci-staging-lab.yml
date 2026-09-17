@@ -13,10 +13,6 @@ on:
         description: Optional override for OCI_AVAILABILITY_DOMAIN
         type: string
         required: false
-      image_ocid:
-        description: Optional override for OCI_IMAGE_OCID
-        type: string
-        required: false
       confirm_destroy:
         description: Required for destroy
         type: boolean
@@ -45,7 +41,6 @@ jobs:
       OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
       OCI_TFSTATE_BUCKET: ${{ vars.OCI_TFSTATE_BUCKET || 'chess-studio-tfstate' }}
       OCI_AVAILABILITY_DOMAIN: ${{ inputs.availability_domain || vars.OCI_AVAILABILITY_DOMAIN }}
-      OCI_IMAGE_OCID: ${{ inputs.image_ocid || vars.OCI_IMAGE_OCID }}
       OCI_CONFIRM_DESTROY: ${{ inputs.confirm_destroy }}
     steps:
       - uses: actions/checkout@v7

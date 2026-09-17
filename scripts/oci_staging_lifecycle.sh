@@ -15,7 +15,6 @@ valid_operation() {
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
-valid_image_override() { [[ -z "${1:-}" || "${1:-}" == ocid1.image.* ]]; }
 
 validate_backend_value() {
   [[ "${1:-}" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "backend value contains unsupported characters"
@@ -216,7 +215,7 @@ write_staging_backend() {
 }
 
 validate_staging_overrides() {
-  valid_image_override "${OCI_IMAGE_OCID:-}" || die "OCI_IMAGE_OCID does not look like an image OCID"
+  [[ -z "${OCI_IMAGE_OCID:-}" ]] || die "OCI_IMAGE_OCID overrides are forbidden in zero-cost mode; staging must use the discovered Canonical Ubuntu platform image"
   if [[ -n "${OCI_AVAILABILITY_DOMAIN:-}" ]]; then
     validate_backend_value "$OCI_AVAILABILITY_DOMAIN"
   fi
@@ -233,9 +232,6 @@ prepare_staging() {
   unset TF_VAR_availability_domain TF_VAR_image_ocid
   if [[ -n "${OCI_AVAILABILITY_DOMAIN:-}" ]]; then
     export TF_VAR_availability_domain="$OCI_AVAILABILITY_DOMAIN"
-  fi
-  if [[ -n "${OCI_IMAGE_OCID:-}" ]]; then
-    export TF_VAR_image_ocid="$OCI_IMAGE_OCID"
   fi
   terraform -chdir="$staging" validate -no-color
 }
@@ -296,9 +292,6 @@ self_test() {
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
-  valid_image_override "" || exit 1
-  valid_image_override ocid1.image.oc1.eu-frankfurt-1.test || exit 1
-  ! valid_image_override nope || exit 1
   local text
   text="$(render_backend chess-studio-tfstate namespace123 "$staging_key" eu-frankfurt-1)"
   for marker in chess-studio-tfstate namespace123 "$staging_key" eu-frankfurt-1; do

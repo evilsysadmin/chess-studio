@@ -47,7 +47,16 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
 
   assert {
     condition     = oci_core_instance.backend.source_details[0].source_id == "ocid1.image.oc1.eu-frankfurt-1.chessstudioauto"
-    error_message = "Default staging should use the discovered A1-compatible Ubuntu image."
+    error_message = "Default staging should use the discovered A1-compatible Ubuntu platform image."
+  }
+
+  assert {
+    condition = (
+      data.oci_core_images.arm64_ubuntu.operating_system == "Canonical Ubuntu" &&
+      data.oci_core_images.arm64_ubuntu.operating_system_version == "24.04" &&
+      data.oci_core_images.arm64_ubuntu.shape == "VM.Standard.A1.Flex"
+    )
+    error_message = "Zero-cost staging must discover the Canonical Ubuntu A1 platform image rather than accept a custom image override."
   }
 
   assert {
@@ -199,12 +208,11 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 }
 
-run "explicit_discovery_overrides_win" {
+run "explicit_availability_domain_override_wins" {
   command = plan
 
   variables {
     availability_domain = "kIdk:EU-FRANKFURT-1-AD-3"
-    image_ocid          = "ocid1.image.oc1.eu-frankfurt-1.manualoverride"
   }
 
   assert {
@@ -213,8 +221,8 @@ run "explicit_discovery_overrides_win" {
   }
 
   assert {
-    condition     = oci_core_instance.backend.source_details[0].source_id == "ocid1.image.oc1.eu-frankfurt-1.manualoverride"
-    error_message = "Explicit image_ocid must override discovery."
+    condition     = oci_core_instance.backend.source_details[0].source_id == "ocid1.image.oc1.eu-frankfurt-1.chessstudioauto"
+    error_message = "Image discovery must remain active even when the availability domain is overridden."
   }
 }
 
@@ -255,16 +263,6 @@ run "allow_narrow_ssh_with_public_key" {
     condition     = contains(keys(oci_core_instance.backend.metadata), "ssh_authorized_keys")
     error_message = "An explicit SSH key must be injected when operator SSH is enabled."
   }
-}
-
-run "reject_invalid_image_override" {
-  command = plan
-
-  variables {
-    image_ocid = "not-an-ocid"
-  }
-
-  expect_failures = [var.image_ocid]
 }
 
 run "reject_invalid_tenancy_ocid" {
