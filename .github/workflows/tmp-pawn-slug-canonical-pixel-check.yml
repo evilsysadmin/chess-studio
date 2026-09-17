@@ -10,23 +10,46 @@ permissions:
 
 jobs:
   pixel-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - uses: actions/checkout@v7
       - name: Compare canonical master pixel hash
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
           python3 -m pip install --disable-pip-version-check --quiet pillow
           python3 - <<'PY'
           import hashlib
           import io
-          import urllib.request
+          import os
+          import sys
+          from pathlib import Path
           from PIL import Image
 
-          url = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png'
-          data = urllib.request.urlopen(url, timeout=20).read()
+          root = Path.cwd()
+          sys.path.insert(0, str(root / 'scripts'))
+          from cloudflare_r2_assets import load_config
+          from r2_asset_publisher import get_object
+
+          config = load_config(root / 'infra/cloudflare/r2-assets.json')
+          key = 'pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png'
+          data = get_object(
+              os.environ['CLOUDFLARE_API_TOKEN'],
+              os.environ['CLOUDFLARE_ACCOUNT_ID'],
+              config['bucket'],
+              key,
+          )
           image = Image.open(io.BytesIO(data)).convert('RGBA')
+          pixel_hash = hashlib.sha256(image.tobytes()).hexdigest()
           print('FILE_SHA256=' + hashlib.sha256(data).hexdigest())
-          print('PIXEL_SHA256=' + hashlib.sha256(image.tobytes()).hexdigest())
+          print('PIXEL_SHA256=' + pixel_hash)
+          print('TARGET_PIXEL_SHA256=3c9050581eba472854196dc3b974cf388351dc8f889062f0ee6f1217dc7b7e1a')
+          print('PIXELS_MATCH=' + str(pixel_hash == '3c9050581eba472854196dc3b974cf388351dc8f889062f0ee6f1217dc7b7e1a').lower())
           print('SIZE=%dx%d' % image.size)
           PY
