@@ -93,8 +93,8 @@ describe('HomeCastle3DProps', () => {
     expect(props.play.userData.destination).toBe('play');
     expect(props.daily.name).toBe('home-castle-prop-daily');
     expect(props.daily.userData.destination).toBe('daily');
-    expect(props.tournament.userData.baseScale).toBeGreaterThan(0.65);
-    expect(props.tournament.userData.baseScale).toBeLessThan(0.85);
+    expect(props.tournament.userData.baseScale).toBeGreaterThan(1.1);
+    expect(props.tournament.userData.baseScale).toBeLessThan(1.2);
     expect(props.train.userData.baseScale).toBeGreaterThan(0.65);
     expect(props.train.userData.baseScale).toBeLessThan(0.85);
     expect(props.play.userData.baseScale).toBeGreaterThan(0.75);

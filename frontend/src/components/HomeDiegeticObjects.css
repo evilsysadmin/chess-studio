@@ -30,9 +30,30 @@
   .illustrated-home__destination.is-diegetic-object > strong,
   .illustrated-home__destination.is-diegetic-object > span,
   .illustrated-home__destination.is-diegetic-object > i {
-    opacity: 0;
-    transform: translateY(.38cqw) scale(.975);
     transition: opacity .18s ease, transform .24s cubic-bezier(.2,.75,.25,1), filter .2s ease;
+  }
+
+  /* Never hide navigation just because a destination is intended to be 3D.
+   * The copy only yields to the physical prop after the WebGL composition has
+   * actually painted and declared itself ready. If WebGL/LOD/loading fails,
+   * the normal visible label remains the discoverable fallback. */
+  @supports selector(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)) {
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination.is-diegetic-object > svg,
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination.is-diegetic-object > strong,
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination.is-diegetic-object > span,
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination.is-diegetic-object > i {
+      opacity: 0;
+      transform: translateY(.38cqw) scale(.975);
+    }
+
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination.is-diegetic-object + .illustrated-home__scene-fragment {
+      opacity: 0;
+    }
   }
 
   .illustrated-home__destination.is-diegetic-object:hover,
@@ -104,10 +125,6 @@
     min-height: 20%;
     justify-content: flex-end;
     padding-bottom: .6cqw;
-  }
-
-  .illustrated-home__destination.is-diegetic-object + .illustrated-home__scene-fragment {
-    opacity: 0;
   }
 
   .illustrated-home__destination.is-diegetic-object:hover + .illustrated-home__scene-fragment,
