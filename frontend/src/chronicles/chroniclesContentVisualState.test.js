@@ -64,14 +64,12 @@ describe('Chronicles authored content visual state', () => {
     });
   });
 
-  it('derives Gallery visual state from Gallery authored flags, not Crypt aliases', () => {
+  it('derives Gallery visual state from Gallery authored flags with no Crypt aliases present', () => {
     const gallery = chroniclesMapById('gallery-of-forks');
     const state = {
       mapId: gallery.id,
       galleryLeverPulled: true,
       galleryRelicCollected: false,
-      runeCacheOpened: false,
-      runeCoreCollected: false,
     };
 
     const lever = chroniclesContentVisualStateById(state, 'gallery-lever', gallery);
