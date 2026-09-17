@@ -2,23 +2,10 @@ name: OCI readiness
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - backend-python/Dockerfile
-      - backend-python/requirements*.txt
-      - infra/oci/runtime/**
-      - scripts/oci_arm64_smoke.sh
-      - scripts/oci_existing_a1_deploy.sh
-      - scripts/oci_runtime_bundle.py
-      - scripts/oci_staging_cors_contract.py
-      - scripts/oci_readiness_scope.py
-      - .github/workflows/oci-readiness.yml
+    paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_runtime_bundle.py, scripts/oci_staging_cors_contract.py, scripts/oci_readiness_scope.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml]
   push:
     branches: [main]
-    paths:
-      - infra/oci/k3s/**
-      - scripts/oci_k3s_bundle.py
-      - scripts/oci_k3s_bundle_publish.py
-      - scripts/oci_k3s_bundle_probe.py
+    paths: ['infra/oci/k3s/**', 'scripts/oci_k3s_*']
 permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
@@ -26,8 +13,7 @@ concurrency:
 jobs:
   classify:
     runs-on: ubuntu-24.04
-    outputs:
-      arm64: ${{ steps.scope.outputs.arm64 }}
+    outputs: {arm64: '${{ steps.scope.outputs.arm64 }}'}
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
@@ -38,9 +24,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - run: python3 -S scripts/oci_staging_cors_contract.py
-      - run: python3 -S scripts/oci_runtime_bundle.py
-      - run: bash -n scripts/oci_existing_a1_deploy.sh
+      - run: |
+          python3 -S scripts/oci_staging_cors_contract.py
+          python3 scripts/oci_k3s_readiness_contract.py
+          python3 scripts/oci_runtime_bundle.py
+          bash -n scripts/oci_existing_a1_deploy.sh
   backend-arm64:
     needs: classify
     if: needs.classify.outputs.arm64 == 'true'
@@ -67,6 +55,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     environment: staging
+    concurrency: {group: oci-staging-mutations, cancel-in-progress: false}
     env:
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
