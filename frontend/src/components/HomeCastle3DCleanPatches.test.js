@@ -1,12 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
-import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
+import { createCanonicalHallGeometry } from './HomeCastle3DGeometry.js';
 import {
   HOME_CASTLE_CLEAN_PATCH_PLAN,
-  createHomeCastleCleanPatchLayer,
+  HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE,
+  applyHomeCastleBackgroundCleanPatches,
+  restoreHomeCastleOriginalUvs,
 } from './HomeCastle3DCleanPatches.js';
 
-function firstPatch(layer) {
-  return layer.group.children[0];
+function uvSnapshot(geometry) {
+  return Array.from(geometry.getAttribute('uv').array);
 }
 
 describe('HomeCastle3D clean patches', () => {
@@ -17,45 +19,45 @@ describe('HomeCastle3D clean patches', () => {
     expect(HOME_CASTLE_CLEAN_PATCH_PLAN[0].size.height).toBeLessThan(0.2);
   });
 
-  it('renders the clone-blended clean patch between the hall art and 3D props', () => {
-    const layer = createHomeCastleCleanPatchLayer();
-    const patch = firstPatch(layer);
+  it('clone-stamps only a bounded part of the canonical background UVs', () => {
+    const geometry = createCanonicalHallGeometry({ widthSegments: 64, heightSegments: 36 });
+    const before = uvSnapshot(geometry);
 
-    expect(layer.group.name).toBe('home-castle-clean-patches');
-    expect(patch.name).toBe('home-castle-clean-patch-tournament');
-    expect(patch.renderOrder).toBeGreaterThan(0);
-    expect(patch.renderOrder).toBeLessThan(1);
-    expect(patch.material.transparent).toBe(true);
-    expect(patch.material.depthWrite).toBe(false);
-    expect(patch.material.depthTest).toBe(false);
-    expect(patch.material.fragmentShader).toContain('fromLeft');
-    expect(patch.material.fragmentShader).toContain('fromRight');
-    expect(patch.geometry.getAttribute('patchUv')).toBeTruthy();
+    applyHomeCastleBackgroundCleanPatches(geometry);
 
-    layer.dispose();
+    const after = uvSnapshot(geometry);
+    let changedValues = 0;
+    for (let index = 0; index < before.length; index += 1) {
+      if (Math.abs(before[index] - after[index]) > 1e-8) changedValues += 1;
+    }
+
+    expect(changedValues).toBeGreaterThan(0);
+    expect(changedValues).toBeLessThan(before.length * 0.08);
+    expect(geometry.getAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE)).toBeTruthy();
+    geometry.dispose();
   });
 
-  it('warps the patch with the hall surface instead of leaving it as a flat DOM-like card', () => {
-    const layer = createHomeCastleCleanPatchLayer();
-    const positions = firstPatch(layer).geometry.getAttribute('position');
-    const zValues = [];
-    for (let index = 0; index < positions.count; index += 1) zValues.push(positions.getZ(index));
+  it('is idempotent so renderer restarts cannot compound the texture displacement', () => {
+    const geometry = createCanonicalHallGeometry({ widthSegments: 64, heightSegments: 36 });
 
-    expect(Math.max(...zValues) - Math.min(...zValues)).toBeGreaterThan(0);
-    layer.dispose();
+    applyHomeCastleBackgroundCleanPatches(geometry);
+    const once = uvSnapshot(geometry);
+    applyHomeCastleBackgroundCleanPatches(geometry);
+    const twice = uvSnapshot(geometry);
+
+    expect(twice).toEqual(once);
+    geometry.dispose();
   });
 
-  it('borrows the already-loaded hall texture without taking ownership of it', () => {
-    const texture = new THREE.Texture();
-    const disposeTexture = vi.spyOn(texture, 'dispose');
-    const layer = createHomeCastleCleanPatchLayer();
-    const patch = firstPatch(layer);
+  it('preserves the untouched source UVs for later foreground mattes', () => {
+    const geometry = createCanonicalHallGeometry({ widthSegments: 64, heightSegments: 36 });
+    const before = uvSnapshot(geometry);
 
-    layer.setTexture(texture);
-    expect(patch.material.uniforms.map.value).toBe(texture);
-    layer.dispose();
-    expect(disposeTexture).not.toHaveBeenCalled();
+    applyHomeCastleBackgroundCleanPatches(geometry);
+    restoreHomeCastleOriginalUvs(geometry);
 
-    texture.dispose();
+    expect(uvSnapshot(geometry)).toEqual(before);
+    expect(geometry.getAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE)).toBeUndefined();
+    geometry.dispose();
   });
 });
