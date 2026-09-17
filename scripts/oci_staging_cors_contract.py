@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""No-dependency contract checks for the OCI staging CORS deployment gate."""
+"""No-dependency contract checks for the OCI staging deploy/runtime boundary."""
 from __future__ import annotations
 
 import ast
@@ -11,6 +11,8 @@ compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
+staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
+service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -70,4 +72,18 @@ required_public_verifier_fragments = (
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 
-print("OCI staging CORS deployment contract: OK")
+# Runtime configuration is operational state, not application release state.
+# Canonical deploys consume the already-published private OCI bundle. Updating
+# that bundle remains an explicit service-control action instead of a hidden
+# side effect of every code release.
+assert "oci_runtime_config.py publish" not in staging_deploy, (
+    "canonical staging releases must not republish runtime config from Render"
+)
+assert "inputs.operation == 'runtime-sync'" in service_control, (
+    "OCI service control must keep an explicit runtime-sync operation"
+)
+assert "python3 scripts/oci_runtime_config.py sync" in service_control, (
+    "runtime-sync must remain the owner of Render-to-OCI runtime synchronization"
+)
+
+print("OCI staging CORS + runtime deployment contract: OK")
