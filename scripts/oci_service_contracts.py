@@ -13,6 +13,7 @@ SERVICE_WORKFLOW = ROOT / ".github/workflows/oci-staging-service.yml"
 TRANSPORT = (("scripts/oci_run_command.py", "--self-test"),)
 RUNTIME = (("scripts/oci_runtime_config.py", "--self-test"),)
 VAULT_RUNTIME = (("scripts/oci_vault_runtime.py", "--self-test"),)
+VAULT_COMPARE = (("scripts/oci_vault_compare.py", "--self-test"),)
 VAULT_BOOTSTRAP = (("scripts/oci_vault_bootstrap.py", "--self-test"),)
 BACKEND_DIAG = (("scripts/oci_backend_diagnose.py", "--self-test"),)
 RENDER_MONGO_DIAG = (("scripts/render_mongo_target_diagnose.py", "--self-test"),)
@@ -42,6 +43,7 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "vault-bootstrap": TRANSPORT + VAULT_BOOTSTRAP + VAULT_RUNTIME,
     "vault-validate": TRANSPORT + VAULT_RUNTIME,
     "vault-validate-pending": TRANSPORT + VAULT_RUNTIME,
+    "vault-compare-current": TRANSPORT + VAULT_RUNTIME + VAULT_COMPARE,
     "k3s-start": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
     "k3s-status": TRANSPORT + K3S_STATUS,
     "k3s-rollback": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
@@ -82,6 +84,7 @@ def self_test() -> None:
         "vault-bootstrap",
         "vault-validate",
         "vault-validate-pending",
+        "vault-compare-current",
         "k3s-start",
         "k3s-status",
         "k3s-rollback",
@@ -101,6 +104,11 @@ def self_test() -> None:
     vault_validate = commands_for("vault-validate")
     assert vault_validate == TRANSPORT + VAULT_RUNTIME
     assert K3S_CONTROL[0] not in vault_validate
+
+    vault_compare = commands_for("vault-compare-current")
+    assert vault_compare == TRANSPORT + VAULT_RUNTIME + VAULT_COMPARE
+    assert RUNTIME[0] not in vault_compare
+    assert K3S_CONTROL[0] not in vault_compare
 
     k3s_status = commands_for("k3s-status")
     assert k3s_status == TRANSPORT + K3S_STATUS
@@ -126,6 +134,7 @@ def self_test() -> None:
     assert "for attempt in $(seq 1 60)" not in workflow
     assert "retrying in 10s" not in workflow
     assert "Host/agent registration convergence belongs to the infrastructure apply" in workflow
+    assert "python3 scripts/oci_vault_compare.py compare-current" in workflow
 
     print("OCI service contract isolation self-test: OK")
 
