@@ -7,6 +7,11 @@ import {
   homeCastleCompositionReady,
   prepareHomeCastleSceneTexture,
 } from './HomeCastle3DCompositor.js';
+import {
+  HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE,
+  applyHomeCastleBackgroundCleanPatches,
+} from './HomeCastle3DCleanPatches.js';
+import { createCanonicalHallGeometry } from './HomeCastle3DGeometry.js';
 
 describe('HomeCastle3DCompositor', () => {
   it('keeps the legacy single-layer scene ready as soon as the background exists', () => {
@@ -60,6 +65,26 @@ describe('HomeCastle3DCompositor', () => {
     layer.dispose();
     expect(textureDispose).toHaveBeenCalledOnce();
     expect(geometryDispose).not.toHaveBeenCalled();
+    geometry.dispose();
+  });
+
+  it('uses untouched canonical UVs for a future foreground over a cleaned background', () => {
+    const geometry = createCanonicalHallGeometry({ widthSegments: 64, heightSegments: 36 });
+    const canonicalUv = Array.from(geometry.getAttribute('uv').array);
+    applyHomeCastleBackgroundCleanPatches(geometry);
+    const patchedUv = Array.from(geometry.getAttribute('uv').array);
+    expect(patchedUv).not.toEqual(canonicalUv);
+    expect(geometry.getAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE)).toBeTruthy();
+
+    const layer = createHomeCastleForegroundLayer(geometry);
+    const ownedGeometryDispose = vi.spyOn(layer.mesh.geometry, 'dispose');
+
+    expect(layer.mesh.geometry).not.toBe(geometry);
+    expect(Array.from(layer.mesh.geometry.getAttribute('uv').array)).toEqual(canonicalUv);
+    expect(layer.mesh.geometry.getAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE)).toBeUndefined();
+
+    layer.dispose();
+    expect(ownedGeometryDispose).toHaveBeenCalledOnce();
     geometry.dispose();
   });
 });
