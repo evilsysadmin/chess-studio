@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 terraform fmt -check -diff -recursive "$root/infra/oci"
+python3 -S "$root/scripts/oci_zero_cost_contract.py"
 python3 -S "$root/scripts/oci_auth_contract.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_state.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_recover.py" --self-test
@@ -20,4 +21,4 @@ for stack in bootstrap probe staging; do
   terraform -chdir="$dir" test -no-color
 done
 
-echo "OCI Terraform bootstrap + probe + staging static contracts passed"
+echo "OCI Terraform bootstrap + probe + staging zero-cost static contracts passed"

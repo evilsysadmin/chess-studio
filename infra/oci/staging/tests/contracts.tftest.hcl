@@ -13,6 +13,19 @@ mock_provider "oci" {
     }
   }
 
+  mock_data "oci_identity_region_subscriptions" {
+    defaults = {
+      region_subscriptions = [
+        {
+          is_home_region = true
+          region_key     = "FRA"
+          region_name    = "eu-frankfurt-1"
+          status         = "READY"
+        },
+      ]
+    }
+  }
+
   mock_data "oci_core_images" {
     defaults = {
       images = [
@@ -43,6 +56,11 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
   assert {
     condition     = oci_core_instance.backend.availability_domain == "kIdk:EU-FRANKFURT-1-AD-1"
     error_message = "Default staging should use the first discovered availability domain."
+  }
+
+  assert {
+    condition     = local.home_region == "eu-frankfurt-1"
+    error_message = "Zero-cost staging must resolve the tenancy home region."
   }
 
   assert {
@@ -101,6 +119,16 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
     )
     error_message = "Compute Instance Run Command must be explicitly enabled for no-SSH staging operations."
   }
+}
+
+run "reject_non_home_region" {
+  command = plan
+
+  variables {
+    region = "us-phoenix-1"
+  }
+
+  expect_failures = [oci_core_instance.backend]
 }
 
 run "always_free_load_balancer_contract" {

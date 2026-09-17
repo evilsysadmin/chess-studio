@@ -4,6 +4,10 @@ data "oci_identity_availability_domains" "available" {
   compartment_id = var.compartment_ocid
 }
 
+data "oci_identity_region_subscriptions" "tenancy" {
+  tenancy_id = var.tenancy_ocid
+}
+
 data "oci_core_images" "arm64_ubuntu" {
   compartment_id           = var.compartment_ocid
   operating_system         = "Canonical Ubuntu"
@@ -29,6 +33,11 @@ locals {
     data.oci_core_images.arm64_ubuntu.images[0].id,
     "",
   )
+  home_regions = [
+    for subscription in data.oci_identity_region_subscriptions.tenancy.region_subscriptions :
+    subscription.region_name if subscription.is_home_region
+  ]
+  home_region = length(local.home_regions) == 1 ? local.home_regions[0] : ""
   common_tags = merge({
     service    = "chess-studio"
     component  = "backend"
@@ -171,6 +180,16 @@ resource "oci_core_instance" "backend" {
     # host contract, so the disposable A1 is intentionally replaced once.
     ignore_changes       = [metadata["user_data"]]
     replace_triggered_by = [terraform_data.bootstrap_contract]
+
+    precondition {
+      condition     = local.home_region != ""
+      error_message = "OCI returned no unique tenancy home region; refusing a potentially billable staging plan."
+    }
+
+    precondition {
+      condition     = var.region == local.home_region
+      error_message = "Zero-cost staging is home-region-only. Set OCI_REGION to the tenancy home region before planning or applying."
+    }
 
     precondition {
       condition     = local.selected_availability_domain != ""
