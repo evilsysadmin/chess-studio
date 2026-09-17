@@ -1,22 +1,12 @@
 name: OCI staging · service control
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'infra/oci/ops/agent-reboot.request'
-      - 'infra/oci/ops/bringup.request'
-      - 'infra/oci/ops/backend-diagnose.request'
-      - 'infra/oci/ops/mongo-target-diagnose.request'
-      - 'infra/oci/ops/mongo-network-diagnose.request'
-      - 'infra/oci/ops/reserved-egress.request'
-      - 'infra/oci/ops/vault-bootstrap.request'
   workflow_dispatch:
     inputs:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending]
         default: smoke
         required: true
       secret_key:
@@ -26,7 +16,7 @@ on:
         default: JWT_SECRET
         required: false
       repo_ref:
-        description: Immutable 40-character SHA for deploy; defaults to workflow SHA
+        description: Immutable 40-character SHA for deploy/bringup; defaults to workflow SHA
         type: string
         required: false
 
@@ -52,81 +42,15 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 2
-
-      - name: Detect explicit OCI operations requested by main
-        id: ops
-        if: github.event_name == 'push'
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          files=''
-          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            files="$(git diff-tree --no-commit-id --name-only -r "$HEAD_SHA")"
-          else
-            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-              git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
-            fi
-            files="$(git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" --)"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/agent-reboot.request' <<<"$files"; then
-            echo 'reboot=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'reboot=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/bringup.request' <<<"$files"; then
-            echo 'bringup=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'bringup=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/backend-diagnose.request' <<<"$files"; then
-            echo 'backend_diagnose=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'backend_diagnose=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/mongo-target-diagnose.request' <<<"$files"; then
-            echo 'mongo_target_diagnose=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'mongo_target_diagnose=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/mongo-network-diagnose.request' <<<"$files"; then
-            echo 'mongo_network_diagnose=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'mongo_network_diagnose=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/reserved-egress.request' <<<"$files"; then
-            echo 'reserved_egress=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'reserved_egress=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Fxq 'infra/oci/ops/vault-bootstrap.request' <<<"$files"; then
-            echo 'vault_bootstrap=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'vault_bootstrap=false' >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Setup Python for Render-only Mongo target diagnosis
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.mongo_target_diagnose == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose')
+        if: inputs.operation == 'mongo-target-diagnose'
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
       - name: Restore cached OCI SDK toolchain
-        if: >-
-          (github.event_name != 'push' || steps.ops.outputs.mongo_target_diagnose != 'true') &&
-          (github.event_name != 'workflow_dispatch' || inputs.operation != 'mongo-target-diagnose')
+        if: inputs.operation != 'mongo-target-diagnose'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
@@ -144,17 +68,13 @@ jobs:
           python3 -S scripts/oci_reserve_egress_ip.py --self-test
 
       - name: Diagnose Render staging Mongo target
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.mongo_target_diagnose == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose')
+        if: inputs.operation == 'mongo-target-diagnose'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
 
       - name: Wait for OCI Run Command registration before runtime sync
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
+        if: inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'
         shell: bash
         run: |
           set -euo pipefail
@@ -179,72 +99,51 @@ jobs:
           done
 
       - name: Sync private runtime config
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
+        if: inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_runtime_config.py sync
 
       - name: Bootstrap missing OCI Vault values from Render staging
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.vault_bootstrap == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-bootstrap')
+        if: inputs.operation == 'vault-bootstrap'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_vault_bootstrap.py bootstrap
 
       - name: Validate CURRENT OCI Vault runtime secrets
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.vault_bootstrap == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate')
+        if: inputs.operation == 'vault-bootstrap' || inputs.operation == 'vault-validate'
         run: python3 scripts/oci_vault_runtime.py validate
 
       - name: Validate one PENDING OCI Vault rotation
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate-pending'
+        if: inputs.operation == 'vault-validate-pending'
         env:
           VAULT_SECRET_KEY: ${{ inputs.secret_key }}
         run: python3 scripts/oci_vault_runtime.py validate-pending --key "$VAULT_SECRET_KEY"
 
       - name: Recover stale OCI agent after explicit request
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.reboot == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent')
+        if: inputs.operation == 'reboot-agent'
         run: python3 scripts/oci_run_command.py reboot-agent
 
       - name: Diagnose OCI agent transport
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'diagnose'
+        if: inputs.operation == 'diagnose'
         run: python3 scripts/oci_run_command.py diagnose
 
       - name: Diagnose OCI backend runtime
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.backend_diagnose == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'backend-diagnose')
+        if: inputs.operation == 'backend-diagnose'
         run: python3 scripts/oci_backend_diagnose.py
 
       - name: Diagnose OCI Mongo network
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.mongo_network_diagnose == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-network-diagnose')
+        if: inputs.operation == 'mongo-network-diagnose'
         run: python3 scripts/oci_mongo_network_diagnose.py
 
       - name: Reserve stable OCI egress IP
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.reserved_egress == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'reserved-egress')
+        if: inputs.operation == 'reserved-egress'
         run: python3 scripts/oci_reserve_egress_ip.py
 
       - name: Smoke OCI agent transport
         id: smoke
-        if: >-
-          (github.event_name == 'push' &&
-            steps.ops.outputs.backend_diagnose != 'true' &&
-            steps.ops.outputs.mongo_target_diagnose != 'true' &&
-            steps.ops.outputs.mongo_network_diagnose != 'true' &&
-            steps.ops.outputs.reserved_egress != 'true') ||
-          (github.event_name == 'workflow_dispatch' &&
-            (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
-        continue-on-error: ${{ github.event_name == 'push' && steps.ops.outputs.bringup == 'true' }}
+        if: inputs.operation == 'smoke' || inputs.operation == 'reboot-agent' || inputs.operation == 'bringup'
+        continue-on-error: ${{ inputs.operation == 'bringup' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -268,18 +167,13 @@ jobs:
             exit "$rc"
           done
 
-      - name: Explain tolerated P0 host-contract drift
-        if: >-
-          github.event_name == 'push' &&
-          steps.ops.outputs.bringup == 'true' &&
-          steps.smoke.outcome == 'failure'
+      - name: Explain tolerated bringup host-contract drift
+        if: inputs.operation == 'bringup' && steps.smoke.outcome == 'failure'
         run: >-
-          echo '::warning::P0 bring-up continues after host-contract smoke failure; the immutable deploy itself remains blocking and proves the effective privileged path.'
+          echo '::warning::Bringup continues after host-contract smoke failure; the immutable deploy itself remains blocking and proves the effective privileged path.'
 
       - name: Deploy immutable backend release
-        if: >-
-          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy')
+        if: inputs.operation == 'deploy' || inputs.operation == 'bringup'
         env:
-          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.sha }}
+          DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
         run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
