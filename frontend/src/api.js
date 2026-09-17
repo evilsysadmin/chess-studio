@@ -47,7 +47,7 @@ export const api = {
     return requestJson(`${BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ fen, level, ...(ghostStyle ? { ghostStyle } : {}) }),
+      body: JSON.stringify({ fen, level, ...(ghostStyle ? { ghostStyle, candidateLimit: 5 } : {}) }),
       timeoutMs: 8000,
       signal,
     });
