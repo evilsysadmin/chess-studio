@@ -25,6 +25,7 @@ export function chroniclesTacticsCombatActive(state) {
 
 export function chroniclesTacticsResolvePlayerAction(previous, next, { forceCombat = false } = {}) {
   if (!next || next === previous) return previous;
+  if (previous?.mapId && next?.mapId && previous.mapId !== next.mapId) return next;
   const shouldResolveEnemyTurn = forceCombat
     || chroniclesTacticsCombatActive(previous)
     || chroniclesTacticsCombatActive(next);
