@@ -13,6 +13,7 @@ export const DEFAULT_COMBAT_UTILITY_OPTIONS = Object.freeze({
   bossDamageCp: 22,
   techniqueCp: 16,
   persistentUnitCp: 55,
+  enemyPersistentCp: 20,
   exposureCp: 35,
 });
 
@@ -33,21 +34,30 @@ export function combatCandidateUtility(candidate, options = {}) {
   const chessScoreCp = finite(candidate.chessScoreCp, 0);
   const hitChance = probability(candidate.hitChance);
   const enemyValue = Math.max(0, finite(candidate.enemyValue, 0));
+  const enemyPersistentValue = Math.max(0, finite(candidate.enemyPersistentValue, 0));
   const ownPersistentValue = Math.max(0, finite(candidate.ownPersistentValue, 0));
   const ownCasualtyRisk = probability(candidate.ownCasualtyRisk);
   const exposureRisk = probability(candidate.exposureRisk);
   const expectedBossDamage = Math.max(0, finite(candidate.expectedBossDamage, 0));
   const techniqueValue = Math.max(0, finite(candidate.techniqueValue, 0));
 
-  const captureCp = enemyValue > 0
-    ? (hitChance * enemyValue * 100) - ((1 - hitChance) * finite(cfg.missTempoCp, 18))
+  // chessScoreCp already evaluates the legal move as if its capture succeeded.
+  // Combat therefore discounts the deterministic chess baseline by the chance
+  // that the capture misses; adding the victim value again would count material
+  // twice and make the CPU irrationally capture-hungry.
+  const captureFailureCp = enemyValue > 0
+    ? (1 - hitChance) * ((enemyValue * 100) + finite(cfg.missTempoCp, 18))
     : 0;
+  // Persistent progression is not represented by normal chess material. A
+  // modest extra value may therefore distinguish two otherwise-near captures,
+  // while the chess-loss guardrail still prevents RPG value buying blunders.
+  const persistentTargetCp = enemyPersistentValue * hitChance * finite(cfg.enemyPersistentCp, 20);
   const bossCp = expectedBossDamage * finite(cfg.bossDamageCp, 22);
   const techniqueCp = techniqueValue * finite(cfg.techniqueCp, 16);
   const veteranRiskCp = ownPersistentValue * ownCasualtyRisk * finite(cfg.persistentUnitCp, 55);
   const exposureCp = exposureRisk * finite(cfg.exposureCp, 35);
 
-  return chessScoreCp + captureCp + bossCp + techniqueCp - veteranRiskCp - exposureCp;
+  return chessScoreCp - captureFailureCp + persistentTargetCp + bossCp + techniqueCp - veteranRiskCp - exposureCp;
 }
 
 export function rankCombatCandidates(candidates, options = {}) {
