@@ -30,9 +30,17 @@ REQUIRED_MATTHIAS = (
     "AnimatedSprite2D",
     "Marker2D",
     "AnimationPlayer",
-    "res://assets/weapon_atlas.svg",
-    "/pawn-slug/matthias/motion/",
+    "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
+    "/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-",
+    "/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-",
+    "/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-",
     "load_webp_from_buffer",
+)
+FORBIDDEN_MATTHIAS = (
+    "MOTION_ATLAS_URL",
+    "PISTOL_SHOOT_URL",
+    "res://assets/weapon_atlas.svg",
+    "_pistol_shoot",
 )
 REQUIRED_ENEMIES = (
     "Sprite2D",
@@ -68,6 +76,10 @@ def validate_contract(path: pathlib.Path, label: str, required: tuple[str, ...],
     for token in required:
         if token not in text:
             violations.append(f"{label} perdió contrato 2D requerido: {token}")
+    if path == MATTHIAS:
+        for token in FORBIDDEN_MATTHIAS:
+            if token in text:
+                violations.append(f"{label} reintrodujo identidad visual legacy: {token}")
 
 
 def validate() -> None:
@@ -93,7 +105,8 @@ def self_test() -> None:
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
-    assert "/pawn-slug/matthias/motion/" in REQUIRED_MATTHIAS
+    assert "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-" in REQUIRED_MATTHIAS
+    assert "MOTION_ATLAS_URL" in FORBIDDEN_MATTHIAS
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     print("OK Pawn Slug Godot 2D gate self-test")

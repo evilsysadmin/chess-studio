@@ -1,26 +1,35 @@
 extends Node2D
 
 # Godot-native 2D Matthias visual controller.
-# One body atlas drives locomotion; weapon sprites stay independent and are
-# attached to Marker2D sockets instead of baking four body atlases.
-const MOTION_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
-const PISTOL_SHOOT_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
-const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
-const FRAME_SIZE := Vector2(96.0, 96.0)
-const ATLAS_COLUMNS := 16
+# Matthias is always rendered from the approved canonical full-body weapon atlases.
+# There is no generic motion-body fallback and firing never swaps character identity.
+const FRAME_SIZE := Vector2(192.0, 192.0)
 const ATLAS_ROWS := 5
 const PLAYER_FOOT_Y := 42.0
-const BODY_SCALE := 1.34
-const SHOOT_FRAME_SIZE := Vector2(192.0, 192.0)
-const SHOOT_FRAMES := 2
-const SHOOT_SCALE := BODY_SCALE * 0.5
-const SHOOT_FOOT_OFFSET := Vector2(0.0, -72.0)
-const SHOOT_SECOND_FRAME_AT := 0.075
-const SHOOT_HOLD_SECONDS := 0.18
+const BODY_SCALE := 0.67
+const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 const JUMP_VISUAL_SPEED_RANGE := 610.0
 const AIR_APEX_SPEED := 90.0
 
+const WEAPON_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-37db67d27387fde0.webp",
+}
+const WEAPON_COLUMNS := {
+    "pistol": 4,
+    "machinegun": 16,
+    "shotgun": 16,
+    "panzerfaust": 16,
+}
+const WEAPON_SOURCE_FACING := {
+    "pistol": 1.0,
+    "machinegun": -1.0,
+    "shotgun": -1.0,
+    "panzerfaust": -1.0,
+}
 const ACTION_ROWS := {
     "idle": 0,
     "walk": 1,
@@ -28,7 +37,14 @@ const ACTION_ROWS := {
     "crouch": 3,
     "jump": 4,
 }
-const ACTION_COUNTS := {
+const PISTOL_ACTION_COUNTS := {
+    "idle": 1,
+    "walk": 4,
+    "run": 4,
+    "crouch": 1,
+    "jump": 1,
+}
+const PREMIUM_ACTION_COUNTS := {
     "idle": 10,
     "walk": 10,
     "run": 16,
@@ -41,12 +57,6 @@ const ACTION_FPS := {
     "run": 8.0,
     "crouch": 8.0,
     "jump": 9.0,
-}
-const WEAPON_FRAME := {
-    "pistol": 0,
-    "machinegun": 1,
-    "shotgun": 2,
-    "panzerfaust": 3,
 }
 const WEAPON_MOTION_SCALE := {
     "pistol": 1.0,
@@ -66,111 +76,54 @@ const WEAPON_FLASH_SCALE := {
     "shotgun": Vector2(1.20, 1.20),
     "panzerfaust": Vector2(1.55, 1.55),
 }
-const WEAPON_SOCKET_DAMPING := {
-    "pistol": 1.0,
-    "machinegun": 0.88,
-    "shotgun": 0.72,
-    "panzerfaust": 0.52,
-}
-
-# Motion is driven by the current AnimatedSprite2D frame, keeping the gun tied
-# to Matthias' gait without authoring a separate body sheet for each weapon.
-const ACTION_SOCKET_MOTION := {
-    "idle": {"x": 0.35, "y": 0.70, "rotation": 0.006},
-    "walk": {"x": 0.90, "y": 1.55, "rotation": 0.016},
-    "run": {"x": 1.45, "y": 2.35, "rotation": 0.026},
-    "crouch": {"x": 0.25, "y": 0.45, "rotation": 0.005},
-    "jump": {"x": 0.55, "y": 1.10, "rotation": 0.010},
-    "apex": {"x": 0.20, "y": 0.45, "rotation": 0.004},
-    "fall": {"x": 0.45, "y": 0.90, "rotation": 0.012},
-}
-
-# Each weapon owns a small authored 2D socket set. Airborne poses distinguish
-# ascent, apex and descent while reusing the same nine body jump frames.
-const WEAPON_POSES := {
+const WEAPON_MUZZLE_POSES := {
     "pistol": {
-        "idle": {"position": Vector2(16.0, -55.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "walk": {"position": Vector2(17.0, -54.0), "rotation": -0.02, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "run": {"position": Vector2(20.0, -53.0), "rotation": -0.05, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "crouch": {"position": Vector2(20.0, -39.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "jump": {"position": Vector2(18.0, -54.0), "rotation": -0.08, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "apex": {"position": Vector2(19.0, -53.0), "rotation": -0.02, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "fall": {"position": Vector2(18.0, -52.0), "rotation": 0.045, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "idle": Vector2(54.0, -55.0), "walk": Vector2(55.0, -54.0), "run": Vector2(58.0, -53.0),
+        "crouch": Vector2(58.0, -39.0), "jump": Vector2(56.0, -54.0), "apex": Vector2(57.0, -53.0), "fall": Vector2(56.0, -52.0),
     },
     "machinegun": {
-        "idle": {"position": Vector2(16.0, -52.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "walk": {"position": Vector2(18.0, -52.0), "rotation": -0.03, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "run": {"position": Vector2(20.0, -50.0), "rotation": -0.08, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "crouch": {"position": Vector2(20.0, -37.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "jump": {"position": Vector2(17.0, -51.0), "rotation": -0.10, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "apex": {"position": Vector2(18.0, -50.0), "rotation": -0.045, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "fall": {"position": Vector2(17.0, -49.0), "rotation": 0.025, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "idle": Vector2(68.0, -53.0), "walk": Vector2(70.0, -53.0), "run": Vector2(72.0, -51.0),
+        "crouch": Vector2(72.0, -38.0), "jump": Vector2(69.0, -52.0), "apex": Vector2(70.0, -51.0), "fall": Vector2(69.0, -50.0),
     },
     "shotgun": {
-        "idle": {"position": Vector2(17.0, -51.0), "rotation": -0.025, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "walk": {"position": Vector2(19.0, -50.0), "rotation": -0.04, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "run": {"position": Vector2(21.0, -49.0), "rotation": -0.09, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "crouch": {"position": Vector2(22.0, -36.0), "rotation": -0.01, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "jump": {"position": Vector2(18.0, -50.0), "rotation": -0.11, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "apex": {"position": Vector2(19.0, -49.0), "rotation": -0.055, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "fall": {"position": Vector2(18.0, -48.0), "rotation": 0.018, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "idle": Vector2(74.0, -52.0), "walk": Vector2(76.0, -51.0), "run": Vector2(78.0, -50.0),
+        "crouch": Vector2(79.0, -37.0), "jump": Vector2(75.0, -51.0), "apex": Vector2(76.0, -50.0), "fall": Vector2(75.0, -49.0),
     },
     "panzerfaust": {
-        "idle": {"position": Vector2(12.0, -50.0), "rotation": -0.03, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "walk": {"position": Vector2(14.0, -49.0), "rotation": -0.05, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "run": {"position": Vector2(17.0, -46.0), "rotation": -0.11, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "crouch": {"position": Vector2(17.0, -34.0), "rotation": 0.02, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "jump": {"position": Vector2(13.0, -48.0), "rotation": -0.12, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "apex": {"position": Vector2(14.0, -47.0), "rotation": -0.07, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "fall": {"position": Vector2(13.0, -46.0), "rotation": -0.005, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "idle": Vector2(73.0, -52.0), "walk": Vector2(75.0, -51.0), "run": Vector2(78.0, -48.0),
+        "crouch": Vector2(78.0, -36.0), "jump": Vector2(74.0, -50.0), "apex": Vector2(75.0, -49.0), "fall": Vector2(74.0, -48.0),
     },
 }
 
-# SpriteFrames resources are immutable after construction here, so sharing them
-# across Matthias remounts is safe: playback/frame state belongs to each node.
-static var _cached_body_frames: SpriteFrames
-static var _cached_pistol_shoot_frames: SpriteFrames
+static var _cached_weapon_frames: Dictionary = {}
 
 var _body_ready := false
-var _pistol_shoot_ready := false
 var _weapon := "pistol"
 var _action := "idle"
 var _facing := 1.0
 var _vertical_speed := 0.0
 var _on_floor := false
 var _crouching := false
-var _shoot_age := SHOOT_HOLD_SECONDS
 var _muzzle_remaining := 0.0
 var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _dead := false
 var _was_hurt := false
 var _was_dead := false
+var _request_serial := 0
+var _requested_weapon := ""
 
 var _facing_root: Node2D
 var _fx_root: Node2D
 var _body: AnimatedSprite2D
-var _pistol_shoot: AnimatedSprite2D
-var _weapon_root: Marker2D
-var _weapon_sprite: Sprite2D
 var _muzzle: Marker2D
 var _muzzle_flash: Polygon2D
 var _fx_player: AnimationPlayer
-var _motion_request: HTTPRequest
-var _pistol_shoot_request: HTTPRequest
 
 func _ready() -> void:
     _build_native_nodes()
     _build_fx_animations()
-    _load_weapon_texture()
-    if _cached_body_frames != null:
-        _install_body_frames(_cached_body_frames)
-    else:
-        _request_motion_atlas()
-    if _cached_pistol_shoot_frames != null:
-        _install_pistol_shoot_frames(_cached_pistol_shoot_frames)
-    else:
-        _request_pistol_shoot()
+    _ensure_weapon_atlas()
 
 func body_ready() -> bool:
     return _body_ready
@@ -179,11 +132,16 @@ func current_weapon() -> String:
     return _weapon
 
 func set_weapon(kind: String) -> void:
-    _weapon = kind if WEAPON_FRAME.has(kind) else "pistol"
-    _apply_weapon_frame()
-    _sync_weapon_pose()
-    if _body_ready and not _dead:
-        _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
+    var next_weapon := kind if WEAPON_URLS.has(kind) else "pistol"
+    if next_weapon == _weapon and (_body_ready or _requested_weapon == next_weapon):
+        return
+    _weapon = next_weapon
+    _body_ready = false
+    if _body != null:
+        _body.visible = false
+    _request_serial += 1
+    _ensure_weapon_atlas()
+    _sync_muzzle_pose()
     _sync_shoot_visibility()
 
 func set_combat_state(
@@ -233,10 +191,6 @@ func update_visual(
     if fired_now and not _dead and _hurt_remaining <= 0.0:
         _play_recoil_fx()
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
-        if _weapon == "pistol" and _on_floor and not _crouching:
-            _shoot_age = 0.0
-    else:
-        _shoot_age += delta
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
 
@@ -247,7 +201,7 @@ func update_visual(
     elif _action == "jump" and _body_ready:
         _sync_jump_frame()
 
-    _sync_weapon_pose()
+    _sync_muzzle_pose()
     _sync_modulate()
     _sync_shoot_visibility()
 
@@ -271,6 +225,9 @@ func _visual_pose_key() -> String:
         return "fall"
     return "apex"
 
+func _action_counts() -> Dictionary:
+    return PISTOL_ACTION_COUNTS if _weapon == "pistol" else PREMIUM_ACTION_COUNTS
+
 func _build_native_nodes() -> void:
     _facing_root = Node2D.new()
     _facing_root.name = "FacingRoot"
@@ -282,47 +239,22 @@ func _build_native_nodes() -> void:
     _facing_root.add_child(_fx_root)
 
     _body = AnimatedSprite2D.new()
-    _body.name = "Body"
-    _body.position = Vector2(0.0, -48.0 * BODY_SCALE)
+    _body.name = "CanonicalBody"
+    _body.position = Vector2(0.0, -BODY_CENTER_TO_FOOT * BODY_SCALE)
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
     _body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
     _body.visible = false
     _fx_root.add_child(_body)
 
-    _pistol_shoot = AnimatedSprite2D.new()
-    _pistol_shoot.name = "PistolShoot"
-    _pistol_shoot.offset = SHOOT_FOOT_OFFSET
-    _pistol_shoot.scale = Vector2(SHOOT_SCALE, SHOOT_SCALE)
-    _pistol_shoot.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-    _pistol_shoot.visible = false
-    _fx_root.add_child(_pistol_shoot)
-
-    _weapon_root = Marker2D.new()
-    _weapon_root.name = "WeaponRoot"
-    _fx_root.add_child(_weapon_root)
-
-    _weapon_sprite = Sprite2D.new()
-    _weapon_sprite.name = "Weapon"
-    _weapon_sprite.centered = true
-    _weapon_sprite.region_enabled = true
-    _weapon_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-    _weapon_root.add_child(_weapon_sprite)
-
     _muzzle = Marker2D.new()
     _muzzle.name = "Muzzle"
-    _weapon_root.add_child(_muzzle)
+    _fx_root.add_child(_muzzle)
 
     _muzzle_flash = Polygon2D.new()
     _muzzle_flash.name = "MuzzleFlash"
     _muzzle_flash.polygon = PackedVector2Array([
-        Vector2(0.0, 0.0),
-        Vector2(9.0, -3.0),
-        Vector2(14.0, 0.0),
-        Vector2(9.0, 3.0),
-        Vector2(0.0, 0.0),
-        Vector2(4.0, -7.0),
-        Vector2(7.0, 0.0),
-        Vector2(4.0, 7.0),
+        Vector2(0.0, 0.0), Vector2(9.0, -3.0), Vector2(14.0, 0.0), Vector2(9.0, 3.0),
+        Vector2(0.0, 0.0), Vector2(4.0, -7.0), Vector2(7.0, 0.0), Vector2(4.0, 7.0),
     ])
     _muzzle_flash.color = Color("ffd36a")
     _muzzle_flash.visible = false
@@ -333,178 +265,92 @@ func _build_native_nodes() -> void:
     _fx_player.root_node = NodePath("..")
     add_child(_fx_player)
 
-func _load_weapon_texture() -> void:
-    var texture := load(WEAPON_ATLAS_PATH) as Texture2D
-    if texture == null:
-        _weapon_sprite.visible = false
+func _sync_muzzle_pose() -> void:
+    if _muzzle == null:
         return
-    _weapon_sprite.texture = texture
-    _weapon_sprite.visible = true
-    _apply_weapon_frame()
-
-func _apply_weapon_frame() -> void:
-    if _weapon_sprite == null:
-        return
-    var index := int(WEAPON_FRAME.get(_weapon, 0))
-    _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
-
-func _weapon_pose() -> Dictionary:
-    var weapon_poses: Dictionary = WEAPON_POSES.get(_weapon, WEAPON_POSES["pistol"])
-    var pose_key := _visual_pose_key()
-    return weapon_poses.get(pose_key, weapon_poses["idle"])
-
-func _body_frame_phase() -> float:
-    if not _body_ready or _body == null:
-        return 0.0
-    var count := maxi(1, int(ACTION_COUNTS.get(_action, 1)))
-    return TAU * (float(_body.frame) / float(count))
-
-func _socket_motion_offset() -> Dictionary:
-    var pose_key := _visual_pose_key()
-    var profile: Dictionary = ACTION_SOCKET_MOTION.get(pose_key, ACTION_SOCKET_MOTION["idle"])
-    var phase := _body_frame_phase()
-    var damping := float(WEAPON_SOCKET_DAMPING.get(_weapon, 1.0))
-    var wave := sin(phase)
-    var bob_wave := sin(phase * 2.0) if pose_key in ["walk", "run"] else wave
-    return {
-        "position": Vector2(
-            cos(phase) * float(profile["x"]),
-            bob_wave * float(profile["y"]),
-        ) * damping,
-        "rotation": wave * float(profile["rotation"]) * damping,
-    }
-
-func _sync_weapon_pose() -> void:
-    if _weapon_root == null:
-        return
-    var pose := _weapon_pose()
-    var motion := _socket_motion_offset()
-    _weapon_root.position = pose["position"] + motion["position"]
-    _weapon_root.rotation = float(pose["rotation"]) + float(motion["rotation"])
-    _weapon_sprite.scale = pose["scale"]
-    _muzzle.position = pose["muzzle"]
+    var poses: Dictionary = WEAPON_MUZZLE_POSES.get(_weapon, WEAPON_MUZZLE_POSES["pistol"])
+    _muzzle.position = poses.get(_visual_pose_key(), poses["idle"])
     _muzzle_flash.scale = WEAPON_FLASH_SCALE.get(_weapon, Vector2.ONE)
 
-func _authored_pistol_shoot_active() -> bool:
-    return (
-        _pistol_shoot_ready
-        and _weapon == "pistol"
-        and _on_floor
-        and not _crouching
-        and not _dead
-        and _hurt_remaining <= 0.0
-        and _shoot_age < SHOOT_HOLD_SECONDS
-    )
-
 func _sync_shoot_visibility() -> void:
-    var show_shoot := _authored_pistol_shoot_active()
     if _body != null:
-        _body.visible = _body_ready and not show_shoot
-    if _weapon_sprite != null:
-        _weapon_sprite.visible = _weapon_sprite.texture != null and not show_shoot
-    if _pistol_shoot != null:
-        _pistol_shoot.visible = show_shoot
-        if show_shoot:
-            _pistol_shoot.animation = "shoot"
-            _pistol_shoot.frame = 0 if _shoot_age < SHOOT_SECOND_FRAME_AT else 1
+        _body.visible = _body_ready
     if _muzzle_flash != null:
-        _muzzle_flash.visible = _muzzle_remaining > 0.0 and not _dead and not show_shoot
+        _muzzle_flash.visible = _muzzle_remaining > 0.0 and not _dead and _body_ready
 
-func _request_motion_atlas() -> void:
-    _motion_request = HTTPRequest.new()
-    _motion_request.name = "MotionAtlasRequest"
-    add_child(_motion_request)
-    _motion_request.request_completed.connect(_on_motion_atlas_loaded)
-    if _motion_request.request(MOTION_ATLAS_URL) != OK:
-        _motion_request.queue_free()
-        _motion_request = null
+func _ensure_weapon_atlas() -> void:
+    if _cached_weapon_frames.has(_weapon):
+        _install_weapon_frames(_weapon, _cached_weapon_frames[_weapon])
+        return
+    _request_weapon_atlas(_weapon, _request_serial)
 
-func _on_motion_atlas_loaded(
+func _request_weapon_atlas(weapon_id: String, serial: int) -> void:
+    if _requested_weapon == weapon_id:
+        return
+    _requested_weapon = weapon_id
+    var request := HTTPRequest.new()
+    request.name = "CanonicalAtlasRequest_%s_%d" % [weapon_id, serial]
+    add_child(request)
+    request.request_completed.connect(_on_weapon_atlas_loaded.bind(weapon_id, serial, request))
+    if request.request(String(WEAPON_URLS[weapon_id])) != OK:
+        if _requested_weapon == weapon_id:
+            _requested_weapon = ""
+        request.queue_free()
+
+func _on_weapon_atlas_loaded(
     result: int,
     response_code: int,
     _headers: PackedStringArray,
     bytes: PackedByteArray,
+    weapon_id: String,
+    serial: int,
+    request: HTTPRequest,
 ) -> void:
-    if _motion_request != null:
-        _motion_request.queue_free()
-        _motion_request = null
+    if is_instance_valid(request):
+        request.queue_free()
+    if _requested_weapon == weapon_id:
+        _requested_weapon = ""
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         return
 
     var image := Image.new()
     if image.load_webp_from_buffer(bytes) != OK:
         return
-    if image.get_width() != int(FRAME_SIZE.x) * ATLAS_COLUMNS:
+    var expected_columns := int(WEAPON_COLUMNS.get(weapon_id, 16))
+    if image.get_width() != int(FRAME_SIZE.x) * expected_columns:
         return
     if image.get_height() != int(FRAME_SIZE.y) * ATLAS_ROWS:
         return
 
     var atlas := ImageTexture.create_from_image(image)
-    _cached_body_frames = _make_sprite_frames(atlas)
-    _install_body_frames(_cached_body_frames)
+    var frames := _make_sprite_frames(atlas, weapon_id)
+    _cached_weapon_frames[weapon_id] = frames
+    if weapon_id == _weapon and serial == _request_serial:
+        _install_weapon_frames(weapon_id, frames)
 
-func _request_pistol_shoot() -> void:
-    _pistol_shoot_request = HTTPRequest.new()
-    _pistol_shoot_request.name = "PistolShootRequest"
-    add_child(_pistol_shoot_request)
-    _pistol_shoot_request.request_completed.connect(_on_pistol_shoot_loaded)
-    if _pistol_shoot_request.request(PISTOL_SHOOT_URL) != OK:
-        _pistol_shoot_request.queue_free()
-        _pistol_shoot_request = null
-
-func _on_pistol_shoot_loaded(
-    result: int,
-    response_code: int,
-    _headers: PackedStringArray,
-    bytes: PackedByteArray,
-) -> void:
-    if _pistol_shoot_request != null:
-        _pistol_shoot_request.queue_free()
-        _pistol_shoot_request = null
-    if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        return
-
-    var image := Image.new()
-    if image.load_webp_from_buffer(bytes) != OK:
-        return
-    if image.get_width() != int(SHOOT_FRAME_SIZE.x) * SHOOT_FRAMES:
-        return
-    if image.get_height() != int(SHOOT_FRAME_SIZE.y):
-        return
-
-    var atlas := ImageTexture.create_from_image(image)
-    _cached_pistol_shoot_frames = _make_pistol_shoot_frames(atlas)
-    _install_pistol_shoot_frames(_cached_pistol_shoot_frames)
-
-func _install_body_frames(frames: SpriteFrames) -> void:
-    if frames == null or _body == null:
+func _install_weapon_frames(weapon_id: String, frames: SpriteFrames) -> void:
+    if weapon_id != _weapon or frames == null or _body == null:
         return
     _body.sprite_frames = frames
+    var source_facing := float(WEAPON_SOURCE_FACING.get(weapon_id, 1.0))
+    _body.scale = Vector2(BODY_SCALE * source_facing, BODY_SCALE)
     _body_ready = true
     _body.visible = true
     _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
     _play_body_action(_action, true)
     _sync_shoot_visibility()
 
-func _install_pistol_shoot_frames(frames: SpriteFrames) -> void:
-    if frames == null or _pistol_shoot == null:
-        return
-    _pistol_shoot.sprite_frames = frames
-    _pistol_shoot_ready = true
-    _pistol_shoot.animation = "shoot"
-    _pistol_shoot.pause()
-    _sync_shoot_visibility()
-
-func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
+func _make_sprite_frames(atlas: Texture2D, weapon_id: String) -> SpriteFrames:
     var frames := SpriteFrames.new()
     if frames.has_animation("default"):
         frames.remove_animation("default")
+    var counts: Dictionary = PISTOL_ACTION_COUNTS if weapon_id == "pistol" else PREMIUM_ACTION_COUNTS
 
     for action in ACTION_ROWS.keys():
         frames.add_animation(action)
         frames.set_animation_speed(action, float(ACTION_FPS[action]))
         frames.set_animation_loop(action, action in ["idle", "walk", "run"])
-        var count := int(ACTION_COUNTS[action])
+        var count := int(counts[action])
         for frame_index in range(count):
             var frame_texture := AtlasTexture.new()
             frame_texture.atlas = atlas
@@ -513,22 +359,6 @@ func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
                 FRAME_SIZE,
             )
             frames.add_frame(action, frame_texture)
-    return frames
-
-func _make_pistol_shoot_frames(atlas: Texture2D) -> SpriteFrames:
-    var frames := SpriteFrames.new()
-    if frames.has_animation("default"):
-        frames.remove_animation("default")
-    frames.add_animation("shoot")
-    frames.set_animation_loop("shoot", false)
-    for frame_index in range(SHOOT_FRAMES):
-        var frame_texture := AtlasTexture.new()
-        frame_texture.atlas = atlas
-        frame_texture.region = Rect2(
-            Vector2(frame_index * SHOOT_FRAME_SIZE.x, 0.0),
-            SHOOT_FRAME_SIZE,
-        )
-        frames.add_frame("shoot", frame_texture)
     return frames
 
 func _play_body_action(action: String, force_restart := false) -> void:
@@ -545,7 +375,11 @@ func _play_body_action(action: String, force_restart := false) -> void:
 func _sync_jump_frame() -> void:
     if not _body_ready or _body.animation != "jump":
         return
-    var count := int(ACTION_COUNTS["jump"])
+    var counts := _action_counts()
+    var count := int(counts["jump"])
+    if count <= 1:
+        _body.frame = 0
+        return
     var phase := clampf(
         (_vertical_speed + JUMP_VISUAL_SPEED_RANGE) / (JUMP_VISUAL_SPEED_RANGE * 2.0),
         0.0,
