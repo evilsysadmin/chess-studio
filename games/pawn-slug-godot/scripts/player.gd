@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 signal fired(origin: Vector2, direction: float)
+signal health_changed(current: int, maximum: int)
 
 const MOVE_SPEED := 330.0
 const GROUND_ACCEL := 2200.0
@@ -11,15 +12,25 @@ const GRAVITY := 1550.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
 const FIRE_INTERVAL := 0.16
+const MAX_HEALTH := 3
+const INVULNERABILITY_TIME := 0.65
 
+var health := MAX_HEALTH
 var facing := 1.0
 var fire_cooldown := 0.0
 var muzzle_flash := 0.0
+var invulnerability_remaining := 0.0
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
+var _spawn_position := Vector2.ZERO
+
+func _ready() -> void:
+    _spawn_position = global_position
 
 func _physics_process(delta: float) -> void:
+    invulnerability_remaining = maxf(0.0, invulnerability_remaining - delta)
+
     var axis := _movement_axis()
     if absf(axis) > 0.08:
         facing = 1.0 if axis > 0.0 else -1.0
@@ -61,6 +72,23 @@ func _physics_process(delta: float) -> void:
 
     queue_redraw()
 
+func take_hit(amount: int = 1) -> bool:
+    if invulnerability_remaining > 0.0:
+        return false
+
+    health = maxi(0, health - maxi(1, amount))
+    invulnerability_remaining = INVULNERABILITY_TIME
+    if health <= 0:
+        global_position = _spawn_position
+        velocity = Vector2.ZERO
+        health = MAX_HEALTH
+    health_changed.emit(health, MAX_HEALTH)
+    queue_redraw()
+    return true
+
+func contains_world_point(point: Vector2) -> bool:
+    return Rect2(global_position - Vector2(24.0, 42.0), Vector2(48.0, 84.0)).has_point(point)
+
 func _movement_axis() -> float:
     var axis := 0.0
     if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
@@ -88,6 +116,9 @@ func _fire_pressed() -> bool:
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_X)
 
 func _draw() -> void:
+    if invulnerability_remaining > 0.0 and int(Time.get_ticks_msec() / 70) % 2 == 0:
+        return
+
     draw_rect(Rect2(Vector2(-24.0, -26.0), Vector2(48.0, 58.0)), Color("20262c"), true)
     draw_circle(Vector2(0.0, -43.0), 24.0, Color("d7c2a0"))
     draw_rect(Rect2(Vector2(-30.0, -69.0), Vector2(60.0, 10.0)), Color("11151a"), true)
