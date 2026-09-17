@@ -79,4 +79,4 @@ jobs:
         with: {version: '2.185.2', python-version: '3.13'}
       - run: |
           python3 scripts/oci_k3s_bundle_publish.py reconcile
-          python3 scripts/oci_k3s_bundle_probe.py probe
+          python3 scripts/oci_k3s_bundle_probe.py install
