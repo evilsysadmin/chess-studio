@@ -4,7 +4,6 @@ import {
   chroniclesEnemyIsActive,
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
-import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyGridFootprint } from './chroniclesPartyFootprint.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
@@ -59,6 +58,12 @@ const RUBBLE = Object.freeze([
 
 export function chroniclesIsoWorldForCell(x, y, scenePlan = chroniclesIsometricScenePlan()) {
   const world = chroniclesIsometricCellToWorld(scenePlan, x, y, CELL);
+  return new THREE.Vector3(world.x, world.y, world.z);
+}
+
+export function chroniclesIsoWorldForContent(geometryPlan, contentId) {
+  const world = geometryPlan?.content?.find((content) => content.id === contentId)?.world;
+  if (!world) return null;
   return new THREE.Vector3(world.x, world.y, world.z);
 }
 
@@ -320,21 +325,23 @@ function buildIsoDungeon({
     root.add(trim);
   });
 
-  const sigilWorld = chroniclesIsoWorldForCell(3, 4, scenePlan);
+  const sigilWorld = chroniclesIsoWorldForContent(geometryPlan, 'ancient-sigil');
   const sigil = addMesh(
     root,
     new THREE.TorusGeometry(0.62, 0.085, 8, coarsePointer ? 18 : 30),
     brass,
-    [sigilWorld.x, 0.035, sigilWorld.z],
+    [sigilWorld?.x ?? 0, 0.035, sigilWorld?.z ?? 0],
     'chronicles-iso-sigil',
     { castShadow: false, receiveShadow: false },
   );
   sigil.rotation.x = -Math.PI / 2;
+  sigil.visible = Boolean(sigilWorld);
 
-  const leverCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.lever.x, CHRONICLES_TACTICS_WORLD.lever.y, scenePlan);
+  const leverCell = chroniclesIsoWorldForContent(geometryPlan, 'rune-cache-lever');
   const leverRoot = new THREE.Group();
   leverRoot.name = 'chronicles-iso-rune-cache-lever';
-  leverRoot.position.set(leverCell.x + 0.62, 0, leverCell.z - 0.56);
+  leverRoot.position.set((leverCell?.x ?? 0) + 0.62, 0, (leverCell?.z ?? 0) - 0.56);
+  leverRoot.visible = Boolean(leverCell);
   const leverBase = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.34), wallTrim);
   leverBase.position.y = 0.13;
   leverBase.castShadow = !coarsePointer;
@@ -352,10 +359,11 @@ function buildIsoDungeon({
   leverRoot.add(leverPivot);
   root.add(leverRoot);
 
-  const runeCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.runeCore.x, CHRONICLES_TACTICS_WORLD.runeCore.y, scenePlan);
+  const runeCell = chroniclesIsoWorldForContent(geometryPlan, 'rune-core');
   const runeCoreRoot = new THREE.Group();
   runeCoreRoot.name = 'chronicles-iso-rune-core';
-  runeCoreRoot.position.set(runeCell.x + 0.42, 0.18, runeCell.z + 0.2);
+  runeCoreRoot.position.set((runeCell?.x ?? 0) + 0.42, 0.18, (runeCell?.z ?? 0) + 0.2);
+  runeCoreRoot.userData.chroniclesIsoAuthored = Boolean(runeCell);
   const runeCradle = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 8, coarsePointer ? 16 : 24), brass);
   runeCradle.rotation.x = -Math.PI / 2;
   runeCradle.position.y = 0.08;
@@ -438,7 +446,8 @@ function buildTorches(scene, { coarsePointer }) {
     glow.position.y = 1.05;
     glow.scale.set(0.8, 1.45, 0.8);
     const baseIntensity = coarsePointer ? 2.35 : 3.05;
-    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 6.8 : 8.8, 2);
+    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 2.35 : 3.05, 2);
+    light.distance = coarsePointer ? 6.8 : 8.8;
     light.position.y = 1.02;
     root.add(stem, cup, glow, flame, light);
     root.position.set(cell.x + ox, 0, cell.z + oz);
@@ -792,7 +801,9 @@ export function createChroniclesIsometricGame(host, {
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.24;
     const worldObjects = chroniclesIsoWorldObjectState(state);
     dungeon.leverPivot.rotation.z = worldObjects.leverPulled ? -0.74 : 0.58;
-    dungeon.runeCoreRoot.visible = worldObjects.runeCoreVisible;
+    dungeon.runeCoreRoot.visible = Boolean(
+      dungeon.runeCoreRoot.userData.chroniclesIsoAuthored && worldObjects.runeCoreVisible,
+    );
     dungeon.runeMaterial.emissiveIntensity = worldObjects.runeCoreVisible ? 1.7 : 0.25;
     syncSelection({ immediate: reducedMotion });
     syncInteraction(nextInteraction);
