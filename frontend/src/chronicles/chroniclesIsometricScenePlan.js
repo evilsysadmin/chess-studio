@@ -5,7 +5,6 @@ import {
 import {
   chroniclesContentDefinition,
   chroniclesContentVisible,
-  chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
 import { chroniclesIsometricSceneStyle } from './chroniclesIsometricSceneStyles.js';
 
@@ -59,19 +58,24 @@ function exposedWallFaces(grid) {
   })));
 }
 
+function contentActivated(runtimeState, definition) {
+  if (!runtimeState || !definition) return false;
+  const whenKeys = new Set((definition.when || []).map((requirement) => requirement?.key).filter(Boolean));
+  return (definition.action?.effects || []).some((effect) => (
+    effect?.type === 'set'
+    && effect.key
+    && whenKeys.has(effect.key)
+    && runtimeState[effect.key] === effect.value
+  ));
+}
+
 function contentPlan(runtimeState, map, renderPlan) {
   return Object.freeze(renderPlan.content.map((entry) => {
     const definition = chroniclesContentDefinition(map, entry.id);
-    const activeWhen = definition?.visual?.activeWhen;
     return Object.freeze({
       ...entry,
       visible: chroniclesContentVisible(runtimeState, definition),
-      active: Boolean(
-        runtimeState
-        && Array.isArray(activeWhen)
-        && activeWhen.length > 0
-        && chroniclesRequirementsMet(runtimeState, activeWhen),
-      ),
+      active: contentActivated(runtimeState, definition),
     });
   }));
 }
