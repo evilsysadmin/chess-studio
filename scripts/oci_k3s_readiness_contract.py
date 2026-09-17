@@ -118,7 +118,7 @@ assert "github.event.workflow_run" not in service
 assert "auto_admission" not in service
 assert "git ls-remote origin refs/heads/main" not in service
 assert "ref: ${{ github.sha }}" in service
-assert "group: oci-staging-mutations" in service
+assert "'oci-staging-mutations'" in service
 assert "Start or ensure guarded single-node K3s" in service
 assert "python3 scripts/oci_k3s_control.py start" in service
 assert "python3 scripts/oci_k3s_control.py rollback" in service
