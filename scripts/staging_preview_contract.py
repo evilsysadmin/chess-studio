@@ -15,6 +15,7 @@ STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
+OCI_RELEASE_DEPLOY = ROOT / "scripts/oci_release_deploy.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
 STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
@@ -59,6 +60,7 @@ def main() -> int:
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
         OCI_RUN_COMMAND,
+        OCI_RELEASE_DEPLOY,
         OCI_RUNTIME_BUNDLE,
     )
     for path in paths:
@@ -78,6 +80,7 @@ def main() -> int:
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
     staging_release_identity = STAGING_RELEASE_IDENTITY.read_text(encoding="utf-8")
     oci_run_command = OCI_RUN_COMMAND.read_text(encoding="utf-8")
+    oci_release_deploy = OCI_RELEASE_DEPLOY.read_text(encoding="utf-8")
     oci_runtime_bundle = OCI_RUNTIME_BUNDLE.read_text(encoding="utf-8")
 
     # Preview remains manual and frontend-only.
@@ -122,7 +125,7 @@ def main() -> int:
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
-        ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
+        ('python3 scripts/oci_release_deploy.py deploy --repo-ref "$DEPLOY_SHA"', "OCI release-only deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker generation", "generation Worker deploy"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
@@ -155,16 +158,37 @@ def main() -> int:
         "Legacy contract phrase",
     ):
         forbid(staging_deploy, needle, "staging generation conserva dependencia/orchestration legado prohibido", errors)
+    forbid(
+        staging_deploy,
+        'python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"',
+        "canonical staging usa el deploy legacy que rematerializa runtime",
+        errors,
+    )
 
-    # Run Command owns its bounded readiness wait; orchestration does not poll it.
+    # Transport owns the bounded registration wait; the release-only helper opts
+    # into it while orchestration itself never polls Run Command registration.
     for needle, label in (
         ("PLUGIN_REGISTRATION_TIMEOUT_SECONDS = 300", "Run Command bounded registration wait"),
         ("PLUGIN_REGISTRATION_RETRY_SECONDS = 5", "Run Command registration retry cadence"),
         ("def plugin_registration_is_pending", "Run Command missing-plugin classifier"),
         ("wait_for_registration: bool = False", "Run Command opt-in readiness wait"),
-        ("diagnose_plugin(oci, config, wait_for_registration=True)", "deploy enables readiness wait"),
     ):
         require(oci_run_command, needle, label, errors)
+    for needle, label in (
+        ("def release_command", "release-only command builder"),
+        ("diagnose_plugin(oci, config, wait_for_registration=True)", "release deploy enables bounded readiness wait"),
+        ("sudo --non-interactive", "release deploy privileged stable wrapper call"),
+    ):
+        require(oci_release_deploy, needle, label, errors)
+    for needle in (
+        "ObjectStorageClient",
+        "InstancePrincipalsSecurityTokenSigner",
+        "chess-studio-install-runtime",
+        "backend.env",
+        "COMMIT_SHA=",
+        "pip install",
+    ):
+        forbid(oci_release_deploy, needle, "release helper contiene acoplamiento de runtime prohibido", errors)
 
     # The private runtime reader is intentionally tiny and allowlisted.
     for needle, label in (
@@ -192,8 +216,22 @@ def main() -> int:
 
         require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
         require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
-        for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
-            forbid(blocks["backend"], needle, "backend no depende de Render", errors)
+        require(
+            blocks["backend"],
+            "python3 -S scripts/oci_release_deploy.py --self-test",
+            "backend valida helper release-only",
+            errors,
+        )
+        for needle in (
+            "RENDER_API_KEY",
+            "render_staging_bootstrap",
+            "render_service_id",
+            "oci_runtime_config.py",
+            "chess-studio-install-runtime",
+            "ObjectStorageClient",
+            "oci_run_command.py deploy",
+        ):
+            forbid(blocks["backend"], needle, "backend release no materializa runtime ni depende de Render", errors)
 
         require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
         require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
@@ -325,7 +363,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "Render-free canonical release; persistent Worker secret; smoke-integrated N/N/N"
+        "Render-free canonical release; release/runtime decoupled; persistent Worker secret; smoke-integrated N/N/N"
     )
     return 0
 
