@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Deploy the isolated staging Workers AI service with least privilege.
 
-Wrangler uploads only the Worker script and bindings. The Custom Domain is then
-attached through the account-level Workers Domains API, which needs Workers
-Scripts Write but not the broader zone-level Workers Routes permission.
+Normal staging releases upload only Worker code plus the non-sensitive BUILD_SHA.
+CHESS_AI_SHARED_SECRET is a persistent Cloudflare secret binding: Wrangler
+validates that it already exists and preserves it across deploys. Secret rotation
+therefore stays outside the normal application-release path.
 
-The shared secret already lives on the Render staging service. This helper
-validates that service, reads the secret through the authenticated Render API
-and streams it to Wrangler's stdin. The secret is never written to disk, argv
-or logs. The non-sensitive generation SHA is installed through the same binding
-mechanism so /health can prove the exact Worker generation at runtime.
+The Custom Domain is attached through the account-level Workers Domains API,
+which needs Workers Scripts Write but not the broader zone-level Workers Routes
+permission. /health then proves the exact Worker generation at runtime.
 """
 from __future__ import annotations
 
@@ -24,14 +23,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-import render_staging_bootstrap as render
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 CF_API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
-SERVICE_NAME = "chess-study-backend-staging"
 WORKER_NAME = "chess-studio-narrative-ai-staging"
 WORKER_HOSTNAME = "ai-staging.shadowops.dpdns.org"
 WORKER_URL = f"https://{WORKER_HOSTNAME}"
@@ -49,77 +45,6 @@ def required_deploy_sha() -> str:
     if len(value) != 40 or any(char not in "0123456789abcdef" for char in value):
         raise SystemExit(f"DEPLOY_SHA inválido para Workers AI staging: {value!r}")
     return value
-
-
-def unwrap_service(payload: object) -> dict:
-    if not isinstance(payload, dict):
-        return {}
-    service = payload.get("service")
-    return service if isinstance(service, dict) else payload
-
-
-def resolve_staging_service() -> dict:
-    service = render.find_service(SERVICE_NAME)
-    if not service or not service.get("id"):
-        raise SystemExit(f"No existe un único servicio Render {SERVICE_NAME}")
-    return service
-
-
-def validate_service(service_id: str) -> str:
-    service = unwrap_service(render.api("GET", f"/services/{service_id}"))
-    if str(service.get("name") or "") != SERVICE_NAME:
-        raise SystemExit("El service ID no corresponde al backend de staging; no se lee ningún secreto")
-    if (render.read_env(service_id, "ENVIRONMENT") or "").strip().lower() != "staging":
-        raise SystemExit("El servicio no declara ENVIRONMENT=staging; aborto fail-closed")
-    if (render.read_env(service_id, "MONGO_DB_NAME") or "").strip() != "chess_study_staging":
-        raise SystemExit("El servicio no apunta a chess_study_staging; aborto fail-closed")
-    if (render.read_env(service_id, "CF_AI_WORKER_URL") or "").rstrip("/") != WORKER_URL:
-        raise SystemExit("CF_AI_WORKER_URL de staging no apunta al Worker aislado esperado")
-    secret = render.read_env(service_id, "CHESS_AI_SHARED_SECRET") or ""
-    if len(secret) < 32:
-        raise SystemExit("CHESS_AI_SHARED_SECRET de staging falta o es demasiado corto")
-    return secret
-
-
-def wait_for_render_contract(
-    service_id: str = "",
-    *,
-    attempts: int = 150,
-    interval: float = 2.0,
-) -> tuple[str, str]:
-    """Resolve a valid staging service while Render reconcile runs in parallel.
-
-    Normal deploys return on the first attempt. On a first bootstrap or after
-    recoverable configuration drift, the backend control-plane job may still be
-    creating/reconciling the service. Retrying here removes a false dependency
-    between Workers AI and the full Render reconcile without relaxing any of the
-    service identity, environment, database or shared-secret checks.
-    """
-    last_error = ""
-    for attempt in range(1, attempts + 1):
-        try:
-            candidate_id = service_id or str(resolve_staging_service()["id"])
-            secret = validate_service(candidate_id)
-            if attempt > 1:
-                print(
-                    f"Render staging ya acredita el contrato Worker "
-                    f"(intento {attempt}/{attempts})"
-                )
-            return candidate_id, secret
-        except SystemExit as exc:
-            last_error = str(exc)
-            if attempt >= attempts:
-                break
-            print(
-                "Render staging aún no acredita el contrato Worker; "
-                f"reconcile puede seguir en curso (intento {attempt}/{attempts}): {last_error}"
-            )
-            time.sleep(interval)
-
-    raise SystemExit(
-        "Render staging no quedó listo para sincronizar Workers AI tras "
-        f"{attempts * interval:.0f}s: {last_error or 'estado desconocido'}"
-    )
 
 
 def cf_request(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
@@ -231,13 +156,7 @@ def runtime_health() -> tuple[int, dict]:
 
 
 def wait_for_runtime_build(deploy_sha: str, *, attempts: int = 60, interval: float = 2.0) -> None:
-    """Wait until the Custom Domain serves the exact version just deployed.
-
-    Cloudflare version/deployment updates are asynchronous at the edge. A plain
-    HTTP-200 health check can therefore observe the previous healthy version for
-    a short window after `wrangler secret put BUILD_SHA` returns. Accreditation
-    must wait for identity, not merely liveness.
-    """
+    """Wait until the Custom Domain serves the exact version just deployed."""
     last_status = 0
     last_build = ""
     for attempt in range(1, attempts + 1):
@@ -254,7 +173,8 @@ def wait_for_runtime_build(deploy_sha: str, *, attempts: int = 60, interval: flo
             time.sleep(interval)
     raise SystemExit(
         "Workers AI staging no convergió a la generación exacta tras "
-        f"{attempts * interval:.0f}s: HTTP {last_status or 'error'}, build={last_build or '<vacío>'}, esperaba {deploy_sha}"
+        f"{attempts * interval:.0f}s: HTTP {last_status or 'error'}, "
+        f"build={last_build or '<vacío>'}, esperaba {deploy_sha}"
     )
 
 
@@ -290,6 +210,10 @@ def self_test() -> None:
     if "routes" in config:
         raise SystemExit("Wrangler staging no debe declarar routes; Custom Domains se gestionan por API account-level")
 
+    secrets = config.get("secrets")
+    if not isinstance(secrets, dict) or secrets.get("required") != ["CHESS_AI_SHARED_SECRET"]:
+        raise SystemExit("Wrangler staging debe exigir el secreto persistente CHESS_AI_SHARED_SECRET")
+
     wrapper = STAGING_WRAPPER.read_text(encoding="utf-8") if STAGING_WRAPPER.exists() else ""
     if "BUILD_SHA" not in wrapper or "./index.js" not in wrapper or "'/health'" not in wrapper:
         raise SystemExit("Wrapper staging no acredita build ni delega en el Worker compartido")
@@ -310,12 +234,14 @@ def self_test() -> None:
     production = (ROOT / "infra/cloudflare/wrangler.toml").read_text(encoding="utf-8")
     if f'name = "{WORKER_NAME}"' in production or WORKER_HOSTNAME in production:
         raise SystemExit("La configuración de producción contiene identidad/ruta de staging")
-    print("staging-ai-worker self-test OK · wrapper build-aware, script route-free, identidad y rate-limit aislados")
+    print(
+        "staging-ai-worker self-test OK · wrapper build-aware, secret persistente requerido, "
+        "script route-free, identidad y rate-limit aislados"
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--service-id")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -323,21 +249,15 @@ def main() -> None:
         return
 
     deploy_sha = required_deploy_sha()
-    # Missing credentials are permanent, not a reconcile race: fail immediately.
-    required("RENDER_API_KEY")
-    service_id = str(args.service_id or "").strip()
-    service_id, secret = wait_for_render_contract(service_id)
-
-    wrangler(["deploy"])
-    wrangler(["secret", "put", "CHESS_AI_SHARED_SECRET"], stdin=secret + "\n")
-    # Instalado al final para que el runtime que acreditamos siempre publique la
-    # generación exacta incluso si un secret update crea una nueva versión.
-    wrangler(["secret", "put", "BUILD_SHA"], stdin=deploy_sha + "\n")
+    # Cloudflare documents that deploys preserve existing secrets. Requiring the
+    # binding in Wrangler makes a missing secret fail closed without re-reading or
+    # rewriting it during every application release.
+    wrangler(["deploy", "--var", f"BUILD_SHA:{deploy_sha}"])
     domain_state = ensure_custom_domain()
     wait_for_runtime_build(deploy_sha)
     print(
         f"Workers AI staging desplegado: {WORKER_NAME} · build={deploy_sha} · "
-        f"secreto sincronizado sin exponerlo · Custom Domain={domain_state}"
+        f"secreto persistente conservado · Custom Domain={domain_state}"
     )
 
 

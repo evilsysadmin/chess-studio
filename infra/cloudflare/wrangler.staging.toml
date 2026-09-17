@@ -4,12 +4,17 @@ compatibility_date = "2026-08-22"
 workers_dev = false
 
 # El Custom Domain se adjunta explícitamente con Workers Domains API después
-# de subir script + secret. No usamos [[routes]] aquí: Wrangler lo traduce a
-# la API de Workers Routes de zona, que exigiría un permiso adicional que el
-# pipeline no necesita para un Custom Domain.
+# de subir el script. CHESS_AI_SHARED_SECRET es un binding persistente de
+# Cloudflare: el deploy normal valida que exista y lo conserva sin reescribirlo.
+# No usamos [[routes]] aquí: Wrangler lo traduce a la API de Workers Routes de
+# zona, que exigiría un permiso adicional que el pipeline no necesita para un
+# Custom Domain.
 #
 # staging.js envuelve únicamente /health para publicar BUILD_SHA. El runtime
 # funcional sigue delegando en worker/index.js, compartido con producción.
+
+[secrets]
+required = ["CHESS_AI_SHARED_SECRET"]
 
 [ai]
 binding = "AI"
