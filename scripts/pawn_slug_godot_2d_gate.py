@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Keep Pawn Slug's Godot runtime strictly 2D.
+"""Keep Pawn Slug's Godot runtime strictly 2D and frame-driven.
 
-This gate is intentionally narrow: it protects games/pawn-slug-godot from
-accidentally reintroducing 3D runtime nodes or 3D-authored asset references.
-Other Chess Studio surfaces may continue using 3D where appropriate.
+The gate protects games/pawn-slug-godot from accidental 3D runtime assets and
+also keeps Matthias on the Godot AnimatedSprite2D/SpriteFrames path.
 """
 from __future__ import annotations
 
@@ -28,13 +27,24 @@ FORBIDDEN = (
 )
 REQUIRED_MATTHIAS = (
     "AnimatedSprite2D",
+    "SpriteFrames",
     "Marker2D",
     "HTTPRequest",
     "MASTER_URL",
+    "LEGACY_PISTOL_ATLAS_URL",
     "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-",
-    "SOURCE_RECTS",
-    "Rect2i(715, 58, 110, 164)",
+    "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
+    "FULL_ATLAS_COLUMNS := 8",
+    "FULL_ATLAS_ROWS := 10",
+    "FULL_ACTIONS",
+    '"shoot": {"row": 6, "count": 6',
+    '"die": {"row": 9, "count": 8',
+    "_normalized_cell_texture",
+    "ImageTexture.create_from_image",
     "load_png_from_buffer",
+    "load_webp_from_buffer",
+    "animation_finished.connect",
+    'name = "WeaponRoot"',
 )
 FORBIDDEN_MATTHIAS = (
     "MOTION_ATLAS_URL",
@@ -42,11 +52,9 @@ FORBIDDEN_MATTHIAS = (
     "WEAPON_URLS",
     "res://assets/weapon_atlas.svg",
     "_pistol_shoot",
-    "/pawn-slug/matthias/pistol/",
     "/pawn-slug/matthias/machinegun/",
     "/pawn-slug/matthias/shotgun/",
     "/pawn-slug/matthias/panzerfaust/",
-    "load_webp_from_buffer",
 )
 REQUIRED_ENEMIES = (
     "Sprite2D",
@@ -111,13 +119,15 @@ def self_test() -> None:
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
-    assert "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-" in REQUIRED_MATTHIAS
-    assert "SOURCE_RECTS" in REQUIRED_MATTHIAS
+    assert "SpriteFrames" in REQUIRED_MATTHIAS
+    assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
+    assert "FULL_ATLAS_ROWS := 10" in REQUIRED_MATTHIAS
+    assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
-    print("OK Pawn Slug Godot 2D gate self-test")
+    print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 
 def main() -> int:
@@ -126,7 +136,7 @@ def main() -> int:
             self_test()
         else:
             validate()
-            print("OK Pawn Slug Godot stays 2D")
+            print("OK Pawn Slug Godot stays 2D and frame-driven")
         return 0
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
