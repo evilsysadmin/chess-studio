@@ -1,0 +1,56 @@
+name: Pawn Slug · Matthias pistol-family proof
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/render_pawn_slug_matthias_pistol_family.py'
+      - '.github/workflows/pawn-slug-matthias-pistol-family-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-pistol-family-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PAWN_SLUG_CANONICAL_SAMPLES: '32'
+
+jobs:
+  proof:
+    name: Pistol-family proof · ${{ matrix.weapon }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        weapon: [machinegun, shotgun, panzerfaust]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render reference-family proof cells
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          OUT="/tmp/pawn-slug-pistol-family-${WEAPON}-proof"
+          rm -rf "$OUT"
+          blender --background -noaudio \
+            --python-expr "import bpy, os; scene=bpy.context.scene; samples=max(1, int(os.environ.get('PAWN_SLUG_CANONICAL_SAMPLES', '32'))); eevee=getattr(scene, 'eevee', None); setattr(eevee, 'taa_render_samples', samples) if eevee is not None and hasattr(eevee, 'taa_render_samples') else None; scene.render.use_persistent_data=True" \
+            --python scripts/blender/render_pawn_slug_matthias_pistol_family.py \
+            -- --output-dir "$OUT" --weapon "$WEAPON" --profile proof
+          test -s "$OUT/matthias_${WEAPON}_idle_00.png"
+          for FRAME in 00 04 08 12; do
+            test -s "$OUT/matthias_${WEAPON}_run_${FRAME}.png"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-pistol-family-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-pistol-family-${{ matrix.weapon }}-proof/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
