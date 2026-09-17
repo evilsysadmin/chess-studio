@@ -6,6 +6,7 @@ import {
   chroniclesContentDefinition,
   chroniclesContentVisible,
 } from './chroniclesContentRuntime.js';
+import { chroniclesIsometricSceneStyle } from './chroniclesIsometricSceneStyles.js';
 
 function mapCenter(grid) {
   const height = grid.length;
@@ -89,6 +90,7 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
   return Object.freeze({
     mapId: renderPlan.mapId,
     title: renderPlan.title,
+    sceneStyle: chroniclesIsometricSceneStyle(renderPlan.mapId),
     width: renderPlan.width,
     height: renderPlan.height,
     center,
