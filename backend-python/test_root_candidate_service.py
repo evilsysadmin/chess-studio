@@ -1,4 +1,5 @@
 import chess
+import pytest
 
 import root_candidate_service as service
 from engine_analysis import RootCandidateAnalysis
@@ -46,3 +47,50 @@ def test_factual_root_candidates_terminal_position_avoids_search(monkeypatch):
 
     monkeypatch.setattr(service, 'top_root_candidates', fail_if_called)
     assert service.factual_root_candidates(board, depth=2, budget_s=0.1) == []
+
+
+def test_candidate_payload_keeps_white_positive_score_for_white_root():
+    board = chess.Board()
+    move = chess.Move.from_uci('e2e4')
+    candidate = RootCandidateAnalysis(move, 34.0, None)
+
+    payload = service.candidate_api_payload(board, candidate)
+
+    assert payload['from'] == 'e2'
+    assert payload['to'] == 'e4'
+    assert payload['moveKey'] == 'e2e4'
+    assert payload['chessScoreCp'] == 34.0
+    assert payload['isLegal'] is True
+    assert payload['isMate'] is False
+    assert board.fen() == chess.Board().fen()
+
+
+def test_candidate_payload_flips_white_positive_score_for_black_root():
+    board = chess.Board()
+    board.push_san('e4')
+    move = chess.Move.from_uci('e7e5')
+    candidate = RootCandidateAnalysis(move, -27.0, None)
+
+    payload = service.candidate_api_payload(board, candidate)
+
+    assert payload['moveKey'] == 'e7e5'
+    assert payload['chessScoreCp'] == 27.0
+
+
+def test_candidate_payload_marks_forced_mate_from_root_mover_perspective():
+    board = chess.Board('6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1')
+    move = chess.Move.from_uci('a1a8')
+    candidate = RootCandidateAnalysis(move, service.MATE_SCORE, None)
+
+    payload = service.candidate_api_payload(board, candidate)
+
+    assert payload['isMate'] is True
+    assert payload['chessScoreCp'] == service.MATE_SCORE
+
+
+def test_candidate_payload_rejects_move_not_legal_on_root_board():
+    board = chess.Board()
+    candidate = RootCandidateAnalysis(chess.Move.from_uci('e7e5'), 0.0, None)
+
+    with pytest.raises(ValueError, match='candidate move must be legal'):
+        service.candidate_api_payload(board, candidate)
