@@ -411,7 +411,10 @@ function buildIsoDungeon({
   };
 }
 
-function buildTorches(scene, { coarsePointer }) {
+function buildTorches(scene, {
+  coarsePointer,
+  scenePlan = chroniclesIsometricScenePlan(),
+}) {
   const torches = [];
   const iron = ownedMaterial({ color: 0x2c2119, roughness: 0.62, metalness: 0.58 });
   const flameMaterial = new THREE.MeshStandardMaterial({
@@ -431,7 +434,7 @@ function buildTorches(scene, { coarsePointer }) {
   glowMaterial.userData.chroniclesIsoOwned = true;
 
   TORCH_CELLS.forEach(({ x, y, ox, oz }, index) => {
-    const cell = chroniclesIsoWorldForCell(x, y);
+    const cell = chroniclesIsoWorldForCell(x, y, scenePlan);
     const root = new THREE.Group();
     root.name = `chronicles-iso-torch-${index}`;
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.72, 8), iron);
@@ -446,8 +449,7 @@ function buildTorches(scene, { coarsePointer }) {
     glow.position.y = 1.05;
     glow.scale.set(0.8, 1.45, 0.8);
     const baseIntensity = coarsePointer ? 2.35 : 3.05;
-    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 2.35 : 3.05, 2);
-    light.distance = coarsePointer ? 6.8 : 8.8;
+    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 6.8 : 8.8, 2);
     light.position.y = 1.02;
     root.add(stem, cup, glow, flame, light);
     root.position.set(cell.x + ox, 0, cell.z + oz);
@@ -617,6 +619,7 @@ function disposeScene(root) {
 }
 
 export function createChroniclesIsometricGame(host, {
+  initialState = null,
   onReady,
   onCellClick,
   onEnemyClick,
@@ -640,8 +643,12 @@ export function createChroniclesIsometricGame(host, {
   scene.background = new THREE.Color(0x100c09);
   scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.022 : 0.0185);
 
-  const initialScenePlan = chroniclesIsometricScenePlan();
-  const initialFocus = chroniclesIsoWorldForCell(2, 5, initialScenePlan);
+  const initialScenePlan = chroniclesIsometricScenePlan(initialState);
+  const initialFocus = chroniclesIsoWorldForCell(
+    Number(initialScenePlan.partyStart?.x ?? 1) + 1,
+    Number(initialScenePlan.partyStart?.y ?? 5),
+    initialScenePlan,
+  );
   const initialPose = chroniclesIsometricCameraPose({ x: initialFocus.x, z: initialFocus.z });
   const camera = new THREE.PerspectiveCamera(initialPose.fov, 1, 0.1, 70);
   camera.position.copy(initialPose.position);
@@ -678,7 +685,10 @@ export function createChroniclesIsometricGame(host, {
     scenePlan: initialScenePlan,
   });
   scene.add(dungeon.root);
-  const torches = buildTorches(scene, { coarsePointer: coarse });
+  const torches = buildTorches(scene, {
+    coarsePointer: coarse,
+    scenePlan: initialScenePlan,
+  });
   const party = buildParty(scene, { coarsePointer: coarse, reducedMotion });
   const enemies = new Map();
   const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
@@ -731,14 +741,14 @@ export function createChroniclesIsometricGame(host, {
     if (nextInteraction?.mode === 'move') {
       (nextInteraction.legalMoves || []).slice(0, interactionMarkers.moveMarkers.length).forEach((move, index) => {
         const marker = interactionMarkers.moveMarkers[index];
-        const world = chroniclesIsoWorldForCell(move.x, move.y);
+        const world = chroniclesIsoWorldForCell(move.x, move.y, initialScenePlan);
         marker.position.set(world.x, 0.055, world.z);
         marker.visible = true;
       });
     } else if (nextInteraction?.mode === 'attack') {
       (nextInteraction.legalTargets || []).slice(0, interactionMarkers.attackMarkers.length).forEach((target, index) => {
         const marker = interactionMarkers.attackMarkers[index];
-        const world = chroniclesIsoWorldForCell(target.x, target.y);
+        const world = chroniclesIsoWorldForCell(target.x, target.y, initialScenePlan);
         marker.position.set(world.x, 0.065, world.z);
         marker.visible = true;
       });
@@ -749,7 +759,7 @@ export function createChroniclesIsometricGame(host, {
   function syncState(state, nextSelectedMemberId = selectedMemberId, nextInteraction = latestInteraction) {
     latestState = state;
     selectedMemberId = nextSelectedMemberId || selectedMemberId;
-    const partyCell = chroniclesIsoWorldForCell(state.x, state.y);
+    const partyCell = chroniclesIsoWorldForCell(state.x, state.y, initialScenePlan);
     desiredParty.copy(partyCell);
     // Keep the company as the camera anchor. Enemies live deeper in the room,
     // but they no longer drag the shot back toward a tactical overview.
@@ -765,7 +775,7 @@ export function createChroniclesIsometricGame(host, {
       model.visible = active;
       if (!active) return;
       const position = runtimeEnemyPosition(state, definition);
-      const world = chroniclesIsoWorldForCell(position.x, position.y);
+      const world = chroniclesIsoWorldForCell(position.x, position.y, initialScenePlan);
       model.userData.chroniclesIsoTarget = world;
       model.userData.chroniclesIsoTargetYaw = facingAngle(world, partyCell);
       if (!model.userData.chroniclesIsoPlaced) {
@@ -788,7 +798,7 @@ export function createChroniclesIsometricGame(host, {
         return;
       }
 
-      const localTarget = chroniclesIsoWorldForCell(slot.x, slot.y).sub(partyCell);
+      const localTarget = chroniclesIsoWorldForCell(slot.x, slot.y, initialScenePlan).sub(partyCell);
       model.userData.chroniclesIsoTarget = localTarget;
       model.userData.chroniclesIsoCell = slot;
       if (!model.userData.chroniclesIsoPlaced) {
