@@ -6,13 +6,14 @@ import {
   installChroniclesTacticsSigilArt,
 } from './chroniclesOfMatthiasSigilArt.js';
 
-function fixture() {
+function fixture({ visible = true } = {}) {
   const scene = new THREE.Scene();
   const dungeon = new THREE.Group();
   scene.add(dungeon);
   const legacy = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.085, 8, 24));
   legacy.name = 'chronicles-iso-sigil';
   legacy.position.set(1.2, 0.035, -2.4);
+  legacy.visible = visible;
   dungeon.add(legacy);
   return { scene, dungeon, legacy };
 }
@@ -36,6 +37,14 @@ describe('Chronicles Tactics inlaid sigil art', () => {
     expect(root.position.z).toBeCloseTo(legacy.position.z, 8);
     expect(root.userData.chroniclesSigilDrawCalls).toBe(1);
     expect(root.getObjectByName('chronicles-tactics-inlaid-sigil-mesh')).toBeTruthy();
+  });
+
+  it('does not resurrect a hidden placeholder from a map without an authored sigil', () => {
+    const { scene, legacy } = fixture({ visible: false });
+    expect(installChroniclesTacticsSigilArt(scene)).toBeNull();
+    expect(legacy.visible).toBe(false);
+    expect(legacy.userData.chroniclesSigilReplacement).toBeUndefined();
+    expect(scene.getObjectByName('chronicles-tactics-inlaid-sigil')).toBeUndefined();
   });
 
   it('is idempotent and fails closed without the authored sigil', () => {
