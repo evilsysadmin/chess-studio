@@ -21,8 +21,8 @@ expected = {
     'pawnSlug.matthias.canonicalMaster': (3119009, 'image/png', MASTER_SHA256),
     'pawnSlug.matthias.pistol': (130478, 'image/webp', '42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829'),
     'pawnSlug.matthias.machinegun': (280618, 'image/webp', 'ed37fd69ea1f6ae92e1083f84b6bd884054fed2873d96ad84ff02f0ad2bf9edb'),
-    'pawnSlug.matthias.shotgun': (254454, 'image/webp', '35fc4f24fad32f10bf26e24c85dee37b163edd1aac54794c491cb5e6836882e9'),
-    'pawnSlug.matthias.panzerfaust': (269290, 'image/webp', '029dbf486570749df9eaccc68f37d3c1061b470513dc074915d987d09d438e67'),
+    'pawnSlug.matthias.shotgun': (520794, 'image/webp', '5462a87a3aa338f418b2ab64e9d678ab2d08ca15bb1b6d2f787c4f7c795ff2aa'),
+    'pawnSlug.matthias.panzerfaust': (554348, 'image/webp', '613be27822aea57cae2b64c1b19f3546df307dd567597d9d61cff1c17c6bac35'),
     'pawnSlug.matthias.motion': (9334, 'image/webp', '85988118befde41238cedc4ba772af38d08789bdcfb1671e874ff6743470c393'),
 }
 

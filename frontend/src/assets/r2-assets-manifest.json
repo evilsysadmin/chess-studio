@@ -50,11 +50,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
     },
     "pawnSlug.matthias.panzerfaust": {
-      "bytes": 269290,
+      "bytes": 554348,
       "contentType": "image/webp",
-      "key": "pawn-slug/matthias/panzerfaust/matthias_panzerfaust_premium_v3-029dbf486570749d.webp",
-      "sha256": "029dbf486570749df9eaccc68f37d3c1061b470513dc074915d987d09d438e67",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_premium_v3-029dbf486570749d.webp"
+      "key": "pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v3-613be27822aea57c.webp",
+      "sha256": "613be27822aea57cae2b64c1b19f3546df307dd567597d9d61cff1c17c6bac35",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v3-613be27822aea57c.webp"
     },
     "pawnSlug.matthias.pistol": {
       "bytes": 130478,
@@ -71,11 +71,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
     },
     "pawnSlug.matthias.shotgun": {
-      "bytes": 254454,
+      "bytes": 520794,
       "contentType": "image/webp",
-      "key": "pawn-slug/matthias/shotgun/matthias_shotgun_premium_v3-35fc4f24fad32f10.webp",
-      "sha256": "35fc4f24fad32f10bf26e24c85dee37b163edd1aac54794c491cb5e6836882e9",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_premium_v3-35fc4f24fad32f10.webp"
+      "key": "pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v3-5462a87a3aa338f4.webp",
+      "sha256": "5462a87a3aa338f418b2ab64e9d678ab2d08ca15bb1b6d2f787c4f7c795ff2aa",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v3-5462a87a3aa338f4.webp"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",

@@ -5,8 +5,8 @@ const EXPECTED = Object.freeze({
   'pawnSlug.matthias.canonicalMaster': Object.freeze({ bytes: 3119009, contentType: 'image/png', sha256: '9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f' }),
   'pawnSlug.matthias.pistol': Object.freeze({ bytes: 130478, contentType: 'image/webp', sha256: '42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829' }),
   'pawnSlug.matthias.machinegun': Object.freeze({ bytes: 280618, contentType: 'image/webp', sha256: 'ed37fd69ea1f6ae92e1083f84b6bd884054fed2873d96ad84ff02f0ad2bf9edb' }),
-  'pawnSlug.matthias.shotgun': Object.freeze({ bytes: 254454, contentType: 'image/webp', sha256: '35fc4f24fad32f10bf26e24c85dee37b163edd1aac54794c491cb5e6836882e9' }),
-  'pawnSlug.matthias.panzerfaust': Object.freeze({ bytes: 269290, contentType: 'image/webp', sha256: '029dbf486570749df9eaccc68f37d3c1061b470513dc074915d987d09d438e67' }),
+  'pawnSlug.matthias.shotgun': Object.freeze({ bytes: 520794, contentType: 'image/webp', sha256: '5462a87a3aa338f418b2ab64e9d678ab2d08ca15bb1b6d2f787c4f7c795ff2aa' }),
+  'pawnSlug.matthias.panzerfaust': Object.freeze({ bytes: 554348, contentType: 'image/webp', sha256: '613be27822aea57cae2b64c1b19f3546df307dd567597d9d61cff1c17c6bac35' }),
   'pawnSlug.matthias.motion': Object.freeze({ bytes: 9334, contentType: 'image/webp', sha256: '85988118befde41238cedc4ba772af38d08789bdcfb1671e874ff6743470c393' }),
 });
 

@@ -24,14 +24,19 @@ describe('Pawn Slug integrated Matthias weapon art', () => {
   });
 
   it('tracks which migrated atlases already bake the canonical head into each frame', () => {
-    expect(PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS).toEqual(['pistol', 'machinegun']);
+    expect(PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS).toEqual([
+      'pistol',
+      'machinegun',
+      'shotgun',
+      'panzerfaust',
+    ]);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.bakedCanonicalHeadWeapons).toBe(
       PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS,
     );
     expect(pawnSlugWeaponHasBakedCanonicalHead('pistol')).toBe(true);
     expect(pawnSlugWeaponHasBakedCanonicalHead('machinegun')).toBe(true);
-    expect(pawnSlugWeaponHasBakedCanonicalHead('shotgun')).toBe(false);
-    expect(pawnSlugWeaponHasBakedCanonicalHead('panzerfaust')).toBe(false);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('shotgun')).toBe(true);
+    expect(pawnSlugWeaponHasBakedCanonicalHead('panzerfaust')).toBe(true);
     expect(pawnSlugWeaponHasBakedCanonicalHead('banana')).toBe(true);
   });
 
