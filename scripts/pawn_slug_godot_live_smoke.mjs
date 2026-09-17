@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 
 const requireFromE2e = createRequire(new URL('../e2e/package.json', import.meta.url));
@@ -74,6 +75,7 @@ async function snapshotFrame(frame) {
       return {
         href: location.href,
         readyState: document.readyState,
+        secureContext: window.isSecureContext,
         crossOriginIsolated: window.crossOriginIsolated,
         webgl2,
         statusPresent: Boolean(status),
@@ -100,6 +102,23 @@ function fail(stage, diagnostics) {
   throw new Error(`Pawn Slug Godot browser smoke failed at ${stage}\n${JSON.stringify(diagnostics, null, 2)}`);
 }
 
+function listen(server) {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      resolve();
+    });
+  });
+}
+
+function closeServer(server) {
+  return new Promise((resolve) => {
+    if (!server?.listening) return resolve();
+    server.close(() => resolve());
+  });
+}
+
 const browser = await chromium.launch({
   headless: true,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
@@ -114,6 +133,8 @@ const diagnostics = {
   direct: null,
   iframe: null,
 };
+
+let hostServer = null;
 
 try {
   // Stage 1: prove the published Godot page itself gets past Engine.startGame().
@@ -140,10 +161,9 @@ try {
   if (!directReady) fail('direct-gdscript-bridge', diagnostics);
   await direct.close();
 
-  // Stage 2: mirror the product host: source check + payload check, no stricter origin policy.
-  const parent = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  attachDiagnostics(parent, 'iframe', diagnostics);
-  await parent.setContent(`<!doctype html>
+  // Stage 2: serve a loopback parent. Browsers treat loopback as potentially trustworthy,
+  // matching Chess Studio's secure HTTPS ancestor while keeping the R2 iframe cross-origin.
+  const hostHtml = `<!doctype html>
     <meta charset="utf-8">
     <style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#07090b}</style>
     <iframe id="godot" title="Pawn Slug Godot live smoke"></iframe>
@@ -163,7 +183,28 @@ try {
         if (message.type === 'ready') document.body.dataset.godotReady = '1';
       });
       frame.src = ${JSON.stringify(indexUrl)};
-    </script>`);
+    </script>`;
+
+  hostServer = createServer((_request, response) => {
+    response.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    response.end(hostHtml);
+  });
+  await listen(hostServer);
+  const address = hostServer.address();
+  if (!address || typeof address === 'string') fail('iframe-host-listen', diagnostics);
+  const parentUrl = `http://127.0.0.1:${address.port}/`;
+
+  const parent = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  attachDiagnostics(parent, 'iframe', diagnostics);
+  await parent.goto(parentUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  const parentSecureContext = await parent.evaluate(() => window.isSecureContext);
+  if (!parentSecureContext) {
+    diagnostics.iframe = { parentUrl, parentSecureContext, frameUrls: parent.frames().map((frame) => frame.url()) };
+    fail('iframe-parent-secure-context', diagnostics);
+  }
 
   let iframeReady = true;
   try {
@@ -175,6 +216,8 @@ try {
   const child = parent.frames().find((candidate) => candidate !== parent.mainFrame() && candidate.url().startsWith(parsedIndex.origin));
   const parentMessages = await parent.evaluate(() => window.__pawnSlugGodotMessages || []);
   diagnostics.iframe = {
+    parentUrl,
+    parentSecureContext,
     readyMessage: iframeReady,
     parentMessages,
     child: child ? await snapshotFrame(child) : null,
@@ -194,7 +237,8 @@ try {
     fail('browser-errors', diagnostics);
   }
 
-  console.log(`pawn-slug-godot browser smoke OK · engine + ready + iframe + visible canvas · ${indexUrl}`);
+  console.log(`pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas · ${indexUrl}`);
 } finally {
+  await closeServer(hostServer);
   await browser.close();
 }
