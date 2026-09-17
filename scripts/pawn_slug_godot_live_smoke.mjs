@@ -130,6 +130,10 @@ const diagnostics = {
   pageErrors: [],
   requestFailures: [],
   badResponses: [],
+  timings: {
+    directMs: null,
+    iframeMs: null,
+  },
   direct: null,
   iframe: null,
 };
@@ -138,6 +142,7 @@ let hostServer = null;
 
 try {
   // Stage 1: prove the published Godot page itself gets past Engine.startGame().
+  const directStartedAt = Date.now();
   const direct = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   attachDiagnostics(direct, 'direct', diagnostics);
   await installMessageProbe(direct);
@@ -156,6 +161,7 @@ try {
     (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
   );
   diagnostics.direct.readyMessage = Boolean(directReady);
+  diagnostics.timings.directMs = Date.now() - directStartedAt;
 
   if (!engineStarted) fail('direct-engine-start', diagnostics);
   if (!directReady) fail('direct-gdscript-bridge', diagnostics);
@@ -197,6 +203,7 @@ try {
   if (!address || typeof address === 'string') fail('iframe-host-listen', diagnostics);
   const parentUrl = `http://127.0.0.1:${address.port}/`;
 
+  const iframeStartedAt = Date.now();
   const parent = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   attachDiagnostics(parent, 'iframe', diagnostics);
   await parent.goto(parentUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -212,6 +219,7 @@ try {
   } catch {
     iframeReady = false;
   }
+  diagnostics.timings.iframeMs = Date.now() - iframeStartedAt;
 
   const child = parent.frames().find((candidate) => candidate !== parent.mainFrame() && candidate.url().startsWith(parsedIndex.origin));
   const parentMessages = await parent.evaluate(() => window.__pawnSlugGodotMessages || []);
@@ -237,7 +245,9 @@ try {
     fail('browser-errors', diagnostics);
   }
 
-  console.log(`pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas · ${indexUrl}`);
+  console.log(
+    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
+  );
 } finally {
   await closeServer(hostServer);
   await browser.close();
