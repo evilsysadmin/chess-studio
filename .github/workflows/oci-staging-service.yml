@@ -23,11 +23,14 @@ on:
 permissions:
   contents: read
 
-# Explicit service operations share the same repository-wide mutation lock as
-# canonical backend deploys, K3s assets and Terraform. Application releases do
-# not trigger this control plane.
+# Only host/control-plane mutations share the repository-wide OCI mutex with
+# canonical backend deploys, K3s assets and Terraform. Read-only diagnostics get
+# a per-run group so they never queue behind an unrelated release or mutation.
 concurrency:
-  group: oci-staging-mutations
+  group: >-
+    ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","vault-bootstrap","k3s-start","k3s-rollback"]'), inputs.operation)
+        && 'oci-staging-mutations'
+        || format('oci-staging-observe-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
