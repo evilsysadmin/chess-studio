@@ -4,6 +4,7 @@ import {
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
   chroniclesIsoInteractionForHit,
+  chroniclesIsoPointerAction,
   chroniclesIsoWorldForCell,
   chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
@@ -94,6 +95,16 @@ describe('Chronicles canonical isometric viewport', () => {
     });
     expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'gate-jailer' })).toBeNull();
     expect(chroniclesIsoInteractionForHit(null, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toBeNull();
+  });
+
+  it('turns a party-model hit into a member action without requiring a combat interaction mode', () => {
+    expect(chroniclesIsoPointerAction(null, { kind: 'member', memberId: 'bishop' })).toEqual({
+      kind: 'member', memberId: 'bishop',
+    });
+    expect(chroniclesIsoPointerAction({ mode: 'attack', legalTargets: [] }, {
+      kind: 'member', memberId: 'knight',
+    })).toEqual({ kind: 'member', memberId: 'knight' });
+    expect(chroniclesIsoPointerAction(null, { kind: 'cell', x: 2, y: 5 })).toBeNull();
   });
 
   it('keeps the lever down after use and shows the rune core only until collection', () => {
