@@ -9,6 +9,13 @@ function meshes(root, predicate) {
   return matches;
 }
 
+function baseIvoryMesh(piece) {
+  return meshes(piece, (mesh) => (
+    mesh.material?.userData?.surfaceRole === 'ivory'
+    && !mesh.material?.userData?.whiteHeadFinish
+  ))[0];
+}
+
 describe('War Room white piece readability finish', () => {
   it('keeps pawn heads matte while giving white officers a stronger direct-light satin', () => {
     for (const type of ['p', 'n', 'b', 'r', 'q', 'k']) {
@@ -24,11 +31,7 @@ describe('War Room white piece readability finish', () => {
         expect(rims[0].material.clearcoat).toBeLessThanOrEqual(0.06);
         expect(rims[0].material.userData.surfaceRole).toBe('white-base-walnut');
 
-        const body = meshes(piece, (mesh) => (
-          mesh.material?.userData?.surfaceRole === 'ivory'
-          && mesh.material?.userData?.whiteHeadFinish !== 'pawn-deep-matte-v2'
-          && mesh.material?.userData?.whiteHeadFinish !== 'officer-satin-v2'
-        ))[0];
+        const body = baseIvoryMesh(piece);
         expect(body).toBeTruthy();
 
         if (type === 'p') {
@@ -66,6 +69,36 @@ describe('War Room white piece readability finish', () => {
       } finally {
         disposeObject(piece);
       }
+    }
+  });
+
+  it('separates the studio back rank from the pawn line by ivory value, not only by gloss', () => {
+    const pawn = buildPiece('p', 'w', 'studio', false);
+    const rook = buildPiece('r', 'w', 'studio', false);
+    try {
+      const pawnBody = baseIvoryMesh(pawn);
+      const rookBody = baseIvoryMesh(rook);
+      expect(pawnBody).toBeTruthy();
+      expect(rookBody).toBeTruthy();
+      expect(rookBody.material.userData.whiteOfficerBodyTone).toBe('warm-deep-ivory-v1');
+      expect(rookBody.material.userData.whiteOfficerBodyToneHex).toBe(0xcdb184);
+      expect(rookBody.material.color.getHex()).toBe(0xcdb184);
+      expect(pawnBody.material.color.getHex()).not.toBe(rookBody.material.color.getHex());
+    } finally {
+      disposeObject(pawn);
+      disposeObject(rook);
+    }
+  });
+
+  it('keeps themed white palettes intact instead of forcing the studio officer tone', () => {
+    const piece = buildPiece('r', 'w', 'azul', false);
+    try {
+      const body = baseIvoryMesh(piece);
+      expect(body).toBeTruthy();
+      expect(body.material.userData.whiteOfficerBodyTone).toBeUndefined();
+      expect(body.material.color.getHex()).not.toBe(0xcdb184);
+    } finally {
+      disposeObject(piece);
     }
   });
 
