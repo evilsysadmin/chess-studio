@@ -26,7 +26,7 @@ var enemy_hp := ENEMY_MAX_HP
 var enemy_respawn := 0.0
 var enemy_fire_remaining := ENEMY_FIRE_WARMUP
 
-@onready var player: CharacterBody2D = $Player
+@onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 
 func _ready() -> void:
