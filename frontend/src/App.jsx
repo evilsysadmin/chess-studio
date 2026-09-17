@@ -9,7 +9,6 @@ const ReplayScreen = React.lazy(() => import('./components/ReplayScreen.jsx'));
 const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScreen.jsx'));
 const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
-const PvpGameScreen = React.lazy(() => import('./components/PvpGameScreen.jsx'));
 import { loadCombatHistory } from './combatHistory.js';
 const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
 const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
@@ -81,8 +80,8 @@ import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
-import PvpChallengeNudge from './components/PvpChallengeNudge.jsx';
-import { usePvpRosterPresence } from './usePvpRosterPresence.js';
+import PvpAppSurface from './components/PvpAppSurface.jsx';
+import { usePvpAppFlow } from './usePvpAppFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -109,7 +108,6 @@ function AppInner({ isAdminUser }) {
 
   const adminFeedbackNewCount = useAdminFeedbackInbox({ enabled: isAdminUser, view });
   const [game, setGame] = useState(null);
-  const [pvpMatch, setPvpMatch] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSavedGame, setHasSavedGame] = useState(() => !!getStorageItem(STORAGE_LOCAL, STORAGE_KEY) || !!loadActiveGameSession());
@@ -193,30 +191,7 @@ function AppInner({ isAdminUser }) {
   const [logoutError, setLogoutError] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
-  const pvpPresence = usePvpRosterPresence({ enabled: view !== 'pvpGame' });
-
-  function enterPvpMatch(match) {
-    if (!match?.id) return false;
-    setShowSettings(false);
-    setShowGlobalAccount(false);
-    setShowGlobalReleaseNotes(false);
-    setShowGlobalFeedback(false);
-    setShowAccountMenu(false);
-    setShowRatingDetail(false);
-    setShowCombatSummary(false);
-    setShareRecord(null);
-    setPvpMatch(match);
-    replaceView('pvpGame');
-    return true;
-  }
-
-  async function acceptIncomingPvpChallenge(challenge) {
-    const result = await pvpPresence.acceptChallenge(challenge);
-    if (result?.match) enterPvpMatch(result.match);
-    return result;
-  }
-
-
+  const pvpFlow = usePvpAppFlow({ view, replaceView });
   useProfileSyncLifecycle(view);
 
   useEffect(() => {
@@ -262,7 +237,6 @@ function AppInner({ isAdminUser }) {
     }
   }
 
-
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
   // Centro de Operaciones. Reconciliamos los contadores demostrables desde
   // Historial una sola vez cuando éste cambia; las funciones sólo escriben si
@@ -307,7 +281,6 @@ function AppInner({ isAdminUser }) {
     onError: setError,
   });
 
-
   // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
   // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
   // que App conozca otra vez todos los detalles de persistencia.
@@ -332,7 +305,6 @@ function AppInner({ isAdminUser }) {
     setLoading,
     setError,
   });
-
 
   useEffect(() => {
     setRating(loadRating());
@@ -394,7 +366,6 @@ function AppInner({ isAdminUser }) {
       gameLaunch.end(launch);
     }
   }
-
 
   function handleExitGame() {
     if (game?.id) {
@@ -904,14 +875,6 @@ function AppInner({ isAdminUser }) {
           </div>
         )}
 
-        {view !== 'pvpGame' && pvpPresence.incomingChallenge && (
-          <PvpChallengeNudge
-            challenge={pvpPresence.incomingChallenge}
-            onAccept={acceptIncomingPvpChallenge}
-            onDecline={pvpPresence.declineChallenge}
-          />
-        )}
-
         {showRatingDetail && (
           <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
         )}
@@ -927,6 +890,7 @@ function AppInner({ isAdminUser }) {
         {showGlobalReleaseNotes && <UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} />}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
+        <PvpAppSurface view={view} flow={pvpFlow} />
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
           <div className="route-loading active-session-recovery" role="status">
@@ -962,15 +926,7 @@ function AppInner({ isAdminUser }) {
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}
             onLab={() => navigateTo('lab')}
-            onPvpMatchReady={enterPvpMatch}
-            onPvpJoinRoster={pvpPresence.enroll}
-            onPvpLeaveRoster={pvpPresence.leave}
-            pvpStatus={{
-              enrolled: pvpPresence.enrolled,
-              rivalCount: pvpPresence.rivalCount,
-              incomingCount: pvpPresence.incomingChallenge ? 1 : 0,
-              activeMatch: pvpPresence.activeMatch,
-            }}
+            pvpFlow={pvpFlow}
             hasSavedGame={hasSavedGame}
             loading={loading}
             error={error}
@@ -1007,16 +963,6 @@ function AppInner({ isAdminUser }) {
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
             postGameFeedbackEnabled={featureFlags.postGameFeedback}
-          />
-        )}
-
-        {view === 'pvpGame' && pvpMatch && (
-          <PvpGameScreen
-            initialMatch={pvpMatch}
-            onExit={() => {
-              setPvpMatch(null);
-              replaceView('menu');
-            }}
           />
         )}
 
@@ -1108,7 +1054,6 @@ function AppInner({ isAdminUser }) {
             isAdminUser={isAdminUser}
           />
         )}
-
 
         {view === 'history' && (
           <HistoryScreen

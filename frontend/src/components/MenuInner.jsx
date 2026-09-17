@@ -42,10 +42,7 @@ export default function Menu({
   onInsights,
   onProgress,
   onLab,
-  onPvpMatchReady,
-  onPvpJoinRoster,
-  onPvpLeaveRoster,
-  pvpStatus = null,
+  pvpFlow = null,
   hasSavedGame,
   loading,
   error,
@@ -213,17 +210,17 @@ export default function Menu({
       {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
         <HomePvpRosterLink
           onOpen={() => {
-            if (pvpStatus?.activeMatch) {
-              onPvpMatchReady?.(pvpStatus.activeMatch);
+            if (pvpFlow?.menuStatus?.activeMatch) {
+              pvpFlow?.enterMatch?.(pvpFlow.menuStatus.activeMatch);
               return;
             }
             setShowPvpLobby(true);
           }}
           disabled={loading}
-          enrolled={Boolean(pvpStatus?.enrolled)}
-          rivalCount={Number(pvpStatus?.rivalCount || 0)}
-          incomingCount={Number(pvpStatus?.incomingCount || 0)}
-          activeMatch={pvpStatus?.activeMatch || null}
+          enrolled={Boolean(pvpFlow?.menuStatus?.enrolled)}
+          rivalCount={Number(pvpFlow?.menuStatus?.rivalCount || 0)}
+          incomingCount={Number(pvpFlow?.menuStatus?.incomingCount || 0)}
+          activeMatch={pvpFlow?.menuStatus?.activeMatch || null}
         />
       )}
 
@@ -278,11 +275,11 @@ export default function Menu({
       {showPvpLobby && (
         <PvPLobbyModal
           onClose={() => setShowPvpLobby(false)}
-          onJoinRoster={onPvpJoinRoster}
-          onLeaveRoster={onPvpLeaveRoster}
+          onJoinRoster={pvpFlow?.enroll}
+          onLeaveRoster={pvpFlow?.leave}
           onMatchReady={(match) => {
             setShowPvpLobby(false);
-            onPvpMatchReady?.(match);
+            pvpFlow?.enterMatch?.(match);
           }}
         />
       )}
