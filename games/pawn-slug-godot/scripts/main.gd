@@ -1,5 +1,6 @@
 extends Node2D
 
+const EnemyVisual := preload("res://scripts/enemy_visual.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
@@ -43,6 +44,7 @@ const ENEMY_FIRE_PROFILES := {
 var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
+var enemy_visuals: Dictionary = {}
 var pickups: Array[Dictionary] = [
     {"x": 920.0, "type": "machinegun", "taken": false},
     {"x": 2470.0, "type": "shotgun", "taken": false},
@@ -54,6 +56,7 @@ var pickups: Array[Dictionary] = [
 
 func _ready() -> void:
     enemies = _build_enemy_roster()
+    _build_enemy_visuals()
     player.connect("fired", Callable(self, "_on_player_fired"))
     player.connect("hurt", Callable(self, "_on_player_hurt"))
     player.connect("died", Callable(self, "_on_player_died"))
@@ -146,6 +149,39 @@ func _build_enemy_roster() -> Array[Dictionary]:
         })
     return roster
 
+func _build_enemy_visuals() -> void:
+    for enemy in enemies:
+        var id := String(enemy["id"])
+        var type := String(enemy["type"])
+        var stats: Dictionary = ENEMY_TYPES[type]
+        var visual = EnemyVisual.new()
+        visual.name = "Enemy_%s" % id
+        visual.z_index = 1
+        add_child(visual)
+        visual.configure(
+            type,
+            String(enemy["weapon"]),
+            float(stats["height"]),
+            int(enemy["hp"]),
+            int(enemy["max_hp"]),
+        )
+        enemy_visuals[id] = visual
+        _sync_enemy_visual(enemy, false)
+
+func _sync_enemy_visual(enemy: Dictionary, moving: bool) -> void:
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    if visual == null:
+        return
+    var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
+    visual.sync_state(
+        float(enemy["x"]),
+        FLOOR_Y,
+        direction,
+        moving,
+        int(enemy["hp"]),
+        int(enemy["max_hp"]),
+    )
+
 func _enemy_weapon_for(type: String, variant: int) -> String:
     match type:
         "knight":
@@ -192,11 +228,13 @@ func _update_enemies(delta: float) -> void:
     for index in range(enemies.size()):
         var enemy := enemies[index]
         if int(enemy["hp"]) <= 0:
+            _sync_enemy_visual(enemy, false)
             continue
         var type := String(enemy["type"])
         var stats: Dictionary = ENEMY_TYPES[type]
         var distance_x := player.global_position.x - float(enemy["x"])
         var abs_distance := absf(distance_x)
+        var moved := false
 
         if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
             var speed := float(stats["speed"])
@@ -208,13 +246,16 @@ func _update_enemies(delta: float) -> void:
                     maxf(0.0, float(enemy["spawn_x"]) - 360.0),
                     minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
                 )
+                moved = true
 
+            _sync_enemy_visual(enemy, moved)
             enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
             if float(enemy["cooldown"]) <= 0.0:
                 _try_enemy_fire(enemy)
                 enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
         else:
             enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
+            _sync_enemy_visual(enemy, false)
         enemies[index] = enemy
 
 func _try_enemy_fire(enemy: Dictionary) -> void:
@@ -237,6 +278,9 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
             "weapon": weapon,
             "explosive": bool(profile["explosive"]),
         })
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    if visual != null:
+        visual.play_fire()
 
 func _enemy_fire_cooldown(weapon: String) -> float:
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
@@ -295,6 +339,9 @@ func _enemy_rect(enemy: Dictionary) -> Rect2:
     return Rect2(Vector2(float(enemy["x"]) - width * 0.5, FLOOR_Y - height), Vector2(width, height))
 
 func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    if visual != null:
+        return visual.muzzle_global_position()
     var rect := _enemy_rect(enemy)
     var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
     return Vector2(float(enemy["x"]) + direction * rect.size.x * 0.42, rect.position.y + rect.size.y * 0.42)
@@ -313,7 +360,6 @@ func _draw() -> void:
         draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b5883e"), 3.0)
 
     _draw_pickups()
-    _draw_enemies()
 
     for projectile in projectiles:
         var position: Vector2 = projectile["position"]
@@ -354,35 +400,6 @@ func _draw_pickups() -> void:
             "panzerfaust":
                 draw_line(position + Vector2(-18.0, 0.0), position + Vector2(17.0, 0.0), Color("8e927d"), 9.0)
                 draw_circle(position + Vector2(18.0, 0.0), 7.0, Color("b7a05f"))
-
-func _draw_enemies() -> void:
-    for enemy in enemies:
-        if int(enemy["hp"]) <= 0:
-            continue
-        var rect := _enemy_rect(enemy)
-        var type := String(enemy["type"])
-        var body_color := Color("633c35")
-        match type:
-            "knight":
-                body_color = Color("4e5965")
-            "rook":
-                body_color = Color("3e454a")
-            "bishop":
-                body_color = Color("5f4869")
-        draw_rect(rect, body_color, true)
-        var head_radius := minf(24.0, rect.size.x * 0.38)
-        draw_circle(Vector2(rect.get_center().x, rect.position.y - head_radius * 0.35), head_radius, Color("c8ad8a"))
-        var facing := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
-        var gun_origin := Vector2(rect.get_center().x + facing * rect.size.x * 0.18, rect.position.y + rect.size.y * 0.42)
-        var gun_length := 42.0 if String(enemy["weapon"]) != "panzerfaust" else 54.0
-        var gun_width := 6.0 if String(enemy["weapon"]) != "panzerfaust" else 10.0
-        draw_line(gun_origin, gun_origin + Vector2(facing * gun_length, 0.0), Color("a4abb1"), gun_width)
-
-        var hp_width := maxf(44.0, rect.size.x)
-        var hp_ratio := clampf(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
-        var hp_position := Vector2(rect.get_center().x - hp_width * 0.5, rect.position.y - 24.0)
-        draw_rect(Rect2(hp_position, Vector2(hp_width, 6.0)), Color("2f3438"), true)
-        draw_rect(Rect2(hp_position, Vector2(hp_width * hp_ratio, 6.0)), Color("c7634e"), true)
 
 func _notify_parent(message_type: String) -> void:
     if not OS.has_feature("web"):
