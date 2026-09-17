@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUsername } from './auth.js';
-import { pvpApi } from './pvpApi.js';
 import { loadPvpEnrollment, savePvpEnrollment } from './pvpEnrollment.js';
 
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], activeMatch: null, pollAfterMs: 3000 });
 const ROSTER_HEARTBEAT_MS = 15000;
 const HIDDEN_POLL_MS = 12000;
+
+async function loadPvpApi() {
+  return (await import('./pvpApi.js')).pvpApi;
+}
 
 function mergeSelfIntoRoster(lobby, member) {
   if (!member) return lobby;
@@ -32,6 +35,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const refresh = useCallback(async ({ signal, heartbeat = true } = {}) => {
     if (!enrolled) return null;
     try {
+      const pvpApi = await loadPvpApi();
       let next = { ...EMPTY_LOBBY, ...(await pvpApi.getLobby({ signal }) || {}) };
       const due = Date.now() - heartbeatAtRef.current >= ROSTER_HEARTBEAT_MS;
       if (!next.activeMatch && heartbeat && due) {
@@ -87,6 +91,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
 
   const enroll = useCallback(async () => {
     try {
+      const pvpApi = await loadPvpApi();
       const joined = await pvpApi.joinRoster();
       savePvpEnrollment(username, true);
       heartbeatAtRef.current = Date.now();
@@ -103,6 +108,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
 
   const leave = useCallback(async () => {
     try {
+      const pvpApi = await loadPvpApi();
       await pvpApi.leaveRoster();
     } finally {
       savePvpEnrollment(username, false);
@@ -115,6 +121,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const acceptChallenge = useCallback(async (challenge) => {
     const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
     if (!challengeId) return null;
+    const pvpApi = await loadPvpApi();
     const result = await pvpApi.acceptChallenge(challengeId);
     setError('');
     return result;
@@ -123,6 +130,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const declineChallenge = useCallback(async (challenge) => {
     const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
     if (!challengeId) return null;
+    const pvpApi = await loadPvpApi();
     const result = await pvpApi.declineChallenge(challengeId);
     setLobby((current) => ({
       ...current,
