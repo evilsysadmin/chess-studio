@@ -7,7 +7,7 @@
 size = Vector2(48, 84)
 
 [sub_resource type="RectangleShape2D" id="Rectangle_floor"]
-size = Vector2(2600, 110)
+size = Vector2(5200, 110)
 
 [sub_resource type="RectangleShape2D" id="Rectangle_wall"]
 size = Vector2(40, 720)
@@ -25,7 +25,7 @@ size = Vector2(320, 24)
 script = ExtResource("1_main")
 
 [node name="Floor" type="StaticBody2D" parent="."]
-position = Vector2(1300, 665)
+position = Vector2(2600, 665)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
 shape = SubResource("Rectangle_floor")
@@ -37,7 +37,7 @@ position = Vector2(-20, 360)
 shape = SubResource("Rectangle_wall")
 
 [node name="RightBoundary" type="StaticBody2D" parent="."]
-position = Vector2(2620, 360)
+position = Vector2(5220, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightBoundary"]
 shape = SubResource("Rectangle_wall")
@@ -72,6 +72,42 @@ position = Vector2(2260, 500)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform5"]
 shape = SubResource("Rectangle_platform_240")
 
+[node name="Platform6" type="StaticBody2D" parent="."]
+position = Vector2(2720, 470)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform6"]
+shape = SubResource("Rectangle_platform_280")
+
+[node name="Platform7" type="StaticBody2D" parent="."]
+position = Vector2(3120, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform7"]
+shape = SubResource("Rectangle_platform_240")
+
+[node name="Platform8" type="StaticBody2D" parent="."]
+position = Vector2(3580, 520)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform8"]
+shape = SubResource("Rectangle_platform_320")
+
+[node name="Platform9" type="StaticBody2D" parent="."]
+position = Vector2(4000, 440)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
+shape = SubResource("Rectangle_platform_280")
+
+[node name="Platform10" type="StaticBody2D" parent="."]
+position = Vector2(4420, 510)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform10"]
+shape = SubResource("Rectangle_platform_240")
+
+[node name="Platform11" type="StaticBody2D" parent="."]
+position = Vector2(4860, 420)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform11"]
+shape = SubResource("Rectangle_platform_320")
+
 [node name="Player" type="CharacterBody2D" parent="."]
 position = Vector2(180, 568)
 floor_snap_length = 8.0
@@ -86,7 +122,7 @@ position_smoothing_enabled = true
 position_smoothing_speed = 7.0
 limit_left = 0
 limit_top = 0
-limit_right = 2600
+limit_right = 5200
 limit_bottom = 720
 
 [node name="HUD" type="CanvasLayer" parent="."]
