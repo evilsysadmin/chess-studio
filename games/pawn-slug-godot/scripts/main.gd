@@ -911,7 +911,7 @@ func _draw_pickups() -> void:
                 draw_arc(position + Vector2(7.0, -15.0), 7.0, -PI * 0.85, PI * 0.15, 12, Color("d4c083"), 3.0)
             "medkit":
                 draw_rect(Rect2(position - Vector2(17.0, 13.0), Vector2(34.0, 26.0)), Color("d8d7cf"), true)
-                draw_rect(Rect2(position - Vector2(4.0, -11.0), Vector2(8.0, 22.0)), Color("b94e43"), true)
+                draw_rect(Rect2(position - Vector2(4.0, 11.0), Vector2(8.0, 22.0)), Color("b94e43"), true)
                 draw_rect(Rect2(position - Vector2(11.0, 4.0), Vector2(22.0, 8.0)), Color("b94e43"), true)
 
 func _draw_grenades() -> void:
