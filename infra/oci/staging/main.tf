@@ -5,8 +5,6 @@ data "oci_identity_availability_domains" "available" {
 }
 
 data "oci_core_images" "arm64_ubuntu" {
-  count = var.image_ocid == null ? 1 : 0
-
   compartment_id           = var.compartment_ocid
   operating_system         = "Canonical Ubuntu"
   operating_system_version = "24.04"
@@ -27,8 +25,8 @@ locals {
     data.oci_identity_availability_domains.available[0].availability_domains[0].name,
     "",
   )
-  selected_image_ocid = var.image_ocid != null ? trimspace(var.image_ocid) : try(
-    data.oci_core_images.arm64_ubuntu[0].images[0].id,
+  selected_image_ocid = try(
+    data.oci_core_images.arm64_ubuntu.images[0].id,
     "",
   )
   common_tags = merge({
@@ -181,7 +179,7 @@ resource "oci_core_instance" "backend" {
 
     precondition {
       condition     = can(regex("^ocid1\\.image\\.", local.selected_image_ocid))
-      error_message = "OCI returned no Ubuntu 24.04 image compatible with VM.Standard.A1.Flex. Set image_ocid explicitly."
+      error_message = "OCI returned no Canonical Ubuntu 24.04 platform image compatible with VM.Standard.A1.Flex."
     }
 
     precondition {
