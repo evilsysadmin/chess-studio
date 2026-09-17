@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/oci-readiness.yml").read_text(encoding="utf-8")
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
+install_source = probe.split("\ndef install_command", 1)[1].split("\ndef _run", 1)[0]
 
 for required_path in (
     "      - infra/oci/k3s/**",
@@ -24,11 +25,11 @@ assert "    concurrency:\n      group: oci-staging-mutations\n      cancel-in-pr
 assert "python3 scripts/oci_k3s_bundle_publish.py reconcile" in publish
 assert "python3 scripts/oci_k3s_bundle_probe.py install" in publish
 
-assert "fast_path=true" in probe and "fast_path=false" in probe
-assert probe.index("fast_path=true") < probe.index("InstancePrincipalsSecurityTokenSigner")
-assert "K3s service unexpectedly exists" not in probe, (
+assert "fast_path=true" in install_source and "fast_path=false" in install_source
+assert install_source.index("fast_path=true") < install_source.index("InstancePrincipalsSecurityTokenSigner")
+assert "K3s service unexpectedly exists" not in install_source, (
     "asset reconciliation must remain compatible with the separately prepared inert K3s service"
 )
-assert "sudo --non-interactive" in probe, "slow path must retain the narrow root installer"
+assert "sudo --non-interactive" in install_source, "slow path must retain the narrow root installer"
 
 print("OCI K3s readiness serialization + fast-path contract: OK")
