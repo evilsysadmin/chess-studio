@@ -31,4 +31,5 @@ install -o root -g root -m 0440 "$sudoers" "$source_copy"
 install -o root -g root -m 0440 "$sudoers" "$active"
 visudo -cf "$active" >/dev/null
 
-echo 'OCI_K3S_CAPABILITIES_READY assets=true lifecycle=true'
+echo 'OCI_K3S_ASSET_CAPABILITY_READY'
+echo 'OCI_K3S_LIFECYCLE_CAPABILITY_READY'
