@@ -82,6 +82,13 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     experimentsAction();
   };
 
+  const activateSceneDestination = (destination) => {
+    if (loading) return;
+    if (destination === 'tournament') onTournament();
+    else if (destination === 'combat') onCombat();
+    else if (destination === 'play') (hasSavedGame ? onContinue : onPlay)();
+  };
+
   useEffect(() => {
     const refresh = () => setReducedMotion(currentReducedMotion());
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
@@ -153,7 +160,13 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-focus={activeRoom || 'none'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        <HomeCastle3D artUrl={hall} ambient={castleLife.ambient} activeRoom={activeRoom} />
+        <HomeCastle3D
+          artUrl={hall}
+          ambient={castleLife.ambient}
+          activeRoom={activeRoom}
+          onDestinationHover={setActiveRoom}
+          onDestinationActivate={activateSceneDestination}
+        />
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         {castleLife.rareSighting && (
           <span className={`illustrated-home__rare-sighting is-${castleLife.rareSighting}`} aria-hidden="true" />
@@ -181,7 +194,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             <Fragment key={id}>
               <button
                 type="button"
-                className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}`}
+                className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 onClick={action}
                 onPointerEnter={() => setActiveRoom(id)}
