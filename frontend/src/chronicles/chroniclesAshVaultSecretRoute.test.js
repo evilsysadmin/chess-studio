@@ -19,6 +19,7 @@ describe('Chronicles secret Ash Vault route', () => {
   it('discovers a hidden door, consumes its key and enters a distinct side map', () => {
     expect(chroniclesMapIds()).toContain('ash-vault');
     const vault = chroniclesMapById('ash-vault');
+    expect(vault.version).toBe(2);
     expect(vault.grid).toHaveLength(7);
     expect(vault.grid[0]).toHaveLength(9);
     expect(vault.enemies.map((enemy) => enemy.id)).toEqual([
@@ -73,7 +74,7 @@ describe('Chronicles secret Ash Vault route', () => {
     });
   });
 
-  it('rewards the required encounter and lets the optional vault wisp survive', () => {
+  it('rejoins the main campaign with its secret-route trophy while the optional wisp can survive', () => {
     let state = chroniclesMapTransitionState(createChroniclesState(), 'ash-vault');
     state = chroniclesApplyContentEffects(state, [{
       type: 'start-quest',
@@ -110,10 +111,21 @@ describe('Chronicles secret Ash Vault route', () => {
     });
 
     state = { ...state, x: 6, y: 1 };
-    const escaped = chroniclesTacticsUse(state, 'ash-vault-exit');
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.vaultWispHp).toBe(5);
-    expect(escaped.journal.at(-1)?.id).toBe('ash-vault-cleared');
+    const enteredArchive = chroniclesTacticsUse(state, 'ash-vault-exit');
+    expect(enteredArchive.mapId).toBe('blind-king-archive');
+    expect(enteredArchive.phase).toBe('explore');
+    expect({ x: enteredArchive.x, y: enteredArchive.y }).toEqual({ x: 1, y: 7 });
+    expect(chroniclesInventoryEntries(enteredArchive)).toContainEqual(expect.objectContaining({
+      id: 'obsidian-idol',
+      quantity: 1,
+    }));
+    expect(enteredArchive.journal.at(-1)?.id).toBe('ash-vault-archive-crossing');
+
+    const atSecretCache = { ...enteredArchive, x: 7, y: 1 };
+    expect(chroniclesTacticsInteractions(atSecretCache)).toContainEqual(expect.objectContaining({
+      id: 'obsidian-index-cache',
+      label: 'Encajar Ídolo de Obsidiana',
+    }));
   });
 
   it('gives the optional vault light its own non-required trophy loot', () => {
