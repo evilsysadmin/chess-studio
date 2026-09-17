@@ -6,7 +6,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, k3s-start, k3s-rollback]
         default: smoke
         required: true
       secret_key:
@@ -16,7 +16,7 @@ on:
         default: JWT_SECRET
         required: false
       repo_ref:
-        description: Immutable 40-character SHA for deploy/bringup; defaults to workflow SHA
+        description: Immutable 40-character SHA for deploy/bringup/K3s accreditation; defaults to workflow SHA
         type: string
         required: false
 
@@ -68,6 +68,9 @@ jobs:
           python3 -S scripts/render_mongo_target_diagnose.py --self-test
           python3 -S scripts/oci_mongo_network_diagnose.py --self-test
           python3 -S scripts/oci_reserve_egress_ip.py --self-test
+          python3 -S scripts/oci_k3s_control.py --self-test
+          python3 -S scripts/oci_k3s_control_root.py self-test
+          python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Diagnose Render staging Mongo target
         if: inputs.operation == 'mongo-target-diagnose'
@@ -141,6 +144,26 @@ jobs:
       - name: Reserve stable OCI egress IP
         if: inputs.operation == 'reserved-egress'
         run: python3 scripts/oci_reserve_egress_ip.py
+
+      - name: Start guarded single-node K3s
+        if: inputs.operation == 'k3s-start'
+        run: python3 scripts/oci_k3s_control.py start
+
+      - name: Roll back K3s to inert state
+        if: inputs.operation == 'k3s-rollback'
+        run: python3 scripts/oci_k3s_control.py rollback
+
+      - name: Prove Docker staging survived K3s lifecycle change
+        if: inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback'
+        env:
+          EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}
+          STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+        run: >-
+          python3 scripts/verify_backend_staging.py
+          --api-url "$STAGING_API_URL"
+          --sha "$EXPECTED_SHA"
+          --attempts 20
+          --interval 2
 
       - name: Smoke OCI agent transport
         id: smoke
