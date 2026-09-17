@@ -63,22 +63,11 @@ jobs:
           version: '2.185.2'
           python-version: '3.13'
 
-      - name: Validate OCI service contracts
+      - name: Validate selected OCI service contract
         if: github.event_name == 'workflow_dispatch'
-        run: |
-          python3 -S scripts/oci_run_command.py --self-test
-          python3 -S scripts/oci_runtime_config.py --self-test
-          python3 -S scripts/oci_vault_runtime.py --self-test
-          python3 -S scripts/oci_vault_bootstrap.py --self-test
-          python3 -S scripts/oci_backend_diagnose.py --self-test
-          python3 -S scripts/render_mongo_target_diagnose.py --self-test
-          python3 -S scripts/oci_mongo_network_diagnose.py --self-test
-          python3 -S scripts/oci_reserve_egress_ip.py --self-test
-          python3 -S scripts/oci_k3s_control.py --self-test
-          python3 -S scripts/oci_k3s_control_root.py self-test
-          python3 -S scripts/oci_k3s_status.py --self-test
-          python3 -S scripts/oci_k3s_status_root.py self-test
-          python3 -S scripts/verify_backend_staging.py --self-test
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: python3 -S scripts/oci_service_contracts.py "$OPERATION"
 
       - name: Diagnose Render staging Mongo target
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose'
