@@ -67,6 +67,10 @@ export function chroniclesIsoWorldForContent(geometryPlan, contentId) {
   return new THREE.Vector3(world.x, world.y, world.z);
 }
 
+export function chroniclesIsoUsesLegacyDressing(scenePlan) {
+  return scenePlan?.sceneStyle?.dressing === 'crypt-legacy';
+}
+
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
     position: new THREE.Vector3(focus.x, 8.15, focus.z + 8.55),
@@ -377,24 +381,26 @@ function buildIsoDungeon({
   runeCoreRoot.visible = false;
   root.add(runeCoreRoot);
 
-  buildDungeonColumn(root, wallMaterials[0], wallTrim, -5.9, -4.9, 0, { coarsePointer });
-  buildDungeonColumn(root, wallMaterials[1], wallTrim, 5.9, -4.9, 1, { coarsePointer });
-  buildDungeonColumn(root, wallMaterials[2], wallTrim, -5.9, 5.9, 2, { coarsePointer });
-  buildFarShrine(root, wallMaterials[2], wallTrim, brass, { coarsePointer });
+  if (chroniclesIsoUsesLegacyDressing(scenePlan)) {
+    buildDungeonColumn(root, wallMaterials[0], wallTrim, -5.9, -4.9, 0, { coarsePointer });
+    buildDungeonColumn(root, wallMaterials[1], wallTrim, 5.9, -4.9, 1, { coarsePointer });
+    buildDungeonColumn(root, wallMaterials[2], wallTrim, -5.9, 5.9, 2, { coarsePointer });
+    buildFarShrine(root, wallMaterials[2], wallTrim, brass, { coarsePointer });
 
-  if (!coarsePointer) {
-    const rubbleMaterial = ownedMaterial({ color: 0x34312d, roughness: 0.96, metalness: 0.01 });
-    RUBBLE.forEach((piece, index) => {
-      const rubble = addMesh(
-        root,
-        new THREE.DodecahedronGeometry(piece.scale, 0),
-        rubbleMaterial,
-        [piece.x, piece.scale * 0.4 - 0.02, piece.z],
-        `chronicles-iso-rubble-${index}`,
-      );
-      rubble.rotation.set(piece.yaw * 0.25, piece.yaw, piece.yaw * 0.16);
-      rubble.scale.set(1.35, 0.68, 0.92);
-    });
+    if (!coarsePointer) {
+      const rubbleMaterial = ownedMaterial({ color: 0x34312d, roughness: 0.96, metalness: 0.01 });
+      RUBBLE.forEach((piece, index) => {
+        const rubble = addMesh(
+          root,
+          new THREE.DodecahedronGeometry(piece.scale, 0),
+          rubbleMaterial,
+          [piece.x, piece.scale * 0.4 - 0.02, piece.z],
+          `chronicles-iso-rubble-${index}`,
+        );
+        rubble.rotation.set(piece.yaw * 0.25, piece.yaw, piece.yaw * 0.16);
+        rubble.scale.set(1.35, 0.68, 0.92);
+      });
+    }
   }
 
   return {
@@ -691,10 +697,12 @@ export function createChroniclesIsometricGame(host, {
     scenePlan: initialScenePlan,
   });
   scene.add(dungeon.root);
-  const torches = buildTorches(scene, {
-    coarsePointer: coarse,
-    scenePlan: initialScenePlan,
-  });
+  const torches = chroniclesIsoUsesLegacyDressing(initialScenePlan)
+    ? buildTorches(scene, {
+      coarsePointer: coarse,
+      scenePlan: initialScenePlan,
+    })
+    : [];
   const party = buildParty(scene, {
     coarsePointer: coarse,
     reducedMotion,
