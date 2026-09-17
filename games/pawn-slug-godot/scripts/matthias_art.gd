@@ -1,43 +1,18 @@
 extends Node2D
 
-# Canonical Matthias runtime art is delivered from immutable R2 objects, never Git blobs.
-# Contract mirrors frontend/src/pawnSlugMatthiasIntegratedSprites.js.
-const WEAPON_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-37db67d27387fde0.webp",
-}
-const PISTOL_SHOOT_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
-const FRAME_SIZE := Vector2(192.0, 192.0)
+# Godot-native 2D Matthias visual controller.
+# The body uses the published 16x5 motion atlas and every weapon is a separate
+# 2D sprite attached to a Marker2D. Gameplay only talks to this facade.
+const MOTION_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
+const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
+const FRAME_SIZE := Vector2(96.0, 96.0)
 const ATLAS_COLUMNS := 16
 const ATLAS_ROWS := 5
-const SHOOT_FRAMES := 2
-const ART_SCALE := 0.88
-const BOTTOM_GUTTER := 24.0
 const PLAYER_FOOT_Y := 42.0
-const FOOT_OFFSET_Y := -72.0
-const SHOOT_SECOND_FRAME_AT := 0.075
-const SHOOT_HOLD_SECONDS := 0.18
+const BODY_SCALE := 1.34
 const MUZZLE_FLASH_SECONDS := 0.055
-const MUZZLE_OFFSET := Vector2(65.0, -10.0)
-const CROUCH_MUZZLE_Y_SHIFT := 18.0
-const MUZZLE_RADIUS := 9.0
-const RECOIL_SECONDS := 0.11
-const RECOIL_PIXELS := 5.0
-const HURT_VISUAL_SECONDS := 0.18
-const HURT_SHIFT_PIXELS := 12.0
-const HURT_TILT_DEGREES := 6.0
-const DEATH_ROTATION_DEGREES := 82.0
-const DEATH_SHIFT_PIXELS := 10.0
-const DEATH_DROP_PIXELS := 34.0
-const DEATH_SCALE_Y := 0.82
-const LANDING_SECONDS := 0.12
-const LANDING_Y_SQUASH := 0.055
-const LANDING_X_STRETCH := 0.035
-const CANONICAL_RUN_FRAMES := 16
-const CANONICAL_RUN_FPS := 8.0
 const JUMP_VISUAL_SPEED_RANGE := 610.0
+
 const ACTION_ROWS := {
     "idle": 0,
     "walk": 1,
@@ -48,46 +23,79 @@ const ACTION_ROWS := {
 const ACTION_COUNTS := {
     "idle": 10,
     "walk": 10,
-    "run": CANONICAL_RUN_FRAMES,
+    "run": 16,
     "crouch": 10,
     "jump": 9,
 }
 const ACTION_FPS := {
     "idle": 6.0,
     "walk": 10.0,
-    "run": CANONICAL_RUN_FPS,
+    "run": 8.0,
     "crouch": 8.0,
+    "jump": 9.0,
+}
+const WEAPON_FRAME := {
+    "pistol": 0,
+    "machinegun": 1,
+    "shotgun": 2,
+    "panzerfaust": 3,
+}
+const WEAPON_SCALE := {
+    "pistol": Vector2(0.23, 0.23),
+    "machinegun": Vector2(0.27, 0.27),
+    "shotgun": Vector2(0.28, 0.28),
+    "panzerfaust": Vector2(0.31, 0.31),
+}
+const WEAPON_MUZZLE_X := {
+    "pistol": 38.0,
+    "machinegun": 52.0,
+    "shotgun": 57.0,
+    "panzerfaust": 61.0,
+}
+const ACTION_WEAPON_POSITION := {
+    "idle": Vector2(17.0, -55.0),
+    "walk": Vector2(18.0, -55.0),
+    "run": Vector2(20.0, -54.0),
+    "crouch": Vector2(19.0, -39.0),
+    "jump": Vector2(19.0, -55.0),
+}
+const ACTION_WEAPON_ROTATION := {
+    "idle": 0.0,
+    "walk": -0.02,
+    "run": -0.045,
+    "crouch": 0.0,
+    "jump": -0.035,
 }
 
 var _body_ready := false
-var _shoot_ready := false
-var _body_sprite: Sprite2D
-var _shoot_sprite: Sprite2D
+var _weapon := "pistol"
 var _action := "idle"
-var _action_time := 0.0
-var _shoot_age := SHOOT_HOLD_SECONDS
-var _muzzle_age := MUZZLE_FLASH_SECONDS
-var _recoil_remaining := 0.0
-var _landing_remaining := 0.0
 var _facing := 1.0
 var _vertical_speed := 0.0
 var _on_floor := false
 var _crouching := false
+var _muzzle_remaining := 0.0
 var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _dead := false
-var _death_progress := 0.0
-var _weapon := "pistol"
-var _weapon_textures: Dictionary = {}
-var _weapon_requests: Dictionary = {}
+var _was_hurt := false
+var _was_dead := false
+
+var _facing_root: Node2D
+var _fx_root: Node2D
+var _body: AnimatedSprite2D
+var _weapon_root: Marker2D
+var _weapon_sprite: Sprite2D
+var _muzzle: Marker2D
+var _muzzle_flash: Polygon2D
+var _fx_player: AnimationPlayer
+var _art_request: HTTPRequest
 
 func _ready() -> void:
-    _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
-    _shoot_sprite = _make_art_sprite("MatthiasCanonicalShoot")
-    _shoot_sprite.visible = false
-    for weapon in WEAPON_ATLAS_URLS.keys():
-        _request_weapon_art(String(weapon))
-    _request_art(PISTOL_SHOOT_URL, "shoot")
+    _build_native_nodes()
+    _build_fx_animations()
+    _load_weapon_texture()
+    _request_motion_atlas()
 
 func body_ready() -> bool:
     return _body_ready
@@ -96,36 +104,34 @@ func current_weapon() -> String:
     return _weapon
 
 func set_weapon(kind: String) -> void:
-    var resolved := kind if WEAPON_ATLAS_URLS.has(kind) else "pistol"
-    if resolved == _weapon and _body_ready:
-        return
-    _weapon = resolved
-    if _weapon_textures.has(_weapon):
-        _body_sprite.texture = _weapon_textures[_weapon]
-        _body_ready = true
-        _apply_body_frame()
-    else:
-        _body_ready = false
-        _body_sprite.visible = false
-        _request_weapon_art(_weapon)
-    _apply_shoot_frame()
-    _apply_pose_transform()
-    _apply_combat_modulate()
+    _weapon = kind if WEAPON_FRAME.has(kind) else "pistol"
+    _apply_weapon_frame()
+    _sync_weapon_pose()
 
 func set_combat_state(
     hurt_remaining: float,
     invuln_remaining: float,
     dead: bool,
-    death_progress: float,
+    _death_progress: float,
 ) -> void:
     _hurt_remaining = maxf(0.0, hurt_remaining)
     _invuln_remaining = maxf(0.0, invuln_remaining)
     _dead = dead
-    _death_progress = clampf(death_progress, 0.0, 1.0)
-    if _dead or _hurt_remaining > 0.0:
-        _recoil_remaining = 0.0
-        _shoot_age = SHOOT_HOLD_SECONDS
-        _muzzle_age = MUZZLE_FLASH_SECONDS
+
+    var hurt_now := _hurt_remaining > 0.0
+    if hurt_now and not _was_hurt and not _dead:
+        _play_directional_fx("hurt")
+    if _dead and not _was_dead:
+        _play_directional_fx("death")
+        if _body != null:
+            _body.pause()
+    elif not _dead and _was_dead:
+        _reset_fx_transform()
+        _play_body_action(_action, true)
+
+    _was_hurt = hurt_now
+    _was_dead = _dead
+    _sync_modulate()
 
 func update_visual(
     delta: float,
@@ -141,35 +147,28 @@ func update_visual(
     _vertical_speed = vertical_speed
     _on_floor = on_floor
     _crouching = crouching and on_floor
+    _facing_root.scale.x = _facing
+
     if landed_now and not _dead:
-        _landing_remaining = LANDING_SECONDS
-    else:
-        _landing_remaining = maxf(0.0, _landing_remaining - delta)
+        _play_fx("land")
     if fired_now and not _dead and _hurt_remaining <= 0.0:
-        _shoot_age = 0.0
-        _muzzle_age = 0.0
-        _recoil_remaining = RECOIL_SECONDS
-    else:
-        _shoot_age += delta
-        _muzzle_age += delta
-        _recoil_remaining = maxf(0.0, _recoil_remaining - delta)
+        _play_directional_fx("recoil")
+        _muzzle_remaining = MUZZLE_FLASH_SECONDS
+
+    _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
+    if _muzzle_flash != null:
+        _muzzle_flash.visible = _muzzle_remaining > 0.0 and not _dead
 
     var next_action := _resolve_action(horizontal_speed_ratio, on_floor, _crouching)
     if next_action != _action:
         _action = next_action
-        _action_time = 0.0
-    else:
-        _action_time += delta
+        _play_body_action(_action)
+    elif _action == "jump" and _body_ready:
+        _sync_jump_frame()
 
-    if _body_ready:
-        _apply_body_frame()
-    _apply_shoot_frame()
-    _apply_pose_transform()
-    _apply_combat_modulate()
-    queue_redraw()
+    _sync_weapon_pose()
+    _sync_modulate()
 
-# Ground locomotion follows post-physics speed, not raw input. Matthias therefore
-# keeps walking/running while real deceleration still moves him instead of skating in idle.
 func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: bool) -> String:
     if not on_floor:
         return "jump"
@@ -181,201 +180,247 @@ func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: b
         return "walk"
     return "idle"
 
-# Death deliberately reuses the canonical crouch sequence until dedicated authored
-# hurt/death strips exist in R2. The identity stays canonical instead of swapping to graybox art.
-func _apply_body_frame() -> void:
-    var action := _action
-    var frame := 0
-    if _dead:
-        action = "crouch"
-        var death_count := int(ACTION_COUNTS[action])
-        frame = clampi(int(floor(_death_progress * float(death_count - 1))), 0, death_count - 1)
-    else:
-        var count := int(ACTION_COUNTS[action])
-        if action == "jump":
-            frame = _jump_frame_for_speed(_vertical_speed, count)
-        else:
-            frame = int(_action_time * float(ACTION_FPS[action])) % count
+func _build_native_nodes() -> void:
+    _facing_root = Node2D.new()
+    _facing_root.name = "FacingRoot"
+    _facing_root.position = Vector2(0.0, PLAYER_FOOT_Y)
+    add_child(_facing_root)
 
-    _body_sprite.region_rect = Rect2(
-        Vector2(frame * FRAME_SIZE.x, float(ACTION_ROWS[action]) * FRAME_SIZE.y),
-        FRAME_SIZE,
-    )
-    # Premium weapon banks are authored facing screen-left.
-    _body_sprite.flip_h = _facing > 0.0
+    _fx_root = Node2D.new()
+    _fx_root.name = "FxRoot"
+    _facing_root.add_child(_fx_root)
 
-# Airborne art follows the real ballistic phase rather than elapsed animation time.
-# Full ascent maps to the first pose, the apex to the middle pose and descent to
-# the last pose. Variable-height jumps therefore remain visually synchronized.
-func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
-    if count <= 1:
-        return 0
-    var phase := clampf(
-        (vertical_speed + JUMP_VISUAL_SPEED_RANGE) / (JUMP_VISUAL_SPEED_RANGE * 2.0),
-        0.0,
-        1.0,
-    )
-    return clampi(int(round(phase * float(count - 1))), 0, count - 1)
+    _body = AnimatedSprite2D.new()
+    _body.name = "Body"
+    _body.position = Vector2(0.0, -48.0 * BODY_SCALE)
+    _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
+    _body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+    _body.visible = false
+    _fx_root.add_child(_body)
 
-func _apply_shoot_frame() -> void:
-    # The separate authored shoot strip belongs only to the canonical pistol bank.
-    # Other weapons already carry their correct gun in every premium body frame.
-    var show_shoot := (
-        _weapon == "pistol"
-        and _body_ready
-        and _shoot_ready
-        and _on_floor
-        and not _crouching
-        and not _dead
-        and _hurt_remaining <= 0.0
-        and _shoot_age < SHOOT_HOLD_SECONDS
-    )
-    if _body_sprite:
-        _body_sprite.visible = _body_ready and not show_shoot
-    if not _shoot_sprite:
+    _weapon_root = Marker2D.new()
+    _weapon_root.name = "WeaponRoot"
+    _fx_root.add_child(_weapon_root)
+
+    _weapon_sprite = Sprite2D.new()
+    _weapon_sprite.name = "Weapon"
+    _weapon_sprite.centered = true
+    _weapon_sprite.region_enabled = true
+    _weapon_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+    _weapon_root.add_child(_weapon_sprite)
+
+    _muzzle = Marker2D.new()
+    _muzzle.name = "Muzzle"
+    _weapon_root.add_child(_muzzle)
+
+    _muzzle_flash = Polygon2D.new()
+    _muzzle_flash.name = "MuzzleFlash"
+    _muzzle_flash.polygon = PackedVector2Array([
+        Vector2(0.0, 0.0),
+        Vector2(9.0, -3.0),
+        Vector2(14.0, 0.0),
+        Vector2(9.0, 3.0),
+        Vector2(0.0, 0.0),
+        Vector2(4.0, -7.0),
+        Vector2(7.0, 0.0),
+        Vector2(4.0, 7.0),
+    ])
+    _muzzle_flash.color = Color("ffd36a")
+    _muzzle_flash.visible = false
+    _muzzle.add_child(_muzzle_flash)
+
+    _fx_player = AnimationPlayer.new()
+    _fx_player.name = "AnimationPlayer"
+    _fx_player.root_node = NodePath("..")
+    add_child(_fx_player)
+
+func _load_weapon_texture() -> void:
+    var texture := load(WEAPON_ATLAS_PATH) as Texture2D
+    if texture == null:
+        _weapon_sprite.visible = false
         return
-    _shoot_sprite.visible = show_shoot
-    if not show_shoot:
+    _weapon_sprite.texture = texture
+    _weapon_sprite.visible = true
+    _apply_weapon_frame()
+
+func _apply_weapon_frame() -> void:
+    if _weapon_sprite == null:
         return
+    var index := int(WEAPON_FRAME.get(_weapon, 0))
+    _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+    _weapon_sprite.scale = WEAPON_SCALE.get(_weapon, Vector2(0.23, 0.23))
+    if _muzzle != null:
+        _muzzle.position = Vector2(float(WEAPON_MUZZLE_X.get(_weapon, 38.0)), 0.0)
 
-    var frame := 0 if _shoot_age < SHOOT_SECOND_FRAME_AT else 1
-    _shoot_sprite.region_rect = Rect2(Vector2(frame * FRAME_SIZE.x, 0.0), FRAME_SIZE)
-    # Authored shoot strip faces screen-right.
-    _shoot_sprite.flip_h = _facing < 0.0
-
-# All sprite transforms pivot from Matthias' foot anchor. The normal pose is
-# unchanged, but squash, hurt and death no longer rotate around the frame centre.
-func _apply_pose_transform() -> void:
-    var landing := 0.0 if _dead else clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
-    var hurt := clampf(_hurt_remaining / HURT_VISUAL_SECONDS, 0.0, 1.0)
-    var death := sin(_death_progress * PI * 0.5) if _dead else 0.0
-    var scale_x := ART_SCALE * (1.0 + landing * LANDING_X_STRETCH)
-    var scale_y := ART_SCALE * (1.0 - landing * LANDING_Y_SQUASH)
-    scale_y *= lerpf(1.0, DEATH_SCALE_Y, death)
-
-    var recoil_x := _recoil_offset_x()
-    var hurt_x := -_facing * HURT_SHIFT_PIXELS * hurt * hurt
-    var death_x := -_facing * DEATH_SHIFT_PIXELS * death
-    var rotation := deg_to_rad(HURT_TILT_DEGREES) * _facing * hurt
-    rotation += deg_to_rad(DEATH_ROTATION_DEGREES) * _facing * death
-
-    for sprite in [_body_sprite, _shoot_sprite]:
-        if sprite == null:
-            continue
-        sprite.scale = Vector2(scale_x, scale_y)
-        sprite.rotation = rotation
-        sprite.position = Vector2(
-            recoil_x + hurt_x + death_x,
-            PLAYER_FOOT_Y + DEATH_DROP_PIXELS * death,
-        )
-
-func _apply_combat_modulate() -> void:
-    var color := Color.WHITE
-    if _dead:
-        color = Color(0.72, 0.72, 0.72, 1.0)
-    elif _hurt_remaining > 0.0:
-        color = Color(1.0, 0.58, 0.58, 1.0)
-    elif _invuln_remaining > 0.0:
-        var visible_pulse := int(floor(_invuln_remaining * 18.0)) % 2 == 0
-        color = Color(1.0, 1.0, 1.0, 1.0 if visible_pulse else 0.42)
-
-    for sprite in [_body_sprite, _shoot_sprite]:
-        if sprite != null:
-            sprite.modulate = color
-
-func _recoil_offset_x() -> float:
-    if _dead or _hurt_remaining > 0.0 or _recoil_remaining <= 0.0:
-        return 0.0
-    var phase := clampf(_recoil_remaining / RECOIL_SECONDS, 0.0, 1.0)
-    return -_facing * RECOIL_PIXELS * phase * phase
-
-func _draw() -> void:
-    if _dead or _hurt_remaining > 0.0 or _muzzle_age >= MUZZLE_FLASH_SECONDS:
+func _sync_weapon_pose() -> void:
+    if _weapon_root == null:
         return
-    var muzzle_y := MUZZLE_OFFSET.y + (CROUCH_MUZZLE_Y_SHIFT if _crouching else 0.0)
-    draw_circle(
-        Vector2(_recoil_offset_x() + _facing * MUZZLE_OFFSET.x, muzzle_y),
-        MUZZLE_RADIUS,
-        Color("ffd36a"),
-    )
+    _weapon_root.position = ACTION_WEAPON_POSITION.get(_action, ACTION_WEAPON_POSITION["idle"])
+    _weapon_root.rotation = float(ACTION_WEAPON_ROTATION.get(_action, 0.0))
+    if _weapon == "panzerfaust":
+        _weapon_root.position += Vector2(-2.0, -2.0 if _action != "crouch" else 1.0)
+    elif _weapon == "shotgun":
+        _weapon_root.position += Vector2(2.0, 0.0)
 
-func _make_art_sprite(sprite_name: String) -> Sprite2D:
-    var sprite := Sprite2D.new()
-    sprite.name = sprite_name
-    sprite.centered = true
-    sprite.region_enabled = true
-    sprite.position = Vector2(0.0, PLAYER_FOOT_Y)
-    sprite.offset = Vector2(0.0, FOOT_OFFSET_Y)
-    sprite.scale = Vector2(ART_SCALE, ART_SCALE)
-    sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-    sprite.visible = false
-    add_child(sprite)
-    return sprite
+func _request_motion_atlas() -> void:
+    _art_request = HTTPRequest.new()
+    _art_request.name = "MotionAtlasRequest"
+    add_child(_art_request)
+    _art_request.request_completed.connect(_on_motion_atlas_loaded)
+    if _art_request.request(MOTION_ATLAS_URL) != OK:
+        _art_request.queue_free()
+        _art_request = null
 
-func _request_weapon_art(weapon: String) -> void:
-    if _weapon_textures.has(weapon) or _weapon_requests.has(weapon):
-        return
-    var url := String(WEAPON_ATLAS_URLS.get(weapon, ""))
-    if url.is_empty():
-        return
-    _weapon_requests[weapon] = true
-    _request_art(url, "weapon:%s" % weapon)
-
-func _request_art(url: String, kind: String) -> void:
-    var request := HTTPRequest.new()
-    request.name = "ArtRequest_%s" % kind.replace(":", "_")
-    add_child(request)
-    request.request_completed.connect(_on_art_request_completed.bind(kind, request))
-    if request.request(url) != OK:
-        if kind.begins_with("weapon:"):
-            _weapon_requests.erase(kind.trim_prefix("weapon:"))
-        request.queue_free()
-
-func _on_art_request_completed(
+func _on_motion_atlas_loaded(
     result: int,
     response_code: int,
     _headers: PackedStringArray,
-    body: PackedByteArray,
-    kind: String,
-    request: HTTPRequest,
+    bytes: PackedByteArray,
 ) -> void:
-    request.queue_free()
-    var weapon := kind.trim_prefix("weapon:") if kind.begins_with("weapon:") else ""
-    if not weapon.is_empty():
-        _weapon_requests.erase(weapon)
+    if _art_request != null:
+        _art_request.queue_free()
+        _art_request = null
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         return
 
     var image := Image.new()
-    if image.load_webp_from_buffer(body) != OK:
+    if image.load_webp_from_buffer(bytes) != OK:
         return
-    if not weapon.is_empty() and not _valid_body_dimensions(image):
+    if image.get_width() != int(FRAME_SIZE.x) * ATLAS_COLUMNS:
         return
-    if kind == "shoot" and not _valid_shoot_dimensions(image):
+    if image.get_height() != int(FRAME_SIZE.y) * ATLAS_ROWS:
         return
 
-    var texture := ImageTexture.create_from_image(image)
-    if not weapon.is_empty():
-        _weapon_textures[weapon] = texture
-        if weapon == _weapon:
-            _body_sprite.texture = texture
-            _body_ready = true
-            _apply_body_frame()
-    elif kind == "shoot":
-        _shoot_sprite.texture = texture
-        _shoot_ready = true
-    _apply_shoot_frame()
-    _apply_pose_transform()
-    _apply_combat_modulate()
+    var atlas := ImageTexture.create_from_image(image)
+    _body.sprite_frames = _make_sprite_frames(atlas)
+    _body_ready = true
+    _body.visible = true
+    _play_body_action(_action, true)
 
-func _valid_body_dimensions(image: Image) -> bool:
-    return (
-        image.get_width() == int(FRAME_SIZE.x) * ATLAS_COLUMNS
-        and image.get_height() == int(FRAME_SIZE.y) * ATLAS_ROWS
+func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
+    var frames := SpriteFrames.new()
+    if frames.has_animation("default"):
+        frames.remove_animation("default")
+
+    for action in ACTION_ROWS.keys():
+        frames.add_animation(action)
+        frames.set_animation_speed(action, float(ACTION_FPS[action]))
+        frames.set_animation_loop(action, action in ["idle", "walk", "run"])
+        var count := int(ACTION_COUNTS[action])
+        for frame_index in range(count):
+            var frame_texture := AtlasTexture.new()
+            frame_texture.atlas = atlas
+            frame_texture.region = Rect2(
+                Vector2(frame_index * FRAME_SIZE.x, float(ACTION_ROWS[action]) * FRAME_SIZE.y),
+                FRAME_SIZE,
+            )
+            frames.add_frame(action, frame_texture)
+    return frames
+
+func _play_body_action(action: String, force_restart := false) -> void:
+    if not _body_ready or _dead:
+        return
+    if not force_restart and _body.animation == action:
+        return
+    _body.play(action)
+    if action == "jump":
+        _body.pause()
+        _sync_jump_frame()
+
+func _sync_jump_frame() -> void:
+    if not _body_ready or _body.animation != "jump":
+        return
+    var count := int(ACTION_COUNTS["jump"])
+    var phase := clampf(
+        (_vertical_speed + JUMP_VISUAL_SPEED_RANGE) / (JUMP_VISUAL_SPEED_RANGE * 2.0),
+        0.0,
+        1.0,
     )
+    _body.frame = clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
-func _valid_shoot_dimensions(image: Image) -> bool:
-    return (
-        image.get_width() == int(FRAME_SIZE.x) * SHOOT_FRAMES
-        and image.get_height() == int(FRAME_SIZE.y)
-    )
+func _sync_modulate() -> void:
+    if _fx_root == null:
+        return
+    var color := Color.WHITE
+    if _dead:
+        color = Color(0.72, 0.72, 0.72, 1.0)
+    elif _hurt_remaining > 0.0:
+        color = Color(1.0, 0.62, 0.62, 1.0)
+    elif _invuln_remaining > 0.0:
+        color.a = 1.0 if int(floor(_invuln_remaining * 18.0)) % 2 == 0 else 0.42
+    _fx_root.modulate = color
+
+func _build_fx_animations() -> void:
+    var library := AnimationLibrary.new()
+    library.add_animation("recoil_right", _make_transform_animation(0.11, Vector2(-5.0, 0.0), 0.0, Vector2.ONE))
+    library.add_animation("recoil_left", _make_transform_animation(0.11, Vector2(5.0, 0.0), 0.0, Vector2.ONE))
+    library.add_animation("hurt_right", _make_transform_animation(0.18, Vector2(-12.0, 0.0), deg_to_rad(6.0), Vector2(1.0, 0.965)))
+    library.add_animation("hurt_left", _make_transform_animation(0.18, Vector2(12.0, 0.0), deg_to_rad(-6.0), Vector2(1.0, 0.965)))
+    library.add_animation("land", _make_transform_animation(0.12, Vector2.ZERO, 0.0, Vector2(1.035, 0.945)))
+    library.add_animation("death_right", _make_death_animation(1.0))
+    library.add_animation("death_left", _make_death_animation(-1.0))
+    _fx_player.add_animation_library("", library)
+
+func _make_transform_animation(
+    length: float,
+    displacement: Vector2,
+    rotation: float,
+    scale_peak: Vector2,
+) -> Animation:
+    var animation := Animation.new()
+    animation.length = length
+
+    var position_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(position_track, NodePath("FacingRoot/FxRoot:position"))
+    animation.track_insert_key(position_track, 0.0, Vector2.ZERO)
+    animation.track_insert_key(position_track, length * 0.35, displacement)
+    animation.track_insert_key(position_track, length, Vector2.ZERO)
+
+    var rotation_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(rotation_track, NodePath("FacingRoot/FxRoot:rotation"))
+    animation.track_insert_key(rotation_track, 0.0, 0.0)
+    animation.track_insert_key(rotation_track, length * 0.35, rotation)
+    animation.track_insert_key(rotation_track, length, 0.0)
+
+    var scale_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(scale_track, NodePath("FacingRoot/FxRoot:scale"))
+    animation.track_insert_key(scale_track, 0.0, Vector2.ONE)
+    animation.track_insert_key(scale_track, length * 0.35, scale_peak)
+    animation.track_insert_key(scale_track, length, Vector2.ONE)
+    return animation
+
+func _make_death_animation(direction: float) -> Animation:
+    var animation := Animation.new()
+    animation.length = 0.55
+
+    var position_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(position_track, NodePath("FacingRoot/FxRoot:position"))
+    animation.track_insert_key(position_track, 0.0, Vector2.ZERO)
+    animation.track_insert_key(position_track, 0.55, Vector2(-direction * 10.0, 34.0))
+
+    var rotation_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(rotation_track, NodePath("FacingRoot/FxRoot:rotation"))
+    animation.track_insert_key(rotation_track, 0.0, 0.0)
+    animation.track_insert_key(rotation_track, 0.55, deg_to_rad(82.0) * direction)
+
+    var scale_track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(scale_track, NodePath("FacingRoot/FxRoot:scale"))
+    animation.track_insert_key(scale_track, 0.0, Vector2.ONE)
+    animation.track_insert_key(scale_track, 0.55, Vector2(1.0, 0.82))
+    return animation
+
+func _play_directional_fx(prefix: String) -> void:
+    _play_fx("%s_%s" % [prefix, "left" if _facing < 0.0 else "right"])
+
+func _play_fx(animation_name: String) -> void:
+    if _fx_player != null and _fx_player.has_animation(animation_name):
+        _fx_player.play(animation_name)
+
+func _reset_fx_transform() -> void:
+    if _fx_player != null:
+        _fx_player.stop()
+    if _fx_root != null:
+        _fx_root.position = Vector2.ZERO
+        _fx_root.rotation = 0.0
+        _fx_root.scale = Vector2.ONE
+        _fx_root.modulate = Color.WHITE
