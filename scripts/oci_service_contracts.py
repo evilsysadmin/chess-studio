@@ -136,6 +136,16 @@ def self_test() -> None:
     assert "Host/agent registration convergence belongs to the infrastructure apply" in workflow
     assert "python3 scripts/oci_vault_compare.py compare-current" in workflow
 
+    concurrency_block = workflow.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
+    assert '"vault-compare-current"' not in concurrency_block, (
+        "Vault runtime comparison is read-only and must not take the staging mutation mutex"
+    )
+    compare_block = workflow.split(
+        "- name: Compare CURRENT Vault + Git runtime with installed backend.env", 1
+    )[1].split("\n      - name:", 1)[0]
+    assert "RENDER_API_KEY" not in compare_block
+    assert "runtime-sync" not in compare_block
+
     print("OCI service contract isolation self-test: OK")
 
 
