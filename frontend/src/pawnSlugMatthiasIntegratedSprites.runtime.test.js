@@ -97,10 +97,12 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.scale.y).toBe(before);
   });
 
-  it('keeps the old weapon model slot as a zero-geometry compatibility shell', () => {
-    const shell = createWeaponSprite('pistol');
-    expect(shell.userData.pawnSlugIntegratedWeaponShell).toBe(true);
-    expect(shell.type).toBe('Object3D');
-    expect(shell.children).toHaveLength(0);
+  it('keeps the runtime weapon slot as a renderable separate attachment', () => {
+    const weapon = createWeaponSprite('pistol');
+    expect(weapon.type).toBe('Sprite');
+    expect(weapon.userData.weaponId).toBe('pistol');
+    expect(weapon.userData.pawnSlugSeparateWeaponAttachment).toBe(true);
+    expect(weapon.userData.pawnSlugGripAnchored).toBe(true);
+    expect(weapon.userData.pawnSlugIntegratedWeaponShell).toBeUndefined();
   });
 });
