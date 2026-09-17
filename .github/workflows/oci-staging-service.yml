@@ -23,8 +23,10 @@ on:
 permissions:
   contents: read
 
+# Service operations share the same repository-wide mutation lock as canonical
+# backend deploys and Terraform so manual recovery cannot race staging changes.
 concurrency:
-  group: oci-staging-service-control
+  group: oci-staging-mutations
   cancel-in-progress: false
 
 jobs:
