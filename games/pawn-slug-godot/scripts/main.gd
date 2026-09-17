@@ -3,16 +3,10 @@ extends Node2D
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
-const ENEMY_BULLET_SPEED := 540.0
-const ENEMY_FIRE_INTERVAL := 1.05
-const ENEMY_FIRE_WARMUP := 0.35
-const ENEMY_AGGRO_RANGE := 1080.0
-const ENEMY_BULLET_DAMAGE := 1
 const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
-const ENEMY_MAX_HP := 112
-const ENEMY_POSITION := Vector2(2300.0, 568.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
+const ENEMY_AGGRO_RANGE := 1080.0
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
@@ -26,22 +20,40 @@ const PLATFORMS: Array[Rect2] = [
     Rect2(4300.0, 498.0, 240.0, 24.0),
     Rect2(4700.0, 408.0, 320.0, 24.0),
 ]
+const ENEMY_SPAWNS := [
+    [620.0, "pawn"], [790.0, "pawn"], [1080.0, "pawn"], [1210.0, "knight"], [1380.0, "pawn"],
+    [1560.0, "rook"], [1710.0, "pawn"], [1940.0, "knight"], [2110.0, "pawn"], [2250.0, "pawn"],
+    [2380.0, "bishop"], [2590.0, "rook"], [2730.0, "pawn"], [2890.0, "knight"], [3070.0, "pawn"],
+    [3210.0, "pawn"], [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "pawn"],
+    [4070.0, "knight"], [4190.0, "rook"], [4380.0, "pawn"],
+]
+const ENEMY_TYPES := {
+    "pawn": {"hp": 34, "speed": 54.0, "width": 38.0, "height": 62.0, "standoff": 270.0},
+    "knight": {"hp": 62, "speed": 92.0, "width": 48.0, "height": 68.0, "standoff": 225.0},
+    "rook": {"hp": 112, "speed": 0.0, "width": 58.0, "height": 76.0, "standoff": 420.0},
+    "bishop": {"hp": 310, "speed": 42.0, "width": 78.0, "height": 112.0, "standoff": 430.0},
+}
+const ENEMY_FIRE_PROFILES := {
+    "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.05, "cooldown_max": 1.55, "speed": 540.0, "pellets": 1, "spread": 0.0, "explosive": false},
+    "machinegun": {"range": 840.0, "min_range": 0.0, "cooldown_min": 0.62, "cooldown_max": 0.95, "speed": 630.0, "pellets": 1, "spread": 0.035, "explosive": false},
+    "shotgun": {"range": 545.0, "min_range": 0.0, "cooldown_min": 1.25, "cooldown_max": 1.70, "speed": 510.0, "pellets": 5, "spread": 0.16, "explosive": false},
+    "panzerfaust": {"range": 1200.0, "min_range": 290.0, "cooldown_min": 1.80, "cooldown_max": 2.45, "speed": 420.0, "pellets": 1, "spread": 0.0, "explosive": true},
+}
 
 var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
+var enemies: Array[Dictionary] = []
 var pickups: Array[Dictionary] = [
     {"x": 920.0, "type": "machinegun", "taken": false},
     {"x": 2470.0, "type": "shotgun", "taken": false},
     {"x": 3500.0, "type": "panzerfaust", "taken": false},
 ]
-var enemy_hp := ENEMY_MAX_HP
-var enemy_respawn := 0.0
-var enemy_fire_remaining := ENEMY_FIRE_WARMUP
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 
 func _ready() -> void:
+    enemies = _build_enemy_roster()
     player.connect("fired", Callable(self, "_on_player_fired"))
     player.connect("hurt", Callable(self, "_on_player_hurt"))
     player.connect("died", Callable(self, "_on_player_died"))
@@ -54,8 +66,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _update_projectiles(delta)
-    _update_enemy(delta)
-    _update_enemy_fire(delta)
+    _update_enemies(delta)
     _update_enemy_projectiles(delta)
     _update_pickups()
     queue_redraw()
@@ -92,13 +103,17 @@ func _on_player_hurt(_current_hp: int, _max_hp: int) -> void:
 
 func _on_player_died(_lives_remaining: int) -> void:
     enemy_projectiles.clear()
-    enemy_fire_remaining = ENEMY_FIRE_WARMUP
     _sync_hud()
     _notify_parent("player-death")
 
 func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int) -> void:
     enemy_projectiles.clear()
-    enemy_fire_remaining = ENEMY_FIRE_WARMUP
+    for index in range(enemies.size()):
+        var enemy := enemies[index]
+        if int(enemy["hp"]) <= 0:
+            continue
+        enemy["cooldown"] = 0.35 + float(index % 5) * 0.08
+        enemies[index] = enemy
     _sync_hud()
     _notify_parent("player-respawn")
 
@@ -113,6 +128,34 @@ func _sync_hud() -> void:
     var hp_ratio := clampf(float(player.hp) / float(player.MAX_HP), 0.0, 1.0)
     status_bar.offset_right = status_bar.offset_left + 220.0 * hp_ratio
 
+func _build_enemy_roster() -> Array[Dictionary]:
+    var roster: Array[Dictionary] = []
+    for index in range(ENEMY_SPAWNS.size()):
+        var spawn = ENEMY_SPAWNS[index]
+        var type := String(spawn[1])
+        var stats: Dictionary = ENEMY_TYPES[type]
+        roster.append({
+            "id": "%s-%d" % [type, index],
+            "type": type,
+            "x": float(spawn[0]),
+            "spawn_x": float(spawn[0]),
+            "hp": int(stats["hp"]),
+            "max_hp": int(stats["hp"]),
+            "weapon": _enemy_weapon_for(type, index),
+            "cooldown": 0.35 + float(index % 5) * 0.08,
+        })
+    return roster
+
+func _enemy_weapon_for(type: String, variant: int) -> String:
+    match type:
+        "knight":
+            return "machinegun" if variant % 2 == 0 else "shotgun"
+        "rook", "bishop":
+            var choices := ["machinegun", "machinegun", "panzerfaust"]
+            return choices[variant % choices.size()]
+        _:
+            return "pistol" if variant % 2 == 0 else "machinegun"
+
 func _update_projectiles(delta: float) -> void:
     for index in range(projectiles.size() - 1, -1, -1):
         var projectile := projectiles[index]
@@ -122,11 +165,19 @@ func _update_projectiles(delta: float) -> void:
         projectile["position"] = position
         projectiles[index] = projectile
 
-        if enemy_hp > 0 and Rect2(ENEMY_POSITION - Vector2(34.0, 44.0), Vector2(68.0, 88.0)).has_point(position):
-            enemy_hp = maxi(0, enemy_hp - int(projectile["damage"]))
+        var hit_enemy := false
+        for enemy_index in range(enemies.size()):
+            var enemy := enemies[enemy_index]
+            if int(enemy["hp"]) <= 0:
+                continue
+            if not _enemy_rect(enemy).has_point(position):
+                continue
+            enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
+            enemies[enemy_index] = enemy
+            hit_enemy = true
+            break
+        if hit_enemy:
             projectiles.remove_at(index)
-            if enemy_hp <= 0:
-                enemy_respawn = 1.25
             continue
 
         if (
@@ -137,34 +188,63 @@ func _update_projectiles(delta: float) -> void:
         ):
             projectiles.remove_at(index)
 
-func _update_enemy(delta: float) -> void:
-    if enemy_hp > 0:
-        return
-    enemy_respawn -= delta
-    if enemy_respawn <= 0.0:
-        enemy_hp = ENEMY_MAX_HP
-        enemy_fire_remaining = ENEMY_FIRE_WARMUP
+func _update_enemies(delta: float) -> void:
+    for index in range(enemies.size()):
+        var enemy := enemies[index]
+        if int(enemy["hp"]) <= 0:
+            continue
+        var type := String(enemy["type"])
+        var stats: Dictionary = ENEMY_TYPES[type]
+        var distance_x := player.global_position.x - float(enemy["x"])
+        var abs_distance := absf(distance_x)
 
-func _update_enemy_fire(delta: float) -> void:
-    if enemy_hp <= 0 or player.dead or player.is_game_over:
-        enemy_fire_remaining = ENEMY_FIRE_WARMUP
-        return
-    if absf(player.global_position.x - ENEMY_POSITION.x) > ENEMY_AGGRO_RANGE:
-        enemy_fire_remaining = ENEMY_FIRE_WARMUP
-        return
+        if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
+            var speed := float(stats["speed"])
+            var standoff := float(stats["standoff"])
+            if speed > 0.0 and abs_distance > standoff:
+                var move_direction := 1.0 if distance_x > 0.0 else -1.0
+                enemy["x"] = clampf(
+                    float(enemy["x"]) + move_direction * speed * delta,
+                    maxf(0.0, float(enemy["spawn_x"]) - 360.0),
+                    minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
+                )
 
-    enemy_fire_remaining = maxf(0.0, enemy_fire_remaining - delta)
-    if enemy_fire_remaining > 0.0:
-        return
+            enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
+            if float(enemy["cooldown"]) <= 0.0:
+                _try_enemy_fire(enemy)
+                enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
+        else:
+            enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
+        enemies[index] = enemy
 
-    var origin := ENEMY_POSITION + Vector2(-42.0, -26.0)
+func _try_enemy_fire(enemy: Dictionary) -> void:
+    var weapon := String(enemy["weapon"])
+    var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
+    var origin := _enemy_fire_origin(enemy)
     var target := player.global_position + Vector2(0.0, -18.0)
-    var direction := (target - origin).normalized()
-    enemy_projectiles.append({
-        "position": origin,
-        "velocity": direction * ENEMY_BULLET_SPEED,
-    })
-    enemy_fire_remaining = ENEMY_FIRE_INTERVAL
+    var target_delta := target - origin
+    var distance := target_delta.length()
+    if distance > float(profile["range"]) or distance < float(profile["min_range"]):
+        return
+    var base_direction := target_delta.normalized()
+    var pellets := maxi(1, int(profile["pellets"]))
+    var spread := float(profile["spread"])
+    for _pellet in range(pellets):
+        var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
+        enemy_projectiles.append({
+            "position": origin,
+            "velocity": base_direction.rotated(angle) * float(profile["speed"]),
+            "weapon": weapon,
+            "explosive": bool(profile["explosive"]),
+        })
+
+func _enemy_fire_cooldown(weapon: String) -> float:
+    var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
+    if weapon == "machinegun":
+        if randf() < 0.60:
+            return 0.11
+        return randf_range(1.50, 2.10)
+    return randf_range(float(profile["cooldown_min"]), float(profile["cooldown_max"]))
 
 func _update_enemy_projectiles(delta: float) -> void:
     var player_hitbox := Rect2(
@@ -180,7 +260,7 @@ func _update_enemy_projectiles(delta: float) -> void:
         enemy_projectiles[index] = projectile
 
         if not player.dead and player_hitbox.has_point(position):
-            player.take_damage(ENEMY_BULLET_DAMAGE)
+            player.take_damage(1)
             enemy_projectiles.remove_at(index)
             continue
 
@@ -208,6 +288,17 @@ func _update_pickups() -> void:
             pickups[index] = pickup
             _notify_parent("weapon-pickup")
 
+func _enemy_rect(enemy: Dictionary) -> Rect2:
+    var stats: Dictionary = ENEMY_TYPES[String(enemy["type"])]
+    var width := float(stats["width"])
+    var height := float(stats["height"])
+    return Rect2(Vector2(float(enemy["x"]) - width * 0.5, FLOOR_Y - height), Vector2(width, height))
+
+func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
+    var rect := _enemy_rect(enemy)
+    var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
+    return Vector2(float(enemy["x"]) + direction * rect.size.x * 0.42, rect.position.y + rect.size.y * 0.42)
+
 func _draw() -> void:
     draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("10161d"))
     draw_rect(Rect2(Vector2(0.0, FLOOR_Y), Vector2(WORLD_SIZE.x, WORLD_SIZE.y - FLOOR_Y)), Color("222a2f"))
@@ -222,7 +313,7 @@ func _draw() -> void:
         draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b5883e"), 3.0)
 
     _draw_pickups()
-    _draw_enemy()
+    _draw_enemies()
 
     for projectile in projectiles:
         var position: Vector2 = projectile["position"]
@@ -237,9 +328,12 @@ func _draw() -> void:
     for projectile in enemy_projectiles:
         var position: Vector2 = projectile["position"]
         var velocity: Vector2 = projectile["velocity"]
-        var trail := velocity.normalized() * 18.0
-        draw_circle(position, 5.0, Color("e36d5a"))
-        draw_line(position - trail, position, Color(0.9, 0.3, 0.22, 0.5), 3.0)
+        var explosive := bool(projectile["explosive"])
+        var radius := 8.0 if explosive else 5.0
+        var color := Color("f28a52") if explosive else Color("e36d5a")
+        var trail := velocity.normalized() * (28.0 if explosive else 18.0)
+        draw_circle(position, radius, color)
+        draw_line(position - trail, position, Color(color.r, color.g, color.b, 0.5), 3.0)
 
 func _draw_pickups() -> void:
     for pickup in pickups:
@@ -261,18 +355,34 @@ func _draw_pickups() -> void:
                 draw_line(position + Vector2(-18.0, 0.0), position + Vector2(17.0, 0.0), Color("8e927d"), 9.0)
                 draw_circle(position + Vector2(18.0, 0.0), 7.0, Color("b7a05f"))
 
-func _draw_enemy() -> void:
-    if enemy_hp <= 0:
-        draw_circle(ENEMY_POSITION + Vector2(0.0, 34.0), 34.0, Color(0.25, 0.11, 0.09, 0.5))
-        return
+func _draw_enemies() -> void:
+    for enemy in enemies:
+        if int(enemy["hp"]) <= 0:
+            continue
+        var rect := _enemy_rect(enemy)
+        var type := String(enemy["type"])
+        var body_color := Color("633c35")
+        match type:
+            "knight":
+                body_color = Color("4e5965")
+            "rook":
+                body_color = Color("3e454a")
+            "bishop":
+                body_color = Color("5f4869")
+        draw_rect(rect, body_color, true)
+        var head_radius := minf(24.0, rect.size.x * 0.38)
+        draw_circle(Vector2(rect.get_center().x, rect.position.y - head_radius * 0.35), head_radius, Color("c8ad8a"))
+        var facing := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
+        var gun_origin := Vector2(rect.get_center().x + facing * rect.size.x * 0.18, rect.position.y + rect.size.y * 0.42)
+        var gun_length := 42.0 if String(enemy["weapon"]) != "panzerfaust" else 54.0
+        var gun_width := 6.0 if String(enemy["weapon"]) != "panzerfaust" else 10.0
+        draw_line(gun_origin, gun_origin + Vector2(facing * gun_length, 0.0), Color("a4abb1"), gun_width)
 
-    draw_rect(Rect2(ENEMY_POSITION - Vector2(30.0, 34.0), Vector2(60.0, 68.0)), Color("633c35"), true)
-    draw_circle(ENEMY_POSITION - Vector2(0.0, 47.0), 22.0, Color("c8ad8a"))
-    draw_rect(Rect2(ENEMY_POSITION + Vector2(-36.0, -83.0), Vector2(72.0, 8.0)), Color("4a2c28"), true)
-
-    var hp_width := 70.0
-    draw_rect(Rect2(ENEMY_POSITION + Vector2(-hp_width / 2.0, -108.0), Vector2(hp_width, 7.0)), Color("2f3438"), true)
-    draw_rect(Rect2(ENEMY_POSITION + Vector2(-hp_width / 2.0, -108.0), Vector2(hp_width * float(enemy_hp) / float(ENEMY_MAX_HP), 7.0)), Color("c7634e"), true)
+        var hp_width := maxf(44.0, rect.size.x)
+        var hp_ratio := clampf(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
+        var hp_position := Vector2(rect.get_center().x - hp_width * 0.5, rect.position.y - 24.0)
+        draw_rect(Rect2(hp_position, Vector2(hp_width, 6.0)), Color("2f3438"), true)
+        draw_rect(Rect2(hp_position, Vector2(hp_width * hp_ratio, 6.0)), Color("c7634e"), true)
 
 func _notify_parent(message_type: String) -> void:
     if not OS.has_feature("web"):
