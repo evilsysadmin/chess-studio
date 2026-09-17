@@ -30,16 +30,23 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - name: Decode Home GLBs
+      - name: Decode and verify Home GLBs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          base64 -d frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
-          base64 -d frontend/src/assets/home3d/play-rook-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
+          printf '%s  %s\n' \
+            'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
+            '/tmp/home-r2/tournament-cup-v1.glb' \
+            'c5cd00fc94b82b891cc31364d506f86a548999b3fb0b48ad904496d217fcdd90' \
+            '/tmp/home-r2/combat-heraldry-v1.glb' \
+            '3f49c19ffd8cb8947dc174093feac37b4d11033b80fbb45ecc5edf56383a38f2' \
+            '/tmp/home-r2/play-rook-v1.glb' | sha256sum -c -
           for file in /tmp/home-r2/*.glb; do
-            test "$(head -c 4 "$file")" = "glTF"
+            test "$(head -c 4 "$file")" = 'glTF'
           done
       - name: Validate publisher and dry-run Home assets
         shell: bash
@@ -76,14 +83,21 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-      - name: Decode Home GLBs
+      - name: Decode and verify Home GLBs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          base64 -d frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
-          base64 -d frontend/src/assets/home3d/play-rook-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
+          printf '%s  %s\n' \
+            'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
+            '/tmp/home-r2/tournament-cup-v1.glb' \
+            'c5cd00fc94b82b891cc31364d506f86a548999b3fb0b48ad904496d217fcdd90' \
+            '/tmp/home-r2/combat-heraldry-v1.glb' \
+            '3f49c19ffd8cb8947dc174093feac37b4d11033b80fbb45ecc5edf56383a38f2' \
+            '/tmp/home-r2/play-rook-v1.glb' | sha256sum -c -
       - name: Publish immutable Home assets
         shell: bash
         run: |
