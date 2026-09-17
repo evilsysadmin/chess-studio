@@ -106,14 +106,14 @@ function createTournamentCup(resources) {
     roughness: 0.58,
     metalness: 0.4,
     emissive: 0x4a2a0a,
-    emissiveIntensity: 0.095,
+    emissiveIntensity: 0.14,
   });
   const darkBrass = new THREE.MeshStandardMaterial({
     color: 0x80603a,
     roughness: 0.7,
     metalness: 0.26,
     emissive: 0x281407,
-    emissiveIntensity: 0.06,
+    emissiveIntensity: 0.085,
   });
   resources.materials.push(agedBrass, darkBrass);
 
@@ -152,7 +152,9 @@ function createTournamentCup(resources) {
     group.add(handle);
   }
 
-  attachViewportScale(group, base, 0.74);
+  // Torneos is one of the primary object-led destinations. Keep the cup
+  // unmistakable at rest; hover/focus should enrich the prop, not reveal it.
+  attachViewportScale(group, base, 1.16);
   return group;
 }
 
