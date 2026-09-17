@@ -13,6 +13,9 @@ const BOTTOM_GUTTER := 24.0
 const PLAYER_FOOT_Y := 42.0
 const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
+const MUZZLE_FLASH_SECONDS := 0.055
+const MUZZLE_OFFSET := Vector2(65.0, -10.0)
+const MUZZLE_RADIUS := 9.0
 const CANONICAL_PISTOL_RUN_FRAMES := 4
 const CANONICAL_PISTOL_RUN_FPS := 8.0
 const JUMP_VISUAL_SPEED_RANGE := 610.0
@@ -44,6 +47,7 @@ var _shoot_sprite: Sprite2D
 var _action := "idle"
 var _action_time := 0.0
 var _shoot_age := SHOOT_HOLD_SECONDS
+var _muzzle_age := MUZZLE_FLASH_SECONDS
 var _facing := 1.0
 var _vertical_speed := 0.0
 
@@ -69,8 +73,10 @@ func update_visual(
     _vertical_speed = vertical_speed
     if fired_now:
         _shoot_age = 0.0
+        _muzzle_age = 0.0
     else:
         _shoot_age += delta
+        _muzzle_age += delta
 
     var next_action := _resolve_action(movement_axis, on_floor)
     if next_action != _action:
@@ -82,6 +88,7 @@ func update_visual(
     if _body_ready:
         _apply_body_frame()
     _apply_shoot_frame()
+    queue_redraw()
 
 func _resolve_action(movement_axis: float, on_floor: bool) -> String:
     if not on_floor:
@@ -136,6 +143,15 @@ func _apply_shoot_frame() -> void:
     _shoot_sprite.region_rect = Rect2(Vector2(frame * FRAME_SIZE.x, 0.0), FRAME_SIZE)
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
+
+func _draw() -> void:
+    if _muzzle_age >= MUZZLE_FLASH_SECONDS:
+        return
+    draw_circle(
+        Vector2(_facing * MUZZLE_OFFSET.x, MUZZLE_OFFSET.y),
+        MUZZLE_RADIUS,
+        Color("ffd36a"),
+    )
 
 func _make_art_sprite(sprite_name: String) -> Sprite2D:
     var sprite := Sprite2D.new()
