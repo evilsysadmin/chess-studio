@@ -8,6 +8,7 @@ import {
   chroniclesIsoUsesLegacyDressing,
   chroniclesIsoWorldForCell,
   chroniclesIsoWorldForContentKind,
+  chroniclesIsoWorldsForContentKind,
   chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
   chroniclesIsometricFovForAspect,
@@ -50,6 +51,25 @@ describe('Chronicles canonical isometric viewport', () => {
     expect([lever.x, lever.y, lever.z]).toEqual([4.9, 0, 4.9]);
     expect([pickup.x, pickup.y, pickup.z]).toEqual([4.9, 0, 2.45]);
     expect(chroniclesIsoWorldForContentKind(plan, 'trigger')).toBeNull();
+  });
+
+  it('preserves every authored pickup for the renderer instead of collapsing to the first one', () => {
+    const plan = {
+      content: [
+        { id: 'blind-index', kind: 'pickup', visualType: 'ash-reliquary', world: { x: 2.45, y: 0, z: -2.45 } },
+        { id: 'obsidian-index-cache', kind: 'pickup', visualType: 'ember-cache', world: { x: 4.9, y: 0, z: -4.9 } },
+      ],
+    };
+
+    const pickups = chroniclesIsoWorldsForContentKind(plan, 'pickup');
+
+    expect(pickups.map((entry) => entry.id)).toEqual(['blind-index', 'obsidian-index-cache']);
+    expect(pickups.map((entry) => entry.visualType)).toEqual(['ash-reliquary', 'ember-cache']);
+    expect(pickups.map((entry) => [entry.world.x, entry.world.y, entry.world.z])).toEqual([
+      [2.45, 0, -2.45],
+      [4.9, 0, -4.9],
+    ]);
+    expect(chroniclesIsoWorldsForContentKind(plan, 'lever')).toEqual([]);
   });
 
   it('keeps legacy crypt dressing opt-in through the scene style contract', () => {
