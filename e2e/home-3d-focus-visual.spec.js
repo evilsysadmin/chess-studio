@@ -50,4 +50,31 @@ test('Home 3D · captura Combat con foco físico', async ({ page }) => {
     fullPage: false,
     animations: 'disabled',
   });
+
+  const tournament = home.locator('.illustrated-home__destination--tournament');
+  const alignment = await page.evaluate(() => {
+    const stageNode = document.querySelector('.illustrated-home__stage');
+    const tournamentNode = document.querySelector('.illustrated-home__destination--tournament');
+    const stageRect = stageNode?.getBoundingClientRect();
+    const tournamentRect = tournamentNode?.getBoundingClientRect();
+    if (!stageRect || !tournamentRect) return null;
+    return {
+      x: ((tournamentRect.left + (tournamentRect.width / 2)) - stageRect.left) / stageRect.width,
+      y: ((tournamentRect.top + (tournamentRect.height / 2)) - stageRect.top) / stageRect.height,
+    };
+  });
+
+  expect(alignment).not.toBeNull();
+  expect(Math.abs(alignment.x - 0.245)).toBeLessThan(0.012);
+  expect(Math.abs(alignment.y - 0.519)).toBeLessThan(0.012);
+
+  const stageBox = await stage.boundingBox();
+  expect(stageBox).not.toBeNull();
+  await page.mouse.move(
+    stageBox.x + (stageBox.width * 0.245),
+    stageBox.y + (stageBox.height * 0.505),
+  );
+  await expect(stage).toHaveAttribute('data-home-castle-focus', 'tournament');
+
+  await expect(tournament).toBeVisible();
 });
