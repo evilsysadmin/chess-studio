@@ -183,6 +183,21 @@ function updateQuest(state, effect, status) {
   };
 }
 
+function damageParty(state, effect) {
+  const amount = Math.max(0, Number(effect.amount || 0));
+  const party = Array.isArray(state.party)
+    ? state.party.map((member) => member.hp > 0
+      ? { ...member, hp: Math.max(0, member.hp - amount) }
+      : member)
+    : state.party;
+  const defeated = Array.isArray(party) && party.length > 0 && party.every((member) => member.hp <= 0);
+  return {
+    ...state,
+    party,
+    ...(defeated ? { phase: 'defeated' } : {}),
+  };
+}
+
 export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
   return (effects || []).reduce((next, effect) => {
     if (effect.type === 'set' && effect.key) return { ...next, [effect.key]: effect.value };
@@ -203,6 +218,7 @@ export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
           : next.party,
       };
     }
+    if (effect.type === 'damage-party') return damageParty(next, effect);
     if (effect.type === 'refill-class-abilities' && typeof adapters.refillClassAbilities === 'function') {
       return adapters.refillClassAbilities(next);
     }

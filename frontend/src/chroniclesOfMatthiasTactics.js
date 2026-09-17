@@ -246,6 +246,22 @@ function refillAbilityCharges(state) {
   return { ...state, classAbilityCharges };
 }
 
+function triggerTrapAtCurrentCell(state) {
+  const map = chroniclesMapForState(state);
+  const trapInteraction = chroniclesContentInteractions(
+    state,
+    map,
+    (x, y) => chroniclesTileAt(x, y, state),
+  ).find((candidate) => candidate.kind === 'trap' && candidate.x === state.x && candidate.y === state.y);
+  if (!trapInteraction) return state;
+  const definition = chroniclesContentDefinition(map, trapInteraction.id);
+  if (!definition) return state;
+  return chroniclesApplyContentAction(state, definition.action, {
+    appendJournal,
+    refillClassAbilities: refillAbilityCharges,
+  });
+}
+
 export function chroniclesTacticsInteractions(state) {
   if (!actionAllowed(state)) return [];
   const map = chroniclesMapForState(state);
@@ -410,13 +426,14 @@ export function chroniclesTacticsMove(state, destination) {
   const legal = chroniclesTacticsLegalMoves(state).find((move) => move.x === destination?.x && move.y === destination?.y);
   if (!legal) return state;
 
-  return {
+  const moved = {
     ...state,
     x: legal.x,
     y: legal.y,
     turns: Number(state.turns || 0) + 1,
     message: `La compañía avanza hacia ${legal.label.toLowerCase()}. Piedra, formación y malas intenciones.`,
   };
+  return triggerTrapAtCurrentCell(moved);
 }
 
 export function chroniclesTacticsAttack(state, memberId, enemyId) {
