@@ -63,6 +63,7 @@ func _physics_process(delta: float) -> void:
     move_and_slide()
     var landed_now := not was_on_floor and is_on_floor()
     crouching = _crouch_pressed() and is_on_floor()
+    var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
     var fired_now := false
@@ -73,7 +74,7 @@ func _physics_process(delta: float) -> void:
 
     _art.update_visual(
         delta,
-        axis,
+        horizontal_speed_ratio,
         is_on_floor(),
         crouching,
         landed_now,
