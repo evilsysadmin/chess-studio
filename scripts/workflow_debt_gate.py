@@ -30,6 +30,7 @@ INVENTORY = {
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
     'home-matthias-blender-art.yml': 'art-generation',
+    'home-r2-assets.yml': 'infra-assets',
     'main-admission.yml': 'delivery-admission',
     'materialize-home-matthias-art.yml': 'art-generation-infra',
     'oci-readiness.yml': 'infra-readiness',
