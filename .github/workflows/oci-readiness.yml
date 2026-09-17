@@ -10,7 +10,6 @@ on:
       - 'scripts/oci_arm64_smoke.sh'
       - 'scripts/oci_existing_a1_deploy.sh'
       - 'scripts/oci_staging_cors_contract.py'
-      # Terraform/Floci PR contracts already run inside required Quality preflight.
       - '.github/workflows/oci-readiness.yml'
 
 permissions:
@@ -21,6 +20,33 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  classify:
+    name: Classify OCI readiness surface
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      arm64: ${{ steps.scope.outputs.arm64 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            echo arm64=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$GITHUB_SHA")"
+          if grep -Eq '^(backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$' <<<"$files"; then
+            echo arm64=true >> "$GITHUB_OUTPUT"
+          else
+            echo arm64=false >> "$GITHUB_OUTPUT"
+          fi
+
   staging-cors-contract:
     name: Staging · CORS deploy contract
     runs-on: ubuntu-24.04
@@ -32,6 +58,8 @@ jobs:
 
   backend-arm64:
     name: Backend · linux/arm64
+    needs: classify
+    if: needs.classify.outputs.arm64 == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -42,8 +70,6 @@ jobs:
       - uses: docker/setup-buildx-action@v4
       - run: bash scripts/oci_arm64_smoke.sh
 
-  # PR Terraform/Floci is already protected by Preflight · contracts. Manual
-  # dispatch keeps this standalone full-OCI diagnostic escape hatch available.
   terraform:
     name: Terraform · contracts + Floci
     if: github.event_name == 'workflow_dispatch'
