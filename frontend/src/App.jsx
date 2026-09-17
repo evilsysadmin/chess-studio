@@ -81,7 +81,6 @@ import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
-import { usePvpAppFlow } from './usePvpAppFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -191,7 +190,6 @@ function AppInner({ isAdminUser }) {
   const [logoutError, setLogoutError] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
-  const pvpFlow = usePvpAppFlow({ view, replaceView });
   useProfileSyncLifecycle(view);
 
   useEffect(() => {
@@ -891,7 +889,7 @@ function AppInner({ isAdminUser }) {
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
-        <PvpAppSurface view={view} flow={pvpFlow} />
+        <PvpAppSurface view={view} replaceView={replaceView} />
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
           <div className="route-loading active-session-recovery" role="status">
             {error ? (
@@ -926,7 +924,6 @@ function AppInner({ isAdminUser }) {
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}
             onLab={() => navigateTo('lab')}
-            pvpFlow={pvpFlow}
             hasSavedGame={hasSavedGame}
             loading={loading}
             error={error}

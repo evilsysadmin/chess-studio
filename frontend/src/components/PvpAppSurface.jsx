@@ -1,9 +1,23 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import PvpChallengeNudge from './PvpChallengeNudge.jsx';
+import { usePvpAppFlow } from '../usePvpAppFlow.js';
+import { clearPvpRuntime, publishPvpRuntime } from '../pvpRuntimeBridge.js';
 
 const PvpGameScreen = lazy(() => import('./PvpGameScreen.jsx'));
 
-export default function PvpAppSurface({ view, flow }) {
+export default function PvpAppSurface({ view, replaceView }) {
+  const flow = usePvpAppFlow({ view, replaceView });
+
+  useEffect(() => {
+    publishPvpRuntime({
+      ...flow.menuStatus,
+      enterMatch: flow.enterMatch,
+      enroll: flow.enroll,
+      leave: flow.leave,
+    });
+    return clearPvpRuntime;
+  }, [flow.enterMatch, flow.enroll, flow.leave, flow.menuStatus]);
+
   return (
     <>
       {view !== 'pvpGame' && flow.incomingChallenge && (

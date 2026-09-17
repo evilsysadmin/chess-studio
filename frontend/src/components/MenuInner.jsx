@@ -25,6 +25,7 @@ import {
 import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../matthiasSession.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
+import { usePvpRuntime } from '../pvpRuntimeBridge.js';
 
 export default function Menu({
   onNewGame,
@@ -42,7 +43,6 @@ export default function Menu({
   onInsights,
   onProgress,
   onLab,
-  pvpFlow = null,
   hasSavedGame,
   loading,
   error,
@@ -60,6 +60,7 @@ export default function Menu({
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showPvpLobby, setShowPvpLobby] = useState(false);
+  const pvpFlow = usePvpRuntime();
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
