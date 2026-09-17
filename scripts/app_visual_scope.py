@@ -119,11 +119,6 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/public/matthias-home-canonical.b64",
     }:
         return {"home"}
-    if lower in {
-        "frontend/public/assets/enemy_atlas_v2.webp",
-        "frontend/public/enemy_atlas_v2.webp",
-    }:
-        return {"experiments"}
     if lower.startswith("frontend/public/"):
         return None
 
@@ -163,11 +158,6 @@ def _experiment_parts(path: str) -> set[str]:
         return set(EXPERIMENT_ORDER)
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
         return {"chronicles"}
-    if lower in {
-        "frontend/public/assets/enemy_atlas_v2.webp",
-        "frontend/public/enemy_atlas_v2.webp",
-    }:
-        return {"pawnslug"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
@@ -335,9 +325,6 @@ def self_test() -> None:
     assert public_home_model.capture_groups == "home"
     public_home_b64 = classify(["frontend/public/matthias-home-canonical.b64"])
     assert public_home_b64.capture_groups == "home"
-    public_enemy_atlas = classify(["frontend/public/assets/enemy_atlas_v2.webp"])
-    assert public_enemy_atlas.capture_groups == "experiments"
-    assert public_enemy_atlas.experiments_scope == "pawnslug"
     assert classify(["frontend/public/support-pawn.png"]) == full_scope()
 
     for admin_path in (
