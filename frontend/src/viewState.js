@@ -12,6 +12,7 @@ export const VIEW_HISTORY_STORAGE_KEY = 'chess-study-view-history';
 
 const RESTORABLE_VIEWS = Object.freeze([
   'menu',
+  'pvpGame',
   'tutorial',
   'openings',
   'tournament',

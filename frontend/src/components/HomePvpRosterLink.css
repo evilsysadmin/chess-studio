@@ -1,204 +1,39 @@
 .home-pvp-roster-link {
   position: fixed;
   z-index: 44;
-  left: 50%;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(560px, calc(100vw - 32px));
-  min-height: 72px;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(285px, calc(100vw - 28px));
+  min-height: 46px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
   align-items: center;
-  gap: .8rem;
-  padding: .7rem .78rem .7rem .72rem;
-  overflow: hidden;
-  border: 1px solid rgba(218, 179, 105, .46);
-  border-radius: 18px;
-  color: #f2e7d1;
-  background:
-    radial-gradient(circle at 14% 0%, rgba(176, 119, 54, .22), transparent 38%),
-    linear-gradient(145deg, rgba(37, 27, 18, .96), rgba(12, 13, 15, .965));
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, .46),
-    0 0 0 1px rgba(255, 226, 171, .025) inset,
-    inset 0 1px rgba(255, 226, 171, .07);
-  backdrop-filter: blur(15px) saturate(1.12);
-  cursor: pointer;
-  isolation: isolate;
-  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
-}
-
-.home-pvp-roster-link::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(180deg, rgba(235, 198, 124, .92), rgba(126, 77, 31, .24));
-  box-shadow: 0 0 22px rgba(222, 178, 91, .25);
-}
-
-.home-pvp-roster-link::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  width: 180px;
-  height: 180px;
-  right: -90px;
-  top: -110px;
-  border-radius: 50%;
-  background: rgba(207, 159, 76, .08);
-  filter: blur(2px);
-}
-
-.home-pvp-roster-link:hover,
-.home-pvp-roster-link:focus-visible {
-  transform: translateX(-50%) translateY(-4px);
-  border-color: rgba(231, 195, 124, .76);
-  box-shadow:
-    0 24px 58px rgba(0, 0, 0, .54),
-    0 0 0 1px rgba(231, 195, 124, .12),
-    inset 0 1px rgba(255, 235, 194, .1);
-}
-
-.home-pvp-roster-link:focus-visible {
-  outline: 2px solid rgba(231, 195, 124, .78);
-  outline-offset: 4px;
-}
-
-.home-pvp-roster-link:disabled {
-  opacity: .48;
-  cursor: wait;
-  transform: translateX(-50%);
-}
-
-.home-pvp-roster-link__emblem {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(223, 184, 111, .26);
-  border-radius: 14px;
-  color: #e4c37f;
-  background: linear-gradient(145deg, rgba(153, 102, 45, .24), rgba(54, 36, 22, .25));
-  box-shadow: inset 0 1px rgba(255, 230, 180, .06);
-}
-
-.home-pvp-roster-link__mark {
-  font-size: 1.2rem;
-  line-height: 1;
-  transform: translateY(1px);
-}
-
-.home-pvp-roster-link__signal {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  right: -3px;
-  top: -3px;
-  border: 2px solid #17130f;
+  gap: .55rem;
+  padding: .46rem .55rem .46rem .62rem;
+  border: 1px solid rgba(218,179,105,.22);
   border-radius: 999px;
-  background: #73b47a;
-  box-shadow: 0 0 12px rgba(115, 180, 122, .66);
+  color: #f2e7d1;
+  background: rgba(12,14,16,.88);
+  box-shadow: 0 12px 30px rgba(0,0,0,.34), inset 0 1px rgba(255,226,171,.05);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
-
-.home-pvp-roster-link__copy {
-  min-width: 0;
-  display: grid;
-  gap: .08rem;
-  text-align: left;
-  line-height: 1.08;
+.home-pvp-roster-link:hover,.home-pvp-roster-link:focus-visible { transform: translateY(-2px); border-color: rgba(231,195,124,.48); background: rgba(18,18,18,.94); outline:none; }
+.home-pvp-roster-link:focus-visible { box-shadow:0 0 0 2px rgba(231,195,124,.42),0 12px 30px rgba(0,0,0,.34); }
+.home-pvp-roster-link:disabled { opacity:.48; cursor:wait; transform:none; }
+.home-pvp-roster-link__signal { width:8px; height:8px; border-radius:50%; background:#776f62; box-shadow:none; }
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__signal { background:#73b47a; box-shadow:0 0 10px rgba(115,180,122,.52); }
+.home-pvp-roster-link.has-alert .home-pvp-roster-link__signal { background:#d7a34f; box-shadow:0 0 12px rgba(215,163,79,.62); }
+.home-pvp-roster-link__copy { min-width:0; display:grid; gap:.08rem; text-align:left; line-height:1.08; }
+.home-pvp-roster-link__copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.72rem; font-weight:720; }
+.home-pvp-roster-link__copy span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(237,226,205,.55); font-size:.61rem; }
+.home-pvp-roster-link__action { color:#d8b977; font-family:Georgia,'Times New Roman',serif; font-size:1.2rem; line-height:1; }
+@media (max-width:999px) { body:has(.illustrated-home__utilities.is-open) .home-pvp-roster-link { visibility:hidden; pointer-events:none; } }
+@media (max-width:620px) {
+  .home-pvp-roster-link { left:10px; bottom:max(10px,env(safe-area-inset-bottom)); width:min(250px,calc(100vw - 20px)); min-height:42px; padding:.4rem .5rem; }
+  .menu:has(#illustrated-home-tools) .home-pvp-roster-link { visibility:hidden; pointer-events:none; }
+  .home-pvp-roster-link__copy strong { font-size:.66rem; }
+  .home-pvp-roster-link__copy span { font-size:.56rem; }
 }
-
-.home-pvp-roster-link__copy small {
-  overflow: hidden;
-  color: rgba(229, 208, 169, .58);
-  font-family: var(--font-mono);
-  font-size: .56rem;
-  letter-spacing: .13em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-pvp-roster-link__copy strong {
-  margin-top: .05rem;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.08rem;
-  font-weight: 600;
-  letter-spacing: .01em;
-}
-
-.home-pvp-roster-link__copy > span {
-  overflow: hidden;
-  color: rgba(237, 226, 205, .62);
-  font-size: .76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-pvp-roster-link__action {
-  display: inline-flex;
-  align-items: center;
-  gap: .48rem;
-  min-height: 38px;
-  padding: 0 .68rem;
-  border: 1px solid rgba(226, 186, 111, .24);
-  border-radius: 11px;
-  color: rgba(242, 221, 184, .88);
-  background: rgba(211, 163, 83, .075);
-  font-family: var(--font-mono);
-  font-size: .58rem;
-  letter-spacing: .1em;
-  white-space: nowrap;
-}
-
-.home-pvp-roster-link__action b {
-  color: #e8c67f;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.45rem;
-  font-weight: 400;
-  line-height: .8;
-}
-
-@media (max-width: 999px) {
-  body:has(.illustrated-home__utilities.is-open) .home-pvp-roster-link {
-    visibility: hidden;
-    pointer-events: none;
-  }
-}
-
-@media (max-width: 620px) {
-  .home-pvp-roster-link {
-    bottom: max(10px, env(safe-area-inset-bottom));
-    width: calc(100vw - 20px);
-    min-height: 64px;
-    gap: .62rem;
-    padding: .58rem .64rem .58rem .6rem;
-    border-radius: 15px;
-  }
-
-  .menu:has(#illustrated-home-tools) .home-pvp-roster-link {
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .home-pvp-roster-link__emblem { width: 40px; height: 40px; border-radius: 12px; }
-  .home-pvp-roster-link__copy small { font-size: .49rem; }
-  .home-pvp-roster-link__copy strong { font-size: .96rem; }
-  .home-pvp-roster-link__copy > span { font-size: .69rem; }
-  .home-pvp-roster-link__action { min-width: 34px; min-height: 34px; padding: 0 .42rem; }
-  .home-pvp-roster-link__action > span { display: none; }
-}
-
-@media (max-width: 380px) {
-  .home-pvp-roster-link__copy > span { display: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-pvp-roster-link { transition: none; }
-  .home-pvp-roster-link:hover,
-  .home-pvp-roster-link:focus-visible { transform: translateX(-50%); }
-  .home-pvp-roster-link__signal { box-shadow: none; }
-}
+@media (prefers-reduced-motion:reduce) { .home-pvp-roster-link { transition:none; } .home-pvp-roster-link:hover,.home-pvp-roster-link:focus-visible { transform:none; } .home-pvp-roster-link__signal { box-shadow:none!important; } }

@@ -4,6 +4,7 @@ import { bindPresenceLifecycle } from './presenceLifecycle.js';
 const ACTIVITY_BY_VIEW = Object.freeze({
   menu: 'Menú principal',
   game: 'Partida',
+  pvpGame: 'War Room 1 vs 1',
   tournament: 'Torneo',
   tournamentGame: 'Torneo',
   combat: 'Combat Chess',

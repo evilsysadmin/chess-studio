@@ -4,7 +4,6 @@ const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const MirrorModeModal = lazy(() => import('./MirrorModeModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
-const PvpGameScreen = lazy(() => import('./PvpGameScreen.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
 import HomePvpRosterLink from './HomePvpRosterLink.jsx';
 import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
@@ -48,6 +47,8 @@ export default function Menu({
   error,
   rating,
   suppressHomeNudge = false,
+  pvp,
+  onPvpMatchReady,
 }) {
   const [difficulty, setDifficulty] = useState(50);
   const [autoDifficulty, setAutoDifficulty] = useState(true);
@@ -60,7 +61,6 @@ export default function Menu({
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showPvpLobby, setShowPvpLobby] = useState(false);
-  const [pvpMatch, setPvpMatch] = useState(null);
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
@@ -72,14 +72,12 @@ export default function Menu({
     || showPracticeMatch
     || showMirrorMode
     || showPvpLobby
-    || Boolean(pvpMatch)
     || Boolean(error);
   const matthiasCornerBlocked = suppressHomeNudge
     || showQuickMatch
     || showPracticeMatch
     || showMirrorMode
     || showPvpLobby
-    || Boolean(pvpMatch)
     || Boolean(error);
   const rivalry = useMemo(() => loadRivalry(), []);
   const matthiasCandidate = useMemo(
@@ -179,18 +177,6 @@ export default function Menu({
     setShowQuickMatch(true);
   }
 
-  if (pvpMatch) {
-    return (
-      <PvpGameScreen
-        initialMatch={pvpMatch}
-        onExit={() => {
-          setPvpMatch(null);
-          setShowPvpLobby(true);
-        }}
-      />
-    );
-  }
-
   return (
     <div className="menu menu-illustrated">
       <HomeIllustrated
@@ -223,7 +209,14 @@ export default function Menu({
       />
 
       {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
-        <HomePvpRosterLink onOpen={() => setShowPvpLobby(true)} disabled={loading} />
+        <HomePvpRosterLink
+          onOpen={() => pvp?.lobby?.activeMatch ? onPvpMatchReady?.(pvp.lobby.activeMatch) : setShowPvpLobby(true)}
+          disabled={loading}
+          enrolled={Boolean(pvp?.enrolled)}
+          rivalCount={pvp?.rivalCount || 0}
+          incomingCount={pvp?.incoming?.length || 0}
+          activeMatch={pvp?.lobby?.activeMatch || null}
+        />
       )}
 
       {showQuickMatch && (
@@ -276,10 +269,11 @@ export default function Menu({
 
       {showPvpLobby && (
         <PvPLobbyModal
+          pvp={pvp}
           onClose={() => setShowPvpLobby(false)}
           onMatchReady={(match) => {
             setShowPvpLobby(false);
-            setPvpMatch(match);
+            onPvpMatchReady?.(match);
           }}
         />
       )}
