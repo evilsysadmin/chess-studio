@@ -16,6 +16,9 @@ service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").r
 tunnel_control = (ROOT / ".github" / "workflows" / "oci-staging-tunnel.yml").read_text(encoding="utf-8")
 infra_apply = (ROOT / ".github" / "workflows" / "oci-staging-deploy.yml").read_text(encoding="utf-8")
 infra_lab = (ROOT / ".github" / "workflows" / "oci-staging-lab.yml").read_text(encoding="utf-8")
+k3s_root = (ROOT / "scripts" / "oci_k3s_assets_root.py").read_text(encoding="utf-8")
+k3s_provision = (ROOT / "scripts" / "oci_k3s_capability_provision.sh").read_text(encoding="utf-8")
+k3s_sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -53,7 +56,6 @@ for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
-
 default_origins = assigned_literal_strings(backend_main, "_DEFAULT_CORS_ORIGINS")
 assert STAGING_ORIGIN in default_origins, (
     "FastAPI must always allow the canonical staging browser origin even if runtime "
@@ -151,5 +153,22 @@ assert "Attach and verify existing reserved staging egress" in infra_apply, (
 assert "group: oci-staging-mutations" in infra_apply and "group: oci-staging-mutations" in infra_lab, (
     "all OCI infrastructure operations must share the staging mutation mutex"
 )
+
+# K3s asset installation is deliberately a narrow host capability. It is
+# provisioned by the already-root deployment path, but ocarun receives exactly
+# one additional sudo command with one fixed staging path. The capability pins
+# the current verified bundle and may materialize assets only; starting K3s is a
+# later, separately reviewed phase.
+ast.parse(k3s_root)
+assert '/bin/bash "$k3s_capability_provision"' in deploy
+assert "OCI_K3S_ASSET_CAPABILITY_READY" in k3s_provision
+assert "visudo -cf" in k3s_provision
+assert "EXPECTED_BUNDLE_SHA256 = \"db0972ea4c9439e238e777f26d579ae29865f22f05f70c9a01989cc772611256\"" in k3s_root
+assert "EXPECTED_BUNDLE_SIZE = 240779539" in k3s_root
+assert "os.O_NOFOLLOW" in k3s_root and 'info.st_uid != sudo_uid' in k3s_root
+assert "CHESS_STUDIO_K3S_ASSETS = /usr/local/sbin/chess-studio-k3s-assets /tmp/chess-studio-k3s-bundle.tar.gz" in k3s_sudoers
+assert "CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME, CHESS_STUDIO_K3S_ASSETS" in k3s_sudoers
+for forbidden in ("systemctl", "k3s server", "k3s agent", "curl ", "wget "):
+    assert forbidden not in k3s_root, f"K3s asset capability must not contain {forbidden!r}"
 
 print("OCI staging CORS + runtime deployment contract: OK")
