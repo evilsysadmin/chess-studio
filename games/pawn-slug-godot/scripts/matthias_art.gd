@@ -104,6 +104,7 @@ var _recoil_x := 0.0
 var _facing := 1.0
 var _one_shot_action := ""
 var _hold_one_shot := false
+var _locomotion_frame_accumulator := 0.0
 
 var _facing_root: Node2D
 var _fx_root: Node2D
@@ -182,7 +183,10 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
             var next := _resolve_action(horizontal_speed_ratio, on_floor, crouching and on_floor, vertical_speed)
             if next != _action:
                 _action = next
+                _locomotion_frame_accumulator = 0.0
                 _play_action()
+            if _action == "walk" or _action == "run":
+                _advance_locomotion(delta, horizontal_speed_ratio)
 
     var authored_shoot := _using_full_atlas and _animation_available("shoot")
     if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
@@ -353,13 +357,14 @@ func _build_full_frames(image: Image) -> SpriteFrames:
             )
             frames.add_frame(action, texture)
 
-    # Crouch remains a gameplay state although the strict sheet uses LAND.
-    # Reusing an authored 256 x 256 cell keeps crouch at exactly the same visual
-    # scale as standing frames; no per-pose resize is allowed on strict atlases.
+    # Crouch remains a gameplay state outside the 10-row authored contract.
+    # The first FALL frame is the compact legs-tucked pose in strict-v5. Because
+    # every strict cell shares the same 256 x 256 canvas and baseline, reusing it
+    # reads as a real crouch on the ground without changing apparent sprite size.
     frames.add_animation("crouch")
     frames.set_animation_loop("crouch", true)
     frames.set_animation_speed("crouch", 1.0)
-    frames.add_frame("crouch", frames.get_frame_texture("land", 0))
+    frames.add_frame("crouch", frames.get_frame_texture("fall", 0))
     return frames
 
 func _build_legacy_pistol_frames(image: Image) -> SpriteFrames:
@@ -484,7 +489,29 @@ func _animation_available(name: String) -> bool:
 func _play_action() -> void:
     if not _body_ready or _dead or not _animation_available(_action):
         return
+    if _action == "walk" or _action == "run":
+        _body.animation = _action
+        _body.frame = 0
+        _body.pause()
+        return
+    _body.speed_scale = 1.0
     _body.play(_action)
+
+func _advance_locomotion(delta: float, horizontal_speed_ratio: float) -> void:
+    if not _animation_available(_action):
+        return
+    var frame_count := _body.sprite_frames.get_frame_count(_action)
+    if frame_count <= 1:
+        return
+    var authored_fps := _body.sprite_frames.get_animation_speed(_action)
+    # Tie the cycle to actual travel speed so movement can never degenerate into
+    # a static skating pose. Keep a floor once the state is active so acceleration
+    # still shows a readable first step.
+    var speed_factor := maxf(0.55, horizontal_speed_ratio)
+    _locomotion_frame_accumulator += delta * authored_fps * speed_factor
+    _body.animation = _action
+    _body.frame = int(floor(_locomotion_frame_accumulator)) % frame_count
+    _body.pause()
 
 func _play_one_shot(name: String, hold: bool = false) -> void:
     if not _animation_available(name):
