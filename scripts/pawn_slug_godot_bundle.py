@@ -126,6 +126,14 @@ def validate_pointer(pointer: Any, *, base_url: str, prefix: str = DEFAULT_PREFI
             raise BundleError(f"Pointer Godot inválido: sha256 {relative}")
 
 
+def _pointer_action(existing: dict[str, Any], desired: dict[str, Any]) -> str:
+    if existing.get("sha256") != desired.get("sha256"):
+        return "publish"
+    if existing.get("sourceSha") != desired.get("sourceSha"):
+        return "repoint"
+    return "unchanged"
+
+
 def publish(build_dir: pathlib.Path, config_path: pathlib.Path, prefix: str, dry_run: bool) -> dict[str, Any]:
     config = core.load_config(config_path)
     base_url = f"https://{config['customDomain']}"
@@ -137,14 +145,24 @@ def publish(build_dir: pathlib.Path, config_path: pathlib.Path, prefix: str, dry
     token, account_id = core.require_env()
     bucket = config["bucket"]
     pointer_key = f"{prefix.strip('/')}/{POINTER_NAME}"
+    existing: dict[str, Any] | None = None
     try:
-        existing = json.loads(core.get_object(token, account_id, bucket, pointer_key).decode("utf-8"))
-        validate_pointer(existing, base_url=base_url, prefix=prefix)
-        if existing.get("sha256") == pointer["sha256"]:
+        candidate = json.loads(core.get_object(token, account_id, bucket, pointer_key).decode("utf-8"))
+        validate_pointer(candidate, base_url=base_url, prefix=prefix)
+        existing = candidate
+    except Exception:
+        existing = None
+
+    if existing is not None:
+        action = _pointer_action(existing, pointer)
+        if action == "unchanged":
             print(f"UNCHANGED Pawn Slug Godot -> {pointer['index']}")
             return existing
-    except Exception:
-        pass
+        if action == "repoint":
+            rendered = (json.dumps(pointer, indent=2, sort_keys=True) + "\n").encode("utf-8")
+            core.upload_object(token, account_id, bucket, pointer_key, rendered, "application/json; charset=utf-8")
+            print(f"REPOINTED Pawn Slug Godot {pointer['release']} -> sourceSha={pointer['sourceSha']}")
+            return pointer
 
     for relative, entry in pointer["files"].items():
         source = build_dir / pathlib.PurePosixPath(relative)
@@ -187,9 +205,13 @@ def self_test() -> None:
         assert first == second
         assert first["index"].endswith(f"/releases/{first['release']}/index.html")
         assert first["files"]["index.wasm"]["contentType"] == "application/wasm"
+        same_bundle_new_source = build_pointer(root, "https://assets.example.test", DEFAULT_PREFIX, "b" * 40)
+        assert _pointer_action(first, second) == "unchanged"
+        assert _pointer_action(first, same_bundle_new_source) == "repoint"
         (root / "index.pck").write_bytes(b"changed" * 64)
         changed = build_pointer(root, "https://assets.example.test", DEFAULT_PREFIX, "b" * 40)
         assert changed["release"] != first["release"]
+        assert _pointer_action(first, changed) == "publish"
         (root / "index.js").unlink()
         try:
             build_pointer(root, "https://assets.example.test", DEFAULT_PREFIX)
