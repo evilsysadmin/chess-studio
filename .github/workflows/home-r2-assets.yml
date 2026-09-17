@@ -1,0 +1,105 @@
+name: Home · publish 3D assets to R2
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/home-r2-assets.yml
+      - frontend/src/assets/home3d/**
+      - scripts/r2_asset_publish.py
+      - scripts/r2_asset_publisher.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/home-r2-assets.yml
+      - frontend/src/assets/home3d/**
+      - scripts/r2_asset_publish.py
+      - scripts/r2_asset_publisher.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-home-r2-assets
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Validate · Home R2 assets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Decode Home GLBs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/home-r2
+          base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
+          base64 -d frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
+          base64 -d frontend/src/assets/home3d/play-rook-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+          for file in /tmp/home-r2/*.glb; do
+            test "$(head -c 4 "$file")" = "glTF"
+          done
+      - name: Validate publisher and dry-run Home assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py self-test
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/tournament-cup-v1.glb \
+            --logical-id home.tournament.trophy.runtime \
+            --prefix home/tournament/trophy \
+            --dry-run
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/combat-heraldry-v1.glb \
+            --logical-id home.combat.heraldry.runtime \
+            --prefix home/combat/heraldry \
+            --dry-run
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/play-rook-v1.glb \
+            --logical-id home.play.rook.runtime \
+            --prefix home/play/rook \
+            --dry-run
+
+  publish:
+    name: Publish · Home R2 assets
+    if: github.event_name != 'pull_request'
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Decode Home GLBs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/home-r2
+          base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
+          base64 -d frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
+          base64 -d frontend/src/assets/home3d/play-rook-v1.glb.gz.b64 | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+      - name: Publish immutable Home assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/tournament-cup-v1.glb \
+            --logical-id home.tournament.trophy.runtime \
+            --prefix home/tournament/trophy
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/combat-heraldry-v1.glb \
+            --logical-id home.combat.heraldry.runtime \
+            --prefix home/combat/heraldry
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-r2/play-rook-v1.glb \
+            --logical-id home.play.rook.runtime \
+            --prefix home/play/rook
+          python3 -S scripts/r2_asset_publish.py check-manifest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: home-r2-manifest-${{ github.sha }}
+          path: frontend/src/assets/r2-assets-manifest.json
+          if-no-files-found: error
