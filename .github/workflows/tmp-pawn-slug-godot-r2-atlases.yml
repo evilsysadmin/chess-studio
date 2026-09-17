@@ -24,36 +24,36 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-godot-atlases
           base64 -d .r2-transfer/pawn_slug_godot_atlases_v2.zip.b64 > /tmp/pawn-slug-godot-atlases.zip
-          echo 'e550a76a131fd8767fae27c5a93052b56cabb944815ff217b49b265dc3a482e8  /tmp/pawn-slug-godot-atlases.zip' | sha256sum -c -
+          echo 'a02f64cf9f0ec4b46c53ddaac34edd10ee064a6129f4c1ea56092da75138182c  /tmp/pawn-slug-godot-atlases.zip' | sha256sum -c -
           unzip -q /tmp/pawn-slug-godot-atlases.zip -d /tmp/pawn-slug-godot-atlases
           cat <<'SUMS' | sha256sum -c -
-          571e7c89ee2182d3e92cc9d36d942568dbf87215810596a97830e214d5ab39e6  /tmp/pawn-slug-godot-atlases/matthias_pistol_godot_full_v2.webp
-          614666927e0e37c19f0db3739eaaa5cd577be076ac7cbff8b5ae04497589804c  /tmp/pawn-slug-godot-atlases/matthias_smg_godot_full_v2.webp
-          7c6248c8280025ad26a1a167766e8e4e8cf41b64634816d35d19309c8c5984c3  /tmp/pawn-slug-godot-atlases/matthias_shotgun_godot_full_v2.webp
-          2c58d0712b03baf12075b84f071c813352af9d865cb060aa3bfef8c24f1d7ddf  /tmp/pawn-slug-godot-atlases/matthias_bazooka_godot_full_v2.webp
+          999b5a475c808b08c61ab7eccd2ff96739bbf4c7fa1dfec4115246b0bb01739a  /tmp/pawn-slug-godot-atlases/matthias_pistol_godot_full_v2.png
+          0f0994004369b698314270e3d90b0207582ae60da5c50328aff9a87704cc5400  /tmp/pawn-slug-godot-atlases/matthias_smg_godot_full_v2.png
+          a8c6baf32fd80ccdc9021f63c24fab438051492e922289e76a86ce5e87f16cc2  /tmp/pawn-slug-godot-atlases/matthias_shotgun_godot_full_v2.png
+          77031eb277c7b69b77b0659ed7ddfeb7b00e0099fde0aacd26c5ac779137a1f5  /tmp/pawn-slug-godot-atlases/matthias_bazooka_godot_full_v2.png
           SUMS
       - name: Publish immutable Godot atlases
         shell: bash
         run: |
           set -euo pipefail
           cp frontend/src/assets/r2-assets-manifest.json /tmp/r2-assets-manifest.json
-          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_pistol_godot_full_v2.webp --logical-id pawnSlug.matthias.godot.pistol --prefix pawn-slug/matthias/godot/pistol --manifest /tmp/r2-assets-manifest.json
-          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_smg_godot_full_v2.webp --logical-id pawnSlug.matthias.godot.machinegun --prefix pawn-slug/matthias/godot/machinegun --manifest /tmp/r2-assets-manifest.json
-          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_shotgun_godot_full_v2.webp --logical-id pawnSlug.matthias.godot.shotgun --prefix pawn-slug/matthias/godot/shotgun --manifest /tmp/r2-assets-manifest.json
-          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_bazooka_godot_full_v2.webp --logical-id pawnSlug.matthias.godot.panzerfaust --prefix pawn-slug/matthias/godot/panzerfaust --manifest /tmp/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_pistol_godot_full_v2.png --logical-id pawnSlug.matthias.godot.pistol --prefix pawn-slug/matthias/godot/pistol --manifest /tmp/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_smg_godot_full_v2.png --logical-id pawnSlug.matthias.godot.machinegun --prefix pawn-slug/matthias/godot/machinegun --manifest /tmp/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_shotgun_godot_full_v2.png --logical-id pawnSlug.matthias.godot.shotgun --prefix pawn-slug/matthias/godot/shotgun --manifest /tmp/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish /tmp/pawn-slug-godot-atlases/matthias_bazooka_godot_full_v2.png --logical-id pawnSlug.matthias.godot.panzerfaust --prefix pawn-slug/matthias/godot/panzerfaust --manifest /tmp/r2-assets-manifest.json
       - name: Public asset smoke
         shell: bash
         run: |
           set -euo pipefail
           base='https://assets.chess-studio.shadowops.dpdns.org'
-          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/pistol/matthias_pistol_godot_full_v2-571e7c89ee2182d3.webp" -o /tmp/pistol.webp
-          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/machinegun/matthias_smg_godot_full_v2-614666927e0e37c1.webp" -o /tmp/smg.webp
-          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/shotgun/matthias_shotgun_godot_full_v2-7c6248c8280025ad.webp" -o /tmp/shotgun.webp
-          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/panzerfaust/matthias_bazooka_godot_full_v2-2c58d0712b03baf1.webp" -o /tmp/bazooka.webp
+          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/pistol/matthias_pistol_godot_full_v2-999b5a475c808b08.png" -o /tmp/pistol.png
+          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/machinegun/matthias_smg_godot_full_v2-0f0994004369b698.png" -o /tmp/smg.png
+          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/shotgun/matthias_shotgun_godot_full_v2-a8c6baf32fd80ccd.png" -o /tmp/shotgun.png
+          curl -fsS --retry 3 "$base/pawn-slug/matthias/godot/panzerfaust/matthias_bazooka_godot_full_v2-77031eb277c7b69b.png" -o /tmp/bazooka.png
           cat <<'SUMS' | sha256sum -c -
-          571e7c89ee2182d3e92cc9d36d942568dbf87215810596a97830e214d5ab39e6  /tmp/pistol.webp
-          614666927e0e37c19f0db3739eaaa5cd577be076ac7cbff8b5ae04497589804c  /tmp/smg.webp
-          7c6248c8280025ad26a1a167766e8e4e8cf41b64634816d35d19309c8c5984c3  /tmp/shotgun.webp
-          2c58d0712b03baf12075b84f071c813352af9d865cb060aa3bfef8c24f1d7ddf  /tmp/bazooka.webp
+          999b5a475c808b08c61ab7eccd2ff96739bbf4c7fa1dfec4115246b0bb01739a  /tmp/pistol.png
+          0f0994004369b698314270e3d90b0207582ae60da5c50328aff9a87704cc5400  /tmp/smg.png
+          a8c6baf32fd80ccdc9021f63c24fab438051492e922289e76a86ce5e87f16cc2  /tmp/shotgun.png
+          77031eb277c7b69b77b0659ed7ddfeb7b00e0099fde0aacd26c5ac779137a1f5  /tmp/bazooka.png
           SUMS
           echo 'Pawn Slug Godot atlases published and publicly verified.'
