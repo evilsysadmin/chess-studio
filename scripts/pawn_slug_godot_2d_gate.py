@@ -29,18 +29,24 @@ FORBIDDEN = (
 REQUIRED_MATTHIAS = (
     "AnimatedSprite2D",
     "Marker2D",
-    "AnimationPlayer",
-    "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
-    "/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-",
-    "/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-",
-    "/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-",
-    "load_webp_from_buffer",
+    "HTTPRequest",
+    "MASTER_URL",
+    "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-",
+    "SOURCE_RECTS",
+    "Rect2i(715, 58, 110, 164)",
+    "load_png_from_buffer",
 )
 FORBIDDEN_MATTHIAS = (
     "MOTION_ATLAS_URL",
     "PISTOL_SHOOT_URL",
+    "WEAPON_URLS",
     "res://assets/weapon_atlas.svg",
     "_pistol_shoot",
+    "/pawn-slug/matthias/pistol/",
+    "/pawn-slug/matthias/machinegun/",
+    "/pawn-slug/matthias/shotgun/",
+    "/pawn-slug/matthias/panzerfaust/",
+    "load_webp_from_buffer",
 )
 REQUIRED_ENEMIES = (
     "Sprite2D",
@@ -105,8 +111,10 @@ def self_test() -> None:
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
-    assert "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-" in REQUIRED_MATTHIAS
-    assert "MOTION_ATLAS_URL" in FORBIDDEN_MATTHIAS
+    assert "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-" in REQUIRED_MATTHIAS
+    assert "SOURCE_RECTS" in REQUIRED_MATTHIAS
+    assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
+    assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     print("OK Pawn Slug Godot 2D gate self-test")
