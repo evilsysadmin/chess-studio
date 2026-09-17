@@ -43,7 +43,7 @@ describe('approved canonical handoff', () => {
     sprite.userData.setWeapon('shotgun');
     pending[3].success(texture());
     expect(sprite.userData.atlas.weapon).toBe('shotgun');
-    expect(sprite.userData.canonicalHead.sprite.material.visible).toBe(true);
+    expect(sprite.userData.canonicalHead.sprite.material.visible).toBe(false);
   });
   it('discards stale weapon loads', () => {
     pending.length = 0;

@@ -4,7 +4,7 @@ import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 import { r2AssetUrl } from './r2Assets.js';
 
 const WEAPONS = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
-export const PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS = Object.freeze(['pistol', 'machinegun']);
+export const PAWN_SLUG_MATTHIAS_BAKED_HEAD_WEAPONS = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_MATTHIAS_R2_ASSETS = Object.freeze({
   canonicalMaster: 'pawnSlug.matthias.canonicalMaster',
