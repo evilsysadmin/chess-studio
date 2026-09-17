@@ -18,7 +18,7 @@ describe('Combat candidate transport seam', () => {
       from: 'e7', to: 'e5', san: 'e5',
       candidates: [
         { from: 'd7', to: 'd5', moveKey: 'd7d5', chessScoreCp: 20, isLegal: true, combatReady: true },
-        { from: 'e7', to: 'e5', moveKey: 'e7e5', chessScoreCp: 10, isLegal: true, combatReady: true, enemyValue: 5, hitChance: 1 },
+        { from: 'e7', to: 'e5', moveKey: 'e7e5', chessScoreCp: 10, isLegal: true, combatReady: true, enemyPersistentValue: 1, hitChance: 1 },
       ],
     };
     expect(selectCombatAwareRemoteSuggestion(remote).moveKey).toBe('e7e5');
