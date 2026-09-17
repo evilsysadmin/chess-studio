@@ -511,9 +511,9 @@ export default function HomeCastle3D({
     window.addEventListener('resize', resize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
+    canvas.parentElement?.addEventListener('pointermove', onCanvasPointerMove, { passive: true });
     canvas.parentElement?.addEventListener('pointerleave', onPointerLeave, { passive: true });
-    canvas.addEventListener('pointermove', onCanvasPointerMove, { passive: true });
-    canvas.addEventListener('pointerleave', onCanvasPointerLeave, { passive: true });
+    canvas.parentElement?.addEventListener('pointerleave', onCanvasPointerLeave, { passive: true });
     canvas.addEventListener('click', onCanvasClick);
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
@@ -575,9 +575,9 @@ export default function HomeCastle3D({
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
+      canvas.parentElement?.removeEventListener('pointermove', onCanvasPointerMove);
       canvas.parentElement?.removeEventListener('pointerleave', onPointerLeave);
-      canvas.removeEventListener('pointermove', onCanvasPointerMove);
-      canvas.removeEventListener('pointerleave', onCanvasPointerLeave);
+      canvas.parentElement?.removeEventListener('pointerleave', onCanvasPointerLeave);
       canvas.removeEventListener('click', onCanvasClick);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
