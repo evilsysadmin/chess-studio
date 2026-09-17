@@ -15,7 +15,6 @@ const FIRE_INTERVAL := 0.16
 
 var facing := 1.0
 var fire_cooldown := 0.0
-var muzzle_flash := 0.0
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
@@ -60,11 +59,9 @@ func _physics_process(delta: float) -> void:
     move_and_slide()
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
-    muzzle_flash = maxf(0.0, muzzle_flash - delta)
     var fired_now := false
     if _fire_pressed() and fire_cooldown <= 0.0:
         fire_cooldown = FIRE_INTERVAL
-        muzzle_flash = 0.055
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
@@ -106,6 +103,3 @@ func _draw() -> void:
 
         var gun_origin := Vector2(facing * 14.0, -7.0)
         draw_line(gun_origin, gun_origin + Vector2(facing * 42.0, 0.0), Color("a4abb1"), 9.0)
-
-    if muzzle_flash > 0.0:
-        draw_circle(Vector2(facing * 65.0, -10.0), 9.0, Color("ffd36a"))
