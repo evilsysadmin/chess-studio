@@ -41,18 +41,6 @@ variable "availability_domain" {
   }
 }
 
-variable "image_ocid" {
-  description = "Optional image override. Null discovers the newest Canonical Ubuntu 24.04 image compatible with A1."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition     = var.image_ocid == null || can(regex("^ocid1\\.image\\.", trimspace(var.image_ocid)))
-    error_message = "image_ocid must be null or an OCI image OCID."
-  }
-}
-
 variable "ssh_authorized_key" {
   description = "Optional public SSH key. Keep null while SSH ingress is disabled. Private key material must never be passed to Terraform."
   type        = string
