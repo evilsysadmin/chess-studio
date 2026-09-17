@@ -147,6 +147,27 @@ export function loadCombatSession(sessionId) {
   return validSnapshot(memory, id) ? memory : null;
 }
 
+// El turno CPU no conoce el combatSessionId porque su contrato sólo necesita
+// FEN + dificultad. Para alimentar una policy Combat-aware sin acoplarla al
+// hook, resolvemos el snapshot por FEN exacto. Sólo devolvemos contexto cuando
+// hay UNA coincidencia: dos campañas suspendidas en la misma posición son
+// ambiguas y deben conservar la jugada primaria del motor.
+export function combatSessionContextForFen(fen) {
+  if (!validFen(fen)) return null;
+  const snapshots = new Map(Object.entries(readSnapshotBucket()));
+  for (const [id, snapshot] of memorySnapshots.entries()) {
+    if (validSnapshot(snapshot, id)) snapshots.set(id, snapshot);
+  }
+  const matches = [...snapshots.values()].filter((snapshot) => snapshot.fen === fen);
+  if (matches.length !== 1) return null;
+  const snapshot = matches[0];
+  return {
+    sessionId: snapshot.sessionId,
+    registry: snapshot.registry,
+    focus: snapshot.focus || null,
+  };
+}
+
 export function hasCombatSession(sessionId) {
   return !!loadCombatSession(sessionId);
 }
