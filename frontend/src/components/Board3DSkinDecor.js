@@ -348,13 +348,13 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   walnutRim.castShadow = false;
 
   // The tactical camera compresses the two white ranks. Give the canonical
-  // studio officers a slightly deeper, warmer ivory body so the rear rank is
-  // readable by value/chroma alone, even before specular lighting helps. Pawns
-  // keep the brighter canonical ivory; themed skins keep their own palette.
+  // studio officers a clearly deeper antique-ivory body so the rear rank stays
+  // readable by value/chroma alone after ACES and the warm practical lights.
+  // Pawns keep the brighter canonical ivory; themed skins keep their own palette.
   if (type !== 'p' && ivoryMaterial.userData?.skin3DId === 'studio') {
-    ivoryMaterial.color.setHex(0xcdb184);
-    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-deep-ivory-v1';
-    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xcdb184;
+    ivoryMaterial.color.setHex(0xc09b69);
+    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-deep-ivory-v2';
+    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xc09b69;
   }
 
   // Pawns remain dry/matte because their heads form the foreground picket line.
