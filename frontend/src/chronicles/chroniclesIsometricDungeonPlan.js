@@ -38,6 +38,11 @@ function projectContent(scenePlan, entry, cellSize) {
   });
 }
 
+export function chroniclesIsometricContentByKind(dungeonPlan, kind) {
+  if (!kind) return null;
+  return (dungeonPlan?.content || []).find((entry) => entry.kind === kind) || null;
+}
+
 export function chroniclesIsometricDungeonPlan(mapOrState = null, cellSize = CHRONICLES_ISOMETRIC_CELL_SIZE) {
   const scenePlan = isScenePlan(mapOrState) ? mapOrState : chroniclesIsometricScenePlan(mapOrState);
   const size = normalizedCellSize(cellSize);
