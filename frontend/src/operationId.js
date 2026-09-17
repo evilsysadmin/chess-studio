@@ -8,11 +8,26 @@ export function createOperationId(scope = 'op') {
   return `${cleanScope}:${Date.now().toString(36)}-${fallbackCounter.toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function canonicalJsonValue(value, seen = new WeakSet()) {
+  if (value == null || typeof value !== 'object') return value;
+  if (typeof value.toJSON === 'function') return canonicalJsonValue(value.toJSON(), seen);
+  if (seen.has(value)) throw new TypeError('Circular operation fingerprint input');
+
+  seen.add(value);
+  const canonical = Array.isArray(value)
+    ? value.map((item) => canonicalJsonValue(item, seen))
+    : Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonicalJsonValue(value[key], seen)]),
+    );
+  seen.delete(value);
+  return canonical;
+}
+
 export function operationFingerprint(parts = []) {
   return (Array.isArray(parts) ? parts : [parts]).map((part) => {
     if (part == null) return '';
     if (typeof part === 'object') {
-      try { return JSON.stringify(part, Object.keys(part).sort()); } catch { return String(part); }
+      try { return JSON.stringify(canonicalJsonValue(part)); } catch { return String(part); }
     }
     return String(part);
   }).join('|');

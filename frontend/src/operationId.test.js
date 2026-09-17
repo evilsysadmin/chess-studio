@@ -21,6 +21,24 @@ describe('operation ids', () => {
     expect(operationFingerprint(['game', { to: 'e4', from: 'e2' }]))
       .toBe(operationFingerprint(['game', { from: 'e2', to: 'e4' }]));
   });
+
+  it('canonicaliza objetos anidados sin perder sus claves internas', () => {
+    const first = operationFingerprint([{
+      id: 'g1',
+      context: { move: { to: 'e4', from: 'e2' }, options: { promotion: null, animate: true } },
+    }]);
+    const reordered = operationFingerprint([{
+      context: { options: { animate: true, promotion: null }, move: { from: 'e2', to: 'e4' } },
+      id: 'g1',
+    }]);
+    const differentNestedMove = operationFingerprint([{
+      id: 'g1',
+      context: { move: { from: 'd2', to: 'd4' }, options: { animate: true, promotion: null } },
+    }]);
+
+    expect(reordered).toBe(first);
+    expect(differentNestedMove).not.toBe(first);
+  });
 });
 
 describe('retry operation id cache', () => {
