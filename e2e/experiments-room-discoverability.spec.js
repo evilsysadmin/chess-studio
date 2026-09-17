@@ -5,6 +5,7 @@ const DESTINATIONS = [
   ['.lab-workshop-portal--chronicles', 'Chronicles of Matthias'],
   ['.lab-workshop-portal--tactics', 'Chronicles of Matthias Tactics'],
   ['.lab-workshop-portal--pawnslug', 'Pawn Slug'],
+  ['.lab-workshop-portal--pawnslug-godot', 'PAWN SLUG GODOT'],
   ['.lab-workshop-portal--trailblazer', 'Pawn Trailblazer'],
   ['.lab-workshop-map-table', 'Chesscom'],
   ['.lab-workshop-tool:not(.lab-workshop-tool--arena)', 'Laboratorio libre'],
