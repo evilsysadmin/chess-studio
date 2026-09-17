@@ -10,7 +10,12 @@ describe('Chronicles isometric scene plan', () => {
     const plan = chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares'));
 
     expect(plan.mapId).toBe('crypt-eight-squares');
-    expect(plan.sceneStyle).toEqual({ id: 'crypt-stone', version: 1, dressing: 'crypt-legacy' });
+    expect(plan.sceneStyle).toMatchObject({ id: 'crypt-stone', version: 2, dressing: 'crypt-legacy' });
+    expect(plan.sceneStyle.palette).toEqual(expect.objectContaining({
+      background: 0x100c09,
+      floor: expect.any(Array),
+      wall: expect.any(Array),
+    }));
     expect(plan.width).toBe(7);
     expect(plan.height).toBe(7);
     expect(plan.center).toEqual({ x: 3, y: 3 });
@@ -31,8 +36,8 @@ describe('Chronicles isometric scene plan', () => {
     const gallery = chroniclesIsometricScenePlan(chroniclesMapById('gallery-of-forks'));
 
     expect(gallery.mapId).toBe('gallery-of-forks');
-    expect(gallery.sceneStyle).toEqual({ id: 'gallery-stone', version: 1, dressing: 'none' });
-    expect(gallery.sceneStyle).not.toEqual(crypt.sceneStyle);
+    expect(gallery.sceneStyle).toMatchObject({ id: 'gallery-stone', version: 2, dressing: 'none' });
+    expect(gallery.sceneStyle.palette).not.toEqual(crypt.sceneStyle.palette);
     expect(gallery.floors).not.toEqual(crypt.floors);
     expect(gallery.walls).not.toEqual(crypt.walls);
     expect(gallery.wallFaces).not.toEqual(crypt.wallFaces);
@@ -61,7 +66,9 @@ describe('Chronicles isometric scene plan', () => {
       exits: [],
     });
 
-    expect(plan.sceneStyle).toEqual({ id: 'neutral', version: 1, dressing: 'none' });
+    expect(plan.sceneStyle).toMatchObject({ id: 'neutral', version: 2, dressing: 'none' });
+    expect(plan.sceneStyle.palette.floor.length).toBeGreaterThan(0);
+    expect(plan.sceneStyle.palette.wall.length).toBeGreaterThan(0);
     expect(plan.center).toEqual({ x: 2, y: 1 });
     expect(chroniclesIsometricCellToWorld(plan, 2, 1, 2)).toEqual({ x: 0, y: 0, z: 0 });
     expect(chroniclesIsometricCellToWorld(plan, 4, 2, 2)).toEqual({ x: 4, y: 0, z: 2 });
