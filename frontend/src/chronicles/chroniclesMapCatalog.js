@@ -2,6 +2,7 @@ import cryptEightSquares from './maps/crypt-eight-squares.json';
 import galleryOfForks from './maps/gallery-of-forks.json';
 import menagerieOfAsh from './maps/menagerie-of-ash.json';
 import ashVault from './maps/ash-vault.json';
+import ironFoundry from './maps/iron-foundry.json';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
@@ -243,6 +244,7 @@ const MAPS = Object.freeze({
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
   [menagerieOfAsh.id]: normalizeMap(menagerieOfAsh),
   [ashVault.id]: normalizeMap(ashVault),
+  [ironFoundry.id]: normalizeMap(ironFoundry),
 });
 
 const MAP_IDS = new Set(Object.keys(MAPS));
