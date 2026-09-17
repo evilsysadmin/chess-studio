@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare prospective Vault+Git staging runtime with the installed env, read-only."""
+"""Compare prospective Vault+Git runtime with the persisted private OCI runtime source."""
 from __future__ import annotations
 
 import argparse
@@ -10,33 +10,35 @@ from oci_runtime_manifest import DECLARATIVE_KEYS, load_declarative
 from oci_vault_runtime import OCI_SDK_VERSION, SECRET_NAMES, resolve_vault_id, validate_vault_id
 
 OK_MARKER = "OCI_VAULT_RUNTIME_COMPARE_OK"
-RUNTIME_PATH = "/etc/chess-studio/backend.env"
 
 
-def host_compare_command(vault_id: str, declarative: dict[str, str]) -> str:
+def host_compare_command(vault_id: str, namespace: str, declarative: dict[str, str]) -> str:
+    from oci_run_command import RUNTIME_BUCKET, RUNTIME_OBJECT, validate_namespace
+
     vault_id = validate_vault_id(vault_id)
+    namespace = validate_namespace(namespace)
     if set(declarative) != set(DECLARATIVE_KEYS):
         raise SystemExit("declarative runtime keys do not match comparison contract")
     declarative_rows = tuple((key, declarative[key]) for key in DECLARATIVE_KEYS)
     command = f"""set -euo pipefail
-runtime={shlex.quote(RUNTIME_PATH)}
-test -r "$runtime"
 venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
 if [ ! -x "$venv/bin/python" ]; then
   python3 -m venv "$venv"
   "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
 fi
-VAULT_ID={shlex.quote(vault_id)} RUNTIME_PATH="$runtime" "$venv/bin/python" - <<'PY'
+VAULT_ID={shlex.quote(vault_id)} RUNTIME_NAMESPACE={shlex.quote(namespace)} "$venv/bin/python" - <<'PY'
 import base64, os
-from pathlib import Path
 import oci
 
 secret_rows = {repr(SECRET_NAMES)}
 expected = dict({repr(declarative_rows)})
-client = oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
+signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+secrets = oci.secrets.SecretsClient(config={{}}, signer=signer)
+storage = oci.object_storage.ObjectStorageClient(config={{}}, signer=signer)
 for key, name in secret_rows:
-    response = client.get_secret_bundle_by_name(secret_name=name, vault_id=os.environ["VAULT_ID"], stage="CURRENT")
-    encoded = str(getattr(response.data.secret_bundle_content, "content", "") or "")
+    response = secrets.get_secret_bundle_by_name(secret_name=name, vault_id=os.environ["VAULT_ID"], stage="CURRENT")
+    content = getattr(response.data, "secret_bundle_content", None)
+    encoded = str(getattr(content, "content", "") or "")
     try:
         value = base64.b64decode(encoded, validate=True).decode("utf-8")
     except Exception:
@@ -45,15 +47,22 @@ for key, name in secret_rows:
         raise SystemExit("invalid CURRENT secret value shape: " + name)
     expected[key] = value
 
+runtime = storage.get_object(os.environ["RUNTIME_NAMESPACE"], {RUNTIME_BUCKET!r}, {RUNTIME_OBJECT!r})
+try:
+    text = runtime.data.content.decode("utf-8")
+except Exception:
+    raise SystemExit("persisted runtime object is not valid UTF-8") from None
+if "\\x00" in text or "\\r" in text:
+    raise SystemExit("persisted runtime object contains forbidden control characters")
 actual = {{}}
-for raw in Path(os.environ["RUNTIME_PATH"]).read_text(encoding="utf-8").splitlines():
+for raw in text.splitlines():
     if not raw or "=" not in raw:
-        raise SystemExit("installed runtime contains malformed line")
+        raise SystemExit("persisted runtime object contains malformed line")
     key, value = raw.split("=", 1)
     if key == "COMMIT_SHA":
         continue
     if key in actual:
-        raise SystemExit("installed runtime contains duplicate key: " + key)
+        raise SystemExit("persisted runtime object contains duplicate key: " + key)
     actual[key] = value
 
 missing = sorted(set(expected) - set(actual))
@@ -67,7 +76,7 @@ for key in different:
     print("OCI_VAULT_RUNTIME_DIFF key=" + key)
 if missing or extra or different:
     raise SystemExit(43)
-print("{OK_MARKER} keys=" + str(len(expected)))
+print("{OK_MARKER} target=object-storage keys=" + str(len(expected)))
 PY
 """
     from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
@@ -80,42 +89,48 @@ PY
 
 def validate_output(text: str) -> None:
     lines = {line.strip() for line in text.splitlines() if line.strip()}
-    if not any(line.startswith(f"{OK_MARKER} keys=") for line in lines):
+    if not any(line.startswith(f"{OK_MARKER} target=object-storage keys=") for line in lines):
         raise SystemExit("OCI Vault runtime comparison did not return success marker")
 
 
 def compare_current(oci: Any) -> None:
-    from oci_run_command import config_from_env, diagnose_plugin, execute, resolve_staging
+    from oci_run_command import config_from_env, diagnose_plugin, execute, resolve_staging, runtime_namespace
 
     config = config_from_env(oci)
     diagnose_plugin(oci, config)
     compartment_id, _instance_id = resolve_staging(oci, config)
     vault_id = resolve_vault_id(oci, config, compartment_id)
+    namespace = runtime_namespace(oci, config)
     output = execute(
         oci,
         config,
-        host_compare_command(vault_id, load_declarative()),
+        host_compare_command(vault_id, namespace, load_declarative()),
         display_name="chess-studio-vault-runtime-compare",
         timeout=300,
     )
     validate_output(output)
-    print("OCI Vault+Git runtime matches installed backend.env")
+    print("OCI Vault+Git runtime matches persisted private runtime source")
 
 
 def self_test() -> None:
-    from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
+    from oci_run_command import RUNTIME_BUCKET, RUNTIME_OBJECT, RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
 
-    sample_vault = "ocid1.vault.oc1.eu-frankfurt-1.testvault"
-    command = host_compare_command(sample_vault, load_declarative())
+    command = host_compare_command(
+        "ocid1.vault.oc1.eu-frankfurt-1.testvault",
+        "chessnamespace",
+        load_declarative(),
+    )
     assert "InstancePrincipalsSecurityTokenSigner" in command
-    assert RUNTIME_PATH in command
-    assert OK_MARKER in command
-    assert 'stage="CURRENT"' in command
+    assert "ObjectStorageClient" in command and "get_object" in command
+    assert RUNTIME_BUCKET in command and RUNTIME_OBJECT in command
+    assert "/etc/chess-studio/backend.env" not in command
+    assert OK_MARKER in command and 'stage="CURRENT"' in command
     assert 'if key == "COMMIT_SHA"' in command
     assert "print(value" not in command and "print(encoded" not in command
+    assert "sudo " not in command and "systemctl" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert_nonsecret_command(command)
-    validate_output(f"{OK_MARKER} keys=19")
+    validate_output(f"{OK_MARKER} target=object-storage keys=19")
     try:
         validate_output("OCI_VAULT_RUNTIME_DIFF key=JWT_SECRET")
     except SystemExit:
