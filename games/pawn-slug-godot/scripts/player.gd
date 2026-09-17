@@ -203,6 +203,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
             select_weapon("shotgun")
         KEY_4:
             select_weapon("panzerfaust")
+        KEY_Q:
+            _cycle_weapon(-1)
+        KEY_E:
+            _cycle_weapon(1)
 
 func grant_weapon(id: String, ammo_bonus: int = -1) -> bool:
     if not WEAPONS.has(id) or id == "pistol":
@@ -256,6 +260,23 @@ func select_weapon(id: String) -> bool:
     _art.set_weapon(weapon)
     weapon_changed.emit(weapon, current_ammo())
     return true
+
+func _cycle_weapon(step: int) -> bool:
+    if step == 0:
+        return false
+    var current_index := WEAPON_ORDER.find(weapon)
+    if current_index < 0:
+        current_index = 0
+    var direction := 1 if step > 0 else -1
+    for offset in range(1, WEAPON_ORDER.size() + 1):
+        var index := (current_index + direction * offset) % WEAPON_ORDER.size()
+        if index < 0:
+            index += WEAPON_ORDER.size()
+        var candidate := String(WEAPON_ORDER[index])
+        var slot: Dictionary = arsenal[candidate]
+        if bool(slot["unlocked"]) and int(slot["ammo"]) != 0:
+            return select_weapon(candidate)
+    return false
 
 func current_ammo() -> int:
     return int(arsenal[weapon]["ammo"])
@@ -425,13 +446,18 @@ func _crouch_pressed() -> bool:
     )
 
 func _jump_pressed() -> bool:
-    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_SPACE):
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_A)
 
 func _fire_pressed() -> bool:
-    if Input.is_key_pressed(KEY_SPACE) or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+    if (
+        Input.is_key_pressed(KEY_Z)
+        or Input.is_key_pressed(KEY_J)
+        or Input.is_key_pressed(KEY_ENTER)
+        or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+    ):
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_X)
