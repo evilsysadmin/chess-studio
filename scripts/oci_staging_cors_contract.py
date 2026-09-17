@@ -82,8 +82,8 @@ for fragment in required_public_verifier_fragments:
 
 # Runtime configuration is operational state, not application release state.
 # Canonical deploys consume the already-published private OCI bundle. Updating
-# that bundle remains an explicit service-control action instead of a hidden
-# side effect of every code release or bringup.
+# that bundle remains an explicit manual service-control action instead of a
+# hidden side effect of code release, bringup, or automatic K3s reconciliation.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
 )
@@ -93,16 +93,16 @@ assert "inputs.operation == 'runtime-sync'" in service_control, (
 assert "python3 scripts/oci_runtime_config.py sync" in service_control, (
     "runtime-sync must remain the owner of Render-to-OCI runtime synchronization"
 )
-assert "Sync private runtime config\n        if: inputs.operation == 'runtime-sync'" in service_control, (
-    "runtime sync must remain an explicit operation instead of a bringup side effect"
-)
+assert (
+    "if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'"
+    in service_control
+), "runtime sync must remain workflow_dispatch-only instead of a release side effect"
 assert "inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'" not in service_control, (
     "bringup must consume the persisted OCI runtime bundle without resynchronizing Render"
 )
 
-# All manual service operations share the same native mutation mutex as the
-# canonical backend deploy and Terraform. Diagnostics may queue briefly, but a
-# recovery/deploy can never race another OCI mutation.
+# Manual service operations plus the narrowly-scoped automatic K3s ensure path
+# share the same native mutation mutex as canonical backend deploy and Terraform.
 assert "group: oci-staging-mutations" in service_control, (
     "OCI service control must share the repository-wide staging mutation mutex"
 )
@@ -157,11 +157,9 @@ assert "group: oci-staging-mutations" in infra_apply and "group: oci-staging-mut
     "all OCI infrastructure operations must share the staging mutation mutex"
 )
 
-# K3s asset installation is deliberately a narrow host capability. It is
-# provisioned by the already-root deployment path, but ocarun receives exactly
-# one additional sudo command with one fixed staging path. The capability pins
-# the current verified bundle and may materialize assets only; starting K3s is a
-# later, separately reviewed phase.
+# K3s asset installation remains a narrow host capability. It pins the current
+# verified air-gap bundle and may only materialize exact assets; lifecycle
+# privilege lives in a separate literal-command wrapper covered independently.
 ast.parse(k3s_root)
 assert '/bin/bash "$k3s_capability_provision"' in deploy
 assert "OCI_K3S_ASSET_CAPABILITY_READY" in k3s_provision
