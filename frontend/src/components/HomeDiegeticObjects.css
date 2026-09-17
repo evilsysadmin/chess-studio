@@ -57,7 +57,8 @@
   }
 
   .illustrated-home__destination.is-diegetic-object:hover,
-  .illustrated-home__destination.is-diegetic-object:focus-visible {
+  .illustrated-home__destination.is-diegetic-object:focus-visible,
+  .illustrated-home__destination.is-diegetic-object.is-active {
     transform: translateY(-.08cqw);
     background: transparent !important;
     filter: none;
@@ -65,7 +66,8 @@
   }
 
   .illustrated-home__destination.is-diegetic-object:hover::before,
-  .illustrated-home__destination.is-diegetic-object:focus-visible::before {
+  .illustrated-home__destination.is-diegetic-object:focus-visible::before,
+  .illustrated-home__destination.is-diegetic-object.is-active::before {
     opacity: .72;
     transform: scale(1.04);
     filter: blur(.22cqw) brightness(1.12);
@@ -78,19 +80,25 @@
   .illustrated-home__destination.is-diegetic-object:focus-visible > svg,
   .illustrated-home__destination.is-diegetic-object:focus-visible > strong,
   .illustrated-home__destination.is-diegetic-object:focus-visible > span,
-  .illustrated-home__destination.is-diegetic-object:focus-visible > i {
+  .illustrated-home__destination.is-diegetic-object:focus-visible > i,
+  .illustrated-home__destination.is-diegetic-object.is-active > svg,
+  .illustrated-home__destination.is-diegetic-object.is-active > strong,
+  .illustrated-home__destination.is-diegetic-object.is-active > span,
+  .illustrated-home__destination.is-diegetic-object.is-active > i {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 
   .illustrated-home__destination.is-diegetic-object:hover > svg,
-  .illustrated-home__destination.is-diegetic-object:focus-visible > svg {
+  .illustrated-home__destination.is-diegetic-object:focus-visible > svg,
+  .illustrated-home__destination.is-diegetic-object.is-active > svg {
     opacity: .82;
     filter: drop-shadow(0 2px 4px #160b03) drop-shadow(0 0 10px #d98e35aa);
   }
 
   .illustrated-home__destination.is-diegetic-object:hover > i,
-  .illustrated-home__destination.is-diegetic-object:focus-visible > i {
+  .illustrated-home__destination.is-diegetic-object:focus-visible > i,
+  .illustrated-home__destination.is-diegetic-object.is-active > i {
     opacity: .78;
   }
 
@@ -128,7 +136,8 @@
   }
 
   .illustrated-home__destination.is-diegetic-object:hover + .illustrated-home__scene-fragment,
-  .illustrated-home__destination.is-diegetic-object:focus-visible + .illustrated-home__scene-fragment {
+  .illustrated-home__destination.is-diegetic-object:focus-visible + .illustrated-home__scene-fragment,
+  .illustrated-home__destination.is-diegetic-object.is-active + .illustrated-home__scene-fragment {
     opacity: .92;
     transform: translateY(-.18cqw) scale(1.018);
     filter: brightness(1.2) saturate(1.12) contrast(1.025) drop-shadow(0 .22cqw .5cqw #0007);
@@ -146,7 +155,8 @@
   }
 
   .illustrated-home__destination.is-diegetic-object:hover,
-  .illustrated-home__destination.is-diegetic-object:focus-visible {
+  .illustrated-home__destination.is-diegetic-object:focus-visible,
+  .illustrated-home__destination.is-diegetic-object.is-active {
     transform: none;
   }
 }

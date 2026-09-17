@@ -33,6 +33,10 @@ import {
   homeCastleNeedsContinuousRender,
   homeCastleShouldRender,
 } from './HomeCastle3DVisibility.js';
+import {
+  homeCastleDestinationFromIntersections,
+  homeCastlePickableGroups,
+} from './HomeCastle3DPicking.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -134,9 +138,13 @@ export default function HomeCastle3D({
   foregroundArtUrl = null,
   ambient = 'day',
   activeRoom = null,
+  onDestinationHover = null,
+  onDestinationActivate = null,
 }) {
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
+  const onDestinationHoverRef = useRef(onDestinationHover);
+  const onDestinationActivateRef = useRef(onDestinationActivate);
   const renderRequestRef = useRef(null);
   const [runtimeLodCap, setRuntimeLodCap] = useState(null);
   const [renderPolicy, setRenderPolicy] = useState(() => browserRenderPolicy());
@@ -145,6 +153,11 @@ export default function HomeCastle3D({
     activeRoomRef.current = activeRoom;
     renderRequestRef.current?.();
   }, [activeRoom]);
+
+  useEffect(() => {
+    onDestinationHoverRef.current = onDestinationHover;
+    onDestinationActivateRef.current = onDestinationActivate;
+  }, [onDestinationActivate, onDestinationHover]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -264,6 +277,9 @@ export default function HomeCastle3D({
       pawnslug: utilityDestinationProps.pawnslug,
       dungeon: utilityDestinationProps.dungeon,
     };
+    const pickableDestinationGroups = homeCastlePickableGroups(destinationPropsByRoom);
+    const raycaster = new THREE.Raycaster();
+    const pickPointer = new THREE.Vector2();
 
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
@@ -282,6 +298,7 @@ export default function HomeCastle3D({
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
     let roomLightReach = IDLE_ROOM_LIGHT_REACH;
     let lastRenderedAt = Number.NEGATIVE_INFINITY;
+    let pickedDestination = null;
 
     const compositionReady = () => homeCastleCompositionReady({
       backgroundReady: backgroundTextureReady,
@@ -423,6 +440,43 @@ export default function HomeCastle3D({
       );
     };
 
+    const pickedDestinationAt = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      pickPointer.set(
+        THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1),
+        THREE.MathUtils.clamp(-(((event.clientY - rect.top) / rect.height) * 2 - 1), -1, 1),
+      );
+      raycaster.setFromCamera(pickPointer, camera);
+      return homeCastleDestinationFromIntersections(
+        raycaster.intersectObjects(pickableDestinationGroups, true),
+      );
+    };
+
+    const syncPickedDestination = (destination) => {
+      if (destination === pickedDestination) return;
+      pickedDestination = destination;
+      canvas.dataset.homeCastlePicked = destination || 'none';
+
+      const keyboardDestination = document.activeElement?.dataset?.homeDiegeticObject;
+      if (!destination && keyboardDestination) return;
+
+      onDestinationHoverRef.current?.(destination);
+      resumeRender();
+    };
+
+    const onCanvasPointerMove = (event) => {
+      if (!canvas.classList.contains('is-ready')) return;
+      syncPickedDestination(pickedDestinationAt(event));
+    };
+
+    const onCanvasPointerLeave = () => syncPickedDestination(null);
+    const onCanvasClick = (event) => {
+      if (!canvas.classList.contains('is-ready')) return;
+      const destination = pickedDestinationAt(event);
+      if (destination) onDestinationActivateRef.current?.(destination);
+    };
+
     const onPointerLeave = () => target.set(0, 0);
     const onContextLost = (event) => {
       event.preventDefault();
@@ -457,7 +511,10 @@ export default function HomeCastle3D({
     window.addEventListener('resize', resize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
+    canvas.parentElement?.addEventListener('pointermove', onCanvasPointerMove, { passive: true });
     canvas.parentElement?.addEventListener('pointerleave', onPointerLeave, { passive: true });
+    canvas.parentElement?.addEventListener('pointerleave', onCanvasPointerLeave, { passive: true });
+    canvas.addEventListener('click', onCanvasClick);
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
 
@@ -518,7 +575,10 @@ export default function HomeCastle3D({
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
+      canvas.parentElement?.removeEventListener('pointermove', onCanvasPointerMove);
       canvas.parentElement?.removeEventListener('pointerleave', onPointerLeave);
+      canvas.parentElement?.removeEventListener('pointerleave', onCanvasPointerLeave);
+      canvas.removeEventListener('click', onCanvasClick);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       material.map?.dispose();
@@ -541,6 +601,7 @@ export default function HomeCastle3D({
       className="illustrated-home__castle-3d"
       data-home-castle-lod={renderPolicy.lod}
       data-home-castle-compositor={foregroundArtUrl ? 'layered' : 'single'}
+      data-home-castle-picked="none"
       aria-hidden="true"
     />
   );
