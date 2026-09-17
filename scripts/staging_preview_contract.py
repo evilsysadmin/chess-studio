@@ -15,6 +15,7 @@ STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
+OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
 STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
 OCI_MUTATION_MUTEX = "concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false"
@@ -58,6 +59,7 @@ def main() -> int:
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
         OCI_RUN_COMMAND,
+        OCI_RUNTIME_BUNDLE,
     )
     for path in paths:
         if not path.exists():
@@ -76,8 +78,9 @@ def main() -> int:
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
     staging_release_identity = STAGING_RELEASE_IDENTITY.read_text(encoding="utf-8")
     oci_run_command = OCI_RUN_COMMAND.read_text(encoding="utf-8")
+    oci_runtime_bundle = OCI_RUNTIME_BUNDLE.read_text(encoding="utf-8")
 
-    # Preview remains a manual, frontend-only path and cannot mutate backend/AI.
+    # Preview remains manual and frontend-only.
     for needle, label in (
         ("name: Staging · preview", "workflow name"),
         ("workflow_dispatch:", "manual-only trigger"),
@@ -121,14 +124,24 @@ def main() -> int:
         ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
+        ("Deploy exact staging Worker generation", "generation Worker deploy"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
         ("'worker': str(ai.get('build')", "generation Worker SHA parity"),
+        ("Load ephemeral staging invite code from OCI runtime", "smoke invite source"),
+        ("Generate isolated staging smoke credentials", "smoke random credentials"),
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
 
+    # Render production remains valid elsewhere, but the canonical staging release
+    # must not need Render availability, identities or API credentials at all.
     for needle in (
+        "RENDER_API_KEY",
+        "RENDER_SERVICE_ID",
+        "render_staging_bootstrap.py",
+        "Resolve legacy Render service id read-only",
+        "render_service_id:",
         "actions: write",
         "GH_TOKEN:",
         "/actions/runs/$GITHUB_RUN_ID/cancel",
@@ -141,7 +154,7 @@ def main() -> int:
         "Legacy contract marker",
         "Legacy contract phrase",
     ):
-        forbid(staging_deploy, needle, "staging generation conserva orchestration legado prohibido", errors)
+        forbid(staging_deploy, needle, "staging generation conserva dependencia/orchestration legado prohibido", errors)
 
     # Run Command owns its bounded readiness wait; orchestration does not poll it.
     for needle, label in (
@@ -153,11 +166,19 @@ def main() -> int:
     ):
         require(oci_run_command, needle, label, errors)
 
+    # The private runtime reader is intentionally tiny and allowlisted.
+    for needle, label in (
+        ('RUNNER_READABLE_KEYS = frozenset({"CHESS_AI_SHARED_SECRET", "INVITE_CODE"})', "runtime reader allowlist"),
+        ("Runtime bucket must remain NoPublicAccess", "runtime private bucket guard"),
+        ("Runtime bucket versioning must remain Disabled", "runtime non-versioned secret guard"),
+        ("MAX_RUNTIME_BYTES = 65536", "runtime size bound"),
+        ("def read_private_runtime_value", "runtime single-value reader"),
+    ):
+        require(oci_runtime_bundle, needle, label, errors)
+
     names = ("prepare", "backend", "frontend", "worker", "smoke", "summary")
     blocks = split_jobs(staging_deploy, names, errors)
     if blocks:
-        if "render_staging_bootstrap.py" in blocks["prepare"]:
-            errors.append("staging generation: prepare volvió a ejecutar Render lookup y serializa Pages/Worker")
         forbid(staging_deploy, "\n  render_reconcile:\n", "staging generation: Render reconcile volvió a job separado", errors)
         forbid(staging_deploy, "\n  parity:\n", "staging generation: parity volvió a job separado", errors)
 
@@ -171,20 +192,13 @@ def main() -> int:
 
         require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
         require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
-        # Render remains temporarily read-only only because browser smoke still
-        # obtains INVITE_CODE there. It must not participate in Worker deployment.
-        require(blocks["backend"], "render_staging_bootstrap.py", "backend conserva lookup legado para smoke", errors)
-        require(
-            blocks["backend"],
-            "render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}",
-            "backend exporta service id sólo para smoke",
-            errors,
-        )
+        for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
+            forbid(blocks["backend"], needle, "backend no depende de Render", errors)
 
         require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
         require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
-        forbid(blocks["worker"], "--service-id", "Worker no depende de service_id Render", errors)
-        forbid(blocks["worker"], "render_reconcile", "Worker no depende de Render reconcile", errors)
+        for needle in ("RENDER_API_KEY", "--service-id", "render_reconcile"):
+            forbid(blocks["worker"], needle, "Worker no depende de Render", errors)
 
         require(
             blocks["smoke"],
@@ -192,12 +206,18 @@ def main() -> int:
             "smoke espera las tres ramas de deploy",
             errors,
         )
-        require(
-            blocks["smoke"],
-            "RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}",
-            "smoke conserva temporalmente service id legado",
-            errors,
-        )
+        for needle, label in (
+            ("OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}", "smoke OCI tenancy credential"),
+            ("uses: ./.github/actions/setup-oci-sdk", "smoke OCI SDK toolchain"),
+            ("from oci_runtime_bundle import read_private_runtime_value", "smoke private runtime reader"),
+            ("read_private_runtime_value(oci, 'INVITE_CODE')", "smoke invite allowlisted read"),
+            ("secrets.token_hex(8)", "smoke random username entropy"),
+            ("secrets.token_urlsafe(32)", "smoke random password entropy"),
+        ):
+            require(blocks["smoke"], needle, label, errors)
+        for needle in ("RENDER_API_KEY", "RENDER_SERVICE_ID", "render_staging_bootstrap"):
+            forbid(blocks["smoke"], needle, "smoke no depende de Render", errors)
+
         require(
             blocks["summary"],
             "needs: [prepare, backend, frontend, worker, smoke]",
@@ -211,6 +231,16 @@ def main() -> int:
         if min(parity, browser_restore, browser_test) >= 0 and not parity < browser_restore < browser_test:
             errors.append("staging generation: N/N/N debe cerrarse antes de restaurar Chromium y ejecutar smoke")
 
+        if parity >= 0 and browser_test > parity:
+            parity_block = blocks["smoke"][parity:browser_test]
+            for needle, label in (
+                ("parity_ok=false", "generation parity retry state"),
+                ("for attempt in {1..60}; do", "generation parity bounded polling"),
+                ("Staging generation aún no converge:", "generation parity skew diagnostics"),
+                ("Generation parity no convergió a N/N/N tras 5 minutos", "generation parity bounded timeout"),
+            ):
+                require(parity_block, needle, label, errors)
+
     stale_step = staging_deploy.find("Supersede stale staging commit")
     backend_step = staging_deploy.find("Deploy exact backend commit to OCI staging")
     frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
@@ -218,13 +248,11 @@ def main() -> int:
     if stale_step >= 0 and all(step >= 0 for step in (backend_step, frontend_step, worker_step)):
         if not all(stale_step < step for step in (backend_step, frontend_step, worker_step)):
             errors.append("staging generation: stale supersede guard no está antes de todas las ramas operativas")
-
     if "::error::CI aprobó" in staging_deploy:
         errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")
 
     # Worker releases preserve the long-lived shared secret. Code deploy validates
-    # that the secret exists, binds BUILD_SHA as a non-secret variable in the same
-    # deploy, and waits for the Custom Domain to serve that exact SHA.
+    # that it exists, binds BUILD_SHA in the same deploy and waits for exact SHA.
     for needle, label in (
         ('main = "worker/staging.js"', "staging Worker wrapper entrypoint"),
         ('required = ["CHESS_AI_SHARED_SECRET"]', "staging Worker required persistent secret"),
@@ -297,7 +325,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "persistent Worker secret; deploy lanes parallel; smoke-integrated N/N/N"
+        "Render-free canonical release; persistent Worker secret; smoke-integrated N/N/N"
     )
     return 0
 
