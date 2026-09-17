@@ -14,6 +14,27 @@
       "sha256": "0d12bb3c3ec92d55b3e4af7b64cade1dede55537ff118c360ec260f788ff640c",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/tactics/party/runtime/chronicles-tactics-party-0d12bb3c3ec92d55.glb"
     },
+    "home.combat.heraldry.runtime": {
+      "bytes": 29012,
+      "contentType": "model/gltf-binary",
+      "key": "home/combat/heraldry/combat-heraldry-v1-c5cd00fc94b82b89.glb",
+      "sha256": "c5cd00fc94b82b891cc31364d506f86a548999b3fb0b48ad904496d217fcdd90",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/combat/heraldry/combat-heraldry-v1-c5cd00fc94b82b89.glb"
+    },
+    "home.play.rook.runtime": {
+      "bytes": 37076,
+      "contentType": "model/gltf-binary",
+      "key": "home/play/rook/play-rook-v1-3f49c19ffd8cb894.glb",
+      "sha256": "3f49c19ffd8cb8947dc174093feac37b4d11033b80fbb45ecc5edf56383a38f2",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/play/rook/play-rook-v1-3f49c19ffd8cb894.glb"
+    },
+    "home.tournament.trophy.runtime": {
+      "bytes": 10128,
+      "contentType": "model/gltf-binary",
+      "key": "home/tournament/trophy/tournament-cup-v1-e4c1210500fb5b67.glb",
+      "sha256": "e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/tournament/trophy/tournament-cup-v1-e4c1210500fb5b67.glb"
+    },
     "pawnSlug.enemy.actionAtlas": {
       "bytes": 373596,
       "contentType": "image/webp",
