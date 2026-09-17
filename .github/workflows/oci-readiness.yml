@@ -67,6 +67,9 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     environment: staging
+    concurrency:
+      group: oci-staging-mutations
+      cancel-in-progress: false
     env:
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
