@@ -275,6 +275,12 @@
   background: linear-gradient(90deg, rgba(7, 8, 9, .78), rgba(7, 8, 9, .34) 78%, transparent);
 }
 
+.lab-screen .lab-workshop-portal--pawnslug-godot {
+  --hotspot-accent: 99, 179, 205;
+  left: 5.5%;
+  bottom: 29%;
+}
+
 .lab-screen .lab-workshop-portal--pawnslug {
   --hotspot-accent: 211, 149, 67;
   left: 5.5%;
@@ -417,6 +423,11 @@
     right: 24px;
   }
 
+  .lab-screen .lab-workshop-portal--pawnslug-godot {
+    left: 24px;
+    bottom: 30%;
+  }
+
   .lab-screen .lab-workshop-portal--pawnslug {
     left: 24px;
     bottom: 19%;
@@ -463,6 +474,7 @@
 
   .lab-screen .lab-workshop-portal--chronicles { top: 37%; }
   .lab-screen .lab-workshop-portal--tactics { top: 49%; }
+  .lab-screen .lab-workshop-portal--pawnslug-godot { bottom: 36%; }
   .lab-screen .lab-workshop-map-table { bottom: 27%; }
   .lab-screen .lab-workshop-portal--pawnslug { bottom: 17%; }
   .lab-screen .lab-workshop-portal--trailblazer { bottom: 8%; }
