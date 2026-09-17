@@ -4,7 +4,6 @@ import { login, mockApi, openMoreGameModes } from './helpers.js';
 const DESTINATIONS = [
   ['.lab-workshop-portal--chronicles', 'Chronicles of Matthias'],
   ['.lab-workshop-portal--tactics', 'Chronicles of Matthias Tactics'],
-  ['.lab-workshop-portal--pawnslug', 'Pawn Slug'],
   ['.lab-workshop-portal--pawnslug-godot', 'PAWN SLUG GODOT'],
   ['.lab-workshop-portal--trailblazer', 'Pawn Trailblazer'],
   ['.lab-workshop-map-table', 'Chesscom'],
@@ -55,6 +54,7 @@ test('Experimentos keeps every destination discoverable without baked image labe
 
   const room = page.locator('.lab-workshop');
   await expect(room).toBeVisible();
+  await expect(page.locator('.lab-workshop-portal--pawnslug')).toHaveCount(0);
   await expectDestinationTitlesVisible(page);
 
   const [roomBox, destinationBoxes] = await Promise.all([
