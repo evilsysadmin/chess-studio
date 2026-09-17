@@ -11,6 +11,7 @@ const SHOOT_FRAMES := 2
 const ART_SCALE := 0.88
 const BOTTOM_GUTTER := 24.0
 const PLAYER_FOOT_Y := 42.0
+const FOOT_OFFSET_Y := -72.0
 const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
 const MUZZLE_FLASH_SECONDS := 0.055
@@ -212,8 +213,8 @@ func _apply_shoot_frame() -> void:
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
-# Landing, recoil, hurt and death are visual-only transforms. Physics and collision
-# stay owned by player.gd, so combat feedback cannot alter actual movement rules.
+# All sprite transforms now pivot from Matthias' foot anchor. The normal pose is
+# unchanged, but squash, hurt and death no longer rotate around the frame centre.
 func _apply_pose_transform() -> void:
     var landing := 0.0 if _dead else clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
     var hurt := clampf(_hurt_remaining / HURT_VISUAL_SECONDS, 0.0, 1.0)
@@ -235,9 +236,7 @@ func _apply_pose_transform() -> void:
         sprite.rotation = rotation
         sprite.position = Vector2(
             recoil_x + hurt_x + death_x,
-            PLAYER_FOOT_Y
-                - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * scale_y
-                + DEATH_DROP_PIXELS * death,
+            PLAYER_FOOT_Y + DEATH_DROP_PIXELS * death,
         )
 
 func _apply_combat_modulate() -> void:
@@ -275,10 +274,8 @@ func _make_art_sprite(sprite_name: String) -> Sprite2D:
     sprite.name = sprite_name
     sprite.centered = true
     sprite.region_enabled = true
-    sprite.position = Vector2(
-        0.0,
-        PLAYER_FOOT_Y - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * ART_SCALE,
-    )
+    sprite.position = Vector2(0.0, PLAYER_FOOT_Y)
+    sprite.offset = Vector2(0.0, FOOT_OFFSET_Y)
     sprite.scale = Vector2(ART_SCALE, ART_SCALE)
     sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
     sprite.visible = false
