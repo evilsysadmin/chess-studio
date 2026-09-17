@@ -1,0 +1,54 @@
+name: Maintenance · purge retired workflow runs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/purge-retired-workflow-runs.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: purge-retired-workflow-runs
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    name: Purge retired Matthias comment runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete runs owned by retired workflows only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t run_ids < <(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?event=issue_comment&per_page=100" \
+              --jq '.workflow_runs[] | select(.workflow_id == 359635202 or .workflow_id == 359641786) | .id'
+          )
+
+          echo "Matched ${#run_ids[@]} retired workflow runs."
+          for run_id in "${run_ids[@]}"; do
+            [[ "${run_id}" =~ ^[0-9]+$ ]]
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}"
+            echo "Deleted run ${run_id}."
+          done
+
+          mapfile -t remaining < <(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?event=issue_comment&per_page=100" \
+              --jq '.workflow_runs[] | select(.workflow_id == 359635202 or .workflow_id == 359641786) | .id'
+          )
+
+          if (( ${#remaining[@]} != 0 )); then
+            printf 'Retired runs still present: %s\n' "${remaining[*]}" >&2
+            exit 1
+          fi
+
+          echo "Retired Matthias workflow history purged."
