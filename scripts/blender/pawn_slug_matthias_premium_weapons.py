@@ -14,14 +14,20 @@ def add_weapon(weapon, origin, parent, m, z):
     # still closer to camera by the character builder.
     y = -0.47
     if weapon == "pistol":
-        box("pistol_slide", xz(origin, -0.48, z + 0.050, y), (0.50, 0.17, 0.125), m["gunmetal"], parent=parent, bevel=0.025)
-        box("pistol_frame", xz(origin, -0.34, z - 0.060, y), (0.28, 0.16, 0.115), m["polymer"], parent=parent, bevel=0.020)
-        box("pistol_grip", xz(origin, -0.21, z - 0.215, y), (0.14, 0.15, 0.29), m["polymer"], rot=(0, 0.16, 0), parent=parent, bevel=0.016)
-        cyl("pistol_barrel", xz(origin, -0.71, z + 0.050, y), 0.039, 0.15, m["dark"], rot=(0, math.pi / 2, 0), parent=parent, verts=24)
-        cyl("pistol_muzzle", xz(origin, -0.79, z + 0.050, y), 0.053, 0.050, m["steel"], rot=(0, math.pi / 2, 0), parent=parent, verts=24)
-        torus("trigger_guard", xz(origin, -0.34, z - 0.125, y - 0.005), 0.062, 0.012, m["steel"], rot=(math.pi / 2, 0, 0), parent=parent)
-        box("pistol_sight", xz(origin, -0.54, z + 0.125, y), (0.045, 0.045, 0.034), m["brass"], parent=parent, bevel=0.007)
-        return (-0.21, -0.45)
+        # Compact P99-style silhouette. Keep the slide short and the two-hand
+        # grip clustered around the handle so it cannot read as a tiny SMG at
+        # gameplay scale.
+        box("pistol_slide", xz(origin, -0.43, z + 0.055, y), (0.42, 0.14, 0.100), m["gunmetal"], parent=parent, bevel=0.020)
+        box("pistol_frame", xz(origin, -0.31, z - 0.035, y), (0.24, 0.13, 0.080), m["polymer"], parent=parent, bevel=0.016)
+        box("pistol_grip", xz(origin, -0.18, z - 0.170, y), (0.115, 0.13, 0.245), m["polymer"], rot=(0, 0.20, 0), parent=parent, bevel=0.014)
+        box("pistol_grip_panel", xz(origin, -0.18, z - 0.170, y - 0.072), (0.075, 0.016, 0.155), m["dark"], rot=(0, 0.20, 0), parent=parent, bevel=0.006)
+        cyl("pistol_barrel", xz(origin, -0.67, z + 0.055, y), 0.030, 0.105, m["dark"], rot=(0, math.pi / 2, 0), parent=parent, verts=24)
+        cyl("pistol_muzzle", xz(origin, -0.73, z + 0.055, y), 0.040, 0.035, m["steel"], rot=(0, math.pi / 2, 0), parent=parent, verts=24)
+        torus("trigger_guard", xz(origin, -0.30, z - 0.095, y - 0.010), 0.050, 0.010, m["steel"], rot=(math.pi / 2, 0, 0), parent=parent)
+        box("pistol_ejection_port", xz(origin, -0.40, z + 0.070, y - 0.076), (0.070, 0.014, 0.032), m["dark"], parent=parent, bevel=0.004)
+        box("pistol_front_sight", xz(origin, -0.57, z + 0.116, y), (0.030, 0.032, 0.026), m["brass"], parent=parent, bevel=0.005)
+        box("pistol_rear_sight", xz(origin, -0.27, z + 0.116, y), (0.034, 0.032, 0.026), m["dark"], parent=parent, bevel=0.005)
+        return (-0.16, -0.25)
 
     if weapon == "machinegun":
         box("smg_receiver", xz(origin, -0.43, z, y), (0.54, 0.19, 0.18), m["gunmetal"], parent=parent, bevel=0.028)
