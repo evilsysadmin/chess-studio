@@ -35,14 +35,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
-          base64 -d frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb.gz
-          printf '%s  %s\n' \
-            'af36369f9695109887cee58c0057fc237378b5a9cf03246a4c79a307bee196c6' \
-            '/tmp/home-r2/combat-heraldry-v1.glb.gz' \
-            '5e7b44869f4387df97013119e6ec84c804187788729bd3251f30089fd6910fe0' \
-            'frontend/src/assets/home3d/publish/play-rook-v1.glb.gz' | sha256sum -c -
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          gzip -dc /tmp/home-r2/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
           gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
           printf '%s  %s\n' \
             'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
@@ -94,14 +88,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
-          base64 -d frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb.gz
-          printf '%s  %s\n' \
-            'af36369f9695109887cee58c0057fc237378b5a9cf03246a4c79a307bee196c6' \
-            '/tmp/home-r2/combat-heraldry-v1.glb.gz' \
-            '5e7b44869f4387df97013119e6ec84c804187788729bd3251f30089fd6910fe0' \
-            'frontend/src/assets/home3d/publish/play-rook-v1.glb.gz' | sha256sum -c -
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          gzip -dc /tmp/home-r2/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
           gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
           printf '%s  %s\n' \
             'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
