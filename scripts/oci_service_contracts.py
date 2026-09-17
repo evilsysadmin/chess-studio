@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SERVICE_WORKFLOW = ROOT / ".github/workflows/oci-staging-service.yml"
 
 TRANSPORT = (("scripts/oci_run_command.py", "--self-test"),)
+RELEASE_DEPLOY = (("scripts/oci_release_deploy.py", "--self-test"),)
 RUNTIME = (("scripts/oci_runtime_config.py", "--self-test"),)
 VAULT_RUNTIME = (("scripts/oci_vault_runtime.py", "--self-test"),)
 VAULT_COMPARE = (("scripts/oci_vault_compare.py", "--self-test"),)
@@ -38,8 +39,8 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "reserved-egress": TRANSPORT + RESERVED_EGRESS,
     "smoke": TRANSPORT,
     "reboot-agent": TRANSPORT,
-    "deploy": TRANSPORT + BACKEND_VERIFY,
-    "bringup": TRANSPORT + BACKEND_VERIFY,
+    "deploy": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
+    "bringup": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
     "runtime-sync": TRANSPORT + RUNTIME,
     "vault-bootstrap": TRANSPORT + VAULT_BOOTSTRAP + VAULT_RUNTIME,
     "vault-validate": TRANSPORT + VAULT_RUNTIME,
@@ -80,6 +81,12 @@ def self_test() -> None:
     assert commands_for("mongo-target-diagnose") == RENDER_MONGO_DIAG
     assert TRANSPORT[0] not in commands_for("mongo-target-diagnose")
 
+    deploy = commands_for("deploy")
+    bringup = commands_for("bringup")
+    assert deploy == TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY
+    assert bringup == TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY
+    assert RUNTIME[0] not in deploy and VAULT_RUNTIME[0] not in deploy
+
     runtime_sync = commands_for("runtime-sync")
     assert runtime_sync == TRANSPORT + RUNTIME
     assert VAULT_RUNTIME[0] not in runtime_sync and K3S_STATUS[0] not in runtime_sync
@@ -119,6 +126,8 @@ def self_test() -> None:
     assert "Host/agent registration convergence belongs to the infrastructure apply" in workflow
     assert "python3 scripts/oci_vault_compare.py compare-current" in workflow
     assert "python3 scripts/oci_vault_preview.py preview-current" in workflow
+    assert 'python3 scripts/oci_release_deploy.py deploy --repo-ref "$DEPLOY_REF"' in workflow
+    assert 'python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"' not in workflow
 
     concurrency_block = workflow.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
     for operation in ("vault-compare-current", "vault-preview-current"):
@@ -127,7 +136,7 @@ def self_test() -> None:
         )
 
     compare_block = workflow.split(
-        "- name: Compare CURRENT Vault + Git runtime with installed backend.env", 1
+        "- name: Compare CURRENT Vault + Git runtime with persisted private runtime source", 1
     )[1].split("\n      - name:", 1)[0]
     assert "RENDER_API_KEY" not in compare_block and "runtime-sync" not in compare_block
 
@@ -136,6 +145,11 @@ def self_test() -> None:
     )[1].split("\n      - name:", 1)[0]
     assert "RENDER_API_KEY" not in preview_block
     assert "runtime-sync" not in preview_block and "install-runtime" not in preview_block
+
+    deploy_block = workflow.split("- name: Deploy immutable backend release", 1)[1]
+    assert "oci_release_deploy.py" in deploy_block
+    assert "oci_runtime_config.py" not in deploy_block
+    assert "oci_vault_runtime.py" not in deploy_block
 
     print("OCI service contract isolation self-test: OK")
 
