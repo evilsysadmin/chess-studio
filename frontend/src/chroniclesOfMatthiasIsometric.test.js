@@ -7,7 +7,7 @@ import {
   chroniclesIsoPointerAction,
   chroniclesIsoUsesLegacyDressing,
   chroniclesIsoWorldForCell,
-  chroniclesIsoWorldForContent,
+  chroniclesIsoWorldForContentKind,
   chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
   chroniclesIsometricFovForAspect,
@@ -44,12 +44,12 @@ describe('Chronicles canonical isometric viewport', () => {
       ],
     };
 
-    const lever = chroniclesIsoWorldForContent(plan, 'lever');
-    const pickup = chroniclesIsoWorldForContent(plan, 'pickup');
+    const lever = chroniclesIsoWorldForContentKind(plan, 'lever');
+    const pickup = chroniclesIsoWorldForContentKind(plan, 'pickup');
 
     expect([lever.x, lever.y, lever.z]).toEqual([4.9, 0, 4.9]);
     expect([pickup.x, pickup.y, pickup.z]).toEqual([4.9, 0, 2.45]);
-    expect(chroniclesIsoWorldForContent(plan, 'trigger')).toBeNull();
+    expect(chroniclesIsoWorldForContentKind(plan, 'trigger')).toBeNull();
   });
 
   it('keeps legacy crypt dressing opt-in through the scene style contract', () => {
