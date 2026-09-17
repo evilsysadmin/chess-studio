@@ -69,8 +69,6 @@ export function chroniclesIsoWorldForContent(geometryPlan, contentId) {
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
-    // Canonical Tactics framing: straight behind the company, elevated enough
-    // to read the tactical floor while keeping all four backs in the foreground.
     position: new THREE.Vector3(focus.x, 8.15, focus.z + 8.55),
     target: new THREE.Vector3(focus.x, 0.78, focus.z - 2.65),
     fov: 38,
@@ -459,7 +457,11 @@ function buildTorches(scene, {
   return torches;
 }
 
-function buildParty(scene, { coarsePointer, reducedMotion }) {
+function buildParty(scene, {
+  coarsePointer,
+  reducedMotion,
+  scenePlan = chroniclesIsometricScenePlan(),
+}) {
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-party';
   scene.add(root);
@@ -476,7 +478,11 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
     if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
   });
-  root.userData.chroniclesArtCancel = installChroniclesTacticsPartyBlenderArt(models, { coarsePointer, reducedMotion });
+  root.userData.chroniclesArtCancel = installChroniclesTacticsPartyBlenderArt(models, {
+    coarsePointer,
+    reducedMotion,
+    scenePlan,
+  });
 
   const selectionMaterial = new THREE.MeshBasicMaterial({
     color: CHRONICLES_ISO_MARKER_STYLE.selectionColor,
@@ -689,7 +695,11 @@ export function createChroniclesIsometricGame(host, {
     coarsePointer: coarse,
     scenePlan: initialScenePlan,
   });
-  const party = buildParty(scene, { coarsePointer: coarse, reducedMotion });
+  const party = buildParty(scene, {
+    coarsePointer: coarse,
+    reducedMotion,
+    scenePlan: initialScenePlan,
+  });
   const enemies = new Map();
   const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
 
@@ -761,8 +771,6 @@ export function createChroniclesIsometricGame(host, {
     selectedMemberId = nextSelectedMemberId || selectedMemberId;
     const partyCell = chroniclesIsoWorldForCell(state.x, state.y, initialScenePlan);
     desiredParty.copy(partyCell);
-    // Keep the company as the camera anchor. Enemies live deeper in the room,
-    // but they no longer drag the shot back toward a tactical overview.
     desiredFocus.copy(partyCell);
     const partyFootprint = chroniclesPartyGridFootprint(state);
 

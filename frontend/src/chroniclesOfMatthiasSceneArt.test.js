@@ -35,6 +35,18 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(partyRoot.getObjectByName('chronicles-party-damage-feedback')).toBeTruthy();
   });
 
+  it('forwards supplied map topology into the premium architecture layer', () => {
+    const { models } = sceneModels();
+    const scenePlan = {
+      center: { x: 8, y: 9 },
+      wallFaces: [],
+    };
+    const art = installChroniclesTacticsSceneArt(models, { coarsePointer: true, scenePlan });
+
+    expect(art?.architecture?.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
+    expect(art?.architecture?.userData.chroniclesArchitectureWallCount).toBe(0);
+  });
+
   it('reuses idempotent canonical layers when called twice', () => {
     const { models } = sceneModels();
     const first = installChroniclesTacticsSceneArt(models, { coarsePointer: false });
