@@ -13,6 +13,8 @@ const BOTTOM_GUTTER := 24.0
 const PLAYER_FOOT_Y := 42.0
 const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
+const CANONICAL_PISTOL_RUN_FRAMES := 4
+const CANONICAL_PISTOL_RUN_FPS := 8.0
 const ACTION_ROWS := {
     "idle": 0,
     "walk": 1,
@@ -23,14 +25,14 @@ const ACTION_ROWS := {
 const ACTION_COUNTS := {
     "idle": 10,
     "walk": 10,
-    "run": 16,
+    "run": CANONICAL_PISTOL_RUN_FRAMES,
     "crouch": 10,
     "jump": 9,
 }
 const ACTION_FPS := {
     "idle": 6.0,
     "walk": 10.0,
-    "run": 14.0,
+    "run": CANONICAL_PISTOL_RUN_FPS,
     "crouch": 8.0,
     "jump": 12.0,
 }
@@ -81,6 +83,8 @@ func _resolve_action(movement_axis: float, on_floor: bool) -> String:
         return "walk"
     return "idle"
 
+# Pistol run intentionally uses only the four authored canonical poses at 8 fps,
+# matching pawnSlugMatthiasAuthoredMotion.js instead of racing through filler frames.
 func _apply_body_frame() -> void:
     var count := int(ACTION_COUNTS[_action])
     var frame := 0
