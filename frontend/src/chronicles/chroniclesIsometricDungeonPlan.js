@@ -4,6 +4,7 @@ import {
 } from './chroniclesIsometricScenePlan.js';
 
 export const CHRONICLES_ISOMETRIC_CELL_SIZE = 2.45;
+const EMPTY_CONTENT = Object.freeze([]);
 
 function normalizedCellSize(cellSize) {
   const numeric = Number(cellSize);
@@ -38,9 +39,14 @@ function projectContent(scenePlan, entry, cellSize) {
   });
 }
 
+export function chroniclesIsometricContentsByKind(dungeonPlan, kind) {
+  if (!kind) return EMPTY_CONTENT;
+  const matches = (dungeonPlan?.content || []).filter((entry) => entry.kind === kind);
+  return matches.length ? Object.freeze(matches) : EMPTY_CONTENT;
+}
+
 export function chroniclesIsometricContentByKind(dungeonPlan, kind) {
-  if (!kind) return null;
-  return (dungeonPlan?.content || []).find((entry) => entry.kind === kind) || null;
+  return chroniclesIsometricContentsByKind(dungeonPlan, kind)[0] || null;
 }
 
 export function chroniclesIsometricDungeonPlan(mapOrState = null, cellSize = CHRONICLES_ISOMETRIC_CELL_SIZE) {
