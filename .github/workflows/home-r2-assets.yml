@@ -30,18 +30,28 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - name: Decode Home GLBs
+      - name: Decode and verify Home GLBs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
-          combat_suffix='dZQw11ESw3WUtOU68uV69+V69+V69+V69+V69+V69+V69+W+5Mt9yZf7ki/3JV/uS77cl3y5L/ly//Tl/unL/dOX+6cv909f7p++3D99uc97cp/35D7vyX3ek/u8J/d5T+7z3n8AhpNG2VRxAAA='
-          play_suffix='eWNlPJVSvkqpXyVUr5KKV+llCdTypMp5cmU8mRKeTKt61dXQX5Of7S28Cjyc7r1yPqPIj9HjvycbtmzvYL8nFJdSKkupFQXUqoLKdWFlOpRSvUopXqUUj1KqR6lVAdTqoMp1cGU6mBKdTCl+itUf1OqvynV35Tqr1DdF6r7QnVfqO4L1X2hfkOo3xDqN4T6DaF+Q6jPEepzhPocoT5HqM8R6q+E+iuh/kqovxLqr4T6OqG+TqivE+rrhPo6oX5SqJ8U6ieF+kmhflKoj02oj02oj02oj02oj02K+M5xfXoGlD/PqSWeIdUU3/2tj+8JN8UzrYr0u+CN6Xez/XvGNd/4rfEaeh4W/+54E3ouV2PwJrCr4Teef9Wano1VD7whPQ+sSM/lakiv+XeZ/RlX/qypdvSaPx+rAa7bn4NVg9da4fWW9Lvi/iyuZvSaPz+sHv1ueQH/rwH9fjo/q+sQcP4d8dZ4rTHe48/Tak3rXUPP92pFr7XCa/68NH9GWgE21KffBzqIXpvxTvVZ/H5829/0mtB7hN6TfNtrNI/QPELzJDRGMM//GvfNc9N7hN7zD/N+29zfHEPvEXrPP/z9//3vR/8DRQZrwNSQAAA='
+          printf '%s  %s\n' \
+            'af36369f9695109887cee58c0057fc237378b5a9cf03246a4c79a307bee196c6' \
+            'frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz' \
+            '5e7b44869f4387df97013119e6ec84c804187788729bd3251f30089fd6910fe0' \
+            'frontend/src/assets/home3d/publish/play-rook-v1.glb.gz' | sha256sum -c -
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          { cat frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64; printf '%s' "$combat_suffix"; } | base64 -d | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
-          { cat frontend/src/assets/home3d/play-rook-v1.glb.gz.b64; printf '%s' "$play_suffix"; } | base64 -d | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
+          printf '%s  %s\n' \
+            'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
+            '/tmp/home-r2/tournament-cup-v1.glb' \
+            'c5cd00fc94b82b891cc31364d506f86a548999b3fb0b48ad904496d217fcdd90' \
+            '/tmp/home-r2/combat-heraldry-v1.glb' \
+            '3f49c19ffd8cb8947dc174093feac37b4d11033b80fbb45ecc5edf56383a38f2' \
+            '/tmp/home-r2/play-rook-v1.glb' | sha256sum -c -
           for file in /tmp/home-r2/*.glb; do
-            test "$(head -c 4 "$file")" = "glTF"
+            test "$(head -c 4 "$file")" = 'glTF'
           done
       - name: Validate publisher and dry-run Home assets
         shell: bash
@@ -78,16 +88,26 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-      - name: Decode Home GLBs
+      - name: Decode and verify Home GLBs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-r2
-          combat_suffix='dZQw11ESw3WUtOU68uV69+V69+V69+V69+V69+V69+V69+W+5Mt9yZf7ki/3JV/uS77cl3y5L/ly//Tl/unL/dOX+6cv909f7p++3D99uc97cp/35D7vyX3ek/u8J/d5T+7z3n8AhpNG2VRxAAA='
-          play_suffix='eWNlPJVSvkqpXyVUr5KKV+llCdTypMp5cmU8mRKeTKt61dXQX5Of7S28Cjyc7r1yPqPIj9HjvycbtmzvYL8nFJdSKkupFQXUqoLKdWFlOpRSvUopXqUUj1KqR6lVAdTqoMp1cGU6mBKdTCl+itUf1OqvynV35Tqr1DdF6r7QnVfqO4L1X2hfkOo3xDqN4T6DaF+Q6jPEepzhPocoT5HqM8R6q+E+iuh/kqovxLqr4T6OqG+TqivE+rrhPo6oX5SqJ8U6ieF+kmhflKoj02oj02oj02oj02oj02K+M5xfXoGlD/PqSWeIdUU3/2tj+8JN8UzrYr0u+CN6Xez/XvGNd/4rfEaeh4W/+54E3ouV2PwJrCr4Teef9Wano1VD7whPQ+sSM/lakiv+XeZ/RlX/qypdvSaPx+rAa7bn4NVg9da4fWW9Lvi/iyuZvSaPz+sHv1ueQH/rwH9fjo/q+sQcP4d8dZ4rTHe48/Tak3rXUPP92pFr7XCa/68NH9GWgE21KffBzqIXpvxTvVZ/H5829/0mtB7hN6TfNtrNI/QPELzJDRGMM//GvfNc9N7hN7zD/N+29zfHEPvEXrPP/z9//3vR/8DRQZrwNSQAAA='
+          printf '%s  %s\n' \
+            'af36369f9695109887cee58c0057fc237378b5a9cf03246a4c79a307bee196c6' \
+            'frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz' \
+            '5e7b44869f4387df97013119e6ec84c804187788729bd3251f30089fd6910fe0' \
+            'frontend/src/assets/home3d/publish/play-rook-v1.glb.gz' | sha256sum -c -
           base64 -d frontend/src/assets/home3d/tournament-cup-v1.glb.b64 > /tmp/home-r2/tournament-cup-v1.glb
-          { cat frontend/src/assets/home3d/combat-heraldry-v1.glb.gz.b64; printf '%s' "$combat_suffix"; } | base64 -d | gzip -dc > /tmp/home-r2/combat-heraldry-v1.glb
-          { cat frontend/src/assets/home3d/play-rook-v1.glb.gz.b64; printf '%s' "$play_suffix"; } | base64 -d | gzip -dc > /tmp/home-r2/play-rook-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/combat-heraldry-v1.glb.gz > /tmp/home-r2/combat-heraldry-v1.glb
+          gzip -dc frontend/src/assets/home3d/publish/play-rook-v1.glb.gz > /tmp/home-r2/play-rook-v1.glb
+          printf '%s  %s\n' \
+            'e4c1210500fb5b6732a81dc19cc60c29288ba45108b1ef947976c305ba072df4' \
+            '/tmp/home-r2/tournament-cup-v1.glb' \
+            'c5cd00fc94b82b891cc31364d506f86a548999b3fb0b48ad904496d217fcdd90' \
+            '/tmp/home-r2/combat-heraldry-v1.glb' \
+            '3f49c19ffd8cb8947dc174093feac37b4d11033b80fbb45ecc5edf56383a38f2' \
+            '/tmp/home-r2/play-rook-v1.glb' | sha256sum -c -
       - name: Publish immutable Home assets
         shell: bash
         run: |
