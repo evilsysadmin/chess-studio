@@ -2,7 +2,12 @@ extends Node2D
 
 # Canonical Matthias runtime art is delivered from immutable R2 objects, never Git blobs.
 # Contract mirrors frontend/src/pawnSlugMatthiasIntegratedSprites.js.
-const PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
+const WEAPON_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-37db67d27387fde0.webp",
+}
 const PISTOL_SHOOT_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
 const FRAME_SIZE := Vector2(192.0, 192.0)
 const ATLAS_COLUMNS := 16
@@ -30,8 +35,8 @@ const DEATH_SCALE_Y := 0.82
 const LANDING_SECONDS := 0.12
 const LANDING_Y_SQUASH := 0.055
 const LANDING_X_STRETCH := 0.035
-const CANONICAL_PISTOL_RUN_FRAMES := 4
-const CANONICAL_PISTOL_RUN_FPS := 8.0
+const CANONICAL_RUN_FRAMES := 16
+const CANONICAL_RUN_FPS := 8.0
 const JUMP_VISUAL_SPEED_RANGE := 610.0
 const ACTION_ROWS := {
     "idle": 0,
@@ -43,14 +48,14 @@ const ACTION_ROWS := {
 const ACTION_COUNTS := {
     "idle": 10,
     "walk": 10,
-    "run": CANONICAL_PISTOL_RUN_FRAMES,
+    "run": CANONICAL_RUN_FRAMES,
     "crouch": 10,
     "jump": 9,
 }
 const ACTION_FPS := {
     "idle": 6.0,
     "walk": 10.0,
-    "run": CANONICAL_PISTOL_RUN_FPS,
+    "run": CANONICAL_RUN_FPS,
     "crouch": 8.0,
 }
 
@@ -72,16 +77,40 @@ var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _dead := false
 var _death_progress := 0.0
+var _weapon := "pistol"
+var _weapon_textures: Dictionary = {}
+var _weapon_requests: Dictionary = {}
 
 func _ready() -> void:
     _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
     _shoot_sprite = _make_art_sprite("MatthiasCanonicalShoot")
     _shoot_sprite.visible = false
-    _request_art(PISTOL_ATLAS_URL, "body")
+    for weapon in WEAPON_ATLAS_URLS.keys():
+        _request_weapon_art(String(weapon))
     _request_art(PISTOL_SHOOT_URL, "shoot")
 
 func body_ready() -> bool:
     return _body_ready
+
+func current_weapon() -> String:
+    return _weapon
+
+func set_weapon(kind: String) -> void:
+    var resolved := kind if WEAPON_ATLAS_URLS.has(kind) else "pistol"
+    if resolved == _weapon and _body_ready:
+        return
+    _weapon = resolved
+    if _weapon_textures.has(_weapon):
+        _body_sprite.texture = _weapon_textures[_weapon]
+        _body_ready = true
+        _apply_body_frame()
+    else:
+        _body_ready = false
+        _body_sprite.visible = false
+        _request_weapon_art(_weapon)
+    _apply_shoot_frame()
+    _apply_pose_transform()
+    _apply_combat_modulate()
 
 func set_combat_state(
     hurt_remaining: float,
@@ -172,7 +201,7 @@ func _apply_body_frame() -> void:
         Vector2(frame * FRAME_SIZE.x, float(ACTION_ROWS[action]) * FRAME_SIZE.y),
         FRAME_SIZE,
     )
-    # Premium pistol bank is authored facing screen-left.
+    # Premium weapon banks are authored facing screen-left.
     _body_sprite.flip_h = _facing > 0.0
 
 # Airborne art follows the real ballistic phase rather than elapsed animation time.
@@ -189,10 +218,11 @@ func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
-    # Canonical authored shoot strip is a grounded standing pose. Crouched,
-    # airborne, hurt or dead states preserve the canonical body pose instead.
+    # The separate authored shoot strip belongs only to the canonical pistol bank.
+    # Other weapons already carry their correct gun in every premium body frame.
     var show_shoot := (
-        _body_ready
+        _weapon == "pistol"
+        and _body_ready
         and _shoot_ready
         and _on_floor
         and not _crouching
@@ -213,7 +243,7 @@ func _apply_shoot_frame() -> void:
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
-# All sprite transforms now pivot from Matthias' foot anchor. The normal pose is
+# All sprite transforms pivot from Matthias' foot anchor. The normal pose is
 # unchanged, but squash, hurt and death no longer rotate around the frame centre.
 func _apply_pose_transform() -> void:
     var landing := 0.0 if _dead else clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
@@ -282,12 +312,23 @@ func _make_art_sprite(sprite_name: String) -> Sprite2D:
     add_child(sprite)
     return sprite
 
+func _request_weapon_art(weapon: String) -> void:
+    if _weapon_textures.has(weapon) or _weapon_requests.has(weapon):
+        return
+    var url := String(WEAPON_ATLAS_URLS.get(weapon, ""))
+    if url.is_empty():
+        return
+    _weapon_requests[weapon] = true
+    _request_art(url, "weapon:%s" % weapon)
+
 func _request_art(url: String, kind: String) -> void:
     var request := HTTPRequest.new()
-    request.name = "ArtRequest_%s" % kind
+    request.name = "ArtRequest_%s" % kind.replace(":", "_")
     add_child(request)
     request.request_completed.connect(_on_art_request_completed.bind(kind, request))
     if request.request(url) != OK:
+        if kind.begins_with("weapon:"):
+            _weapon_requests.erase(kind.trim_prefix("weapon:"))
         request.queue_free()
 
 func _on_art_request_completed(
@@ -299,22 +340,27 @@ func _on_art_request_completed(
     request: HTTPRequest,
 ) -> void:
     request.queue_free()
+    var weapon := kind.trim_prefix("weapon:") if kind.begins_with("weapon:") else ""
+    if not weapon.is_empty():
+        _weapon_requests.erase(weapon)
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         return
 
     var image := Image.new()
     if image.load_webp_from_buffer(body) != OK:
         return
-    if kind == "body" and not _valid_body_dimensions(image):
+    if not weapon.is_empty() and not _valid_body_dimensions(image):
         return
     if kind == "shoot" and not _valid_shoot_dimensions(image):
         return
 
     var texture := ImageTexture.create_from_image(image)
-    if kind == "body":
-        _body_sprite.texture = texture
-        _body_ready = true
-        _apply_body_frame()
+    if not weapon.is_empty():
+        _weapon_textures[weapon] = texture
+        if weapon == _weapon:
+            _body_sprite.texture = texture
+            _body_ready = true
+            _apply_body_frame()
     elif kind == "shoot":
         _shoot_sprite.texture = texture
         _shoot_ready = true
