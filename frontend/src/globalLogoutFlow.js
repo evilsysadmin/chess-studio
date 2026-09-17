@@ -1,3 +1,4 @@
+// Carga diferida desde App: logout no forma parte del coste de arranque.
 import { reportLogoutPresence, touchActivity } from './auth.js';
 import { activityForView } from './usePresenceHeartbeat.js';
 import { pushProfileToServer } from './profileBackup.js';
