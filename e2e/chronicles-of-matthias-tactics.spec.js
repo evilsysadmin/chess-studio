@@ -36,7 +36,9 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   // a long sequence of UI assertions first lets real-time enemy turns kill the
   // selected hero on slow CI runners, turning this into a wall-clock race.
   await page.keyboard.press('2');
-  await expect(mode.getByText(/Habilidad: Martillo de asedio · 1 carga/i)).toBeVisible();
+  const rookCard = mode.locator('[data-member-id="rook"]');
+  await expect(rookCard).toHaveClass(/is-selected/);
+  await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('1/1');
   // This assertion owns the ability state transition, not browser keyboard delivery.
   // SwiftShader can starve Playwright keyboard dispatch while the realtime renderer is
   // busy even though the same React action remains available. Invoke the real button
@@ -44,7 +46,7 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   const classSkill = mode.getByRole('button', { name: 'Habilidad de clase', exact: true });
   await expect(classSkill).toBeEnabled();
   await classSkill.evaluate((button) => button.click());
-  await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
+  await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('0/1');
   await expect(classSkill).toBeDisabled();
 
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
@@ -62,6 +64,8 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
       camera: root.dataset.camera,
       combat: root.dataset.combat,
       text: root.textContent || '',
+      partyMembers: root.querySelectorAll('.chronicles-party-hud__member[data-member-id]').length,
+      sheetTriggers: buttonNames.filter((label) => label.startsWith('Abrir ficha de ')).length,
       hasUse: buttonNames.includes('Usar'),
       hasClassSkill: buttonNames.includes('Habilidad de clase'),
       hasWait: buttonNames.includes('Esperar'),
@@ -71,16 +75,18 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   expect(contract.camera).toBe('isometric-behind-party');
   expect(contract.combat).toBe('realtime');
   expect(contract.text).toMatch(/cuatro clases, cuatro geometrías de combate/i);
-  expect(contract.text).toMatch(/Espadachín · Espada corta/i);
-  expect(contract.text).toMatch(/Taumaturgo · Farol rúnico/i);
-  expect(contract.text).toMatch(/Hostigador · Ballesta de estribo/i);
+  expect(contract.text).toMatch(/Espadachín/i);
+  expect(contract.text).toMatch(/Taumaturgo/i);
+  expect(contract.text).toMatch(/Hostigador/i);
   expect(contract.text).toMatch(/espacio usa · Shift ataca · E habilidad/i);
+  expect(contract.partyMembers).toBe(4);
+  expect(contract.sheetTriggers).toBe(4);
   expect(contract.hasUse).toBe(true);
   expect(contract.hasClassSkill).toBe(true);
   expect(contract.hasWait).toBe(false);
 });
 
-test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alternativa', async ({ page }) => {
+test('Chronicles Tactics · elegir doctrina desde la ficha consume skill point y cierra la alternativa', async ({ page }) => {
   await openTactics(page, {
     progression: {
       version: 1,
@@ -98,16 +104,16 @@ test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alte
   });
 
   const mode = page.locator('[data-chronicles-tactics="true"]');
-  const summary = mode.getByText('Técnicas · 1 punto', { exact: true });
-  await expect(summary).toBeVisible();
-  // This case owns the progression/disclosure state contract, not pointer hit-testing.
-  // Under software WebGL, Playwright's physical click waiter can be starved after the
-  // browser has already dispatched the same DOM event. Use the element's real click
-  // directly and prove the resulting disclosure state through the enabled actions.
-  await summary.evaluate((element) => element.click());
+  const openSheet = mode.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true });
+  await expect(openSheet).toBeVisible();
+  // The sheet is progressive disclosure: the combat HUD remains compact and the
+  // progression controls only materialize when the player explicitly opens a hero.
+  await openSheet.evaluate((button) => button.click());
+  const sheet = mode.getByRole('dialog', { name: 'Matthias' });
+  await expect(sheet).toBeVisible();
 
-  const tempo = mode.getByRole('button', { name: /Tempo de hierro/i });
-  const rupture = mode.getByRole('button', { name: /Ruptura maestra/i });
+  const tempo = sheet.getByRole('button', { name: /Tempo de hierro/i });
+  const rupture = sheet.getByRole('button', { name: /Ruptura maestra/i });
   await expect(tempo).toBeEnabled();
   await expect(rupture).toBeEnabled();
   // This case owns the progression state contract, not pointer hit-testing. On
@@ -117,8 +123,8 @@ test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alte
   // learned/closed state below.
   await tempo.evaluate((button) => button.click());
 
-  await expect(mode.getByRole('button', { name: /Tempo de hierro.*Aprendida/i })).toBeDisabled();
-  await expect(mode.getByRole('button', { name: /Ruptura maestra.*Rama cerrada/i })).toBeDisabled();
+  await expect(sheet.getByRole('button', { name: /Tempo de hierro.*Aprendida/i })).toBeDisabled();
+  await expect(sheet.getByRole('button', { name: /Ruptura maestra.*Rama cerrada/i })).toBeDisabled();
 });
 
 test('Chronicles Tactics · móvil conserva canvas y controles de acción sin overflow', async ({ page }) => {

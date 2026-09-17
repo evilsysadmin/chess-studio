@@ -4,15 +4,9 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import {
-  CHRONICLES_ATTRIBUTE_CAP,
-  CHRONICLES_ATTRIBUTE_DEFINITIONS,
   applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
   beginChroniclesTacticsRun,
-  chroniclesAllowedAttributes,
-  chroniclesHeroProgress,
-  chroniclesSkillsForMember,
-  chroniclesXpToNextLevel,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
   loadChroniclesProgression,
@@ -33,10 +27,10 @@ import {
 } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasProgression.css';
 
-const PARTY_ORDER = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const MOVEMENT = Object.freeze({
   ArrowUp: Object.freeze({ dx: 0, dy: -1 }),
   w: Object.freeze({ dx: 0, dy: -1 }),
@@ -73,11 +67,6 @@ function enemyPulseMessage(previousMessage, next) {
   return previousMessage;
 }
 
-function xpLabel(progress, xpWindow) {
-  if (xpWindow.maxLevel) return `Nv ${progress.level} · MAX · ${progress.xp} XP`;
-  return `Nv ${progress.level} · ${progress.xp}/${xpWindow.next} XP`;
-}
-
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
@@ -94,37 +83,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
 
-  const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
-  const selectedProgress = useMemo(
-    () => chroniclesHeroProgress(progression, selectedMemberId),
-    [progression, selectedMemberId],
-  );
-  const selectedXpWindow = useMemo(
-    () => chroniclesXpToNextLevel(progression, selectedMemberId),
-    [progression, selectedMemberId],
-  );
-  const selectedAttributes = useMemo(
-    () => chroniclesAllowedAttributes(selectedMemberId),
-    [selectedMemberId],
-  );
-  const selectedSkills = useMemo(
-    () => chroniclesSkillsForMember(selectedMemberId),
-    [selectedMemberId],
-  );
   const selectedAbility = useMemo(
     () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
     [selectedMemberId, state],
   );
-  const selectedModifiers = state.rpgModifiers?.[selectedMemberId] || {};
-  const selectedReach = selectedProfile.reach + Number(selectedModifiers.reachBonus || 0);
-  const hasAllocatedAttributes = selectedAttributes.some((key) => Number(selectedProgress.attributes?.[key] || 0) > 0);
-  const hasLearnedSkills = selectedProgress.skills.length > 0;
   const objective = chroniclesObjective(state);
-  const activeParty = useMemo(
-    () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
-    [state.party],
-  );
   const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
   const canAttack = useMemo(
     () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
@@ -195,16 +159,16 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     commitState(chroniclesTacticsUse(current), { actorMemberId: memberId, actionKind: 'use' });
   }, [commitState]);
 
-  const allocateAttribute = useCallback((attributeKey) => {
-    const result = spendChroniclesAttributePoint(progressionRef.current, selectedMemberRef.current, attributeKey);
+  const allocateAttribute = useCallback((memberId, attributeKey) => {
+    const result = spendChroniclesAttributePoint(progressionRef.current, memberId, attributeKey);
     if (!result.spent) return;
     const saved = saveChroniclesProgression(result.progression);
     progressionRef.current = saved;
     setProgression(saved);
   }, []);
 
-  const learnSkill = useCallback((skillId) => {
-    const result = unlockChroniclesSkill(progressionRef.current, selectedMemberRef.current, skillId);
+  const learnSkill = useCallback((memberId, skillId) => {
+    const result = unlockChroniclesSkill(progressionRef.current, memberId, skillId);
     if (!result.unlocked) return;
     const saved = saveChroniclesProgression(result.progression);
     progressionRef.current = saved;
@@ -384,99 +348,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           </div>
         </main>
 
-        <aside className="chronicles-tactics__party" aria-label="Compañía">
-          <span className="chronicles-tactics__kicker">GRUPO · 1–4</span>
-          {activeParty.map((member, index) => {
-            const ratio = Math.max(0, member.hp / member.maxHp);
-            const profile = chroniclesTacticsProfile(member.id);
-            const memberProgress = chroniclesHeroProgress(progression, member.id);
-            return (
-              <button
-                type="button"
-                key={member.id}
-                className={member.id === selectedMemberId ? 'is-selected' : ''}
-                onClick={() => selectMember(member.id)}
-                aria-pressed={member.id === selectedMemberId}
-              >
-                <i aria-hidden="true">{member.glyph}</i>
-                <span><b>{index + 1}. {member.name}</b><small>Nv {memberProgress.level} · {profile.className} · {profile.weaponName}</small><em><u style={{ width: `${ratio * 100}%` }} /></em></span>
-                <strong>{member.hp}/{member.maxHp}</strong>
-              </button>
-            );
-          })}
-          <div className="chronicles-tactics__party-note">
-            <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
-            <b>{selectedMember?.name}</b>
-            <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedReach}` : 'Fuera de combate'}</small>
-            <small>Habilidad: {selectedProfile.abilityName} · {selectedAbility.charges > 0 ? `${selectedAbility.charges} carga${selectedAbility.charges === 1 ? '' : 's'}` : 'agotada'}</small>
-            <small>{xpLabel(selectedProgress, selectedXpWindow)}{selectedProgress.attributePoints || selectedProgress.skillPoints ? ` · ${selectedProgress.attributePoints} atributo · ${selectedProgress.skillPoints} skill` : ''}</small>
-            {(selectedProgress.attributePoints > 0 || hasAllocatedAttributes) && (
-              <details className="chronicles-tactics__progression">
-                <summary>Atributos · {selectedProgress.attributePoints > 0 ? `${selectedProgress.attributePoints} por asignar` : 'ver'}</summary>
-                <div className="chronicles-tactics__attribute-grid">
-                  {selectedAttributes.map((attributeKey) => {
-                    const definition = CHRONICLES_ATTRIBUTE_DEFINITIONS[attributeKey];
-                    const value = Number(selectedProgress.attributes?.[attributeKey] || 0);
-                    const disabled = selectedProgress.attributePoints <= 0 || value >= CHRONICLES_ATTRIBUTE_CAP;
-                    return (
-                      <button
-                        type="button"
-                        key={attributeKey}
-                        disabled={disabled}
-                        title={definition.effect}
-                        aria-label={`${definition.label}: ${value} de ${CHRONICLES_ATTRIBUTE_CAP}. ${definition.effect}`}
-                        onClick={() => allocateAttribute(attributeKey)}
-                      >
-                        <span>{definition.shortLabel}</span><b>{value}/{CHRONICLES_ATTRIBUTE_CAP}</b><i aria-hidden="true">+</i>
-                      </button>
-                    );
-                  })}
-                </div>
-                <small>Los cambios entran en combate al reiniciar la incursión.</small>
-              </details>
-            )}
-            {(selectedProgress.skillPoints > 0 || hasLearnedSkills) && (
-              <details className="chronicles-tactics__progression chronicles-tactics__skills">
-                <summary>Técnicas · {selectedProgress.skillPoints > 0 ? `${selectedProgress.skillPoints} punto${selectedProgress.skillPoints === 1 ? '' : 's'}` : 'doctrina fijada'}</summary>
-                <div className="chronicles-tactics__skill-grid">
-                  {selectedSkills.map((skill) => {
-                    const learned = selectedProgress.skills.includes(skill.id);
-                    const competing = selectedSkills.some((candidate) => (
-                      candidate.id !== skill.id
-                      && candidate.group === skill.group
-                      && selectedProgress.skills.includes(candidate.id)
-                    ));
-                    const levelLocked = selectedProgress.level < skill.requiredLevel;
-                    const disabled = learned || competing || levelLocked || selectedProgress.skillPoints < skill.cost;
-                    const status = learned
-                      ? 'Aprendida'
-                      : competing
-                        ? 'Rama cerrada'
-                        : levelLocked
-                          ? `Requiere Nv ${skill.requiredLevel}`
-                          : `${skill.cost} punto`;
-                    return (
-                      <button
-                        type="button"
-                        key={skill.id}
-                        className={learned ? 'is-learned' : ''}
-                        disabled={disabled}
-                        title={skill.description}
-                        aria-label={`${skill.label}. ${skill.description}. ${status}`}
-                        onClick={() => learnSkill(skill.id)}
-                      >
-                        <span>{skill.label}</span>
-                        <small>{skill.description}</small>
-                        <b>{status}</b>
-                      </button>
-                    );
-                  })}
-                </div>
-                <small>La primera elección fija esta doctrina; la alternativa queda cerrada. Se aplica al reiniciar.</small>
-              </details>
-            )}
-          </div>
-        </aside>
+        <ChroniclesTacticsPartyHud
+          state={state}
+          progression={progression}
+          selectedMemberId={selectedMemberId}
+          onSelectMember={selectMember}
+          onAllocateAttribute={allocateAttribute}
+          onLearnSkill={learnSkill}
+        />
       </div>
 
       <footer className="chronicles-tactics__footer">
