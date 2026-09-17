@@ -15,6 +15,10 @@ import {
 } from './chroniclesEnemyRenderRoster.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
+import {
+  chroniclesIsometricCellToWorld,
+  chroniclesIsometricScenePlan,
+} from './chronicles/chroniclesIsometricScenePlan.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 2.45;
@@ -50,8 +54,9 @@ const RUBBLE = Object.freeze([
   Object.freeze({ x: 3.2, z: 5.62, scale: 0.14, yaw: 0.35 }),
 ]);
 
-export function chroniclesIsoWorldForCell(x, y) {
-  return new THREE.Vector3((x - 3) * CELL, 0, (y - 3) * CELL);
+export function chroniclesIsoWorldForCell(x, y, scenePlan = chroniclesIsometricScenePlan()) {
+  const world = chroniclesIsometricCellToWorld(scenePlan, x, y, CELL);
+  return new THREE.Vector3(world.x, world.y, world.z);
 }
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
