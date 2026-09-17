@@ -1,6 +1,6 @@
 {
   "id": "gallery-of-forks",
-  "version": 2,
+  "version": 3,
   "progressionKey": "gallery-01",
   "title": "Galería de las Horquillas",
   "grid": [
@@ -15,8 +15,6 @@
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
   "initialFlags": {
     "sigilAwake": true,
-    "runeCacheOpened": false,
-    "runeCoreCollected": false,
     "galleryLeverPulled": false,
     "galleryRelicCollected": false
   },
@@ -59,8 +57,7 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "galleryLeverPulled", "value": true },
-          { "type": "set", "key": "runeCacheOpened", "value": true }
+          { "type": "set", "key": "galleryLeverPulled", "value": true }
         ],
         "message": "El contrapeso cae y una hornacina se abre con el entusiasmo de una tumba mal mantenida.",
         "journal": {
@@ -86,7 +83,6 @@
       "action": {
         "effects": [
           { "type": "set", "key": "galleryRelicCollected", "value": true },
-          { "type": "set", "key": "runeCoreCollected", "value": true },
           { "type": "heal-party", "amount": 2 }
         ],
         "message": "La reliquia de ceniza recompone a los supervivientes. Nadie pregunta por qué algo llamado ceniza cura heridas.",
