@@ -184,6 +184,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: ${{ env.STAGING_API_URL }}
+          VITE_WAR_ROOM_V2_ENABLE: '1'
           VITE_PUBLIC_BASE: /
           VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
           VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}

@@ -31,7 +31,6 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
-import WarRoomVariantPicker from './WarRoomVariantPicker.jsx';
 import { buildClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
@@ -107,7 +106,7 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
-  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, status: warRoomV2Status, setVariant: setWarRoomVariant, setStatus: setWarRoomV2Status } = useWarRoomVariant();
+  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, status: warRoomV2Status, setStatus: setWarRoomV2Status } = useWarRoomVariant();
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -1173,7 +1172,6 @@ function Board3DCanvas({
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <WarRoomVariantPicker visible={warRoomVariantSelectable} variant={warRoomVariant} status={warRoomV2Status} onChange={setWarRoomVariant} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE GUERRA · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>

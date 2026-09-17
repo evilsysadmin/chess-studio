@@ -1,6 +1,7 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import useWarRoomVariant from './useWarRoomVariant.js';
 import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -75,6 +76,11 @@ export function WarRoomUtilityMenu({
   showAppearance = true,
   showZen = true,
 }) {
+  const {
+    selectable: warRoomVariantSelectable,
+    variant: warRoomVariant,
+    setVariant: setWarRoomVariant,
+  } = useWarRoomVariant();
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
@@ -83,6 +89,7 @@ export function WarRoomUtilityMenu({
     || hasUndo
     || (compactViewport && showRendererToggle)
     || hasAppearance
+    || warRoomVariantSelectable
     || (showZen && typeof controls.onToggleZen === 'function');
 
   return (
@@ -144,6 +151,36 @@ export function WarRoomUtilityMenu({
           >
             Apariencia
           </button>
+        )}
+        {warRoomVariantSelectable && (
+          <>
+            <span className="game-3d-utility-separator" role="separator" />
+            <span className="game-3d-utility-section-label" aria-hidden="true">Escena</span>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={warRoomVariant === 'classic'}
+              className={warRoomVariant === 'classic' ? 'is-selected' : ''}
+              onClick={(event) => {
+                closeUtilityMenu(event);
+                setWarRoomVariant('classic');
+              }}
+            >
+              War Room
+            </button>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={warRoomVariant === 'v2'}
+              className={warRoomVariant === 'v2' ? 'is-selected' : ''}
+              onClick={(event) => {
+                closeUtilityMenu(event);
+                setWarRoomVariant('v2');
+              }}
+            >
+              War Room v2
+            </button>
+          </>
         )}
         {showZen && typeof controls.onToggleZen === 'function' && (
           <button

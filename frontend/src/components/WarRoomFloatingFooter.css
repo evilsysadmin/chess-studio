@@ -216,6 +216,27 @@
     cursor: default;
   }
 
+  .game-3d-utility-section-label {
+    display: block;
+    padding: .32rem .55rem .18rem;
+    color: color-mix(in srgb, var(--studio-muted) 78%, var(--brass));
+    font: 760 .48rem/1 var(--font-mono);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  .game-3d-utility-popover button[role='menuitemradio'].is-selected {
+    background: rgba(201, 162, 39, .09);
+    color: var(--brass);
+  }
+
+  .game-3d-utility-popover button[role='menuitemradio'].is-selected::after {
+    content: '✓';
+    float: right;
+    margin-left: .65rem;
+    color: var(--brass);
+  }
+
   .game-3d-utility-popover button.is-danger:hover,
   .game-3d-utility-popover button.is-danger:focus-visible {
     background: color-mix(in srgb, var(--danger) 12%, transparent);

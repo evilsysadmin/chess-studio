@@ -246,6 +246,25 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     const warRoomSignal = page.locator('[data-matthias-war-room-presence="king-piece"]');
     const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+
+    // Staging is the deliberate A/B surface for the Blender shell. Keep the
+    // experiment behind the canonical overflow menu so the room itself remains
+    // visually clean, then prove the R2 shell can replace the classic scene.
+    const variantUtilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(variantUtilityMenu).toBeVisible();
+    await variantUtilityMenu.click();
+    const classicWarRoomItem = page.getByRole('menuitemradio', { name: 'War Room', exact: true });
+    const v2WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v2', exact: true });
+    await expect(classicWarRoomItem).toBeVisible();
+    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
+    await v2WarRoomItem.click();
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'ready', { timeout: 30_000 });
+    await variantUtilityMenu.click();
+    await page.getByRole('menuitemradio', { name: 'War Room', exact: true }).click();
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'idle');
+
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomSignal).toContainText('Matthias');
