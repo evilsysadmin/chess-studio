@@ -10,7 +10,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, k3s-start, k3s-rollback]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, k3s-start, k3s-status, k3s-rollback]
         default: smoke
         required: true
       secret_key:
@@ -98,6 +98,8 @@ jobs:
           python3 -S scripts/oci_reserve_egress_ip.py --self-test
           python3 -S scripts/oci_k3s_control.py --self-test
           python3 -S scripts/oci_k3s_control_root.py self-test
+          python3 -S scripts/oci_k3s_status.py --self-test
+          python3 -S scripts/oci_k3s_status_root.py self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Diagnose Render staging Mongo target
@@ -182,6 +184,12 @@ jobs:
       - name: Roll back K3s to inert state
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-rollback'
         run: python3 scripts/oci_k3s_control.py rollback
+
+      - name: Read K3s status and resource snapshot
+        if: >-
+          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
+          (github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-status' || inputs.operation == 'k3s-rollback'))
+        run: python3 scripts/oci_k3s_status.py
 
       - name: Prove Docker staging survived K3s lifecycle change
         if: >-
