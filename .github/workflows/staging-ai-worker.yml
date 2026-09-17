@@ -11,7 +11,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
 concurrency:
@@ -59,6 +58,7 @@ jobs:
       # compare/$DEPLOY_SHA...$current_main
       # identical|ahead
       - name: Supersede stale staging accreditation outside current main lineage
+        id: lineage
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -69,6 +69,7 @@ jobs:
           source "$lineage_env"
 
           if [[ "$IN_MAIN_LINEAGE" != true ]]; then
+            echo 'accredited=false' >> "$GITHUB_OUTPUT"
             echo "::notice title=Staging accreditation superseded::El SHA acreditable $DEPLOY_SHA ya no pertenece a la línea de main ($CURRENT_MAIN, compare=$COMPARE_STATUS). No emito credencial de producción."
             {
               echo '### Acreditación de staging superseded'
@@ -76,18 +77,13 @@ jobs:
               echo "- Staging SHA verificado: \`$DEPLOY_SHA\`"
               echo "- Current main: \`$CURRENT_MAIN\`"
               echo "- Compare status: \`$COMPARE_STATUS\`"
-              echo '- Acción: `autocancelar antes de emitir credencial de promoción`'
+              echo '- Acción: `terminar limpio sin emitir credencial de promoción`'
               echo '- Producción: `no se dispara para un SHA fuera de la línea de main`'
             } >> "$GITHUB_STEP_SUMMARY"
-
-            gh api --method POST \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-
-            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do sleep 30; done
+            exit 0
           fi
 
+          echo 'accredited=true' >> "$GITHUB_OUTPUT"
           if [[ "$DEPLOY_SHA" != "$CURRENT_MAIN" ]]; then
             echo "::notice title=Staging accreditation retained::main avanzó a $CURRENT_MAIN; $DEPLOY_SHA sigue siendo ancestro y su deploy exitoso ya lo acreditó."
           fi
@@ -99,7 +95,7 @@ jobs:
       # Verify staging frontend still serves approved SHA
       # Verify staging AI health and build identity
       - name: Shared Workers AI live contract · manual strict probe
-        if: github.event_name == 'workflow_dispatch'
+        if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
@@ -109,7 +105,7 @@ jobs:
           python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
 
       - name: Write immutable production accreditation
-        if: github.event_name == 'workflow_run'
+        if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'
         shell: bash
         env:
           STAGING_DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
@@ -129,7 +125,7 @@ jobs:
           PY
 
       - name: Upload immutable production accreditation
-        if: github.event_name == 'workflow_run'
+        if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'
         uses: actions/upload-artifact@v6
         with:
           name: staging-promotion-accreditation
@@ -138,6 +134,7 @@ jobs:
           retention-days: 7
 
       - name: Summary
+        if: steps.lineage.outputs.accredited == 'true'
         shell: bash
         run: |
           {
