@@ -117,9 +117,12 @@ export function chroniclesIsoPointerAction(interaction, hit) {
 }
 
 export function chroniclesIsoWorldObjectState(state) {
+  const content = chroniclesIsometricScenePlan(state).content;
+  const lever = content.find((entry) => entry.kind === 'lever');
+  const pickup = content.find((entry) => entry.kind === 'pickup');
   return {
-    leverPulled: Boolean(state?.runeCacheOpened),
-    runeCoreVisible: Boolean(state?.runeCacheOpened && !state?.runeCoreCollected),
+    leverPulled: Boolean(lever?.active),
+    runeCoreVisible: Boolean(pickup?.visible),
   };
 }
 
