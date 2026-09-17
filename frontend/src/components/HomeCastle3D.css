@@ -67,7 +67,9 @@
     .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
       .illustrated-home__destination:hover > svg,
     .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
-      .illustrated-home__destination:focus-visible > svg {
+      .illustrated-home__destination:focus-visible > svg,
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination.is-active > svg {
       opacity: 0.3;
     }
 
@@ -84,7 +86,9 @@
     .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
       .illustrated-home__destination:hover > i,
     .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
-      .illustrated-home__destination:focus-visible > i {
+      .illustrated-home__destination:focus-visible > i,
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination.is-active > i {
       opacity: 0.72;
     }
 
