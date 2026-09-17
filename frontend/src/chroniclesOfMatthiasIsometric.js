@@ -16,6 +16,7 @@ import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasP
 import {
   CHRONICLES_ISOMETRIC_CELL_SIZE,
   chroniclesIsometricContentByKind,
+  chroniclesIsometricContentsByKind,
   chroniclesIsometricDungeonPlan,
 } from './chronicles/chroniclesIsometricDungeonPlan.js';
 import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
@@ -68,6 +69,14 @@ export function chroniclesIsoWorldForContentKind(geometryPlan, kind) {
   const world = chroniclesIsometricContentByKind(geometryPlan, kind)?.world;
   if (!world) return null;
   return new THREE.Vector3(world.x, world.y, world.z);
+}
+
+export function chroniclesIsoWorldsForContentKind(geometryPlan, kind) {
+  return chroniclesIsometricContentsByKind(geometryPlan, kind).map((entry) => Object.freeze({
+    id: entry.id,
+    visualType: entry.visualType || entry.kind,
+    world: new THREE.Vector3(entry.world.x, entry.world.y, entry.world.z),
+  }));
 }
 
 export function chroniclesIsoUsesLegacyDressing(scenePlan) {
@@ -383,25 +392,40 @@ function buildIsoDungeon({
   leverRoot.add(leverPivot);
   root.add(leverRoot);
 
-  const runeCell = chroniclesIsoWorldForContentKind(geometryPlan, 'pickup');
-  const runeCoreRoot = new THREE.Group();
-  runeCoreRoot.name = 'chronicles-iso-rune-core';
-  runeCoreRoot.position.set((runeCell?.x ?? 0) + 0.42, 0.18, (runeCell?.z ?? 0) + 0.2);
-  runeCoreRoot.userData.chroniclesIsoAuthored = Boolean(runeCell);
-  const runeCradle = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 8, coarsePointer ? 16 : 24), brass);
-  runeCradle.rotation.x = -Math.PI / 2;
-  runeCradle.position.y = 0.08;
-  runeCradle.castShadow = !coarsePointer;
-  runeCoreRoot.add(runeCradle);
-  const runeCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.23, 0), runeMaterial);
-  runeCore.position.y = 0.42;
-  runeCore.castShadow = !coarsePointer;
-  runeCoreRoot.add(runeCore);
-  const runeGlow = new THREE.PointLight(palette.runeGlow, coarsePointer ? 0.72 : 1.05, 3.6, 2);
-  runeGlow.position.y = 0.46;
-  runeCoreRoot.add(runeGlow);
-  runeCoreRoot.visible = false;
-  root.add(runeCoreRoot);
+  const pickupProps = chroniclesIsoWorldsForContentKind(geometryPlan, 'pickup').map((entry, index) => {
+    const pickupRoot = new THREE.Group();
+    pickupRoot.name = `chronicles-iso-pickup-${entry.id}`;
+    pickupRoot.position.set(entry.world.x + 0.42, 0.18, entry.world.z + 0.2);
+    pickupRoot.userData.chroniclesIsoAuthored = true;
+    pickupRoot.userData.chroniclesIsoContentId = entry.id;
+    pickupRoot.userData.chroniclesIsoVisualType = entry.visualType;
+
+    const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 8, coarsePointer ? 16 : 24), brass);
+    cradle.rotation.x = -Math.PI / 2;
+    cradle.position.y = 0.08;
+    cradle.castShadow = !coarsePointer;
+    pickupRoot.add(cradle);
+
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.23, 0), runeMaterial);
+    core.position.y = 0.42;
+    core.castShadow = !coarsePointer;
+    pickupRoot.add(core);
+
+    const glow = new THREE.PointLight(palette.runeGlow, coarsePointer ? 0.72 : 1.05, 3.6, 2);
+    glow.position.y = 0.46;
+    pickupRoot.add(glow);
+    pickupRoot.visible = false;
+    root.add(pickupRoot);
+
+    return Object.freeze({
+      id: entry.id,
+      visualType: entry.visualType,
+      root: pickupRoot,
+      core,
+      glow,
+      phase: index * 1.17,
+    });
+  });
 
   if (chroniclesIsoUsesLegacyDressing(scenePlan)) {
     buildDungeonColumn(root, wallMaterials[0], wallTrim, -5.9, -4.9, 0, { coarsePointer });
@@ -430,10 +454,8 @@ function buildIsoDungeon({
     sigilMaterial: brass,
     floorTargets,
     leverPivot,
-    runeCoreRoot,
-    runeCore,
+    pickupProps,
     runeMaterial,
-    runeGlow,
   };
 }
 
@@ -850,10 +872,14 @@ export function createChroniclesIsometricGame(host, {
     dungeon.sigilMaterial.emissive.setHex(worldObjects.triggerActivated ? 0x8c3f0d : 0x160a02);
     dungeon.sigilMaterial.emissiveIntensity = worldObjects.triggerActivated ? 1.25 : 0.24;
     dungeon.leverPivot.rotation.z = worldObjects.leverActivated ? -0.74 : 0.58;
-    dungeon.runeCoreRoot.visible = Boolean(
-      dungeon.runeCoreRoot.userData.chroniclesIsoAuthored && worldObjects.pickupVisible,
-    );
-    dungeon.runeMaterial.emissiveIntensity = worldObjects.pickupVisible ? 1.7 : 0.25;
+
+    const contentVisualById = new Map(chroniclesContentVisualStates(state).map((entry) => [entry.id, entry]));
+    dungeon.pickupProps.forEach((pickup) => {
+      const visual = contentVisualById.get(pickup.id);
+      pickup.root.visible = Boolean(visual?.visible);
+    });
+    dungeon.runeMaterial.emissiveIntensity = dungeon.pickupProps.some((pickup) => pickup.root.visible) ? 1.7 : 0.25;
+
     syncSelection({ immediate: reducedMotion });
     syncInteraction(nextInteraction);
 
@@ -950,13 +976,16 @@ export function createChroniclesIsometricGame(host, {
         torch.flame.rotation.z = Math.sin(time * 4.8 + torch.phase) * 0.08;
       });
 
-      if (dungeon.runeCoreRoot.visible) {
-        const pulse = 0.9 + Math.sin(time * 3.1) * 0.1;
-        dungeon.runeCoreRoot.rotation.y = time * 0.72;
-        dungeon.runeCore.position.y = 0.42 + Math.sin(time * 2.4) * 0.055;
-        dungeon.runeGlow.intensity = (coarse ? 0.72 : 1.05) * pulse;
-        dungeon.runeMaterial.emissiveIntensity = 1.55 + pulse * 0.35;
-      }
+      let pickupPulse = null;
+      dungeon.pickupProps.forEach((pickup) => {
+        if (!pickup.root.visible) return;
+        const pulse = 0.9 + Math.sin(time * 3.1 + pickup.phase) * 0.1;
+        pickup.root.rotation.y = time * 0.72 + pickup.phase;
+        pickup.core.position.y = 0.42 + Math.sin(time * 2.4 + pickup.phase) * 0.055;
+        pickup.glow.intensity = (coarse ? 0.72 : 1.05) * pulse;
+        pickupPulse = Math.max(pickupPulse ?? pulse, pulse);
+      });
+      if (pickupPulse !== null) dungeon.runeMaterial.emissiveIntensity = 1.55 + pickupPulse * 0.35;
 
       const pose = chroniclesIsometricCameraPose({ x: desiredFocus.x, z: desiredFocus.z });
       camera.position.lerp(pose.position, 0.09);
