@@ -20,6 +20,7 @@ const ACTIVITY_BY_VIEW = Object.freeze({
   spectator: 'Espectador',
   admin: 'Panel admin',
   board3d: 'Experimento 3D',
+  pvpGame: 'War Room 1 vs 1',
 });
 
 
