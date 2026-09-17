@@ -1,0 +1,135 @@
+/* Primary diegetic navigation for the canonical Great Hall.
+ * The scene object is the visual control; copy appears only as confirmation.
+ * Touch layouts keep the existing explicit labels because hover cannot carry
+ * discoverability there. */
+
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  .illustrated-home__destination.is-diegetic-object {
+    isolation: isolate;
+    overflow: visible;
+    border-color: transparent;
+    background: transparent !important;
+    box-shadow: none;
+  }
+
+  .illustrated-home__destination.is-diegetic-object::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 8% -4%;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center, rgba(255, 190, 87, .26) 0%, rgba(205, 120, 35, .10) 44%, transparent 76%);
+    transform: scale(.82);
+    transition: opacity .22s ease, transform .24s cubic-bezier(.2,.75,.25,1), filter .22s ease;
+    filter: blur(.18cqw);
+  }
+
+  .illustrated-home__destination.is-diegetic-object > svg,
+  .illustrated-home__destination.is-diegetic-object > strong,
+  .illustrated-home__destination.is-diegetic-object > span,
+  .illustrated-home__destination.is-diegetic-object > i {
+    opacity: 0;
+    transform: translateY(.38cqw) scale(.975);
+    transition: opacity .18s ease, transform .24s cubic-bezier(.2,.75,.25,1), filter .2s ease;
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover,
+  .illustrated-home__destination.is-diegetic-object:focus-visible {
+    transform: translateY(-.08cqw);
+    background: transparent !important;
+    filter: none;
+    text-shadow: 0 2px 5px #080401, 0 0 14px #d38a2a99;
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover::before,
+  .illustrated-home__destination.is-diegetic-object:focus-visible::before {
+    opacity: .72;
+    transform: scale(1.04);
+    filter: blur(.22cqw) brightness(1.12);
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover > svg,
+  .illustrated-home__destination.is-diegetic-object:hover > strong,
+  .illustrated-home__destination.is-diegetic-object:hover > span,
+  .illustrated-home__destination.is-diegetic-object:hover > i,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > svg,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > strong,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > span,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > i {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover > svg,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > svg {
+    opacity: .82;
+    filter: drop-shadow(0 2px 4px #160b03) drop-shadow(0 0 10px #d98e35aa);
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover > i,
+  .illustrated-home__destination.is-diegetic-object:focus-visible > i {
+    opacity: .78;
+  }
+
+  /* Keep the click target generous while letting the board/prop remain the hero. */
+  .illustrated-home__destination--play.is-diegetic-object {
+    top: 57.4%;
+    left: 37.6%;
+    width: 24.8%;
+    min-height: 18.5%;
+    justify-content: flex-end;
+    padding-bottom: 1.2cqw;
+  }
+
+  .illustrated-home__destination--play.is-diegetic-object > i {
+    position: static;
+    margin-top: .35cqw;
+  }
+
+  .illustrated-home__destination--combat.is-diegetic-object {
+    left: 51.2%;
+    top: 30.2%;
+    width: 15.5%;
+    min-height: 24%;
+    justify-content: flex-end;
+    padding-bottom: .7cqw;
+  }
+
+  .illustrated-home__destination--tournament.is-diegetic-object {
+    left: 12.6%;
+    top: 22.2%;
+    width: 15.2%;
+    min-height: 20%;
+    justify-content: flex-end;
+    padding-bottom: .6cqw;
+  }
+
+  .illustrated-home__destination.is-diegetic-object + .illustrated-home__scene-fragment {
+    opacity: 0;
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover + .illustrated-home__scene-fragment,
+  .illustrated-home__destination.is-diegetic-object:focus-visible + .illustrated-home__scene-fragment {
+    opacity: .92;
+    transform: translateY(-.18cqw) scale(1.018);
+    filter: brightness(1.2) saturate(1.12) contrast(1.025) drop-shadow(0 .22cqw .5cqw #0007);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__destination.is-diegetic-object,
+  .illustrated-home__destination.is-diegetic-object::before,
+  .illustrated-home__destination.is-diegetic-object > svg,
+  .illustrated-home__destination.is-diegetic-object > strong,
+  .illustrated-home__destination.is-diegetic-object > span,
+  .illustrated-home__destination.is-diegetic-object > i {
+    transition: none !important;
+  }
+
+  .illustrated-home__destination.is-diegetic-object:hover,
+  .illustrated-home__destination.is-diegetic-object:focus-visible {
+    transform: none;
+  }
+}
