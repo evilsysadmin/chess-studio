@@ -57,6 +57,18 @@ function exposedWallFaces(grid) {
   })));
 }
 
+export function chroniclesIsometricCellToWorld(scenePlan, x, y, cellSize = 2.45) {
+  const centerX = Number(scenePlan?.center?.x ?? 0);
+  const centerY = Number(scenePlan?.center?.y ?? 0);
+  const size = Number(cellSize);
+  const safeSize = Number.isFinite(size) && size > 0 ? size : 2.45;
+  return Object.freeze({
+    x: (Number(x) - centerX) * safeSize,
+    y: 0,
+    z: (Number(y) - centerY) * safeSize,
+  });
+}
+
 export function chroniclesIsometricScenePlan(mapOrState = null) {
   const runtimeState = mapOrState?.grid ? null : mapOrState;
   const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
