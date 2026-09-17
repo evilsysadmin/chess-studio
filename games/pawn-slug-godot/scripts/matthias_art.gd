@@ -72,6 +72,7 @@ var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _dead := false
 var _death_progress := 0.0
+var _impact_direction := 0.0
 
 func _ready() -> void:
     _body_sprite = _make_art_sprite("MatthiasCanonicalBody")
@@ -88,11 +89,18 @@ func set_combat_state(
     invuln_remaining: float,
     dead: bool,
     death_progress: float,
+    impact_direction: float,
 ) -> void:
     _hurt_remaining = maxf(0.0, hurt_remaining)
     _invuln_remaining = maxf(0.0, invuln_remaining)
     _dead = dead
     _death_progress = clampf(death_progress, 0.0, 1.0)
+    if impact_direction < 0.0:
+        _impact_direction = -1.0
+    elif impact_direction > 0.0:
+        _impact_direction = 1.0
+    elif not _dead and _hurt_remaining <= 0.0:
+        _impact_direction = 0.0
     if _dead or _hurt_remaining > 0.0:
         _recoil_remaining = 0.0
         _shoot_age = SHOOT_HOLD_SECONDS
@@ -139,8 +147,6 @@ func update_visual(
     _apply_combat_modulate()
     queue_redraw()
 
-# Ground locomotion follows post-physics speed, not raw input. Matthias therefore
-# keeps walking/running while real deceleration still moves him instead of skating in idle.
 func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: bool) -> String:
     if not on_floor:
         return "jump"
@@ -152,8 +158,6 @@ func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: b
         return "walk"
     return "idle"
 
-# Death deliberately reuses the canonical crouch sequence until dedicated authored
-# hurt/death strips exist in R2. The identity stays canonical instead of swapping to graybox art.
 func _apply_body_frame() -> void:
     var action := _action
     var frame := 0
@@ -172,12 +176,8 @@ func _apply_body_frame() -> void:
         Vector2(frame * FRAME_SIZE.x, float(ACTION_ROWS[action]) * FRAME_SIZE.y),
         FRAME_SIZE,
     )
-    # Premium pistol bank is authored facing screen-left.
     _body_sprite.flip_h = _facing > 0.0
 
-# Airborne art follows the real ballistic phase rather than elapsed animation time.
-# Full ascent maps to the first pose, the apex to the middle pose and descent to
-# the last pose. Variable-height jumps therefore remain visually synchronized.
 func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     if count <= 1:
         return 0
@@ -189,8 +189,6 @@ func _jump_frame_for_speed(vertical_speed: float, count: int) -> int:
     return clampi(int(round(phase * float(count - 1))), 0, count - 1)
 
 func _apply_shoot_frame() -> void:
-    # Canonical authored shoot strip is a grounded standing pose. Crouched,
-    # airborne, hurt or dead states preserve the canonical body pose instead.
     var show_shoot := (
         _body_ready
         and _shoot_ready
@@ -210,11 +208,9 @@ func _apply_shoot_frame() -> void:
 
     var frame := 0 if _shoot_age < SHOOT_SECOND_FRAME_AT else 1
     _shoot_sprite.region_rect = Rect2(Vector2(frame * FRAME_SIZE.x, 0.0), FRAME_SIZE)
-    # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
-# All sprite transforms now pivot from Matthias' foot anchor. The normal pose is
-# unchanged, but squash, hurt and death no longer rotate around the frame centre.
+# Impact and death now follow projectile travel direction instead of Matthias' facing.
 func _apply_pose_transform() -> void:
     var landing := 0.0 if _dead else clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
     var hurt := clampf(_hurt_remaining / HURT_VISUAL_SECONDS, 0.0, 1.0)
@@ -223,11 +219,12 @@ func _apply_pose_transform() -> void:
     var scale_y := ART_SCALE * (1.0 - landing * LANDING_Y_SQUASH)
     scale_y *= lerpf(1.0, DEATH_SCALE_Y, death)
 
+    var impact := _impact_direction if absf(_impact_direction) > 0.0 else -_facing
     var recoil_x := _recoil_offset_x()
-    var hurt_x := -_facing * HURT_SHIFT_PIXELS * hurt * hurt
-    var death_x := -_facing * DEATH_SHIFT_PIXELS * death
-    var rotation := deg_to_rad(HURT_TILT_DEGREES) * _facing * hurt
-    rotation += deg_to_rad(DEATH_ROTATION_DEGREES) * _facing * death
+    var hurt_x := impact * HURT_SHIFT_PIXELS * hurt * hurt
+    var death_x := impact * DEATH_SHIFT_PIXELS * death
+    var rotation := deg_to_rad(HURT_TILT_DEGREES) * impact * hurt
+    rotation += deg_to_rad(DEATH_ROTATION_DEGREES) * impact * death
 
     for sprite in [_body_sprite, _shoot_sprite]:
         if sprite == null:
