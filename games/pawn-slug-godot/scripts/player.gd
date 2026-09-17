@@ -3,6 +3,7 @@ extends CharacterBody2D
 signal fired(origin: Vector2, direction: float, shot: Dictionary)
 signal grenade_thrown(origin: Vector2, direction: float)
 signal grenades_changed(count: int)
+signal checkpoint_changed(checkpoint_x: float)
 signal hurt(current_hp: int, max_hp: int)
 signal healed(current_hp: int, max_hp: int)
 signal died(lives_remaining: int)
@@ -27,6 +28,7 @@ const HIT_INVULN_SECONDS := 0.85
 const HURT_VISUAL_SECONDS := 0.18
 const DEATH_PAUSE_SECONDS := 0.55
 const RESPAWN_INVULN_SECONDS := 1.8
+const CHECKPOINT_X := [110.0, 1480.0, 2980.0, 4140.0]
 const WEAPON_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 const WEAPONS := {
     "pistol": {
@@ -93,6 +95,7 @@ var arsenal := {
 }
 var _death_remaining := 0.0
 var _spawn_position := Vector2.ZERO
+var _checkpoint_position := Vector2.ZERO
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
@@ -101,7 +104,9 @@ var _grenade_was_pressed := false
 var _art
 
 func _ready() -> void:
+    global_position.x = CHECKPOINT_X[0]
     _spawn_position = global_position
+    _checkpoint_position = _spawn_position
     _art = MatthiasArt.new()
     _art.name = "MatthiasArt"
     add_child(_art)
@@ -148,6 +153,7 @@ func _physics_process(delta: float) -> void:
     _jump_was_pressed = jump_pressed
 
     move_and_slide()
+    _update_checkpoint()
     var landed_now := not was_on_floor and is_on_floor()
     crouching = _crouch_pressed() and is_on_floor()
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
@@ -313,6 +319,18 @@ func _projectile_origin() -> Vector2:
             return muzzle.global_position
     return global_position + Vector2(facing * 38.0, -7.0)
 
+func _update_checkpoint() -> void:
+    for checkpoint_x in CHECKPOINT_X:
+        if global_position.x + 0.01 < checkpoint_x:
+            break
+        if checkpoint_x <= _checkpoint_position.x:
+            continue
+        _checkpoint_position = Vector2(checkpoint_x, _spawn_position.y)
+        checkpoint_changed.emit(checkpoint_x)
+
+func current_checkpoint_x() -> float:
+    return _checkpoint_position.x
+
 func _fallback_to_pistol() -> void:
     if weapon == "pistol":
         return
@@ -364,7 +382,7 @@ func _update_dead_state(delta: float) -> void:
     queue_redraw()
 
 func _respawn() -> void:
-    global_position = _spawn_position
+    global_position = _checkpoint_position
     velocity = Vector2.ZERO
     hp = MAX_HP
     invuln_remaining = RESPAWN_INVULN_SECONDS
@@ -376,6 +394,7 @@ func _respawn() -> void:
     _jump_was_pressed = false
     _fire_was_pressed = false
     _grenade_was_pressed = false
+    select_weapon("pistol")
     _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
 
