@@ -38,7 +38,7 @@ describe('HomeCastle3DPropFocus', () => {
 
     expect(play.material.emissiveIntensity).toBeGreaterThan(0.08);
     expect(play.material.emissiveIntensity).toBeLessThanOrEqual(HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE);
-    expect(daily.material.emissiveIntensity).toBe(0.05);
+    expect(daily.material.emissiveIntensity).toBeCloseTo(0.05, 6);
     expect(play.group.position.y).toBeGreaterThan(initialPlayPosition.y);
     expect(play.group.position.y).toBeLessThan(initialPlayPosition.y + HOME_CASTLE_PROP_FOCUS_LIFT);
     expect(play.group.position.z).toBeGreaterThan(initialPlayPosition.z);
