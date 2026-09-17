@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { createChroniclesState } from './chroniclesOfMatthias.js';
+import {
+  CHRONICLES_ENEMIES,
+  createChroniclesState,
+  chroniclesTileAt,
+} from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_PARTY_GRID_ORDER,
   chroniclesPartyGridFootprint,
 } from './chroniclesPartyFootprint.js';
+import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
 
 function footprintCells(footprint) {
   return CHRONICLES_PARTY_GRID_ORDER.map((id) => footprint[id]).filter(Boolean);
 }
 
 function key(cell) {
-  return `${cell.x.toFixed(4)}:${cell.y.toFixed(4)}`;
+  return `${cell.x}:${cell.y}`;
 }
 
 describe('Chronicles Tactics party deploy footprint', () => {
-  it('keeps the full party compact inside the logical anchor cell', () => {
+  it('uses exactly one walkable dungeon cell per living hero', () => {
     const state = createChroniclesState();
     const footprint = chroniclesPartyGridFootprint(state);
     const cells = footprintCells(footprint);
@@ -22,47 +27,79 @@ describe('Chronicles Tactics party deploy footprint', () => {
     expect(Object.keys(footprint)).toEqual(CHRONICLES_PARTY_GRID_ORDER);
     expect(cells).toHaveLength(4);
     expect(new Set(cells.map(key)).size).toBe(4);
-
     cells.forEach((cell) => {
-      expect(Math.abs(cell.x - state.x)).toBeLessThan(0.5);
-      expect(Math.abs(cell.y - state.y)).toBeLessThan(0.5);
+      expect(Number.isInteger(cell.x)).toBe(true);
+      expect(Number.isInteger(cell.y)).toBe(true);
+      expect(chroniclesTileAt(cell.x, cell.y, state)).not.toBe('#');
     });
-
-    const centroid = cells.reduce(
-      (sum, cell) => ({ x: sum.x + cell.x, y: sum.y + cell.y }),
-      { x: 0, y: 0 },
-    );
-    expect(centroid.x / cells.length).toBeCloseTo(state.x, 8);
-    expect(centroid.y / cells.length).toBeCloseTo(state.y, 8);
   });
 
-  it('rotates front/back and left/right deployment with party facing', () => {
-    const eastState = { ...createChroniclesState(), direction: 1 };
-    const east = chroniclesPartyGridFootprint(eastState);
+  it('never deploys a hero onto an active enemy cell', () => {
+    const base = createChroniclesState();
+    const enemy = CHRONICLES_ENEMIES[0];
+    const blocked = { x: base.x + 1, y: base.y };
+    const state = {
+      ...base,
+      [enemy.hpKey]: Math.max(1, Number(base[enemy.hpKey] || 0)),
+      enemyPositions: {
+        ...(base.enemyPositions || {}),
+        [enemy.id]: blocked,
+      },
+    };
 
-    expect(east.matthias.x).toBeGreaterThan(eastState.x);
-    expect(east.rook.x).toBeGreaterThan(eastState.x);
-    expect(east.bishop.x).toBeLessThan(eastState.x);
-    expect(east.knight.x).toBeLessThan(eastState.x);
-    expect(east.matthias.y).toBeLessThan(eastState.y);
-    expect(east.bishop.y).toBeLessThan(eastState.y);
-    expect(east.rook.y).toBeGreaterThan(eastState.y);
-    expect(east.knight.y).toBeGreaterThan(eastState.y);
+    const cells = footprintCells(chroniclesPartyGridFootprint(state));
 
-    const northState = { ...eastState, direction: 0 };
-    const north = chroniclesPartyGridFootprint(northState);
-
-    expect(north.matthias.y).toBeLessThan(northState.y);
-    expect(north.rook.y).toBeLessThan(northState.y);
-    expect(north.bishop.y).toBeGreaterThan(northState.y);
-    expect(north.knight.y).toBeGreaterThan(northState.y);
-    expect(north.matthias.x).toBeLessThan(northState.x);
-    expect(north.bishop.x).toBeLessThan(northState.x);
-    expect(north.rook.x).toBeGreaterThan(northState.x);
-    expect(north.knight.x).toBeGreaterThan(northState.x);
+    expect(cells).toHaveLength(4);
+    expect(cells.map(key)).not.toContain(key(blocked));
   });
 
-  it('does not reshuffle survivors when one party member falls', () => {
+  it('treats visible authored content as occupied cells', () => {
+    const state = {
+      ...createChroniclesState(),
+      x: 3,
+      y: 3,
+      direction: 2,
+    };
+    const visibleContent = chroniclesContentVisualStates(state)
+      .filter((entry) => entry.visible && entry.position);
+    const occupied = new Set(visibleContent.map((entry) => key(entry.position)));
+    const cells = footprintCells(chroniclesPartyGridFootprint(state));
+
+    expect(occupied.has('3:4')).toBe(true);
+    expect(cells).toHaveLength(4);
+    cells.forEach((cell) => expect(occupied.has(key(cell))).toBe(false));
+  });
+
+  it('keeps a constrained corridor formation connected and local', () => {
+    const state = createChroniclesState();
+    const cells = footprintCells(chroniclesPartyGridFootprint(state));
+    const cellKeys = new Set(cells.map(key));
+
+    expect(Math.max(...cells.map((cell) => (
+      Math.abs(cell.x - state.x) + Math.abs(cell.y - state.y)
+    )))).toBeLessThanOrEqual(3);
+
+    const visited = new Set();
+    const queue = [cells[0]];
+    while (queue.length) {
+      const current = queue.shift();
+      const currentKey = key(current);
+      if (visited.has(currentKey)) continue;
+      visited.add(currentKey);
+      [
+        { x: current.x + 1, y: current.y },
+        { x: current.x - 1, y: current.y },
+        { x: current.x, y: current.y + 1 },
+        { x: current.x, y: current.y - 1 },
+      ].forEach((neighbor) => {
+        if (cellKeys.has(key(neighbor)) && !visited.has(key(neighbor))) queue.push(neighbor);
+      });
+    }
+
+    expect(visited.size).toBe(cells.length);
+  });
+
+  it('keeps surviving heroes in their assigned cells when a member falls', () => {
     const base = createChroniclesState();
     const full = chroniclesPartyGridFootprint(base);
     const state = {
@@ -85,11 +122,11 @@ describe('Chronicles Tactics party deploy footprint', () => {
     const equivalentState = {
       ...firstState,
       party: firstState.party.map((member) => ({ ...member })),
+      enemyPositions: Object.fromEntries(Object.entries(firstState.enemyPositions || {}).map(([id, cell]) => [id, { ...cell }])),
     };
 
-    const first = chroniclesPartyGridFootprint(firstState);
-    const second = chroniclesPartyGridFootprint(equivalentState);
-
-    expect(second).toEqual(first);
+    expect(chroniclesPartyGridFootprint(equivalentState)).toEqual(
+      chroniclesPartyGridFootprint(firstState),
+    );
   });
 });
