@@ -13,6 +13,19 @@ mock_provider "oci" {
     }
   }
 
+  mock_data "oci_identity_region_subscriptions" {
+    defaults = {
+      region_subscriptions = [
+        {
+          is_home_region = true
+          region_key     = "FRA"
+          region_name    = "eu-frankfurt-1"
+          status         = "READY"
+        },
+      ]
+    }
+  }
+
   mock_data "oci_core_images" {
     defaults = {
       images = [{ id = "ocid1.image.oc1.eu-frankfurt-1.chessstudioauto" }]
