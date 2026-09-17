@@ -9,6 +9,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -31,6 +32,12 @@ OCI_WORKFLOWS = {
     ".github/workflows/oci-staging-deploy.yml",
     ".github/workflows/oci-staging-service.yml",
 }
+K3S_BUNDLE_PATHS = {
+    "scripts/oci_k3s_bundle.py",
+    "infra/oci/k3s/README.md",
+    "infra/oci/k3s/install-k3s-airgap.sh",
+    "infra/oci/k3s/versions.env",
+}
 
 
 def is_oci_path(path: str) -> bool:
@@ -42,6 +49,11 @@ def is_oci_path(path: str) -> bool:
     )
 
 
+def is_k3s_bundle_path(path: str) -> bool:
+    path = path.strip().replace("\\", "/")
+    return path in K3S_BUNDLE_PATHS or path.startswith("infra/oci/k3s/")
+
+
 def self_test() -> None:
     for path in (
         "infra/oci/bootstrap/main.tf",
@@ -51,8 +63,12 @@ def self_test() -> None:
         *sorted(OCI_WORKFLOWS),
     ):
         assert is_oci_path(path), path
+    for path in sorted(K3S_BUNDLE_PATHS):
+        assert is_oci_path(path), path
+        assert is_k3s_bundle_path(path), path
     for path in ("frontend/src/App.jsx", "backend-python/main.py", "infra/cloudflare/main.tf"):
         assert not is_oci_path(path), path
+        assert not is_k3s_bundle_path(path), path
 
 
 def _have_commit(root: Path, sha: str) -> bool:
@@ -112,6 +128,30 @@ def required_in_this_run(root: Path = ROOT) -> bool:
     return required
 
 
+def k3s_bundle_required_in_this_run(root: Path = ROOT) -> bool:
+    override = os.environ.get("OCI_K3S_BUNDLE_REQUIRED", "").lower()
+    if override in {"1", "true", "yes"}:
+        return True
+    if override in {"0", "false", "no"}:
+        return False
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return False
+
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    if event_name == "workflow_dispatch":
+        return True
+    if event_name != "pull_request":
+        return False
+    try:
+        paths = _pr_changed_paths(root)
+    except (KeyError, OSError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+        print(f"K3s bundle scope unreadable; failing closed into bundle validation: {exc}")
+        return True
+    required = any(is_k3s_bundle_path(path) for path in paths)
+    print(f"OCI K3s bundle scope: required={'true' if required else 'false'}")
+    return required
+
+
 def _terraform_binary(root: Path) -> Path:
     machine = platform.machine().lower()
     if machine not in TERRAFORM_ARCHIVE:
@@ -157,6 +197,23 @@ def _secret_surface_guard(root: Path) -> None:
         raise SystemExit("OCI secret-surface guard failed: " + ", ".join(sorted(offenders)))
 
 
+def _run_k3s_bundle_contract(root: Path) -> None:
+    command = [sys.executable, "-S", "scripts/oci_k3s_bundle.py"]
+    subprocess.run([*command, "--self-test"], cwd=root, check=True)
+    with tempfile.TemporaryDirectory(prefix="chess-studio-k3s-ci-") as tmp:
+        subprocess.run([*command, "--output-dir", tmp], cwd=root, check=True)
+        bundles = list(Path(tmp).glob("k3s-airgap-arm64-*.tar.gz"))
+        if len(bundles) != 1:
+            raise SystemExit(f"K3s bundle gate expected one archive, found {len(bundles)}")
+        max_bytes = 300 * 1024 * 1024
+        size = bundles[0].stat().st_size
+        if size > max_bytes:
+            raise SystemExit(
+                f"K3s bundle exceeds zero-cost artifact budget: {size} > {max_bytes} bytes"
+            )
+        print(f"OCI K3s bundle protected gate OK · bytes={size}")
+
+
 def run_required_contracts(root: Path = ROOT) -> None:
     self_test()
     if not required_in_this_run(root):
@@ -172,6 +229,8 @@ def run_required_contracts(root: Path = ROOT) -> None:
     subprocess.run(["bash", "scripts/oci_terraform_static.sh"], cwd=root, env=env, check=True)
     _secret_surface_guard(root)
     subprocess.run(["bash", "scripts/oci_floci_smoke.sh"], cwd=root, env=env, check=True)
+    if k3s_bundle_required_in_this_run(root):
+        _run_k3s_bundle_contract(root)
     print("OCI required contracts OK")
 
 
