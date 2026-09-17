@@ -1,0 +1,319 @@
+{
+  "id": "blind-king-archive",
+  "version": 1,
+  "progressionKey": "blind-king-archive-01",
+  "title": "Archivo del Rey Ciego",
+  "grid": [
+    "###########",
+    "#....#...X#",
+    "#.#..#.#..#",
+    "#.#......##",
+    "#.###.#...#",
+    "#.....#.#.#",
+    "#.###...#.#",
+    "#P........#",
+    "###########"
+  ],
+  "partyStart": { "x": 1, "y": 7, "direction": 1 },
+  "initialFlags": {
+    "archivePlaqueRead": false,
+    "archiveIndexUnlocked": false,
+    "archiveIndexRead": false,
+    "obsidianCacheOpened": false
+  },
+  "enemies": [
+    {
+      "id": "ledger-warden",
+      "visualType": "gate-jailer",
+      "visualScale": 1.04,
+      "visualMotion": "grounded",
+      "name": "guardián del índice",
+      "x": 5,
+      "y": 3,
+      "hpKey": "ledgerWardenHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          { "x": 5, "y": 3 },
+          { "x": 6, "y": 3 },
+          { "x": 7, "y": 3 },
+          { "x": 6, "y": 3 }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba al guardián del índice con {attack}. Del cinturón cae una llave de marfil con más burocracia que filo.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "ivory-index-key",
+            "name": "Llave de Marfil",
+            "description": "Llave estrecha marcada con el sello del Rey Ciego. Abre algo que probablemente habría sido más sano dejar cerrado.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "blind-kings-index",
+            "title": "El índice del Rey Ciego",
+            "description": "El guardián llevaba la llave del mecanismo central del archivo.",
+            "objective": "Usa la Llave de Marfil en el índice sellado.",
+            "order": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "blind-archivist",
+      "visualType": "spectral-bishop",
+      "visualScale": 0.98,
+      "visualMotion": "hover",
+      "name": "archivero ciego",
+      "x": 8,
+      "y": 2,
+      "hpKey": "blindArchivistHp",
+      "maxHp": 7,
+      "retaliation": 2,
+      "retaliationReach": 2,
+      "activation": "always",
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
+    },
+    {
+      "id": "ink-hound",
+      "visualType": "bone-hound",
+      "visualScale": 0.94,
+      "visualMotion": "grounded",
+      "name": "sabueso de tinta",
+      "x": 5,
+      "y": 7,
+      "hpKey": "inkHoundHp",
+      "maxHp": 6,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "catalogue-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.9,
+      "visualMotion": "skitter",
+      "name": "araña catalogadora",
+      "x": 7,
+      "y": 5,
+      "hpKey": "catalogueSpiderHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-roam", "attackReach": 1, "engagedMovement": "cardinal-chase", "engageRange": 3 }
+    },
+    {
+      "id": "archive-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.8,
+      "visualMotion": "hover",
+      "name": "lámpara sin bibliotecario",
+      "x": 8,
+      "y": 1,
+      "hpKey": "archiveWispHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "message": "{attacker} apaga la lámpara errante con {attack}. La llama deja una gota de vidrio negro todavía tibia.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "black-glass-drop",
+            "name": "Gota de Vidrio Negro",
+            "description": "Una lágrima de vidrio templado por fuego espectral. No abre la salida; sí demuestra que te desviaste por gusto.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "archive-plaque",
+      "kind": "lore",
+      "x": 1,
+      "y": 7,
+      "label": "Leer protocolo del archivo",
+      "when": [
+        { "key": "archivePlaqueRead", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "archivePlaqueRead", "value": true },
+          {
+            "type": "start-quest",
+            "questId": "blind-kings-index",
+            "title": "El índice del Rey Ciego",
+            "description": "El archivo está dividido en alas y su índice central permanece bloqueado por un guardián con llave propia.",
+            "objective": "Derriba al Guardián del Índice y recupera la Llave de Marfil.",
+            "order": 50
+          }
+        ],
+        "message": "El protocolo exige llave, índice, cuatro sellos y silencio. Matthias cumple sólo una de esas condiciones y por accidente.",
+        "journal": {
+          "id": "blind-archive-protocol",
+          "title": "El protocolo del Rey Ciego",
+          "body": "El índice central gobierna el archivo. Su guardián porta una llave de marfil y el ala oriental conserva el registro final.",
+          "sigil": "V"
+        }
+      }
+    },
+    {
+      "id": "sealed-index",
+      "kind": "lever",
+      "visualType": "lever",
+      "x": 6,
+      "y": 3,
+      "label": "Desbloquear índice sellado",
+      "when": [
+        { "itemId": "ivory-index-key", "quantity": 1 },
+        { "key": "archiveIndexUnlocked", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "consume-item", "itemId": "ivory-index-key", "quantity": 1 },
+          { "type": "set", "key": "archiveIndexUnlocked", "value": true },
+          {
+            "type": "advance-quest",
+            "questId": "blind-kings-index",
+            "title": "El índice del Rey Ciego",
+            "description": "La Llave de Marfil libera el mecanismo del índice y señala un registro en el ala oriental.",
+            "objective": "Llega al ala oriental y recupera el Índice Ciego.",
+            "order": 50
+          }
+        ],
+        "message": "La llave gira y media pared empieza a clasificarte como intruso prioritario. Al menos el índice ya apunta hacia el ala este.",
+        "journal": {
+          "id": "blind-index-unlocked",
+          "title": "El índice despierta",
+          "body": "El mecanismo central se abre y señala un volumen negro en el ala oriental del archivo.",
+          "sigil": "V"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "blind-index",
+      "kind": "pickup",
+      "visualType": "ash-reliquary",
+      "x": 8,
+      "y": 4,
+      "label": "Recuperar Índice Ciego",
+      "when": [
+        { "key": "archiveIndexUnlocked", "equals": true },
+        { "key": "ledgerWardenHp", "lte": 0 },
+        { "key": "blindArchivistHp", "lte": 0 },
+        { "key": "inkHoundHp", "lte": 0 },
+        { "key": "catalogueSpiderHp", "lte": 0 },
+        { "key": "archiveIndexRead", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "archiveIndexRead", "value": true },
+          {
+            "type": "grant-item",
+            "itemId": "blind-king-seal",
+            "name": "Sello del Rey Ciego",
+            "description": "Una placa de metal frío que certifica que el archivo te ha leído tanto como tú a él.",
+            "quantity": 1
+          },
+          { "type": "heal-party", "amount": 1 },
+          { "type": "refill-class-abilities" },
+          {
+            "type": "complete-quest",
+            "questId": "blind-kings-index",
+            "title": "El índice del Rey Ciego",
+            "description": "La compañía recuperó el Índice Ciego y abrió la salida oriental.",
+            "objective": "Índice recuperado. Busca la salida.",
+            "order": 50
+          }
+        ],
+        "message": "El volumen negro se abre sin páginas: sólo placas móviles, nombres borrados y un Sello del Rey Ciego. Matthias lo llama biblioteca minimalista para no decir maldita.",
+        "journal": {
+          "id": "blind-index-recovered",
+          "title": "El libro sin páginas",
+          "body": "El Índice Ciego entrega un sello metálico y libera el paso oriental del archivo.",
+          "sigil": "V"
+        }
+      }
+    },
+    {
+      "id": "obsidian-index-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 7,
+      "y": 1,
+      "label": "Encajar Ídolo de Obsidiana",
+      "when": [
+        { "itemId": "obsidian-idol", "quantity": 1 },
+        { "key": "obsidianCacheOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "obsidianCacheOpened", "value": true },
+          {
+            "type": "grant-item",
+            "itemId": "royal-cipher",
+            "name": "Cifra Real",
+            "description": "Una tablilla cifrada que sólo aparece para quien encontró la cámara secreta anterior. Botín de rutas sospechosamente bien aprovechadas.",
+            "quantity": 1
+          },
+          { "type": "heal-party", "amount": 1 }
+        ],
+        "message": "El ídolo encaja en un hueco que parecía decorativo. El muro entrega una Cifra Real y confirma que la arquitectura también sabe guardar rencor.",
+        "journal": {
+          "id": "obsidian-cache-opened",
+          "title": "El premio por no obedecer el mapa",
+          "body": "El Ídolo de Obsidiana abre un alijo reservado a quienes llegaron al archivo por la ruta secreta.",
+          "sigil": "◆"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "archive-east-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abandonar el Archivo del Rey Ciego",
+      "lockedLabel": "Examinar salida oriental",
+      "requirements": [
+        { "key": "archiveIndexRead", "equals": true, "message": "El Índice Ciego aún mantiene sellada la salida." }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "phase", "value": "escaped" }
+        ],
+        "message": "El sello responde. La puerta oriental se abre y la compañía deja atrás un archivo que, técnicamente, ha tomado más notas sobre ellos que al revés.",
+        "journal": {
+          "id": "blind-archive-cleared",
+          "title": "El Rey Ciego ya tiene expediente",
+          "body": "La compañía abandona el archivo con el sello, el índice resuelto y quizá varios objetos que ningún inventario oficial reconoce.",
+          "sigil": "XIII"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "blind-archive-entry",
+    "title": "Archivo del Rey Ciego",
+    "body": "Estanterías de piedra parten la sala en alas estrechas. Algo patrulla el índice central y algo peor espera donde termina la luz.",
+    "sigil": "XIII"
+  },
+  "introMessage": "Archivo del Rey Ciego. Aquí hasta las estanterías parecen tomar notas. Qué sitio tan desagradablemente organizado."
+}

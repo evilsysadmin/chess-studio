@@ -8,12 +8,13 @@ import {
 } from './chroniclesMapCatalog.js';
 
 describe('Chronicles multi-map campaign', () => {
-  it('registers four standalone authored encounters with distinct content', () => {
+  it('registers five standalone authored encounters with distinct content', () => {
     expect(chroniclesMapIds()).toEqual(expect.arrayContaining([
       'crypt-eight-squares',
       'gallery-of-forks',
       'menagerie-of-ash',
       'ash-vault',
+      'blind-king-archive',
     ]));
 
     const gallery = chroniclesMapById('gallery-of-forks');
@@ -26,7 +27,7 @@ describe('Chronicles multi-map campaign', () => {
     const menagerie = chroniclesMapById('menagerie-of-ash');
     const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
     const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
-    expect(menagerie.version).toBe(4);
+    expect(menagerie.version).toBe(5);
     expect(menagerie.enemies).toHaveLength(4);
     expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
     expect(menagerie.interactables.map((entry) => entry.id)).toEqual(expect.arrayContaining([
@@ -42,6 +43,15 @@ describe('Chronicles multi-map campaign', () => {
     expect(vault.grid[0]).toHaveLength(9);
     expect(vault.enemies).toHaveLength(4);
     expect(vault.treasures.map((entry) => entry.id)).toContain('ash-reliquary');
+
+    const archive = chroniclesMapById('blind-king-archive');
+    expect(archive.title).toBe('Archivo del Rey Ciego');
+    expect(archive.grid[0]).toHaveLength(11);
+    expect(archive.enemies).toHaveLength(5);
+    expect(archive.treasures.map((entry) => entry.id)).toEqual(expect.arrayContaining([
+      'blind-index',
+      'obsidian-index-cache',
+    ]));
   });
 
   it('crosses the Black Gate into Gallery without resetting the surviving party or journal', () => {
@@ -107,7 +117,7 @@ describe('Chronicles multi-map campaign', () => {
     expect(next.journal.at(-1)?.id).toBe('gallery-menagerie-crossing');
   });
 
-  it('can finish Menagerie while both optional side routes remain untouched', () => {
+  it('continues from Menagerie while both optional side routes remain untouched', () => {
     const menagerieState = chroniclesMapTransitionState(createChroniclesState(), 'menagerie-of-ash');
     const readyToLeave = {
       ...menagerieState,
@@ -119,14 +129,14 @@ describe('Chronicles multi-map campaign', () => {
       emberWispHp: 4,
     };
 
-    const escaped = chroniclesTacticsUse(readyToLeave, 'menagerie-gate');
+    const next = chroniclesTacticsUse(readyToLeave, 'menagerie-gate');
 
-    expect(escaped.mapId).toBe('menagerie-of-ash');
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.emberWispHp).toBe(4);
-    expect(escaped.inventory).toBeUndefined();
-    expect(escaped.quests).toBeUndefined();
-    expect(escaped.message).toMatch(/cruza el portón/i);
-    expect(escaped.journal.at(-1)?.id).toBe('menagerie-cleared');
+    expect(next.mapId).toBe('blind-king-archive');
+    expect(next.phase).toBe('explore');
+    expect(next.archiveWispHp).toBe(4);
+    expect(next.inventory).toBeUndefined();
+    expect(next.quests).toBeUndefined();
+    expect(next.message).toMatch(/archivo enterrado/i);
+    expect(next.journal.at(-1)?.id).toBe('menagerie-archive-crossing');
   });
 });
