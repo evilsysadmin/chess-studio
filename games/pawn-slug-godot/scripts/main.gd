@@ -1,5 +1,6 @@
 extends Node2D
 
+const EnemyArt := preload("res://scripts/enemy_art.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
@@ -48,12 +49,16 @@ var pickups: Array[Dictionary] = [
     {"x": 2470.0, "type": "shotgun", "taken": false},
     {"x": 3500.0, "type": "panzerfaust", "taken": false},
 ]
+var _enemy_art
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 
 func _ready() -> void:
     enemies = _build_enemy_roster()
+    _enemy_art = EnemyArt.new()
+    _enemy_art.name = "EnemyArt"
+    add_child(_enemy_art)
     player.connect("fired", Callable(self, "_on_player_fired"))
     player.connect("hurt", Callable(self, "_on_player_hurt"))
     player.connect("died", Callable(self, "_on_player_died"))
@@ -69,6 +74,8 @@ func _process(delta: float) -> void:
     _update_enemies(delta)
     _update_enemy_projectiles(delta)
     _update_pickups()
+    if _enemy_art != null:
+        _enemy_art.sync(enemies, player.global_position.x, delta)
     queue_redraw()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -361,22 +368,24 @@ func _draw_enemies() -> void:
             continue
         var rect := _enemy_rect(enemy)
         var type := String(enemy["type"])
-        var body_color := Color("633c35")
-        match type:
-            "knight":
-                body_color = Color("4e5965")
-            "rook":
-                body_color = Color("3e454a")
-            "bishop":
-                body_color = Color("5f4869")
-        draw_rect(rect, body_color, true)
-        var head_radius := minf(24.0, rect.size.x * 0.38)
-        draw_circle(Vector2(rect.get_center().x, rect.position.y - head_radius * 0.35), head_radius, Color("c8ad8a"))
-        var facing := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
-        var gun_origin := Vector2(rect.get_center().x + facing * rect.size.x * 0.18, rect.position.y + rect.size.y * 0.42)
-        var gun_length := 42.0 if String(enemy["weapon"]) != "panzerfaust" else 54.0
-        var gun_width := 6.0 if String(enemy["weapon"]) != "panzerfaust" else 10.0
-        draw_line(gun_origin, gun_origin + Vector2(facing * gun_length, 0.0), Color("a4abb1"), gun_width)
+        var atlas_draws_body := _enemy_art != null and _enemy_art.ready() and _enemy_art.supports_type(type)
+        if not atlas_draws_body:
+            var body_color := Color("633c35")
+            match type:
+                "knight":
+                    body_color = Color("4e5965")
+                "rook":
+                    body_color = Color("3e454a")
+                "bishop":
+                    body_color = Color("5f4869")
+            draw_rect(rect, body_color, true)
+            var head_radius := minf(24.0, rect.size.x * 0.38)
+            draw_circle(Vector2(rect.get_center().x, rect.position.y - head_radius * 0.35), head_radius, Color("c8ad8a"))
+            var facing := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
+            var gun_origin := Vector2(rect.get_center().x + facing * rect.size.x * 0.18, rect.position.y + rect.size.y * 0.42)
+            var gun_length := 42.0 if String(enemy["weapon"]) != "panzerfaust" else 54.0
+            var gun_width := 6.0 if String(enemy["weapon"]) != "panzerfaust" else 10.0
+            draw_line(gun_origin, gun_origin + Vector2(facing * gun_length, 0.0), Color("a4abb1"), gun_width)
 
         var hp_width := maxf(44.0, rect.size.x)
         var hp_ratio := clampf(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
