@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { BASE_STATS, derivedLevel } from './combat.js';
+import { chooseCombatCandidate } from './combatExpectedUtility.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
 export const STATUS_LABELS = Object.freeze({
@@ -81,13 +82,23 @@ export function emergencyCombatCpuSuggestion(fen) {
   }
 }
 
+// Backward-compatible seam for the future candidate endpoint. Today /analyze
+// returns one move, which passes through unchanged. Once Combat receives a
+// factual candidate set, only this mode will apply the expected-utility policy.
+export function selectCombatAwareRemoteSuggestion(remote) {
+  const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
+  if (!candidates?.length) return remote;
+  return chooseCombatCandidate(candidates);
+}
+
 // Política de disponibilidad del turno CPU: el análisis remoto mejora la
 // calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
 // Este helper hace el fail-open comprobable con tests sin montar React.
 export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition }) {
   let remoteError = null;
   try {
-    const remote = await analyzePosition(fen, difficulty);
+    const response = await analyzePosition(fen, difficulty);
+    const remote = selectCombatAwareRemoteSuggestion(response);
     if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
     return { suggestion: remote, source: 'remote', remoteError: null };
   } catch (error) {
