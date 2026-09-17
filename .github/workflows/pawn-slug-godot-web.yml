@@ -64,13 +64,14 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7
-      - name: Cache pinned Godot editor and Web template
+      - name: Cache pinned Godot editor and Web templates
         uses: actions/cache@v6
         with:
           path: |
             .godot-ci/${{ env.GODOT_VERSION }}
-            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_release.zip
-          key: pawn-slug-godot-web-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-web-only-v2
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_debug.zip
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_release.zip
+          key: pawn-slug-godot-web-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-nothreads-v3
       - name: Install pinned Godot editor
         shell: bash
         run: |
@@ -89,13 +90,14 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
-      - name: Install pinned Godot Web export template
+      - name: Install pinned Godot Web export templates
         shell: bash
         run: |
           set -euo pipefail
           template_dir="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_VERSION"
-          template="$template_dir/web_release.zip"
-          if [[ ! -f "$template" ]]; then
+          debug_template="$template_dir/web_nothreads_debug.zip"
+          release_template="$template_dir/web_nothreads_release.zip"
+          if [[ ! -f "$debug_template" || ! -f "$release_template" ]]; then
             archive="$RUNNER_TEMP/godot-templates.tpz"
             unpack="$RUNNER_TEMP/godot-templates"
             rm -rf "$unpack"
@@ -104,10 +106,15 @@ jobs:
               -o "$archive"
             echo "$GODOT_TEMPLATES_SHA256  $archive" | sha256sum -c -
             mkdir -p "$template_dir" "$unpack"
-            unzip -q "$archive" templates/web_release.zip -d "$unpack"
-            install -m 0644 "$unpack/templates/web_release.zip" "$template"
+            unzip -q "$archive" \
+              templates/web_nothreads_debug.zip \
+              templates/web_nothreads_release.zip \
+              -d "$unpack"
+            install -m 0644 "$unpack/templates/web_nothreads_debug.zip" "$debug_template"
+            install -m 0644 "$unpack/templates/web_nothreads_release.zip" "$release_template"
           fi
-          test -s "$template"
+          test -s "$debug_template"
+          test -s "$release_template"
       - name: Export Godot Web release
         shell: bash
         run: |
