@@ -10,7 +10,7 @@ export const FRONTEND_CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-src 'none'",
+  "frame-src 'self' https://assets.chess-studio.shadowops.dpdns.org",
   "script-src 'self' 'wasm-unsafe-eval'",
   "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
