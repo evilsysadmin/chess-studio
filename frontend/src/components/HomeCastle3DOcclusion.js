@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyHomeCastleBackgroundCleanPatches } from './HomeCastle3DCleanPatches.js';
 
 function clamp01(value) {
   return THREE.MathUtils.clamp(value, 0, 1);
@@ -34,5 +35,10 @@ export function applyCanonicalHallOcclusion(geometry) {
     colors[(index * 3) + 2] = shade;
   }
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  // The pilot clean plate lives on the same warped geometry as the hall art.
+  // Apply it only after occlusion has been derived from canonical UVs so light
+  // shaping stays spatially stable while the painted tournament prop disappears.
+  applyHomeCastleBackgroundCleanPatches(geometry);
   return geometry;
 }
