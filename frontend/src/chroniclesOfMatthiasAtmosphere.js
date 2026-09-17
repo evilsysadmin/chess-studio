@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 import { buildChroniclesDungeonCeiling } from './chroniclesOfMatthiasCeiling.js';
 import { buildChroniclesSurfacePatina } from './chroniclesOfMatthiasSurfacePatina.js';
 
@@ -13,14 +13,8 @@ function unitNoise(index, salt) {
   return ((value ^ (value >>> 16)) >>> 0) / 0xffffffff;
 }
 
-function walkableCells() {
-  const cells = [];
-  CHRONICLES_MAP.forEach((row, y) => {
-    [...row].forEach((tile, x) => {
-      if (tile !== '#') cells.push({ x, y });
-    });
-  });
-  return cells;
+function walkableCells(scenePlan) {
+  return (scenePlan?.floors || []).map(({ x, y }) => ({ x, y }));
 }
 
 function createSoftMistTexture(size = 48) {
@@ -52,16 +46,17 @@ function createSoftMistTexture(size = 48) {
   return texture;
 }
 
-function createDust(count) {
-  const cells = walkableCells();
+function createDust(count, scenePlan) {
+  const cells = walkableCells(scenePlan);
   const positions = new Float32Array(count * 3);
   const baseY = new Float32Array(count);
   const phases = new Float32Array(count);
+  const center = scenePlan?.center || { x: 0, y: 0 };
 
   for (let index = 0; index < count; index += 1) {
     const cell = cells[index % cells.length];
-    const wx = (cell.x - 3) * CELL;
-    const wz = (cell.y - 3) * CELL;
+    const wx = (cell.x - center.x) * CELL;
+    const wz = (cell.y - center.y) * CELL;
     const x = wx + (unitNoise(index, 3) - 0.5) * 3.05;
     const y = 0.34 + unitNoise(index, 7) * 2.75;
     const z = wz + (unitNoise(index, 11) - 0.5) * 3.05;
@@ -206,15 +201,19 @@ function addReadabilityLighting(root, { coarsePointer }) {
   };
 }
 
-export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {
+export function buildChroniclesDungeonAtmosphere({
+  coarsePointer = false,
+  reducedMotion = false,
+  scenePlan = chroniclesIsometricScenePlan(),
+} = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-atmosphere';
-  root.add(buildChroniclesDungeonCeiling({ coarsePointer }));
+  root.add(buildChroniclesDungeonCeiling({ coarsePointer, scenePlan }));
   root.add(buildChroniclesSurfacePatina({ coarsePointer }));
   const readabilityLighting = addReadabilityLighting(root, { coarsePointer });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
-  const dustData = createDust(dustCount);
+  const dustData = createDust(dustCount, scenePlan);
   const dustMaterial = new THREE.PointsMaterial({
     color: coarsePointer ? 0xb8b3a8 : 0xd1c2ad,
     size: coarsePointer ? 0.025 : 0.035,
