@@ -146,28 +146,7 @@ jobs:
         id: smoke
         if: inputs.operation == 'smoke' || inputs.operation == 'reboot-agent' || inputs.operation == 'bringup'
         continue-on-error: ${{ inputs.operation == 'bringup' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 30); do
-            log="${RUNNER_TEMP}/oci-agent-smoke-${attempt}.log"
-            set +e
-            python3 scripts/oci_run_command.py smoke >"$log" 2>&1
-            rc=$?
-            set -e
-
-            if [[ "$rc" -eq 0 ]]; then
-              cat "$log"
-              exit 0
-            fi
-            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 30 ]]; then
-              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/30); retrying in 10s"
-              sleep 10
-              continue
-            fi
-            cat "$log"
-            exit "$rc"
-          done
+        run: python3 scripts/oci_run_command.py smoke
 
       - name: Explain tolerated bringup host-contract drift
         if: inputs.operation == 'bringup' && steps.smoke.outcome == 'failure'
