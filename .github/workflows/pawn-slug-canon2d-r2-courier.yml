@@ -1,0 +1,59 @@
+name: Pawn Slug · canon2d R2 courier
+
+on:
+  push:
+    branches:
+      - ops/pawn-slug-r2-courier-canon2d
+    paths:
+      - '.github/workflows/pawn-slug-canon2d-r2-courier.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+      OUT: /tmp/matthias_approved_canonical_2d_v1.webp
+    steps:
+      - uses: actions/checkout@v7
+      - name: Reassemble approved canonical atlas from unreachable blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$OUT"
+          for SHA in \
+            7a00a9007a71358f1c74609641f799cbf6208690 \
+            f78d2f5f684e885787903e434c28cf24bfa7ffbf \
+            a7db2d2ea5c67c8b2cd420beb7351fed5043f5b3 \
+            2c89f5d6ea19fdd333a60533de839ee83f731c27
+          do
+            gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${SHA}" --jq .content \
+              | tr -d '\n' \
+              | base64 --decode >> "$OUT"
+          done
+          test "$(stat -c %s "$OUT")" = "203850"
+          echo "f1e4b6ceebd20b358c6a540e71333501ff9a49a89eb81c3c62ad9cf540ed7d3e  $OUT" | sha256sum -c -
+      - name: Publish immutable atlas to Cloudflare R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$OUT" \
+            --logical-id "pawnSlug.matthias.canonical2d" \
+            --prefix "pawn-slug/matthias/canonical-2d" \
+            | tee /tmp/pawn-slug-canon2d-r2-publish.txt
+          python3 -S scripts/r2_asset_publish.py check-manifest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-canon2d-r2-publish-${{ github.run_number }}
+          path: |
+            frontend/src/assets/r2-assets-manifest.json
+            /tmp/pawn-slug-canon2d-r2-publish.txt
+          if-no-files-found: error
+          retention-days: 7
