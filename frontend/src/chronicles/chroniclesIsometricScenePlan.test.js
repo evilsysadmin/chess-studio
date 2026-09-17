@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { chroniclesMapById } from './chroniclesMapCatalog.js';
-import { chroniclesIsometricScenePlan } from './chroniclesIsometricScenePlan.js';
+import {
+  chroniclesIsometricCellToWorld,
+  chroniclesIsometricScenePlan,
+} from './chroniclesIsometricScenePlan.js';
 
 describe('Chronicles isometric scene plan', () => {
   it('derives topology and authored props from the active map', () => {
@@ -35,6 +38,30 @@ describe('Chronicles isometric scene plan', () => {
       'gallery-relic',
       'gallery-gate',
     ]);
+  });
+
+  it('derives world coordinates from the active scene center instead of a 7x7 constant', () => {
+    const plan = chroniclesIsometricScenePlan({
+      id: 'small-test-room',
+      title: 'Small test room',
+      grid: [
+        '#####',
+        '#...#',
+        '#####',
+      ],
+      partyStart: { x: 1, y: 1 },
+      enemies: [],
+      triggers: [],
+      interactables: [],
+      treasures: [],
+      traps: [],
+      exits: [],
+    });
+
+    expect(plan.center).toEqual({ x: 2, y: 1 });
+    expect(chroniclesIsometricCellToWorld(plan, 2, 1, 2)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(chroniclesIsometricCellToWorld(plan, 4, 2, 2)).toEqual({ x: 4, y: 0, z: 2 });
+    expect(chroniclesIsometricCellToWorld(plan, 0, 0, 2)).toEqual({ x: -4, y: 0, z: -2 });
   });
 
   it('derives prop visibility from authored when rules instead of renderer flag names', () => {
