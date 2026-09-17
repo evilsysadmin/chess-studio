@@ -16,6 +16,7 @@ import './LabWorkshopHotfix.css';
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlug = lazy(() => import('./PawnSlug.jsx'));
+const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
 const ChroniclesOfMatthiasTactics = lazy(() => import('./ChroniclesOfMatthiasTactics.jsx'));
@@ -44,7 +45,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -78,6 +79,7 @@ export default function LabScreen({ onExit, onStart }){
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug') return <Suspense fallback={<LabModeFallback />}><PawnSlug onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
@@ -131,6 +133,12 @@ export default function LabScreen({ onExit, onStart }){
               <strong>Pawn Slug</strong>
               <span>Run & gun corto y brutal. Matthias, cuatro armas y un Panzer‑Rook que ha elegido la violencia administrativa.</span>
               <b>Entrar en la operación</b>
+            </button>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--pawnslug-godot" data-glyph="G" onClick={()=>setLabMode('pawnslug-godot')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
+              <strong>PAWN SLUG GODOT</strong>
+              <span>Reemplazo experimental con motor de juego propio: Godot manda; React sólo abre la puerta.</span>
+              <b>Probar el nuevo runtime</b>
             </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>
