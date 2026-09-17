@@ -90,7 +90,7 @@ jobs:
     if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    # Serialize application deploys with the push-triggered Terraform auto-apply
+    # Serialize application deploys with explicit Terraform infrastructure work
     # using Actions' repository-wide concurrency primitive instead of polling the
     # workflow-runs API from inside the job.
     concurrency:
@@ -147,12 +147,6 @@ jobs:
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
-
-      - name: Publish private OCI runtime config for deploy
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 scripts/oci_runtime_config.py publish
 
       - name: Deploy exact backend commit to OCI staging
         shell: bash
@@ -472,7 +466,7 @@ jobs:
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
-            echo '- OCI runtime config: `publicado antes del deploy; instalado una sola vez por el deploy exacto`'
+            echo '- OCI runtime config: `bundle privado persistente; cambios explícitos vía OCI staging · service control → runtime-sync`'
             echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
