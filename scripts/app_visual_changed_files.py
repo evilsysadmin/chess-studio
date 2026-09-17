@@ -32,6 +32,18 @@ def _is_matthias_canonical_owner(path: str) -> bool:
     )
 
 
+def _is_app_visual_e2e(path: str) -> bool:
+    """Keep only E2E files that the app-visual workflow itself owns."""
+    lower = path.lower().replace("\\", "/")
+    if not lower.startswith("e2e/"):
+        return False
+    name = lower.rsplit("/", 1)[-1]
+    return (
+        ("visual" in name and name.endswith(".spec.js"))
+        or (name.startswith("browser-") and name.endswith("-health.spec.js"))
+    )
+
+
 def normalize(paths: list[str]) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
@@ -46,6 +58,12 @@ def normalize(paths: list[str]) -> list[str]:
         if not path:
             continue
         lower = path.lower()
+        # A push may contain functional E2E changes alongside one real visual
+        # owner. Those functional specs are not part of this workflow's trigger
+        # surface and must not turn a focused capture into the fail-closed full
+        # visual suite. Visual/health E2E files remain explicit owners.
+        if lower.startswith("e2e/") and not _is_app_visual_e2e(path):
+            continue
         if _is_matthias_canonical_owner(path):
             # Home and Chronicles Tactics both render this GLB. Emit the runtime
             # asset plus one stable Chronicles owner so the existing classifiers
@@ -88,6 +106,25 @@ def self_test() -> None:
     pawn_slug_pow_sources = [PAWN_SLUG_POW_BLEND, PAWN_SLUG_POW_MODEL, PAWN_SLUG_POW_BUILDER]
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
+
+    # Functional browser tests can travel in the same commit as a visual owner,
+    # but app-visual does not own them and must not fail closed to every surface.
+    assert normalize([
+        "e2e/chronicles-of-matthias-tactics.spec.js",
+        "frontend/src/chroniclesTacticsTurnMode.js",
+    ]) == ["frontend/src/chroniclesTacticsTurnMode.js"]
+    assert normalize(["e2e/regression-journeys.spec.js"]) == []
+
+    # Visual artifacts and browser-health specs are explicit workflow owners and
+    # therefore must survive normalization unchanged.
+    for owned_e2e in (
+        "e2e/chronicles-tactics-visual-artifact.spec.js",
+        "e2e/app-visual-artifact.spec.js",
+        "e2e/browser-runtime-health.spec.js",
+        "e2e/browser-storage-health.spec.js",
+    ):
+        assert normalize([owned_e2e]) == [owned_e2e]
+
     print("app visual changed-file normalization self-test: OK")
 
 
