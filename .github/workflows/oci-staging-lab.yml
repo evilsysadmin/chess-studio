@@ -6,7 +6,7 @@ on:
       operation:
         description: Terraform operation
         type: choice
-        options: [probe, plan, apply, bootstrap, destroy]
+        options: [probe, plan, bootstrap, destroy]
         default: probe
         required: true
       availability_domain:
