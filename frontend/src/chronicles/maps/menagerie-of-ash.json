@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 3,
+  "version": 4,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -15,7 +15,8 @@
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
   "initialFlags": {
     "emberClueRead": false,
-    "emberCacheOpened": false
+    "emberCacheOpened": false,
+    "ashDoorFound": false
   },
   "enemies": [
     {
@@ -143,6 +144,69 @@
           "sigil": "✦"
         }
       }
+    },
+    {
+      "id": "ash-wall-seam",
+      "kind": "lore",
+      "x": 1,
+      "y": 3,
+      "label": "Examinar junta ennegrecida",
+      "when": [
+        { "key": "emberCacheOpened", "equals": true },
+        { "key": "ashDoorFound", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "ashDoorFound", "value": true },
+          {
+            "type": "start-quest",
+            "questId": "behind-the-ash-wall",
+            "title": "Tras el muro de ceniza",
+            "description": "La llave hallada en el alijo coincide con una cerradura oculta tras una junta del muro occidental.",
+            "objective": "Abre la puerta oculta de la Menagerie.",
+            "order": 40
+          }
+        ],
+        "message": "La junta cede medio dedo. Detrás hay hierro, una cerradura y el tipo de silencio que suele cobrar entrada.",
+        "journal": {
+          "id": "ash-wall-found",
+          "title": "Una pared con antecedentes",
+          "body": "Tras el mortero de la pared occidental aparece una puerta estrecha. La Llave de Escoria parece haber estado esperando este momento con inquietante paciencia.",
+          "sigil": "◇"
+        }
+      }
+    },
+    {
+      "id": "ash-secret-door",
+      "kind": "secret-door",
+      "x": 1,
+      "y": 3,
+      "label": "Abrir puerta oculta",
+      "when": [
+        { "key": "ashDoorFound", "equals": true },
+        { "itemId": "cinder-key", "quantity": 1 }
+      ],
+      "action": {
+        "effects": [
+          { "type": "consume-item", "itemId": "cinder-key", "quantity": 1 },
+          {
+            "type": "advance-quest",
+            "questId": "behind-the-ash-wall",
+            "title": "Tras el muro de ceniza",
+            "description": "La puerta secreta conduce a una cámara que no figura en ningún plano decente.",
+            "objective": "Saquea la Cámara de Ceniza y encuentra una salida.",
+            "order": 40
+          },
+          { "type": "transition-map", "mapId": "ash-vault" }
+        ],
+        "message": "La Llave de Escoria gira. Parte del muro se retrae y revela una cámara olvidada. Matthias sonríe como alguien que acaba de encontrar trabajo no facturado.",
+        "journal": {
+          "id": "ash-secret-door-opened",
+          "title": "Tras la pared",
+          "body": "La compañía abre el pasadizo secreto de la Menagerie y entra en una cámara sellada durante demasiado tiempo.",
+          "sigil": "◇"
+        }
+      }
     }
   ],
   "treasures": [
@@ -164,6 +228,13 @@
           { "type": "heal-party", "amount": 2 },
           { "type": "refill-class-abilities" },
           {
+            "type": "grant-item",
+            "itemId": "cinder-key",
+            "name": "Llave de Escoria",
+            "description": "Una llave corta, ennegrecida y demasiado pesada. Tiene polvo de mortero en los dientes.",
+            "quantity": 1
+          },
+          {
             "type": "complete-quest",
             "questId": "embers-under-stone",
             "title": "Brasa bajo piedra",
@@ -172,11 +243,11 @@
             "order": 30
           }
         ],
-        "message": "El fragmento encaja. La piedra tose calor, vendas secas y suficiente energía arcana para volver a cometer errores con las habilidades cargadas.",
+        "message": "El fragmento encaja. La piedra tose calor, vendas secas, energía arcana y una llave de escoria que nadie recuerda haber pedido.",
         "journal": {
           "id": "ember-cache-opened",
           "title": "El alijo de brasa",
-          "body": "La brasa del fuego fatuo abre un escondrijo antiguo. La compañía recupera fuerzas y carga sus recursos antes de seguir bajando.",
+          "body": "La brasa del fuego fatuo abre un escondrijo antiguo. Entre suministros y energía aparece una pesada Llave de Escoria cubierta de mortero.",
           "sigil": "✦"
         }
       }
