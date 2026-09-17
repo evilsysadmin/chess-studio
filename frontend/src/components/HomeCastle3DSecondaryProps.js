@@ -158,23 +158,27 @@ function createCombatHeraldry(resources) {
   mount.rotation.x = Math.PI / 2;
   mount.position.z = -0.022;
 
-  const createSword = (rotationZ) => {
+  const createSword = (side, rotationZ) => {
     const sword = new THREE.Group();
+    sword.name = `home-castle-combat-${side}-sword`;
     sword.rotation.z = rotationZ;
     sword.position.z = -0.006;
 
     const blade = new THREE.Mesh(bladeGeometry, steel);
+    blade.name = `home-castle-combat-${side}-blade`;
     blade.position.y = 0.018;
     const guard = new THREE.Mesh(guardGeometry, brass);
+    guard.name = `home-castle-combat-${side}-guard`;
     guard.position.y = -0.056;
     const grip = new THREE.Mesh(gripGeometry, darkSteel);
+    grip.name = `home-castle-combat-${side}-grip`;
     grip.position.y = -0.077;
     sword.add(blade, guard, grip);
     return sword;
   };
 
-  const leftSword = createSword(-0.64);
-  const rightSword = createSword(0.64);
+  const leftSword = createSword('left', -0.64);
+  const rightSword = createSword('right', 0.64);
 
   const shield = new THREE.Mesh(shieldGeometry, darkSteel);
   shield.name = 'home-castle-combat-shield';
@@ -183,6 +187,7 @@ function createCombatHeraldry(resources) {
   shield.position.z = 0.008;
 
   const boss = new THREE.Mesh(bossGeometry, brass);
+  boss.name = 'home-castle-combat-boss';
   boss.position.z = 0.02;
   boss.rotation.x = Math.PI / 2;
 

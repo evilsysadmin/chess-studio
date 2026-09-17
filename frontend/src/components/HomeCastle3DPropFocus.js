@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hydrateHomeCastleCombatHeraldry } from './HomeCastle3DCombatAsset.js';
 import { hydrateHomeCastleTournamentCup } from './HomeCastle3DTournamentAsset.js';
 
 export const HOME_CASTLE_PROP_FOCUS_LERP = 0.18;
@@ -10,6 +11,7 @@ export const HOME_CASTLE_PROP_FOCUS_DEPTH = 0.018;
 export const HOME_CASTLE_PROP_FOCUS_TILT = 0.028;
 
 const tournamentHydration = new WeakMap();
+const combatHydration = new WeakMap();
 
 function materialTarget(base, focused) {
   if (!focused) return base;
@@ -92,6 +94,32 @@ function ensureTournamentAsset(room, group) {
     });
 }
 
+function ensureCombatAsset(room, group) {
+  if (
+    room !== 'combat'
+    || group?.name !== 'home-castle-prop-combat'
+    || group?.userData?.destination !== 'combat'
+    || combatHydration.has(group)
+  ) {
+    return;
+  }
+
+  const state = { status: 'loading' };
+  combatHydration.set(group, state);
+  group.userData.homeCastleCombatAssetStatus = state.status;
+
+  Promise.resolve()
+    .then(() => hydrateHomeCastleCombatHeraldry(group))
+    .then((hydrated) => {
+      state.status = hydrated ? 'ready' : 'fallback';
+      group.userData.homeCastleCombatAssetStatus = state.status;
+    })
+    .catch(() => {
+      state.status = 'fallback';
+      group.userData.homeCastleCombatAssetStatus = state.status;
+    });
+}
+
 export function applyHomeCastleDestinationPropFocus(
   propsByRoom,
   activeRoom,
@@ -99,6 +127,7 @@ export function applyHomeCastleDestinationPropFocus(
 ) {
   for (const [room, group] of Object.entries(propsByRoom || {})) {
     ensureTournamentAsset(room, group);
+    ensureCombatAsset(room, group);
     const focused = room === activeRoom;
     applyPhysicalFocus(group, focused, reducedMotion);
     for (const material of focusableMaterials(group)) {
