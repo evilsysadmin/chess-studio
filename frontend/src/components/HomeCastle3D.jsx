@@ -20,6 +20,11 @@ import { createHomeCastleSecondaryDestinationProps } from './HomeCastle3DSeconda
 import { createHomeCastleUtilityDestinationProps } from './HomeCastle3DUtilityProps.js';
 import { applyHomeCastleDestinationPropFocus } from './HomeCastle3DPropFocus.js';
 import {
+  createHomeCastleForegroundLayer,
+  homeCastleCompositionReady,
+  prepareHomeCastleSceneTexture,
+} from './HomeCastle3DCompositor.js';
+import {
   homeCastleChandelierShimmer,
   homeCastleFireplacePulse,
   homeCastleTorchFlicker,
@@ -124,7 +129,12 @@ function addLightRig(scene, profile) {
   };
 }
 
-export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = null }) {
+export default function HomeCastle3D({
+  artUrl,
+  foregroundArtUrl = null,
+  ambient = 'day',
+  activeRoom = null,
+}) {
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
   const renderRequestRef = useRef(null);
@@ -151,9 +161,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const canvas = canvasRef.current;
     if (!renderPolicy.enabled || !canvas || !artUrl) return undefined;
 
-    // Never let readiness survive a renderer restart. The 2D canonical art is
-    // our safety net and must remain visible until this renderer has actually
-    // painted a textured frame.
+    // Never let readiness survive a renderer restart. The complete 2D master is
+    // the safety net until every required scene layer has painted successfully.
     canvas.classList.remove('is-ready');
 
     let renderer;
@@ -237,6 +246,14 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     utilityDestinationProps.group.renderOrder = 2;
     scene.add(utilityDestinationProps.group);
 
+    // A transparent foreground matte shares the exact warped hall geometry and
+    // camera. When authored later, it can place furniture/arches back in front
+    // of GLB props without DOM/CSS parallax seams.
+    const foregroundLayer = foregroundArtUrl
+      ? createHomeCastleForegroundLayer(geometry)
+      : null;
+    if (foregroundLayer) scene.add(foregroundLayer.mesh);
+
     const destinationPropsByRoom = {
       tournament: torchProps.destinationProps?.tournament,
       train: torchProps.destinationProps?.train,
@@ -259,11 +276,28 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     let disposed = false;
     let intersecting = true;
     let performanceReady = false;
-    let textureReady = false;
+    let backgroundTextureReady = false;
+    let foregroundTextureReady = !foregroundArtUrl;
     let texturedFramePainted = false;
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
     let roomLightReach = IDLE_ROOM_LIGHT_REACH;
     let lastRenderedAt = Number.NEGATIVE_INFINITY;
+
+    const compositionReady = () => homeCastleCompositionReady({
+      backgroundReady: backgroundTextureReady,
+      foregroundRequired: Boolean(foregroundArtUrl),
+      foregroundReady: foregroundTextureReady,
+    });
+
+    const syncCompositionReadiness = () => {
+      const ready = compositionReady();
+      performanceReady = ready;
+      if (!ready) {
+        texturedFramePainted = false;
+        canvas.classList.remove('is-ready');
+      }
+      return ready;
+    };
 
     const shouldRender = () => homeCastleShouldRender({
       documentHidden: document.hidden,
@@ -367,7 +401,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         return;
       }
 
-      if (textureReady && !texturedFramePainted) {
+      if (compositionReady() && !texturedFramePainted) {
         texturedFramePainted = true;
         canvas.classList.add('is-ready');
       }
@@ -435,22 +469,42 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
           texture.dispose();
           return;
         }
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.minFilter = THREE.LinearFilter;
+        prepareHomeCastleSceneTexture(texture);
         material.map = texture;
         material.emissiveMap = texture;
         material.needsUpdate = true;
-        textureReady = true;
-        performanceReady = true;
+        backgroundTextureReady = true;
+        syncCompositionReadiness();
         resumeRender();
       },
       undefined,
       () => {
-        textureReady = false;
-        texturedFramePainted = false;
-        canvas.classList.remove('is-ready');
+        backgroundTextureReady = false;
+        syncCompositionReadiness();
       },
     );
+
+    if (foregroundLayer) {
+      textureLoader.load(
+        foregroundArtUrl,
+        (texture) => {
+          if (disposed) {
+            texture.dispose();
+            return;
+          }
+          foregroundLayer.setTexture(texture);
+          foregroundTextureReady = true;
+          syncCompositionReadiness();
+          resumeRender();
+        },
+        undefined,
+        () => {
+          foregroundTextureReady = false;
+          foregroundLayer.mesh.visible = false;
+          syncCompositionReadiness();
+        },
+      );
+    }
     resumeRender();
 
     return () => {
@@ -469,6 +523,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       material.map?.dispose();
       material.dispose();
+      foregroundLayer?.dispose();
       occlusionMaterial.dispose();
       utilityDestinationProps.dispose();
       secondaryDestinationProps.dispose();
@@ -477,7 +532,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       renderer.dispose();
       renderer.forceContextLoss?.();
     };
-  }, [ambient, artUrl, renderPolicy]);
+  }, [ambient, artUrl, foregroundArtUrl, renderPolicy]);
 
   if (!renderPolicy.enabled) return null;
   return (
@@ -485,6 +540,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       ref={canvasRef}
       className="illustrated-home__castle-3d"
       data-home-castle-lod={renderPolicy.lod}
+      data-home-castle-compositor={foregroundArtUrl ? 'layered' : 'single'}
       aria-hidden="true"
     />
   );
