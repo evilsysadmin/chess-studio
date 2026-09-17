@@ -5,6 +5,7 @@ import {
 } from '../safeStorage.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
+export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
 export const WAR_ROOM_VARIANTS = Object.freeze([
   Object.freeze({ id: 'classic', label: 'War Room' }),
   Object.freeze({ id: 'v2', label: 'War Room v2' }),

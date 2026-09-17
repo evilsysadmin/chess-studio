@@ -247,16 +247,21 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
 
-    // Staging is the deliberate A/B surface for the Blender shell. Prove the
-    // selector is actually visible in the deployed UI and that the R2 GLB can
-    // replace the classic static shell before continuing with the normal game.
-    const warRoomVariantPicker = page.getByLabel('Versión de War Room');
-    await expect(warRoomVariantPicker).toBeVisible();
-    await expect(warRoomVariantPicker).toHaveValue('classic');
-    await warRoomVariantPicker.selectOption('v2');
+    // Staging is the deliberate A/B surface for the Blender shell. Keep the
+    // experiment behind the canonical overflow menu so the room itself remains
+    // visually clean, then prove the R2 shell can replace the classic scene.
+    const variantUtilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(variantUtilityMenu).toBeVisible();
+    await variantUtilityMenu.click();
+    const classicWarRoomItem = page.getByRole('menuitemradio', { name: 'War Room', exact: true });
+    const v2WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v2', exact: true });
+    await expect(classicWarRoomItem).toBeVisible();
+    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
+    await v2WarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'ready', { timeout: 30_000 });
-    await warRoomVariantPicker.selectOption('classic');
+    await variantUtilityMenu.click();
+    await page.getByRole('menuitemradio', { name: 'War Room', exact: true }).click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
     await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'idle');
 
