@@ -80,6 +80,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const lastAttackAtRef = useRef(0);
   const [runId, setRunId] = useState(() => ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
+  const [sheetRequest, setSheetRequest] = useState(null);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
 
@@ -180,6 +181,11 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     setSelectedMemberId(memberId);
   }, []);
 
+  const openMemberSheet = useCallback((memberId) => {
+    selectMember(memberId);
+    setSheetRequest({ memberId });
+  }, [selectMember]);
+
   const restart = useCallback(() => {
     finishChroniclesTacticsRun(runId);
     const nextRunId = beginChroniclesTacticsRun();
@@ -189,6 +195,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     lastAttackAtRef.current = 0;
     setRunId(nextRunId);
     setSelectedMemberId('matthias');
+    setSheetRequest(null);
     stateRef.current = next;
     setState(next);
   }, [runId]);
@@ -213,6 +220,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             moveParty(cell.x - current.x, cell.y - current.y);
           },
           onEnemyClick: (enemyId) => attackEnemy(enemyId),
+          onMemberClick: (memberId) => openMemberSheet(memberId),
         });
         engineRef.current = engine;
         engine.renderState(stateRef.current, selectedMemberRef.current, null);
@@ -230,7 +238,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [attackEnemy, moveParty]);
+  }, [attackEnemy, moveParty, openMemberSheet]);
 
   useEffect(() => {
     engineRef.current?.renderState(state, selectedMemberId, null);
@@ -352,6 +360,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           state={state}
           progression={progression}
           selectedMemberId={selectedMemberId}
+          sheetRequest={sheetRequest}
           onSelectMember={selectMember}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
