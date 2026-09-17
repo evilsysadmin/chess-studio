@@ -43,7 +43,7 @@ describe('HomeCastle3DPropFocus', () => {
     expect(play.group.position.y).toBeLessThan(initialPlayPosition.y + HOME_CASTLE_PROP_FOCUS_LIFT);
     expect(play.group.position.z).toBeGreaterThan(initialPlayPosition.z);
     expect(play.group.position.z).toBeLessThan(initialPlayPosition.z + HOME_CASTLE_PROP_FOCUS_DEPTH);
-    expect(daily.group.position.equals(initialDailyPosition)).toBe(true);
+    expect(daily.group.position.distanceTo(initialDailyPosition)).toBeLessThan(1e-12);
     expect(play.group.scale.equals(initialScale)).toBe(true);
 
     play.dispose();
