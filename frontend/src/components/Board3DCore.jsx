@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
-import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { isMatthiasRivalKing } from './MatthiasKing3D.js';
 import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSurfaces.js';
 import { loadBoardTheme } from '../career.js';
@@ -24,19 +23,16 @@ import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js
 import { adjacentSquare, isLightSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
-import { addMesh, buildWarRoom, fitBoardCamera, makeTextSprite } from './Board3DScene.js';
+import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import {
   board3DForensicGhost,
   board3DTechniqueTargetCount,
   board3DTerrainSquares,
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
-import {
-  WAR_ROOM_VARIANTS,
-  isWarRoomVariantSelectable,
-  loadWarRoomVariant,
-  saveWarRoomVariant,
-} from './WarRoomVariant.js';
+import useWarRoomVariant from './useWarRoomVariant.js';
+import WarRoomVariantPicker from './WarRoomVariantPicker.jsx';
+import { buildClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -111,9 +107,7 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
-  const warRoomVariantSelectable = isWarRoomVariantSelectable();
-  const [warRoomVariant, setWarRoomVariant] = useState(() => loadWarRoomVariant());
-  const [warRoomV2Status, setWarRoomV2Status] = useState('idle');
+  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, status: warRoomV2Status, setVariant: setWarRoomVariant, setStatus: setWarRoomV2Status } = useWarRoomVariant();
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -295,47 +289,7 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const warRoom = buildWarRoom(theme, whiteSide, renderLite);
-    scene.add(warRoom);
-    const premiumWarRoomLayer = buildPremiumWarRoomLayer(theme, whiteSide, renderLite);
-    scene.add(premiumWarRoomLayer);
-
-    const table = new THREE.Mesh(
-      new THREE.BoxGeometry(11.6, 0.55, 11.6),
-      new THREE.MeshPhysicalMaterial({ color: 0x1f120c, metalness: 0.08, roughness: 0.6, clearcoat: 0.28, clearcoatRoughness: 0.25, envMapIntensity: 0.74 }),
-    );
-    table.position.y = -0.48;
-    table.receiveShadow = true;
-    scene.add(table);
-    const premiumTableLayer = buildPremiumTableLayer(theme, renderLite);
-    scene.add(premiumTableLayer);
-
-    const legacyBoardFrameGroup = new THREE.Group();
-    legacyBoardFrameGroup.name = 'war-room-classic-board-frame';
-    boardGroup.add(legacyBoardFrameGroup);
-
-    const pedestal = new THREE.Mesh(
-      new THREE.BoxGeometry(9.35, 0.4, 9.35),
-      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.08, roughness: 0.67, clearcoat: 0.18, clearcoatRoughness: 0.36, envMapIntensity: 0.48, specularIntensity: 0.42 }),
-    );
-    pedestal.position.y = -0.22;
-    pedestal.receiveShadow = true;
-    legacyBoardFrameGroup.add(pedestal);
-
-    const frameGold = new THREE.MeshPhysicalMaterial({ color: 0xa77a2d, metalness: 0.72, roughness: 0.24, clearcoat: 0.68, clearcoatRoughness: 0.12, envMapIntensity: 1.2 });
-    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.025, roughness: 0.7, clearcoat: 0.15, clearcoatRoughness: 0.4, envMapIntensity: 0.42, specularIntensity: 0.36 });
-    for (const [x, z, sx, sz] of [
-      [0, 4.38, 9.05, 0.28], [0, -4.38, 9.05, 0.28],
-      [4.38, 0, 0.28, 9.05], [-4.38, 0, 0.28, 9.05],
-    ]) {
-      addMesh(legacyBoardFrameGroup, new THREE.BoxGeometry(sx, 0.18, sz), frameWood, [x, 0.03, z]);
-    }
-    for (const [x, z, sx, sz] of [
-      [0, 4.16, 8.55, 0.055], [0, -4.16, 8.55, 0.055],
-      [4.16, 0, 0.055, 8.55], [-4.16, 0, 0.055, 8.55],
-    ]) {
-      addMesh(legacyBoardFrameGroup, new THREE.BoxGeometry(sx, 0.08, sz), frameGold, [x, 0.135, z]);
-    }
+    const { classicShellObjects } = buildClassicWarRoomShell({ scene, boardGroup, theme, whiteSide, renderLite });
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
@@ -420,49 +374,10 @@ function Board3DCanvas({
       });
     }
 
-    const classicShellObjects = [
-      warRoom,
-      premiumWarRoomLayer,
-      table,
-      premiumTableLayer,
-      legacyBoardFrameGroup,
-    ];
-    let releaseWarRoomV2Shell = null;
-    let warRoomV2Cancelled = false;
-    renderer.domElement.dataset.warRoomVariant = warRoomVariant;
-
-    if (warRoomVariantSelectable && warRoomVariant === 'v2') {
-      renderer.domElement.dataset.warRoomV2Status = 'loading';
-      setWarRoomV2Status('loading');
-      void import('./WarRoomV2Shell.js')
-        .then(({ installWarRoomV2Shell }) => installWarRoomV2Shell(scene, {
-          whiteSide,
-          coarsePointer: renderLite,
-        }))
-        .then((release) => {
-          if (warRoomV2Cancelled) {
-            release?.();
-            return;
-          }
-          releaseWarRoomV2Shell = release;
-          classicShellObjects.forEach((object) => { object.visible = false; });
-          renderer.domElement.dataset.warRoomVariant = 'v2';
-          renderer.domElement.dataset.warRoomV2Status = 'ready';
-          setWarRoomV2Status('ready');
-          render();
-        })
-        .catch(() => {
-          if (warRoomV2Cancelled) return;
-          classicShellObjects.forEach((object) => { object.visible = true; });
-          renderer.domElement.dataset.warRoomVariant = 'classic-fallback';
-          renderer.domElement.dataset.warRoomV2Status = 'fallback';
-          setWarRoomV2Status('fallback');
-          render();
-        });
-    } else {
-      renderer.domElement.dataset.warRoomV2Status = 'idle';
-      setWarRoomV2Status('idle');
-    }
+    const stopWarRoomVariantScene = startWarRoomVariantScene({
+      scene, classicShellObjects, variant: warRoomVariant, selectable: warRoomVariantSelectable,
+      whiteSide, renderLite, canvas: renderer.domElement, onStatus: setWarRoomV2Status, onPaint: render,
+    });
 
     let cachedHansDiagnosticsObject = null;
     let cachedHansDriver = null;
@@ -775,9 +690,7 @@ function Board3DCanvas({
     ambientScheduler?.start();
 
     return () => {
-      warRoomV2Cancelled = true;
-      releaseWarRoomV2Shell?.();
-      releaseWarRoomV2Shell = null;
+      stopWarRoomVariantScene();
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
@@ -1260,26 +1173,7 @@ function Board3DCanvas({
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      {warRoomVariantSelectable && (
-        <label className="board3d-variant-picker">
-          <span>Escena</span>
-          <select
-            aria-label="Versión de War Room"
-            value={warRoomVariant}
-            onChange={(event) => setWarRoomVariant(saveWarRoomVariant(event.target.value))}
-          >
-            {WAR_ROOM_VARIANTS.map((variant) => (
-              <option key={variant.id} value={variant.id}>{variant.label}</option>
-            ))}
-          </select>
-          {warRoomVariant === 'v2' && warRoomV2Status === 'loading' && (
-            <small aria-live="polite">cargando…</small>
-          )}
-          {warRoomVariant === 'v2' && warRoomV2Status === 'fallback' && (
-            <small aria-live="polite">fallback clásico</small>
-          )}
-        </label>
-      )}
+      <WarRoomVariantPicker visible={warRoomVariantSelectable} variant={warRoomVariant} status={warRoomV2Status} onChange={setWarRoomVariant} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE GUERRA · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
