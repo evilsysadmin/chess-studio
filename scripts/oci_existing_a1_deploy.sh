@@ -16,6 +16,7 @@ state_file="$state_dir/deployed.sha"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
 port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
 staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
+registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
@@ -36,6 +37,20 @@ if [[ -s "$state_file" ]]; then
   previous_sha="$(tr -d '\r\n' < "$state_file")"
   [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || previous_sha=''
 fi
+
+image_ref() {
+  printf '%s%s' "$registry_image_prefix" "$1"
+}
+
+legacy_image_ref() {
+  printf 'chess-studio-backend:oci-%s' "$1"
+}
+
+image_available_for_rollback() {
+  local target_sha="$1"
+  docker image inspect "$(image_ref "$target_sha")" >/dev/null 2>&1 || \
+    docker image inspect "$(legacy_image_ref "$target_sha")" >/dev/null 2>&1
+}
 
 compose() {
   local target_sha="$1"
@@ -138,7 +153,7 @@ rollback() {
     echo 'no previous deployment available for rollback' >&2
     return 1
   fi
-  if ! docker image inspect "chess-studio-backend:oci-$previous_sha" >/dev/null 2>&1; then
+  if ! image_available_for_rollback "$previous_sha"; then
     echo "rollback image missing for $previous_sha" >&2
     return 1
   fi
@@ -177,10 +192,12 @@ fi
 [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
 /bin/bash "$tunnel_connector" --self-test
 
-# Telemetry sidecars are deliberately not part of the staging deployment gate.
-# Prepare only the exact backend artifact before touching the currently serving
-# release; observability can be restored independently once it cannot block P0.
-if ! compose "$sha" build --pull backend; then
+# CI already built and published the exact linux/arm64 backend image. Pull that
+# immutable artifact before touching the serving container; do not invoke
+# BuildKit on the A1 merely to retag an image that already exists in GHCR.
+target_image="$(image_ref "$sha")"
+if ! docker pull "$target_image"; then
+  echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
 fi
@@ -197,7 +214,7 @@ for _ in $(seq 1 60); do
       exit 46
     fi
     record_successful_backend "$sha"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process"
+    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process image=pulled"
     exit 0
   fi
   sleep 2
