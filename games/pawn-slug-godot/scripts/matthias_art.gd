@@ -1,8 +1,8 @@
 extends Node2D
 
 # Godot-native 2D Matthias visual controller.
-# The body uses the published 16x5 motion atlas and every weapon is a separate
-# 2D sprite attached to a Marker2D. Gameplay only talks to this facade.
+# One body atlas drives locomotion; weapon sprites stay independent and are
+# attached to per-action Marker2D sockets instead of baking four body atlases.
 const MOTION_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 const FRAME_SIZE := Vector2(96.0, 96.0)
@@ -40,31 +40,56 @@ const WEAPON_FRAME := {
     "shotgun": 2,
     "panzerfaust": 3,
 }
-const WEAPON_SCALE := {
-    "pistol": Vector2(0.23, 0.23),
-    "machinegun": Vector2(0.27, 0.27),
-    "shotgun": Vector2(0.28, 0.28),
-    "panzerfaust": Vector2(0.31, 0.31),
+const WEAPON_MOTION_SCALE := {
+    "pistol": 1.0,
+    "machinegun": 0.96,
+    "shotgun": 0.90,
+    "panzerfaust": 0.78,
 }
-const WEAPON_MUZZLE_X := {
-    "pistol": 38.0,
-    "machinegun": 52.0,
-    "shotgun": 57.0,
-    "panzerfaust": 61.0,
+const WEAPON_RECOIL_PIXELS := {
+    "pistol": 4.0,
+    "machinegun": 3.0,
+    "shotgun": 7.0,
+    "panzerfaust": 10.0,
 }
-const ACTION_WEAPON_POSITION := {
-    "idle": Vector2(17.0, -55.0),
-    "walk": Vector2(18.0, -55.0),
-    "run": Vector2(20.0, -54.0),
-    "crouch": Vector2(19.0, -39.0),
-    "jump": Vector2(19.0, -55.0),
+const WEAPON_FLASH_SCALE := {
+    "pistol": Vector2(0.75, 0.75),
+    "machinegun": Vector2(0.95, 0.95),
+    "shotgun": Vector2(1.20, 1.20),
+    "panzerfaust": Vector2(1.55, 1.55),
 }
-const ACTION_WEAPON_ROTATION := {
-    "idle": 0.0,
-    "walk": -0.02,
-    "run": -0.045,
-    "crouch": 0.0,
-    "jump": -0.035,
+
+# Each weapon owns a small authored 2D socket set. Values are local to the foot-
+# anchored character root, so changing locomotion never requires duplicating art.
+const WEAPON_POSES := {
+    "pistol": {
+        "idle": {"position": Vector2(16.0, -55.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "walk": {"position": Vector2(17.0, -54.0), "rotation": -0.02, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "run": {"position": Vector2(20.0, -53.0), "rotation": -0.05, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "crouch": {"position": Vector2(20.0, -39.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "jump": {"position": Vector2(18.0, -54.0), "rotation": -0.04, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+    },
+    "machinegun": {
+        "idle": {"position": Vector2(16.0, -52.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "walk": {"position": Vector2(18.0, -52.0), "rotation": -0.03, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "run": {"position": Vector2(20.0, -50.0), "rotation": -0.08, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "crouch": {"position": Vector2(20.0, -37.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "jump": {"position": Vector2(18.0, -51.0), "rotation": -0.06, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+    },
+    "shotgun": {
+        "idle": {"position": Vector2(17.0, -51.0), "rotation": -0.025, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "walk": {"position": Vector2(19.0, -50.0), "rotation": -0.04, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "run": {"position": Vector2(21.0, -49.0), "rotation": -0.09, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "crouch": {"position": Vector2(22.0, -36.0), "rotation": -0.01, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "jump": {"position": Vector2(19.0, -50.0), "rotation": -0.07, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+    },
+    "panzerfaust": {
+        "idle": {"position": Vector2(12.0, -50.0), "rotation": -0.03, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "walk": {"position": Vector2(14.0, -49.0), "rotation": -0.05, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "run": {"position": Vector2(17.0, -46.0), "rotation": -0.11, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "crouch": {"position": Vector2(17.0, -34.0), "rotation": 0.02, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "jump": {"position": Vector2(15.0, -48.0), "rotation": -0.08, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+    },
 }
 
 var _body_ready := false
@@ -107,6 +132,8 @@ func set_weapon(kind: String) -> void:
     _weapon = kind if WEAPON_FRAME.has(kind) else "pistol"
     _apply_weapon_frame()
     _sync_weapon_pose()
+    if _body_ready and not _dead:
+        _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
 
 func set_combat_state(
     hurt_remaining: float,
@@ -152,7 +179,7 @@ func update_visual(
     if landed_now and not _dead:
         _play_fx("land")
     if fired_now and not _dead and _hurt_remaining <= 0.0:
-        _play_directional_fx("recoil")
+        _play_recoil_fx()
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
@@ -248,19 +275,20 @@ func _apply_weapon_frame() -> void:
         return
     var index := int(WEAPON_FRAME.get(_weapon, 0))
     _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
-    _weapon_sprite.scale = WEAPON_SCALE.get(_weapon, Vector2(0.23, 0.23))
-    if _muzzle != null:
-        _muzzle.position = Vector2(float(WEAPON_MUZZLE_X.get(_weapon, 38.0)), 0.0)
+
+func _weapon_pose() -> Dictionary:
+    var weapon_poses: Dictionary = WEAPON_POSES.get(_weapon, WEAPON_POSES["pistol"])
+    return weapon_poses.get(_action, weapon_poses["idle"])
 
 func _sync_weapon_pose() -> void:
     if _weapon_root == null:
         return
-    _weapon_root.position = ACTION_WEAPON_POSITION.get(_action, ACTION_WEAPON_POSITION["idle"])
-    _weapon_root.rotation = float(ACTION_WEAPON_ROTATION.get(_action, 0.0))
-    if _weapon == "panzerfaust":
-        _weapon_root.position += Vector2(-2.0, -2.0 if _action != "crouch" else 1.0)
-    elif _weapon == "shotgun":
-        _weapon_root.position += Vector2(2.0, 0.0)
+    var pose := _weapon_pose()
+    _weapon_root.position = pose["position"]
+    _weapon_root.rotation = float(pose["rotation"])
+    _weapon_sprite.scale = pose["scale"]
+    _muzzle.position = pose["muzzle"]
+    _muzzle_flash.scale = WEAPON_FLASH_SCALE.get(_weapon, Vector2.ONE)
 
 func _request_motion_atlas() -> void:
     _art_request = HTTPRequest.new()
@@ -295,6 +323,7 @@ func _on_motion_atlas_loaded(
     _body.sprite_frames = _make_sprite_frames(atlas)
     _body_ready = true
     _body.visible = true
+    _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
     _play_body_action(_action, true)
 
 func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
@@ -320,6 +349,7 @@ func _make_sprite_frames(atlas: Texture2D) -> SpriteFrames:
 func _play_body_action(action: String, force_restart := false) -> void:
     if not _body_ready or _dead:
         return
+    _body.speed_scale = float(WEAPON_MOTION_SCALE.get(_weapon, 1.0))
     if not force_restart and _body.animation == action:
         return
     _body.play(action)
@@ -352,8 +382,10 @@ func _sync_modulate() -> void:
 
 func _build_fx_animations() -> void:
     var library := AnimationLibrary.new()
-    library.add_animation("recoil_right", _make_transform_animation(0.11, Vector2(-5.0, 0.0), 0.0, Vector2.ONE))
-    library.add_animation("recoil_left", _make_transform_animation(0.11, Vector2(5.0, 0.0), 0.0, Vector2.ONE))
+    for weapon in WEAPON_RECOIL_PIXELS.keys():
+        var kick := float(WEAPON_RECOIL_PIXELS[weapon])
+        library.add_animation("recoil_%s_right" % weapon, _make_transform_animation(0.11, Vector2(-kick, 0.0), 0.0, Vector2.ONE))
+        library.add_animation("recoil_%s_left" % weapon, _make_transform_animation(0.11, Vector2(kick, 0.0), 0.0, Vector2.ONE))
     library.add_animation("hurt_right", _make_transform_animation(0.18, Vector2(-12.0, 0.0), deg_to_rad(6.0), Vector2(1.0, 0.965)))
     library.add_animation("hurt_left", _make_transform_animation(0.18, Vector2(12.0, 0.0), deg_to_rad(-6.0), Vector2(1.0, 0.965)))
     library.add_animation("land", _make_transform_animation(0.12, Vector2.ZERO, 0.0, Vector2(1.035, 0.945)))
@@ -408,6 +440,10 @@ func _make_death_animation(direction: float) -> Animation:
     animation.track_insert_key(scale_track, 0.0, Vector2.ONE)
     animation.track_insert_key(scale_track, 0.55, Vector2(1.0, 0.82))
     return animation
+
+func _play_recoil_fx() -> void:
+    var side := "left" if _facing < 0.0 else "right"
+    _play_fx("recoil_%s_%s" % [_weapon, side])
 
 func _play_directional_fx(prefix: String) -> void:
     _play_fx("%s_%s" % [prefix, "left" if _facing < 0.0 else "right"])
