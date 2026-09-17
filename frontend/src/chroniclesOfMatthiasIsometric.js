@@ -22,6 +22,7 @@ import {
   chroniclesIsometricCellToWorld,
   chroniclesIsometricScenePlan,
 } from './chronicles/chroniclesIsometricScenePlan.js';
+import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
@@ -70,6 +71,12 @@ export function chroniclesIsoWorldForContentKind(geometryPlan, kind) {
 
 export function chroniclesIsoUsesLegacyDressing(scenePlan) {
   return scenePlan?.sceneStyle?.dressing === 'crypt-legacy';
+}
+
+export function chroniclesIsoScenePalette(scenePlan) {
+  const palette = scenePlan?.sceneStyle?.palette;
+  if (palette?.floor?.length && palette?.wall?.length) return palette;
+  return chroniclesIsometricSceneStyle()?.palette;
 }
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
@@ -260,25 +267,35 @@ function buildIsoDungeon({
   scenePlan = chroniclesIsometricScenePlan(),
 }) {
   const geometryPlan = chroniclesIsometricDungeonPlan(scenePlan, CELL);
+  const palette = chroniclesIsoScenePalette(scenePlan);
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
   const floorTargets = [];
 
-  const floorMaterials = [
-    ownedMaterial({ color: 0x4e4a43, roughness: 0.9, metalness: 0.025 }),
-    ownedMaterial({ color: 0x575249, roughness: 0.86, metalness: 0.025 }),
-    ownedMaterial({ color: 0x45423d, roughness: 0.93, metalness: 0.02 }),
-    ownedMaterial({ color: 0x5b554b, roughness: 0.89, metalness: 0.025 }),
-  ];
-  const foundation = ownedMaterial({ color: 0x211f1c, roughness: 0.98, metalness: 0 });
-  const wallMaterials = [
-    ownedMaterial({ color: 0x403a34, roughness: 0.97, metalness: 0.01 }),
-    ownedMaterial({ color: 0x49423a, roughness: 0.95, metalness: 0.012 }),
-    ownedMaterial({ color: 0x393530, roughness: 0.98, metalness: 0.008 }),
-  ];
-  const wallTrim = ownedMaterial({ color: 0x1d1a17, roughness: 0.98, metalness: 0 });
-  const brass = ownedMaterial({ color: 0x7b562c, roughness: 0.45, metalness: 0.68, emissive: 0x160a02, emissiveIntensity: 0.24 });
-  const runeMaterial = ownedMaterial({ color: 0x8ed8c7, roughness: 0.22, metalness: 0.16, emissive: 0x2aa88e, emissiveIntensity: 1.7 });
+  const floorRoughness = [0.9, 0.86, 0.93, 0.89];
+  const floorMetalness = [0.025, 0.025, 0.02, 0.025];
+  const floorMaterials = palette.floor.map((color, index) => ownedMaterial({
+    color,
+    roughness: floorRoughness[index] ?? 0.9,
+    metalness: floorMetalness[index] ?? 0.02,
+  }));
+  const foundation = ownedMaterial({ color: palette.foundation, roughness: 0.98, metalness: 0 });
+  const wallRoughness = [0.97, 0.95, 0.98];
+  const wallMetalness = [0.01, 0.012, 0.008];
+  const wallMaterials = palette.wall.map((color, index) => ownedMaterial({
+    color,
+    roughness: wallRoughness[index] ?? 0.97,
+    metalness: wallMetalness[index] ?? 0.01,
+  }));
+  const wallTrim = ownedMaterial({ color: palette.wallTrim, roughness: 0.98, metalness: 0 });
+  const brass = ownedMaterial({ color: palette.metal, roughness: 0.45, metalness: 0.68, emissive: 0x160a02, emissiveIntensity: 0.24 });
+  const runeMaterial = ownedMaterial({
+    color: palette.rune,
+    roughness: 0.22,
+    metalness: 0.16,
+    emissive: palette.runeEmissive,
+    emissiveIntensity: 1.7,
+  });
 
   addMesh(
     root,
@@ -376,7 +393,7 @@ function buildIsoDungeon({
   runeCore.position.y = 0.42;
   runeCore.castShadow = !coarsePointer;
   runeCoreRoot.add(runeCore);
-  const runeGlow = new THREE.PointLight(0x58d8bc, coarsePointer ? 0.72 : 1.05, 3.6, 2);
+  const runeGlow = new THREE.PointLight(palette.runeGlow, coarsePointer ? 0.72 : 1.05, 3.6, 2);
   runeGlow.position.y = 0.46;
   runeCoreRoot.add(runeGlow);
   runeCoreRoot.visible = false;
@@ -642,21 +659,22 @@ export function createChroniclesIsometricGame(host, {
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+  const initialScenePlan = chroniclesIsometricScenePlan(initialState);
+  const scenePalette = chroniclesIsoScenePalette(initialScenePlan);
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = coarse ? 1.27 : 1.2;
-  renderer.setClearColor(0x100c09, 1);
+  renderer.setClearColor(scenePalette.background, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.7));
   renderer.shadowMap.enabled = !coarse;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x100c09);
-  scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.022 : 0.0185);
+  scene.background = new THREE.Color(scenePalette.background);
+  scene.fog = new THREE.FogExp2(scenePalette.fog, coarse ? 0.022 : 0.0185);
 
-  const initialScenePlan = chroniclesIsometricScenePlan(initialState);
   const initialFocus = chroniclesIsoWorldForCell(
     Number(initialScenePlan.partyStart?.x ?? 1) + 1,
     Number(initialScenePlan.partyStart?.y ?? 5),
@@ -668,9 +686,9 @@ export function createChroniclesIsometricGame(host, {
   camera.lookAt(initialPose.target);
   const cameraTarget = initialPose.target.clone();
 
-  const hemi = new THREE.HemisphereLight(0xd6c5a8, 0x15100d, coarse ? 0.82 : 0.64);
+  const hemi = new THREE.HemisphereLight(scenePalette.hemiSky, scenePalette.hemiGround, coarse ? 0.82 : 0.64);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xffd39b, coarse ? 2.35 : 2.95);
+  const key = new THREE.DirectionalLight(scenePalette.key, coarse ? 2.35 : 2.95);
   key.position.set(5.5, 10, 7.5);
   key.castShadow = !coarse;
   if (!coarse) {
@@ -683,13 +701,13 @@ export function createChroniclesIsometricGame(host, {
     key.shadow.normalBias = 0.04;
   }
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x758aa2, coarse ? 0.84 : 1.2);
+  const rim = new THREE.DirectionalLight(scenePalette.rim, coarse ? 0.84 : 1.2);
   rim.position.set(-7, 5, -6);
   scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x9db7c6, coarse ? 0.38 : 0.52);
+  const fill = new THREE.DirectionalLight(scenePalette.fill, coarse ? 0.38 : 0.52);
   fill.position.set(3, 4.5, -7);
   scene.add(fill);
-  const warmBounce = new THREE.PointLight(0x9b5b30, coarse ? 0.28 : 0.4, 18, 2);
+  const warmBounce = new THREE.PointLight(scenePalette.bounce, coarse ? 0.28 : 0.4, 18, 2);
   warmBounce.position.set(0, 2.4, 2.8);
   scene.add(warmBounce);
 
