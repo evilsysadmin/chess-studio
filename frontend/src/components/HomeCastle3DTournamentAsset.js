@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import tournamentCupPayload from '../assets/home3d/tournament-cup-v1.glb.b64?raw';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
