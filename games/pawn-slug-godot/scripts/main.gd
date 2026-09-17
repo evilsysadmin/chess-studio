@@ -440,8 +440,8 @@ func _update_enemies(delta: float) -> void:
             continue
         var type := String(enemy["type"])
         var stats: Dictionary = ENEMY_TYPES[type]
-        var distance_x := player.global_position.x - float(enemy["x"])
-        var abs_distance := absf(distance_x)
+        var distance_x: float = float(player.global_position.x) - float(enemy["x"])
+        var abs_distance: float = absf(distance_x)
         var moved := false
 
         if type == "bishop":
@@ -558,9 +558,9 @@ func _set_bishop_telegraph(enemy: Dictionary, shell_strength: float, suppression
 
 func _fire_bishop_shell(enemy: Dictionary) -> void:
     var visual = enemy_visuals.get(String(enemy["id"]))
-    var origin := _enemy_fire_origin(enemy)
-    var target := player.global_position + Vector2(0.0, -18.0)
-    var direction := (target - origin).normalized()
+    var origin: Vector2 = _enemy_fire_origin(enemy)
+    var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
+    var direction: Vector2 = (target - origin).normalized()
     var profile: Dictionary = ENEMY_FIRE_PROFILES["panzerfaust"]
     enemy_projectiles.append({
         "position": origin,
@@ -592,7 +592,7 @@ func _update_boss(delta: float) -> void:
     if player.dead or player.is_game_over:
         return
 
-    var distance := absf(player.global_position.x - float(boss["x"]))
+    var distance: float = absf(float(player.global_position.x) - float(boss["x"]))
     boss["regular_cooldown"] = maxf(0.0, float(boss["regular_cooldown"]) - delta)
     boss["shell_cooldown"] = maxf(0.0, float(boss["shell_cooldown"]) - delta)
 
@@ -607,13 +607,13 @@ func _update_boss(delta: float) -> void:
 func _try_enemy_fire(enemy: Dictionary) -> void:
     var weapon := String(enemy["weapon"])
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
-    var origin := _enemy_fire_origin(enemy)
-    var target := player.global_position + Vector2(0.0, -18.0)
-    var target_delta := target - origin
-    var distance := target_delta.length()
+    var origin: Vector2 = _enemy_fire_origin(enemy)
+    var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
+    var target_delta: Vector2 = target - origin
+    var distance: float = target_delta.length()
     if distance > float(profile["range"]) or distance < float(profile["min_range"]):
         return
-    var base_direction := target_delta.normalized()
+    var base_direction: Vector2 = target_delta.normalized()
     var pellets := maxi(1, int(profile["pellets"]))
     var spread := float(profile["spread"])
     for _pellet in range(pellets):
@@ -634,8 +634,8 @@ func _fire_boss(explosive: bool) -> void:
     var weapon := "panzerfaust" if explosive else "machinegun"
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
     var origin: Vector2 = boss_visual.muzzle_global_position()
-    var target := player.global_position + Vector2(0.0, -18.0)
-    var direction := (target - origin).normalized()
+    var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
+    var direction: Vector2 = (target - origin).normalized()
     var spread := 0.0 if explosive else float(profile["spread"])
     var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
     enemy_projectiles.append({
