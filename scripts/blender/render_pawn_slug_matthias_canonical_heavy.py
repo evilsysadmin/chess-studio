@@ -9,6 +9,12 @@ pistol remain byte-for-byte pose-equivalent to the base renderer.
 from __future__ import annotations
 
 import math
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 import render_pawn_slug_matthias_canonical_chibi as base
 
