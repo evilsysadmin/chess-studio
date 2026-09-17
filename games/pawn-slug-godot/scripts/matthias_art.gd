@@ -2,21 +2,27 @@ extends Node2D
 
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
-# The full-v2 contract is an 8 x 10 sheet (idle/walk/run/jump/fall/land/
-# shoot/reload/hurt/die). Until those immutable R2 objects are published, the
-# canonical pistol handoff already provides real walk/run frames and the old
-# canonical master remains the safe fallback for missing weapon sheets.
+# The strict-v5 contract is an exact 8 x 10 sheet (idle/walk/run/jump/fall/land/
+# shoot/reload/hurt/die), 256 x 256 per cell, published as immutable R2 objects.
+# Godot consumes those authored cells directly; the old canonical assets remain
+# only as a graceful fallback if a remote strict atlas cannot be loaded.
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
 
-# Future content-addressed full atlases are added here after R2 publication.
-# The runtime needs no hand-cut rectangles for them: Godot normalizes and slices
-# the sheet into frame textures itself.
+# Strict Godot atlases: exact 8 x 10 grid, 256 x 256 cells, transparent PNG.
+# Do not normalize or rescale these at runtime: each authored cell is consumed
+# directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png",
 }
 const FULL_ATLAS_COLUMNS := 8
 const FULL_ATLAS_ROWS := 10
+const FULL_ATLAS_CELL_SIZE := 256
+const FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)
 const NORMALIZED_FRAME_SIZE := 192
 const NORMALIZED_FOOT_GUTTER := 24
 const CELL_GUARD_PX := 2
@@ -323,8 +329,11 @@ func _decode_raster(bytes: PackedByteArray) -> Image:
     return null
 
 func _build_full_frames(image: Image) -> SpriteFrames:
-    if image.get_width() < FULL_ATLAS_COLUMNS * 32 or image.get_height() < FULL_ATLAS_ROWS * 32:
+    if image.get_size() != FULL_ATLAS_SIZE:
+        push_error("Strict Matthias atlas has invalid dimensions: %s, expected %s" % [image.get_size(), FULL_ATLAS_SIZE])
         return null
+
+    var atlas_texture := ImageTexture.create_from_image(image)
     var frames := SpriteFrames.new()
     frames.remove_animation("default")
     for action in FULL_ACTION_ORDER:
@@ -332,20 +341,21 @@ func _build_full_frames(image: Image) -> SpriteFrames:
         frames.add_animation(action)
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
+        var row := int(spec["row"])
         for frame_index in range(int(spec["count"])):
-            var texture := _normalized_cell_texture(
-                image,
-                int(spec["row"]),
-                frame_index,
-                FULL_ATLAS_COLUMNS,
-                FULL_ATLAS_ROWS,
+            var texture := AtlasTexture.new()
+            texture.atlas = atlas_texture
+            texture.region = Rect2(
+                frame_index * FULL_ATLAS_CELL_SIZE,
+                row * FULL_ATLAS_CELL_SIZE,
+                FULL_ATLAS_CELL_SIZE,
+                FULL_ATLAS_CELL_SIZE,
             )
-            if texture == null:
-                return null
             frames.add_frame(action, texture)
 
-    # Crouch remains a gameplay state although the new authored sheet uses LAND.
-    # Reuse the impact frame instead of inventing another character pose.
+    # Crouch remains a gameplay state although the strict sheet uses LAND.
+    # Reusing an authored 256 x 256 cell keeps crouch at exactly the same visual
+    # scale as standing frames; no per-pose resize is allowed on strict atlases.
     frames.add_animation("crouch")
     frames.set_animation_loop("crouch", true)
     frames.set_animation_speed("crouch", 1.0)
