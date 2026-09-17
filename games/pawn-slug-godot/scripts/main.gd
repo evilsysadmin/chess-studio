@@ -28,6 +28,17 @@ const GRENADE_RADIUS := 210.0
 const GRENADE_DAMAGE := 125
 const PANZER_BLAST_RADIUS := 152.0
 const EXPLOSION_VISUAL_SECONDS := 0.28
+const BISHOP_SHELL_TELEGRAPH := 0.52
+const BISHOP_SHELL_RANGE := 1000.0
+const BISHOP_SUPPRESSION_TELEGRAPH := 0.46
+const BISHOP_SUPPRESSION_RANGE := 760.0
+const BISHOP_SUPPRESSION_SHOTS := 3
+const BISHOP_SUPPRESSION_INTERVAL := 0.14
+const BISHOP_SUPPRESSION_LANES := [
+    {"height": 50.0, "speed": 668.0},
+    {"height": 134.0, "speed": 652.0},
+    {"height": 86.0, "speed": 676.0},
+]
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
@@ -174,6 +185,12 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
         if int(enemy["hp"]) <= 0:
             continue
         enemy["cooldown"] = 0.35 + float(index % 5) * 0.08
+        if String(enemy["type"]) == "bishop":
+            enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
+            enemy["suppression_cooldown"] = 2.35 + randf_range(0.0, 0.70)
+            enemy["suppression_shots"] = 0
+            enemy["suppression_index"] = 0
+            enemy["suppression_shot_cooldown"] = 0.0
         enemies[index] = enemy
     if boss_spawned and not boss_defeated:
         boss["regular_cooldown"] = 0.65
@@ -199,7 +216,7 @@ func _build_enemy_roster() -> Array[Dictionary]:
         var spawn = ENEMY_SPAWNS[index]
         var type := String(spawn[1])
         var stats: Dictionary = ENEMY_TYPES[type]
-        roster.append({
+        var enemy := {
             "id": "%s-%d" % [type, index],
             "type": type,
             "x": float(spawn[0]),
@@ -208,7 +225,14 @@ func _build_enemy_roster() -> Array[Dictionary]:
             "max_hp": int(stats["hp"]),
             "weapon": _enemy_weapon_for(type, index),
             "cooldown": 0.35 + float(index % 5) * 0.08,
-        })
+        }
+        if type == "bishop":
+            enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
+            enemy["suppression_cooldown"] = 2.35 + randf_range(0.0, 0.70)
+            enemy["suppression_shots"] = 0
+            enemy["suppression_index"] = 0
+            enemy["suppression_shot_cooldown"] = 0.0
+        roster.append(enemy)
     return roster
 
 func _build_enemy_visuals() -> void:
@@ -420,6 +444,15 @@ func _update_enemies(delta: float) -> void:
         var abs_distance := absf(distance_x)
         var moved := false
 
+        if type == "bishop":
+            if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
+                moved = _update_bishop(enemy, delta, abs_distance, distance_x)
+            else:
+                _set_bishop_telegraph(enemy, 0.0, 0.0)
+            _sync_enemy_visual(enemy, moved)
+            enemies[index] = enemy
+            continue
+
         if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
             var speed := float(stats["speed"])
             var standoff := float(stats["standoff"])
@@ -441,6 +474,116 @@ func _update_enemies(delta: float) -> void:
             enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
             _sync_enemy_visual(enemy, false)
         enemies[index] = enemy
+
+func _update_bishop(enemy: Dictionary, delta: float, distance: float, distance_x: float) -> bool:
+    var stats: Dictionary = ENEMY_TYPES["bishop"]
+    enemy["shell_cooldown"] = _bishop_cooldown_tick(
+        float(enemy["shell_cooldown"]), distance, BISHOP_SHELL_RANGE, BISHOP_SHELL_TELEGRAPH, delta
+    )
+    enemy["suppression_cooldown"] = _bishop_cooldown_tick(
+        float(enemy["suppression_cooldown"]), distance, BISHOP_SUPPRESSION_RANGE, BISHOP_SUPPRESSION_TELEGRAPH, delta
+    )
+    enemy["suppression_shot_cooldown"] = maxf(0.0, float(enemy["suppression_shot_cooldown"]) - delta)
+
+    var shell_clear_for_suppression := float(enemy["shell_cooldown"]) > BISHOP_SHELL_TELEGRAPH + 0.35
+    var suppression_charging := (
+        int(enemy["suppression_shots"]) <= 0
+        and shell_clear_for_suppression
+        and distance < BISHOP_SUPPRESSION_RANGE
+        and float(enemy["suppression_cooldown"]) > 0.0
+        and float(enemy["suppression_cooldown"]) <= BISHOP_SUPPRESSION_TELEGRAPH
+    )
+    var moved := false
+
+    if int(enemy["suppression_shots"]) > 0:
+        enemy["shell_cooldown"] = maxf(float(enemy["shell_cooldown"]), BISHOP_SHELL_TELEGRAPH + 0.55)
+        if float(enemy["suppression_shot_cooldown"]) <= 0.0:
+            _fire_bishop_suppression(enemy, int(enemy["suppression_index"]))
+            enemy["suppression_index"] = int(enemy["suppression_index"]) + 1
+            enemy["suppression_shots"] = int(enemy["suppression_shots"]) - 1
+            enemy["suppression_shot_cooldown"] = BISHOP_SUPPRESSION_INTERVAL
+            if int(enemy["suppression_shots"]) <= 0:
+                enemy["suppression_cooldown"] = 3.15 + randf_range(0.0, 0.65)
+                enemy["cooldown"] = maxf(float(enemy["cooldown"]), 0.32)
+    else:
+        if not suppression_charging and distance > float(stats["standoff"]):
+            var move_direction := 1.0 if distance_x > 0.0 else -1.0
+            enemy["x"] = clampf(
+                float(enemy["x"]) + move_direction * float(stats["speed"]) * delta,
+                maxf(0.0, float(enemy["spawn_x"]) - 360.0),
+                minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
+            )
+            moved = true
+
+        var regular_fire_clear := not suppression_charging and float(enemy["shell_cooldown"]) > BISHOP_SHELL_TELEGRAPH
+        if regular_fire_clear:
+            enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
+            if float(enemy["cooldown"]) <= 0.0:
+                _try_enemy_fire(enemy)
+                enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
+
+        if shell_clear_for_suppression and distance < BISHOP_SUPPRESSION_RANGE and float(enemy["suppression_cooldown"]) <= 0.0:
+            enemy["suppression_shots"] = BISHOP_SUPPRESSION_SHOTS
+            enemy["suppression_index"] = 0
+            enemy["suppression_shot_cooldown"] = 0.0
+            enemy["shell_cooldown"] = maxf(float(enemy["shell_cooldown"]), BISHOP_SHELL_TELEGRAPH + 0.70)
+            moved = false
+        elif distance < BISHOP_SHELL_RANGE and float(enemy["shell_cooldown"]) <= 0.0:
+            _fire_bishop_shell(enemy)
+            enemy["shell_cooldown"] = 2.05 + randf_range(0.0, 0.55)
+
+    var shell_telegraph := _bishop_telegraph_strength(float(enemy["shell_cooldown"]), distance, BISHOP_SHELL_RANGE, BISHOP_SHELL_TELEGRAPH)
+    var suppression_telegraph := 1.0 if int(enemy["suppression_shots"]) > 0 else _bishop_telegraph_strength(
+        float(enemy["suppression_cooldown"]), distance, BISHOP_SUPPRESSION_RANGE, BISHOP_SUPPRESSION_TELEGRAPH
+    )
+    _set_bishop_telegraph(enemy, shell_telegraph, suppression_telegraph)
+    return moved
+
+func _bishop_cooldown_tick(current: float, distance: float, attack_range: float, telegraph_seconds: float, delta: float) -> float:
+    if distance > attack_range:
+        return maxf(current, telegraph_seconds)
+    return current - delta
+
+func _bishop_telegraph_strength(current: float, distance: float, attack_range: float, telegraph_seconds: float) -> float:
+    if distance > attack_range:
+        return 0.0
+    if current <= 0.0:
+        return 1.0
+    return clampf(1.0 - current / telegraph_seconds, 0.0, 1.0)
+
+func _set_bishop_telegraph(enemy: Dictionary, shell_strength: float, suppression_strength: float) -> void:
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    if visual != null:
+        visual.set_bishop_telegraph(shell_strength, suppression_strength)
+
+func _fire_bishop_shell(enemy: Dictionary) -> void:
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    var origin := _enemy_fire_origin(enemy)
+    var target := player.global_position + Vector2(0.0, -18.0)
+    var direction := (target - origin).normalized()
+    var profile: Dictionary = ENEMY_FIRE_PROFILES["panzerfaust"]
+    enemy_projectiles.append({
+        "position": origin,
+        "velocity": direction * float(profile["speed"]),
+        "weapon": "panzerfaust",
+        "explosive": true,
+    })
+    if visual != null:
+        visual.play_fire()
+
+func _fire_bishop_suppression(enemy: Dictionary, shot_index: int) -> void:
+    var lane: Dictionary = BISHOP_SUPPRESSION_LANES[shot_index % BISHOP_SUPPRESSION_LANES.size()]
+    var direction := 1.0 if player.global_position.x > float(enemy["x"]) else -1.0
+    var origin := Vector2(float(enemy["x"]) + direction * 48.0, FLOOR_Y - float(lane["height"]))
+    enemy_projectiles.append({
+        "position": origin,
+        "velocity": Vector2(direction * float(lane["speed"]), 0.0),
+        "weapon": "machinegun",
+        "explosive": false,
+    })
+    var visual = enemy_visuals.get(String(enemy["id"]))
+    if visual != null:
+        visual.play_fire()
 
 func _update_boss(delta: float) -> void:
     if not boss_spawned or boss_defeated or boss.is_empty():
