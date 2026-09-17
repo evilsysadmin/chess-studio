@@ -2,117 +2,84 @@ import * as THREE from 'three';
 import {
   HOME_CASTLE_ART_HEIGHT,
   HOME_CASTLE_ART_WIDTH,
-  canonicalHallDepth,
 } from './HomeCastle3DGeometry.js';
+
+export const HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE = 'homeCastleOriginalUv';
 
 export const HOME_CASTLE_CLEAN_PATCH_PLAN = Object.freeze([
   Object.freeze({
     id: 'tournament',
     center: Object.freeze({ x: -0.96, y: 0.018 }),
     size: Object.freeze({ width: 0.19, height: 0.17 }),
-    sampleOffsetX: 0.155,
-    feather: 0.17,
+    sampleOffset: Object.freeze({ x: 0.155, y: 0 }),
+    feather: 0.34,
   }),
 ]);
 
-const VERTEX_SHADER = `
-  attribute vec2 patchUv;
-  varying vec2 vSourceUv;
-  varying vec2 vPatchUv;
+function smoothPatchWeight(distanceToEdge, feather) {
+  if (distanceToEdge <= 0) return 0;
+  if (feather <= 0) return 1;
+  return THREE.MathUtils.smootherstep(distanceToEdge, 0, feather);
+}
 
-  void main() {
-    vSourceUv = uv;
-    vPatchUv = patchUv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
+function patchCenterUv(patch) {
+  return {
+    u: 0.5 + (patch.center.x / HOME_CASTLE_ART_WIDTH),
+    v: 0.5 + (patch.center.y / HOME_CASTLE_ART_HEIGHT),
+  };
+}
 
-const FRAGMENT_SHADER = `
-  uniform sampler2D map;
-  uniform float sampleOffsetU;
-  uniform float feather;
-  varying vec2 vSourceUv;
-  varying vec2 vPatchUv;
+export function applyHomeCastleBackgroundCleanPatches(
+  geometry,
+  plan = HOME_CASTLE_CLEAN_PATCH_PLAN,
+) {
+  const uv = geometry?.attributes?.uv;
+  if (!uv) return geometry;
 
-  void main() {
-    vec4 fromLeft = texture2D(map, vSourceUv - vec2(sampleOffsetU, 0.0));
-    vec4 fromRight = texture2D(map, vSourceUv + vec2(sampleOffsetU, 0.0));
-    float blend = smoothstep(0.15, 0.85, vPatchUv.x);
-    vec4 clean = mix(fromLeft, fromRight, blend);
-    float edge = min(min(vPatchUv.x, 1.0 - vPatchUv.x), min(vPatchUv.y, 1.0 - vPatchUv.y));
-    float alpha = smoothstep(0.0, feather, edge);
-    gl_FragColor = vec4(clean.rgb, clean.a * alpha);
-  }
-`;
-
-function createPatchGeometry(patch, segments = 6) {
-  const geometry = new THREE.PlaneGeometry(patch.size.width, patch.size.height, segments, segments);
-  const positions = geometry.attributes.position;
-  const sourceUv = geometry.attributes.uv;
-  const patchUv = new Float32Array(positions.count * 2);
-
-  for (let index = 0; index < positions.count; index += 1) {
-    const localX = positions.getX(index);
-    const localY = positions.getY(index);
-    const worldX = patch.center.x + localX;
-    const worldY = patch.center.y + localY;
-    const u = 0.5 + (worldX / HOME_CASTLE_ART_WIDTH);
-    const v = 0.5 + (worldY / HOME_CASTLE_ART_HEIGHT);
-
-    sourceUv.setXY(index, u, v);
-    positions.setZ(index, canonicalHallDepth(u, v) + 0.0022);
-
-    patchUv[(index * 2)] = (localX / patch.size.width) + 0.5;
-    patchUv[(index * 2) + 1] = (localY / patch.size.height) + 0.5;
+  let originalUv = geometry.getAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE);
+  if (!originalUv) {
+    originalUv = uv.clone();
+    geometry.setAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE, originalUv);
   }
 
-  positions.needsUpdate = true;
-  sourceUv.needsUpdate = true;
-  geometry.setAttribute('patchUv', new THREE.BufferAttribute(patchUv, 2));
+  for (let index = 0; index < uv.count; index += 1) {
+    const baseU = originalUv.getX(index);
+    const baseV = originalUv.getY(index);
+    let nextU = baseU;
+    let nextV = baseV;
+
+    for (const patch of plan) {
+      const center = patchCenterUv(patch);
+      const halfU = patch.size.width / HOME_CASTLE_ART_WIDTH / 2;
+      const halfV = patch.size.height / HOME_CASTLE_ART_HEIGHT / 2;
+      if (halfU <= 0 || halfV <= 0) continue;
+
+      const normalizedX = Math.abs((baseU - center.u) / halfU);
+      const normalizedY = Math.abs((baseV - center.v) / halfV);
+      const maxDistance = Math.max(normalizedX, normalizedY);
+      if (maxDistance >= 1) continue;
+
+      const distanceToEdge = 1 - maxDistance;
+      const weight = smoothPatchWeight(distanceToEdge, patch.feather);
+      nextU += (patch.sampleOffset.x / HOME_CASTLE_ART_WIDTH) * weight;
+      nextV += (patch.sampleOffset.y / HOME_CASTLE_ART_HEIGHT) * weight;
+    }
+
+    uv.setXY(
+      index,
+      THREE.MathUtils.clamp(nextU, 0, 1),
+      THREE.MathUtils.clamp(nextV, 0, 1),
+    );
+  }
+
+  uv.needsUpdate = true;
   return geometry;
 }
 
-export function createHomeCastleCleanPatchLayer(plan = HOME_CASTLE_CLEAN_PATCH_PLAN) {
-  const group = new THREE.Group();
-  group.name = 'home-castle-clean-patches';
-  group.renderOrder = 0.5;
-  const geometries = [];
-  const materials = [];
-
-  for (const patch of plan) {
-    const geometry = createPatchGeometry(patch);
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        map: { value: null },
-        sampleOffsetU: { value: patch.sampleOffsetX / HOME_CASTLE_ART_WIDTH },
-        feather: { value: patch.feather },
-      },
-      vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      toneMapped: false,
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = `home-castle-clean-patch-${patch.id}`;
-    mesh.renderOrder = 0.5;
-    group.add(mesh);
-    geometries.push(geometry);
-    materials.push(material);
-  }
-
-  return {
-    group,
-    setTexture(texture) {
-      for (const material of materials) {
-        material.uniforms.map.value = texture;
-        material.needsUpdate = true;
-      }
-    },
-    dispose() {
-      geometries.forEach((geometry) => geometry.dispose());
-      materials.forEach((material) => material.dispose());
-    },
-  };
+export function restoreHomeCastleOriginalUvs(geometry) {
+  const originalUv = geometry?.getAttribute?.(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE);
+  if (!originalUv) return geometry;
+  geometry.setAttribute('uv', originalUv.clone());
+  geometry.deleteAttribute(HOME_CASTLE_ORIGINAL_UV_ATTRIBUTE);
+  return geometry;
 }
