@@ -6,6 +6,7 @@ import {
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
 import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
+import { chroniclesPartyGridFootprint } from './chroniclesPartyFootprint.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import {
@@ -470,7 +471,7 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
     side: THREE.DoubleSide,
   });
   selectionMaterial.userData.chroniclesIsoOwned = true;
-  const selection = new THREE.Mesh(buildSquareFrameGeometry(1.34, coarsePointer ? 0.075 : 0.055), selectionMaterial);
+  const selection = new THREE.Mesh(buildSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.075 : 0.055), selectionMaterial);
   selection.rotation.x = -Math.PI / 2;
   selection.position.y = 0.035;
   selection.renderOrder = 9;
@@ -679,11 +680,21 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     camera.updateProjectionMatrix();
   }
 
-  function syncSelection() {
+  function syncSelection({ immediate = false } = {}) {
     const config = CHRONICLES_ISO_PARTY_LAYOUT[selectedMemberId] || CHRONICLES_ISO_PARTY_LAYOUT.matthias;
-    party.selection.position.x = config.x;
-    party.selection.position.z = config.z;
+    const model = party.models.get(selectedMemberId);
+    const target = model?.userData?.chroniclesIsoTarget;
     party.selection.scale.setScalar(config.scale || 1);
+    party.selection.visible = Boolean(model?.visible && target);
+    if (!target) return;
+
+    const selectionTarget = target.clone();
+    selectionTarget.y = 0.035;
+    party.selection.userData.chroniclesIsoTarget = selectionTarget;
+    if (immediate || !party.selection.userData.chroniclesIsoPlaced) {
+      party.selection.position.copy(selectionTarget);
+      party.selection.userData.chroniclesIsoPlaced = true;
+    }
   }
 
   function syncInteraction(nextInteraction = null) {
@@ -717,6 +728,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     // Keep the company as the camera anchor. Enemies live deeper in the room,
     // but they no longer drag the shot back toward a tactical overview.
     desiredFocus.copy(partyCell);
+    const partyFootprint = chroniclesPartyGridFootprint(state);
 
     const enemyRoster = chroniclesEnemyRenderRoster(state);
     reconcileEnemyModels(scene, enemies, enemyRoster, { coarsePointer: coarse });
@@ -741,8 +753,22 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     state.party.forEach((member) => {
       const model = party.models.get(member.id);
       if (!model) return;
-      model.visible = member.hp > 0;
+      const slot = partyFootprint[member.id];
+      model.visible = member.hp > 0 && Boolean(slot);
       model.userData.chroniclesIsoHpRatio = Math.max(0, member.hp / member.maxHp);
+      if (!slot) {
+        model.userData.chroniclesIsoTarget = null;
+        model.userData.chroniclesIsoPlaced = false;
+        return;
+      }
+
+      const localTarget = chroniclesIsoWorldForCell(slot.x, slot.y).sub(partyCell);
+      model.userData.chroniclesIsoTarget = localTarget;
+      model.userData.chroniclesIsoCell = slot;
+      if (!model.userData.chroniclesIsoPlaced) {
+        model.position.copy(localTarget);
+        model.userData.chroniclesIsoPlaced = true;
+      }
     });
 
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x8c3f0d : 0x160a02);
@@ -751,11 +777,18 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     dungeon.leverPivot.rotation.z = worldObjects.leverPulled ? -0.74 : 0.58;
     dungeon.runeCoreRoot.visible = worldObjects.runeCoreVisible;
     dungeon.runeMaterial.emissiveIntensity = worldObjects.runeCoreVisible ? 1.7 : 0.25;
-    syncSelection();
+    syncSelection({ immediate: reducedMotion });
     syncInteraction(nextInteraction);
 
     if (reducedMotion) {
       party.root.position.copy(desiredParty);
+      party.models.forEach((model) => {
+        if (!model.visible || !model.userData.chroniclesIsoTarget) return;
+        model.position.copy(model.userData.chroniclesIsoTarget);
+      });
+      if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
+        party.selection.position.copy(party.selection.userData.chroniclesIsoTarget);
+      }
       enemies.forEach((model) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.copy(model.userData.chroniclesIsoTarget);
@@ -815,11 +848,16 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
       party.models.forEach((model, id) => {
         if (!model.visible) return;
+        const target = model.userData.chroniclesIsoTarget;
+        if (target) model.position.lerp(target, 0.2);
         model.userData.chroniclesArtTick?.(time);
         model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
       });
+      if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
+        party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
+      }
 
       torches.forEach((torch) => {
         const pulse = 0.94 + Math.sin(time * 7.2 + torch.phase) * 0.07 + Math.sin(time * 15.8 + torch.phase) * 0.025;
