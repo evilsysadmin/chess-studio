@@ -2,7 +2,7 @@ extends Node2D
 
 # Godot-native 2D Matthias visual controller.
 # One body atlas drives locomotion; weapon sprites stay independent and are
-# attached to per-action Marker2D sockets instead of baking four body atlases.
+# attached to Marker2D sockets instead of baking four body atlases.
 const MOTION_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 const FRAME_SIZE := Vector2(96.0, 96.0)
@@ -57,6 +57,22 @@ const WEAPON_FLASH_SCALE := {
     "machinegun": Vector2(0.95, 0.95),
     "shotgun": Vector2(1.20, 1.20),
     "panzerfaust": Vector2(1.55, 1.55),
+}
+const WEAPON_SOCKET_DAMPING := {
+    "pistol": 1.0,
+    "machinegun": 0.88,
+    "shotgun": 0.72,
+    "panzerfaust": 0.52,
+}
+
+# Motion is driven by the current AnimatedSprite2D frame, keeping the gun tied
+# to Matthias' gait without authoring a separate body sheet for each weapon.
+const ACTION_SOCKET_MOTION := {
+    "idle": {"x": 0.35, "y": 0.70, "rotation": 0.006},
+    "walk": {"x": 0.90, "y": 1.55, "rotation": 0.016},
+    "run": {"x": 1.45, "y": 2.35, "rotation": 0.026},
+    "crouch": {"x": 0.25, "y": 0.45, "rotation": 0.005},
+    "jump": {"x": 0.55, "y": 1.10, "rotation": 0.010},
 }
 
 # Each weapon owns a small authored 2D socket set. Values are local to the foot-
@@ -287,12 +303,33 @@ func _weapon_pose() -> Dictionary:
     var weapon_poses: Dictionary = WEAPON_POSES.get(_weapon, WEAPON_POSES["pistol"])
     return weapon_poses.get(_action, weapon_poses["idle"])
 
+func _body_frame_phase() -> float:
+    if not _body_ready or _body == null:
+        return 0.0
+    var count := maxi(1, int(ACTION_COUNTS.get(_action, 1)))
+    return TAU * (float(_body.frame) / float(count))
+
+func _socket_motion_offset() -> Dictionary:
+    var profile: Dictionary = ACTION_SOCKET_MOTION.get(_action, ACTION_SOCKET_MOTION["idle"])
+    var phase := _body_frame_phase()
+    var damping := float(WEAPON_SOCKET_DAMPING.get(_weapon, 1.0))
+    var wave := sin(phase)
+    var bob_wave := sin(phase * 2.0) if _action in ["walk", "run"] else wave
+    return {
+        "position": Vector2(
+            cos(phase) * float(profile["x"]),
+            bob_wave * float(profile["y"]),
+        ) * damping,
+        "rotation": wave * float(profile["rotation"]) * damping,
+    }
+
 func _sync_weapon_pose() -> void:
     if _weapon_root == null:
         return
     var pose := _weapon_pose()
-    _weapon_root.position = pose["position"]
-    _weapon_root.rotation = float(pose["rotation"])
+    var motion := _socket_motion_offset()
+    _weapon_root.position = pose["position"] + motion["position"]
+    _weapon_root.rotation = float(pose["rotation"]) + float(motion["rotation"])
     _weapon_sprite.scale = pose["scale"]
     _muzzle.position = pose["muzzle"]
     _muzzle_flash.scale = WEAPON_FLASH_SCALE.get(_weapon, Vector2.ONE)
