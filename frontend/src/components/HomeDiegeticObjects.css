@@ -19,7 +19,7 @@
     inset: 8% -4%;
     border-radius: 50%;
     pointer-events: none;
-    opacity: .08;
+    opacity: 0;
     background: radial-gradient(ellipse at center, rgba(255, 190, 87, .26) 0%, rgba(205, 120, 35, .10) 44%, transparent 76%);
     transform: scale(.82);
     transition: opacity .22s ease, transform .24s cubic-bezier(.2,.75,.25,1), filter .22s ease;
@@ -107,8 +107,7 @@
   }
 
   .illustrated-home__destination.is-diegetic-object + .illustrated-home__scene-fragment {
-    opacity: .12;
-    filter: brightness(1.045) saturate(1.025);
+    opacity: 0;
   }
 
   .illustrated-home__destination.is-diegetic-object:hover + .illustrated-home__scene-fragment,
