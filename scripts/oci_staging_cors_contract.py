@@ -14,6 +14,8 @@ verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
 tunnel_control = (ROOT / ".github" / "workflows" / "oci-staging-tunnel.yml").read_text(encoding="utf-8")
+infra_apply = (ROOT / ".github" / "workflows" / "oci-staging-deploy.yml").read_text(encoding="utf-8")
+infra_lab = (ROOT / ".github" / "workflows" / "oci-staging-lab.yml").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -126,6 +128,28 @@ assert "group: oci-staging-mutations" in tunnel_control, (
 )
 assert "group: oci-staging-cloudflare-tunnel" not in tunnel_control, (
     "OCI tunnel reconciliation must not use a private mutation mutex"
+)
+
+# Infrastructure has one production-grade apply path. The lab remains useful for
+# observation/bootstrap/destruction, but must not bypass post-apply agent and
+# reserved-egress convergence owned by the dedicated infrastructure workflow.
+assert "options: [probe, plan, bootstrap, destroy]" in infra_lab, (
+    "OCI lab must not expose a second bare Terraform apply path"
+)
+assert "options: [probe, plan, apply" not in infra_lab, (
+    "OCI lab must not reintroduce apply alongside the canonical infrastructure workflow"
+)
+assert "run: make -C infra/oci apply" in infra_apply, (
+    "dedicated OCI infrastructure workflow must own Terraform apply"
+)
+assert "Wait for OCI Run Command registration after infrastructure change" in infra_apply, (
+    "canonical OCI apply must keep post-apply agent convergence"
+)
+assert "Attach and verify existing reserved staging egress" in infra_apply, (
+    "canonical OCI apply must keep reserved-egress convergence"
+)
+assert "group: oci-staging-mutations" in infra_apply and "group: oci-staging-mutations" in infra_lab, (
+    "all OCI infrastructure operations must share the staging mutation mutex"
 )
 
 print("OCI staging CORS + runtime deployment contract: OK")
