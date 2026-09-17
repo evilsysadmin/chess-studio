@@ -28,6 +28,16 @@ function projectCell(scenePlan, cell, cellSize) {
   });
 }
 
+function projectContent(scenePlan, entry, cellSize) {
+  const position = entry?.position;
+  return Object.freeze({
+    ...entry,
+    world: position
+      ? chroniclesIsometricCellToWorld(scenePlan, position.x, position.y, cellSize)
+      : null,
+  });
+}
+
 export function chroniclesIsometricDungeonPlan(mapOrState = null, cellSize = CHRONICLES_ISOMETRIC_CELL_SIZE) {
   const scenePlan = isScenePlan(mapOrState) ? mapOrState : chroniclesIsometricScenePlan(mapOrState);
   const size = normalizedCellSize(cellSize);
@@ -42,5 +52,6 @@ export function chroniclesIsometricDungeonPlan(mapOrState = null, cellSize = CHR
     }),
     floors: Object.freeze(scenePlan.floors.map((cell) => projectCell(scenePlan, cell, size))),
     walls: Object.freeze(scenePlan.walls.map((cell) => projectCell(scenePlan, cell, size))),
+    content: Object.freeze((scenePlan.content || []).map((entry) => projectContent(scenePlan, entry, size))),
   });
 }
