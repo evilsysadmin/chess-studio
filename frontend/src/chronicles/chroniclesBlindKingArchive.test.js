@@ -19,6 +19,7 @@ describe('Chronicles Blind King Archive', () => {
   it('continues the main campaign from Menagerie into a larger fifth map', () => {
     expect(chroniclesMapIds()).toContain('blind-king-archive');
     const archive = chroniclesMapById('blind-king-archive');
+    expect(archive.version).toBe(2);
     expect(archive.title).toBe('Archivo del Rey Ciego');
     expect(archive.grid).toHaveLength(9);
     expect(archive.grid[0]).toHaveLength(11);
@@ -49,7 +50,7 @@ describe('Chronicles Blind King Archive', () => {
     expect(entered.journal.at(-1)?.id).toBe('menagerie-archive-crossing');
   });
 
-  it('runs a multi-step key and index quest while keeping the archive wisp optional', () => {
+  it('runs a multi-step key and index quest, keeps the wisp optional and continues into Foundry', () => {
     const archive = chroniclesMapById('blind-king-archive');
     const warden = archive.enemies.find((enemy) => enemy.id === 'ledger-warden');
     let state = chroniclesMapTransitionState(createChroniclesState(), 'blind-king-archive');
@@ -111,10 +112,17 @@ describe('Chronicles Blind King Archive', () => {
     });
 
     state = { ...state, x: 9, y: 2 };
-    const escaped = chroniclesTacticsUse(state, 'archive-east-gate');
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.archiveWispHp).toBe(4);
-    expect(escaped.journal.at(-1)?.id).toBe('blind-archive-cleared');
+    const foundry = chroniclesTacticsUse(state, 'archive-east-gate');
+    expect(foundry.mapId).toBe('iron-foundry');
+    expect(foundry.phase).toBe('explore');
+    expect({ x: foundry.x, y: foundry.y, direction: foundry.direction }).toEqual({ x: 1, y: 1, direction: 1 });
+    expect(foundry.archiveWispHp).toBe(0);
+    expect(foundry.ironSentinelHp).toBe(10);
+    expect(foundry.chainHoundHp).toBe(7);
+    expect(foundry.slagCrawlerHp).toBe(6);
+    expect(foundry.emberArtificerHp).toBe(6);
+    expect(foundry.scrapGoblinHp).toBe(5);
+    expect(foundry.journal.at(-1)?.id).toBe('blind-archive-cleared');
   });
 
   it('rewards the previous secret route without making its trophy mandatory', () => {

@@ -1,6 +1,6 @@
 {
   "id": "blind-king-archive",
-  "version": 1,
+  "version": 2,
   "progressionKey": "blind-king-archive-01",
   "title": "Archivo del Rey Ciego",
   "grid": [
@@ -290,20 +290,20 @@
       "id": "archive-east-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abandonar el Archivo del Rey Ciego",
+      "openLabel": "Bajar hacia la Fundición de Hierro Negro",
       "lockedLabel": "Examinar salida oriental",
       "requirements": [
         { "key": "archiveIndexRead", "equals": true, "message": "El Índice Ciego aún mantiene sellada la salida." }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "iron-foundry" }
         ],
-        "message": "El sello responde. La puerta oriental se abre y la compañía deja atrás un archivo que, técnicamente, ha tomado más notas sobre ellos que al revés.",
+        "message": "El sello responde. Tras la puerta oriental no hay aire libre: hay cadenas, hornos y una Fundición de Hierro Negro funcionando sin supervisión razonable.",
         "journal": {
           "id": "blind-archive-cleared",
-          "title": "El Rey Ciego ya tiene expediente",
-          "body": "La compañía abandona el archivo con el sello, el índice resuelto y quizá varios objetos que ningún inventario oficial reconoce.",
+          "title": "Del archivo a la fundición",
+          "body": "El Índice Ciego abre el paso hacia una fundición activa. La compañía conserva su botín, incluida cualquier Cifra Real obtenida por la ruta secreta.",
           "sigil": "XIII"
         }
       }
