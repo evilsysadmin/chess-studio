@@ -27,6 +27,7 @@ func _ready() -> void:
     add_child(_art)
 
 func _physics_process(delta: float) -> void:
+    var was_on_floor := is_on_floor()
     var axis := _movement_axis()
     if absf(axis) > 0.08:
         facing = 1.0 if axis > 0.0 else -1.0
@@ -60,6 +61,7 @@ func _physics_process(delta: float) -> void:
     _jump_was_pressed = jump_pressed
 
     move_and_slide()
+    var landed_now := not was_on_floor and is_on_floor()
     crouching = _crouch_pressed() and is_on_floor()
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
@@ -69,7 +71,16 @@ func _physics_process(delta: float) -> void:
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
-    _art.update_visual(delta, axis, is_on_floor(), crouching, velocity.y, facing, fired_now)
+    _art.update_visual(
+        delta,
+        axis,
+        is_on_floor(),
+        crouching,
+        landed_now,
+        velocity.y,
+        facing,
+        fired_now,
+    )
     queue_redraw()
 
 func _movement_axis() -> float:
