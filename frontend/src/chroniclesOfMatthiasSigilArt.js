@@ -77,7 +77,7 @@ export function installChroniclesTacticsSigilArt(scene) {
   if (existing) return existing;
 
   const legacy = scene.getObjectByName(LEGACY_NAME);
-  if (!legacy?.parent) return null;
+  if (!legacy?.parent || !legacy.visible) return null;
   legacy.visible = false;
   legacy.userData.chroniclesSigilReplacement = 'inlaid-v1';
 
