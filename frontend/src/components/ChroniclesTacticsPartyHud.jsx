@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CHRONICLES_ATTRIBUTE_CAP,
   CHRONICLES_ATTRIBUTE_DEFINITIONS,
@@ -50,6 +50,7 @@ export default function ChroniclesTacticsPartyHud({
   state,
   progression,
   selectedMemberId,
+  sheetRequest = null,
   onSelectMember,
   onAllocateAttribute,
   onLearnSkill,
@@ -70,6 +71,13 @@ export default function ChroniclesTacticsPartyHud({
   const sheetSkills = sheetMember ? chroniclesSkillsForMember(sheetMember.id) : [];
   const sheetModifiers = sheetMember ? state.rpgModifiers?.[sheetMember.id] || {} : {};
   const sheetReach = sheetProfile ? sheetProfile.reach + Number(sheetModifiers.reachBonus || 0) : 0;
+
+  useEffect(() => {
+    const memberId = sheetRequest?.memberId;
+    if (!memberId || !party.some((member) => member.id === memberId)) return;
+    onSelectMember(memberId);
+    setSheetMemberId(memberId);
+  }, [onSelectMember, party, sheetRequest]);
 
   const openSheet = (memberId) => {
     onSelectMember(memberId);
