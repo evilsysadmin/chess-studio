@@ -44,7 +44,7 @@ describe('Chronicles Tactics inlaid sigil art', () => {
     expect(installChroniclesTacticsSigilArt(scene)).toBeNull();
     expect(legacy.visible).toBe(false);
     expect(legacy.userData.chroniclesSigilReplacement).toBeUndefined();
-    expect(scene.getObjectByName('chronicles-tactics-inlaid-sigil')).toBeNull();
+    expect(scene.getObjectByName('chronicles-tactics-inlaid-sigil')).toBeUndefined();
   });
 
   it('is idempotent and fails closed without the authored sigil', () => {
