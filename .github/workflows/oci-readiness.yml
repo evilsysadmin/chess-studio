@@ -11,7 +11,14 @@ on:
       - 'scripts/oci_existing_a1_deploy.sh'
       - 'scripts/oci_runtime_bundle.py'
       - 'scripts/oci_staging_cors_contract.py'
+      - 'scripts/oci_readiness_scope.py'
       - '.github/workflows/oci-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/oci/k3s/**'
+      - 'scripts/oci_k3s_bundle.py'
+      - 'scripts/oci_k3s_bundle_publish.py'
 
 permissions:
   contents: read
@@ -22,9 +29,7 @@ concurrency:
 
 jobs:
   classify:
-    name: Classify OCI readiness surface
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
     outputs:
       arm64: ${{ steps.scope.outputs.arm64 }}
     steps:
@@ -34,24 +39,10 @@ jobs:
       - id: scope
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
-            echo arm64=true >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$GITHUB_SHA")"
-          if grep -Eq '^(backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$' <<<"$files"; then
-            echo arm64=true >> "$GITHUB_OUTPUT"
-          else
-            echo arm64=false >> "$GITHUB_OUTPUT"
-          fi
+        run: python3 -S scripts/oci_readiness_scope.py >> "$GITHUB_OUTPUT"
 
   staging-cors-contract:
-    name: Staging · CORS deploy contract
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - run: python3 -S scripts/oci_staging_cors_contract.py
@@ -59,7 +50,6 @@ jobs:
       - run: bash -n scripts/oci_existing_a1_deploy.sh
 
   backend-arm64:
-    name: Backend · linux/arm64
     needs: classify
     if: needs.classify.outputs.arm64 == 'true'
     runs-on: ubuntu-24.04
@@ -73,10 +63,8 @@ jobs:
       - run: bash scripts/oci_arm64_smoke.sh
 
   terraform:
-    name: Terraform · contracts + Floci
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     env:
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
@@ -87,6 +75,23 @@ jobs:
           terraform_version: 1.16.0
           terraform_wrapper: false
       - run: make -C infra/oci static
-      - name: Secret-surface guard
-        run: make -C infra/oci secret-guard
+      - run: make -C infra/oci secret-guard
       - run: make -C infra/oci floci
+
+  publish-k3s:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: staging
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+      - run: python3 scripts/oci_k3s_bundle_publish.py reconcile
