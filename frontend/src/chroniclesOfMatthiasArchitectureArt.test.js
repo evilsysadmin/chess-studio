@@ -30,6 +30,27 @@ describe('Chronicles Tactics architecture depth', () => {
     expect(chroniclesTacticsExposedWallSide(0, 0)).toBeNull();
   });
 
+  it('uses supplied scene topology instead of consulting the canonical crypt', () => {
+    const scenePlan = {
+      center: { x: 8, y: 9 },
+      wallFaces: [
+        { x: 8, y: 9, side: 'west' },
+        { x: 9, y: 9, side: 'north' },
+      ],
+    };
+    const scene = new THREE.Scene();
+    scene.add(wall('chronicles-iso-wall-8-9', [0, 1.23, 0]));
+    scene.add(wall('chronicles-iso-wall-9-9', [2.45, 1.23, 0]));
+
+    expect(chroniclesTacticsExposedWallSide(8, 9, scenePlan)?.key).toBe('west');
+    expect(chroniclesTacticsExposedWallSide(9, 9, scenePlan)?.key).toBe('north');
+    expect(chroniclesTacticsArchitectureWallCells(scene, scenePlan)).toHaveLength(2);
+
+    const root = installChroniclesTacticsArchitectureArt(scene, { scenePlan });
+    expect(root.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
+    expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
+  });
+
   it('decorates only full-height structural walls and batches the geometry', () => {
     const scene = fixture();
     expect(chroniclesTacticsArchitectureWallCells(scene)).toHaveLength(2);
