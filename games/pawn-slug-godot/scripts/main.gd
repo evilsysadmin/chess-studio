@@ -21,7 +21,7 @@ var enemy_respawn := 0.0
 @onready var player: CharacterBody2D = $Player
 
 func _ready() -> void:
-    player.fired.connect(_on_player_fired)
+    player.connect("fired", Callable(self, "_on_player_fired"))
     _notify_parent("ready")
     queue_redraw()
 
