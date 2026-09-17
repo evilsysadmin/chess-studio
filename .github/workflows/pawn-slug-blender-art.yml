@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/home_matthias_parts.py'
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/home_matthias_parts.py'
@@ -41,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
-      - name: Render canonical chibi proof cells
+      - name: Render canonical weighted proof cells
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           WEAPON: ${{ matrix.weapon }}
@@ -50,7 +52,7 @@ jobs:
           OUT="/tmp/pawn-slug-canonical-${WEAPON}-proof"
           rm -rf "$OUT"
           blender --background -noaudio \
-            --python scripts/blender/render_pawn_slug_matthias_canonical_chibi.py \
+            --python scripts/blender/render_pawn_slug_matthias_canonical_heavy.py \
             -- --output-dir "$OUT" --weapon "$WEAPON" --profile proof
           test -s "$OUT/matthias_${WEAPON}_idle_00.png"
           for FRAME in 00 04 08 12; do
@@ -78,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
-      - name: Render full canonical runtime bank
+      - name: Render full weighted canonical runtime bank
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           WEAPON: ${{ matrix.weapon }}
@@ -88,7 +90,7 @@ jobs:
           rm -rf "$OUT"
           mkdir -p "$OUT"
           blender --background -noaudio \
-            --python scripts/blender/render_pawn_slug_matthias_canonical_chibi.py \
+            --python scripts/blender/render_pawn_slug_matthias_canonical_heavy.py \
             -- --output-dir "$OUT" --weapon "$WEAPON" --profile runtime
       - name: Pack lossless 16x5 runtime atlas
         env:
@@ -97,7 +99,7 @@ jobs:
           set -euo pipefail
           python3 -m pip install --disable-pip-version-check --quiet pillow
           OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
-          ATLAS="$OUT/matthias_${WEAPON}_canonical_v3.webp"
+          ATLAS="$OUT/matthias_${WEAPON}_canonical_v4.webp"
           python3 scripts/art/pack_pawn_slug_canonical_runtime.py \
             --frames-dir "$OUT" \
             --weapon "$WEAPON" \
@@ -111,7 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
-          ATLAS="$OUT/matthias_${WEAPON}_canonical_v3.webp"
+          ATLAS="$OUT/matthias_${WEAPON}_canonical_v4.webp"
           python3 -S scripts/r2_asset_publish.py publish \
             "$ATLAS" \
             --logical-id "pawnSlug.matthias.${WEAPON}" \
