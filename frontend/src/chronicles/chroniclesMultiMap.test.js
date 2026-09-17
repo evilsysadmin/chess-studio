@@ -8,10 +8,11 @@ import {
 } from './chroniclesMapCatalog.js';
 
 describe('Chronicles multi-map campaign', () => {
-  it('registers a second standalone encounter with its own state and content', () => {
+  it('registers three standalone authored encounters with distinct content', () => {
     expect(chroniclesMapIds()).toEqual(expect.arrayContaining([
       'crypt-eight-squares',
       'gallery-of-forks',
+      'menagerie-of-ash',
     ]));
 
     const gallery = chroniclesMapById('gallery-of-forks');
@@ -20,9 +21,17 @@ describe('Chronicles multi-map campaign', () => {
     expect(gallery.interactables.map((entry) => entry.id)).toContain('gallery-lever');
     expect(gallery.treasures.map((entry) => entry.id)).toContain('gallery-relic');
     expect(gallery.exits.map((entry) => entry.id)).toContain('gallery-gate');
+
+    const menagerie = chroniclesMapById('menagerie-of-ash');
+    const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
+    const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
+    expect(menagerie.version).toBe(2);
+    expect(menagerie.enemies).toHaveLength(4);
+    expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
+    expect(gate.requirements.map((requirement) => requirement.key)).not.toContain('emberWispHp');
   });
 
-  it('crosses the Black Gate into the second map without resetting the surviving party or journal', () => {
+  it('crosses the Black Gate into Gallery without resetting the surviving party or journal', () => {
     const initial = createChroniclesState();
     const woundedParty = initial.party.map((member, index) => ({
       ...member,
@@ -60,7 +69,7 @@ describe('Chronicles multi-map campaign', () => {
     expect(next.phase).toBe('explore');
   });
 
-  it('can finish the second encounter through its own declarative exit', () => {
+  it('crosses Gallery into Menagerie as the third campaign encounter', () => {
     const galleryState = chroniclesMapTransitionState(createChroniclesState(), 'gallery-of-forks');
     const readyToLeave = {
       ...galleryState,
@@ -69,12 +78,40 @@ describe('Chronicles multi-map campaign', () => {
       enemyHp: 0,
       jailerHp: 0,
       galleryRelicCollected: true,
+      turns: 31,
     };
 
-    const escaped = chroniclesTacticsUse(readyToLeave, 'gallery-gate');
-    expect(escaped.mapId).toBe('gallery-of-forks');
+    const next = chroniclesTacticsUse(readyToLeave, 'gallery-gate');
+
+    expect(next.mapId).toBe('menagerie-of-ash');
+    expect({ x: next.x, y: next.y, direction: next.direction }).toEqual({ x: 1, y: 5, direction: 1 });
+    expect(next.phase).toBe('explore');
+    expect(next.turns).toBe(32);
+    expect(next.ashGoblinHp).toBe(5);
+    expect(next.cryptSpiderHp).toBe(4);
+    expect(next.emberWispHp).toBe(4);
+    expect(next.boneHoundHp).toBe(6);
+    expect(next.journal.at(-1)?.id).toBe('gallery-menagerie-crossing');
+  });
+
+  it('can finish Menagerie while the optional ember wisp remains alive', () => {
+    const menagerieState = chroniclesMapTransitionState(createChroniclesState(), 'menagerie-of-ash');
+    const readyToLeave = {
+      ...menagerieState,
+      x: 4,
+      y: 1,
+      ashGoblinHp: 0,
+      cryptSpiderHp: 0,
+      boneHoundHp: 0,
+      emberWispHp: 4,
+    };
+
+    const escaped = chroniclesTacticsUse(readyToLeave, 'menagerie-gate');
+
+    expect(escaped.mapId).toBe('menagerie-of-ash');
     expect(escaped.phase).toBe('escaped');
-    expect(escaped.message).toMatch(/abandona la Galería/);
-    expect(escaped.journal.at(-1)?.id).toBe('gallery-extraction');
+    expect(escaped.emberWispHp).toBe(4);
+    expect(escaped.message).toMatch(/cruza el portón/i);
+    expect(escaped.journal.at(-1)?.id).toBe('menagerie-cleared');
   });
 });
