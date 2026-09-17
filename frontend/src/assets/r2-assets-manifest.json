@@ -78,11 +78,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-37db67d27387fde0.webp"
     },
     "pawnSlug.matthias.pistol": {
-      "bytes": 130478,
+      "bytes": 515130,
       "contentType": "image/webp",
-      "key": "pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
-      "sha256": "42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
+      "key": "pawn-slug/matthias/pistol/matthias_pistol_canonical_v4-8d06b70e1ea9ce27.webp",
+      "sha256": "8d06b70e1ea9ce2735c8e9b01d5952022770fc4d355f49f3c683986287b7b259",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_pistol_canonical_v4-8d06b70e1ea9ce27.webp"
     },
     "pawnSlug.matthias.pistolShoot": {
       "bytes": 22850,

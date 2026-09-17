@@ -11,11 +11,11 @@ const PISTOL_SHOOT_WIDTH = PISTOL_SHOOT_FRAME_WIDTH * PISTOL_SHOOT_FRAMES;
 const PISTOL_SHOOT_HEIGHT = PISTOL_SHOOT_FRAME_HEIGHT;
 
 export const PAWN_SLUG_MATTHIAS_AUTHORED_MOTION = Object.freeze({
-  version: 'canonical-authored-motion-v1',
+  version: 'canonical-authored-motion-v2',
   canonicalPistolRun: Object.freeze({
-    frameCount: 4,
-    frameRate: 8,
-    purpose: 'make-the-four-real-canonical-run-poses-readable-at-runtime',
+    frameCount: 16,
+    frameRate: 32,
+    purpose: 'use-the-full-16-frame-canonical-run-cycle-at-the-existing-half-second-cadence',
   }),
   pistolShoot: Object.freeze({
     logicalId: PISTOL_SHOOT_LOGICAL_ID,

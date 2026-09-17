@@ -3,7 +3,7 @@ extends Node2D
 # Canonical Matthias runtime art is delivered from immutable R2 objects, never Git blobs.
 # Contract mirrors frontend/src/pawnSlugMatthiasIntegratedSprites.js.
 const WEAPON_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_pistol_canonical_v4-8d06b70e1ea9ce27.webp",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_canonical_v4-37db67d27387fde0.webp",
@@ -36,7 +36,7 @@ const LANDING_SECONDS := 0.12
 const LANDING_Y_SQUASH := 0.055
 const LANDING_X_STRETCH := 0.035
 const CANONICAL_RUN_FRAMES := 16
-const CANONICAL_RUN_FPS := 8.0
+const CANONICAL_RUN_FPS := 32.0
 const JUMP_VISUAL_SPEED_RANGE := 610.0
 const ACTION_ROWS := {
     "idle": 0,

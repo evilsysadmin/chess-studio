@@ -33,13 +33,14 @@ import {
 } from './pawnSlugMatthiasAuthoredMotion.js';
 
 describe('Pawn Slug canonical Matthias authored motion', () => {
-  it('slows the four real pistol run poses into a readable authored cadence', () => {
-    expect(PAWN_SLUG_MATTHIAS_AUTHORED_MOTION.canonicalPistolRun.frameCount).toBe(4);
-    expect(PAWN_SLUG_MATTHIAS_AUTHORED_MOTION.canonicalPistolRun.frameRate).toBe(8);
+  it('uses all sixteen pistol run poses while preserving the half-second cycle', () => {
+    expect(PAWN_SLUG_MATTHIAS_AUTHORED_MOTION.canonicalPistolRun.frameCount).toBe(16);
+    expect(PAWN_SLUG_MATTHIAS_AUTHORED_MOTION.canonicalPistolRun.frameRate).toBe(32);
     expect(pawnSlugMatthiasCanonicalRunFrame(1, 1)).toBe(0);
-    expect(pawnSlugMatthiasCanonicalRunFrame(1.13, 1)).toBe(1);
-    expect(pawnSlugMatthiasCanonicalRunFrame(1.26, 1)).toBe(2);
-    expect(pawnSlugMatthiasCanonicalRunFrame(1.39, 1)).toBe(3);
+    expect(pawnSlugMatthiasCanonicalRunFrame(1.04, 1)).toBe(1);
+    expect(pawnSlugMatthiasCanonicalRunFrame(1.13, 1)).toBe(4);
+    expect(pawnSlugMatthiasCanonicalRunFrame(1.26, 1)).toBe(8);
+    expect(pawnSlugMatthiasCanonicalRunFrame(1.39, 1)).toBe(12);
     expect(pawnSlugMatthiasCanonicalRunFrame(1.51, 1)).toBe(0);
   });
 
@@ -87,8 +88,8 @@ describe('Pawn Slug canonical Matthias authored motion', () => {
       firing: false,
       dir: 1,
     });
-    expect(run.runFrame).toBe(1);
-    expect(sprite.userData.setActionFrame).toHaveBeenLastCalledWith('run', 1);
+    expect(run.runFrame).toBe(4);
+    expect(sprite.userData.setActionFrame).toHaveBeenLastCalledWith('run', 4);
 
     const blast = applyPawnSlugMatthiasAuthoredMotion(sprite, {
       time: 2,

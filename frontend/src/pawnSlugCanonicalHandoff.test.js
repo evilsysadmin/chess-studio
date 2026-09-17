@@ -8,7 +8,17 @@ vi.mock('three', async () => ({
 import { createIntegratedMatthiasSlugSprite, pawnSlugIntegratedWeaponAtlasUrl } from './pawnSlugMatthiasIntegratedSprites.js';
 const texture = () => ({ repeat: { set: vi.fn() }, offset: { set: vi.fn() }, dispose: vi.fn() });
 describe('approved canonical handoff', () => {
-  it('keeps guarded windows inside the atlas for both directions and invalid frames', () => {
+  it('uses the full canonical pistol v4 bank and keeps guarded windows inside the atlas', () => {
+    expect(meta.version).toBe('canonical-pistol-v4');
+    expect(meta.width).toBe(3072);
+    expect(meta.height).toBe(960);
+    expect(meta.sourceFacing).toBe('left');
+    expect(meta.actions.idle.count).toBe(10);
+    expect(meta.actions.walk.count).toBe(10);
+    expect(meta.actions.run.count).toBe(16);
+    expect(meta.actions.crouch.count).toBe(10);
+    expect(meta.actions.jump.count).toBe(9);
+
     for (const action of [...Object.keys(meta.actions), 'unknown', 'constructor']) {
       for (const frame of [-17, 0, 3, 19, NaN, Infinity]) {
         for (const dir of [-1, 1]) {
@@ -17,11 +27,10 @@ describe('approved canonical handoff', () => {
           expect(Math.max(w.offsetX, w.offsetX + w.repeatX)).toBeLessThan(1);
           expect(w.offsetY).toBeGreaterThan(0);
           expect(w.offsetY + w.repeatY).toBeLessThan(1);
-          expect(w.mirrored).toBe(dir < 0);
+          expect(w.mirrored).toBe(dir >= 0);
         }
       }
     }
-    expect(meta.fallbacks.jump).toContain('aim pose');
     expect(pawnSlugCanonicalPistolWindow('unknown').action).toBe('idle');
   });
   it('uses the baked canonical face and never substitutes pistol for another weapon', () => {
