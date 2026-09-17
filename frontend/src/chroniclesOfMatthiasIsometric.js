@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import {
   CHRONICLES_ENEMIES,
-  CHRONICLES_MAP,
   chroniclesEnemyIsActive,
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
@@ -16,12 +15,16 @@ import {
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import {
+  CHRONICLES_ISOMETRIC_CELL_SIZE,
+  chroniclesIsometricDungeonPlan,
+} from './chronicles/chroniclesIsometricDungeonPlan.js';
+import {
   chroniclesIsometricCellToWorld,
   chroniclesIsometricScenePlan,
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
-const CELL = 2.45;
+const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
   rook: Object.freeze({ x: -1.62, z: 0.08, scale: 1.03 }),
   matthias: Object.freeze({ x: -0.54, z: 0.32, scale: 1.07 }),
@@ -103,14 +106,6 @@ export function chroniclesIsoWorldObjectState(state) {
     leverPulled: Boolean(state?.runeCacheOpened),
     runeCoreVisible: Boolean(state?.runeCacheOpened && !state?.runeCoreCollected),
   };
-}
-
-function isWalkable(x, y) {
-  return CHRONICLES_MAP[y]?.[x] && CHRONICLES_MAP[y][x] !== '#';
-}
-
-function wallTouchesWalkable(x, y) {
-  return isWalkable(x - 1, y) || isWalkable(x + 1, y) || isWalkable(x, y - 1) || isWalkable(x, y + 1);
 }
 
 function runtimeEnemyPosition(state, enemy) {
@@ -252,7 +247,11 @@ function buildFarShrine(root, wall, trim, brass, { coarsePointer }) {
   return shrine;
 }
 
-function buildIsoDungeon({ coarsePointer }) {
+function buildIsoDungeon({
+  coarsePointer,
+  scenePlan = chroniclesIsometricScenePlan(),
+}) {
+  const geometryPlan = chroniclesIsometricDungeonPlan(scenePlan, CELL);
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
   const floorTargets = [];
@@ -275,7 +274,7 @@ function buildIsoDungeon({ coarsePointer }) {
 
   addMesh(
     root,
-    new THREE.BoxGeometry(CELL * 7.25, 0.34, CELL * 7.25),
+    new THREE.BoxGeometry(geometryPlan.foundation.width, 0.34, geometryPlan.foundation.depth),
     foundation,
     [0, -0.31, 0],
     'chronicles-iso-foundation',
@@ -286,49 +285,42 @@ function buildIsoDungeon({ coarsePointer }) {
   const wallGeometry = new THREE.BoxGeometry(CELL, 2.65, CELL);
   const wallCapGeometry = new THREE.BoxGeometry(CELL * 0.96, 0.12, CELL * 0.96);
 
-  CHRONICLES_MAP.forEach((row, y) => {
-    [...row].forEach((tile, x) => {
-      const world = chroniclesIsoWorldForCell(x, y);
-      if (tile !== '#') {
-        const noise = deterministicNoise(x, y);
-        const material = floorMaterials[Math.min(floorMaterials.length - 1, Math.floor(noise * floorMaterials.length))];
-        const tileMesh = new THREE.Mesh(tileGeometry, material);
-        tileMesh.position.set(world.x, -0.095 + (noise - 0.5) * 0.025, world.z);
-        tileMesh.rotation.y = (deterministicNoise(x, y, 3) - 0.5) * 0.014;
-        tileMesh.receiveShadow = true;
-        tileMesh.name = `chronicles-iso-floor-${x}-${y}`;
-        tileMesh.userData.chroniclesIsoCell = { x, y };
-        root.add(tileMesh);
-        floorTargets.push(tileMesh);
-        return;
-      }
-      if (!wallTouchesWalkable(x, y)) return;
-      // Leave the south/east shell open for the close behind-party camera,
-      // otherwise the foreground wall would swallow the heroes and action.
-      if (x === CHRONICLES_MAP[0].length - 1 || y === CHRONICLES_MAP.length - 1) return;
-      const noise = deterministicNoise(x, y, 7);
-      const wall = wallMaterials[Math.min(wallMaterials.length - 1, Math.floor(noise * wallMaterials.length))];
-      const block = new THREE.Mesh(wallGeometry, wall);
-      block.position.set(world.x, 1.23, world.z);
-      block.castShadow = !coarsePointer;
-      block.receiveShadow = true;
-      block.name = `chronicles-iso-wall-${x}-${y}`;
-      root.add(block);
-
-      const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
-      cap.position.set(world.x, 2.59, world.z);
-      cap.castShadow = !coarsePointer;
-      cap.receiveShadow = true;
-      root.add(cap);
-
-      const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
-      trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
-      trim.receiveShadow = true;
-      root.add(trim);
-    });
+  geometryPlan.floors.forEach(({ x, y, world }) => {
+    const noise = deterministicNoise(x, y);
+    const material = floorMaterials[Math.min(floorMaterials.length - 1, Math.floor(noise * floorMaterials.length))];
+    const tileMesh = new THREE.Mesh(tileGeometry, material);
+    tileMesh.position.set(world.x, -0.095 + (noise - 0.5) * 0.025, world.z);
+    tileMesh.rotation.y = (deterministicNoise(x, y, 3) - 0.5) * 0.014;
+    tileMesh.receiveShadow = true;
+    tileMesh.name = `chronicles-iso-floor-${x}-${y}`;
+    tileMesh.userData.chroniclesIsoCell = { x, y };
+    root.add(tileMesh);
+    floorTargets.push(tileMesh);
   });
 
-  const sigilWorld = chroniclesIsoWorldForCell(3, 4);
+  geometryPlan.walls.forEach(({ x, y, world }) => {
+    const noise = deterministicNoise(x, y, 7);
+    const wall = wallMaterials[Math.min(wallMaterials.length - 1, Math.floor(noise * wallMaterials.length))];
+    const block = new THREE.Mesh(wallGeometry, wall);
+    block.position.set(world.x, 1.23, world.z);
+    block.castShadow = !coarsePointer;
+    block.receiveShadow = true;
+    block.name = `chronicles-iso-wall-${x}-${y}`;
+    root.add(block);
+
+    const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
+    cap.position.set(world.x, 2.59, world.z);
+    cap.castShadow = !coarsePointer;
+    cap.receiveShadow = true;
+    root.add(cap);
+
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
+    trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
+    trim.receiveShadow = true;
+    root.add(trim);
+  });
+
+  const sigilWorld = chroniclesIsoWorldForCell(3, 4, scenePlan);
   const sigil = addMesh(
     root,
     new THREE.TorusGeometry(0.62, 0.085, 8, coarsePointer ? 18 : 30),
@@ -339,7 +331,7 @@ function buildIsoDungeon({ coarsePointer }) {
   );
   sigil.rotation.x = -Math.PI / 2;
 
-  const leverCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.lever.x, CHRONICLES_TACTICS_WORLD.lever.y);
+  const leverCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.lever.x, CHRONICLES_TACTICS_WORLD.lever.y, scenePlan);
   const leverRoot = new THREE.Group();
   leverRoot.name = 'chronicles-iso-rune-cache-lever';
   leverRoot.position.set(leverCell.x + 0.62, 0, leverCell.z - 0.56);
@@ -360,7 +352,7 @@ function buildIsoDungeon({ coarsePointer }) {
   leverRoot.add(leverPivot);
   root.add(leverRoot);
 
-  const runeCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.runeCore.x, CHRONICLES_TACTICS_WORLD.runeCore.y);
+  const runeCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.runeCore.x, CHRONICLES_TACTICS_WORLD.runeCore.y, scenePlan);
   const runeCoreRoot = new THREE.Group();
   runeCoreRoot.name = 'chronicles-iso-rune-core';
   runeCoreRoot.position.set(runeCell.x + 0.42, 0.18, runeCell.z + 0.2);
@@ -639,7 +631,8 @@ export function createChroniclesIsometricGame(host, {
   scene.background = new THREE.Color(0x100c09);
   scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.022 : 0.0185);
 
-  const initialFocus = chroniclesIsoWorldForCell(2, 5);
+  const initialScenePlan = chroniclesIsometricScenePlan();
+  const initialFocus = chroniclesIsoWorldForCell(2, 5, initialScenePlan);
   const initialPose = chroniclesIsometricCameraPose({ x: initialFocus.x, z: initialFocus.z });
   const camera = new THREE.PerspectiveCamera(initialPose.fov, 1, 0.1, 70);
   camera.position.copy(initialPose.position);
@@ -671,7 +664,10 @@ export function createChroniclesIsometricGame(host, {
   warmBounce.position.set(0, 2.4, 2.8);
   scene.add(warmBounce);
 
-  const dungeon = buildIsoDungeon({ coarsePointer: coarse });
+  const dungeon = buildIsoDungeon({
+    coarsePointer: coarse,
+    scenePlan: initialScenePlan,
+  });
   scene.add(dungeon.root);
   const torches = buildTorches(scene, { coarsePointer: coarse });
   const party = buildParty(scene, { coarsePointer: coarse, reducedMotion });
