@@ -9,6 +9,7 @@ const ReplayScreen = React.lazy(() => import('./components/ReplayScreen.jsx'));
 const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScreen.jsx'));
 const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
+const PvpAppSurface = React.lazy(() => import('./components/PvpAppSurface.jsx'));
 import { loadCombatHistory } from './combatHistory.js';
 const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
 const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
@@ -80,7 +81,6 @@ import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
-import PvpAppSurface from './components/PvpAppSurface.jsx';
 import { usePvpAppFlow } from './usePvpAppFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -890,8 +890,8 @@ function AppInner({ isAdminUser }) {
         {showGlobalReleaseNotes && <UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} />}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
-        <PvpAppSurface view={view} flow={pvpFlow} />
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
+        <PvpAppSurface view={view} flow={pvpFlow} />
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
           <div className="route-loading active-session-recovery" role="status">
             {error ? (
