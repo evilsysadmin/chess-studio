@@ -74,10 +74,10 @@ export default function ChroniclesTacticsPartyHud({
 
   useEffect(() => {
     const memberId = sheetRequest?.memberId;
-    if (!memberId || !party.some((member) => member.id === memberId)) return;
+    if (!memberId) return;
     onSelectMember(memberId);
     setSheetMemberId(memberId);
-  }, [onSelectMember, party, sheetRequest]);
+  }, [onSelectMember, sheetRequest]);
 
   const openSheet = (memberId) => {
     onSelectMember(memberId);
