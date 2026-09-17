@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
+      - 'scripts/blender/publish_war_room_v2_staging.py'
       - '.github/workflows/war-room-blender-art.yml'
   workflow_dispatch:
 
@@ -62,6 +63,16 @@ jobs:
           assert data['board_anchor']['name'] == 'WR_ANCHOR_board_origin'
           assert len(data['objects']) >= 195, len(data['objects'])
           PY
+
+      - name: Publish staging-only War Room v2 shell
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/publish_war_room_v2_staging.py \
+            /tmp/war-room-premium/war-room-premium-shell.glb
 
       - uses: actions/upload-artifact@v7
         if: always()
