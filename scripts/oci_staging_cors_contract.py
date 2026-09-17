@@ -75,7 +75,7 @@ for fragment in required_public_verifier_fragments:
 # Runtime configuration is operational state, not application release state.
 # Canonical deploys consume the already-published private OCI bundle. Updating
 # that bundle remains an explicit service-control action instead of a hidden
-# side effect of every code release.
+# side effect of every code release or bringup.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
 )
@@ -84,6 +84,12 @@ assert "inputs.operation == 'runtime-sync'" in service_control, (
 )
 assert "python3 scripts/oci_runtime_config.py sync" in service_control, (
     "runtime-sync must remain the owner of Render-to-OCI runtime synchronization"
+)
+assert "Sync private runtime config\n        if: inputs.operation == 'runtime-sync'" in service_control, (
+    "runtime sync must remain an explicit operation instead of a bringup side effect"
+)
+assert "inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'" not in service_control, (
+    "bringup must consume the persisted OCI runtime bundle without resynchronizing Render"
 )
 
 # All manual service operations share the same native mutation mutex as the
@@ -97,8 +103,8 @@ assert "group: oci-staging-service-control" not in service_control, (
 )
 
 # Service smoke is an observation, not another readiness controller. Bringup
-# already waits before runtime sync and reboot-agent waits for a refreshed
-# RUNNING plugin, so wrapping smoke in another multi-minute retry hides failures.
+# may tolerate it and the immutable deploy owns bounded registration readiness;
+# reboot-agent already waits for a refreshed RUNNING plugin.
 assert "run: python3 scripts/oci_run_command.py smoke" in service_control, (
     "OCI service smoke must call the transport check directly"
 )
