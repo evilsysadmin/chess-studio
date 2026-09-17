@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { LOCAL_GODOT_BOOTSTRAP_URL, resolvePawnSlugGodotUrl } from '../pawnSlugGodotRuntime.js';
 import './PawnSlugGodotHost.css';
-
-const DEFAULT_GODOT_URL = '/games/pawn-slug-godot/index.html';
-
-function configuredGameUrl() {
-  const configured = import.meta.env.VITE_PAWN_SLUG_GODOT_URL;
-  return typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_GODOT_URL;
-}
 
 export default function PawnSlugGodotHost({ onExit }) {
   const iframeRef = useRef(null);
   const [runtimeReady, setRuntimeReady] = useState(false);
-  const gameUrl = configuredGameUrl();
+  const [runtime, setRuntime] = useState({ url: LOCAL_GODOT_BOOTSTRAP_URL, source: 'resolving', release: '' });
+
+  useEffect(() => {
+    let cancelled = false;
+    resolvePawnSlugGodotUrl().then((resolved) => {
+      if (cancelled) return;
+      setRuntimeReady(false);
+      setRuntime(resolved);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     function onMessage(event) {
@@ -27,6 +31,14 @@ export default function PawnSlugGodotHost({ onExit }) {
     return () => window.removeEventListener('message', onMessage);
   }, [onExit]);
 
+  const runtimeStatus = runtimeReady
+    ? 'Godot listo'
+    : runtime.source === 'fallback'
+      ? 'Export Godot aún no publicado'
+      : runtime.source === 'resolving'
+        ? 'Resolviendo runtime Godot…'
+        : 'Arrancando runtime Godot…';
+
   return (
     <div className="pawn-slug-godot-host">
       <header className="pawn-slug-godot-host__header">
@@ -41,12 +53,13 @@ export default function PawnSlugGodotHost({ onExit }) {
       <div className="pawn-slug-godot-host__frame-shell">
         <div className="pawn-slug-godot-host__status" aria-live="polite">
           <span className={runtimeReady ? 'is-ready' : ''} aria-hidden="true" />
-          {runtimeReady ? 'Godot listo' : 'Arrancando runtime Godot…'}
+          {runtimeStatus}
         </div>
         <iframe
+          key={runtime.url}
           ref={iframeRef}
           className="pawn-slug-godot-host__frame"
-          src={gameUrl}
+          src={runtime.url}
           title="Pawn Slug Godot"
           allow="autoplay; fullscreen; gamepad"
           allowFullScreen
