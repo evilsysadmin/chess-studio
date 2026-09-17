@@ -14,6 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_RE = re.compile(r'^\s*resource\s+"(oci_[^"]+)"\s+"[^"]+"\s*\{', re.MULTILINE)
+CUSTOM_IMAGE_OVERRIDE_RE = re.compile(
+    r'(?:variable\s+"image_ocid"|\bvar\.image_ocid\b|\bTF_VAR_image_ocid\b|\bOCI_IMAGE_OCID\b)'
+)
 
 ALLOWED_RESOURCE_TYPES = {
     "oci_core_instance",
@@ -96,7 +99,7 @@ def validate(root: Path = ROOT) -> None:
     require(staging_main, 'operating_system_version = "24.04"', "staging platform image must remain Ubuntu 24.04")
     require(staging_main, 'data "oci_identity_region_subscriptions" "tenancy"', "staging must discover the tenancy home region")
     require(staging_main, "var.region == local.home_region", "A1 creation must fail outside the tenancy home region")
-    if "image_ocid" in staging_main or "OCI_IMAGE_OCID" in staging_main:
+    if CUSTOM_IMAGE_OVERRIDE_RE.search(text):
         raise SystemExit("OCI zero-cost contract: FAIL · custom image override resurfaced")
 
     require(load_balancer, 'shape          = "flexible"', "load balancer must remain Flexible")
@@ -126,6 +129,10 @@ def self_test() -> None:
     assert RESOURCE_RE.findall(sample) == ["oci_core_instance", "oci_kms_key"]
     data_only = 'data "oci_core_images" "arm64" {}\n'
     assert RESOURCE_RE.findall(data_only) == []
+    assert not CUSTOM_IMAGE_OVERRIDE_RE.search("selected_image_ocid = data.oci_core_images.arm64.images[0].id")
+    assert CUSTOM_IMAGE_OVERRIDE_RE.search('variable "image_ocid" {}')
+    assert CUSTOM_IMAGE_OVERRIDE_RE.search("source_id = var.image_ocid")
+    assert CUSTOM_IMAGE_OVERRIDE_RE.search("OCI_IMAGE_OCID")
 
 
 if __name__ == "__main__":
