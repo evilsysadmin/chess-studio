@@ -36,11 +36,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
     },
     "pawnSlug.matthias.machinegun": {
-      "bytes": 248596,
+      "bytes": 280618,
       "contentType": "image/webp",
-      "key": "pawn-slug/matthias/machinegun/matthias_machinegun_premium_v3-a83a25d9b8c424c1.webp",
-      "sha256": "a83a25d9b8c424c16414396bb165d3985b466b009b4cd6936e3835317be01250",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_premium_v3-a83a25d9b8c424c1.webp"
+      "key": "pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp",
+      "sha256": "ed37fd69ea1f6ae92e1083f84b6bd884054fed2873d96ad84ff02f0ad2bf9edb",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_canonical_v2-ed37fd69ea1f6ae9.webp"
     },
     "pawnSlug.matthias.motion": {
       "bytes": 9334,
