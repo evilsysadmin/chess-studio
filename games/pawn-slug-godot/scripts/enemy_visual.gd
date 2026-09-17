@@ -26,6 +26,9 @@ var _last_hp := 1
 var _frame_time := 0.0
 var _frame := 0
 var _fire_flash := 0.0
+var _visual_time := 0.0
+var _bishop_shell_telegraph := 0.0
+var _bishop_suppression_telegraph := 0.0
 
 var _facing_root: Node2D
 var _body: Sprite2D
@@ -66,6 +69,15 @@ func sync_state(world_x: float, floor_y: float, facing: float, is_moving: bool, 
     _last_hp = hp
     queue_redraw()
 
+func set_bishop_telegraph(shell_strength: float, suppression_strength: float) -> void:
+    if enemy_type != "bishop":
+        return
+    _bishop_shell_telegraph = clampf(shell_strength, 0.0, 1.0)
+    _bishop_suppression_telegraph = clampf(suppression_strength, 0.0, 1.0)
+    if _muzzle_flash != null:
+        _muzzle_flash.color = Color("ff5b3d") if _bishop_suppression_telegraph > _bishop_shell_telegraph else Color("ffb347")
+    queue_redraw()
+
 func play_fire() -> void:
     if dead or _weapon_root == null:
         return
@@ -81,11 +93,13 @@ func muzzle_global_position() -> Vector2:
 func _process(delta: float) -> void:
     if dead:
         return
+    _visual_time += delta
     _fire_flash = maxf(0.0, _fire_flash - delta)
     if _muzzle_flash != null:
         _muzzle_flash.visible = _fire_flash > 0.0
 
     if enemy_type == "bishop":
+        queue_redraw()
         return
     if moving:
         _frame_time += delta * float(TYPE_FPS.get(enemy_type, 6.0))
@@ -215,6 +229,16 @@ func _draw_bishop() -> void:
     var h := visual_height
     var body_top := -h * 0.72
     var body_bottom := -4.0
+    var telegraph := maxf(_bishop_shell_telegraph, _bishop_suppression_telegraph)
+    if telegraph > 0.015:
+        var suppression := _bishop_suppression_telegraph > _bishop_shell_telegraph
+        var warning_color := Color("ff5b3d") if suppression else Color("ffb347")
+        var pulse := 0.82 + 0.18 * sin(_visual_time * (18.0 if suppression else 13.0))
+        var warning_radius := h * (0.42 + telegraph * 0.08 * pulse)
+        draw_arc(Vector2(0.0, -h * 0.54), warning_radius, 0.0, TAU, 40, Color(warning_color.r, warning_color.g, warning_color.b, 0.35 + telegraph * 0.48), 5.0)
+        draw_circle(Vector2(-h * 0.27, -h * 0.60), 5.0 + telegraph * 3.0, warning_color)
+        draw_circle(Vector2(h * 0.27, -h * 0.60), 5.0 + telegraph * 3.0, warning_color)
+
     draw_ellipse_shadow(Vector2(0.0, -1.0), Vector2(h * 0.36, 7.0), Color(0.02, 0.02, 0.025, 0.48))
     draw_colored_polygon(PackedVector2Array([
         Vector2(-h * 0.28, body_bottom),
@@ -228,8 +252,9 @@ func _draw_bishop() -> void:
         Vector2(0.0, -h * 1.05),
         Vector2(h * 0.12, -h * 0.93),
     ]), Color("c1a75f"), 5.0)
-    draw_circle(Vector2(-h * 0.06, -h * 0.83), 3.0, Color("e36d5a"))
-    draw_circle(Vector2(h * 0.06, -h * 0.83), 3.0, Color("e36d5a"))
+    var visor_color := Color("ff735c") if telegraph > 0.0 else Color("e36d5a")
+    draw_circle(Vector2(-h * 0.06, -h * 0.83), 3.0 + telegraph * 1.5, visor_color)
+    draw_circle(Vector2(h * 0.06, -h * 0.83), 3.0 + telegraph * 1.5, visor_color)
 
 func draw_ellipse_shadow(center: Vector2, radii: Vector2, color: Color) -> void:
     var points := PackedVector2Array()
