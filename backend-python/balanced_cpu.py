@@ -129,6 +129,7 @@ def get_balanced_cpu_move(
     try:
         analyzed = top_root_candidates(
             board,
+            limit=max(1, board.legal_moves.count()),
             depth=profile.depth,
             deadline=deadline,
         )
