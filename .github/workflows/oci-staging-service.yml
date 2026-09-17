@@ -153,6 +153,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'reserved-egress'
         run: python3 scripts/oci_reserve_egress_ip.py
 
+      - name: Reconcile K3s bootstrap assets before explicit start
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-start'
+        run: |
+          python3 scripts/oci_k3s_bundle_publish.py reconcile
+          python3 scripts/oci_k3s_bundle_probe.py install
+
       - name: Start or ensure guarded single-node K3s
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-start'
         run: python3 scripts/oci_k3s_control.py start
