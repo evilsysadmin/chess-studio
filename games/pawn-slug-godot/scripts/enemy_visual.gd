@@ -1,11 +1,17 @@
 extends Node2D
 
-const BODY_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
+const BODY_FALLBACK_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
+const BODY_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
-const FRAME_SIZE := Vector2(256.0, 256.0)
+
+const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
+const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
 const FRAMES_PER_TYPE := 8
-const TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16}
-const TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43}
+const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16}
+const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2}
+const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43}
+const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376}
+const REMOTE_BODY_CENTER_Y := 31.0
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0}
 const WEAPON_FRAME := {"pistol": 0, "machinegun": 1, "shotgun": 2, "panzerfaust": 3}
 const WEAPON_POSE := {
@@ -14,6 +20,10 @@ const WEAPON_POSE := {
     "shotgun": {"position": Vector2(18.0, -43.0), "rotation": -0.04, "scale": Vector2(0.24, 0.24), "muzzle": Vector2(57.0, -1.0)},
     "panzerfaust": {"position": Vector2(13.0, -45.0), "rotation": -0.07, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(61.0, -2.0)},
 }
+
+static var _cached_body_texture: Texture2D
+static var _body_texture_loading := false
+static var _body_texture_waiters: Array = []
 
 var enemy_type := "pawn"
 var weapon := "pistol"
@@ -29,6 +39,7 @@ var _fire_flash := 0.0
 var _visual_time := 0.0
 var _bishop_shell_telegraph := 0.0
 var _bishop_suppression_telegraph := 0.0
+var _using_remote_body := false
 
 var _facing_root: Node2D
 var _body: Sprite2D
@@ -36,11 +47,13 @@ var _weapon_root: Marker2D
 var _weapon_sprite: Sprite2D
 var _muzzle: Marker2D
 var _muzzle_flash: Polygon2D
+var _body_request: HTTPRequest
 
 func _ready() -> void:
     _build_nodes()
     _apply_type()
     _apply_weapon()
+    _request_body_atlas()
     queue_redraw()
 
 func configure(kind: String, weapon_id: String, height: float, current_hp: int, total_hp: int) -> void:
@@ -53,6 +66,7 @@ func configure(kind: String, weapon_id: String, height: float, current_hp: int, 
     if is_node_ready():
         _apply_type()
         _apply_weapon()
+        _request_body_atlas()
         queue_redraw()
 
 func sync_state(world_x: float, floor_y: float, facing: float, is_moving: bool, current_hp: int, total_hp: int) -> void:
@@ -159,13 +173,19 @@ func _apply_type() -> void:
         _body.visible = false
         queue_redraw()
         return
-    var texture := load(BODY_ATLAS_PATH) as Texture2D
+
+    if _cached_body_texture != null:
+        _install_remote_body_texture(_cached_body_texture)
+        return
+
+    var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
     if texture == null:
         _body.visible = false
         return
+    _using_remote_body = false
     _body.texture = texture
     _body.visible = true
-    var body_scale := float(TYPE_SCALE.get(enemy_type, 0.39))
+    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39))
     _body.scale = Vector2(body_scale, body_scale)
     _body.position = Vector2(0.0, -98.0 * body_scale)
     _apply_body_frame()
@@ -173,8 +193,89 @@ func _apply_type() -> void:
 func _apply_body_frame() -> void:
     if _body == null or not _body.visible:
         return
-    var base := int(TYPE_FRAME_BASE.get(enemy_type, 0))
-    _body.region_rect = Rect2(Vector2(float(base + _frame) * FRAME_SIZE.x, 0.0), FRAME_SIZE)
+
+    if _using_remote_body:
+        var row := int(REMOTE_TYPE_ROW.get(enemy_type, 0))
+        _body.region_rect = Rect2(
+            Vector2(float(_frame) * REMOTE_FRAME_SIZE.x, float(row) * REMOTE_FRAME_SIZE.y),
+            REMOTE_FRAME_SIZE,
+        )
+        return
+
+    var base := int(FALLBACK_TYPE_FRAME_BASE.get(enemy_type, 0))
+    _body.region_rect = Rect2(
+        Vector2(float(base + _frame) * FALLBACK_FRAME_SIZE.x, 0.0),
+        FALLBACK_FRAME_SIZE,
+    )
+
+func _request_body_atlas() -> void:
+    if enemy_type == "bishop":
+        return
+    if _cached_body_texture != null:
+        _install_remote_body_texture(_cached_body_texture)
+        return
+    if not _body_texture_waiters.has(self):
+        _body_texture_waiters.append(self)
+    if _body_texture_loading:
+        return
+
+    _body_texture_loading = true
+    _body_request = HTTPRequest.new()
+    _body_request.name = "EnemyBodyAtlasRequest"
+    add_child(_body_request)
+    _body_request.request_completed.connect(_on_body_atlas_loaded)
+    if _body_request.request(BODY_ATLAS_URL) != OK:
+        _finish_body_atlas_request(null)
+
+func _on_body_atlas_loaded(
+    result: int,
+    response_code: int,
+    _headers: PackedStringArray,
+    bytes: PackedByteArray,
+) -> void:
+    if _body_request != null:
+        _body_request.queue_free()
+        _body_request = null
+
+    var texture: Texture2D = null
+    if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+        var image := Image.new()
+        if (
+            image.load_webp_from_buffer(bytes) == OK
+            and image.get_width() == int(REMOTE_FRAME_SIZE.x) * FRAMES_PER_TYPE
+            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_TYPE_ROW.size()
+        ):
+            texture = ImageTexture.create_from_image(image)
+            _cached_body_texture = texture
+
+    _finish_body_atlas_request(texture)
+
+func _finish_body_atlas_request(texture: Texture2D) -> void:
+    if _body_request != null:
+        _body_request.queue_free()
+        _body_request = null
+    _body_texture_loading = false
+
+    var waiters := _body_texture_waiters.duplicate()
+    _body_texture_waiters.clear()
+    if texture == null:
+        return
+    for waiter in waiters:
+        if is_instance_valid(waiter):
+            waiter.call("_install_remote_body_texture", texture)
+
+func _install_remote_body_texture(texture: Texture2D) -> void:
+    if texture == null or _body == null or enemy_type == "bishop":
+        return
+    _using_remote_body = true
+    _body.texture = texture
+    _body.visible = true
+    var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248))
+    # The canonical enemy raster is authored facing left. Weapon/muzzle sockets
+    # remain authored facing right, so flip only the body inside FacingRoot.
+    _body.scale = Vector2(-body_scale, body_scale)
+    _body.position = Vector2(0.0, -REMOTE_BODY_CENTER_Y * body_scale)
+    _apply_body_frame()
 
 func _apply_weapon() -> void:
     if _weapon_sprite == null:
