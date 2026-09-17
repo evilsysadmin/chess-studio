@@ -6,7 +6,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, k3s-start, k3s-status, k3s-rollback]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, k3s-start, k3s-status, k3s-rollback]
         default: smoke
         required: true
       secret_key:
@@ -99,6 +99,10 @@ jobs:
         env:
           VAULT_SECRET_KEY: ${{ inputs.secret_key }}
         run: python3 scripts/oci_vault_runtime.py validate-pending --key "$VAULT_SECRET_KEY"
+
+      - name: Compare CURRENT Vault + Git runtime with installed backend.env
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-compare-current'
+        run: python3 scripts/oci_vault_compare.py compare-current
 
       - name: Recover stale OCI agent after explicit request
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent'
