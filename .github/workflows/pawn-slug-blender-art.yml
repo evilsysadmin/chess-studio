@@ -29,6 +29,9 @@ concurrency:
   group: pawn-slug-blender-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  PAWN_SLUG_CANONICAL_SAMPLES: '32'
+
 jobs:
   canonical-weapon-proof:
     if: github.event_name != 'push'
@@ -52,6 +55,7 @@ jobs:
           OUT="/tmp/pawn-slug-canonical-${WEAPON}-proof"
           rm -rf "$OUT"
           blender --background -noaudio \
+            --python-expr "import bpy, os; scene=bpy.context.scene; samples=max(1, int(os.environ.get('PAWN_SLUG_CANONICAL_SAMPLES', '32'))); eevee=getattr(scene, 'eevee', None); setattr(eevee, 'taa_render_samples', samples) if eevee is not None and hasattr(eevee, 'taa_render_samples') else None; scene.render.use_persistent_data=True; print(f'Canonical render: {samples} EEVEE samples, persistent data enabled')" \
             --python scripts/blender/render_pawn_slug_matthias_canonical_heavy.py \
             -- --output-dir "$OUT" --weapon "$WEAPON" --profile proof
           test -s "$OUT/matthias_${WEAPON}_idle_00.png"
@@ -90,6 +94,7 @@ jobs:
           rm -rf "$OUT"
           mkdir -p "$OUT"
           blender --background -noaudio \
+            --python-expr "import bpy, os; scene=bpy.context.scene; samples=max(1, int(os.environ.get('PAWN_SLUG_CANONICAL_SAMPLES', '32'))); eevee=getattr(scene, 'eevee', None); setattr(eevee, 'taa_render_samples', samples) if eevee is not None and hasattr(eevee, 'taa_render_samples') else None; scene.render.use_persistent_data=True; print(f'Canonical render: {samples} EEVEE samples, persistent data enabled')" \
             --python scripts/blender/render_pawn_slug_matthias_canonical_heavy.py \
             -- --output-dir "$OUT" --weapon "$WEAPON" --profile runtime
       - name: Pack lossless 16x5 runtime atlas
@@ -97,7 +102,6 @@ jobs:
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          python3 -m pip install --disable-pip-version-check --quiet pillow
           OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
           ATLAS="$OUT/matthias_${WEAPON}_canonical_v4.webp"
           python3 scripts/art/pack_pawn_slug_canonical_runtime.py \
