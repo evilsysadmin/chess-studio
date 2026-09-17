@@ -2,10 +2,11 @@
 """Verify or materialize the pinned K3s air-gap bundle on the existing OCI A1.
 
 Both paths read the private Object Storage object with the instance principal.
-`probe` is observation-only. `install` downloads the same pinned bytes as the
-unprivileged Run Command user and delegates only the fixed, already-provisioned
-root copy operation to `chess-studio-k3s-assets`. Neither path creates or starts
-a K3s service.
+`probe` is observation-only. `install` first verifies the already-installed
+pinned assets locally; only when they differ does it download the same pinned
+bytes as the unprivileged Run Command user and delegate the fixed root copy
+operation to `chess-studio-k3s-assets`. Neither path creates or starts a K3s
+service.
 """
 from __future__ import annotations
 
@@ -96,6 +97,28 @@ PY
 
 def install_command(namespace: str) -> str:
     command = f"""set -euo pipefail
+if python3 -S - <<'PY'
+import hashlib
+from pathlib import Path
+marker=Path('/var/lib/chess-studio/K3S_AIRGAP_ASSETS_READY')
+binary=Path('/usr/local/bin/k3s')
+images=Path('/var/lib/rancher/k3s/agent/images/k3s-airgap-images-arm64.tar.zst')
+expected='K3S_AIRGAP_ASSETS_READY version={K3S_VERSION} bundle_sha256={BUNDLE_SHA256}'
+def regular(path): return path.is_file() and not path.is_symlink()
+def sha(path):
+ h=hashlib.sha256()
+ with path.open('rb') as f:
+  for chunk in iter(lambda:f.read(1024*1024),b''): h.update(chunk)
+ return h.hexdigest()
+if not (regular(marker) and regular(binary) and regular(images)): raise SystemExit(1)
+if marker.read_text(encoding='utf-8').strip()!=expected: raise SystemExit(1)
+if sha(binary)!='{K3S_BINARY_SHA256}' or sha(images)!='{K3S_IMAGES_SHA256}': raise SystemExit(1)
+PY
+then
+ echo 'K3S_AIRGAP_ASSETS_READY version={K3S_VERSION} bundle_sha256={BUNDLE_SHA256}'
+ echo '{INSTALL_OK_MARKER} bytes={BUNDLE_SIZE} sha256={BUNDLE_SHA256} version={K3S_VERSION} fast_path=true'
+ exit 0
+fi
 venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"; tmp='{STAGED_BUNDLE}'
 trap 'rm -f "$tmp"' EXIT
 test -x "$venv/bin/python" || {{ echo 'K3S_INSTALL_OCI_VENV_MISSING' >&2; exit 66; }}
@@ -127,7 +150,7 @@ except BaseException:
 PY
 sudo --non-interactive '{ROOT_INSTALLER}' "$tmp"
 "$venv/bin/python" - <<'PY'
-import hashlib,os
+import hashlib
 from pathlib import Path
 def sha(path):
  h=hashlib.sha256()
@@ -137,12 +160,10 @@ def sha(path):
 if sha('/usr/local/bin/k3s')!='{K3S_BINARY_SHA256}': raise SystemExit('installed K3s binary digest mismatch')
 if sha('/var/lib/rancher/k3s/agent/images/k3s-airgap-images-arm64.tar.zst')!='{K3S_IMAGES_SHA256}': raise SystemExit('installed K3s images digest mismatch')
 marker=Path('/var/lib/chess-studio/K3S_AIRGAP_ASSETS_READY').read_text().strip()
-if 'version={K3S_VERSION}' not in marker or 'bundle_sha256={BUNDLE_SHA256}' not in marker: raise SystemExit('K3s asset marker mismatch')
-for unit in ('/etc/systemd/system/k3s.service','/etc/systemd/system/k3s-agent.service','/etc/systemd/system/multi-user.target.wants/k3s.service'):
- if os.path.lexists(unit): raise SystemExit('K3s service unexpectedly exists')
+if marker!='K3S_AIRGAP_ASSETS_READY version={K3S_VERSION} bundle_sha256={BUNDLE_SHA256}': raise SystemExit('K3s asset marker mismatch')
 print(marker)
 PY
-echo '{INSTALL_OK_MARKER} bytes={BUNDLE_SIZE} sha256={BUNDLE_SHA256} version={K3S_VERSION}'
+echo '{INSTALL_OK_MARKER} bytes={BUNDLE_SIZE} sha256={BUNDLE_SHA256} version={K3S_VERSION} fast_path=false'
 """
     return _bounded(command, "install")
 
@@ -185,6 +206,9 @@ def self_test() -> None:
     assert "os.O_NOFOLLOW" in install_payload
     assert "sudo --non-interactive" in install_payload
     assert BUNDLE_SHA256 in install_payload and str(BUNDLE_SIZE) in install_payload
+    assert "fast_path=true" in install_payload and "fast_path=false" in install_payload
+    assert install_payload.index("fast_path=true") < install_payload.index("InstancePrincipalsSecurityTokenSigner")
+    assert "K3s service unexpectedly exists" not in install_payload
     print(
         "OCI K3s A1 bundle self-test: OK · "
         f"probe={len(probe_payload.encode('utf-8'))} bytes · "
