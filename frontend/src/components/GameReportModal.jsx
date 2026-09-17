@@ -164,7 +164,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card game-autopsy" role="dialog" aria-modal="true" aria-label="Resumen de la partida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <p className="eyebrow">Post-partida</p>
+        <p className="eyebrow">MATTHIAS // DEBRIEF</p>
         <h3>Resumen de la partida</h3>
 
         {status === 'loading' && <div className="ui-state ui-state-loading" role="status"><b>Preparando el resumen</b><span>Buscando los momentos que más explican la partida…</span></div>}
@@ -172,16 +172,15 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
         {status === 'done' && report && <>
           {report.analyzedCount === 0 ? <p className="hint-text">No hubo suficientes jugadas propias para analizar.</p> : <>
-            <div className="autopsy-summary">
-              <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
-              <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
-              <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
-            </div>
             {cleanEvidence?.clean ? (
               <div className="autopsy-training-note" data-clean-game="true"><b>✓ PARTIDA LIMPIA</b> · {cleanEvidence.analyzedCount} jugadas propias revisadas, sin mistakes/blunders, mate omitido ni regalo inmediato de pieza mayor o menor.</div>
             ) : cleanEvidence && !cleanEvidence.sufficientSample ? (
               <p className="hint-text">“Partida limpia” exige al menos 8 jugadas propias analizadas; esta autopsia sólo tiene {cleanEvidence.analyzedCount}. No se concede por falta de muestra.</p>
             ) : null}
+            <div className="autopsy-debrief-intro">
+              <span>LO QUE IMPORTA</span>
+              <p>{keyMoments.length ? 'Los momentos que mejor explican cómo se decidió la partida. Sin desfile de indicadores.' : 'No hay un momento crítico suficientemente claro; el expediente completo conserva el detalle técnico.'}</p>
+            </div>
             <div className="autopsy-key-moments" aria-label="Momentos clave de la partida">
               {keyMoments.map((item) => (
                 <article key={`${item.kind}-${item.move.index}`} className={`autopsy-key-moment sev-${item.move.severity || 'ok'}`}>
@@ -214,6 +213,11 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <summary>Abrir autopsia completa</summary>
               <div className="autopsy-full-details-body">
                 <p className="hint-text">La precisión estimada es una escala propia de Chess Studio basada en la pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+                <div className="autopsy-summary">
+                  <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
+                  <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
+                  <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
+                </div>
                 <button
                   type="button"
                   className="secondary-btn"
