@@ -37,8 +37,16 @@ secret_rows={SECRET_NAMES!r}
 ordered={tuple(ALLOWED_KEYS)!r}
 values=dict({declarative_rows!r})
 client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
+missing=[]
 for key,name in secret_rows:
-    response=client.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
+    try:
+        response=client.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
+    except oci.exceptions.ServiceError as exc:
+        if exc.status==404:
+            missing.append(name)
+            continue
+        print("OCI_VAULT_SECRET_ERROR name="+name+" status="+str(exc.status)+" code="+str(exc.code or "-"))
+        raise SystemExit(43) from None
     content=getattr(response.data,"secret_bundle_content",None)
     encoded=str(getattr(content,"content","") or "")
     try:
@@ -48,6 +56,10 @@ for key,name in secret_rows:
     if not value or any(ch in value for ch in ("\\x00","\\r","\\n")):
         raise SystemExit("invalid CURRENT secret value shape: "+name)
     values[key]=value
+if missing:
+    for name in missing:
+        print("OCI_VAULT_SECRET_MISSING name="+name+" stage=CURRENT")
+    raise SystemExit(42)
 if set(values)!=set(ordered):
     raise SystemExit("runtime key set does not match backend.env contract")
 path=Path(os.environ["RUNTIME_TMP"])
@@ -120,6 +132,8 @@ def self_test() -> None:
     assert "RENDER_API_KEY" not in command
     assert "ObjectStorageClient" not in command
     assert "put_object" not in command
+    assert "OCI_VAULT_SECRET_MISSING" in command
+    assert "OCI_VAULT_SECRET_ERROR" in command
     assert "MONGO_URL=" not in command
     assert "JWT_SECRET=" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
