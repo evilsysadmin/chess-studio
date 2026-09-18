@@ -608,7 +608,17 @@ func _quantize_aim(raw: Vector2) -> Vector2:
         return Vector2(facing, 0.0)
     var step := PI / 4.0
     var angle := roundf(raw.angle() / step) * step
-    return Vector2.RIGHT.rotated(angle).normalized()
+    var direction := Vector2.RIGHT.rotated(angle).normalized()
+    return _constrain_vertical_aim(direction, is_on_floor())
+
+func _constrain_vertical_aim(direction: Vector2, grounded: bool) -> Vector2:
+    if (
+        grounded
+        and absf(direction.x) < 0.25
+        and absf(direction.y) > 0.75
+    ):
+        return Vector2(facing, signf(direction.y)).normalized()
+    return direction
 
 func _movement_axis() -> float:
     var axis := 0.0
