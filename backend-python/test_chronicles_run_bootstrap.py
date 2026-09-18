@@ -94,21 +94,21 @@ def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
 
 def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
     seed = 20260918
-    route_plan = chronicles_api.chronicles_route_plan_for_seed(seed)
+    route_snapshot = chronicles_api.chronicles_route_snapshot_for_seed(seed)
+    route_plan = route_snapshot["mapIds"]
 
     assert len(route_plan) == 3
     assert len(set(route_plan)) == 3
     assert route_plan[-1] == "echo-cistern"
 
-    policy = chronicles_api.chronicles_route_policy()
     for index, map_id in enumerate(route_plan[:-1]):
         envelope = chronicles_api.chronicles_area_envelope(
             map_id,
             seed,
-            route_plan=route_plan,
+            route_snapshot=route_snapshot,
         )
         manifest = envelope["manifest"]
-        exit_id = policy["primaryExitIds"][map_id]
+        exit_id = route_snapshot["primaryExitIds"][map_id]
         exit_entry = next(entry for entry in manifest["exits"] if entry["id"] == exit_id)
         transitions = [
             effect
@@ -122,7 +122,7 @@ def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
     final_envelope = chronicles_api.chronicles_area_envelope(
         "echo-cistern",
         seed,
-        route_plan=route_plan,
+        route_snapshot=route_snapshot,
     )
     final_manifest = final_envelope["manifest"]
     assert final_manifest["generation"]["route"]["index"] == 2
@@ -136,7 +136,7 @@ def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
     assert final_transitions == []
 
 
-def test_idempotent_seeded_route_replays_original_seed_and_route(monkeypatch):
+def test_idempotent_seeded_route_replays_persisted_snapshot_across_policy_change(monkeypatch):
     async def no_collection():
         return None
 
@@ -151,13 +151,35 @@ def test_idempotent_seeded_route_replays_original_seed_and_route(monkeypatch):
     }
 
     first = client.post("/api/chronicles/runs", headers=headers, json={})
+    assert first.status_code == 201
+    first_payload = first.json()
+    first_route = list(first_payload["route"]["mapIds"])
+
+    stored = client.get(
+        f"/api/chronicles/runs/{first_payload['runId']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert stored.status_code == 200
+    stored_route = stored.json()["route"]
+    assert stored_route["policyVersion"] == 2
+    assert stored_route["mapIds"] == first_route
+    assert set(stored_route["primaryExitIds"]) == set(first_route[:-1])
+
+    original_policy = chronicles_api.chronicles_route_policy()
+    changed_policy = {
+        **original_policy,
+        "version": 999,
+        "mapIds": tuple(reversed(original_policy["mapIds"])),
+    }
+    monkeypatch.setattr(chronicles_api, "chronicles_route_policy", lambda: changed_policy)
+
     repeated = client.post("/api/chronicles/runs", headers=headers, json={})
 
-    assert first.status_code == 201
     assert repeated.status_code == 201
-    assert repeated.json() == first.json()
-    assert first.json()["seed"] == 111
-    assert first.json()["route"]["mapIds"] == list(chronicles_api.chronicles_route_plan_for_seed(111))
+    assert repeated.json() == first_payload
+    assert repeated.json()["seed"] == 111
+    assert repeated.json()["route"]["policyVersion"] == 2
+    assert repeated.json()["route"]["mapIds"] == first_route
 
 
 def test_idempotent_run_bootstrap_replays_identical_area(monkeypatch):
