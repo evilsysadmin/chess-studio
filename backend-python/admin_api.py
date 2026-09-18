@@ -16,6 +16,7 @@ from feedback_attachments import validate_feedback_attachments
 import game_store as store
 import profile_store as pstore
 import users_store as ustore
+import user_data_lifecycle
 import matthias_daily_store as matthias_daily_store
 import matthias_memory_store as matthias_memory_store
 from admin_insights import (
@@ -469,17 +470,14 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         if target == username:
             raise HTTPException(409, "No puedes borrar tu propia cuenta desde el panel de admin.")
 
-        # Cascada deliberada: una cuenta borrada no debe dejar perfil ni savegames
-        # activos. El historial/estadísticas del jugador viven dentro del perfil.
-        deleted_games = await store.delete_games_by_owner(target)
-        await pstore.delete_profile(target)
-        await matthias_daily_store.delete_user_daily(target)
-        await matthias_memory_store.delete_user_memory(target)
+        # La identidad se elimina al final; la cascada compartida borra
+        # todos los datos no-account, incluidos PvP, Chronicles y feedback.
+        purged = await user_data_lifecycle.purge_user_data(target)
         deleted = await ustore.delete_user(target)
         if not deleted:
             raise HTTPException(404, "Usuario no encontrado.")
 
-        return {"deleted": True, "username": target, "deletedGames": deleted_games}
+        return {"deleted": True, "username": target, "deletedGames": purged["games"]}
 
 
     # Compatibilidad con V15.2/V15.3 ya desplegadas. La UI nueva usa POST para
