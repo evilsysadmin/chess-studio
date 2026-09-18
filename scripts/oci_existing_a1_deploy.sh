@@ -310,6 +310,64 @@ record_successful_backend() {
   mv -f "$tmp" "$state_file"
 }
 
+agent_diag_summary() {
+  local service log version active restarts bytes mtime age now metrics
+  local recent_lines poll_errors backoff throttled transport_errors
+
+  service="snap.oracle-cloud-agent.oracle-cloud-agent.service"
+  log="/var/log/oracle-cloud-agent/plugins/runcommand/runcommand.log"
+  version="unknown"
+  if command -v snap >/dev/null 2>&1; then
+    version="$(snap list oracle-cloud-agent 2>/dev/null | awk 'NR == 2 {print $2}' | tr -cd 'A-Za-z0-9._+~-' || true)"
+    [[ -n "$version" ]] || version="unknown"
+  fi
+
+  active="$(systemctl is-active "$service" 2>/dev/null || true)"
+  active="$(printf '%s' "$active" | tr -cd 'A-Za-z0-9._-' || true)"
+  [[ -n "$active" ]] || active="unknown"
+
+  restarts="$(systemctl show "$service" -p NRestarts --value 2>/dev/null | tr -cd '0-9' || true)"
+  [[ -n "$restarts" ]] || restarts="unknown"
+
+  bytes="0"
+  age="-1"
+  recent_lines="0"
+  poll_errors="0"
+  backoff="0"
+  throttled="0"
+  transport_errors="0"
+
+  if [[ -f "$log" && ! -L "$log" ]]; then
+    bytes="$(stat -c '%s' "$log" 2>/dev/null || printf '0')"
+    mtime="$(stat -c '%Y' "$log" 2>/dev/null || printf '0')"
+    now="$(date +%s)"
+    if [[ "$mtime" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ && "$mtime" -gt 0 ]]; then
+      if [[ "$now" -ge "$mtime" ]]; then
+        age="$((now - mtime))"
+      else
+        age="0"
+      fi
+    fi
+    metrics="$(tail -n 2000 "$log" 2>/dev/null | awk '
+      BEGIN { IGNORECASE=1 }
+      {
+        lines++
+        if ($0 ~ /poll/ && $0 ~ /(error|fail|timeout)/) poll_errors++
+        if ($0 ~ /(circuit.?breaker|backoff)/) backoff++
+        if ($0 ~ /(^|[^0-9])429([^0-9]|$)|throttl/) throttled++
+        if ($0 ~ /(502|503|504|connection reset|connection refused|temporary failure|service unavailable)/) transport_errors++
+      }
+      END {
+        printf "%d,%d,%d,%d,%d", lines+0, poll_errors+0, backoff+0, throttled+0, transport_errors+0
+      }
+    ' || printf '0,0,0,0,0')"
+    IFS=',' read -r recent_lines poll_errors backoff throttled transport_errors <<<"$metrics"
+  fi
+
+  printf 'OCI_AGENT_DIAG version=%s active=%s restarts=%s log_bytes=%s log_age_s=%s recent_lines=%s poll_errors=%s backoff=%s throttled=%s transport_errors=%s\n' \
+    "$version" "$active" "$restarts" "$bytes" "$age" "$recent_lines" "$poll_errors" "$backoff" "$throttled" "$transport_errors"
+}
+
 total_started_ms="$(now_ms)"
 checkout_started_ms="$total_started_ms"
 cd "$repo"
@@ -372,6 +430,7 @@ for _ in $(seq 1 60); do
     fi
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
+    agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
     printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
     echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
