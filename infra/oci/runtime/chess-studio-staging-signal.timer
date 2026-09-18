@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll Chess Studio staging approved-image signal
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=chess-studio-staging-signal.service
+
+[Install]
+WantedBy=timers.target

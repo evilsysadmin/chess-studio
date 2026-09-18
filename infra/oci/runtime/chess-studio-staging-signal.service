@@ -1,0 +1,11 @@
+[Unit]
+Description=Chess Studio staging approved-image deploy signal
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=/usr/local/sbin/chess-studio-deploy
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/chess-studio-staging-signal
+TimeoutStartSec=90
