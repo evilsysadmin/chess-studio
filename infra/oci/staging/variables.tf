@@ -140,6 +140,21 @@ variable "subnet_cidr" {
   }
 }
 
+variable "load_balancer_ingress_cidr" {
+  description = "Optional operator CIDR allowed to reach the emergency OCI HTTP load balancer. Null keeps it closed; canonical staging uses Cloudflare Tunnel."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.load_balancer_ingress_cidr == null ||
+      (can(cidrhost(var.load_balancer_ingress_cidr, 0)) && var.load_balancer_ingress_cidr != "0.0.0.0/0")
+    )
+    error_message = "load_balancer_ingress_cidr must be null or a valid CIDR other than 0.0.0.0/0."
+  }
+}
+
 variable "load_balancer_subnet_cidr" {
   description = "Dedicated public subnet for the OCI Always Free load balancer."
   type        = string
