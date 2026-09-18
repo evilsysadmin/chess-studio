@@ -15,6 +15,7 @@ MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
+MAIN = GODOT_ROOT / "scripts/main.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -102,6 +103,18 @@ REQUIRED_PAUSE_MENU = (
     "AudioServer.set_bus_volume_db",
     "ConfigFile",
 )
+REQUIRED_COMBAT_FX = (
+    "muzzle_fx",
+    "impact_fx",
+    "_add_muzzle_fx",
+    "_add_impact_fx",
+    "_draw_projectile",
+    "_draw_muzzle_flashes",
+    "_draw_impacts",
+    '"machinegun"',
+    '"shotgun"',
+    '"panzerfaust"',
+)
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -159,6 +172,7 @@ def validate() -> None:
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -184,6 +198,8 @@ def self_test() -> None:
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     assert "PROCESS_MODE_ALWAYS" in REQUIRED_PAUSE_MENU
     assert "requestFullscreen" in REQUIRED_PAUSE_MENU
+    assert "_draw_projectile" in REQUIRED_COMBAT_FX
+    assert "_draw_muzzle_flashes" in REQUIRED_COMBAT_FX
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 

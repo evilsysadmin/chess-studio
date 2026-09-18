@@ -39,6 +39,8 @@ const GRENADE_RADIUS := 210.0
 const GRENADE_DAMAGE := 125
 const PANZER_BLAST_RADIUS := 152.0
 const EXPLOSION_VISUAL_SECONDS := 0.28
+const MUZZLE_FLASH_SECONDS := 0.085
+const IMPACT_FX_SECONDS := 0.16
 const BISHOP_SHELL_TELEGRAPH := 0.52
 const BISHOP_SHELL_RANGE := 1000.0
 const BISHOP_SUPPRESSION_TELEGRAPH := 0.46
@@ -87,6 +89,8 @@ var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
 var thrown_grenades: Array[Dictionary] = []
 var explosion_fx: Array[Dictionary] = []
+var muzzle_fx: Array[Dictionary] = []
+var impact_fx: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
 var enemy_visuals: Dictionary = {}
 var pickups: Array[Dictionary] = [
@@ -139,6 +143,7 @@ func _process(delta: float) -> void:
     _update_projectiles(delta)
     _update_grenades(delta)
     _update_explosion_fx(delta)
+    _update_combat_fx(delta)
     _update_enemies(delta)
     _update_boss(delta)
     _update_enemy_projectiles(delta)
@@ -154,6 +159,7 @@ func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> vo
     var spread := float(shot.get("spread", 0.0))
     var explosive := bool(shot.get("explosive", false))
     var weapon := String(shot.get("weapon", "pistol"))
+    _add_muzzle_fx(origin, Vector2(direction, 0.0), weapon)
     for _pellet in range(pellets):
         var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
         var velocity := Vector2(direction, 0.0).rotated(angle) * speed
@@ -373,6 +379,12 @@ func _update_projectiles(delta: float) -> void:
             if bool(projectile["explosive"]):
                 _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
             else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    false,
+                )
                 enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
                 enemies[enemy_index] = enemy
                 _sync_enemy_visual(enemy, false)
@@ -383,6 +395,12 @@ func _update_projectiles(delta: float) -> void:
             if bool(projectile["explosive"]):
                 _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
             else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    false,
+                )
                 boss["hp"] = maxi(0, int(boss["hp"]) - int(projectile["damage"]))
                 _sync_boss_visual()
                 if int(boss["hp"]) <= 0:
@@ -787,6 +805,13 @@ func _update_enemy_projectiles(delta: float) -> void:
         if not player.dead and player_hitbox.has_point(position):
             if bool(projectile["explosive"]):
                 _add_explosion_fx(position, PANZER_BLAST_RADIUS)
+            else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    true,
+                )
             player.take_damage(1)
             enemy_projectiles.remove_at(index)
             continue
@@ -878,32 +903,160 @@ func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
     var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
     return Vector2(float(enemy["x"]) + direction * rect.size.x * 0.42, rect.position.y + rect.size.y * 0.42)
 
+func _add_muzzle_fx(origin: Vector2, direction: Vector2, weapon: String) -> void:
+    var safe_direction := direction.normalized()
+    if safe_direction.length_squared() <= 0.001:
+        safe_direction = Vector2.RIGHT
+    var duration := MUZZLE_FLASH_SECONDS
+    match weapon:
+        "machinegun":
+            duration = 0.060
+        "shotgun":
+            duration = 0.110
+        "panzerfaust":
+            duration = 0.145
+    muzzle_fx.append({
+        "position": origin,
+        "direction": safe_direction,
+        "weapon": weapon,
+        "age": 0.0,
+        "duration": duration,
+    })
+
+func _add_impact_fx(position: Vector2, velocity: Vector2, weapon: String, hostile: bool) -> void:
+    impact_fx.append({
+        "position": position,
+        "incoming": velocity.normalized(),
+        "weapon": weapon,
+        "hostile": hostile,
+        "seed": randf_range(-1.0, 1.0),
+        "age": 0.0,
+        "duration": IMPACT_FX_SECONDS,
+    })
+
+func _update_combat_fx(delta: float) -> void:
+    for index in range(muzzle_fx.size() - 1, -1, -1):
+        var effect := muzzle_fx[index]
+        effect["age"] = float(effect["age"]) + delta
+        if float(effect["age"]) >= float(effect["duration"]):
+            muzzle_fx.remove_at(index)
+        else:
+            muzzle_fx[index] = effect
+
+    for index in range(impact_fx.size() - 1, -1, -1):
+        var effect := impact_fx[index]
+        effect["age"] = float(effect["age"]) + delta
+        if float(effect["age"]) >= float(effect["duration"]):
+            impact_fx.remove_at(index)
+        else:
+            impact_fx[index] = effect
+
 func _draw() -> void:
-    # The static world art lives in EnvironmentVisual so gameplay drawing stays
-    # focused on readable combat FX and pickups.
+    # Static scenery stays isolated in EnvironmentVisual. Runtime drawing is
+    # reserved for readable pickups and short-lived combat feedback.
     _draw_pickups()
     _draw_grenades()
     _draw_explosions()
+    _draw_muzzle_flashes()
 
     for projectile in projectiles:
-        var position: Vector2 = projectile["position"]
-        var velocity: Vector2 = projectile["velocity"]
-        var explosive := bool(projectile["explosive"])
-        var radius := 8.0 if explosive else 5.0
-        var color := Color("ff9d4d") if explosive else Color("ffd36a")
-        var trail := velocity.normalized() * (28.0 if explosive else 18.0)
-        draw_circle(position, radius, color)
-        draw_line(position - trail, position, Color(color.r, color.g, color.b, 0.45), 3.0)
+        _draw_projectile(projectile, false)
 
     for projectile in enemy_projectiles:
-        var position: Vector2 = projectile["position"]
-        var velocity: Vector2 = projectile["velocity"]
-        var explosive := bool(projectile["explosive"])
-        var radius := 8.0 if explosive else 5.0
-        var color := Color("f28a52") if explosive else Color("e36d5a")
-        var trail := velocity.normalized() * (28.0 if explosive else 18.0)
-        draw_circle(position, radius, color)
-        draw_line(position - trail, position, Color(color.r, color.g, color.b, 0.5), 3.0)
+        _draw_projectile(projectile, true)
+
+    _draw_impacts()
+
+func _draw_projectile(projectile: Dictionary, hostile: bool) -> void:
+    var position: Vector2 = projectile["position"]
+    var velocity: Vector2 = projectile["velocity"]
+    var direction := velocity.normalized()
+    if direction.length_squared() <= 0.001:
+        direction = Vector2.RIGHT
+    var weapon := String(projectile.get("weapon", "pistol"))
+    var warm := Color("f0bd6b") if not hostile else Color("e46f5f")
+    var hot := Color("fff3c9") if not hostile else Color("ffd0c7")
+
+    match weapon:
+        "machinegun":
+            draw_line(position - direction * 34.0, position, Color(warm.r, warm.g, warm.b, 0.38), 4.0)
+            draw_line(position - direction * 25.0, position + direction * 3.0, hot, 1.8)
+            draw_circle(position, 2.6, hot)
+        "shotgun":
+            draw_line(position - direction * 13.0, position, Color(warm.r, warm.g, warm.b, 0.46), 2.4)
+            draw_circle(position, 2.2, hot)
+        "panzerfaust":
+            var smoke := Color(0.58, 0.59, 0.55, 0.24)
+            draw_line(position - direction * 42.0, position - direction * 11.0, smoke, 7.0)
+            draw_circle(position - direction * 10.0, 5.0, Color(1.0, 0.45, 0.12, 0.72))
+            draw_line(position - direction * 7.0, position + direction * 7.0, Color("696b61"), 8.0)
+            draw_circle(position + direction * 7.0, 4.5, warm)
+            draw_circle(position + direction * 9.0, 2.3, hot)
+        _:
+            draw_line(position - direction * 22.0, position, Color(warm.r, warm.g, warm.b, 0.34), 3.0)
+            draw_line(position - direction * 13.0, position + direction * 2.0, hot, 1.5)
+            draw_circle(position, 3.0, hot)
+
+func _draw_muzzle_flashes() -> void:
+    for effect in muzzle_fx:
+        var position: Vector2 = effect["position"]
+        var direction: Vector2 = effect["direction"]
+        var weapon := String(effect["weapon"])
+        var phase := clampf(float(effect["age"]) / float(effect["duration"]), 0.0, 1.0)
+        var alpha := 1.0 - phase
+        var side := Vector2(-direction.y, direction.x)
+        var length := 30.0
+        var half_width := 8.0
+        match weapon:
+            "machinegun":
+                length = 38.0
+                half_width = 6.0
+            "shotgun":
+                length = 34.0
+                half_width = 14.0
+            "panzerfaust":
+                length = 46.0
+                half_width = 13.0
+        var inner := position + direction * 2.0
+        var tip := position + direction * length
+        var flare := PackedVector2Array([
+            inner + side * half_width,
+            tip,
+            inner - side * half_width,
+        ])
+        draw_colored_polygon(flare, Color(1.0, 0.66, 0.20, alpha * 0.72))
+        draw_line(position, position + direction * length * 0.82, Color(1.0, 0.94, 0.72, alpha), 3.0)
+        draw_circle(position + direction * 5.0, 5.0 + half_width * 0.18, Color(1.0, 0.88, 0.52, alpha * 0.72))
+        if weapon == "shotgun":
+            draw_line(position, tip + side * 9.0, Color(1.0, 0.72, 0.30, alpha * 0.45), 2.0)
+            draw_line(position, tip - side * 9.0, Color(1.0, 0.72, 0.30, alpha * 0.45), 2.0)
+        elif weapon == "panzerfaust":
+            draw_arc(position - direction * 5.0, 12.0 + phase * 7.0, 0.0, TAU, 18, Color(0.72, 0.68, 0.56, alpha * 0.34), 3.0)
+
+func _draw_impacts() -> void:
+    for effect in impact_fx:
+        var position: Vector2 = effect["position"]
+        var incoming: Vector2 = effect["incoming"]
+        var reverse := -incoming
+        if reverse.length_squared() <= 0.001:
+            reverse = Vector2.LEFT
+        var phase := clampf(float(effect["age"]) / float(effect["duration"]), 0.0, 1.0)
+        var alpha := 1.0 - phase
+        var hostile := bool(effect["hostile"])
+        var seed := float(effect["seed"])
+        var spark_color := Color("e7715f") if hostile else Color("f2c66d")
+        var core_color := Color("ffd8cf") if hostile else Color("fff1bf")
+        draw_circle(position, 6.0 * alpha + 1.5, Color(core_color.r, core_color.g, core_color.b, alpha * 0.48))
+        for spark_index in range(5):
+            var angle := lerpf(-0.82, 0.82, float(spark_index) / 4.0) + seed * 0.12
+            var ray := reverse.rotated(angle)
+            var length := (10.0 + float((spark_index * 7) % 9)) * alpha
+            draw_line(
+                position,
+                position + ray * length,
+                Color(spark_color.r, spark_color.g, spark_color.b, alpha * 0.82),
+                2.0,
+            )
 
 func _draw_pickups() -> void:
     for pickup in pickups:
