@@ -132,6 +132,101 @@ function closeServer(server) {
   });
 }
 
+async function bridgeCounts(page) {
+  return page.evaluate(() => ({ ...(window.__pawnSlugGodotEventCounts || {}) }));
+}
+
+async function waitForBridgeCount(page, type, minimum = 1, timeout = 15_000) {
+  await page.waitForFunction(
+    ({ expectedType, expectedMinimum }) => (
+      Number(window.__pawnSlugGodotEventCounts?.[expectedType] || 0) >= expectedMinimum
+    ),
+    { expectedType: type, expectedMinimum: minimum },
+    { timeout },
+  );
+}
+
+async function gameplayAutopilot(parent, canvas, diagnostics) {
+  await canvas.click();
+  await parent.evaluate(() => {
+    window.__pawnSlugGodotEventCounts = {};
+  });
+
+  const keyboard = parent.keyboard;
+  let counts = {};
+  await keyboard.down('ArrowRight');
+  try {
+    for (let step = 0; step < 150; step += 1) {
+      await keyboard.press('z');
+      if (step % 8 === 2) await keyboard.press('Space');
+      if (step % 18 === 7) await keyboard.press('x');
+      await parent.waitForTimeout(105);
+      if (step % 5 !== 0) continue;
+      counts = await bridgeCounts(parent);
+      if (counts.gameover || counts['boss-spawned']) break;
+    }
+  } finally {
+    await keyboard.up('ArrowRight');
+  }
+
+  counts = await bridgeCounts(parent);
+  diagnostics.iframe.gameplayApproach = counts;
+  if (!counts['weapon-pickup']) fail('gameplay-weapon-pickup', diagnostics);
+  if (!counts.checkpoint) fail('gameplay-checkpoint', diagnostics);
+  if (!counts['boss-spawned']) fail('gameplay-boss-spawn', diagnostics);
+  if (counts.gameover) fail('gameplay-gameover-before-boss', diagnostics);
+
+  if (!counts['player-death'] || !counts['player-respawn']) {
+    try {
+      await waitForBridgeCount(parent, 'player-death', 1, 16_000);
+      await waitForBridgeCount(parent, 'player-respawn', 1, 6_000);
+    } catch {
+      diagnostics.iframe.gameplayDeathWait = await bridgeCounts(parent);
+      fail('gameplay-death-respawn', diagnostics);
+    }
+  }
+
+  counts = await bridgeCounts(parent);
+  if (counts.gameover) fail('gameplay-gameover-after-respawn', diagnostics);
+
+  await keyboard.down('ArrowRight');
+  try {
+    for (let step = 0; step < 190; step += 1) {
+      await keyboard.press('z');
+      if (step % 7 === 3) await keyboard.press('Space');
+      if (step % 15 === 5) await keyboard.press('x');
+      await parent.waitForTimeout(115);
+      if (step % 5 !== 0) continue;
+      counts = await bridgeCounts(parent);
+      if (counts.gameover || counts['boss-defeated']) break;
+    }
+  } finally {
+    await keyboard.up('ArrowRight');
+  }
+
+  counts = await bridgeCounts(parent);
+  diagnostics.iframe.gameplayBoss = counts;
+  if (counts.gameover) fail('gameplay-gameover-during-boss', diagnostics);
+  if (!counts['boss-defeated']) fail('gameplay-boss-defeat', diagnostics);
+
+  await keyboard.down('ArrowRight');
+  try {
+    for (let step = 0; step < 55; step += 1) {
+      if (step % 3 === 0) await keyboard.press('z');
+      await parent.waitForTimeout(100);
+      counts = await bridgeCounts(parent);
+      if (counts.victory) break;
+    }
+  } finally {
+    await keyboard.up('ArrowRight');
+  }
+
+  counts = await bridgeCounts(parent);
+  diagnostics.iframe.gameplayComplete = counts;
+  if (!counts.victory) fail('gameplay-victory', diagnostics);
+  if (!counts['player-death'] || !counts['player-respawn']) fail('gameplay-death-contract', diagnostics);
+}
+
 const browser = await chromium.launch({
   headless: true,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
@@ -223,6 +318,7 @@ try {
     <script>
       const frame = document.getElementById('godot');
       window.__pawnSlugGodotMessages = [];
+      window.__pawnSlugGodotEventCounts = {};
       window.addEventListener('message', (event) => {
         const message = event.data;
         window.__pawnSlugGodotMessages.push({
@@ -233,6 +329,10 @@ try {
         if (window.__pawnSlugGodotMessages.length > 40) window.__pawnSlugGodotMessages.shift();
         if (event.source !== frame.contentWindow) return;
         if (!message || message.source !== 'pawn-slug-godot') return;
+        if (message.type) {
+          window.__pawnSlugGodotEventCounts[message.type] =
+            Number(window.__pawnSlugGodotEventCounts[message.type] || 0) + 1;
+        }
         if (message.type === 'ready') document.body.dataset.godotReady = '1';
       });
       frame.src = ${JSON.stringify(indexUrl)};
@@ -341,12 +441,16 @@ try {
   await remountedCanvas.waitFor({ state: 'visible', timeout: 5_000 });
   if (!(await remountedCanvas.boundingBox())) fail('iframe-remount-canvas', diagnostics);
 
+  // Stage 3: drive the published build through real gameplay using only public
+  // keyboard input + the existing iframe bridge.
+  await gameplayAutopilot(parent, remountedCanvas, diagnostics);
+
   if (diagnostics.pageErrors.length || diagnostics.requestFailures.length || diagnostics.badResponses.length) {
     fail('browser-errors', diagnostics);
   }
 
   console.log(
-    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas + ESC pause + reload/remount lifecycle · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
+    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas + ESC pause + reload/remount lifecycle + gameplay autopilot · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
   );
 } finally {
   await closeServer(hostServer);
