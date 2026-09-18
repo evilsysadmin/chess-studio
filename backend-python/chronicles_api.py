@@ -44,6 +44,12 @@ CHRONICLES_RUN_NAMESPACE = uuid.UUID("e73c9496-fffd-4dc4-a0d0-8c7b6060a116")
 _MAP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _MAX_SEED = CHRONICLES_MAP_CODE_MAX_SEED
+CHRONICLES_ENTRY_POLICY_VERSION = 1
+CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS = (
+    "crypt-eight-squares",
+    "menagerie-of-ash",
+    "echo-cistern",
+)
 
 
 class ChroniclesManifestError(ValueError):
@@ -51,7 +57,7 @@ class ChroniclesManifestError(ValueError):
 
 
 class CreateChroniclesRunRequest(BaseModel):
-    map_id: str = Field(default="crypt-eight-squares", alias="mapId")
+    map_id: str | None = Field(default=None, alias="mapId")
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -193,6 +199,20 @@ def chronicles_shipped_map_ids() -> tuple[str, ...]:
     )
 
 
+def chronicles_entry_map_for_seed(seed: int) -> str:
+    """Choose a curated standalone-safe entry map reproducibly from the run seed."""
+    shipped = set(chronicles_shipped_map_ids())
+    missing = [map_id for map_id in CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS if map_id not in shipped]
+    if missing:
+        raise HTTPException(500, "El catálogo de entrada de Chronicles referencia mapas ausentes.")
+
+    digest = hashlib.sha256(
+        f"chronicles-entry-v{CHRONICLES_ENTRY_POLICY_VERSION}:{int(seed)}".encode("utf-8")
+    ).digest()
+    index = int.from_bytes(digest[:4], "big") % len(CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS)
+    return CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS[index]
+
+
 
 def chronicles_area_envelope(map_id: str, seed: int, *, root: Path | None = None) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
@@ -275,14 +295,18 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         seed = secrets.randbelow(_MAX_SEED + 1)
-        area = chronicles_area_envelope(body.map_id, seed)
-        fingerprint = operation_fingerprint({"mapId": body.map_id})
+        selected_map_id = body.map_id or chronicles_entry_map_for_seed(seed)
+        area = chronicles_area_envelope(selected_map_id, seed)
+        fingerprint_payload = {"mapId": body.map_id}
+        if body.map_id is None:
+            fingerprint_payload["entryPolicyVersion"] = CHRONICLES_ENTRY_POLICY_VERSION
+        fingerprint = operation_fingerprint(fingerprint_payload)
         try:
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=_run_id(username, idempotency_key),
                 owner=username,
                 seed=seed,
-                map_id=body.map_id,
+                map_id=selected_map_id,
                 content_version=area["contentVersion"],
                 manifest_revision=area["manifestRevision"],
                 create_fingerprint=fingerprint,
