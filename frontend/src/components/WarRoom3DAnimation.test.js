@@ -108,6 +108,14 @@ describe('War Room ambient render cadence', () => {
     expect(compactWebGLRendererLabel('')).toBe('UNKNOWN');
   });
 
+  it('preserva el framebuffer sólo cuando la captura visual lo pide', () => {
+    expect(warRoomRendererAttempts().every((attempt) => attempt.parameters.preserveDrawingBuffer === false)).toBe(true);
+    expect(
+      warRoomRendererAttempts({ preserveDrawingBuffer: true })
+        .every((attempt) => attempt.parameters.preserveDrawingBuffer === true),
+    ).toBe(true);
+  });
+
   it('prioriza GPU con y sin MSAA antes de permitir el fallback lite', () => {
     const attempts = warRoomRendererAttempts();
     expect(attempts.map((attempt) => attempt.id)).toEqual(['gpu-aa', 'gpu-noaa', 'fallback-lite']);
