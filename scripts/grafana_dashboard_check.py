@@ -218,9 +218,15 @@ def main() -> int:
     overview_titles = {str(row.get("title") or "") for row in overview_data.get("panels") or []}
     if billing_titles - overview_titles:
         fail("overview perdió los dos widgets P0 de billing")
+    billing_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for row in overview_data.get("panels") or []
+        if str(row.get("title") or "").startswith("P0 ·")
+        for target in (row.get("targets") or [])
+    )
     for provider in ("oci", "cloudflare"):
         token = f'last_over_time(chess_studio_billing_cost_current_cycle{{provider="{provider}"}}[12h])'
-        if token not in overview:
+        if token not in billing_exprs:
             fail(f"overview billing no cubre {provider} con ventana de frescura 12h")
     if 'or vector(0)' in "\n".join(
         str(target.get("expr") or "")
