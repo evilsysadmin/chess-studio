@@ -33,10 +33,12 @@ const FULL_ATLAS_CELL_SIZE := 256
 const FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)
 const DIRECTIONAL_SHOOT_ROW := 6
 const DIRECTIONAL_SHOOT_FPS := 15.0
+# Use pose-only cells for authored aiming. Muzzle flash is rendered by Godot at
+# the computed barrel tip, so baked flash cells cannot drift into the weapon.
 const DIRECTIONAL_SHOOT_COLUMNS := {
-    "shoot": [0, 1, 2],
-    "shoot_up": [3, 4, 5],
-    "shoot_down": [6, 7],
+    "shoot": [0, 2],
+    "shoot_up": [3, 5],
+    "shoot_down": [6],
 }
 const CROUCH_SHOOT_COLUMNS := [4, 5, 6]
 const NORMALIZED_FRAME_SIZE := 192
@@ -63,9 +65,15 @@ const RUN_LEAN_DEGREES := 1.35
 const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 const MUZZLE_SCAN_ALPHA := 0.12
-const MUZZLE_SCAN_Y_MIN_RATIO := 0.26
-const MUZZLE_SCAN_Y_MAX_RATIO := 0.73
+const MUZZLE_SCAN_Y_MIN_RATIO := 0.12
+const MUZZLE_SCAN_Y_MAX_RATIO := 0.88
 const MUZZLE_TIP_PAD_PX := 2.0
+const MUZZLE_TIP_FORWARD_PX := {
+    "pistol": 8.0,
+    "machinegun": 10.0,
+    "shotgun": 12.0,
+    "panzerfaust": 12.0,
+}
 const RUN_FIRE_RECOIL_DEGREES := 4.2
 const RUN_FIRE_RECOIL_DECAY_DEGREES := 32.0
 const MOVING_FIRE_FLASH_SECONDS := 0.088
@@ -323,23 +331,24 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and _using_full_atlas
         and _animation_available(authored_shoot_action)
     )
-    if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
+    if fired_now and not _dead and _hurt_remaining <= 0.0:
+        # Muzzle flash is always procedural and starts at the computed barrel tip.
+        # Authored shoot frames provide the pose only; they no longer decide the
+        # flash origin, which avoids a flash appearing halfway along the weapon.
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
-        var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
-        var recoil_strength := float(RECOIL.get(visual_weapon, 4.0))
         _muzzle_flash_boost = 1.0
-        if locomoting_now:
-            # Static fire gets a 6-frame authored shoot animation. Moving fire
-            # keeps the locomotion sprite, so it needs its own readable envelope
-            # rather than a tiny one-frame nudge.
-            recoil_strength *= float(MOVING_FIRE_RECOIL_BOOST.get(visual_weapon, 1.65))
-            _muzzle_flash_boost = float(MOVING_FIRE_FLASH_BOOST.get(visual_weapon, 1.50))
-            _muzzle_remaining = MOVING_FIRE_FLASH_SECONDS
-            _moving_recoil_hold_remaining = MOVING_FIRE_RECOIL_HOLD_SECONDS
-            _recoil_rotation = deg_to_rad(-RUN_FIRE_RECOIL_DEGREES)
-        # FacingRoot already mirrors local X. Negative local X is backwards for
-        # both facings; multiplying by facing here made left-facing recoil wrong.
-        _recoil_x = -recoil_strength
+        if not authored_shoot:
+            var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
+            var recoil_strength := float(RECOIL.get(visual_weapon, 4.0))
+            if locomoting_now:
+                recoil_strength *= float(MOVING_FIRE_RECOIL_BOOST.get(visual_weapon, 1.65))
+                _muzzle_flash_boost = float(MOVING_FIRE_FLASH_BOOST.get(visual_weapon, 1.50))
+                _muzzle_remaining = MOVING_FIRE_FLASH_SECONDS
+                _moving_recoil_hold_remaining = MOVING_FIRE_RECOIL_HOLD_SECONDS
+                _recoil_rotation = deg_to_rad(-RUN_FIRE_RECOIL_DEGREES)
+            # FacingRoot already mirrors local X. Negative local X is backwards
+            # for both facings, so recoil remains negative in local space.
+            _recoil_x = -recoil_strength
     if landed_now and not _dead and not (_using_full_atlas and _animation_available("land")):
         _fx_root.scale = Vector2(1.03, 0.95)
 
@@ -362,13 +371,15 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _fx_root.scale = _fx_root.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
     _sync_muzzle()
     _sync_modulate()
-    _flash.visible = _muzzle_remaining > 0.0 and _body_ready and not _dead and not authored_shoot
+    _flash.visible = _muzzle_remaining > 0.0 and _body_ready and not _dead
 
 func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bool) -> String:
     if not _using_full_atlas:
         return ""
-    if on_floor and crouching and absf(_aim_direction.y) < 0.25 and _animation_available("shoot_crouch"):
-        return "shoot_crouch"
+    # Grounded crouch is a physical state, not a one-shot animation. Firing
+    # keeps the crouch frame locked and layers recoil/flash over it.
+    if on_floor and crouching:
+        return ""
     var diagonal := absf(_aim_direction.x) > 0.25 and absf(_aim_direction.y) > 0.25
     if diagonal and _aim_direction.y < 0.0 and _animation_available("shoot_up"):
         return "shoot_up"
@@ -536,7 +547,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
                 var body_y := _full_body_y_for_atlas(render_image)
                 _full_frames_by_weapon[requested_weapon] = frames
                 _full_body_y_by_weapon[requested_weapon] = body_y
-                _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, true)
+                _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, true, requested_weapon)
     elif requested_layout == "full":
         var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
         frames = _build_full_frames(render_image, requested_weapon, false)
@@ -544,7 +555,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             var body_y := _full_body_y_for_atlas(render_image)
             _full_frames_by_weapon[requested_weapon] = frames
             _full_body_y_by_weapon[requested_weapon] = body_y
-            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, false)
+            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, false, requested_weapon)
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
         if frames != null:
@@ -715,7 +726,7 @@ func _full_body_y_for_atlas(image: Image) -> float:
     var foot_y := float(foot_samples[int(foot_samples.size() / 2)])
     return -(foot_y - float(FULL_ATLAS_CELL_SIZE) * 0.5) * BODY_SCALE
 
-func _full_muzzle_positions_for_atlas(image: Image, body_y: float, directional_shoot: bool) -> Dictionary:
+func _full_muzzle_positions_for_atlas(image: Image, body_y: float, directional_shoot: bool, weapon_id: String) -> Dictionary:
     # The weapon is baked into each strict frame. Treat the authored barrel tip
     # as the single source of truth instead of maintaining hand-tuned offsets
     # that drift whenever atlas grounding/scale changes.
@@ -729,22 +740,22 @@ func _full_muzzle_positions_for_atlas(image: Image, body_y: float, directional_s
         for frame_index in range(int(spec["count"])):
             if not _cell_has_visible_pixels(image, row, frame_index):
                 continue
-            positions.append(_muzzle_from_full_cell(image, row, frame_index, body_y))
+            positions.append(_muzzle_from_full_cell(image, row, frame_index, body_y, weapon_id))
         if not positions.is_empty():
             result[action] = positions
     if directional_shoot:
         for shoot_action in ["shoot", "shoot_up", "shoot_down"]:
             var shoot_positions: Array = []
             for column_value in DIRECTIONAL_SHOOT_COLUMNS[shoot_action]:
-                shoot_positions.append(_muzzle_from_full_cell(image, DIRECTIONAL_SHOOT_ROW, int(column_value), body_y))
+                shoot_positions.append(_muzzle_from_full_cell(image, DIRECTIONAL_SHOOT_ROW, int(column_value), body_y, weapon_id))
             result[shoot_action] = shoot_positions
         var crouch_positions: Array = []
         for column_value in CROUCH_SHOOT_COLUMNS:
-            crouch_positions.append(_muzzle_from_full_cell(image, int(FULL_ACTIONS["crouch"]["row"]), int(column_value), body_y))
+            crouch_positions.append(_muzzle_from_full_cell(image, int(FULL_ACTIONS["crouch"]["row"]), int(column_value), body_y, weapon_id))
         result["shoot_crouch"] = crouch_positions
     return result
 
-func _muzzle_from_full_cell(image: Image, row: int, column: int, body_y: float) -> Vector2:
+func _muzzle_from_full_cell(image: Image, row: int, column: int, body_y: float, weapon_id: String) -> Vector2:
     var cell := image.get_region(Rect2i(
         column * FULL_ATLAS_CELL_SIZE,
         row * FULL_ATLAS_CELL_SIZE,
@@ -779,8 +790,9 @@ func _muzzle_from_full_cell(image: Image, row: int, column: int, body_y: float) 
         return Vector2.ZERO
     y_samples.sort()
     var tip_y := float(y_samples[int(y_samples.size() / 2)])
+    var forward_pad := float(MUZZLE_TIP_FORWARD_PX.get(weapon_id, MUZZLE_TIP_PAD_PX))
     return Vector2(
-        (float(tip_x) + MUZZLE_TIP_PAD_PX - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
+        (float(tip_x) + forward_pad - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
         body_y + (tip_y - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
     )
 
