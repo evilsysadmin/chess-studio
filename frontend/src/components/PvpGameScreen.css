@@ -112,3 +112,34 @@
 .pvp-war-room__elo-change em { min-width:2.5rem; text-align:right; font-family:var(--font-mono); font-size:.65rem; font-style:normal; }
 .pvp-war-room__elo-change em.is-up { color:#83c58a; }
 .pvp-war-room__elo-change em.is-down { color:#df8e84; }
+
+
+.pvp-war-room__opponent-meta {
+  display:flex;
+  align-items:center;
+  gap:.34rem;
+  min-width:0;
+}
+.pvp-war-room__opponent-meta span {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pvp-war-room__opponent-meta em {
+  flex:0 0 auto;
+  font-family:var(--font-mono);
+  font-size:.5rem;
+  font-style:normal;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+.pvp-war-room__opponent-meta.is-online em { color:#78c884; }
+.pvp-war-room__opponent-meta.is-reconnecting em { color:#d5a855; }
+.pvp-war-room__opponent-meta.is-disconnected em { color:#d2786f; }
+.pvp-war-room__opponent-meta.is-unknown em { color:rgba(233,226,211,.42); }
+
+@media (max-width:520px) {
+  .pvp-war-room__identity small.pvp-war-room__opponent-meta { display:flex; }
+  .pvp-war-room__opponent-meta span { display:none; }
+  .pvp-war-room__opponent-meta em { font-size:.46rem; }
+}
