@@ -190,8 +190,13 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     extraction = stage.get("extraction") or {}
     boss_x = float(boss.get("x", -1))
     extraction_x = float(extraction.get("x", -1))
+    boss_trigger_x = float(boss.get("trigger_x", boss_x - 720.0))
     if not 0 < boss_x < width:
         errors.append(f"{stage_name}: boss x outside world")
+    if xs and max(xs) >= boss_trigger_x:
+        errors.append(
+            f"{stage_name}: regular enemy at x={max(xs):.0f} overlaps boss trigger x={boss_trigger_x:.0f}"
+        )
     if not boss_x < extraction_x < width:
         errors.append(f"{stage_name}: extraction must be after boss and inside world")
 
