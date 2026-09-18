@@ -10,7 +10,9 @@ rewrite, disable, or stop the cluster.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -27,6 +29,12 @@ K3S_BINARY = Path("/usr/local/bin/k3s")
 K3S_IMAGES = Path("/var/lib/rancher/k3s/agent/images/k3s-airgap-images-arm64.tar.zst")
 CONFIG_TARGET = Path("/etc/rancher/k3s/config.yaml")
 UNIT_TARGET = Path("/etc/systemd/system/k3s.service")
+INTEGRITY_CACHE = Path("/var/lib/chess-studio/K3S_AIRGAP_INTEGRITY_V1.json")
+INTEGRITY_CACHE_SCHEMA = 1
+ASSETS = (
+    (K3S_BINARY, "K3s binary", K3S_BINARY_SHA256, 0o755),
+    (K3S_IMAGES, "K3s air-gap images", K3S_IMAGES_SHA256, 0o644),
+)
 
 
 def _repo() -> Path:
@@ -38,17 +46,117 @@ def _sources() -> tuple[Path, Path]:
     return root / "infra/oci/k3s/config.yaml", root / "infra/oci/k3s/k3s.service"
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _require_regular(path: Path, label: str) -> None:
     if not path.is_file() or path.is_symlink():
         raise SystemExit(f"{label} must be a regular non-symlink file: {path}")
+
+
+def _fingerprint(info: os.stat_result) -> dict[str, int]:
+    return {
+        "dev": int(info.st_dev),
+        "ino": int(info.st_ino),
+        "size": int(info.st_size),
+        "mtime_ns": int(info.st_mtime_ns),
+        "ctime_ns": int(info.st_ctime_ns),
+        "uid": int(info.st_uid),
+        "gid": int(info.st_gid),
+        "mode": int(stat.S_IMODE(info.st_mode)),
+    }
+
+
+def _open_verified_asset(path: Path, label: str, expected_mode: int) -> tuple[int, os.stat_result]:
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise SystemExit(f"{label} must be a regular file: {path}")
+        if info.st_uid != 0 or info.st_gid != 0:
+            raise SystemExit(f"{label} must remain root-owned: {path}")
+        if stat.S_IMODE(info.st_mode) != expected_mode:
+            raise SystemExit(
+                f"{label} mode drift: expected {expected_mode:04o}, "
+                f"found {stat.S_IMODE(info.st_mode):04o}"
+            )
+        return fd, info
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _asset_fingerprint(path: Path, label: str, expected_mode: int) -> dict[str, int]:
+    fd, info = _open_verified_asset(path, label, expected_mode)
+    try:
+        return _fingerprint(info)
+    finally:
+        os.close(fd)
+
+
+def _sha256_with_fingerprint(
+    path: Path,
+    label: str,
+    expected_mode: int,
+) -> tuple[str, dict[str, int]]:
+    fd, before = _open_verified_asset(path, label, expected_mode)
+    digest = hashlib.sha256()
+    try:
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+        after = os.fstat(fd)
+    finally:
+        os.close(fd)
+    before_fp = _fingerprint(before)
+    after_fp = _fingerprint(after)
+    if before_fp != after_fp:
+        raise SystemExit(f"{label} changed while verifying integrity")
+    return digest.hexdigest(), after_fp
+
+
+def _integrity_payload(fingerprints: dict[str, dict[str, int]]) -> dict[str, object]:
+    assets: dict[str, object] = {}
+    for path, _label, expected_sha, _mode in ASSETS:
+        assets[str(path)] = {
+            "sha256": expected_sha,
+            "fingerprint": fingerprints[str(path)],
+        }
+    return {
+        "schema": INTEGRITY_CACHE_SCHEMA,
+        "k3s_version": K3S_VERSION,
+        "assets": assets,
+    }
+
+
+def _read_integrity_cache() -> dict[str, object] | None:
+    try:
+        fd = os.open(INTEGRITY_CACHE, os.O_RDONLY | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return None
+    try:
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != 0
+            or info.st_gid != 0
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_size > 16384
+        ):
+            return None
+        with os.fdopen(os.dup(fd), "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    finally:
+        os.close(fd)
+    return payload if isinstance(payload, dict) else None
+
+
+def _write_integrity_cache(payload: dict[str, object]) -> None:
+    data = (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+    _atomic_write(INTEGRITY_CACHE, data, 0o600)
 
 
 def _verify_assets() -> None:
@@ -57,12 +165,25 @@ def _verify_assets() -> None:
     expected = f"K3S_AIRGAP_ASSETS_READY version={K3S_VERSION} bundle_sha256={BUNDLE_SHA256}"
     if marker != expected:
         raise SystemExit("K3s asset marker does not match the pinned service contract")
-    _require_regular(K3S_BINARY, "K3s binary")
-    _require_regular(K3S_IMAGES, "K3s air-gap images")
-    if _sha256(K3S_BINARY) != K3S_BINARY_SHA256:
-        raise SystemExit("K3s binary digest does not match the pinned service contract")
-    if _sha256(K3S_IMAGES) != K3S_IMAGES_SHA256:
-        raise SystemExit("K3s air-gap image digest does not match the pinned service contract")
+
+    current = {
+        str(path): _asset_fingerprint(path, label, expected_mode)
+        for path, label, _expected_sha, expected_mode in ASSETS
+    }
+    current_payload = _integrity_payload(current)
+    if _read_integrity_cache() == current_payload:
+        print(f"OCI_K3S_ASSET_INTEGRITY_REUSED version={K3S_VERSION}")
+        return
+
+    verified: dict[str, dict[str, int]] = {}
+    for path, label, expected_sha, expected_mode in ASSETS:
+        actual_sha, fingerprint = _sha256_with_fingerprint(path, label, expected_mode)
+        if actual_sha != expected_sha:
+            raise SystemExit(f"{label} digest does not match the pinned service contract")
+        verified[str(path)] = fingerprint
+
+    _write_integrity_cache(_integrity_payload(verified))
+    print(f"OCI_K3S_ASSET_INTEGRITY_REFRESHED version={K3S_VERSION}")
 
 
 def _systemctl_state(args: list[str]) -> tuple[int, str]:
@@ -206,7 +327,13 @@ def self_test() -> None:
     assert START_APPROVAL == Path("/var/lib/chess-studio/K3S_START_APPROVED")
     assert CONFIG_TARGET == Path("/etc/rancher/k3s/config.yaml")
     assert UNIT_TARGET == Path("/etc/systemd/system/k3s.service")
-    assert '["systemctl", "daemon-reload"]' in Path(__file__).read_text(encoding="utf-8")
+    assert INTEGRITY_CACHE == Path("/var/lib/chess-studio/K3S_AIRGAP_INTEGRITY_V1.json")
+    assert INTEGRITY_CACHE_SCHEMA == 1
+    assert len(ASSETS) == 2
+    source = Path(__file__).read_text(encoding="utf-8")
+    assert "st_ctime_ns" in source and "st_mtime_ns" in source
+    assert "os.O_NOFOLLOW" in source
+    assert '["systemctl", "daemon-reload"]' in source
     print("OCI K3s inert service prepare self-test: OK")
 
 
