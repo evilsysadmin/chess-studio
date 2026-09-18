@@ -37,10 +37,7 @@ func _input(event: InputEvent) -> void:
     if not _is_pause_event(event):
         return
 
-    if _overlay.visible:
-        _resume_game()
-    else:
-        _open_pause_menu()
+    toggle_pause()
     get_viewport().set_input_as_handled()
 
 func _is_escape(event: InputEvent) -> bool:
@@ -68,6 +65,12 @@ func _is_user_activation(event: InputEvent) -> bool:
     if event is InputEventScreenTouch:
         return event.pressed
     return false
+
+func toggle_pause() -> void:
+    if _overlay.visible:
+        _resume_game()
+    else:
+        _open_pause_menu()
 
 func _open_pause_menu() -> void:
     _overlay.visible = true
@@ -235,13 +238,24 @@ func _apply_display_mode(fullscreen: bool) -> void:
                     var target = document.querySelector('canvas') || document.documentElement;
                     if (!document.fullscreenElement && target && target.requestFullscreen) {
                         var promise = target.requestFullscreen();
-                        if (promise && promise.catch) promise.catch(function () {});
+                        if (promise && promise.then) {
+                            promise.then(function () {
+                                if (screen.orientation && screen.orientation.lock) {
+                                    screen.orientation.lock('landscape').catch(function () {});
+                                }
+                            }).catch(function () {});
+                        } else if (promise && promise.catch) {
+                            promise.catch(function () {});
+                        }
                     }
                 })();
             """)
         else:
             JavaScriptBridge.eval("""
                 (function () {
+                    if (screen.orientation && screen.orientation.unlock) {
+                        try { screen.orientation.unlock(); } catch (_) {}
+                    }
                     if (document.fullscreenElement && document.exitFullscreen) {
                         var promise = document.exitFullscreen();
                         if (promise && promise.catch) promise.catch(function () {});
