@@ -8,12 +8,14 @@ var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
 var _platforms: Array[Rect2] = []
 var _obstacles: Array[Rect2] = []
+var _theme := "night_front"
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = []) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front") -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
     _obstacles = obstacles.duplicate()
+    _theme = theme
     queue_redraw()
 
 func _ready() -> void:
@@ -123,14 +125,30 @@ func _draw_midground_defences() -> void:
         )
 
 func _draw_ground() -> void:
+    var ground_main := Color("1b2226")
+    var ground_deep := Color("151b1e")
+    var edge := Color("8c7145")
+    var crack := Color(0.36, 0.34, 0.30, 0.26)
+    match _theme:
+        "harbor_dusk":
+            ground_main = Color("17262b")
+            ground_deep = Color("101a1e")
+            edge = Color("6d8790")
+            crack = Color(0.30, 0.42, 0.45, 0.24)
+        "alpine_night":
+            ground_main = Color("20272b")
+            ground_deep = Color("171d20")
+            edge = Color("a7b4b8")
+            crack = Color(0.56, 0.61, 0.62, 0.22)
+
     draw_rect(
         Rect2(Vector2(0.0, _floor_y), Vector2(_world_size.x, _world_size.y - _floor_y)),
-        Color("1b2226"),
+        ground_main,
         true
     )
-    draw_rect(Rect2(Vector2(0.0, _floor_y + 24.0), Vector2(_world_size.x, 74.0)), Color("151b1e"), true)
-    draw_line(Vector2(0.0, _floor_y), Vector2(_world_size.x, _floor_y), Color("8c7145"), 4.0)
-    draw_line(Vector2(0.0, _floor_y + 5.0), Vector2(_world_size.x, _floor_y + 5.0), Color(0.78, 0.63, 0.34, 0.18), 1.5)
+    draw_rect(Rect2(Vector2(0.0, _floor_y + 24.0), Vector2(_world_size.x, 74.0)), ground_deep, true)
+    draw_line(Vector2(0.0, _floor_y), Vector2(_world_size.x, _floor_y), edge, 4.0)
+    draw_line(Vector2(0.0, _floor_y + 5.0), Vector2(_world_size.x, _floor_y + 5.0), Color(edge.r, edge.g, edge.b, 0.20), 1.5)
 
     for index in range(44):
         var x := 38.0 + float(index) * 119.0
@@ -138,19 +156,38 @@ func _draw_ground() -> void:
         draw_line(
             Vector2(x, _floor_y + 34.0 + float((index * 9) % 34)),
             Vector2(x + crack_len, _floor_y + 27.0 + float((index * 5) % 28)),
-            Color(0.36, 0.34, 0.30, 0.26),
+            crack,
             2.0
         )
 
 func _draw_platforms() -> void:
+    var top_color := Color("303b42")
+    var body_color := Color("252e34")
+    var trim := Color("b08a48")
+    var rivet := Color("69747a")
+    var support := Color("242c31")
+    match _theme:
+        "harbor_dusk":
+            top_color = Color("294047")
+            body_color = Color("1e3137")
+            trim = Color("6f98a4")
+            rivet = Color("8ba4aa")
+            support = Color("203237")
+        "alpine_night":
+            top_color = Color("3b454a")
+            body_color = Color("2b3438")
+            trim = Color("aab9bd")
+            rivet = Color("c1c9cb")
+            support = Color("30393d")
+
     for platform in _platforms:
-        draw_rect(platform, Color("303b42"), true)
+        draw_rect(platform, top_color, true)
         draw_rect(
             Rect2(platform.position + Vector2(0.0, 4.0), Vector2(platform.size.x, platform.size.y - 4.0)),
-            Color("252e34"),
+            body_color,
             true
         )
-        draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b08a48"), 3.0)
+        draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), trim, 3.0)
         draw_line(
             platform.position + Vector2(0.0, platform.size.y),
             platform.position + platform.size,
@@ -158,19 +195,19 @@ func _draw_platforms() -> void:
             3.0
         )
         for rivet_x in range(int(platform.position.x) + 18, int(platform.end.x) - 10, 34):
-            draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, Color("69747a"))
+            draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, rivet)
 
         var support_y := platform.end.y
         draw_line(
             Vector2(platform.position.x + 20.0, support_y),
             Vector2(platform.position.x + 20.0, minf(_floor_y, support_y + 72.0)),
-            Color("242c31"),
+            support,
             7.0
         )
         draw_line(
             Vector2(platform.end.x - 20.0, support_y),
             Vector2(platform.end.x - 20.0, minf(_floor_y, support_y + 72.0)),
-            Color("242c31"),
+            support,
             7.0
         )
 
@@ -179,6 +216,12 @@ func _draw_obstacles() -> void:
         var obstacle := _obstacles[index]
         var body := Color("4a4134") if index % 2 == 0 else Color("384549")
         var edge := Color("b18b50") if index % 2 == 0 else Color("7b888a")
+        if _theme == "harbor_dusk":
+            body = Color("31484f") if index % 2 == 0 else Color("4b3e31")
+            edge = Color("7297a0") if index % 2 == 0 else Color("a47a4e")
+        elif _theme == "alpine_night":
+            body = Color("4a5051") if index % 2 == 0 else Color("343c40")
+            edge = Color("b7c1c3") if index % 2 == 0 else Color("7f8d92")
         draw_rect(obstacle, body, true)
         draw_rect(obstacle, edge, false, 2.0)
         if obstacle.size.x >= 58.0:
@@ -201,18 +244,39 @@ func _draw_obstacles() -> void:
         )
 
 func _draw_foreground_props() -> void:
-    for index in range(8):
-        var x := 540.0 + float(index) * 640.0
-        _draw_crate(Vector2(x, _floor_y - 3.0), 32.0 + float((index % 3) * 4))
-        if index % 2 == 1:
-            _draw_barrel(Vector2(x + 78.0, _floor_y - 2.0))
+    match _theme:
+        "harbor_dusk":
+            for index in range(10):
+                var x := 460.0 + float(index) * 560.0
+                _draw_crate(Vector2(x, _floor_y - 3.0), 34.0 + float((index % 2) * 6))
+                _draw_barrel(Vector2(x + 64.0, _floor_y - 2.0))
+        "alpine_night":
+            for index in range(8):
+                var x := 520.0 + float(index) * 650.0
+                _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
+                if index % 2 == 0:
+                    _draw_crate(Vector2(x + 105.0, _floor_y - 3.0), 30.0)
+        _:
+            for index in range(8):
+                var x := 540.0 + float(index) * 640.0
+                _draw_crate(Vector2(x, _floor_y - 3.0), 32.0 + float((index % 3) * 4))
+                if index % 2 == 1:
+                    _draw_barrel(Vector2(x + 78.0, _floor_y - 2.0))
 
-    for index in range(6):
-        var x := 940.0 + float(index) * 820.0
-        _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
+            for index in range(6):
+                var x := 940.0 + float(index) * 820.0
+                _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
 
 func _draw_foreground_story_props() -> void:
-    # Sparse close silhouettes sell a battlefield without becoming collision.
+    match _theme:
+        "harbor_dusk":
+            _draw_harbor_story_props()
+        "alpine_night":
+            _draw_alpine_story_props()
+        _:
+            _draw_front_story_props()
+
+func _draw_front_story_props() -> void:
     for index in range(5):
         var x := 760.0 + float(index) * 980.0
         var base := Vector2(x, _floor_y - 2.0)
@@ -221,21 +285,29 @@ func _draw_foreground_story_props() -> void:
         draw_circle(base + Vector2(-30.0, -3.0), 12.0, Color(0.11, 0.13, 0.13, 0.88))
         draw_circle(base + Vector2(28.0, -12.0), 10.0, Color(0.11, 0.13, 0.13, 0.88))
 
+func _draw_harbor_story_props() -> void:
     for index in range(6):
-        var x := 520.0 + float(index) * 840.0
-        var post_top := Vector2(x, _floor_y - 86.0)
-        draw_line(Vector2(x, _floor_y), post_top, Color("303638"), 5.0)
-        draw_rect(Rect2(post_top + Vector2(-26.0, -4.0), Vector2(52.0, 24.0)), Color("5a4a35"), true)
-        draw_rect(Rect2(post_top + Vector2(-26.0, -4.0), Vector2(52.0, 24.0)), Color(0.72, 0.56, 0.31, 0.58), false, 2.0)
-        draw_line(post_top + Vector2(-15.0, 8.0), post_top + Vector2(15.0, 8.0), Color(0.14, 0.12, 0.10, 0.65), 2.0)
-
+        var x := 620.0 + float(index) * 860.0
+        draw_line(Vector2(x, _floor_y), Vector2(x, _floor_y - 78.0), Color("24363a"), 7.0)
+        draw_line(Vector2(x - 18.0, _floor_y - 66.0), Vector2(x + 28.0, _floor_y - 66.0), Color("71898f"), 4.0)
+        draw_circle(Vector2(x + 30.0, _floor_y - 66.0), 5.0, Color(0.88, 0.67, 0.32, 0.52))
     for index in range(5):
-        var x := 1120.0 + float(index) * 900.0
-        var y := _floor_y - 14.0
-        for barb in range(5):
-            var bx := x + float(barb) * 17.0
-            draw_line(Vector2(bx, y), Vector2(bx + 12.0, y - 18.0), Color(0.28, 0.31, 0.31, 0.58), 1.5)
-            draw_line(Vector2(bx + 12.0, y - 18.0), Vector2(bx + 22.0, y), Color(0.28, 0.31, 0.31, 0.58), 1.5)
+        var x := 980.0 + float(index) * 940.0
+        var base := Vector2(x, _floor_y - 3.0)
+        draw_arc(base + Vector2(0.0, -10.0), 28.0, PI, TAU, 18, Color(0.20, 0.30, 0.34, 0.68), 4.0)
+        draw_line(base + Vector2(-24.0, -8.0), base + Vector2(24.0, -8.0), Color("405a60"), 4.0)
+
+func _draw_alpine_story_props() -> void:
+    for index in range(8):
+        var x := 430.0 + float(index) * 690.0
+        var base := Vector2(x, _floor_y)
+        draw_line(base + Vector2(-18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
+        draw_line(base + Vector2(18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
+        draw_line(base + Vector2(-18.0, 0.0), base + Vector2(18.0, 0.0), Color("aab6b8"), 3.0)
+    for index in range(6):
+        var x := 850.0 + float(index) * 840.0
+        draw_circle(Vector2(x, _floor_y - 4.0), 24.0, Color(0.50, 0.56, 0.58, 0.16))
+        draw_circle(Vector2(x + 18.0, _floor_y - 3.0), 18.0, Color(0.67, 0.72, 0.73, 0.12))
 
 func _draw_crate(origin: Vector2, size: float) -> void:
     var rect := Rect2(origin + Vector2(-size * 0.5, -size), Vector2(size, size))

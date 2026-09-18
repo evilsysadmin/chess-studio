@@ -6,6 +6,7 @@ const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
+const STAGE_CATALOG := ["industrial_front_v1", "harbor_raid_v1", "alpine_fortress_v1"]
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const PICKUP_RADIUS_X := 44.0
 const ENEMY_AGGRO_RANGE := 1380.0
@@ -146,7 +147,8 @@ var _enemy_suppression_remaining := 0.0
 
 func _ready() -> void:
     _reduced_motion = _prefers_reduced_motion()
-    if not _load_stage_manifest(DEFAULT_STAGE_ID):
+    var selected_stage := _selected_stage_id()
+    if not _load_stage_manifest(selected_stage):
         push_error("Pawn Slug stage manifest failed; using minimal safe fallback")
     _build_stage_geometry()
     if player.has_method("configure_stage"):
@@ -175,6 +177,20 @@ func _ready() -> void:
     touch_controls.connect("weapon_cycle_requested", Callable(self, "_on_touch_weapon_cycle_requested"))
     _sync_hud()
     queue_redraw()
+
+func _selected_stage_id() -> String:
+    if OS.has_feature("web"):
+        var selected = JavaScriptBridge.eval(
+            "(new URLSearchParams(window.location.search)).get('stage') || ''",
+            true,
+        )
+        var candidate := String(selected)
+        if candidate in STAGE_CATALOG:
+            return candidate
+    return DEFAULT_STAGE_ID
+
+func available_stage_ids() -> Array:
+    return STAGE_CATALOG.duplicate()
 
 func _load_stage_manifest(stage_id: String) -> bool:
     _stage_id = stage_id
@@ -523,6 +539,7 @@ func _build_parallax_backdrop() -> void:
             kind,
             seed + index * 97,
             float(spec.get("intensity", 1.0)),
+            String(backdrop.get("preset", _stage_manifest.get("theme", "night_front"))),
         )
 
 func _build_environment_visual() -> void:
@@ -530,7 +547,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles)
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")))
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:

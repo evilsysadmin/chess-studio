@@ -1,0 +1,421 @@
+{
+  "id": "alpine_fortress_v1",
+  "version": 1,
+  "theme": "alpine_night",
+  "world": {
+    "width": 5800,
+    "height": 720,
+    "floor_y": 610,
+    "start_x": 110,
+    "floor_depth": 110,
+    "boundary_thickness": 40
+  },
+  "checkpoints": [
+    110,
+    1680,
+    3360,
+    4700
+  ],
+  "platforms": [
+    {
+      "x": 390,
+      "y": 520,
+      "w": 170,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 620,
+      "y": 450,
+      "w": 150,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 830,
+      "y": 362,
+      "w": 180,
+      "h": 24,
+      "kind": "cliff"
+    },
+    {
+      "x": 1060,
+      "y": 430,
+      "w": 150,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 1270,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 1530,
+      "y": 448,
+      "w": 160,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 1760,
+      "y": 350,
+      "w": 210,
+      "h": 24,
+      "kind": "cliff"
+    },
+    {
+      "x": 2040,
+      "y": 420,
+      "w": 160,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 2260,
+      "y": 520,
+      "w": 210,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 2540,
+      "y": 458,
+      "w": 150,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 2750,
+      "y": 378,
+      "w": 190,
+      "h": 24,
+      "kind": "cliff"
+    },
+    {
+      "x": 3010,
+      "y": 448,
+      "w": 180,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 3260,
+      "y": 520,
+      "w": 220,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 3550,
+      "y": 400,
+      "w": 210,
+      "h": 24,
+      "kind": "cliff"
+    },
+    {
+      "x": 3830,
+      "y": 468,
+      "w": 160,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 4050,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 4320,
+      "y": 360,
+      "w": 210,
+      "h": 24,
+      "kind": "cliff"
+    },
+    {
+      "x": 4610,
+      "y": 438,
+      "w": 170,
+      "h": 24,
+      "kind": "ledge"
+    },
+    {
+      "x": 4860,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_ledge"
+    },
+    {
+      "x": 5130,
+      "y": 390,
+      "w": 250,
+      "h": 24,
+      "kind": "fortress_walk"
+    },
+    {
+      "x": 5450,
+      "y": 456,
+      "w": 200,
+      "h": 24,
+      "kind": "ledge"
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 700,
+      "y": 546,
+      "w": 72,
+      "h": 64,
+      "kind": "rockfall"
+    },
+    {
+      "x": 1450,
+      "y": 538,
+      "w": 62,
+      "h": 72,
+      "kind": "bunker_block"
+    },
+    {
+      "x": 2170,
+      "y": 548,
+      "w": 88,
+      "h": 62,
+      "kind": "sandbags"
+    },
+    {
+      "x": 2890,
+      "y": 532,
+      "w": 70,
+      "h": 78,
+      "kind": "rockfall"
+    },
+    {
+      "x": 3660,
+      "y": 546,
+      "w": 84,
+      "h": 64,
+      "kind": "bunker_block"
+    },
+    {
+      "x": 4200,
+      "y": 536,
+      "w": 70,
+      "h": 74,
+      "kind": "sandbags"
+    },
+    {
+      "x": 4760,
+      "y": 528,
+      "w": 82,
+      "h": 82,
+      "kind": "rockfall"
+    },
+    {
+      "x": 5250,
+      "y": 538,
+      "w": 74,
+      "h": 72,
+      "kind": "bunker_block"
+    },
+    {
+      "x": 5570,
+      "y": 548,
+      "w": 70,
+      "h": 62,
+      "kind": "sandbags"
+    }
+  ],
+  "enemies": [
+    {
+      "x": 840,
+      "type": "pawn"
+    },
+    {
+      "x": 1012,
+      "type": "scout"
+    },
+    {
+      "x": 1184,
+      "type": "pawn"
+    },
+    {
+      "x": 1356,
+      "type": "knight"
+    },
+    {
+      "x": 1527,
+      "type": "shield"
+    },
+    {
+      "x": 1699,
+      "type": "rook"
+    },
+    {
+      "x": 1871,
+      "type": "pawn"
+    },
+    {
+      "x": 2043,
+      "type": "grenadier"
+    },
+    {
+      "x": 2215,
+      "type": "knight"
+    },
+    {
+      "x": 2387,
+      "type": "bishop"
+    },
+    {
+      "x": 2559,
+      "type": "pawn"
+    },
+    {
+      "x": 2730,
+      "type": "commando"
+    },
+    {
+      "x": 2902,
+      "type": "scout"
+    },
+    {
+      "x": 3074,
+      "type": "rook"
+    },
+    {
+      "x": 3246,
+      "type": "pawn"
+    },
+    {
+      "x": 3418,
+      "type": "queen"
+    },
+    {
+      "x": 3590,
+      "type": "knight"
+    },
+    {
+      "x": 3761,
+      "type": "shield"
+    },
+    {
+      "x": 3933,
+      "type": "pawn"
+    },
+    {
+      "x": 4105,
+      "type": "grenadier"
+    },
+    {
+      "x": 4277,
+      "type": "rook"
+    },
+    {
+      "x": 4449,
+      "type": "bishop"
+    },
+    {
+      "x": 4621,
+      "type": "commando"
+    },
+    {
+      "x": 4793,
+      "type": "pawn"
+    },
+    {
+      "x": 4964,
+      "type": "knight"
+    },
+    {
+      "x": 5136,
+      "type": "scout"
+    },
+    {
+      "x": 5308,
+      "type": "pawn"
+    },
+    {
+      "x": 5480,
+      "type": "rook"
+    }
+  ],
+  "pickups": [
+    {
+      "x": 1300,
+      "y": 566,
+      "type": "machinegun"
+    },
+    {
+      "x": 2210,
+      "y": 566,
+      "type": "grenade"
+    },
+    {
+      "x": 3020,
+      "y": 566,
+      "type": "shotgun"
+    },
+    {
+      "x": 3740,
+      "y": 566,
+      "type": "medkit"
+    },
+    {
+      "x": 4280,
+      "y": 566,
+      "type": "panzerfaust"
+    },
+    {
+      "x": 4960,
+      "y": 566,
+      "type": "grenade"
+    }
+  ],
+  "boss": {
+    "x": 5580,
+    "hp": 860,
+    "width": 190,
+    "height": 150,
+    "trigger_x": 5550,
+    "arena_left": 5450,
+    "arena_right": 5780
+  },
+  "extraction": {
+    "x": 5720
+  },
+  "backdrop": {
+    "preset": "alpine_night",
+    "seed": 53,
+    "layers": [
+      {
+        "kind": "sky",
+        "scroll": 0.02,
+        "z": -80,
+        "intensity": 1
+      },
+      {
+        "kind": "far_ridge",
+        "scroll": 0.1,
+        "z": -70,
+        "intensity": 1
+      },
+      {
+        "kind": "ruined_city",
+        "scroll": 0.27,
+        "z": -55,
+        "intensity": 1
+      },
+      {
+        "kind": "mid_defence",
+        "scroll": 0.56,
+        "z": -32,
+        "intensity": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,407 @@
+{
+  "id": "harbor_raid_v1",
+  "version": 1,
+  "theme": "harbor_dusk",
+  "world": {
+    "width": 5600,
+    "height": 720,
+    "floor_y": 610,
+    "start_x": 110,
+    "floor_depth": 110,
+    "boundary_thickness": 40
+  },
+  "checkpoints": [
+    110,
+    1620,
+    3220,
+    4540
+  ],
+  "platforms": [
+    {
+      "x": 420,
+      "y": 520,
+      "w": 180,
+      "h": 24,
+      "kind": "low_dock"
+    },
+    {
+      "x": 650,
+      "y": 466,
+      "w": 150,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 860,
+      "y": 396,
+      "w": 220,
+      "h": 24,
+      "kind": "crane_walk"
+    },
+    {
+      "x": 1140,
+      "y": 520,
+      "w": 210,
+      "h": 24,
+      "kind": "low_dock"
+    },
+    {
+      "x": 1410,
+      "y": 448,
+      "w": 160,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 1680,
+      "y": 378,
+      "w": 210,
+      "h": 24,
+      "kind": "crane_walk"
+    },
+    {
+      "x": 1960,
+      "y": 488,
+      "w": 190,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 2210,
+      "y": 430,
+      "w": 140,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 2420,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_dock"
+    },
+    {
+      "x": 2680,
+      "y": 452,
+      "w": 220,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 2960,
+      "y": 372,
+      "w": 190,
+      "h": 24,
+      "kind": "crane_walk"
+    },
+    {
+      "x": 3230,
+      "y": 500,
+      "w": 170,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 3470,
+      "y": 438,
+      "w": 150,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 3700,
+      "y": 520,
+      "w": 210,
+      "h": 24,
+      "kind": "low_dock"
+    },
+    {
+      "x": 3980,
+      "y": 404,
+      "w": 240,
+      "h": 24,
+      "kind": "crane_walk"
+    },
+    {
+      "x": 4300,
+      "y": 474,
+      "w": 170,
+      "h": 24,
+      "kind": "dock"
+    },
+    {
+      "x": 4530,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_dock"
+    },
+    {
+      "x": 4800,
+      "y": 390,
+      "w": 240,
+      "h": 24,
+      "kind": "crane_walk"
+    },
+    {
+      "x": 5120,
+      "y": 456,
+      "w": 220,
+      "h": 24,
+      "kind": "dock"
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 720,
+      "y": 550,
+      "w": 84,
+      "h": 60,
+      "kind": "cargo_crates"
+    },
+    {
+      "x": 1280,
+      "y": 532,
+      "w": 64,
+      "h": 78,
+      "kind": "container_stack"
+    },
+    {
+      "x": 1870,
+      "y": 548,
+      "w": 92,
+      "h": 62,
+      "kind": "bollards"
+    },
+    {
+      "x": 2330,
+      "y": 540,
+      "w": 58,
+      "h": 70,
+      "kind": "barrels"
+    },
+    {
+      "x": 3090,
+      "y": 530,
+      "w": 96,
+      "h": 80,
+      "kind": "container_stack"
+    },
+    {
+      "x": 3570,
+      "y": 548,
+      "w": 88,
+      "h": 62,
+      "kind": "cargo_crates"
+    },
+    {
+      "x": 4160,
+      "y": 540,
+      "w": 62,
+      "h": 70,
+      "kind": "barrels"
+    },
+    {
+      "x": 4690,
+      "y": 526,
+      "w": 92,
+      "h": 84,
+      "kind": "container_stack"
+    },
+    {
+      "x": 5260,
+      "y": 550,
+      "w": 86,
+      "h": 60,
+      "kind": "cargo_crates"
+    }
+  ],
+  "enemies": [
+    {
+      "x": 820,
+      "type": "pawn"
+    },
+    {
+      "x": 977,
+      "type": "scout"
+    },
+    {
+      "x": 1133,
+      "type": "pawn"
+    },
+    {
+      "x": 1290,
+      "type": "knight"
+    },
+    {
+      "x": 1447,
+      "type": "commando"
+    },
+    {
+      "x": 1603,
+      "type": "rook"
+    },
+    {
+      "x": 1760,
+      "type": "pawn"
+    },
+    {
+      "x": 1917,
+      "type": "shield"
+    },
+    {
+      "x": 2073,
+      "type": "grenadier"
+    },
+    {
+      "x": 2230,
+      "type": "knight"
+    },
+    {
+      "x": 2387,
+      "type": "bishop"
+    },
+    {
+      "x": 2543,
+      "type": "pawn"
+    },
+    {
+      "x": 2700,
+      "type": "scout"
+    },
+    {
+      "x": 2857,
+      "type": "commando"
+    },
+    {
+      "x": 3013,
+      "type": "rook"
+    },
+    {
+      "x": 3170,
+      "type": "pawn"
+    },
+    {
+      "x": 3327,
+      "type": "queen"
+    },
+    {
+      "x": 3483,
+      "type": "knight"
+    },
+    {
+      "x": 3640,
+      "type": "shield"
+    },
+    {
+      "x": 3797,
+      "type": "pawn"
+    },
+    {
+      "x": 3953,
+      "type": "grenadier"
+    },
+    {
+      "x": 4110,
+      "type": "rook"
+    },
+    {
+      "x": 4267,
+      "type": "bishop"
+    },
+    {
+      "x": 4423,
+      "type": "commando"
+    },
+    {
+      "x": 4580,
+      "type": "pawn"
+    },
+    {
+      "x": 4737,
+      "type": "knight"
+    },
+    {
+      "x": 4893,
+      "type": "scout"
+    },
+    {
+      "x": 5050,
+      "type": "pawn"
+    }
+  ],
+  "pickups": [
+    {
+      "x": 1260,
+      "y": 566,
+      "type": "machinegun"
+    },
+    {
+      "x": 2060,
+      "y": 566,
+      "type": "grenade"
+    },
+    {
+      "x": 2860,
+      "y": 566,
+      "type": "shotgun"
+    },
+    {
+      "x": 3520,
+      "y": 566,
+      "type": "medkit"
+    },
+    {
+      "x": 4070,
+      "y": 566,
+      "type": "panzerfaust"
+    },
+    {
+      "x": 4680,
+      "y": 566,
+      "type": "grenade"
+    }
+  ],
+  "boss": {
+    "x": 5350,
+    "hp": 820,
+    "width": 190,
+    "height": 150,
+    "trigger_x": 5150,
+    "arena_left": 5200,
+    "arena_right": 5580
+  },
+  "extraction": {
+    "x": 5520
+  },
+  "backdrop": {
+    "preset": "harbor_dusk",
+    "seed": 31,
+    "layers": [
+      {
+        "kind": "sky",
+        "scroll": 0.03,
+        "z": -80,
+        "intensity": 1
+      },
+      {
+        "kind": "far_ridge",
+        "scroll": 0.12,
+        "z": -70,
+        "intensity": 1
+      },
+      {
+        "kind": "ruined_city",
+        "scroll": 0.3,
+        "z": -55,
+        "intensity": 1
+      },
+      {
+        "kind": "mid_defence",
+        "scroll": 0.58,
+        "z": -32,
+        "intensity": 1
+      }
+    ]
+  }
+}
