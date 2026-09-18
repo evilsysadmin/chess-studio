@@ -76,6 +76,24 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+  it('waits past the old 250ms cutoff for the authoritative generated run', async () => {
+    vi.useFakeTimers();
+    let release;
+    const createRun = vi.fn(() => new Promise((resolve) => {
+      release = resolve;
+    }));
+
+    const bootstrap = chroniclesBootstrapTacticsWorld({ createRun });
+    await vi.advanceTimersByTimeAsync(300);
+
+    release(remoteRun('Cripta procedural tardía', 991));
+    const resolved = await bootstrap;
+
+    expect(resolved.source).toBe('remote');
+    expect(resolved.seed).toBe(991);
+    expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta procedural tardía');
+  });
+
   it('keeps the bundled map when run creation fails open', async () => {
     const local = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
     const createRun = vi.fn().mockRejectedValue(new Error('network-down'));
