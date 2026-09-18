@@ -73,6 +73,7 @@ PAWN_SLUG_GODOT_PATHS = {
     ".github/workflows/cicd.yml",
     "scripts/pawn_slug_godot_bundle.py",
     "scripts/pawn_slug_godot_2d_gate.py",
+    "scripts/pawn_slug_enemy_roster_gate.py",
     "scripts/pawn_slug_godot_live_smoke.mjs",
     "scripts/apply_frontend_csp.mjs",
 }
@@ -359,6 +360,7 @@ def self_test() -> None:
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
     _expect(["games/pawn-slug-godot/scripts/player.gd"], run_pawn_slug_godot=True)
     _expect(["scripts/pawn_slug_godot_2d_gate.py"], run_pawn_slug_godot=True)
+    _expect(["scripts/pawn_slug_enemy_roster_gate.py"], run_pawn_slug_godot=True)
     _expect(["scripts/apply_frontend_csp.mjs"], run_pawn_slug_godot=True)
     _expect([".github/workflows/pawn-slug-godot-web.yml"], run_pawn_slug_godot=True)
     _expect_core(
