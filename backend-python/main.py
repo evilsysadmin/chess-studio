@@ -23,6 +23,7 @@ from slowapi.util import get_remote_address
 
 import profile_store as pstore
 import users_store as ustore
+import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
 from db import PersistentStorageUnavailable
@@ -562,9 +563,7 @@ async def register(body: RegisterRequest, request: Request):
         # Si quedó un perfil huérfano de una eliminación antigua con el mismo
         # username, debe desaparecer antes del primer login: un alta nueva es
         # siempre vanilla y jamás hereda datos de una identidad anterior.
-        await pstore.delete_profile(username)
-        await matthias_daily_store.delete_user_daily(username)
-        await matthias_memory_store.delete_user_memory(username)
+        await user_data_lifecycle.purge_user_data(username)
     except PersistentStorageUnavailable as exc:
         # No entregamos una cuenta cuyo estado inicial no podemos garantizar.
         # El rollback deja el username disponible para reintentar el alta.

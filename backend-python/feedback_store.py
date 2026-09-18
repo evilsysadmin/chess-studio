@@ -220,6 +220,24 @@ async def delete_feedback(feedback_id: str) -> bool:
             raise PersistentStorageUnavailable("MongoDB no está disponible para borrar feedback.") from exc
     return _memory_feedback.pop(feedback_id, None) is not None
 
+async def delete_feedback_by_user(username: str) -> int:
+    """Delete every feedback item owned by an account identity."""
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_many({"username": username})
+            return int(getattr(result, "deleted_count", 0))
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para borrar el feedback del usuario.") from exc
+
+    doomed = [
+        feedback_id
+        for feedback_id, row in _memory_feedback.items()
+        if row.get("username") == username
+    ]
+    for feedback_id in doomed:
+        _memory_feedback.pop(feedback_id, None)
+    return len(doomed)
 
 async def get_feedback_attachment(feedback_id: str, index: int) -> dict | None:
     if index < 0:

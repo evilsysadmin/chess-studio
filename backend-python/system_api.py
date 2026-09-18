@@ -16,6 +16,7 @@ import matthias_memory_store
 import profile_store as pstore
 import pvp_store
 import users_store as ustore
+import user_data_lifecycle
 import release_info
 from auth import verify_password
 from feature_flags import public_feature_flags
@@ -127,18 +128,13 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         if not user or not verify_password(body.password, user.get("password_hash", "")):
             raise HTTPException(401, "La contraseña actual no es correcta.")
 
-        deleted_games = await gstore.delete_games_by_owner(username)
-        await pstore.delete_profile(username)
-        await pvp_store.delete_user_data(username)
-        await chronicles_run_store.delete_user_runs(username)
-        await matthias_daily_store.delete_user_daily(username)
-        await matthias_memory_store.delete_user_memory(username)
+        purged = await user_data_lifecycle.purge_user_data(username)
         deleted = await ustore.delete_user(username)
         if not deleted:
             raise HTTPException(404, "La cuenta ya no existe.")
 
         request.state.username = username
-        return {"deleted": True, "username": username, "deletedGames": deleted_games}
+        return {"deleted": True, "username": username, "deletedGames": purged["games"]}
 
     @router.get("/api/status")
     async def public_status(_username: str = Depends(auth_dependency)):
