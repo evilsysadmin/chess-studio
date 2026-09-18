@@ -367,16 +367,16 @@ def add_table_and_board(materials):
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
-        [(x * 0.74 + 0.05, (z - 0.58) * 0.74 + 0.53) for x, z in horse_points],
+        [(x * 0.88 + 0.05, (z - 0.58) * 0.88 + 0.57) for x, z in horse_points],
         emblem_y,
         0.040,
         heraldry,
         bevel=0.018,
     )
-    cone("HOME_PROP_table_horse_ear", (-0.17, emblem_y - 0.035, 0.86), 0.048, 0.008, 0.16, heraldry, vertices=12)
-    for idx, (mx, mz) in enumerate(((0.08, 0.74), (0.12, 0.64), (0.14, 0.54))):
-        cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.040, 0.006, 0.11, heraldry, vertices=10)
-    sphere("HOME_PROP_table_horse_eye", (-0.17, emblem_y - 0.055, 0.70), (0.016, 0.008, 0.016), materials["dark"])
+    cone("HOME_PROP_table_horse_ear", (-0.19, emblem_y - 0.035, 0.92), 0.055, 0.008, 0.18, heraldry, vertices=12)
+    for idx, (mx, mz) in enumerate(((0.09, 0.80), (0.14, 0.68), (0.16, 0.56))):
+        cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.046, 0.006, 0.125, heraldry, vertices=10)
+    sphere("HOME_PROP_table_horse_eye", (-0.19, emblem_y - 0.055, 0.75), (0.018, 0.009, 0.018), materials["dark"])
     cube("HOME_PROP_table_mark_v", (0.0, emblem_y, -0.20), (0.035, 0.024, 0.12), heraldry, bevel=0.01)
     cube("HOME_PROP_table_mark_h", (0.0, emblem_y, -0.17), (0.10, 0.024, 0.035), heraldry, bevel=0.01)
 
@@ -683,7 +683,7 @@ def add_side_furnishings(materials):
 
     # Right cabinet + globe, pulled slightly forward so the globe actually reads
     # beside the right fireplace at canonical camera distance.
-    gx, gy = 5.95, 4.08
+    gx, gy = 5.58, 4.08
     cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
     sphere("HOME_PROP_globe", (gx, gy, 1.86), (0.56, 0.56, 0.56), globe)
@@ -888,14 +888,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (0.58, 0.035, 0.004, 1),
             roughness=0.30,
             emission=(0.90, 0.075, 0.006, 1),
-            emission_strength=0.34,
+            emission_strength=0.08,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
             (1.0, 0.28, 0.025, 1),
             roughness=0.24,
             emission=(1.0, 0.22, 0.018, 1),
-            emission_strength=0.58,
+            emission_strength=0.16,
         ),
     }
 
@@ -1046,9 +1046,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
             origin = Vector((1.55, 5.28, 0.24))
-            obj.location = origin + (obj.location - origin) * 0.84
-            obj.location.y += 0.70
-            obj.scale *= 0.84
+            obj.location = origin + (obj.location - origin) * 0.95
+            obj.location.y += 0.55
+            obj.scale *= 0.95
     flat_panel(
         "HOME_PROP_armor_cape",
         [(1.02, 3.45), (2.08, 3.45), (1.95, 0.75), (1.55, 0.52), (1.15, 0.75)],
@@ -1057,47 +1057,47 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["banner"],
         bevel=0.025,
     )
-    cube("HOME_PROP_armor_chest_plate", (1.55, 5.72, 2.28), (0.28, 0.050, 0.23), materials["steel"], bevel=0.06)
-    cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.66, 2.28), (0.028, 0.026, 0.11), materials["brass_dark"], bevel=0.01)
-    cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.66, 2.31), (0.095, 0.026, 0.028), materials["brass_dark"], bevel=0.01)
+    cube("HOME_PROP_armor_chest_plate", (1.55, 5.58, 2.42), (0.31, 0.052, 0.25), materials["steel"], bevel=0.065)
+    cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.52, 2.42), (0.030, 0.027, 0.12), materials["brass_dark"], bevel=0.01)
+    cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.52, 2.45), (0.105, 0.027, 0.030), materials["brass_dark"], bevel=0.01)
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.42), 0.050, 1.05, materials["brass_dark"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.34), 0.050, 1.08, materials["brass_dark"])
     ring_points = [
         (
-            1.72 * math.cos(i * math.tau / 24),
-            2.20 + 1.02 * math.sin(i * math.tau / 24),
-            4.52 + 0.24 * math.sin(i * math.tau / 24),
+            1.84 * math.cos(i * math.tau / 24),
+            2.20 + 1.08 * math.sin(i * math.tau / 24),
+            4.44 + 0.25 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.050, materials["brass_dark"])
     inner_ring = [
         (
-            1.15 * math.cos(i * math.tau / 24),
-            2.20 + 0.68 * math.sin(i * math.tau / 24),
-            4.48 + 0.17 * math.sin(i * math.tau / 24),
+            1.24 * math.cos(i * math.tau / 24),
+            2.20 + 0.72 * math.sin(i * math.tau / 24),
+            4.40 + 0.18 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.032, materials["brass"])
     lower_outer_ring = [
         (
-            1.72 * math.cos(i * math.tau / 24),
-            2.20 + 1.02 * math.sin(i * math.tau / 24),
-            4.38 + 0.24 * math.sin(i * math.tau / 24),
+            1.84 * math.cos(i * math.tau / 24),
+            2.20 + 1.08 * math.sin(i * math.tau / 24),
+            4.30 + 0.25 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_lower_ring", lower_outer_ring, 0.032, materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        x = 1.72 * math.cos(angle)
-        y = 2.20 + 1.02 * math.sin(angle)
-        z_mid = 4.45 + 0.24 * math.sin(angle)
+        x = 1.84 * math.cos(angle)
+        y = 2.20 + 1.08 * math.sin(angle)
+        z_mid = 4.37 + 0.25 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_dropbar_{idx}",
             [(x, y, z_mid - 0.08), (x, y, z_mid + 0.08)],
@@ -1108,27 +1108,27 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_chandelier_spoke_{idx}",
             [
-                (0.0, 2.20, 4.47),
-                (1.50 * math.cos(angle), 2.20 + 0.90 * math.sin(angle), 4.47),
+                (0.0, 2.20, 4.39),
+                (1.62 * math.cos(angle), 2.20 + 0.94 * math.sin(angle), 4.39),
             ],
             0.026,
             materials["brass_dark"],
         )
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
-        rx = 1.34 * math.cos(angle)
-        ry = 2.38 + 0.86 * math.sin(angle)
+        rx = 1.42 * math.cos(angle)
+        ry = 2.38 + 0.90 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.94), (rx, ry, 4.74)],
+            [(0.0, 2.20, 5.88), (rx, ry, 4.66)],
             0.032,
             materials["brass_dark"],
         )
-    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.48), (0.13, 0.13, 0.12), materials["brass_dark"])
+    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.40), (0.13, 0.13, 0.12), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.62 * math.cos(angle)
-        cy = 2.20 + 0.96 * math.sin(angle)
-        cz = 4.56 + 0.20 * math.sin(angle)
+        cx = 1.72 * math.cos(angle)
+        cy = 2.20 + 1.00 * math.sin(angle)
+        cz = 4.48 + 0.21 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.28), (0.052, 0.052, 0.25), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.59), 0.052, 0.008, 0.18, materials["fire_hot"], vertices=12)
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.035), 0.095, 0.072, materials["brass_dark"], vertices=16)
@@ -1155,11 +1155,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 92, (0.68, 0.52, 0.39), 4.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 80, (0.66, 0.50, 0.38), 4.4, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 48, (0.10, 0.22, 0.40), 4.2, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 96, (0.68, 0.38, 0.22), 3.0, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 108, (0.34, 0.24, 0.18), 6.5, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.15, 0.32, 0.62), 3.8, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 78, (0.66, 0.36, 0.21), 3.0, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 122, (0.34, 0.24, 0.18), 6.3, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 350, (0.14, 0.34, 0.68), 3.8, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 150, (0.88, 0.68, 0.48), 2.8, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 168, (0.82, 0.48, 0.24), 2.0, target=(0, -0.72, 0.30))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
