@@ -51,13 +51,13 @@ export function warRoomV2RuntimeSurfaceKind(materialName = '') {
 
 export function warRoomV2StoneSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1 })
+    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.10 })
     : Object.freeze({ enabled: true, size: 32, bumpScale: 0.012, albedoCompensation: 1.10 });
 }
 
 export function warRoomV2WoodSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1 })
+    ? Object.freeze({ enabled: true, size: 32, bumpScale: 0, albedoCompensation: 1.055 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.007, albedoCompensation: 1.055 });
 }
 
@@ -155,14 +155,16 @@ function installRuntimeWoodSurface(material, sharedTextures, { coarsePointer = f
   if (!profile.enabled) return false;
 
   sharedTextures.albedo ||= createWarRoomV2WoodTexture({ mode: 'albedo', size: profile.size });
-  sharedTextures.micro ||= createWarRoomV2WoodTexture({ mode: 'micro', size: profile.size });
 
   if (!material.map) {
     material.map = sharedTextures.albedo;
     material.color.multiplyScalar(profile.albedoCompensation);
   }
-  if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
-  if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
+  if (profile.bumpScale > 0) {
+    sharedTextures.micro ||= createWarRoomV2WoodTexture({ mode: 'micro', size: profile.size });
+    if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
+    if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
+  }
   material.bumpScale = profile.bumpScale;
   material.userData ||= {};
   material.userData.warRoomV2RuntimeSurface = 'walnut-grain-v1';
@@ -176,7 +178,6 @@ function installRuntimeStoneSurface(material, sharedTextures, { coarsePointer = 
   if (!profile.enabled) return false;
 
   sharedTextures.albedo ||= createWarRoomV2StoneTexture({ mode: 'albedo', size: profile.size });
-  sharedTextures.micro ||= createWarRoomV2StoneTexture({ mode: 'micro', size: profile.size });
 
   if (!material.map) {
     material.map = sharedTextures.albedo;
@@ -186,8 +187,11 @@ function installRuntimeStoneSurface(material, sharedTextures, { coarsePointer = 
     // room simply becoming darker.
     material.color.multiplyScalar(profile.albedoCompensation);
   }
-  if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
-  if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
+  if (profile.bumpScale > 0) {
+    sharedTextures.micro ||= createWarRoomV2StoneTexture({ mode: 'micro', size: profile.size });
+    if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
+    if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
+  }
   material.bumpScale = profile.bumpScale;
   material.userData ||= {};
   material.userData.warRoomV2RuntimeSurface = 'stone-meso-v2';
@@ -285,7 +289,7 @@ export async function installWarRoomV2Shell(
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v7-walnut-grain';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v8-lite-albedo-proof';
   root.userData.warRoomV2PracticalLights = practicalLights;
   root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;

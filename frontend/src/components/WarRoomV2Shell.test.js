@@ -54,10 +54,10 @@ describe('War Room v2 staging asset URL', () => {
       albedoCompensation: 1.10,
     });
     expect(warRoomV2StoneSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: false,
-      size: 0,
+      enabled: true,
+      size: 24,
       bumpScale: 0,
-      albedoCompensation: 1,
+      albedoCompensation: 1.10,
     });
 
     expect(warRoomV2WoodSurfaceProfile()).toEqual({
@@ -67,10 +67,10 @@ describe('War Room v2 staging asset URL', () => {
       albedoCompensation: 1.055,
     });
     expect(warRoomV2WoodSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: false,
-      size: 0,
+      enabled: true,
+      size: 32,
       bumpScale: 0,
-      albedoCompensation: 1,
+      albedoCompensation: 1.055,
     });
   });
 
