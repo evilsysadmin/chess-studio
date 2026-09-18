@@ -109,6 +109,7 @@ var _enemy_spawns: Array[Dictionary] = []
 var _setpieces: Array[Dictionary] = []
 var _setpiece_nodes: Dictionary = {}
 var _moving_platforms: Array[Dictionary] = []
+var _collapsing_platforms: Array[Dictionary] = []
 var _boss_x := 4580.0
 var _boss_hp := 780
 var _boss_size := Vector2(190.0, 150.0)
@@ -309,7 +310,7 @@ func _point_hits_stage_geometry(point: Vector2) -> bool:
     for rect in _obstacles:
         if rect.has_point(point):
             return true
-    for rect in _moving_platform_rects():
+    for rect in _dynamic_platform_rects():
         if rect.has_point(point):
             return true
     return false
@@ -527,6 +528,7 @@ func _enemy_from_spawn(spawn: Dictionary, variant: int, id_prefix: String) -> Di
 func _build_stage_setpieces() -> void:
     _setpiece_nodes.clear()
     _moving_platforms.clear()
+    _collapsing_platforms.clear()
     var theme := String(_stage_manifest.get("theme", "night_front"))
 
     for index in range(_setpieces.size()):
@@ -571,6 +573,42 @@ func _build_stage_setpieces() -> void:
             }
             _moving_platforms.append(moving)
             _setpiece_nodes[id] = body
+        elif kind == "collapse_bridge":
+            var width := float(setpiece.get("w", 180.0))
+            var height := float(setpiece.get("h", 24.0))
+            var body := AnimatableBody2D.new()
+            body.name = "Setpiece_%s" % id
+            body.position = Vector2(
+                float(setpiece.get("x", 0.0)) + width * 0.5,
+                float(setpiece.get("y", _floor_y - 160.0)) + height * 0.5,
+            )
+            body.sync_to_physics = true
+            var collision := CollisionShape2D.new()
+            collision.name = "CollisionShape2D"
+            var shape := RectangleShape2D.new()
+            shape.size = Vector2(width, height)
+            collision.shape = shape
+            body.add_child(collision)
+            var visual = SetpieceVisual.new()
+            visual.configure(kind, Vector2(width, height), theme)
+            body.add_child(visual)
+            add_child(body)
+            _collapsing_platforms.append({
+                "id": id,
+                "body": body,
+                "collision": collision,
+                "visual": visual,
+                "origin": body.position,
+                "size": Vector2(width, height),
+                "trigger_x": float(setpiece.get("trigger_x", float(setpiece.get("x", 0.0)) + width + 40.0)),
+                "warning_duration": maxf(0.20, float(setpiece.get("warning", 0.75))),
+                "timer": 0.0,
+                "elapsed": 0.0,
+                "velocity": 0.0,
+                "fall_gravity": maxf(240.0, float(setpiece.get("fall_gravity", 980.0))),
+                "state": "idle",
+            })
+            _setpiece_nodes[id] = body
         elif kind == "bunker_turret":
             var visual = SetpieceVisual.new()
             visual.name = "Setpiece_%s" % id
@@ -605,6 +643,21 @@ func _build_stage_setpieces() -> void:
             visual.visible = false
             add_child(visual)
             _setpiece_nodes[id] = visual
+        elif kind in ["waterfall", "tunnel_portal"]:
+            var visual = SetpieceVisual.new()
+            visual.name = "Setpiece_%s" % id
+            visual.position = Vector2(
+                float(setpiece.get("x", 0.0)),
+                float(setpiece.get("y", _floor_y)),
+            )
+            visual.z_index = 0 if kind == "waterfall" else 2
+            visual.configure(
+                kind,
+                Vector2(float(setpiece.get("w", 180.0)), float(setpiece.get("h", 220.0))),
+                theme,
+            )
+            add_child(visual)
+            _setpiece_nodes[id] = visual
 
         _setpieces[index] = setpiece
 
@@ -621,6 +674,46 @@ func _physics_process(delta: float) -> void:
         body.position = Vector2(moving["origin"]) + Vector2(moving["travel"]) * wave
         _moving_platforms[index] = moving
 
+    for index in range(_collapsing_platforms.size()):
+        var bridge := _collapsing_platforms[index]
+        var body = bridge.get("body")
+        if body == null:
+            continue
+        var state := String(bridge.get("state", "idle"))
+        if state == "gone":
+            continue
+        if state == "idle" and player.global_position.x >= float(bridge["trigger_x"]):
+            state = "warning"
+            bridge["state"] = state
+            bridge["timer"] = float(bridge["warning_duration"])
+            bridge["elapsed"] = 0.0
+            var visual = bridge.get("visual")
+            if visual != null:
+                visual.set_warning(true)
+        if state == "warning":
+            bridge["elapsed"] = float(bridge["elapsed"]) + delta
+            bridge["timer"] = float(bridge["timer"]) - delta
+            body.position = Vector2(bridge["origin"]) + Vector2(
+                sin(float(bridge["elapsed"]) * 34.0) * 2.2,
+                0.0,
+            )
+            if float(bridge["timer"]) <= 0.0:
+                bridge["state"] = "falling"
+                var visual = bridge.get("visual")
+                if visual != null:
+                    visual.set_warning(false)
+        elif state == "falling":
+            bridge["velocity"] = float(bridge["velocity"]) + float(bridge["fall_gravity"]) * delta
+            body.position.y += float(bridge["velocity"]) * delta
+            body.rotation += delta * 0.16
+            if body.position.y - float(Vector2(bridge["size"]).y) * 0.5 > _world_size.y + 90.0:
+                bridge["state"] = "gone"
+                var collision = bridge.get("collision")
+                if collision != null:
+                    collision.disabled = true
+                body.visible = false
+        _collapsing_platforms[index] = bridge
+
 func _moving_platform_rects() -> Array[Rect2]:
     var rects: Array[Rect2] = []
     for moving in _moving_platforms:
@@ -629,6 +722,23 @@ func _moving_platform_rects() -> Array[Rect2]:
             continue
         var size: Vector2 = moving["size"]
         rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
+    return rects
+
+func _collapsing_platform_rects() -> Array[Rect2]:
+    var rects: Array[Rect2] = []
+    for bridge in _collapsing_platforms:
+        if String(bridge.get("state", "idle")) == "gone":
+            continue
+        var body = bridge.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = bridge["size"]
+        rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
+    return rects
+
+func _dynamic_platform_rects() -> Array[Rect2]:
+    var rects := _moving_platform_rects()
+    rects.append_array(_collapsing_platform_rects())
     return rects
 
 func _update_stage_setpieces(delta: float) -> void:
@@ -1350,7 +1460,7 @@ func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
 func _knight_has_support(world_x: float, foot_y: float) -> bool:
     if is_equal_approx(foot_y, _floor_y):
         return true
-    for platform in _platforms + _moving_platform_rects():
+    for platform in _platforms + _dynamic_platform_rects():
         if (
             absf(foot_y - platform.position.y) <= 2.0
             and world_x >= platform.position.x
@@ -1361,7 +1471,7 @@ func _knight_has_support(world_x: float, foot_y: float) -> bool:
 
 func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
     var landing_y := -1.0
-    for platform in _platforms + _moving_platform_rects():
+    for platform in _platforms + _dynamic_platform_rects():
         var top := platform.position.y
         if (
             world_x >= platform.position.x
