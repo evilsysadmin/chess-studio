@@ -360,65 +360,121 @@ func _draw_ruined_city() -> void:
         _draw_jungle_ruins()
         return
 
-    for index in range(34):
-        var x := 30.0 + float(index) * 160.0
-        var w := 70.0 + _noise(index, 4.2) * 70.0
-        var h := 70.0 + _noise(index, 4.8) * 150.0
-        var y := _floor_y - 126.0 - h
-        var building := Color(0.067, 0.083, 0.095, 0.94)
+    # Mid-city must frame the distant megafactory, not bury it. Use fewer,
+    # narrower silhouettes with gaps and higher tonal separation.
+    for index in range(20):
+        var x := 36.0 + float(index) * 258.0
+        var w := 74.0 + _noise(index, 4.2) * 72.0
+        var h := 58.0 + _noise(index, 4.8) * 112.0
+        var y := _floor_y - 104.0 - h
+        var building := Color(
+            0.090 + _noise(index, 47.1) * 0.020,
+            0.108 + _noise(index, 47.7) * 0.020,
+            0.120 + _noise(index, 48.3) * 0.020,
+            0.88
+        )
+
         draw_rect(Rect2(Vector2(x, y), Vector2(w, h)), building, true)
+        draw_line(
+            Vector2(x + 4.0, y),
+            Vector2(x + w - 4.0, y),
+            Color(0.22, 0.25, 0.26, 0.22),
+            2.0,
+        )
+        draw_rect(
+            Rect2(Vector2(x, y + h - 8.0), Vector2(w, 8.0)),
+            Color(0.035, 0.043, 0.047, 0.44),
+            true,
+        )
 
         if index % 3 == 0:
-            var chimney_h := 22.0 + _noise(index, 5.1) * 34.0
-            draw_rect(
-                Rect2(Vector2(x + w * 0.62, y - chimney_h), Vector2(11.0, chimney_h + 2.0)),
-                building,
-                true,
+            var antenna_h := 18.0 + _noise(index, 49.1) * 42.0
+            var antenna_x := x + w * (0.42 + _noise(index, 49.7) * 0.30)
+            draw_line(
+                Vector2(antenna_x, y),
+                Vector2(antenna_x, y - antenna_h),
+                Color(0.12, 0.14, 0.15, 0.74),
+                3.0,
             )
+            draw_line(
+                Vector2(antenna_x - 7.0, y - antenna_h + 9.0),
+                Vector2(antenna_x + 7.0, y - antenna_h + 9.0),
+                Color(0.16, 0.17, 0.17, 0.56),
+                1.5,
+            )
+
         if index % 4 == 1:
             draw_line(
-                Vector2(x + 8.0, y + 20.0),
-                Vector2(x + w - 9.0, y + 7.0),
-                Color(0.23, 0.24, 0.24, 0.34),
-                3.0,
+                Vector2(x + 7.0, y + 20.0),
+                Vector2(x + w - 8.0, y + 8.0),
+                Color(0.27, 0.29, 0.29, 0.30),
+                2.0,
             )
 
         for row in range(3):
             for col in range(3):
-                if (index + row + col) % 5 != 0:
+                if (index * 2 + row + col) % 4 != 0:
                     continue
-                var wx := x + 12.0 + float(col) * minf(20.0, w / 4.0)
-                var wy := y + 18.0 + float(row) * 24.0
+                var wx := x + 12.0 + float(col) * minf(22.0, w / 4.0)
+                var wy := y + 16.0 + float(row) * 22.0
+                var window_glow := 0.22 + _noise(index * 11 + row * 3 + col, 50.2) * 0.20
                 draw_rect(
-                    Rect2(Vector2(wx, wy), Vector2(5.0, 8.0)),
-                    Color(0.80, 0.48, 0.20, 0.18 * _intensity),
+                    Rect2(Vector2(wx, wy), Vector2(5.0, 7.0)),
+                    Color(0.90, 0.52, 0.20, window_glow * _intensity),
                     true,
                 )
 
-    for index in range(8):
-        var smoke_x := 520.0 + float(index) * 640.0
-        var base_y := 250.0 + _noise(index, 6.3) * 80.0
-        for puff in range(5):
-            var drift := float(puff) * 18.0 + sin(_atmosphere_time * 0.55 + float(index) * 0.9 + float(puff) * 0.4) * (6.0 + float(puff) * 2.0)
-            var radius := 18.0 + float(puff) * 7.0
-            draw_circle(
-                Vector2(smoke_x + drift, base_y - float(puff) * 22.0),
-                radius,
-                Color(0.22, 0.25, 0.26, (0.07 - float(puff) * 0.008) * _intensity),
+        if index < 19 and index % 2 == 0:
+            var bridge_y := y + 34.0 + _noise(index, 50.9) * 26.0
+            draw_line(
+                Vector2(x + w, bridge_y),
+                Vector2(x + 258.0, bridge_y - 6.0),
+                Color(0.12, 0.14, 0.15, 0.48),
+                3.0,
             )
 
-    for origin_x in [1180.0, 3180.0, 4520.0]:
-        var origin := Vector2(origin_x, _floor_y - 154.0)
-        var sweep := sin(_atmosphere_time * 0.42 + origin_x * 0.0017) * 245.0
-        var beam_tip := Vector2(origin_x + 300.0 + sweep, 118.0)
+    # Low ribbon of warm points helps separate this plane from the water and
+    # echoes the long-lit industrial road in the mock.
+    for index in range(28):
+        var light_x := 70.0 + float(index) * 188.0
+        var light_y := 430.0 + float(index % 3) * 5.0
+        draw_circle(
+            Vector2(light_x, light_y),
+            2.2,
+            Color(0.95, 0.53, 0.22, 0.22 * _intensity),
+        )
+
+    for index in range(7):
+        var smoke_x := 430.0 + float(index) * 720.0
+        var base_y := 278.0 + _noise(index, 6.3) * 76.0
+        for puff in range(5):
+            var drift := float(puff) * 18.0 + sin(_atmosphere_time * 0.55 + float(index) * 0.9 + float(puff) * 0.4) * (6.0 + float(puff) * 2.0)
+            var radius := 16.0 + float(puff) * 6.0
+            draw_circle(
+                Vector2(smoke_x + drift, base_y - float(puff) * 21.0),
+                radius,
+                Color(0.26, 0.29, 0.30, (0.050 - float(puff) * 0.006) * _intensity),
+            )
+
+    for origin_x in [1080.0, 3040.0, 4580.0]:
+        var origin := Vector2(origin_x, _floor_y - 150.0)
+        var sweep := sin(_atmosphere_time * 0.40 + origin_x * 0.0017) * 225.0
+        var beam_tip := Vector2(origin_x + 275.0 + sweep, 124.0)
         var beam := PackedVector2Array([
-            origin + Vector2(-8.0, 0.0),
-            beam_tip + Vector2(-78.0, 0.0),
-            beam_tip + Vector2(78.0, 0.0),
-            origin + Vector2(8.0, 0.0),
+            origin + Vector2(-7.0, 0.0),
+            beam_tip + Vector2(-64.0, 0.0),
+            beam_tip + Vector2(64.0, 0.0),
+            origin + Vector2(7.0, 0.0),
         ])
-        draw_colored_polygon(beam, Color(0.77, 0.72, 0.53, 0.034 * _intensity))
-        draw_circle(origin, 8.0, Color(0.84, 0.70, 0.36, 0.58))
+        draw_colored_polygon(beam, Color(0.76, 0.72, 0.56, 0.026 * _intensity))
+        draw_circle(origin, 7.0, Color(0.88, 0.70, 0.36, 0.50))
+
+    # Mist pocket between mid-city and playable plane.
+    draw_rect(
+        Rect2(Vector2(0.0, 402.0), Vector2(_world_size.x, 92.0)),
+        Color(0.34, 0.39, 0.41, 0.040 * _intensity),
+        true,
+    )
 
 func _draw_harbor_horizon() -> void:
     draw_rect(Rect2(Vector2(0.0, 390.0), Vector2(_world_size.x, _floor_y - 390.0)), Color("102a33"), true)
