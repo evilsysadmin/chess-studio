@@ -10,6 +10,12 @@ function ownedMaterial(params) {
   return material;
 }
 
+function ownedClone(material) {
+  const clone = material.clone();
+  clone.userData = { ...(clone.userData || {}), chroniclesIsoOwned: true };
+  return clone;
+}
+
 function worldForEntry(entry, scenePlan) {
   const centerX = Number(scenePlan?.center?.x ?? 0);
   const centerY = Number(scenePlan?.center?.y ?? 0);
@@ -27,6 +33,12 @@ export function chroniclesTacticsTrapEntries(scenePlan) {
   ));
 }
 
+export function chroniclesTacticsTrapVisualMode(visualState) {
+  if (visualState?.available) return 'armed';
+  if (visualState?.activated) return 'spent';
+  return 'safe';
+}
+
 function buildSlagVent(root, entry, world, materials, { coarsePointer }) {
   const group = new THREE.Group();
   group.name = `chronicles-trap-${entry.id}`;
@@ -42,9 +54,10 @@ function buildSlagVent(root, entry, world, materials, { coarsePointer }) {
   rim.receiveShadow = true;
   group.add(rim);
 
+  const emberMaterial = ownedClone(materials.ember);
   const ember = new THREE.Mesh(
     new THREE.BoxGeometry(CELL * 0.48, 0.035, CELL * 0.48),
-    materials.ember,
+    emberMaterial,
   );
   ember.position.y = 0.065;
   group.add(ember);
@@ -57,9 +70,19 @@ function buildSlagVent(root, entry, world, materials, { coarsePointer }) {
     group.add(bar);
   });
 
-  const glow = new THREE.PointLight(0xff6a1a, coarsePointer ? 0.35 : 0.55, 3.4, 2);
+  const baseLightIntensity = coarsePointer ? 0.35 : 0.55;
+  const glow = new THREE.PointLight(0xff6a1a, baseLightIntensity, 3.4, 2);
   glow.position.y = 0.24;
   group.add(glow);
+
+  group.userData.chroniclesTrapVisual = {
+    kind: 'slag-vent',
+    ember,
+    emberMaterial,
+    glow,
+    baseLightIntensity,
+    armedEmissiveIntensity: coarsePointer ? 0.85 : 1.15,
+  };
 
   root.add(group);
   return group;
@@ -76,15 +99,23 @@ function buildChainPlate(root, entry, world, materials, { coarsePointer }) {
     new THREE.BoxGeometry(CELL * 0.62, 0.08, CELL * 0.62),
     materials.iron,
   );
+  plate.position.y = 0.045;
   plate.receiveShadow = true;
   group.add(plate);
 
   const grooveGeometry = new THREE.BoxGeometry(CELL * 0.52, 0.025, coarsePointer ? 0.09 : 0.07);
-  const grooveA = new THREE.Mesh(grooveGeometry, materials.burnished);
-  grooveA.position.y = 0.055;
+  const grooveMaterials = [ownedClone(materials.burnished), ownedClone(materials.burnished)];
+  grooveMaterials.forEach((material) => {
+    material.emissive.setHex(0x3a1707);
+    material.emissiveIntensity = 0.28;
+  });
+
+  const grooveA = new THREE.Mesh(grooveGeometry, grooveMaterials[0]);
+  grooveA.position.y = 0.092;
   grooveA.rotation.y = Math.PI / 4;
   group.add(grooveA);
-  const grooveB = grooveA.clone();
+  const grooveB = new THREE.Mesh(grooveGeometry, grooveMaterials[1]);
+  grooveB.position.y = 0.092;
   grooveB.rotation.y = -Math.PI / 4;
   group.add(grooveB);
 
@@ -96,12 +127,107 @@ function buildChainPlate(root, entry, world, materials, { coarsePointer }) {
     [0.22, 0.22],
   ].forEach(([x, z]) => {
     const stud = new THREE.Mesh(studGeometry, materials.darkMetal);
-    stud.position.set(x * CELL, 0.09, z * CELL);
+    stud.position.set(x * CELL, 0.115, z * CELL);
     group.add(stud);
   });
 
+  group.userData.chroniclesTrapVisual = {
+    kind: 'chain-plate',
+    plate,
+    grooveA,
+    grooveB,
+    grooveMaterials,
+  };
+
   root.add(group);
   return group;
+}
+
+function applyTrapMode(model, mode) {
+  const visual = model?.userData?.chroniclesTrapVisual;
+  if (!visual) return;
+
+  model.userData.chroniclesTrapVisualMode = mode;
+  if (visual.kind === 'slag-vent') {
+    visual.ember.scale.y = mode === 'armed' ? 1 : mode === 'spent' ? 0.56 : 0.34;
+    visual.ember.position.y = mode === 'armed' ? 0.065 : 0.052;
+    visual.emberMaterial.emissiveIntensity = mode === 'armed'
+      ? visual.armedEmissiveIntensity
+      : mode === 'spent' ? 0.16 : 0.025;
+    visual.glow.intensity = mode === 'armed'
+      ? visual.baseLightIntensity
+      : mode === 'spent' ? visual.baseLightIntensity * 0.12 : 0;
+    return;
+  }
+
+  const plateY = mode === 'armed' ? 0.045 : mode === 'spent' ? -0.005 : 0.012;
+  const detailY = mode === 'armed' ? 0.092 : mode === 'spent' ? 0.045 : 0.062;
+  visual.plate.position.y = plateY;
+  visual.grooveA.position.y = detailY;
+  visual.grooveB.position.y = detailY;
+  visual.grooveMaterials.forEach((material) => {
+    material.emissive.setHex(mode === 'safe' ? 0x071417 : 0x3a1707);
+    material.emissiveIntensity = mode === 'armed' ? 0.28 : mode === 'spent' ? 0.025 : 0.08;
+  });
+}
+
+function normalizeVisualStates(visualStates) {
+  if (visualStates instanceof Map) return visualStates;
+  return new Map((visualStates || []).map((entry) => [entry.id, entry]));
+}
+
+export function syncChroniclesTacticsPressurePlateArt(scene, visualStates, { now = 0 } = {}) {
+  const root = scene?.getObjectByName?.(ROOT_NAME);
+  if (!root) return null;
+  const byId = normalizeVisualStates(visualStates);
+
+  (root.userData.chroniclesTrapModels || []).forEach((model) => {
+    const visualState = byId.get(model.userData.chroniclesTrapId);
+    const nextMode = chroniclesTacticsTrapVisualMode(visualState);
+    const previousMode = model.userData.chroniclesTrapVisualMode;
+    if (previousMode === 'armed' && nextMode === 'spent') {
+      model.userData.chroniclesTrapTriggeredAt = now;
+    }
+    applyTrapMode(model, nextMode);
+  });
+
+  return root;
+}
+
+export function tickChroniclesTacticsPressurePlateArt(scene, time = 0) {
+  const root = scene?.getObjectByName?.(ROOT_NAME);
+  if (!root) return null;
+
+  (root.userData.chroniclesTrapModels || []).forEach((model, index) => {
+    const visual = model.userData.chroniclesTrapVisual;
+    const mode = model.userData.chroniclesTrapVisualMode;
+    if (!visual) return;
+
+    if (visual.kind === 'slag-vent') {
+      if (mode === 'armed') {
+        const pulse = 0.88 + Math.sin(time * 4.8 + index * 1.7) * 0.12;
+        visual.emberMaterial.emissiveIntensity = visual.armedEmissiveIntensity * pulse;
+        visual.glow.intensity = visual.baseLightIntensity * pulse;
+      } else if (mode === 'spent') {
+        const elapsed = time - Number(model.userData.chroniclesTrapTriggeredAt ?? -99);
+        const flash = elapsed >= 0 && elapsed < 0.52 ? Math.sin((elapsed / 0.52) * Math.PI) : 0;
+        visual.emberMaterial.emissiveIntensity = 0.16 + flash * 1.35;
+        visual.glow.intensity = visual.baseLightIntensity * (0.12 + flash * 1.7);
+      }
+      return;
+    }
+
+    if (mode === 'armed') {
+      const pulse = 0.24 + (Math.sin(time * 3.2 + index) + 1) * 0.045;
+      visual.grooveMaterials.forEach((material) => { material.emissiveIntensity = pulse; });
+    } else if (mode === 'spent') {
+      const elapsed = time - Number(model.userData.chroniclesTrapTriggeredAt ?? -99);
+      const flash = elapsed >= 0 && elapsed < 0.38 ? Math.sin((elapsed / 0.38) * Math.PI) : 0;
+      visual.grooveMaterials.forEach((material) => { material.emissiveIntensity = 0.025 + flash * 0.48; });
+    }
+  });
+
+  return root;
 }
 
 export function installChroniclesTacticsPressurePlateArt(scene, {

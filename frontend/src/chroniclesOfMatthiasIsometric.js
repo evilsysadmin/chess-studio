@@ -25,6 +25,10 @@ import {
   chroniclesIsometricScenePlan,
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
+import {
+  syncChroniclesTacticsPressurePlateArt,
+  tickChroniclesTacticsPressurePlateArt,
+} from './chroniclesOfMatthiasPressurePlateArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
@@ -884,6 +888,7 @@ export function createChroniclesIsometricGame(host, {
     dungeon.sigilMaterial.emissiveIntensity = worldObjects.triggerActivated ? 1.25 : 0.24;
 
     const contentVisualById = new Map(chroniclesContentVisualStates(state).map((entry) => [entry.id, entry]));
+    syncChroniclesTacticsPressurePlateArt(scene, contentVisualById, { now: clock.getElapsedTime() });
     dungeon.leverProps.forEach((lever) => {
       const visual = contentVisualById.get(lever.id);
       lever.root.visible = Boolean(visual?.visible);
@@ -982,6 +987,8 @@ export function createChroniclesIsometricGame(host, {
       if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
         party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
       }
+
+      tickChroniclesTacticsPressurePlateArt(scene, time);
 
       torches.forEach((torch) => {
         const pulse = 0.94 + Math.sin(time * 7.2 + torch.phase) * 0.07 + Math.sin(time * 15.8 + torch.phase) * 0.025;
