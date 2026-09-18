@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { applyCastleFurnitureLayout, buildCastleArchitectureLayer } from './WarRoomCastleArchitecture.js';
+import { addWarRoomCanonStudyLayer, addWarRoomCanonTableLayer, WAR_ROOM_VISUAL_CANON_VERSION } from './WarRoomCanon20260918.js';
 
 const COLORS = Object.freeze({
   walnut: 0x3a2114,
@@ -698,6 +699,8 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
     addBookStack(group, leftX + (whiteSide ? -0.76 : 0.76), 3.03, wallZ + towardBoard * 0.58, !whiteSide, false);
   }
 
+  addWarRoomCanonStudyLayer(group, { wallZ, towardBoard, coarsePointer });
+  group.userData.warRoomVisualCanon = WAR_ROOM_VISUAL_CANON_VERSION;
   addCinematicAccentLights(group, theme, wallZ, towardBoard, coarsePointer);
   return group;
 }
@@ -812,6 +815,8 @@ export function buildPremiumTableLayer(theme, coarsePointer = false) {
 
   group.userData.warRoomRetiredTableClutterMeshesOmitted = coarsePointer ? 13 : 20;
   addTableEdgeWear(group, coarsePointer);
+  addWarRoomCanonTableLayer(group, { coarsePointer });
+  group.userData.warRoomVisualCanon = WAR_ROOM_VISUAL_CANON_VERSION;
 
   return group;
 }
