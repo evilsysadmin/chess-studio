@@ -1,308 +1,74 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi, openMoreGameModes } from './helpers.js';
 
-async function dismissGuide(page) {
+async function dismissHomeOverlays(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  if (!(await guide.isVisible().catch(() => false))) return;
-
-  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
-  if (await dismiss.isVisible().catch(() => false)) {
-    await dismiss.click();
-    return;
+  if (await guide.isVisible().catch(() => false)) {
+    const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+    const close = guide.getByRole('button', { name: 'Cerrar guía rápida', exact: true });
+    if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
+    else if (await close.isVisible().catch(() => false)) await close.click();
   }
 
-  const close = guide.getByRole('button', { name: 'Cerrar guía rápida', exact: true });
-  if (await close.isVisible().catch(() => false)) await close.click();
-}
-
-async function dismissMatthiasSpeech(page) {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-  if (!(await speech.isVisible().catch(() => false))) return;
-
-  const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-  if (await close.isVisible().catch(() => false)) {
-    // Home can place another diegetic control above the speech close target on
-    // narrow viewports. This helper is test setup, not a hit-target assertion,
-    // so dispatch the semantic close action without coupling Pawn Slug smoke to
-    // unrelated Home stacking.
-    await close.click({ force: true });
+  if (await speech.isVisible().catch(() => false)) {
+    const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
 }
 
-async function openPawnSlug(page) {
+async function authenticate(page) {
   await mockApi(page);
   await login(page);
-  await dismissGuide(page);
-  await dismissMatthiasSpeech(page);
-  await openMoreGameModes(page);
+  await dismissHomeOverlays(page);
+}
 
-  const moreModes = page.locator('#illustrated-home-tools');
-  await expect(moreModes).toBeVisible();
+async function openExperiments(page) {
+  const moreModes = await openMoreGameModes(page);
   const experiments = moreModes
     .getByRole('button')
     .filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeVisible();
   await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Pawn Slug/ }).click();
-  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
 }
 
-async function startPawnSlug(page) {
-  await page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toHaveCount(0);
-  await expect(page.getByText('Dienstpistole', { exact: true })).toBeVisible();
-  return page.getByRole('group', { name: 'Seleccionar arma' });
+async function expectGodotHost(page) {
+  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toBeVisible();
+  await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
 }
 
-const LIVE_PREMIUM_ENEMY = /^(premium-raster|premium-fallback):visible:mapped:readable:attached$/;
-const LIVE_CANONICAL_MATTHIAS = /^premium-body:canonical-head:identity-locked:attached$/;
+test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', async ({ page }) => {
+  await authenticate(page);
+  await openExperiments(page);
 
-test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajedrez competitivo', async ({ page }) => {
-  // This path intentionally boots the premium Three.js runtime twice to prove cleanup/remount.
-  // Keep the extra budget local instead of weakening the global Playwright timeout.
-  test.setTimeout(90_000);
-  await openPawnSlug(page);
+  const godotPortal = page.getByRole('button', { name: /PAWN SLUG GODOT/i });
+  await expect(godotPortal).toBeVisible();
+  await godotPortal.click();
+  await expectGodotHost(page);
 
-  const root = page.locator('[data-pawn-slug="true"]');
-  const stage = page.locator('[data-pawn-slug-renderer="three"]');
-  await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
-  await expect(stage).toBeVisible();
-  await expect(stage.locator('canvas')).toHaveCount(0);
-  await expect(page.getByText('BAUERNSCHLAG', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toBeVisible();
-
-  const arsenal = await startPawnSlug(page);
-  await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-  // A canvas is not enough: the exact regression we are guarding rendered the
-  // scene and POWs while regular enemies were absent. Require a regular enemy
-  // to have premium art, a visible mapped material, the combat readability
-  // layer and an attached Three.js parent in the live browser runtime.
-  await expect(stage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
-  // Matthias must also be the actual canonical runtime actor, not merely a
-  // compile-time metadata promise: premium tactical body + loaded canonical
-  // spherical face/officer cap + locked identity + live Three.js attachment.
-  await expect(stage).toHaveAttribute('data-pawn-slug-matthias-visual', LIVE_CANONICAL_MATTHIAS, { timeout: 30_000 });
-  await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
-  await expect(arsenal).toBeVisible();
-  await expect(page.locator('.pawn-slug-xp-track')).toHaveCount(0);
-  await expect(page.locator('.pawn-slug-hud').getByText(/Mk I/)).toHaveCount(0);
-  const pistol = arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ });
-  await expect(pistol).toHaveAttribute('aria-pressed', 'true');
-  await expect(pistol).toHaveAttribute('title', '1 · Dienstpistole');
-  await expect(arsenal.getByRole('button', { name: /^2\. MG-42 · no disponible$/ })).toBeDisabled();
-  await expect(arsenal.getByRole('button', { name: /^3\. Benelli M3 · no disponible$/ })).toBeDisabled();
-  await expect(arsenal.getByRole('button', { name: /^4\. Panzerfaust · no disponible$/ })).toBeDisabled();
-
-  // La salida forma parte del mismo smoke: no hace falta arrancar Three.js y
-  // autenticar otra página sólo para volver al hub.
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  const pawnSlugButton = page.getByRole('button', { name: /Pawn Slug/ });
-  await expect(pawnSlugButton).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
-
-  // Reenter once in the same authenticated session. The first Three.js runtime
-  // must have cleaned up its RAF/listeners/WebGL host well enough for a fresh
-  // runtime to mount, start and leave again without a reload.
-  await pawnSlugButton.click();
-  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
-  const remountedStage = page.locator('[data-pawn-slug-renderer="three"]');
-  await expect(remountedStage.locator('canvas')).toHaveCount(0);
-  await startPawnSlug(page);
-  await expect(remountedStage.locator('canvas')).toHaveCount(1);
-  await expect(remountedStage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-  await expect(remountedStage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
-  await expect(remountedStage).toHaveAttribute('data-pawn-slug-matthias-visual', LIVE_CANONICAL_MATTHIAS, { timeout: 30_000 });
-  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(remountedStage).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /PAWN SLUG GODOT/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Pawn Slug$/ })).toHaveCount(0);
 });
 
-test('Pawn Slug · ESC abre Settings, persiste remap y conserva el runtime', async ({ page }) => {
-  // Premium runtime startup plus the full remap/persistence cycle can exceed the default 45 s on CI.
-  test.setTimeout(90_000);
-  await openPawnSlug(page);
-  await startPawnSlug(page);
-
-  const canvas = page.locator('[data-pawn-slug-renderer="three"] canvas');
-  await expect(canvas).toBeVisible();
-
-  await page.keyboard.press('Escape');
-  const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
-  await expect(settings).toBeVisible();
-  await expect(canvas).toBeVisible();
-
-  const jumpRemap = settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true });
-  await expect(jumpRemap.locator('kbd')).toHaveText('SHIFT IZQ');
-  await jumpRemap.click();
-  await expect(jumpRemap.locator('kbd')).toHaveText('PULSA…');
-  await page.keyboard.press('KeyL');
-  await expect(jumpRemap.locator('kbd')).toHaveText('L');
-
-  // Closing and reopening proves the persisted settings are also the active UI source.
-  await page.keyboard.press('Escape');
-  await expect(settings).toHaveCount(0);
-  await expect(canvas).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(settings).toBeVisible();
-  await expect(settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true }).locator('kbd')).toHaveText('L');
-
-  // Leave the shared browser state deterministic for any later smoke work.
-  await settings.getByRole('button', { name: 'Restaurar defaults', exact: true }).click();
-  await expect(settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true }).locator('kbd')).toHaveText('SHIFT IZQ');
-
-  // The handler still works after remapping and reset: close and reopen once more without remount.
-  await page.keyboard.press('Escape');
-  await expect(settings).toHaveCount(0);
-  await expect(canvas).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Pawn Slug Settings' })).toBeVisible();
-});
-
-test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow horizontal', async ({ page }) => {
-  // Premium sprite generation is intentionally retained on mobile. This smoke
-  // validates the finished runtime rather than treating a heavier startup as a
-  // hang; keep the extra budget local to this high-cost path.
-  test.setTimeout(90_000);
+test('Pawn Slug · el host Godot móvil no introduce overflow horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openPawnSlug(page);
-  const arsenal = await startPawnSlug(page);
+  await authenticate(page);
+  await openExperiments(page);
+  await page.getByRole('button', { name: /PAWN SLUG GODOT/i }).click();
+  await expectGodotHost(page);
 
-  await expect(arsenal).toBeVisible({ timeout: 30_000 });
-  await expect(arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ })).toBeVisible({ timeout: 30_000 });
+  const frame = page.locator('iframe[title="Pawn Slug Godot"]');
+  const box = await frame.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.x).toBeGreaterThanOrEqual(-1);
+  expect(box.x + box.width).toBeLessThanOrEqual(391);
 
-  const controls = page.getByLabel('Controles táctiles de Pawn Slug');
-  await expect(controls).toBeVisible({ timeout: 30_000 });
-  for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Power-up']) {
-    const button = page.getByRole('button', { name, exact: true });
-    await expect(button).toBeVisible({ timeout: 30_000 });
-    const box = await button.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box.height).toBeGreaterThanOrEqual(50);
-  }
-
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
   expect(overflow).toBeLessThanOrEqual(1);
-});
-
-test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en pantallas cortas', async ({ browser }) => {
-  // One premium WebGL boot plus three real landscape reflows can graze 120 s on
-  // shared CI runners. Keep a local 150 s budget while preserving every
-  // viewport, touch-target and Settings assertion instead of weakening coverage.
-  test.setTimeout(150_000);
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    hasTouch: true,
-    isMobile: true,
-  });
-  const page = await context.newPage();
-  try {
-    await openPawnSlug(page);
-    await startPawnSlug(page);
-
-    const cabinet = page.locator('.pawn-slug-cabinet');
-    const gestureSurface = page.getByRole('group', { name: 'Controles gestuales de Pawn Slug' });
-    const powerUp = page.getByRole('button', { name: 'Power-up', exact: true });
-    const settingsTrigger = page.getByRole('button', { name: 'Abrir ajustes de Pawn Slug', exact: true });
-    const arsenal = page.getByRole('group', { name: 'Seleccionar arma' });
-    const arsenalButtons = arsenal.getByRole('button');
-
-    for (const viewport of [
-      { width: 844, height: 390 },
-      { width: 667, height: 375 },
-      { width: 568, height: 320 },
-    ]) {
-      await page.setViewportSize(viewport);
-
-      await expect(cabinet).toBeVisible({ timeout: 30_000 });
-      const cabinetBox = await cabinet.boundingBox();
-      expect(cabinetBox).not.toBeNull();
-      expect(cabinetBox.y).toBeGreaterThanOrEqual(-1);
-      expect(cabinetBox.y + cabinetBox.height).toBeLessThanOrEqual(viewport.height + 1);
-
-      await expect(gestureSurface).toBeVisible({ timeout: 30_000 });
-      const gestureBox = await gestureSurface.boundingBox();
-      expect(gestureBox).not.toBeNull();
-      expect(gestureBox.y).toBeGreaterThanOrEqual(-1);
-      expect(gestureBox.y + gestureBox.height).toBeLessThanOrEqual(viewport.height + 1);
-
-      for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar']) {
-        await expect(page.getByRole('button', { name, exact: true })).not.toBeVisible();
-      }
-
-      await expect(arsenal).toBeVisible();
-      await expect(arsenalButtons).toHaveCount(4);
-      for (let index = 0; index < 4; index += 1) {
-        const arsenalBox = await arsenalButtons.nth(index).boundingBox();
-        expect(arsenalBox).not.toBeNull();
-        expect(arsenalBox.width).toBeGreaterThanOrEqual(44);
-        expect(arsenalBox.height).toBeGreaterThanOrEqual(44);
-      }
-
-      await expect(powerUp).toBeVisible();
-      const powerBox = await powerUp.boundingBox();
-      expect(powerBox).not.toBeNull();
-      expect(powerBox.width).toBeGreaterThanOrEqual(44);
-      expect(powerBox.height).toBeGreaterThanOrEqual(44);
-      expect(powerBox.x).toBeGreaterThanOrEqual(-1);
-      expect(powerBox.x + powerBox.width).toBeLessThanOrEqual(viewport.width + 1);
-      expect(powerBox.y + powerBox.height).toBeLessThanOrEqual(viewport.height + 1);
-
-      await expect(settingsTrigger).toBeVisible();
-      const settingsBox = await settingsTrigger.boundingBox();
-      expect(settingsBox).not.toBeNull();
-      expect(settingsBox.width).toBeGreaterThanOrEqual(44);
-      expect(settingsBox.height).toBeGreaterThanOrEqual(44);
-      expect(settingsBox.x).toBeGreaterThanOrEqual(-1);
-      expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(viewport.width + 1);
-      expect(settingsBox.y + settingsBox.height).toBeLessThanOrEqual(viewport.height + 1);
-
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(overflow).toBeLessThanOrEqual(1);
-    }
-
-    // Exercise the three invisible landscape zones with Chromium's real touch
-    // input in the same runtime we already paid to boot above. The trained-zone
-    // classes are emitted only after Pawn Slug consumes each corresponding
-    // pointer path, so this catches a dead overlay or broken touch routing.
-    const touchBox = await gestureSurface.boundingBox();
-    expect(touchBox).not.toBeNull();
-    const touchY = touchBox.y + touchBox.height * 0.5;
-    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.1, touchY);
-    await expect(gestureSurface).toHaveClass(/is-move-trained/);
-    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.55, touchY);
-    await expect(gestureSurface).toHaveClass(/is-gesture-trained/);
-    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.75, touchY);
-    await expect(gestureSurface).toHaveClass(/is-fire-trained/);
-    await page.waitForTimeout(100);
-
-    // The final 568×320 layout is intentionally tiny: pausing must not bury the
-    // escape/restart actions below a long remap form. The sticky action rail
-    // keeps all three controls inside the viewport with touch-safe targets.
-    await settingsTrigger.click();
-    const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
-    await expect(settings).toBeVisible();
-    const dialogBox = await settings.boundingBox();
-    expect(dialogBox).not.toBeNull();
-    expect(dialogBox.y).toBeGreaterThanOrEqual(-1);
-    expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(321);
-
-    const settingsActions = settings.locator('.pawn-slug-settings-actions');
-    for (const name of ['Reiniciar misión', 'Continuar', 'Salir del juego']) {
-      const button = settingsActions.getByRole('button', { name, exact: true });
-      await expect(button).toBeVisible();
-      const box = await button.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      expect(box.y).toBeGreaterThanOrEqual(-1);
-      expect(box.y + box.height).toBeLessThanOrEqual(321);
-    }
-
-    await settingsActions.getByRole('button', { name: 'Continuar', exact: true }).click();
-    await expect(settings).toHaveCount(0);
-    await expect(gestureSurface).toBeVisible();
-  } finally {
-    await context.close();
-  }
 });
