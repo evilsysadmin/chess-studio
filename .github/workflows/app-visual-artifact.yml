@@ -1,7 +1,6 @@
 name: App · visual artifact
 on:
-  push:
-    branches: [main]
+  pull_request:
     paths:
       - frontend/src/**/*.jsx
       - frontend/src/**/*.css

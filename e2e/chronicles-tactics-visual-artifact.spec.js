@@ -122,13 +122,23 @@ for (const capture of CAPTURES) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
+      // Navigation through Home is not part of this producer's visual contract.
+      // Enter Tactics from a stable canonical desktop layout, preserving touch
+      // capability from browser creation so the renderer still selects its
+      // coarse-pointer/mobile quality path. Resize only after Tactics is live.
+      viewport: {
+        width: capture.hasTouch ? 1180 : capture.width,
+        height: capture.hasTouch ? 900 : capture.height,
+      },
       hasTouch: capture.hasTouch,
-      isMobile: capture.hasTouch,
     });
     const page = await context.newPage();
     try {
       await openTactics(page);
+      if (capture.hasTouch) {
+        await page.setViewportSize({ width: capture.width, height: capture.height });
+        await page.waitForTimeout(180);
+      }
       const mode = page.locator('[data-chronicles-tactics="true"]');
       const viewport = mode.locator('.chronicles-tactics__viewport');
       const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
@@ -153,6 +163,19 @@ for (const capture of CAPTURES) {
       if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
+      if (capture.hasTouch) {
+        // On narrow layouts the mission, action pad and party HUD flow below the
+        // battlefield. Keep the battlefield crop for renderer inspection, and
+        // add a full-page proof so human review can judge the complete mobile UI.
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await page.waitForTimeout(120);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/chronicles-tactics-full-${capture.label}.png`,
+          fullPage: true,
+          animations: 'disabled',
+          timeout: 30_000,
+        });
+      }
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
         `${JSON.stringify({ schema: 2, scope: 'chronicles-tactics', capture: { label: capture.label, ...health } }, null, 2)}\n`,

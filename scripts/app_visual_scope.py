@@ -77,16 +77,18 @@ def _surface_groups(path: str) -> set[str] | None:
     lower = path.lower()
     name = Path(lower).name
 
-    if lower == "scripts/app_visual_scope.py":
-        return {"training"}
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if (
-        lower.startswith(".github/actions/app-visual-pipeline/")
-        or lower == ".github/workflows/app-visual-artifact.yml"
-        or lower.startswith("scripts/app_visual_")
-        or lower == "scripts/war_room_visual_freeze_check.mjs"
+        lower in {
+            "scripts/app_visual_scope.py",
+            "scripts/app_visual_producer_scope.py",
+            ".github/workflows/app-visual-artifact.yml",
+        }
+        or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
+        return {"experiments"}
+    if lower.startswith("scripts/app_visual_") or lower == "scripts/war_room_visual_freeze_check.mjs":
         return None
     if lower.startswith("e2e/"):
         if "chesscom" in name:
@@ -99,7 +101,12 @@ def _surface_groups(path: str) -> set[str] | None:
             "home-3d-focus-visual.spec.js",
         }:
             return {"home"}
-        if name in {"experiments-visual-artifact.spec.js", "chronicles-avatar-visual-artifact.spec.js"}:
+        if name in {
+            "experiments-visual-artifact.spec.js",
+            "chronicles-avatar-visual-artifact.spec.js",
+            "chronicles-gameplay-visual-artifact.spec.js",
+            "chronicles-tactics-visual-artifact.spec.js",
+        }:
             return {"experiments"}
         if name == "training-visual-artifact.spec.js":
             return {"training"}
@@ -154,6 +161,15 @@ def _surface_groups(path: str) -> set[str] | None:
 def _experiment_parts(path: str) -> set[str]:
     lower = path.lower()
     name = Path(lower).name
+    if (
+        lower in {
+            "scripts/app_visual_scope.py",
+            "scripts/app_visual_producer_scope.py",
+            ".github/workflows/app-visual-artifact.yml",
+        }
+        or lower.startswith(".github/actions/app-visual-pipeline/")
+    ):
+        return {"chronicles"}
     if name == "experiments-visual-artifact.spec.js":
         return set(EXPERIMENT_ORDER)
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
@@ -252,6 +268,10 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/pawnSlugThree.js"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
+    assert chronicles_visual.capture_groups == "experiments"
+    assert chronicles_visual.experiments_scope == "chronicles"
+    assert not chronicles_visual.hans and not chronicles_visual.chesscom
     chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
     assert chronicles_logic.capture_groups == "experiments"
     assert chronicles_logic.experiments_scope == "chronicles"
@@ -353,7 +373,8 @@ def self_test() -> None:
     assert not career_with_manifest.hans and not career_with_manifest.chesscom
 
     visual_scope = classify(["scripts/app_visual_scope.py"])
-    assert visual_scope.capture_groups == "training"
+    assert visual_scope.capture_groups == "experiments"
+    assert visual_scope.experiments_scope == "chronicles"
     assert not visual_scope.hans and not visual_scope.chesscom
     assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
@@ -361,7 +382,10 @@ def self_test() -> None:
     assert global_css.capture_groups == ",".join(GROUP_ORDER)
     assert global_css.experiments_scope == ",".join(EXPERIMENT_ORDER)
     assert not global_css.hans and not global_css.chesscom
-    assert classify([".github/actions/app-visual-pipeline/action.yml"]) == full_scope()
+    visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
+    assert visual_pipeline.capture_groups == "experiments"
+    assert visual_pipeline.experiments_scope == "chronicles"
+    assert not visual_pipeline.chronicles_avatar
     print("app visual scope self-test: OK")
 
 
