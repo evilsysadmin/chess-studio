@@ -232,7 +232,8 @@
     },
     {
       "x": 1940,
-      "type": "rook"
+      "type": "rook",
+      "y": 366
     },
     {
       "x": 2110,
@@ -252,7 +253,8 @@
     },
     {
       "x": 2590,
-      "type": "rook"
+      "type": "rook",
+      "y": 458
     },
     {
       "x": 2730,
@@ -396,5 +398,64 @@
         "intensity": 1
       }
     ]
-  }
+  },
+  "setpieces": [
+    {
+      "id": "factory-lift",
+      "type": "moving_platform",
+      "x": 2280,
+      "y": 330,
+      "w": 150,
+      "h": 22,
+      "travel_x": 0,
+      "travel_y": 120,
+      "period": 4.8,
+      "phase": 0.1
+    },
+    {
+      "id": "armored-convoy",
+      "type": "convoy",
+      "trigger_x": 1500,
+      "start_x": 2240,
+      "end_x": 1180,
+      "y": 606,
+      "w": 160,
+      "h": 72,
+      "speed": 330
+    },
+    {
+      "id": "pillbox-01",
+      "type": "bunker_turret",
+      "x": 3480,
+      "y": 610,
+      "w": 132,
+      "h": 84,
+      "hp": 210,
+      "trigger_x": 2950,
+      "range": 820,
+      "cooldown_min": 0.78,
+      "cooldown_max": 1.12,
+      "reaction": 0.75
+    },
+    {
+      "id": "counterattack",
+      "type": "reinforcement_wave",
+      "trigger_x": 3880,
+      "reaction": 0.55,
+      "enemies": [
+        {
+          "x": 3740,
+          "type": "pawn"
+        },
+        {
+          "x": 3980,
+          "type": "commando"
+        },
+        {
+          "x": 4080,
+          "type": "scout"
+        }
+      ]
+    }
+  ]
 }
