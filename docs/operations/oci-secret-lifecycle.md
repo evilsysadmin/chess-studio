@@ -1,6 +1,6 @@
 # OCI staging secret lifecycle
 
-Status: **target contract for retiring Render staging as a runtime-config dependency**.
+Status: **active runtime contract; Render remains only as a bootstrap/diagnostic bridge during retirement**.
 
 Issue: #2306.
 
@@ -10,7 +10,7 @@ OCI Vault is the editable source of truth for staging secrets. `/etc/chess-studi
 
 Terraform creates the staging Vault, its master encryption key and read-only runtime IAM. Terraform deliberately does **not** create secret values or secret versions: plaintext secret material must never enter Terraform variables, plans or state.
 
-The normal application deploy must eventually stop reading Render staging entirely. Render production remains untouched by this migration.
+The normal application deploy no longer reads Render staging for runtime configuration. Render production remains untouched by this migration.
 
 ## Terraform-owned infrastructure
 
@@ -78,7 +78,7 @@ These values are configuration, not secrets, and should remain declarative/versi
 - `OTEL_LOGS_ENABLED`
 - `OTEL_EXPORTER_OTLP_PROTOCOL`
 
-The exact declarative source will be introduced before the Render dependency is removed. Until then the existing Render runtime-sync remains the temporary migration bridge.
+The declarative source is `infra/oci/runtime/backend.staging.env`. `runtime-sync` composes it with CURRENT OCI Vault values on the A1, persists the private Object Storage bundle, and installs `/etc/chess-studio/backend.env` without exposing plaintext to the runner.
 
 ## Runtime materialization contract
 
@@ -107,8 +107,8 @@ Requirements:
 - The A1 reads Vault through its existing instance-principal dynamic group.
 - Secret values never enter GitHub Run Command payloads, Terraform variables/state, workflow summaries or logs.
 - Generated runtime files are written to a temporary path, validated against a strict allowlist, then atomically installed as root-owned mode `0600`.
-- Deploying a new application SHA does not implicitly rotate or rewrite secrets.
-- Runtime sync and application deploy are separate operations.
+- Normal fast-path deploys consume the installed runtime without rotating secrets. A control-plane deploy fallback reconciles the CURRENT Vault + Git contract before deploying so legacy runtime cannot survive silently.
+- Explicit `runtime-sync` remains the operator entry point for applying secret rotations without waiting for an application change; it recreates and verifies the backend after installation.
 - A candidate rotation is tested from `PENDING` while the known-good values remain `CURRENT`; promotion is the commit point.
 
 ## IAM boundary
@@ -124,7 +124,7 @@ Human/operator secret editing remains outside the VM. The VM is a consumer only.
 3. Add a transactional candidate apply that restores CURRENT on failed backend/telemetry attestation.
 4. Manually create/populate the staging Vault values.
 5. Compare generated runtime shape with the current Render-derived runtime without logging values.
-6. Switch normal staging deploy to consume Vault-derived runtime without querying Render.
+6. Switch staging runtime materialization to Vault + Git without querying Render. **Done:** versioned `vault-git-v1` readiness prevents a legacy Render-derived runtime from being accredited.
 7. Prove backend, Mongo, Cloudflare Tunnel and Grafana OTLP with Render staging stopped.
 8. Keep Render staging stopped for a reversible observation period.
 9. Remove obsolete Render staging integration and delete the service only after repository-wide dependency search is clean.
