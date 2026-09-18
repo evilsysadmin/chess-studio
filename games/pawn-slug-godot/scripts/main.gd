@@ -104,6 +104,7 @@ var boss: Dictionary = {}
 var boss_visual
 var extraction_visual
 var environment_visual
+var _startup_ready_sent := false
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
@@ -123,10 +124,15 @@ func _ready() -> void:
     player.connect("game_over", Callable(self, "_on_player_game_over"))
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
     _sync_hud()
-    _notify_parent("ready")
     queue_redraw()
 
 func _process(delta: float) -> void:
+    if not _startup_ready_sent:
+        if not player.visual_ready():
+            return
+        _startup_ready_sent = true
+        _notify_parent("ready")
+
     _spawn_boss_if_needed()
     _update_projectiles(delta)
     _update_grenades(delta)
@@ -946,5 +952,7 @@ func _draw_explosions() -> void:
 func _notify_parent(message_type: String) -> void:
     if not OS.has_feature("web"):
         return
+    if message_type == "ready":
+        JavaScriptBridge.eval("if (window.__pawnSlugGodotVisualReady) window.__pawnSlugGodotVisualReady();")
     var message := JSON.stringify({"source": "pawn-slug-godot", "type": message_type})
     JavaScriptBridge.eval("window.parent.postMessage(" + message + ", '*');")
