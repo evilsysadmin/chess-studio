@@ -18,7 +18,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id`, builds Playwright duplicados y runners flotantes en rutas críticas.
 - Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
 - Un push directo excepcional a `main` no recibe bypass: `Main · admission` lo detecta y ejecuta un gate completo sobre ese HEAD exacto antes de permitir staging.
-- El release canónico de staging no aplica Terraform, no sincroniza secretos/configuración y no arranca K3s: esas operaciones pertenecen al control-plane explícito.
+- El release canónico de staging no aplica Terraform ni arranca K3s. El fast-path normal consume el runtime instalado; si cae al control-plane, reconcilia el contrato CURRENT Vault + Git antes del deploy para no acreditar runtime legado.
 - `oci-staging-mutations` se reserva para operaciones que realmente mutan OCI/host. Diagnósticos y probes read-only no deben bloquear un deploy por compartir un mutex innecesario.
 
 ## Acciones reutilizables
@@ -57,7 +57,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
 
-La retirada de Render staging es deliberadamente gradual: el **release normal ya no depende de Render**, pero `runtime-sync`, `vault-bootstrap` y diagnósticos de migración todavía pueden usarlo como puente hasta que OCI Vault + configuración declarativa + rollback transaccional queden acreditados. Render producción no forma parte de esa migración.
+La retirada de Render staging es deliberadamente gradual: el **release normal y `runtime-sync` ya no dependen de Render**. `vault-bootstrap` y diagnósticos de migración concretos todavía pueden usarlo como puente mientras se completa la retirada. Render producción no forma parte de esa migración.
 
 ## Calidad especializada
 
@@ -119,7 +119,7 @@ Fuera de la línea de release:
 
 ```text
 OCI infra apply ────── manual
-OCI runtime/Vault ─── manual y desacoplado del SHA de aplicación
+OCI runtime/Vault ─── manual para rotaciones; fallback de deploy reconcilia CURRENT Vault + Git
 OCI tunnel ────────── manual
 K3s lifecycle ─────── manual/experimental
 Diagnostics ───────── manual/read-only, sin bloquear deploys

@@ -76,13 +76,29 @@ jobs:
         run: python3 scripts/render_mongo_target_diagnose.py
 
       # Host/agent registration convergence belongs to the infrastructure apply.
-      # Runtime sync performs one direct transport health check and fails fast if
-      # the already-converged host is unhealthy instead of hiding a 10-minute wait.
-      - name: Sync private runtime config
+      # Runtime sync materializes CURRENT Vault values plus versioned Git config
+      # directly on the A1; Render is no longer a runtime source for this operation.
+      - name: Sync CURRENT Vault + Git runtime to staging
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
+        run: python3 scripts/oci_vault_sync.py sync-current
+
+      - name: Recreate backend after runtime sync
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
         env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: python3 scripts/oci_runtime_config.py sync
+          DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
+        run: python3 scripts/oci_release_deploy.py deploy --repo-ref "$DEPLOY_REF"
+
+      - name: Verify backend after runtime sync
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
+        env:
+          EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}
+          STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+        run: >-
+          python3 scripts/verify_backend_staging.py
+          --api-url "$STAGING_API_URL"
+          --sha "$EXPECTED_SHA"
+          --attempts 20
+          --interval 2
 
       - name: Bootstrap missing OCI Vault values from Render staging
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-bootstrap'

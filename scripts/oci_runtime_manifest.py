@@ -37,6 +37,7 @@ DECLARATIVE_KEYS = (
     "OTEL_METRICS_ENABLED",
     "OTEL_LOGS_ENABLED",
     "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "CHESS_STUDIO_RUNTIME_SCHEMA",
 )
 
 
@@ -123,6 +124,7 @@ def self_test() -> None:
         "OTEL_METRICS_ENABLED": "true",
         "OTEL_LOGS_ENABLED": "true",
         "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+        "CHESS_STUDIO_RUNTIME_SCHEMA": "vault-git-v1",
     }
     assert not set(declarative) & set(VAULT_KEYS)
 
@@ -162,7 +164,7 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if not args.self_test:
-        parser.error("--self-test is required; runtime materialization is not enabled yet")
+        parser.error("--self-test is required; use oci_vault_sync.py for runtime materialization")
     self_test()
     return 0
 

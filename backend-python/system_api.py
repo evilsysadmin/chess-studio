@@ -29,6 +29,7 @@ from feature_flags import public_feature_flags
 from observability import record_process_ready
 from observability_history import record_presence_snapshot
 from tracing import record_billing_costs_otel
+from runtime_contract import staging_runtime_contract_ready
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 from pvp_api import build_pvp_router
@@ -142,6 +143,8 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
     @router.get("/api/ready")
     @limiter.exempt
     async def ready():
+        if not staging_runtime_contract_ready():
+            raise HTTPException(503, "Staging runtime contract is not materialized.")
         # En desarrollo sin MONGO_URL explícito el modo memoria es válido. Si
         # hay persistencia configurada, readiness exige un ping real.
         storage_required = db.persistent_storage_required()
