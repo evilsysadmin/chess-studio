@@ -781,6 +781,17 @@ def add_gothic_canon_v2(static, mats):
     deep bookcase, second fireplace, chandelier, globe and table drape.
     """
     bpy.context.scene["war_room_visual_canon"] = "cinematic-gothic-study-2026-09-18-v1"
+    # Retire legacy modern-study decoration only inside the v2 generator. The
+    # historical implementation remains in source control as rollback, but these
+    # rectangular paintings/floating shelves visually fight the approved gothic canon.
+    legacy_prefixes = (
+        "WR_ART_", "WR_SHELF_", "WR_BOOK_", "WR_VASE_", "WR_CURTAIN_",
+        "WR_LIGHT_picture_",
+    )
+    for obj in list(static.objects):
+        if obj.name.startswith(legacy_prefixes):
+            bpy.data.objects.remove(obj, do_unlink=True)
+
     burgundy = material(
         "WR_MAT_canon_burgundy", (0.205, 0.014, 0.021, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
@@ -865,26 +876,26 @@ def add_gothic_canon_v2(static, mats):
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
     cz = 5.98
-    torus("WR_CANON_chandelier_ring", (0, 1.04, cz), 1.58, 0.065, mats["brass"], static)
+    torus("WR_CANON_chandelier_ring", (0, 1.92, cz), 1.58, 0.065, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (0, 1.04, cz), 0.18, 0.26, mats["brass_dark"], static, vertices=28)
     cylinder("WR_CANON_chandelier_chain", (0, 1.04, 6.43), 0.032, 0.74, mats["brass_dark"], static, vertices=16)
     for index in range(8):
         angle = index * math.tau / 8.0
         x = math.cos(angle) * 1.33
-        y = 1.04 + math.sin(angle) * 1.14
+        y = 1.92 + math.sin(angle) * 1.06
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.23),
                  0.065, 0.40, mats["ivory"], static, vertices=18)
         sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.50), 0.095,
                mats["fire_core"], static, scale=(0.46, 0.46, 1.15))
         # short radial arm from hub; cylinders are aligned to Z by default.
-        midpoint = Vector((x * 0.50, 1.04 + (y - 1.04) * 0.50, cz))
+        midpoint = Vector((x * 0.50, 1.92 + (y - 1.92) * 0.50, cz))
         endpoint = Vector((x, y, cz))
-        origin = Vector((0, 1.04, cz))
+        origin = Vector((0, 1.92, cz))
         direction = endpoint - origin
         arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, 1.04, 5.78), 205.0,
+    light("WR_CANON_chandelier_light", "POINT", (0, 1.92, 5.78), 205.0,
           (1.0, 0.48, 0.18), static, radius=2.2)
 
     # Burgundy heraldic drape on the camera-facing table edge.
@@ -925,6 +936,9 @@ def add_gothic_canon_v2(static, mats):
     tail = cylinder("WR_CANON_table_horse_tail", (0.31, emblem_y, 0.47),
                     0.030, 0.30, mats["brass"], static, vertices=14)
     tail.rotation_euler.y = 0.88
+    drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
+                       (1.0, 0.36, 0.18), static, size=3.4)
+    look_at(drape_fill, (0, -5.50, 0.44))
 
 
 def build():
@@ -1072,10 +1086,10 @@ def validate():
         "WR_TABLE_main", "WR_TABLE_board_frame",
         "WR_TABLE_inlay_x_-1", "WR_TABLE_inlay_x_1",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
-        "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
+        "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
-        "WR_CURTAIN_panel_-1", "WR_CURTAIN_panel_1", "WR_CURTAIN_rod_-1", "WR_CURTAIN_rod_1",
+        "WR_CANON_banner_1", "WR_CANON_banner_2", "WR_CANON_banner_3",
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
@@ -1364,8 +1378,8 @@ def runtime_batch_cell(obj):
     """Keep static batches spatially local so frustum culling still has useful granularity."""
     x, y, z = obj.matrix_world.translation
     return (
-        math.floor((float(x) + 3.5) / 7.0),
-        math.floor((float(y) + 3.5) / 7.0),
+        math.floor((float(x) + 3.0) / 6.0),
+        math.floor((float(y) + 3.0) / 6.0),
         math.floor((float(z) + 2.0) / 4.0),
     )
 
