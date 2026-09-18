@@ -2,7 +2,13 @@ import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { addMesh, buildWarRoom } from './Board3DScene.js';
 
-export function buildClassicWarRoomShell({ scene, boardGroup, theme, whiteSide, renderLite }) {
+export function shouldShowClassicWarRoomShell({ selectable = false, variant = 'classic' } = {}) {
+  return !selectable || variant !== 'v2';
+}
+
+export function buildClassicWarRoomShell({
+  scene, boardGroup, theme, whiteSide, renderLite, visible = true,
+}) {
   const warRoom = buildWarRoom(theme, whiteSide, renderLite);
   scene.add(warRoom);
   const premiumWarRoomLayer = buildPremiumWarRoomLayer(theme, whiteSide, renderLite);
@@ -56,7 +62,9 @@ export function buildClassicWarRoomShell({ scene, boardGroup, theme, whiteSide, 
     [4.16, 0, 0.055, 8.55], [-4.16, 0, 0.055, 8.55],
   ]) addMesh(legacyBoardFrameGroup, new THREE.BoxGeometry(sx, 0.08, sz), frameGold, [x, 0.135, z]);
 
-  return { classicShellObjects: [warRoom, premiumWarRoomLayer, table, premiumTableLayer, legacyBoardFrameGroup] };
+  const classicShellObjects = [warRoom, premiumWarRoomLayer, table, premiumTableLayer, legacyBoardFrameGroup];
+  setClassicShellVisible(classicShellObjects, visible);
+  return { classicShellObjects };
 }
 
 function setClassicShellVisible(objects, visible) {
@@ -76,7 +84,7 @@ export function startWarRoomVariantScene({
     onStatus?.(status);
   };
 
-  if (!selectable || variant !== 'v2') {
+  if (shouldShowClassicWarRoomShell({ selectable, variant })) {
     setClassicShellVisible(classicShellObjects, true);
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
@@ -84,7 +92,14 @@ export function startWarRoomVariantScene({
     return () => {};
   }
 
+  // Never paint the legacy room while the persisted v2 shell is loading.
+  // Runtime switches to v2 get the same treatment; classic only returns on a
+  // genuine GLB/import failure.
+  setClassicShellVisible(classicShellObjects, false);
+  scene.userData ||= {};
+  scene.userData.warRoomRenderedVariant = 'v2-loading';
   setStatus('loading', 'v2-loading');
+  onPaint?.();
   void import('./WarRoomV2Shell.js')
     .then(({ installWarRoomV2Shell }) => installWarRoomV2Shell(scene, { whiteSide, coarsePointer: renderLite }))
     .then((release) => {
