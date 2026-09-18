@@ -50,8 +50,8 @@ export function warRoomV2RuntimeSurfaceKind(materialName = '') {
 
 export function warRoomV2StoneSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0 })
-    : Object.freeze({ enabled: true, size: 32, bumpScale: 0.012 });
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1 })
+    : Object.freeze({ enabled: true, size: 32, bumpScale: 0.012, albedoCompensation: 1.10 });
 }
 
 function nextSurfaceNoise(state) {
@@ -69,15 +69,15 @@ function createWarRoomV2StoneTexture({ mode = 'albedo', size = 32 } = {}) {
       [state, noise] = nextSurfaceNoise(state);
       const u = x / Math.max(1, size - 1);
       const v = y / Math.max(1, size - 1);
-      const broad = Math.sin((u * 3.4 + v * 1.7) * Math.PI * 2) * 4.2
-        + Math.cos((u * 1.2 - v * 2.8) * Math.PI * 2) * 3.2;
-      const mineral = Math.sin((u - v) * Math.PI * 9.0) * 1.8;
-      const random = (noise - 0.5) * (mode === 'albedo' ? 4 : 18);
-      const base = mode === 'albedo' ? 249 : 236;
-      const signal = mode === 'albedo' ? broad * 0.55 + mineral + random : broad * 2.0 + mineral * 2.8 + random;
+      const broad = Math.sin((u * 1.45 + v * 0.72) * Math.PI * 2) * 16
+        + Math.cos((u * 0.58 - v * 1.18) * Math.PI * 2) * 11;
+      const mineral = Math.sin((u - v) * Math.PI * 4.2) * 5;
+      const random = (noise - 0.5) * (mode === 'albedo' ? 8 : 18);
+      const base = mode === 'albedo' ? 228 : 236;
+      const signal = mode === 'albedo' ? broad + mineral + random : broad * 0.65 + mineral * 1.8 + random;
       const value = THREE.MathUtils.clamp(
         Math.round(base + signal),
-        mode === 'albedo' ? 239 : 204,
+        mode === 'albedo' ? 198 : 204,
         255,
       );
       const index = (y * size + x) * 4;
@@ -92,7 +92,7 @@ function createWarRoomV2StoneTexture({ mode = 'albedo', size = 32 } = {}) {
   texture.name = `war-room-v2-stone-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1.8, 1.6);
+  texture.repeat.set(mode === 'albedo' ? 0.86 : 1.8, mode === 'albedo' ? 0.78 : 1.6);
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.colorSpace = mode === 'albedo' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -108,12 +108,19 @@ function installRuntimeStoneSurface(material, sharedTextures, { coarsePointer = 
   sharedTextures.albedo ||= createWarRoomV2StoneTexture({ mode: 'albedo', size: profile.size });
   sharedTextures.micro ||= createWarRoomV2StoneTexture({ mode: 'micro', size: profile.size });
 
-  if (!material.map) material.map = sharedTextures.albedo;
+  if (!material.map) {
+    material.map = sharedTextures.albedo;
+    // The albedo map is intentionally darker than white so broad mineral
+    // mottling survives ACES/8-bit output. Compensate its average loss here so
+    // the authored Blender value stays the visual baseline instead of the whole
+    // room simply becoming darker.
+    material.color.multiplyScalar(profile.albedoCompensation);
+  }
   if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
   if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
   material.bumpScale = profile.bumpScale;
   material.userData ||= {};
-  material.userData.warRoomV2RuntimeSurface = 'stone-micro-v1';
+  material.userData.warRoomV2RuntimeSurface = 'stone-meso-v2';
   material.needsUpdate = true;
   return true;
 }
@@ -205,7 +212,7 @@ export async function installWarRoomV2Shell(
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v5-stone-microdetail';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v6-visible-stone-variation';
   root.userData.warRoomV2PracticalLights = practicalLights;
   root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;
