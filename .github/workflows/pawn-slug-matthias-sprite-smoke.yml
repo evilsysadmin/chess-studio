@@ -10,7 +10,7 @@ on:
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
-      - Staging · deploy
+      - Deploy to staging
     types:
       - completed
     branches:

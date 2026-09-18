@@ -6,7 +6,7 @@ There is deliberately no repository workflow that waits for checks and executes 
 
 The normal release chain is intentionally boring:
 
-`Quality · CI gate (PR)` -> GitHub native auto-merge -> `push main` -> `Main · admission` -> `Staging · deploy` -> staging accreditation -> `Production · promote`.
+`Quality · CI gate (PR)` -> GitHub native auto-merge -> `push main` -> `Main · admission` -> `Deploy to staging` -> staging accreditation -> `Production · promote`.
 
 ## Ownership
 

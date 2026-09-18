@@ -317,7 +317,7 @@ def main() -> int:
 
     # Staging AI is read-only accreditation downstream of canonical staging deploy.
     for needle, label in (
-        ("workflows:\n      - Staging · deploy", "staging AI canonical source"),
+        ("workflows:\n      - Deploy to staging", "staging AI canonical source"),
         ("UPSTREAM_EVENT", "staging AI upstream provenance guard"),
         ("Accredit coherent staging generation", "staging AI read-only accreditation"),
         ("Verify staging backend still serves approved SHA", "staging AI backend attestation"),

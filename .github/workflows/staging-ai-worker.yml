@@ -3,7 +3,7 @@ name: Staging · AI Worker
 on:
   workflow_run:
     workflows:
-      - Staging · deploy
+      - Deploy to staging
     types:
       - completed
     branches:
@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
           if [[ "$TRIGGER_EVENT" == 'workflow_run' && "$UPSTREAM_EVENT" != 'workflow_run' ]]; then
-            echo "::error::Staging AI fue encadenado desde un Staging · deploy manual ($UPSTREAM_EVENT); puede probar staging, pero no acreditar producción."
+            echo "::error::Staging AI fue encadenado desde un Deploy to staging manual ($UPSTREAM_EVENT); puede probar staging, pero no acreditar producción."
             exit 1
           fi
 
@@ -142,7 +142,7 @@ jobs:
             echo
             echo "- Source SHA: \`$DEPLOY_SHA\`"
             if [[ "$TRIGGER_EVENT" == 'workflow_run' ]]; then
-              echo '- Prueba: `Staging · deploy automático completado bajo el lock staging`'
+              echo '- Prueba: `Deploy to staging automático completado bajo el lock staging`'
               echo '- Credencial: `artifact inmutable; N+1 puede avanzar staging sin invalidarla`'
             else
               echo '- Manual: `live backend + frontend + Worker verificados; sin credencial`'

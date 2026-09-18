@@ -97,7 +97,7 @@ Main · admission
  └─ direct HEAD ─> full exact-HEAD fallback gate
  │
  ▼
-Staging · deploy
+Deploy to staging
  ├─ OCI backend ─────────────┐
  ├─ Cloudflare Pages ────────┼─ mismo SHA
  └─ Cloudflare AI Worker ────┘
@@ -134,7 +134,7 @@ Diagnostics ───────── manual/read-only, sin bloquear deploys
 - `matthias-visual.yml` → absorbido primero por `e2e-full.yml`; sus gates PR path-aware viven ahora en `cicd.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
 - Publicación K3s automática desde `oci-readiness.yml` → retirada; assets se reconcilian en el `k3s-start` explícito.
-- Auto-K3s tras cada `Staging · deploy` → retirado; lifecycle experimental no forma parte del release canónico.
+- Auto-K3s tras cada `Deploy to staging` → retirado; lifecycle experimental no forma parte del release canónico.
 - Mutex único para cualquier `oci-staging-service` → retirado; sólo las operaciones mutantes compiten con deploy/Terraform.
 - `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
 - `codeql.yml` → absorbido por `coverage.yml` como señal periódica; conserva cadence semanal y permisos `security-events` limitados al job CodeQL.

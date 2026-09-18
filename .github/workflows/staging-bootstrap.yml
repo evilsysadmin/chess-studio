@@ -1,7 +1,7 @@
 name: Staging · Render maintenance
 
 # Maintenance escape hatch only. Normal staging mutations must flow through
-# the quality gate -> Staging · deploy so every deployed SHA is accredited.
+# the quality gate -> Deploy to staging so every deployed SHA is accredited.
 on:
   workflow_dispatch:
 
@@ -128,7 +128,7 @@ jobs:
           {
             echo '### Render staging preparado manualmente'
             echo
-            echo '- Ruta: `maintenance-only`; las releases normales usan `Staging · deploy`.'
+            echo '- Ruta: `maintenance-only`; las releases normales usan `Deploy to staging`.'
             echo '- Servicio: `chess-study-backend-staging`'
             echo '- Service ID: `${{ steps.bootstrap.outputs.service_id }}`'
             echo '- Creado ahora: `${{ steps.bootstrap.outputs.created }}`'

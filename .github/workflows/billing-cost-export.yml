@@ -2,7 +2,7 @@ name: Observability · Billing costs
 
 on:
   workflow_run:
-    workflows: ['Staging · deploy']
+    workflows: ['Deploy to staging']
     types: [completed]
   schedule:
     - cron: '17 */6 * * *'
