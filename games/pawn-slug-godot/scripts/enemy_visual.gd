@@ -6,6 +6,7 @@ const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
+const REMOTE_ATLAS_ROWS := 5
 const FRAMES_PER_TYPE := 8
 const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 8, "shield": 16}
 const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 1, "shield": 2}
@@ -254,7 +255,7 @@ func _on_body_atlas_loaded(
         if (
             image.load_webp_from_buffer(bytes) == OK
             and image.get_width() == int(REMOTE_FRAME_SIZE.x) * FRAMES_PER_TYPE
-            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_TYPE_ROW.size()
+            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_ATLAS_ROWS
         ):
             texture = ImageTexture.create_from_image(image)
             _cached_body_texture = texture
