@@ -781,6 +781,13 @@ def add_gothic_canon_v2(static, mats):
     deep bookcase, second fireplace, chandelier, globe and table drape.
     """
     bpy.context.scene["war_room_visual_canon"] = "cinematic-gothic-study-2026-09-18-v1"
+    # Separate the heraldic crest from the chandelier in projection. The crest
+    # remains centered on the rear wall, but sits slightly higher so the horse
+    # silhouette reads through the fixture instead of collapsing into its spokes.
+    for obj in list(static.objects):
+        if obj.name.startswith("WR_CREST_"):
+            obj.location.z += 0.34
+
     # Retire legacy modern-study decoration only inside the v2 generator. The
     # historical implementation remains in source control as rollback, but these
     # rectangular paintings/floating shelves visually fight the approved gothic canon.
@@ -931,18 +938,18 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 6.16
-    chandelier_y = 3.35
-    torus("WR_CANON_chandelier_ring", (0, chandelier_y, cz), 1.12, 0.055, mats["brass"], static)
+    cz = 6.28
+    chandelier_y = 3.38
+    torus("WR_CANON_chandelier_ring", (0, chandelier_y, cz), 0.98, 0.048, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (0, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
     cylinder("WR_CANON_chandelier_chain", (0, chandelier_y, 6.49), 0.030, 0.52, mats["brass_dark"], static, vertices=16)
-    for index in range(8):
-        angle = index * math.tau / 8.0
-        x = math.cos(angle) * 0.94
-        y = chandelier_y + math.sin(angle) * 0.76
+    for index in range(6):
+        angle = index * math.tau / 6.0
+        x = math.cos(angle) * 0.82
+        y = chandelier_y + math.sin(angle) * 0.66
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.20),
-                 0.058, 0.34, mats["ivory"], static, vertices=18)
-        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.43), 0.082,
+                 0.054, 0.31, mats["ivory"], static, vertices=18)
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.39), 0.076,
                mats["fire_core"], static, scale=(0.44, 0.44, 1.10))
         # short radial arm from hub; cylinders are aligned to Z by default.
         midpoint = Vector((x * 0.50, chandelier_y + (y - chandelier_y) * 0.50, cz))
@@ -952,9 +959,9 @@ def add_gothic_canon_v2(static, mats):
         arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.030,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, chandelier_y, 5.98), 138.0,
-          (1.0, 0.48, 0.18), static, radius=2.0)
-    anchor("WR_ANCHOR_chandelier_practical", (0, chandelier_y, 5.88), static)
+    light("WR_CANON_chandelier_light", "POINT", (0, chandelier_y, 6.04), 126.0,
+          (1.0, 0.48, 0.18), static, radius=1.9)
+    anchor("WR_ANCHOR_chandelier_practical", (0, chandelier_y, 5.96), static)
 
     # Burgundy heraldic drape on the camera-facing table edge.
     front_y = -5.50
