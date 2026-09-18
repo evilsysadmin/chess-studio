@@ -1,0 +1,57 @@
+name: Pawn Slug · Matthias sprite smoke
+
+on:
+  workflow_run:
+    workflows:
+      - Staging · deploy
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-matthias-sprite-smoke
+  cancel-in-progress: true
+
+jobs:
+  export:
+    name: Export Matthias runtime sprite PNGs
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Install Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Export Matthias runtime sprites
+        run: |
+          set -euo pipefail
+          python3 scripts/art/export_matthias_sprite_smoke.py \
+            --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
+            --output-dir /tmp/pawn-slug-matthias-sprite-smoke
+
+      - name: Upload Matthias sprite smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-matthias-sprite-smoke-${{ env.DEPLOY_SHA }}
+          path: /tmp/pawn-slug-matthias-sprite-smoke/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
