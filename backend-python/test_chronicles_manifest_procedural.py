@@ -76,17 +76,35 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
                 enemy["id"]
                 for enemy in base.get("enemies", [])
                 if enemy.get("optional") is not True
+                and not enemy.get("proceduralModule")
             }
             generated_enemy_ids = {enemy["id"] for enemy in validated.get("enemies", [])}
             assert mandatory_enemy_ids <= generated_enemy_ids
             assert generated_enemy_ids <= {enemy["id"] for enemy in base.get("enemies", [])}
+            omitted_modules = set(manifest["generation"]["omittedProceduralModuleIds"])
+            active_modules = set(manifest["generation"]["activeProceduralModuleIds"])
+            assert omitted_modules.isdisjoint(active_modules)
+
             for group in ("triggers", "interactables", "traps", "exits"):
-                assert validated.get(group, []) == base.get(group, [])
+                authored_entries = {entry["id"]: entry for entry in base.get(group, [])}
+                generated_entries = {entry["id"]: entry for entry in validated.get(group, [])}
+                assert generated_entries.keys() <= authored_entries.keys()
+                for entry_id, authored in authored_entries.items():
+                    module_id = authored.get("proceduralModule")
+                    if module_id in omitted_modules:
+                        assert entry_id not in generated_entries
+                    else:
+                        assert generated_entries.get(entry_id) == authored
 
             authored_treasures = {entry["id"]: entry for entry in base.get("treasures", [])}
             generated_treasures = {entry["id"]: entry for entry in validated.get("treasures", [])}
-            assert generated_treasures.keys() == authored_treasures.keys()
+            assert generated_treasures.keys() <= authored_treasures.keys()
             for treasure_id, authored in authored_treasures.items():
+                module_id = authored.get("proceduralModule")
+                if module_id in omitted_modules:
+                    assert treasure_id not in generated_treasures
+                    continue
+                assert treasure_id in generated_treasures
                 generated_treasure = deepcopy(generated_treasures[treasure_id])
                 authored_effects = (authored.get("action") or {}).get("effects") or []
                 generated_effects = (generated_treasure.get("action") or {}).get("effects") or []
@@ -118,6 +136,8 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert manifest["generation"]["mapCode"] == generated.map_code
             assert manifest["generation"]["generatorVersion"] == generated.generator_version
             assert manifest["generation"]["layoutRevision"] == generated.layout_revision
+            assert manifest["generation"]["moduleVariationVersion"] == 1
+            assert len(manifest["generation"]["moduleVariationRevision"]) == 64
             assert manifest["generation"]["compositionVersion"] == 1
             assert len(manifest["generation"]["compositionRevision"]) == 64
             assert set(manifest["generation"]["omittedOptionalEnemyIds"]).isdisjoint(mandatory_enemy_ids)
