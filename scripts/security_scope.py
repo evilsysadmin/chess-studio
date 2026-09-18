@@ -31,6 +31,10 @@ SECURITY_PATTERN = re.compile(
     r"|^deploy/"
     r"|^render\.ya?ml$"
 )
+IAC_PATTERN = re.compile(
+    r"^infra/(?:oci|cloudflare|terraform)/.*\.(?:tf|tfvars|hcl)$"
+    r"|^infra/oci/runtime/backend\.staging\.env$"
+)
 
 
 def normalize_files(lines: list[str]) -> list[str]:
@@ -41,8 +45,15 @@ def requires_heavy_security(files: list[str]) -> bool:
     return any(SECURITY_PATTERN.search(path) is not None for path in normalize_files(files))
 
 
-def output_lines(run_security: bool) -> list[str]:
-    return [f"run_security={'true' if run_security else 'false'}"]
+def requires_iac_security(files: list[str]) -> bool:
+    return any(IAC_PATTERN.search(path) is not None for path in normalize_files(files))
+
+
+def output_lines(run_security: bool, run_iac_security: bool = False) -> list[str]:
+    return [
+        f"run_security={'true' if run_security else 'false'}",
+        f"run_iac_security={'true' if run_iac_security else 'false'}",
+    ]
 
 
 def write_output(lines: list[str], github_output: str | None) -> None:
@@ -86,6 +97,14 @@ def self_test() -> None:
     for path in positive:
         assert requires_heavy_security([path]), f"debía activar security pesado: {path}"
 
+    iac_positive = (
+        "infra/oci/staging/terraform.tfvars",
+        "infra/oci/staging/tests/contracts.tftest.hcl",
+        "infra/oci/runtime/backend.staging.env",
+    )
+    for path in iac_positive:
+        assert requires_iac_security([path]), f"debía activar Trivy IaC: {path}"
+
     negative = (
         "README.md",
         "frontend/src/App.jsx",
@@ -98,7 +117,6 @@ def self_test() -> None:
         "frontend/package-lock.json.bak",
         "backend-python/requirements.md",
         "infra/oci/staging/main.tf",
-        "infra/oci/bootstrap/outputs.tf",
         "infra/cloudflare/main.tf",
         "infra/terraform/main.tf",
         "infrared/example.txt",
@@ -110,11 +128,14 @@ def self_test() -> None:
 
     assert requires_heavy_security(["README.md", "deploy/service.yaml"])
     assert not requires_heavy_security(["README.md", "infra/oci/staging/main.tf"])
+    assert requires_iac_security(["README.md", "infra/oci/staging/main.tf"])
     assert not requires_heavy_security([])
+    assert not requires_iac_security([])
     assert normalize_files(["", "  README.md  ", "\n"]) == ["README.md"]
-    assert output_lines(True) == ["run_security=true"]
-    assert output_lines(False) == ["run_security=false"]
-    print("security-scope self-test OK · pure IaC skips heavy Trivy/Docker")
+    assert output_lines(True, True) == ["run_security=true", "run_iac_security=true"]
+    assert output_lines(False, True) == ["run_security=false", "run_iac_security=true"]
+    assert output_lines(False, False) == ["run_security=false", "run_iac_security=false"]
+    print("security-scope self-test OK · IaC runs Trivy without forcing Docker/Compose")
 
 
 def main() -> int:
@@ -130,7 +151,8 @@ def main() -> int:
 
     files = [] if args.all else sys.stdin.read().splitlines()
     run_security = True if args.all else requires_heavy_security(files)
-    write_output(output_lines(run_security), args.github_output)
+    run_iac_security = True if args.all else requires_iac_security(files)
+    write_output(output_lines(run_security, run_iac_security), args.github_output)
     return 0
 
 
