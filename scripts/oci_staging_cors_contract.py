@@ -221,4 +221,12 @@ assert "OCI_K3S_SERVICE_PREPARED" in k3s_service_prepare
 assert "OCI_K3S_SERVICE_ARMED_UNCHANGED" in k3s_service_prepare
 assert "START_APPROVAL.exists()" in k3s_service_prepare
 
+# Healthy public routing of the exact new SHA is sufficient to reuse the
+# existing tunnel. Any probe failure must retain the full connector self-heal.
+assert "public_tunnel_attest" in deploy
+assert 'Cache-Control: no-cache' in deploy
+assert 'CHESS_STUDIO_TUNNEL_REUSED' in deploy
+assert 'if ! /bin/bash "$tunnel_connector"; then' in deploy
+assert 'tunnel_action="restarted"' in deploy
+
 print("OCI staging CORS + runtime deployment contract: OK")
