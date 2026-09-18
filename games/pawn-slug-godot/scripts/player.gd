@@ -591,7 +591,7 @@ func _find_ledge_climb_target() -> Dictionary:
         return {}
     var target := Vector2(
         wall_position.x + direction * (half_width + LEDGE_TARGET_INSET),
-        top_position.y - STANDING_HITBOX_SIZE.y * 0.5,
+        top_position.y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0,
     )
     if not _respawn_position_is_clear(target):
         target.x += direction * 8.0
