@@ -910,6 +910,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # readable castle masonry without adding heavy displacement geometry.
     for row, z in enumerate((0.70, 1.52, 2.34, 3.16, 3.98, 4.80, 5.62)):
         cube(f"HOME_ARCH_back_mortar_h_{row}", (0, 6.72, z), (9.10, 0.014, 0.010), materials["stone_dark"])
+        offset = 0.90 if row % 2 else -0.20
+        for col, x in enumerate((-6.6, -2.2, 2.2, 6.6)):
+            cube(
+                f"HOME_ARCH_back_mortar_v_{row}_{col}",
+                (x + offset, 6.715, z + 0.36),
+                (0.012, 0.018, 0.31),
+                materials["stone_dark"],
+            )
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
@@ -952,10 +960,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
     for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
+        cube(f"HOME_ARCH_pilaster_back_{x}", (x, 6.78, 2.65), (0.42, 0.15, 2.55), materials["arch_stone"], bevel=0.045)
+        cube(f"HOME_ARCH_pilaster_cap_{x}", (x, 6.62, 5.18), (0.56, 0.22, 0.16), materials["arch_stone"], bevel=0.045)
         cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
+    cube("HOME_ARCH_upper_cornice", (0, 6.72, 5.62), (8.95, 0.20, 0.12), materials["wood"], bevel=0.045)
 
     add_fireplace("fireplace_left", -6.15, materials)
     fireplace_left_origin = Vector((-6.15, 6.10, 0.35))
@@ -1137,19 +1148,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     for idx, x in enumerate((-8.0, -4.15, 2.45, 7.95)):
-        cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass"], bevel=0.025)
-        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), 0.10, 0.018, 0.34, materials["fire_hot"], vertices=16)
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 78, (1.0, 0.36, 0.10), radius=0.44)
+        cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass_dark"], bevel=0.025)
+        cube(f"HOME_PROP_torch_candle_{idx}", (x, 5.96, 2.78), (0.045, 0.045, 0.18), materials["paper"], bevel=0.012)
+        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.94, 3.02), 0.045, 0.008, 0.14, materials["fire_hot"], vertices=12)
+        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.62, 3.02), 64, (1.0, 0.34, 0.08), radius=0.36)
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 92, (0.68, 0.52, 0.39), 4.5, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 48, (0.10, 0.22, 0.40), 4.2, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 96, (0.68, 0.38, 0.22), 3.0, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 82, (0.34, 0.24, 0.18), 6.5, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 108, (0.34, 0.24, 0.18), 6.5, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.15, 0.32, 0.62), 3.8, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 150, (0.88, 0.68, 0.48), 2.8, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 135, (0.82, 0.48, 0.24), 2.0, target=(0, -0.72, 0.42))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 168, (0.82, 0.48, 0.24), 2.0, target=(0, -0.72, 0.30))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 235, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
@@ -1165,6 +1177,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     look_at(camera, target)
     scene.camera = camera
 
+    try:
+        scene.view_settings.exposure = -0.30
+    except Exception:
+        pass
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
