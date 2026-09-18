@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -175,6 +176,8 @@ def self_test() -> None:
     body = encode_payload([("oci", 0.0, "EUR"), ("cloudflare", 0.25, "USD")])
     parsed = json.loads(body)
     assert parsed["costs"][0] == {"amount": 0.0, "currency": "EUR", "provider": "oci"}
+    partial = json.loads(encode_payload([("oci", 0.0, "EUR")]))
+    assert partial["costs"] == [{"amount": 0.0, "currency": "EUR", "provider": "oci"}]
     expected = hmac.new(b"secret", b"123." + body, hashlib.sha256).hexdigest()
     assert sign_payload("secret", "123", body) == f"sha256={expected}"
     print("billing-cost-export self-test: OK")
@@ -191,12 +194,28 @@ def main() -> int:
     import oci
 
     oci_cost, oci_currency = collect_oci_cost(oci)
-    cf_cost, cf_currency = collect_cloudflare_cost()
-    costs = [
-        ("oci", oci_cost, oci_currency),
-        ("cloudflare", cf_cost, cf_currency),
-    ]
+    costs = [("oci", oci_cost, oci_currency)]
+    cloudflare_error: str | None = None
+    try:
+        cf_cost, cf_currency = collect_cloudflare_cost()
+    except SystemExit as exc:
+        cloudflare_error = str(exc)
+    else:
+        costs.append(("cloudflare", cf_cost, cf_currency))
+
+    # Publish every trustworthy provider sample we have. A Cloudflare permission
+    # failure must not blind the independent OCI billing widget.
     publish_via_staging(oci, costs)
+
+    if cloudflare_error:
+        print(
+            "billing-cost-export PARTIAL · "
+            f"oci={oci_cost:.2f} {oci_currency} published · cloudflare=unavailable · "
+            f"{cloudflare_error}",
+            file=sys.stderr,
+        )
+        raise SystemExit(cloudflare_error)
+
     print(
         "billing-cost-export OK · "
         f"oci={oci_cost:.2f} {oci_currency} · cloudflare={cf_cost:.2f} {cf_currency}"
