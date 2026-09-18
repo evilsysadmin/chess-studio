@@ -235,7 +235,9 @@ assert "_sha256_with_fingerprint" in k3s_service_prepare
 assert "run_k3s_reconcile_steps" in deploy
 assert '{ /bin/bash "$k3s_capability_provision" && python3 -S "$k3s_service_prepare"; }' in deploy
 assert 'cat "$log" >&2' in deploy
-assert "awk '/^OCI_K3S_/ {print}'" in deploy
+assert "OCI_K3S_ASSET_INTEGRITY_REUSED" in deploy
+assert "OCI_K3S_ASSET_INTEGRITY_REFRESHED" in deploy
+assert 'printf "integrity=%s,service=%s"' in deploy
 
 # Healthy public routing of the exact new SHA is sufficient to reuse the
 # existing tunnel. Any probe failure must retain the full connector self-heal.
@@ -247,10 +249,10 @@ assert 'tunnel_action="restarted"' in deploy
 
 # Deploy timing markers are observational only: they expose where time is spent
 # without weakening or bypassing any readiness/integrity gate.
-assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" in deploy
 for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
     assert f"phase_done {phase}" in deploy
-assert "OCI_DEPLOY_TIMINGS phases=%s" in deploy
+assert "OCI_DEPLOY_TIMINGS phases=%s k3s=%s tunnel=%s" in deploy
+assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
 assert 'docker pull --quiet "$target_image"' in deploy
 
 print("OCI staging CORS + runtime deployment contract: OK")

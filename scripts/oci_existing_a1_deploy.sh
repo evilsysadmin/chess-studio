@@ -40,7 +40,6 @@ phase_done() {
   local ended_ms duration_ms
   ended_ms="$(now_ms)"
   duration_ms="$((ended_ms - started_ms))"
-  printf 'OCI_DEPLOY_PHASE name=%s duration_ms=%s\n' "$name" "$duration_ms"
   deploy_phase_summary="${deploy_phase_summary:-}${name}:${duration_ms},"
 }
 
@@ -136,7 +135,13 @@ run_k3s_reconcile_steps() {
     rm -f "$log"
     return "$rc"
   fi
-  awk '/^OCI_K3S_/ {print}' "$log"
+  k3s_success_summary="$(awk '
+    /^OCI_K3S_ASSET_INTEGRITY_REUSED / {integrity="reused"}
+    /^OCI_K3S_ASSET_INTEGRITY_REFRESHED / {integrity="refreshed"}
+    /^OCI_K3S_SERVICE_ARMED_UNCHANGED / {service="armed"}
+    /^OCI_K3S_SERVICE_PREPARED / {service="prepared"}
+    END {printf "integrity=%s,service=%s", integrity ? integrity : "unknown", service ? service : "unknown"}
+  ' "$log")"
   rm -f "$log"
 }
 
@@ -364,7 +369,7 @@ for _ in $(seq 1 60); do
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
     phase_done total "$total_started_ms"
-    printf 'OCI_DEPLOY_TIMINGS phases=%s\n' "${deploy_phase_summary%,}"
+    printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "$tunnel_action"
     echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
