@@ -27,6 +27,21 @@ require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
 }
 
+now_ms() {
+  local seconds micros
+  seconds="${EPOCHREALTIME%.*}"
+  micros="${EPOCHREALTIME#*.}"
+  printf '%s%s\n' "$seconds" "${micros:0:3}"
+}
+
+phase_done() {
+  local name="$1"
+  local started_ms="$2"
+  local ended_ms
+  ended_ms="$(now_ms)"
+  printf 'OCI_DEPLOY_PHASE name=%s duration_ms=%s\n' "$name" "$((ended_ms - started_ms))"
+}
+
 require git
 require docker
 require curl
@@ -273,6 +288,8 @@ record_successful_backend() {
   mv -f "$tmp" "$state_file"
 }
 
+total_started_ms="$(now_ms)"
+checkout_started_ms="$total_started_ms"
 cd "$repo"
 if [[ "${CHESS_STUDIO_CHECKOUT_READY:-0}" == "1" ]]; then
   current_sha="$(git rev-parse HEAD)"
@@ -281,30 +298,42 @@ else
   git fetch --no-tags --depth=1 origin "$sha"
   git checkout --detach "$sha"
 fi
+phase_done checkout "$checkout_started_ms"
+preflight_started_ms="$(now_ms)"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
 [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
 [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
 [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
 /bin/bash "$tunnel_connector" --self-test
+phase_done preflight "$preflight_started_ms"
+k3s_started_ms="$(now_ms)"
 reconcile_k3s_contract
+phase_done k3s "$k3s_started_ms"
 
 # CI already built and published the exact linux/arm64 backend image. Pull that
 # immutable artifact before touching the serving container; do not invoke
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
 target_image="$(image_ref "$sha")"
+image_pull_started_ms="$(now_ms)"
 if ! docker pull "$target_image"; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
 fi
+phase_done image_pull "$image_pull_started_ms"
 
+recreate_started_ms="$(now_ms)"
 if ! compose "$sha" up -d --no-build --force-recreate backend; then
   rollback "$sha" || true
   exit 1
 fi
+phase_done recreate "$recreate_started_ms"
 
+readiness_started_ms="$(now_ms)"
 for _ in $(seq 1 60); do
   if attest "$sha"; then
+    phase_done readiness "$readiness_started_ms"
+    tunnel_started_ms="$(now_ms)"
     tunnel_action="reused"
     if public_tunnel_attest "$sha"; then
       echo "CHESS_STUDIO_TUNNEL_REUSED repo_ref=$sha"
@@ -315,7 +344,9 @@ for _ in $(seq 1 60); do
         exit 46
       fi
     fi
+    phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
+    phase_done total "$total_started_ms"
     echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
