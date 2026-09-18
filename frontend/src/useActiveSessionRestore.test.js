@@ -6,6 +6,7 @@ import {
   hasRecoverableCombatState,
   resolveRestoredGameContext,
   selectBoundaryRecovery,
+  shouldAutoRestoreActiveSession,
   shouldLeaveActiveRouteAfterRestoreFailure,
 } from './useActiveSessionRestore.js';
 import { STORAGE_KEY } from './api.js';
@@ -23,6 +24,14 @@ describe('active session restore helpers', () => {
       .toEqual({ runMode: 'cup', resumed: 'g-1' });
     expect(resolveRestoredGameContext({ gameContext: {} }, found, null))
       .toEqual({ ghost: true, ghostStyle: 'solid', resumed: 'g-1' });
+  });
+
+  it('sólo auto-restaura si la ruta activa era la pantalla visible al recargar', () => {
+    const saved = { route: 'game', gameId: 'g-1' };
+    expect(shouldAutoRestoreActiveSession({ currentView: 'game', saved })).toBe(true);
+    expect(shouldAutoRestoreActiveSession({ currentView: 'lab', saved })).toBe(false);
+    expect(shouldAutoRestoreActiveSession({ currentView: 'menu', saved })).toBe(false);
+    expect(shouldAutoRestoreActiveSession({ currentView: 'tournamentGame', saved })).toBe(false);
   });
 
   it('construye un descriptor mínimo para saves anteriores a dm6', () => {

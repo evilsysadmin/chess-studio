@@ -56,7 +56,7 @@ import { shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
-import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
+import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
 import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
@@ -79,6 +79,7 @@ import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendT
 import { APP_RELEASE } from './release.js';
 import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
@@ -98,12 +99,16 @@ function AppInner({ isAdminUser }) {
     resetNavigation,
   } = useViewNavigation({
     isAdminUser,
-    initialView: () => loadActiveGameSession()?.route || null,
+    initialView: () => loadVisibleActiveGameSession()?.route || null,
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
   const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
 
   usePresenceHeartbeat(view);
+
+  useEffect(() => {
+    if (view !== 'lab') clearRememberedLabMode();
+  }, [view]);
 
   const adminFeedbackNewCount = useAdminFeedbackInbox({ enabled: isAdminUser, view });
   const [game, setGame] = useState(null);

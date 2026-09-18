@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { consumeLabLaunch, requestLabLaunch } from './labLaunchIntent.js';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode, requestLabLaunch } from './labLaunchIntent.js';
 
 describe('labLaunchIntent', () => {
+  beforeEach(() => sessionStorage.clear());
   it('routes legacy Pawn Slug launch requests to Godot once', () => {
     requestLabLaunch('pawnslug');
     expect(consumeLabLaunch()).toBe('pawnslug-godot');
@@ -12,6 +13,14 @@ describe('labLaunchIntent', () => {
     requestLabLaunch('pawnslug-godot');
     expect(consumeLabLaunch()).toBe('pawnslug-godot');
     expect(consumeLabLaunch()).toBeNull();
+  });
+
+  it('remembers Pawn Slug Godot across a browser refresh without turning it into a one-shot intent', () => {
+    expect(rememberLabMode('pawnslug-godot')).toBe('pawnslug-godot');
+    expect(loadRememberedLabMode()).toBe('pawnslug-godot');
+    expect(loadRememberedLabMode()).toBe('pawnslug-godot');
+    clearRememberedLabMode();
+    expect(loadRememberedLabMode()).toBeNull();
   });
 
   it('ignores unsupported modes', () => {

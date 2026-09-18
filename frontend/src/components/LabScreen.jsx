@@ -1,7 +1,7 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { consumeLabLaunch } from '../labLaunchIntent.js';
+import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
@@ -33,7 +33,7 @@ function LabModeFallback() {
 
 export default function LabScreen({ onExit, onStart }){
   const initial = initialState();
-  const [labMode,setLabMode]=useState(() => consumeLabLaunch() || 'hub');
+  const [labMode,setLabMode]=useState(() => consumeLabLaunch() || loadRememberedLabMode() || 'hub');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
   const [turn,setTurn]=useState(initial.turn);
@@ -43,6 +43,11 @@ export default function LabScreen({ onExit, onStart }){
   const [fullmove,setFullmove]=useState(initial.fullmove);
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
+
+  useEffect(() => {
+    if (labMode === 'pawnslug-godot') rememberLabMode(labMode);
+    else clearRememberedLabMode();
+  }, [labMode]);
 
   const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
