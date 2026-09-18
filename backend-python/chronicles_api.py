@@ -21,7 +21,15 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import chronicles_run_store
-from chronicles_map_code import CHRONICLES_MAP_CODE_MAX_SEED
+from chronicles_map_code import (
+    CHRONICLES_MAP_CODE_MAX_LENGTH,
+    CHRONICLES_MAP_CODE_MAX_SEED,
+    ChroniclesMapCodeError,
+)
+from chronicles_map_generator import (
+    ChroniclesMapGenerationError,
+    generate_chronicles_layout,
+)
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -43,6 +51,16 @@ class ChroniclesManifestError(ValueError):
 
 class CreateChroniclesRunRequest(BaseModel):
     map_id: str = Field(default="crypt-eight-squares", alias="mapId")
+
+    model_config = {"populate_by_name": True, "extra": "forbid"}
+
+
+class PreviewChroniclesMapCodeRequest(BaseModel):
+    map_code: str = Field(
+        alias="mapCode",
+        min_length=1,
+        max_length=CHRONICLES_MAP_CODE_MAX_LENGTH,
+    )
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -199,6 +217,16 @@ def _run_bootstrap_payload(run: dict[str, Any]) -> dict[str, Any]:
 
 def build_chronicles_router(*, auth_dependency) -> APIRouter:
     router = APIRouter(prefix="/api/chronicles", tags=["chronicles"])
+
+    @router.post("/map-code/preview")
+    async def preview_map_code(
+        body: PreviewChroniclesMapCodeRequest,
+        _username: str = Depends(auth_dependency),
+    ):
+        try:
+            return generate_chronicles_layout(body.map_code).as_dict()
+        except (ChroniclesMapCodeError, ChroniclesMapGenerationError) as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @router.get("/maps/{map_id}")
     async def area_manifest(
