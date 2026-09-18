@@ -196,7 +196,7 @@ def add_fireplace(name: str, x: float, materials):
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.08, 1.32), 580, (1.0, 0.25, 0.06), radius=0.8)
 
 
-def add_bookshelf(materials):def add_bookshelf(materials):
+def add_bookshelf(materials):
     wood = materials["wood"]
     brass = materials["brass"]
     x, y = -2.55, 6.22
@@ -235,7 +235,7 @@ def add_armor(materials):
     curve_tube("HOME_PROP_armor_right_arm", [(x + 0.44, y, 2.18), (x + 0.7, y, 1.58)], 0.115, steel)
 
 
-def add_trophy(materials):def add_trophy(materials):
+def add_trophy(materials):
     brass = materials["brass"]
     wood = materials["wood"]
     x, y = -3.45, 5.76
@@ -270,7 +270,7 @@ def add_stairs(materials):
     curve_tube("HOME_PROP_dungeon_rail", [(5.62, 4.85, 1.8), (5.62, 3.5, 1.3), (5.62, 1.75, 0.82)], 0.05, brass)
 
 
-def build_scene(reference: Path, samples: int, max_width: int, engine: str):def build_scene(reference: Path, samples: int, max_width: int, engine: str):
+def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
     scene = bpy.context.scene
     if engine == "workbench":
