@@ -40,16 +40,11 @@ from operation_idempotency_core import (
 
 CHRONICLES_MANIFEST_SCHEMA_VERSION = 1
 CHRONICLES_MAP_ROOT = Path(__file__).with_name("chronicles_maps")
+CHRONICLES_ENTRY_CATALOG_PATH = Path(__file__).with_name("chronicles_entry_catalog.json")
 CHRONICLES_RUN_NAMESPACE = uuid.UUID("e73c9496-fffd-4dc4-a0d0-8c7b6060a116")
 _MAP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _MAX_SEED = CHRONICLES_MAP_CODE_MAX_SEED
-CHRONICLES_ENTRY_POLICY_VERSION = 1
-CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS = (
-    "crypt-eight-squares",
-    "menagerie-of-ash",
-    "echo-cistern",
-)
 
 
 class ChroniclesManifestError(ValueError):
@@ -199,18 +194,43 @@ def chronicles_shipped_map_ids() -> tuple[str, ...]:
     )
 
 
+@lru_cache(maxsize=1)
+def chronicles_entry_catalog() -> tuple[int, tuple[str, ...]]:
+    """Load the versioned server-side catalog of standalone-safe entry maps."""
+    try:
+        payload = json.loads(CHRONICLES_ENTRY_CATALOG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(500, "El catálogo de entrada de Chronicles no se puede leer.") from exc
+
+    version = payload.get("version") if isinstance(payload, dict) else None
+    map_ids = payload.get("mapIds") if isinstance(payload, dict) else None
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise HTTPException(500, "El catálogo de entrada de Chronicles tiene una versión inválida.")
+    if not isinstance(map_ids, list) or len(map_ids) < 2:
+        raise HTTPException(500, "El catálogo de entrada de Chronicles necesita al menos dos mapas.")
+    if any(not isinstance(map_id, str) or not _MAP_ID_RE.fullmatch(map_id) for map_id in map_ids):
+        raise HTTPException(500, "El catálogo de entrada de Chronicles contiene IDs inválidos.")
+    if len(set(map_ids)) != len(map_ids):
+        raise HTTPException(500, "El catálogo de entrada de Chronicles contiene mapas duplicados.")
+
+    shipped = set(chronicles_shipped_map_ids())
+    if any(map_id not in shipped for map_id in map_ids):
+        raise HTTPException(500, "El catálogo de entrada de Chronicles referencia mapas ausentes.")
+    return version, tuple(map_ids)
+
+
+def chronicles_entry_map_ids() -> tuple[str, ...]:
+    return chronicles_entry_catalog()[1]
+
+
 def chronicles_entry_map_for_seed(seed: int) -> str:
     """Choose a curated standalone-safe entry map reproducibly from the run seed."""
-    shipped = set(chronicles_shipped_map_ids())
-    missing = [map_id for map_id in CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS if map_id not in shipped]
-    if missing:
-        raise HTTPException(500, "El catálogo de entrada de Chronicles referencia mapas ausentes.")
-
+    version, map_ids = chronicles_entry_catalog()
     digest = hashlib.sha256(
-        f"chronicles-entry-v{CHRONICLES_ENTRY_POLICY_VERSION}:{int(seed)}".encode("utf-8")
+        f"chronicles-entry-v{version}:{int(seed)}".encode("utf-8")
     ).digest()
-    index = int.from_bytes(digest[:4], "big") % len(CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS)
-    return CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS[index]
+    index = int.from_bytes(digest[:4], "big") % len(map_ids)
+    return map_ids[index]
 
 
 
@@ -299,7 +319,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         area = chronicles_area_envelope(selected_map_id, seed)
         fingerprint_payload = {"mapId": body.map_id}
         if body.map_id is None:
-            fingerprint_payload["entryPolicyVersion"] = CHRONICLES_ENTRY_POLICY_VERSION
+            fingerprint_payload["entryPolicyVersion"] = chronicles_entry_catalog()[0]
         fingerprint = operation_fingerprint(fingerprint_payload)
         try:
             run = await chronicles_run_store.create_or_replay_run(
