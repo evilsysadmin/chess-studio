@@ -423,7 +423,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             color = _player_color(match or {}, username)
             if not match or color is None:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
-            match = await store.touch_match_presence(match_id, username) or match
+            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
             if match.get("status") == "cancelled":
                 return {"match": _public_match(match, username)}
@@ -460,9 +460,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @limiter.limit("60/minute")
     async def get_match(request: Request, match_id: str, username: str = Depends(auth_dependency)):
         match = await store.get_match(match_id)
-        if not match or _player_color(match, username) is None:
+        color = _player_color(match or {}, username)
+        if not match or color is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
-        match = await store.touch_match_presence(match_id, username) or match
+        match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
         if match.get("status") == "starting":
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
@@ -519,7 +520,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
             if match.get("status") != "active":
                 raise HTTPException(409, "La partida ya ha terminado.")
-            match = await store.touch_match_presence(match_id, username) or match
+            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
 
             board = chess.Board(match["fen"])
             if board.turn != color:
