@@ -26,6 +26,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_BILLING_API_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_API_TOKEN }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CHESS_STUDIO_BILLING_INGEST_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api/internal/billing-costs
     steps:
       - uses: actions/checkout@v5
 
