@@ -1,11 +1,15 @@
 extends Node2D
 
+const ATMOSPHERE_REDRAW_INTERVAL := 0.05
+
 var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
 var _kind := "far_ridge"
 var _seed := 1
 var _intensity := 1.0
 var _preset := "night_front"
+var _atmosphere_time := 0.0
+var _redraw_accumulator := 0.0
 
 func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, intensity: float = 1.0, preset: String = "night_front") -> void:
     _world_size = world_size
@@ -14,9 +18,20 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _seed = seed
     _intensity = clampf(intensity, 0.0, 2.0)
     _preset = preset
+    set_process(_kind in ["sky", "ruined_city", "mid_defence"])
     queue_redraw()
 
 func _ready() -> void:
+    queue_redraw()
+
+func _process(delta: float) -> void:
+    if not is_processing():
+        return
+    _atmosphere_time += delta
+    _redraw_accumulator += delta
+    if _redraw_accumulator < ATMOSPHERE_REDRAW_INTERVAL:
+        return
+    _redraw_accumulator = 0.0
     queue_redraw()
 
 func _draw() -> void:
@@ -61,7 +76,8 @@ func _draw_sky() -> void:
         var y := 34.0 + _noise(index, 0.63) * 250.0
         var radius := 0.8 + _noise(index, 0.91) * 1.5
         var alpha := 0.16 + _noise(index, 1.21) * 0.36
-        draw_circle(Vector2(x, y), radius, Color(0.78, 0.84, 0.88, alpha * _intensity))
+        var twinkle := 0.78 + sin(_atmosphere_time * (0.7 + _noise(index, 1.73)) + float(index)) * 0.22
+        draw_circle(Vector2(x, y), radius, Color(0.78, 0.84, 0.88, alpha * twinkle * _intensity))
 
     if _preset == "harbor_dusk":
         var sun := Vector2(820.0, 178.0)
@@ -88,6 +104,41 @@ func _draw_sky() -> void:
         Color(0.50, 0.43, 0.34, 0.032 * _intensity),
         true,
     )
+    _draw_cloud_bands()
+
+func _draw_cloud_bands() -> void:
+    var cloud_color := Color(0.34, 0.39, 0.43, 0.055 * _intensity)
+    var glow_color := Color(0.62, 0.64, 0.61, 0.025 * _intensity)
+    if _preset == "harbor_dusk":
+        cloud_color = Color(0.30, 0.34, 0.40, 0.075 * _intensity)
+        glow_color = Color(0.82, 0.50, 0.38, 0.030 * _intensity)
+    elif _preset == "alpine_night":
+        cloud_color = Color(0.34, 0.42, 0.48, 0.050 * _intensity)
+        glow_color = Color(0.68, 0.76, 0.80, 0.022 * _intensity)
+    elif _preset == "jungle_storm":
+        cloud_color = Color(0.18, 0.28, 0.21, 0.090 * _intensity)
+        glow_color = Color(0.42, 0.58, 0.43, 0.026 * _intensity)
+
+    for index in range(9):
+        var speed := 2.0 + _noise(index, 20.1) * 4.0
+        var track_width := _world_size.x + 900.0
+        var base_x := fposmod(
+            _noise(index, 20.8) * track_width + _atmosphere_time * speed,
+            track_width
+        ) - 450.0
+        var base_y := 78.0 + _noise(index, 21.4) * 210.0
+        var scale := 0.75 + _noise(index, 22.0) * 0.85
+        for puff in range(5):
+            var puff_x := base_x + float(puff) * 54.0 * scale
+            var puff_y := base_y + sin(float(puff) * 1.4 + float(index)) * 10.0
+            var radius := (28.0 + _noise(index * 7 + puff, 22.7) * 34.0) * scale
+            draw_circle(Vector2(puff_x, puff_y), radius, cloud_color)
+            draw_line(
+                Vector2(puff_x - radius * 0.70, puff_y + radius * 0.34),
+                Vector2(puff_x + radius * 0.72, puff_y + radius * 0.30),
+                glow_color,
+                maxf(1.0, 2.0 * scale),
+            )
 
 func _draw_far_ridge() -> void:
     if _preset == "harbor_dusk":
@@ -168,7 +219,7 @@ func _draw_ruined_city() -> void:
         var smoke_x := 520.0 + float(index) * 640.0
         var base_y := 250.0 + _noise(index, 6.3) * 80.0
         for puff in range(5):
-            var drift := float(puff) * 18.0
+            var drift := float(puff) * 18.0 + sin(_atmosphere_time * 0.55 + float(index) * 0.9 + float(puff) * 0.4) * (6.0 + float(puff) * 2.0)
             var radius := 18.0 + float(puff) * 7.0
             draw_circle(
                 Vector2(smoke_x + drift, base_y - float(puff) * 22.0),
@@ -178,7 +229,8 @@ func _draw_ruined_city() -> void:
 
     for origin_x in [1180.0, 3180.0, 4520.0]:
         var origin := Vector2(origin_x, _floor_y - 154.0)
-        var beam_tip := Vector2(origin_x + 420.0, 118.0)
+        var sweep := sin(_atmosphere_time * 0.42 + origin_x * 0.0017) * 245.0
+        var beam_tip := Vector2(origin_x + 300.0 + sweep, 118.0)
         var beam := PackedVector2Array([
             origin + Vector2(-8.0, 0.0),
             beam_tip + Vector2(-78.0, 0.0),
@@ -354,7 +406,9 @@ func _draw_mid_defence() -> void:
             Color("30383b"),
             6.0,
         )
-        draw_circle(Vector2(pole_x, _floor_y - 152.0), 7.0, Color(0.82, 0.67, 0.38, 0.44))
+        var lamp_pulse := 0.38 + sin(_atmosphere_time * 2.2 + float(index) * 0.8) * 0.06
+        draw_circle(Vector2(pole_x, _floor_y - 152.0), 11.0, Color(0.88, 0.69, 0.34, lamp_pulse * 0.20))
+        draw_circle(Vector2(pole_x, _floor_y - 152.0), 7.0, Color(0.82, 0.67, 0.38, lamp_pulse))
         if pole_x + 620.0 <= _world_size.x:
             draw_line(
                 Vector2(pole_x, _floor_y - 140.0),
