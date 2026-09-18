@@ -107,6 +107,9 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert manifest["generation"]["compositionVersion"] == 1
             assert len(manifest["generation"]["compositionRevision"]) == 64
             assert set(manifest["generation"]["omittedOptionalEnemyIds"]).isdisjoint(mandatory_enemy_ids)
+            assert manifest["generation"]["treasureVariationVersion"] == 1
+            assert len(manifest["generation"]["treasureVariationRevision"]) == 64
+            assert len(manifest["generation"]["treasureBoons"]) <= 1
 
 
 def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():
