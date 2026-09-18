@@ -86,6 +86,10 @@ REQUIRED_MATTHIAS = (
     "set_aim_direction",
     "_sync_aim_feedback",
     "_flash.rotation = local_aim.angle()",
+    "SHOOT_FACE_REPAIR_SOURCE_FRAMES",
+    "SHOOT_FACE_REPAIR_CUT_X",
+    "_repair_distorted_shoot_frames",
+
 )
 FORBIDDEN_MATTHIAS = (
     "MOTION_ATLAS_URL",
