@@ -15,6 +15,10 @@ import main as main_module
 
 BACKEND = Path(__file__).resolve().parent
 STRONG_JWT_SECRET = "staging-security-test-secret-32-bytes-minimum"
+STAGING_DB_ENV = {
+    "MONGO_URL": "mongodb://127.0.0.1:27017",
+    "MONGO_DB_NAME": "chess_study_staging",
+}
 
 
 def _import_module(module: str, *, unset=(), **overrides):
@@ -54,6 +58,7 @@ def test_staging_rejects_open_registration_without_invite_secret():
         ENVIRONMENT="staging",
         JWT_SECRET=STRONG_JWT_SECRET,
         ALLOW_REGISTRATION="true",
+        **STAGING_DB_ENV,
         ADMIN_USERNAMES="evilsysadmin",
     )
     assert result.returncode != 0
@@ -66,6 +71,7 @@ def test_staging_rejects_admin_wildcard():
         ENVIRONMENT="staging",
         JWT_SECRET=STRONG_JWT_SECRET,
         INVITE_CODE="test-invite",
+        **STAGING_DB_ENV,
         ALLOW_REGISTRATION="true",
         ADMIN_USERNAMES="*",
     )
