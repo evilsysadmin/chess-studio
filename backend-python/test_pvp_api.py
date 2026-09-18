@@ -167,6 +167,15 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert first_ready.json()["match"]["status"] == "starting"
     assert first_ready.json()["match"]["youReady"] is True
     assert first_ready.json()["match"]["opponentReady"] is False
+
+    # F5/retry del mismo jugador no duplica ni adelanta el arranque.
+    repeated_ready = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/ready")
+    assert repeated_ready.status_code == 200
+    assert repeated_ready.json()["match"]["status"] == "starting"
+    assert repeated_ready.json()["match"]["youReady"] is True
+    assert repeated_ready.json()["match"]["opponentReady"] is False
+    assert repeated_ready.json()["match"]["revision"] == first_ready.json()["match"]["revision"]
+
     second_ready = as_user(client, black, "post", f"/api/pvp/matches/{match_id}/ready")
     assert second_ready.status_code == 200
     prepared = second_ready.json()["match"]
