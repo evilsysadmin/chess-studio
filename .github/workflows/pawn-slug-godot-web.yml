@@ -90,6 +90,13 @@ jobs:
             echo '::error::Pawn Slug Godot contains GDScript load/parse errors.'
             exit 1
           fi
+      - name: Runtime mechanics smoke · crouch + aim + respawn
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          "$godot" --headless --path games/pawn-slug-godot --script res://tests/player_runtime_smoke.gd
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
       - name: Godot runtime stays strictly 2D
