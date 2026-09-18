@@ -50,10 +50,23 @@ const MUZZLE_SCAN_ALPHA := 0.12
 const MUZZLE_SCAN_Y_MIN_RATIO := 0.26
 const MUZZLE_SCAN_Y_MAX_RATIO := 0.73
 const MUZZLE_TIP_PAD_PX := 2.0
-const RUN_FIRE_RECOIL_DEGREES := 2.35
-const RUN_FIRE_RECOIL_DECAY_DEGREES := 78.0
-const MOVING_FIRE_RECOIL_BOOST := 1.35
-const MOVING_FIRE_FLASH_BOOST := 1.34
+const RUN_FIRE_RECOIL_DEGREES := 4.2
+const RUN_FIRE_RECOIL_DECAY_DEGREES := 32.0
+const MOVING_FIRE_FLASH_SECONDS := 0.088
+const MOVING_FIRE_RECOIL_HOLD_SECONDS := 0.060
+const MOVING_FIRE_RECOIL_DECAY_PX := 38.0
+const MOVING_FIRE_RECOIL_BOOST := {
+    "pistol": 1.65,
+    "machinegun": 2.25,
+    "shotgun": 1.65,
+    "panzerfaust": 1.35,
+}
+const MOVING_FIRE_FLASH_BOOST := {
+    "pistol": 1.50,
+    "machinegun": 2.15,
+    "shotgun": 1.55,
+    "panzerfaust": 1.40,
+}
 
 const FULL_ACTION_ORDER := [
     "idle", "walk", "run", "jump", "fall", "land", "shoot", "reload", "hurt", "die", "crouch",
@@ -131,6 +144,7 @@ var _muzzle_remaining := 0.0
 var _muzzle_flash_boost := 1.0
 var _recoil_x := 0.0
 var _recoil_rotation := 0.0
+var _moving_recoil_hold_remaining := 0.0
 var _facing := 1.0
 var _one_shot_action := ""
 var _hold_one_shot := false
@@ -251,25 +265,31 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         var recoil_strength := float(RECOIL.get(visual_weapon, 4.0))
         _muzzle_flash_boost = 1.0
         if locomoting_now:
-            # Static fire already has a strong authored shoot pose. Locomotion
-            # keeps the stride, so compensate deliberately: the shot must not
-            # read weaker just because Matthias is moving.
-            recoil_strength *= MOVING_FIRE_RECOIL_BOOST
-            _muzzle_flash_boost = MOVING_FIRE_FLASH_BOOST
+            # Static fire gets a 6-frame authored shoot animation. Moving fire
+            # keeps the locomotion sprite, so it needs its own readable envelope
+            # rather than a tiny one-frame nudge.
+            recoil_strength *= float(MOVING_FIRE_RECOIL_BOOST.get(visual_weapon, 1.65))
+            _muzzle_flash_boost = float(MOVING_FIRE_FLASH_BOOST.get(visual_weapon, 1.50))
+            _muzzle_remaining = MOVING_FIRE_FLASH_SECONDS
+            _moving_recoil_hold_remaining = MOVING_FIRE_RECOIL_HOLD_SECONDS
             _recoil_rotation = deg_to_rad(-RUN_FIRE_RECOIL_DEGREES)
-        _recoil_x = -_facing * recoil_strength
+        # FacingRoot already mirrors local X. Negative local X is backwards for
+        # both facings; multiplying by facing here made left-facing recoil wrong.
+        _recoil_x = -recoil_strength
     if landed_now and not _dead and not (_using_full_atlas and _animation_available("land")):
         _fx_root.scale = Vector2(1.03, 0.95)
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
     if _muzzle_remaining <= 0.0:
         _muzzle_flash_boost = 1.0
-    _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
-    _recoil_rotation = move_toward(
-        _recoil_rotation,
-        0.0,
-        deg_to_rad(RUN_FIRE_RECOIL_DECAY_DEGREES) * delta,
-    )
+    _moving_recoil_hold_remaining = maxf(0.0, _moving_recoil_hold_remaining - delta)
+    if _moving_recoil_hold_remaining <= 0.0:
+        _recoil_x = move_toward(_recoil_x, 0.0, MOVING_FIRE_RECOIL_DECAY_PX * delta)
+        _recoil_rotation = move_toward(
+            _recoil_rotation,
+            0.0,
+            deg_to_rad(RUN_FIRE_RECOIL_DECAY_DEGREES) * delta,
+        )
     _fx_root.position.x = _recoil_x
     if not _dead:
         _fx_root.rotation += _recoil_rotation
