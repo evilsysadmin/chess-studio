@@ -98,8 +98,11 @@ def self_test() -> None:
         assert requires_heavy_security([path]), f"debía activar security pesado: {path}"
 
     iac_positive = (
+        "infra/oci/staging/main.tf",
         "infra/oci/staging/terraform.tfvars",
         "infra/oci/staging/tests/contracts.tftest.hcl",
+        "infra/cloudflare/main.tf",
+        "infra/terraform/main.tf",
         "infra/oci/runtime/backend.staging.env",
     )
     for path in iac_positive:
