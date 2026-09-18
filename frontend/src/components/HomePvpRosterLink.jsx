@@ -10,34 +10,50 @@ export default function HomePvpRosterLink({
 }) {
   const active = Boolean(activeMatch);
   const challenged = Number(incomingCount) > 0;
-  const title = active ? 'Duelo activo' : challenged ? 'Reto pendiente' : enrolled ? 'En roster' : 'Duelo online';
-  const detail = active
-    ? 'Volver a la War Room 1 vs 1'
+  const hasRivals = Number(rivalCount) > 0;
+  const title = active
+    ? 'Duelo activo'
     : challenged
-      ? 'Tienes un desafío esperando respuesta'
+      ? 'Reto pendiente'
       : enrolled
-        ? `${rivalCount} rival${rivalCount === 1 ? '' : 'es'} disponible${rivalCount === 1 ? '' : 's'} · sigue jugando normal`
-        : 'Entra al roster y reta a otro jugador';
+        ? hasRivals ? 'Rivales disponibles' : 'Esperando rival'
+        : 'Jugar 1 vs 1';
+  const detail = active
+    ? 'Vuelve a tu partida 1 vs 1'
+    : challenged
+      ? 'Abre y responde al desafío'
+      : enrolled
+        ? hasRivals
+          ? `${rivalCount} rival${rivalCount === 1 ? '' : 'es'} · abre, elige y pulsa Retar`
+          : 'Sigues disponible · te avisaremos cuando aparezca alguien'
+        : 'Ponte disponible, elige rival y pulsa Retar';
+  const action = active
+    ? 'VOLVER'
+    : challenged
+      ? 'RESPONDER'
+      : enrolled
+        ? hasRivals ? 'ELEGIR' : 'VER SALA'
+        : 'ENTRAR';
 
   return (
     <button
       type="button"
-      className={`home-pvp-roster-link${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}`}
+      className={`home-pvp-roster-link${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}`}
       onClick={onOpen}
       disabled={disabled}
-      aria-label="Abrir roster 1 contra 1 de War Room"
+      aria-label="Abrir rivales 1 contra 1 de War Room"
     >
       <span className="home-pvp-roster-link__emblem" aria-hidden="true">
         <span className="home-pvp-roster-link__signal" />
         <span className="home-pvp-roster-link__mark">♟</span>
       </span>
       <span className="home-pvp-roster-link__copy">
-        <small>WAR ROOM · 1 VS 1</small>
+        <small>WAR ROOM · DUELOS 1 VS 1</small>
         <strong>{title}</strong>
         <span>{detail}</span>
       </span>
       <span className="home-pvp-roster-link__action" aria-hidden="true">
-        <span>{active ? 'VOLVER' : 'ROSTER'}</span>
+        <span>{action}</span>
         <b>›</b>
       </span>
     </button>
