@@ -243,7 +243,6 @@ assert 'printf "integrity=%s,service=%s"' in deploy
 # existing tunnel. Any probe failure must retain the full connector self-heal.
 assert "public_tunnel_attest" in deploy
 assert 'Cache-Control: no-cache' in deploy
-assert 'CHESS_STUDIO_TUNNEL_REUSED' in deploy
 assert 'if ! /bin/bash "$tunnel_connector"; then' in deploy
 assert 'tunnel_action="restarted"' in deploy
 
@@ -251,7 +250,13 @@ assert 'tunnel_action="restarted"' in deploy
 # without weakening or bypassing any readiness/integrity gate.
 for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
     assert f"phase_done {phase}" in deploy
-assert "OCI_DEPLOY_TIMINGS phases=%s k3s=%s tunnel=%s" in deploy
+assert "OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s" in deploy
+assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
+assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
+assert 'compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1' in deploy
+assert 'cat "$compose_log" >&2' in deploy
+assert 'k3s_contract_action="reused"' in deploy
+assert 'k3s_contract_action="refreshed"' in deploy
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
 assert 'docker pull --quiet "$target_image"' in deploy
 
