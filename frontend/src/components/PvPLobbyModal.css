@@ -423,6 +423,15 @@
   white-space: nowrap;
 }
 
+.pvp-lobby__head-to-head {
+  margin-top: .06rem;
+  color: rgba(221, 193, 139, .54);
+  font-family: var(--font-mono);
+  font-size: .53rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+}
+
 .pvp-lobby__player-rating {
   min-width: 62px;
   display: grid;

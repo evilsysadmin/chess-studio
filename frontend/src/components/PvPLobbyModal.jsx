@@ -17,6 +17,12 @@ function challengeExpiryLabel(value) {
   return `caduca ${time}`;
 }
 
+export function pvpHeadToHeadLabel(record) {
+  const games = Number(record?.games || 0);
+  if (games <= 0) return '';
+  return `VS TI · ${Number(record?.wins || 0)}V ${Number(record?.draws || 0)}T ${Number(record?.losses || 0)}D`;
+}
+
 function sortedRoster(rows) {
   return [...(rows || [])].sort((a, b) => {
     if (a.isSelf !== b.isSelf) return a.isSelf ? -1 : 1;
@@ -225,6 +231,7 @@ export default function PvPLobbyModal({
                         <div className="pvp-lobby__player-copy">
                           <strong>{row.username}</strong>
                           <span>{row.tier}</span>
+                          {row.headToHead?.games > 0 && <small className="pvp-lobby__head-to-head">{pvpHeadToHeadLabel(row.headToHead)}</small>}
                         </div>
                         <div className="pvp-lobby__player-state"><i aria-hidden="true" /><span>{pending ? 'RETO ENVIADO' : 'DISPONIBLE'}</span></div>
                         <div className="pvp-lobby__player-rating"><small>ELO 1V1</small><b>{row.rating}</b></div>
