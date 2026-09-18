@@ -80,3 +80,11 @@ export function projectPvpClock(clock, elapsedMs = 0) {
     incrementMs: Math.max(0, Number(clock?.incrementMs) || 0),
   };
 }
+
+
+export function opponentPresenceLabel(value) {
+  if (value === 'online') return 'EN LÍNEA';
+  if (value === 'reconnecting') return 'RECONECTANDO';
+  if (value === 'disconnected') return 'SIN CONEXIÓN';
+  return 'SIN DATO';
+}
