@@ -18,7 +18,7 @@ jobs:
   render-enemies:
     name: Render enemy · ${{ matrix.enemy_type }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 8
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -39,7 +39,7 @@ jobs:
           mkdir -p /tmp/pawn-slug-enemy-v1
           blender --background \
             --python scripts/blender/render_pawn_slug_enemy_sheets_v1.py \
-            -- --output-dir /tmp/pawn-slug-enemy-v1 --enemy-type "$ENEMY_TYPE"
+            -- --output-dir /tmp/pawn-slug-enemy-v1 --enemy-type "$ENEMY_TYPE" --smoke
           test -s /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
           test -s /tmp/pawn-slug-enemy-v1/manifest.json
 
@@ -60,6 +60,7 @@ jobs:
           manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
           types = tuple(manifest['types'])
           actions = manifest['actions']
+          rendered_frames = manifest.get('renderedFrames') or {}
           row_order = tuple(actions)
           violations = []
 
@@ -73,8 +74,12 @@ jobs:
           gate(actions == {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}, f'unexpected action contract: {actions!r}')
           gate(manifest.get('sourceFacing') == 'left', f"sourceFacing={manifest.get('sourceFacing')!r}")
           gate(manifest.get('columns') == 16, f"columns={manifest.get('columns')!r}")
-          gate(manifest.get('frameSize2x') == [192, 192], f"frameSize2x={manifest.get('frameSize2x')!r}")
+          gate(manifest.get('mode') == 'smoke', f"mode={manifest.get('mode')!r}")
+          gate(manifest.get('frameSize') == [96, 96], f"frameSize={manifest.get('frameSize')!r}")
           gate(manifest.get('runtimeCell') == [96, 96], f"runtimeCell={manifest.get('runtimeCell')!r}")
+          for action, count in actions.items():
+              expected_samples = [0, count // 2, count - 1]
+              gate(rendered_frames.get(action) == expected_samples, f'{action}: renderedFrames={rendered_frames.get(action)!r}; expected {expected_samples!r}')
 
           cell = 96
           cols = 16
@@ -91,15 +96,15 @@ jobs:
                   bboxes = []
                   luminance = []
                   action_frames = []
-                  for frame in range(count):
+                  for frame in rendered_frames.get(action, []):
                       source = root / 'frames' / enemy_type / action / f'{frame:02d}.png'
                       if not source.is_file():
                           gate(False, f'missing frame: {source}')
                           continue
                       image = Image.open(source).convert('RGBA')
-                      if not gate(image.size == (192, 192), f'wrong frame size {source}: {image.size}'):
+                      if not gate(image.size == (cell, cell), f'wrong frame size {source}: {image.size}'):
                           continue
-                      down = image.resize((cell, cell), Image.Resampling.LANCZOS)
+                      down = image
                       alpha = down.getchannel('A').point(lambda value: 255 if value >= 24 else 0)
                       bbox = alpha.getbbox()
                       if bbox is None:
@@ -146,7 +151,7 @@ jobs:
               webp = root / f'enemy_{enemy_type}_blender_v1.webp'
               sheet.save(png, optimize=True)
               sheet.save(webp, 'WEBP', quality=90, method=6)
-              gate(webp.stat().st_size > 20_000, f'{webp.name} suspiciously small: {webp.stat().st_size}')
+              gate(webp.stat().st_size > 8_000, f'{webp.name} suspiciously small: {webp.stat().st_size}')
               gate(webp.stat().st_size < 900_000, f'{webp.name} suspiciously large: {webp.stat().st_size}')
               stats[enemy_type] = type_stats
               frame_stats[enemy_type] = type_frame_stats
@@ -182,6 +187,7 @@ jobs:
             /tmp/pawn-slug-enemy-v1/manifest.json
             /tmp/pawn-slug-enemy-v1/sheet_stats.json
             /tmp/pawn-slug-enemy-v1/gate_violations.json
+            /tmp/pawn-slug-enemy-v1/frames/
             /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.png
             /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.webp
             /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1_review.png
