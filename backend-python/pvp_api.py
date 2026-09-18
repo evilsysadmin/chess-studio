@@ -21,6 +21,7 @@ PVP_HANDOFF_SECONDS = 5
 PVP_READY_TIMEOUT_SECONDS = 30
 PVP_PRESENCE_ONLINE_SECONDS = 4
 PVP_PRESENCE_RECONNECTING_SECONDS = 12
+PVP_DISCONNECT_GRACE_SECONDS = 60
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -193,6 +194,119 @@ async def _finish_handoff_timeout(match_id: str, match: dict, now: datetime | No
     return updated or await store.get_match(match_id)
 
 
+def _disconnect_grace_key(color: chess.Color) -> str:
+    return "white_disconnect_grace_started_at" if color == chess.WHITE else "black_disconnect_grace_started_at"
+
+
+def _player_was_recently_present(match: dict, color: chess.Color, now: datetime) -> bool:
+    seen_key = "white_seen_at" if color == chess.WHITE else "black_seen_at"
+    seen_at = match.get(seen_key)
+    if not isinstance(seen_at, datetime):
+        return False
+    return max(0.0, (now - seen_at).total_seconds()) <= PVP_PRESENCE_RECONNECTING_SECONDS
+
+
+async def _ensure_disconnect_grace(
+    match_id: str,
+    match: dict,
+    username: str,
+    now: datetime | None = None,
+    *,
+    observer_was_live: bool = True,
+) -> dict:
+    if match.get("status") != "active":
+        return match
+    stamp = now or store.utcnow()
+    color = _player_color(match, username)
+    if color is None:
+        return match
+    opponent_color = not color
+    opponent_presence, _seen_at = _opponent_presence(match, username, stamp)
+    grace_key = _disconnect_grace_key(opponent_color)
+    if opponent_presence != "disconnected":
+        return match
+    if observer_was_live and isinstance(match.get(grace_key), datetime):
+        return match
+    return await store.begin_disconnect_grace(
+        match_id,
+        "w" if opponent_color == chess.WHITE else "b",
+        now=stamp,
+        restart=not observer_was_live,
+    ) or match
+
+
+async def _finish_disconnect_forfeit(
+    match_id: str,
+    match: dict,
+    username: str,
+    now: datetime | None = None,
+) -> dict | None:
+    if match.get("status") != "active":
+        return match
+    stamp = now or store.utcnow()
+    color = _player_color(match, username)
+    if color is None:
+        return match
+    opponent_color = not color
+    grace_started_at = match.get(_disconnect_grace_key(opponent_color))
+    opponent_presence, _seen_at = _opponent_presence(match, username, stamp)
+    if (
+        opponent_presence != "disconnected"
+        or not isinstance(grace_started_at, datetime)
+        or grace_started_at + timedelta(seconds=PVP_DISCONNECT_GRACE_SECONDS) > stamp
+    ):
+        return match
+
+    clock = _clock_snapshot(match, stamp)
+    result = "0-1" if opponent_color == chess.WHITE else "1-0"
+    return await store.update_match(
+        match_id,
+        expected_revision=int(match.get("revision", 0)),
+        changes={
+            "status": "finished",
+            "result": result,
+            "end_reason": "disconnect",
+            "white_clock_ms": clock["whiteMs"],
+            "black_clock_ms": clock["blackMs"],
+            "turn_started_at": None,
+            "updated_at": stamp,
+        },
+    )
+
+
+async def _apply_active_lifecycle(
+    match_id: str,
+    match: dict,
+    username: str,
+    now: datetime | None = None,
+    *,
+    observer_was_live: bool = True,
+) -> dict:
+    if match.get("status") != "active":
+        return match
+    stamp = now or store.utcnow()
+
+    timed = await _finish_timeout(match_id, match, stamp)
+    if timed is None:
+        match = await store.get_match(match_id) or match
+    else:
+        match = timed
+    if match.get("status") != "active":
+        return match
+
+    match = await _ensure_disconnect_grace(
+        match_id,
+        match,
+        username,
+        stamp,
+        observer_was_live=observer_was_live,
+    )
+    disconnected = await _finish_disconnect_forfeit(match_id, match, username, stamp)
+    if disconnected is None:
+        return await store.get_match(match_id) or match
+    return disconnected
+
+
 def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
     if color is None or match.get("status") != "finished":
         return None
@@ -225,6 +339,15 @@ def _public_match(match: dict, username: str) -> dict:
     color = _player_color(match, username)
     turn = match.get("turn", "w")
     opponent_presence, opponent_seen_at = _opponent_presence(match, username)
+    opponent_color = not color if color is not None else None
+    opponent_grace_started_at = match.get(_disconnect_grace_key(opponent_color)) if opponent_color is not None else None
+    opponent_disconnect_deadline = (
+        opponent_grace_started_at + timedelta(seconds=PVP_DISCONNECT_GRACE_SECONDS)
+        if match.get("status") == "active"
+        and opponent_presence == "disconnected"
+        and isinstance(opponent_grace_started_at, datetime)
+        else None
+    )
     you_ready = bool(match.get("white_ready")) if color == chess.WHITE else bool(match.get("black_ready")) if color == chess.BLACK else False
     opponent_ready = bool(match.get("black_ready")) if color == chess.WHITE else bool(match.get("white_ready")) if color == chess.BLACK else False
     return {
@@ -244,6 +367,7 @@ def _public_match(match: dict, username: str) -> dict:
         "opponentReady": opponent_ready,
         "opponentPresence": opponent_presence,
         "opponentSeenAt": _iso(opponent_seen_at),
+        "opponentDisconnectDeadline": _iso(opponent_disconnect_deadline),
         "ratingChange": _rating_change(match, color),
         "clock": _clock_snapshot(match),
         "history": _serialize(match.get("history") or []),
@@ -463,15 +587,24 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         color = _player_color(match or {}, username)
         if not match or color is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
-        match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
+        now = store.utcnow()
+        observer_was_live = _player_was_recently_present(match, color, now)
+        match = await store.touch_match_presence(
+            match_id,
+            username,
+            "w" if color == chess.WHITE else "b",
+            now=now,
+        ) or match
         if match.get("status") == "starting":
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
-            timed = await _finish_timeout(match_id, match)
-            if timed is None:
-                match = await store.get_match(match_id) or match
-            else:
-                match = timed
+            match = await _apply_active_lifecycle(
+                match_id,
+                match,
+                username,
+                now,
+                observer_was_live=observer_was_live,
+            )
         if match.get("status") == "finished":
             # Reintento idempotente: si el request que dio mate, la bandera o
             # la rendición se cortó tras guardar la partida pero antes de
@@ -520,7 +653,24 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
             if match.get("status") != "active":
                 raise HTTPException(409, "La partida ya ha terminado.")
-            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
+            lifecycle_now = store.utcnow()
+            observer_was_live = _player_was_recently_present(match, color, lifecycle_now)
+            match = await store.touch_match_presence(
+                match_id,
+                username,
+                "w" if color == chess.WHITE else "b",
+                now=lifecycle_now,
+            ) or match
+            match = await _apply_active_lifecycle(
+                match_id,
+                match,
+                username,
+                lifecycle_now,
+                observer_was_live=observer_was_live,
+            )
+            if match.get("status") == "finished":
+                await rating_store.settle_match(match_id, match)
+                return {"match": _public_match(match, username)}
 
             board = chess.Board(match["fen"])
             if board.turn != color:

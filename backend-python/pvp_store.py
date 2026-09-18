@@ -657,29 +657,72 @@ async def touch_match_presence(
                 return None
             if color == "w" and row.get("white") == username:
                 key = "white_seen_at"
+                grace_key = "white_disconnect_grace_started_at"
             elif color == "b" and row.get("black") == username:
                 key = "black_seen_at"
+                grace_key = "black_disconnect_grace_started_at"
             else:
                 return None
             row[key] = stamp
+            row.pop(grace_key, None)
             return _public(row)
 
     _, _, matches = collections
     if color == "w":
-        player_field, seen_field = "white", "white_seen_at"
+        player_field, seen_field, grace_field = "white", "white_seen_at", "white_disconnect_grace_started_at"
     elif color == "b":
-        player_field, seen_field = "black", "black_seen_at"
+        player_field, seen_field, grace_field = "black", "black_seen_at", "black_disconnect_grace_started_at"
     else:
         return None
     try:
         row = await matches.find_one_and_update(
             {"_id": match_id, player_field: username, "acceptance_state": {"$ne": "staged"}},
-            {"$set": {seen_field: stamp}},
+            {"$set": {seen_field: stamp}, "$unset": {grace_field: ""}},
             return_document=ReturnDocument.AFTER,
         )
         return _public(row)
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo actualizar la presencia del duelo 1v1.") from exc
+
+
+async def begin_disconnect_grace(
+    match_id: str,
+    color: str,
+    *,
+    now: datetime | None = None,
+    restart: bool = False,
+) -> dict[str, Any] | None:
+    """Arm one player's disconnect grace without changing gameplay revision."""
+    stamp = now or utcnow()
+    if color == "w":
+        grace_field = "white_disconnect_grace_started_at"
+    elif color == "b":
+        grace_field = "black_disconnect_grace_started_at"
+    else:
+        return None
+
+    collections = await _collections()
+    if collections is None:
+        async with _memory_guard():
+            row = _memory_matches.get(match_id)
+            if not row or row.get("status") != "active" or row.get("acceptance_state") == "staged":
+                return None
+            current = row.get(grace_field)
+            if restart or not isinstance(current, datetime) or stamp < current:
+                row[grace_field] = stamp
+            return _public(row)
+
+    _, _, matches = collections
+    try:
+        update = {"$set": {grace_field: stamp}} if restart else {"$min": {grace_field: stamp}}
+        row = await matches.find_one_and_update(
+            {"_id": match_id, "status": "active", "acceptance_state": {"$ne": "staged"}},
+            update,
+            return_document=ReturnDocument.AFTER,
+        )
+        return _public(row)
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo iniciar la gracia de reconexión 1v1.") from exc
 
 
 async def update_match(match_id: str, *, expected_revision: int, changes: dict[str, Any]) -> dict[str, Any] | None:

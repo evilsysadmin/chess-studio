@@ -21,6 +21,9 @@ function matchPayload({ status = 'active', startsAt = null, ...overrides } = {})
     createdAt: '2026-09-18T00:00:00Z',
     updatedAt: '2026-09-18T00:00:00Z',
     startsAt,
+    opponentPresence: 'online',
+    opponentSeenAt: new Date().toISOString(),
+    opponentDisconnectDeadline: null,
     clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
     ...overrides,
   };
@@ -179,4 +182,50 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await expect.poll(() => matchReads, { timeout: 1200 }).toBeGreaterThan(readsBeforeOnline);
   await expect(duelStatus).toHaveText('Tu turno');
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+  const rivalPresence = restoredWarRoom.locator('.pvp-war-room__opponent-meta em');
+  await expect(rivalPresence).toHaveText('EN LÍNEA');
+
+  // Backend arma una gracia factual cuando el rival lleva >12 s ausente. La UI
+  // sólo proyecta el deadline; no decide el resultado por su cuenta.
+  const readsBeforeGrace = matchReads;
+  authoritativeOverrides = {
+    revision: 2,
+    yourTurn: true,
+    turn: 'w',
+    opponentPresence: 'disconnected',
+    opponentDisconnectDeadline: new Date(Date.now() + 60_000).toISOString(),
+  };
+  await expect.poll(() => matchReads, { timeout: 1800 }).toBeGreaterThan(readsBeforeGrace);
+  await expect(rivalPresence).toHaveText(/SIN CONEXIÓN · \d+ s/);
+
+  // Si vuelve antes del deadline, el mismo snapshot limpia la gracia.
+  const readsBeforeRecovery = matchReads;
+  authoritativeOverrides = {
+    revision: 2,
+    yourTurn: true,
+    turn: 'w',
+    opponentPresence: 'online',
+    opponentDisconnectDeadline: null,
+  };
+  await expect.poll(() => matchReads, { timeout: 1800 }).toBeGreaterThan(readsBeforeRecovery);
+  await expect(rivalPresence).toHaveText('EN LÍNEA');
+
+  // Si no vuelve, sólo el servidor cierra el duelo y liquida el resultado.
+  const readsBeforeForfeit = matchReads;
+  authoritativeOverrides = {
+    revision: 3,
+    status: 'finished',
+    result: '1-0',
+    endReason: 'disconnect',
+    yourTurn: false,
+    opponentPresence: 'disconnected',
+    opponentDisconnectDeadline: null,
+    ratingChange: { before: 1050, after: 1066, delta: 16 },
+  };
+  await expect.poll(() => matchReads, { timeout: 1800 }).toBeGreaterThan(readsBeforeForfeit);
+  const debrief = restoredWarRoom.getByRole('dialog', { name: 'Resumen del duelo' });
+  await expect(debrief).toBeVisible();
+  await expect(debrief).toContainText('El rival agotó los 60 s de gracia de reconexión.');
+  await expect(debrief).toContainText('Desconexión');
 });
