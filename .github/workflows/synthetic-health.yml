@@ -4,15 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '23 */2 * * *'
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/synthetic-health.yml
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
 
 concurrency:
   group: chess-studio-production-synthetic
@@ -20,7 +14,6 @@ concurrency:
 
 jobs:
   probe:
-    if: github.event_name != 'push'
     name: Liveness + readiness + authenticated gameplay
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -36,65 +29,3 @@ jobs:
         run: python3 -c "import sys; assert sys.version_info >= (3, 10), sys.version"
       - name: Probe production
         run: python3 scripts/synthetic_health_check.py --timeout 75
-
-  cleanup-retired-runs:
-    if: github.event_name == 'push'
-    name: One-shot cleanup of retired Actions runs
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      ORIGINAL_SHA: d433af11232a216dab9260ae55093940a6530ac6
-    steps:
-      - name: Delete retired workflow runs in bounded parallel
-        shell: bash
-        run: |
-          set -euo pipefail
-          paths='[
-            ".github/workflows/auto-merge.yml",
-            ".github/workflows/main-delivery-handoff.yml",
-            ".github/workflows/matthias-visual.yml",
-            ".github/workflows/oci-arm64-readiness.yml",
-            ".github/workflows/oci-terraform-readiness.yml",
-            ".github/workflows/war-room-runtime-marathon.yml",
-            ".github/workflows/codeql.yml"
-          ]'
-
-          gh api --paginate "repos/${REPO}/actions/runs?per_page=100" \
-            | jq -r --argjson paths "${paths}" '.workflow_runs[] | select(.path as $p | $paths | index($p)) | .id' \
-            | sort -un > /tmp/retired-run-ids
-
-          total="$(wc -l < /tmp/retired-run-ids)"
-          echo "Retired runs remaining: ${total}"
-
-          delete_run() {
-            local run_id="$1"
-            for attempt in 1 2 3; do
-              if gh api --method DELETE "repos/${REPO}/actions/runs/${run_id}" >/dev/null; then
-                echo "Deleted ${run_id}"
-                return 0
-              fi
-              sleep "${attempt}"
-            done
-            echo "::error::Failed to delete run ${run_id}"
-            return 1
-          }
-          export -f delete_run
-          export GH_TOKEN REPO
-
-          xargs -r -n1 -P4 bash -c 'delete_run "$1"' _ < /tmp/retired-run-ids
-
-      - name: Restore canonical synthetic workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          path=".github/workflows/synthetic-health.yml"
-          current_sha="$(gh api "repos/${REPO}/contents/${path}?ref=main" --jq '.sha')"
-          original_b64="$(gh api "repos/${REPO}/contents/${path}?ref=${ORIGINAL_SHA}" --jq '.content' | tr -d '\n')"
-
-          gh api --method PUT "repos/${REPO}/contents/${path}" \
-            -f message="chore: restore synthetic workflow after one-shot cleanup" \
-            -f content="${original_b64}" \
-            -f sha="${current_sha}" \
-            -f branch="main"
