@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import secrets
 import threading
@@ -24,6 +25,9 @@ _HTTP_COUNTER: Any | None = None
 _HTTP_LATENCY: Any | None = None
 _FRONTEND_COUNTER: Any | None = None
 _FRONTEND_VITAL: Any | None = None
+_BILLING_GAUGE: Any | None = None
+_BILLING_COSTS: dict[str, tuple[float, str]] = {}
+_BILLING_COSTS_LOCK = threading.Lock()
 _LAST_INIT_ERROR: str | None = None
 _STARTUP_TRACE_ID: str | None = None
 _SIGNAL_ERRORS: dict[str, str | None] = {"traces": None, "metrics": None, "logs": None}
@@ -266,6 +270,43 @@ def record_frontend_otel(event_type: str, *, metric_name: str | None = None, val
         pass
 
 
+def _billing_cost_observations(_options=None):
+    try:
+        from opentelemetry.metrics import Observation
+        with _BILLING_COSTS_LOCK:
+            snapshot = dict(_BILLING_COSTS)
+        return [
+            Observation(
+                amount,
+                {"provider": provider, "currency": currency, "scope": "current_cycle"},
+            )
+            for provider, (amount, currency) in sorted(snapshot.items())
+        ]
+    except Exception:
+        return []
+
+
+def record_billing_costs_otel(costs: list[tuple[str, float, str]]) -> bool:
+    """Store the latest provider costs and force one OTLP metric export."""
+    cleaned: dict[str, tuple[float, str]] = {}
+    for provider, raw_amount, raw_currency in costs:
+        provider = str(provider or "").strip().lower()
+        if provider not in {"oci", "cloudflare"}:
+            raise ValueError("unsupported billing provider")
+        amount = float(raw_amount)
+        if not math.isfinite(amount) or amount < 0:
+            raise ValueError("invalid billing amount")
+        currency = str(raw_currency or "").strip().upper()
+        if len(currency) != 3 or not currency.isalpha():
+            raise ValueError("invalid billing currency")
+        cleaned[provider] = (amount, currency)
+    if set(cleaned) != {"oci", "cloudflare"}:
+        raise ValueError("both billing providers are required")
+    with _BILLING_COSTS_LOCK:
+        _BILLING_COSTS.update(cleaned)
+    return _METER_PROVIDER is not None and _force_flush(_METER_PROVIDER)
+
+
 def _force_flush(provider: Any | None, timeout_ms: int = 5000) -> bool:
     if provider is None:
         return False
@@ -377,7 +418,7 @@ def emit_observability_probe() -> dict[str, Any]:
 def configure_tracing(app: Any, *, release: str | None = None) -> bool:
     """Configure OTLP traces, metrics and logs once; fail-open per signal."""
     global _CONFIGURED, _TRACE_PROVIDER, _METER_PROVIDER, _LOGGER_PROVIDER
-    global _HTTP_COUNTER, _HTTP_LATENCY, _FRONTEND_COUNTER, _FRONTEND_VITAL
+    global _HTTP_COUNTER, _HTTP_LATENCY, _FRONTEND_COUNTER, _FRONTEND_VITAL, _BILLING_GAUGE
     global _LAST_INIT_ERROR, _OTEL_LOG_HANDLER, _STARTUP_TRACE_ID
     if _CONFIGURED:
         return True
@@ -509,6 +550,12 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             _HTTP_LATENCY = meter.create_histogram("chess_studio_http_server_duration", unit="s", description="Chess Studio HTTP request duration")
             _FRONTEND_COUNTER = meter.create_counter("chess_studio_frontend_events", description="Coarse frontend telemetry events")
             _FRONTEND_VITAL = meter.create_histogram("chess_studio_frontend_web_vital", description="Web Vital value reported by the frontend")
+            _BILLING_GAUGE = meter.create_observable_gauge(
+                "chess_studio_billing_cost_current_cycle",
+                callbacks=[_billing_cost_observations],
+                unit="1",
+                description="Current OCI or Cloudflare billing cost in provider billing currency.",
+            )
             _METER_PROVIDER = meter_provider
             _SIGNAL_ERRORS["metrics"] = None
         except Exception as exc:
