@@ -325,6 +325,36 @@ def add_table_and_board(materials):
     cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.28), (0.040, 0.028, 0.15), metal, bevel=0.01)
     cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.13, 0.028, 0.040), metal, bevel=0.01)
 
+    # Canonical lived-in table props, kept outside the board interaction footprint.
+    for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
+        cube(
+            f"HOME_PROP_table_book_{idx}",
+            (px, py, pz),
+            (0.58 - idx * 0.05, 0.34, 0.045),
+            materials["book_brown"] if idx != 1 else materials["book_green"],
+            bevel=0.025,
+        )
+    cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.17, 0.08, metal, vertices=20)
+    cube("HOME_PROP_table_candle", (-2.72, 1.60, 1.57), (0.055, 0.055, 0.20), materials["paper"], bevel=0.02)
+    cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.82), 0.055, 0.012, 0.18, materials["fire_hot"], vertices=14)
+    add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 58, (1.0, 0.48, 0.20), radius=0.30)
+
+    cube("HOME_PROP_table_folio", (2.65, 0.35, 1.37), (0.56, 0.36, 0.055), materials["book_brown"], bevel=0.035)
+    cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
+    cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
+    curve_tube(
+        "HOME_PROP_table_hourglass_frame_l",
+        [(-2.18, 2.05, 1.36), (-2.18, 2.05, 1.55)],
+        0.022,
+        metal,
+    )
+    curve_tube(
+        "HOME_PROP_table_hourglass_frame_r",
+        [(-2.02, 2.05, 1.36), (-2.02, 2.05, 1.55)],
+        0.022,
+        metal,
+    )
+
     for side in (-1, 1):
         x = side * 4.18
         cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
@@ -674,7 +704,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.035
+    bg.inputs["Strength"].default_value = 0.052
 
     materials = {
         "stone": material("HOME_MAT_stone", (0.145, 0.115, 0.090, 1), roughness=0.92, bump_scale=5.0, bump_strength=0.24),
@@ -837,11 +867,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 205, (0.72, 0.58, 0.46), 6.5, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 110, (0.13, 0.24, 0.42), 5.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 175, (0.66, 0.38, 0.22), 4.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 70, (0.34, 0.24, 0.17), 8.0, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 360, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 285, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 155, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 220, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 105, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 270, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 205, (0.86, 0.69, 0.52), 4.5, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 135, (0.78, 0.48, 0.26), 3.0, target=(-2.65, 5.9, 2.6))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 185, (0.38, 0.48, 0.60), 2.8, target=(1.55, 5.28, 2.4))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
