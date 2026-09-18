@@ -26,8 +26,12 @@ const FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FUL
 const NORMALIZED_FRAME_SIZE := 192
 const NORMALIZED_FOOT_GUTTER := 24
 const CELL_GUARD_PX := 2
-const BODY_SCALE := 0.67
+const AUTHORED_BODY_SCALE := 0.67
+const BODY_SCALE := 0.50
+const BODY_SCALE_RATIO := BODY_SCALE / AUTHORED_BODY_SCALE
 const PLAYER_FOOT_Y := 42.0
+const RUN_LEG_MOTION_SAMPLE_STEP := 6
+const RUN_LEG_MOTION_MIN_DIFF := 0.008
 const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 
@@ -236,6 +240,7 @@ func _build_nodes() -> void:
 
     _weapon_root = Node2D.new()
     _weapon_root.name = "WeaponRoot"
+    _weapon_root.scale = Vector2(BODY_SCALE_RATIO, BODY_SCALE_RATIO)
     _fx_root.add_child(_weapon_root)
     _muzzle = Marker2D.new()
     _muzzle.name = "Muzzle"
@@ -346,6 +351,8 @@ func _build_full_frames(image: Image) -> SpriteFrames:
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
         var row := int(spec["row"])
+        if action == "run":
+            row = _select_run_source_row(image)
         for frame_index in range(int(spec["count"])):
             var texture := AtlasTexture.new()
             texture.atlas = atlas_texture
@@ -366,6 +373,48 @@ func _build_full_frames(image: Image) -> SpriteFrames:
     frames.set_animation_speed("crouch", 1.0)
     frames.add_frame("crouch", frames.get_frame_texture("fall", 0))
     return frames
+
+
+func _select_run_source_row(image: Image) -> int:
+    var run_spec: Dictionary = FULL_ACTIONS["run"]
+    var walk_spec: Dictionary = FULL_ACTIONS["walk"]
+    var run_row := int(run_spec["row"])
+    var walk_row := int(walk_spec["row"])
+    var run_score := _lower_body_motion_score(image, run_row, int(run_spec["count"]))
+    var walk_score := _lower_body_motion_score(image, walk_row, int(walk_spec["count"]))
+    if (
+        walk_score > run_score + RUN_LEG_MOTION_MIN_DIFF
+        and walk_score > run_score * 1.20
+    ):
+        push_warning(
+            "Strict run row has weak lower-body motion; using authored walk stride for running"
+        )
+        return walk_row
+    return run_row
+
+func _lower_body_motion_score(image: Image, row: int, frame_count: int) -> float:
+    if frame_count <= 1:
+        return 0.0
+    var changed := 0
+    var sampled := 0
+    var y_start := int(round(float(FULL_ATLAS_CELL_SIZE) * 0.55))
+    var y_end := FULL_ATLAS_CELL_SIZE - 12
+    var x_start := 18
+    var x_end := FULL_ATLAS_CELL_SIZE - 18
+    for frame_index in range(1, frame_count):
+        var previous_x := (frame_index - 1) * FULL_ATLAS_CELL_SIZE
+        var current_x := frame_index * FULL_ATLAS_CELL_SIZE
+        var base_y := row * FULL_ATLAS_CELL_SIZE
+        for local_y in range(y_start, y_end, RUN_LEG_MOTION_SAMPLE_STEP):
+            for local_x in range(x_start, x_end, RUN_LEG_MOTION_SAMPLE_STEP):
+                var previous_alpha := image.get_pixel(previous_x + local_x, base_y + local_y).a
+                var current_alpha := image.get_pixel(current_x + local_x, base_y + local_y).a
+                if (previous_alpha > 0.18) != (current_alpha > 0.18):
+                    changed += 1
+                sampled += 1
+    if sampled <= 0:
+        return 0.0
+    return float(changed) / float(sampled)
 
 func _build_legacy_pistol_frames(image: Image) -> SpriteFrames:
     if image.get_size() != Vector2i(768, 960):
