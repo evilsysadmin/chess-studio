@@ -148,7 +148,11 @@ export function startWarRoomVariantScene({
   setStatus('loading', 'v2-loading');
   onPaint?.();
   void import('./WarRoomV2Shell.js')
-    .then(({ installWarRoomV2Shell }) => installWarRoomV2Shell(scene, { whiteSide, coarsePointer: renderLite }))
+    .then(({ installWarRoomV2Shell }) => installWarRoomV2Shell(scene, {
+      whiteSide,
+      coarsePointer: renderLite,
+      onRefine: onPaint,
+    }))
     .then((release) => {
       if (cancelled) return release?.();
       releaseV2 = release;

@@ -3,6 +3,7 @@ import {
   WAR_ROOM_V2_STAGING_MODEL_URL,
   warRoomV2EnvMapIntensity,
   warRoomV2ModelUrl,
+  scheduleWarRoomV2AfterFirstPaint,
   warRoomV2PracticalLightProfile,
   warRoomV2RuntimeSurfaceKind,
   warRoomV2StoneSurfaceProfile,
@@ -55,6 +56,61 @@ describe('War Room v2 staging asset URL', () => {
     expect(controller.isBuilt()).toBe(true);
     expect(controller.current()).toHaveLength(1);
     expect(builds).toBe(1);
+  });
+
+  it('defers expensive shell refinement until after a paint and an idle turn', () => {
+    let frame = null;
+    let idle = null;
+    let refinements = 0;
+    const cancelled = [];
+    const release = scheduleWarRoomV2AfterFirstPaint(
+      () => { refinements += 1; },
+      {
+        requestFrame: (callback) => {
+          frame = callback;
+          return 11;
+        },
+        cancelFrame: (id) => cancelled.push(['frame', id]),
+        requestIdle: (callback) => {
+          idle = callback;
+          return 22;
+        },
+        cancelIdle: (id) => cancelled.push(['idle', id]),
+        setTimer: () => {
+          throw new Error('timer fallback should not be used');
+        },
+      },
+    );
+
+    expect(refinements).toBe(0);
+    frame();
+    expect(refinements).toBe(0);
+    idle();
+    expect(refinements).toBe(1);
+    release();
+    expect(cancelled).toEqual([['frame', 11], ['idle', 22]]);
+  });
+
+  it('can cancel deferred shell refinement before the first paint completes', () => {
+    let frame = null;
+    let refinements = 0;
+    const release = scheduleWarRoomV2AfterFirstPaint(
+      () => { refinements += 1; },
+      {
+        requestFrame: (callback) => {
+          frame = callback;
+          return 7;
+        },
+        cancelFrame: () => {},
+        requestIdle: () => {
+          throw new Error('cancelled frame must not schedule idle work');
+        },
+      },
+    );
+
+    release();
+    frame();
+    expect(refinements).toBe(0);
   });
 
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {

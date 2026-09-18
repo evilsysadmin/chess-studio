@@ -25,6 +25,41 @@ export function warRoomV2EnvMapIntensity(materialName = '') {
   return 0.28;
 }
 
+export function scheduleWarRoomV2AfterFirstPaint(task, scheduler = {}) {
+  if (typeof task !== 'function') return () => {};
+
+  const host = typeof globalThis !== 'undefined' ? globalThis : {};
+  const requestFrame = scheduler.requestFrame || host.requestAnimationFrame?.bind(host);
+  const cancelFrame = scheduler.cancelFrame || host.cancelAnimationFrame?.bind(host);
+  const requestIdle = scheduler.requestIdle || host.requestIdleCallback?.bind(host);
+  const cancelIdle = scheduler.cancelIdle || host.cancelIdleCallback?.bind(host);
+  const setTimer = scheduler.setTimer || ((callback) => setTimeout(callback, 0));
+  const clearTimer = scheduler.clearTimer || ((id) => clearTimeout(id));
+  let cancelled = false;
+  let frameId = 0;
+  let idleId = 0;
+  let timerId = 0;
+
+  const run = () => {
+    if (!cancelled) task();
+  };
+  const afterPaint = () => {
+    if (cancelled) return;
+    if (requestIdle) idleId = requestIdle(run, { timeout: 220 });
+    else timerId = setTimer(run, 0);
+  };
+
+  if (requestFrame) frameId = requestFrame(afterPaint);
+  else timerId = setTimer(afterPaint, 0);
+
+  return () => {
+    cancelled = true;
+    if (frameId && cancelFrame) cancelFrame(frameId);
+    if (idleId && cancelIdle) cancelIdle(idleId);
+    if (timerId) clearTimer(timerId);
+  };
+}
+
 export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
   return {
     fire: {
@@ -255,6 +290,7 @@ export async function installWarRoomV2Shell(
     whiteSide = true,
     coarsePointer = false,
     url = warRoomV2ModelUrl(),
+    onRefine,
   } = {},
 ) {
   if (!scene?.add) throw new Error('War Room v2 requires a Three.js scene');
@@ -273,9 +309,14 @@ export async function installWarRoomV2Shell(
   const runtimeWoodTextures = {};
   let runtimeStoneMaterials = 0;
   let runtimeWoodMaterials = 0;
+  const deferredShadowMeshes = [];
   root.traverse((node) => {
     if (!node.isMesh) return;
-    node.castShadow = !coarsePointer;
+    // First paint prioritizes getting the room on screen. Static shell shadows
+    // are restored immediately afterwards during browser idle time, preserving
+    // the final desktop image without making shader/shadow warm-up block entry.
+    node.castShadow = false;
+    if (!coarsePointer) deferredShadowMeshes.push(node);
     node.receiveShadow = true;
     node.frustumCulled = true;
     const rows = Array.isArray(node.material) ? node.material : [node.material];
@@ -295,9 +336,20 @@ export async function installWarRoomV2Shell(
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;
   root.userData.warRoomV2RuntimeWoodMaterials = runtimeWoodMaterials;
   root.userData.warRoomV2RuntimeWoodTextures = Object.keys(runtimeWoodTextures).length;
+  root.userData.warRoomV2ShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
+  root.userData.warRoomV2ShadowCasterCount = 0;
   scene.add(root);
 
+  const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomV2AfterFirstPaint(() => {
+    if (!root.parent) return;
+    deferredShadowMeshes.forEach((node) => { node.castShadow = true; });
+    root.userData.warRoomV2ShadowWarmup = 'ready';
+    root.userData.warRoomV2ShadowCasterCount = deferredShadowMeshes.length;
+    onRefine?.();
+  });
+
   return () => {
+    cancelShadowWarmup();
     root.removeFromParent();
     disposeShell(root);
   };
