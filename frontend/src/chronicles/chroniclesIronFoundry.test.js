@@ -24,7 +24,7 @@ describe('Chronicles Black Iron Foundry', () => {
     expect(chroniclesMapIds()).toContain('iron-foundry');
     const foundry = chroniclesMapById('iron-foundry');
 
-    expect(foundry.version).toBe(1);
+    expect(foundry.version).toBe(2);
     expect(foundry.grid).toHaveLength(9);
     expect(foundry.grid[0]).toHaveLength(11);
     expect(foundry.enemies.map((enemy) => enemy.id)).toEqual([
@@ -101,15 +101,22 @@ describe('Chronicles Black Iron Foundry', () => {
     });
 
     state = { ...state, x: 8, y: 1 };
-    const escaped = chroniclesTacticsUse(state, 'foundry-gate');
+    const basilica = chroniclesTacticsUse(state, 'foundry-gate');
 
-    expect(escaped.phase).toBe('escaped');
-    expect(chroniclesInventoryEntries(escaped).map((item) => item.id)).not.toContain('forgemaster-seal');
-    expect(chroniclesQuestEntries(escaped).find((quest) => quest.id === 'break-black-foundry')).toMatchObject({
+    expect(basilica.mapId).toBe('chain-basilica');
+    expect(basilica.phase).toBe('explore');
+    expect({ x: basilica.x, y: basilica.y, direction: basilica.direction }).toEqual({ x: 1, y: 1, direction: 1 });
+    expect(chroniclesInventoryEntries(basilica).map((item) => item.id)).not.toContain('forgemaster-seal');
+    expect(chroniclesQuestEntries(basilica).find((quest) => quest.id === 'break-black-foundry')).toMatchObject({
       status: 'completed',
       objective: 'Fundición superada.',
     });
-    expect(escaped.scrapGoblinHp).toBe(5);
-    expect(escaped.journal.at(-1)?.id).toBe('iron-foundry-cleared');
+    expect(basilica.scrapGoblinHp).toBe(0);
+    expect(basilica.ironDeaconHp).toBe(10);
+    expect(basilica.chainPrelateHp).toBe(9);
+    expect(basilica.choirHoundHp).toBe(7);
+    expect(basilica.naveSpiderHp).toBe(6);
+    expect(basilica.censerWispHp).toBe(5);
+    expect(basilica.journal.at(-1)?.id).toBe('iron-foundry-cleared');
   });
 });
