@@ -772,6 +772,161 @@ def add_room(static, mats):
         relink(spike, static)
 
 
+
+def add_gothic_canon_v2(static, mats):
+    """Structural parity pass for the approved 2026-09-18 gothic-study canon.
+
+    Keep the existing room as the editable baseline, then add the large canonical
+    masses that are already present in the Three.js scene: burgundy heraldry,
+    deep bookcase, second fireplace, chandelier, globe and table drape.
+    """
+    bpy.context.scene["war_room_visual_canon"] = "cinematic-gothic-study-2026-09-18-v1"
+    burgundy = material(
+        "WR_MAT_canon_burgundy", (0.205, 0.014, 0.021, 1),
+        rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
+    )
+    burgundy_dark = material(
+        "WR_MAT_canon_burgundy_dark", (0.060, 0.006, 0.010, 1),
+        rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
+    )
+
+    # Four tall heraldic banners frame the existing central rampant-horse crest.
+    # Their lower points sit behind the table so they read as architecture, not UI.
+    for index, x in enumerate((-6.55, -2.65, 2.65, 6.55)):
+        draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
+        cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
+             mats["brass_dark"], static, bevel=0.018)
+        for edge in (-1, 1):
+            sphere(f"WR_CANON_banner_finial_{index}_{edge}",
+                   (x + edge * 0.76, 6.38, 6.22), 0.075, mats["brass"], static)
+        # Restrained cross + horse-head relief: readable from the hero camera.
+        cube(f"WR_CANON_banner_cross_v_{index}", (x, 6.335, 4.54), (0.055, 0.028, 0.42),
+             mats["brass"], static, bevel=0.018)
+        cube(f"WR_CANON_banner_cross_h_{index}", (x, 6.332, 4.70), (0.30, 0.028, 0.055),
+             mats["brass"], static, bevel=0.018)
+        sphere(f"WR_CANON_banner_horse_head_{index}", (x - 0.11, 6.325, 5.18), 0.17,
+               mats["brass"], static, scale=(1.12, 0.32, 0.78))
+        muzzle = cube(f"WR_CANON_banner_horse_muzzle_{index}", (x - 0.25, 6.318, 5.10),
+                      (0.14, 0.026, 0.055), mats["brass"], static, bevel=0.04)
+        muzzle.rotation_euler.y = -0.16
+
+    # Deep bookcase to the left of the central desk. It deliberately overlaps the
+    # old rear joinery: the canon needs a real dark mass and visible book depth.
+    bx, by = -2.62, 6.16
+    cube("WR_CANON_bookshelf_back", (bx, 6.63, 2.52), (1.18, 0.12, 1.95),
+         mats["walnut_dark"], static, bevel=0.035)
+    for side in (-1, 1):
+        cube(f"WR_CANON_bookshelf_post_{side}", (bx + side * 1.18, by, 2.52),
+             (0.11, 0.48, 2.10), mats["frame_wood"], static, bevel=0.045)
+    for level, z in enumerate((0.62, 1.30, 1.98, 2.66, 3.34, 4.02)):
+        cube(f"WR_CANON_bookshelf_shelf_{level}", (bx, by, z), (1.17, 0.50, 0.065),
+             mats["frame_wood"], static, bevel=0.028)
+        if level < 5:
+            for book in range(7):
+                px = bx - 0.92 + book * 0.30
+                height = 0.38 + (book % 3) * 0.065
+                cube(f"WR_CANON_book_{level}_{book}", (px, 5.72, z + 0.10 + height / 2),
+                     (0.105, 0.19, height / 2),
+                     mats["book_a"] if (book + level) % 2 else mats["book_b"],
+                     static, bevel=0.018)
+
+    # Right-hand fireplace: the approved mock is asymmetric but balanced by two
+    # warm hearths. The side window remains visible farther right as the cold key.
+    rx = 4.85
+    cube("WR_CANON_right_fireplace_body", (rx, 6.34, 2.00), (1.46, 0.47, 1.46),
+         mats["stone"], static, bevel=0.105)
+    cube("WR_CANON_right_fireplace_opening", (rx, 5.84, 1.67), (0.88, 0.13, 0.76),
+         mats["charcoal"], static, bevel=0.045)
+    cube("WR_CANON_right_fireplace_mantel", (rx, 5.74, 3.49), (1.73, 0.64, 0.13),
+         mats["stone_light"], static, bevel=0.075)
+    cube("WR_CANON_right_fireplace_hearth", (rx, 5.34, 0.72), (1.42, 0.76, 0.10),
+         mats["stone"], static, bevel=0.07)
+    for side in (-1, 1):
+        cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
+             (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.34, 0.18, 0.52, 1.18), (-0.06, 0.34, 0.45, 1.42),
+        (0.22, 0.16, 0.56, 1.04), (0.43, 0.28, 0.42, 1.28),
+    )):
+        sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
+               mats["fire"], static, scale=(sx, 0.40, sz))
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 300.0,
+          (1.0, 0.23, 0.05), static, radius=1.30)
+
+    # Cold floor globe in the window/fireplace transition.
+    gx, gy = 6.82, 4.86
+    sphere("WR_CANON_globe_sphere", (gx, gy, 1.53), 0.54, mats["picture_b"], static,
+           scale=(1.0, 1.0, 1.0))
+    torus("WR_CANON_globe_ring", (gx, gy, 1.53), 0.66, 0.035, mats["brass"], static,
+          rotation=(math.pi / 2, 0, 0))
+    cylinder("WR_CANON_globe_stem", (gx, gy, 0.82), 0.105, 0.78, mats["brass_dark"], static, vertices=24)
+    cylinder("WR_CANON_globe_foot", (gx, gy, 0.38), 0.32, 0.10, mats["brass_dark"], static, vertices=28)
+
+    # Chandelier over the board. Keep it high enough to never occlude legal
+    # destinations, but large enough to own the upper centre of the composition.
+    cz = 5.76
+    torus("WR_CANON_chandelier_ring", (0, 0.80, cz), 2.05, 0.075, mats["brass"], static)
+    cylinder("WR_CANON_chandelier_hub", (0, 0.80, cz), 0.20, 0.30, mats["brass_dark"], static, vertices=28)
+    cylinder("WR_CANON_chandelier_chain", (0, 0.80, 6.45), 0.035, 1.20, mats["brass_dark"], static, vertices=16)
+    for index in range(8):
+        angle = index * math.tau / 8.0
+        x = math.cos(angle) * 1.72
+        y = 0.80 + math.sin(angle) * 1.48
+        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.23),
+                 0.065, 0.40, mats["ivory"], static, vertices=18)
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.50), 0.095,
+               mats["fire_core"], static, scale=(0.46, 0.46, 1.15))
+        # short radial arm from hub; cylinders are aligned to Z by default.
+        midpoint = Vector((x * 0.50, 0.80 + (y - 0.80) * 0.50, cz))
+        endpoint = Vector((x, y, cz))
+        origin = Vector((0, 0.80, cz))
+        direction = endpoint - origin
+        arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
+                       direction.length, mats["brass_dark"], static, vertices=14)
+        arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+    light("WR_CANON_chandelier_light", "POINT", (0, 0.80, 5.62), 220.0,
+          (1.0, 0.48, 0.18), static, radius=2.2)
+
+    # Burgundy heraldic drape on the camera-facing table edge.
+    front_y = -5.44
+    verts = [
+        (-2.25, front_y - 0.035, 0.79), (2.25, front_y - 0.035, 0.79),
+        (2.25, front_y - 0.035, 0.26), (0.0, front_y - 0.035, -0.06),
+        (-2.25, front_y - 0.035, 0.26),
+        (-2.25, front_y + 0.035, 0.79), (2.25, front_y + 0.035, 0.79),
+        (2.25, front_y + 0.035, 0.26), (0.0, front_y + 0.035, -0.06),
+        (-2.25, front_y + 0.035, 0.26),
+    ]
+    faces = [
+        (0, 4, 3, 2, 1), (5, 6, 7, 8, 9),
+        (0, 1, 6, 5), (1, 2, 7, 6), (2, 3, 8, 7),
+        (3, 4, 9, 8), (4, 0, 5, 9),
+    ]
+    mesh_data = bpy.data.meshes.new("WR_CANON_table_drape_mesh")
+    mesh_data.from_pydata(verts, [], faces)
+    mesh_data.update()
+    drape = bpy.data.objects.new("WR_CANON_table_drape", mesh_data)
+    drape.data.materials.append(burgundy_dark)
+    tag(drape)
+    static.objects.link(drape)
+
+    # Small rampant horse relief on the drape, intentionally broad rather than
+    # anatomically fussy so it survives the gameplay camera.
+    emblem_y = front_y - 0.085
+    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.40), 0.24,
+                  mats["brass"], static, scale=(1.30, 0.28, 0.72))
+    body.rotation_euler.y = -0.26
+    sphere("WR_CANON_table_horse_head", (-0.28, emblem_y, 0.59), 0.13,
+           mats["brass"], static, scale=(1.12, 0.30, 0.78))
+    for index, (x, z, ang) in enumerate(((-0.08, 0.20, -0.72), (0.14, 0.18, 0.58))):
+        leg = cylinder(f"WR_CANON_table_horse_leg_{index}", (x, emblem_y, z),
+                       0.035, 0.34, mats["brass"], static, vertices=14)
+        leg.rotation_euler.y = ang
+    tail = cylinder("WR_CANON_table_horse_tail", (0.31, emblem_y, 0.47),
+                    0.030, 0.30, mats["brass"], static, vertices=14)
+    tail.rotation_euler.y = 0.88
+
+
 def build():
     scene = bpy.context.scene
     scene["war_room_contract"] = CONTRACT
@@ -847,6 +1002,7 @@ def build():
     }
 
     add_room(static, mats)
+    add_gothic_canon_v2(static, mats)
     add_preview_board(dynamic, mats)
 
     key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 560.0, (1.0, 0.67, 0.42), static, size=5.8)
@@ -922,6 +1078,8 @@ def validate():
         "WR_CURTAIN_panel_-1", "WR_CURTAIN_panel_1", "WR_CURTAIN_rod_-1", "WR_CURTAIN_rod_1",
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
+        "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
+        "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
