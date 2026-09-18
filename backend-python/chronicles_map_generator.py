@@ -121,10 +121,9 @@ def _generator_seed(map_code: str) -> int:
 
 def _mechanism_slots(recipe: ChroniclesMapCode) -> int:
     slots = CHRONICLES_LAYOUT_RESERVED_OBJECT_SLOTS
-    if any(verb in {"lever", "sluice", "keys", "puzzle"} for verb in recipe.verbs):
-        slots += 2
-    if "traps" in recipe.verbs:
-        slots += 2
+    for verb in recipe.verbs:
+        if verb in {"lever", "sluice", "keys", "puzzle", "traps"}:
+            slots += 2
     return slots
 
 
