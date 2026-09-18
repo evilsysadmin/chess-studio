@@ -11,6 +11,7 @@ const parsedIndex = new URL(indexUrl);
 if (parsedIndex.protocol !== 'https:') throw new Error(`Godot smoke requires HTTPS: ${indexUrl}`);
 
 const LIMIT = 40;
+const READY_BRIDGE_TIMEOUT_MS = 12_000;
 const clip = (value, max = 500) => String(value ?? '').slice(0, max);
 const pushBounded = (list, value) => {
   list.push(value);
@@ -175,7 +176,7 @@ try {
             (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
           ),
         null,
-        { timeout: 5_000 },
+        { timeout: READY_BRIDGE_TIMEOUT_MS },
       );
       directReady = true;
     } catch {
@@ -203,7 +204,7 @@ try {
           (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
         ),
       null,
-      { timeout: 5_000 },
+      { timeout: READY_BRIDGE_TIMEOUT_MS },
     );
   } catch {
     directReloadReady = false;
