@@ -15,12 +15,40 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v6.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v6.png",
+}
+const V7_SOURCE_SIZE := Vector2i(1070, 1470)
+const DIRECTIONAL_SOURCE_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_generated_source.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_generated_source.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_generated_source.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_generated_source.png",
 }
-const V7_SOURCE_SIZE := Vector2i(1070, 1470)
+# Exact pose-only crops from the uploaded v7 generated sheets. The generated
+# sheets omitted/misaligned whole rows for several weapons, so treating them as
+# a strict 8x11 locomotion atlas caused the sunk/levitating regression. Keep
+# v6 for body motion and use only these verified diagonal poses from v7.
+const DIRECTIONAL_SOURCE_RECTS := {
+    "pistol": {
+        "shoot_up": [Rect2i(422, 672, 102, 138), Rect2i(684, 687, 103, 125)],
+        "shoot_down": [Rect2i(808, 702, 96, 124)],
+    },
+    "machinegun": {
+        "shoot_up": [Rect2i(412, 783, 107, 132), Rect2i(678, 780, 113, 135)],
+        "shoot_down": [Rect2i(810, 788, 97, 127)],
+    },
+    "shotgun": {
+        "shoot_up": [Rect2i(434, 689, 118, 131), Rect2i(703, 684, 108, 136)],
+        "shoot_down": [Rect2i(823, 692, 110, 128)],
+    },
+    "panzerfaust": {
+        "shoot_up": [Rect2i(401, 781, 122, 130), Rect2i(652, 784, 135, 127)],
+        "shoot_down": [Rect2i(779, 788, 116, 123)],
+    },
+}
 const FULL_ATLAS_FALLBACK_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6.png",
@@ -164,6 +192,7 @@ const SHOOT_FACE_REPAIR_CUT_X := {
 static var _full_frames_by_weapon: Dictionary = {}
 static var _full_body_y_by_weapon: Dictionary = {}
 static var _full_muzzle_by_weapon: Dictionary = {}
+static var _directional_ready_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -286,6 +315,10 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
+    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down", "shoot_crouch"]:
+        _one_shot_action = ""
+        _hold_one_shot = false
+        _action = ""
     var authored_shoot_action := _shoot_action_for_state(on_floor, crouching, locomoting_now)
     if locomoting_now and _one_shot_action == "shoot":
         _one_shot_action = ""
@@ -473,7 +506,7 @@ func _install_or_request_weapon() -> void:
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
         if _atlas_request == null:
-            _request_atlas(_weapon, full_url, "full-v7-source")
+            _request_atlas(_weapon, full_url, "full")
         if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
             return
         if _weapon == "pistol" and _legacy_pistol_frames != null:
@@ -496,6 +529,16 @@ func _install_or_request_weapon() -> void:
         _install_frames(_fallback_frames_by_weapon[_weapon], false)
         return
     _ensure_master()
+
+func _ensure_directional_source(weapon_id: String) -> void:
+    if _directional_ready_by_weapon.has(weapon_id):
+        return
+    if not _full_frames_by_weapon.has(weapon_id) or _atlas_request != null:
+        return
+    var url := String(DIRECTIONAL_SOURCE_URLS.get(weapon_id, ""))
+    if url.is_empty():
+        return
+    _request_atlas(weapon_id, url, "directional-v7-source")
 
 func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
     if _atlas_request != null:
@@ -533,6 +576,17 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
+        return
+
+    if requested_layout == "directional-v7-source":
+        if image.get_size() == V7_SOURCE_SIZE and _append_directional_source_frames(requested_weapon, image):
+            _directional_ready_by_weapon[requested_weapon] = true
+            if requested_weapon == _weapon:
+                _sync_muzzle()
+        else:
+            push_warning("Matthias directional v7 source invalid for %s" % requested_weapon)
+        if requested_weapon != _weapon:
+            call_deferred("_install_or_request_weapon")
         return
 
     var frames: SpriteFrames
@@ -585,6 +639,122 @@ func _normalize_v7_source(image: Image) -> Image:
         push_error("Matthias v7 normalization failed: %s" % [normalized.get_size()])
         return null
     return normalized
+
+func _append_directional_source_frames(weapon_id: String, image: Image) -> bool:
+    if not _full_frames_by_weapon.has(weapon_id):
+        return false
+    var spec_value = DIRECTIONAL_SOURCE_RECTS.get(weapon_id, {})
+    if typeof(spec_value) != TYPE_DICTIONARY:
+        return false
+    var spec: Dictionary = spec_value
+    var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
+    var body_y := float(_full_body_y_by_weapon.get(weapon_id, -BODY_CENTER_TO_FOOT * BODY_SCALE))
+    var target_foot_y := clampf(
+        float(FULL_ATLAS_CELL_SIZE) * 0.5 - body_y / BODY_SCALE,
+        156.0,
+        float(FULL_ATLAS_CELL_SIZE - 6),
+    )
+    var muzzle_map: Dictionary = _full_muzzle_by_weapon.get(weapon_id, {}).duplicate(true)
+
+    for action in ["shoot_up", "shoot_down"]:
+        if frames.has_animation(action):
+            frames.remove_animation(action)
+        frames.add_animation(action)
+        frames.set_animation_loop(action, false)
+        frames.set_animation_speed(action, DIRECTIONAL_SHOOT_FPS)
+        var muzzles: Array = []
+        var rects: Array = spec.get(action, [])
+        for rect_value in rects:
+            var source_rect: Rect2i = rect_value
+            var normalized := _directional_frame_from_source(image, source_rect, target_foot_y)
+            if normalized == null:
+                continue
+            frames.add_frame(action, ImageTexture.create_from_image(normalized))
+            muzzles.append(_muzzle_from_directional_frame(normalized, body_y, weapon_id))
+        if frames.get_frame_count(action) <= 0:
+            frames.remove_animation(action)
+            return false
+        muzzle_map[action] = muzzles
+
+    _full_muzzle_by_weapon[weapon_id] = muzzle_map
+    return true
+
+func _directional_frame_from_source(image: Image, source_rect: Rect2i, target_foot_y: float) -> Image:
+    var x0 := maxi(0, source_rect.position.x)
+    var y0 := maxi(0, source_rect.position.y)
+    var x1 := mini(image.get_width(), source_rect.position.x + source_rect.size.x)
+    var y1 := mini(image.get_height(), source_rect.position.y + source_rect.size.y)
+    if x1 <= x0 or y1 <= y0:
+        return null
+    var crop := image.get_region(Rect2i(x0, y0, x1 - x0, y1 - y0))
+    var used := crop.get_used_rect()
+    if used.size == Vector2i.ZERO:
+        return null
+    crop = crop.get_region(used)
+
+    # Preserve the scale the source would have had in a 2048px-wide strict
+    # atlas, but fit oversized weapons inside one 256px Godot frame.
+    var scale_factor := float(FULL_ATLAS_SIZE.x) / float(V7_SOURCE_SIZE.x)
+    scale_factor = minf(
+        scale_factor,
+        float(FULL_ATLAS_CELL_SIZE - 10) / float(maxi(1, crop.get_width())),
+    )
+    scale_factor = minf(
+        scale_factor,
+        float(maxi(80, int(target_foot_y) - 6)) / float(maxi(1, crop.get_height())),
+    )
+    var scaled_size := Vector2i(
+        maxi(1, int(round(float(crop.get_width()) * scale_factor))),
+        maxi(1, int(round(float(crop.get_height()) * scale_factor))),
+    )
+    crop.resize(scaled_size.x, scaled_size.y, Image.INTERPOLATE_LANCZOS)
+
+    var canvas := Image.create(
+        FULL_ATLAS_CELL_SIZE,
+        FULL_ATLAS_CELL_SIZE,
+        false,
+        Image.FORMAT_RGBA8,
+    )
+    canvas.fill(Color(0.0, 0.0, 0.0, 0.0))
+    var foot_y := clampi(
+        int(round(target_foot_y)),
+        scaled_size.y + 2,
+        FULL_ATLAS_CELL_SIZE - 2,
+    )
+    var destination := Vector2i(
+        int(round(float(FULL_ATLAS_CELL_SIZE - scaled_size.x) * 0.5)),
+        foot_y - scaled_size.y,
+    )
+    canvas.blit_rect(crop, Rect2i(Vector2i.ZERO, scaled_size), destination)
+    return canvas
+
+func _muzzle_from_directional_frame(image: Image, body_y: float, weapon_id: String) -> Vector2:
+    var used := image.get_used_rect()
+    if used.size == Vector2i.ZERO:
+        return Vector2.ZERO
+    var tip_x := -1
+    for y in range(used.position.y, used.position.y + used.size.y):
+        for x in range(used.position.x, used.position.x + used.size.x):
+            if image.get_pixel(x, y).a >= MUZZLE_SCAN_ALPHA:
+                tip_x = maxi(tip_x, x)
+    if tip_x < 0:
+        return Vector2.ZERO
+    var y_samples: Array[int] = []
+    var cluster_x_start := maxi(used.position.x, tip_x - 8)
+    for y in range(used.position.y, used.position.y + used.size.y):
+        for x in range(cluster_x_start, tip_x + 1):
+            if image.get_pixel(x, y).a >= MUZZLE_SCAN_ALPHA:
+                y_samples.append(y)
+                break
+    if y_samples.is_empty():
+        return Vector2.ZERO
+    y_samples.sort()
+    var tip_y := float(y_samples[int(y_samples.size() / 2)])
+    var forward_pad := float(MUZZLE_TIP_FORWARD_PX.get(weapon_id, MUZZLE_TIP_PAD_PX))
+    return Vector2(
+        (float(tip_x) + forward_pad - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
+        body_y + (tip_y - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
+    )
 
 func _decode_raster(bytes: PackedByteArray) -> Image:
     var image := Image.new()
@@ -985,15 +1155,15 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
-    if authored_full and _rendered_weapon == "pistol":
-        call_deferred("_prefetch_machinegun")
+    if authored_full:
+        call_deferred("_ensure_directional_source", _rendered_weapon)
 
 func _prefetch_machinegun() -> void:
     if _atlas_request != null or _full_frames_by_weapon.has("machinegun"):
         return
     var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
     if not url.is_empty():
-        _request_atlas("machinegun", url, "full-v7-source")
+        _request_atlas("machinegun", url, "full")
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
