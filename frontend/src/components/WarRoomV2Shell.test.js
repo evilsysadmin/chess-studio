@@ -9,6 +9,7 @@ import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
 
 describe('War Room v2 staging asset URL', () => {
   it('does not expose the classic shell while a persisted v2 room loads', () => {
+    expect(shouldShowClassicWarRoomShell()).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v2' })).toBe(false);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'classic' })).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: false, variant: 'v2' })).toBe(true);
