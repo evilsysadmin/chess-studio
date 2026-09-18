@@ -282,6 +282,9 @@ REQUIRED_ENEMIES = (
     "enemy_premium_raster_v5",
     "load_webp_from_buffer",
     "ENEMY_VISUAL_SCALE",
+    '"scout"',
+    '"commando"',
+    '"shield"',
 )
 
 

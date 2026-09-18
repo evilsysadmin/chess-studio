@@ -6,17 +6,21 @@ const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
+const REMOTE_ATLAS_ROWS := 5
 const FRAMES_PER_TYPE := 8
-const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0}
-const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0}
-const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42}
-const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34}
+const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 8, "shield": 16}
+const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 1, "shield": 2}
+const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.35, "shield": 0.45}
+const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.12, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
 const ENEMY_VISUAL_SCALE := 1.18
-const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5}
+const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5, "scout": 8.5, "commando": 7.5, "shield": 3.6}
 const TYPE_TINT := {
     "queen": Color(1.0, 0.76, 0.78, 1.0),
     "grenadier": Color(0.82, 0.92, 0.72, 1.0),
+    "scout": Color(0.78, 0.90, 1.0, 1.0),
+    "commando": Color(0.96, 0.84, 0.68, 1.0),
+    "shield": Color(0.80, 0.84, 0.90, 1.0),
 }
 const WEAPON_FRAME := {"pistol": 0, "machinegun": 1, "shotgun": 2, "panzerfaust": 3}
 const WEAPON_POSE := {
@@ -251,7 +255,7 @@ func _on_body_atlas_loaded(
         if (
             image.load_webp_from_buffer(bytes) == OK
             and image.get_width() == int(REMOTE_FRAME_SIZE.x) * FRAMES_PER_TYPE
-            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_TYPE_ROW.size()
+            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_ATLAS_ROWS
         ):
             texture = ImageTexture.create_from_image(image)
             _cached_body_texture = texture
@@ -298,7 +302,22 @@ func _apply_weapon() -> void:
     var index := int(WEAPON_FRAME.get(weapon, 0))
     _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
     var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
-    var type_y_adjust := -7.0 if enemy_type == "bishop" else (-2.0 if enemy_type == "queen" else (3.0 if enemy_type == "grenadier" else (2.0 if enemy_type == "rook" else 0.0)))
+    var type_y_adjust := 0.0
+    match enemy_type:
+        "bishop":
+            type_y_adjust = -7.0
+        "queen":
+            type_y_adjust = -2.0
+        "grenadier":
+            type_y_adjust = 3.0
+        "rook":
+            type_y_adjust = 2.0
+        "scout":
+            type_y_adjust = 1.0
+        "commando":
+            type_y_adjust = -1.0
+        "shield":
+            type_y_adjust = 4.0
     _weapon_root.position = pose["position"] + Vector2(0.0, type_y_adjust)
     _weapon_root.rotation = float(pose["rotation"])
     _weapon_sprite.scale = pose["scale"]
@@ -327,7 +346,7 @@ func _draw() -> void:
         return
     if enemy_type == "bishop":
         _draw_bishop()
-    elif enemy_type == "queen" or enemy_type == "grenadier":
+    elif enemy_type in ["queen", "grenadier", "scout", "commando", "shield"]:
         _draw_variant_backdrop()
     if hp <= 0:
         return
@@ -359,6 +378,30 @@ func _draw_variant_backdrop() -> void:
         for x in [-0.21, 0.0, 0.21]:
             draw_circle(Vector2(h * x, -h * 0.43), maxf(3.0, h * 0.055), Color("58624a"))
             draw_line(Vector2(h * x, -h * 0.49), Vector2(h * x, -h * 0.56), Color("b9a66b"), 2.0)
+    elif enemy_type == "scout":
+        draw_line(Vector2(h * 0.14, -h * 0.92), Vector2(h * 0.20, -h * 1.18), Color("252b31"), 3.0)
+        draw_circle(Vector2(h * 0.205, -h * 1.19), maxf(2.5, h * 0.035), Color("79b7d8"))
+        draw_polyline(PackedVector2Array([
+            Vector2(-h * 0.25, -h * 0.69),
+            Vector2(0.0, -h * 0.61),
+            Vector2(h * 0.23, -h * 0.70),
+        ]), Color("8eb8c9"), 5.0)
+    elif enemy_type == "commando":
+        draw_rect(Rect2(Vector2(-h * 0.28, -h * 0.72), Vector2(h * 0.56, h * 0.46)), Color(0.12, 0.10, 0.07, 0.76), true)
+        draw_line(Vector2(-h * 0.24, -h * 0.76), Vector2(h * 0.24, -h * 0.30), Color("b88a4d"), 5.0)
+        draw_line(Vector2(h * 0.24, -h * 0.76), Vector2(-h * 0.24, -h * 0.30), Color("b88a4d"), 5.0)
+    elif enemy_type == "shield":
+        var shield := PackedVector2Array([
+            Vector2(-h * 0.40, -h * 0.80),
+            Vector2(h * 0.30, -h * 0.80),
+            Vector2(h * 0.37, -h * 0.34),
+            Vector2(0.0, -h * 0.12),
+            Vector2(-h * 0.42, -h * 0.34),
+        ])
+        draw_colored_polygon(shield, Color(0.20, 0.24, 0.28, 0.88))
+        var shield_outline := shield.duplicate()
+        shield_outline.append(shield[0])
+        draw_polyline(shield_outline, Color("aab4bf"), 4.0)
 
 
 func _draw_bishop() -> void:

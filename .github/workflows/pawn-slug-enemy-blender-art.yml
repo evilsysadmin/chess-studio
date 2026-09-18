@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       max-parallel: 6
       matrix:
-        enemy_type: [pawn, knight, rook, bishop, queen, grenadier]
+        enemy_type: [pawn, knight, rook, bishop, queen, grenadier, scout, commando, shield]
 
     steps:
       - uses: actions/checkout@v7
@@ -216,7 +216,7 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
 
-      - name: Validate silhouettes + compose 6x7 review board
+      - name: Validate silhouettes + compose 9x7 review board
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -227,7 +227,7 @@ jobs:
           root = Path('/tmp/pawn-slug-enemy-cast')
           out = Path('/tmp/pawn-slug-enemy-review')
           out.mkdir(parents=True, exist_ok=True)
-          types = ('pawn', 'knight', 'rook', 'bishop', 'queen', 'grenadier')
+          types = ('pawn', 'knight', 'rook', 'bishop', 'queen', 'grenadier', 'scout', 'commando', 'shield')
           actions = {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}
           row_order = tuple(actions)
           cell = 96
@@ -265,6 +265,11 @@ jobs:
               ('bishop', 'queen'),
               ('pawn', 'grenadier'),
               ('queen', 'grenadier'),
+              ('pawn', 'scout'),
+              ('knight', 'commando'),
+              ('rook', 'shield'),
+              ('scout', 'commando'),
+              ('commando', 'shield'),
           ):
               if (left, 'idle') not in representative or (right, 'idle') not in representative:
                   gate(False, f'missing representative for {left}:{right}')

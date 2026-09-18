@@ -94,12 +94,12 @@ const PLATFORMS: Array[Rect2] = [
     Rect2(4700.0, 408.0, 320.0, 24.0),
 ]
 const ENEMY_SPAWNS := [
-    [620.0, "pawn"], [790.0, "pawn"], [1080.0, "pawn"], [1210.0, "knight"], [1380.0, "pawn"],
+    [620.0, "pawn"], [790.0, "pawn"], [990.0, "scout"], [1080.0, "pawn"], [1210.0, "knight"], [1380.0, "pawn"],
     [1490.0, "grenadier"], [1560.0, "rook"], [1710.0, "pawn"], [1840.0, "pawn"], [1940.0, "knight"],
     [2110.0, "pawn"], [2250.0, "pawn"], [2380.0, "bishop"], [2515.0, "knight"], [2590.0, "rook"],
-    [2730.0, "grenadier"], [2890.0, "knight"], [3070.0, "pawn"], [3210.0, "pawn"], [3335.0, "pawn"],
+    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3210.0, "pawn"], [3335.0, "pawn"],
     [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "queen"], [4070.0, "knight"],
-    [4190.0, "rook"], [4380.0, "grenadier"],
+    [4190.0, "rook"], [4285.0, "shield"], [4380.0, "grenadier"],
 ]
 const ENEMY_TYPES := {
     "pawn": {"hp": 34, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
@@ -108,6 +108,9 @@ const ENEMY_TYPES := {
     "bishop": {"hp": 310, "speed": 42.0, "width": 90.0, "height": 128.0, "standoff": 430.0},
     "queen": {"hp": 156, "speed": 74.0, "width": 62.0, "height": 96.0, "standoff": 345.0},
     "grenadier": {"hp": 82, "speed": 50.0, "width": 54.0, "height": 82.0, "standoff": 470.0},
+    "scout": {"hp": 46, "speed": 84.0, "width": 48.0, "height": 76.0, "standoff": 245.0},
+    "commando": {"hp": 78, "speed": 76.0, "width": 58.0, "height": 84.0, "standoff": 300.0},
+    "shield": {"hp": 168, "speed": 32.0, "width": 72.0, "height": 94.0, "standoff": 255.0},
 }
 const ENEMY_FIRE_PROFILES := {
     "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.05, "cooldown_max": 1.55, "speed": 540.0, "pellets": 1, "spread": 0.0, "explosive": false},
@@ -342,7 +345,7 @@ func _build_enemy_roster() -> Array[Dictionary]:
         var stats: Dictionary = ENEMY_TYPES[type]
         var weapon := _enemy_weapon_for(type, index)
         var role := "hold"
-        if type in ["pawn", "knight", "queen", "grenadier"]:
+        if type in ["pawn", "knight", "queen", "grenadier", "scout", "commando", "shield"]:
             role = "support" if weapon in ["machinegun", "panzerfaust"] and index % 3 != 0 else "assaulter"
         var enemy := {
             "id": "%s-%d" % [type, index],
@@ -434,6 +437,12 @@ func _enemy_weapon_for(type: String, variant: int) -> String:
             return queen_choices[variant % queen_choices.size()]
         "grenadier":
             return "panzerfaust" if variant % 3 == 0 else "machinegun"
+        "scout":
+            return "machinegun" if variant % 3 == 0 else "pistol"
+        "commando":
+            return "machinegun" if variant % 2 == 0 else "shotgun"
+        "shield":
+            return "shotgun" if variant % 2 == 0 else "machinegun"
         _:
             return "pistol" if variant % 2 == 0 else "machinegun"
 
