@@ -162,7 +162,7 @@ jobs:
       - name: Pawn Slug browser smoke
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test '(^|/)pawn-slug\.spec\.js$' --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test home-pawn-slug-direct.spec.js --workers=1 --retries=0
       - name: Chesscom browser smoke
         if: needs.preflight.outputs.run_chesscom_e2e == 'true'
         working-directory: e2e
