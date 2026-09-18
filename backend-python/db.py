@@ -104,25 +104,29 @@ async def _close_client(client) -> None:
         pass
 
 
-async def _ensure_runtime_indexes(database) -> None:
-    """Prepara índices baratos que protegen rutas calientes sin bloquear servicio.
+_RUNTIME_INDEXES = (
+    ("users", "last_activity", "users_last_activity"),
+    ("games", "owner", "games_owner"),
+    ("chronicles_runs", "owner", "chronicles_runs_owner"),
+)
 
-    ``count_online_users`` consulta una ventana de apenas 150 s por
-    ``users.last_activity``. El índice de rango evita recorrer toda la colección
-    a medida que crece la base. Es una optimización: si Mongo rechaza la creación
-    del índice, la conexión sigue siendo válida y la aplicación conserva la
-    semántica anterior en vez de convertir un problema de rendimiento en caída.
+
+async def _ensure_runtime_indexes(database) -> None:
+    """Prepara índices baratos que protegen rutas calientes y lifecycle.
+
+    Presencia consulta por ``users.last_activity``; la purga central de una
+    identidad borra savegames y runs por ``owner``. Son optimizaciones, no
+    invariantes: cada índice falla de forma independiente y nunca convierte un
+    problema de permisos/mantenimiento en una caída del backend.
     """
-    try:
-        await database["users"].create_index(
-            "last_activity",
-            name="users_last_activity",
-        )
-    except PyMongoError as exc:
-        print(
-            "MongoDB conectado, pero no se pudo preparar el índice "
-            f"users.last_activity ({type(exc).__name__})."
-        )
+    for collection_name, key, index_name in _RUNTIME_INDEXES:
+        try:
+            await database[collection_name].create_index(key, name=index_name)
+        except PyMongoError as exc:
+            print(
+                "MongoDB conectado, pero no se pudo preparar el índice "
+                f"{collection_name}.{key} ({type(exc).__name__})."
+            )
 
 
 async def get_db():
