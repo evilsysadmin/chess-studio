@@ -3,9 +3,20 @@ import {
   WAR_ROOM_V2_STAGING_MODEL_URL,
   warRoomV2EnvMapIntensity,
   warRoomV2ModelUrl,
+  warRoomV2PracticalLightProfile,
 } from './WarRoomV2Shell.js';
 
 describe('War Room v2 staging asset URL', () => {
+  it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
+    const desktop = warRoomV2PracticalLightProfile();
+    const coarse = warRoomV2PracticalLightProfile({ coarsePointer: true });
+    expect(desktop.fire.color).toBe(0xff8a38);
+    expect(desktop.moon.color).toBe(0x6f98ff);
+    expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
+    expect(desktop.moon.intensity).toBeGreaterThan(coarse.moon.intensity);
+    expect(desktop.fire.distance).toBeLessThan(desktop.moon.distance);
+  });
+
   it('keeps nocturnal materials below the old bright IBL levels', () => {
     expect(warRoomV2EnvMapIntensity('WR_MAT_wall_walnut')).toBe(0.32);
     expect(warRoomV2EnvMapIntensity('WR_MAT_stone')).toBe(0.20);
