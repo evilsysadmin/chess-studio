@@ -1,8 +1,15 @@
 {
-  "version": 1,
+  "version": 2,
   "mapIds": [
     "crypt-eight-squares",
-    "menagerie-of-ash",
-    "echo-cistern"
-  ]
+    "gallery-of-forks",
+    "menagerie-of-ash"
+  ],
+  "routeLength": 3,
+  "finalMapId": "echo-cistern",
+  "primaryExitIds": {
+    "crypt-eight-squares": "black-gate",
+    "gallery-of-forks": "gallery-gate",
+    "menagerie-of-ash": "menagerie-gate"
+  }
 }
