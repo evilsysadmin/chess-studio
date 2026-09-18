@@ -29,13 +29,16 @@ describe('War Room 1v1 API', () => {
     expect(JSON.parse(global.fetch.mock.calls[2][1].body)).toEqual({ opponent: 'bob' });
   });
 
-  it('usa los endpoints explícitos de aceptar y rechazar reto', async () => {
+  it('usa endpoints explícitos de cancelar, aceptar y rechazar reto', async () => {
+    await pvpApi.cancelChallenge('c-0');
     await pvpApi.acceptChallenge('c-1');
     await pvpApi.declineChallenge('c-2');
 
-    expect(global.fetch.mock.calls[0][0]).toContain('/pvp/challenges/c-1/accept');
+    expect(global.fetch.mock.calls[0][0]).toContain('/pvp/challenges/c-0/cancel');
     expect(global.fetch.mock.calls[0][1].method).toBe('POST');
-    expect(global.fetch.mock.calls[1][0]).toContain('/pvp/challenges/c-2/decline');
+    expect(global.fetch.mock.calls[1][0]).toContain('/pvp/challenges/c-1/accept');
+    expect(global.fetch.mock.calls[1][1].method).toBe('POST');
+    expect(global.fetch.mock.calls[2][0]).toContain('/pvp/challenges/c-2/decline');
   });
 
   it('serializa una jugada humana con promoción opcional', async () => {

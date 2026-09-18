@@ -281,6 +281,7 @@ export default function Menu({
           onJoinRoster={pvpFlow?.enroll}
           onLeaveRoster={pvpFlow?.leave}
           onChallenge={pvpFlow?.challenge}
+          onCancelChallenge={pvpFlow?.cancelChallenge}
           onAcceptChallenge={pvpFlow?.acceptChallenge}
           onDeclineChallenge={pvpFlow?.declineChallenge}
           onMatchReady={(match) => {

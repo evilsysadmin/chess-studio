@@ -40,6 +40,10 @@ export const pvpApi = {
     });
   },
 
+  cancelChallenge(challengeId, { signal } = {}) {
+    return jsonRequest(`/challenges/${challengeId}/cancel`, { method: 'POST', signal });
+  },
+
   acceptChallenge(challengeId, { signal } = {}) {
     return jsonRequest(`/challenges/${challengeId}/accept`, { method: 'POST', signal });
   },
