@@ -8,6 +8,19 @@ export default function PawnSlugGodotHost({ onExit }) {
   const [runtime, setRuntime] = useState({ url: LOCAL_GODOT_BOOTSTRAP_URL, source: 'resolving', release: '' });
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     resolvePawnSlugGodotUrl().then((resolved) => {
       if (cancelled) return;
@@ -40,18 +53,23 @@ export default function PawnSlugGodotHost({ onExit }) {
         : 'Arrancando runtime Godot…';
 
   return (
-    <div className="pawn-slug-godot-host">
-      <header className="pawn-slug-godot-host__header">
-        <div>
-          <span className="section-label">POC · Godot Web</span>
-          <h2>PAWN SLUG GODOT</h2>
-          <p>Runtime Godot canónico. React abre la puerta; el juego, la simulación y el render viven dentro de Godot.</p>
-        </div>
-        <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
-      </header>
+    <div className="pawn-slug-godot-host" data-runtime-ready={runtimeReady ? 'true' : 'false'}>
+      {!runtimeReady && (
+        <button
+          type="button"
+          className="pawn-slug-godot-host__fallback-exit"
+          onClick={onExit}
+          aria-label="Volver a Experimentos"
+        >
+          ←
+        </button>
+      )}
 
       <div className="pawn-slug-godot-host__frame-shell">
-        <div className="pawn-slug-godot-host__status" aria-live="polite">
+        <div
+          className={`pawn-slug-godot-host__status${runtimeReady ? ' is-ready' : ''}`}
+          aria-live="polite"
+        >
           <span className={runtimeReady ? 'is-ready' : ''} aria-hidden="true" />
           {runtimeStatus}
         </div>
