@@ -113,6 +113,11 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
   }
 
   assert {
+    condition     = oci_core_instance.backend.instance_options[0].are_legacy_imds_endpoints_disabled == true
+    error_message = "OCI staging must disable legacy IMDSv1 and expose metadata through IMDSv2 only."
+  }
+
+  assert {
     condition = (
       oci_core_instance.backend.agent_config[0].plugins_config[0].name == "Compute Instance Run Command" &&
       oci_core_instance.backend.agent_config[0].plugins_config[0].desired_state == "ENABLED"

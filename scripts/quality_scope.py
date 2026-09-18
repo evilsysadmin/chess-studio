@@ -136,7 +136,7 @@ SECURITY_RE = re.compile(
     r"^compose\.ya?ml$|^frontend/package-lock\.json$|"
     r"^backend-python/requirements[^/]*\.txt$|^\.trivy(?:ignore|\.ya?ml)?$|"
     r"^scripts/(?:npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|"
-    r"trivy_[^/]*|install_trivy\.sh)$|^deploy/|^render\.ya?ml$"
+    r"trivy_[^/]*|install_trivy\.sh)$|^infra/(?:oci|cloudflare|terraform)/|^deploy/|^render\.ya?ml$"
 )
 
 
@@ -358,9 +358,9 @@ def self_test() -> None:
     _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
     _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
     _expect_core(["e2e/new-critical-journey.spec.js"])
-    _expect(["infra/cloudflare/main.tf"])
-    _expect(["infra/oci/staging/main.tf"])
-    _expect(["infra/terraform/main.tf"])
+    _expect(["infra/cloudflare/main.tf"], run_security=True)
+    _expect(["infra/oci/staging/main.tf"], run_security=True)
+    _expect(["infra/terraform/main.tf"], run_security=True)
     _expect(["Dockerfile"], run_security=True)
     _expect(["scripts/npm_audit_gate.py"], run_security=True)
 
