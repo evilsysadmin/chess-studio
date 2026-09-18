@@ -254,12 +254,33 @@ try {
   diagnostics.iframe.canvasBox = box;
   if (!box || box.width < 320 || box.height < 180) fail('iframe-canvas-bounds', diagnostics);
 
+  // Regression contract: ESC is pause/resume now, never an implicit exit.
+  // The first focused gesture may enter browser fullscreen; two ESC presses
+  // therefore cover both the browser-fullscreen path and the plain canvas path.
+  await canvas.click({ position: { x: Math.max(20, box.width / 2), y: Math.max(20, box.height / 2) } });
+  await parent.keyboard.press('Escape');
+  await parent.waitForTimeout(100);
+  await parent.keyboard.press('Escape');
+  await parent.waitForTimeout(100);
+
+  const escapeExitMessages = await parent.evaluate(() => (
+    (window.__pawnSlugGodotMessages || []).filter(
+      (message) => message?.sourceMatches
+        && message?.data?.source === 'pawn-slug-godot'
+        && message?.data?.type === 'exit',
+    )
+  ));
+  diagnostics.iframe.escapeExitMessages = escapeExitMessages;
+  diagnostics.iframe.canvasAfterEscape = await canvas.boundingBox();
+  if (escapeExitMessages.length > 0) fail('iframe-escape-must-pause-not-exit', diagnostics);
+  if (!diagnostics.iframe.canvasAfterEscape) fail('iframe-escape-keeps-runtime-alive', diagnostics);
+
   if (diagnostics.pageErrors.length || diagnostics.requestFailures.length || diagnostics.badResponses.length) {
     fail('browser-errors', diagnostics);
   }
 
   console.log(
-    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
+    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas + ESC pause contract · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
   );
 } finally {
   await closeServer(hostServer);
