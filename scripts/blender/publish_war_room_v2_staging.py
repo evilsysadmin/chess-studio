@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import pathlib
 import sys
 
@@ -16,9 +15,8 @@ import r2_asset_publisher as core  # noqa: E402
 
 CANONICAL_PREFIX = "war-room/v2/runtime"
 STAGING_ALIAS = "war-room/v2/staging/current.glb"
-STAGING_REVISION_ALIAS = "war-room/v2/staging/current.json"
+STAGING_REVISION_PREFIX = "war-room/v2/staging/revisions"
 CONTENT_TYPE = "model/gltf-binary"
-REVISION_CONTENT_TYPE = "application/json"
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -59,33 +57,24 @@ def main() -> int:
     if sha256_bytes(received) != digest:
         raise SystemExit("War Room v2 staging alias corrupto tras publicar")
 
-    # Publish the marker last: seeing this revision guarantees current.glb
-    # already contains the matching bytes.
-    marker = json.dumps(
-        {
-            "schema": 1,
-            "revision": revision,
-            "sha256": digest,
-            "canonical": canonical_key,
-        },
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode("utf-8")
+    # The immutable PR key is published last. Visual CI points directly at
+    # this object, so it can never validate a stale current.glb alias.
+    revision_key = f"{STAGING_REVISION_PREFIX}/{revision}.glb"
     transport.raw_upload_object(
         token,
         account_id,
         config["bucket"],
-        STAGING_REVISION_ALIAS,
-        marker,
-        REVISION_CONTENT_TYPE,
+        revision_key,
+        data,
+        CONTENT_TYPE,
     )
-    received_marker = core.get_object(token, account_id, config["bucket"], STAGING_REVISION_ALIAS)
-    if received_marker != marker:
-        raise SystemExit("War Room v2 revision marker corrupto tras publicar")
+    received_revision = core.get_object(token, account_id, config["bucket"], revision_key)
+    if sha256_bytes(received_revision) != digest:
+        raise SystemExit("War Room v2 revision GLB corrupto tras publicar")
 
     print(
         f"War Room v2 R2 OK · revision={revision} · sha256={digest} · "
-        f"canonical={canonical_key} · staging={STAGING_ALIAS}"
+        f"canonical={canonical_key} · staging={STAGING_ALIAS} · revision_key={revision_key}"
     )
     return 0
 
