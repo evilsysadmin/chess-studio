@@ -122,16 +122,23 @@ for (const capture of CAPTURES) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
-      // Chess Studio's canonical mobile contract is viewport + touch. Do not
-      // enable Playwright's browser-level mobile emulation here: it changes UA/
-      // viewport semantics beyond the product's responsive contract and can
-      // hide the diegetic Home entry before the visual surface is reached.
+      // Navigation through Home is not part of this producer's visual contract.
+      // Enter Tactics from a stable canonical desktop layout, preserving touch
+      // capability from browser creation so the renderer still selects its
+      // coarse-pointer/mobile quality path. Resize only after Tactics is live.
+      viewport: {
+        width: capture.hasTouch ? 1180 : capture.width,
+        height: capture.hasTouch ? 900 : capture.height,
+      },
       hasTouch: capture.hasTouch,
     });
     const page = await context.newPage();
     try {
       await openTactics(page);
+      if (capture.hasTouch) {
+        await page.setViewportSize({ width: capture.width, height: capture.height });
+        await page.waitForTimeout(180);
+      }
       const mode = page.locator('[data-chronicles-tactics="true"]');
       const viewport = mode.locator('.chronicles-tactics__viewport');
       const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
