@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-signal fired(origin: Vector2, direction: float, shot: Dictionary)
+signal fired(origin: Vector2, direction: Vector2, shot: Dictionary)
 signal grenade_thrown(origin: Vector2, direction: float)
 signal grenades_changed(count: int)
 signal checkpoint_changed(checkpoint_x: float)
@@ -15,6 +15,17 @@ signal landed(intensity: float)
 const MatthiasArt := preload("res://scripts/matthias_art.gd")
 const MOVE_SPEED := 330.0
 const CROUCH_SPEED_SCALE := 0.30
+const STANDING_HITBOX_SIZE := Vector2(48.0, 84.0)
+const CROUCH_HITBOX_SIZE := Vector2(48.0, 48.0)
+const CROUCH_HITBOX_OFFSET_Y := (STANDING_HITBOX_SIZE.y - CROUCH_HITBOX_SIZE.y) * 0.5
+const STAND_CLEARANCE_SIZE := Vector2(46.0, STANDING_HITBOX_SIZE.y - CROUCH_HITBOX_SIZE.y)
+const STAND_CLEARANCE_OFFSET_Y := -24.0
+const RESPAWN_SEARCH_X_OFFSETS := [
+    0.0, -48.0, 48.0, -96.0, 96.0, -144.0, 144.0,
+    -192.0, 192.0, -256.0, 256.0,
+]
+const RESPAWN_RAY_UP_DISTANCE := 460.0
+const RESPAWN_RAY_DOWN_DISTANCE := 320.0
 const GROUND_ACCEL := 2200.0
 const AIR_ACCEL := 1350.0
 const GROUND_DECEL := 2800.0
@@ -104,12 +115,18 @@ var _fire_was_pressed := false
 var _grenade_was_pressed := false
 var _art
 var _touch_controls
+var _collision_shape: CollisionShape2D
+var _crouching := false
+var _last_safe_position := Vector2.ZERO
 
 func _ready() -> void:
     _touch_controls = get_parent().get_node_or_null("TouchControls")
+    _collision_shape = get_node_or_null("CollisionShape2D") as CollisionShape2D
     global_position.x = CHECKPOINT_X[0]
     _spawn_position = global_position
     _checkpoint_position = _spawn_position
+    _last_safe_position = _spawn_position
+    _set_crouching(false, true)
     _art = MatthiasArt.new()
     _art.name = "MatthiasArt"
     add_child(_art)
@@ -136,9 +153,13 @@ func _physics_process(delta: float) -> void:
     var axis := _movement_axis()
     if absf(axis) > 0.08:
         facing = 1.0 if axis > 0.0 else -1.0
+    if _fire_pressed():
+        var aim_facing := _aim_direction()
+        if absf(aim_facing.x) > 0.25:
+            facing = signf(aim_facing.x)
 
-    var crouching := _crouch_pressed() and is_on_floor()
-    var speed_scale := CROUCH_SPEED_SCALE if crouching else 1.0
+    _update_crouch_state()
+    var speed_scale := CROUCH_SPEED_SCALE if _crouching else 1.0
     var target_speed := axis * MOVE_SPEED * speed_scale
     var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
     if absf(axis) <= 0.08 and is_on_floor():
@@ -151,13 +172,14 @@ func _physics_process(delta: float) -> void:
         _coyote_remaining = maxf(0.0, _coyote_remaining - delta)
         velocity.y += GRAVITY * delta
 
-    var jump_pressed := _jump_pressed()
+    var aiming_up_while_firing := _fire_pressed() and _aim_vertical_axis() < -0.5
+    var jump_pressed := _jump_pressed() and not aiming_up_while_firing
     if jump_pressed and not _jump_was_pressed:
         _jump_buffer_remaining = JUMP_BUFFER_TIME
     else:
         _jump_buffer_remaining = maxf(0.0, _jump_buffer_remaining - delta)
 
-    if _jump_buffer_remaining > 0.0 and _coyote_remaining > 0.0 and not crouching:
+    if _jump_buffer_remaining > 0.0 and _coyote_remaining > 0.0 and not _crouching:
         velocity.y = -JUMP_SPEED
         _jump_buffer_remaining = 0.0
         _coyote_remaining = 0.0
@@ -167,11 +189,13 @@ func _physics_process(delta: float) -> void:
 
     var landing_speed := maxf(0.0, velocity.y)
     move_and_slide()
+    _update_crouch_state()
     _update_checkpoint()
+    if is_on_floor() and _respawn_position_is_clear(global_position):
+        _last_safe_position = global_position
     var landed_now := not was_on_floor and is_on_floor()
     if landed_now:
         landed.emit(clampf((landing_speed - 180.0) / 620.0, 0.0, 1.0))
-    crouching = _crouch_pressed() and is_on_floor()
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 
     # Pose/facing must be current before weapon or grenade origins are resolved.
@@ -180,7 +204,7 @@ func _physics_process(delta: float) -> void:
         delta,
         horizontal_speed_ratio,
         is_on_floor(),
-        crouching,
+        _crouching,
         landed_now,
         velocity.y,
         facing,
@@ -194,7 +218,7 @@ func _physics_process(delta: float) -> void:
             0.0,
             horizontal_speed_ratio,
             is_on_floor(),
-            crouching,
+            _crouching,
             false,
             velocity.y,
             facing,
@@ -341,7 +365,7 @@ func _update_fire_input() -> bool:
         "spread": float(profile["spread"]),
         "explosive": bool(profile["explosive"]),
     }
-    fired.emit(_projectile_origin(), facing, shot)
+    fired.emit(_projectile_origin(), _aim_direction(), shot)
 
     if ammo > 0:
         ammo -= 1
@@ -365,11 +389,18 @@ func _update_checkpoint() -> void:
             break
         if checkpoint_x <= _checkpoint_position.x:
             continue
-        _checkpoint_position = Vector2(checkpoint_x, _spawn_position.y)
+        var preferred := Vector2(checkpoint_x, _spawn_position.y)
+        _checkpoint_position = _find_safe_respawn_position(preferred)
         checkpoint_changed.emit(checkpoint_x)
 
 func current_checkpoint_x() -> float:
     return _checkpoint_position.x
+
+func combat_hitbox_rect() -> Rect2:
+    var size := CROUCH_HITBOX_SIZE if _crouching else STANDING_HITBOX_SIZE
+    var offset_y := CROUCH_HITBOX_OFFSET_Y if _crouching else 0.0
+    var center := global_position + Vector2(0.0, offset_y)
+    return Rect2(center - size * 0.5, size)
 
 func _fallback_to_pistol() -> void:
     if weapon == "pistol":
@@ -422,7 +453,8 @@ func _update_dead_state(delta: float) -> void:
     queue_redraw()
 
 func _respawn() -> void:
-    global_position = _checkpoint_position
+    global_position = _find_safe_respawn_position(_checkpoint_position)
+    _set_crouching(false, true)
     velocity = Vector2.ZERO
     hp = MAX_HP
     invuln_remaining = RESPAWN_INVULN_SECONDS
@@ -437,6 +469,146 @@ func _respawn() -> void:
     select_weapon("pistol")
     _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
+
+func _update_crouch_state() -> void:
+    if _collision_shape == null:
+        _crouching = false
+        return
+    var wants_crouch := _crouch_pressed() and is_on_floor()
+    if wants_crouch:
+        _set_crouching(true)
+    elif _crouching and _can_stand():
+        _set_crouching(false)
+
+func _set_crouching(value: bool, force := false) -> void:
+    if _collision_shape == null or (_crouching == value and not force):
+        return
+    if not value and not force and not _can_stand():
+        return
+    var rect := _collision_shape.shape as RectangleShape2D
+    if rect == null:
+        return
+    _crouching = value
+    rect.size = CROUCH_HITBOX_SIZE if value else STANDING_HITBOX_SIZE
+    _collision_shape.position.y = CROUCH_HITBOX_OFFSET_Y if value else 0.0
+
+func _can_stand() -> bool:
+    return _shape_position_is_clear(
+        global_position + Vector2(0.0, STAND_CLEARANCE_OFFSET_Y),
+        STAND_CLEARANCE_SIZE,
+    )
+
+func _shape_position_is_clear(center: Vector2, size: Vector2) -> bool:
+    var shape := RectangleShape2D.new()
+    shape.size = size
+    var params := PhysicsShapeQueryParameters2D.new()
+    params.shape = shape
+    params.transform = Transform2D(0.0, center)
+    params.exclude = [get_rid()]
+    params.collision_mask = collision_mask
+    params.collide_with_bodies = true
+    params.collide_with_areas = false
+    params.margin = 0.0
+    return get_world_2d().direct_space_state.intersect_shape(params, 1).is_empty()
+
+func _respawn_position_is_clear(candidate: Vector2) -> bool:
+    return _shape_position_is_clear(candidate, STANDING_HITBOX_SIZE)
+
+func _grounded_respawn_candidate(x: float, around_y: float) -> Dictionary:
+    var ray := PhysicsRayQueryParameters2D.create(
+        Vector2(x, around_y - RESPAWN_RAY_UP_DISTANCE),
+        Vector2(x, around_y + RESPAWN_RAY_DOWN_DISTANCE),
+        collision_mask,
+        [get_rid()],
+    )
+    ray.collide_with_areas = false
+    ray.collide_with_bodies = true
+    var hit := get_world_2d().direct_space_state.intersect_ray(ray)
+    if hit.is_empty():
+        return {"valid": false}
+    var surface: Vector2 = hit["position"]
+    return {
+        "valid": true,
+        "position": Vector2(x, surface.y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0),
+    }
+
+func _find_safe_respawn_position(preferred: Vector2) -> Vector2:
+    for offset_x in RESPAWN_SEARCH_X_OFFSETS:
+        var candidate_info := _grounded_respawn_candidate(preferred.x + float(offset_x), preferred.y)
+        if not bool(candidate_info.get("valid", false)):
+            continue
+        var candidate: Vector2 = candidate_info["position"]
+        if _respawn_position_is_clear(candidate):
+            return candidate
+    if _last_safe_position != Vector2.ZERO and _respawn_position_is_clear(_last_safe_position):
+        return _last_safe_position
+    var spawn_info := _grounded_respawn_candidate(_spawn_position.x, _spawn_position.y)
+    if bool(spawn_info.get("valid", false)):
+        var spawn_candidate: Vector2 = spawn_info["position"]
+        if _respawn_position_is_clear(spawn_candidate):
+            return spawn_candidate
+    return _spawn_position
+
+func _aim_vertical_axis() -> float:
+    if _touch_controls != null and _touch_controls.has_method("aim_vector"):
+        var touch_aim: Vector2 = _touch_controls.aim_vector()
+        if absf(touch_aim.y) > 0.25:
+            return signf(touch_aim.y)
+    var vertical := 0.0
+    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+        vertical -= 1.0
+    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+        vertical += 1.0
+    var joypads := Input.get_connected_joypads()
+    if not joypads.is_empty():
+        var joypad := joypads[0]
+        var stick_y := Input.get_joy_axis(joypad, JOY_AXIS_RIGHT_Y)
+        if absf(stick_y) > 0.45:
+            return signf(stick_y)
+        if Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_UP):
+            vertical -= 1.0
+        if Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_DOWN):
+            vertical += 1.0
+    return clampf(vertical, -1.0, 1.0)
+
+func _aim_direction() -> Vector2:
+    if _touch_controls != null and _touch_controls.has_method("aim_vector"):
+        var touch_aim: Vector2 = _touch_controls.aim_vector()
+        if touch_aim.length_squared() > 0.05:
+            return _quantize_aim(touch_aim)
+
+    var joypads := Input.get_connected_joypads()
+    if not joypads.is_empty():
+        var joypad := joypads[0]
+        var right_stick := Vector2(
+            Input.get_joy_axis(joypad, JOY_AXIS_RIGHT_X),
+            Input.get_joy_axis(joypad, JOY_AXIS_RIGHT_Y),
+        )
+        if right_stick.length() > 0.45:
+            return _quantize_aim(right_stick)
+
+    var vertical := _aim_vertical_axis()
+    if absf(vertical) > 0.5:
+        var horizontal := 0.0
+        if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+            horizontal -= 1.0
+        if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+            horizontal += 1.0
+        if not joypads.is_empty():
+            var joypad := joypads[0]
+            if Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_LEFT):
+                horizontal -= 1.0
+            if Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_RIGHT):
+                horizontal += 1.0
+        return _quantize_aim(Vector2(horizontal, vertical))
+    return Vector2(facing, 0.0)
+
+func _quantize_aim(raw: Vector2) -> Vector2:
+    if raw.length_squared() <= 0.01:
+        return Vector2(facing, 0.0)
+    var step := PI / 4.0
+    var angle := roundf(raw.angle() / step) * step
+    return Vector2.RIGHT.rotated(angle).normalized()
 
 func _movement_axis() -> float:
     var axis := 0.0
