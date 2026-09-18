@@ -22,6 +22,9 @@ k3s_sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(
 k3s_service_prepare = (ROOT / "scripts" / "oci_k3s_service_prepare.py").read_text(encoding="utf-8")
 k3s_config = (ROOT / "infra" / "oci" / "k3s" / "config.yaml").read_text(encoding="utf-8")
 k3s_unit = (ROOT / "infra" / "oci" / "k3s" / "k3s.service").read_text(encoding="utf-8")
+signal_controller = (ROOT / "scripts" / "oci_staging_signal_controller.sh").read_text(encoding="utf-8")
+signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.service").read_text(encoding="utf-8")
+signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -268,5 +271,27 @@ assert "tail -n 2000" in deploy
 assert "poll_errors" in deploy and "backoff" in deploy and "transport_errors" in deploy
 assert "agent_diag_summary ||" in deploy
 assert 'cat "$log"' not in deploy.split("agent_diag_summary()", 1)[1].split("total_started_ms=", 1)[0]
+
+# The GHCR signal controller is staged but deliberately dormant in this change.
+# It adds no OCI resource, no inbound port and no polling traffic until a later
+# reviewed change explicitly enables the timer.
+assert "prepare_signal_controller_disabled()" in deploy
+assert "systemctl disable --now chess-studio-staging-signal.timer" in deploy
+assert 'install -o root -g root -m 0755 "$signal_controller_source"' in deploy
+assert 'install -o root -g root -m 0644 "$signal_service_source"' in deploy
+assert 'install -o root -g root -m 0644 "$signal_timer_source"' in deploy
+assert "systemctl enable --now chess-studio-staging-signal.timer" not in deploy
+assert "oci-staging-approved" in signal_controller
+assert "org.opencontainers.image.revision" in signal_controller
+assert "org.opencontainers.image.source" in signal_controller
+assert "flock -n 9" in signal_controller
+assert "docker pull --quiet" in signal_controller
+assert "approved and immutable image identities differ" in signal_controller
+assert "ssh " not in signal_controller.lower()
+assert "object_storage" not in signal_controller.lower()
+assert "bastion" not in signal_controller.lower()
+assert "ExecStart=/usr/local/sbin/chess-studio-staging-signal" in signal_service
+assert "OnUnitActiveSec=15s" in signal_timer
+assert "WantedBy=timers.target" in signal_timer
 
 print("OCI staging CORS + runtime deployment contract: OK")
