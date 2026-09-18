@@ -25,3 +25,6 @@ func respawn_position_is_clear_probe(candidate: Vector2) -> bool:
 
 func quantize_aim_probe(raw: Vector2) -> Vector2:
     return _quantize_aim(raw)
+
+func constrain_vertical_aim_probe(direction: Vector2, grounded: bool) -> Vector2:
+    return _constrain_vertical_aim(direction, grounded)

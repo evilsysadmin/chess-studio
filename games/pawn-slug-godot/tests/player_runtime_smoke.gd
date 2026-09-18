@@ -72,11 +72,9 @@ func _run() -> void:
     var aim_cases := [
         [Vector2(1.0, 0.0), Vector2.RIGHT, "derecha"],
         [Vector2(1.0, -1.0), Vector2(1.0, -1.0).normalized(), "diagonal superior derecha"],
-        [Vector2(0.0, -1.0), Vector2.UP, "vertical superior"],
         [Vector2(-1.0, -1.0), Vector2(-1.0, -1.0).normalized(), "diagonal superior izquierda"],
         [Vector2(-1.0, 0.0), Vector2.LEFT, "izquierda"],
         [Vector2(-1.0, 1.0), Vector2(-1.0, 1.0).normalized(), "diagonal inferior izquierda"],
-        [Vector2(0.0, 1.0), Vector2.DOWN, "vertical inferior"],
         [Vector2(1.0, 1.0), Vector2(1.0, 1.0).normalized(), "diagonal inferior derecha"],
     ]
     for aim_case in aim_cases:
@@ -85,7 +83,32 @@ func _run() -> void:
             aim_case[1],
             "aim 8-way " + String(aim_case[2]),
         )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.UP, false),
+        Vector2.UP,
+        "vertical arriba se conserva en el aire",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.DOWN, false),
+        Vector2.DOWN,
+        "vertical abajo se conserva en el aire",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.UP, true),
+        Vector2(1.0, -1.0).normalized(),
+        "vertical arriba en suelo se convierte en diagonal según facing",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.DOWN, true),
+        Vector2(1.0, 1.0).normalized(),
+        "vertical abajo en suelo se convierte en diagonal según facing",
+    )
     player.facing = -1.0
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.UP, true),
+        Vector2(-1.0, -1.0).normalized(),
+        "vertical en suelo respeta facing izquierdo",
+    )
     _expect_vector(player.quantize_aim_probe(Vector2.ZERO), Vector2.LEFT, "aim neutro conserva facing")
 
     # Reproduce the old checkpoint failure: y=137 intersects this platform.
