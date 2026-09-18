@@ -45,7 +45,7 @@ export default function PawnSlugGodotHost({ onExit }) {
         <div>
           <span className="section-label">POC · Godot Web</span>
           <h2>PAWN SLUG GODOT</h2>
-          <p>Runtime independiente. El Pawn Slug actual sigue intacto mientras éste aprende a disparar sin pedir permiso a React.</p>
+          <p>Runtime Godot canónico. React abre la puerta; el juego, la simulación y el render viven dentro de Godot.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>

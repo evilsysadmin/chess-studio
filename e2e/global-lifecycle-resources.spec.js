@@ -197,7 +197,7 @@ async function openPawnSlugFromHome(page) {
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Pawn Slug/ }).click();
-  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
 }
 
 test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no acumula recursos globales', async ({ page }) => {
@@ -236,17 +236,14 @@ test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no 
   expectReturnedResourcesToFitBaseline({ baseline, final: afterWarRoom });
 
   await openPawnSlugFromHome(page);
-  await page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true }).click();
-  await expect(page.getByText('Dienstpistole', { exact: true })).toBeVisible();
-  const stage = page.locator('[data-pawn-slug-renderer="three"]');
-  await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  const pawnSlugFrame = page.locator('iframe[title="Pawn Slug Godot"]');
+  await expect(pawnSlugFrame).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
   await settle(page);
 
-  const pawnSlug = await snapshot();
-  expect(pawnSlug.webglCanvases, `Pawn Slug debe acreditar al menos un canvas WebGL: ${JSON.stringify(pawnSlug)}`)
-    .toBeGreaterThanOrEqual(1);
-  expect(pawnSlug.liveWebglContexts, `Pawn Slug debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(pawnSlug)}`)
-    .toBeGreaterThanOrEqual(1);
+  const pawnSlugHost = await snapshot();
+  expect(pawnSlugHost.webglCanvases, `Pawn Slug Godot no debe reintroducir canvas Three en el shell: ${JSON.stringify(pawnSlugHost)}`)
+    .toBeLessThanOrEqual(afterWarRoom.webglCanvases);
 
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();

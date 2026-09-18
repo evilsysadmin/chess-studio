@@ -11,7 +11,6 @@ vi.mock('./soundPreferences.js', () => ({
 }));
 
 import { createChesscomAudio } from './chesscomAudio.js';
-import { createPawnSlugRuntimeSfx } from './pawnSlugRuntimeSfx.js';
 
 class FakeAudioParam {
   setValueAtTime() {}
@@ -103,25 +102,4 @@ describe('audio context lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('shares Pawn Slug audio, schedules composite cues in WebAudio, and never owns context teardown', async () => {
-    const first = createPawnSlugRuntimeSfx();
-    const second = createPawnSlugRuntimeSfx();
-    first.play('levelUp');
-    second.play('pickup');
-
-    expect(FakeAudioContext.created).toBe(1);
-    expect(vi.getTimerCount()).toBe(0);
-
-    first.destroy();
-    first.destroy();
-    second.destroy();
-    first.play('boss');
-    second.play('pickup');
-    vi.runAllTimers();
-    await Promise.resolve();
-
-    expect(FakeAudioContext.closed).toBe(0);
-    expect(FakeAudioContext.created).toBe(1);
-    expect(vi.getTimerCount()).toBe(0);
-  });
 });
