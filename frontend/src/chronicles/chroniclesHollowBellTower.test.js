@@ -20,7 +20,7 @@ describe('Chronicles Hollow Bell Tower', () => {
     expect(chroniclesMapIds()).toContain('hollow-bell-tower');
     const tower = chroniclesMapById('hollow-bell-tower');
 
-    expect(tower.version).toBe(1);
+    expect(tower.version).toBe(2);
     expect(tower.grid).toHaveLength(11);
     expect(tower.grid[0]).toHaveLength(11);
     expect(tower.enemies.map((enemy) => enemy.id)).toEqual([
@@ -103,17 +103,24 @@ describe('Chronicles Hollow Bell Tower', () => {
     });
 
     state = { ...state, x: 8, y: 1 };
-    const escaped = chroniclesTacticsUse(state, 'tower-upper-gate');
+    const cistern = chroniclesTacticsUse(state, 'tower-upper-gate');
 
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.bellArchivistHp).toBe(8);
-    expect(escaped.tollWispHp).toBe(5);
-    expect(chroniclesInventoryEntries(escaped).map((item) => item.id)).not.toContain('master-clapper');
-    expect(chroniclesQuestEntries(escaped).find((quest) => quest.id === 'silence-hollow-bells')).toMatchObject({
+    expect(cistern.mapId).toBe('echo-cistern');
+    expect(cistern.phase).toBe('explore');
+    expect({ x: cistern.x, y: cistern.y, direction: cistern.direction }).toEqual({ x: 1, y: 1, direction: 1 });
+    expect(cistern.bellArchivistHp).toBe(0);
+    expect(cistern.tollWispHp).toBe(0);
+    expect(cistern.cisternWardenHp).toBe(12);
+    expect(cistern.westSiltHoundHp).toBe(7);
+    expect(cistern.eastDrainSpiderHp).toBe(6);
+    expect(cistern.echoBishopHp).toBe(8);
+    expect(cistern.brineWispHp).toBe(5);
+    expect(chroniclesInventoryEntries(cistern).map((item) => item.id)).not.toContain('master-clapper');
+    expect(chroniclesQuestEntries(cistern).find((quest) => quest.id === 'silence-hollow-bells')).toMatchObject({
       status: 'completed',
       objective: 'Torre superada.',
     });
-    expect(escaped.journal.at(-1)?.id).toBe('hollow-bell-tower-cleared');
+    expect(cistern.journal.at(-1)?.id).toBe('hollow-bell-tower-cleared');
   });
 
   it('keeps the archivist cache optional and separate from the two-brake objective', () => {
