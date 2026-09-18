@@ -2307,6 +2307,32 @@ def test_internal_billing_cost_ingest_requires_hmac_and_records_two_providers(mo
     assert seen["costs"] == [("oci", 0.0, "EUR"), ("cloudflare", 0.25, "USD")]
 
 
+def test_internal_billing_cost_ingest_accepts_one_provider(monkeypatch):
+    import system_api
+
+    secret = "billing-test-secret"
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", secret)
+    seen = {}
+
+    def capture(costs):
+        seen["costs"] = costs
+        return True
+
+    monkeypatch.setattr(system_api, "record_billing_costs_otel", capture)
+    body = json.dumps(
+        {"costs": [{"provider": "oci", "amount": 0.0, "currency": "EUR"}]},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    response = raw_client.post(
+        "/api/internal/billing-costs",
+        content=body,
+        headers=_billing_headers(secret, body),
+    )
+    assert response.status_code == 204
+    assert seen["costs"] == [("oci", 0.0, "EUR")]
+
+
 def test_internal_billing_cost_ingest_rejects_bad_signature(monkeypatch):
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "billing-test-secret")
     body = b'{"costs":[]}'
