@@ -812,3 +812,106 @@
   .pvp-lobby__player-state { font-size: .52rem; }
   .pvp-lobby__player-rating small { font-size: .52rem; }
 }
+
+/* 1v1 discovery pass: compact mental model, not another tutorial modal. */
+.pvp-lobby__flow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .5rem;
+  margin: .8rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pvp-lobby__flow li {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .58rem;
+  padding: .58rem .68rem;
+  border: 1px solid rgba(199, 165, 110, .11);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .012);
+}
+
+.pvp-lobby__flow li > b {
+  width: 1.72rem;
+  height: 1.72rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(213, 172, 99, .2);
+  border-radius: 50%;
+  color: rgba(231, 203, 153, .72);
+  background: rgba(178, 128, 61, .06);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  font-weight: 600;
+}
+
+.pvp-lobby__flow li > span {
+  min-width: 0;
+  display: grid;
+  gap: .05rem;
+}
+
+.pvp-lobby__flow strong {
+  overflow: hidden;
+  color: rgba(243, 232, 211, .88);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: .82rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pvp-lobby__flow small {
+  overflow: hidden;
+  color: rgba(236, 228, 209, .43);
+  font-size: .66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pvp-lobby__flow li.is-done,
+.pvp-lobby__flow li.is-ready {
+  border-color: rgba(111, 174, 120, .19);
+  background: linear-gradient(90deg, rgba(66, 126, 75, .07), transparent 72%), rgba(255, 255, 255, .012);
+}
+
+.pvp-lobby__flow li.is-done > b,
+.pvp-lobby__flow li.is-ready > b {
+  border-color: rgba(116, 183, 125, .28);
+  color: #b8d7bb;
+  background: rgba(75, 139, 84, .08);
+}
+
+.pvp-lobby__challenge-cta:not(:disabled) {
+  color: #f0d69e;
+  border-color: rgba(222, 181, 104, .36);
+  background: rgba(190, 139, 68, .12);
+}
+
+.pvp-lobby__challenge-cta:not(:disabled)::after {
+  content: ' ›';
+  color: #e8c67f;
+}
+
+@media (max-width: 660px) {
+  .pvp-lobby__flow {
+    grid-template-columns: 1fr;
+    gap: .34rem;
+  }
+
+  .pvp-lobby__flow li {
+    padding: .48rem .58rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pvp-lobby__flow li {
+    transition: none;
+  }
+}
