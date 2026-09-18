@@ -264,7 +264,7 @@ def main() -> int:
             fail(f"exporter billing incompleto: {token}")
 
     system_api = (ROOT / "backend-python" / "system_api.py").read_text(encoding="utf-8")
-    for token in ("/api/internal/billing-costs", "X-Chess-Signature", "record_billing_costs_otel"):
+    for token in ("/api/internal/billing-costs", "x-chess-signature", "record_billing_costs_otel"):
         if token not in system_api:
             fail(f"backend billing ingest incompleto: {token}")
     if "chess_studio_billing_cost_current_cycle" not in tracing or "create_observable_gauge" not in tracing:
