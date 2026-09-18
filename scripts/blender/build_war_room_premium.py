@@ -802,33 +802,71 @@ def add_gothic_canon_v2(static, mats):
     )
 
     def add_pointed_arch_frame(prefix, cx):
-        """Slim timber ribs that give the rear wall gothic vertical rhythm."""
+        """Stone lancet frame: curved in segments so it reads as gothic, not as a roof truss."""
         y = 6.43
         span = 1.48
-        jamb_bottom = 3.28
-        shoulder = 5.08
-        peak = 6.46
+        jamb_bottom = 3.18
+        shoulder = 5.04
+        peak = 6.48
         for side in (-1, 1):
             cube(
                 f"WR_CANON_arch_{prefix}_jamb_{side}",
                 (cx + side * span, y, (jamb_bottom + shoulder) / 2),
-                (0.095, 0.075, (shoulder - jamb_bottom) / 2),
-                mats["trim_wood"], static, bevel=0.032,
+                (0.105, 0.080, (shoulder - jamb_bottom) / 2),
+                mats["stone"], static, bevel=0.038,
             )
-            start = Vector((cx + side * span, y, shoulder))
-            end = Vector((cx, y, peak))
-            direction = end - start
-            beam = cube(
-                f"WR_CANON_arch_{prefix}_slope_{side}",
-                (start + end) / 2,
-                (0.095, 0.075, direction.length / 2),
-                mats["trim_wood"], static, bevel=0.032,
+            cube(
+                f"WR_CANON_arch_{prefix}_foot_{side}",
+                (cx + side * span, y - 0.01, jamb_bottom + 0.08),
+                (0.18, 0.105, 0.095), mats["stone_light"], static, bevel=0.038,
             )
-            beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-        sphere(f"WR_CANON_arch_{prefix}_boss", (cx, y - 0.02, peak), 0.10, mats["brass_dark"], static)
+            cube(
+                f"WR_CANON_arch_{prefix}_capital_{side}",
+                (cx + side * span, y - 0.01, shoulder),
+                (0.18, 0.105, 0.105), mats["stone_light"], static, bevel=0.040,
+            )
+            points = (
+                Vector((cx + side * span, y, shoulder)),
+                Vector((cx + side * span * 0.90, y, shoulder + 0.38)),
+                Vector((cx + side * span * 0.68, y, shoulder + 0.76)),
+                Vector((cx + side * span * 0.37, y, peak - 0.27)),
+                Vector((cx, y, peak)),
+            )
+            for segment in range(len(points) - 1):
+                start = points[segment]
+                end = points[segment + 1]
+                direction = end - start
+                beam = cube(
+                    f"WR_CANON_arch_{prefix}_curve_{side}_{segment}",
+                    (start + end) / 2,
+                    (0.095, 0.075, direction.length / 2),
+                    mats["stone"], static, bevel=0.035,
+                )
+                beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+        sphere(f"WR_CANON_arch_{prefix}_boss", (cx, y - 0.02, peak), 0.105, mats["brass_dark"], static)
 
     add_pointed_arch_frame("left", -4.55)
     add_pointed_arch_frame("right", 4.85)
+
+    # Shallow mortar courses break the upper wall into believable masonry.
+    # They stay behind the hero props and use one existing material so runtime
+    # batching can collapse them aggressively.
+    for course, z in enumerate((3.62, 4.18, 4.74, 5.30, 5.86, 6.36)):
+        cube(
+            f"WR_CANON_masonry_course_{course}",
+            (0, 6.555, z), (8.10, 0.018, 0.018),
+            mats["stone_dark"], static, bevel=0.006,
+        )
+        stagger = 0.68 if course % 2 else 0.0
+        for joint, x in enumerate((-6.55, -4.25, -1.95, 0.35, 2.65, 4.95, 7.25)):
+            px = x + stagger
+            if px > 8.0:
+                continue
+            cube(
+                f"WR_CANON_masonry_joint_{course}_{joint}",
+                (px, 6.553, z - 0.28), (0.014, 0.018, 0.25),
+                mats["stone_dark"], static, bevel=0.004,
+            )
 
     # Four tall heraldic banners frame the existing central rampant-horse crest.
     # Their lower points sit behind the table so they read as architecture, not UI.
@@ -1125,6 +1163,7 @@ def validate():
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
         "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
+        "WR_CANON_arch_left_curve_-1_0", "WR_CANON_masonry_course_2",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
