@@ -113,6 +113,6 @@ def test_same_recipe_always_encodes_to_same_code():
         difficulty=2,
         seed=CHRONICLES_MAP_CODE_MAX_SEED,
     )
-    right = ChroniclesMapCode(**left.as_dict() | {"verbs": tuple(left.verbs)})
+    right = ChroniclesMapCode(**(left.as_dict() | {"verbs": tuple(left.verbs)}))
 
     assert encode_chronicles_map_code(left) == encode_chronicles_map_code(right)
