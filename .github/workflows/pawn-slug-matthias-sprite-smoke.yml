@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pawn-slug-matthias-sprite-smoke
+  group: pawn-slug-sprite-smoke-${{ github.event.pull_request.number || github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 jobs:
