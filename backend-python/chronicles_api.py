@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import chronicles_run_store
+from chronicles_map_code import CHRONICLES_MAP_CODE_MAX_SEED
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -33,7 +34,7 @@ CHRONICLES_MAP_ROOT = Path(__file__).with_name("chronicles_maps")
 CHRONICLES_RUN_NAMESPACE = uuid.UUID("e73c9496-fffd-4dc4-a0d0-8c7b6060a116")
 _MAP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
-_MAX_SEED = 2_147_483_647
+_MAX_SEED = CHRONICLES_MAP_CODE_MAX_SEED
 
 
 class ChroniclesManifestError(ValueError):
