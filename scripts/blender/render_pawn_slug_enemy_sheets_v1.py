@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Render canonical Blender-authored Pawn Slug enemy sprite sheets.
 
-Six distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
+Nine distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
   pawn      -> light rifle infantry
   knight    -> fast assault trooper with swept knight crest
   rook      -> broad heavy gunner with crenellated armour
   bishop    -> tall field officer with mitre crest and brass command trim
   queen     -> elite command assault officer with crown crest and cape armour
   grenadier -> demolition infantry with explosive pack and under-barrel launcher
+  scout     -> light reconnaissance infantry with radio antenna and scarf
+  commando  -> assault veteran with crossed bandoliers and reinforced visor
+  shield    -> slow breacher with broad frontal ballistic shield
 
 Each type renders the real runtime action contract into transparent 2x source frames.
 A lightweight compositor step in CI downsamples them into 96px runtime-style sheets.
@@ -32,8 +35,14 @@ ACTIONS = {
     "climb": 12,
     "death": 14,
 }
-TYPES = ("pawn", "knight", "rook", "bishop", "queen", "grenadier")
-BASE_ARCHETYPE = {"queen": "bishop", "grenadier": "pawn"}
+TYPES = ("pawn", "knight", "rook", "bishop", "queen", "grenadier", "scout", "commando", "shield")
+BASE_ARCHETYPE = {
+    "queen": "bishop",
+    "grenadier": "pawn",
+    "scout": "pawn",
+    "commando": "knight",
+    "shield": "rook",
+}
 
 
 def archetype(enemy_type):
@@ -220,6 +229,15 @@ def add_helmet(enemy_type, mats, head_z):
             box(f"queen_crown_spike_{index}", (0.055, 0.07, 0.20 + (0.04 if index in (1, 2) else 0.0)), mats["brass"], (x, -0.01, head_z + 0.42), (0, 0, (-0.08 + index * 0.05)), bevel=0.018)
     elif enemy_type == "grenadier":
         box("grenadier_helmet_wrap", (0.39, 0.22, 0.07), mats["red"], (-0.01, -0.10, head_z + 0.13), (0, 0, -0.03), bevel=0.018)
+    elif enemy_type == "scout":
+        box("scout_helmet_wrap", (0.36, 0.21, 0.055), mats["cloth_light"], (-0.01, -0.11, head_z + 0.13), bevel=0.018)
+        cylinder("scout_radio_antenna", 0.012, 0.34, mats["black"], (0.14, 0.04, head_z + 0.39), vertices=8, bevel=0.003)
+        sphere("scout_radio_tip", 0.028, mats["steel_light"], (0.14, 0.04, head_z + 0.57), segments=10, rings=6)
+    elif enemy_type == "commando":
+        box("commando_visor", (0.39, 0.06, 0.075), mats["black"], (-0.01, -0.18, head_z + 0.10), bevel=0.014)
+        box("commando_helmet_band", (0.40, 0.23, 0.052), mats["webbing"], (0.0, -0.08, head_z + 0.16), bevel=0.016)
+    elif enemy_type == "shield":
+        box("shield_helmet_band", (0.48, 0.24, 0.065), mats["steel_light"], (0.0, -0.09, head_z + 0.14), bevel=0.018)
 
 
 def add_weapon(enemy_type, mats, shoulder_z, pose):
@@ -256,6 +274,12 @@ def add_weapon(enemy_type, mats, shoulder_z, pose):
     elif enemy_type == "grenadier":
         cylinder("grenadier_launcher", 0.052, 0.44, mats["steel"], (-0.42, -0.28, z - 0.10), (0, math.pi / 2 + pitch, 0), vertices=12, bevel=0.008)
         cylinder("grenadier_drum", 0.10, 0.13, mats["black"], (-0.28, -0.28, z - 0.15), (math.pi / 2, 0, 0), vertices=12, bevel=0.010)
+    elif enemy_type == "scout":
+        box("scout_weapon_scope", (0.22, 0.07, 0.07), mats["steel_light"], (-0.30, -0.285, z + 0.10), (0, pitch, 0), bevel=0.012)
+    elif enemy_type == "commando":
+        box("commando_foregrip", (0.08, 0.08, 0.20), mats["webbing"], (-0.49, -0.285, z - 0.10), (0, 0.0, -0.05), bevel=0.012)
+    elif enemy_type == "shield":
+        box("shield_weapon_guard", (0.30, 0.10, 0.15), mats["steel"], (-0.35, -0.29, z - 0.01), (0, pitch, 0), bevel=0.018)
 
 
 def build_enemy(enemy_type, action, frame, mats):
@@ -340,6 +364,17 @@ def build_enemy(enemy_type, action, frame, mats):
         for index, x in enumerate((-0.20, 0.0, 0.20)):
             cylinder(f"grenade_{index}", 0.055, 0.12, mats["steel"], (root_x + x, -0.31, chest_z - 0.10), (math.pi / 2, 0, 0), vertices=10, bevel=0.008)
         box("grenadier_bandolier", (0.10, 0.045, 0.70), mats["webbing"], (root_x + 0.02, -0.325, chest_z + 0.01), (0, 0, -0.48), bevel=0.018)
+    elif enemy_type == "scout":
+        box("scout_radio_pack", (0.34, 0.18, 0.42), mats["cloth_dark"], (root_x + 0.04, 0.21, chest_z - 0.03), bevel=0.04)
+        box("scout_scarf", (0.52, 0.24, 0.09), mats["cloth_light"], (root_x - 0.01, -0.05, shoulder_z + 0.02), (0, 0, -0.05), bevel=0.025)
+    elif enemy_type == "commando":
+        box("commando_bandolier_a", (0.10, 0.045, 0.72), mats["webbing"], (root_x - 0.02, -0.325, chest_z + 0.01), (0, 0, -0.54), bevel=0.018)
+        box("commando_bandolier_b", (0.10, 0.045, 0.72), mats["webbing"], (root_x + 0.02, -0.327, chest_z + 0.01), (0, 0, 0.54), bevel=0.018)
+        box("commando_back_plate", (0.46, 0.17, 0.46), mats["steel"], (root_x, 0.18, chest_z - 0.01), bevel=0.04)
+    elif enemy_type == "shield":
+        box("shield_plate", (0.62, 0.08, 0.84), mats["steel"], (root_x - 0.20, -0.43, chest_z - 0.12), (0, 0, -0.04), bevel=0.055)
+        box("shield_viewport", (0.24, 0.025, 0.10), mats["black"], (root_x - 0.20, -0.476, chest_z + 0.11), bevel=0.012)
+        box("shield_brass_mark", (0.12, 0.025, 0.20), mats["brass"], (root_x - 0.20, -0.477, chest_z - 0.16), bevel=0.014)
 
 
     if pose["death"] > 0:
@@ -412,9 +447,12 @@ def clear_authored():
 
 def save_preview_blend(out, mats, types):
     clear_authored()
-    offsets = {"pawn": -3.15, "knight": -1.90, "rook": -0.65, "bishop": 0.65, "queen": 1.90, "grenadier": 3.15}
     if len(types) == 1:
         offsets = {types[0]: 0.0}
+    else:
+        spacing = 1.30
+        start = -spacing * (len(types) - 1) * 0.5
+        offsets = {enemy_type: start + index * spacing for index, enemy_type in enumerate(types)}
     for enemy_type in types:
         before = set(bpy.context.scene.objects)
         build_enemy(enemy_type, "idle", 0, mats)
