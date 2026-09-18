@@ -319,9 +319,9 @@ def add_table_and_board(materials):
     drape_points = [
         (-1.92, 1.28),
         (1.92, 1.28),
-        (1.92, 0.22),
-        (0.0, -0.10),
-        (-1.92, 0.22),
+        (1.92, -0.10),
+        (0.0, -0.55),
+        (-1.92, -0.10),
     ]
     flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.68, 0.08, metal, bevel=0.045)
     flat_panel(
@@ -336,9 +336,9 @@ def add_table_and_board(materials):
         "HOME_PROP_table_banner_gold_border",
         [
             (-1.80, -0.790, 1.19),
-            (-1.80, -0.790, 0.27),
-            (0.0, -0.790, -0.01),
-            (1.80, -0.790, 0.27),
+            (-1.80, -0.790, -0.02),
+            (0.0, -0.790, -0.46),
+            (1.80, -0.790, -0.02),
             (1.80, -0.790, 1.19),
         ],
         0.028,
@@ -362,7 +362,7 @@ def add_table_and_board(materials):
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
-        [(x + 0.10, z) for x, z in horse_points],
+        [(x * 1.10 + 0.10, (z - 0.58) * 1.10 + 0.57) for x, z in horse_points],
         emblem_y,
         0.040,
         heraldry,
@@ -372,8 +372,8 @@ def add_table_and_board(materials):
     for idx, (mx, mz) in enumerate(((0.10, 0.88), (0.16, 0.74), (0.18, 0.59))):
         cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.055, 0.008, 0.15, heraldry, vertices=10)
     sphere("HOME_PROP_table_horse_eye", (-0.24, emblem_y - 0.055, 0.84), (0.020, 0.010, 0.020), materials["dark"])
-    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.24), (0.040, 0.026, 0.14), heraldry, bevel=0.01)
-    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.28), (0.12, 0.026, 0.040), heraldry, bevel=0.01)
+    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, -0.18), (0.040, 0.026, 0.14), heraldry, bevel=0.01)
+    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, -0.14), (0.12, 0.026, 0.040), heraldry, bevel=0.01)
 
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
@@ -831,7 +831,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.22,
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
-        "steel": material("HOME_MAT_steel", (0.34, 0.35, 0.36, 1), roughness=0.24, metallic=0.92),
+        "steel": material("HOME_MAT_steel", (0.48, 0.50, 0.52, 1), roughness=0.20, metallic=0.82),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
@@ -864,17 +864,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.92, 0.16, 0.018, 1),
+            (0.58, 0.035, 0.004, 1),
             roughness=0.30,
-            emission=(1.0, 0.20, 0.018, 1),
-            emission_strength=1.35,
+            emission=(0.90, 0.075, 0.006, 1),
+            emission_strength=0.34,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.62, 0.12, 1),
+            (1.0, 0.28, 0.025, 1),
             roughness=0.24,
-            emission=(1.0, 0.52, 0.08, 1),
-            emission_strength=0.90,
+            emission=(1.0, 0.22, 0.018, 1),
+            emission_strength=0.58,
         ),
     }
 
@@ -1029,12 +1029,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 4.86), 0.055, 1.10, materials["brass_dark"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.02), 0.055, 1.14, materials["brass_dark"])
     ring_points = [
         (
             2.02 * math.cos(i * math.tau / 24),
             2.20 + 1.22 * math.sin(i * math.tau / 24),
-            4.00 + 0.28 * math.sin(i * math.tau / 24),
+            4.16 + 0.28 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1043,7 +1043,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (
             1.36 * math.cos(i * math.tau / 24),
             2.20 + 0.82 * math.sin(i * math.tau / 24),
-            3.96 + 0.20 * math.sin(i * math.tau / 24),
+            4.12 + 0.20 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1052,7 +1052,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (
             2.02 * math.cos(i * math.tau / 24),
             2.20 + 1.22 * math.sin(i * math.tau / 24),
-            3.84 + 0.28 * math.sin(i * math.tau / 24),
+            4.00 + 0.28 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1072,8 +1072,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_chandelier_spoke_{idx}",
             [
-                (0.0, 2.20, 4.06),
-                (1.78 * math.cos(angle), 2.20 + 1.06 * math.sin(angle), 4.06),
+                (0.0, 2.20, 4.22),
+                (1.78 * math.cos(angle), 2.20 + 1.06 * math.sin(angle), 4.22),
             ],
             0.026,
             materials["brass_dark"],
@@ -1083,16 +1083,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.45 + 1.02 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.50), (rx, ry, 4.24)],
+            [(0.0, 2.20, 5.66), (rx, ry, 4.40)],
             0.032,
             materials["brass_dark"],
         )
-    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 3.96), (0.14, 0.14, 0.13), materials["brass_dark"])
+    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.12), (0.14, 0.14, 0.13), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
         cx = 1.92 * math.cos(angle)
         cy = 2.20 + 1.18 * math.sin(angle)
-        cz = 4.08 + 0.24 * math.sin(angle)
+        cz = 4.24 + 0.24 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.28), (0.052, 0.052, 0.25), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.59), 0.052, 0.008, 0.18, materials["fire_hot"], vertices=12)
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.035), 0.095, 0.072, materials["brass_dark"], vertices=16)
@@ -1128,6 +1128,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 180, (0.82, 0.48, 0.24), 2.4, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 300, (0.42, 0.52, 0.66), 2.5, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 165, (0.66, 0.72, 0.78), 1.8, target=(1.55, 5.28, 2.40))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
