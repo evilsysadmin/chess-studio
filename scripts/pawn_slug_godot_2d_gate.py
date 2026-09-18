@@ -36,16 +36,17 @@ REQUIRED_MATTHIAS = (
     "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-",
     "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
     "FULL_ATLAS_COLUMNS := 8",
-    "FULL_ATLAS_ROWS := 10",
+    "FULL_ATLAS_ROWS := 11",
     "FULL_ATLAS_CELL_SIZE := 256",
     "FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)",
-    "pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png",
-    "pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png",
-    "pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png",
-    "pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png",
+    "pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6",
+    "pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6",
+    "pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v6",
+    "pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v6",
     "FULL_ACTIONS",
     '"shoot": {"row": 6, "count": 6',
     '"die": {"row": 9, "count": 8',
+    '"crouch": {"row": 10, "count": 1',
     "_normalized_cell_texture",
     "ImageTexture.create_from_image",
     "load_png_from_buffer",
@@ -53,8 +54,8 @@ REQUIRED_MATTHIAS = (
     "animation_finished.connect",
     "_advance_locomotion",
     "_apply_locomotion_polish",
-    "_install_combat_crouch",
-    'source := "land"',
+    "locomoting_now",
+    'not locomoting_now',
     "RUN_ENTER_SPEED_RATIO",
     "RUN_EXIT_SPEED_RATIO",
     "RUN_CYCLE_HZ_MIN",
@@ -72,6 +73,7 @@ FORBIDDEN_MATTHIAS = (
     "res://assets/weapon_atlas.svg",
     "_pistol_shoot",
     "_draw_boot_fallback",
+    "_install_combat_crouch",
     'frames.get_frame_texture("fall", 0)',
     "/pawn-slug/matthias/machinegun/",
     "/pawn-slug/matthias/shotgun/",
@@ -154,12 +156,11 @@ def self_test() -> None:
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
     assert "SpriteFrames" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
-    assert "FULL_ATLAS_ROWS := 10" in REQUIRED_MATTHIAS
+    assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
-    assert "matthias_smg_godot_strict_8x10_256_v5.png" in REQUIRED_MATTHIAS
+    assert "matthias_machinegun_godot_strict_8x11_256_v6" in REQUIRED_MATTHIAS
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
-    assert "_install_combat_crouch" in REQUIRED_MATTHIAS
-    assert 'source := "land"' in REQUIRED_MATTHIAS
+    assert "locomoting_now" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
