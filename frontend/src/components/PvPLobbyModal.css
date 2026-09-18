@@ -39,12 +39,6 @@
   right: 1rem;
 }
 
-.pvp-lobby .pvp-lobby__minimize {
-  right: 3.7rem;
-  font-size: 1.05rem;
-  line-height: 1;
-}
-
 .pvp-lobby__header {
   position: relative;
   z-index: 1;
@@ -52,7 +46,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 1.3rem;
-  padding: .1rem 5.8rem .4rem 0;
+  padding: .1rem 3rem .4rem 0;
 }
 
 .pvp-lobby__header-copy { min-width: 0; }
@@ -246,6 +240,28 @@
 .pvp-lobby__identity-rating span {
   color: rgba(236, 228, 209, .48);
   font-size: .68rem;
+}
+
+.pvp-lobby__identity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .48rem;
+  flex: 0 0 auto;
+}
+
+.pvp-lobby__minimize-cta {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  white-space: nowrap;
+}
+
+.pvp-lobby__minimize-cta > span {
+  color: #dfbd79;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .pvp-lobby__leave {
@@ -551,7 +567,7 @@
 
   .pvp-lobby__header {
     grid-template-columns: 1fr;
-    padding-right: 5.4rem;
+    padding-right: 2.5rem;
   }
 
   .pvp-lobby__seal { display: none; }
@@ -559,6 +575,17 @@
   .pvp-lobby__identity,
   .pvp-lobby__footer { align-items: stretch; flex-direction: column; }
   .pvp-lobby__identity-main { width: 100%; }
+
+  .pvp-lobby__identity-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pvp-lobby__identity-actions > button {
+    width: 100%;
+    justify-content: center;
+  }
 
   .pvp-lobby__identity-rating {
     width: 100%;
