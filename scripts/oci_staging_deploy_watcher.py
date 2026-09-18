@@ -10,6 +10,7 @@ It never accepts inbound requests and it performs no OCI API calls.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -166,10 +167,15 @@ def self_test() -> None:
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
     source = Path(__file__).read_text(encoding="utf-8")
-    lowered = source.lower()
-    assert "import oci" not in lowered
-    assert "oraclecloud.com" not in lowered
-    assert "oci.auth" not in lowered
+    tree = ast.parse(source)
+    imported = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imported.append(node.module or "")
+    assert not any(name == "oci" or name.startswith("oci.") for name in imported)
+    assert "oraclecloud.com" not in source.lower()
     assert "ls-remote" in source
     assert "refs/heads/main" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
