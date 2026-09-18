@@ -103,14 +103,15 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
 
   await login(page);
 
-  const rosterLink = page.getByRole('button', { name: 'Abrir roster 1 contra 1 de War Room' });
+  const rosterLink = page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' });
   await rosterLink.click();
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
-  await lobby.getByRole('button', { name: 'Entrar al roster', exact: true }).click();
-  await expect(lobby.getByText('EN SERVICIO', { exact: true })).toBeVisible();
+  await lobby.getByRole('button', { name: 'Ponerme disponible', exact: true }).click();
+  await expect(lobby.getByText('DISPONIBLE PARA RETOS', { exact: true })).toBeVisible();
   await lobby.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
-  await expect(rosterLink.getByText('En roster', { exact: true })).toBeVisible();
+  await expect(rosterLink.getByText('Rivales disponibles', { exact: true })).toBeVisible();
+  await expect(rosterLink.getByText('ELEGIR', { exact: true })).toBeVisible();
   challengeReady = true;
 
   await buttonWithHeading(page, 'Torneo').click();
