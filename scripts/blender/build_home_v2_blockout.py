@@ -558,14 +558,14 @@ def add_banner(name: str, x: float, materials):
                 (x - 0.34, 4.02),
                 (x + 0.34, 4.02),
                 (x + 0.28, 4.18),
-                (x + 0.08, 4.34),
+                (x + 0.08, 4.94),
                 (x + 0.24, 4.58),
                 (x + 0.16, 4.86),
                 (x - 0.04, 5.02),
                 (x - 0.24, 4.92),
                 (x - 0.08, 4.70),
                 (x - 0.32, 4.52),
-                (x - 0.18, 4.30),
+                (x - 0.18, 4.90),
             ],
             relief_y,
             0.055,
@@ -764,7 +764,7 @@ def add_equestrian_statue(materials):
     sphere("HOME_PROP_equestrian_rider_head", (x - 0.02, y, 4.58), (0.16, 0.14, 0.17), dark)
     curve_tube(
         "HOME_PROP_equestrian_rider_arm",
-        [(x + 0.10, y, 4.28), (x + 0.36, y - 0.01, 4.10)],
+        [(x + 0.10, y, 4.28), (x + 0.36, y - 0.01, 4.70)],
         0.055,
         dark,
     )
@@ -956,20 +956,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # rather than sitting on top of a solid slab.
     cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
-    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
-    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
-    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
+    cube("HOME_ARCH_back_wall", (0, 7.0, 3.80), (9.35, 0.25, 4.00), materials["stone"])
+    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.55), (0.18, 4.4, 3.75), materials["stone"])
+    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.55), (0.18, 4.4, 3.75), materials["stone"])
 
     # One large pointed rib and a heavy cornice give the back wall the gothic
     # silhouette of the canonical mock instead of reading as a flat stage set.
-    cube("HOME_ARCH_back_cornice", (0.0, 6.70, 5.70), (8.78, 0.20, 0.15), materials["stone_dark"], bevel=0.035)
+    cube("HOME_ARCH_back_cornice", (0.0, 6.70, 6.42), (8.78, 0.20, 0.15), materials["stone_dark"], bevel=0.035)
     gothic_arch(
         "HOME_ARCH_master_vault",
         0.15,
         6.36,
         10.6,
-        3.66,
-        6.28,
+        4.28,
+        7.42,
         0.18,
         materials["stone"],
         bevel=0.150,
@@ -1018,11 +1018,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
     for x in (-7.85, -5.10, -1.82, 1.82, 5.15, 8.05):
-        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
+        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 3.05), 0.25, 6.10, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
-        cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
-        cube(f"HOME_ARCH_column_cap_{x}", (x, 6.55, 5.08), (0.40, 0.32, 0.14), materials["stone"], bevel=0.04)
+        cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 5.58), 0.31, 0.12, materials["stone_dark"], vertices=28)
+        cube(f"HOME_ARCH_column_cap_{x}", (x, 6.55, 5.96), (0.40, 0.32, 0.14), materials["stone"], bevel=0.04)
         cube(f"HOME_ARCH_column_plinth_{x}", (x, 6.55, 0.12), (0.42, 0.34, 0.12), materials["stone"], bevel=0.04)
 
     add_fireplace("fireplace_left", -3.55, materials)
@@ -1110,13 +1110,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_equestrian_statue(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (-1.05, 2.02, 5.02), 0.075, 1.62, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (-1.05, 2.02, 5.62), 0.075, 1.62, materials["brass"])
     ring_points = [
-        (-1.05 + 2.34 * math.cos(i * math.tau / 32), 2.02 + 1.42 * math.sin(i * math.tau / 32), 4.12)
+        (-1.05 + 2.34 * math.cos(i * math.tau / 32), 2.02 + 1.42 * math.sin(i * math.tau / 32), 4.72)
         for i in range(33)
     ]
     ring_points_upper = [
-        (-1.05 + 2.22 * math.cos(i * math.tau / 32), 2.02 + 1.34 * math.sin(i * math.tau / 32), 4.34)
+        (-1.05 + 2.22 * math.cos(i * math.tau / 32), 2.02 + 1.34 * math.sin(i * math.tau / 32), 4.94)
         for i in range(33)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.095, materials["brass"])
@@ -1126,7 +1126,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cy = 2.02 + 1.38 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_brace_{idx}",
-            [(cx, cy, 4.10), (cx * 0.985 - 0.016, cy, 4.36)],
+            [(cx, cy, 4.70), (cx * 0.985 - 0.016, cy, 4.96)],
             0.028,
             materials["brass"],
         )
@@ -1135,7 +1135,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.20 + 1.18 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(-1.05, 2.02, 5.84), (rx - 1.05, ry, 4.16)],
+            [(-1.05, 2.02, 6.44), (rx - 1.05, ry, 4.76)],
             0.025,
             materials["brass"],
         )
@@ -1143,9 +1143,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         angle = idx * math.tau / 8.0
         cx = -1.05 + 2.16 * math.cos(angle)
         cy = 2.02 + 1.32 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.30), (0.055, 0.055, 0.24), materials["fire_hot"])
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.90), (0.055, 0.055, 0.24), materials["fire_hot"])
         if idx % 2 == 0:
-            add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.42), 72, (1.0, 0.46, 0.16), radius=0.44)
+            add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 5.02), 72, (1.0, 0.46, 0.16), radius=0.44)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -1203,12 +1203,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     join_meshes("HOME_PROP_dungeon_runner_compact", ("HOME_PROP_dungeon_runner_",))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 40.0
+    camera_data.lens = 38.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (-1.55, -14.20, 4.62)
-    target = (0.22, 2.65, 1.70)
+    camera.location = (-1.72, -13.85, 3.08)
+    target = (0.18, 2.72, 1.56)
     look_at(camera, target)
     scene.camera = camera
 
