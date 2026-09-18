@@ -87,6 +87,18 @@
   }
 }
 
+@media (max-width: 700px) and (orientation: portrait) and (pointer: coarse) {
+  .pawn-slug-godot-host__frame-shell {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+
+  .pawn-slug-godot-host__frame {
+    min-height: 0;
+    height: 100%;
+  }
+}
+
 @media (max-height: 600px) and (orientation: landscape) and (pointer: coarse) {
   .pawn-slug-godot-host {
     width: 100%;
