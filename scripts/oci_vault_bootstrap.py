@@ -6,10 +6,11 @@ the existing allow-listed runtime values, creates only missing OCI Vault
 secrets, and never updates an existing secret. Plaintext is never printed and
 never enters Terraform state or OCI Run Command payloads.
 
-The staging service historically did not carry OTEL_EXPORTER_OTLP_ENDPOINT.
-For that single non-credential value, bootstrap may inherit the existing
-production Render endpoint so staging can join the same Grafana Cloud gateway.
-No other staging value is ever allowed to fall back to production.
+The staging service historically did not carry the Grafana OTLP transport pair.
+Bootstrap may therefore inherit OTEL_EXPORTER_OTLP_ENDPOINT and
+OTEL_EXPORTER_OTLP_HEADERS from production exactly once so staging can join the
+same Grafana Cloud gateway. No application/runtime secret outside that telemetry
+pair is ever allowed to fall back to production.
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from typing import Any
 
 KEY_NAME = "chess-studio-staging-secrets"
 INITIAL_VERSION_NAME = "initial-render-migration"
-PRODUCTION_FALLBACK_KEYS = ("OTEL_EXPORTER_OTLP_ENDPOINT",)
+PRODUCTION_FALLBACK_KEYS = ("OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS")
 
 
 def required_vault_values(values: dict[str, str], secret_rows: tuple[tuple[str, str], ...]) -> dict[str, str]:
@@ -63,7 +64,7 @@ def collect_bootstrap_source() -> dict[str, str]:
         if not str(staging.get(key) or "") and str(merged.get(key) or "")
     ]
     if inherited:
-        print("OCI_VAULT_BOOTSTRAP_INHERITED_NONSECRET keys=" + ",".join(inherited))
+        print("OCI_VAULT_BOOTSTRAP_INHERITED_PRODUCTION keys=" + ",".join(inherited))
     return merged
 
 
@@ -218,12 +219,17 @@ def self_test() -> None:
         "MONGO_URL": "production-mongo",
         "JWT_SECRET": "production-jwt",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example.test/otlp",
+        "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic sample",
     }
     merged = apply_production_fallbacks(staging, production)
     assert merged["MONGO_URL"] == "staging-mongo"
     assert merged["JWT_SECRET"] == "staging-jwt"
     assert merged["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://otlp.example.test/otlp"
-    assert PRODUCTION_FALLBACK_KEYS == ("OTEL_EXPORTER_OTLP_ENDPOINT",)
+    assert merged["OTEL_EXPORTER_OTLP_HEADERS"] == "Authorization=Basic sample"
+    assert PRODUCTION_FALLBACK_KEYS == (
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+    )
     source = open(__file__, encoding="utf-8").read().split("def self_test", 1)[0]
     assert "find_production_service" in source
     assert "PRODUCTION_RENDER_SERVICE_NAME" not in source
