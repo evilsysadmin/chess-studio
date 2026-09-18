@@ -629,3 +629,186 @@
   .pvp-lobby__player { transition: none; }
   .pvp-lobby__player:not(.is-self):hover { transform: none; }
 }
+
+/* Premium roster pass · issue #2680 */
+.pvp-lobby {
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.018), transparent 18%, transparent 82%, rgba(218,168,92,.018)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 84% 0%, rgba(141,86,42,.13), transparent 29%),
+    linear-gradient(155deg, #211a15 0%, #11100e 56%, #090909 100%);
+}
+
+.pvp-lobby__header { align-items: end; }
+.pvp-lobby__header p { max-width: 610px; color: rgba(236,228,209,.57); }
+.pvp-lobby__seal {
+  width: 88px;
+  min-height: 64px;
+  gap: .06rem;
+  border-radius: 10px;
+  transform: none;
+  background: rgba(143,101,52,.055);
+  box-shadow: inset 0 0 0 1px rgba(255,220,156,.025);
+}
+.pvp-lobby__seal strong { font-size: .78rem; }
+.pvp-lobby__seal span,
+.pvp-lobby__seal small { font-size: .49rem; }
+
+.pvp-lobby__identity {
+  min-height: 76px;
+  border-radius: 13px;
+  background: rgba(255,255,255,.014);
+}
+.pvp-lobby__identity.is-active {
+  border-color: rgba(112,169,116,.2);
+  background: linear-gradient(90deg, rgba(58,112,66,.085), transparent 42%), rgba(255,255,255,.012);
+}
+.pvp-lobby__identity-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(190,145,79,.075);
+}
+.pvp-lobby__identity-rating { border-inline-color: rgba(199,165,110,.09); }
+
+.pvp-lobby__panel {
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(255,250,238,.018), transparent 34%),
+    rgba(8,8,8,.18);
+  box-shadow: inset 0 1px rgba(255,255,255,.015), 0 12px 30px rgba(0,0,0,.08);
+}
+.pvp-lobby__panel--roster { border-color: rgba(199,165,110,.23); }
+
+.pvp-lobby__player {
+  position: relative;
+  grid-template-columns: auto minmax(0,1fr) auto auto auto;
+  min-height: 72px;
+  padding: .68rem .72rem .68rem .82rem;
+  overflow: hidden;
+  border-color: rgba(199,165,110,.09);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(191,145,77,.035), transparent 36%),
+    rgba(255,255,255,.014);
+  box-shadow: inset 0 1px rgba(255,255,255,.016);
+}
+.pvp-lobby__player::before {
+  content: '';
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(207,166,96,.2);
+  transform: scaleY(.55);
+  transition: transform .16s ease, background .16s ease;
+}
+.pvp-lobby__player:not(.is-self):hover,
+.pvp-lobby__player:focus-within {
+  transform: translateY(-1px);
+  border-color: rgba(209,171,101,.28);
+  background:
+    linear-gradient(90deg, rgba(191,145,77,.075), transparent 42%),
+    rgba(255,255,255,.019);
+}
+.pvp-lobby__player:hover::before,
+.pvp-lobby__player:focus-within::before {
+  transform: scaleY(1);
+  background: rgba(222,181,104,.7);
+}
+.pvp-lobby__player.is-pending {
+  border-color: rgba(194,151,86,.17);
+  opacity: .78;
+}
+.pvp-lobby__rank-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: rgba(166,121,63,.08);
+}
+.pvp-lobby__rank-mark i {
+  width: 6px;
+  height: 6px;
+  border-width: 1px;
+  right: 1px;
+  top: 1px;
+}
+.pvp-lobby__player-copy strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+.pvp-lobby__player-copy > span { margin-top: .08rem; color: rgba(236,228,209,.45); }
+.pvp-lobby__player-state {
+  display: inline-flex;
+  align-items: center;
+  gap: .34rem;
+  min-width: 88px;
+  color: rgba(213,198,169,.58);
+  font-family: var(--font-mono);
+  font-size: .56rem;
+  letter-spacing: .09em;
+}
+.pvp-lobby__player-state i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #72b77a;
+  box-shadow: 0 0 8px rgba(114,183,122,.35);
+}
+.pvp-lobby__player.is-pending .pvp-lobby__player-state i {
+  background: #c7a15f;
+  box-shadow: none;
+}
+.pvp-lobby__challenge-cta {
+  min-width: 76px;
+  border-color: rgba(210,171,100,.22);
+  background: rgba(176,126,60,.07);
+}
+.pvp-lobby__challenge-cta:not(:disabled):hover,
+.pvp-lobby__challenge-cta:not(:disabled):focus-visible {
+  border-color: rgba(222,181,104,.48);
+  background: rgba(190,139,68,.14);
+}
+
+.pvp-lobby__challenge {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,.014);
+}
+.pvp-lobby__challenge.is-incoming {
+  border-color: rgba(215,169,91,.38);
+  background:
+    linear-gradient(100deg, rgba(173,119,55,.13), transparent 64%),
+    rgba(255,255,255,.018);
+  box-shadow: inset 3px 0 rgba(218,174,97,.56);
+}
+.pvp-lobby__challenge.is-incoming strong {
+  color: #f0ddba;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.04rem;
+}
+
+@media (max-width: 760px) {
+  .pvp-lobby__player {
+    grid-template-columns: auto minmax(0,1fr) auto;
+  }
+  .pvp-lobby__player-state {
+    grid-column: 2;
+    min-width: 0;
+  }
+  .pvp-lobby__player-rating {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .pvp-lobby__challenge-cta {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .pvp-lobby__player-state { font-size: .52rem; }
+  .pvp-lobby__player-rating small { font-size: .52rem; }
+}
