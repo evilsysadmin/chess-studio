@@ -196,7 +196,10 @@ def add_table_and_board(materials):
         for y in (0.05, 2.45):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
 
-    square = 0.31
+    # The canonical board nearly fills the table width; the earlier blockout
+    # made it read like a travel set.
+    square = 0.47
+    board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
     for row in range(8):
@@ -208,7 +211,7 @@ def add_table_and_board(materials):
                 (square / 2, square / 2, 0.018),
                 mat,
             )
-    cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (1.34, 1.34, 0.035), metal, bevel=0.025)
+    cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (board_half, board_half, 0.035), metal, bevel=0.025)
 
     # The red frontal cloth and side benches are major silhouettes in the
     # canonical Home, not decorative polish.
@@ -340,11 +343,11 @@ def add_side_furnishings(materials):
     )
 
     # Plant and ceramic pot mark the stair edge in the master.
-    cylinder("HOME_PROP_plant_pot", (5.40, 1.72, 0.34), 0.34, 0.48, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
     for idx, (dx, dy) in enumerate(((-0.25, 0.05), (0.22, 0.02), (-0.12, 0.18), (0.10, -0.10), (0.30, 0.15))):
         curve_tube(
             f"HOME_PROP_plant_leaf_{idx}",
-            [(5.40, 1.72, 0.58), (5.40 + dx * 0.55, 1.72 + dy, 0.95), (5.40 + dx, 1.72 + dy * 1.7, 1.28)],
+            [(5.10, 1.70, 0.76), (5.10 + dx * 0.55, 1.70 + dy, 1.13), (5.10 + dx, 1.70 + dy * 1.7, 1.46)],
             0.055,
             plant,
         )
@@ -355,44 +358,51 @@ def add_stairs(materials):
     brass = materials["brass"]
     dark = materials["dark"]
 
-    # Canonical Dungeon: a bridge/balcony over a lower arched chamber, with a
-    # diagonal stair descending into the lower-right corner.
-    cube("HOME_ARCH_dungeon_balcony", (6.95, 2.75, 0.88), (2.05, 0.72, 0.12), stone, bevel=0.05)
-    cube("HOME_ARCH_dungeon_parapet", (6.95, 2.26, 1.22), (1.75, 0.13, 0.34), stone, bevel=0.04)
-    cube("HOME_ARCH_dungeon_void", (7.22, 2.18, -0.42), (1.62, 0.09, 1.34), dark, bevel=0.10)
-    arch("HOME_ARCH_dungeon_arch", 7.22, 2.05, 3.30, 0.55, 1.32, -1.72, stone)
+    # Canonical Dungeon: broad stone bridge with balustrade, a large arched
+    # lower chamber, then a diagonal stair disappearing into the foreground.
+    cube("HOME_ARCH_dungeon_bridge", (7.02, 2.62, 1.38), (2.12, 0.74, 0.13), stone, bevel=0.05)
+    cube("HOME_ARCH_dungeon_bridge_lip", (7.02, 1.98, 1.58), (2.04, 0.12, 0.18), stone, bevel=0.04)
 
-    # Side posts and the round stone finial visible above the stair.
-    cylinder("HOME_ARCH_dungeon_post", (5.18, 2.25, 0.78), 0.25, 1.56, stone, vertices=32)
-    sphere("HOME_PROP_dungeon_finial", (5.18, 2.25, 1.68), (0.22, 0.22, 0.22), materials["stone_dark"])
+    cube("HOME_ARCH_dungeon_void", (7.28, 2.16, -0.05), (1.72, 0.10, 1.45), dark, bevel=0.12)
+    arch("HOME_ARCH_dungeon_arch", 7.28, 1.99, 3.48, 0.65, 1.52, -1.52, stone)
+    # Secondary inner arch gives the lower chamber visible depth.
+    arch("HOME_ARCH_dungeon_arch_inner", 7.42, 1.86, 2.82, 0.48, 1.20, -1.44, materials["stone_dark"])
 
-    steps = 11
+    # Canonical balustrade across the bridge.
+    for idx, x in enumerate((5.55, 6.05, 6.55, 7.05, 7.55, 8.05, 8.55)):
+        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.83, 1.90), 0.085, 0.58, stone, vertices=20)
+    cube("HOME_ARCH_dungeon_balustrade_top", (7.05, 1.83, 2.22), (1.82, 0.12, 0.10), stone, bevel=0.025)
+
+    cylinder("HOME_ARCH_dungeon_post", (5.18, 1.92, 1.36), 0.27, 2.00, stone, vertices=32)
+    sphere("HOME_PROP_dungeon_finial", (5.18, 1.92, 2.46), (0.24, 0.24, 0.24), materials["stone_dark"])
+
+    steps = 12
     for i in range(steps):
         t = i / (steps - 1)
-        x = 5.65 + 2.65 * t
-        y = 1.72 - 2.45 * t
-        z = 0.20 - 1.45 * t
+        x = 5.55 + 2.90 * t
+        y = 1.52 - 2.70 * t
+        z = 0.74 - 1.78 * t
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
             (x, y, z),
-            (0.62, 0.34, 0.075),
+            (0.72, 0.38, 0.08),
             stone,
             bevel=0.025,
         )
 
     curve_tube(
         "HOME_PROP_dungeon_rail",
-        [(5.18, 1.95, 1.38), (6.35, 0.95, 0.82), (7.55, -0.10, 0.18), (8.35, -0.78, -0.45)],
-        0.045,
+        [(5.10, 1.66, 2.18), (6.20, 0.75, 1.50), (7.50, -0.32, 0.70), (8.52, -1.18, 0.02)],
+        0.050,
         brass,
     )
     curve_tube(
         "HOME_PROP_dungeon_rail_lower",
-        [(5.18, 1.95, 1.08), (6.35, 0.95, 0.52), (7.55, -0.10, -0.12), (8.35, -0.78, -0.75)],
-        0.025,
+        [(5.10, 1.66, 1.82), (6.20, 0.75, 1.14), (7.50, -0.32, 0.34), (8.52, -1.18, -0.34)],
+        0.027,
         brass,
     )
-    cube("HOME_ARCH_dungeon_lower_floor", (7.45, -0.55, -1.62), (1.85, 1.65, 0.10), dark, bevel=0.02)
+    cube("HOME_ARCH_dungeon_lower_floor", (7.45, -0.72, -1.55), (1.95, 1.80, 0.10), dark, bevel=0.02)
 
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
@@ -544,7 +554,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
     camera.location = (0.0, -15.8, 5.25)
-    target = (0.0, 2.65, 2.05)
+    target = (0.0, 2.65, 1.82)
     look_at(camera, target)
     scene.camera = camera
 
