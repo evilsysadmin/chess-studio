@@ -17,7 +17,7 @@ describe('Chronicles Chain Basilica', () => {
     expect(chroniclesMapIds()).toContain('chain-basilica');
     const basilica = chroniclesMapById('chain-basilica');
 
-    expect(basilica.version).toBe(3);
+    expect(basilica.version).toBe(4);
     expect(basilica.grid).toHaveLength(9);
     expect(basilica.grid[0]).toHaveLength(13);
     expect(basilica.enemies.map((enemy) => enemy.id)).toEqual([
@@ -29,6 +29,10 @@ describe('Chronicles Chain Basilica', () => {
     ]);
     expect(basilica.enemies.find((enemy) => enemy.id === 'censer-wisp')?.optional).toBe(true);
     expect(basilica.treasures.map((entry) => entry.id)).toEqual(['chain-altar', 'oculus-cache']);
+    expect(basilica.interactables.find((entry) => entry.id === 'black-glass-secret-door')).toMatchObject({
+      kind: 'secret-door',
+      proceduralModule: 'black-glass-route',
+    });
   });
 
   it('stacks three liturgical links, consumes all three at the altar and keeps the wisp optional', () => {
