@@ -12,12 +12,18 @@ export default function PvpAppSurface({ view, replaceView }) {
   useEffect(() => {
     publishPvpRuntime({
       ...flow.menuStatus,
+      lobby: flow.enrolled ? flow.lobby : null,
       enterMatch: flow.enterMatch,
+      refresh: flow.refresh,
       enroll: flow.enroll,
       leave: flow.leave,
+      challenge: flow.challenge,
+      acceptChallenge: flow.acceptChallenge,
+      declineChallenge: flow.declineChallenge,
     });
-    return clearPvpRuntime;
-  }, [flow.enterMatch, flow.enroll, flow.leave, flow.menuStatus]);
+  }, [flow.acceptChallenge, flow.challenge, flow.declineChallenge, flow.enterMatch, flow.enroll, flow.leave, flow.lobby, flow.menuStatus, flow.refresh]);
+
+  useEffect(() => clearPvpRuntime, []);
 
   return (
     <>

@@ -211,17 +211,17 @@ export default function Menu({
       {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
         <HomePvpRosterLink
           onOpen={() => {
-            if (pvpFlow?.menuStatus?.activeMatch) {
-              pvpFlow?.enterMatch?.(pvpFlow.menuStatus.activeMatch);
+            if (pvpFlow?.activeMatch) {
+              pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
               return;
             }
             setShowPvpLobby(true);
           }}
           disabled={loading}
-          enrolled={Boolean(pvpFlow?.menuStatus?.enrolled)}
-          rivalCount={Number(pvpFlow?.menuStatus?.rivalCount || 0)}
-          incomingCount={Number(pvpFlow?.menuStatus?.incomingCount || 0)}
-          activeMatch={pvpFlow?.menuStatus?.activeMatch || null}
+          enrolled={Boolean(pvpFlow?.enrolled)}
+          rivalCount={Number(pvpFlow?.rivalCount || 0)}
+          incomingCount={Number(pvpFlow?.incomingCount || 0)}
+          activeMatch={pvpFlow?.activeMatch || null}
         />
       )}
 
@@ -276,8 +276,13 @@ export default function Menu({
       {showPvpLobby && (
         <PvPLobbyModal
           onClose={() => setShowPvpLobby(false)}
+          lobbySnapshot={pvpFlow?.enrolled ? pvpFlow?.lobby : null}
+          onRefreshRoster={pvpFlow?.refresh}
           onJoinRoster={pvpFlow?.enroll}
           onLeaveRoster={pvpFlow?.leave}
+          onChallenge={pvpFlow?.challenge}
+          onAcceptChallenge={pvpFlow?.acceptChallenge}
+          onDeclineChallenge={pvpFlow?.declineChallenge}
           onMatchReady={(match) => {
             setShowPvpLobby(false);
             pvpFlow?.enterMatch?.(match);

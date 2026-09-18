@@ -13,24 +13,38 @@ function sortedRoster(rows) {
   });
 }
 
-export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = null, onLeaveRoster = null }) {
+export default function PvPLobbyModal({
+  onClose,
+  onMatchReady,
+  lobbySnapshot = null,
+  onRefreshRoster = null,
+  onJoinRoster = null,
+  onLeaveRoster = null,
+  onChallenge = null,
+  onAcceptChallenge = null,
+  onDeclineChallenge = null,
+}) {
   useEscapeToClose(onClose);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
-  const self = useMemo(() => lobby.roster.find((row) => row.isSelf) || null, [lobby.roster]);
-  const roster = useMemo(() => sortedRoster(lobby.roster), [lobby.roster]);
+  const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
+  const liveLobby = lobbySnapshot || lobby;
+  const self = useMemo(() => liveLobby.roster.find((row) => row.isSelf) || null, [liveLobby.roster]);
+  const roster = useMemo(() => sortedRoster(liveLobby.roster), [liveLobby.roster]);
   const rivals = useMemo(() => roster.filter((row) => !row.isSelf), [roster]);
-  const incoming = useMemo(() => lobby.challenges.filter((row) => row.direction === 'incoming' && row.status === 'pending'), [lobby.challenges]);
-  const outgoing = useMemo(() => lobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [lobby.challenges]);
-  const opponent = opponentForMatch(lobby.activeMatch);
+  const incoming = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'incoming' && row.status === 'pending'), [liveLobby.challenges]);
+  const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
+  const opponent = opponentForMatch(liveLobby.activeMatch);
 
   const refresh = useCallback(async ({ quiet = false, signal } = {}) => {
     if (!quiet) setLoading(true);
     try {
-      const next = await pvpApi.getLobby({ signal });
-      setLobby({ ...EMPTY_LOBBY, ...(next || {}) });
+      const next = externallyDriven
+        ? await onRefreshRoster({ signal })
+        : await pvpApi.getLobby({ signal });
+      if (!externallyDriven) setLobby({ ...EMPTY_LOBBY, ...(next || {}) });
       setError('');
       return next;
     } catch (err) {
@@ -39,9 +53,13 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, []);
+  }, [externallyDriven, onRefreshRoster]);
 
   useEffect(() => {
+    if (externallyDriven) {
+      setLoading(false);
+      return undefined;
+    }
     let active = true;
     let timer = null;
     let controller = new AbortController();
@@ -63,15 +81,16 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
       controller.abort();
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [refresh]);
+  }, [externallyDriven, refresh]);
 
-  const run = useCallback(async (key, action) => {
+  const run = useCallback(async (key, action, { refreshAfter = true } = {}) => {
     if (busyKey) return null;
     setBusyKey(key);
     setError('');
     try {
       const result = await action();
-      await refresh({ quiet: true });
+      if (key === 'leave') setLobby(EMPTY_LOBBY);
+      if (refreshAfter) await refresh({ quiet: true });
       return result;
     } catch (err) {
       setError(err?.message || 'La orden no pudo completarse.');
@@ -82,7 +101,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
   }, [busyKey, refresh]);
 
   async function accept(challenge) {
-    const result = await run(`accept:${challenge.id}`, () => pvpApi.acceptChallenge(challenge.id));
+    const result = await run(`accept:${challenge.id}`, () => onAcceptChallenge ? onAcceptChallenge(challenge) : pvpApi.acceptChallenge(challenge.id));
     if (result?.match) onMatchReady(result.match);
   }
 
@@ -107,15 +126,15 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
           </div>
         </header>
 
-        {lobby.activeMatch && opponent && (
+        {liveLobby.activeMatch && opponent && (
           <aside className="pvp-lobby__active" aria-label="Partida 1 contra 1 activa">
             <span className="pvp-lobby__signal" aria-hidden="true" />
             <div className="pvp-lobby__active-copy">
               <small>PARTIDA ACTIVA</small>
               <strong>{opponent.username} · {opponent.rating}</strong>
-              <span>{lobby.activeMatch.yourTurn ? 'Tu turno' : `Turno de ${opponent.username}`}</span>
+              <span>{liveLobby.activeMatch.yourTurn ? 'Tu turno' : `Turno de ${opponent.username}`}</span>
             </div>
-            <button type="button" className="primary-btn" onClick={() => onMatchReady(lobby.activeMatch)}>Entrar en War Room</button>
+            <button type="button" className="primary-btn" onClick={() => onMatchReady(liveLobby.activeMatch)}>Entrar en War Room</button>
           </aside>
         )}
 
@@ -142,10 +161,10 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
                 <span aria-hidden="true">—</span>
                 Minimizar y seguir jugando
               </button>
-              <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster())}>{busyKey === 'leave' ? 'Saliendo…' : 'Salir del roster'}</button>
+              <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster(), { refreshAfter: false })}>{busyKey === 'leave' ? 'Saliendo…' : 'Salir del roster'}</button>
             </div>
           ) : (
-            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Entrando…' : 'Entrar al roster'}</button>
+            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Entrando…' : 'Entrar al roster'}</button>
           )}
         </section>
 
@@ -180,7 +199,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
                         </div>
                         <div className="pvp-lobby__player-state"><i aria-hidden="true" /><span>{pending ? 'RETO ENVIADO' : 'DISPONIBLE'}</span></div>
                         <div className="pvp-lobby__player-rating"><small>ELO 1V1</small><b>{row.rating}</b></div>
-                        <button type="button" className="secondary-btn pvp-lobby__challenge-cta" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => pvpApi.challenge(row.username))}>{pending ? 'En espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>
+                        <button type="button" className="secondary-btn pvp-lobby__challenge-cta" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => onChallenge ? onChallenge(row.username) : pvpApi.challenge(row.username))}>{pending ? 'En espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>
                       </article>
                     );
                   })}
@@ -217,7 +236,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
                 {incoming.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
                     <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1</span></div>
-                    <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
+                    <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
                   </article>
                 ))}
                 {outgoing.map((challenge) => <article key={challenge.id} className="pvp-lobby__challenge"><div><small>RETO ENVIADO</small><strong>{challenge.opponent}</strong><span>{challenge.opponentRating} Elo 1v1 · esperando respuesta</span></div></article>)}

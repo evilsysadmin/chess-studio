@@ -118,6 +118,14 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     }
   }, [username]);
 
+  const challenge = useCallback(async (opponent) => {
+    if (!opponent) return null;
+    const pvpApi = await loadPvpApi();
+    const result = await pvpApi.challenge(opponent);
+    setError('');
+    return result;
+  }, []);
+
   const acceptChallenge = useCallback(async (challenge) => {
     const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
     if (!challengeId) return null;
@@ -153,6 +161,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     refresh,
     enroll,
     leave,
+    challenge,
     acceptChallenge,
     declineChallenge,
   };
