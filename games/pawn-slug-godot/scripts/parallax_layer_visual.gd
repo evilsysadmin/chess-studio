@@ -25,7 +25,7 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _preset = preset
     if _kind == "industrial_art":
         _ensure_industrial_far_art()
-    set_process(_kind in ["sky", "industrial_landmark", "ruined_city", "mid_defence", "near_weather"])
+    set_process(_kind in ["sky", "industrial_landmark", "ruined_city", "mid_defence", "near_weather", "near_foreground"])
     queue_redraw()
 
 func _ready() -> void:
@@ -57,6 +57,8 @@ func _draw() -> void:
             _draw_mid_defence()
         "near_weather":
             _draw_near_weather()
+        "near_foreground":
+            _draw_near_foreground()
 
 func _noise(index: int, salt: float = 0.0) -> float:
     var raw := sin(float(index) * 12.9898 + float(_seed) * 41.137 + salt * 78.233) * 43758.5453
@@ -852,6 +854,80 @@ func _draw_near_weather() -> void:
             if ember:
                 mote_color = Color(0.92, 0.48, 0.18, 0.14 + depth * 0.08)
             draw_circle(Vector2(x, y), 0.9 + depth * 1.2, mote_color)
+
+func _draw_near_foreground() -> void:
+    if _preset != "night_front":
+        return
+
+    # Camera-near framing only. It lives below the walk surface so it adds
+    # depth without obscuring Matthias, enemies or projectile readability.
+    var silhouette := Color(0.020, 0.027, 0.029, 0.78 * _intensity)
+    var metal := Color(0.055, 0.065, 0.066, 0.82 * _intensity)
+    var rust := Color(0.25, 0.13, 0.075, 0.34 * _intensity)
+    var top_y := _floor_y + 55.0
+
+    var rubble := PackedVector2Array([Vector2(0.0, _world_size.y)])
+    for x in range(0, int(_world_size.x) + 101, 100):
+        var xf := float(x)
+        var y := top_y + (_noise(x / 100, 70.1) - 0.5) * 25.0
+        rubble.append(Vector2(xf, y))
+    rubble.append(Vector2(_world_size.x, _world_size.y))
+    draw_colored_polygon(rubble, silhouette)
+
+    # Bent posts + barbed wire, deliberately interrupted so the foreground
+    # frames the view instead of becoming a continuous visual fence.
+    for index in range(13):
+        var x := 90.0 + float(index) * 420.0
+        var base_y := _world_size.y + 8.0
+        var post_top := top_y - 12.0 - _noise(index, 70.8) * 26.0
+        var lean := (_noise(index, 71.4) - 0.5) * 26.0
+        draw_line(Vector2(x, base_y), Vector2(x + lean, post_top), metal, 7.0)
+        if index % 3 != 1:
+            var wire_y := post_top + 18.0
+            draw_line(
+                Vector2(x + lean - 38.0, wire_y),
+                Vector2(x + lean + 120.0, wire_y - 8.0),
+                Color(0.10, 0.11, 0.105, 0.64 * _intensity),
+                2.0,
+            )
+            for barb in range(4):
+                var bx := x + lean - 18.0 + float(barb) * 34.0
+                var by := wire_y - float(barb) * 1.7
+                draw_line(Vector2(bx - 5.0, by - 5.0), Vector2(bx + 5.0, by + 5.0), rust, 1.5)
+                draw_line(Vector2(bx - 5.0, by + 5.0), Vector2(bx + 5.0, by - 5.0), rust, 1.5)
+
+    # Broken beams and drum silhouettes produce the shallow, near-camera frame
+    # seen in the approved mock while remaining entirely non-collidable.
+    for index in range(9):
+        var x := 210.0 + float(index) * 575.0
+        var y := top_y + 30.0 + float(index % 3) * 11.0
+        var angle := -0.55 + _noise(index, 72.2) * 1.10
+        var length := 54.0 + _noise(index, 72.8) * 52.0
+        var direction := Vector2(cos(angle), sin(angle)) * length
+        draw_line(Vector2(x, y), Vector2(x, y) + direction, metal, 10.0)
+        if index % 2 == 0:
+            draw_rect(
+                Rect2(Vector2(x + 48.0, y + 8.0), Vector2(30.0, 46.0)),
+                Color(0.040, 0.048, 0.048, 0.88 * _intensity),
+                true,
+            )
+            draw_line(
+                Vector2(x + 48.0, y + 20.0),
+                Vector2(x + 78.0, y + 20.0),
+                Color(0.22, 0.12, 0.07, 0.34 * _intensity),
+                2.0,
+            )
+
+    # A handful of close embers gives the foreground its own motion plane.
+    for index in range(18):
+        var speed := 12.0 + _noise(index, 73.5) * 24.0
+        var span := _world_size.x + 180.0
+        var x := fposmod(_noise(index, 74.1) * span + _atmosphere_time * speed, span) - 90.0
+        var y := top_y - 18.0 + _noise(index, 74.7) * 92.0
+        y += sin(_atmosphere_time * 0.7 + float(index)) * 8.0
+        var radius := 1.0 + _noise(index, 75.3) * 1.9
+        var alpha := 0.08 + _noise(index, 75.9) * 0.15
+        draw_circle(Vector2(x, y), radius, Color(0.96, 0.37, 0.10, alpha * _intensity))
 
 func _draw_mid_defence() -> void:
     if _preset == "harbor_dusk":
