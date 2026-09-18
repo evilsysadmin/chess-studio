@@ -11,6 +11,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
+MAIN = GODOT_ROOT / "scripts/main.gd"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
@@ -26,6 +27,15 @@ FORBIDDEN = (
     "skeleton3d",
     ".glb",
     ".gltf",
+)
+REQUIRED_MAIN = (
+    'preload("res://scripts/pause_menu.gd")',
+    "PROCESS_MODE_ALWAYS",
+    "_toggle_pause_menu",
+    "get_tree().paused = true",
+    'pause_menu.resume_requested.connect(_resume_game)',
+    '_notify_parent("menu-open")',
+    '_notify_parent("menu-close")',
 )
 REQUIRED_MATTHIAS = (
     "AnimatedSprite2D",
@@ -152,6 +162,7 @@ def validate() -> None:
             if token in lowered:
                 violations.append(f"{path.relative_to(ROOT)}: token prohibido {token!r}")
 
+    validate_contract(MAIN, "main.gd", REQUIRED_MAIN, violations)
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
@@ -164,6 +175,8 @@ def validate() -> None:
 def self_test() -> None:
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
+    assert "_toggle_pause_menu" in REQUIRED_MAIN
+    assert "get_tree().paused = true" in REQUIRED_MAIN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
     assert "SpriteFrames" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
