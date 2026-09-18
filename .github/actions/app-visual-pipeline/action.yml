@@ -101,11 +101,12 @@ runs:
 
     - name: Capture Hans routines
       if: inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
+      id: hans_capture
       shell: bash
       run: bash scripts/app_visual_capture.sh hans
 
     - name: Upload Hans routine artifact
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true' && steps.hans_capture.outcome != 'skipped'
       uses: actions/upload-artifact@v7
       with:
         name: hans-routines-${{ github.event.pull_request.number || github.run_id }}
