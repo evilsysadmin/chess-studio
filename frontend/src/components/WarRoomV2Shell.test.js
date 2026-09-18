@@ -4,6 +4,8 @@ import {
   warRoomV2EnvMapIntensity,
   warRoomV2ModelUrl,
   warRoomV2PracticalLightProfile,
+  warRoomV2RuntimeSurfaceKind,
+  warRoomV2StoneSurfaceProfile,
 } from './WarRoomV2Shell.js';
 import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
 
@@ -34,6 +36,24 @@ describe('War Room v2 staging asset URL', () => {
     expect(warRoomV2EnvMapIntensity('WR_MAT_stone')).toBe(0.20);
     expect(warRoomV2EnvMapIntensity('WR_MAT_rug')).toBe(0.16);
     expect(warRoomV2EnvMapIntensity('WR_MAT_armor')).toBe(0.88);
+  });
+
+  it('adds desktop-only microdetail to the authored stone family', () => {
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_plaster')).toBe('stone');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_floor_underlay')).toBe('stone');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_stone_light')).toBe('stone');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_walnut')).toBe(null);
+
+    expect(warRoomV2StoneSurfaceProfile()).toEqual({
+      enabled: true,
+      size: 32,
+      bumpScale: 0.012,
+    });
+    expect(warRoomV2StoneSurfaceProfile({ coarsePointer: true })).toEqual({
+      enabled: false,
+      size: 0,
+      bumpScale: 0,
+    });
   });
 
   it('versions the mutable current.glb alias with the frontend build SHA', () => {
