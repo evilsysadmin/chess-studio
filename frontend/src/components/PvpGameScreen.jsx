@@ -61,6 +61,9 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const [pendingAnim, setPendingAnim] = useState(null);
   const [showResignConfirm, setShowResignConfirm] = useState(false);
   const [resigning, setResigning] = useState(false);
+  const [connectionState, setConnectionState] = useState(() => (
+    typeof navigator !== 'undefined' && navigator.onLine === false ? 'reconnecting' : 'live'
+  ));
   const [clockElapsedMs, setClockElapsedMs] = useState(0);
   const clockAnchorRef = useRef(Date.now());
   const animSeqRef = useRef(0);
@@ -74,16 +77,26 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const matthiasVerdict = resultText ? pvpMatthiasVerdict(result, match?.endReason) : '';
   const eloChange = match?.ratingChange || null;
   const eloDeltaLabel = eloChange ? `${eloChange.delta >= 0 ? '+' : ''}${eloChange.delta}` : '';
+  const connectionLive = connectionState === 'live';
+  const canInteract = connectionLive && match?.status === 'active' && match?.yourTurn && !busy;
   const moves = useMemo(
-    () => match?.yourTurn && !busy ? selectableMoves(match.fen, selected, match.youAre) : [],
-    [busy, match?.fen, match?.youAre, match?.yourTurn, selected],
+    () => canInteract ? selectableMoves(match.fen, selected, match.youAre) : [],
+    [canInteract, match?.fen, match?.youAre, selected],
   );
   const legalTargets = useMemo(() => uniqueLegalTargets(moves), [moves]);
   const lastMove = useMemo(() => lastMoveFromHistory(match?.history), [match?.history]);
   const checkSquare = useMemo(() => checkedKingSquare(match?.fen), [match?.fen]);
   const orientation = match?.youAre === 'b' ? 'black' : 'white';
-  const tone = busy ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
-  const turnLabel = busy ? 'Transmitiendo jugada…' : match?.status !== 'active' ? resultText?.title || 'Partida terminada' : match?.yourTurn ? 'Tu turno' : `${opponent?.username || 'Rival'} juega`;
+  const tone = busy || !connectionLive ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
+  const turnLabel = !connectionLive
+    ? 'Reconectando con el árbitro…'
+    : busy
+      ? 'Transmitiendo jugada…'
+      : match?.status !== 'active'
+        ? resultText?.title || 'Partida terminada'
+        : match?.yourTurn
+          ? 'Tu turno'
+          : `${opponent?.username || 'Rival'} juega`;
   const liveClock = useMemo(() => projectPvpClock(match?.clock, clockElapsedMs), [clockElapsedMs, match?.clock]);
   const yourClockMs = match?.youAre === 'b' ? liveClock.blackMs : liveClock.whiteMs;
   const rivalClockMs = opponent?.color === 'w' ? liveClock.whiteMs : liveClock.blackMs;
@@ -116,40 +129,92 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   }, [match?.revision]);
 
   useEffect(() => {
+    if (!connectionLive) setShowResignConfirm(false);
+  }, [connectionLive]);
+
+  useEffect(() => {
     if (!match?.id || match.status !== 'active') return undefined;
     let active = true;
     let timer = null;
-    let controller = new AbortController();
-    const poll = async () => {
-      if (!active) return;
-      if (document.visibilityState === 'hidden') {
-        timer = window.setTimeout(poll, 1500);
-        return;
-      }
-      controller.abort();
+    let controller = null;
+
+    const clearTimer = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+
+    const schedule = (delay) => {
+      clearTimer();
+      timer = window.setTimeout(() => { void poll(); }, delay);
+    };
+
+    async function poll() {
+      if (!active || document.visibilityState === 'hidden') return;
+      controller?.abort();
       controller = new AbortController();
       try {
         const response = await pvpApi.getMatch(match.id, { signal: controller.signal });
         if (!active) return;
         setMatch((current) => mergeNewerMatch(current, response?.match));
+        setConnectionState('live');
         setError('');
-        timer = window.setTimeout(poll, Math.max(900, Number(response?.pollAfterMs || 1250)));
+        schedule(Math.max(900, Number(response?.pollAfterMs || 1250)));
       } catch (err) {
         if (!active || err?.name === 'AbortError') return;
-        setError(err?.message || 'No se pudo sincronizar la partida.');
-        timer = window.setTimeout(poll, 2500);
+        setConnectionState('reconnecting');
+        setSelected(null);
+        setPendingPromotion(null);
+        if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+          setError(err?.message || 'No se pudo sincronizar la partida.');
+          schedule(2500);
+        }
       }
+    }
+
+    const requestImmediateSync = () => {
+      if (!active || document.visibilityState === 'hidden') return;
+      setConnectionState('reconnecting');
+      setSelected(null);
+      setPendingPromotion(null);
+      schedule(0);
     };
-    timer = window.setTimeout(poll, 450);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        clearTimer();
+        controller?.abort();
+        return;
+      }
+      requestImmediateSync();
+    };
+
+    const handleOffline = () => {
+      clearTimer();
+      controller?.abort();
+      setConnectionState('reconnecting');
+      setSelected(null);
+      setPendingPromotion(null);
+      setError('');
+    };
+
+    const handleOnline = () => requestImmediateSync();
+
+    schedule(450);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
     return () => {
       active = false;
-      controller.abort();
-      if (timer !== null) window.clearTimeout(timer);
+      clearTimer();
+      controller?.abort();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
     };
   }, [match?.id, match?.status]);
 
   const submitMove = useCallback(async (from, to, promotion = null) => {
-    if (!match?.id || !match.yourTurn || busy) return;
+    if (!match?.id || !canInteract) return;
     setBusy(true);
     setError('');
     try {
@@ -159,17 +224,23 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       setError(err?.message || 'La jugada no llegó al árbitro.');
       try {
         const response = await pvpApi.getMatch(match.id);
-        if (response?.match) setMatch((current) => mergeNewerMatch(current, response.match));
+        if (response?.match) {
+          setMatch((current) => mergeNewerMatch(current, response.match));
+          setConnectionState('live');
+        }
       } catch {
-        // El siguiente polling vuelve a reconciliar sin pisar una revisión nueva.
+        setConnectionState('reconnecting');
+        setSelected(null);
+        setPendingPromotion(null);
+        // El polling y los eventos online/foreground reintentan contra la autoridad.
       }
     } finally {
       setBusy(false);
     }
-  }, [busy, match?.id, match?.yourTurn]);
+  }, [canInteract, match?.id]);
 
   const onSquareClick = useCallback((square) => {
-    if (!match?.yourTurn || match.status !== 'active' || busy) return;
+    if (!canInteract) return;
     if (selected) {
       const choice = chooseMoveTo(moves, square);
       if (choice.kind === 'move') {
@@ -183,7 +254,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
     }
     const selectable = selectableMoves(match.fen, square, match.youAre);
     setSelected(selectable.length ? square : null);
-  }, [busy, match?.fen, match?.status, match?.youAre, match?.yourTurn, moves, selected, submitMove]);
+  }, [canInteract, match?.fen, match?.youAre, moves, selected, submitMove]);
 
   function choosePromotion(piece) {
     const pending = pendingPromotion;
@@ -192,7 +263,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   }
 
   async function confirmResign() {
-    if (!match?.id || match.status !== 'active' || resigning) return;
+    if (!match?.id || match.status !== 'active' || !connectionLive || resigning) return;
     setResigning(true);
     setError('');
     try {
@@ -233,7 +304,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                     hintMove={null}
                     checkSquare={checkSquare}
                     gameOver={match.status !== 'active'}
-                    turnState={busy ? 'thinking' : match.yourTurn ? 'human' : 'cpu'}
+                    turnState={busy || !connectionLive ? 'thinking' : match.yourTurn ? 'human' : 'cpu'}
                     orientation={orientation}
                     showCoordinates={showCoordinates}
                     matthiasKingColor={null}
@@ -261,7 +332,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                   <WarRoomUtilityMenu
                     game={match}
                     board={null}
-                    controls={{ onAbandon: match.status === 'active' ? () => setShowResignConfirm(true) : undefined }}
+                    controls={{ onAbandon: match.status === 'active' && connectionLive ? () => setShowResignConfirm(true) : undefined }}
                     zenMode={false}
                     showFocus={false}
                     showRendererToggle={false}
