@@ -491,8 +491,8 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
     assert "OCI_K3S_STAGING2_DIAG_EVENT" in source
-    assert "kubectl logs" not in source
-    assert "get secret" not in source
+    for forbidden_runtime_token in ("kubectl" + " logs", "get" + " secret"):
+        assert forbidden_runtime_token not in source
     print("OCI K3s staging2 root capability self-test: OK")
 
 
