@@ -47,7 +47,15 @@ async def _collection():
 def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
     if not row:
         return None
-    return {
+    route_map_ids = list(row.get("routeMapIds") or [])
+    route = None
+    if route_map_ids:
+        route = {
+            "policyVersion": int(row.get("routePolicyVersion", 0)),
+            "mapIds": route_map_ids,
+            "primaryExitIds": dict(row.get("routePrimaryExitIds") or {}),
+        }
+    payload = {
         "runId": str(row.get("_id") or row.get("runId")),
         "seed": int(row["seed"]),
         "currentMapId": row["currentMapId"],
@@ -60,6 +68,9 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "createdAt": row.get("createdAt"),
         "updatedAt": row.get("updatedAt"),
     }
+    if route is not None:
+        payload["route"] = route
+    return payload
 
 
 async def create_or_replay_run(
@@ -71,6 +82,7 @@ async def create_or_replay_run(
     content_version: int,
     manifest_revision: str,
     create_fingerprint: str,
+    route_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = utcnow()
     document = {
@@ -88,6 +100,10 @@ async def create_or_replay_run(
         "updatedAt": now,
         "createFingerprint": create_fingerprint,
     }
+    if route_snapshot is not None:
+        document["routePolicyVersion"] = int(route_snapshot["policyVersion"])
+        document["routeMapIds"] = list(route_snapshot["mapIds"])
+        document["routePrimaryExitIds"] = dict(route_snapshot["primaryExitIds"])
     collection = await _collection()
     if collection is None:
         async with _memory_guard():
