@@ -194,7 +194,6 @@ jobs:
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_sync.py --self-test
-          python3 -S scripts/oci_vault_cutover.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Ensure CURRENT Vault + Git runtime
@@ -206,10 +205,9 @@ jobs:
           OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
           OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
           OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
           set -euo pipefail
-          python3 scripts/oci_vault_cutover.py ensure
+          python3 scripts/oci_vault_sync.py sync-current
 
       - name: Deploy exact backend commit to OCI staging
         if: steps.watcher.outputs.converged != 'true'
@@ -546,7 +544,7 @@ jobs:
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
             echo '- OCI runtime config: `CURRENT Vault + Git; runtime-sync manual para rotaciones`'
-            echo '- Canonical staging Render dependency: `none after Vault cutover; one-time idempotent bootstrap recovery only`'
+            echo '- Canonical staging Render dependency: `none`'
             echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
