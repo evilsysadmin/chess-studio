@@ -172,6 +172,23 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(chroniclesIsoInteractionForHit(null, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toBeNull();
   });
 
+  it('accepts legal move and attack hits together in direct battlefield mode', () => {
+    const interaction = {
+      mode: 'hybrid',
+      legalMoves: [{ x: 2, y: 5 }, { x: 1, y: 4 }],
+      legalTargets: [{ enemyId: 'corrupted-pawn', x: 3, y: 5 }],
+    };
+
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'cell', x: 2, y: 5 })).toEqual({
+      kind: 'cell', x: 2, y: 5,
+    });
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toEqual({
+      kind: 'enemy', enemyId: 'corrupted-pawn',
+    });
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'cell', x: 4, y: 5 })).toBeNull();
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'gate-jailer' })).toBeNull();
+  });
+
   it('turns a party-model hit into a member action without requiring a combat interaction mode', () => {
     expect(chroniclesIsoPointerAction(null, { kind: 'member', memberId: 'bishop' })).toEqual({
       kind: 'member', memberId: 'bishop',
