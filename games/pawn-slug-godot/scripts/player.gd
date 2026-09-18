@@ -153,10 +153,9 @@ func _physics_process(delta: float) -> void:
     var axis := _movement_axis()
     if absf(axis) > 0.08:
         facing = 1.0 if axis > 0.0 else -1.0
-    if _fire_pressed():
-        var aim_facing := _aim_direction()
-        if absf(aim_facing.x) > 0.25:
-            facing = signf(aim_facing.x)
+    var aim_direction := _aim_direction()
+    if _fire_pressed() and absf(aim_direction.x) > 0.25:
+        facing = signf(aim_direction.x)
 
     _update_crouch_state()
     var speed_scale := CROUCH_SPEED_SCALE if _crouching else 1.0
@@ -200,6 +199,7 @@ func _physics_process(delta: float) -> void:
 
     # Pose/facing must be current before weapon or grenade origins are resolved.
     _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+    _art.set_aim_direction(aim_direction)
     _art.update_visual(
         delta,
         horizontal_speed_ratio,
@@ -212,7 +212,7 @@ func _physics_process(delta: float) -> void:
     )
 
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
-    var fired_now := _update_fire_input()
+    var fired_now := _update_fire_input(aim_direction)
     if fired_now:
         _art.update_visual(
             0.0,
@@ -341,7 +341,7 @@ func take_damage(amount: int = 1) -> bool:
         _begin_death()
     return true
 
-func _update_fire_input() -> bool:
+func _update_fire_input(aim_direction: Vector2) -> bool:
     var fire_pressed := _fire_pressed()
     var profile: Dictionary = WEAPONS[weapon]
     var trigger := String(profile["trigger"])
@@ -365,7 +365,7 @@ func _update_fire_input() -> bool:
         "spread": float(profile["spread"]),
         "explosive": bool(profile["explosive"]),
     }
-    fired.emit(_projectile_origin(), _aim_direction(), shot)
+    fired.emit(_projectile_origin(), aim_direction, shot)
 
     if ammo > 0:
         ammo -= 1
