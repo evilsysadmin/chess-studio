@@ -19,7 +19,7 @@
   "timezone": "browser",
   "title": "Chess Studio · Salud operativa",
   "uid": "chess-studio-api-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": "monday",
   "time": {
     "from": "now-6h",
@@ -70,7 +70,8 @@
             "uid": "${metrics_datasource_uid}"
           },
           "expr": "last_over_time(chess_studio_billing_cost_current_cycle{provider=\"oci\"}[12h])",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "{{currency}}"
         }
       ],
       "fieldConfig": {
@@ -78,7 +79,6 @@
           "unit": "short",
           "decimals": 2,
           "noValue": "SIN DATOS",
-          "displayName": "${__field.labels.currency}",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -133,7 +133,8 @@
             "uid": "${metrics_datasource_uid}"
           },
           "expr": "last_over_time(chess_studio_billing_cost_current_cycle{provider=\"cloudflare\"}[12h])",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "{{currency}}"
         }
       ],
       "fieldConfig": {
@@ -141,7 +142,6 @@
           "unit": "short",
           "decimals": 2,
           "noValue": "SIN DATOS",
-          "displayName": "${__field.labels.currency}",
           "thresholds": {
             "mode": "absolute",
             "steps": [
