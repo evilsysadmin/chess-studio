@@ -361,9 +361,11 @@ def add_room(static, mats):
     # Marble fireplace, firebox and props.
     cube("WR_FIREPLACE_body", (-4.55, 6.35, 2.03), (1.55, 0.46, 1.48), mats["stone"], static, bevel=0.10)
     cube("WR_FIREPLACE_opening", (-4.55, 5.86, 1.70), (0.93, 0.12, 0.78), mats["charcoal"], static, bevel=0.04)
-    cube("WR_FIREPLACE_mantel", (-4.55, 5.76, 3.53), (1.78, 0.64, 0.16), mats["stone_light"], static, bevel=0.08)
-    cube("WR_FIREPLACE_mantel_shadow", (-4.55, 5.08, 3.42), (1.84, 0.08, 0.07), mats["stone_dark"], static, bevel=0.025)
-    cube("WR_FIREPLACE_hearth", (-4.55, 5.35, 0.72), (1.48, 0.78, 0.12), mats["stone_light"], static, bevel=0.08)
+    cube("WR_FIREPLACE_mantel", (-4.55, 5.76, 3.53), (1.78, 0.64, 0.12), mats["stone_light"], static, bevel=0.075)
+    cube("WR_FIREPLACE_mantel_cap", (-4.55, 5.76, 3.70), (1.88, 0.68, 0.055), mats["stone"], static, bevel=0.04)
+    cube("WR_FIREPLACE_mantel_shadow", (-4.55, 5.08, 3.39), (1.84, 0.08, 0.06), mats["stone_dark"], static, bevel=0.025)
+    cube("WR_FIREPLACE_hearth", (-4.55, 5.35, 0.72), (1.48, 0.78, 0.10), mats["stone"], static, bevel=0.07)
+    cube("WR_FIREPLACE_hearth_lip", (-4.55, 4.72, 0.82), (1.56, 0.12, 0.055), mats["stone_dark"], static, bevel=0.025)
     cube("WR_FIREPLACE_inner_lintel", (-4.55, 5.69, 2.58), (1.05, 0.09, 0.12), mats["stone_dark"], static, bevel=0.035)
     # A soot-darkened inner reveal stops the surround reading as a bright toy block.
     cube("WR_FIREPLACE_soot_header", (-4.55, 5.73, 2.38), (0.90, 0.035, 0.055),
@@ -374,8 +376,9 @@ def add_room(static, mats):
     for px in (-5.57, -3.53):
         cube(f"WR_FIREPLACE_inner_jamb_{px}", (px, 5.69, 1.70), (0.11, 0.09, 0.76), mats["stone_dark"], static, bevel=0.03)
     for px in (-5.78, -3.32):
-        cube(f"WR_FIREPLACE_pilaster_{px}", (px, 5.77, 2.16), (0.16, 0.12, 1.06), mats["stone_light"], static, bevel=0.045)
+        cube(f"WR_FIREPLACE_pilaster_{px}", (px, 5.77, 2.16), (0.16, 0.12, 1.06), mats["stone"], static, bevel=0.045)
         cube(f"WR_FIREPLACE_cap_{px}", (px, 5.73, 3.23), (0.24, 0.18, 0.10), mats["stone_light"], static, bevel=0.045)
+        cube(f"WR_FIREPLACE_foot_{px}", (px, 5.66, 1.02), (0.24, 0.20, 0.10), mats["stone_dark"], static, bevel=0.035)
     # Hearth: crossed charred logs, low grate and layered emissive wisps.
     # Keep flame geometry restrained; the old three giant cones read as toy
     # triangles in the runtime GLB, especially on mobile.
@@ -517,14 +520,21 @@ def add_room(static, mats):
         cube(f"WR_ARMOR_stand_{side}", (x, 4.35, 1.12), (0.11, 0.11, 0.78), mats["charcoal"], static, bevel=0.025)
         sphere(f"WR_ARMOR_breastplate_{side}", (x, 4.35, 1.45), 0.47, mats["armor"], static, scale=(0.82, 0.50, 1.18))
         torus(f"WR_ARMOR_gorget_{side}", (x, 4.33, 1.90), 0.19, 0.035, mats["brass_dark"], static)
+        torus(f"WR_ARMOR_belt_{side}", (x, 4.35, 1.13), 0.29, 0.035, mats["brass_dark"], static)
         cube(f"WR_ARMOR_breastplate_ridge_{side}", (x, 4.08, 1.48), (0.035, 0.035, 0.38),
              mats["brass_dark"], static, bevel=0.012)
         for leg in (-1, 1):
             cube(f"WR_ARMOR_greave_{side}_{leg}", (x + leg * 0.18, 4.35, 0.67), (0.11, 0.12, 0.27),
                  mats["armor"], static, bevel=0.05)
+            sphere(f"WR_ARMOR_sabatons_{side}_{leg}", (x + leg * 0.18, 4.16, 0.38), 0.13,
+                   mats["armor_dark"], static, scale=(0.82, 1.22, 0.48))
         for shoulder in (-1, 1):
             sphere(f"WR_ARMOR_pauldron_{side}_{shoulder}", (x + shoulder * 0.43, 4.35, 1.63), 0.22,
                    mats["armor"], static, scale=(1.10, 0.72, 0.65))
+            sphere(f"WR_ARMOR_upper_arm_{side}_{shoulder}", (x + shoulder * 0.45, 4.35, 1.34), 0.18,
+                   mats["armor_dark"], static, scale=(0.68, 0.58, 1.15))
+            sphere(f"WR_ARMOR_forearm_{side}_{shoulder}", (x + shoulder * 0.48, 4.34, 1.06), 0.15,
+                   mats["armor"], static, scale=(0.62, 0.55, 1.05))
         sphere(f"WR_ARMOR_helmet_{side}", (x, 4.35, 2.12), 0.34, mats["armor"], static, scale=(0.88, 0.78, 1.02))
         cube(f"WR_ARMOR_visor_{side}", (x, 4.13, 2.12), (0.24, 0.035, 0.07), mats["armor_dark"], static, bevel=0.02)
         cube(f"WR_ARMOR_skirt_{side}", (x, 4.35, 0.98), (0.38, 0.28, 0.23), mats["armor_dark"], static, bevel=0.05)
@@ -589,7 +599,7 @@ def build():
         "leather_dark": material("WR_MAT_leather_dark", (0.048, 0.005, 0.008, 1), rough=0.56, coat=0.14, texture="leather", scale=48, bump=0.09),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "stone": material("WR_MAT_stone", (0.235, 0.225, 0.205, 1), rough=0.70, coat=0.028, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.39, 0.37, 0.34, 1), rough=0.64, coat=0.035, texture="stone", scale=4.1, bump=0.080),
+        "stone_light": material("WR_MAT_stone_light", (0.31, 0.30, 0.285, 1), rough=0.67, coat=0.028, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.18, 0.007, 0.013, 1), rough=0.94, sheen=0.30, texture="fabric", scale=52, bump=0.14),
         "armor": material("WR_MAT_armor", (0.095, 0.105, 0.12, 1), metal=0.94, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.035),
@@ -679,7 +689,8 @@ def validate():
         "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
-        "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0",
+        "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
+        "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
