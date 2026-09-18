@@ -63,7 +63,8 @@
       "w": 160,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "stone",
+      "route": "climb"
     },
     {
       "x": 1760,
@@ -184,6 +185,33 @@
       "h": 24,
       "kind": "ledge",
       "material": "stone"
+    },
+    {
+      "x": 1610,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "stone",
+      "route": "climb"
+    },
+    {
+      "x": 1710,
+      "y": 275,
+      "w": 155,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "stone",
+      "route": "climb"
+    },
+    {
+      "x": 1840,
+      "y": 360,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "concrete",
+      "route": "climb"
     }
   ],
   "obstacles": [
@@ -273,9 +301,10 @@
       "type": "shield"
     },
     {
-      "x": 1670,
+      "x": 1780,
       "type": "rook",
-      "y": 448
+      "y": 275,
+      "route": "climb"
     },
     {
       "x": 1871,
@@ -404,6 +433,13 @@
       "x": 4960,
       "y": 566,
       "type": "grenade"
+    },
+    {
+      "x": 1780,
+      "y": 231,
+      "type": "grenade",
+      "route": "climb",
+      "optional": true
     }
   ],
   "boss": {
