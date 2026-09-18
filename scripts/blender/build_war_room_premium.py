@@ -350,16 +350,16 @@ def add_room(static, mats):
         cube(f"WR_DECOR_rug_y_{side}", (side * 6.31, 0, 0.105), (0.06, 6.25, 0.012), mats["brass_dark"], static, bevel=0.01)
     cube("WR_TABLE_main", (0, 0, 0.47), (5.86, 5.86, 0.38), mats["table_wood"], static, bevel=0.13)
     cube("WR_TABLE_board_frame", (0, 0, 0.96), (4.62, 4.62, 0.12), mats["frame_wood"], static, bevel=0.09)
-    # Dark green leather inlay breaks the broad walnut surface into a crafted chess table.
+    # Restrained leather band: furniture detail, not a second frame competing with the board.
     for side in (-1, 1):
-        cube(f"WR_TABLE_inlay_x_{side}", (0, side * 5.05, 1.075), (4.40, 0.32, 0.025),
-             mats["desk_leather"], static, bevel=0.035)
-        cube(f"WR_TABLE_inlay_y_{side}", (side * 5.05, 0, 1.075), (0.32, 4.40, 0.025),
-             mats["desk_leather"], static, bevel=0.035)
-        cube(f"WR_TABLE_inlay_pipe_x_{side}", (0, side * 5.37, 1.105), (4.42, 0.018, 0.012),
-             mats["brass_dark"], static, bevel=0.008)
-        cube(f"WR_TABLE_inlay_pipe_y_{side}", (side * 5.37, 0, 1.105), (0.018, 4.42, 0.012),
-             mats["brass_dark"], static, bevel=0.008)
+        cube(f"WR_TABLE_inlay_x_{side}", (0, side * 4.90, 1.075), (4.58, 0.16, 0.018),
+             mats["table_leather"], static, bevel=0.022)
+        cube(f"WR_TABLE_inlay_y_{side}", (side * 4.90, 0, 1.075), (0.16, 4.58, 0.018),
+             mats["table_leather"], static, bevel=0.022)
+        cube(f"WR_TABLE_inlay_pipe_x_{side}", (0, side * 5.07, 1.097), (4.60, 0.010, 0.009),
+             mats["brass_dark"], static, bevel=0.005)
+        cube(f"WR_TABLE_inlay_pipe_y_{side}", (side * 5.07, 0, 1.097), (0.010, 4.60, 0.009),
+             mats["brass_dark"], static, bevel=0.005)
     for side in (-1, 1):
         cube(f"WR_TABLE_gold_x_{side}", (0, side * 4.42, 1.10), (4.36, 0.035, 0.035), mats["brass"], static, bevel=0.016)
         cube(f"WR_TABLE_gold_y_{side}", (side * 4.42, 0, 1.10), (0.035, 4.36, 0.035), mats["brass"], static, bevel=0.016)
@@ -608,6 +608,7 @@ def build():
         "leather": material("WR_MAT_leather", (0.082, 0.026, 0.022, 1), rough=0.50, coat=0.18, sheen=0.14, texture="leather", scale=47, bump=0.105),
         "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
+        "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
         "stone": material("WR_MAT_stone", (0.235, 0.225, 0.205, 1), rough=0.70, coat=0.028, texture="stone", scale=4.3, bump=0.095),
         "stone_light": material("WR_MAT_stone_light", (0.31, 0.30, 0.285, 1), rough=0.67, coat=0.028, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
