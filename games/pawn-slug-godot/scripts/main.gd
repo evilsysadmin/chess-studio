@@ -385,7 +385,7 @@ func _resolve_pickup_spawn(desired: Vector2) -> Vector2:
             Vector2(distance, -distance),
         ]
         for offset in offsets:
-            var candidate := desired + offset
+            var candidate: Vector2 = desired + Vector2(offset)
             candidate.x = clampf(
                 candidate.x,
                 PICKUP_SPAWN_SIZE.x * 0.5,
