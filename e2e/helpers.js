@@ -531,12 +531,23 @@ export async function startPracticeGame(page) {
 }
 
 export async function openMoreGameModes(page) {
-  const illustrated = page.locator('.illustrated-home__utilities');
-  if (await illustrated.isVisible()) {
-    const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+  // Canonical illustrated Home owns one accessible trigger across desktop and
+  // narrow/mobile layouts. Resolve that contract first instead of requiring the
+  // surrounding utilities container itself to have a visible box: mobile may
+  // position the panel/trigger independently while the wrapper has no layout box.
+  const trigger = page.getByRole('button', { name: /Más modos y herramientas/ }).first();
+  if (await trigger.isVisible().catch(() => false)) {
     if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    const navigation = page.getByRole('navigation', { name: 'Más modos y herramientas' });
+    if (await navigation.isVisible().catch(() => false)) return navigation;
+
+    const illustrated = page.locator('.illustrated-home__utilities');
+    await expect(illustrated).toBeAttached();
     return illustrated;
   }
+
   const details = page.locator('details.home-more-modes');
   await expect(details).toBeVisible();
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
