@@ -105,9 +105,9 @@ def test_lobby_exposes_head_to_head_only_from_persisted_finished_matches():
             "id": "finished-draw", "white": "bob", "black": "alice",
             "status": "finished", "result": "1/2-1/2", "updated_at": now - timedelta(minutes=1),
         },
-        "active-ignore": {
-            "id": "active-ignore", "white": "alice", "black": "bob",
-            "status": "active", "result": None, "updated_at": now,
+        "unfinished-ignore": {
+            "id": "unfinished-ignore", "white": "alice", "black": "bob",
+            "status": "finished", "result": None, "updated_at": now,
         },
     })
 
