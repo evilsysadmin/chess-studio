@@ -21,11 +21,24 @@ const FULL_ATLAS_URLS := {
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v6.png",
 }
 const V7_SOURCE_SIZE := Vector2i(1070, 1470)
-const DIRECTIONAL_SOURCE_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_generated_source.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_generated_source.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_generated_source.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_generated_source.png",
+const DIRECTIONAL_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_directional_strict_v8.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_directional_strict_v8.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_directional_strict_v8.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_directional_strict_v8.png",
+}
+const DIRECTIONAL_ATLAS_COLUMNS := 3
+const DIRECTIONAL_ATLAS_ROWS := 4
+const DIRECTIONAL_ATLAS_CELL_SIZE := 362
+const DIRECTIONAL_ATLAS_SIZE := Vector2i(
+    DIRECTIONAL_ATLAS_COLUMNS * DIRECTIONAL_ATLAS_CELL_SIZE,
+    DIRECTIONAL_ATLAS_ROWS * DIRECTIONAL_ATLAS_CELL_SIZE,
+)
+const DIRECTIONAL_ACTION_ROWS := {
+    "shoot": 0,
+    "shoot_up": 1,
+    "shoot_down": 2,
+    "shoot_crouch": 3,
 }
 # Exact pose-only crops from the uploaded v7 generated sheets. The generated
 # sheets omitted/misaligned whole rows for several weapons, so treating them as
@@ -74,6 +87,7 @@ const NORMALIZED_FOOT_GUTTER := 24
 const CELL_GUARD_PX := 2
 const AUTHORED_BODY_SCALE := 0.67
 const BODY_SCALE := 0.50
+const DIRECTIONAL_BODY_SCALE := BODY_SCALE * float(FULL_ATLAS_CELL_SIZE) / float(DIRECTIONAL_ATLAS_CELL_SIZE)
 const BODY_SCALE_RATIO := BODY_SCALE / AUTHORED_BODY_SCALE
 const PLAYER_FOOT_Y := 42.0
 const RUN_LEG_MOTION_SAMPLE_STEP := 6
@@ -193,6 +207,7 @@ static var _full_frames_by_weapon: Dictionary = {}
 static var _full_body_y_by_weapon: Dictionary = {}
 static var _full_muzzle_by_weapon: Dictionary = {}
 static var _directional_ready_by_weapon: Dictionary = {}
+static var _directional_body_y_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -315,7 +330,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
-    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down", "shoot_crouch"]:
+    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down"]:
         _one_shot_action = ""
         _hold_one_shot = false
         _action = ""
@@ -409,10 +424,8 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
 func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bool) -> String:
     if not _using_full_atlas:
         return ""
-    # Grounded crouch is a physical state, not a one-shot animation. Firing
-    # keeps the crouch frame locked and layers recoil/flash over it.
-    if on_floor and crouching:
-        return ""
+    if on_floor and crouching and _animation_available("shoot_crouch"):
+        return "shoot_crouch"
     var diagonal := absf(_aim_direction.x) > 0.25 and absf(_aim_direction.y) > 0.25
     if diagonal and _aim_direction.y < 0.0 and _animation_available("shoot_up"):
         return "shoot_up"
@@ -480,6 +493,7 @@ func _build_nodes() -> void:
     _body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
     _body.visible = false
     _body.animation_finished.connect(_on_animation_finished)
+    _body.frame_changed.connect(_on_body_frame_changed)
     _fx_root.add_child(_body)
 
     _weapon_root = Node2D.new()
@@ -535,10 +549,10 @@ func _ensure_directional_source(weapon_id: String) -> void:
         return
     if not _full_frames_by_weapon.has(weapon_id) or _atlas_request != null:
         return
-    var url := String(DIRECTIONAL_SOURCE_URLS.get(weapon_id, ""))
+    var url := String(DIRECTIONAL_ATLAS_URLS.get(weapon_id, ""))
     if url.is_empty():
         return
-    _request_atlas(weapon_id, url, "directional-v7-source")
+    _request_atlas(weapon_id, url, "directional-v8")
 
 func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
     if _atlas_request != null:
@@ -576,6 +590,18 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
+        return
+
+    if requested_layout == "directional-v8":
+        if image.get_size() == DIRECTIONAL_ATLAS_SIZE and _append_directional_atlas_frames(requested_weapon, image):
+            _directional_ready_by_weapon[requested_weapon] = true
+            if requested_weapon == _weapon:
+                _sync_muzzle()
+        else:
+            push_warning(
+                "Matthias directional v8 atlas invalid for %s: %s"
+                % [requested_weapon, image.get_size()]
+            )
         return
 
     if requested_layout == "directional-v7-source":
@@ -639,6 +665,60 @@ func _normalize_v7_source(image: Image) -> Image:
         push_error("Matthias v7 normalization failed: %s" % [normalized.get_size()])
         return null
     return normalized
+
+func _append_directional_atlas_frames(weapon_id: String, image: Image) -> bool:
+    if image.get_size() != DIRECTIONAL_ATLAS_SIZE or not _full_frames_by_weapon.has(weapon_id):
+        return false
+    var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
+    var atlas_texture := ImageTexture.create_from_image(image)
+    var body_y_by_action := {}
+
+    for action in ["shoot", "shoot_up", "shoot_down", "shoot_crouch"]:
+        var row := int(DIRECTIONAL_ACTION_ROWS[action])
+        if frames.has_animation(action):
+            frames.remove_animation(action)
+        frames.add_animation(action)
+        frames.set_animation_loop(action, false)
+        frames.set_animation_speed(action, DIRECTIONAL_SHOOT_FPS)
+        var anchors: Array = []
+        for column in range(DIRECTIONAL_ATLAS_COLUMNS):
+            var texture := AtlasTexture.new()
+            texture.atlas = atlas_texture
+            texture.region = Rect2(
+                column * DIRECTIONAL_ATLAS_CELL_SIZE,
+                row * DIRECTIONAL_ATLAS_CELL_SIZE,
+                DIRECTIONAL_ATLAS_CELL_SIZE,
+                DIRECTIONAL_ATLAS_CELL_SIZE,
+            )
+            frames.add_frame(action, texture)
+            anchors.append(_directional_body_y_for_cell(image, row, column))
+        body_y_by_action[action] = anchors
+
+    _directional_body_y_by_weapon[weapon_id] = body_y_by_action
+    return true
+
+func _directional_body_y_for_cell(image: Image, row: int, column: int) -> float:
+    var cell := image.get_region(Rect2i(
+        column * DIRECTIONAL_ATLAS_CELL_SIZE,
+        row * DIRECTIONAL_ATLAS_CELL_SIZE,
+        DIRECTIONAL_ATLAS_CELL_SIZE,
+        DIRECTIONAL_ATLAS_CELL_SIZE,
+    ))
+    # Scan only the left half/lower body. Downward muzzle flashes and rockets can
+    # extend below the boots on the right; they must never become the ground anchor.
+    var foot_y := -1
+    var x_end := int(round(float(DIRECTIONAL_ATLAS_CELL_SIZE) * 0.50))
+    var y_start := int(round(float(DIRECTIONAL_ATLAS_CELL_SIZE) * 0.45))
+    for y in range(y_start, DIRECTIONAL_ATLAS_CELL_SIZE):
+        for x in range(0, x_end):
+            if cell.get_pixel(x, y).a >= 0.10:
+                foot_y = maxi(foot_y, y)
+    if foot_y < 0:
+        var used := cell.get_used_rect()
+        if used.size == Vector2i.ZERO:
+            return -BODY_CENTER_TO_FOOT * BODY_SCALE
+        foot_y = used.position.y + used.size.y
+    return -(float(foot_y) - float(DIRECTIONAL_ATLAS_CELL_SIZE) * 0.5) * DIRECTIONAL_BODY_SCALE
 
 func _append_directional_source_frames(weapon_id: String, image: Image) -> bool:
     if not _full_frames_by_weapon.has(weapon_id):
@@ -1171,6 +1251,7 @@ func _animation_available(name: String) -> bool:
 func _play_action() -> void:
     if not _body_ready or _dead or not _animation_available(_action):
         return
+    _apply_body_transform(_action, _body.frame)
     if _action == "walk" or _action == "run":
         _body.animation = _action
         _body.frame = 0
@@ -1228,14 +1309,34 @@ func _play_one_shot(name: String, hold: bool = false) -> void:
     _one_shot_action = name
     _hold_one_shot = hold
     _action = name
-    _body.play(name)
     _body.frame = 0
+    _apply_body_transform(name, 0)
+    _body.play(name)
+
+func _on_body_frame_changed() -> void:
+    if _body == null:
+        return
+    _apply_body_transform(String(_body.animation), _body.frame)
+
+func _apply_body_transform(action: String, frame_index: int) -> void:
+    var directional_by_action: Dictionary = _directional_body_y_by_weapon.get(_rendered_weapon, {})
+    if directional_by_action.has(action):
+        var anchors: Array = directional_by_action[action]
+        if not anchors.is_empty():
+            _body.scale = Vector2(DIRECTIONAL_BODY_SCALE, DIRECTIONAL_BODY_SCALE)
+            _body.position.y = float(anchors[clampi(frame_index, 0, anchors.size() - 1)])
+            return
+    _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
+    _body.position.y = float(
+        _full_body_y_by_weapon.get(_rendered_weapon, -BODY_CENTER_TO_FOOT * BODY_SCALE)
+    )
 
 func _on_animation_finished() -> void:
     if _one_shot_action.is_empty() or _hold_one_shot:
         return
     _one_shot_action = ""
     _action = ""
+    _apply_body_transform("idle", 0)
 
 func _sync_muzzle() -> void:
     var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
