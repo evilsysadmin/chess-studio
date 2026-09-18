@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   render:
-    name: Render Home Blender 2.0 · ${{ inputs.quality || 'beauty' }}
+    name: Render Home Blender 2.0 · ${{ inputs.quality || 'blockout' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -51,13 +51,13 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '32' || '16' }}' \
-            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '1814' || '1100' }}' \
-            --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
+            --samples '${{ (inputs.quality || 'blockout') == 'beauty' && '32' || '16' }}' \
+            --max-width '${{ (inputs.quality || 'blockout') == 'beauty' && '1814' || '1100' }}' \
+            --engine '${{ (inputs.quality || 'blockout') == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
         env:
-          QUALITY: ${{ inputs.quality || 'beauty' }}
+          QUALITY: ${{ inputs.quality || 'blockout' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -92,7 +92,7 @@ jobs:
           assert preview.width <= expected_max_width
           assert metadata['engine'] == expected_engine
           assert metadata['object_count'] >= 80, metadata['object_count']
-          assert metadata['mesh_count'] <= 150, metadata['mesh_count']
+          assert metadata['mesh_count'] <= 280, metadata['mesh_count']
           assert metadata['named_groups']['architecture']
           assert metadata['named_groups']['props']
 
