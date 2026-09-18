@@ -19,6 +19,7 @@ MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
 COMBAT_AUDIO = GODOT_ROOT / "scripts/combat_audio.gd"
 BOSS = GODOT_ROOT / "scripts/boss_visual.gd"
+TOUCH = GODOT_ROOT / "scripts/touch_controls.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -157,6 +158,28 @@ REQUIRED_BOSS_TELEGRAPH = (
     "_shell_telegraph",
     "draw_arc",
 )
+REQUIRED_TOUCH = (
+    "DisplayServer.is_touchscreen_available",
+    "DisplayServer.get_display_safe_area",
+    "move_axis",
+    "crouch_pressed",
+    "jump_pressed",
+    "fire_pressed",
+    "grenade_pressed",
+    "pause_requested",
+    "weapon_cycle_requested",
+)
+REQUIRED_MOBILE_PLAYER = (
+    'get_node_or_null("TouchControls")',
+    "cycle_weapon",
+    "_touch_controls.move_axis",
+    "_touch_controls.fire_pressed",
+)
+REQUIRED_MOBILE_PAUSE = (
+    "toggle_pause",
+    "screen.orientation.lock('landscape')",
+    "screen.orientation.unlock",
+)
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -220,6 +243,9 @@ def validate() -> None:
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
     validate_contract(BOSS, "boss_visual.gd", REQUIRED_BOSS_TELEGRAPH, violations)
+    validate_contract(TOUCH, "touch_controls.gd", REQUIRED_TOUCH, violations)
+    validate_contract(PLAYER, "player.gd", REQUIRED_MOBILE_PLAYER, violations)
+    validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_MOBILE_PAUSE, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -254,6 +280,9 @@ def self_test() -> None:
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
+    assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
+    assert "_touch_controls.fire_pressed" in REQUIRED_MOBILE_PLAYER
+    assert "screen.orientation.lock(\'landscape\')" in REQUIRED_MOBILE_PAUSE
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 
