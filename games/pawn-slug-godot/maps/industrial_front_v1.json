@@ -1,0 +1,374 @@
+{
+  "id": "industrial_front_v1",
+  "version": 1,
+  "theme": "night_front",
+  "world": {
+    "width": 5200,
+    "height": 720,
+    "floor_y": 610,
+    "start_x": 110,
+    "floor_depth": 110,
+    "boundary_thickness": 40
+  },
+  "checkpoints": [
+    110,
+    1480,
+    2980,
+    4140
+  ],
+  "platforms": [
+    {
+      "x": 420,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_catwalk"
+    },
+    {
+      "x": 670,
+      "y": 456,
+      "w": 160,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 900,
+      "y": 400,
+      "w": 220,
+      "h": 24,
+      "kind": "high_catwalk"
+    },
+    {
+      "x": 1180,
+      "y": 476,
+      "w": 150,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 1370,
+      "y": 520,
+      "w": 250,
+      "h": 24,
+      "kind": "low_catwalk"
+    },
+    {
+      "x": 1660,
+      "y": 446,
+      "w": 160,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 1840,
+      "y": 366,
+      "w": 220,
+      "h": 24,
+      "kind": "high_catwalk"
+    },
+    {
+      "x": 2130,
+      "y": 488,
+      "w": 180,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 2380,
+      "y": 430,
+      "w": 140,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 2580,
+      "y": 458,
+      "w": 250,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 2870,
+      "y": 510,
+      "w": 150,
+      "h": 24,
+      "kind": "low_catwalk"
+    },
+    {
+      "x": 3050,
+      "y": 390,
+      "w": 220,
+      "h": 24,
+      "kind": "high_catwalk"
+    },
+    {
+      "x": 3330,
+      "y": 452,
+      "w": 150,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 3510,
+      "y": 512,
+      "w": 230,
+      "h": 24,
+      "kind": "low_catwalk"
+    },
+    {
+      "x": 3820,
+      "y": 426,
+      "w": 220,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 4110,
+      "y": 358,
+      "w": 150,
+      "h": 24,
+      "kind": "high_catwalk"
+    },
+    {
+      "x": 4310,
+      "y": 498,
+      "w": 200,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 4600,
+      "y": 456,
+      "w": 130,
+      "h": 24,
+      "kind": "catwalk"
+    },
+    {
+      "x": 4750,
+      "y": 406,
+      "w": 300,
+      "h": 24,
+      "kind": "high_catwalk"
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 710,
+      "y": 558,
+      "w": 48,
+      "h": 52,
+      "kind": "crate"
+    },
+    {
+      "x": 1200,
+      "y": 542,
+      "w": 64,
+      "h": 68,
+      "kind": "barricade"
+    },
+    {
+      "x": 2010,
+      "y": 550,
+      "w": 74,
+      "h": 60,
+      "kind": "sandbags"
+    },
+    {
+      "x": 2320,
+      "y": 536,
+      "w": 52,
+      "h": 74,
+      "kind": "crate_stack"
+    },
+    {
+      "x": 3220,
+      "y": 552,
+      "w": 86,
+      "h": 58,
+      "kind": "barricade"
+    },
+    {
+      "x": 3600,
+      "y": 528,
+      "w": 60,
+      "h": 82,
+      "kind": "crate_stack"
+    },
+    {
+      "x": 4460,
+      "y": 548,
+      "w": 70,
+      "h": 62,
+      "kind": "sandbags"
+    },
+    {
+      "x": 4860,
+      "y": 546,
+      "w": 58,
+      "h": 64,
+      "kind": "barrels"
+    }
+  ],
+  "enemies": [
+    {
+      "x": 780,
+      "type": "pawn"
+    },
+    {
+      "x": 1120,
+      "type": "pawn"
+    },
+    {
+      "x": 1320,
+      "type": "scout"
+    },
+    {
+      "x": 1510,
+      "type": "knight"
+    },
+    {
+      "x": 1760,
+      "type": "grenadier"
+    },
+    {
+      "x": 1940,
+      "type": "rook"
+    },
+    {
+      "x": 2110,
+      "type": "pawn"
+    },
+    {
+      "x": 2250,
+      "type": "pawn"
+    },
+    {
+      "x": 2380,
+      "type": "bishop"
+    },
+    {
+      "x": 2515,
+      "type": "knight"
+    },
+    {
+      "x": 2590,
+      "type": "rook"
+    },
+    {
+      "x": 2730,
+      "type": "grenadier"
+    },
+    {
+      "x": 2820,
+      "type": "commando"
+    },
+    {
+      "x": 2890,
+      "type": "knight"
+    },
+    {
+      "x": 3070,
+      "type": "pawn"
+    },
+    {
+      "x": 3130,
+      "type": "scout"
+    },
+    {
+      "x": 3210,
+      "type": "pawn"
+    },
+    {
+      "x": 3335,
+      "type": "pawn"
+    },
+    {
+      "x": 3430,
+      "type": "rook"
+    },
+    {
+      "x": 3560,
+      "type": "knight"
+    },
+    {
+      "x": 3680,
+      "type": "pawn"
+    },
+    {
+      "x": 3740,
+      "type": "bishop"
+    },
+    {
+      "x": 3820,
+      "type": "commando"
+    },
+    {
+      "x": 3950,
+      "type": "queen"
+    },
+    {
+      "x": 4070,
+      "type": "knight"
+    },
+    {
+      "x": 4190,
+      "type": "rook"
+    },
+    {
+      "x": 4285,
+      "type": "shield"
+    },
+    {
+      "x": 4380,
+      "type": "grenadier"
+    }
+  ],
+  "pickups": [
+    {
+      "x": 1240,
+      "y": 566,
+      "type": "machinegun"
+    },
+    {
+      "x": 1810,
+      "y": 566,
+      "type": "grenade"
+    },
+    {
+      "x": 2470,
+      "y": 566,
+      "type": "shotgun"
+    },
+    {
+      "x": 3300,
+      "y": 566,
+      "type": "medkit"
+    },
+    {
+      "x": 3500,
+      "y": 566,
+      "type": "panzerfaust"
+    },
+    {
+      "x": 4310,
+      "y": 566,
+      "type": "grenade"
+    }
+  ],
+  "boss": {
+    "x": 4580,
+    "hp": 780,
+    "width": 190,
+    "height": 150,
+    "trigger_x": 3860,
+    "arena_left": 4010,
+    "arena_right": 5080
+  },
+  "extraction": {
+    "x": 5050
+  },
+  "backdrop": {
+    "preset": "night_front",
+    "seed": 17
+  }
+}

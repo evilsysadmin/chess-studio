@@ -4,11 +4,9 @@ const EnemyVisual := preload("res://scripts/enemy_visual.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
+const DEFAULT_STAGE_ID := "industrial_front_v1"
 const VIEW_SIZE := Vector2(1280.0, 720.0)
-const WORLD_SIZE := Vector2(5200.0, 720.0)
-const FLOOR_Y := 610.0
 const PICKUP_RADIUS_X := 44.0
-const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1380.0
 const START_ZONE_END_X := 1150.0
 const START_ZONE_AGGRO_RANGE := 520.0
@@ -42,13 +40,6 @@ const KNIGHT_INITIAL_LEAP_MIN := 0.70
 const KNIGHT_INITIAL_LEAP_MAX := 1.90
 const KNIGHT_LEAP_COOLDOWN_MIN := 2.20
 const KNIGHT_LEAP_COOLDOWN_MAX := 3.60
-const BOSS_X := 4580.0
-const EXTRACTION_X := 5050.0
-const BOSS_TRIGGER_X := BOSS_X - 720.0
-const BOSS_ARENA_LEFT := BOSS_X - 570.0
-const BOSS_ARENA_RIGHT := BOSS_X + 500.0
-const BOSS_HP := 780
-const BOSS_SIZE := Vector2(190.0, 150.0)
 const BOSS_REGULAR_RANGE := 1280.0
 const BOSS_SHELL_RANGE := 1440.0
 const BOSS_SHELL_WINDUP := 0.62
@@ -83,29 +74,6 @@ const PLAYER_STANDING_HEIGHT := 84.0
 const PLAYER_CROUCH_HEIGHT := 48.0
 const MOVEMENT_HINT_LOOKAHEAD := 180.0
 const MOVEMENT_HINT_TRAIL := 36.0
-const PLATFORMS: Array[Rect2] = [
-    Rect2(460.0, 498.0, 280.0, 24.0),
-    Rect2(920.0, 418.0, 240.0, 24.0),
-    Rect2(1300.0, 508.0, 320.0, 24.0),
-    Rect2(1760.0, 388.0, 280.0, 24.0),
-    Rect2(2140.0, 488.0, 240.0, 24.0),
-    Rect2(2580.0, 458.0, 280.0, 24.0),
-    Rect2(3000.0, 388.0, 240.0, 24.0),
-    Rect2(3420.0, 508.0, 320.0, 24.0),
-    Rect2(3860.0, 428.0, 280.0, 24.0),
-    Rect2(4300.0, 498.0, 240.0, 24.0),
-    Rect2(4700.0, 408.0, 320.0, 24.0),
-]
-const ENEMY_SPAWNS := [
-    # Opening cadence: one readable first contact, then progressively denser
-    # resistance after Matthias has had room to move, jump and collect the SMG.
-    [780.0, "pawn"], [1120.0, "pawn"], [1320.0, "scout"], [1510.0, "knight"],
-    [1760.0, "grenadier"], [1940.0, "rook"],
-    [2110.0, "pawn"], [2250.0, "pawn"], [2380.0, "bishop"], [2515.0, "knight"], [2590.0, "rook"],
-    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3130.0, "scout"], [3210.0, "pawn"], [3335.0, "pawn"],
-    [3430.0, "rook"], [3560.0, "knight"], [3680.0, "pawn"], [3740.0, "bishop"], [3820.0, "commando"], [3950.0, "queen"], [4070.0, "knight"],
-    [4190.0, "rook"], [4285.0, "shield"], [4380.0, "grenadier"],
-]
 const ENEMY_TYPES := {
     "pawn": {"hp": 34, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
     "knight": {"hp": 62, "speed": 92.0, "width": 57.0, "height": 80.0, "standoff": 225.0},
@@ -124,6 +92,26 @@ const ENEMY_FIRE_PROFILES := {
     "panzerfaust": {"range": 1200.0, "min_range": 290.0, "cooldown_min": 1.80, "cooldown_max": 2.45, "speed": 420.0, "pellets": 1, "spread": 0.0, "explosive": true},
 }
 
+var _stage_id := DEFAULT_STAGE_ID
+var _stage_manifest: Dictionary = {}
+var _world_size := Vector2(1280.0, 720.0)
+var _floor_y := 610.0
+var _floor_depth := 110.0
+var _boundary_thickness := 40.0
+var _stage_start_x := 110.0
+var _checkpoints: Array = [110.0]
+var _platforms: Array[Rect2] = []
+var _obstacles: Array[Rect2] = []
+var _enemy_spawns: Array[Dictionary] = []
+var _boss_x := 4580.0
+var _boss_hp := 780
+var _boss_size := Vector2(190.0, 150.0)
+var _boss_trigger_x := 3860.0
+var _boss_arena_left := 4010.0
+var _boss_arena_right := 5080.0
+var _extraction_x := 5050.0
+var _map_geometry_root: Node2D
+
 var projectiles: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
 var thrown_grenades: Array[Dictionary] = []
@@ -132,14 +120,7 @@ var muzzle_fx: Array[Dictionary] = []
 var impact_fx: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
 var enemy_visuals: Dictionary = {}
-var pickups: Array[Dictionary] = [
-    {"x": 920.0, "type": "machinegun", "taken": false},
-    {"x": 1810.0, "type": "grenade", "taken": false},
-    {"x": 2470.0, "type": "shotgun", "taken": false},
-    {"x": 3300.0, "type": "medkit", "taken": false},
-    {"x": 3500.0, "type": "panzerfaust", "taken": false},
-    {"x": 4310.0, "type": "grenade", "taken": false},
-]
+var pickups: Array[Dictionary] = []
 var boss_spawned := false
 var boss_defeated := false
 var mission_complete := false
@@ -163,6 +144,14 @@ var _enemy_suppression_remaining := 0.0
 
 func _ready() -> void:
     _reduced_motion = _prefers_reduced_motion()
+    if not _load_stage_manifest(DEFAULT_STAGE_ID):
+        push_error("Pawn Slug stage manifest failed; using minimal safe fallback")
+    _build_stage_geometry()
+    if player.has_method("configure_stage"):
+        player.configure_stage(_stage_start_x, _checkpoints)
+    if camera != null:
+        camera.limit_right = int(_world_size.x)
+        camera.limit_bottom = int(_world_size.y)
     _build_environment_visual()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
@@ -184,12 +173,121 @@ func _ready() -> void:
     _sync_hud()
     queue_redraw()
 
+func _load_stage_manifest(stage_id: String) -> bool:
+    _stage_id = stage_id
+    var path := "res://maps/%s.json" % stage_id
+    if not FileAccess.file_exists(path):
+        return false
+    var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+    if typeof(parsed) != TYPE_DICTIONARY:
+        return false
+
+    _stage_manifest = parsed
+    var world: Dictionary = _stage_manifest.get("world", {})
+    _world_size = Vector2(float(world.get("width", 1280.0)), float(world.get("height", 720.0)))
+    _floor_y = float(world.get("floor_y", 610.0))
+    _floor_depth = float(world.get("floor_depth", 110.0))
+    _boundary_thickness = float(world.get("boundary_thickness", 40.0))
+    _stage_start_x = float(world.get("start_x", 110.0))
+
+    _checkpoints = _stage_manifest.get("checkpoints", [_stage_start_x]).duplicate(true)
+    _platforms = _stage_rects(_stage_manifest.get("platforms", []))
+    _obstacles = _stage_rects(_stage_manifest.get("obstacles", []))
+
+    _enemy_spawns.clear()
+    for entry in _stage_manifest.get("enemies", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _enemy_spawns.append(Dictionary(entry).duplicate(true))
+
+    pickups.clear()
+    for entry in _stage_manifest.get("pickups", []):
+        if typeof(entry) != TYPE_DICTIONARY:
+            continue
+        var pickup := Dictionary(entry).duplicate(true)
+        pickup["taken"] = false
+        pickups.append(pickup)
+
+    var boss_spec: Dictionary = _stage_manifest.get("boss", {})
+    _boss_x = float(boss_spec.get("x", 4580.0))
+    _boss_hp = int(boss_spec.get("hp", 780))
+    _boss_size = Vector2(float(boss_spec.get("width", 190.0)), float(boss_spec.get("height", 150.0)))
+    _boss_trigger_x = float(boss_spec.get("trigger_x", _boss_x - 720.0))
+    _boss_arena_left = float(boss_spec.get("arena_left", _boss_x - 570.0))
+    _boss_arena_right = float(boss_spec.get("arena_right", _boss_x + 500.0))
+
+    var extraction_spec: Dictionary = _stage_manifest.get("extraction", {})
+    _extraction_x = float(extraction_spec.get("x", _world_size.x - 150.0))
+    return true
+
+func _stage_rects(raw: Array) -> Array[Rect2]:
+    var result: Array[Rect2] = []
+    for entry in raw:
+        if typeof(entry) != TYPE_DICTIONARY:
+            continue
+        var item: Dictionary = entry
+        result.append(Rect2(
+            float(item.get("x", 0.0)),
+            float(item.get("y", 0.0)),
+            float(item.get("w", 0.0)),
+            float(item.get("h", 0.0)),
+        ))
+    return result
+
+func _build_stage_geometry() -> void:
+    if _map_geometry_root != null:
+        _map_geometry_root.queue_free()
+    _map_geometry_root = Node2D.new()
+    _map_geometry_root.name = "StageGeometry"
+    add_child(_map_geometry_root)
+
+    _add_stage_body(
+        Rect2(0.0, _floor_y, _world_size.x, _floor_depth),
+        "Floor",
+    )
+    _add_stage_body(
+        Rect2(-_boundary_thickness, 0.0, _boundary_thickness, _world_size.y),
+        "LeftBoundary",
+    )
+    _add_stage_body(
+        Rect2(_world_size.x, 0.0, _boundary_thickness, _world_size.y),
+        "RightBoundary",
+    )
+    for index in range(_platforms.size()):
+        _add_stage_body(_platforms[index], "Platform_%02d" % index)
+    for index in range(_obstacles.size()):
+        _add_stage_body(_obstacles[index], "Obstacle_%02d" % index)
+
+func _add_stage_body(rect: Rect2, body_name: String) -> void:
+    if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+        return
+    var body := StaticBody2D.new()
+    body.name = body_name
+    body.position = rect.get_center()
+    var collision := CollisionShape2D.new()
+    collision.name = "CollisionShape2D"
+    var shape := RectangleShape2D.new()
+    shape.size = rect.size
+    collision.shape = shape
+    body.add_child(collision)
+    _map_geometry_root.add_child(body)
+
+func _point_hits_stage_geometry(point: Vector2) -> bool:
+    if point.y >= _floor_y:
+        return true
+    for rect in _platforms:
+        if rect.has_point(point):
+            return true
+    for rect in _obstacles:
+        if rect.has_point(point):
+            return true
+    return false
+
 func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:
         return "EN EL AIRE: ↑/↓ + FIRE · vertical · en suelo sale diagonal"
 
-    for platform in PLATFORMS:
-        var clearance := FLOOR_Y - platform.end.y
+    for platform in _platforms:
+        var clearance := _floor_y - platform.end.y
         var crouch_only := (
             clearance < PLAYER_STANDING_HEIGHT + 2.0
             and clearance >= PLAYER_CROUCH_HEIGHT + 8.0
@@ -354,9 +452,10 @@ func _sync_hud() -> void:
 
 func _build_enemy_roster() -> Array[Dictionary]:
     var roster: Array[Dictionary] = []
-    for index in range(ENEMY_SPAWNS.size()):
-        var spawn = ENEMY_SPAWNS[index]
-        var type := String(spawn[1])
+    for index in range(_enemy_spawns.size()):
+        var spawn: Dictionary = _enemy_spawns[index]
+        var spawn_x := float(spawn.get("x", 0.0))
+        var type := String(spawn.get("type", "pawn"))
         var stats: Dictionary = ENEMY_TYPES[type]
         var weapon := _enemy_weapon_for(type, index)
         var role := "hold"
@@ -365,11 +464,11 @@ func _build_enemy_roster() -> Array[Dictionary]:
         var enemy := {
             "id": "%s-%d" % [type, index],
             "type": type,
-            "x": float(spawn[0]),
-            "spawn_x": float(spawn[0]),
+            "x": spawn_x,
+            "spawn_x": spawn_x,
             "alerted": false,
-            "reaction": _initial_enemy_reaction(float(spawn[0]), index),
-            "y": FLOOR_Y,
+            "reaction": _initial_enemy_reaction(spawn_x, index),
+            "y": _floor_y,
             "vy": 0.0,
             "on_ground": true,
             "hp": int(stats["hp"]),
@@ -394,7 +493,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(WORLD_SIZE, FLOOR_Y, PLATFORMS)
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
@@ -418,7 +517,7 @@ func _build_enemy_visuals() -> void:
 func _build_extraction_visual() -> void:
     extraction_visual = ExtractionVisual.new()
     extraction_visual.name = "Extraction"
-    extraction_visual.position = Vector2(EXTRACTION_X, FLOOR_Y)
+    extraction_visual.position = Vector2(_extraction_x, _floor_y)
     extraction_visual.z_index = 1
     add_child(extraction_visual)
     extraction_visual.set_unlocked(false)
@@ -432,7 +531,7 @@ func _sync_enemy_visual(enemy: Dictionary, move_speed_scale: float) -> void:
     var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
     visual.sync_state(
         float(enemy["x"]),
-        float(enemy.get("y", FLOOR_Y)),
+        float(enemy.get("y", _floor_y)),
         direction,
         move_speed_scale > 0.05,
         int(enemy["hp"]),
@@ -462,14 +561,14 @@ func _enemy_weapon_for(type: String, variant: int) -> String:
             return "pistol" if variant % 2 == 0 else "machinegun"
 
 func _spawn_boss_if_needed() -> void:
-    if boss_spawned or boss_defeated or player.global_position.x < BOSS_TRIGGER_X:
+    if boss_spawned or boss_defeated or player.global_position.x < _boss_trigger_x:
         return
     boss_spawned = true
     boss = {
         "id": "boss-panzer-rook",
-        "x": BOSS_X,
-        "hp": BOSS_HP,
-        "max_hp": BOSS_HP,
+        "x": _boss_x,
+        "hp": _boss_hp,
+        "max_hp": _boss_hp,
         "regular_cooldown": 0.45,
         "shell_cooldown": 1.55,
         "shell_windup": 0.0,
@@ -488,7 +587,7 @@ func _sync_boss_visual() -> void:
     var facing := -1.0 if player.global_position.x < float(boss["x"]) else 1.0
     boss_visual.sync_state(
         float(boss["x"]),
-        FLOOR_Y,
+        _floor_y,
         facing,
         int(boss["hp"]),
         int(boss["max_hp"]),
@@ -502,6 +601,19 @@ func _update_projectiles(delta: float) -> void:
         position += velocity * delta
         projectile["position"] = position
         projectiles[index] = projectile
+
+        if _point_hits_stage_geometry(position):
+            if bool(projectile["explosive"]):
+                _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
+            else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    false,
+                )
+            projectiles.remove_at(index)
+            continue
 
         var hit_target := false
         for enemy_index in range(enemies.size()):
@@ -547,9 +659,9 @@ func _update_projectiles(delta: float) -> void:
 
         if (
             position.x < -30.0
-            or position.x > WORLD_SIZE.x + 30.0
+            or position.x > _world_size.x + 30.0
             or position.y < -30.0
-            or position.y > WORLD_SIZE.y + 30.0
+            or position.y > _world_size.y + 30.0
         ):
             projectiles.remove_at(index)
 
@@ -562,8 +674,8 @@ func _update_grenades(delta: float) -> void:
         velocity.y += GRENADE_GRAVITY * delta
         position += velocity * delta
 
-        if position.y >= FLOOR_Y - 8.0 and velocity.y > 0.0:
-            position.y = FLOOR_Y - 8.0
+        if position.y >= _floor_y - 8.0 and velocity.y > 0.0:
+            position.y = _floor_y - 8.0
             velocity.y = -absf(velocity.y) * GRENADE_BOUNCE
             velocity.x *= GRENADE_FRICTION
             if absf(velocity.y) < 55.0:
@@ -696,7 +808,7 @@ func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
 func _enemy_has_line_of_sight(enemy: Dictionary, stats: Dictionary) -> bool:
     var origin := Vector2(
         float(enemy["x"]),
-        float(enemy.get("y", FLOOR_Y)) - float(stats["height"]) * 0.58,
+        float(enemy.get("y", _floor_y)) - float(stats["height"]) * 0.58,
     )
     var target := Vector2(player.global_position) + Vector2(0.0, -18.0)
     return not _platform_blocks_line(origin, target)
@@ -707,7 +819,7 @@ func _platform_blocks_line(origin: Vector2, target: Vector2) -> bool:
         return false
     var line_min_x := minf(origin.x, target.x)
     var line_max_x := maxf(origin.x, target.x)
-    for platform in PLATFORMS:
+    for platform in _platforms:
         var platform_min_x := platform.position.x
         var platform_max_x := platform.position.x + platform.size.x
         if platform_max_x < line_min_x or platform_min_x > line_max_x:
@@ -718,6 +830,16 @@ func _platform_blocks_line(origin: Vector2, target: Vector2) -> bool:
         var top := platform.position.y - 3.0
         var bottom := platform.position.y + platform.size.y + 3.0
         if line_y >= top and line_y <= bottom:
+            return true
+    for obstacle in _obstacles:
+        var obstacle_min_x := obstacle.position.x
+        var obstacle_max_x := obstacle.end.x
+        if obstacle_max_x < line_min_x or obstacle_min_x > line_max_x:
+            continue
+        var sample_x := clampf(obstacle.get_center().x, line_min_x, line_max_x)
+        var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
+        var line_y := lerpf(origin.y, target.y, t)
+        if line_y >= obstacle.position.y - 3.0 and line_y <= obstacle.end.y + 3.0:
             return true
     return false
 
@@ -780,7 +902,7 @@ func _update_enemies(delta: float) -> void:
                 enemy["x"] = clampf(
                     previous_x + move_direction * knight_speed * delta,
                     maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                    minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
+                    minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
                 )
                 if not is_equal_approx(previous_x, float(enemy["x"])):
                     movement_speed_scale = knight_speed_scale
@@ -844,7 +966,7 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
     enemy["x"] = clampf(
         previous_x + move_direction * speed * speed_scale * delta,
         maxf(0.0, float(enemy["spawn_x"]) - SOLDIER_ROAM_LIMIT),
-        minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
+        minf(_world_size.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
     )
     if is_equal_approx(previous_x, float(enemy["x"])):
         return 0.0
@@ -852,12 +974,12 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
 
 
 func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
-    var foot_y := float(enemy.get("y", FLOOR_Y))
+    var foot_y := float(enemy.get("y", _floor_y))
     var velocity_y := float(enemy.get("vy", 0.0))
     var on_ground := bool(enemy.get("on_ground", true))
     var world_x := float(enemy["x"])
 
-    if on_ground and foot_y < FLOOR_Y - 1.0 and not _knight_has_support(world_x, foot_y):
+    if on_ground and foot_y < _floor_y - 1.0 and not _knight_has_support(world_x, foot_y):
         on_ground = false
 
     if not on_ground:
@@ -876,9 +998,9 @@ func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
     enemy["on_ground"] = on_ground
 
 func _knight_has_support(world_x: float, foot_y: float) -> bool:
-    if is_equal_approx(foot_y, FLOOR_Y):
+    if is_equal_approx(foot_y, _floor_y):
         return true
-    for platform in PLATFORMS:
+    for platform in _platforms:
         if (
             absf(foot_y - platform.position.y) <= 2.0
             and world_x >= platform.position.x
@@ -889,7 +1011,7 @@ func _knight_has_support(world_x: float, foot_y: float) -> bool:
 
 func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
     var landing_y := -1.0
-    for platform in PLATFORMS:
+    for platform in _platforms:
         var top := platform.position.y
         if (
             world_x >= platform.position.x
@@ -899,8 +1021,8 @@ func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> floa
         ):
             if landing_y < 0.0 or top < landing_y:
                 landing_y = top
-    if previous_y <= FLOOR_Y and next_y >= FLOOR_Y and (landing_y < 0.0 or FLOOR_Y < landing_y):
-        landing_y = FLOOR_Y
+    if previous_y <= _floor_y and next_y >= _floor_y and (landing_y < 0.0 or _floor_y < landing_y):
+        landing_y = _floor_y
     return landing_y
 
 func _update_bishop(enemy: Dictionary, delta: float, distance: float, distance_x: float) -> bool:
@@ -939,7 +1061,7 @@ func _update_bishop(enemy: Dictionary, delta: float, distance: float, distance_x
             enemy["x"] = clampf(
                 float(enemy["x"]) + move_direction * float(stats["speed"]) * delta,
                 maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
+                minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
             )
             moved = true
 
@@ -1005,7 +1127,7 @@ func _fire_bishop_shell(enemy: Dictionary) -> void:
 func _fire_bishop_suppression(enemy: Dictionary, shot_index: int) -> void:
     var lane: Dictionary = BISHOP_SUPPRESSION_LANES[shot_index % BISHOP_SUPPRESSION_LANES.size()]
     var direction := 1.0 if player.global_position.x > float(enemy["x"]) else -1.0
-    var origin := Vector2(float(enemy["x"]) + direction * 48.0, FLOOR_Y - float(lane["height"]))
+    var origin := Vector2(float(enemy["x"]) + direction * 48.0, _floor_y - float(lane["height"]))
     if not _can_spawn_hostile_shot(origin, "machinegun", 1):
         return
     enemy_projectiles.append({
@@ -1168,6 +1290,19 @@ func _update_enemy_projectiles(delta: float) -> void:
         projectile["position"] = position
         enemy_projectiles[index] = projectile
 
+        if _point_hits_stage_geometry(position):
+            if bool(projectile["explosive"]):
+                _add_explosion_fx(position, PANZER_BLAST_RADIUS)
+            else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    true,
+                )
+            enemy_projectiles.remove_at(index)
+            continue
+
         if not player.dead and player_hitbox.has_point(position):
             if bool(projectile["explosive"]):
                 _add_explosion_fx(position, PANZER_BLAST_RADIUS)
@@ -1190,9 +1325,9 @@ func _update_enemy_projectiles(delta: float) -> void:
 
         if (
             position.x < -30.0
-            or position.x > WORLD_SIZE.x + 30.0
+            or position.x > _world_size.x + 30.0
             or position.y < -30.0
-            or position.y > WORLD_SIZE.y + 30.0
+            or position.y > _world_size.y + 30.0
         ):
             enemy_projectiles.remove_at(index)
 
@@ -1205,7 +1340,7 @@ func _update_pickups() -> void:
             continue
         if absf(player.global_position.x - float(pickup["x"])) > PICKUP_RADIUS_X:
             continue
-        if absf(player.global_position.y - PICKUP_Y) > 80.0:
+        if absf(player.global_position.y - float(pickup.get("y", _floor_y - 44.0))) > 80.0:
             continue
 
         var kind := String(pickup["type"])
@@ -1227,9 +1362,9 @@ func _update_pickups() -> void:
         _notify_parent("%s-pickup" % ("weapon" if kind in ["machinegun", "shotgun", "panzerfaust"] else kind))
 
 func _enforce_boss_arena() -> void:
-    if not boss_spawned or boss_defeated or player.global_position.x <= BOSS_ARENA_LEFT:
+    if not boss_spawned or boss_defeated or player.global_position.x <= _boss_arena_left:
         return
-    var clamped_x := clampf(player.global_position.x, BOSS_ARENA_LEFT, BOSS_ARENA_RIGHT)
+    var clamped_x := clampf(player.global_position.x, _boss_arena_left, _boss_arena_right)
     if not is_equal_approx(clamped_x, player.global_position.x):
         player.global_position.x = clamped_x
         player.velocity.x = 0.0
@@ -1237,7 +1372,7 @@ func _enforce_boss_arena() -> void:
 func _check_victory() -> void:
     if mission_complete or not boss_defeated or player.dead or player.is_game_over:
         return
-    if player.global_position.x < EXTRACTION_X - 50.0:
+    if player.global_position.x < _extraction_x - 50.0:
         return
     mission_complete = true
     if extraction_visual != null:
@@ -1259,13 +1394,13 @@ func _enemy_rect(enemy: Dictionary) -> Rect2:
     var stats: Dictionary = ENEMY_TYPES[String(enemy["type"])]
     var width := float(stats["width"])
     var height := float(stats["height"])
-    var foot_y := float(enemy.get("y", FLOOR_Y))
+    var foot_y := float(enemy.get("y", _floor_y))
     return Rect2(Vector2(float(enemy["x"]) - width * 0.5, foot_y - height), Vector2(width, height))
 
 func _boss_rect() -> Rect2:
     return Rect2(
-        Vector2(BOSS_X - BOSS_SIZE.x * 0.5, FLOOR_Y - BOSS_SIZE.y),
-        BOSS_SIZE,
+        Vector2(_boss_x - _boss_size.x * 0.5, _floor_y - _boss_size.y),
+        _boss_size,
     )
 
 func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
@@ -1436,7 +1571,7 @@ func _draw_pickups() -> void:
     for pickup in pickups:
         if bool(pickup["taken"]):
             continue
-        var position := Vector2(float(pickup["x"]), PICKUP_Y)
+        var position := Vector2(float(pickup["x"]), float(pickup.get("y", _floor_y - 44.0)))
         var kind := String(pickup["type"])
         draw_circle(position, 30.0, Color(0.78, 0.61, 0.25, 0.12))
         draw_rect(Rect2(position - Vector2(25.0, 18.0), Vector2(50.0, 36.0)), Color("4b4a3f"), true)
