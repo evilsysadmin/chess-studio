@@ -690,6 +690,7 @@ async def begin_disconnect_grace(
     color: str,
     *,
     now: datetime | None = None,
+    restart: bool = False,
 ) -> dict[str, Any] | None:
     """Arm one player's disconnect grace without changing gameplay revision."""
     stamp = now or utcnow()
@@ -707,15 +708,16 @@ async def begin_disconnect_grace(
             if not row or row.get("status") != "active" or row.get("acceptance_state") == "staged":
                 return None
             current = row.get(grace_field)
-            if not isinstance(current, datetime) or stamp < current:
+            if restart or not isinstance(current, datetime) or stamp < current:
                 row[grace_field] = stamp
             return _public(row)
 
     _, _, matches = collections
     try:
+        update = {"$set": {grace_field: stamp}} if restart else {"$min": {grace_field: stamp}}
         row = await matches.find_one_and_update(
             {"_id": match_id, "status": "active", "acceptance_state": {"$ne": "staged"}},
-            {"$min": {grace_field: stamp}},
+            update,
             return_document=ReturnDocument.AFTER,
         )
         return _public(row)
