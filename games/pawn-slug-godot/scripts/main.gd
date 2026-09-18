@@ -10,8 +10,11 @@ const FLOOR_Y := 610.0
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1380.0
-const START_ZONE_END_X := 900.0
-const START_ZONE_AGGRO_RANGE := 900.0
+const START_ZONE_END_X := 1150.0
+const START_ZONE_AGGRO_RANGE := 520.0
+const OPENING_SAFE_UNTIL_X := 320.0
+const OPENING_ALERT_REACTION_MIN := 0.45
+const RESPAWN_HOSTILE_GRACE_SECONDS := 1.10
 const ENEMY_DISENGAGE_RANGE := 1850.0
 const GUNFIRE_HEARING_RANGE := 1550.0
 const GRENADE_HEARING_RANGE := 1750.0
@@ -94,11 +97,13 @@ const PLATFORMS: Array[Rect2] = [
     Rect2(4700.0, 408.0, 320.0, 24.0),
 ]
 const ENEMY_SPAWNS := [
-    [620.0, "pawn"], [790.0, "pawn"], [990.0, "scout"], [1080.0, "pawn"], [1210.0, "knight"], [1380.0, "pawn"],
-    [1490.0, "grenadier"], [1560.0, "rook"], [1710.0, "pawn"], [1840.0, "pawn"], [1940.0, "knight"],
+    # Opening cadence: one readable first contact, then progressively denser
+    # resistance after Matthias has had room to move, jump and collect the SMG.
+    [780.0, "pawn"], [1120.0, "pawn"], [1320.0, "scout"], [1510.0, "knight"],
+    [1760.0, "grenadier"], [1940.0, "rook"],
     [2110.0, "pawn"], [2250.0, "pawn"], [2380.0, "bishop"], [2515.0, "knight"], [2590.0, "rook"],
-    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3210.0, "pawn"], [3335.0, "pawn"],
-    [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "queen"], [4070.0, "knight"],
+    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3130.0, "scout"], [3210.0, "pawn"], [3335.0, "pawn"],
+    [3430.0, "rook"], [3560.0, "knight"], [3680.0, "pawn"], [3740.0, "bishop"], [3820.0, "commando"], [3950.0, "queen"], [4070.0, "knight"],
     [4190.0, "rook"], [4285.0, "shield"], [4380.0, "grenadier"],
 ]
 const ENEMY_TYPES := {
@@ -146,6 +151,7 @@ var _startup_ready_sent := false
 var _camera_kick := Vector2.ZERO
 var _reduced_motion := false
 var _hostile_fire_gap_remaining := 0.0
+var _hostile_grace_remaining := 0.0
 var _enemy_suppression_remaining := 0.0
 
 @onready var player = $Player
@@ -209,6 +215,7 @@ func _process(delta: float) -> void:
         return
 
     _hostile_fire_gap_remaining = maxf(0.0, _hostile_fire_gap_remaining - delta)
+    _hostile_grace_remaining = maxf(0.0, _hostile_grace_remaining - delta)
     _enemy_suppression_remaining = maxf(0.0, _enemy_suppression_remaining - delta)
     _spawn_boss_if_needed()
     _update_projectiles(delta)
@@ -305,7 +312,14 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
         var enemy := enemies[index]
         if int(enemy["hp"]) <= 0:
             continue
-        enemy["cooldown"] = 0.35 + float(index % 5) * 0.08
+        enemy["cooldown"] = maxf(
+            0.35 + float(index % 5) * 0.08,
+            RESPAWN_HOSTILE_GRACE_SECONDS,
+        )
+        enemy["reaction"] = maxf(
+            float(enemy.get("reaction", 0.0)),
+            RESPAWN_HOSTILE_GRACE_SECONDS,
+        )
         if String(enemy["type"]) == "bishop":
             enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
             enemy["suppression_cooldown"] = 2.35 + randf_range(0.0, 0.70)
@@ -315,8 +329,9 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
         elif String(enemy["type"]) == "knight":
             enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
         enemies[index] = enemy
+    _hostile_grace_remaining = RESPAWN_HOSTILE_GRACE_SECONDS
     if boss_spawned and not boss_defeated:
-        boss["regular_cooldown"] = 0.65
+        boss["regular_cooldown"] = maxf(0.65, RESPAWN_HOSTILE_GRACE_SECONDS)
         boss["shell_cooldown"] = 1.35
         boss["shell_windup"] = 0.0
         boss["shell_armed"] = false
@@ -353,7 +368,7 @@ func _build_enemy_roster() -> Array[Dictionary]:
             "x": float(spawn[0]),
             "spawn_x": float(spawn[0]),
             "alerted": false,
-            "reaction": 0.10 + float(index % 4) * 0.055,
+            "reaction": _initial_enemy_reaction(float(spawn[0]), index),
             "y": FLOOR_Y,
             "vy": 0.0,
             "on_ground": true,
@@ -608,6 +623,18 @@ func _update_explosion_fx(delta: float) -> void:
         else:
             explosion_fx[index] = effect
 
+func _initial_enemy_reaction(spawn_x: float, index: int) -> float:
+    if spawn_x < 900.0:
+        return 0.75
+    if spawn_x < 1220.0:
+        return 0.55
+    if spawn_x < 1420.0:
+        return 0.42
+    if spawn_x < 1600.0:
+        return 0.32
+    return 0.10 + float(index % 4) * 0.055
+
+
 func _enemy_aggro_range() -> float:
     # The opening still stages the first squad, but anything visible in front of
     # Matthias should not read as a cardboard target.
@@ -616,17 +643,31 @@ func _enemy_aggro_range() -> float:
     return ENEMY_AGGRO_RANGE
 
 func _alert_enemies(world_x: float, hearing_range: float) -> void:
+    if player.global_position.x < OPENING_SAFE_UNTIL_X:
+        return
+    var effective_hearing := hearing_range
+    if player.global_position.x < START_ZONE_END_X:
+        # Early gunfire should wake the next visible threat, not the whole squad.
+        effective_hearing = minf(effective_hearing, START_ZONE_AGGRO_RANGE)
     for index in range(enemies.size()):
         var enemy := enemies[index]
         if int(enemy["hp"]) <= 0:
             continue
-        if absf(float(enemy["x"]) - world_x) <= hearing_range:
+        if absf(float(enemy["x"]) - world_x) <= effective_hearing:
             enemy["alerted"] = true
-            enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.12)
+            if player.global_position.x < START_ZONE_END_X:
+                enemy["reaction"] = maxf(
+                    float(enemy.get("reaction", 0.0)),
+                    OPENING_ALERT_REACTION_MIN,
+                )
+            else:
+                enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.12)
             enemies[index] = enemy
 
 func _enemy_engaged(enemy: Dictionary, abs_distance: float) -> bool:
     if player.dead or player.is_game_over:
+        return false
+    if player.global_position.x < OPENING_SAFE_UNTIL_X:
         return false
     if abs_distance <= _enemy_aggro_range():
         enemy["alerted"] = true
@@ -1095,6 +1136,10 @@ func _hostile_explosive_count() -> int:
     return count
 
 func _can_spawn_hostile_shot(origin: Vector2, weapon: String, projectile_count: int) -> bool:
+    if player.global_position.x < OPENING_SAFE_UNTIL_X:
+        return false
+    if _hostile_grace_remaining > 0.0:
+        return false
     if not _world_x_is_combat_visible(origin.x):
         return false
     if _hostile_fire_gap_remaining > 0.0:
