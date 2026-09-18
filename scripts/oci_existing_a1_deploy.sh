@@ -124,6 +124,22 @@ record_k3s_contract_digest() {
   mv -f "$tmp" "$k3s_contract_state_file"
 }
 
+run_k3s_reconcile_steps() {
+  local log rc
+  log="$(mktemp /tmp/chess-studio-k3s-reconcile.XXXXXX)"
+  set +e
+  { /bin/bash "$k3s_capability_provision" && python3 -S "$k3s_service_prepare"; } >"$log" 2>&1
+  rc=$?
+  set -e
+  if [[ "$rc" -ne 0 ]]; then
+    cat "$log" >&2
+    rm -f "$log"
+    return "$rc"
+  fi
+  awk '/^OCI_K3S_/ {print}' "$log"
+  rm -f "$log"
+}
+
 reconcile_k3s_contract() {
   local digest cached=''
   digest="$(k3s_contract_digest)"
@@ -136,8 +152,7 @@ reconcile_k3s_contract() {
     return 0
   fi
 
-  /bin/bash "$k3s_capability_provision"
-  python3 -S "$k3s_service_prepare"
+  run_k3s_reconcile_steps
   record_k3s_contract_digest "$digest"
   echo "OCI_K3S_DEPLOY_CONTRACT_REFRESHED digest=$digest"
 }
