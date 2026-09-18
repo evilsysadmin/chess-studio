@@ -173,9 +173,20 @@ def validate_manifest(data: bytes, env: dict[str, str]) -> None:
     for controller in env["FLUX_COMPONENTS"].split(","):
         if f"name: {controller}" not in manifest:
             raise SystemExit(f"Flux export missing controller: {controller}")
-    for controller in FORBIDDEN_CONTROLLERS:
-        if controller in manifest:
-            raise SystemExit(f"Flux export contains forbidden controller: {controller}")
+    deployment_names: list[str] = []
+    lines = manifest.splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() != "kind: Deployment":
+            continue
+        for candidate in lines[index + 1:index + 12]:
+            if candidate.strip().startswith("name: "):
+                deployment_names.append(candidate.split(":", 1)[1].strip())
+                break
+    expected_deployments = env["FLUX_COMPONENTS"].split(",")
+    if sorted(deployment_names) != sorted(expected_deployments):
+        raise SystemExit(
+            f"Flux export deployment set drifted: expected {expected_deployments}, got {deployment_names}"
+        )
     if "kind: Secret" in manifest:
         raise SystemExit("Flux export unexpectedly contains a Secret")
     if "source.toolkit.fluxcd.io" not in manifest:
@@ -225,7 +236,7 @@ def self_test() -> None:
     validate_manifest(sample, env)
     for bad in (
         sample + b"\nkind: Secret\n",
-        sample + b"\nname: helm-controller\n",
+        sample + b"\nkind: Deployment\nmetadata:\n  name: helm-controller\n",
         sample.replace(b"kind: Deployment", b"kind: Service", 1),
     ):
         try:
