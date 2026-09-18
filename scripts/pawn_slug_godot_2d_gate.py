@@ -54,6 +54,9 @@ REQUIRED_MATTHIAS = (
     "_advance_locomotion",
     "_cell_has_visible_pixels",
     "RUN_LEG_MOTION_MIN_SCORE",
+    "_rendered_weapon",
+    "_draw_boot_fallback",
+    "_prefetch_machinegun",
     'frames.get_frame_texture("fall", 0)',
     'name = "WeaponRoot"',
 )

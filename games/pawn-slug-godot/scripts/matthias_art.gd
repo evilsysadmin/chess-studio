@@ -100,6 +100,7 @@ static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
 
 var _weapon := "pistol"
+var _rendered_weapon := ""
 var _action := "idle"
 var _body_ready := false
 var _using_full_atlas := false
@@ -127,6 +128,7 @@ var _atlas_request_layout := ""
 func _ready() -> void:
     _build_nodes()
     _install_or_request_weapon()
+    queue_redraw()
 
 func body_ready() -> bool:
     return _body_ready
@@ -136,15 +138,13 @@ func current_weapon() -> String:
 
 func set_weapon(kind: String) -> void:
     var next := kind if SOURCE_RECTS.has(kind) else "pistol"
-    if next == _weapon and _body_ready:
+    if next == _weapon and _body_ready and _rendered_weapon == next:
         return
     _weapon = next
-    _body_ready = false
-    _using_full_atlas = false
     _one_shot_action = ""
     _hold_one_shot = false
-    _body.visible = false
     _install_or_request_weapon()
+    queue_redraw()
 
 func set_combat_state(hurt_remaining: float, invuln_remaining: float, dead: bool, death_progress: float) -> void:
     var became_dead := dead and not _dead
@@ -173,11 +173,12 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _facing = -1.0 if facing < 0.0 else 1.0
     _facing_root.scale.x = _facing
 
+    var weapon_visual_ready := _rendered_weapon == _weapon
     if _body_ready and not _dead:
         if _using_full_atlas and _hurt_remaining > 0.0 and _animation_available("hurt"):
             if _one_shot_action != "hurt":
                 _play_one_shot("hurt")
-        elif fired_now and _using_full_atlas and _animation_available("shoot"):
+        elif fired_now and weapon_visual_ready and _using_full_atlas and _animation_available("shoot"):
             if _one_shot_action == "shoot":
                 _action = "shoot"
                 _body.frame = 0
@@ -195,10 +196,11 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
             if _action == "walk" or _action == "run":
                 _advance_locomotion(delta, horizontal_speed_ratio)
 
-    var authored_shoot := _using_full_atlas and _animation_available("shoot")
+    var authored_shoot := weapon_visual_ready and _using_full_atlas and _animation_available("shoot")
     if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
-        _recoil_x = -_facing * float(RECOIL.get(_weapon, 4.0))
+        var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
+        _recoil_x = -_facing * float(RECOIL.get(visual_weapon, 4.0))
     if landed_now and not _dead and not (_using_full_atlas and _animation_available("land")):
         _fx_root.scale = Vector2(1.03, 0.95)
 
@@ -222,6 +224,34 @@ func _resolve_action(speed: float, on_floor: bool, crouching: bool, vertical_spe
     if speed > 0.08:
         return "walk"
     return "idle"
+
+func _draw() -> void:
+    if _body_ready:
+        return
+    _draw_boot_fallback()
+
+func _draw_boot_fallback() -> void:
+    var foot_y := PLAYER_FOOT_Y
+    var dir := _facing
+    draw_circle(Vector2(0.0, foot_y + 1.0), 20.0, Color(0.0, 0.0, 0.0, 0.20))
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-17.0, foot_y - 48.0), Vector2(17.0, foot_y - 48.0),
+        Vector2(20.0, foot_y - 10.0), Vector2(9.0, foot_y - 4.0),
+        Vector2(5.0, foot_y - 26.0), Vector2(-5.0, foot_y - 26.0),
+        Vector2(-9.0, foot_y - 4.0), Vector2(-20.0, foot_y - 10.0),
+    ]), Color("111923"))
+    draw_line(Vector2(-8.0, foot_y - 4.0), Vector2(-11.0, foot_y + 1.0), Color("202b35"), 8.0)
+    draw_line(Vector2(8.0, foot_y - 4.0), Vector2(11.0, foot_y + 1.0), Color("202b35"), 8.0)
+    var head := Vector2(0.0, foot_y - 70.0)
+    draw_circle(head, 22.0, Color("c6ad82"))
+    draw_circle(head + Vector2(-7.0, -1.0), 3.2, Color("101418"))
+    draw_circle(head + Vector2(7.0, -1.0), 3.2, Color("101418"))
+    draw_line(head + Vector2(-11.0, -8.0), head + Vector2(-3.0, -10.0), Color("15191c"), 2.5)
+    draw_line(head + Vector2(3.0, -10.0), head + Vector2(11.0, -8.0), Color("15191c"), 2.5)
+    draw_rect(Rect2(head + Vector2(-19.0, -28.0), Vector2(38.0, 10.0)), Color("0c1117"), true)
+    draw_rect(Rect2(head + Vector2(-13.0, -34.0), Vector2(26.0, 9.0)), Color("151c24"), true)
+    draw_line(head + Vector2(10.0 * dir, 8.0), head + Vector2(35.0 * dir, 17.0), Color("29333c"), 6.0)
+    draw_line(head + Vector2(31.0 * dir, 17.0), head + Vector2(43.0 * dir, 17.0), Color("6e7477"), 4.0)
 
 func _build_nodes() -> void:
     _facing_root = Node2D.new()
@@ -263,6 +293,8 @@ func _install_or_request_weapon() -> void:
     if not full_url.is_empty():
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full")
+        if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
+            return
         if _weapon == "pistol" and _legacy_pistol_frames != null:
             _install_frames(_legacy_pistol_frames, false)
         elif _fallback_frames_by_weapon.has(_weapon):
@@ -556,6 +588,7 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.sprite_frames = frames
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
     _using_full_atlas = authored_full
+    _rendered_weapon = _weapon
     _body_ready = true
     _body.visible = true
     _one_shot_action = ""
@@ -567,6 +600,16 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
         _body.frame = 0
     _body.visible = true
     _sync_muzzle()
+    queue_redraw()
+    if authored_full and _rendered_weapon == "pistol":
+        call_deferred("_prefetch_machinegun")
+
+func _prefetch_machinegun() -> void:
+    if _atlas_request != null or _full_frames_by_weapon.has("machinegun"):
+        return
+    var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
+    if not url.is_empty():
+        _request_atlas("machinegun", url, "full")
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
@@ -614,9 +657,10 @@ func _on_animation_finished() -> void:
     _action = ""
 
 func _sync_muzzle() -> void:
-    var poses: Dictionary = MUZZLE_POS.get(_weapon, MUZZLE_POS["pistol"])
+    var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
+    var poses: Dictionary = MUZZLE_POS.get(visual_weapon, MUZZLE_POS["pistol"])
     _muzzle.position = poses.get(_action, poses["idle"])
-    var s := float(FLASH_SCALE.get(_weapon, 1.0))
+    var s := float(FLASH_SCALE.get(visual_weapon, 1.0))
     _flash.scale = Vector2(s, s)
 
 func _sync_modulate() -> void:
