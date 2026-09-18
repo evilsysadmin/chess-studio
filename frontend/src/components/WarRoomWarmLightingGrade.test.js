@@ -3,6 +3,8 @@ import {
   applyWarRoomAtmosphereGrade,
   applyWarRoomHemisphereGrade,
   applyWarRoomKeyLightGrade,
+  applyWarRoomV2RuntimeLightingGrade,
+  warRoomV2RuntimeLightingProfile,
 } from './WarRoom3DMotion.js';
 
 function color(initialHex) {
@@ -64,6 +66,33 @@ describe('War Room canonical warm lighting', () => {
     expect(key.position).toMatchObject({ x: -6.4, y: 12.2, z: 3.2 });
     expect(scene.userData.warRoomLightingGrade).toBe('warm-club-v2');
     expect(scene.userData.warRoomAtmosphereGrade).toBe('warm-amber-room-v2');
+  });
+
+  it('applies the darker v2 grade only when the Blender shell is active', () => {
+    const hemisphere = { intensity: 0.62 };
+    const key = { intensity: 1.72 };
+    const warmFill = { intensity: 2.45 };
+    const renderer = { toneMappingExposure: 1.16 };
+    const scene = {
+      userData: { warRoomRenderedVariant: 'v2' },
+      background: color(0x100b08),
+      fog: { isFogExp2: true, color: color(0x17100c) },
+    };
+
+    const profile = applyWarRoomV2RuntimeLightingGrade(scene, renderer, {
+      hemisphere,
+      key,
+      warmFill,
+    });
+
+    expect(profile).toEqual(warRoomV2RuntimeLightingProfile());
+    expect(renderer.toneMappingExposure).toBe(1);
+    expect(hemisphere.intensity).toBe(0.44);
+    expect(key.intensity).toBe(1.34);
+    expect(warmFill.intensity).toBe(1.55);
+    expect(scene.background.getHex()).toBe(0x070504);
+    expect(scene.fog.color.getHex()).toBe(0x0d0907);
+    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v2');
   });
 
   it('recognizes an already graded key instead of depending on the old source color', () => {
