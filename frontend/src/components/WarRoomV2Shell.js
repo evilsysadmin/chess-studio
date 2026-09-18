@@ -24,12 +24,53 @@ export function configureWarRoomV2Loader(loader) {
 
 export function warRoomV2EnvMapIntensity(materialName = '') {
   const name = String(materialName || '').toLowerCase();
-  if (name.includes('brass') || name.includes('armor')) return 0.88;
-  if (name.includes('window')) return 0.62;
-  if (name.includes('stone')) return 0.20;
-  if (name.includes('leather') || name.includes('velvet') || name.includes('rug')) return 0.16;
-  if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) return 0.32;
-  return 0.28;
+  if (name.includes('brass')) return 0.82;
+  if (name.includes('armor')) return 0.76;
+  if (name.includes('window')) return 0.56;
+  if (name.includes('stone') || name.includes('wall_plaster')) return 0.16;
+  if (name.includes('burgundy') || name.includes('leather') || name.includes('velvet') || name.includes('rug')) return 0.11;
+  if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) return 0.26;
+  return 0.23;
+}
+
+export function warRoomV2MaterialFinishProfile(materialName = '') {
+  const name = String(materialName || '').toLowerCase();
+  if (name.includes('canon_burgundy') || name.includes('burgundy')) {
+    return Object.freeze({
+      colorScale: [0.78, 0.56, 0.62],
+      roughness: [0.84, 1],
+      clearcoatMax: 0.02,
+    });
+  }
+  if (name.includes('brass')) {
+    return Object.freeze({
+      colorScale: [0.92, 0.78, 0.58],
+      roughness: [0.30, 0.46],
+      clearcoatMax: 0.24,
+    });
+  }
+  if (name.includes('armor')) {
+    return Object.freeze({
+      colorScale: [0.80, 0.86, 0.98],
+      roughness: [0.34, 0.52],
+      clearcoatMax: 0.18,
+    });
+  }
+  if (name.includes('stone') || name.includes('wall_plaster')) {
+    return Object.freeze({
+      colorScale: [0.88, 0.91, 0.98],
+      roughness: [0.76, 0.96],
+      clearcoatMax: 0.05,
+    });
+  }
+  if (name.includes('walnut') || name.includes('wood')) {
+    return Object.freeze({
+      colorScale: [0.90, 0.82, 0.76],
+      roughness: [0.48, 0.70],
+      clearcoatMax: 0.18,
+    });
+  }
+  return null;
 }
 
 export function scheduleWarRoomV2AfterFirstPaint(task, scheduler = {}) {
@@ -71,26 +112,26 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
   return {
     fire: {
       color: 0xff8a38,
-      intensity: coarsePointer ? 1.50 : 2.45,
-      distance: 11.3,
+      intensity: coarsePointer ? 1.42 : 2.30,
+      distance: 10.8,
       decay: 2,
     },
     rightFire: {
       color: 0xff7f30,
-      intensity: coarsePointer ? 0.95 : 1.85,
-      distance: 9.6,
+      intensity: coarsePointer ? 0.88 : 1.68,
+      distance: 9.2,
       decay: 2,
     },
     chandelier: {
       color: 0xffb457,
-      intensity: coarsePointer ? 0 : 1.15,
-      distance: 8.2,
+      intensity: coarsePointer ? 0 : 0.92,
+      distance: 7.8,
       decay: 2,
     },
     moon: {
-      color: 0x6f98ff,
-      intensity: coarsePointer ? 1.75 : 2.95,
-      distance: 13.9,
+      color: 0x7ba6ff,
+      intensity: coarsePointer ? 2.02 : 3.42,
+      distance: 15.2,
       decay: 2,
     },
   };
@@ -281,8 +322,23 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
 function tuneRuntimeMaterial(material) {
   if (!material?.isMeshStandardMaterial) return;
   material.envMapIntensity = warRoomV2EnvMapIntensity(material.name);
+  const finish = warRoomV2MaterialFinishProfile(material.name);
+  if (finish) {
+    const [r, g, b] = finish.colorScale;
+    material.color?.multiply?.(new THREE.Color(r, g, b));
+    if (Number.isFinite(material.roughness)) {
+      material.roughness = THREE.MathUtils.clamp(
+        material.roughness,
+        finish.roughness[0],
+        finish.roughness[1],
+      );
+    }
+    if (Number.isFinite(material.clearcoat)) {
+      material.clearcoat = Math.min(material.clearcoat, finish.clearcoatMax);
+    }
+  }
   material.userData ||= {};
-  material.userData.warRoomV2Finish = 'nocturnal-walnut-v2';
+  material.userData.warRoomV2Finish = 'cinematic-gothic-v3';
   material.needsUpdate = true;
 }
 
@@ -352,7 +408,7 @@ export async function installWarRoomV2Shell(
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v8-lite-albedo-proof';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-cinematic-gothic-v9';
   root.userData.warRoomV2PracticalLights = practicalLights;
   root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;

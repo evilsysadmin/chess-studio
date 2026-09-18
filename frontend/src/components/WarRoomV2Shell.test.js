@@ -3,6 +3,7 @@ import {
   WAR_ROOM_V2_STAGING_MODEL_URL,
   configureWarRoomV2Loader,
   warRoomV2EnvMapIntensity,
+  warRoomV2MaterialFinishProfile,
   warRoomV2ModelUrl,
   scheduleWarRoomV2AfterFirstPaint,
   warRoomV2PracticalLightProfile,
@@ -134,7 +135,7 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.fire.color).toBe(0xff8a38);
     expect(desktop.rightFire.color).toBe(0xff7f30);
     expect(desktop.chandelier.color).toBe(0xffb457);
-    expect(desktop.moon.color).toBe(0x6f98ff);
+    expect(desktop.moon.color).toBe(0x7ba6ff);
     expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
     expect(desktop.rightFire.intensity).toBeGreaterThan(coarse.rightFire.intensity);
     expect(desktop.chandelier.intensity).toBeGreaterThan(coarse.chandelier.intensity);
@@ -142,21 +143,40 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.moon.intensity).toBeGreaterThan(coarse.moon.intensity);
     expect(desktop.rightFire.distance).toBeLessThan(desktop.fire.distance);
     expect(desktop.fire.distance).toBeLessThan(desktop.moon.distance);
-    expect(desktop.fire.intensity).toBe(2.45);
-    expect(desktop.fire.distance).toBe(11.3);
-    expect(desktop.rightFire.intensity).toBe(1.85);
-    expect(desktop.rightFire.distance).toBe(9.6);
-    expect(desktop.chandelier.intensity).toBe(1.15);
-    expect(desktop.chandelier.distance).toBe(8.2);
-    expect(desktop.moon.intensity).toBe(2.95);
-    expect(desktop.moon.distance).toBe(13.9);
+    expect(desktop.fire.intensity).toBe(2.30);
+    expect(desktop.fire.distance).toBe(10.8);
+    expect(desktop.rightFire.intensity).toBe(1.68);
+    expect(desktop.rightFire.distance).toBe(9.2);
+    expect(desktop.chandelier.intensity).toBe(0.92);
+    expect(desktop.chandelier.distance).toBe(7.8);
+    expect(desktop.moon.intensity).toBe(3.42);
+    expect(desktop.moon.distance).toBe(15.2);
   });
 
   it('keeps nocturnal materials below the old bright IBL levels', () => {
-    expect(warRoomV2EnvMapIntensity('WR_MAT_wall_walnut')).toBe(0.32);
-    expect(warRoomV2EnvMapIntensity('WR_MAT_stone')).toBe(0.20);
-    expect(warRoomV2EnvMapIntensity('WR_MAT_rug')).toBe(0.16);
-    expect(warRoomV2EnvMapIntensity('WR_MAT_armor')).toBe(0.88);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_wall_walnut')).toBe(0.26);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_stone')).toBe(0.16);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_canon_burgundy')).toBe(0.11);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_armor')).toBe(0.76);
+  });
+
+  it('uses restrained cinematic finish profiles instead of glossy mockup materials', () => {
+    expect(warRoomV2MaterialFinishProfile('WR_MAT_canon_burgundy')).toEqual({
+      colorScale: [0.78, 0.56, 0.62],
+      roughness: [0.84, 1],
+      clearcoatMax: 0.02,
+    });
+    expect(warRoomV2MaterialFinishProfile('WR_MAT_brass')).toEqual({
+      colorScale: [0.92, 0.78, 0.58],
+      roughness: [0.30, 0.46],
+      clearcoatMax: 0.24,
+    });
+    expect(warRoomV2MaterialFinishProfile('WR_MAT_stone_light')).toEqual({
+      colorScale: [0.88, 0.91, 0.98],
+      roughness: [0.76, 0.96],
+      clearcoatMax: 0.05,
+    });
+    expect(warRoomV2MaterialFinishProfile('unrelated')).toBe(null);
   });
 
   it('adds desktop-only microdetail to the authored stone family', () => {
