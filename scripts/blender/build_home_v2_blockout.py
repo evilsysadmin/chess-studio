@@ -148,7 +148,7 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
         "king": (0.11, 0.06, 0.42, 0.11, 0.47),
     }
     r1, r2, depth, head, height = profiles[kind]
-    piece_scale = 1.18
+    piece_scale = 1.24
     r1 *= piece_scale
     r2 *= piece_scale
     depth *= piece_scale
@@ -262,6 +262,7 @@ def add_table_and_board(materials):
     dark = materials["board_dark"]
     light = materials["board_light"]
     metal = materials["brass"]
+    heraldry = materials["gold"]
     banner = materials["banner"]
 
     table_y = 1.05
@@ -276,7 +277,7 @@ def add_table_and_board(materials):
 
     # The canonical board nearly fills the table width; the earlier blockout
     # made it read like a travel set.
-    square = 0.50
+    square = 0.54
     board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
@@ -313,17 +314,17 @@ def add_table_and_board(materials):
 
     # Large canonical horse-head relief on the table drape.
     emblem_y = -0.765
-    sphere("HOME_PROP_table_horse_head", (-0.10, emblem_y, 0.73), (0.28, 0.040, 0.24), metal)
-    cube("HOME_PROP_table_horse_muzzle", (-0.31, emblem_y, 0.66), (0.15, 0.032, 0.070), metal, bevel=0.022)
+    sphere("HOME_PROP_table_horse_head", (-0.10, emblem_y, 0.73), (0.31, 0.042, 0.27), heraldry)
+    cube("HOME_PROP_table_horse_muzzle", (-0.33, emblem_y, 0.65), (0.17, 0.034, 0.075), heraldry, bevel=0.022)
     curve_tube(
         "HOME_PROP_table_horse_neck",
         [(0.00, emblem_y, 0.66), (0.15, emblem_y, 0.37), (0.04, emblem_y, 0.18)],
         0.085,
-        metal,
+        heraldry,
     )
-    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y, 1.02), 0.075, 0.018, 0.25, metal, vertices=14)
-    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.28), (0.040, 0.028, 0.15), metal, bevel=0.01)
-    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.13, 0.028, 0.040), metal, bevel=0.01)
+    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y, 1.02), 0.080, 0.018, 0.26, heraldry, vertices=14)
+    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.28), (0.043, 0.030, 0.16), heraldry, bevel=0.01)
+    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.14, 0.030, 0.043), heraldry, bevel=0.01)
 
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
@@ -450,6 +451,7 @@ def add_bookshelf(materials):
 def add_banner(name: str, x: float, materials):
     banner = materials["banner"]
     brass = materials["brass"]
+    gold = materials["gold"]
     points = [
         (x - 0.48, 5.62),
         (x + 0.48, 5.62),
@@ -461,17 +463,17 @@ def add_banner(name: str, x: float, materials):
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
 
     relief_y = 5.73
-    sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.16, 0.035, 0.14), brass)
-    cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), brass, bevel=0.018)
+    sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.16, 0.035, 0.14), gold)
+    cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), gold, bevel=0.018)
     curve_tube(
         f"HOME_PROP_banner_horse_neck_{name}",
         [(x + 0.01, relief_y, 4.69), (x + 0.10, relief_y, 4.48), (x + 0.04, relief_y, 4.29)],
         0.055,
-        brass,
+        gold,
     )
-    cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, brass, vertices=12)
-    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), brass, bevel=0.01)
-    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), brass, bevel=0.01)
+    cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, gold, vertices=12)
+    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), gold, bevel=0.01)
+    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), gold, bevel=0.01)
 
 
 def add_armor(materials):
@@ -718,6 +720,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "floor_stone": material("HOME_MAT_floor_stone", (0.072, 0.060, 0.050, 1), roughness=0.95, bump_scale=8.0, bump_strength=0.16),
         "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10),
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
+        "gold": material("HOME_MAT_gold", (0.58, 0.31, 0.070, 1), roughness=0.25, metallic=0.92),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
@@ -820,21 +823,21 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     fireplace_origin = Vector((4.45, 6.10, 0.35))
     for obj in list(bpy.data.objects):
         if ("fireplace_right" in obj.name) and obj.type != "LIGHT":
-            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.38
-            obj.scale *= 1.38
+            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.20
+            obj.scale *= 1.20
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
                 obj.scale.x *= 0.72
                 obj.scale.z *= 0.62
     add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.78, 1.52), 190, (1.0, 0.30, 0.07), radius=1.20)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
-    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.37, 1.13), (1.02, 0.07, 0.78), materials["dark"], bevel=0.05)
-    cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.20, 2.52), (1.78, 0.30, 0.18), materials["stone"], bevel=0.055)
+    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.34, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
+    cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.22, 2.46), (1.36, 0.28, 0.16), materials["stone"], bevel=0.055)
     for side in (-1, 1):
-        px = 4.45 + side * 1.38
-        cube(f"HOME_PROP_fireplace_right_canon_pilaster_{side}", (px, 5.42, 1.42), (0.24, 0.22, 1.18), materials["stone"], bevel=0.05)
-        cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.38), (0.34, 0.30, 0.16), materials["stone"], bevel=0.045)
-        sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.06, 2.78), (0.13, 0.10, 0.13), materials["brass"])
+        px = 4.45 + side * 1.06
+        cube(f"HOME_PROP_fireplace_right_canon_pilaster_{side}", (px, 5.40, 1.40), (0.18, 0.20, 1.12), materials["stone"], bevel=0.05)
+        cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.34), (0.27, 0.26, 0.14), materials["stone"], bevel=0.045)
+        sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.10, 2.70), (0.10, 0.08, 0.10), materials["gold"])
     cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
     for idx, cx in enumerate((3.72, 4.45, 5.18)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
@@ -857,10 +860,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
             origin = Vector((1.55, 5.28, 0.24))
-            obj.location = origin + (obj.location - origin) * 1.06
-            obj.location.y += 0.34
-            obj.scale *= 1.06
-    cube("HOME_PROP_armor_chest_plate", (1.55, 5.26, 2.55), (0.34, 0.055, 0.27), materials["steel"], bevel=0.07)
+            obj.location = origin + (obj.location - origin) * 1.16
+            obj.location.y += 0.22
+            obj.scale *= 1.16
+    cube("HOME_PROP_armor_chest_plate", (1.55, 5.14, 2.70), (0.36, 0.055, 0.30), materials["steel"], bevel=0.07)
     cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.19, 2.55), (0.035, 0.030, 0.14), materials["brass_dark"], bevel=0.01)
     cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.19, 2.59), (0.12, 0.030, 0.035), materials["brass_dark"], bevel=0.01)
     add_trophy(materials)
@@ -873,7 +876,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (2.02 * math.cos(i * math.tau / 24), 2.20 + 1.22 * math.sin(i * math.tau / 24), 4.72)
         for i in range(25)
     ]
-    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
+    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.050, materials["brass_dark"])
+    inner_ring = [
+        (1.36 * math.cos(i * math.tau / 24), 2.20 + 0.82 * math.sin(i * math.tau / 24), 4.68)
+        for i in range(25)
+    ]
+    curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.032, materials["brass"])
+    for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
+        curve_tube(
+            f"HOME_PROP_chandelier_spoke_{idx}",
+            [
+                (0.0, 2.20, 4.70),
+                (1.78 * math.cos(angle), 2.20 + 1.06 * math.sin(angle), 4.70),
+            ],
+            0.026,
+            materials["brass_dark"],
+        )
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
         rx = 1.52 * math.cos(angle)
         ry = 2.45 + 1.02 * math.sin(angle)
