@@ -298,32 +298,60 @@ func _draw_platforms() -> void:
         _draw_platform_wear(platform, material, trim, index)
 
         var support_y := platform.end.y
+        var left_support_x := platform.position.x + 20.0
+        var right_support_x := platform.end.x - 20.0
+        var left_anchor_y := _platform_support_anchor_y(left_support_x, support_y, index)
+        var right_anchor_y := _platform_support_anchor_y(right_support_x, support_y, index)
         draw_line(
-            Vector2(platform.position.x + 20.0, support_y),
-            Vector2(platform.position.x + 20.0, minf(_floor_y, support_y + 72.0)),
+            Vector2(left_support_x, support_y),
+            Vector2(left_support_x, left_anchor_y),
             support,
             7.0
         )
         draw_line(
-            Vector2(platform.end.x - 20.0, support_y),
-            Vector2(platform.end.x - 20.0, minf(_floor_y, support_y + 72.0)),
+            Vector2(right_support_x, support_y),
+            Vector2(right_support_x, right_anchor_y),
             support,
             7.0
         )
-        if support_y + 26.0 < _floor_y and platform.size.x >= 110.0:
-            var brace_bottom := minf(_floor_y, support_y + 68.0)
-            draw_line(
-                Vector2(platform.position.x + 20.0, brace_bottom),
-                Vector2(platform.end.x - 20.0, support_y + 8.0),
-                Color(support.r, support.g, support.b, 0.62),
-                3.0,
-            )
-            draw_line(
-                Vector2(platform.end.x - 20.0, brace_bottom),
-                Vector2(platform.position.x + 20.0, support_y + 8.0),
-                Color(support.r, support.g, support.b, 0.42),
-                2.0,
-            )
+
+        if support_y + 30.0 < _floor_y and platform.size.x >= 110.0:
+            var brace_bottom := minf(left_anchor_y, right_anchor_y)
+            var segment_top := support_y + 8.0
+            while segment_top + 22.0 < brace_bottom:
+                var segment_bottom := minf(brace_bottom, segment_top + 54.0)
+                draw_line(
+                    Vector2(left_support_x, segment_top),
+                    Vector2(right_support_x, segment_bottom),
+                    Color(support.r, support.g, support.b, 0.58),
+                    3.0,
+                )
+                draw_line(
+                    Vector2(right_support_x, segment_top),
+                    Vector2(left_support_x, segment_bottom),
+                    Color(support.r, support.g, support.b, 0.42),
+                    2.5,
+                )
+                draw_line(
+                    Vector2(left_support_x, segment_bottom),
+                    Vector2(right_support_x, segment_bottom),
+                    Color(support.r, support.g, support.b, 0.30),
+                    1.8,
+                )
+                segment_top = segment_bottom
+
+func _platform_support_anchor_y(x: float, start_y: float, current_index: int) -> float:
+    var anchor_y := _floor_y
+    for other_index in range(_platforms.size()):
+        if other_index == current_index:
+            continue
+        var other := _platforms[other_index]
+        if other.position.y <= start_y + 2.0:
+            continue
+        if x < other.position.x + 4.0 or x > other.end.x - 4.0:
+            continue
+        anchor_y = minf(anchor_y, other.position.y)
+    return anchor_y
 
 func _draw_platform_wear(platform: Rect2, material: String, trim: Color, platform_index: int) -> void:
     draw_rect(
