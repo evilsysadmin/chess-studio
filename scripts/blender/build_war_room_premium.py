@@ -333,6 +333,16 @@ def add_room(static, mats):
         cube(f"WR_ARCH_side_cornice_{side}", (side * 8.52, 0.75, 6.32), (0.10, 6.0, 0.12), mats["trim_wood"], static, bevel=0.035)
         cube(f"WR_ARCH_side_baseboard_{side}", (side * 8.52, 0.75, 0.42), (0.10, 6.0, 0.16), mats["trim_wood"], static, bevel=0.035)
 
+    # Recessed lower panels break the large back wall into believable joinery.
+    for index, x in enumerate((-6.35, -2.55, 2.55, 6.35)):
+        cube(f"WR_ARCH_wainscot_recess_{index}", (x, 6.76, 1.92), (1.22, 0.045, 0.58),
+             mats["wall_recess"], static, bevel=0.025)
+        cube(f"WR_ARCH_wainscot_top_{index}", (x, 6.68, 2.55), (1.34, 0.055, 0.045),
+             mats["trim_wood"], static, bevel=0.018)
+        for edge in (-1, 1):
+            cube(f"WR_ARCH_wainscot_edge_{index}_{edge}", (x + edge * 1.28, 6.68, 1.92),
+                 (0.04, 0.055, 0.60), mats["trim_wood"], static, bevel=0.014)
+
     # Rug and hero table.
     cube("WR_DECOR_rug", (0, 0, 0.065), (6.55, 6.55, 0.035), mats["rug"], static, bevel=0.025)
     for side in (-1, 1):
@@ -352,7 +362,11 @@ def add_room(static, mats):
     cube("WR_FIREPLACE_body", (-4.55, 6.35, 2.03), (1.55, 0.46, 1.48), mats["stone"], static, bevel=0.10)
     cube("WR_FIREPLACE_opening", (-4.55, 5.86, 1.70), (0.93, 0.12, 0.78), mats["charcoal"], static, bevel=0.04)
     cube("WR_FIREPLACE_mantel", (-4.55, 5.76, 3.53), (1.78, 0.64, 0.16), mats["stone_light"], static, bevel=0.08)
+    cube("WR_FIREPLACE_mantel_shadow", (-4.55, 5.08, 3.42), (1.84, 0.08, 0.07), mats["stone_dark"], static, bevel=0.025)
     cube("WR_FIREPLACE_hearth", (-4.55, 5.35, 0.72), (1.48, 0.78, 0.12), mats["stone_light"], static, bevel=0.08)
+    cube("WR_FIREPLACE_inner_lintel", (-4.55, 5.69, 2.58), (1.05, 0.09, 0.12), mats["stone_dark"], static, bevel=0.035)
+    for px in (-5.57, -3.53):
+        cube(f"WR_FIREPLACE_inner_jamb_{px}", (px, 5.69, 1.70), (0.11, 0.09, 0.76), mats["stone_dark"], static, bevel=0.03)
     for px in (-5.78, -3.32):
         cube(f"WR_FIREPLACE_pilaster_{px}", (px, 5.77, 2.16), (0.16, 0.12, 1.06), mats["stone_light"], static, bevel=0.045)
         cube(f"WR_FIREPLACE_cap_{px}", (px, 5.73, 3.23), (0.24, 0.18, 0.10), mats["stone_light"], static, bevel=0.045)
@@ -364,10 +378,12 @@ def add_room(static, mats):
         flame.data.materials.append(mats["fire"])
         tag(flame)
         relink(flame, static)
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 2.05), 470.0, (1.0, 0.30, 0.08), static, radius=1.15)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 2.05), 390.0, (1.0, 0.28, 0.07), static, radius=1.25)
 
     # Back desk.
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
+    cube("WR_DESK_blotter", (0.18, 5.45, 2.33), (0.92, 0.26, 0.025), mats["desk_leather"], static, bevel=0.025)
+    cube("WR_DESK_blotter_edge", (0.18, 5.17, 2.34), (0.98, 0.025, 0.028), mats["brass_dark"], static, bevel=0.012)
     for x in (-1.48, 1.48):
         cube(f"WR_DESK_pedestal_{x}", (x, 6.18, 1.27), (0.35, 0.43, 0.78), mats["frame_wood"], static, bevel=0.06)
         for row in range(3):
@@ -412,9 +428,11 @@ def add_room(static, mats):
     # Tall night window on the right.
     cube("WR_WINDOW_frame", (8.43, 2.85, 3.42), (0.12, 1.42, 2.18), mats["brass_dark"], static, bevel=0.05)
     cube("WR_WINDOW_night", (8.29, 2.85, 3.42), (0.025, 1.20, 1.94), mats["window"], static, bevel=0.01)
+    cube("WR_WINDOW_sill", (8.12, 2.85, 1.34), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
+    cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 520.0, (0.18, 0.34, 1.0), static, size=3.4)
+    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 570.0, (0.16, 0.30, 1.0), static, size=3.6)
 
     # Leather benches.
     for side in (-1, 1):
@@ -434,6 +452,12 @@ def add_room(static, mats):
         cylinder(f"WR_ARMOR_base_{side}", (x, 4.35, 0.33), 0.62, 0.22, mats["charcoal"], static)
         cube(f"WR_ARMOR_stand_{side}", (x, 4.35, 1.12), (0.11, 0.11, 0.78), mats["charcoal"], static, bevel=0.025)
         sphere(f"WR_ARMOR_breastplate_{side}", (x, 4.35, 1.45), 0.47, mats["armor"], static, scale=(0.82, 0.50, 1.18))
+        torus(f"WR_ARMOR_gorget_{side}", (x, 4.33, 1.90), 0.19, 0.035, mats["brass_dark"], static)
+        cube(f"WR_ARMOR_breastplate_ridge_{side}", (x, 4.08, 1.48), (0.035, 0.035, 0.38),
+             mats["brass_dark"], static, bevel=0.012)
+        for leg in (-1, 1):
+            cube(f"WR_ARMOR_greave_{side}_{leg}", (x + leg * 0.18, 4.35, 0.67), (0.11, 0.12, 0.27),
+                 mats["armor"], static, bevel=0.05)
         for shoulder in (-1, 1):
             sphere(f"WR_ARMOR_pauldron_{side}_{shoulder}", (x + shoulder * 0.43, 4.35, 1.63), 0.22,
                    mats["armor"], static, scale=(1.10, 0.72, 0.65))
@@ -469,7 +493,7 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.28
+    scene.view_settings.exposure = -0.40
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
@@ -483,23 +507,26 @@ def build():
     mats = {
         "walnut": material("WR_MAT_board_walnut", (0.17, 0.070, 0.032, 1), rough=0.42, coat=0.20, texture="wood", scale=4.4, bump=0.09),
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
-        "wall_wood": material("WR_MAT_wall_walnut", (0.075, 0.028, 0.016, 1), rough=0.55, coat=0.10, texture="wood", scale=2.6, bump=0.05),
-        "trim_wood": material("WR_MAT_trim_walnut", (0.12, 0.045, 0.021, 1), rough=0.38, coat=0.26, texture="wood", scale=3.2, bump=0.05),
-        "parquet": material("WR_MAT_parquet", (0.15, 0.060, 0.028, 1), rough=0.46, coat=0.14, texture="wood", scale=4.8, bump=0.07),
-        "floor_dark": material("WR_MAT_floor_underlay", (0.025, 0.012, 0.009, 1), rough=0.68, coat=0.04, texture="wood", scale=2.4, bump=0.03),
-        "table_wood": material("WR_MAT_table_walnut", (0.13, 0.042, 0.018, 1), rough=0.34, coat=0.34, texture="wood", scale=3.6, bump=0.055),
-        "frame_wood": material("WR_MAT_frame_walnut", (0.065, 0.021, 0.012, 1), rough=0.30, coat=0.38, texture="wood", scale=3.0, bump=0.045),
-        "brass": material("WR_MAT_brass", (0.50, 0.25, 0.060, 1), metal=0.92, rough=0.22, coat=0.24, texture="metal", scale=20, bump=0.04),
-        "brass_dark": material("WR_MAT_brass_dark", (0.18, 0.080, 0.024, 1), metal=0.88, rough=0.31, coat=0.18, texture="metal", scale=24, bump=0.035),
+        "wall_wood": material("WR_MAT_wall_walnut", (0.058, 0.020, 0.011, 1), rough=0.58, coat=0.08, texture="wood", scale=2.9, bump=0.045),
+        "wall_recess": material("WR_MAT_wall_recess", (0.032, 0.010, 0.007, 1), rough=0.64, coat=0.04, texture="wood", scale=3.1, bump=0.035),
+        "trim_wood": material("WR_MAT_trim_walnut", (0.095, 0.032, 0.015, 1), rough=0.41, coat=0.22, texture="wood", scale=3.5, bump=0.045),
+        "parquet": material("WR_MAT_parquet", (0.12, 0.043, 0.020, 1), rough=0.50, coat=0.11, texture="wood", scale=5.1, bump=0.06),
+        "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.009, 0.007, 1), rough=0.72, coat=0.03, texture="wood", scale=2.6, bump=0.025),
+        "table_wood": material("WR_MAT_table_walnut", (0.105, 0.030, 0.013, 1), rough=0.37, coat=0.30, texture="wood", scale=3.9, bump=0.05),
+        "frame_wood": material("WR_MAT_frame_walnut", (0.052, 0.016, 0.010, 1), rough=0.33, coat=0.34, texture="wood", scale=3.2, bump=0.04),
+        "brass": material("WR_MAT_brass", (0.38, 0.16, 0.035, 1), metal=0.92, rough=0.27, coat=0.20, texture="metal", scale=22, bump=0.032),
+        "brass_dark": material("WR_MAT_brass_dark", (0.13, 0.052, 0.016, 1), metal=0.88, rough=0.36, coat=0.14, texture="metal", scale=26, bump=0.028),
         "ivory": material("WR_MAT_ivory", (0.80, 0.70, 0.55, 1), rough=0.43, coat=0.17, texture="stone", scale=5.2, bump=0.055),
         "ebony": material("WR_MAT_ebony", (0.008, 0.010, 0.014, 1), metal=0.08, rough=0.24, coat=0.58, texture="stone", scale=6.2, bump=0.025),
         "red": material("WR_MAT_red_metal", (0.30, 0.012, 0.016, 1), metal=0.74, rough=0.24, coat=0.50),
         "velvet": material("WR_MAT_velvet", (0.20, 0.008, 0.016, 1), rough=0.84, sheen=0.68, texture="fabric", scale=38, bump=0.08),
         "velvet_dark": material("WR_MAT_velvet_dark", (0.060, 0.003, 0.007, 1), rough=0.92, sheen=0.50, texture="fabric", scale=44, bump=0.06),
         "leather": material("WR_MAT_leather", (0.16, 0.012, 0.018, 1), rough=0.46, coat=0.22, sheen=0.18, texture="leather", scale=45, bump=0.12),
-        "leather_dark": material("WR_MAT_leather_dark", (0.048, 0.005, 0.008, 1), rough=0.54, coat=0.16, texture="leather", scale=45, bump=0.10),
-        "stone": material("WR_MAT_stone", (0.46, 0.43, 0.38, 1), rough=0.58, coat=0.05, texture="stone", scale=3.6, bump=0.12),
-        "stone_light": material("WR_MAT_stone_light", (0.72, 0.69, 0.63, 1), rough=0.48, coat=0.08, texture="stone", scale=3.4, bump=0.10),
+        "leather_dark": material("WR_MAT_leather_dark", (0.048, 0.005, 0.008, 1), rough=0.56, coat=0.14, texture="leather", scale=48, bump=0.09),
+        "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
+        "stone": material("WR_MAT_stone", (0.30, 0.27, 0.22, 1), rough=0.66, coat=0.035, texture="stone", scale=4.1, bump=0.10),
+        "stone_light": material("WR_MAT_stone_light", (0.48, 0.43, 0.36, 1), rough=0.60, coat=0.045, texture="stone", scale=3.9, bump=0.085),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.18, 0.007, 0.013, 1), rough=0.94, sheen=0.30, texture="fabric", scale=52, bump=0.14),
         "armor": material("WR_MAT_armor", (0.095, 0.105, 0.12, 1), metal=0.94, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.035),
         "armor_dark": material("WR_MAT_armor_dark", (0.028, 0.032, 0.040, 1), metal=0.92, rough=0.34, coat=0.16, texture="metal", scale=22, bump=0.025),
@@ -516,14 +543,14 @@ def build():
     add_room(static, mats)
     add_preview_board(dynamic, mats)
 
-    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 820.0, (1.0, 0.74, 0.52), static, size=5.4)
+    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 690.0, (1.0, 0.70, 0.50), static, size=5.8)
     look_at(key, (0, 0.5, 1.1))
-    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 390.0, (0.38, 0.52, 1.0), static, size=5.1)
+    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 455.0, (0.32, 0.46, 1.0), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
-    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 430.0, (1.0, 0.62, 0.34), static, size=4.6)
+    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 300.0, (1.0, 0.58, 0.32), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
-        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 170.0, (1.0, 0.34, 0.09), static, radius=1.2)
+        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 115.0, (1.0, 0.31, 0.08), static, radius=1.35)
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
     cam = bpy.data.objects.new("WR_CAMERA_hero", cam_data)
