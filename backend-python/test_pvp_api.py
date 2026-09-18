@@ -101,6 +101,13 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert match["clock"]["id"] == "10+0"
     assert 590_000 <= match["clock"]["whiteMs"] <= 600_000
     assert 590_000 <= match["clock"]["blackMs"] <= 600_000
+    assert match["id"] == challenge_id
+
+    retried = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge_id}/accept")
+    assert retried.status_code == 200
+    assert retried.json()["match"]["id"] == match["id"]
+    assert retried.json()["match"]["white"] == match["white"]
+    assert retried.json()["match"]["black"] == match["black"]
 
     white = match["white"]
     black = match["black"]

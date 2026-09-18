@@ -110,6 +110,8 @@ def _public(doc: dict[str, Any] | None) -> dict[str, Any] | None:
         row.setdefault("id", str(row["_id"]))
         row.pop("_id", None)
     row.pop("pair_key", None)
+    row.pop("challenge_id", None)
+    row.pop("acceptance_state", None)
     return row
 
 
@@ -319,22 +321,65 @@ async def decline_challenge(challenge_id: str, username: str) -> dict[str, Any] 
         raise PersistentStorageUnavailable("No se pudo rechazar el reto 1v1.") from exc
 
 
-async def accept_challenge(challenge_id: str, username: str, match: dict[str, Any]) -> dict[str, Any] | None:
+async def accept_challenge(
+    challenge_id: str,
+    username: str,
+    match: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    """Accept a challenge with a crash-recoverable two-document saga.
+
+    The match is staged first under a deterministic id and remains invisible to
+    gameplay reads. The challenge CAS then points at that match and a final
+    write activates it. A retry can resume after either crash window without
+    requiring Mongo transactions/replica-set semantics.
+    """
     now = utcnow()
+    match_id = str(match["id"])
     collections = await _collections()
     if collections is None:
         async with _memory_guard():
             row = _memory_challenges.get(challenge_id)
-            if not row or row.get("status") != "pending" or row.get("opponent") != username:
+            if not row or row.get("opponent") != username:
                 return None
-            if row.get("created_at") < _challenge_cutoff(now):
-                row.update(status="expired", resolved_at=now)
+            if row.get("status") == "pending":
+                if row.get("created_at") < _challenge_cutoff(now):
+                    row.update(status="expired", resolved_at=now)
+                    return None
+                row.update(status="accepted", resolved_at=now, match_id=match_id)
+            elif row.get("status") != "accepted" or row.get("match_id") != match_id:
                 return None
-            _memory_matches[match["id"]] = dict(match)
-            row.update(status="accepted", resolved_at=now, match_id=match["id"])
-            return dict(row)
+
+            canonical = _memory_matches.get(match_id)
+            if canonical is None:
+                canonical = {
+                    **dict(match),
+                    "challenge_id": challenge_id,
+                    "acceptance_state": "staged",
+                }
+                _memory_matches[match_id] = canonical
+            elif canonical.get("challenge_id") not in {None, challenge_id}:
+                raise PersistentStorageUnavailable("El id de partida 1v1 colisionó con otro reto.")
+
+            canonical["challenge_id"] = challenge_id
+            canonical["acceptance_state"] = "active"
+            return dict(row), _public(canonical) or dict(match)
+
     _, challenges, matches = collections
+    staged_doc = {
+        "_id": match_id,
+        **{k: v for k, v in match.items() if k != "id"},
+        "challenge_id": challenge_id,
+        "acceptance_state": "staged",
+    }
     try:
+        try:
+            await matches.insert_one(staged_doc)
+            canonical = staged_doc
+        except DuplicateKeyError:
+            canonical = await matches.find_one({"_id": match_id, "challenge_id": challenge_id})
+            if canonical is None:
+                raise PersistentStorageUnavailable("El id de partida 1v1 colisionó con otro reto.")
+
         row = await challenges.find_one_and_update(
             {
                 "_id": challenge_id,
@@ -342,21 +387,35 @@ async def accept_challenge(challenge_id: str, username: str, match: dict[str, An
                 "opponent": username,
                 "created_at": {"$gte": _challenge_cutoff(now)},
             },
-            {"$set": {"status": "accepted", "resolved_at": now, "match_id": match["id"]}},
+            {"$set": {"status": "accepted", "resolved_at": now, "match_id": match_id}},
             return_document=ReturnDocument.AFTER,
         )
-        if not row:
+        if row is None:
+            row = await challenges.find_one({
+                "_id": challenge_id,
+                "status": "accepted",
+                "opponent": username,
+                "match_id": match_id,
+            })
+        if row is None:
+            await matches.delete_one({
+                "_id": match_id,
+                "challenge_id": challenge_id,
+                "acceptance_state": "staged",
+            })
             return None
-        try:
-            await matches.insert_one({"_id": match["id"], **{k: v for k, v in match.items() if k != "id"}})
-        except Exception:
-            await challenges.update_one(
-                {"_id": challenge_id, "status": "accepted", "match_id": match["id"]},
-                {"$set": {"status": "pending"}, "$unset": {"resolved_at": "", "match_id": ""}},
-            )
-            raise
-        return _public(row)
+
+        activated = await matches.find_one_and_update(
+            {"_id": match_id, "challenge_id": challenge_id},
+            {"$set": {"acceptance_state": "active"}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if activated is None:
+            raise PersistentStorageUnavailable("La partida 1v1 aceptada no pudo activarse.")
+        return _public(row) or {}, _public(activated) or {}
     except PyMongoError as exc:
+        # A storage error deliberately leaves a staged match in place. The
+        # deterministic id lets the next retry resume instead of duplicating it.
         raise PersistentStorageUnavailable("No se pudo aceptar el reto 1v1.") from exc
 
 
@@ -365,10 +424,15 @@ async def get_match(match_id: str) -> dict[str, Any] | None:
     if collections is None:
         async with _memory_guard():
             row = _memory_matches.get(match_id)
-            return dict(row) if row else None
+            if not row or row.get("acceptance_state") == "staged":
+                return None
+            return _public(row)
     _, _, matches = collections
     try:
-        return _public(await matches.find_one({"_id": match_id}))
+        return _public(await matches.find_one({
+            "_id": match_id,
+            "acceptance_state": {"$ne": "staged"},
+        }))
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo leer la partida 1v1.") from exc
 
@@ -401,7 +465,9 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
         async with _memory_guard():
             rows = [
                 row for row in _memory_matches.values()
-                if row.get("status") == "active" and username in {row.get("white"), row.get("black")}
+                if row.get("status") == "active"
+                and row.get("acceptance_state") != "staged"
+                and username in {row.get("white"), row.get("black")}
             ]
             if not rows:
                 return None
@@ -409,7 +475,11 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
     _, _, matches = collections
     try:
         row = await matches.find_one(
-            {"status": "active", "$or": [{"white": username}, {"black": username}]},
+            {
+                "status": "active",
+                "acceptance_state": {"$ne": "staged"},
+                "$or": [{"white": username}, {"black": username}],
+            },
             sort=[("updated_at", -1)],
         )
         return _public(row)
