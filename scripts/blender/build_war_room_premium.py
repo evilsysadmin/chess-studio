@@ -350,6 +350,16 @@ def add_room(static, mats):
         cube(f"WR_DECOR_rug_y_{side}", (side * 6.31, 0, 0.105), (0.06, 6.25, 0.012), mats["brass_dark"], static, bevel=0.01)
     cube("WR_TABLE_main", (0, 0, 0.47), (5.86, 5.86, 0.38), mats["table_wood"], static, bevel=0.13)
     cube("WR_TABLE_board_frame", (0, 0, 0.96), (4.62, 4.62, 0.12), mats["frame_wood"], static, bevel=0.09)
+    # Dark green leather inlay breaks the broad walnut surface into a crafted chess table.
+    for side in (-1, 1):
+        cube(f"WR_TABLE_inlay_x_{side}", (0, side * 5.05, 1.075), (4.40, 0.32, 0.025),
+             mats["desk_leather"], static, bevel=0.035)
+        cube(f"WR_TABLE_inlay_y_{side}", (side * 5.05, 0, 1.075), (0.32, 4.40, 0.025),
+             mats["desk_leather"], static, bevel=0.035)
+        cube(f"WR_TABLE_inlay_pipe_x_{side}", (0, side * 5.37, 1.105), (4.42, 0.018, 0.012),
+             mats["brass_dark"], static, bevel=0.008)
+        cube(f"WR_TABLE_inlay_pipe_y_{side}", (side * 5.37, 0, 1.105), (0.018, 4.42, 0.012),
+             mats["brass_dark"], static, bevel=0.008)
     for side in (-1, 1):
         cube(f"WR_TABLE_gold_x_{side}", (0, side * 4.42, 1.10), (4.36, 0.035, 0.035), mats["brass"], static, bevel=0.016)
         cube(f"WR_TABLE_gold_y_{side}", (side * 4.42, 0, 1.10), (0.035, 4.36, 0.035), mats["brass"], static, bevel=0.016)
@@ -595,13 +605,13 @@ def build():
         "red": material("WR_MAT_red_metal", (0.30, 0.012, 0.016, 1), metal=0.74, rough=0.24, coat=0.50),
         "velvet": material("WR_MAT_velvet", (0.20, 0.008, 0.016, 1), rough=0.84, sheen=0.68, texture="fabric", scale=38, bump=0.08),
         "velvet_dark": material("WR_MAT_velvet_dark", (0.060, 0.003, 0.007, 1), rough=0.92, sheen=0.50, texture="fabric", scale=44, bump=0.06),
-        "leather": material("WR_MAT_leather", (0.16, 0.012, 0.018, 1), rough=0.46, coat=0.22, sheen=0.18, texture="leather", scale=45, bump=0.12),
-        "leather_dark": material("WR_MAT_leather_dark", (0.048, 0.005, 0.008, 1), rough=0.56, coat=0.14, texture="leather", scale=48, bump=0.09),
+        "leather": material("WR_MAT_leather", (0.082, 0.026, 0.022, 1), rough=0.50, coat=0.18, sheen=0.14, texture="leather", scale=47, bump=0.105),
+        "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "stone": material("WR_MAT_stone", (0.235, 0.225, 0.205, 1), rough=0.70, coat=0.028, texture="stone", scale=4.3, bump=0.095),
         "stone_light": material("WR_MAT_stone_light", (0.31, 0.30, 0.285, 1), rough=0.67, coat=0.028, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
-        "rug": material("WR_MAT_rug", (0.18, 0.007, 0.013, 1), rough=0.94, sheen=0.30, texture="fabric", scale=52, bump=0.14),
+        "rug": material("WR_MAT_rug", (0.075, 0.016, 0.020, 1), rough=0.95, sheen=0.24, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.095, 0.105, 0.12, 1), metal=0.94, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.035),
         "armor_dark": material("WR_MAT_armor_dark", (0.028, 0.032, 0.040, 1), metal=0.92, rough=0.34, coat=0.16, texture="metal", scale=22, bump=0.025),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
@@ -687,6 +697,7 @@ def validate():
     scene = bpy.context.scene
     required = {
         "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
+        "WR_TABLE_inlay_x_-1", "WR_TABLE_inlay_x_1",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
