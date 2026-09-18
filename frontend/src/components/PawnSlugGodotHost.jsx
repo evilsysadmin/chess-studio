@@ -18,6 +18,19 @@ export default function PawnSlugGodotHost({ onExit }) {
   }, []);
 
   useEffect(() => {
+    const body = document.body;
+    const root = document.documentElement;
+    const previousBodyOverflow = body.style.overflow;
+    const previousRootOverflow = root.style.overflow;
+    body.style.overflow = 'hidden';
+    root.style.overflow = 'hidden';
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      root.style.overflow = previousRootOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     function onMessage(event) {
       if (event.source !== iframeRef.current?.contentWindow) return;
       const message = event.data;
@@ -40,21 +53,14 @@ export default function PawnSlugGodotHost({ onExit }) {
         : 'Arrancando runtime Godot…';
 
   return (
-    <div className="pawn-slug-godot-host">
-      <header className="pawn-slug-godot-host__header">
-        <div>
-          <span className="section-label">POC · Godot Web</span>
-          <h2>PAWN SLUG GODOT</h2>
-          <p>Runtime Godot canónico. React abre la puerta; el juego, la simulación y el render viven dentro de Godot.</p>
-        </div>
-        <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
-      </header>
-
+    <div className="pawn-slug-godot-host" data-runtime-ready={runtimeReady ? 'true' : 'false'}>
       <div className="pawn-slug-godot-host__frame-shell">
-        <div className="pawn-slug-godot-host__status" aria-live="polite">
-          <span className={runtimeReady ? 'is-ready' : ''} aria-hidden="true" />
-          {runtimeStatus}
-        </div>
+        {!runtimeReady && (
+          <div className="pawn-slug-godot-host__status" aria-live="polite">
+            <span aria-hidden="true" />
+            {runtimeStatus}
+          </div>
+        )}
         <iframe
           key={runtime.url}
           ref={iframeRef}
@@ -66,5 +72,4 @@ export default function PawnSlugGodotHost({ onExit }) {
         />
       </div>
     </div>
-  );
-}
+  );}

@@ -4,6 +4,7 @@ const EnemyVisual := preload("res://scripts/enemy_visual.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
+const PauseMenu := preload("res://scripts/pause_menu.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
@@ -104,12 +105,15 @@ var boss: Dictionary = {}
 var boss_visual
 var extraction_visual
 var environment_visual
+var pause_menu
 var _startup_ready_sent := false
+var _pause_open := false
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 
 func _ready() -> void:
+    process_mode = Node.PROCESS_MODE_ALWAYS
     _build_environment_visual()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
@@ -123,10 +127,14 @@ func _ready() -> void:
     player.connect("respawned", Callable(self, "_on_player_respawned"))
     player.connect("game_over", Callable(self, "_on_player_game_over"))
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
+    _build_pause_menu()
     _sync_hud()
     queue_redraw()
 
 func _process(delta: float) -> void:
+    if _pause_open:
+        return
+
     if not _startup_ready_sent:
         if not player.visual_ready():
             return
@@ -147,8 +155,43 @@ func _process(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-        _notify_parent("exit")
+        _toggle_pause_menu()
         get_viewport().set_input_as_handled()
+
+func _build_pause_menu() -> void:
+    pause_menu = PauseMenu.new()
+    pause_menu.name = "PauseMenu"
+    add_child(pause_menu)
+    pause_menu.resume_requested.connect(_resume_game)
+    pause_menu.exit_requested.connect(_exit_game)
+
+func _toggle_pause_menu() -> void:
+    if _pause_open:
+        _resume_game()
+    else:
+        _pause_game()
+
+func _pause_game() -> void:
+    if _pause_open:
+        return
+    _pause_open = true
+    pause_menu.open_menu()
+    get_tree().paused = true
+    _notify_parent("menu-open")
+
+func _resume_game() -> void:
+    if not _pause_open:
+        return
+    get_tree().paused = false
+    _pause_open = false
+    pause_menu.close_menu()
+    _notify_parent("menu-close")
+
+func _exit_game() -> void:
+    get_tree().paused = false
+    _pause_open = false
+    pause_menu.close_menu()
+    _notify_parent("exit")
 
 func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> void:
     var speed := float(shot.get("speed", 760.0))
