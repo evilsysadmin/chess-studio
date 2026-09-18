@@ -391,10 +391,15 @@ def save_preview_blend(out, mats, types):
 def selected_frames(action, count, smoke):
     if not smoke:
         return list(range(count))
-    # Smoke evidence samples the authored start, middle and end pose. This
-    # catches clipping/silhouette regressions and proves motion without paying
-    # for the full production atlas on every PR.
-    return sorted({0, count // 2, count - 1})
+    # CI visual smoke renders the pose that is actually shown in the review
+    # board for every action. Run/death get one extra phase so we still prove
+    # visible motion without paying for the complete production atlas.
+    mid = count // 2
+    if action == "run":
+        return [0, mid]
+    if action == "death":
+        return [mid, count - 1]
+    return [mid]
 
 
 def render_frames(out, mats, types, smoke=False):
