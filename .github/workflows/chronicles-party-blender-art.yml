@@ -7,6 +7,7 @@ on:
       - 'scripts/blender/refine_chronicles_party_tailoring.py'
       - 'scripts/blender/refine_chronicles_party_anatomy.py'
       - 'scripts/blender/render_chronicles_party_preview.py'
+      - 'scripts/blender/render_chronicles_dungeon_mock.py'
       - '.github/workflows/chronicles-party-blender-art.yml'
   workflow_dispatch:
 
@@ -41,6 +42,13 @@ jobs:
         run: |
           set -euo pipefail
           blender --background -noaudio --python scripts/blender/render_chronicles_party_preview.py -- --blend /tmp/chronicles-party/chronicles-tactics-party.blend --output-dir /tmp/chronicles-party/previews
+      - name: Render canonical dungeon look-development mock
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
+        run: |
+          set -euo pipefail
+          blender --background -noaudio --python scripts/blender/render_chronicles_dungeon_mock.py -- --output /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
       - name: Validate Chronicles humanoid visual contract
         run: |
           set -euo pipefail
@@ -48,6 +56,7 @@ jobs:
           test -s /tmp/chronicles-party/chronicles-tactics-party.glb
           for member in rook bishop knight; do test -s "/tmp/chronicles-party/previews/chronicles-party-${member}.png"; done
           test -s /tmp/chronicles-party/previews/chronicles-party-group.png
+          test -s /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
           blender --background -noaudio /tmp/chronicles-party/chronicles-tactics-party.blend --python-expr "import bpy; members=('rook','bishop','knight'); roots=[bpy.data.objects.get('ChroniclesParty__'+m) for m in members]; assert all(roots), roots; assert bpy.context.scene.get('chronicles_cast') == 'rook,bishop,knight'; assert bpy.context.scene.get('chronicles_party_asset_version') == 'chronicles-humanoid-party-v8'; assert bpy.context.scene.get('chronicles_party_visual_contract') == 'authored-humanoid-anatomy-v5'; assert all(r.get('authored_humanoid') for r in roots); assert all(r.get('party_art') == 'authored-v8' for r in roots); assert all(len([o for o in r.children if o.type == 'MESH']) >= 27 for r in roots); assert sum(1 for o in bpy.data.objects if o.get('authored_costume_mesh')) >= 7; assert sum(1 for o in bpy.data.objects if o.get('authored_anatomy_mesh')) >= 17; assert all(bpy.data.objects.get(n) for n in ('rook__authored_sword_arm','rook__authored_shield_arm','bishop__authored_lantern_arm','bishop__authored_scroll_arm','knight__authored_vial_arm','knight__authored_dagger_arm'))"
           python3 - <<'PY'
           from pathlib import Path
@@ -58,6 +67,9 @@ jobs:
               assert image.size==(720,820),(name,image.size)
               assert any(hi-lo>24 for lo,hi in image.getextrema()),name
           assert Image.open(root/'chronicles-party-group.png').size==(1280,720)
+          dungeon=Image.open(root/'chronicles-dungeon-canonical.png').convert('RGB')
+          assert dungeon.size==(1672,941), dungeon.size
+          assert any(hi-lo>32 for lo,hi in dungeon.getextrema())
           PY
           sha256sum /tmp/chronicles-party/chronicles-tactics-party.blend /tmp/chronicles-party/chronicles-tactics-party.glb /tmp/chronicles-party/previews/*.png > /tmp/chronicles-party/SHA256SUMS
       - uses: actions/upload-artifact@v4
