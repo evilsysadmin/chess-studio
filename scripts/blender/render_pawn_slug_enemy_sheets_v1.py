@@ -50,6 +50,7 @@ PALETTE = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--enemy-type", choices=TYPES)
     tail = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(tail)
 
@@ -368,10 +369,12 @@ def clear_authored():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def save_preview_blend(out, mats):
+def save_preview_blend(out, mats, types):
     clear_authored()
     offsets = {"pawn": -2.10, "knight": -0.70, "rook": 0.70, "bishop": 2.10}
-    for enemy_type in TYPES:
+    if len(types) == 1:
+        offsets = {types[0]: 0.0}
+    for enemy_type in types:
         before = set(bpy.context.scene.objects)
         build_enemy(enemy_type, "idle", 0, mats)
         for obj in set(bpy.context.scene.objects) - before:
@@ -383,9 +386,9 @@ def save_preview_blend(out, mats):
     print("Wrote", path)
 
 
-def render_frames(out, mats):
+def render_frames(out, mats, types):
     scene = bpy.context.scene
-    for enemy_type in TYPES:
+    for enemy_type in types:
         for action, count in ACTIONS.items():
             target = out / "frames" / enemy_type / action
             target.mkdir(parents=True, exist_ok=True)
@@ -401,7 +404,7 @@ def render_frames(out, mats):
         "frameSize2x": [192, 192],
         "runtimeCell": [96, 96],
         "columns": 16,
-        "types": list(TYPES),
+        "types": list(types),
         "actions": ACTIONS,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -411,11 +414,12 @@ def main():
     args = parse_args()
     out = Path(args.output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    types = (args.enemy_type,) if args.enemy_type else TYPES
     clear_scene()
     mats = build_materials()
     setup_scene()
-    save_preview_blend(out, mats)
-    render_frames(out, mats)
+    save_preview_blend(out, mats, types)
+    render_frames(out, mats, types)
     print("Pawn Slug enemy Blender sheets source complete:", out)
 
 
