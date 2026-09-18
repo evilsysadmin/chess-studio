@@ -103,8 +103,10 @@ var _jump_was_pressed := false
 var _fire_was_pressed := false
 var _grenade_was_pressed := false
 var _art
+var _touch_controls
 
 func _ready() -> void:
+    _touch_controls = get_parent().get_node_or_null("TouchControls")
     global_position.x = CHECKPOINT_X[0]
     _spawn_position = global_position
     _checkpoint_position = _spawn_position
@@ -275,6 +277,9 @@ func select_weapon(id: String) -> bool:
     weapon_changed.emit(weapon, current_ammo())
     return true
 
+func cycle_weapon(step: int) -> bool:
+    return _cycle_weapon(step)
+
 func _cycle_weapon(step: int) -> bool:
     if step == 0:
         return false
@@ -435,6 +440,8 @@ func _respawn() -> void:
 
 func _movement_axis() -> float:
     var axis := 0.0
+    if _touch_controls != null:
+        axis = float(_touch_controls.move_axis())
     if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
         axis -= 1.0
     if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
@@ -448,6 +455,8 @@ func _movement_axis() -> float:
     return clampf(axis, -1.0, 1.0)
 
 func _crouch_pressed() -> bool:
+    if _touch_controls != null and bool(_touch_controls.crouch_pressed()):
+        return true
     if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
         return true
     var joypads := Input.get_connected_joypads()
@@ -460,12 +469,16 @@ func _crouch_pressed() -> bool:
     )
 
 func _jump_pressed() -> bool:
+    if _touch_controls != null and bool(_touch_controls.jump_pressed()):
+        return true
     if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_SPACE):
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_A)
 
 func _fire_pressed() -> bool:
+    if _touch_controls != null and bool(_touch_controls.fire_pressed()):
+        return true
     if (
         Input.is_key_pressed(KEY_Z)
         or Input.is_key_pressed(KEY_J)
@@ -477,6 +490,8 @@ func _fire_pressed() -> bool:
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_X)
 
 func _grenade_pressed() -> bool:
+    if _touch_controls != null and bool(_touch_controls.grenade_pressed()):
+        return true
     if Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_K):
         return true
     var joypads := Input.get_connected_joypads()
