@@ -441,6 +441,29 @@ def add_room(static, mats):
         cube(f"WR_ART_frame_{side}", (px, 6.57, 4.68), (1.33, 0.10, 1.02), mats["brass_dark"], static, bevel=0.06)
         cube(f"WR_ART_canvas_{side}", (px, 6.43, 4.68), (1.16, 0.025, 0.84),
              mats["picture_a"] if side < 0 else mats["picture_b"], static, bevel=0.015)
+        # Thin bas-relief linework gives the frames authored content without
+        # relying on a baked bitmap that would age poorly in the runtime shell.
+        for edge in (-1, 1):
+            cube(f"WR_ART_inner_v_{side}_{edge}", (px + edge * 0.95, 6.38, 4.68),
+                 (0.018, 0.022, 0.68), mats["art_gilt"], static, bevel=0.008)
+            cube(f"WR_ART_inner_h_{side}_{edge}", (px, 6.38, 4.68 + edge * 0.64),
+                 (0.95, 0.022, 0.018), mats["art_gilt"], static, bevel=0.008)
+        if side < 0:
+            for index, (dx, dz, sx, sz) in enumerate((
+                (-0.46, 0.18, 0.40, 0.018),
+                (-0.18, -0.16, 0.018, 0.44),
+                (0.18, 0.08, 0.018, 0.34),
+                (0.42, -0.24, 0.32, 0.018),
+            )):
+                cube(f"WR_ART_relief_left_{index}", (px + dx, 6.34, 4.68 + dz),
+                     (sx, 0.018, sz), mats["art_gilt"], static, bevel=0.008)
+        else:
+            torus(f"WR_ART_relief_right_ring", (px, 6.34, 4.72), 0.37, 0.022,
+                  mats["art_gilt"], static, rotation=(math.pi / 2, 0, 0))
+            cube("WR_ART_relief_right_axis", (px, 6.34, 4.72), (0.52, 0.018, 0.018),
+                 mats["art_gilt"], static, bevel=0.008)
+            cube("WR_ART_relief_right_mark", (px + 0.22, 6.34, 4.46), (0.018, 0.018, 0.30),
+                 mats["art_gilt"], static, bevel=0.008)
         shelf_x = side * 5.35
         cube(f"WR_SHELF_{side}", (shelf_x, 6.02, 2.65), (1.7, 0.42, 0.08), mats["table_wood"], static, bevel=0.04)
         for book in range(6):
@@ -453,6 +476,10 @@ def add_room(static, mats):
     # Tall night window on the right.
     cube("WR_WINDOW_frame", (8.43, 2.85, 3.42), (0.12, 1.42, 2.18), mats["brass_dark"], static, bevel=0.05)
     cube("WR_WINDOW_night", (8.29, 2.85, 3.42), (0.025, 1.20, 1.94), mats["window"], static, bevel=0.01)
+    sphere("WR_WINDOW_moon", (8.20, 3.53, 4.48), 0.28, mats["moon"], static, scale=(0.18, 1.0, 1.0))
+    for index, (y, height) in enumerate(((1.92, 0.42), (2.20, 0.66), (2.52, 0.50), (2.88, 0.76), (3.24, 0.54), (3.58, 0.70))):
+        cube(f"WR_WINDOW_horizon_{index}", (8.19, y, 1.66 + height / 2),
+             (0.035, 0.12, height / 2), mats["horizon"], static, bevel=0.012)
     cube("WR_WINDOW_sill", (8.12, 2.85, 1.34), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
@@ -559,9 +586,12 @@ def build():
         "green": material("WR_MAT_green_glaze", (0.012, 0.12, 0.055, 1), rough=0.24, coat=0.62),
         "book_a": material("WR_MAT_book_burgundy", (0.14, 0.020, 0.016, 1), rough=0.74, sheen=0.10),
         "book_b": material("WR_MAT_book_green", (0.030, 0.090, 0.050, 1), rough=0.74, sheen=0.10),
-        "picture_a": material("WR_MAT_picture_a", (0.18, 0.060, 0.018, 1), rough=0.68, texture="stone", scale=4.0, bump=0.025),
-        "picture_b": material("WR_MAT_picture_b", (0.12, 0.038, 0.020, 1), rough=0.68, texture="stone", scale=5.0, bump=0.025),
-        "window": material("WR_MAT_window_night", (0.004, 0.012, 0.075, 1), rough=0.16, coat=0.52),
+        "picture_a": material("WR_MAT_picture_a", (0.075, 0.020, 0.012, 1), rough=0.78, texture="stone", scale=4.5, bump=0.022),
+        "picture_b": material("WR_MAT_picture_b", (0.050, 0.015, 0.012, 1), rough=0.80, texture="stone", scale=5.4, bump=0.022),
+        "art_gilt": material("WR_MAT_art_gilt", (0.24, 0.095, 0.022, 1), metal=0.84, rough=0.38, coat=0.12, texture="metal", scale=28, bump=0.02),
+        "window": material("WR_MAT_window_night", (0.003, 0.010, 0.055, 1), rough=0.20, coat=0.44),
+        "moon": material("WR_MAT_window_moon", (0.56, 0.68, 0.90, 1), rough=0.26, emission=(0.16, 0.28, 0.62, 1)),
+        "horizon": material("WR_MAT_window_horizon", (0.004, 0.007, 0.014, 1), rough=0.96),
         "fire": material("WR_MAT_fire", (0.88, 0.085, 0.006, 1), rough=0.18, emission=(1.0, 0.045, 0.002, 1)),
         "fire_core": material("WR_MAT_fire_core", (1.0, 0.32, 0.015, 1), rough=0.16, emission=(1.0, 0.18, 0.008, 1)),
         "ember": material("WR_MAT_ember", (0.24, 0.010, 0.003, 1), rough=0.38, emission=(0.44, 0.012, 0.002, 1)),
@@ -636,7 +666,8 @@ def validate():
     required = {
         "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_CREST_plaque",
-        "WR_WINDOW_frame", "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0",
+        "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
+        "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
