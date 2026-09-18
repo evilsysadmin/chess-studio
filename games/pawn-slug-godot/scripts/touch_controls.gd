@@ -13,6 +13,7 @@ var _right_group: Control
 var _move_left := false
 var _move_right := false
 var _crouch := false
+var _aim_up := false
 var _jump := false
 var _fire := false
 var _grenade := false
@@ -39,6 +40,12 @@ func move_axis() -> float:
         axis += 1.0
     return axis
 
+func aim_vector() -> Vector2:
+    var vertical := -1.0 if _aim_up else (1.0 if _crouch else 0.0)
+    if absf(vertical) <= 0.01:
+        return Vector2.ZERO
+    return Vector2(move_axis(), vertical).normalized()
+
 func crouch_pressed() -> bool:
     return _crouch
 
@@ -61,6 +68,7 @@ func release_all() -> void:
     _move_left = false
     _move_right = false
     _crouch = false
+    _aim_up = false
     _jump = false
     _fire = false
     _grenade = false
@@ -85,7 +93,7 @@ func _build_ui() -> void:
     _left_group = Control.new()
     _left_group.name = "MoveCluster"
     _left_group.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _left_group.size = Vector2(250.0, 150.0)
+    _left_group.size = Vector2(268.0, 172.0)
     _root.add_child(_left_group)
 
     _right_group = Control.new()
@@ -130,18 +138,23 @@ func _build_ui() -> void:
     notice_copy.add_theme_color_override("font_color", Color("c8c1b0"))
     notice_box.add_child(notice_copy)
 
+    var aim_up := _make_button("↑", BUTTON_SIZE)
+    aim_up.position = Vector2(92.0, 0.0)
+    _bind_hold(aim_up, func(value: bool): _aim_up = value)
+    _left_group.add_child(aim_up)
+
     var left := _make_button("←", BUTTON_SIZE)
-    left.position = Vector2(0.0, 64.0)
+    left.position = Vector2(0.0, 88.0)
     _bind_hold(left, func(value: bool): _move_left = value)
     _left_group.add_child(left)
 
     var right := _make_button("→", BUTTON_SIZE)
-    right.position = Vector2(92.0, 64.0)
+    right.position = Vector2(92.0, 88.0)
     _bind_hold(right, func(value: bool): _move_right = value)
     _left_group.add_child(right)
 
     var crouch := _make_button("↓", BUTTON_SIZE)
-    crouch.position = Vector2(184.0, 64.0)
+    crouch.position = Vector2(184.0, 88.0)
     _bind_hold(crouch, func(value: bool): _crouch = value)
     _left_group.add_child(crouch)
 
