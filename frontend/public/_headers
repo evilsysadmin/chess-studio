@@ -1,7 +1,7 @@
 /*
   X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=31536000
