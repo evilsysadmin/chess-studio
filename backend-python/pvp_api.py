@@ -18,6 +18,7 @@ PVP_TIME_CONTROL_ID = "10+0"
 PVP_INITIAL_MS = 10 * 60 * 1000
 PVP_INCREMENT_MS = 0
 PVP_HANDOFF_SECONDS = 5
+PVP_READY_TIMEOUT_SECONDS = 30
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -162,6 +163,27 @@ async def _finish_timeout(match_id: str, match: dict, now: datetime | None = Non
     )
 
 
+async def _finish_handoff_timeout(match_id: str, match: dict, now: datetime | None = None) -> dict | None:
+    if match.get("status") != "starting":
+        return match
+    stamp = now or store.utcnow()
+    deadline = match.get("ready_deadline")
+    if not isinstance(deadline, datetime) or deadline > stamp:
+        return match
+    updated = await store.update_match(
+        match_id,
+        expected_revision=int(match.get("revision", 0)),
+        changes={
+            "status": "cancelled",
+            "result": None,
+            "end_reason": "handoff_timeout",
+            "turn_started_at": None,
+            "updated_at": stamp,
+        },
+    )
+    return updated or await store.get_match(match_id)
+
+
 def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
     if color is None or match.get("status") != "finished":
         return None
@@ -193,6 +215,7 @@ def _public_match(match: dict, username: str) -> dict:
         "result": match.get("result"),
         "endReason": match.get("end_reason"),
         "startsAt": _iso(match.get("start_at")),
+        "readyDeadline": _iso(match.get("ready_deadline")),
         "youReady": you_ready,
         "opponentReady": opponent_ready,
         "ratingChange": _rating_change(match, color),
@@ -257,6 +280,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         opponent_row = await store.roster_member(opponent)
         if not opponent_row:
             raise HTTPException(409, "Ese jugador ya no está disponible en el roster.")
+        if await store.active_match_for_user(username):
+            raise HTTPException(409, "Ya tienes un duelo 1v1 en curso.")
+        if await store.active_match_for_user(opponent):
+            raise HTTPException(409, "Ese jugador ya está entrando o jugando otro duelo.")
         now = store.utcnow()
         row = await store.create_challenge({
             "id": uuid.uuid4().hex,
@@ -302,6 +329,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         # storage saga and must not require players to still be in the ephemeral
         # roster. Fresh acceptance still requires both live roster entries.
         if challenge_status == "pending":
+            if await store.active_match_for_user(challenge_row["challenger"]):
+                raise HTTPException(409, "El rival ya está entrando o jugando otro duelo.")
+            if await store.active_match_for_user(username):
+                raise HTTPException(409, "Ya tienes un duelo 1v1 en curso.")
             if not await store.roster_member(challenge_row["challenger"]):
                 raise HTTPException(409, "El rival ya no está disponible.")
             if not await store.roster_member(username):
@@ -330,6 +361,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "white_ready": False,
             "black_ready": False,
             "start_at": None,
+            "ready_deadline": now + timedelta(seconds=PVP_READY_TIMEOUT_SECONDS),
             "turn_started_at": None,
             "end_reason": None,
             "created_at": now,
@@ -339,8 +371,6 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         if not accepted:
             raise HTTPException(409, "El reto ya no está disponible.")
         _accepted_challenge, accepted_match = accepted
-        await store.leave_roster(accepted_match["white"])
-        await store.leave_roster(accepted_match["black"])
         return {"match": _public_match(accepted_match, username)}
 
     @router.post("/matches/{match_id}/ready")
@@ -350,7 +380,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             color = _player_color(match or {}, username)
             if not match or color is None:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
+            match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
+            if match.get("status") == "cancelled":
+                return {"match": _public_match(match, username)}
             if match.get("status") == "active":
+                await store.leave_roster(match["white"])
+                await store.leave_roster(match["black"])
                 return {"match": _public_match(match, username)}
             if match.get("status") != "starting":
                 raise HTTPException(409, "La partida ya no está preparando el arranque.")
@@ -371,6 +406,9 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 changes=changes,
             )
             if updated:
+                if updated.get("status") == "active":
+                    await store.leave_roster(updated["white"])
+                    await store.leave_roster(updated["black"])
                 return {"match": _public_match(updated, username)}
         raise HTTPException(409, "El duelo cambió mientras sincronizábamos a los jugadores.")
 
@@ -380,6 +418,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         match = await store.get_match(match_id)
         if not match or _player_color(match, username) is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
+        if match.get("status") == "starting":
+            match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
             timed = await _finish_timeout(match_id, match)
             if timed is None:
