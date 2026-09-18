@@ -260,4 +260,13 @@ assert 'k3s_contract_action="refreshed"' in deploy
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
 assert 'docker pull --quiet "$target_image"' in deploy
 
+# Agent diagnostics are aggregate-only and observational. Never emit raw agent
+# log lines into Actions, and never let diagnostics block an otherwise healthy deploy.
+assert "agent_diag_summary()" in deploy
+assert "OCI_AGENT_DIAG version=%s active=%s restarts=%s" in deploy
+assert "tail -n 2000" in deploy
+assert "poll_errors" in deploy and "backoff" in deploy and "transport_errors" in deploy
+assert "agent_diag_summary ||" in deploy
+assert 'cat "$log"' not in deploy.split("agent_diag_summary()", 1)[1].split("total_started_ms=", 1)[0]
+
 print("OCI staging CORS + runtime deployment contract: OK")
