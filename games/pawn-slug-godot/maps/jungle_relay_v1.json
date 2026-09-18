@@ -238,8 +238,9 @@
       "type": "commando"
     },
     {
-      "x": 1585,
-      "type": "rook"
+      "x": 1540,
+      "type": "rook",
+      "y": 446
     },
     {
       "x": 1742,
@@ -275,7 +276,8 @@
     },
     {
       "x": 2999,
-      "type": "rook"
+      "type": "rook",
+      "y": 378
     },
     {
       "x": 3156,
@@ -403,5 +405,64 @@
         "intensity": 1
       }
     ]
-  }
+  },
+  "setpieces": [
+    {
+      "id": "ruin-lift",
+      "type": "moving_platform",
+      "x": 2750,
+      "y": 320,
+      "w": 150,
+      "h": 22,
+      "travel_x": 0,
+      "travel_y": 142,
+      "period": 4.9,
+      "phase": 0.18
+    },
+    {
+      "id": "jungle-jeep",
+      "type": "convoy",
+      "trigger_x": 1500,
+      "start_x": 2250,
+      "end_x": 1260,
+      "y": 606,
+      "w": 158,
+      "h": 68,
+      "speed": 335
+    },
+    {
+      "id": "hidden-pillbox",
+      "type": "bunker_turret",
+      "x": 4550,
+      "y": 610,
+      "w": 132,
+      "h": 84,
+      "hp": 205,
+      "trigger_x": 3970,
+      "range": 810,
+      "cooldown_min": 0.78,
+      "cooldown_max": 1.08,
+      "reaction": 0.72
+    },
+    {
+      "id": "ruin-ambush",
+      "type": "reinforcement_wave",
+      "trigger_x": 3460,
+      "reaction": 0.48,
+      "enemies": [
+        {
+          "x": 3320,
+          "type": "scout"
+        },
+        {
+          "x": 3550,
+          "type": "pawn"
+        },
+        {
+          "x": 3670,
+          "type": "commando"
+        }
+      ]
+    }
+  ]
 }
