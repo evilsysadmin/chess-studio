@@ -97,7 +97,7 @@ def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(db, "AsyncIOMotorClient", FakeClient)
+    monkeypatch.setattr(db, "AsyncMongoClient", FakeClient)
 
     async def scenario():
         return await asyncio.gather(*(db.get_db() for _ in range(20)))
@@ -143,10 +143,10 @@ def test_failed_connect_enters_fast_retry_cooldown_then_recovers(monkeypatch):
         def __getitem__(self, _name):
             return fake_database
 
-        def close(self):
+        async def close(self):
             calls["closed"] += 1
 
-    monkeypatch.setattr(db, "AsyncIOMotorClient", FakeClient)
+    monkeypatch.setattr(db, "AsyncMongoClient", FakeClient)
 
     async def failed_wave():
         return await asyncio.gather(*(db.get_db() for _ in range(16)))
