@@ -27,10 +27,12 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(art?.weathering?.name).toBe('chronicles-stone-weathering');
     expect(art?.grounding?.name).toBe('chronicles-party-grounding');
     expect(art?.architecture?.name).toBe('chronicles-tactics-architecture-depth');
+    expect(art?.pressurePlates?.name).toBe('chronicles-tactics-pressure-plates');
     expect(art?.damageFeedback?.name).toBe('chronicles-party-damage-feedback');
     expect(scene.getObjectByName('chronicles-fortress-backdrop')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-wet-stone')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-tactics-architecture-depth')).toBeTruthy();
+    expect(scene.getObjectByName('chronicles-tactics-pressure-plates')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-grounding')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-damage-feedback')).toBeTruthy();
   });
@@ -47,6 +49,28 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(art?.architecture?.userData.chroniclesArchitectureWallCount).toBe(0);
   });
 
+  it('renders every authored floor trap with stable ids and distinct silhouettes', () => {
+    const { scene, models } = sceneModels();
+    const scenePlan = {
+      center: { x: 5, y: 4 },
+      wallFaces: [],
+      content: [
+        { id: 'slag-vent-west', kind: 'trap', visualType: 'slag-vent', x: 5, y: 6 },
+        { id: 'chain-plate-east', kind: 'trap', visualType: 'chain-plate', x: 9, y: 5 },
+      ],
+    };
+
+    const art = installChroniclesTacticsSceneArt(models, { coarsePointer: true, scenePlan });
+    const traps = art?.pressurePlates;
+
+    expect(traps?.userData.chroniclesTrapCount).toBe(2);
+    expect(traps?.userData.chroniclesTrapIds).toEqual(['slag-vent-west', 'chain-plate-east']);
+    expect(scene.getObjectByName('chronicles-trap-slag-vent-west')?.userData.chroniclesTrapVisualType).toBe('slag-vent');
+    expect(scene.getObjectByName('chronicles-trap-chain-plate-east')?.userData.chroniclesTrapVisualType).toBe('chain-plate');
+    expect(scene.getObjectByName('chronicles-trap-slag-vent-west')?.position.z)
+      .toBeGreaterThan(scene.getObjectByName('chronicles-trap-chain-plate-east')?.position.z);
+  });
+
   it('reuses idempotent canonical layers when called twice', () => {
     const { models } = sceneModels();
     const first = installChroniclesTacticsSceneArt(models, { coarsePointer: false });
@@ -58,6 +82,7 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(second?.weathering).toBe(first?.weathering);
     expect(second?.grounding).toBe(first?.grounding);
     expect(second?.architecture).toBe(first?.architecture);
+    expect(second?.pressurePlates).toBe(first?.pressurePlates);
     expect(second?.damageFeedback).toBe(first?.damageFeedback);
   });
 
