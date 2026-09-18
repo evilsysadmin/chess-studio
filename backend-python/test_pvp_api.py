@@ -301,6 +301,51 @@ def test_outgoing_challenge_cancel_is_idempotent_and_expiry_is_server_factual():
     assert as_user(client, "bob", "get", "/api/pvp/lobby").json()["challenges"] == []
 
 
+def test_explicit_cancel_and_decline_apply_short_pair_cooldown_only():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    first = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    cancelled = as_user(client, "alice", "post", f"/api/pvp/challenges/{first['id']}/cancel")
+    assert cancelled.status_code == 200
+
+    blocked = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
+    assert blocked.status_code == 429
+    assert int(blocked.headers["retry-after"]) <= pvp_store.CHALLENGE_PAIR_COOLDOWN_SECONDS
+    assert "antes de volver a retar" in blocked.json()["detail"]
+
+    # El cooldown es por pareja, así que tampoco permite el ping-pong inmediato
+    # desde la otra dirección.
+    reverse = as_user(client, "bob", "post", "/api/pvp/challenges", json={"opponent": "alice"})
+    assert reverse.status_code == 429
+
+    pvp_store._memory_challenges[first["id"]]["cooldown_until"] = pvp_store.utcnow() - timedelta(seconds=1)
+    second = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
+    assert second.status_code == 201
+    second_id = second.json()["challenge"]["id"]
+
+    declined = as_user(client, "bob", "post", f"/api/pvp/challenges/{second_id}/decline")
+    assert declined.status_code == 200
+    blocked_after_decline = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
+    assert blocked_after_decline.status_code == 429
+
+
+def test_roster_leave_cancellation_does_not_create_pair_cooldown():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    assert as_user(client, "alice", "delete", "/api/pvp/roster").status_code == 204
+    assert pvp_store._memory_challenges[challenge["id"]]["status"] == "cancelled"
+    assert "cooldown_until" not in pvp_store._memory_challenges[challenge["id"]]
+
+    assert as_user(client, "alice", "post", "/api/pvp/roster").status_code == 200
+    retried = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
+    assert retried.status_code == 201
+
+
 def test_resignation_is_authoritative_and_settles_rating(monkeypatch):
     monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
     client = make_client()
