@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   WAR_ROOM_V2_STAGING_MODEL_URL,
+  configureWarRoomV2Loader,
   warRoomV2EnvMapIntensity,
   warRoomV2ModelUrl,
   scheduleWarRoomV2AfterFirstPaint,
@@ -15,6 +16,20 @@ import {
 } from './WarRoomSceneVariant.js';
 
 describe('War Room v2 staging asset URL', () => {
+  it('registers the bundled Meshopt decoder on the v2 GLTF loader', () => {
+    let decoder = null;
+    const loader = {
+      setMeshoptDecoder(value) {
+        decoder = value;
+        return this;
+      },
+    };
+
+    expect(configureWarRoomV2Loader(loader)).toBe(loader);
+    expect(decoder).toBeTruthy();
+    expect(decoder.ready).toBeTruthy();
+  });
+
   it('never paints classic first when persisted v2 is available', () => {
     expect(shouldShowClassicWarRoomShell()).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v2' })).toBe(false);
