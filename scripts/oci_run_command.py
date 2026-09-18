@@ -653,6 +653,7 @@ def self_test() -> None:
     assert sample in deploy
     assert len(deploy.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert "docker build" not in deploy
+    assert "sync_current(oci, config=config, resolved=resolved, diagnose=False)" in source
     assert "systemctl restart" not in deploy
     for payload in (smoke, deploy):
         assert_nonsecret_command(payload)
@@ -723,6 +724,9 @@ def main() -> int:
             resolved=resolved,
             include_desired_config=False,
         )
+        from oci_vault_sync import sync_current
+
+        sync_current(oci, config=config, resolved=resolved, diagnose=False)
         execute(
             oci,
             config,
