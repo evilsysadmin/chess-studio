@@ -35,6 +35,15 @@ const RUN_LEG_MOTION_MIN_DIFF := 0.025
 const RUN_LEG_MOTION_MIN_SCORE := 0.045
 const RUN_LEG_MOTION_RELATIVE_GAIN := 1.08
 const RUN_LEG_PIXEL_DIFF := 0.20
+const RUN_ENTER_SPEED_RATIO := 0.72
+const RUN_EXIT_SPEED_RATIO := 0.54
+const WALK_CYCLE_HZ_MIN := 1.20
+const WALK_CYCLE_HZ_MAX := 1.60
+const RUN_CYCLE_HZ_MIN := 1.85
+const RUN_CYCLE_HZ_MAX := 2.30
+const WALK_BOB_PX := 0.65
+const RUN_BOB_PX := 1.65
+const RUN_LEAN_DEGREES := 1.35
 const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 
@@ -190,8 +199,13 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         elif _one_shot_action.is_empty():
             var next := _resolve_action(horizontal_speed_ratio, on_floor, crouching and on_floor, vertical_speed)
             if next != _action:
+                var preserve_stride_phase := (
+                    _action in ["walk", "run"]
+                    and next in ["walk", "run"]
+                )
                 _action = next
-                _locomotion_frame_accumulator = 0.0
+                if not preserve_stride_phase:
+                    _locomotion_frame_accumulator = 0.0
                 _play_action()
             if _action == "walk" or _action == "run":
                 _advance_locomotion(delta, horizontal_speed_ratio)
@@ -219,7 +233,11 @@ func _resolve_action(speed: float, on_floor: bool, crouching: bool, vertical_spe
         return "jump"
     if crouching:
         return "crouch"
-    if speed > 0.65:
+    # Hysteresis avoids walk/run ping-pong while acceleration hovers around the
+    # threshold; once Matthias is running he keeps the stride until clearly slow.
+    if _action == "run" and speed > RUN_EXIT_SPEED_RATIO:
+        return "run"
+    if speed > RUN_ENTER_SPEED_RATIO:
         return "run"
     if speed > 0.08:
         return "walk"
@@ -631,15 +649,42 @@ func _advance_locomotion(delta: float, horizontal_speed_ratio: float) -> void:
     var frame_count := _body.sprite_frames.get_frame_count(_action)
     if frame_count <= 1:
         return
-    var authored_fps := _body.sprite_frames.get_animation_speed(_action)
-    # Tie the cycle to actual travel speed so movement can never degenerate into
-    # a static skating pose. Keep a floor once the state is active so acceleration
-    # still shows a readable first step.
-    var speed_factor := maxf(0.55, horizontal_speed_ratio)
-    _locomotion_frame_accumulator += delta * authored_fps * speed_factor
+
+    var ratio := clampf(horizontal_speed_ratio, 0.0, 1.0)
+    var cycle_hz := WALK_CYCLE_HZ_MIN
+    if _action == "run":
+        var run_t := clampf(
+            (ratio - RUN_EXIT_SPEED_RATIO) / maxf(0.001, 1.0 - RUN_EXIT_SPEED_RATIO),
+            0.0,
+            1.0,
+        )
+        cycle_hz = lerpf(RUN_CYCLE_HZ_MIN, RUN_CYCLE_HZ_MAX, smoothstep(0.0, 1.0, run_t))
+    else:
+        var walk_t := clampf(ratio / RUN_ENTER_SPEED_RATIO, 0.0, 1.0)
+        cycle_hz = lerpf(WALK_CYCLE_HZ_MIN, WALK_CYCLE_HZ_MAX, smoothstep(0.0, 1.0, walk_t))
+
+    _locomotion_frame_accumulator += delta * float(frame_count) * cycle_hz
     _body.animation = _action
     _body.frame = int(floor(_locomotion_frame_accumulator)) % frame_count
     _body.pause()
+    _apply_locomotion_polish(frame_count, ratio)
+
+func _apply_locomotion_polish(frame_count: int, speed_ratio: float) -> void:
+    if frame_count <= 1:
+        return
+    var phase := fmod(_locomotion_frame_accumulator / float(frame_count), 1.0) * TAU
+    if _action == "run":
+        var intensity := clampf(
+            (speed_ratio - RUN_EXIT_SPEED_RATIO) / maxf(0.001, 1.0 - RUN_EXIT_SPEED_RATIO),
+            0.0,
+            1.0,
+        )
+        intensity = smoothstep(0.0, 1.0, intensity)
+        _fx_root.position.y = -absf(sin(phase * 2.0)) * RUN_BOB_PX * intensity
+        _fx_root.rotation = deg_to_rad(-RUN_LEAN_DEGREES * intensity)
+    elif _action == "walk":
+        var intensity := clampf(speed_ratio / RUN_ENTER_SPEED_RATIO, 0.0, 1.0)
+        _fx_root.position.y = -absf(sin(phase * 2.0)) * WALK_BOB_PX * intensity
 
 func _play_one_shot(name: String, hold: bool = false) -> void:
     if not _animation_available(name):
