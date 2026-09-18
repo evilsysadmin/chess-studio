@@ -53,6 +53,7 @@ REQUIRED_MATTHIAS = (
     "animation_finished.connect",
     "_advance_locomotion",
     "_apply_locomotion_polish",
+    "_install_canonical_crouch",
     "RUN_ENTER_SPEED_RATIO",
     "RUN_EXIT_SPEED_RATIO",
     "RUN_CYCLE_HZ_MIN",
@@ -61,7 +62,6 @@ REQUIRED_MATTHIAS = (
     "RUN_LEG_MOTION_MIN_SCORE",
     "_rendered_weapon",
     "_prefetch_machinegun",
-    'frames.get_frame_texture("fall", 0)',
     'name = "WeaponRoot"',
 )
 FORBIDDEN_MATTHIAS = (
@@ -71,6 +71,7 @@ FORBIDDEN_MATTHIAS = (
     "res://assets/weapon_atlas.svg",
     "_pistol_shoot",
     "_draw_boot_fallback",
+    'frames.get_frame_texture("fall", 0)',
     "/pawn-slug/matthias/machinegun/",
     "/pawn-slug/matthias/shotgun/",
     "/pawn-slug/matthias/panzerfaust/",
@@ -156,7 +157,7 @@ def self_test() -> None:
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
     assert "matthias_smg_godot_strict_8x10_256_v5.png" in REQUIRED_MATTHIAS
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
-    assert 'frames.get_frame_texture("fall", 0)' in REQUIRED_MATTHIAS
+    assert "_install_canonical_crouch" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
