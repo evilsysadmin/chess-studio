@@ -87,9 +87,9 @@ describe('War Room canonical warm lighting', () => {
 
     expect(profile).toEqual(warRoomV2RuntimeLightingProfile());
     expect(renderer.toneMappingExposure).toBe(1);
-    expect(hemisphere.intensity).toBe(0.44);
-    expect(key.intensity).toBe(1.34);
-    expect(warmFill.intensity).toBe(1.55);
+    expect(hemisphere.intensity).toBe(0.52);
+    expect(key.intensity).toBe(1.40);
+    expect(warmFill.intensity).toBe(1.82);
     expect(scene.background.getHex()).toBe(0x070504);
     expect(scene.fog.color.getHex()).toBe(0x0d0907);
     expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v2');
