@@ -32,15 +32,14 @@ def apply_combat_crouch(rig, weapon: str) -> None:
     weighted.apply_frame_pose(rig, weapon, "crouch", 9, 10)
     d = math.radians
 
-    rig.pose.bones["root"].location.z += 0.10
-    rig.pose.bones["root"].rotation_euler[1] += d(-4.0)
-    rig.pose.bones["spine"].rotation_euler[1] += d(-5.0)
-    rig.pose.bones["head"].rotation_euler[1] += d(3.0)
-    rig.pose.bones["thigh.L"].rotation_euler[1] *= 0.82
-    rig.pose.bones["thigh.R"].rotation_euler[1] *= 0.82
-    rig.pose.bones["shin.L"].rotation_euler[1] *= 0.86
-    rig.pose.bones["shin.R"].rotation_euler[1] *= 0.86
-    rig.pose.bones["weapon_socket"].location.z += 0.045
+    # Stay visibly crouched: the canonical pose already has the correct knee
+    # geometry. Lift it only a touch to avoid the old "sitting" read, then add
+    # forward combat intent without straightening either leg.
+    rig.pose.bones["root"].location.z += 0.025
+    rig.pose.bones["root"].rotation_euler[1] += d(-3.0)
+    rig.pose.bones["spine"].rotation_euler[1] += d(-4.0)
+    rig.pose.bones["head"].rotation_euler[1] += d(2.0)
+    rig.pose.bones["weapon_socket"].location.z += 0.015
     rig.pose.bones["weapon_socket"].rotation_euler[1] += d(-2.0)
     bpy.context.view_layer.update()
 
