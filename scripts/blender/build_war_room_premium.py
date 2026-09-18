@@ -843,8 +843,6 @@ def add_gothic_canon_v2(static, mats):
                     mats["stone"], static, bevel=0.035,
                 )
                 beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-        sphere(f"WR_CANON_arch_{prefix}_boss", (cx, y - 0.02, peak), 0.105, mats["brass_dark"], static)
-
     add_pointed_arch_frame("left", -4.55)
     add_pointed_arch_frame("right", 4.85)
 
