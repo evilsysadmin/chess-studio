@@ -367,18 +367,8 @@ def setup_scene(out):
     if scene.world is None:
         scene.world = bpy.data.worlds.new("DungeonWorld")
     scene.world.color = (.004, .003, .004)
-    scene.use_nodes = True
-    nt = scene.node_tree
-    nt.nodes.clear()
-    rl = nt.nodes.new("CompositorNodeRLayers")
-    glare = nt.nodes.new("CompositorNodeGlare")
-    glare.glare_type = "FOG_GLOW"
-    glare.quality = "HIGH"
-    glare.threshold = .8
-    glare.size = 6
-    comp = nt.nodes.new("CompositorNodeComposite")
-    nt.links.new(rl.outputs["Image"], glare.inputs["Image"])
-    nt.links.new(glare.outputs["Image"], comp.inputs["Image"])
+    # Blender 5.2 compositor ownership changed; keep the lookdev render self-contained
+    # and rely on emissive materials + physical lights instead of version-fragile glow nodes.
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
