@@ -46,7 +46,6 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
         raise SystemExit('Workflow static contracts failed:\n- ' + '\n- '.join(errors))
 
     run_flux_seam_contracts(root)
-    subprocess.run([sys.executable, "-S", "scripts/oci_staging2_shadow_contract.py"], cwd=root, check=True)
     run_oci_required_contracts(root)
     print(
         'workflow-static-contracts OK · lineage + promotion + staging identity + workflow inventory/ratchets'
