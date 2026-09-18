@@ -18,7 +18,7 @@ jobs:
   render-enemies:
     name: Render enemy cast · Blender v1
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -57,7 +57,7 @@ jobs:
                   violations.append(str(message))
               return condition
 
-          gate(types == ('pawn', 'knight', 'rook'), f'unexpected types: {types!r}')
+          gate(types == ('pawn', 'knight', 'rook', 'bishop'), f'unexpected types: {types!r}')
           gate(row_order == ('idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death'), f'unexpected row order: {row_order!r}')
           gate(actions == {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}, f'unexpected action contract: {actions!r}')
           gate(manifest.get('sourceFacing') == 'left', f"sourceFacing={manifest.get('sourceFacing')!r}")
@@ -144,13 +144,13 @@ jobs:
 
           # The three archetypes must remain visibly different at the same idle frame.
           silhouette_diffs = {}
-          for left, right in (('pawn', 'knight'), ('knight', 'rook'), ('pawn', 'rook')):
+          for left, right in (('pawn', 'knight'), ('knight', 'rook'), ('pawn', 'rook'), ('pawn', 'bishop'), ('rook', 'bishop')):
               diff = ImageChops.difference(representative[(left, 'idle')], representative[(right, 'idle')])
               bbox = diff.getbbox()
               silhouette_diffs[f'{left}:{right}'] = list(bbox) if bbox else None
               gate(bbox is not None, f'{left}/{right} silhouettes collapsed')
 
-          # Compact 3x7 review board: types as rows, actions as columns.
+          # Compact 4x7 review board: types as rows, actions as columns.
           tile = 128
           label_h = 28
           board = Image.new('RGBA', (len(row_order) * tile, len(types) * (tile + label_h)), (14, 16, 18, 255))
