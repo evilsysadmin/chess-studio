@@ -22,133 +22,152 @@
       "y": 520,
       "w": 180,
       "h": 24,
-      "kind": "low_bridge"
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
       "x": 650,
       "y": 458,
       "w": 150,
       "h": 24,
-      "kind": "wood_bridge"
+      "kind": "wood_bridge",
+      "material": "wood"
     },
     {
       "x": 860,
       "y": 382,
       "w": 210,
       "h": 24,
-      "kind": "canopy_walk"
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 1130,
       "y": 520,
       "w": 200,
       "h": 24,
-      "kind": "low_bridge"
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
       "x": 1390,
       "y": 446,
       "w": 170,
       "h": 24,
-      "kind": "wood_bridge"
+      "kind": "wood_bridge",
+      "material": "wood"
     },
     {
       "x": 1620,
       "y": 370,
       "w": 220,
       "h": 24,
-      "kind": "canopy_walk"
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 1910,
       "y": 492,
       "w": 180,
       "h": 24,
-      "kind": "ruin_ledge"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 2160,
       "y": 426,
       "w": 140,
       "h": 24,
-      "kind": "wood_bridge"
+      "kind": "wood_bridge",
+      "material": "wood"
     },
     {
       "x": 2370,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_bridge"
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
       "x": 2630,
       "y": 456,
       "w": 210,
       "h": 24,
-      "kind": "ruin_ledge"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 2900,
       "y": 378,
       "w": 200,
       "h": 24,
-      "kind": "canopy_walk"
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 3170,
       "y": 500,
       "w": 170,
       "h": 24,
-      "kind": "wood_bridge"
+      "kind": "wood_bridge",
+      "material": "wood"
     },
     {
       "x": 3410,
       "y": 438,
       "w": 150,
       "h": 24,
-      "kind": "ruin_ledge"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 3640,
       "y": 520,
       "w": 220,
       "h": 24,
-      "kind": "low_bridge"
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
       "x": 3930,
       "y": 404,
       "w": 230,
       "h": 24,
-      "kind": "canopy_walk"
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 4230,
       "y": 472,
       "w": 170,
       "h": 24,
-      "kind": "wood_bridge"
+      "kind": "wood_bridge",
+      "material": "wood"
     },
     {
       "x": 4460,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_bridge"
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
       "x": 4720,
       "y": 392,
       "w": 230,
       "h": 24,
-      "kind": "canopy_walk"
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 5020,
       "y": 454,
       "w": 210,
       "h": 24,
-      "kind": "ruin_ledge"
+      "kind": "ruin_ledge",
+      "material": "stone"
     }
   ],
   "obstacles": [
@@ -244,7 +263,9 @@
     },
     {
       "x": 1742,
-      "type": "pawn"
+      "type": "pawn",
+      "idle_pose": "sit",
+      "idle_reaction": 0.86
     },
     {
       "x": 1899,
@@ -281,7 +302,9 @@
     },
     {
       "x": 3156,
-      "type": "pawn"
+      "type": "pawn",
+      "idle_pose": "lean",
+      "idle_reaction": 0.94
     },
     {
       "x": 3313,
@@ -313,7 +336,9 @@
     },
     {
       "x": 4412,
-      "type": "commando"
+      "type": "commando",
+      "idle_pose": "rest",
+      "idle_reaction": 1.02
     },
     {
       "x": 4569,
@@ -482,6 +507,37 @@
       "y": 198,
       "w": 140,
       "h": 400
+    },
+    {
+      "id": "bamboo-blockade",
+      "type": "destructible_barricade",
+      "x": 2430,
+      "y": 548,
+      "w": 104,
+      "h": 62,
+      "hp": 92
+    },
+    {
+      "id": "rotting-walkway",
+      "type": "destructible_platform",
+      "x": 3370,
+      "y": 318,
+      "w": 180,
+      "h": 24,
+      "hp": 68
+    },
+    {
+      "id": "jungle-shelling",
+      "type": "artillery_barrage",
+      "trigger_x": 2920,
+      "min_x": 2860,
+      "max_x": 3740,
+      "salvos": 3,
+      "telegraph": 1.02,
+      "interval": 0.88,
+      "radius": 84,
+      "damage": 92,
+      "lead": 82
     }
   ]
 }
