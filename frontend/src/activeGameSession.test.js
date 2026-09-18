@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ACTIVE_GAME_SESSION_KEY, clearActiveGameSession, loadActiveGameSession, saveActiveGameSession } from './activeGameSession.js';
+import { ACTIVE_GAME_SESSION_KEY, ACTIVE_GAME_VISIBLE_ROUTE_KEY, clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession, saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { loadClockSnapshot, saveClockSnapshot } from './clockPersistence.js';
 import { clearLocalUserState } from './profileKeys.js';
 
 describe('continuidad de partida activa', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
   it('persiste ruta, contexto, reloj y snapshot de una partida normal', () => {
     saveActiveGameSession({
@@ -22,6 +22,18 @@ describe('continuidad de partida activa', () => {
       timeControlId: '10+20',
       gameSnapshot: { id: 'g-1', history: [{ san: 'e4' }] },
     });
+  });
+
+  it('distingue una partida guardada de la ruta de partida que estaba realmente visible', () => {
+    saveActiveGameSession({ route: 'game', game: { id: 'g-visible', history: [] } });
+    expect(loadVisibleActiveGameSession()).toBeNull();
+
+    setActiveGameSessionVisible('game');
+    expect(loadVisibleActiveGameSession()).toMatchObject({ route: 'game', gameId: 'g-visible' });
+
+    setActiveGameSessionVisible(null);
+    expect(loadVisibleActiveGameSession()).toBeNull();
+    expect(loadActiveGameSession()).toMatchObject({ gameId: 'g-visible' });
   });
 
   it('también identifica una partida de torneo para poder reconstruir su pantalla', () => {
@@ -154,7 +166,9 @@ describe('continuidad de partida activa', () => {
   it('rechaza datos corruptos y se limpia explícitamente', () => {
     localStorage.setItem(ACTIVE_GAME_SESSION_KEY, JSON.stringify({ version: 1, route: 'banana', gameId: 'x' }));
     expect(loadActiveGameSession()).toBeNull();
+    setActiveGameSessionVisible('game');
     clearActiveGameSession();
     expect(localStorage.getItem(ACTIVE_GAME_SESSION_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ACTIVE_GAME_VISIBLE_ROUTE_KEY)).toBeNull();
   });
 });
