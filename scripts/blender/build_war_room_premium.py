@@ -806,8 +806,8 @@ def add_gothic_canon_v2(static, mats):
         y = 6.43
         span = 1.48
         jamb_bottom = 3.28
-        shoulder = 5.58
-        peak = 6.34
+        shoulder = 5.08
+        peak = 6.46
         for side in (-1, 1):
             cube(
                 f"WR_CANON_arch_{prefix}_jamb_{side}",
@@ -927,6 +927,7 @@ def add_gothic_canon_v2(static, mats):
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
     light("WR_CANON_chandelier_light", "POINT", (0, 2.55, 5.82), 190.0,
           (1.0, 0.48, 0.18), static, radius=2.2)
+    anchor("WR_ANCHOR_chandelier_practical", (0, 2.55, 5.72), static)
 
     # Burgundy heraldic drape on the camera-facing table edge.
     front_y = -5.50
@@ -954,16 +955,16 @@ def add_gothic_canon_v2(static, mats):
     # Small rampant horse relief on the drape, intentionally broad rather than
     # anatomically fussy so it survives the gameplay camera.
     emblem_y = front_y - 0.085
-    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.53), 0.24,
+    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.68), 0.20,
                   mats["brass"], static, scale=(1.30, 0.28, 0.72))
     body.rotation_euler.y = -0.26
-    sphere("WR_CANON_table_horse_head", (-0.28, emblem_y, 0.70), 0.13,
+    sphere("WR_CANON_table_horse_head", (-0.24, emblem_y, 0.82), 0.11,
            mats["brass"], static, scale=(1.12, 0.30, 0.78))
-    for index, (x, z, ang) in enumerate(((-0.08, 0.34, -0.72), (0.14, 0.32, 0.58))):
+    for index, (x, z, ang) in enumerate(((-0.07, 0.49, -0.72), (0.12, 0.47, 0.58))):
         leg = cylinder(f"WR_CANON_table_horse_leg_{index}", (x, emblem_y, z),
                        0.035, 0.34, mats["brass"], static, vertices=14)
         leg.rotation_euler.y = ang
-    tail = cylinder("WR_CANON_table_horse_tail", (0.31, emblem_y, 0.59),
+    tail = cylinder("WR_CANON_table_horse_tail", (0.27, emblem_y, 0.74),
                     0.030, 0.30, mats["brass"], static, vertices=14)
     tail.rotation_euler.y = 0.88
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
@@ -1022,8 +1023,8 @@ def build():
         "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.046, 0.045, 0.043, 1), rough=0.77, coat=0.018, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.072, 0.069, 0.064, 1), rough=0.74, coat=0.018, texture="stone", scale=4.3, bump=0.075),
+        "stone": material("WR_MAT_stone", (0.074, 0.070, 0.064, 1), rough=0.77, coat=0.018, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.125, 0.112, 0.094, 1), rough=0.74, coat=0.018, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.022, 0.022, 0.023, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.012, 0.026, 0.022, 1), rough=0.96, sheen=0.18, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.205, 0.220, 0.245, 1), metal=0.93, rough=0.29, coat=0.18, texture="metal", scale=28, bump=0.035),
@@ -1120,7 +1121,7 @@ def validate():
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
         "WR_CANON_banner_1", "WR_CANON_banner_2", "WR_CANON_banner_3",
-        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
         "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
@@ -1347,6 +1348,7 @@ def validate_runtime_glb(path, expected_factors=None):
     required_runtime_anchors = {
         "WR_ANCHOR_fireplace_practical",
         "WR_ANCHOR_right_fireplace_practical",
+        "WR_ANCHOR_chandelier_practical",
         "WR_ANCHOR_window_moonlight",
     }
     missing_runtime_anchors = sorted(required_runtime_anchors - node_names)
