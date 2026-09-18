@@ -269,6 +269,9 @@ func _draw_far_ridge() -> void:
     if _preset == "jungle_storm":
         _draw_jungle_canopy()
         return
+    if _preset == "night_front":
+        _draw_industrial_low_ridge()
+        return
 
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
     for x in range(0, int(_world_size.x) + 161, 160):
@@ -288,12 +291,46 @@ func _draw_far_ridge() -> void:
     front.append(Vector2(_world_size.x, _floor_y))
     draw_colored_polygon(front, Color(0.082, 0.12, 0.14, 0.98))
 
+func _draw_industrial_low_ridge() -> void:
+    # The approved raster already owns mountains and the high silhouette.
+    # Keep this parallax plane low so it adds motion/depth without burying
+    # the viaduct, water and factory frontage.
+    var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for x in range(0, int(_world_size.x) + 181, 180):
+        var xf := float(x)
+        var noise := (_noise(x / 180, 52.1) - 0.5) * 14.0
+        var y := 458.0 + sin(xf * 0.0042) * 13.0 + noise
+        rear.append(Vector2(xf, y))
+    rear.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(rear, Color(0.060, 0.082, 0.094, 0.72))
+
+    var front := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for x in range(0, int(_world_size.x) + 141, 140):
+        var xf := float(x)
+        var noise := (_noise(x / 140, 52.8) - 0.5) * 10.0
+        var y := 504.0 + sin(xf * 0.0067 + 0.7) * 9.0 + noise
+        front.append(Vector2(xf, y))
+    front.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(front, Color(0.070, 0.094, 0.103, 0.78))
+
+    # Sparse low treeline breaks the edge without recreating a giant mountain.
+    for index in range(28):
+        var x := 40.0 + float(index) * 190.0
+        var base_y := 500.0 + (_noise(index, 53.4) - 0.5) * 16.0
+        var h := 18.0 + _noise(index, 54.0) * 28.0
+        var tree := PackedVector2Array([
+            Vector2(x, base_y - h),
+            Vector2(x - 8.0, base_y),
+            Vector2(x + 8.0, base_y),
+        ])
+        draw_colored_polygon(tree, Color(0.045, 0.067, 0.074, 0.52))
+
 func _draw_industrial_landmark() -> void:
     if _preset != "night_front":
         return
 
-    var haze := Color(0.11, 0.15, 0.17, 0.16 * _intensity)
-    var water := Color(0.030, 0.074, 0.096, 0.82 * _intensity)
+    var haze := Color(0.11, 0.15, 0.17, 0.11 * _intensity)
+    var water := Color(0.030, 0.074, 0.096, 0.62 * _intensity)
     var far_structure := Color(0.090, 0.108, 0.120, 0.96)
     var factory_dark := Color(0.082, 0.094, 0.104, 0.98)
     var factory_mid := Color(0.112, 0.122, 0.128, 0.98)
