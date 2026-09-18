@@ -347,3 +347,50 @@ def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
     assert payload["clock"]["runningColor"] is None
     assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
     assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
+
+
+
+def test_starting_handoff_expires_without_result_or_rating():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    accepted = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
+    assert accepted.status_code == 200
+    match = accepted.json()["match"]
+    assert match["status"] == "starting"
+    assert match["readyDeadline"]
+
+    # Aceptar ya no expulsa del roster: sólo una partida realmente activa lo hace.
+    assert {row["username"] for row in as_user(client, "alice", "get", "/api/pvp/lobby").json()["roster"]} == {"alice", "bob"}
+
+    pvp_store._memory_matches[match["id"]]["ready_deadline"] = pvp_store.utcnow() - timedelta(seconds=1)
+    expired = as_user(client, "alice", "get", f"/api/pvp/matches/{match['id']}")
+    assert expired.status_code == 200
+    payload = expired.json()["match"]
+    assert payload["status"] == "cancelled"
+    assert payload["result"] is None
+    assert payload["endReason"] == "handoff_timeout"
+    assert payload["ratingChange"] is None
+    assert "pvp_rating_games" not in users_store._memory_users["alice"]
+    assert "pvp_rating_games" not in users_store._memory_users["bob"]
+    assert as_user(client, "alice", "get", "/api/pvp/lobby").json()["activeMatch"] is None
+
+
+def test_accept_rejects_second_concurrent_duel_for_same_player():
+    users_store._memory_users["carol"] = {"username": "carol"}
+    client = make_client()
+    for user in ("alice", "bob", "carol"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    first = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    second = as_user(client, "carol", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+
+    accepted = as_user(client, "bob", "post", f"/api/pvp/challenges/{first['id']}/accept")
+    assert accepted.status_code == 200
+    assert accepted.json()["match"]["status"] == "starting"
+
+    duplicate = as_user(client, "bob", "post", f"/api/pvp/challenges/{second['id']}/accept")
+    assert duplicate.status_code == 409
+    assert "duelo 1v1 en curso" in duplicate.json()["detail"]
