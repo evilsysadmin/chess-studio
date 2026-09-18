@@ -73,6 +73,8 @@ REQUIRED_MATTHIAS = (
     "_full_muzzle_positions_for_atlas",
     "_muzzle_from_full_cell",
     "RUN_FIRE_RECOIL_DEGREES",
+    "MOVING_FIRE_RECOIL_BOOST",
+    "MOVING_FIRE_FLASH_BOOST",
     'name = "WeaponRoot"',
 )
 FORBIDDEN_MATTHIAS = (
@@ -317,6 +319,8 @@ def self_test() -> None:
     assert "SUPPRESSION_PUSH_SECONDS" in REQUIRED_ENEMY_AI
     assert "_full_muzzle_positions_for_atlas" in REQUIRED_MATTHIAS
     assert "RUN_FIRE_RECOIL_DEGREES" in REQUIRED_MATTHIAS
+    assert "MOVING_FIRE_RECOIL_BOOST" in REQUIRED_MATTHIAS
+    assert "MOVING_FIRE_FLASH_BOOST" in REQUIRED_MATTHIAS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
     assert "GIRA EL MÓVIL" in REQUIRED_TOUCH
