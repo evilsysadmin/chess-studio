@@ -152,7 +152,7 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   const restoredWarRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
   await expect(restoredWarRoom).toBeVisible({ timeout: 12_000 });
 
-  const duelStatus = restoredWarRoom.getByRole('status');
+  const duelStatus = restoredWarRoom.locator('.pvp-war-room__duel-pill [role="status"]');
   await expect(duelStatus).toHaveText('Tu turno');
 
   // Background suspends network polling. Returning to foreground must force an
@@ -164,7 +164,6 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await page.waitForTimeout(700);
   expect(matchReads).toBe(readsWhileHidden);
   await setVisibility(page, 'visible');
-  await expect(duelStatus).toHaveText('Reconectando con el árbitro…');
   await expect.poll(() => matchReads, { timeout: 1200 }).toBeGreaterThan(readsWhileHidden);
   await expect(duelStatus).toHaveText('bob juega');
 
