@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
@@ -8,27 +9,53 @@ const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 
-async function waitForWarRoomV2Revision(request, expectedRevision) {
-  const expected = String(expectedRevision || '').trim();
+function expectedWarRoomV2Revision() {
+  const explicit = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '').trim();
+  if (explicit) return explicit;
+  try {
+    const eventPath = String(process.env.GITHUB_EVENT_PATH || '').trim();
+    if (eventPath) {
+      const event = JSON.parse(readFileSync(eventPath, 'utf8'));
+      const head = String(event?.pull_request?.head?.sha || event?.after || '').trim();
+      if (head) return head;
+    }
+  } catch {
+    // Local visual runs have no GitHub event payload.
+  }
+  return String(process.env.GITHUB_SHA || '').trim();
+}
+
+async function installWarRoomV2RevisionRoute(page) {
+  const expected = expectedWarRoomV2Revision();
   if (!expected) return;
   const deadline = Date.now() + 180_000;
   const revisionUrl = WAR_ROOM_V2_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
+  let body = null;
   while (Date.now() < deadline) {
     try {
-      const response = await request.get(revisionUrl + '?probe=' + Date.now(), {
-        headers: {
-          'cache-control': 'no-cache',
-          range: 'bytes=0-31',
-        },
+      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: { 'cache-control': 'no-cache' },
         timeout: 10_000,
       });
-      if (response.ok()) return;
+      if (response.ok()) {
+        body = await response.body();
+        break;
+      }
     } catch {
       // Blender may still be publishing; keep polling to the bounded deadline.
     }
     await new Promise((resolve) => setTimeout(resolve, 1_500));
   }
-  throw new Error('War Room v2 revision GLB timeout: ' + expected);
+  if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
+
+  await page.route('**/war-room/v2/staging/current.glb*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'model/gltf-binary',
+      body,
+      headers: { 'cache-control': 'no-store' },
+    });
+  });
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
@@ -99,6 +126,11 @@ async function freezeVisualFrame(page) {
 }
 
 async function captureViewportPng(context, page, path) {
+  // WebGL defaults to preserveDrawingBuffer=false. Force one synchronous
+  // renderer paint immediately before CDP captures the compositor surface so
+  // quiet v2 scenes never turn into an all-black PNG after animation freeze.
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(20);
   const session = await context.newCDPSession(page);
   try {
     const { data } = await session.send('Page.captureScreenshot', {
@@ -246,10 +278,7 @@ async function captureWarRoomHealth(page, label) {
 async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   if (variant === 'v2') {
-    await waitForWarRoomV2Revision(
-      page.request,
-      process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION,
-    );
+    await installWarRoomV2RevisionRoute(page);
   }
   await page.addInitScript(({ key, value }) => {
     window.localStorage.setItem(key, value);
@@ -271,6 +300,12 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
   await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
+
+  const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
+  if (await tutorial.isVisible().catch(() => false)) {
+    await tutorial.getByRole('button', { name: /Saltar|Continuar/ }).click();
+    await expect(tutorial).toBeHidden();
+  }
 
   if (variant !== 'v2') {
     // The cat is classic-shell decor; keep that canary there without making
