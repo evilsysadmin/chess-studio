@@ -40,6 +40,7 @@ export default function PvpAppSurface({ view, replaceView }) {
           match={flow.handoffMatch}
           error={flow.handoffError}
           onComplete={flow.completeHandoff}
+          onAbort={flow.cancelHandoff}
         />
       )}
       {view === 'pvpGame' && flow.match && (
