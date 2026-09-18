@@ -10,6 +10,7 @@ signal died(lives_remaining: int)
 signal respawned(current_hp: int, max_hp: int, lives_remaining: int)
 signal game_over
 signal weapon_changed(weapon_id: String, ammo_remaining: int)
+signal landed(intensity: float)
 
 const MatthiasArt := preload("res://scripts/matthias_art.gd")
 const MOVE_SPEED := 330.0
@@ -162,9 +163,12 @@ func _physics_process(delta: float) -> void:
         velocity.y *= 0.55
     _jump_was_pressed = jump_pressed
 
+    var landing_speed := maxf(0.0, velocity.y)
     move_and_slide()
     _update_checkpoint()
     var landed_now := not was_on_floor and is_on_floor()
+    if landed_now:
+        landed.emit(clampf((landing_speed - 180.0) / 620.0, 0.0, 1.0))
     crouching = _crouch_pressed() and is_on_floor()
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 

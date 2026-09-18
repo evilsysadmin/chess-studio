@@ -16,6 +16,8 @@ ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
+PLAYER = GODOT_ROOT / "scripts/player.gd"
+COMBAT_AUDIO = GODOT_ROOT / "scripts/combat_audio.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -117,6 +119,30 @@ REQUIRED_COMBAT_FX = (
     '"shotgun"',
     '"panzerfaust"',
 )
+REQUIRED_PLAYER_FEEL = (
+    "signal landed",
+    "landing_speed",
+    "landed.emit",
+)
+REQUIRED_AUDIO = (
+    "AudioStreamPlayer",
+    "AudioStreamWAV",
+    "PackedByteArray",
+    "play_weapon",
+    "play_impact",
+    "play_explosion",
+    "play_pickup",
+    "play_hurt",
+    "play_land",
+)
+REQUIRED_FEEL = (
+    "_kick_camera_for_weapon",
+    "_add_camera_kick",
+    "_update_camera_feel",
+    "_prefers_reduced_motion",
+    "combat_audio.play_weapon",
+    "combat_audio.play_explosion",
+)
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -175,6 +201,9 @@ def validate() -> None:
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_FEEL, violations)
+    validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
+    validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -204,6 +233,9 @@ def self_test() -> None:
     assert "grab_focus" in REQUIRED_PAUSE_MENU
     assert "_draw_projectile" in REQUIRED_COMBAT_FX
     assert "_draw_muzzle_flashes" in REQUIRED_COMBAT_FX
+    assert "_prefers_reduced_motion" in REQUIRED_FEEL
+    assert "AudioStreamWAV" in REQUIRED_AUDIO
+    assert "landed.emit" in REQUIRED_PLAYER_FEEL
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 

@@ -41,6 +41,7 @@ const PANZER_BLAST_RADIUS := 152.0
 const EXPLOSION_VISUAL_SECONDS := 0.28
 const MUZZLE_FLASH_SECONDS := 0.085
 const IMPACT_FX_SECONDS := 0.16
+const CAMERA_KICK_DECAY := 32.0
 const BISHOP_SHELL_TELEGRAPH := 0.52
 const BISHOP_SHELL_RANGE := 1000.0
 const BISHOP_SUPPRESSION_TELEGRAPH := 0.46
@@ -109,12 +110,17 @@ var boss_visual
 var extraction_visual
 var environment_visual
 var _startup_ready_sent := false
+var _camera_kick := Vector2.ZERO
+var _reduced_motion := false
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 @onready var pause_menu = $PauseMenu
+@onready var camera: Camera2D = $Player/Camera2D
+@onready var combat_audio = $CombatAudio
 
 func _ready() -> void:
+    _reduced_motion = _prefers_reduced_motion()
     _build_environment_visual()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
@@ -128,6 +134,7 @@ func _ready() -> void:
     player.connect("respawned", Callable(self, "_on_player_respawned"))
     player.connect("game_over", Callable(self, "_on_player_game_over"))
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
+    player.connect("landed", Callable(self, "_on_player_landed"))
     pause_menu.connect("exit_requested", Callable(self, "_on_pause_exit_requested"))
     _sync_hud()
     queue_redraw()
@@ -144,6 +151,7 @@ func _process(delta: float) -> void:
     _update_grenades(delta)
     _update_explosion_fx(delta)
     _update_combat_fx(delta)
+    _update_camera_feel(delta)
     _update_enemies(delta)
     _update_boss(delta)
     _update_enemy_projectiles(delta)
@@ -159,6 +167,8 @@ func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> vo
     var spread := float(shot.get("spread", 0.0))
     var explosive := bool(shot.get("explosive", false))
     var weapon := String(shot.get("weapon", "pistol"))
+    combat_audio.play_weapon(weapon)
+    _kick_camera_for_weapon(weapon, direction)
     _add_muzzle_fx(origin, Vector2(direction, 0.0), weapon)
     for _pellet in range(pellets):
         var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
@@ -194,8 +204,14 @@ func _on_pause_exit_requested() -> void:
         get_tree().quit()
 
 func _on_player_hurt(_current_hp: int, _max_hp: int) -> void:
+    combat_audio.play_hurt()
+    _add_camera_kick(Vector2(randf_range(-0.7, 0.7), -0.35), 5.5)
     _sync_hud()
     _notify_parent("player-hurt")
+
+func _on_player_landed(intensity: float) -> void:
+    combat_audio.play_land(intensity)
+    _add_camera_kick(Vector2(0.0, 1.0), lerpf(1.0, 4.5, clampf(intensity, 0.0, 1.0)))
 
 func _on_player_healed(_current_hp: int, _max_hp: int) -> void:
     _sync_hud()
@@ -471,6 +487,8 @@ func _explosion_damage(base_damage: int, distance: float, radius: float) -> int:
     return maxi(1, int(round(float(base_damage) * clampf(falloff, 0.0, 1.0))))
 
 func _add_explosion_fx(position: Vector2, radius: float) -> void:
+    combat_audio.play_explosion()
+    _add_camera_kick(Vector2(randf_range(-0.7, 0.7), randf_range(-0.45, 0.25)), 7.0)
     explosion_fx.append({
         "position": position,
         "radius": radius,
@@ -851,6 +869,7 @@ func _update_pickups() -> void:
             continue
         pickup["taken"] = true
         pickups[index] = pickup
+        combat_audio.play_pickup()
         _notify_parent("%s-pickup" % ("weapon" if kind in ["machinegun", "shotgun", "panzerfaust"] else kind))
 
 func _enforce_boss_arena() -> void:
@@ -924,6 +943,7 @@ func _add_muzzle_fx(origin: Vector2, direction: Vector2, weapon: String) -> void
     })
 
 func _add_impact_fx(position: Vector2, velocity: Vector2, weapon: String, hostile: bool) -> void:
+    combat_audio.play_impact(hostile)
     impact_fx.append({
         "position": position,
         "incoming": velocity.normalized(),
@@ -1105,6 +1125,46 @@ func _draw_explosions() -> void:
         var alpha := 1.0 - phase
         draw_circle(position, radius * 0.48, Color(1.0, 0.42, 0.16, alpha * 0.28))
         draw_arc(position, radius, 0.0, TAU, 32, Color(1.0, 0.72, 0.28, alpha * 0.75), 5.0)
+
+func _kick_camera_for_weapon(weapon: String, direction: float) -> void:
+    var strength := 2.2
+    match weapon:
+        "machinegun":
+            strength = 1.3
+        "shotgun":
+            strength = 4.4
+        "panzerfaust":
+            strength = 7.2
+    _add_camera_kick(Vector2(-direction, -0.18), strength)
+
+func _add_camera_kick(direction: Vector2, strength: float) -> void:
+    if _reduced_motion or camera == null:
+        return
+    var safe_direction := direction.normalized()
+    if safe_direction.length_squared() <= 0.001:
+        safe_direction = Vector2.UP
+    _camera_kick += safe_direction * strength
+    _camera_kick.x = clampf(_camera_kick.x, -10.0, 10.0)
+    _camera_kick.y = clampf(_camera_kick.y, -8.0, 8.0)
+
+func _update_camera_feel(delta: float) -> void:
+    if camera == null:
+        return
+    if _reduced_motion:
+        _camera_kick = Vector2.ZERO
+        camera.offset = Vector2.ZERO
+        return
+    _camera_kick = _camera_kick.move_toward(Vector2.ZERO, CAMERA_KICK_DECAY * delta)
+    camera.offset = _camera_kick
+
+func _prefers_reduced_motion() -> bool:
+    if not OS.has_feature("web"):
+        return false
+    var result = JavaScriptBridge.eval(
+        "Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)",
+        true,
+    )
+    return bool(result)
 
 func _notify_parent(message_type: String) -> void:
     if not OS.has_feature("web"):
