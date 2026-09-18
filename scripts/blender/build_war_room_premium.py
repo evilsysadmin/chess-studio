@@ -548,7 +548,7 @@ def add_room(static, mats):
         sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.25 + dz),
                0.16, mats["fire_core"], static, scale=(sx, sy, sz))
 
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 330.0, (1.0, 0.25, 0.055), static, radius=1.35)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk.
@@ -690,7 +690,7 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 410.0, (0.12, 0.25, 0.82), static, size=3.6)
+    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 485.0, (0.12, 0.28, 0.95), static, size=3.6)
     anchor("WR_ANCHOR_window_moonlight", (8.05, 2.85, 4.10), static)
 
     # Leather benches.
@@ -793,11 +793,11 @@ def add_gothic_canon_v2(static, mats):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     burgundy = material(
-        "WR_MAT_canon_burgundy", (0.205, 0.014, 0.021, 1),
+        "WR_MAT_canon_burgundy", (0.135, 0.009, 0.016, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
     )
     burgundy_dark = material(
-        "WR_MAT_canon_burgundy_dark", (0.145, 0.010, 0.018, 1),
+        "WR_MAT_canon_burgundy_dark", (0.092, 0.007, 0.013, 1),
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
 
@@ -916,7 +916,7 @@ def add_gothic_canon_v2(static, mats):
     )):
         sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
                mats["fire"], static, scale=(sx, 0.40, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 300.0,
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 258.0,
           (1.0, 0.23, 0.05), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
 
@@ -951,7 +951,7 @@ def add_gothic_canon_v2(static, mats):
         arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, 2.55, 5.82), 190.0,
+    light("WR_CANON_chandelier_light", "POINT", (0, 2.55, 5.82), 150.0,
           (1.0, 0.48, 0.18), static, radius=2.2)
     anchor("WR_ANCHOR_chandelier_practical", (0, 2.55, 5.72), static)
 
@@ -1017,14 +1017,14 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.38
+    scene.view_settings.exposure = -0.46
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.004, 0.006, 0.012, 1.0)
-    bg.inputs["Strength"].default_value = 0.078
+    bg.inputs["Strength"].default_value = 0.066
 
     static = collection("WR_STATIC_SHELL")
     dynamic = collection("WR_PREVIEW_DYNAMIC")
@@ -1038,8 +1038,8 @@ def build():
         "floor_dark": material("WR_MAT_floor_underlay", (0.045, 0.043, 0.041, 1), rough=0.76, coat=0.018, texture="stone", scale=4.8, bump=0.055),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.030, 0.018, 0.012, 1), rough=0.37, coat=0.28, texture="wood", scale=3.2, bump=0.04),
-        "brass": material("WR_MAT_brass", (0.38, 0.16, 0.035, 1), metal=0.92, rough=0.27, coat=0.20, texture="metal", scale=22, bump=0.032),
-        "brass_dark": material("WR_MAT_brass_dark", (0.13, 0.052, 0.016, 1), metal=0.88, rough=0.36, coat=0.14, texture="metal", scale=26, bump=0.028),
+        "brass": material("WR_MAT_brass", (0.31, 0.115, 0.026, 1), metal=0.92, rough=0.31, coat=0.16, texture="metal", scale=22, bump=0.032),
+        "brass_dark": material("WR_MAT_brass_dark", (0.095, 0.036, 0.012, 1), metal=0.88, rough=0.40, coat=0.10, texture="metal", scale=26, bump=0.028),
         "ivory": material("WR_MAT_ivory", (0.80, 0.70, 0.55, 1), rough=0.43, coat=0.17, texture="stone", scale=5.2, bump=0.055),
         "ebony": material("WR_MAT_ebony", (0.008, 0.010, 0.014, 1), metal=0.08, rough=0.24, coat=0.58, texture="stone", scale=6.2, bump=0.025),
         "red": material("WR_MAT_red_metal", (0.30, 0.012, 0.016, 1), metal=0.74, rough=0.24, coat=0.50),
@@ -1049,12 +1049,12 @@ def build():
         "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.074, 0.070, 0.064, 1), rough=0.77, coat=0.018, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.125, 0.112, 0.094, 1), rough=0.74, coat=0.018, texture="stone", scale=4.3, bump=0.075),
+        "stone": material("WR_MAT_stone", (0.064, 0.065, 0.070, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.108, 0.106, 0.108, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.022, 0.022, 0.023, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.012, 0.026, 0.022, 1), rough=0.96, sheen=0.18, texture="fabric", scale=54, bump=0.12),
-        "armor": material("WR_MAT_armor", (0.205, 0.220, 0.245, 1), metal=0.93, rough=0.29, coat=0.18, texture="metal", scale=28, bump=0.035),
-        "armor_dark": material("WR_MAT_armor_dark", (0.080, 0.088, 0.105, 1), metal=0.90, rough=0.38, coat=0.12, texture="metal", scale=22, bump=0.025),
+        "armor": material("WR_MAT_armor", (0.165, 0.185, 0.225, 1), metal=0.93, rough=0.35, coat=0.14, texture="metal", scale=28, bump=0.035),
+        "armor_dark": material("WR_MAT_armor_dark", (0.060, 0.072, 0.095, 1), metal=0.90, rough=0.43, coat=0.09, texture="metal", scale=22, bump=0.025),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
         "green": material("WR_MAT_green_glaze", (0.012, 0.12, 0.055, 1), rough=0.24, coat=0.62),
         "book_a": material("WR_MAT_book_burgundy", (0.14, 0.020, 0.016, 1), rough=0.74, sheen=0.10),
@@ -1076,14 +1076,14 @@ def build():
     add_gothic_canon_v2(static, mats)
     add_preview_board(dynamic, mats)
 
-    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 560.0, (1.0, 0.67, 0.42), static, size=5.8)
+    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 500.0, (1.0, 0.62, 0.36), static, size=5.8)
     look_at(key, (0, 0.5, 1.1))
-    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 330.0, (0.24, 0.36, 0.82), static, size=5.4)
+    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 390.0, (0.20, 0.34, 0.92), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
-    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 220.0, (1.0, 0.54, 0.29), static, size=5.0)
+    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 175.0, (1.0, 0.48, 0.24), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
-        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 92.0, (1.0, 0.34, 0.10), static, radius=1.35)
+        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 78.0, (1.0, 0.31, 0.09), static, radius=1.35)
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
     cam = bpy.data.objects.new("WR_CAMERA_hero", cam_data)
