@@ -15,7 +15,9 @@ from typing import Any
 
 from chronicles_content_variation import (
     CHRONICLES_COMPOSITION_VERSION,
+    CHRONICLES_TREASURE_VARIATION_VERSION,
     apply_chronicles_seeded_composition,
+    apply_chronicles_seeded_treasure_boons,
 )
 from chronicles_map_code import ChroniclesMapCode, encode_chronicles_map_code
 from chronicles_map_generator import (
@@ -219,7 +221,11 @@ def proceduralize_chronicles_manifest(
     seed: int,
 ) -> ChroniclesProceduralManifest:
     composition = apply_chronicles_seeded_composition(manifest, seed)
-    composed_manifest = composition.manifest
+    treasure_variation = apply_chronicles_seeded_treasure_boons(
+        composition.manifest,
+        seed,
+    )
+    composed_manifest = treasure_variation.manifest
     recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
     map_code = encode_chronicles_map_code(recipe)
     layout = generate_chronicles_layout(recipe)
@@ -255,6 +261,9 @@ def proceduralize_chronicles_manifest(
         "activeOptionalEnemyIds": list(composition.plan.active_optional_enemy_ids),
         "omittedOptionalEnemyIds": list(composition.plan.omitted_optional_enemy_ids),
         "protectedOptionalEnemyIds": list(composition.plan.protected_optional_enemy_ids),
+        "treasureVariationVersion": CHRONICLES_TREASURE_VARIATION_VERSION,
+        "treasureVariationRevision": treasure_variation.plan.revision,
+        "treasureBoons": [boon.as_dict() for boon in treasure_variation.plan.boons],
     }
 
     return ChroniclesProceduralManifest(
