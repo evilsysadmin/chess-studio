@@ -28,9 +28,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   const minimizeButton = lobby.getByRole('button', { name: 'Minimizar y seguir jugando' });
   await expect(minimizeButton).toBeVisible();
   await expect(lobby.getByRole('button', { name: 'Salir del roster' })).toBeVisible();
-  await expect(lobby.getByText('sigues en servicio aunque minimices esta ventana', { exact: false })).toBeVisible();
+  await expect(lobby.getByText('Disponible para retos · puedes minimizar y seguir jugando', { exact: true })).toBeVisible();
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
   await expect(rosterLink).toBeVisible();
+  await expect(rosterLink.getByText('En roster', { exact: true })).toBeVisible();
 });
