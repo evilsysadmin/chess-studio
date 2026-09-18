@@ -389,7 +389,7 @@ def add_fireplace(name: str, x: float, materials):
                 hot,
                 vertices=14,
             )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 235, (1.0, 0.33, 0.09), radius=1.05)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 360, (1.0, 0.30, 0.07), radius=1.15)
 
 
 def add_bookshelf(materials):
@@ -674,15 +674,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.115
+    bg.inputs["Strength"].default_value = 0.035
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.25, 0.21, 0.17, 1), roughness=0.90, bump_scale=5.0, bump_strength=0.22),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.075, 0.060, 0.050, 1), roughness=0.96, bump_scale=6.5, bump_strength=0.18),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.20, 0.15, 0.105, 1), roughness=0.91, bump_scale=7.0, bump_strength=0.16),
-        "wood": material("HOME_MAT_wood", (0.19, 0.080, 0.032, 1), roughness=0.74, bump_scale=4.0, bump_strength=0.10),
-        "brass": material("HOME_MAT_brass", (0.47, 0.25, 0.055, 1), roughness=0.32, metallic=0.82),
-        "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.42, metallic=0.72),
+        "stone": material("HOME_MAT_stone", (0.145, 0.115, 0.090, 1), roughness=0.92, bump_scale=5.0, bump_strength=0.24),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.040, 0.032, 0.028, 1), roughness=0.97, bump_scale=6.5, bump_strength=0.20),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.090, 0.065, 0.048, 1), roughness=0.94, bump_scale=7.0, bump_strength=0.18),
+        "wood": material("HOME_MAT_wood", (0.105, 0.036, 0.014, 1), roughness=0.70, bump_scale=4.0, bump_strength=0.11),
+        "brass": material("HOME_MAT_brass", (0.42, 0.22, 0.050, 1), roughness=0.27, metallic=0.88),
+        "steel": material("HOME_MAT_steel", (0.11, 0.12, 0.13, 1), roughness=0.34, metallic=0.82),
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
         "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
@@ -699,10 +699,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
             "HOME_MAT_window",
-            (0.025, 0.07, 0.11, 1),
-            roughness=0.22,
-            emission=(0.055, 0.16, 0.28, 1),
-            emission_strength=0.55,
+            (0.012, 0.038, 0.070, 1),
+            roughness=0.28,
+            emission=(0.025, 0.095, 0.19, 1),
+            emission_strength=0.32,
         ),
         "moon": material(
             "HOME_MAT_moon",
@@ -795,9 +795,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 4.55), 0.070, 1.55, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.18), 0.070, 1.35, materials["brass"])
     ring_points = [
-        (2.08 * math.cos(i * math.tau / 24), 2.20 + 1.28 * math.sin(i * math.tau / 24), 3.72)
+        (2.08 * math.cos(i * math.tau / 24), 2.20 + 1.28 * math.sin(i * math.tau / 24), 4.38)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
@@ -806,7 +806,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.45 + 1.02 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.22), (rx, ry, 3.76)],
+            [(0.0, 2.20, 5.82), (rx, ry, 4.42)],
             0.025,
             materials["brass"],
         )
@@ -814,8 +814,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         angle = idx * math.tau / 8.0
         cx = 1.92 * math.cos(angle)
         cy = 2.20 + 1.18 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 3.91), (0.055, 0.055, 0.24), materials["fire"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.02), 38, (1.0, 0.52, 0.20), radius=0.30)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.56), (0.055, 0.055, 0.24), materials["fire_hot"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.68), 52, (1.0, 0.48, 0.18), radius=0.36)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -837,10 +837,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 430, (0.82, 0.72, 0.62), 6.5, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 285, (0.22, 0.34, 0.52), 5.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 320, (0.76, 0.50, 0.34), 4.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 180, (0.48, 0.40, 0.32), 8.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 205, (0.72, 0.58, 0.46), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 110, (0.13, 0.24, 0.42), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 175, (0.66, 0.38, 0.22), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 70, (0.34, 0.24, 0.17), 8.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 360, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
