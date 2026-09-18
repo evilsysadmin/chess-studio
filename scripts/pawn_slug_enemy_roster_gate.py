@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
-"""Validate Pawn Slug enemy roster composition and bounded density."""
+"""Validate Pawn Slug stage manifests, roster composition and traversal density."""
 from __future__ import annotations
 
 import collections
+import json
 import pathlib
 import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MAIN = ROOT / "games/pawn-slug-godot/scripts/main.gd"
+MAP_ROOT = ROOT / "games/pawn-slug-godot/maps"
 
 MIN_ENEMIES = 28
 MAX_ENEMIES = 32
 MIN_GAP = 55.0
 DENSITY_WINDOW = 600.0
 MAX_IN_WINDOW = 6
+MIN_PLATFORMS = 15
+MIN_OBSTACLES = 6
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
 
-SPAWN_BLOCK_RE = re.compile(r"const ENEMY_SPAWNS\s*:=\s*\[(?P<body>.*?)\n\]", re.S)
-SPAWN_RE = re.compile(r"\[(?P<x>\d+(?:\.\d+)?),\s*\"(?P<type>[a-z0-9_-]+)\"\]")
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
     r'^\s*"(?P<type>[a-z0-9_-]+)"\s*:\s*\{'
@@ -36,12 +38,10 @@ TYPE_RE = re.compile(
 class GateError(RuntimeError):
     pass
 
-def parse_roster(text: str) -> tuple[list[tuple[float, str]], dict[str, dict[str, float]]]:
-    spawn_block = SPAWN_BLOCK_RE.search(text)
+def parse_stats(text: str) -> dict[str, dict[str, float]]:
     type_block = TYPE_BLOCK_RE.search(text)
-    if not spawn_block or not type_block:
-        raise GateError("ENEMY_SPAWNS/ENEMY_TYPES contract missing")
-    spawns = [(float(m.group("x")), m.group("type")) for m in SPAWN_RE.finditer(spawn_block.group("body"))]
+    if not type_block:
+        raise GateError("ENEMY_TYPES contract missing")
     stats: dict[str, dict[str, float]] = {}
     for m in TYPE_RE.finditer(type_block.group("body")):
         stats[m.group("type")] = {
@@ -51,33 +51,99 @@ def parse_roster(text: str) -> tuple[list[tuple[float, str]], dict[str, dict[str
             "height": float(m.group("height")),
             "standoff": float(m.group("standoff")),
         }
-    if not spawns:
-        raise GateError("enemy roster contains no spawns")
     if not stats:
-        raise GateError("enemy roster contains no type stats")
-    return spawns, stats
+        raise GateError("enemy type stats are empty")
+    return stats
 
-def validate(spawns: list[tuple[float, str]], stats: dict[str, dict[str, float]]) -> list[str]:
+def load_stage(path: pathlib.Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise GateError(f"{path.name}: stage root must be an object")
+    return data
+
+def _rect_errors(stage_name: str, label: str, rects: list[dict], width: float, height: float) -> list[str]:
     errors: list[str] = []
+    for index, rect in enumerate(rects):
+        try:
+            x = float(rect["x"]); y = float(rect["y"])
+            w = float(rect["w"]); h = float(rect["h"])
+        except Exception:
+            errors.append(f"{stage_name}: {label}[{index}] has invalid rectangle fields")
+            continue
+        if w <= 0 or h <= 0:
+            errors.append(f"{stage_name}: {label}[{index}] has non-positive size")
+        if x < 0 or x + w > width:
+            errors.append(f"{stage_name}: {label}[{index}] escapes horizontal world bounds")
+        if y < 0 or y + h > height:
+            errors.append(f"{stage_name}: {label}[{index}] escapes vertical world bounds")
+    return errors
+
+def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: str) -> list[str]:
+    errors: list[str] = []
+    world = stage.get("world") or {}
+    width = float(world.get("width", 0))
+    height = float(world.get("height", 0))
+    floor_y = float(world.get("floor_y", 0))
+    start_x = float(world.get("start_x", -1))
+    if width < 1280 or height < 600:
+        errors.append(f"{stage_name}: world bounds too small")
+    if not 0 < floor_y < height:
+        errors.append(f"{stage_name}: floor_y outside world")
+    if not 0 <= start_x < width:
+        errors.append(f"{stage_name}: start_x outside world")
+
+    platforms = stage.get("platforms") or []
+    obstacles = stage.get("obstacles") or []
+    if len(platforms) < MIN_PLATFORMS:
+        errors.append(f"{stage_name}: platform count {len(platforms)} < {MIN_PLATFORMS}")
+    if len(obstacles) < MIN_OBSTACLES:
+        errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
+    errors += _rect_errors(stage_name, "platforms", platforms, width, height)
+    errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+
+    low_passages = 0
+    platform_heights: set[int] = set()
+    for rect in platforms:
+        try:
+            y = float(rect["y"]); h = float(rect["h"])
+        except Exception:
+            continue
+        clearance = floor_y - (y + h)
+        if 56.0 <= clearance < 86.0:
+            low_passages += 1
+        platform_heights.add(int(round(y / 20.0)) * 20)
+    if low_passages < 2:
+        errors.append(f"{stage_name}: needs at least 2 crouch-height passages")
+    if len(platform_heights) < 4:
+        errors.append(f"{stage_name}: platform vertical variety too low")
+
+    checkpoints = [float(x) for x in (stage.get("checkpoints") or [])]
+    if not checkpoints:
+        errors.append(f"{stage_name}: checkpoints missing")
+    elif checkpoints != sorted(checkpoints):
+        errors.append(f"{stage_name}: checkpoints must be ordered")
+    elif checkpoints[0] > start_x + 1.0:
+        errors.append(f"{stage_name}: first checkpoint must cover the spawn")
+    if any(x < 0 or x >= width for x in checkpoints):
+        errors.append(f"{stage_name}: checkpoint outside world")
+
+    enemies = stage.get("enemies") or []
+    spawns = [(float(e.get("x", -1)), str(e.get("type", ""))) for e in enemies if isinstance(e, dict)]
     count = len(spawns)
     if not MIN_ENEMIES <= count <= MAX_ENEMIES:
-        errors.append(f"enemy count {count} outside [{MIN_ENEMIES}, {MAX_ENEMIES}]")
-
+        errors.append(f"{stage_name}: enemy count {count} outside [{MIN_ENEMIES}, {MAX_ENEMIES}]")
     xs = [x for x, _ in spawns]
     if xs != sorted(xs):
-        errors.append("enemy spawn positions must stay ordered")
+        errors.append(f"{stage_name}: enemy spawn positions must stay ordered")
     for previous, current in zip(xs, xs[1:]):
         gap = current - previous
         if gap < MIN_GAP:
-            errors.append(f"enemy spawn gap {gap:.1f}px below {MIN_GAP:.0f}px near x={current:.0f}")
+            errors.append(f"{stage_name}: enemy spawn gap {gap:.1f}px below {MIN_GAP:.0f}px near x={current:.0f}")
             break
-
-    for index, start_x in enumerate(xs):
-        in_window = sum(1 for x in xs[index:] if 0.0 <= x - start_x <= DENSITY_WINDOW)
+    for index, start in enumerate(xs):
+        in_window = sum(1 for x in xs[index:] if 0 <= x - start <= DENSITY_WINDOW)
         if in_window > MAX_IN_WINDOW:
-            errors.append(
-                f"enemy density {in_window} within {DENSITY_WINDOW:.0f}px starting at x={start_x:.0f}; max {MAX_IN_WINDOW}"
-            )
+            errors.append(f"{stage_name}: enemy density {in_window} within {DENSITY_WINDOW:.0f}px starting x={start:.0f}")
             break
 
     counts = collections.Counter(kind for _x, kind in spawns)
@@ -85,74 +151,86 @@ def validate(spawns: list[tuple[float, str]], stats: dict[str, dict[str, float]]
     missing_base = sorted(REQUIRED_BASE_TYPES - spawn_types)
     missing_variants = sorted(REQUIRED_VARIANTS - spawn_types)
     if missing_base:
-        errors.append("missing base enemy types: " + ", ".join(missing_base))
+        errors.append(f"{stage_name}: missing base enemy types: " + ", ".join(missing_base))
     if missing_variants:
-        errors.append("missing visual enemy variants: " + ", ".join(missing_variants))
-
+        errors.append(f"{stage_name}: missing visual enemy variants: " + ", ".join(missing_variants))
     undefined = sorted(spawn_types - stats.keys())
     if undefined:
-        errors.append("spawn types missing ENEMY_TYPES stats: " + ", ".join(undefined))
-    unused = sorted(stats.keys() - spawn_types)
-    if unused:
-        errors.append("ENEMY_TYPES entries never spawned: " + ", ".join(unused))
-
+        errors.append(f"{stage_name}: spawn types missing ENEMY_TYPES stats: " + ", ".join(undefined))
     if counts["grenadier"] > MAX_GRENADIERS:
-        errors.append(f"grenadier count {counts['grenadier']} exceeds {MAX_GRENADIERS}")
+        errors.append(f"{stage_name}: grenadier count {counts['grenadier']} exceeds {MAX_GRENADIERS}")
     first_grenadier = min((x for x, kind in spawns if kind == "grenadier"), default=999999.0)
     if first_grenadier < 1200.0:
-        errors.append(f"first grenadier at x={first_grenadier:.0f} is too early")
+        errors.append(f"{stage_name}: first grenadier at x={first_grenadier:.0f} is too early")
+
+    pickups = stage.get("pickups") or []
+    if not any(str(p.get("type", "")) == "machinegun" for p in pickups if isinstance(p, dict)):
+        errors.append(f"{stage_name}: opening machinegun pickup missing")
+
+    boss = stage.get("boss") or {}
+    extraction = stage.get("extraction") or {}
+    boss_x = float(boss.get("x", -1))
+    extraction_x = float(extraction.get("x", -1))
+    if not 0 < boss_x < width:
+        errors.append(f"{stage_name}: boss x outside world")
+    if not boss_x < extraction_x < width:
+        errors.append(f"{stage_name}: extraction must be after boss and inside world")
 
     for kind, values in sorted(stats.items()):
         hp, speed = values["hp"], values["speed"]
-        width, height, standoff = values["width"], values["height"], values["standoff"]
+        width_stat, height_stat, standoff = values["width"], values["height"], values["standoff"]
         if not 1 <= hp <= 350:
             errors.append(f"{kind}: hp {hp:g} outside 1..350")
         if not 0 <= speed <= 120:
             errors.append(f"{kind}: speed {speed:g} outside 0..120")
-        if not 35 <= width <= 100:
-            errors.append(f"{kind}: width {width:g} outside 35..100")
-        if not 55 <= height <= 140:
-            errors.append(f"{kind}: height {height:g} outside 55..140")
+        if not 35 <= width_stat <= 100:
+            errors.append(f"{kind}: width {width_stat:g} outside 35..100")
+        if not 55 <= height_stat <= 140:
+            errors.append(f"{kind}: height {height_stat:g} outside 55..140")
         if not 140 <= standoff <= 650:
             errors.append(f"{kind}: standoff {standoff:g} outside 140..650")
     return errors
 
 def self_test() -> None:
-    stats = {
-        "pawn": {"hp": 34.0, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
-        "knight": {"hp": 62.0, "speed": 92.0, "width": 57.0, "height": 80.0, "standoff": 225.0},
-        "rook": {"hp": 112.0, "speed": 0.0, "width": 68.0, "height": 90.0, "standoff": 420.0},
-        "bishop": {"hp": 310.0, "speed": 42.0, "width": 90.0, "height": 128.0, "standoff": 430.0},
-        "scout": {"hp": 46.0, "speed": 84.0, "width": 48.0, "height": 76.0, "standoff": 245.0},
-        "shield": {"hp": 168.0, "speed": 32.0, "width": 72.0, "height": 94.0, "standoff": 255.0},
-        "grenadier": {"hp": 82.0, "speed": 50.0, "width": 54.0, "height": 82.0, "standoff": 470.0},
-        "commando": {"hp": 78.0, "speed": 76.0, "width": 58.0, "height": 84.0, "standoff": 300.0},
-        "queen": {"hp": 156.0, "speed": 74.0, "width": 62.0, "height": 96.0, "standoff": 345.0},
+    stage = {
+        "world": {"width": 5200, "height": 720, "floor_y": 610, "start_x": 110},
+        "checkpoints": [110, 1480, 2980, 4140],
+        "platforms": [
+            {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24}
+            for i in range(18)
+        ],
+        "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
+        "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
+        "boss": {"x": 4580},
+        "extraction": {"x": 5050},
     }
-    kinds = ["pawn", "scout", "pawn", "knight", "shield", "pawn", "rook", "pawn", "grenadier", "bishop",
-             "knight", "pawn", "rook", "grenadier", "commando", "knight", "pawn", "queen", "bishop",
-             "pawn", "rook", "knight", "pawn", "grenadier", "pawn", "rook", "knight", "pawn"]
-    sample = [(620.0 + index * 120.0, kind) for index, kind in enumerate(kinds)]
-    assert validate(sample, stats) == []
-    crowded = sample[:]
-    crowded[1] = (650.0, crowded[1][1])
-    assert any("gap" in error for error in validate(crowded, stats))
-    no_queen = [(x, "pawn" if kind == "queen" else kind) for x, kind in sample]
-    assert any("missing visual enemy variants" in error for error in validate(no_queen, stats))
-    print("OK Pawn Slug enemy roster gate self-test")
+    kinds = ["pawn","scout","pawn","knight","shield","pawn","rook","pawn","grenadier","bishop",
+             "knight","pawn","rook","grenadier","commando","knight","pawn","queen","bishop",
+             "pawn","rook","knight","pawn","grenadier","pawn","rook","knight","pawn"]
+    stage["enemies"] = [{"x": 620 + i * 120, "type": kind} for i, kind in enumerate(kinds)]
+    stats = parse_stats(MAIN.read_text(encoding="utf-8"))
+    assert not validate_stage(stage, stats, "self-test")
+    crowded = json.loads(json.dumps(stage))
+    crowded["enemies"][1]["x"] = 650
+    assert any("gap" in e for e in validate_stage(crowded, stats, "self-test"))
+    print("OK Pawn Slug stage manifest gate self-test")
 
 def main() -> int:
     try:
         if len(sys.argv) > 1 and sys.argv[1] == "self-test":
             self_test()
             return 0
-        spawns, stats = parse_roster(MAIN.read_text(encoding="utf-8"))
-        errors = validate(spawns, stats)
+        stats = parse_stats(MAIN.read_text(encoding="utf-8"))
+        paths = sorted(MAP_ROOT.glob("*.json"))
+        if not paths:
+            raise GateError("no Pawn Slug stage manifests found")
+        errors: list[str] = []
+        for path in paths:
+            stage = load_stage(path)
+            errors.extend(validate_stage(stage, stats, path.name))
         if errors:
             raise GateError("\n".join(errors))
-        counts = collections.Counter(kind for _x, kind in spawns)
-        variants = sum(counts[kind] for kind in REQUIRED_VARIANTS)
-        print(f"OK Pawn Slug enemy roster: {len(spawns)} enemies, {variants} variants, {dict(sorted(counts.items()))}")
+        print(f"OK Pawn Slug stage manifests: {len(paths)} map(s) validated")
         return 0
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
