@@ -137,11 +137,12 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(CHRONICLES_ISO_MARKER_STYLE.selectionColor).toBe(0xd8b56a);
   });
 
-  it('adds restrained FOV only when the canvas becomes narrow', () => {
+  it('preserves desktop-like horizontal framing as the canvas narrows', () => {
     expect(chroniclesIsometricFovForAspect(1.6, 38)).toBe(38);
-    expect(chroniclesIsometricFovForAspect(1.21, 38)).toBe(40.5);
-    expect(chroniclesIsometricFovForAspect(0.85, 38)).toBe(42.5);
-    expect(chroniclesIsometricFovForAspect(0.65, 38)).toBe(45);
+    expect(chroniclesIsometricFovForAspect(1.21, 38)).toBeCloseTo(48.96, 1);
+    expect(chroniclesIsometricFovForAspect(1.11, 38)).toBeCloseTo(52.79, 1);
+    expect(chroniclesIsometricFovForAspect(0.85, 38)).toBe(58);
+    expect(chroniclesIsometricFovForAspect(0.65, 38)).toBe(58);
     expect(chroniclesIsometricFovForAspect(0, 38)).toBe(38);
     expect(chroniclesIsometricFovForAspect(Number.NaN, 38)).toBe(38);
   });
