@@ -312,7 +312,11 @@ if (scopeEnabled('pawnslug')) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const captures = [];
-    for (const capture of CAPTURES) {
+    const pawnSlugCaptures = [
+      ...CAPTURES,
+      { label: 'android-landscape-844x390', width: 844, height: 390, hasTouch: true },
+    ];
+    for (const capture of pawnSlugCaptures) {
       await withCapturePage(browser, capture, async (page) => {
         const godot = page.getByRole('button', { name: /PAWN SLUG GODOT/i });
         await expect(godot).toBeVisible();
@@ -321,6 +325,10 @@ if (scopeEnabled('pawnslug')) {
         await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
         const frame = page.locator('iframe[title="Pawn Slug Godot"]');
         await expect(frame).toBeVisible();
+        await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 35_000 });
+        const godotCanvas = page.frameLocator('iframe[title="Pawn Slug Godot"]').locator('canvas');
+        await expect(godotCanvas).toBeVisible({ timeout: 15_000 });
+        await page.waitForTimeout(180);
 
         const health = await page.evaluate(() => {
           const root = document.documentElement;
@@ -366,7 +374,7 @@ if (scopeEnabled('pawnslug')) {
 
     await writeFile(
       `${ARTIFACT_DIR}/pawn-slug-visual-health.json`,
-      `${JSON.stringify({ schema: 2, scope: 'pawnslug-godot', captures }, null, 2)}\n`,
+      `${JSON.stringify({ schema: 3, scope: 'pawnslug-godot', captures }, null, 2)}\n`,
       'utf8',
     );
   });
