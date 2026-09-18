@@ -20,6 +20,8 @@ PLAYER = GODOT_ROOT / "scripts/player.gd"
 COMBAT_AUDIO = GODOT_ROOT / "scripts/combat_audio.gd"
 BOSS = GODOT_ROOT / "scripts/boss_visual.gd"
 TOUCH = GODOT_ROOT / "scripts/touch_controls.gd"
+PLAYER_PROBE = GODOT_ROOT / "tests/player_probe.gd"
+RUNTIME_SMOKE = GODOT_ROOT / "tests/player_runtime_smoke.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -80,6 +82,9 @@ REQUIRED_MATTHIAS = (
     "MOVING_FIRE_RECOIL_HOLD_SECONDS",
     "MOVING_FIRE_RECOIL_DECAY_PX",
     'name = "WeaponRoot"',
+    "set_aim_direction",
+    "_sync_aim_feedback",
+    "_flash.rotation = local_aim.angle()",
 )
 FORBIDDEN_MATTHIAS = (
     "MOTION_ATLAS_URL",
@@ -148,7 +153,25 @@ REQUIRED_PLAYER_MOBILITY = (
     "_find_safe_respawn_position",
     "_respawn_position_is_clear",
     "combat_hitbox_rect",
+    "_art.set_aim_direction(aim_direction)",
+    "_update_fire_input(aim_direction: Vector2)",
 )
+REQUIRED_RUNTIME_PROBE = (
+    'extends "res://scripts/player.gd"',
+    "force_crouching",
+    "can_stand_probe",
+    "find_safe_respawn_probe",
+    "respawn_position_is_clear_probe",
+    "quantize_aim_probe",
+)
+REQUIRED_RUNTIME_SMOKE = (
+    "crouch conserva la línea de pies",
+    "Matthias no puede levantarse dentro de un techo bajo",
+    "aim 8-way",
+    "checkpoint legacy de prueba está realmente bloqueado",
+    "respawn final queda libre de geometría",
+)
+
 REQUIRED_DIRECTIONAL_FIRE = (
     "func _on_player_fired(origin: Vector2, direction: Vector2",
     "safe_direction.rotated(angle)",
@@ -296,6 +319,8 @@ def validate() -> None:
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_MOBILITY, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_DIRECTIONAL_FIRE, violations)
+    validate_contract(PLAYER_PROBE, "tests/player_probe.gd", REQUIRED_RUNTIME_PROBE, violations)
+    validate_contract(RUNTIME_SMOKE, "tests/player_runtime_smoke.gd", REQUIRED_RUNTIME_SMOKE, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_ENEMY_AI, violations)
@@ -340,6 +365,8 @@ def self_test() -> None:
     assert "_find_safe_respawn_position" in REQUIRED_PLAYER_MOBILITY
     assert "_aim_direction" in REQUIRED_PLAYER_MOBILITY
     assert "safe_direction.rotated(angle)" in REQUIRED_DIRECTIONAL_FIRE
+    assert "quantize_aim_probe" in REQUIRED_RUNTIME_PROBE
+    assert "respawn final queda libre de geometría" in REQUIRED_RUNTIME_SMOKE
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "_enemy_engaged" in REQUIRED_ENEMY_AI
