@@ -21,7 +21,7 @@ from oci_runtime_config import (
 )
 
 MAX_RUNTIME_BYTES = 65536
-RUNNER_READABLE_KEYS = frozenset({"CHESS_AI_SHARED_SECRET", "INVITE_CODE", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS"})
+RUNNER_READABLE_KEYS = frozenset({"CHESS_AI_SHARED_SECRET", "INVITE_CODE"})
 
 
 def _validate_requested_keys(keys: Iterable[str]) -> tuple[str, ...]:
@@ -144,9 +144,6 @@ def self_test() -> None:
     assert parsed["INVITE_CODE"] == sample["INVITE_CODE"]
     assert parsed["CHESS_AI_SHARED_SECRET"] == sample["CHESS_AI_SHARED_SECRET"]
     assert _validate_requested_keys(["INVITE_CODE", "INVITE_CODE"]) == ("INVITE_CODE",)
-
-    for allowed_optional in ("OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS"):
-        assert allowed_optional in RUNNER_READABLE_KEYS
 
     for forbidden in ("JWT_SECRET", "MONGO_URL", "OCI_PRIVATE_KEY", "RENDER_API_KEY"):
         try:
