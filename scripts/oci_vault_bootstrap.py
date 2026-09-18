@@ -224,7 +224,7 @@ def self_test() -> None:
     assert merged["JWT_SECRET"] == "staging-jwt"
     assert merged["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://otlp.example.test/otlp"
     assert PRODUCTION_FALLBACK_KEYS == ("OTEL_EXPORTER_OTLP_ENDPOINT",)
-    source = open(__file__, encoding="utf-8").read()
+    source = open(__file__, encoding="utf-8").read().split("def self_test", 1)[0]
     assert "find_production_service" in source
     assert "PRODUCTION_RENDER_SERVICE_NAME" not in source
 
