@@ -104,10 +104,18 @@ export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
 export function chroniclesIsometricFovForAspect(aspect, baseFov = 38) {
   const safeBaseFov = Number.isFinite(baseFov) ? baseFov : 38;
   if (!Number.isFinite(aspect) || aspect <= 0) return safeBaseFov;
-  if (aspect < 0.72) return safeBaseFov + 7;
-  if (aspect < 1) return safeBaseFov + 4.5;
-  if (aspect < 1.32) return safeBaseFov + 2.5;
-  return safeBaseFov;
+
+  // Preserve roughly the same horizontal battlefield read that the canonical
+  // 16:10-ish desktop framing gets. A few fixed vertical-FOV bumps were not
+  // enough on phone-width canvases, so right-flank actors could sit half out of
+  // frame even though the viewport itself had no DOM overflow.
+  const referenceAspect = 1.6;
+  if (aspect >= referenceAspect) return safeBaseFov;
+  const baseRadians = safeBaseFov * (Math.PI / 180);
+  const horizontalRadians = 2 * Math.atan(Math.tan(baseRadians / 2) * referenceAspect);
+  const fittedRadians = 2 * Math.atan(Math.tan(horizontalRadians / 2) / aspect);
+  const fittedFov = fittedRadians * (180 / Math.PI);
+  return Math.min(safeBaseFov + 20, Math.max(safeBaseFov, fittedFov));
 }
 
 export function chroniclesIsoInteractionForHit(interaction, hit) {
