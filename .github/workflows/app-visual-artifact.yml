@@ -1,5 +1,25 @@
 name: App · visual artifact
 on:
+  pull_request:
+    paths:
+      - frontend/src/**/*.jsx
+      - frontend/src/**/*.css
+      - frontend/src/components/**
+      - frontend/src/assets/**
+      - frontend/src/chesscom*.js
+      - frontend/src/chronicles*.js
+      - frontend/src/pawn*.js
+      - '!frontend/src/**/*.test.*'
+      - '!frontend/src/components/*Admin*'
+      - '!frontend/src/components/Observability*'
+      - frontend/public/**
+      - '!frontend/public/audio/**'
+      - e2e/*visual*.spec.js
+      - e2e/browser-*-health.spec.js
+      - scripts/app_visual_*
+      - scripts/war_room_visual_freeze_check.mjs
+      - .github/actions/app-visual-pipeline/**
+      - .github/workflows/app-visual-artifact.yml
   push:
     branches: [main]
     paths:
