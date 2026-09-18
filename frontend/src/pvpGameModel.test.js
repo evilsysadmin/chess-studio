@@ -4,6 +4,7 @@ import {
   lastMoveFromHistory,
   mergeNewerMatch,
   opponentForMatch,
+  opponentPresenceLabel,
   playerResult,
   projectPvpClock,
   selectableMoves,
@@ -42,6 +43,13 @@ describe('PvP War Room model', () => {
       runningColor: 'w',
       id: '10+0',
     });
+  });
+
+  it('expone presencia del rival sin inventar estados', () => {
+    expect(opponentPresenceLabel('online')).toBe('EN LÍNEA');
+    expect(opponentPresenceLabel('reconnecting')).toBe('RECONECTANDO');
+    expect(opponentPresenceLabel('disconnected')).toBe('SIN CONEXIÓN');
+    expect(opponentPresenceLabel(null)).toBe('SIN DATO');
   });
 
   it('no deja que una respuesta de polling antigua pise una revisión nueva', () => {
