@@ -370,15 +370,40 @@ def add_room(static, mats):
     for px in (-5.78, -3.32):
         cube(f"WR_FIREPLACE_pilaster_{px}", (px, 5.77, 2.16), (0.16, 0.12, 1.06), mats["stone_light"], static, bevel=0.045)
         cube(f"WR_FIREPLACE_cap_{px}", (px, 5.73, 3.23), (0.24, 0.18, 0.10), mats["stone_light"], static, bevel=0.045)
-    for idx, dx in enumerate((-0.43, 0.0, 0.43)):
-        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.25, radius2=0.04, depth=0.72,
-                                       location=(-4.55 + dx, 5.63, 1.54 + (idx % 2) * 0.12))
-        flame = bpy.context.object
-        flame.name = f"WR_FIREPLACE_flame_{idx}"
-        flame.data.materials.append(mats["fire"])
-        tag(flame)
-        relink(flame, static)
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 2.05), 390.0, (1.0, 0.28, 0.07), static, radius=1.25)
+    # Hearth: crossed charred logs, low grate and layered emissive wisps.
+    # Keep flame geometry restrained; the old three giant cones read as toy
+    # triangles in the runtime GLB, especially on mobile.
+    for idx, (dx, rot) in enumerate(((-0.30, math.radians(78)), (0.30, math.radians(102)))):
+        log = cylinder(f"WR_FIREPLACE_log_{idx}", (-4.55 + dx * 0.25, 5.56, 1.03),
+                       0.12, 1.18, mats["charred_wood"], static, vertices=18)
+        log.rotation_euler = (0, math.pi / 2, rot - math.pi / 2)
+    for idx, x in enumerate((-4.93, -4.55, -4.17)):
+        ember = sphere(f"WR_FIREPLACE_ember_{idx}", (x, 5.47, 1.08 + (idx % 2) * 0.05),
+                       0.11, mats["ember"], static, scale=(1.25, 0.72, 0.45))
+        ember.rotation_euler.z = idx * 0.18
+    cube("WR_FIREPLACE_grate_bar", (-4.55, 5.45, 1.12), (0.74, 0.045, 0.045),
+         mats["iron"], static, bevel=0.018)
+    for idx, x in enumerate((-5.10, -4.73, -4.36, -3.99)):
+        cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
+             mats["iron"], static, bevel=0.012)
+
+    for idx, (dx, dz, sx, sy, sz) in enumerate((
+        (-0.34, 0.22, 0.58, 0.42, 1.20),
+        (-0.08, 0.36, 0.50, 0.38, 1.48),
+        (0.18, 0.18, 0.62, 0.44, 1.08),
+        (0.39, 0.30, 0.46, 0.36, 1.34),
+    )):
+        sphere(f"WR_FIREPLACE_flame_outer_{idx}", (-4.55 + dx, 5.55, 1.28 + dz),
+               0.22, mats["fire"], static, scale=(sx, sy, sz))
+    for idx, (dx, dz, sx, sy, sz) in enumerate((
+        (-0.18, 0.12, 0.44, 0.34, 0.88),
+        (0.05, 0.24, 0.38, 0.30, 1.05),
+        (0.26, 0.10, 0.36, 0.30, 0.82),
+    )):
+        sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.25 + dz),
+               0.16, mats["fire_core"], static, scale=(sx, sy, sz))
+
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 330.0, (1.0, 0.25, 0.055), static, radius=1.35)
 
     # Back desk.
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
@@ -537,7 +562,11 @@ def build():
         "picture_a": material("WR_MAT_picture_a", (0.18, 0.060, 0.018, 1), rough=0.68, texture="stone", scale=4.0, bump=0.025),
         "picture_b": material("WR_MAT_picture_b", (0.12, 0.038, 0.020, 1), rough=0.68, texture="stone", scale=5.0, bump=0.025),
         "window": material("WR_MAT_window_night", (0.004, 0.012, 0.075, 1), rough=0.16, coat=0.52),
-        "fire": material("WR_MAT_fire", (1.0, 0.10, 0.008, 1), rough=0.12, emission=(1.0, 0.05, 0.004, 1)),
+        "fire": material("WR_MAT_fire", (0.88, 0.085, 0.006, 1), rough=0.18, emission=(1.0, 0.045, 0.002, 1)),
+        "fire_core": material("WR_MAT_fire_core", (1.0, 0.32, 0.015, 1), rough=0.16, emission=(1.0, 0.18, 0.008, 1)),
+        "ember": material("WR_MAT_ember", (0.24, 0.010, 0.003, 1), rough=0.38, emission=(0.44, 0.012, 0.002, 1)),
+        "charred_wood": material("WR_MAT_charred_log", (0.018, 0.008, 0.004, 1), rough=0.90, texture="wood", scale=3.2, bump=0.08),
+        "iron": material("WR_MAT_hearth_iron", (0.025, 0.028, 0.032, 1), metal=0.86, rough=0.52, texture="metal", scale=30, bump=0.018),
     }
 
     add_room(static, mats)
@@ -607,7 +636,8 @@ def validate():
     required = {
         "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_CREST_plaque",
-        "WR_WINDOW_frame", "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
+        "WR_WINDOW_frame", "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0",
+        "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
