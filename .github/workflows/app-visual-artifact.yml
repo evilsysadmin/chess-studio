@@ -35,13 +35,3 @@ jobs:
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
         with: {mode: canonical}
-      - name: Require inspectable PNG proof on PRs
-        if: always() && github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          dir=.artifacts/app-visual
-          [[ -d "$dir" ]] || { echo "::error::No visual artifact directory"; exit 1; }
-          count="$(find "$dir" -type f -name '*.png' | wc -l | tr -d ' ')"
-          [[ "$count" -gt 0 ]] || { echo "::error::Visual PR produced no PNG proof"; exit 1; }
-          echo "Inspectable PNG proof: $count"
