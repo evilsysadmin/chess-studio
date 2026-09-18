@@ -170,6 +170,8 @@ def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
 def _public_match(match: dict, username: str) -> dict:
     color = _player_color(match, username)
     turn = match.get("turn", "w")
+    you_ready = bool(match.get("white_ready")) if color == chess.WHITE else bool(match.get("black_ready")) if color == chess.BLACK else False
+    opponent_ready = bool(match.get("black_ready")) if color == chess.WHITE else bool(match.get("white_ready")) if color == chess.BLACK else False
     return {
         "id": match["id"],
         "white": match["white"],
@@ -182,6 +184,8 @@ def _public_match(match: dict, username: str) -> dict:
         "result": match.get("result"),
         "endReason": match.get("end_reason"),
         "startsAt": _iso(match.get("start_at")),
+        "youReady": you_ready,
+        "opponentReady": opponent_ready,
         "ratingChange": _rating_change(match, color),
         "clock": _clock_snapshot(match),
         "history": _serialize(match.get("history") or []),
