@@ -1,13 +1,22 @@
 import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { addMesh, buildWarRoom } from './Board3DScene.js';
+import { isWarRoomVariantSelectable, loadWarRoomVariant } from './WarRoomVariant.js';
 
 export function shouldShowClassicWarRoomShell({ selectable = false, variant = 'classic' } = {}) {
   return !selectable || variant !== 'v2';
 }
 
 export function buildClassicWarRoomShell({
-  scene, boardGroup, theme, whiteSide, renderLite, visible = true,
+  scene,
+  boardGroup,
+  theme,
+  whiteSide,
+  renderLite,
+  visible = shouldShowClassicWarRoomShell({
+    selectable: isWarRoomVariantSelectable(),
+    variant: loadWarRoomVariant(),
+  }),
 }) {
   const warRoom = buildWarRoom(theme, whiteSide, renderLite);
   scene.add(warRoom);
