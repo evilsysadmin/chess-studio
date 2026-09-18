@@ -44,7 +44,10 @@ export function useActiveGameSessionPersistence({
       view, game, tournamentGame, learningMode, gameContext, timeControlId,
     });
     if (!descriptor) {
-      setActiveGameSessionVisible(null);
+      // Durante el primer render de una ruta activa, la partida todavía puede
+      // estar rehidratándose. Conserva el marcador hasta saber que realmente
+      // abandonamos game/tournamentGame.
+      if (view !== 'game' && view !== 'tournamentGame') setActiveGameSessionVisible(null);
       return;
     }
 
