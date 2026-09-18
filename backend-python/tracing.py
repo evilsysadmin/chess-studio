@@ -12,6 +12,7 @@ import math
 import os
 import secrets
 import threading
+import time
 from collections import deque
 from typing import Any
 from urllib.parse import unquote, urlsplit, urlunsplit
@@ -26,7 +27,8 @@ _HTTP_LATENCY: Any | None = None
 _FRONTEND_COUNTER: Any | None = None
 _FRONTEND_VITAL: Any | None = None
 _BILLING_GAUGE: Any | None = None
-_BILLING_COSTS: dict[str, tuple[float, str]] = {}
+_BILLING_EMIT_TTL_SECONDS = 300.0
+_BILLING_COSTS: dict[str, tuple[float, str, float]] = {}
 _BILLING_COSTS_LOCK = threading.Lock()
 _LAST_INIT_ERROR: str | None = None
 _STARTUP_TRACE_ID: str | None = None
@@ -273,14 +275,22 @@ def record_frontend_otel(event_type: str, *, metric_name: str | None = None, val
 def _billing_cost_observations(_options=None):
     try:
         from opentelemetry.metrics import Observation
+        now = time.monotonic()
         with _BILLING_COSTS_LOCK:
+            stale = [
+                provider
+                for provider, (_amount, _currency, received_at) in _BILLING_COSTS.items()
+                if now - received_at > _BILLING_EMIT_TTL_SECONDS
+            ]
+            for provider in stale:
+                _BILLING_COSTS.pop(provider, None)
             snapshot = dict(_BILLING_COSTS)
         return [
             Observation(
                 amount,
                 {"provider": provider, "currency": currency, "scope": "current_cycle"},
             )
-            for provider, (amount, currency) in sorted(snapshot.items())
+            for provider, (amount, currency, _received_at) in sorted(snapshot.items())
         ]
     except Exception:
         return []
@@ -288,20 +298,21 @@ def _billing_cost_observations(_options=None):
 
 def record_billing_costs_otel(costs: list[tuple[str, float, str]]) -> bool:
     """Store the latest provider costs and force one OTLP metric export."""
-    cleaned: dict[str, tuple[float, str]] = {}
+    cleaned: dict[str, tuple[float, str, float]] = {}
+    received_at = time.monotonic()
     for provider, raw_amount, raw_currency in costs:
         provider = str(provider or "").strip().lower()
-        if provider not in {"oci", "cloudflare"}:
-            raise ValueError("unsupported billing provider")
+        if provider not in {"oci", "cloudflare"} or provider in cleaned:
+            raise ValueError("unsupported or duplicate billing provider")
         amount = float(raw_amount)
         if not math.isfinite(amount) or amount < 0:
             raise ValueError("invalid billing amount")
         currency = str(raw_currency or "").strip().upper()
         if len(currency) != 3 or not currency.isalpha():
             raise ValueError("invalid billing currency")
-        cleaned[provider] = (amount, currency)
-    if set(cleaned) != {"oci", "cloudflare"}:
-        raise ValueError("both billing providers are required")
+        cleaned[provider] = (amount, currency, received_at)
+    if not cleaned:
+        raise ValueError("at least one billing provider is required")
     with _BILLING_COSTS_LOCK:
         _BILLING_COSTS.update(cleaned)
     return _METER_PROVIDER is not None and _force_flush(_METER_PROVIDER)
