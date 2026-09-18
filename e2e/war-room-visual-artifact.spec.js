@@ -2,6 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
+import { WAR_ROOM_VARIANT_STORAGE_KEY } from '../frontend/src/components/WarRoomVariant.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURE_PROFILES = Object.freeze([
@@ -28,6 +29,16 @@ const CAPTURE_PROFILES = Object.freeze([
     hasTouch: false,
     portraitContract: false,
     landscapeContract: false,
+    variant: 'classic',
+  }),
+  Object.freeze({
+    label: 'war-room-v2-desktop-1440x900',
+    title: 'War Room v2 desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+    landscapeContract: false,
+    variant: 'v2',
   }),
 ]);
 
@@ -207,8 +218,11 @@ async function captureWarRoomHealth(page, label) {
   }, label);
 }
 
-async function openCanonicalWarRoom(page) {
+async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value);
+  }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: variant });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -293,7 +307,13 @@ for (const profile of CAPTURE_PROFILES) {
 
     const page = await context.newPage();
     try {
-      await openCanonicalWarRoom(page);
+      await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
+      if (profile.variant === 'v2') {
+        await expect(page.locator('.board3d-main-canvas'))
+          .toHaveAttribute('data-war-room-variant', 'v2', { timeout: 30_000 });
+        await expect(page.locator('.board3d-main-canvas'))
+          .toHaveAttribute('data-war-room-v2-status', 'ready', { timeout: 30_000 });
+      }
 
       if (profile.portraitContract) {
         await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
