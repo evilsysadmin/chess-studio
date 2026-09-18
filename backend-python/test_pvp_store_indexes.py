@@ -97,3 +97,82 @@ def test_duplicate_pending_challenge_race_reuses_unique_index_winner(monkeypatch
     assert challenges.insert_calls == 1
     assert result["id"] == "winner"
     assert "pair_key" not in result
+
+
+def test_accept_challenge_resumes_staged_match_after_interrupted_attempt(monkeypatch):
+    now = pvp_store.utcnow()
+    staged = {
+        "_id": "challenge-1",
+        "challenge_id": "challenge-1",
+        "acceptance_state": "staged",
+        "white": "alice",
+        "black": "bob",
+        "status": "active",
+        "revision": 0,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    class _Challenges:
+        async def find_one_and_update(self, query, update, return_document=None):
+            assert query["_id"] == "challenge-1"
+            return {
+                "_id": "challenge-1",
+                "challenger": "alice",
+                "opponent": "bob",
+                "status": "accepted",
+                "match_id": "challenge-1",
+            }
+
+        async def find_one(self, _query):
+            raise AssertionError("accepted fallback should not be needed")
+
+    class _Matches:
+        def __init__(self):
+            self.activated = False
+
+        async def insert_one(self, _doc):
+            raise DuplicateKeyError("staged match survived previous process")
+
+        async def find_one(self, query):
+            assert query == {"_id": "challenge-1", "challenge_id": "challenge-1"}
+            return dict(staged)
+
+        async def find_one_and_update(self, query, update, return_document=None):
+            assert query == {"_id": "challenge-1", "challenge_id": "challenge-1"}
+            assert update == {"$set": {"acceptance_state": "active"}}
+            self.activated = True
+            return {**staged, "acceptance_state": "active"}
+
+        async def delete_one(self, _query):
+            raise AssertionError("recovered staged match must not be deleted")
+
+    matches = _Matches()
+
+    async def fake_collections():
+        return object(), _Challenges(), matches
+
+    monkeypatch.setattr(pvp_store, "_collections", fake_collections)
+
+    result = asyncio.run(pvp_store.accept_challenge(
+        "challenge-1",
+        "bob",
+        {
+            "id": "challenge-1",
+            "white": "bob",
+            "black": "alice",
+            "status": "active",
+            "revision": 0,
+            "created_at": now,
+            "updated_at": now,
+        },
+    ))
+
+    assert result is not None
+    challenge, match = result
+    assert challenge["status"] == "accepted"
+    assert match["white"] == "alice"
+    assert match["black"] == "bob"
+    assert "acceptance_state" not in match
+    assert "challenge_id" not in match
+    assert matches.activated is True
