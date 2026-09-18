@@ -439,6 +439,18 @@ def add_bookshelf(materials):
             bx = x - 1.15 + col * 0.285
             h = 0.22 + 0.035 * ((row + col) % 3)
             cube(f"HOME_PROP_book_{row}_{col}", (bx, y - 0.47, z), (0.09, 0.08, h), book_colors[(row + col) % len(book_colors)])
+    armillary_center = (x + 0.72, y - 0.58, 3.38)
+    sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
+    curve_tube(
+        "HOME_PROP_library_armillary_ring",
+        [
+            (armillary_center[0] + 0.34 * math.cos(i * math.tau / 24), armillary_center[1], armillary_center[2] + 0.34 * math.sin(i * math.tau / 24))
+            for i in range(25)
+        ],
+        0.025,
+        brass,
+    )
+    cylinder("HOME_PROP_library_armillary_stand", (armillary_center[0], armillary_center[1], 2.96), 0.055, 0.52, brass, vertices=18)
 
 
 def add_banner(name: str, x: float, materials):
@@ -712,7 +724,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "floor_stone": material("HOME_MAT_floor_stone", (0.090, 0.065, 0.048, 1), roughness=0.94, bump_scale=7.0, bump_strength=0.18),
         "wood": material("HOME_MAT_wood", (0.105, 0.036, 0.014, 1), roughness=0.70, bump_scale=4.0, bump_strength=0.11),
         "brass": material("HOME_MAT_brass", (0.42, 0.22, 0.050, 1), roughness=0.27, metallic=0.88),
-        "steel": material("HOME_MAT_steel", (0.11, 0.12, 0.13, 1), roughness=0.34, metallic=0.82),
+        "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
         "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
@@ -781,6 +793,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
     cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
+    for idx, x in enumerate((-2.95, -2.25, -1.55, -0.85, 0.0, 0.85, 1.55, 2.25, 2.95)):
+        motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.12, 0.066), (0.085, 0.085, 0.010), rug_border)
+        motif.rotation_euler[2] = math.radians(45)
+    for idx, x in enumerate((-2.70, -1.80, -0.90, 0.0, 0.90, 1.80, 2.70)):
+        motif = cube(f"HOME_PROP_rug_inner_motif_{idx}", (x, -1.72, 0.062), (0.050, 0.050, 0.009), materials["stone_dark"])
+        motif.rotation_euler[2] = math.radians(45)
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
@@ -791,6 +809,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
 
     add_fireplace("fireplace_left", -6.15, materials)
+    fireplace_left_origin = Vector((-6.15, 6.10, 0.35))
+    for obj in list(bpy.data.objects):
+        if ("fireplace_left" in obj.name) and obj.type != "LIGHT":
+            obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
+            obj.scale *= 0.90
     add_bookshelf(materials)
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
@@ -798,8 +821,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     fireplace_origin = Vector((4.45, 6.10, 0.35))
     for obj in list(bpy.data.objects):
         if ("fireplace_right" in obj.name) and obj.type != "LIGHT":
-            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.22
-            obj.scale *= 1.22
+            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.38
+            obj.scale *= 1.38
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.78, 1.52), 190, (1.0, 0.30, 0.07), radius=1.20)
+    for idx, cx in enumerate((3.72, 4.45, 5.18)):
+        cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 5.54, 2.62), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
+        cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 5.54, 2.92), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
     cube("HOME_ARCH_window_right", (7.58, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.58, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass"], bevel=0.12)
