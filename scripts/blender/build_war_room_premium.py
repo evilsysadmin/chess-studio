@@ -1202,6 +1202,92 @@ def validate_runtime_glb(path, expected_factors=None):
         raise RuntimeError(f"runtime GLB base-colour factors drifted: {drifted}")
 
 
+def runtime_batch_cell(obj):
+    """Keep static batches spatially local so frustum culling still has useful granularity."""
+    x, y, z = obj.matrix_world.translation
+    return (
+        math.floor((float(x) + 3.0) / 6.0),
+        math.floor((float(y) + 3.0) / 6.0),
+        math.floor((float(z) + 2.0) / 4.0),
+    )
+
+
+def collapse_runtime_static_shell():
+    """Apply authored modifiers and batch compatible static meshes for runtime only.
+
+    This runs after the hero preview and .blend have already been written, so the
+    editable source remains untouched. Grouping is deliberately conservative:
+    same material signature plus a coarse spatial cell. Runtime light anchors
+    are empties and therefore never participate.
+    """
+    static_meshes = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
+    ]
+    source_count = len(static_meshes)
+    if source_count < 200:
+        raise RuntimeError(f"runtime static source mesh count suspiciously small: {source_count}")
+
+    # Joining discards non-active object modifiers in Blender, so bake every
+    # authored bevel/shape modifier first. The preview has already rendered.
+    for obj in static_meshes:
+        if not obj.modifiers:
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        for modifier in list(obj.modifiers):
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+        obj.select_set(False)
+
+    groups = {}
+    for obj in static_meshes:
+        # Preserve authored crest node names as a runtime/QA contract. The
+        # heraldry is small, visually important, and deliberately exempt from
+        # batching so semantic validation cannot be erased by an optimization.
+        if obj.name.startswith("WR_CREST_"):
+            continue
+        material_signature = tuple(
+            material.name if material else ""
+            for material in obj.data.materials
+        )
+        key = (material_signature, runtime_batch_cell(obj))
+        groups.setdefault(key, []).append(obj)
+
+    merged_away = 0
+    batches = 0
+    for _key, objects in sorted(groups.items(), key=lambda row: repr(row[0])):
+        if len(objects) < 2:
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        active = objects[0]
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = active
+        bpy.ops.object.join()
+        active.name = f"WR_RUNTIME_BATCH_{batches:03d}"
+        active["war_room_contract"] = CONTRACT
+        active["war_room_role"] = ROLE_STATIC
+        bpy.ops.object.material_slot_remove_unused()
+        merged_away += len(objects) - 1
+        batches += 1
+
+    bpy.ops.object.select_all(action="DESELECT")
+    remaining = sum(
+        1 for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
+    )
+    if remaining > 150:
+        raise RuntimeError(f"runtime static batching ineffective: {source_count} -> {remaining}")
+    if merged_away < 120:
+        raise RuntimeError(f"runtime static batching merged too little: {merged_away}")
+
+    bpy.context.scene["war_room_runtime_source_meshes"] = source_count
+    bpy.context.scene["war_room_runtime_batched_meshes"] = remaining
+    bpy.context.scene["war_room_runtime_batches"] = batches
+    return source_count, remaining, merged_away
+
+
 def meshopt_export_kwargs():
     properties = set(bpy.ops.export_scene.gltf.get_rna_type().properties.keys())
     required = {"export_meshopt_compression_enable", "export_meshopt_extension"}
@@ -1218,6 +1304,11 @@ def export_shell(path):
     sanitized_links, runtime_textures, base_color_factors = sanitize_runtime_materials()
     bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
     bpy.context.scene["war_room_runtime_texture_count"] = runtime_textures
+    source_meshes, batched_meshes, merged_away = collapse_runtime_static_shell()
+    print(
+        f"War Room runtime batching: {source_meshes} -> {batched_meshes} meshes "
+        f"({merged_away} merged)"
+    )
     bpy.ops.object.select_all(action="DESELECT")
     selected = 0
     for obj in bpy.context.scene.objects:
