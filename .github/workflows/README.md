@@ -57,7 +57,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
 
-La retirada de Render staging es deliberadamente gradual: el **release normal y `runtime-sync` ya no dependen de Render**. `vault-bootstrap` y diagnósticos de migración concretos todavía pueden usarlo como puente mientras se completa la retirada. Render producción no forma parte de esa migración.
+La retirada de Render staging es deliberadamente gradual: el **fast-path normal y `runtime-sync` consumen Vault + Git y no consultan Render**. Mientras se completa el primer cutover real, el fallback canónico puede ejecutar una única recuperación idempotente `vault-bootstrap` si Vault aún no está poblado; después Render vuelve a quedar fuera del release normal. Render producción no forma parte de esa migración.
 
 ## Calidad especializada
 
