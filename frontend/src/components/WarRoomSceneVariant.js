@@ -103,11 +103,25 @@ export function createWarRoomClassicShellController({ build, eager = false } = {
   };
 }
 
+export function createClassicWarRoomShellController(
+  { scene, boardGroup, theme, whiteSide, renderLite } = {},
+  eager = false,
+) {
+  return createWarRoomClassicShellController({
+    eager,
+    build: () => buildClassicWarRoomShell({
+      scene, boardGroup, theme, whiteSide, renderLite,
+    }).classicShellObjects,
+  });
+}
+
 export function startWarRoomVariantScene({
-  scene, classicShellObjects = [], ensureClassicShell, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
+  scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
   let cancelled = false;
   let releaseV2 = null;
+  const classicShellObjects = classicShellController?.current?.() || [];
+  const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
       canvas.dataset.warRoomV2Status = status;
