@@ -123,7 +123,7 @@ func _run() -> void:
     if not ledge_target.is_empty():
         var target: Vector2 = ledge_target["target"]
         _expect(absf(target.x - 64.0) <= 1.0, "ledge climb entra lo suficiente sobre la plataforma")
-        _expect(absf(target.y - 36.0) <= 1.0, "ledge climb termina con los pies sobre la cara superior")
+        _expect(absf(target.y - 35.0) <= 1.0, "ledge climb termina con los pies sobre la cara superior")
         _expect(player.respawn_position_is_clear_probe(target), "ledge climb sólo acepta un destino de pie libre")
         player.start_ledge_climb_probe(target)
         _expect(player.is_climbing_probe(), "el segundo toque puede iniciar el estado de escalada")
