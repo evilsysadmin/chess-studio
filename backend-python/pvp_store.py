@@ -299,6 +299,45 @@ async def get_challenge(challenge_id: str) -> dict[str, Any] | None:
         raise PersistentStorageUnavailable("No se pudo leer el reto 1v1.") from exc
 
 
+async def cancel_challenge(challenge_id: str, username: str) -> dict[str, Any] | None:
+    """Cancel an outgoing pending challenge; repeated cancellation is idempotent."""
+    now = utcnow()
+    cutoff = _challenge_cutoff(now)
+    collections = await _collections()
+    if collections is None:
+        async with _memory_guard():
+            row = _memory_challenges.get(challenge_id)
+            if not row or row.get("challenger") != username:
+                return None
+            if row.get("status") == "cancelled":
+                return dict(row)
+            if row.get("status") != "pending" or row.get("created_at") < cutoff:
+                return None
+            row.update(status="cancelled", resolved_at=now)
+            return dict(row)
+    _, challenges, _ = collections
+    try:
+        row = await challenges.find_one_and_update(
+            {
+                "_id": challenge_id,
+                "status": "pending",
+                "challenger": username,
+                "created_at": {"$gte": cutoff},
+            },
+            {"$set": {"status": "cancelled", "resolved_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if row is not None:
+            return _public(row)
+        return _public(await challenges.find_one({
+            "_id": challenge_id,
+            "status": "cancelled",
+            "challenger": username,
+        }))
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo cancelar el reto 1v1.") from exc
+
+
 async def decline_challenge(challenge_id: str, username: str) -> dict[str, Any] | None:
     now = utcnow()
     collections = await _collections()
