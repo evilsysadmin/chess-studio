@@ -1,0 +1,109 @@
+name: Home · Blender 2.0 preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Eevee render samples for the blockout preview
+        required: false
+        default: '32'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: home-blender-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Render Home Blender 2.0 blockout
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-blender-canonical
+        with:
+          extra-packages: webp
+
+      - name: Build editable scene + preview
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/home-blender-v2
+          blender --background --python-exit-code 1 \
+            --python scripts/blender/build_home_v2_blockout.py -- \
+            --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
+            --out-dir /tmp/home-blender-v2 \
+            --samples '${{ inputs.samples }}'
+
+      - name: Validate render envelope and build comparison sheet
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          from PIL import Image, ImageDraw
+
+          out = Path('/tmp/home-blender-v2')
+          ref_path = Path('frontend/src/assets/home-canonical/great-hall-dungeon.webp')
+          preview_path = out / 'home-v2-preview.png'
+          clay_path = out / 'home-v2-clay.png'
+          blend_path = out / 'home-v2-blockout.blend'
+          metadata_path = out / 'home-v2-camera.json'
+
+          for path in (preview_path, clay_path, blend_path, metadata_path):
+              assert path.is_file() and path.stat().st_size > 1_000, path
+
+          reference = Image.open(ref_path).convert('RGB')
+          preview = Image.open(preview_path).convert('RGB')
+          clay = Image.open(clay_path).convert('RGB')
+          assert preview.size == reference.size, (preview.size, reference.size)
+          assert clay.size == reference.size, (clay.size, reference.size)
+
+          metadata = json.loads(metadata_path.read_text())
+          assert metadata['contract'] == 'home-blender-v2-blockout-v1'
+          assert metadata['reference_size'] == list(reference.size)
+          assert metadata['object_count'] >= 80, metadata['object_count']
+          assert metadata['named_groups']['architecture']
+          assert metadata['named_groups']['props']
+
+          target_width = min(1400, reference.width)
+          def scaled(image):
+              height = round(image.height * target_width / image.width)
+              return image.resize((target_width, height), Image.Resampling.LANCZOS)
+
+          rows = [
+              ('CANONICAL REFERENCE', scaled(reference)),
+              ('BLENDER 2.0 BLOCKOUT', scaled(preview)),
+              ('CLAY / GEOMETRY CHECK', scaled(clay)),
+          ]
+          label_h = 54
+          total_h = sum(img.height + label_h for _, img in rows)
+          sheet = Image.new('RGB', (target_width, total_h), (18, 14, 11))
+          draw = ImageDraw.Draw(sheet)
+          y = 0
+          for label, img in rows:
+              draw.text((18, y + 16), label, fill=(235, 219, 188))
+              y += label_h
+              sheet.paste(img, (0, y))
+              y += img.height
+          sheet.save(out / 'home-v2-comparison.png', optimize=True)
+          reference.save(out / 'home-v2-reference.png', optimize=True)
+          print(json.dumps({
+              'reference_size': reference.size,
+              'objects': metadata['object_count'],
+              'camera': metadata['camera'],
+          }, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: home-blender-v2-${{ github.run_number }}
+          path: /tmp/home-blender-v2/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
