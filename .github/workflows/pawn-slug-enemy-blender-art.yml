@@ -17,8 +17,8 @@ concurrency:
 jobs:
   render-enemies:
     name: Render enemy cast · Blender v1
-    runs-on: ubuntu-latest
-    timeout-minutes: 18
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 

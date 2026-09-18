@@ -20,7 +20,7 @@ concurrency:
 jobs:
   canonical-party:
     name: Build · Chronicles humanoid party
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v7
