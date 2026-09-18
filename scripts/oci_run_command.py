@@ -164,7 +164,7 @@ log="$(mktemp /tmp/chess-studio-deploy.XXXXXX)"
 tmp=''
 cleanup() {{ rm -f "$log"; [ -z "$tmp" ] || rm -f "$tmp"; }}
 trap cleanup EXIT
-agent_version="$(snap list oracle-cloud-agent 2>/dev/null | awk 'NR == 2 {print $2; exit}' || true)"
+agent_version="$(snap list oracle-cloud-agent 2>/dev/null | awk 'NR == 2 {{print $2; exit}}' || true)"
 run_deploy() {{
   : >"$log"
   set +e
