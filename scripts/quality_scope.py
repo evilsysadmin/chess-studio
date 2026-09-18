@@ -117,7 +117,7 @@ DEDICATED_3D_BROWSER_RE = re.compile(
     r"WarRoomTeutonicDecor|PremiumWarRoomScene)\.js$"
 )
 TARGETED_E2E = {
-    "e2e/pawn-slug.spec.js": "run_pawn_slug_e2e",
+    "e2e/home-pawn-slug-direct.spec.js": "run_pawn_slug_e2e",
     "e2e/chesscom.spec.js": "run_chesscom_e2e",
     "e2e/pawn-trailblazer.spec.js": "run_trailblazer_e2e",
     "e2e/matthias-home-priority.spec.js": "run_matthias_home_e2e",
@@ -345,7 +345,7 @@ def self_test() -> None:
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_security=True)
-    _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
+    _expect(["e2e/home-pawn-slug-direct.spec.js"], run_pawn_slug_e2e=True)
     _expect_core(
         ["e2e/helpers.js"],
         run_pawn_slug_e2e=True,
