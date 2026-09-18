@@ -136,6 +136,9 @@ REQUIRED_AUDIO = (
     "play_pickup",
     "play_hurt",
     "play_land",
+    "_start_ambient",
+    "_make_ambient_loop",
+    "AudioStreamWAV.LOOP_FORWARD",
 )
 REQUIRED_FEEL = (
     "_kick_camera_for_weapon",
@@ -277,6 +280,8 @@ def self_test() -> None:
     assert "_draw_muzzle_flashes" in REQUIRED_COMBAT_FX
     assert "_prefers_reduced_motion" in REQUIRED_FEEL
     assert "AudioStreamWAV" in REQUIRED_AUDIO
+    assert "_make_ambient_loop" in REQUIRED_AUDIO
+    assert "AudioStreamWAV.LOOP_FORWARD" in REQUIRED_AUDIO
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
