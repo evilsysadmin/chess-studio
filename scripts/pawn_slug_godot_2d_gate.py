@@ -70,6 +70,9 @@ REQUIRED_MATTHIAS = (
     "RUN_LEG_MOTION_MIN_SCORE",
     "_rendered_weapon",
     "_prefetch_machinegun",
+    "_full_muzzle_positions_for_atlas",
+    "_muzzle_from_full_cell",
+    "RUN_FIRE_RECOIL_DEGREES",
     'name = "WeaponRoot"',
 )
 FORBIDDEN_MATTHIAS = (
@@ -190,6 +193,17 @@ REQUIRED_MOBILE_PAUSE = (
     "screen.orientation.lock('landscape')",
     "screen.orientation.unlock",
 )
+REQUIRED_ENEMY_AI = (
+    "_enemy_engaged",
+    "_alert_enemies",
+    "_enemy_weapon_standoff",
+    "_grenade_evade_direction",
+    "GUNFIRE_HEARING_RANGE",
+    "GRENADE_EVADE_RADIUS",
+    "SOLDIER_SPRINT_MULTIPLIER",
+    "SOLDIER_BACKPEDAL_MULTIPLIER",
+)
+
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -252,6 +266,7 @@ def validate() -> None:
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_ENEMY_AI, violations)
     validate_contract(BOSS, "boss_visual.gd", REQUIRED_BOSS_TELEGRAPH, violations)
     validate_contract(TOUCH, "touch_controls.gd", REQUIRED_TOUCH, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_MOBILE_PLAYER, violations)
@@ -292,6 +307,10 @@ def self_test() -> None:
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
+    assert "_enemy_engaged" in REQUIRED_ENEMY_AI
+    assert "GRENADE_EVADE_RADIUS" in REQUIRED_ENEMY_AI
+    assert "_full_muzzle_positions_for_atlas" in REQUIRED_MATTHIAS
+    assert "RUN_FIRE_RECOIL_DEGREES" in REQUIRED_MATTHIAS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
     assert "GIRA EL MÓVIL" in REQUIRED_TOUCH

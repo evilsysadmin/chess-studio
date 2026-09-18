@@ -10,9 +10,14 @@ const FLOOR_Y := 610.0
 const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
-const ENEMY_AGGRO_RANGE := 1080.0
+const ENEMY_AGGRO_RANGE := 1380.0
 const START_ZONE_END_X := 900.0
-const START_ZONE_AGGRO_RANGE := 650.0
+const START_ZONE_AGGRO_RANGE := 900.0
+const ENEMY_DISENGAGE_RANGE := 1850.0
+const GUNFIRE_HEARING_RANGE := 1550.0
+const GRENADE_HEARING_RANGE := 1750.0
+const GRENADE_EVADE_RADIUS := 250.0
+const GRENADE_EVADE_SPEED_SCALE := 2.15
 const SOLDIER_SPRINT_MARGIN := 180.0
 const SOLDIER_ADVANCE_MARGIN := 80.0
 const SOLDIER_COMFORT_MARGIN := 24.0
@@ -186,6 +191,7 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> void:
+    _alert_enemies(origin.x, GUNFIRE_HEARING_RANGE)
     var speed := float(shot.get("speed", 760.0))
     var damage := int(shot.get("damage", 1))
     var pellets := maxi(1, int(shot.get("pellets", 1)))
@@ -207,6 +213,7 @@ func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> vo
         })
 
 func _on_player_grenade_thrown(origin: Vector2, direction: float) -> void:
+    _alert_enemies(origin.x, GRENADE_HEARING_RANGE)
     thrown_grenades.append({
         "position": origin,
         "velocity": Vector2(GRENADE_START_SPEED.x * direction, GRENADE_START_SPEED.y),
@@ -304,6 +311,8 @@ func _build_enemy_roster() -> Array[Dictionary]:
             "type": type,
             "x": float(spawn[0]),
             "spawn_x": float(spawn[0]),
+            "alerted": false,
+            "reaction": 0.10 + float(index % 4) * 0.055,
             "y": FLOOR_Y,
             "vy": 0.0,
             "on_ground": true,
@@ -547,11 +556,59 @@ func _update_explosion_fx(delta: float) -> void:
             explosion_fx[index] = effect
 
 func _enemy_aggro_range() -> float:
-    # Keep the opening lively without activating the whole first squad before
-    # the player has even established movement and weapon rhythm.
+    # The opening still stages the first squad, but anything visible in front of
+    # Matthias should not read as a cardboard target.
     if player.global_position.x < START_ZONE_END_X:
         return START_ZONE_AGGRO_RANGE
     return ENEMY_AGGRO_RANGE
+
+func _alert_enemies(world_x: float, hearing_range: float) -> void:
+    for index in range(enemies.size()):
+        var enemy := enemies[index]
+        if int(enemy["hp"]) <= 0:
+            continue
+        if absf(float(enemy["x"]) - world_x) <= hearing_range:
+            enemy["alerted"] = true
+            enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.12)
+            enemies[index] = enemy
+
+func _enemy_engaged(enemy: Dictionary, abs_distance: float) -> bool:
+    if player.dead or player.is_game_over:
+        return false
+    if abs_distance <= _enemy_aggro_range():
+        enemy["alerted"] = true
+    if not bool(enemy.get("alerted", false)):
+        return false
+    if abs_distance > ENEMY_DISENGAGE_RANGE:
+        enemy["alerted"] = false
+        return false
+    return true
+
+func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
+    match String(enemy.get("weapon", "pistol")):
+        "shotgun":
+            return 205.0
+        "machinegun":
+            return 330.0
+        "panzerfaust":
+            return 590.0
+        _:
+            return float(stats["standoff"])
+
+func _grenade_evade_direction(enemy_x: float) -> float:
+    var nearest_distance := GRENADE_EVADE_RADIUS + 1.0
+    var nearest_x := 0.0
+    for grenade in thrown_grenades:
+        var grenade_x := float(Vector2(grenade["position"]).x)
+        var distance := absf(enemy_x - grenade_x)
+        if distance < nearest_distance:
+            nearest_distance = distance
+            nearest_x = grenade_x
+    if nearest_distance > GRENADE_EVADE_RADIUS:
+        return 0.0
+    if is_equal_approx(enemy_x, nearest_x):
+        return -1.0 if player.global_position.x > enemy_x else 1.0
+    return 1.0 if enemy_x > nearest_x else -1.0
 
 func _update_enemies(delta: float) -> void:
     for index in range(enemies.size()):
@@ -565,8 +622,13 @@ func _update_enemies(delta: float) -> void:
         var abs_distance: float = absf(distance_x)
         var movement_speed_scale := 0.0
 
+        var player_active := _enemy_engaged(enemy, abs_distance)
+        if player_active:
+            enemy["reaction"] = maxf(0.0, float(enemy.get("reaction", 0.0)) - delta)
+        var can_act := player_active and float(enemy.get("reaction", 0.0)) <= 0.0
+
         if type == "bishop":
-            if not player.dead and not player.is_game_over and abs_distance <= _enemy_aggro_range():
+            if can_act:
                 movement_speed_scale = 1.0 if _update_bishop(enemy, delta, abs_distance, distance_x) else 0.0
             else:
                 _set_bishop_telegraph(enemy, 0.0, 0.0)
@@ -577,10 +639,9 @@ func _update_enemies(delta: float) -> void:
         if type == "knight":
             enemy["leap_cooldown"] = maxf(0.0, float(enemy["leap_cooldown"]) - delta)
 
-        var player_active: bool = not bool(player.dead) and not bool(player.is_game_over) and abs_distance <= _enemy_aggro_range()
-        if player_active:
+        if can_act:
             var speed := float(stats["speed"])
-            var standoff := float(stats["standoff"])
+            var standoff := _enemy_weapon_standoff(enemy, stats)
             if type == "knight":
                 var move_direction := 1.0 if distance_x > 0.0 else -1.0
                 var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
@@ -606,28 +667,31 @@ func _update_enemies(delta: float) -> void:
                     enemy["on_ground"] = false
                     enemy["leap_cooldown"] = randf_range(KNIGHT_LEAP_COOLDOWN_MIN, KNIGHT_LEAP_COOLDOWN_MAX)
             elif speed > 0.0:
-                movement_speed_scale = _update_soldier_movement(enemy, stats, distance_x, abs_distance, delta)
+                movement_speed_scale = _update_soldier_movement(enemy, stats, standoff, distance_x, abs_distance, delta)
 
         if type == "knight":
             _update_knight_vertical(enemy, delta)
 
         _sync_enemy_visual(enemy, movement_speed_scale)
         enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
-        if player_active and float(enemy["cooldown"]) <= 0.0:
+        if can_act and float(enemy["cooldown"]) <= 0.0:
             _try_enemy_fire(enemy)
             enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
         enemies[index] = enemy
 
-func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, distance_x: float, abs_distance: float, delta: float) -> float:
+func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: float, distance_x: float, abs_distance: float, delta: float) -> float:
     var speed := float(stats["speed"])
-    var standoff := float(stats["standoff"])
     if speed <= 0.0:
         return 0.0
 
     var toward_player := 1.0 if distance_x > 0.0 else -1.0
     var move_direction := 0.0
     var speed_scale := 0.0
-    if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+    var grenade_evade := _grenade_evade_direction(float(enemy["x"]))
+    if not is_zero_approx(grenade_evade):
+        move_direction = grenade_evade
+        speed_scale = GRENADE_EVADE_SPEED_SCALE
+    elif abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
         move_direction = toward_player
         speed_scale = SOLDIER_SPRINT_MULTIPLIER
     elif abs_distance > standoff + SOLDIER_ADVANCE_MARGIN:
@@ -652,6 +716,7 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, distance_x: 
     if is_equal_approx(previous_x, float(enemy["x"])):
         return 0.0
     return speed_scale
+
 
 func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
     var foot_y := float(enemy.get("y", FLOOR_Y))
