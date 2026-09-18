@@ -35,6 +35,7 @@ class Scope:
     chesscom: bool = False
     experiment_parts: tuple[str, ...] = ()
     chronicles_avatar: bool = False
+    warroom_revision_required: bool = False
 
     @property
     def capture_groups(self) -> str:
@@ -203,6 +204,17 @@ def _needs_hans_routines(path: str) -> bool:
     return lower in HANS_ROUTINE_SHARED_OWNERS
 
 
+WAR_ROOM_V2_REVISION_OWNERS = {
+    "scripts/blender/build_war_room_premium.py",
+    "scripts/blender/publish_war_room_v2_staging.py",
+    ".github/workflows/war-room-blender-art.yml",
+}
+
+
+def _needs_warroom_revision(path: str) -> bool:
+    return path.lower().replace("\\", "/") in WAR_ROOM_V2_REVISION_OWNERS
+
+
 def _needs_chronicles_avatar(path: str) -> bool:
     """The 8-avatar proof is only needed for portrait/UI/Three ownership."""
     lower = path.lower()
@@ -228,6 +240,7 @@ def classify(paths: list[str]) -> Scope:
     hans = False
     chesscom = False
     chronicles_avatar = False
+    warroom_revision_required = any(_needs_warroom_revision(path) for path in cleaned)
 
     for path in cleaned:
         lower = path.lower()
@@ -238,7 +251,15 @@ def classify(paths: list[str]) -> Scope:
 
         surface = _surface_groups(path)
         if surface is None:
-            return full_scope()
+            fallback = full_scope()
+            return Scope(
+                fallback.groups,
+                hans=fallback.hans,
+                chesscom=fallback.chesscom,
+                experiment_parts=fallback.experiment_parts,
+                chronicles_avatar=fallback.chronicles_avatar,
+                warroom_revision_required=warroom_revision_required,
+            )
         groups.update(surface)
         if "experiments" in surface:
             parts = _experiment_parts(path)
@@ -254,6 +275,7 @@ def classify(paths: list[str]) -> Scope:
         chesscom=chesscom,
         experiment_parts=ordered_experiments,
         chronicles_avatar=chronicles_avatar,
+        warroom_revision_required=warroom_revision_required,
     )
 
 
@@ -265,6 +287,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
         "warroom": str(scope.warroom).lower(),
         "hans": str(scope.hans).lower(),
         "chesscom": str(scope.chesscom).lower(),
+        "warroom_revision_required": str(scope.warroom_revision_required).lower(),
     }
     with open(output_path, "a", encoding="utf-8") as handle:
         for key, value in values.items():
@@ -309,11 +332,15 @@ def self_test() -> None:
     assert blender_publish.capture_groups == "warroom" and not blender_publish.hans
     assert blender_workflow.capture_groups == "warroom" and not blender_workflow.hans
     assert blender_warroom.capture_groups == "warroom" and not blender_warroom.hans
+    assert blender_warroom.warroom_revision_required
+    assert blender_publish.warroom_revision_required
+    assert blender_workflow.warroom_revision_required
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
     board3d_core = classify(["frontend/src/components/Board3DCore.jsx"])
     assert board3d_core.capture_groups == "warroom" and not board3d_core.hans
+    assert not board3d_core.warroom_revision_required
     game_board = classify(["frontend/src/components/GameBoardView.jsx"])
     assert game_board.capture_groups == "warroom" and game_board.hans
     ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
@@ -421,6 +448,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"warroom={str(scope.warroom).lower()}")
         print(f"hans={str(scope.hans).lower()}")
         print(f"chesscom={str(scope.chesscom).lower()}")
+        print(f"warroom_revision_required={str(scope.warroom_revision_required).lower()}")
     return 0
 
 
