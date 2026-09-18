@@ -292,7 +292,7 @@ assert "docker pull --quiet" in signal_controller
 assert "approved and immutable image identities differ" in signal_controller
 assert "failure_cooldown_s=60" in signal_controller
 assert "staging-signal-failure" in signal_controller
-assert 'failed_sha == "$sha"' in signal_controller
+assert '[[ "$failed_sha" == "$sha"' in signal_controller
 assert "ssh " not in signal_controller.lower()
 assert "object_storage" not in signal_controller.lower()
 assert "bastion" not in signal_controller.lower()
