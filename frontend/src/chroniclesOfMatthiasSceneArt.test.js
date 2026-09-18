@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { installChroniclesTacticsSceneArt } from './chroniclesOfMatthiasSceneArt.js';
+import {
+  chroniclesTacticsTrapVisualMode,
+  syncChroniclesTacticsPressurePlateArt,
+} from './chroniclesOfMatthiasPressurePlateArt.js';
 
 function sceneModels() {
   const scene = new THREE.Scene();
@@ -69,6 +73,51 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(scene.getObjectByName('chronicles-trap-chain-plate-east')?.userData.chroniclesTrapVisualType).toBe('chain-plate');
     expect(scene.getObjectByName('chronicles-trap-slag-vent-west')?.position.z)
       .toBeGreaterThan(scene.getObjectByName('chronicles-trap-chain-plate-east')?.position.z);
+  });
+
+  it('maps authored trap runtime state to armed, spent and safe visual poses', () => {
+    expect(chroniclesTacticsTrapVisualMode({ available: true, activated: false })).toBe('armed');
+    expect(chroniclesTacticsTrapVisualMode({ available: false, activated: true })).toBe('spent');
+    expect(chroniclesTacticsTrapVisualMode({ available: false, activated: false })).toBe('safe');
+
+    const { scene, models } = sceneModels();
+    const scenePlan = {
+      center: { x: 5, y: 4 },
+      wallFaces: [],
+      content: [
+        { id: 'slag-vent-west', kind: 'trap', visualType: 'slag-vent', position: { x: 5, y: 6 } },
+        { id: 'chain-plate-east', kind: 'trap', visualType: 'chain-plate', position: { x: 9, y: 5 } },
+      ],
+    };
+    installChroniclesTacticsSceneArt(models, { coarsePointer: true, scenePlan });
+
+    syncChroniclesTacticsPressurePlateArt(scene, [
+      { id: 'slag-vent-west', available: true, activated: false },
+      { id: 'chain-plate-east', available: true, activated: false },
+    ], { now: 1 });
+    const vent = scene.getObjectByName('chronicles-trap-slag-vent-west');
+    const plate = scene.getObjectByName('chronicles-trap-chain-plate-east');
+    expect(vent?.userData.chroniclesTrapVisualMode).toBe('armed');
+    expect(vent?.userData.chroniclesTrapVisual?.glow?.intensity).toBeGreaterThan(0);
+    expect(plate?.userData.chroniclesTrapVisualMode).toBe('armed');
+    const armedPlateY = plate?.userData.chroniclesTrapVisual?.plate?.position?.y;
+
+    syncChroniclesTacticsPressurePlateArt(scene, [
+      { id: 'slag-vent-west', available: false, activated: true },
+      { id: 'chain-plate-east', available: false, activated: true },
+    ], { now: 2 });
+    expect(vent?.userData.chroniclesTrapVisualMode).toBe('spent');
+    expect(vent?.userData.chroniclesTrapTriggeredAt).toBe(2);
+    expect(plate?.userData.chroniclesTrapVisualMode).toBe('spent');
+    expect(plate?.userData.chroniclesTrapVisual?.plate?.position?.y).toBeLessThan(armedPlateY);
+
+    syncChroniclesTacticsPressurePlateArt(scene, [
+      { id: 'slag-vent-west', available: false, activated: false },
+      { id: 'chain-plate-east', available: false, activated: false },
+    ], { now: 3 });
+    expect(vent?.userData.chroniclesTrapVisualMode).toBe('safe');
+    expect(vent?.userData.chroniclesTrapVisual?.glow?.intensity).toBe(0);
+    expect(plate?.userData.chroniclesTrapVisualMode).toBe('safe');
   });
 
   it('reuses idempotent canonical layers when called twice', () => {
