@@ -34,9 +34,41 @@ async function openExperiments(page) {
 }
 
 async function expectGodotHost(page) {
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
-  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toBeVisible();
+  const host = page.locator('.pawn-slug-godot-host');
+  const frame = page.locator('iframe[title="Pawn Slug Godot"]');
+  await expect(host).toBeVisible();
+  await expect(frame).toBeVisible();
+  await expect(page.locator('.pawn-slug-godot-host__header')).toHaveCount(0);
   await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
+
+  const [hostBox, viewport] = await Promise.all([
+    host.boundingBox(),
+    Promise.resolve(page.viewportSize()),
+  ]);
+  expect(hostBox).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(hostBox.x).toBeGreaterThanOrEqual(-1);
+  expect(hostBox.y).toBeGreaterThanOrEqual(-1);
+  expect(hostBox.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  expect(hostBox.height).toBeGreaterThanOrEqual(viewport.height - 1);
+  expect(hostBox.x + hostBox.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(hostBox.y + hostBox.height).toBeLessThanOrEqual(viewport.height + 1);
+
+  const overflow = await page.evaluate(() => ({
+    html: getComputedStyle(document.documentElement).overflow,
+    body: getComputedStyle(document.body).overflow,
+  }));
+  expect(overflow).toEqual({ html: 'hidden', body: 'hidden' });
+}
+
+async function requestGodotExit(page) {
+  const handle = await page.locator('iframe[title="Pawn Slug Godot"]').elementHandle();
+  expect(handle).not.toBeNull();
+  const child = await handle.contentFrame();
+  expect(child).not.toBeNull();
+  await child.evaluate(() => {
+    window.parent.postMessage({ source: 'pawn-slug-godot', type: 'exit' }, '*');
+  });
 }
 
 test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', async ({ page }) => {
@@ -48,7 +80,7 @@ test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', 
   await godotPortal.click();
   await expectGodotHost(page);
 
-  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
+  await requestGodotExit(page);
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /PAWN SLUG GODOT/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Pawn Slug$/ })).toHaveCount(0);
