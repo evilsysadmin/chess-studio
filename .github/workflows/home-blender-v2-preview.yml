@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   render:
-    name: Render Home Blender 2.0 · ${{ inputs.quality || 'blockout' }}
+    name: Render Home Blender 2.0 · ${{ inputs.quality || (contains(github.event.head_commit.message, '[beauty]') && 'beauty' || 'blockout') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -51,13 +51,13 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'blockout') == 'beauty' && '32' || '16' }}' \
-            --max-width '${{ (inputs.quality || 'blockout') == 'beauty' && '1814' || '1100' }}' \
-            --engine '${{ (inputs.quality || 'blockout') == 'beauty' && 'eevee' || 'workbench' }}'
+            --samples '${{ (inputs.quality || (contains(github.event.head_commit.message, '[beauty]') && 'beauty' || 'blockout')) == 'beauty' && '32' || '16' }}' \
+            --max-width '${{ (inputs.quality || (contains(github.event.head_commit.message, '[beauty]') && 'beauty' || 'blockout')) == 'beauty' && '1814' || '1100' }}' \
+            --engine '${{ (inputs.quality || (contains(github.event.head_commit.message, '[beauty]') && 'beauty' || 'blockout')) == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
         env:
-          QUALITY: ${{ inputs.quality || 'blockout' }}
+          QUALITY: ${{ inputs.quality || (contains(github.event.head_commit.message, '[beauty]') && 'beauty' || 'blockout') }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
