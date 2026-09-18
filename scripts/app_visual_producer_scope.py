@@ -82,11 +82,15 @@ def classify_path(path: str) -> set[str] | None:
     name = Path(lower).name
 
     if (
-        lower == "scripts/app_visual_producer_scope.py"
-        or lower == "scripts/app_visual_capture.sh"
+        lower in {
+            "scripts/app_visual_scope.py",
+            "scripts/app_visual_producer_scope.py",
+            ".github/workflows/app-visual-artifact.yml",
+        }
         or lower.startswith(".github/actions/app-visual-pipeline/")
-        or lower == ".github/workflows/app-visual-artifact.yml"
     ):
+        return {"chronicles-tactics"}
+    if lower == "scripts/app_visual_capture.sh":
         return None
 
     if lower.startswith("e2e/"):
@@ -183,6 +187,10 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify(["scripts/app_visual_scope.py"]) == "chronicles-tactics"
+    assert classify(["scripts/app_visual_producer_scope.py"]) == "chronicles-tactics"
+    assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "chronicles-tactics"
+    assert classify([".github/workflows/app-visual-artifact.yml"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
