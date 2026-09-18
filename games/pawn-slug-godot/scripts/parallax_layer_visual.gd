@@ -1,6 +1,7 @@
 extends Node2D
 
 const ATMOSPHERE_REDRAW_INTERVAL := 0.05
+const INDUSTRIAL_FAR_ART := preload("res://art/industrial_front_far_v1.webp")
 
 var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
@@ -38,6 +39,8 @@ func _draw() -> void:
     match _kind:
         "sky":
             _draw_sky()
+        "industrial_art":
+            _draw_industrial_art()
         "far_ridge":
             _draw_far_ridge()
         "industrial_landmark":
@@ -214,6 +217,18 @@ func _draw_industrial_cloud_deck() -> void:
         Vector2(-120.0, 338.0),
     ])
     draw_colored_polygon(mist_points, Color(0.32, 0.39, 0.44, 0.040 * _intensity))
+
+func _draw_industrial_art() -> void:
+    if _preset != "night_front":
+        return
+    # Approved mock-derived far art: sky, mountains and distant factory only.
+    # It is decorative and never defines traversal/collision.
+    draw_texture_rect(
+        INDUSTRIAL_FAR_ART,
+        Rect2(Vector2(250.0, 0.0), Vector2(1536.0, 591.0)),
+        false,
+        Color(0.90, 0.93, 0.96, 0.90 * _intensity),
+    )
 
 func _draw_far_ridge() -> void:
     if _preset == "harbor_dusk":
