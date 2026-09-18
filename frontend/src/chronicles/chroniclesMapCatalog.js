@@ -5,6 +5,7 @@ import ashVault from './maps/ash-vault.json';
 import blindKingArchive from './maps/blind-king-archive.json';
 import ironFoundry from './maps/iron-foundry.json';
 import chainBasilica from './maps/chain-basilica.json';
+import hollowBellTower from './maps/hollow-bell-tower.json';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
@@ -249,6 +250,7 @@ const MAPS = Object.freeze({
   [blindKingArchive.id]: normalizeMap(blindKingArchive),
   [ironFoundry.id]: normalizeMap(ironFoundry),
   [chainBasilica.id]: normalizeMap(chainBasilica),
+  [hollowBellTower.id]: normalizeMap(hollowBellTower),
 });
 
 const MAP_IDS = new Set(Object.keys(MAPS));
