@@ -396,8 +396,8 @@ def add_table_and_board(materials):
         x = -4.02 if side < 0 else 3.18
         chair_y = 0.58 if side < 0 else 1.02
         cube(f"HOME_PROP_chair_frame_{side}", (x, chair_y, 0.50), (0.68, 0.66, 0.12), wood, bevel=0.055)
-        cube(f"HOME_PROP_chair_cushion_{side}", (x, chair_y - 0.05, 0.70), (0.62, 0.60, 0.18), banner, bevel=0.14)
-        cube(f"HOME_PROP_chair_back_{side}", (x, chair_y + 0.52, 1.25), (0.66, 0.16, 0.72), banner, bevel=0.15)
+        cube(f"HOME_PROP_chair_cushion_{side}", (x, chair_y - 0.05, 0.70), (0.62, 0.60, 0.18), materials["leather"], bevel=0.14)
+        cube(f"HOME_PROP_chair_back_{side}", (x, chair_y + 0.52, 1.25), (0.66, 0.16, 0.72), materials["leather"], bevel=0.15)
         for arm_x in (-0.56, 0.56):
             cube(
                 f"HOME_PROP_chair_arm_{side}_{arm_x}",
@@ -461,12 +461,12 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_grate_cross", (x, 5.47, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
     hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.54, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
-    flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
+    flame_offsets = (-0.66, -0.44, -0.24, -0.04, 0.18, 0.40, 0.60)
     for idx, offset in enumerate(flame_offsets):
-        height = 0.34 + 0.13 * ((idx * 5) % 4)
+        height = 0.46 + 0.15 * ((idx * 5) % 4)
         cone(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.53, 0.67 + height / 2),
+            (x + offset, 5.53, 0.98 + height / 2),
             0.13 + 0.025 * (idx % 2),
             0.025,
             height,
@@ -476,14 +476,14 @@ def add_fireplace(name: str, x: float, materials):
         if idx % 2 == 0:
             cone(
                 f"HOME_PROP_{name}_flame_hot_{idx}",
-                (x + offset * 0.98, 5.50, 0.65 + height * 0.30),
+                (x + offset * 0.98, 5.50, 0.95 + height * 0.30),
                 0.070,
                 0.012,
                 height * 0.52,
                 hot,
                 vertices=14,
             )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 360, (1.0, 0.30, 0.07), radius=1.15)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.42), 440, (1.0, 0.28, 0.06), radius=1.22)
 
 
 def add_bookshelf(materials):
@@ -803,6 +803,7 @@ def add_stairs(materials):
         rail_points.append((x, y, z))
         rail_lower.append((x, y, z - 0.28))
 
+    curve_tube("HOME_PROP_dungeon_stone_stringer", [(x, y, z - 0.50) for x, y, z in rail_points], 0.12, stone)
     curve_tube("HOME_PROP_dungeon_rail", rail_points, 0.045, brass)
     curve_tube("HOME_PROP_dungeon_rail_lower", rail_lower, 0.025, brass)
 
@@ -857,21 +858,21 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.052
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.225, 0.178, 0.132, 1), roughness=0.92, bump_scale=5.0, bump_strength=0.24),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.070, 0.052, 0.038, 1), roughness=0.97, bump_scale=6.5, bump_strength=0.20),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.120, 0.085, 0.058, 1), roughness=0.94, bump_scale=7.0, bump_strength=0.18),
+        "stone": material("HOME_MAT_stone", (0.155, 0.125, 0.100, 1), roughness=0.92, bump_scale=5.0, bump_strength=0.24),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.050, 0.040, 0.034, 1), roughness=0.97, bump_scale=6.5, bump_strength=0.20),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.080, 0.060, 0.046, 1), roughness=0.94, bump_scale=7.0, bump_strength=0.18),
         "wood": material("HOME_MAT_wood", (0.105, 0.036, 0.014, 1), roughness=0.70, bump_scale=4.0, bump_strength=0.11),
         "brass": material("HOME_MAT_brass", (0.42, 0.22, 0.050, 1), roughness=0.27, metallic=0.88),
         "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
-        "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
-        "banner": material("HOME_MAT_banner", (0.43, 0.018, 0.014, 1), roughness=0.84, bump_scale=18.0, bump_strength=0.06),
+        "rug": material("HOME_MAT_rug", (0.18, 0.008, 0.012, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
+        "banner": material("HOME_MAT_banner", (0.22, 0.010, 0.010, 1), roughness=0.84, bump_scale=18.0, bump_strength=0.06),
         "book_green": material("HOME_MAT_book_green", (0.08, 0.16, 0.10, 1), roughness=0.88),
         "book_brown": material("HOME_MAT_book_brown", (0.22, 0.08, 0.035, 1), roughness=0.88),
         "piece_light": material("HOME_MAT_piece_light", (0.76, 0.66, 0.48, 1), roughness=0.55),
         "piece_dark": material("HOME_MAT_piece_dark", (0.035, 0.025, 0.022, 1), roughness=0.52),
-        "leather": material("HOME_MAT_leather", (0.30, 0.018, 0.018, 1), roughness=0.76, bump_scale=16.0, bump_strength=0.06),
+        "leather": material("HOME_MAT_leather", (0.12, 0.010, 0.010, 1), roughness=0.72, bump_scale=16.0, bump_strength=0.08),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
         "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
@@ -933,6 +934,25 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
     cube("HOME_ARCH_rug", (0, 1.45, 0.018), (4.05, 5.20, 0.018), materials["rug"])
 
+    # Coarse masonry courses are geometry in the blockout so silhouette and
+    # scale survive even before final texture authoring.
+    for idx, z in enumerate((0.75, 1.55, 2.35, 3.15, 3.95, 4.75, 5.55)):
+        cube(
+            f"HOME_ARCH_back_masonry_h_{idx}",
+            (0.0, 6.72, z),
+            (8.85, 0.018, 0.022),
+            materials["stone_dark"],
+        )
+    for row, z in enumerate((1.15, 2.75, 4.35)):
+        offset = 0.72 if row % 2 else 0.0
+        for col, x in enumerate((-7.2, -5.4, -3.6, -1.8, 0.0, 1.8, 3.6, 5.4, 7.2)):
+            cube(
+                f"HOME_ARCH_back_masonry_v_{row}_{col}",
+                (x + offset, 6.70, z),
+                (0.020, 0.020, 0.38),
+                materials["stone_dark"],
+            )
+
     # Stone slab seams keep the floor from reading as one flat dark plane.
     grout = materials["stone_dark"]
     for idx, x in enumerate((-8.0, -6.4, -4.8, -3.2, 3.2, 4.8, 6.4, 8.0)):
@@ -960,6 +980,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
+        cube(f"HOME_ARCH_column_cap_{x}", (x, 6.55, 5.08), (0.40, 0.32, 0.14), materials["stone"], bevel=0.04)
+        cube(f"HOME_ARCH_column_plinth_{x}", (x, 6.55, 0.12), (0.42, 0.34, 0.12), materials["stone"], bevel=0.04)
 
     add_fireplace("fireplace_left", -3.55, materials)
     fireplace_left_origin = Vector((-3.55, 6.10, 0.35))
@@ -1081,15 +1103,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 235, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 112, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 145, (0.74, 0.57, 0.42), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 82, (0.12, 0.25, 0.46), 5.8, target=(1.8, 3.0, 1.8))
     # Canonical beauty checkpoint: warm hearth/table hierarchy with a cooler
     # moonlit right wing; practicals stay local instead of flattening the room.
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 190, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 92, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 245, (0.86, 0.69, 0.52), 4.5, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 155, (0.78, 0.48, 0.26), 3.0, target=(-5.9, 5.8, 2.6))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 115, (0.70, 0.38, 0.20), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 42, (0.34, 0.24, 0.18), 8.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 285, (0.14, 0.32, 0.62), 4.4, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 145, (0.84, 0.64, 0.46), 4.5, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 105, (0.78, 0.46, 0.24), 3.0, target=(-5.9, 5.8, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (3.8, 3.4, 5.2), 145, (0.38, 0.48, 0.60), 2.8, target=(-4.92, 5.10, 2.4))
 
     # Preserve the visual richness while collapsing repeated geometry. This is
@@ -1164,6 +1186,12 @@ def main() -> None:
         if obj.type == "MESH" and obj.data.materials:
             obj.data.materials.clear()
             obj.data.materials.append(clay)
+    if args.engine == "eevee":
+        scene.render.engine = "BLENDER_WORKBENCH"
+        scene.display.shading.light = "STUDIO"
+        scene.display.shading.color_type = "MATERIAL"
+        scene.display.shading.show_shadows = True
+        scene.display.shading.show_cavity = True
     render(scene, clay_path)
 
     metadata = {
