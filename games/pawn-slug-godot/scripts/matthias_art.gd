@@ -46,6 +46,12 @@ const RUN_BOB_PX := 1.65
 const RUN_LEAN_DEGREES := 1.35
 const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
+const MUZZLE_SCAN_ALPHA := 0.12
+const MUZZLE_SCAN_Y_MIN_RATIO := 0.26
+const MUZZLE_SCAN_Y_MAX_RATIO := 0.73
+const MUZZLE_TIP_PAD_PX := 2.0
+const RUN_FIRE_RECOIL_DEGREES := 1.55
+const RUN_FIRE_RECOIL_DECAY_DEGREES := 72.0
 
 const FULL_ACTION_ORDER := [
     "idle", "walk", "run", "jump", "fall", "land", "shoot", "reload", "hurt", "die", "crouch",
@@ -106,6 +112,7 @@ const FLASH_SCALE := {"pistol": 0.75, "machinegun": 0.95, "shotgun": 1.20, "panz
 
 static var _full_frames_by_weapon: Dictionary = {}
 static var _full_body_y_by_weapon: Dictionary = {}
+static var _full_muzzle_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -120,6 +127,7 @@ var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _muzzle_remaining := 0.0
 var _recoil_x := 0.0
+var _recoil_rotation := 0.0
 var _facing := 1.0
 var _one_shot_action := ""
 var _hold_one_shot := false
@@ -238,12 +246,23 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
         var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
         _recoil_x = -_facing * float(RECOIL.get(visual_weapon, 4.0))
+        if locomoting_now:
+            # Keep the authored run stride, but let the upper silhouette kick a
+            # fraction on every shot instead of skating with a rigid weapon.
+            _recoil_rotation = deg_to_rad(-RUN_FIRE_RECOIL_DEGREES)
     if landed_now and not _dead and not (_using_full_atlas and _animation_available("land")):
         _fx_root.scale = Vector2(1.03, 0.95)
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
     _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
+    _recoil_rotation = move_toward(
+        _recoil_rotation,
+        0.0,
+        deg_to_rad(RUN_FIRE_RECOIL_DECAY_DEGREES) * delta,
+    )
     _fx_root.position.x = _recoil_x
+    if not _dead:
+        _fx_root.rotation += _recoil_rotation
     if not _dead and _action != "walk" and _action != "run":
         _fx_root.position.y = 0.0
     _fx_root.scale = _fx_root.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
@@ -288,7 +307,10 @@ func _build_nodes() -> void:
 
     _weapon_root = Node2D.new()
     _weapon_root.name = "WeaponRoot"
-    _weapon_root.scale = Vector2(BODY_SCALE_RATIO, BODY_SCALE_RATIO)
+    # Muzzle offsets are expressed in grounded world pixels. The legacy
+    # fallback is scaled explicitly in _sync_muzzle; strict atlases derive the
+    # barrel tip directly from authored alpha, so this node stays 1:1.
+    _weapon_root.scale = Vector2.ONE
     _fx_root.add_child(_weapon_root)
     _muzzle = Marker2D.new()
     _muzzle.name = "Muzzle"
@@ -367,8 +389,10 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     if requested_layout == "full":
         frames = _build_full_frames(image)
         if frames != null:
+            var body_y := _full_body_y_for_atlas(image)
             _full_frames_by_weapon[requested_weapon] = frames
-            _full_body_y_by_weapon[requested_weapon] = _full_body_y_for_atlas(image)
+            _full_body_y_by_weapon[requested_weapon] = body_y
+            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(image, body_y)
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
         if frames != null:
@@ -455,6 +479,65 @@ func _full_body_y_for_atlas(image: Image) -> float:
     foot_samples.sort()
     var foot_y := float(foot_samples[int(foot_samples.size() / 2)])
     return -(foot_y - float(FULL_ATLAS_CELL_SIZE) * 0.5) * BODY_SCALE
+
+func _full_muzzle_positions_for_atlas(image: Image, body_y: float) -> Dictionary:
+    # The weapon is baked into each strict frame. Treat the authored barrel tip
+    # as the single source of truth instead of maintaining hand-tuned offsets
+    # that drift whenever atlas grounding/scale changes.
+    var result := {}
+    for action in ["idle", "walk", "run", "jump", "fall", "crouch"]:
+        var spec: Dictionary = FULL_ACTIONS[action]
+        var row := int(spec["row"])
+        if action == "run":
+            row = _select_run_source_row(image)
+        var positions: Array = []
+        for frame_index in range(int(spec["count"])):
+            if not _cell_has_visible_pixels(image, row, frame_index):
+                continue
+            positions.append(_muzzle_from_full_cell(image, row, frame_index, body_y))
+        if not positions.is_empty():
+            result[action] = positions
+    return result
+
+func _muzzle_from_full_cell(image: Image, row: int, column: int, body_y: float) -> Vector2:
+    var cell := image.get_region(Rect2i(
+        column * FULL_ATLAS_CELL_SIZE,
+        row * FULL_ATLAS_CELL_SIZE,
+        FULL_ATLAS_CELL_SIZE,
+        FULL_ATLAS_CELL_SIZE,
+    ))
+    var used := cell.get_used_rect()
+    if used.size == Vector2i.ZERO:
+        return Vector2.ZERO
+
+    # Ignore boots and cap peaks; the right-most opaque cluster through the
+    # torso/weapon band is the barrel tip for the canonical right-facing art.
+    var y_start := maxi(used.position.y, int(round(FULL_ATLAS_CELL_SIZE * MUZZLE_SCAN_Y_MIN_RATIO)))
+    var y_end := mini(used.position.y + used.size.y, int(round(FULL_ATLAS_CELL_SIZE * MUZZLE_SCAN_Y_MAX_RATIO)))
+    var tip_x := -1
+    for y in range(y_start, y_end):
+        for x in range(used.position.x, used.position.x + used.size.x):
+            if cell.get_pixel(x, y).a >= MUZZLE_SCAN_ALPHA:
+                tip_x = maxi(tip_x, x)
+
+    if tip_x < 0:
+        return Vector2.ZERO
+
+    var y_samples: Array[int] = []
+    var cluster_x_start := maxi(used.position.x, tip_x - 7)
+    for y in range(y_start, y_end):
+        for x in range(cluster_x_start, tip_x + 1):
+            if cell.get_pixel(x, y).a >= MUZZLE_SCAN_ALPHA:
+                y_samples.append(y)
+                break
+    if y_samples.is_empty():
+        return Vector2.ZERO
+    y_samples.sort()
+    var tip_y := float(y_samples[int(y_samples.size() / 2)])
+    return Vector2(
+        (float(tip_x) + MUZZLE_TIP_PAD_PX - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
+        body_y + (tip_y - FULL_ATLAS_CELL_SIZE * 0.5) * BODY_SCALE,
+    )
 
 func _cell_has_visible_pixels(image: Image, row: int, column: int) -> bool:
     var rect := Rect2i(
@@ -729,8 +812,18 @@ func _on_animation_finished() -> void:
 
 func _sync_muzzle() -> void:
     var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
-    var poses: Dictionary = MUZZLE_POS.get(visual_weapon, MUZZLE_POS["pistol"])
-    _muzzle.position = poses.get(_action, poses["idle"])
+    var strict_poses: Dictionary = _full_muzzle_by_weapon.get(visual_weapon, {})
+    if _using_full_atlas and not strict_poses.is_empty():
+        var action_key := _action if strict_poses.has(_action) else "idle"
+        var frame_positions: Array = strict_poses.get(action_key, [])
+        if not frame_positions.is_empty():
+            var frame_index := clampi(_body.frame, 0, frame_positions.size() - 1)
+            var authored_position: Vector2 = frame_positions[frame_index]
+            if authored_position != Vector2.ZERO:
+                _muzzle.position = authored_position
+    else:
+        var poses: Dictionary = MUZZLE_POS.get(visual_weapon, MUZZLE_POS["pistol"])
+        _muzzle.position = Vector2(poses.get(_action, poses["idle"])) * BODY_SCALE_RATIO
     var s := float(FLASH_SCALE.get(visual_weapon, 1.0))
     _flash.scale = Vector2(s, s)
 
