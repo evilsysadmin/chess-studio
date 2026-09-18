@@ -318,30 +318,32 @@ def diagnose_plugin(
     registration_timeout: int = PLUGIN_REGISTRATION_TIMEOUT_SECONDS,
     resolved: tuple[str, str] | None = None,
     include_egress_diagnostic: bool = False,
+    include_desired_config: bool = True,
 ) -> str:
     compartment_id, instance_id = resolved or resolve_staging(oci, config)
-    compute = oci.core.ComputeClient(config)
-    instance = compute.get_instance(
-        instance_id,
-        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
-    ).data
-    agent = instance.agent_config
-    configured_plugins = getattr(agent, "plugins_config", None) or []
-    desired = next(
-        (
-            str(plugin.desired_state or "UNKNOWN")
-            for plugin in configured_plugins
-            if str(plugin.name or "") == PLUGIN_NAME
-        ),
-        "UNSPECIFIED",
-    )
-    print(
-        "OCI Run Command desired: "
-        f"state={desired} "
-        f"management_disabled={getattr(agent, 'is_management_disabled', None)} "
-        f"all_plugins_disabled={getattr(agent, 'are_all_plugins_disabled', None)}",
-        flush=True,
-    )
+    if include_desired_config:
+        compute = oci.core.ComputeClient(config)
+        instance = compute.get_instance(
+            instance_id,
+            retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+        ).data
+        agent = instance.agent_config
+        configured_plugins = getattr(agent, "plugins_config", None) or []
+        desired = next(
+            (
+                str(plugin.desired_state or "UNKNOWN")
+                for plugin in configured_plugins
+                if str(plugin.name or "") == PLUGIN_NAME
+            ),
+            "UNSPECIFIED",
+        )
+        print(
+            "OCI Run Command desired: "
+            f"state={desired} "
+            f"management_disabled={getattr(agent, 'is_management_disabled', None)} "
+            f"all_plugins_disabled={getattr(agent, 'are_all_plugins_disabled', None)}",
+            flush=True,
+        )
 
     deadline = time.monotonic() + max(0, registration_timeout)
     attempt = 0
@@ -557,6 +559,9 @@ def self_test() -> None:
     assert not plugin_status_is_healthy("NOT_SUPPORTED")
     assert not plugin_status_is_healthy("INVALID")
     assert safe_plugin_message("line one\nline two") == "line one line two"
+    source = open(__file__, encoding="utf-8").read()
+    assert "include_desired_config: bool = True" in source
+    assert source.count("include_desired_config=False") >= 2
     bounded = bounded_command_output("A" * 2500 + "TAIL_MARKER", head_chars=1000, tail_chars=1000)
     assert len(bounded) < 2100
     assert bounded.startswith("A" * 1000)
@@ -669,7 +674,7 @@ def main() -> int:
         reboot_agent(oci, config)
     elif args.operation == "smoke":
         resolved = resolve_staging(oci, config)
-        diagnose_plugin(oci, config, resolved=resolved)
+        diagnose_plugin(oci, config, resolved=resolved, include_desired_config=False)
         output = execute(
             oci,
             config,
@@ -686,6 +691,7 @@ def main() -> int:
             config,
             wait_for_registration=True,
             resolved=resolved,
+            include_desired_config=False,
         )
         execute(
             oci,
