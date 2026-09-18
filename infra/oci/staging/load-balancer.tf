@@ -4,16 +4,20 @@ resource "oci_core_security_list" "load_balancer" {
   display_name   = "${var.instance_name}-lb-security"
   freeform_tags  = local.common_tags
 
-  ingress_security_rules {
-    description = "Public HTTP entrypoint; Cloudflare/DNS cutover remains a separate gate"
-    protocol    = "6"
-    source      = "0.0.0.0/0"
-    source_type = "CIDR_BLOCK"
-    stateless   = false
+  dynamic "ingress_security_rules" {
+    for_each = var.load_balancer_ingress_cidr == null ? [] : [var.load_balancer_ingress_cidr]
 
-    tcp_options {
-      min = 80
-      max = 80
+    content {
+      description = "Optional emergency HTTP probe; canonical staging uses Cloudflare Tunnel"
+      protocol    = "6"
+      source      = ingress_security_rules.value
+      source_type = "CIDR_BLOCK"
+      stateless   = false
+
+      tcp_options {
+        min = 80
+        max = 80
+      }
     }
   }
 

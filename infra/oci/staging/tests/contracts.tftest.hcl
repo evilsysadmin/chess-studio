@@ -174,8 +174,13 @@ run "always_free_load_balancer_contract" {
   }
 
   assert {
+    condition     = length(oci_core_security_list.load_balancer.ingress_security_rules) == 0
+    error_message = "Emergency OCI LB must have zero public inbound rules by default; canonical staging uses Cloudflare Tunnel."
+  }
+
+  assert {
     condition     = oci_load_balancer_listener.http.port == 80
-    error_message = "Initial emergency listener must remain explicit HTTP until Cloudflare/TLS cutover is separately gated."
+    error_message = "The dormant emergency listener may remain HTTP only while its security list keeps public ingress closed by default."
   }
 }
 
@@ -251,6 +256,39 @@ run "explicit_availability_domain_override_wins" {
   assert {
     condition     = oci_core_instance.backend.source_details[0].source_id == "ocid1.image.oc1.eu-frankfurt-1.chessstudioauto"
     error_message = "Image discovery must remain active even when the availability domain is overridden."
+  }
+}
+
+run "reject_world_open_load_balancer" {
+  command = plan
+
+  variables {
+    load_balancer_ingress_cidr = "0.0.0.0/0"
+  }
+
+  expect_failures = [var.load_balancer_ingress_cidr]
+}
+
+run "allow_narrow_load_balancer_probe" {
+  command = plan
+
+  variables {
+    load_balancer_ingress_cidr = "198.51.100.10/32"
+  }
+
+  assert {
+    condition     = length(oci_core_security_list.load_balancer.ingress_security_rules) == 1
+    error_message = "Explicit emergency LB access must create exactly one inbound rule."
+  }
+
+  assert {
+    condition     = one(oci_core_security_list.load_balancer.ingress_security_rules).source == "198.51.100.10/32"
+    error_message = "Emergency LB ingress must preserve the explicit operator CIDR."
+  }
+
+  assert {
+    condition     = one(oci_core_security_list.load_balancer.ingress_security_rules).tcp_options[0].min == 80
+    error_message = "Emergency LB ingress must expose only the intended HTTP probe port."
   }
 }
 

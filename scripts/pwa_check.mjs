@@ -12,6 +12,7 @@ const pwaInstall = fs.readFileSync(new URL('../frontend/src/pwaInstall.js', impo
 const worker = fs.readFileSync(new URL('../frontend/public/sw.js', import.meta.url), 'utf8');
 const moduleRecovery = fs.readFileSync(new URL('../frontend/public/moduleRecovery.js', import.meta.url), 'utf8');
 const chesscomBabylon = fs.readFileSync(new URL('../frontend/src/chesscomBabylonPremium.js', import.meta.url), 'utf8');
+const pagesHeaders = fs.readFileSync(new URL('../frontend/public/_headers', import.meta.url), 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(`pwa-check FAIL · ${message}`);
@@ -48,6 +49,12 @@ assert(FRONTEND_CSP.includes("script-src-attr 'none'"), 'CSP no bloquea handlers
 assert(!/script-src[^;]*'unsafe-inline'/.test(FRONTEND_CSP), 'script-src permite unsafe-inline');
 assert(!/script-src[^;]*'unsafe-eval'/.test(FRONTEND_CSP), 'script-src permite unsafe-eval genérico');
 assert(FRONTEND_CSP.includes("object-src 'none'") && FRONTEND_CSP.includes("base-uri 'self'"), 'CSP carece de object/base hardening');
+assert(pagesHeaders.includes('X-Content-Type-Options: nosniff'), 'Cloudflare Pages no envía nosniff');
+assert(pagesHeaders.includes('X-Frame-Options: SAMEORIGIN'), 'Cloudflare Pages no restringe framing a same-origin');
+assert(pagesHeaders.includes("Content-Security-Policy: frame-ancestors 'self'"), 'Cloudflare Pages no restringe frame-ancestors a same-origin por cabecera HTTP');
+assert(pagesHeaders.includes('Referrer-Policy: no-referrer'), 'Cloudflare Pages no aplica Referrer-Policy');
+assert(pagesHeaders.includes('Permissions-Policy: camera=(), microphone=(), geolocation=()'), 'Cloudflare Pages no restringe permisos sensibles');
+assert(pagesHeaders.includes('Strict-Transport-Security: max-age=31536000'), 'Cloudflare Pages no aplica HSTS');
 assert(frontendPackage.dependencies?.babylonjs === '9.25.0', 'Chesscom no fija la versión local de Babylon.js');
 assert(chesscomBabylon.includes("import('babylonjs')"), 'Chesscom no carga Babylon.js desde el bundle local');
 assert(!/https?:\/\//.test(chesscomBabylon), 'Chesscom intenta cargar scripts remotos incompatibles con la CSP');
@@ -105,4 +112,4 @@ const crossOriginRecovery = await moduleRecoveryPost({
 assert(crossOriginRecovery.status === 403, 'el recovery POST acepta orígenes ajenos');
 assert(moduleRecoveryFallback().status === 405, 'el endpoint de recovery acepta métodos distintos de POST');
 
-console.log('pwa-check OK · CSP estricta + navegación sin shell stale + recovery POST con URL limpia + API/assets/terceros fuera del cache PWA');
+console.log('pwa-check OK · CSP estricta + headers Pages + navegación sin shell stale + recovery POST con URL limpia + API/assets/terceros fuera del cache PWA');
