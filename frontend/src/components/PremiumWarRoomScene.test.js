@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
+import { WAR_ROOM_VISUAL_CANON_VERSION } from './WarRoomCanon20260918.js';
 
 function sceneStats(root) {
   const stats = { meshes: 0, lights: 0, pointLights: 0, spotLights: 0 };
@@ -53,6 +54,17 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('chess-studio-rampant-horse')).toBeTruthy();
     expect(desktop.getObjectByName('ceremonial-pawn-crest')).toBeUndefined();
     expect(desktop.getObjectByName('ceremonial-single-pawn')).toBeUndefined();
+    expect(desktop.userData.warRoomVisualCanon).toBe(WAR_ROOM_VISUAL_CANON_VERSION);
+    expect(desktop.getObjectByName('war-room-canon-2026-09-18')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-banners')).toBeInstanceOf(THREE.InstancedMesh);
+    expect(desktop.getObjectByName('war-room-canon-bookshelf')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-chandelier')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-right-fireplace')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-right-window')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-floor-globe')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-right-descent')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-central-armor')).toBeTruthy();
+    expect(mobile.getObjectByName('war-room-canon-central-armor')).toBeUndefined();
     expect(desktop.getObjectByName('command-cabinet')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sofa-left')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sofa-right')).toBeTruthy();
@@ -139,6 +151,11 @@ describe('PremiumWarRoomScene', () => {
     expect(mobile.userData.warRoomRetiredTableClutterMeshesOmitted).toBe(13);
     expect(desktop.getObjectByName('emerald-table-inlay')).toBeTruthy();
     expect(mobile.getObjectByName('emerald-table-inlay')).toBeTruthy();
+    expect(desktop.userData.warRoomVisualCanon).toBe(WAR_ROOM_VISUAL_CANON_VERSION);
+    expect(desktop.getObjectByName('war-room-canon-table-drape-near')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-table-drape-far')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-canon-table-horse-near')).toBeTruthy();
+    expect(mobile.getObjectByName('war-room-canon-table-drape-near')).toBeTruthy();
     for (const name of retiredNames) {
       expect(desktop.getObjectByName(name)).toBeUndefined();
       expect(mobile.getObjectByName(name)).toBeUndefined();
