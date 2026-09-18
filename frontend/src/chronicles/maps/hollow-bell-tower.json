@@ -1,6 +1,6 @@
 {
   "id": "hollow-bell-tower",
-  "version": 1,
+  "version": 2,
   "progressionKey": "hollow-bell-tower-01",
   "title": "Torre de las Campanas Huecas",
   "grid": [
@@ -396,7 +396,7 @@
       "id": "tower-upper-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abrir compuerta con el Badajo Maestro",
+      "openLabel": "Abrir compuerta hacia la Cisterna de los Ecos",
       "lockedLabel": "Examinar compuerta superior",
       "requirements": [
         {
@@ -421,16 +421,15 @@
             "order": 80
           },
           {
-            "type": "set",
-            "key": "phase",
-            "value": "escaped"
+            "type": "transition-map",
+            "mapId": "echo-cistern"
           }
         ],
-        "message": "El Badajo Maestro encaja en el cierre y la compuerta cede. La torre queda muda. Matthias parece sinceramente emocionado por el concepto.",
+        "message": "El Badajo Maestro encaja en el cierre y la compuerta cede. Bajo la torre espera una cisterna que ha confundido hidráulica con amenaza.",
         "journal": {
           "id": "hollow-bell-tower-cleared",
-          "title": "La torre aprende silencio",
-          "body": "Ambos frenos quedan inmóviles y el Badajo Maestro abre la compuerta superior.",
+          "title": "De la torre a la cisterna",
+          "body": "La Torre queda muda y la compuerta superior conduce a una cisterna de canales rotos y mecanismos antiguos.",
           "sigil": "XVI"
         }
       }

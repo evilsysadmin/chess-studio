@@ -1,0 +1,525 @@
+{
+  "id": "echo-cistern",
+  "version": 1,
+  "progressionKey": "echo-cistern-01",
+  "title": "Cisterna de los Ecos",
+  "grid": [
+    "#############",
+    "#P....#....X#",
+    "#.#...#.#...#",
+    "#.#.###.#.#.#",
+    "#...#.....#.#",
+    "###.#.###.#.#",
+    "#...#.....#.#",
+    "#.#####.#...#",
+    "#...........#",
+    "#############"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {
+    "cisternBriefingRead": false,
+    "westSluiceSet": false,
+    "eastSluiceSet": false,
+    "echoSealClaimed": false,
+    "prismCacheRevealed": false,
+    "prismCacheOpened": false
+  },
+  "enemies": [
+    {
+      "id": "cistern-warden",
+      "visualType": "gate-jailer",
+      "visualScale": 1.08,
+      "visualMotion": "grounded",
+      "name": "custodio de la cisterna",
+      "x": 6,
+      "y": 8,
+      "hpKey": "cisternWardenHp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          {
+            "x": 6,
+            "y": 8
+          },
+          {
+            "x": 7,
+            "y": 8
+          },
+          {
+            "x": 8,
+            "y": 8
+          },
+          {
+            "x": 7,
+            "y": 8
+          }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 5
+      }
+    },
+    {
+      "id": "west-silt-hound",
+      "visualType": "bone-hound",
+      "visualScale": 0.98,
+      "visualMotion": "grounded",
+      "name": "sabueso del limo oeste",
+      "x": 3,
+      "y": 4,
+      "hpKey": "westSiltHoundHp",
+      "maxHp": 7,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1
+      }
+    },
+    {
+      "id": "east-drain-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.96,
+      "visualMotion": "skitter",
+      "name": "araña del desagüe este",
+      "x": 9,
+      "y": 4,
+      "hpKey": "eastDrainSpiderHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      }
+    },
+    {
+      "id": "echo-bishop",
+      "visualType": "spectral-bishop",
+      "visualScale": 1,
+      "visualMotion": "hover",
+      "name": "obispo del eco",
+      "x": 10,
+      "y": 2,
+      "hpKey": "echoBishopHp",
+      "maxHp": 8,
+      "retaliation": 2,
+      "retaliationReach": 3,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 3,
+        "requiresLineOfSight": true
+      }
+    },
+    {
+      "id": "brine-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.82,
+      "visualMotion": "hover",
+      "name": "lumbre salobre",
+      "x": 2,
+      "y": 8,
+      "hpKey": "brineWispHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} apaga la lumbre salobre con {attack}. Queda una perla de sal que zumba como si el agua tuviera opinión.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "brine-pearl",
+            "name": "Perla Salobre",
+            "description": "Una perla mineral nacida en agua estancada y eco antiguo. Trofeo opcional de la Cisterna.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "cistern-inscription",
+      "kind": "lore",
+      "x": 1,
+      "y": 1,
+      "label": "Leer plano de compuertas",
+      "when": [
+        {
+          "key": "cisternBriefingRead",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "cisternBriefingRead",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "Dos compuertas laterales controlan el nivel central; el custodio protege el sello del desagüe.",
+            "objective": "Activa ambas compuertas y derrota al Custodio de la Cisterna.",
+            "order": 90
+          }
+        ],
+        "message": "El plano indica dos compuertas y un custodio. No menciona el olor. Matthias considera la omisión jurídicamente relevante.",
+        "journal": {
+          "id": "echo-cistern-plan",
+          "title": "Dos compuertas bajo la torre",
+          "body": "La cisterna se drena accionando dos mecanismos laterales. El custodio central protege el sello de la salida.",
+          "sigil": "XVII"
+        }
+      }
+    },
+    {
+      "id": "west-sluice-wheel",
+      "kind": "lever",
+      "visualType": "sluice-wheel",
+      "x": 3,
+      "y": 5,
+      "label": "Accionar compuerta oeste",
+      "when": [
+        {
+          "key": "westSiltHoundHp",
+          "lte": 0
+        },
+        {
+          "key": "westSluiceSet",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "westSluiceSet",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "Una compuerta ya desvía el caudal de la cisterna.",
+            "objective": "Activa ambas compuertas y derrota al Custodio de la Cisterna.",
+            "order": 90
+          }
+        ],
+        "message": "La rueda oeste cede y el agua cambia de dirección con un rugido grave. La cisterna pierde parte de su arrogancia.",
+        "journal": {
+          "id": "west-sluice-opened",
+          "title": "Compuerta oeste",
+          "body": "El mecanismo occidental queda abierto por la fuerza tras despejar a su guardián.",
+          "sigil": "W"
+        }
+      }
+    },
+    {
+      "id": "west-sluice-oil",
+      "kind": "relic-socket",
+      "x": 3,
+      "y": 5,
+      "label": "Lubricar compuerta oeste",
+      "when": [
+        {
+          "itemId": "bellwright-oil",
+          "quantity": 1
+        },
+        {
+          "key": "westSluiceSet",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "bellwright-oil",
+            "quantity": 1
+          },
+          {
+            "type": "set",
+            "key": "westSluiceSet",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "El Aceite de Campanero ha abierto una compuerta sin necesidad de limpiar su guardián.",
+            "objective": "Activa la compuerta restante y derrota al Custodio de la Cisterna.",
+            "order": 90
+          }
+        ],
+        "message": "El Aceite de Campanero entra en el eje y la rueda gira sin resistencia. El sabueso sigue vivo, confundido y laboralmente obsoleto.",
+        "journal": {
+          "id": "west-sluice-oiled",
+          "title": "Herramienta mata épica",
+          "body": "El Aceite de Campanero permite abrir la compuerta oeste sin derrotar a su guardián.",
+          "sigil": "⚙"
+        }
+      }
+    },
+    {
+      "id": "east-sluice-wheel",
+      "kind": "lever",
+      "visualType": "sluice-wheel",
+      "x": 9,
+      "y": 5,
+      "label": "Accionar compuerta este",
+      "when": [
+        {
+          "key": "eastDrainSpiderHp",
+          "lte": 0
+        },
+        {
+          "key": "eastSluiceSet",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "eastSluiceSet",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "Las dos compuertas ya están activadas.",
+            "objective": "Derrota al Custodio de la Cisterna y reclama el sello del desagüe.",
+            "order": 90
+          }
+        ],
+        "message": "La compuerta este baja con un golpe de hierro y el nivel central empieza a caer. El eco suena notablemente menos satisfecho.",
+        "journal": {
+          "id": "east-sluice-opened",
+          "title": "Compuerta este",
+          "body": "La segunda compuerta desvía el caudal y deja expuesto el mecanismo central.",
+          "sigil": "E"
+        }
+      }
+    },
+    {
+      "id": "prism-sounding",
+      "kind": "relic-socket",
+      "x": 7,
+      "y": 6,
+      "label": "Examinar el agua con el Prisma",
+      "when": [
+        {
+          "itemId": "black-glass-prism",
+          "quantity": 1
+        },
+        {
+          "key": "prismCacheRevealed",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "prismCacheRevealed",
+            "value": true
+          }
+        ],
+        "message": "El Prisma de Vidrio Negro divide el reflejo del agua y revela un cofre donde antes sólo había profundidad. La óptica acaba de delinquir.",
+        "journal": {
+          "id": "cistern-prism-cache-revealed",
+          "title": "Un reflejo con fondo",
+          "body": "El Prisma revela un relicario sumergido en una cavidad lateral de la cisterna.",
+          "sigil": "◇"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "echo-drain-seal",
+      "kind": "pickup",
+      "visualType": "chain-altar",
+      "x": 6,
+      "y": 8,
+      "label": "Recuperar Sello del Desagüe",
+      "when": [
+        {
+          "key": "westSluiceSet",
+          "equals": true
+        },
+        {
+          "key": "eastSluiceSet",
+          "equals": true
+        },
+        {
+          "key": "cisternWardenHp",
+          "lte": 0
+        },
+        {
+          "key": "echoSealClaimed",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "echoSealClaimed",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "echo-drain-seal",
+            "name": "Sello del Desagüe",
+            "description": "Una placa de bronce marcada por corrientes concéntricas. Abre la compuerta superior de la cisterna.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "Las compuertas están activadas y el Custodio ha caído.",
+            "objective": "Lleva el Sello del Desagüe hasta la salida superior.",
+            "order": 90
+          }
+        ],
+        "message": "Con el caudal desviado y el Custodio fuera de servicio, el sello central queda libre. Tiene exactamente el peso de una nueva complicación.",
+        "journal": {
+          "id": "echo-drain-seal-claimed",
+          "title": "El sello del agua baja",
+          "body": "La compañía recupera el sello central tras resolver ambas compuertas.",
+          "sigil": "≈"
+        }
+      }
+    },
+    {
+      "id": "drowned-prism-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 9,
+      "y": 6,
+      "label": "Sacar relicario sumergido",
+      "when": [
+        {
+          "key": "prismCacheRevealed",
+          "equals": true
+        },
+        {
+          "key": "prismCacheOpened",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "prismCacheOpened",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "echo-lens",
+            "name": "Lente de Eco",
+            "description": "Cristal pulido por agua antigua. Vibra al enfrentar pasajes huecos y conversaciones malas.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "refill-class-abilities"
+          }
+        ],
+        "message": "El relicario emerge cubierto de limo y guarda una lente translúcida. Matthias la limpia con el entusiasmo de quien sabe que abrirá otra pared después.",
+        "journal": {
+          "id": "drowned-prism-cache-opened",
+          "title": "La lente bajo el agua",
+          "body": "El Prisma conduce a una Lente de Eco escondida bajo la superficie.",
+          "sigil": "◉"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "cistern-upper-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abrir salida con el Sello del Desagüe",
+      "lockedLabel": "Examinar compuerta superior",
+      "requirements": [
+        {
+          "itemId": "echo-drain-seal",
+          "quantity": 1,
+          "message": "La compuerta superior exige el Sello del Desagüe."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "echo-drain-seal",
+            "quantity": 1
+          },
+          {
+            "type": "complete-quest",
+            "questId": "drain-echo-cistern",
+            "title": "Drenar la Cisterna",
+            "description": "Las dos compuertas quedaron resueltas y el sello abrió la salida.",
+            "objective": "Cisterna superada.",
+            "order": 90
+          },
+          {
+            "type": "set",
+            "key": "phase",
+            "value": "escaped"
+          }
+        ],
+        "message": "El sello encaja y la compuerta superior cede mientras el agua sigue bajando. Matthias concede a la fontanería un raro aprobado.",
+        "journal": {
+          "id": "echo-cistern-cleared",
+          "title": "La cisterna pierde la voz",
+          "body": "Dos compuertas resueltas, custodio derrotado y salida abierta. El eco queda abajo con el agua.",
+          "sigil": "XVII"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "echo-cistern-entry",
+    "title": "Cisterna de los Ecos",
+    "body": "Bajo la torre se extiende una cisterna de canales rotos. Dos compuertas controlan el nivel; un custodio protege el desagüe central.",
+    "sigil": "XVII"
+  },
+  "introMessage": "Cisterna de los Ecos. Agua negra, hierro húmedo y una oportunidad sorprendentemente real de resolver un problema con lubricante."
+}
