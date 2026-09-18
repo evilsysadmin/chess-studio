@@ -102,8 +102,8 @@ const ENEMY_SPAWNS := [
     [780.0, "pawn"], [1120.0, "pawn"], [1320.0, "scout"], [1510.0, "knight"],
     [1760.0, "grenadier"], [1940.0, "rook"],
     [2110.0, "pawn"], [2250.0, "pawn"], [2380.0, "bishop"], [2515.0, "knight"], [2590.0, "rook"],
-    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3210.0, "pawn"], [3335.0, "pawn"],
-    [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "queen"], [4070.0, "knight"],
+    [2730.0, "grenadier"], [2820.0, "commando"], [2890.0, "knight"], [3070.0, "pawn"], [3130.0, "scout"], [3210.0, "pawn"], [3335.0, "pawn"],
+    [3430.0, "rook"], [3560.0, "knight"], [3680.0, "pawn"], [3740.0, "bishop"], [3820.0, "commando"], [3950.0, "queen"], [4070.0, "knight"],
     [4190.0, "rook"], [4285.0, "shield"], [4380.0, "grenadier"],
 ]
 const ENEMY_TYPES := {
