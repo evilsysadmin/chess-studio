@@ -110,6 +110,8 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
   });
 
   it('rejects an incomplete area bundle without partially installing remote maps', async () => {
+    const localCryptTitle = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title;
+    const localGalleryTitle = chroniclesMapById('gallery-of-forks').title;
     const payload = remoteRun();
     payload.areas = payload.areas.slice(0, -1);
 
@@ -119,8 +121,8 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
 
     expect(resolved.source).toBe('local');
     expect(resolved.fallbackReason).toBe('incomplete-area-bundle');
-    expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta de las Ocho Casillas');
-    expect(chroniclesMapById('gallery-of-forks').title).toBe('Galería de los Tenedores');
+    expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe(localCryptTitle);
+    expect(chroniclesMapById('gallery-of-forks').title).toBe(localGalleryTitle);
   });
 
   it('rejects a run whose authoritative metadata disagrees with its area envelope', async () => {
