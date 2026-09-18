@@ -43,7 +43,8 @@ export function compactWebGLRendererLabel(rendererLabel = '') {
   return label.trim() ? 'GPU' : 'UNKNOWN';
 }
 
-export function warRoomRendererAttempts() {
+export function warRoomRendererAttempts({ preserveDrawingBuffer = false } = {}) {
+  const captureBuffer = Boolean(preserveDrawingBuffer);
   return Object.freeze([
     Object.freeze({
       id: 'gpu-aa',
@@ -53,6 +54,7 @@ export function warRoomRendererAttempts() {
         alpha: false,
         powerPreference: 'high-performance',
         failIfMajorPerformanceCaveat: true,
+        preserveDrawingBuffer: captureBuffer,
       }),
     }),
     Object.freeze({
@@ -63,6 +65,7 @@ export function warRoomRendererAttempts() {
         alpha: false,
         powerPreference: 'high-performance',
         failIfMajorPerformanceCaveat: true,
+        preserveDrawingBuffer: captureBuffer,
       }),
     }),
     Object.freeze({
@@ -73,6 +76,7 @@ export function warRoomRendererAttempts() {
         alpha: false,
         powerPreference: 'default',
         failIfMajorPerformanceCaveat: false,
+        preserveDrawingBuffer: captureBuffer,
       }),
     }),
   ]);
