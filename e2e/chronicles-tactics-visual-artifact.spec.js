@@ -123,8 +123,11 @@ for (const capture of CAPTURES) {
 
     const context = await browser.newContext({
       viewport: { width: capture.width, height: capture.height },
+      // Chess Studio's canonical mobile contract is viewport + touch. Do not
+      // enable Playwright's browser-level mobile emulation here: it changes UA/
+      // viewport semantics beyond the product's responsive contract and can
+      // hide the diegetic Home entry before the visual surface is reached.
       hasTouch: capture.hasTouch,
-      isMobile: capture.hasTouch,
     });
     const page = await context.newPage();
     try {
