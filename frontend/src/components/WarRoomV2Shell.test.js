@@ -5,8 +5,16 @@ import {
   warRoomV2ModelUrl,
   warRoomV2PracticalLightProfile,
 } from './WarRoomV2Shell.js';
+import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
 
 describe('War Room v2 staging asset URL', () => {
+  it('never paints classic first when persisted v2 is available', () => {
+    expect(shouldShowClassicWarRoomShell()).toBe(true);
+    expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v2' })).toBe(false);
+    expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'classic' })).toBe(true);
+    expect(shouldShowClassicWarRoomShell({ selectable: false, variant: 'v2' })).toBe(true);
+  });
+
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
     const desktop = warRoomV2PracticalLightProfile();
     const coarse = warRoomV2PracticalLightProfile({ coarsePointer: true });
