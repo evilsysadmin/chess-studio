@@ -214,6 +214,98 @@ def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_
     return obj
 
 
+def draped_banner(name, center, side, mat, owner):
+    """Build a shallow gathered cloth panel with real silhouette and fold relief."""
+    cx, cy, cz = center
+    half_height = 1.36
+    columns = (-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0)
+    rows = (
+        (1.00, 0.58, 0.00),
+        (0.28, 0.50, side * 0.04),
+        (-0.48, 0.31, side * 0.30),
+        (-1.00, 0.56, side * 0.15),
+    )
+
+    verts = []
+    front_rows = []
+    for row_index, (height, width, shift) in enumerate(rows):
+        row = []
+        for column_index, factor in enumerate(columns):
+            # Alternate shallow forward/back relief so grazing light does the
+            # work that the old striped primitives tried to fake.
+            fold_depth = 0.030 if column_index % 2 == 0 else 0.085
+            if row_index == 2:
+                fold_depth *= 0.62
+            row.append(len(verts))
+            verts.append((
+                cx + shift + factor * width,
+                cy - fold_depth,
+                cz + height * half_height,
+            ))
+        front_rows.append(row)
+
+    back_rows = []
+    for row in front_rows:
+        back = []
+        for index in row:
+            x, _y, z = verts[index]
+            back.append(len(verts))
+            verts.append((x, cy + 0.028, z))
+        back_rows.append(back)
+
+    faces = []
+    for row_index in range(len(front_rows) - 1):
+        for column_index in range(len(columns) - 1):
+            tl = front_rows[row_index][column_index]
+            tr = front_rows[row_index][column_index + 1]
+            bl = front_rows[row_index + 1][column_index]
+            br = front_rows[row_index + 1][column_index + 1]
+            faces.append((tl, bl, br, tr))
+
+            btl = back_rows[row_index][column_index]
+            btr = back_rows[row_index][column_index + 1]
+            bbl = back_rows[row_index + 1][column_index]
+            bbr = back_rows[row_index + 1][column_index + 1]
+            faces.append((btl, btr, bbr, bbl))
+
+    for row_index in range(len(front_rows) - 1):
+        faces.append((
+            front_rows[row_index][0],
+            back_rows[row_index][0],
+            back_rows[row_index + 1][0],
+            front_rows[row_index + 1][0],
+        ))
+        faces.append((
+            front_rows[row_index][-1],
+            front_rows[row_index + 1][-1],
+            back_rows[row_index + 1][-1],
+            back_rows[row_index][-1],
+        ))
+
+    for column_index in range(len(columns) - 1):
+        faces.append((
+            front_rows[0][column_index],
+            front_rows[0][column_index + 1],
+            back_rows[0][column_index + 1],
+            back_rows[0][column_index],
+        ))
+        faces.append((
+            front_rows[-1][column_index],
+            back_rows[-1][column_index],
+            back_rows[-1][column_index + 1],
+            front_rows[-1][column_index + 1],
+        ))
+
+    mesh = bpy.data.meshes.new(name + "_mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    tag(obj)
+    owner.objects.link(obj)
+    return obj
+
+
 def light(name, kind, loc, energy, color, owner, *, size=3.0, radius=1.2):
     data = bpy.data.lights.new(name, kind)
     data.energy = energy
@@ -451,30 +543,19 @@ def add_room(static, mats):
     cylinder("WR_CREST_pawn_stem", (0, 6.47, 4.43), 0.20, 0.55, mats["brass"], static)
     sphere("WR_CREST_pawn_head", (0, 6.47, 4.86), 0.25, mats["brass"], static)
 
-    # Tailored velvet banners. A broad backing cloth and shallow relief pleats
-    # read as fabric at runtime distance; the old row of cylinders looked like
-    # organ pipes once projected through the wide War Room camera.
+    # Draped velvet banners: the cloth silhouette now narrows into the tieback
+    # and fans out below it, with real shallow fold relief instead of vertical
+    # stripe geometry.
     for side in (-1, 1):
         center = side * 2.13
-        cube(f"WR_CURTAIN_panel_{side}", (center, 6.55, 4.72), (0.58, 0.045, 1.36),
-             mats["velvet_dark"], static, bevel=0.045)
-        for fold, offset in enumerate((-0.42, -0.21, 0.0, 0.21, 0.42)):
-            half_height = 1.28 if fold in (0, 4) else (1.34 if fold == 2 else 1.31)
-            z = 4.72 + (1.36 - half_height) * 0.32
-            pleat = cube(f"WR_CURTAIN_pleat_{side}_{fold}",
-                         (center + offset, 6.47, z),
-                         (0.075, 0.040, half_height),
-                         mats["velvet"] if fold % 2 == 0 else mats["velvet_dark"],
-                         static, bevel=0.035)
-            pleat.rotation_euler.y = side * (fold - 2) * 0.010
-        cube(f"WR_CURTAIN_hem_{side}", (center, 6.46, 3.39), (0.55, 0.035, 0.035),
-             mats["velvet"], static, bevel=0.018)
+        draped_banner(f"WR_CURTAIN_panel_{side}", (center, 6.54, 4.72), side,
+                      mats["velvet"], static)
         cube(f"WR_CURTAIN_rod_{side}", (center, 6.48, 6.18), (0.70, 0.040, 0.040),
              mats["brass_dark"], static, bevel=0.018)
         for edge in (-1, 1):
             sphere(f"WR_CURTAIN_finial_{side}_{edge}",
                    (center + edge * 0.72, 6.48, 6.18), 0.07, mats["brass"], static)
-        torus(f"WR_CURTAIN_tie_{side}", (center + side * 0.43, 6.36, 4.02), 0.17, 0.026,
+        torus(f"WR_CURTAIN_tie_{side}", (center + side * 0.30, 6.34, 4.07), 0.16, 0.026,
               mats["brass"], static, rotation=(math.pi / 2, 0, 0))
 
     # Paintings, shelves, books and decorative vessels.
