@@ -129,6 +129,10 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   }, [match?.revision]);
 
   useEffect(() => {
+    if (!connectionLive) setShowResignConfirm(false);
+  }, [connectionLive]);
+
+  useEffect(() => {
     if (!match?.id || match.status !== 'active') return undefined;
     let active = true;
     let timer = null;
