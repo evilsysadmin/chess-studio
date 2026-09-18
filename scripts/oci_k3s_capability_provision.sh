@@ -10,10 +10,14 @@ repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 installer="$repo/scripts/oci_k3s_assets_root.py"
 controller="$repo/scripts/oci_k3s_control_root.py"
 status_probe="$repo/scripts/oci_k3s_status_root.py"
+staging2_controller="$repo/scripts/oci_k3s_staging2_root.py"
+staging2_template="$repo/infra/oci/gitops/staging2/backend.yaml.tmpl"
 sudoers="$repo/infra/oci/runtime/ocarun.sudoers"
 asset_target=/usr/local/sbin/chess-studio-k3s-assets
 control_target=/usr/local/sbin/chess-studio-k3s-control
 status_target=/usr/local/sbin/chess-studio-k3s-status
+staging2_target=/usr/local/sbin/chess-studio-k3s-staging2
+staging2_template_target=/etc/chess-studio/staging2-backend.yaml.tmpl
 source_copy=/etc/chess-studio/ocarun.sudoers
 active=/etc/sudoers.d/101-chess-studio-ocarun
 
@@ -22,16 +26,21 @@ command -v visudo >/dev/null 2>&1 || { echo 'visudo is required' >&2; exit 69; }
 [[ -f "$installer" && ! -L "$installer" ]] || { echo 'missing K3s root asset installer' >&2; exit 66; }
 [[ -f "$controller" && ! -L "$controller" ]] || { echo 'missing K3s root lifecycle controller' >&2; exit 66; }
 [[ -f "$status_probe" && ! -L "$status_probe" ]] || { echo 'missing K3s root status probe' >&2; exit 66; }
+[[ -f "$staging2_controller" && ! -L "$staging2_controller" ]] || { echo 'missing K3s staging2 controller' >&2; exit 66; }
+[[ -f "$staging2_template" && ! -L "$staging2_template" ]] || { echo 'missing K3s staging2 manifest template' >&2; exit 66; }
 [[ -f "$sudoers" && ! -L "$sudoers" ]] || { echo 'missing OCI runtime sudoers contract' >&2; exit 66; }
 
 python3 -S "$installer" self-test
 python3 -S "$controller" self-test
 python3 -S "$status_probe" self-test
+python3 -S "$staging2_controller" self-test "$staging2_template"
 visudo -cf "$sudoers" >/dev/null
 install -o root -g root -m 0755 "$installer" "$asset_target"
 install -o root -g root -m 0755 "$controller" "$control_target"
 install -o root -g root -m 0755 "$status_probe" "$status_target"
+install -o root -g root -m 0755 "$staging2_controller" "$staging2_target"
 install -d -o root -g root -m 0755 /etc/chess-studio /etc/sudoers.d
+install -o root -g root -m 0644 "$staging2_template" "$staging2_template_target"
 install -o root -g root -m 0440 "$sudoers" "$source_copy"
 install -o root -g root -m 0440 "$sudoers" "$active"
 visudo -cf "$active" >/dev/null
@@ -39,3 +48,4 @@ visudo -cf "$active" >/dev/null
 echo 'OCI_K3S_ASSET_CAPABILITY_READY'
 echo 'OCI_K3S_LIFECYCLE_CAPABILITY_READY'
 echo 'OCI_K3S_STATUS_CAPABILITY_READY'
+echo 'OCI_K3S_STAGING2_CAPABILITY_READY'

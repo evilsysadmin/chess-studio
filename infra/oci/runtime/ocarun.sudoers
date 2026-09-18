@@ -3,4 +3,5 @@ Cmnd_Alias CHESS_STUDIO_RUNTIME = /usr/local/sbin/chess-studio-install-runtime /
 Cmnd_Alias CHESS_STUDIO_K3S_ASSETS = /usr/local/sbin/chess-studio-k3s-assets /tmp/chess-studio-k3s-bundle.tar.gz
 Cmnd_Alias CHESS_STUDIO_K3S_CONTROL = /usr/local/sbin/chess-studio-k3s-control start, /usr/local/sbin/chess-studio-k3s-control rollback
 Cmnd_Alias CHESS_STUDIO_K3S_STATUS = /usr/local/sbin/chess-studio-k3s-status
-ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME, CHESS_STUDIO_K3S_ASSETS, CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS
+Cmnd_Alias CHESS_STUDIO_K3S_STAGING2 = /usr/local/sbin/chess-studio-k3s-staging2 deploy *, /usr/local/sbin/chess-studio-k3s-staging2 status, /usr/local/sbin/chess-studio-k3s-staging2 rollback
+ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME, CHESS_STUDIO_K3S_ASSETS, CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS, CHESS_STUDIO_K3S_STAGING2
