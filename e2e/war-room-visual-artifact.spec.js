@@ -9,11 +9,7 @@ const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 
 function expectedWarRoomV2Revision() {
-  return String(
-    process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION
-      || process.env.GITHUB_SHA
-      || '',
-  ).trim();
+  return String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '').trim();
 }
 
 async function installWarRoomV2RevisionRoute(page) {
