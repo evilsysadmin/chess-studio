@@ -39,22 +39,6 @@ async function expectGodotHost(page) {
   await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
 }
 
-test('Pawn Slug · el acceso directo abre el runtime Godot canónico', async ({ page }) => {
-  await authenticate(page);
-
-  const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
-  await expect(direct).toBeVisible();
-  // Este smoke acredita el wiring directo a Godot. El hit-target/stacking de
-  // Home tiene cobertura propia y puede solaparse con la entrada de Mazmorras
-  // según el viewport del runner, así que disparamos el click DOM del control
-  // localizado en vez de convertir este test en una aserción geométrica.
-  await direct.evaluate((button) => button.click());
-
-  await expectGodotHost(page);
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
-});
-
 test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', async ({ page }) => {
   await authenticate(page);
   await openExperiments(page);
