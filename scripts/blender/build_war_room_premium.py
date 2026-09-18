@@ -72,6 +72,14 @@ def tag(obj, role=ROLE_STATIC):
     return obj
 
 
+def anchor(name, loc, owner, *, role=ROLE_STATIC):
+    obj = bpy.data.objects.new(name, None)
+    obj.location = loc
+    tag(obj, role)
+    owner.objects.link(obj)
+    return obj
+
+
 def socket(bsdf, *names):
     for name in names:
         value = bsdf.inputs.get(name)
@@ -516,6 +524,7 @@ def add_room(static, mats):
                0.16, mats["fire_core"], static, scale=(sx, sy, sz))
 
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 330.0, (1.0, 0.25, 0.055), static, radius=1.35)
+    anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk.
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
@@ -608,6 +617,7 @@ def add_room(static, mats):
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
     light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 410.0, (0.12, 0.25, 0.82), static, size=3.6)
+    anchor("WR_ANCHOR_window_moonlight", (8.05, 2.85, 4.10), static)
 
     # Leather benches.
     for side in (-1, 1):
@@ -834,6 +844,7 @@ def validate():
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
         "WR_CURTAIN_panel_-1", "WR_CURTAIN_panel_1", "WR_CURTAIN_rod_-1", "WR_CURTAIN_rod_1",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
@@ -1042,6 +1053,11 @@ def read_glb_json(path):
 def validate_runtime_glb(path, expected_factors=None):
     data = read_glb_json(path)
     materials = {row.get("name"): row for row in data.get("materials", [])}
+    node_names = {row.get("name") for row in data.get("nodes", [])}
+    required_runtime_anchors = {"WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight"}
+    missing_runtime_anchors = sorted(required_runtime_anchors - node_names)
+    if missing_runtime_anchors:
+        raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
     required_colours = {
         "WR_MAT_wall_walnut",
         "WR_MAT_trim_walnut",
@@ -1087,7 +1103,12 @@ def export_shell(path):
     bpy.ops.object.select_all(action="DESELECT")
     selected = 0
     for obj in bpy.context.scene.objects:
-        if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC:
+        is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
+        is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
+            "WR_ANCHOR_fireplace_practical",
+            "WR_ANCHOR_window_moonlight",
+        }
+        if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
             selected += 1
     if selected < 70:
