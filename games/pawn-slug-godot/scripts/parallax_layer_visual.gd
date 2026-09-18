@@ -1,6 +1,10 @@
 extends Node2D
 
 const ATMOSPHERE_REDRAW_INTERVAL := 0.05
+const IndustrialFarPart0 := preload("res://art/industrial_front_far_v1_part0.gd")
+const IndustrialFarPart1 := preload("res://art/industrial_front_far_v1_part1.gd")
+const IndustrialFarPart2 := preload("res://art/industrial_front_far_v1_part2.gd")
+const IndustrialFarPart3 := preload("res://art/industrial_front_far_v1_part3.gd")
 
 var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
@@ -10,6 +14,7 @@ var _intensity := 1.0
 var _preset := "night_front"
 var _atmosphere_time := 0.0
 var _redraw_accumulator := 0.0
+var _industrial_far_art: ImageTexture
 
 func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, intensity: float = 1.0, preset: String = "night_front") -> void:
     _world_size = world_size
@@ -18,6 +23,8 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _seed = seed
     _intensity = clampf(intensity, 0.0, 2.0)
     _preset = preset
+    if _kind == "industrial_art":
+        _ensure_industrial_far_art()
     set_process(_kind in ["sky", "industrial_landmark", "ruined_city", "mid_defence", "near_weather"])
     queue_redraw()
 
@@ -38,6 +45,8 @@ func _draw() -> void:
     match _kind:
         "sky":
             _draw_sky()
+        "industrial_art":
+            _draw_industrial_art()
         "far_ridge":
             _draw_far_ridge()
         "industrial_landmark":
@@ -214,6 +223,38 @@ func _draw_industrial_cloud_deck() -> void:
         Vector2(-120.0, 338.0),
     ])
     draw_colored_polygon(mist_points, Color(0.32, 0.39, 0.44, 0.040 * _intensity))
+
+func _ensure_industrial_far_art() -> void:
+    if _industrial_far_art != null:
+        return
+    var encoded := (
+        IndustrialFarPart0.DATA
+        + IndustrialFarPart1.DATA
+        + IndustrialFarPart2.DATA
+        + IndustrialFarPart3.DATA
+    )
+    var bytes := Marshalls.base64_to_raw(encoded)
+    var image := Image.new()
+    var error := image.load_webp_from_buffer(bytes)
+    if error != OK:
+        push_warning("Pawn Slug industrial far art could not be decoded")
+        return
+    _industrial_far_art = ImageTexture.create_from_image(image)
+
+func _draw_industrial_art() -> void:
+    if _preset != "night_front":
+        return
+    _ensure_industrial_far_art()
+    if _industrial_far_art == null:
+        return
+    # Approved mock-derived far art: sky, mountains and distant factory only.
+    # The lower edge fades to transparency and never defines traversal/collision.
+    draw_texture_rect(
+        _industrial_far_art,
+        Rect2(Vector2(250.0, 0.0), Vector2(1536.0, 604.0)),
+        false,
+        Color(0.94, 0.96, 0.98, 0.92 * _intensity),
+    )
 
 func _draw_far_ridge() -> void:
     if _preset == "harbor_dusk":
