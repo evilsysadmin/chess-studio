@@ -666,6 +666,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         _ensure_master()
         return
 
+    var frames: SpriteFrames
     if requested_layout == "full-v9":
         frames = _build_v9_frames(image)
         if frames == null:
@@ -701,7 +702,6 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             call_deferred("_install_or_request_weapon")
         return
 
-    var frames: SpriteFrames
     if requested_layout == "full-v7-source":
         var render_image := _normalize_v7_source(image)
         if render_image == null:
