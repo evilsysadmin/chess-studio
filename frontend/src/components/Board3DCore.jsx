@@ -31,7 +31,11 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
-import { buildClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import {
+  buildClassicWarRoomShell,
+  shouldShowClassicWarRoomShell,
+  startWarRoomVariantScene,
+} from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -107,6 +111,10 @@ function Board3DCanvas({
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
   const { selectable: warRoomVariantSelectable, variant: warRoomVariant, status: warRoomV2Status, setStatus: setWarRoomV2Status } = useWarRoomVariant();
+  const initialClassicShellVisibleRef = useRef(shouldShowClassicWarRoomShell({
+    selectable: warRoomVariantSelectable,
+    variant: warRoomVariant,
+  }));
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -288,7 +296,14 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const { classicShellObjects } = buildClassicWarRoomShell({ scene, boardGroup, theme, whiteSide, renderLite });
+    const { classicShellObjects } = buildClassicWarRoomShell({
+      scene,
+      boardGroup,
+      theme,
+      whiteSide,
+      renderLite,
+      visible: initialClassicShellVisibleRef.current,
+    });
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
