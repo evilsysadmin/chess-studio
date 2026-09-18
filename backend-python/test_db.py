@@ -60,19 +60,19 @@ def _reset_db_state(monkeypatch, *, clock=100.0):
 
 def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
     _reset_db_state(monkeypatch)
-    calls = {"clients": 0, "pings": 0, "indexes": 0}
+    calls = {"clients": 0, "pings": 0, "indexes": []}
 
     class FakeCollection:
+        def __init__(self, name):
+            self.name = name
+
         async def create_index(self, key, **kwargs):
-            assert key == "last_activity"
-            assert kwargs == {"name": "users_last_activity"}
-            calls["indexes"] += 1
-            return "users_last_activity"
+            calls["indexes"].append((self.name, key, kwargs["name"]))
+            return kwargs["name"]
 
     class FakeDatabase:
         def __getitem__(self, name):
-            assert name == "users"
-            return FakeCollection()
+            return FakeCollection(name)
 
     fake_database = FakeDatabase()
 
@@ -101,25 +101,33 @@ def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
 
     results = asyncio.run(scenario())
     assert results == [fake_database] * 20
-    assert calls == {"clients": 1, "pings": 1, "indexes": 1}
+    assert calls == {
+        "clients": 1,
+        "pings": 1,
+        "indexes": [
+            ("users", "last_activity", "users_last_activity"),
+            ("games", "owner", "games_owner"),
+            ("chronicles_runs", "owner", "chronicles_runs_owner"),
+        ],
+    }
 
 
 def test_failed_connect_enters_fast_retry_cooldown_then_recovers(monkeypatch):
     now = _reset_db_state(monkeypatch)
-    calls = {"clients": 0, "pings": 0, "closed": 0, "indexes": 0}
+    calls = {"clients": 0, "pings": 0, "closed": 0, "indexes": []}
     should_fail = [True]
 
     class FakeCollection:
+        def __init__(self, name):
+            self.name = name
+
         async def create_index(self, key, **kwargs):
-            assert key == "last_activity"
-            assert kwargs == {"name": "users_last_activity"}
-            calls["indexes"] += 1
-            return "users_last_activity"
+            calls["indexes"].append((self.name, key, kwargs["name"]))
+            return kwargs["name"]
 
     class FakeDatabase:
         def __getitem__(self, name):
-            assert name == "users"
-            return FakeCollection()
+            return FakeCollection(name)
 
     fake_database = FakeDatabase()
 
@@ -152,17 +160,47 @@ def test_failed_connect_enters_fast_retry_cooldown_then_recovers(monkeypatch):
     assert calls["clients"] == 1
     assert calls["pings"] == 1
     assert calls["closed"] == 1
-    assert calls["indexes"] == 0
+    assert calls["indexes"] == []
 
     # Dentro del cooldown no se crea ni se hace ping a ningún cliente nuevo.
     assert asyncio.run(db.get_db()) is None
     assert calls["clients"] == 1
     assert calls["pings"] == 1
-    assert calls["indexes"] == 0
+    assert calls["indexes"] == []
 
     now[0] += db.MONGO_RETRY_COOLDOWN_S + 0.01
     should_fail[0] = False
     assert asyncio.run(db.get_db()) is fake_database
     assert calls["clients"] == 2
     assert calls["pings"] == 2
-    assert calls["indexes"] == 1
+    assert calls["indexes"] == [
+        ("users", "last_activity", "users_last_activity"),
+        ("games", "owner", "games_owner"),
+        ("chronicles_runs", "owner", "chronicles_runs_owner"),
+    ]
+
+
+def test_runtime_index_failure_does_not_skip_other_lifecycle_indexes():
+    calls = []
+
+    class FakeCollection:
+        def __init__(self, name):
+            self.name = name
+
+        async def create_index(self, key, **kwargs):
+            calls.append((self.name, key, kwargs["name"]))
+            if self.name == "games":
+                raise db.PyMongoError("index permission denied")
+            return kwargs["name"]
+
+    class FakeDatabase:
+        def __getitem__(self, name):
+            return FakeCollection(name)
+
+    asyncio.run(db._ensure_runtime_indexes(FakeDatabase()))
+
+    assert calls == [
+        ("users", "last_activity", "users_last_activity"),
+        ("games", "owner", "games_owner"),
+        ("chronicles_runs", "owner", "chronicles_runs_owner"),
+    ]
