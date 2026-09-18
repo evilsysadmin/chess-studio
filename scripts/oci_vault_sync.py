@@ -1,49 +1,44 @@
 #!/usr/bin/env python3
-"""Materialize OCI staging runtime from CURRENT Vault values + versioned Git config."""
+"""Install OCI staging runtime from CURRENT Vault values + versioned Git config."""
 from __future__ import annotations
 
 import argparse
-from typing import Any
 import shlex
+from typing import Any
 
-from oci_runtime_config import ALLOWED_KEYS, install_command
+from oci_runtime_config import ALLOWED_KEYS, RUNTIME_INSTALLER
 from oci_runtime_manifest import DECLARATIVE_KEYS, load_declarative
 from oci_vault_runtime import OCI_SDK_VERSION, SECRET_NAMES, resolve_vault_id, validate_vault_id
 
 OK_MARKER = "OCI_VAULT_RUNTIME_SYNC_OK"
 
 
-def host_publish_command(vault_id: str, namespace: str, declarative: dict[str, str]) -> str:
-    from oci_run_command import (
-        RUNTIME_BUCKET,
-        RUNTIME_OBJECT,
-        RUN_COMMAND_INLINE_MAX_BYTES,
-        assert_nonsecret_command,
-        validate_namespace,
-    )
+def host_sync_command(vault_id: str, declarative: dict[str, str]) -> str:
+    from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
 
     vault_id = validate_vault_id(vault_id)
-    namespace = validate_namespace(namespace)
     if set(declarative) != set(DECLARATIVE_KEYS):
         raise SystemExit("declarative runtime keys do not match sync contract")
     declarative_rows = tuple((key, declarative[key]) for key in DECLARATIVE_KEYS)
     command = f"""set -euo pipefail
+tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+chmod 0600 "$tmp"
 venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
 if [ ! -x "$venv/bin/python" ]; then
   python3 -m venv "$venv"
   "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
 fi
-VAULT_ID={shlex.quote(vault_id)} RUNTIME_NAMESPACE={shlex.quote(namespace)} "$venv/bin/python" - <<'PY'
+VAULT_ID={shlex.quote(vault_id)} RUNTIME_TMP="$tmp" "$venv/bin/python" - <<'PY'
 import base64, os
+from pathlib import Path
 import oci
 secret_rows={SECRET_NAMES!r}
 ordered={tuple(ALLOWED_KEYS)!r}
 values=dict({declarative_rows!r})
-signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
-secrets=oci.secrets.SecretsClient(config={{}}, signer=signer)
-storage=oci.object_storage.ObjectStorageClient(config={{}}, signer=signer)
+client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
 for key,name in secret_rows:
-    response=secrets.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
+    response=client.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
     content=getattr(response.data,"secret_bundle_content",None)
     encoded=str(getattr(content,"content","") or "")
     try:
@@ -55,19 +50,13 @@ for key,name in secret_rows:
     values[key]=value
 if set(values)!=set(ordered):
     raise SystemExit("runtime key set does not match backend.env contract")
-payload="".join(f"{{key}}={{values[key]}}\\n" for key in ordered).encode("utf-8")
-namespace=os.environ["RUNTIME_NAMESPACE"]
-bucket=storage.get_bucket(namespace,{RUNTIME_BUCKET!r}).data
-if str(getattr(bucket,"public_access_type","") or "")!="NoPublicAccess":
-    raise SystemExit("runtime bucket must remain private")
-if str(getattr(bucket,"versioning","") or "")!="Disabled":
-    raise SystemExit("runtime bucket versioning must remain disabled")
-storage.put_object(namespace,{RUNTIME_BUCKET!r},{RUNTIME_OBJECT!r},payload,content_length=len(payload),content_type="text/plain")
-head=storage.head_object(namespace,{RUNTIME_BUCKET!r},{RUNTIME_OBJECT!r})
-if int(head.headers.get("content-length","-1"))!=len(payload):
-    raise SystemExit("runtime object size verification failed")
-print("{OK_MARKER} target=object-storage keys="+str(len(ordered))+" bytes="+str(len(payload)))
+path=Path(os.environ["RUNTIME_TMP"])
+path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in ordered),encoding="utf-8")
+os.chmod(path,0o600)
 PY
+sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
+tmp=''
+printf '%s\n' '{OK_MARKER} target=installed keys={len(ALLOWED_KEYS)} mode=0600'
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -77,7 +66,7 @@ PY
 
 def validate_output(text: str) -> None:
     lines = {line.strip() for line in text.splitlines() if line.strip()}
-    if not any(line.startswith(f"{OK_MARKER} target=object-storage keys=") for line in lines):
+    if not any(line.startswith(f"{OK_MARKER} target=installed keys=") and line.endswith(" mode=0600") for line in lines):
         raise SystemExit("OCI Vault runtime sync did not return success marker")
 
 
@@ -88,15 +77,7 @@ def sync_current(
     resolved: tuple[str, str] | None = None,
     diagnose: bool = True,
 ) -> None:
-    from oci_run_command import (
-        RUNTIME_BUCKET,
-        RUNTIME_OBJECT,
-        config_from_env,
-        diagnose_plugin,
-        execute,
-        resolve_staging,
-        runtime_namespace,
-    )
+    from oci_run_command import config_from_env, diagnose_plugin, execute, resolve_staging
 
     runtime_config = config or config_from_env(oci)
     target = resolved or resolve_staging(oci, runtime_config)
@@ -109,50 +90,41 @@ def sync_current(
         )
     compartment_id, _instance_id = target
     vault_id = resolve_vault_id(oci, runtime_config, compartment_id)
-    namespace = runtime_namespace(oci, runtime_config)
     output = execute(
         oci,
         runtime_config,
-        host_publish_command(vault_id, namespace, load_declarative()),
+        host_sync_command(vault_id, load_declarative()),
         display_name="chess-studio-vault-runtime-sync",
-        timeout=300,
-        resolved=target,
-    )
-    validate_output(output)
-    install_output = execute(
-        oci,
-        runtime_config,
-        install_command(namespace, RUNTIME_BUCKET, RUNTIME_OBJECT),
-        display_name="chess-studio-vault-runtime-install",
         timeout=600,
         resolved=target,
     )
-    if "CHESS_STUDIO_RUNTIME_ENV_READY" not in install_output:
-        raise SystemExit("OCI Vault runtime install did not return readiness marker")
-    print("OCI Vault+Git CURRENT runtime published and installed on staging")
+    validate_output(output)
+    print("OCI Vault+Git CURRENT runtime installed on staging")
 
 
 def self_test() -> None:
     from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
 
     declarative = load_declarative()
-    command = host_publish_command(
+    command = host_sync_command(
         "ocid1.vault.oc1.eu-frankfurt-1.testvault",
-        "chessnamespace",
         declarative,
     )
     assert "InstancePrincipalsSecurityTokenSigner" in command
     assert 'stage="CURRENT"' in command
-    assert "ObjectStorageClient" in command and "put_object" in command
-    assert "NoPublicAccess" in command and "versioning" in command
+    assert "mktemp /tmp/chess-studio-backend.env.XXXXXX" in command
+    assert RUNTIME_INSTALLER in command
+    assert "sudo --non-interactive" in command
     assert "CHESS_STUDIO_RUNTIME_SCHEMA" in command
     assert "vault-git-v1" in command
     assert "RENDER_API_KEY" not in command
+    assert "ObjectStorageClient" not in command
+    assert "put_object" not in command
     assert "MONGO_URL=" not in command
     assert "JWT_SECRET=" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert_nonsecret_command(command)
-    validate_output(f"{OK_MARKER} target=object-storage keys={len(ALLOWED_KEYS)} bytes=123")
+    validate_output(f"{OK_MARKER} target=installed keys={len(ALLOWED_KEYS)} mode=0600")
     try:
         validate_output("OCI_VAULT_RUNTIME_DIFF key=OTEL_EXPORTER_OTLP_ENDPOINT")
     except SystemExit:
