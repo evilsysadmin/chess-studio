@@ -373,11 +373,6 @@ function Board3DCanvas({
       });
     }
 
-    const stopWarRoomVariantScene = startWarRoomVariantScene({
-      scene, classicShellObjects, variant: warRoomVariant, selectable: warRoomVariantSelectable,
-      whiteSide, renderLite, canvas: renderer.domElement, onStatus: setWarRoomV2Status, onPaint: render,
-    });
-
     let cachedHansDiagnosticsObject = null;
     let cachedHansDriver = null;
     let ambientScheduler = null;
@@ -671,6 +666,8 @@ function Board3DCanvas({
       rendererName,
       rendererAttemptId: rendererAttempt.id,
       sceneTier: sceneProfile.tier,
+      classicShellObjects,
+      whiteSide,
       key,
       rim,
       warm,
@@ -689,7 +686,6 @@ function Board3DCanvas({
     ambientScheduler?.start();
 
     return () => {
-      stopWarRoomVariantScene();
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
@@ -716,7 +712,30 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, warRoomVariant, warRoomVariantSelectable]);
+  }, [effectiveThemeId, orientation, showCoordinates]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return undefined;
+    return startWarRoomVariantScene({
+      scene: state.scene,
+      classicShellObjects: state.classicShellObjects,
+      variant: warRoomVariant,
+      selectable: warRoomVariantSelectable,
+      whiteSide: state.whiteSide,
+      renderLite: state.renderLite,
+      canvas: state.renderer.domElement,
+      onStatus: setWarRoomV2Status,
+      onPaint: state.render,
+    });
+  }, [
+    warRoomVariant,
+    warRoomVariantSelectable,
+    setWarRoomV2Status,
+    effectiveThemeId,
+    orientation,
+    showCoordinates,
+  ]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
