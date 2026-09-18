@@ -509,9 +509,26 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_left_sofa_base", (-7.75, -0.05, 0.42), (1.55, 1.05, 0.40), leather, bevel=0.14)
     cube("HOME_PROP_left_sofa_back", (-8.42, 0.58, 1.32), (0.22, 1.02, 0.92), leather, bevel=0.12)
     cube("HOME_PROP_left_sofa_arm", (-6.48, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
+    cube("HOME_PROP_left_sofa_arm_outer", (-8.42, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
+    cube("HOME_PROP_left_sideboard", (-7.55, 2.62, 0.62), (1.30, 0.48, 0.62), wood, bevel=0.06)
     cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
     cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
+    sphere("HOME_PROP_left_horse_body", (-7.52, 2.12, 1.50), (0.28, 0.15, 0.18), brass)
+    curve_tube(
+        "HOME_PROP_left_horse_neck",
+        [(-7.66, 2.12, 1.55), (-7.82, 2.12, 1.74), (-7.94, 2.12, 1.88)],
+        0.065,
+        brass,
+    )
+    sphere("HOME_PROP_left_horse_head", (-8.02, 2.12, 1.91), (0.12, 0.07, 0.10), brass)
+    for idx, hx in enumerate((-7.68, -7.42)):
+        curve_tube(
+            f"HOME_PROP_left_horse_leg_{idx}",
+            [(hx, 2.12, 1.38), (hx - 0.04, 2.12, 1.10)],
+            0.035,
+            brass,
+        )
     for idx in range(4):
         cube(
             f"HOME_PROP_left_book_stack_{idx}",
@@ -686,6 +703,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission=(0.055, 0.16, 0.28, 1),
             emission_strength=0.55,
         ),
+        "moon": material(
+            "HOME_MAT_moon",
+            (0.82, 0.86, 0.84, 1),
+            roughness=0.42,
+            emission=(0.55, 0.66, 0.74, 1),
+            emission_strength=1.35,
+        ),
         "fire": material(
             "HOME_MAT_fire",
             (0.92, 0.16, 0.018, 1),
@@ -740,6 +764,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
+    fireplace_origin = Vector((4.45, 6.10, 0.35))
+    for obj in list(bpy.data.objects):
+        if ("fireplace_right" in obj.name) and obj.type != "LIGHT":
+            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.22
+            obj.scale *= 1.22
 
     cube("HOME_ARCH_window_right", (7.58, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.58, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass"], bevel=0.12)
@@ -748,6 +777,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for idx, z in enumerate((2.78, 3.55, 4.25)):
         cube(f"HOME_PROP_window_mullion_h_{idx}", (7.58, 6.46, z + 0.10), (1.13, 0.045, 0.030), materials["brass"], bevel=0.012)
     cube("HOME_PROP_window_sill", (7.58, 6.20, 1.80), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
+    sphere("HOME_PROP_window_moon", (8.08, 6.40, 4.48), (0.46, 0.035, 0.46), materials["moon"])
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
@@ -757,8 +787,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
             origin = Vector((1.55, 5.28, 0.24))
-            obj.location = origin + (obj.location - origin) * 1.18
-            obj.scale *= 1.18
+            obj.location = origin + (obj.location - origin) * 1.34
+            obj.scale *= 1.34
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
