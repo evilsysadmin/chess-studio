@@ -1083,12 +1083,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 235, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 112, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 220, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 105, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 270, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 205, (0.86, 0.69, 0.52), 4.5, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 135, (0.78, 0.48, 0.26), 3.0, target=(-2.65, 5.9, 2.6))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 185, (0.38, 0.48, 0.60), 2.8, target=(1.55, 5.28, 2.4))
+    # Canonical beauty checkpoint: warm hearth/table hierarchy with a cooler
+    # moonlit right wing; practicals stay local instead of flattening the room.
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 190, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 92, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 245, (0.86, 0.69, 0.52), 4.5, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 155, (0.78, 0.48, 0.26), 3.0, target=(-5.9, 5.8, 2.6))
+    add_area_light("HOME_LIGHT_armor_rim", (3.8, 3.4, 5.2), 145, (0.38, 0.48, 0.60), 2.8, target=(-4.92, 5.10, 2.4))
 
     # Preserve the visual richness while collapsing repeated geometry. This is
     # deliberately late so modelling stays readable and editable above.
