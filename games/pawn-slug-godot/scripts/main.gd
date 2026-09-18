@@ -322,6 +322,9 @@ func _point_hits_stage_geometry(point: Vector2) -> bool:
     for rect in _dynamic_platform_rects():
         if rect.has_point(point):
             return true
+    for rect in _destructible_geometry_rects():
+        if rect.has_point(point):
+            return true
     return false
 
 func contextual_movement_hint(player_x: float) -> String:
@@ -540,6 +543,7 @@ func _build_stage_setpieces() -> void:
     _setpiece_nodes.clear()
     _moving_platforms.clear()
     _collapsing_platforms.clear()
+    _destructible_setpieces.clear()
     var theme := String(_stage_manifest.get("theme", "night_front"))
 
     for index in range(_setpieces.size()):
@@ -620,6 +624,41 @@ func _build_stage_setpieces() -> void:
                 "state": "idle",
             })
             _setpiece_nodes[id] = body
+        elif kind in ["destructible_barricade", "destructible_platform"]:
+            var width := float(setpiece.get("w", 120.0))
+            var default_height := 54.0 if kind == "destructible_barricade" else 24.0
+            var height := float(setpiece.get("h", default_height))
+            var body := StaticBody2D.new()
+            body.name = "Setpiece_%s" % id
+            body.position = Vector2(
+                float(setpiece.get("x", 0.0)) + width * 0.5,
+                float(setpiece.get("y", _floor_y - height)) + height * 0.5,
+            )
+            var collision := CollisionShape2D.new()
+            collision.name = "CollisionShape2D"
+            var shape := RectangleShape2D.new()
+            shape.size = Vector2(width, height)
+            collision.shape = shape
+            body.add_child(collision)
+            var visual = SetpieceVisual.new()
+            visual.configure(kind, Vector2(width, height), theme)
+            if kind == "destructible_barricade":
+                visual.position.y = height * 0.5
+            body.add_child(visual)
+            add_child(body)
+            var max_hp := int(setpiece.get("hp", 90 if kind == "destructible_barricade" else 70))
+            _destructible_setpieces.append({
+                "id": id,
+                "kind": kind,
+                "body": body,
+                "collision": collision,
+                "visual": visual,
+                "size": Vector2(width, height),
+                "hp": max_hp,
+                "max_hp": max_hp,
+                "destroyed": false,
+            })
+            _setpiece_nodes[id] = body
         elif kind == "bunker_turret":
             var visual = SetpieceVisual.new()
             visual.name = "Setpiece_%s" % id
@@ -668,6 +707,19 @@ func _build_stage_setpieces() -> void:
                 theme,
             )
             add_child(visual)
+            _setpiece_nodes[id] = visual
+        elif kind == "artillery_barrage":
+            var visual = SetpieceVisual.new()
+            visual.name = "Setpiece_%s" % id
+            visual.visible = false
+            visual.z_index = 5
+            var radius := float(setpiece.get("radius", 82.0))
+            visual.configure(kind, Vector2(radius * 2.0, radius * 2.0), theme)
+            add_child(visual)
+            setpiece["_phase"] = "idle"
+            setpiece["_timer"] = 0.0
+            setpiece["_salvos_left"] = int(setpiece.get("salvos", 3))
+            setpiece["_target"] = Vector2.ZERO
             _setpiece_nodes[id] = visual
 
         _setpieces[index] = setpiece
@@ -747,9 +799,34 @@ func _collapsing_platform_rects() -> Array[Rect2]:
         rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
     return rects
 
+func _destructible_platform_rects() -> Array[Rect2]:
+    var rects: Array[Rect2] = []
+    for item in _destructible_setpieces:
+        if bool(item.get("destroyed", false)) or String(item.get("kind", "")) != "destructible_platform":
+            continue
+        var body = item.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = item["size"]
+        rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
+    return rects
+
+func _destructible_geometry_rects() -> Array[Rect2]:
+    var rects: Array[Rect2] = []
+    for item in _destructible_setpieces:
+        if bool(item.get("destroyed", false)):
+            continue
+        var body = item.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = item["size"]
+        rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
+    return rects
+
 func _dynamic_platform_rects() -> Array[Rect2]:
     var rects := _moving_platform_rects()
     rects.append_array(_collapsing_platform_rects())
+    rects.append_array(_destructible_platform_rects())
     return rects
 
 func _update_stage_setpieces(delta: float) -> void:
@@ -768,6 +845,8 @@ func _update_stage_setpieces(delta: float) -> void:
                 _update_bunker_turret(setpiece, delta)
             "convoy":
                 _update_convoy_setpiece(setpiece, delta)
+            "artillery_barrage":
+                _update_artillery_barrage(setpiece, delta)
         _setpieces[index] = setpiece
 
 func _spawn_reinforcement_wave(setpiece: Dictionary, setpiece_index: int) -> void:
@@ -852,6 +931,117 @@ func _update_convoy_setpiece(setpiece: Dictionary, delta: float) -> void:
         visual.position.x = end_x
         visual.visible = false
         setpiece["_complete"] = true
+
+func _damage_destructible_at(point: Vector2, damage: int) -> bool:
+    for index in range(_destructible_setpieces.size()):
+        var item := _destructible_setpieces[index]
+        if bool(item.get("destroyed", false)):
+            continue
+        var body = item.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = item["size"]
+        var rect := Rect2(Vector2(body.position) - size * 0.5, size)
+        if not rect.has_point(point):
+            continue
+        if damage > 0:
+            _damage_destructible(index, damage)
+        return true
+    return false
+
+func _damage_destructibles_in_radius(position: Vector2, radius: float, damage: int) -> void:
+    for index in range(_destructible_setpieces.size()):
+        var item := _destructible_setpieces[index]
+        if bool(item.get("destroyed", false)):
+            continue
+        var body = item.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = item["size"]
+        var distance := position.distance_to(Vector2(body.position))
+        if distance > radius + maxf(size.x, size.y) * 0.30:
+            continue
+        _damage_destructible(index, _explosion_damage(damage, distance, radius))
+
+func _damage_destructible(index: int, damage: int) -> void:
+    if index < 0 or index >= _destructible_setpieces.size() or damage <= 0:
+        return
+    var item := _destructible_setpieces[index]
+    if bool(item.get("destroyed", false)):
+        return
+    var next_hp := maxi(0, int(item.get("hp", 0)) - damage)
+    item["hp"] = next_hp
+    var max_hp := maxi(1, int(item.get("max_hp", 1)))
+    var visual = item.get("visual")
+    if visual != null:
+        visual.set_health_ratio(float(next_hp) / float(max_hp))
+    if next_hp <= 0:
+        item["destroyed"] = true
+        var collision = item.get("collision")
+        if collision != null:
+            collision.set_deferred("disabled", true)
+        if visual != null:
+            visual.set_destroyed(true)
+        var body = item.get("body")
+        if body != null:
+            _add_explosion_fx(
+                Vector2(body.position),
+                minf(92.0, maxf(56.0, float(Vector2(item["size"]).x) * 0.35)),
+            )
+    _destructible_setpieces[index] = item
+
+func _update_artillery_barrage(setpiece: Dictionary, delta: float) -> void:
+    if bool(setpiece.get("_complete", false)):
+        return
+    if not bool(setpiece.get("_triggered", false)):
+        if player.global_position.x < float(setpiece.get("trigger_x", 0.0)):
+            return
+        setpiece["_triggered"] = true
+        setpiece["_phase"] = "cooldown"
+        setpiece["_timer"] = float(setpiece.get("initial_delay", 0.55))
+
+    var visual = _setpiece_nodes.get(String(setpiece.get("_id", "")))
+    var phase := String(setpiece.get("_phase", "idle"))
+    setpiece["_timer"] = maxf(0.0, float(setpiece.get("_timer", 0.0)) - delta)
+
+    if phase == "cooldown" and float(setpiece["_timer"]) <= 0.0:
+        if int(setpiece.get("_salvos_left", 0)) <= 0:
+            setpiece["_complete"] = true
+            if visual != null:
+                visual.visible = false
+                visual.set_warning(false)
+            return
+        var lead := float(setpiece.get("lead", 70.0))
+        var direction := 1.0 if player.velocity.x >= 0.0 else -1.0
+        var offset_index := int(setpiece.get("_salvos_left", 1)) % 3 - 1
+        var target_x := clampf(
+            player.global_position.x + direction * lead + float(offset_index) * 72.0,
+            float(setpiece.get("min_x", 0.0)),
+            float(setpiece.get("max_x", _world_size.x)),
+        )
+        var target := Vector2(target_x, _floor_y - 4.0)
+        setpiece["_target"] = target
+        setpiece["_phase"] = "warning"
+        setpiece["_timer"] = maxf(0.45, float(setpiece.get("telegraph", 0.95)))
+        if visual != null:
+            visual.position = target
+            visual.visible = true
+            visual.set_warning(true)
+    elif phase == "warning" and float(setpiece["_timer"]) <= 0.0:
+        var target: Vector2 = setpiece.get("_target", Vector2.ZERO)
+        var radius := float(setpiece.get("radius", 82.0))
+        if visual != null:
+            visual.set_warning(false)
+            visual.visible = false
+        _add_explosion_fx(target, radius)
+        var damage := int(setpiece.get("damage", 90))
+        _damage_destructibles_in_radius(target, radius, damage)
+        _damage_bunkers_in_radius(target, radius, damage)
+        if Vector2(player.global_position).distance_to(target) <= minf(radius, ARTILLERY_PLAYER_DAMAGE_RADIUS):
+            player.take_damage(1)
+        setpiece["_salvos_left"] = maxi(0, int(setpiece.get("_salvos_left", 0)) - 1)
+        setpiece["_phase"] = "cooldown"
+        setpiece["_timer"] = maxf(0.45, float(setpiece.get("interval", 0.85)))
 
 func _bunker_hitbox(setpiece: Dictionary) -> Rect2:
     var width := float(setpiece.get("w", 126.0))
