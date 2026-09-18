@@ -172,52 +172,88 @@ def add_table_and_board(materials):
     cube("HOME_PROP_board_frame", (0, 1.7, 1.15), (1.18, 1.18, 0.035), metal, bevel=0.025)
 
 
+def add_fireplace(name: str, x: float, materials):
+    stone = materials["stone"]
+    dark = materials["stone_dark"]
+    fire = materials["fire"]
+    cube(f"HOME_PROP_{name}_hearth", (x, 6.12, 0.72), (1.18, 0.48, 0.72), dark, bevel=0.05)
+    cube(f"HOME_PROP_{name}_mantel", (x, 5.88, 1.58), (1.42, 0.22, 0.14), stone, bevel=0.04)
+    arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.65, 2.5, 4.2, 0.12, dark)
+    cube(f"HOME_PROP_{name}_fire", (x, 5.61, 0.73), (0.72, 0.07, 0.43), fire, bevel=0.12)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.18, 1.16), 520, (1.0, 0.25, 0.06), radius=0.7)
+
+
+def add_bookshelf(materials):
+    wood = materials["wood"]
+    brass = materials["brass"]
+    x, y = -2.55, 6.22
+    cube("HOME_PROP_library_back", (x, y, 2.35), (1.45, 0.28, 2.25), wood, bevel=0.04)
+    for idx, z in enumerate((0.5, 1.18, 1.86, 2.54, 3.22, 3.9, 4.48)):
+        cube(f"HOME_PROP_library_shelf_{idx}", (x, y - 0.33, z), (1.45, 0.12, 0.065), brass, bevel=0.02)
+    for side in (-1, 1):
+        cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), brass, bevel=0.025)
+    # Book masses only: enough to match the canonical silhouette before detailing.
+    book_colors = (materials["banner"], materials["book_green"], materials["book_brown"])
+    for row, z in enumerate((0.82, 1.5, 2.18, 2.86, 3.54, 4.16)):
+        for col in range(9):
+            bx = x - 1.15 + col * 0.285
+            h = 0.22 + 0.035 * ((row + col) % 3)
+            cube(f"HOME_PROP_book_{row}_{col}", (bx, y - 0.47, z), (0.09, 0.08, h), book_colors[(row + col) % len(book_colors)])
+
+
+def add_banner(name: str, x: float, materials):
+    banner = materials["banner"]
+    brass = materials["brass"]
+    cube(f"HOME_PROP_banner_{name}", (x, 5.88, 4.48), (0.46, 0.045, 1.15), banner, bevel=0.025)
+    cube(f"HOME_PROP_banner_bar_{name}", (x, 5.82, 5.66), (0.58, 0.06, 0.045), brass, bevel=0.015)
+
+
 def add_armor(materials):
     steel = materials["steel"]
     brass = materials["brass"]
     stone = materials["stone"]
-    x, y = 4.6, 3.7
-    cube("HOME_PROP_armor_pedestal", (x, y, 0.35), (0.72, 0.62, 0.35), stone, bevel=0.05)
-    cylinder("HOME_PROP_armor_legs", (x, y, 1.05), 0.27, 1.45, steel)
-    sphere("HOME_PROP_armor_torso", (x, y, 1.95), (0.58, 0.35, 0.72), steel)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.82), (0.39, 0.36, 0.38), steel)
-    cube("HOME_PROP_armor_visor", (x, y - 0.34, 2.82), (0.34, 0.06, 0.12), brass, bevel=0.025)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.45, y, 2.25), (x - 0.78, y, 1.75)], 0.13, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.45, y, 2.25), (x + 0.76, y, 1.72)], 0.13, steel)
+    x, y = 1.35, 5.46
+    cube("HOME_PROP_armor_pedestal", (x, y, 0.28), (0.58, 0.48, 0.28), stone, bevel=0.05)
+    cylinder("HOME_PROP_armor_legs", (x, y, 0.94), 0.22, 1.1, steel)
+    sphere("HOME_PROP_armor_torso", (x, y, 1.72), (0.46, 0.3, 0.62), steel)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.48), (0.31, 0.29, 0.32), steel)
+    cube("HOME_PROP_armor_visor", (x, y - 0.28, 2.48), (0.28, 0.05, 0.095), brass, bevel=0.02)
+    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.37, y, 1.98), (x - 0.58, y, 1.48)], 0.1, steel)
+    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.37, y, 1.98), (x + 0.58, y, 1.48)], 0.1, steel)
 
 
 def add_trophy(materials):
     brass = materials["brass"]
-    stone = materials["stone"]
-    x, y = -4.6, 3.7
-    cube("HOME_PROP_trophy_pedestal", (x, y, 0.42), (0.68, 0.58, 0.42), stone, bevel=0.05)
-    cylinder("HOME_PROP_trophy_stem", (x, y, 1.17), 0.12, 0.8, brass)
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=20, location=(x, y, 1.67))
-    cup = bpy.context.object
-    cup.name = "HOME_PROP_trophy_cup"
-    cup.scale = (0.52, 0.52, 0.42)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    apply_material(cup, brass)
-    cube("HOME_PROP_trophy_cut_hint", (x, y - 0.42, 1.82), (0.42, 0.08, 0.18), materials["dark"], bevel=0.05)
-    curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.34, y, 1.82), (x - 0.64, y, 1.72), (x - 0.48, y, 1.45)], 0.06, brass)
-    curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.34, y, 1.82), (x + 0.64, y, 1.72), (x + 0.48, y, 1.45)], 0.06, brass)
+    wood = materials["wood"]
+    x, y = -3.45, 5.76
+    cube("HOME_PROP_trophy_shelf", (x, y, 2.78), (0.56, 0.22, 0.08), wood, bevel=0.025)
+    cylinder("HOME_PROP_trophy_stem", (x, y - 0.18, 3.05), 0.07, 0.34, brass)
+    sphere("HOME_PROP_trophy_cup", (x, y - 0.18, 3.34), (0.28, 0.22, 0.22), brass)
+    curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.18, y - 0.18, 3.42), (x - 0.34, y - 0.18, 3.33), (x - 0.23, y - 0.18, 3.18)], 0.035, brass)
+    curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.18, y - 0.18, 3.42), (x + 0.34, y - 0.18, 3.33), (x + 0.23, y - 0.18, 3.18)], 0.035, brass)
 
 
 def add_stairs(materials):
     stone = materials["stone"]
-    x0, y0 = 6.6, 4.85
-    for i in range(8):
+    brass = materials["brass"]
+    dark = materials["dark"]
+    x0, y0 = 6.85, 4.75
+    cube("HOME_ARCH_dungeon_void", (x0, 5.88, 1.55), (1.28, 0.08, 1.52), dark, bevel=0.08)
+    arch("HOME_ARCH_dungeon_arch", x0, 5.78, 2.75, 2.6, 4.2, 0.2, stone)
+    for i in range(9):
+        y = y0 - i * 0.38
+        z = 0.82 - i * 0.075
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
-            (x0, y0 - i * 0.34, 0.18 + i * 0.09),
-            (1.1, 0.28, 0.18 + i * 0.02),
+            (x0, y, z),
+            (1.18, 0.25, 0.09),
             stone,
             bevel=0.025,
         )
-    arch("HOME_ARCH_dungeon_arch", x0, 5.6, 2.45, 2.7, 3.9, 0.2, stone)
+    curve_tube("HOME_PROP_dungeon_rail", [(5.76, 4.85, 1.25), (5.76, 3.55, 0.92), (5.76, 2.2, 0.62)], 0.045, brass)
 
 
-def build_scene(reference: Path, samples: int, max_width: int, engine: str):
+def build_scene(reference: Path, samples: int, max_width: int, engine: str):def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
     scene = bpy.context.scene
     if engine == "workbench":
@@ -267,6 +303,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
         "rug": material("HOME_MAT_rug", (0.28, 0.02, 0.018, 1), roughness=0.9),
+        "banner": material("HOME_MAT_banner", (0.34, 0.018, 0.012, 1), roughness=0.82),
+        "book_green": material("HOME_MAT_book_green", (0.08, 0.16, 0.10, 1), roughness=0.88),
+        "book_brown": material("HOME_MAT_book_brown", (0.22, 0.08, 0.035, 1), roughness=0.88),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
             "HOME_MAT_window",
@@ -284,38 +323,37 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
     }
 
-    # Room shell. The proportions are intentionally broad and easy to tune.
-    cube("HOME_ARCH_floor", (0, 2.6, -0.18), (8.9, 6.6, 0.18), materials["stone_dark"])
-    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (8.9, 0.25, 3.4), materials["stone"])
-    cube("HOME_ARCH_left_wall", (-8.6, 2.6, 3.0), (0.24, 4.7, 3.2), materials["stone"])
-    cube("HOME_ARCH_right_wall", (8.6, 2.6, 3.0), (0.24, 4.7, 3.2), materials["stone"])
-    cube("HOME_ARCH_rug", (0, 2.15, 0.018), (3.25, 4.1, 0.018), materials["rug"])
+    # Canonical Great Hall blockout v2: reproduce the asymmetric visual masses
+    # from great-hall-dungeon.webp before adding any decorative detail.
+    cube("HOME_ARCH_floor", (0, 2.6, -0.18), (9.35, 6.8, 0.18), materials["stone_dark"])
+    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
+    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
+    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
+    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
 
-    # Back-wall architecture: three central bays plus side windows.
-    for x in (-5.9, -3.0, 0.0, 3.0, 5.9):
-        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.55), 0.31, 5.1, materials["stone"], vertices=56)
-        cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.5, 0.5, materials["stone_dark"], vertices=48)
-        cylinder(f"HOME_ARCH_column_cap_{x}", (x, 6.55, 5.0), 0.48, 0.42, materials["brass"], vertices=48)
+    # Large canonical masses, left-to-right: fireplace, library, armor portal,
+    # second fireplace, window and dungeon stair.
+    for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
+        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
+        cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
 
-    for idx, x in enumerate((-4.45, 0.0, 4.45)):
-        arch(f"HOME_ARCH_bay_{idx}", x, 6.25, 2.65, 3.2, 4.85, 0.15, materials["stone_dark"])
+    add_fireplace("fireplace_left", -6.15, materials)
+    add_bookshelf(materials)
+    arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.35, 0.15, materials["stone_dark"])
+    add_fireplace("fireplace_right", 4.45, materials)
 
-    for x in (-7.15, 7.15):
-        cube(f"HOME_ARCH_window_{x}", (x, 6.62, 3.45), (0.74, 0.07, 1.42), materials["window"], bevel=0.08)
-        arch(f"HOME_ARCH_window_frame_{x}", x, 6.47, 1.75, 3.25, 4.32, 2.1, materials["brass"])
+    cube("HOME_ARCH_window_right", (8.0, 6.62, 3.58), (0.78, 0.07, 1.46), materials["window"], bevel=0.08)
+    arch("HOME_ARCH_window_right_frame", 8.0, 6.48, 1.78, 3.32, 4.48, 2.08, materials["brass"])
 
-    # Fireplace / focal rear light.
-    cube("HOME_PROP_fireplace_body", (0, 6.22, 1.2), (1.5, 0.5, 1.2), materials["stone_dark"], bevel=0.06)
-    arch("HOME_PROP_fireplace_arch", 0, 5.68, 2.05, 1.65, 2.62, 0.15, materials["stone"])
-    cube("HOME_PROP_fire", (0, 5.68, 0.72), (0.72, 0.08, 0.47), materials["fire"], bevel=0.12)
-    add_point_light("HOME_LIGHT_fire", (0, 5.05, 1.3), 680, (1.0, 0.24, 0.06), radius=0.8)
+    for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
+        add_banner(name, x, materials)
 
     add_table_and_board(materials)
     add_armor(materials)
     add_trophy(materials)
     add_stairs(materials)
 
-    # Chandelier and warm pools of light.
+    # Chandelier and warm pools of light.    # Chandelier and warm pools of light.
     cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.85), 0.055, 1.5, materials["brass"])
     curve_tube("HOME_PROP_chandelier_ring", [
         (1.2 * math.cos(i * math.tau / 20), 2.45 + 0.55 * math.sin(i * math.tau / 20), 4.18)
@@ -344,7 +382,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     look_at(camera, target)
     scene.camera = camera
 
-    scene.view_settings.look = "AgX - Medium High Contrast"
+    try:
+        scene.view_settings.look = "AgX - Medium High Contrast"
+    except Exception:
+        try:
+            scene.view_settings.look = "Medium High Contrast"
+        except Exception:
+            pass
     return scene, camera, target, width, height, render_width, render_height
 
 
