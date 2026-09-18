@@ -61,6 +61,8 @@ def material(
     emission_strength=0.0,
     bump_scale=None,
     bump_strength=0.14,
+    variation=0.0,
+    variation_scale=3.0,
 ):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = color
@@ -74,6 +76,20 @@ def material(
     if emission is not None:
         bsdf.inputs["Emission Color"].default_value = emission
         bsdf.inputs["Emission Strength"].default_value = emission_strength
+    if variation > 0.0:
+        color_noise = nodes.new("ShaderNodeTexNoise")
+        color_noise.inputs["Scale"].default_value = variation_scale
+        color_noise.inputs["Detail"].default_value = 3.5
+        color_noise.inputs["Roughness"].default_value = 0.68
+        ramp = nodes.new("ShaderNodeValToRGB")
+        ramp.color_ramp.elements[0].position = 0.26
+        ramp.color_ramp.elements[1].position = 0.76
+        darker = tuple(max(0.0, c * (1.0 - variation)) for c in color[:3]) + (1.0,)
+        lighter = tuple(min(1.0, c * (1.0 + variation)) for c in color[:3]) + (1.0,)
+        ramp.color_ramp.elements[0].color = darker
+        ramp.color_ramp.elements[1].color = lighter
+        links.new(color_noise.outputs["Fac"], ramp.inputs["Fac"])
+        links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
     if bump_scale is not None:
         noise = nodes.new("ShaderNodeTexNoise")
         noise.inputs["Scale"].default_value = bump_scale
@@ -715,23 +731,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.052
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.115, 0.105, 0.092, 1), roughness=0.93, bump_scale=5.6, bump_strength=0.23),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.024, 0.022, 1), roughness=0.97, bump_scale=7.0, bump_strength=0.18),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.072, 0.060, 0.050, 1), roughness=0.95, bump_scale=8.0, bump_strength=0.16),
-        "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10),
+        "stone": material("HOME_MAT_stone", (0.115, 0.105, 0.092, 1), roughness=0.93, bump_scale=5.6, bump_strength=0.23, variation=0.18, variation_scale=3.8),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.024, 0.022, 1), roughness=0.97, bump_scale=7.0, bump_strength=0.18, variation=0.12, variation_scale=4.8),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.072, 0.060, 0.050, 1), roughness=0.95, bump_scale=8.0, bump_strength=0.16, variation=0.14, variation_scale=5.6),
+        "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10, variation=0.24, variation_scale=2.2),
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
         "gold": material("HOME_MAT_gold", (0.58, 0.31, 0.070, 1), roughness=0.25, metallic=0.92),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
-        "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08),
-        "banner": material("HOME_MAT_banner", (0.22, 0.012, 0.015, 1), roughness=0.88, bump_scale=20.0, bump_strength=0.05),
+        "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
+        "banner": material("HOME_MAT_banner", (0.22, 0.012, 0.015, 1), roughness=0.88, bump_scale=20.0, bump_strength=0.05, variation=0.07, variation_scale=8.0),
         "book_green": material("HOME_MAT_book_green", (0.045, 0.075, 0.048, 1), roughness=0.90),
         "book_brown": material("HOME_MAT_book_brown", (0.105, 0.040, 0.020, 1), roughness=0.90),
         "piece_light": material("HOME_MAT_piece_light", (0.60, 0.51, 0.38, 1), roughness=0.58),
         "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
-        "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05),
+        "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
         "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
@@ -924,7 +940,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["brass"],
         )
 
-    for idx, x in enumerate((-6.0, -3.0, 3.0, 6.0)):
+    for idx, x in enumerate((-8.0, -4.15, 2.45, 7.95)):
         cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass"], bevel=0.025)
         cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), 0.10, 0.018, 0.34, materials["fire_hot"], vertices=16)
         add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 78, (1.0, 0.36, 0.10), radius=0.44)
@@ -991,6 +1007,11 @@ def main() -> None:
         if obj.type == "MESH" and obj.data.materials:
             obj.data.materials.clear()
             obj.data.materials.append(clay)
+    scene.render.engine = "BLENDER_WORKBENCH"
+    scene.display.shading.light = "STUDIO"
+    scene.display.shading.color_type = "MATERIAL"
+    scene.display.shading.show_shadows = True
+    scene.display.shading.show_cavity = True
     render(scene, clay_path)
 
     metadata = {
