@@ -179,6 +179,19 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     return result;
   }, []);
 
+  const cancelChallenge = useCallback(async (challenge) => {
+    const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
+    if (!challengeId) return null;
+    const pvpApi = await loadPvpApi();
+    const result = await pvpApi.cancelChallenge(challengeId);
+    setLobby((current) => ({
+      ...current,
+      challenges: (current.challenges || []).filter((row) => row.id !== challengeId),
+    }));
+    setError('');
+    return result;
+  }, []);
+
   const acceptChallenge = useCallback(async (challenge) => {
     const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
     if (!challengeId) return null;
@@ -215,6 +228,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     enroll,
     leave,
     challenge,
+    cancelChallenge,
     acceptChallenge,
     declineChallenge,
   };
