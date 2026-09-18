@@ -17,7 +17,7 @@ describe('Chronicles Chain Basilica', () => {
     expect(chroniclesMapIds()).toContain('chain-basilica');
     const basilica = chroniclesMapById('chain-basilica');
 
-    expect(basilica.version).toBe(1);
+    expect(basilica.version).toBe(2);
     expect(basilica.grid).toHaveLength(9);
     expect(basilica.grid[0]).toHaveLength(13);
     expect(basilica.enemies.map((enemy) => enemy.id)).toEqual([
@@ -71,16 +71,23 @@ describe('Chronicles Chain Basilica', () => {
     });
 
     state = { ...state, x: 10, y: 1 };
-    const escaped = chroniclesTacticsUse(state, 'basilica-upper-gate');
+    const tower = chroniclesTacticsUse(state, 'basilica-upper-gate');
 
-    expect(escaped.phase).toBe('escaped');
-    expect(escaped.censerWispHp).toBe(5);
-    expect(chroniclesInventoryEntries(escaped).map((item) => item.id)).not.toContain('bell-key');
-    expect(chroniclesQuestEntries(escaped).find((quest) => quest.id === 'silence-chain-basilica')).toMatchObject({
+    expect(tower.mapId).toBe('hollow-bell-tower');
+    expect(tower.phase).toBe('explore');
+    expect({ x: tower.x, y: tower.y, direction: tower.direction }).toEqual({ x: 1, y: 1, direction: 1 });
+    expect(tower.censerWispHp).toBe(0);
+    expect(tower.hollowBellKeeperHp).toBe(12);
+    expect(tower.westChainHoundHp).toBe(7);
+    expect(tower.eastBellSpiderHp).toBe(6);
+    expect(tower.bellArchivistHp).toBe(8);
+    expect(tower.tollWispHp).toBe(5);
+    expect(chroniclesInventoryEntries(tower).map((item) => item.id)).not.toContain('bell-key');
+    expect(chroniclesQuestEntries(tower).find((quest) => quest.id === 'silence-chain-basilica')).toMatchObject({
       status: 'completed',
       objective: 'Basílica superada.',
     });
-    expect(escaped.journal.at(-1)?.id).toBe('chain-basilica-cleared');
+    expect(tower.journal.at(-1)?.id).toBe('chain-basilica-cleared');
   });
 
   it('turns the optional Archive glass drop into a Basilica reward without gating the main route', () => {

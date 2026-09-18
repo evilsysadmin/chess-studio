@@ -1,6 +1,6 @@
 {
   "id": "chain-basilica",
-  "version": 1,
+  "version": 2,
   "progressionKey": "chain-basilica-01",
   "title": "Basílica de las Cadenas",
   "grid": [
@@ -407,7 +407,7 @@
       "id": "basilica-upper-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abrir reja con la Llave de Campana",
+      "openLabel": "Abrir reja hacia la Torre de las Campanas Huecas",
       "lockedLabel": "Examinar reja superior",
       "requirements": [
         {
@@ -432,16 +432,15 @@
             "order": 70
           },
           {
-            "type": "set",
-            "key": "phase",
-            "value": "escaped"
+            "type": "transition-map",
+            "mapId": "hollow-bell-tower"
           }
         ],
-        "message": "La Llave de Campana gira y la reja sube. No suena ninguna campana. Matthias considera el silencio una mejora litúrgica objetiva.",
+        "message": "La Llave de Campana gira y la reja sube. Más arriba espera una torre con dos frenos y pésimas intenciones acústicas.",
         "journal": {
           "id": "chain-basilica-cleared",
-          "title": "La basílica queda muda",
-          "body": "Tres eslabones, un prelado y una cantidad innecesaria de hierro después, la compañía abre la reja superior.",
+          "title": "De la basílica a la torre",
+          "body": "La basílica queda atrás. La reja superior conduce a una torre donde dos frenos gobiernan las campanas huecas.",
           "sigil": "XV"
         }
       }
