@@ -4,7 +4,10 @@ from pathlib import Path
 import chronicles_api
 from chronicles_content_variation import (
     CHRONICLES_COMPOSITION_VERSION,
+    CHRONICLES_TREASURE_VARIATION_VERSION,
     apply_chronicles_seeded_composition,
+    apply_chronicles_seeded_treasure_boons,
+    chronicles_seeded_treasure_variation_plan,
     chronicles_optional_enemy_is_variable,
     chronicles_seeded_composition_plan,
 )
@@ -145,3 +148,69 @@ def test_safe_reward_only_optional_enemy_can_vary_without_mutating_source():
     assert ("mandatory",) in outcomes
     assert ("mandatory", "optional-loot") in outcomes
     assert CHRONICLES_COMPOSITION_VERSION == 1
+
+
+def test_seeded_treasure_boosts_preserve_authored_effects_and_add_at_most_one_safe_boon():
+    saw_none = False
+    saw_heal = False
+    saw_refill = False
+
+    for map_id in _map_ids():
+        base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        authored_effects = {
+            treasure["id"]: deepcopy((treasure.get("action") or {}).get("effects") or [])
+            for treasure in base.get("treasures", [])
+        }
+
+        for seed in range(96):
+            varied = apply_chronicles_seeded_treasure_boons(base, seed)
+            repeated = apply_chronicles_seeded_treasure_boons(base, seed)
+
+            assert varied == repeated
+            assert len(varied.plan.boons) <= 1
+            assert len(varied.plan.revision) == 64
+
+            if not varied.plan.boons:
+                saw_none = True
+
+            for treasure in varied.manifest.get("treasures", []):
+                before = authored_effects[treasure["id"]]
+                after = (treasure.get("action") or {}).get("effects") or []
+                assert after[:len(before)] == before
+                assert len(after) <= len(before) + 1
+                if len(after) == len(before) + 1:
+                    bonus = after[-1]
+                    assert bonus["type"] in {"heal-party", "refill-class-abilities"}
+                    if bonus["type"] == "heal-party":
+                        assert bonus["amount"] == 1
+                        saw_heal = True
+                    else:
+                        saw_refill = True
+
+            assert base == chronicles_api.load_chronicles_manifest(map_id)[0]
+
+    assert saw_none
+    assert saw_heal
+    assert saw_refill
+    assert CHRONICLES_TREASURE_VARIATION_VERSION == 1
+
+
+def test_treasure_plan_never_duplicates_existing_safe_boon_type():
+    manifest = {
+        "id": "treasure-dedup",
+        "treasures": [
+            {
+                "id": "already-heals",
+                "action": {
+                    "effects": [
+                        {"type": "grant-item", "itemId": "token", "quantity": 1},
+                        {"type": "heal-party", "amount": 1},
+                    ]
+                },
+            }
+        ],
+    }
+
+    for seed in range(64):
+        plan = chronicles_seeded_treasure_variation_plan(manifest, seed)
+        assert all(boon.effect_type != "heal-party" for boon in plan.boons)
