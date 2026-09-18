@@ -153,13 +153,13 @@ reconcile_k3s_contract() {
   fi
 
   if ! k3s_is_armed && [[ "$cached" == "$digest" ]]; then
-    echo "OCI_K3S_DEPLOY_CONTRACT_REUSED digest=$digest"
+    k3s_contract_action="reused"
     return 0
   fi
 
   run_k3s_reconcile_steps
   record_k3s_contract_digest "$digest"
-  echo "OCI_K3S_DEPLOY_CONTRACT_REFRESHED digest=$digest"
+  k3s_contract_action="refreshed"
 }
 
 cors_attest() {
@@ -326,7 +326,7 @@ preflight_started_ms="$(now_ms)"
 [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
 [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
 [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
-/bin/bash "$tunnel_connector" --self-test
+/bin/bash "$tunnel_connector" --self-test >/dev/null
 phase_done preflight "$preflight_started_ms"
 k3s_started_ms="$(now_ms)"
 reconcile_k3s_contract
@@ -337,7 +337,7 @@ phase_done k3s "$k3s_started_ms"
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
 target_image="$(image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
-if ! docker pull --quiet "$target_image"; then
+if ! docker pull --quiet "$target_image" >/dev/null; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
@@ -345,10 +345,14 @@ fi
 phase_done image_pull "$image_pull_started_ms"
 
 recreate_started_ms="$(now_ms)"
-if ! compose "$sha" up -d --no-build --force-recreate backend; then
+compose_log="$(mktemp /tmp/chess-studio-compose-up.XXXXXX)"
+if ! compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1; then
+  cat "$compose_log" >&2
+  rm -f "$compose_log"
   rollback "$sha" || true
   exit 1
 fi
+rm -f "$compose_log"
 phase_done recreate "$recreate_started_ms"
 
 readiness_started_ms="$(now_ms)"
@@ -358,7 +362,7 @@ for _ in $(seq 1 60); do
     tunnel_started_ms="$(now_ms)"
     tunnel_action="reused"
     if public_tunnel_attest "$sha"; then
-      echo "CHESS_STUDIO_TUNNEL_REUSED repo_ref=$sha"
+      :
     else
       tunnel_action="restarted"
       if ! /bin/bash "$tunnel_connector"; then
@@ -369,7 +373,7 @@ for _ in $(seq 1 60); do
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
     phase_done total "$total_started_ms"
-    printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "$tunnel_action"
+    printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
     echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
