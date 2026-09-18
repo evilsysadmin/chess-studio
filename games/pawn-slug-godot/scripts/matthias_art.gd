@@ -221,6 +221,8 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
     _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
     _fx_root.position.x = _recoil_x
+    if not _dead:
+        _fx_root.position.y = 3.0 if _action == "crouch" else 0.0
     _fx_root.scale = _fx_root.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
     _sync_muzzle()
     _sync_modulate()
@@ -342,6 +344,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     if requested_layout == "full":
         frames = _build_full_frames(image)
         if frames != null:
+            _install_canonical_crouch(frames, requested_weapon)
             _full_frames_by_weapon[requested_weapon] = frames
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
@@ -399,14 +402,13 @@ func _build_full_frames(image: Image) -> SpriteFrames:
                 frames.add_frame("idle", frames.get_frame_texture(fallback_action, 0))
                 break
 
-    # Crouch remains a gameplay state outside the 10-row authored contract.
-    # The first FALL frame is the compact legs-tucked pose in strict-v5. Because
-    # every strict cell shares the same 256 x 256 canvas and baseline, reusing it
-    # reads as a real crouch on the ground without changing apparent sprite size.
+    # Crouch lives outside the strict 10-row contract. Until the canonical
+    # master crop is available, use the first JUMP anticipation pose as a
+    # grounded emergency fallback. The old FALL tuck looked airborne.
     frames.add_animation("crouch")
     frames.set_animation_loop("crouch", true)
     frames.set_animation_speed("crouch", 1.0)
-    frames.add_frame("crouch", frames.get_frame_texture("fall", 0))
+    frames.add_frame("crouch", frames.get_frame_texture("jump", 0))
     return frames
 
 
@@ -574,7 +576,33 @@ func _build_fallback_frames() -> void:
             frames.add_frame(action, frame)
         _fallback_frames_by_weapon[weapon_id] = frames
 
+    for cached_weapon in _full_frames_by_weapon.keys():
+        _install_canonical_crouch(
+            _full_frames_by_weapon[cached_weapon],
+            String(cached_weapon),
+        )
+
+func _install_canonical_crouch(frames: SpriteFrames, weapon_id: String) -> bool:
+    if frames == null or not _fallback_frames_by_weapon.has(weapon_id):
+        return false
+    var fallback: SpriteFrames = _fallback_frames_by_weapon[weapon_id]
+    if (
+        not fallback.has_animation("crouch")
+        or fallback.get_frame_count("crouch") <= 0
+    ):
+        return false
+
+    if frames.has_animation("crouch"):
+        frames.remove_animation("crouch")
+    frames.add_animation("crouch")
+    frames.set_animation_loop("crouch", true)
+    frames.set_animation_speed("crouch", 1.0)
+    frames.add_frame("crouch", fallback.get_frame_texture("crouch", 0))
+    return true
+
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
+    if authored_full:
+        _install_canonical_crouch(frames, _weapon)
     _body.sprite_frames = frames
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
     _using_full_atlas = authored_full
