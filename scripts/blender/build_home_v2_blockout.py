@@ -776,6 +776,18 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
+    # Shallow mortar courses turn the rear wall from one smooth slab into
+    # readable castle masonry without adding heavy displacement geometry.
+    for row, z in enumerate((0.55, 1.20, 1.85, 2.50, 3.15, 3.80, 4.45, 5.10, 5.75)):
+        cube(f"HOME_ARCH_back_mortar_h_{row}", (0, 6.72, z), (9.10, 0.018, 0.018), materials["stone_dark"])
+        offset = 0.58 if row % 2 else 0.0
+        for col, x in enumerate((-7.8, -5.6, -3.4, -1.2, 1.0, 3.2, 5.4, 7.6)):
+            cube(
+                f"HOME_ARCH_back_mortar_v_{row}_{col}",
+                (x + offset, 6.715, z + 0.31),
+                (0.018, 0.020, 0.29),
+                materials["stone_dark"],
+            )
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
@@ -824,9 +836,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.38
             obj.scale *= 1.38
     add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.78, 1.52), 190, (1.0, 0.30, 0.07), radius=1.20)
+    # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
+    # firebox push the right fireplace toward the approved mock.
+    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.37, 1.13), (1.02, 0.07, 0.78), materials["dark"], bevel=0.05)
+    cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.20, 2.52), (1.78, 0.30, 0.18), materials["stone"], bevel=0.055)
+    for side in (-1, 1):
+        px = 4.45 + side * 1.38
+        cube(f"HOME_PROP_fireplace_right_canon_pilaster_{side}", (px, 5.42, 1.42), (0.24, 0.22, 1.18), materials["stone"], bevel=0.05)
+        cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.38), (0.34, 0.30, 0.16), materials["stone"], bevel=0.045)
+        sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.06, 2.78), (0.13, 0.10, 0.13), materials["brass"])
+    cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
     for idx, cx in enumerate((3.72, 4.45, 5.18)):
-        cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 5.54, 2.62), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
-        cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 5.54, 2.92), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
+        cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
+        cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
     cube("HOME_ARCH_window_right", (7.58, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.58, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass"], bevel=0.12)
@@ -847,6 +869,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             origin = Vector((1.55, 5.28, 0.24))
             obj.location = origin + (obj.location - origin) * 1.34
             obj.scale *= 1.34
+    # Red cape and chest detailing make the armour read as a ceremonial suit
+    # rather than a dark mannequin at normal Home zoom.
+    flat_panel(
+        "HOME_PROP_armor_cape",
+        [(0.72, 3.65), (2.38, 3.65), (2.10, 0.62), (1.55, 0.36), (1.00, 0.62)],
+        5.62,
+        0.07,
+        materials["banner"],
+        bevel=0.045,
+    )
+    cube("HOME_PROP_armor_chest_plate", (1.55, 4.90, 2.92), (0.42, 0.06, 0.34), materials["steel"], bevel=0.08)
+    cube("HOME_PROP_armor_chest_cross_v", (1.55, 4.82, 2.92), (0.045, 0.035, 0.18), materials["brass"], bevel=0.012)
+    cube("HOME_PROP_armor_chest_cross_h", (1.55, 4.82, 2.96), (0.16, 0.035, 0.045), materials["brass"], bevel=0.012)
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
@@ -867,12 +902,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.025,
             materials["brass"],
         )
+    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.40), (0.18, 0.18, 0.16), materials["brass"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
         cx = 1.92 * math.cos(angle)
         cy = 2.20 + 1.18 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.56), (0.055, 0.055, 0.24), materials["fire_hot"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.68), 52, (1.0, 0.48, 0.18), radius=0.36)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.56), (0.055, 0.055, 0.24), materials["paper"], bevel=0.02)
+        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, 4.85), 0.055, 0.010, 0.18, materials["fire_hot"], vertices=12)
+        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, 4.34), 0.11, 0.08, materials["brass"], vertices=16)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.82), 52, (1.0, 0.48, 0.18), radius=0.36)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
