@@ -164,100 +164,6 @@ def curve_tube(name: str, points, bevel_depth: float, mat):
     return obj
 
 
-def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03):
-    half = depth / 2.0
-    vertices = [(x, y - half, z) for x, z in points_xz] + [(x, y + half, z) for x, z in points_xz]
-    count = len(points_xz)
-    faces = [tuple(range(count)), tuple(range(count, count * 2))]
-    for i in range(count):
-        j = (i + 1) % count
-        faces.append((i, j, count + j, count + i))
-    mesh = bpy.data.meshes.new(f"{name}_mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    if bevel:
-        modifier = obj.modifiers.new("Soft edges", "BEVEL")
-        modifier.width = bevel
-        modifier.segments = 3
-    apply_material(obj, mat)
-    return obj
-
-
-def add_rampant_horse_crest(materials):
-    red = materials["banner"]
-    brass = materials["brass"]
-    dark = materials["dark"]
-
-    # Wide shield: intentionally broader than tall so the table-front emblem
-    # cannot read as the old vertical/phallic hanging banner.
-    shield_y = -0.38
-    shield_z = 0.78
-    points = [
-        (-0.92, shield_z + 0.48),
-        (0.92, shield_z + 0.48),
-        (0.86, shield_z - 0.10),
-        (0.52, shield_z - 0.48),
-        (0.00, shield_z - 0.70),
-        (-0.52, shield_z - 0.48),
-        (-0.86, shield_z - 0.10),
-    ]
-    flat_panel("HOME_PROP_table_crest_shield", points, shield_y, 0.12, red, bevel=0.06)
-    flat_panel(
-        "HOME_PROP_table_crest_inner",
-        [(x * 0.86, shield_z + (z - shield_z) * 0.84) for x, z in points],
-        shield_y - 0.075,
-        0.035,
-        dark,
-        bevel=0.035,
-    )
-
-    # Stylised rampant horse relief: body + arched neck/head, raised forelegs,
-    # planted hind legs and tail. At Home scale it should read heraldically,
-    # not as a literal tiny sculpture.
-    relief_y = shield_y - 0.105
-    sphere("HOME_PROP_crest_horse_body", (0.08, relief_y, shield_z + 0.03), (0.30, 0.045, 0.20), brass)
-    curve_tube(
-        "HOME_PROP_crest_horse_neck",
-        [(0.02, relief_y, shield_z + 0.12), (-0.10, relief_y, shield_z + 0.34), (-0.26, relief_y, shield_z + 0.43)],
-        0.065,
-        brass,
-    )
-    sphere("HOME_PROP_crest_horse_head", (-0.30, relief_y, shield_z + 0.47), (0.12, 0.040, 0.095), brass)
-    cube("HOME_PROP_crest_horse_muzzle", (-0.40, relief_y, shield_z + 0.44), (0.075, 0.035, 0.045), brass, bevel=0.018)
-    curve_tube(
-        "HOME_PROP_crest_horse_foreleg_high",
-        [(0.18, relief_y, shield_z + 0.11), (0.38, relief_y, shield_z + 0.31), (0.54, relief_y, shield_z + 0.37)],
-        0.050,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_crest_horse_foreleg_low",
-        [(0.20, relief_y, shield_z + 0.04), (0.43, relief_y, shield_z + 0.16), (0.57, relief_y, shield_z + 0.16)],
-        0.046,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_crest_horse_hindleg_left",
-        [(-0.02, relief_y, shield_z - 0.10), (-0.18, relief_y, shield_z - 0.34), (-0.30, relief_y, shield_z - 0.44)],
-        0.055,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_crest_horse_hindleg_right",
-        [(0.16, relief_y, shield_z - 0.10), (0.30, relief_y, shield_z - 0.33), (0.44, relief_y, shield_z - 0.40)],
-        0.055,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_crest_horse_tail",
-        [(-0.18, relief_y, shield_z + 0.02), (-0.40, relief_y, shield_z + 0.08), (-0.54, relief_y, shield_z + 0.22), (-0.64, relief_y, shield_z + 0.12)],
-        0.045,
-        brass,
-    )
-
-
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
     radius = width / 2.0
     center_z = top_z - radius
@@ -344,9 +250,9 @@ def add_table_and_board(materials):
             )
     cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (board_half, board_half, 0.035), metal, bevel=0.025)
 
-    # Replace the old vertical hanging banner with Chess Studio's recurring
-    # heraldic motif: a wide rampant-horse crest.
-    add_rampant_horse_crest(materials)
+    # The red frontal cloth and side benches are major silhouettes in the
+    # canonical Home, not decorative polish.
+    cube("HOME_PROP_table_banner", (0, -0.28, 0.72), (1.48, 0.055, 0.72), banner, bevel=0.035)
     for side in (-1, 1):
         x = side * 3.55
         cube(f"HOME_PROP_bench_{side}", (x, 1.2, 0.43), (0.62, 1.45, 0.28), wood, bevel=0.05)
