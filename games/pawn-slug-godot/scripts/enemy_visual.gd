@@ -32,6 +32,7 @@ var visual_height := 62.0
 var hp := 1
 var max_hp := 1
 var moving := false
+var movement_speed_scale := 1.0
 var dead := false
 var _last_hp := 1
 var _frame_time := 0.0
@@ -70,11 +71,12 @@ func configure(kind: String, weapon_id: String, height: float, current_hp: int, 
         _request_body_atlas()
         queue_redraw()
 
-func sync_state(world_x: float, floor_y: float, facing: float, is_moving: bool, current_hp: int, total_hp: int) -> void:
+func sync_state(world_x: float, floor_y: float, facing: float, is_moving: bool, current_hp: int, total_hp: int, move_speed_scale: float = 1.0) -> void:
     position = Vector2(world_x, floor_y)
     if _facing_root != null:
         _facing_root.scale.x = -1.0 if facing < 0.0 else 1.0
     moving = is_moving
+    movement_speed_scale = clampf(move_speed_scale, 0.35, 2.8) if moving else 1.0
     max_hp = maxi(1, total_hp)
     hp = maxi(0, current_hp)
     if hp < _last_hp and hp > 0:
@@ -117,7 +119,7 @@ func _process(delta: float) -> void:
         queue_redraw()
         return
     if moving:
-        _frame_time += delta * float(TYPE_FPS.get(enemy_type, 6.0))
+        _frame_time += delta * float(TYPE_FPS.get(enemy_type, 6.0)) * movement_speed_scale
         _frame = int(floor(_frame_time)) % FRAMES_PER_TYPE
     else:
         _frame = 0
