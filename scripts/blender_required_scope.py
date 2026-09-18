@@ -162,7 +162,8 @@ def self_test() -> None:
         "chronicles-party-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"])] == [
-        "pawn-slug-blender-art.yml"
+        "pawn-slug-blender-art.yml",
+        "pawn-slug-godot-strict-atlas.yml",
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_matthias_godot_crouch.py"])] == [
         "pawn-slug-godot-strict-atlas.yml"
