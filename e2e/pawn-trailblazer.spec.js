@@ -47,9 +47,9 @@ test('Pawn Trailblazer · arranca con Three.js real y entra en carrera', async (
   // Conservamos la salida en el mismo recorrido para no pagar otro boot Three.
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Chesscom/ })).toBeVisible();
+  await expect(page.locator('.lab-workshop-portal--trailblazer strong')).toHaveText('Pawn Trailblazer');
+  await expect(page.locator('.lab-workshop-portal--pawnslug-godot strong')).toHaveText('PAWN SLUG GODOT');
+  await expect(page.locator('.lab-workshop-map-table strong')).toHaveText('Chesscom');
 });
 
 test('Pawn Trailblazer · móvil conserva controles utilizables sin overflow horizontal', async ({ page }) => {

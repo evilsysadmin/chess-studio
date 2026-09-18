@@ -19,6 +19,7 @@ jobs:
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
       core_e2e_matrix: ${{ steps.quality_paths.outputs.core_e2e_matrix }}
       run_security: ${{ steps.quality_paths.outputs.run_security }}
+      run_pawn_slug_godot: ${{ steps.quality_paths.outputs.run_pawn_slug_godot }}
       run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
       run_trailblazer_e2e: ${{ steps.quality_paths.outputs.run_trailblazer_e2e }}
@@ -395,6 +396,7 @@ jobs:
           SPECIALIZED_RESULT: ${{ needs.e2e_specialized.result }}
           RUN_BLENDER: ${{ needs.preflight.outputs.blender_required }}
           BLENDER_WORKFLOWS: ${{ needs.preflight.outputs.blender_workflows }}
+          RUN_PAWN_SLUG_GODOT: ${{ github.event_name == 'pull_request' && needs.preflight.outputs.run_pawn_slug_godot || 'false' }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -411,6 +413,17 @@ jobs:
             echo "::error::Alguna lane especializada requerida falló: $SPECIALIZED_RESULT"
             exit 1
           fi
+          if [[ "$RUN_PAWN_SLUG_GODOT" == 'true' ]]; then
+            [[ -n "${PR_HEAD_SHA:-}" ]] || { echo '::error::Pawn Slug Godot requerido sin PR head SHA.'; exit 1; }
+            pawn_slug_run_id=''
+            for _ in {1..60}; do
+              pawn_slug_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pawn-slug-godot-web.yml --commit "$PR_HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+              [[ -n "$pawn_slug_run_id" ]] && break
+              sleep 5
+            done
+            [[ -n "$pawn_slug_run_id" ]] || { echo "::error::No apareció pawn-slug-godot-web.yml para ${PR_HEAD_SHA:0:12}"; exit 1; }
+            gh run watch --repo "$GITHUB_REPOSITORY" "$pawn_slug_run_id" --exit-status --interval 15
+          fi
           if [[ "$RUN_BLENDER" == 'true' ]]; then
             [[ -n "${PR_HEAD_SHA:-}" ]] || { echo '::error::Blender requerido sin PR head SHA.'; exit 1; }
             while read -r workflow; do
@@ -424,8 +437,8 @@ jobs:
               gh run watch --repo "$GITHUB_REPOSITORY" "$run_id" --exit-status --interval 15
             done < <(jq -r '.[].workflow' <<<"$BLENDER_WORKFLOWS")
           fi
-          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' && "$RUN_BLENDER" != 'true' ]]; then
+          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' && "$RUN_BLENDER" != 'true' && "$RUN_PAWN_SLUG_GODOT" != 'true' ]]; then
             echo 'Required gate omitted for this surface.'
             exit 0
           fi
-          echo "Required gate OK · blender=$RUN_BLENDER"
+          echo "Required gate OK · blender=$RUN_BLENDER · pawn_slug_godot=$RUN_PAWN_SLUG_GODOT"

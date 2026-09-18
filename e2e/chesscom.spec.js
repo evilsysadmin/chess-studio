@@ -100,9 +100,9 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   // contrato es el mismo que el antiguo tercer test, sin otro login + boot 3D.
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Chesscom/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
+  await expect(page.locator('.lab-workshop-map-table strong')).toHaveText('Chesscom');
+  await expect(page.locator('.lab-workshop-portal--pawnslug-godot strong')).toHaveText('PAWN SLUG GODOT');
+  await expect(page.locator('.lab-workshop-portal--trailblazer strong')).toHaveText('Pawn Trailblazer');
 });
 
 test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) => {
