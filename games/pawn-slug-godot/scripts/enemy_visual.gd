@@ -398,7 +398,9 @@ func _draw_variant_backdrop() -> void:
             Vector2(-h * 0.42, -h * 0.34),
         ])
         draw_colored_polygon(shield, Color(0.20, 0.24, 0.28, 0.88))
-        draw_polyline(shield + PackedVector2Array([shield[0]]), Color("aab4bf"), 4.0)
+        var shield_outline := shield.duplicate()
+        shield_outline.append(shield[0])
+        draw_polyline(shield_outline, Color("aab4bf"), 4.0)
 
 
 func _draw_bishop() -> void:
