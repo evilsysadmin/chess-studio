@@ -330,7 +330,7 @@ def add_table_and_board(materials):
         cube(
             f"HOME_PROP_table_book_{idx}",
             (px, py, pz),
-            (0.58 - idx * 0.05, 0.34, 0.045),
+            (0.42 - idx * 0.04, 0.26, 0.040),
             materials["book_brown"] if idx != 1 else materials["book_green"],
             bevel=0.025,
         )
@@ -339,7 +339,7 @@ def add_table_and_board(materials):
     cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.82), 0.055, 0.012, 0.18, materials["fire_hot"], vertices=14)
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 58, (1.0, 0.48, 0.20), radius=0.30)
 
-    cube("HOME_PROP_table_folio", (2.65, 0.35, 1.37), (0.56, 0.36, 0.055), materials["book_brown"], bevel=0.035)
+    cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
     curve_tube(
@@ -713,22 +713,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.052
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.145, 0.115, 0.090, 1), roughness=0.92, bump_scale=5.0, bump_strength=0.24),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.040, 0.032, 0.028, 1), roughness=0.97, bump_scale=6.5, bump_strength=0.20),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.090, 0.065, 0.048, 1), roughness=0.94, bump_scale=7.0, bump_strength=0.18),
-        "wood": material("HOME_MAT_wood", (0.105, 0.036, 0.014, 1), roughness=0.70, bump_scale=4.0, bump_strength=0.11),
-        "brass": material("HOME_MAT_brass", (0.42, 0.22, 0.050, 1), roughness=0.27, metallic=0.88),
+        "stone": material("HOME_MAT_stone", (0.115, 0.105, 0.092, 1), roughness=0.93, bump_scale=5.6, bump_strength=0.23),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.024, 0.022, 1), roughness=0.97, bump_scale=7.0, bump_strength=0.18),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.072, 0.060, 0.050, 1), roughness=0.95, bump_scale=8.0, bump_strength=0.16),
+        "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10),
+        "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
-        "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
-        "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
-        "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
-        "banner": material("HOME_MAT_banner", (0.43, 0.018, 0.014, 1), roughness=0.84, bump_scale=18.0, bump_strength=0.06),
-        "book_green": material("HOME_MAT_book_green", (0.08, 0.16, 0.10, 1), roughness=0.88),
-        "book_brown": material("HOME_MAT_book_brown", (0.22, 0.08, 0.035, 1), roughness=0.88),
-        "piece_light": material("HOME_MAT_piece_light", (0.76, 0.66, 0.48, 1), roughness=0.55),
-        "piece_dark": material("HOME_MAT_piece_dark", (0.035, 0.025, 0.022, 1), roughness=0.52),
-        "leather": material("HOME_MAT_leather", (0.30, 0.018, 0.018, 1), roughness=0.76, bump_scale=16.0, bump_strength=0.06),
+        "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
+        "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
+        "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08),
+        "banner": material("HOME_MAT_banner", (0.22, 0.012, 0.015, 1), roughness=0.88, bump_scale=20.0, bump_strength=0.05),
+        "book_green": material("HOME_MAT_book_green", (0.045, 0.075, 0.048, 1), roughness=0.90),
+        "book_brown": material("HOME_MAT_book_brown", (0.105, 0.040, 0.020, 1), roughness=0.90),
+        "piece_light": material("HOME_MAT_piece_light", (0.60, 0.51, 0.38, 1), roughness=0.58),
+        "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
+        "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
         "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
@@ -913,8 +913,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 285, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 155, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 235, (0.70, 0.56, 0.43), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 135, (0.12, 0.24, 0.42), 5.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 220, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 105, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 270, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
