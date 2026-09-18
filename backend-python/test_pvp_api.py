@@ -315,12 +315,23 @@ def test_explicit_cancel_and_decline_apply_short_pair_cooldown_only():
     assert int(blocked.headers["retry-after"]) <= pvp_store.CHALLENGE_PAIR_COOLDOWN_SECONDS
     assert "antes de volver a retar" in blocked.json()["detail"]
 
+    lobby_during_cooldown = as_user(client, "alice", "get", "/api/pvp/lobby").json()
+    alice_row = next(row for row in lobby_during_cooldown["roster"] if row["username"] == "alice")
+    bob_row = next(row for row in lobby_during_cooldown["roster"] if row["username"] == "bob")
+    assert "challengeCooldownUntil" not in alice_row
+    cooldown_until = datetime.fromisoformat(bob_row["challengeCooldownUntil"].replace("Z", "+00:00"))
+    assert cooldown_until > pvp_store.utcnow()
+
     # El cooldown es por pareja, así que tampoco permite el ping-pong inmediato
     # desde la otra dirección.
     reverse = as_user(client, "bob", "post", "/api/pvp/challenges", json={"opponent": "alice"})
     assert reverse.status_code == 429
 
     pvp_store._memory_challenges[first["id"]]["cooldown_until"] = pvp_store.utcnow() - timedelta(seconds=1)
+    lobby_after_cooldown = as_user(client, "alice", "get", "/api/pvp/lobby").json()
+    bob_after = next(row for row in lobby_after_cooldown["roster"] if row["username"] == "bob")
+    assert "challengeCooldownUntil" not in bob_after
+
     second = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
     assert second.status_code == 201
     second_id = second.json()["challenge"]["id"]
