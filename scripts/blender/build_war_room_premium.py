@@ -1242,6 +1242,11 @@ def collapse_runtime_static_shell():
 
     groups = {}
     for obj in static_meshes:
+        # Preserve authored crest node names as a runtime/QA contract. The
+        # heraldry is small, visually important, and deliberately exempt from
+        # batching so semantic validation cannot be erased by an optimization.
+        if obj.name.startswith("WR_CREST_"):
+            continue
         material_signature = tuple(
             material.name if material else ""
             for material in obj.data.materials
