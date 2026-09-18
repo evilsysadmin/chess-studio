@@ -248,19 +248,19 @@
       "type": "knight"
     },
     {
-      "x": 1840,
+      "x": 1830,
       "type": "shield"
     },
     {
-      "x": 2050,
+      "x": 2030,
       "type": "rook"
     },
     {
-      "x": 2250,
+      "x": 2230,
       "type": "pawn"
     },
     {
-      "x": 2440,
+      "x": 2430,
       "type": "grenadier"
     },
     {
@@ -268,79 +268,79 @@
       "type": "knight"
     },
     {
-      "x": 2810,
+      "x": 2830,
       "type": "bishop"
     },
     {
-      "x": 2990,
+      "x": 3030,
       "type": "pawn"
     },
     {
-      "x": 3170,
+      "x": 3230,
       "type": "commando"
     },
     {
-      "x": 3350,
+      "x": 3430,
       "type": "scout"
     },
     {
-      "x": 3520,
+      "x": 3630,
       "type": "rook"
     },
     {
-      "x": 3690,
+      "x": 3830,
       "type": "pawn"
     },
     {
-      "x": 3860,
+      "x": 4030,
       "type": "queen"
     },
     {
-      "x": 4020,
+      "x": 4210,
       "type": "knight"
     },
     {
-      "x": 4180,
+      "x": 4390,
       "type": "shield"
     },
     {
-      "x": 4340,
+      "x": 4550,
       "type": "pawn"
     },
     {
-      "x": 4500,
+      "x": 4690,
       "type": "grenadier"
     },
     {
-      "x": 4660,
+      "x": 4810,
       "type": "rook"
     },
     {
-      "x": 4820,
+      "x": 4910,
       "type": "bishop"
     },
     {
-      "x": 4980,
+      "x": 5010,
       "type": "commando"
     },
     {
-      "x": 5140,
+      "x": 5110,
       "type": "pawn"
     },
     {
-      "x": 5300,
+      "x": 5210,
       "type": "knight"
     },
     {
-      "x": 5450,
+      "x": 5310,
       "type": "scout"
     },
     {
-      "x": 5590,
+      "x": 5410,
       "type": "pawn"
     },
     {
-      "x": 5700,
+      "x": 5510,
       "type": "rook"
     }
   ],
@@ -377,16 +377,16 @@
     }
   ],
   "boss": {
-    "x": 5230,
+    "x": 5580,
     "hp": 860,
     "width": 190,
     "height": 150,
-    "trigger_x": 4520,
-    "arena_left": 4680,
-    "arena_right": 5680
+    "trigger_x": 5480,
+    "arena_left": 5450,
+    "arena_right": 5780
   },
   "extraction": {
-    "x": 5660
+    "x": 5720
   },
   "backdrop": {
     "preset": "alpine_night",
