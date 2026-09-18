@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - .github/workflows/oci-vault-cutover-once.yml
+      - scripts/oci_vault_bootstrap.py
 
 permissions:
   contents: read
