@@ -6,6 +6,7 @@ import {
   warRoomV2PracticalLightProfile,
   warRoomV2RuntimeSurfaceKind,
   warRoomV2StoneSurfaceProfile,
+  warRoomV2WoodSurfaceProfile,
 } from './WarRoomV2Shell.js';
 import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
 
@@ -42,7 +43,9 @@ describe('War Room v2 staging asset URL', () => {
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_plaster')).toBe('stone');
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_floor_underlay')).toBe('stone');
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_stone_light')).toBe('stone');
-    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_walnut')).toBe(null);
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_walnut')).toBe('wood');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_table_walnut')).toBe('wood');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_armor')).toBe(null);
 
     expect(warRoomV2StoneSurfaceProfile()).toEqual({
       enabled: true,
@@ -51,6 +54,19 @@ describe('War Room v2 staging asset URL', () => {
       albedoCompensation: 1.10,
     });
     expect(warRoomV2StoneSurfaceProfile({ coarsePointer: true })).toEqual({
+      enabled: false,
+      size: 0,
+      bumpScale: 0,
+      albedoCompensation: 1,
+    });
+
+    expect(warRoomV2WoodSurfaceProfile()).toEqual({
+      enabled: true,
+      size: 48,
+      bumpScale: 0.007,
+      albedoCompensation: 1.055,
+    });
+    expect(warRoomV2WoodSurfaceProfile({ coarsePointer: true })).toEqual({
       enabled: false,
       size: 0,
       bumpScale: 0,
