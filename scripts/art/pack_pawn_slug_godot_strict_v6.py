@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Append a strict-style crouch row to the Pawn Slug Godot Matthias atlas.
 
+Strict-v6 publish contract: 8x11 @ 256px, with crouch in row 10.
+
 The crouch is derived from the existing strict-v5 shoot stance itself, so the
 new row preserves exactly the same rendered identity, weapon, lighting and
 palette. Only the lower body is recomposed into a low combat stance.
