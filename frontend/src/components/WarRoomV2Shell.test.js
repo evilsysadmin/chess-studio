@@ -135,7 +135,7 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.fire.color).toBe(0xff8a38);
     expect(desktop.rightFire.color).toBe(0xff7f30);
     expect(desktop.chandelier.color).toBe(0xffb457);
-    expect(desktop.moon.color).toBe(0x6f98ff);
+    expect(desktop.moon.color).toBe(0x7ba6ff);
     expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
     expect(desktop.rightFire.intensity).toBeGreaterThan(coarse.rightFire.intensity);
     expect(desktop.chandelier.intensity).toBeGreaterThan(coarse.chandelier.intensity);
