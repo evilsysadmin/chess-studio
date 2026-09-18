@@ -23,6 +23,10 @@ func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obs
 func _ready() -> void:
     queue_redraw()
 
+func _detail_noise(index: int, salt: float = 0.0) -> float:
+    var raw := sin(float(index) * 17.173 + salt * 91.731) * 43821.113
+    return raw - floor(raw)
+
 func _draw() -> void:
     # Sky, distant skyline and midground now live in real Parallax2D layers.
     # This node owns only world-locked ground/traversal/foreground dressing.
@@ -31,6 +35,7 @@ func _draw() -> void:
     _draw_obstacles()
     _draw_foreground_props()
     _draw_foreground_story_props()
+    _draw_near_depth_dressing()
 
 func _draw_sky() -> void:
     var top := Color("071018")
@@ -167,6 +172,42 @@ func _draw_ground() -> void:
             2.0
         )
 
+    _draw_ground_texture(edge)
+
+func _draw_ground_texture(edge: Color) -> void:
+    var fleck_count := maxi(48, int(_world_size.x / 38.0))
+    for index in range(fleck_count):
+        var x := _detail_noise(index, 1.3) * _world_size.x
+        var y := _floor_y + 12.0 + _detail_noise(index, 2.1) * 78.0
+        var size := 0.8 + _detail_noise(index, 2.8) * 2.2
+        var alpha := 0.08 + _detail_noise(index, 3.4) * 0.12
+        var fleck := Color(edge.r, edge.g, edge.b, alpha)
+        draw_circle(Vector2(x, y), size, fleck)
+
+    for index in range(9):
+        var x := 180.0 + float(index) * 610.0
+        var width := 130.0 + _detail_noise(index, 4.2) * 150.0
+        var y := _floor_y + 76.0 + _detail_noise(index, 4.8) * 14.0
+        draw_line(
+            Vector2(x, y),
+            Vector2(minf(_world_size.x, x + width), y + _detail_noise(index, 5.3) * 3.0),
+            Color(0.05, 0.06, 0.06, 0.24),
+            4.0 + _detail_noise(index, 5.9) * 3.0,
+        )
+
+    if _theme in ["night_front", "harbor_dusk", "jungle_storm"]:
+        var reflection := Color(0.48, 0.60, 0.66, 0.13)
+        if _theme == "harbor_dusk":
+            reflection = Color(0.58, 0.71, 0.74, 0.17)
+        elif _theme == "jungle_storm":
+            reflection = Color(0.38, 0.52, 0.40, 0.13)
+        for index in range(7):
+            var x := 310.0 + float(index) * 760.0
+            var y := _floor_y + 29.0 + float(index % 3) * 11.0
+            var width := 74.0 + _detail_noise(index, 6.4) * 70.0
+            draw_line(Vector2(x, y), Vector2(x + width, y), Color(0.03, 0.05, 0.06, 0.38), 9.0)
+            draw_line(Vector2(x + 9.0, y - 1.0), Vector2(x + width * 0.68, y - 1.0), reflection, 2.0)
+
 func _draw_platforms() -> void:
     for index in range(_platforms.size()):
         var platform := _platforms[index]
@@ -253,6 +294,8 @@ func _draw_platforms() -> void:
             for rivet_x in range(int(platform.position.x) + 18, int(platform.end.x) - 10, 34):
                 draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, rivet)
 
+        _draw_platform_wear(platform, material, trim, index)
+
         var support_y := platform.end.y
         draw_line(
             Vector2(platform.position.x + 20.0, support_y),
@@ -266,6 +309,39 @@ func _draw_platforms() -> void:
             support,
             7.0
         )
+        if support_y + 26.0 < _floor_y and platform.size.x >= 110.0:
+            var brace_bottom := minf(_floor_y, support_y + 68.0)
+            draw_line(
+                Vector2(platform.position.x + 20.0, brace_bottom),
+                Vector2(platform.end.x - 20.0, support_y + 8.0),
+                Color(support.r, support.g, support.b, 0.62),
+                3.0,
+            )
+            draw_line(
+                Vector2(platform.end.x - 20.0, brace_bottom),
+                Vector2(platform.position.x + 20.0, support_y + 8.0),
+                Color(support.r, support.g, support.b, 0.42),
+                2.0,
+            )
+
+func _draw_platform_wear(platform: Rect2, material: String, trim: Color, platform_index: int) -> void:
+    draw_rect(
+        Rect2(platform.position + Vector2(5.0, platform.size.y - 5.0), Vector2(maxf(0.0, platform.size.x - 10.0), 4.0)),
+        Color(0.04, 0.05, 0.05, 0.34),
+        true,
+    )
+    var mark_count := maxi(2, int(platform.size.x / 62.0))
+    for mark in range(mark_count):
+        var local_x := 12.0 + _detail_noise(platform_index * 23 + mark, 7.1) * maxf(1.0, platform.size.x - 28.0)
+        var x := platform.position.x + local_x
+        var y := platform.position.y + 6.0 + _detail_noise(platform_index * 29 + mark, 7.8) * maxf(1.0, platform.size.y - 10.0)
+        var length := 5.0 + _detail_noise(platform_index * 31 + mark, 8.2) * 13.0
+        var wear := Color(trim.r, trim.g, trim.b, 0.14)
+        if material == "wood":
+            wear = Color(0.84, 0.68, 0.44, 0.14)
+        elif material in ["stone", "concrete"]:
+            wear = Color(0.84, 0.88, 0.87, 0.10)
+        draw_line(Vector2(x, y), Vector2(minf(platform.end.x - 5.0, x + length), y - 1.5), wear, 1.2)
 
 func _draw_obstacles() -> void:
     for index in range(_obstacles.size()):
@@ -342,6 +418,47 @@ func _draw_foreground_story_props() -> void:
             _draw_jungle_story_props()
         _:
             _draw_front_story_props()
+
+func _draw_near_depth_dressing() -> void:
+    var silhouette := Color(0.035, 0.045, 0.047, 0.46)
+    var accent := Color(0.35, 0.31, 0.23, 0.20)
+    if _theme == "harbor_dusk":
+        silhouette = Color(0.025, 0.055, 0.063, 0.50)
+        accent = Color(0.31, 0.48, 0.52, 0.20)
+    elif _theme == "alpine_night":
+        silhouette = Color(0.05, 0.065, 0.072, 0.48)
+        accent = Color(0.58, 0.66, 0.69, 0.18)
+    elif _theme == "jungle_storm":
+        silhouette = Color(0.025, 0.065, 0.038, 0.52)
+        accent = Color(0.27, 0.39, 0.24, 0.20)
+
+    for index in range(8):
+        var x := 300.0 + float(index) * 690.0
+        var post_h := 62.0 + float((index * 19) % 45)
+        draw_line(Vector2(x, _floor_y), Vector2(x, _floor_y - post_h), silhouette, 6.0)
+        draw_line(Vector2(x + 126.0, _floor_y), Vector2(x + 126.0, _floor_y - post_h * 0.82), silhouette, 5.0)
+        draw_line(
+            Vector2(x, _floor_y - post_h * 0.72),
+            Vector2(x + 126.0, _floor_y - post_h * 0.60),
+            silhouette,
+            2.0,
+        )
+        for barb in range(4):
+            var bx := x + 18.0 + float(barb) * 28.0
+            var by := _floor_y - post_h * 0.67 + float(barb % 2) * 4.0
+            draw_line(Vector2(bx - 4.0, by - 4.0), Vector2(bx + 4.0, by + 4.0), accent, 1.5)
+            draw_line(Vector2(bx - 4.0, by + 4.0), Vector2(bx + 4.0, by - 4.0), accent, 1.5)
+
+    for index in range(18):
+        var x := 120.0 + float(index) * 294.0
+        var height := 10.0 + _detail_noise(index, 10.1) * 18.0
+        var lean := (_detail_noise(index, 10.7) - 0.5) * 12.0
+        draw_line(
+            Vector2(x, _floor_y),
+            Vector2(x + lean, _floor_y - height),
+            Color(accent.r, accent.g, accent.b, 0.42),
+            2.0,
+        )
 
 func _draw_front_story_props() -> void:
     for index in range(5):
