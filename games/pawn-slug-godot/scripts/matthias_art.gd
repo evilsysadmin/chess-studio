@@ -128,6 +128,15 @@ const MUZZLE_POS := {
 const RECOIL := {"pistol": 4.0, "machinegun": 3.0, "shotgun": 7.0, "panzerfaust": 10.0}
 const FLASH_SCALE := {"pistol": 0.75, "machinegun": 0.95, "shotgun": 1.20, "panzerfaust": 1.55}
 
+# Some authored pistol/SMG shoot cells deform Matthias' face/head around the
+# baked muzzle-flash frames. Keep the clean firing pose from known-good cells
+# and preserve only the far-right muzzle/flash strip from each original cell.
+const SHOOT_FACE_REPAIR_SOURCE_FRAMES := [0, 0, 2, 2, 0, 2]
+const SHOOT_FACE_REPAIR_CUT_X := {
+    "pistol": 172,
+    "machinegun": 176,
+}
+
 static var _full_frames_by_weapon: Dictionary = {}
 static var _full_body_y_by_weapon: Dictionary = {}
 static var _full_muzzle_by_weapon: Dictionary = {}
@@ -429,12 +438,13 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
 
     var frames: SpriteFrames
     if requested_layout == "full":
-        frames = _build_full_frames(image)
+        var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
+        frames = _build_full_frames(render_image)
         if frames != null:
-            var body_y := _full_body_y_for_atlas(image)
+            var body_y := _full_body_y_for_atlas(render_image)
             _full_frames_by_weapon[requested_weapon] = frames
             _full_body_y_by_weapon[requested_weapon] = body_y
-            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(image, body_y)
+            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y)
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
         if frames != null:
@@ -453,6 +463,37 @@ func _decode_raster(bytes: PackedByteArray) -> Image:
     if image.load_webp_from_buffer(bytes) == OK:
         return image
     return null
+
+func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
+    if not SHOOT_FACE_REPAIR_CUT_X.has(weapon_id):
+        return image
+
+    var repaired: Image = image.duplicate() as Image
+    if repaired == null:
+        return image
+
+    var shoot_spec: Dictionary = FULL_ACTIONS["shoot"]
+    var shoot_row := int(shoot_spec["row"])
+    var shoot_count := int(shoot_spec["count"])
+    var cut_x := int(SHOOT_FACE_REPAIR_CUT_X[weapon_id])
+    for frame_index in range(shoot_count):
+        var source_index := int(SHOOT_FACE_REPAIR_SOURCE_FRAMES[frame_index])
+        var source_rect := Rect2i(
+            source_index * FULL_ATLAS_CELL_SIZE,
+            shoot_row * FULL_ATLAS_CELL_SIZE,
+            cut_x,
+            FULL_ATLAS_CELL_SIZE,
+        )
+        repaired.blit_rect(
+            image,
+            source_rect,
+            Vector2i(
+                frame_index * FULL_ATLAS_CELL_SIZE,
+                shoot_row * FULL_ATLAS_CELL_SIZE,
+            ),
+        )
+    return repaired
+
 
 func _build_full_frames(image: Image) -> SpriteFrames:
     if image.get_size() != FULL_ATLAS_SIZE:
