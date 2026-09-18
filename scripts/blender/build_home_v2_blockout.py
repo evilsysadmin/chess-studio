@@ -42,17 +42,39 @@ def reset_scene() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def material(name: str, color: tuple[float, float, float, float], *, roughness=0.7, metallic=0.0, emission=None, emission_strength=0.0):
+def material(
+    name: str,
+    color: tuple[float, float, float, float],
+    *,
+    roughness=0.7,
+    metallic=0.0,
+    emission=None,
+    emission_strength=0.0,
+    bump_scale=None,
+    bump_strength=0.14,
+):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = color
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
     bsdf.inputs["Base Color"].default_value = color
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = metallic
     if emission is not None:
         bsdf.inputs["Emission Color"].default_value = emission
         bsdf.inputs["Emission Strength"].default_value = emission_strength
+    if bump_scale is not None:
+        noise = nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = bump_scale
+        noise.inputs["Detail"].default_value = 3.0
+        noise.inputs["Roughness"].default_value = 0.62
+        bump = nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = bump_strength
+        bump.inputs["Distance"].default_value = 0.12
+        links.new(noise.outputs["Fac"], bump.inputs["Height"])
+        links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     return mat
 
 
@@ -93,6 +115,40 @@ def sphere(name: str, location, scale, mat):
     return obj
 
 
+def cone(name: str, location, radius1: float, radius2: float, depth: float, mat, *, vertices=32):
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices,
+        radius1=radius1,
+        radius2=radius2,
+        depth=depth,
+        location=location,
+    )
+    obj = bpy.context.object
+    obj.name = name
+    apply_material(obj, mat)
+    return obj
+
+
+def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
+    profiles = {
+        "pawn": (0.085, 0.055, 0.20, 0.085, 0.26),
+        "rook": (0.10, 0.075, 0.27, 0.10, 0.30),
+        "knight": (0.10, 0.055, 0.29, 0.105, 0.33),
+        "bishop": (0.09, 0.045, 0.32, 0.09, 0.36),
+        "queen": (0.105, 0.055, 0.38, 0.11, 0.43),
+        "king": (0.11, 0.06, 0.42, 0.11, 0.47),
+    }
+    r1, r2, depth, head, height = profiles[kind]
+    cylinder(f"{name}_base", (x, y, z + 0.035), r1 * 1.18, 0.07, mat, vertices=24)
+    cone(f"{name}_body", (x, y, z + depth / 2 + 0.06), r1, r2, depth, mat, vertices=24)
+    sphere(f"{name}_head", (x, y, z + height), (head, head, head), mat)
+    if kind == "rook":
+        cylinder(f"{name}_crown", (x, y, z + height + 0.075), head * 1.08, 0.09, mat, vertices=12)
+    elif kind == "king":
+        cube(f"{name}_cross_v", (x, y, z + height + 0.12), (0.025, 0.025, 0.10), mat, bevel=0.01)
+        cube(f"{name}_cross_h", (x, y, z + height + 0.15), (0.07, 0.025, 0.025), mat, bevel=0.01)
+
+
 def curve_tube(name: str, points, bevel_depth: float, mat):
     curve = bpy.data.curves.new(name, "CURVE")
     curve.dimensions = "3D"
@@ -108,6 +164,29 @@ def curve_tube(name: str, points, bevel_depth: float, mat):
     return obj
 
 
+def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03):
+    half = depth / 2.0
+    front = [(x, y - half, z) for x, z in points_xz]
+    back = [(x, y + half, z) for x, z in points_xz]
+    vertices = front + back
+    count = len(points_xz)
+    faces = [tuple(range(count)), tuple(range(count, count * 2))]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    if bevel:
+        modifier = obj.modifiers.new("Soft edges", "BEVEL")
+        modifier.width = bevel
+        modifier.segments = 2
+    apply_material(obj, mat)
+    return obj
+
+
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
     radius = width / 2.0
     center_z = top_z - radius
@@ -117,6 +196,21 @@ def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: fl
         points.append((x + radius * math.cos(theta), y, center_z + radius * math.sin(theta)))
     points.extend([(x + radius, y, center_z), (x + radius, y, bottom_z)])
     return curve_tube(name, points, 0.19, mat)
+
+
+def gothic_arch(name: str, x: float, y: float, width: float, shoulder_z: float, top_z: float, bottom_z: float, mat, *, bevel=0.19):
+    half = width / 2.0
+    points = [(x - half, y, bottom_z), (x - half, y, shoulder_z)]
+    for i in range(1, 10):
+        t = i / 9.0
+        # Convex rise into a pointed apex; intentionally architectural rather
+        # than mathematically perfect so the silhouette matches the painted master.
+        points.append((x - half * (1.0 - t), y, shoulder_z + (top_z - shoulder_z) * (t ** 0.72)))
+    for i in range(1, 10):
+        t = i / 9.0
+        points.append((x + half * t, y, top_z - (top_z - shoulder_z) * (t ** 1.38)))
+    points.extend([(x + half, y, shoulder_z), (x + half, y, bottom_z)])
+    return curve_tube(name, points, bevel, mat)
 
 
 def look_at(obj, target) -> None:
@@ -162,7 +256,10 @@ def add_table_and_board(materials):
         for y in (0.05, 2.45):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
 
-    square = 0.31
+    # The canonical board nearly fills the table width; the earlier blockout
+    # made it read like a travel set.
+    square = 0.47
+    board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
     for row in range(8):
@@ -174,26 +271,93 @@ def add_table_and_board(materials):
                 (square / 2, square / 2, 0.018),
                 mat,
             )
-    cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (1.34, 1.34, 0.035), metal, bevel=0.025)
+    cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (board_half, board_half, 0.035), metal, bevel=0.025)
 
-    # The red frontal cloth and side benches are major silhouettes in the
-    # canonical Home, not decorative polish.
-    cube("HOME_PROP_table_banner", (0, -0.28, 0.72), (1.48, 0.055, 0.72), banner, bevel=0.035)
+    # The frontal cloth is one of the master image's strongest silhouettes.
+    # Pull it forward so it cannot disappear inside the table and give it the
+    # canonical pointed lower edge plus a narrow brass backing/trim.
+    drape_points = [
+        (-1.62, 1.20),
+        (1.62, 1.20),
+        (1.62, 0.36),
+        (0.0, 0.08),
+        (-1.62, 0.36),
+    ]
+    flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.43, 0.08, metal, bevel=0.045)
+    flat_panel(
+        "HOME_PROP_table_banner",
+        [(x * 0.955, 0.64 + (z - 0.64) * 0.92) for x, z in drape_points],
+        -0.475,
+        0.055,
+        banner,
+        bevel=0.035,
+    )
+
+    # Large canonical horse-head relief on the table drape.
+    emblem_y = -0.515
+    sphere("HOME_PROP_table_horse_head", (-0.10, emblem_y, 0.73), (0.28, 0.040, 0.24), metal)
+    cube("HOME_PROP_table_horse_muzzle", (-0.31, emblem_y, 0.66), (0.15, 0.032, 0.070), metal, bevel=0.022)
+    curve_tube(
+        "HOME_PROP_table_horse_neck",
+        [(0.00, emblem_y, 0.66), (0.15, emblem_y, 0.37), (0.04, emblem_y, 0.18)],
+        0.085,
+        metal,
+    )
+    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y, 1.02), 0.075, 0.018, 0.25, metal, vertices=14)
+    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.28), (0.040, 0.028, 0.15), metal, bevel=0.01)
+    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.13, 0.028, 0.040), metal, bevel=0.01)
+
     for side in (-1, 1):
         x = side * 3.55
         cube(f"HOME_PROP_bench_{side}", (x, 1.2, 0.43), (0.62, 1.45, 0.28), wood, bevel=0.05)
         cube(f"HOME_PROP_bench_cushion_{side}", (x, 1.2, 0.73), (0.58, 1.38, 0.08), banner, bevel=0.05)
+
+    piece_light = materials["piece_light"]
+    piece_dark = materials["piece_dark"]
+    order = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
+    board_z = table_z + 0.215
+    for col, kind in enumerate(order):
+        px = start_x + col * square
+        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, piece_light, kind)
+        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, piece_dark, kind)
+        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, piece_light, "pawn")
+        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, piece_dark, "pawn")
 
 
 def add_fireplace(name: str, x: float, materials):
     stone = materials["stone"]
     dark = materials["stone_dark"]
     fire = materials["fire"]
+    # Tall dark recess is essential to the canonical silhouette.
+    cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
     cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
-    arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.65, 4.45, 0.12, dark)
-    cube(f"HOME_PROP_{name}_fire", (x, 5.56, 0.9), (0.86, 0.07, 0.62), fire, bevel=0.12)
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.08, 1.32), 580, (1.0, 0.25, 0.06), radius=0.8)
+    gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
+    hot = materials["fire_hot"]
+    cube(f"HOME_PROP_{name}_embers", (x, 5.54, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
+    flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
+    for idx, offset in enumerate(flame_offsets):
+        height = 0.34 + 0.13 * ((idx * 5) % 4)
+        cone(
+            f"HOME_PROP_{name}_flame_{idx}",
+            (x + offset, 5.53, 0.67 + height / 2),
+            0.13 + 0.025 * (idx % 2),
+            0.025,
+            height,
+            fire,
+            vertices=18,
+        )
+        if idx % 2 == 0:
+            cone(
+                f"HOME_PROP_{name}_flame_hot_{idx}",
+                (x + offset * 0.98, 5.50, 0.65 + height * 0.30),
+                0.070,
+                0.012,
+                height * 0.52,
+                hot,
+                vertices=14,
+            )
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 235, (1.0, 0.33, 0.09), radius=1.05)
 
 
 def add_bookshelf(materials):
@@ -217,22 +381,74 @@ def add_bookshelf(materials):
 def add_banner(name: str, x: float, materials):
     banner = materials["banner"]
     brass = materials["brass"]
-    cube(f"HOME_PROP_banner_{name}", (x, 5.88, 4.48), (0.46, 0.045, 1.15), banner, bevel=0.025)
-    cube(f"HOME_PROP_banner_bar_{name}", (x, 5.82, 5.66), (0.58, 0.06, 0.045), brass, bevel=0.015)
+    points = [
+        (x - 0.48, 5.62),
+        (x + 0.48, 5.62),
+        (x + 0.48, 3.84),
+        (x, 3.44),
+        (x - 0.48, 3.84),
+    ]
+    flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
+    cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
+
+    relief_y = 5.73
+    sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.16, 0.035, 0.14), brass)
+    cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), brass, bevel=0.018)
+    curve_tube(
+        f"HOME_PROP_banner_horse_neck_{name}",
+        [(x + 0.01, relief_y, 4.69), (x + 0.10, relief_y, 4.48), (x + 0.04, relief_y, 4.29)],
+        0.055,
+        brass,
+    )
+    cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, brass, vertices=12)
+    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), brass, bevel=0.01)
+    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), brass, bevel=0.01)
 
 
 def add_armor(materials):
     steel = materials["steel"]
     brass = materials["brass"]
     stone = materials["stone"]
+    dark = materials["dark"]
     x, y = 1.35, 5.35
-    cube("HOME_PROP_armor_pedestal", (x, y, 0.3), (0.68, 0.52, 0.3), stone, bevel=0.05)
-    cylinder("HOME_PROP_armor_legs", (x, y, 1.03), 0.25, 1.25, steel)
-    sphere("HOME_PROP_armor_torso", (x, y, 1.9), (0.56, 0.36, 0.73), steel)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.78), (0.37, 0.34, 0.38), steel)
-    cube("HOME_PROP_armor_visor", (x, y - 0.33, 2.78), (0.33, 0.055, 0.11), brass, bevel=0.02)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.44, y, 2.18), (x - 0.7, y, 1.58)], 0.115, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.44, y, 2.18), (x + 0.7, y, 1.58)], 0.115, steel)
+
+    cube("HOME_PROP_armor_pedestal", (x, y, 0.24), (0.72, 0.54, 0.24), stone, bevel=0.05)
+
+    # Humanoid stance: two distinct greaves instead of the old single pawn-like
+    # cylinder, plus pelvis, tapered cuirass and articulated limbs.
+    for side in (-1, 1):
+        lx = x + side * 0.19
+        cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
+        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.15, 0.11, 0.70, steel, vertices=24)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.17, 0.13, 0.14), brass)
+        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
+
+    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
+    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
+    cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
+
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
+    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.48, y, 2.27), (x - 0.66, y, 1.95), (x - 0.60, y - 0.02, 1.66)], 0.10, steel)
+    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.48, y, 2.27), (x + 0.66, y, 1.95), (x + 0.60, y - 0.02, 1.66)], 0.10, steel)
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
+
+    # Helmet with neck gap and a face slit, much closer to the canonical suit
+    # of armour silhouette than a round pawn head.
+    cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.83), (0.34, 0.30, 0.34), steel)
+    cube("HOME_PROP_armor_visor", (x, y - 0.285, 2.82), (0.30, 0.05, 0.09), dark, bevel=0.02)
+    cube("HOME_PROP_armor_brow", (x, y - 0.30, 2.95), (0.28, 0.045, 0.045), brass, bevel=0.015)
+
+    # Weapon rack frames the armour without becoming part of its body.
+    for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
+        curve_tube(
+            f"HOME_PROP_armor_weapon_{idx}",
+            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.55)],
+            0.035,
+            dark,
+        )
 
 
 def add_trophy(materials):
@@ -246,28 +462,126 @@ def add_trophy(materials):
     curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.18, y - 0.18, 3.42), (x + 0.34, y - 0.18, 3.33), (x + 0.23, y - 0.18, 3.18)], 0.035, brass)
 
 
+def add_side_furnishings(materials):
+    wood = materials["wood"]
+    brass = materials["brass"]
+    leather = materials["leather"]
+    paper = materials["paper"]
+    globe = materials["globe"]
+    plant = materials["plant"]
+    ceramic = materials["ceramic"]
+    steel = materials["steel"]
+
+    # Left lived-in corner: sofa, side table, helmet/candle and book stack.
+    cube("HOME_PROP_left_sofa_base", (-7.15, 0.58, 0.38), (1.18, 0.82, 0.36), leather, bevel=0.12)
+    cube("HOME_PROP_left_sofa_back", (-7.72, 1.08, 1.08), (0.18, 0.78, 0.70), leather, bevel=0.10)
+    cube("HOME_PROP_left_sofa_arm", (-6.25, 0.60, 0.72), (0.18, 0.70, 0.42), leather, bevel=0.10)
+    cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
+    sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
+    cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
+    for idx in range(4):
+        cube(
+            f"HOME_PROP_left_book_stack_{idx}",
+            (-8.15 + idx * 0.04, -0.65, 0.16 + idx * 0.09),
+            (0.52 - idx * 0.03, 0.35, 0.055),
+            materials["book_brown"] if idx % 2 else materials["book_green"],
+            bevel=0.02,
+        )
+
+    # Library work area behind the main board.
+    cube("HOME_PROP_library_desk", (-3.45, 4.05, 0.82), (1.35, 0.58, 0.10), wood, bevel=0.05)
+    cube("HOME_PROP_library_desk_leg_l", (-4.55, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
+    cube("HOME_PROP_library_desk_leg_r", (-2.35, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
+    cube("HOME_PROP_library_chair_seat", (-4.65, 3.25, 0.48), (0.44, 0.42, 0.12), leather, bevel=0.06)
+    cube("HOME_PROP_library_chair_back", (-4.65, 3.60, 0.98), (0.42, 0.10, 0.55), leather, bevel=0.06)
+    cube("HOME_PROP_library_lamp_base", (-3.10, 3.92, 1.00), (0.09, 0.09, 0.12), brass, bevel=0.02)
+    cube("HOME_PROP_library_lamp_shade", (-3.10, 3.92, 1.24), (0.24, 0.18, 0.14), paper, bevel=0.04)
+
+    # Right cabinet + globe, pulled slightly forward so the globe actually reads
+    # beside the right fireplace at canonical camera distance.
+    gx, gy = 7.05, 4.10
+    cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
+    cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
+    sphere("HOME_PROP_globe", (gx, gy, 1.82), (0.68, 0.68, 0.68), globe)
+    curve_tube(
+        "HOME_PROP_globe_meridian",
+        [
+            (gx + 0.78 * math.cos(i * math.pi / 16), gy, 1.82 + 0.78 * math.sin(i * math.pi / 16))
+            for i in range(17)
+        ],
+        0.025,
+        brass,
+    )
+
+    # Plant and ceramic pot mark the stair edge in the master.
+    cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
+    for idx, (dx, dy) in enumerate(((-0.25, 0.05), (0.22, 0.02), (-0.12, 0.18), (0.10, -0.10), (0.30, 0.15))):
+        curve_tube(
+            f"HOME_PROP_plant_leaf_{idx}",
+            [(5.10, 1.70, 0.76), (5.10 + dx * 0.55, 1.70 + dy, 1.13), (5.10 + dx, 1.70 + dy * 1.7, 1.46)],
+            0.055,
+            plant,
+        )
+
+
 def add_stairs(materials):
     stone = materials["stone"]
     brass = materials["brass"]
     dark = materials["dark"]
-    x0, y0 = 6.9, 4.35
+    fire = materials["fire"]
 
-    # In the canonical art the Dungeon reads as a lower-right descent beneath
-    # the balcony, not as a full-height side doorway.
-    cube("HOME_ARCH_dungeon_void", (x0 + 0.28, 6.0, 0.78), (1.38, 0.07, 0.78), dark, bevel=0.08)
-    arch("HOME_ARCH_dungeon_arch", x0 + 0.28, 5.9, 2.85, 1.45, 2.35, 0.08, stone)
-    cube("HOME_ARCH_dungeon_balcony", (6.55, 4.62, 1.18), (2.05, 0.72, 0.12), stone, bevel=0.04)
-    for i in range(9):
-        y = y0 - i * 0.4
-        z = 1.08 - i * 0.09
+    # Keep the Dungeon a strong lower-right destination without letting it
+    # consume a third of the room. The canonical opening is mostly an arch,
+    # balustrade and descending stair tucked against the right edge.
+    bridge_x = 6.25
+    arch_x = 6.52
+    cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.48, 1.36), (1.70, 0.66, 0.12), stone, bevel=0.05)
+    cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.54), (1.62, 0.11, 0.16), stone, bevel=0.04)
+
+    cube("HOME_ARCH_dungeon_void", (arch_x, 1.78, -0.12), (1.42, 0.09, 1.42), dark, bevel=0.12)
+    arch("HOME_ARCH_dungeon_arch", arch_x, 1.60, 2.95, 0.58, 1.42, -1.56, stone)
+    arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.08, 1.48, 2.42, 0.44, 1.12, -1.46, materials["stone_dark"])
+
+    for idx, x in enumerate((5.62, 5.93, 6.24, 6.55, 6.86, 7.17)):
+        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 1.51, -0.30), (0.040, 0.040, 0.88), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_gate_cross", (6.40, 1.49, -0.25), (0.94, 0.045, 0.050), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_fire_left", (5.88, 1.36, -0.66), (0.15, 0.05, 0.30), fire, bevel=0.08)
+    cube("HOME_PROP_dungeon_fire_right", (6.96, 1.36, -0.70), (0.15, 0.05, 0.34), fire, bevel=0.08)
+
+    for idx, x in enumerate((4.98, 5.38, 5.78, 6.18, 6.58, 6.98, 7.38)):
+        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.80, 1.86), 0.075, 0.52, stone, vertices=20)
+    cube("HOME_ARCH_dungeon_balustrade_top", (6.18, 1.80, 2.14), (1.52, 0.11, 0.09), stone, bevel=0.025)
+
+    cylinder("HOME_ARCH_dungeon_post", (4.72, 1.90, 1.33), 0.24, 1.78, stone, vertices=32)
+    sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.21, 0.21, 0.21), materials["stone_dark"])
+
+    steps = 11
+    for i in range(steps):
+        t = i / (steps - 1)
+        x = 5.28 + 2.45 * t
+        y = 1.45 - 2.28 * t
+        z = 0.68 - 1.58 * t
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
-            (x0, y, z),
-            (1.22, 0.26, 0.09),
+            (x, y, z),
+            (0.61, 0.33, 0.075),
             stone,
             bevel=0.025,
         )
-    curve_tube("HOME_PROP_dungeon_rail", [(5.62, 4.85, 1.8), (5.62, 3.5, 1.3), (5.62, 1.75, 0.82)], 0.05, brass)
+
+    curve_tube(
+        "HOME_PROP_dungeon_rail",
+        [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)],
+        0.045,
+        brass,
+    )
+    curve_tube(
+        "HOME_PROP_dungeon_rail_lower",
+        [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
+        0.024,
+        brass,
+    )
+    cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
@@ -309,44 +623,76 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.22
+    bg.inputs["Strength"].default_value = 0.115
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.17, 0.12, 0.09, 1), roughness=0.88),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.075, 0.05, 0.04, 1), roughness=0.95),
-        "wood": material("HOME_MAT_wood", (0.16, 0.065, 0.025, 1), roughness=0.7),
+        "stone": material("HOME_MAT_stone", (0.25, 0.21, 0.17, 1), roughness=0.90, bump_scale=5.0, bump_strength=0.22),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.075, 0.060, 0.050, 1), roughness=0.96, bump_scale=6.5, bump_strength=0.18),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.20, 0.15, 0.105, 1), roughness=0.91, bump_scale=7.0, bump_strength=0.16),
+        "wood": material("HOME_MAT_wood", (0.19, 0.080, 0.032, 1), roughness=0.74, bump_scale=4.0, bump_strength=0.10),
         "brass": material("HOME_MAT_brass", (0.47, 0.25, 0.055, 1), roughness=0.32, metallic=0.82),
         "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.42, metallic=0.72),
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
-        "rug": material("HOME_MAT_rug", (0.28, 0.02, 0.018, 1), roughness=0.9),
-        "banner": material("HOME_MAT_banner", (0.34, 0.018, 0.012, 1), roughness=0.82),
+        "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
+        "banner": material("HOME_MAT_banner", (0.43, 0.018, 0.014, 1), roughness=0.84, bump_scale=18.0, bump_strength=0.06),
         "book_green": material("HOME_MAT_book_green", (0.08, 0.16, 0.10, 1), roughness=0.88),
         "book_brown": material("HOME_MAT_book_brown", (0.22, 0.08, 0.035, 1), roughness=0.88),
+        "piece_light": material("HOME_MAT_piece_light", (0.76, 0.66, 0.48, 1), roughness=0.55),
+        "piece_dark": material("HOME_MAT_piece_dark", (0.035, 0.025, 0.022, 1), roughness=0.52),
+        "leather": material("HOME_MAT_leather", (0.30, 0.018, 0.018, 1), roughness=0.76, bump_scale=16.0, bump_strength=0.06),
+        "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
+        "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
+        "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
+        "ceramic": material("HOME_MAT_ceramic", (0.48, 0.43, 0.33, 1), roughness=0.52),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
             "HOME_MAT_window",
             (0.025, 0.07, 0.11, 1),
             roughness=0.22,
-            emission=(0.09, 0.28, 0.44, 1),
-            emission_strength=1.45,
+            emission=(0.055, 0.16, 0.28, 1),
+            emission_strength=0.55,
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.55, 0.08, 0.01, 1),
-            roughness=0.35,
-            emission=(1.0, 0.19, 0.025, 1),
-            emission_strength=5.0,
+            (0.92, 0.16, 0.018, 1),
+            roughness=0.30,
+            emission=(1.0, 0.20, 0.018, 1),
+            emission_strength=2.15,
+        ),
+        "fire_hot": material(
+            "HOME_MAT_fire_hot",
+            (1.0, 0.62, 0.12, 1),
+            roughness=0.24,
+            emission=(1.0, 0.52, 0.08, 1),
+            emission_strength=3.10,
         ),
     }
 
     # Canonical Great Hall blockout v2: reproduce the asymmetric visual masses
     # from great-hall-dungeon.webp before adding any decorative detail.
-    cube("HOME_ARCH_floor", (0, 2.6, -0.18), (9.35, 6.8, 0.18), materials["stone_dark"])
+    # Split the floor so the Dungeon can actually descend below the Great Hall
+    # rather than sitting on top of a solid slab.
+    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
+    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
+
+    # Stone slab seams keep the floor from reading as one flat dark plane.
+    grout = materials["stone_dark"]
+    for idx, x in enumerate((-8.0, -6.4, -4.8, -3.2, 3.2, 4.8, 6.4, 8.0)):
+        cube(f"HOME_ARCH_floor_grout_v_{idx}", (x, 2.25, 0.018), (0.018, 5.55, 0.010), grout)
+    for idx, y in enumerate((-2.2, -0.8, 0.6, 4.8, 6.2)):
+        cube(f"HOME_ARCH_floor_grout_h_{idx}", (0, y, 0.018), (8.75, 0.018, 0.010), grout)
+
+    # Narrow brass/brown rug border approximates the ornate woven edge from the master.
+    rug_border = materials["brass"]
+    cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
@@ -356,11 +702,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     add_fireplace("fireplace_left", -6.15, materials)
     add_bookshelf(materials)
-    arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.35, 0.15, materials["stone_dark"])
+    cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
+    gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
 
-    cube("HOME_ARCH_window_right", (8.0, 6.62, 3.58), (0.78, 0.07, 1.46), materials["window"], bevel=0.08)
-    arch("HOME_ARCH_window_right_frame", 8.0, 6.48, 1.78, 3.32, 4.48, 2.08, materials["brass"])
+    cube("HOME_ARCH_window_right", (7.78, 6.62, 3.62), (0.96, 0.07, 1.64), materials["window"], bevel=0.08)
+    gothic_arch("HOME_ARCH_window_right_frame", 7.78, 6.48, 2.08, 3.24, 4.92, 1.94, materials["brass"], bevel=0.12)
 
     for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
         add_banner(name, x, materials)
@@ -368,34 +715,64 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_table_and_board(materials)
     add_armor(materials)
     add_trophy(materials)
+    add_side_furnishings(materials)
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.85), 0.055, 1.5, materials["brass"])
-    curve_tube("HOME_PROP_chandelier_ring", [
-        (1.2 * math.cos(i * math.tau / 20), 2.45 + 0.55 * math.sin(i * math.tau / 20), 4.18)
-        for i in range(21)
-    ], 0.055, materials["brass"])
-    for idx, x in enumerate((-0.85, -0.28, 0.28, 0.85)):
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (x, 2.45, 4.22), (0.055, 0.055, 0.18), materials["fire"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (x, 2.25, 4.3), 95, (1.0, 0.58, 0.23), radius=0.25)
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.78), 0.055, 1.46, materials["brass"])
+    ring_points = [
+        (1.52 * math.cos(i * math.tau / 24), 2.45 + 1.02 * math.sin(i * math.tau / 24), 4.05)
+        for i in range(25)
+    ]
+    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
+    for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
+        rx = 1.52 * math.cos(angle)
+        ry = 2.45 + 1.02 * math.sin(angle)
+        curve_tube(
+            f"HOME_PROP_chandelier_chain_{idx}",
+            [(0.0, 2.45, 5.10), (rx, ry, 4.08)],
+            0.025,
+            materials["brass"],
+        )
+    for idx in range(8):
+        angle = idx * math.tau / 8.0
+        cx = 1.40 * math.cos(angle)
+        cy = 2.45 + 0.94 * math.sin(angle)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.20), (0.050, 0.050, 0.20), materials["fire"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.30), 34, (1.0, 0.52, 0.20), radius=0.28)
+
+    # Side chandeliers are intentionally partial in frame, matching the master.
+    for side in (-1, 1):
+        cx = side * 7.65
+        curve_tube(
+            f"HOME_PROP_side_chandelier_{side}",
+            [
+                (cx + 0.82 * math.cos(i * math.tau / 18), 1.65 + 0.42 * math.sin(i * math.tau / 18), 5.02)
+                for i in range(19)
+            ],
+            0.045,
+            materials["brass"],
+        )
 
     for idx, x in enumerate((-6.0, -3.0, 3.0, 6.0)):
         cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass"], bevel=0.025)
-        sphere(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), (0.12, 0.08, 0.22), materials["fire"])
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 185, (1.0, 0.34, 0.09), radius=0.35)
+        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), 0.10, 0.018, 0.34, materials["fire_hot"], vertices=16)
+        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 78, (1.0, 0.36, 0.10), radius=0.44)
 
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 900, (1.0, 0.58, 0.3), 6.0, target=(0, 2.4, 1.8))
-    add_area_light("HOME_LIGHT_fill", (5.0, 1.0, 5.2), 520, (0.22, 0.38, 0.58), 5.0, target=(0, 3.2, 2.0))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 650, (1.0, 0.41, 0.14), 4.0, target=(0, 2.5, 2.2))
+    # Global lights establish readable stone/wood while practicals keep the
+    # warmth local. Cool right-side fill hints at the window/exterior.
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 430, (0.82, 0.72, 0.62), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 285, (0.22, 0.34, 0.52), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 320, (0.76, 0.50, 0.34), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 180, (0.48, 0.40, 0.32), 8.0, target=(0, 1.4, 0.15))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 42.0
+    camera_data.lens = 45.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0.0, -15.8, 5.25)
-    target = (0.0, 2.65, 2.05)
+    camera.location = (0.0, -16.45, 4.18)
+    target = (0.0, 2.55, 1.92)
     look_at(camera, target)
     scene.camera = camera
 
