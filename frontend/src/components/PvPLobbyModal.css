@@ -1419,3 +1419,23 @@
     transform: none;
   }
 }
+
+
+.pvp-lobby__player.is-cooldown .pvp-lobby__rank-mark i,
+.pvp-lobby__player.is-cooldown .pvp-lobby__player-state i {
+  background: #c7a15f;
+  box-shadow: none;
+}
+
+.pvp-lobby__player.is-cooldown .pvp-lobby__player-state span {
+  color: rgba(225, 195, 139, .72);
+}
+
+
+.pvp-lobby__cooldown-note {
+  margin-top: .06rem;
+  color: rgba(225, 195, 139, .68);
+  font-family: var(--font-mono);
+  font-size: .51rem;
+  letter-spacing: .06em;
+}

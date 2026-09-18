@@ -246,6 +246,58 @@ async def challenge_cooldown_until(challenger: str, opponent: str, *, now: datet
         raise PersistentStorageUnavailable("No se pudo comprobar el cooldown de retos 1v1.") from exc
 
 
+async def challenge_cooldowns_for_user(
+    username: str,
+    opponents: list[str],
+    *,
+    now: datetime | None = None,
+) -> dict[str, datetime]:
+    """Return only currently active pair cooldowns for relevant roster rivals."""
+    stamp = now or utcnow()
+    opponent_set = {str(name) for name in opponents if name and str(name) != username}
+    if not opponent_set:
+        return {}
+
+    collections = await _collections()
+    if collections is None:
+        result: dict[str, datetime] = {}
+        async with _memory_guard():
+            for row in _memory_challenges.values():
+                challenger = row.get("challenger")
+                opponent = row.get("opponent")
+                rival = opponent if challenger == username else challenger if opponent == username else None
+                cooldown_until = row.get("cooldown_until")
+                if rival not in opponent_set or not isinstance(cooldown_until, datetime) or cooldown_until <= stamp:
+                    continue
+                previous = result.get(rival)
+                if previous is None or cooldown_until > previous:
+                    result[rival] = cooldown_until
+        return result
+
+    _, challenges, _ = collections
+    pair_to_opponent = {_challenge_pair_key(username, rival): rival for rival in opponent_set}
+    try:
+        cursor = challenges.find(
+            {
+                "pair_key": {"$in": list(pair_to_opponent)},
+                "cooldown_until": {"$gt": stamp},
+            },
+            {"pair_key": 1, "cooldown_until": 1},
+        )
+        result: dict[str, datetime] = {}
+        async for row in cursor:
+            rival = pair_to_opponent.get(row.get("pair_key"))
+            cooldown_until = row.get("cooldown_until")
+            if not rival or not isinstance(cooldown_until, datetime):
+                continue
+            previous = result.get(rival)
+            if previous is None or cooldown_until > previous:
+                result[rival] = cooldown_until
+        return result
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudieron leer los cooldowns de retos 1v1.") from exc
+
+
 async def create_challenge(challenge: dict[str, Any]) -> dict[str, Any]:
     collections = await _collections()
     pair_key = _challenge_pair_key(challenge["challenger"], challenge["opponent"])

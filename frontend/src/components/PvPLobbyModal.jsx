@@ -17,6 +17,18 @@ function challengeExpiryLabel(value) {
   return `caduca ${time}`;
 }
 
+export function pvpChallengeCooldownLabel(value) {
+  const stamp = Date.parse(value || '');
+  if (!Number.isFinite(stamp)) return '';
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(stamp));
+  return `PAUSA · hasta ${time}`;
+}
+
+
 export function pvpHeadToHeadLabel(record) {
   const games = Number(record?.games || 0);
   if (games <= 0) return '';
@@ -234,17 +246,30 @@ export default function PvPLobbyModal({
                 <div className="pvp-lobby__roster-list">
                   {rivals.map((row) => {
                     const pending = outgoing.find((item) => item.opponent === row.username);
+                    const cooldownLabel = pvpChallengeCooldownLabel(row.challengeCooldownUntil);
+                    const coolingDown = Boolean(cooldownLabel);
+                    const rowState = pending ? 'RETO ENVIADO' : coolingDown ? 'PAUSA' : 'DISPONIBLE';
                     return (
-                      <article key={row.username} className={`pvp-lobby__player${pending ? ' is-pending' : ''}`}>
+                      <article key={row.username} className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}>
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
                           <strong>{row.username}</strong>
                           <span>{row.tier}</span>
                           {row.headToHead?.games > 0 && <small className="pvp-lobby__head-to-head">{pvpHeadToHeadLabel(row.headToHead)}</small>}
+                          {coolingDown && <small className="pvp-lobby__cooldown-note">{cooldownLabel}</small>}
                         </div>
-                        <div className="pvp-lobby__player-state"><i aria-hidden="true" /><span>{pending ? 'RETO ENVIADO' : 'DISPONIBLE'}</span></div>
+                        <div className="pvp-lobby__player-state"><i aria-hidden="true" /><span>{rowState}</span></div>
                         <div className="pvp-lobby__player-rating"><small>ELO 1V1</small><b>{row.rating}</b></div>
-                        <button type="button" className="secondary-btn pvp-lobby__challenge-cta" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => onChallenge ? onChallenge(row.username) : pvpApi.challenge(row.username))}>{pending ? 'En espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>
+                        <button
+                          type="button"
+                          className="secondary-btn pvp-lobby__challenge-cta"
+                          disabled={!self || Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
+                          title={coolingDown ? cooldownLabel : undefined}
+                          aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
+                          onClick={() => run(`challenge:${row.username}`, () => onChallenge ? onChallenge(row.username) : pvpApi.challenge(row.username))}
+                        >
+                          {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
+                        </button>
                       </article>
                     );
                   })}
