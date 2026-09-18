@@ -20,8 +20,8 @@ func _ready() -> void:
     _overlay.visible = false
     _apply_audio()
 
-    # Web already fills the app viewport. Native browser fullscreen remains an
-    # explicit menu choice so ESC is reserved for the pause menu by default.
+    # The React host already fills the app viewport. Native browser fullscreen
+    # remains an explicit menu choice so ESC is reserved for pause by default.
     if not OS.has_feature("web"):
         _apply_display_mode(_fullscreen_enabled)
 
