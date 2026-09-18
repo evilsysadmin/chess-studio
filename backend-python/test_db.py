@@ -46,10 +46,7 @@ def test_staging_and_production_cannot_cross_databases():
 
 def _reset_db_state(monkeypatch, *, clock=100.0):
     if db._client is not None:
-        try:
-            db._client.close()
-        except Exception:
-            pass
+        asyncio.run(db._close_client(db._client))
     monkeypatch.setattr(db, "_db", None)
     monkeypatch.setattr(db, "_client", None)
     monkeypatch.setattr(db, "_warned", False)
@@ -97,7 +94,7 @@ def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(db, "AsyncIOMotorClient", FakeClient)
+    monkeypatch.setattr(db, "AsyncMongoClient", FakeClient)
 
     async def scenario():
         return await asyncio.gather(*(db.get_db() for _ in range(20)))
@@ -143,10 +140,10 @@ def test_failed_connect_enters_fast_retry_cooldown_then_recovers(monkeypatch):
         def __getitem__(self, _name):
             return fake_database
 
-        def close(self):
+        async def close(self):
             calls["closed"] += 1
 
-    monkeypatch.setattr(db, "AsyncIOMotorClient", FakeClient)
+    monkeypatch.setattr(db, "AsyncMongoClient", FakeClient)
 
     async def failed_wave():
         return await asyncio.gather(*(db.get_db() for _ in range(16)))

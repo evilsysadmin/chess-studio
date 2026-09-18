@@ -12,10 +12,11 @@ toque reintentar.
 """
 
 import asyncio
+import inspect
 import os
 import time
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from pymongo.errors import PyMongoError
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
@@ -93,6 +94,16 @@ def _retry_is_cooling_down(now: float | None = None) -> bool:
     return value < _retry_after_monotonic
 
 
+async def _close_client(client) -> None:
+    """Close Motor-style fakes and real PyMongo Async clients safely."""
+    try:
+        result = client.close()
+        if inspect.isawaitable(result):
+            await result
+    except Exception:
+        pass
+
+
 async def _ensure_runtime_indexes(database) -> None:
     """Prepara índices baratos que protegen rutas calientes sin bloquear servicio.
 
@@ -131,7 +142,7 @@ async def get_db():
 
         client = None
         try:
-            client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=3000)
+            client = AsyncMongoClient(MONGO_URL, serverSelectionTimeoutMS=3000)
             await client.admin.command("ping")
             _client = client
             _db = client[MONGO_DB_NAME]
@@ -144,10 +155,7 @@ async def get_db():
             return _db
         except Exception as exc:
             if client is not None:
-                try:
-                    client.close()
-                except Exception:
-                    pass
+                await _close_client(client)
             if not _warned:
                 print(
                     f"No se pudo conectar a MongoDB ({type(exc).__name__}). "
