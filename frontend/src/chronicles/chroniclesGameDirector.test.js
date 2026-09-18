@@ -39,6 +39,34 @@ describe('Chronicles Game Director frontend resolver', () => {
     expect(resolved.manifestRevision).toHaveLength(64);
   });
 
+  it('accepts seeded remote geometry that differs from the bundled fallback', async () => {
+    const authored = chroniclesMapById('crypt-eight-squares');
+    const fetchManifest = vi.fn().mockResolvedValue(remoteEnvelope('crypt-eight-squares', 418, (manifest) => {
+      const grid = [...manifest.grid];
+      grid[2] = '#..##.#';
+      return {
+        ...manifest,
+        grid,
+        generation: {
+          kind: 'seeded-layout',
+          mapCode: 'CM1|theme=crypt|size=7x7|verbs=guardian|enemies=2|treasures=1|secrets=0|difficulty=2|seed=418',
+          generatorVersion: 1,
+          layoutRevision: 'c'.repeat(64),
+        },
+      };
+    }));
+
+    const resolved = await chroniclesResolveAreaManifest('crypt-eight-squares', { seed: 418, fetchManifest });
+
+    expect(resolved.source).toBe('remote');
+    expect(resolved.map.grid).not.toEqual(authored.grid);
+    expect(resolved.map.grid[2]).toBe('#..##.#');
+    expect(resolved.map.generation).toMatchObject({
+      kind: 'seeded-layout',
+      generatorVersion: 1,
+    });
+  });
+
   it('fails open to the bundled map when transport is unavailable', async () => {
     const fetchManifest = vi.fn().mockRejectedValue(new Error('network-down'));
 

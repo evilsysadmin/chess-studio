@@ -38,6 +38,9 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["contentVersion"] == payload["contentVersion"]
     assert area["manifestRevision"] == payload["manifestRevision"]
     assert area["manifest"]["id"] == payload["currentMapId"]
+    assert area["mapCode"].endswith(f"|seed={payload['seed']}")
+    assert area["generatorVersion"] == 1
+    assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
 
 
 def test_idempotent_run_bootstrap_replays_identical_area(monkeypatch):
