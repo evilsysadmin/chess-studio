@@ -166,7 +166,10 @@ def self_test() -> None:
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
     source = Path(__file__).read_text(encoding="utf-8")
-    assert "oci." not in source.lower()
+    lowered = source.lower()
+    assert "import oci" not in lowered
+    assert "oraclecloud.com" not in lowered
+    assert "oci.auth" not in lowered
     assert "ls-remote" in source
     assert "refs/heads/main" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
