@@ -92,7 +92,11 @@ def classify_path(path: str) -> set[str] | None:
         return {"chronicles-tactics"}
     if lower == "scripts/app_visual_capture.sh":
         return None
-    if lower == "scripts/blender/build_war_room_premium.py":
+    if lower in {
+        "scripts/blender/build_war_room_premium.py",
+        "scripts/blender/publish_war_room_v2_staging.py",
+        ".github/workflows/war-room-blender-art.yml",
+    }:
         return {"warroom-core"}
 
     if lower.startswith("e2e/"):
@@ -199,6 +203,8 @@ def self_test() -> None:
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
+    assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
+    assert classify([".github/workflows/war-room-blender-art.yml"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"

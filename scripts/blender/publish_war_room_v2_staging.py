@@ -15,6 +15,7 @@ import r2_asset_publisher as core  # noqa: E402
 
 CANONICAL_PREFIX = "war-room/v2/runtime"
 STAGING_ALIAS = "war-room/v2/staging/current.glb"
+STAGING_REVISION_PREFIX = "war-room/v2/staging/revisions"
 CONTENT_TYPE = "model/gltf-binary"
 
 
@@ -25,11 +26,16 @@ def sha256_bytes(data: bytes) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
+    parser.add_argument("--revision", required=True)
     args = parser.parse_args()
 
     source = args.source.resolve()
     if not source.is_file() or source.stat().st_size <= 60_000:
         raise SystemExit(f"War Room v2 GLB inválido: {source}")
+
+    revision = str(args.revision or "").strip()
+    if len(revision) < 7:
+        raise SystemExit("War Room v2 revision inválida")
 
     data = source.read_bytes()
     digest = sha256_bytes(data)
@@ -51,9 +57,24 @@ def main() -> int:
     if sha256_bytes(received) != digest:
         raise SystemExit("War Room v2 staging alias corrupto tras publicar")
 
+    # The immutable PR key is published last. Visual CI points directly at
+    # this object, so it can never validate a stale current.glb alias.
+    revision_key = f"{STAGING_REVISION_PREFIX}/{revision}.glb"
+    transport.raw_upload_object(
+        token,
+        account_id,
+        config["bucket"],
+        revision_key,
+        data,
+        CONTENT_TYPE,
+    )
+    received_revision = core.get_object(token, account_id, config["bucket"], revision_key)
+    if sha256_bytes(received_revision) != digest:
+        raise SystemExit("War Room v2 revision GLB corrupto tras publicar")
+
     print(
-        f"War Room v2 R2 OK · sha256={digest} · canonical={canonical_key} · "
-        f"staging={STAGING_ALIAS}"
+        f"War Room v2 R2 OK · revision={revision} · sha256={digest} · "
+        f"canonical={canonical_key} · staging={STAGING_ALIAS} · revision_key={revision_key}"
     )
     return 0
 

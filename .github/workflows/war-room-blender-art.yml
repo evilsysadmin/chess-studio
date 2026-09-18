@@ -72,7 +72,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -S scripts/blender/publish_war_room_v2_staging.py \
-            /tmp/war-room-premium/war-room-premium-shell.glb
+            /tmp/war-room-premium/war-room-premium-shell.glb \
+            --revision '${{ github.sha }}'
 
       - uses: actions/upload-artifact@v7
         if: always()

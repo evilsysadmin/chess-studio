@@ -417,6 +417,25 @@ def add_room(static, mats):
     cube("WR_ARCH_back_wall", (0, 7.02, 3.35), (8.8, 0.18, 3.35), mats["wall_wood"], static, bevel=0.02)
     cube("WR_ARCH_left_wall", (-8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)
     cube("WR_ARCH_right_wall", (8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)
+    # Canonical v2 split: dark walnut wainscot below, warm mineral plaster
+    # above. The broad matte fields break the all-brown box effect while the
+    # original rails/stiles remain the architectural frame in front.
+    upper_bays = (
+        (-7.86, 0.53),
+        (-5.75, 1.47),
+        (-2.88, 1.22),
+        (0.00, 1.45),
+        (2.88, 1.22),
+        (5.75, 1.47),
+        (7.86, 0.53),
+    )
+    for index, (x, half_width) in enumerate(upper_bays):
+        cube(f"WR_ARCH_upper_plaster_{index}", (x, 6.815, 4.73),
+             (half_width, 0.018, 1.38), mats["wall_plaster"], static, bevel=0.018)
+    for side in (-1, 1):
+        cube(f"WR_ARCH_side_upper_plaster_{side}", (side * 8.485, 0.85, 4.73),
+             (0.018, 5.95, 1.38), mats["wall_plaster"], static, bevel=0.018)
+
     for z in (1.25, 3.15, 5.45):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
     for x in (-7.3, -4.2, -1.55, 1.55, 4.2, 7.3):
@@ -733,6 +752,7 @@ def build():
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
         "wall_wood": material("WR_MAT_wall_walnut", (0.020, 0.015, 0.012, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
         "wall_recess": material("WR_MAT_wall_recess", (0.009, 0.008, 0.008, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
+        "wall_plaster": material("WR_MAT_wall_plaster", (0.165, 0.145, 0.125, 1), rough=0.86, coat=0.015, texture="stone", scale=5.1, bump=0.045),
         "trim_wood": material("WR_MAT_trim_walnut", (0.042, 0.025, 0.017, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
         "parquet": material("WR_MAT_parquet", (0.036, 0.028, 0.024, 1), rough=0.62, coat=0.05, texture="wood", scale=5.3, bump=0.055),
         "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.021, 0.022, 1), rough=0.70, coat=0.025, texture="stone", scale=4.8, bump=0.040),
@@ -837,7 +857,9 @@ def manifest(path):
 def validate():
     scene = bpy.context.scene
     required = {
-        "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
+        "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_ARCH_upper_plaster_3",
+        "WR_ARCH_side_upper_plaster_-1", "WR_ARCH_side_upper_plaster_1",
+        "WR_TABLE_main", "WR_TABLE_board_frame",
         "WR_TABLE_inlay_x_-1", "WR_TABLE_inlay_x_1",
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
@@ -1060,6 +1082,7 @@ def validate_runtime_glb(path, expected_factors=None):
         raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
     required_colours = {
         "WR_MAT_wall_walnut",
+        "WR_MAT_wall_plaster",
         "WR_MAT_trim_walnut",
         "WR_MAT_parquet",
         "WR_MAT_table_walnut",

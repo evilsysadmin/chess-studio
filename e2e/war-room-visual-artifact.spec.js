@@ -2,9 +2,52 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
-import { WAR_ROOM_VARIANT_STORAGE_KEY } from '../frontend/src/components/WarRoomVariant.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
+const WAR_ROOM_V2_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
+
+function expectedWarRoomV2Revision() {
+  return String(
+    process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION
+      || process.env.GITHUB_SHA
+      || '',
+  ).trim();
+}
+
+async function installWarRoomV2RevisionRoute(page) {
+  const expected = expectedWarRoomV2Revision();
+  if (!expected) return;
+  const deadline = Date.now() + 180_000;
+  const revisionUrl = WAR_ROOM_V2_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
+  let body = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: { 'cache-control': 'no-cache' },
+        timeout: 10_000,
+      });
+      if (response.ok()) {
+        body = await response.body();
+        break;
+      }
+    } catch {
+      // Blender may still be publishing; keep polling to the bounded deadline.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+  if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
+
+  await page.route('**/war-room/v2/staging/current.glb*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'model/gltf-binary',
+      body,
+      headers: { 'cache-control': 'no-store' },
+    });
+  });
+}
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
     label: 'war-room-android-390x844',
@@ -74,6 +117,11 @@ async function freezeVisualFrame(page) {
 }
 
 async function captureViewportPng(context, page, path) {
+  // WebGL defaults to preserveDrawingBuffer=false. Force one synchronous
+  // renderer paint immediately before CDP captures the compositor surface so
+  // quiet v2 scenes never turn into an all-black PNG after animation freeze.
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(20);
   const session = await context.newCDPSession(page);
   try {
     const { data } = await session.send('Page.captureScreenshot', {
@@ -220,6 +268,9 @@ async function captureWarRoomHealth(page, label) {
 
 async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  if (variant === 'v2') {
+    await installWarRoomV2RevisionRoute(page);
+  }
   await page.addInitScript(({ key, value }) => {
     window.localStorage.setItem(key, value);
   }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: variant });
@@ -241,13 +292,21 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
   await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
 
-  // The cat contract is written from the cat body's real onBeforeRender hook.
-  // A mounted-but-culled/hidden actor therefore cannot satisfy this canary.
-  await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-cat-version', WAR_ROOM_CAT_VERSION);
-  await expect(canvas).toHaveAttribute('data-war-room-cat-count', '1');
-  await expect(canvas).toHaveAttribute('data-war-room-cat-placement', /^(left|right)-sofa-sleeper-v1$/);
-  await expect(canvas).toHaveAttribute('data-war-room-cat-sofa-side', /^(left|right)$/);
+  const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
+  if (await tutorial.isVisible().catch(() => false)) {
+    await tutorial.getByRole('button', { name: /Saltar|Continuar/ }).click();
+    await expect(tutorial).toBeHidden();
+  }
+
+  if (variant !== 'v2') {
+    // The cat is classic-shell decor; keep that canary there without making
+    // the Blender v2 proof depend on hidden legacy geometry.
+    await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-cat-version', WAR_ROOM_CAT_VERSION);
+    await expect(canvas).toHaveAttribute('data-war-room-cat-count', '1');
+    await expect(canvas).toHaveAttribute('data-war-room-cat-placement', /^(left|right)-sofa-sleeper-v1$/);
+    await expect(canvas).toHaveAttribute('data-war-room-cat-sofa-side', /^(left|right)$/);
+  }
   return board3d;
 }
 
