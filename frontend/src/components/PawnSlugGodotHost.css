@@ -30,6 +30,9 @@
   background: #07090b;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
   touch-action: none;
+  overscroll-behavior: contain;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .pawn-slug-godot-host__status {
