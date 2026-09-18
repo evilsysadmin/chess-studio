@@ -280,6 +280,7 @@ REQUIRED_ENEMIES = (
     "res://assets/weapon_atlas.svg",
     "/pawn-slug/enemies/premium-raster/",
     "enemy_premium_raster_v5",
+    "REMOTE_ATLAS_ROWS := 3",
     "load_webp_from_buffer",
     "ENEMY_VISUAL_SCALE",
     '"scout"',

@@ -6,7 +6,7 @@ const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
-const REMOTE_ATLAS_ROWS := 5
+const REMOTE_ATLAS_ROWS := 3
 const FRAMES_PER_TYPE := 8
 const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 0, "shield": 16}
 const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 0, "shield": 2}

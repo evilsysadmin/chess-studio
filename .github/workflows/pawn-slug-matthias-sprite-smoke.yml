@@ -1,6 +1,13 @@
-name: Pawn Slug · Matthias sprite smoke
+name: Pawn Slug · sprite smoke
 
 on:
+  pull_request:
+    paths:
+      - games/pawn-slug-godot/scripts/matthias_art.gd
+      - games/pawn-slug-godot/scripts/enemy_visual.gd
+      - scripts/art/export_matthias_sprite_smoke.py
+      - scripts/art/export_enemy_sprite_smoke.py
+      - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
       - Staging · deploy
@@ -14,19 +21,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: pawn-slug-matthias-sprite-smoke
+  group: pawn-slug-sprite-smoke-${{ github.event.pull_request.number || github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 jobs:
   export:
-    name: Export Matthias runtime sprite PNGs
+    name: Export Pawn Slug runtime sprite PNGs
     if: >
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      DEPLOY_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
 
     steps:
       - name: Checkout deployed commit
@@ -44,14 +52,21 @@ jobs:
           set -euo pipefail
           python3 scripts/art/export_matthias_sprite_smoke.py \
             --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
-            --output-dir /tmp/pawn-slug-matthias-sprite-smoke
+            --output-dir /tmp/pawn-slug-sprite-smoke/matthias
 
-      - name: Upload Matthias sprite smoke evidence
+      - name: Export enemy runtime sprites
+        run: |
+          set -euo pipefail
+          python3 scripts/art/export_enemy_sprite_smoke.py \
+            --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
+            --output-dir /tmp/pawn-slug-sprite-smoke/enemies
+
+      - name: Upload Pawn Slug sprite smoke evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: pawn-slug-matthias-sprite-smoke-${{ env.DEPLOY_SHA }}
-          path: /tmp/pawn-slug-matthias-sprite-smoke/
+          name: pawn-slug-sprite-smoke-${{ env.DEPLOY_SHA }}
+          path: /tmp/pawn-slug-sprite-smoke/
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
