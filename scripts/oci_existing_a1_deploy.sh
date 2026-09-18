@@ -114,10 +114,12 @@ k3s_contract_digest() {
     "$repo/scripts/oci_k3s_assets_root.py"
     "$repo/scripts/oci_k3s_control_root.py"
     "$repo/scripts/oci_k3s_status_root.py"
+    "$repo/scripts/oci_k3s_staging2_root.py"
     "$repo/scripts/oci_k3s_service_prepare.py"
     "$repo/infra/oci/runtime/ocarun.sudoers"
     "$repo/infra/oci/k3s/config.yaml"
     "$repo/infra/oci/k3s/k3s.service"
+    "$repo/infra/oci/gitops/staging2/backend.yaml.tmpl"
   )
   for file in "${files[@]}"; do
     [[ -f "$file" && ! -L "$file" ]] || {

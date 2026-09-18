@@ -12,6 +12,9 @@ client = (ROOT / "scripts/oci_k3s_control.py").read_text(encoding="utf-8")
 root_control = (ROOT / "scripts/oci_k3s_control_root.py").read_text(encoding="utf-8")
 status_client = (ROOT / "scripts/oci_k3s_status.py").read_text(encoding="utf-8")
 status_root = (ROOT / "scripts/oci_k3s_status_root.py").read_text(encoding="utf-8")
+staging2_client = (ROOT / "scripts/oci_k3s_staging2.py").read_text(encoding="utf-8")
+staging2_root = (ROOT / "scripts/oci_k3s_staging2_root.py").read_text(encoding="utf-8")
+staging2_template = (ROOT / "infra/oci/gitops/staging2/backend.yaml.tmpl").read_bytes()
 provision = (ROOT / "scripts/oci_k3s_capability_provision.sh").read_text(encoding="utf-8")
 sudoers = (ROOT / "infra/oci/runtime/ocarun.sudoers").read_text(encoding="utf-8")
 config = (ROOT / "infra/oci/k3s/config.yaml").read_bytes()
@@ -87,13 +90,39 @@ assert '"get", "pods", "-A"' in status_root
 assert '"coredns", "metrics-server"' in status_root
 assert "mem_available_mib=" in status_root and "disk_free_mib=" in status_root and "load1=" in status_root
 
+# staging2 is a shadow workload capability only: ClusterIP + temporary loopback
+# port-forward, exact immutable SHA, local runtime Secret, and no public service.
+ast.parse(staging2_client)
+ast.parse(staging2_root)
+template_sha = hashlib.sha256(staging2_template).hexdigest()
+assert f'TEMPLATE_SHA256 = "{template_sha}"' in staging2_root
+assert 'OPERATIONS = ("deploy", "status", "rollback")' in staging2_client
+assert 'WRAPPER = "/usr/local/sbin/chess-studio-k3s-staging2"' in staging2_client
+assert "sudo --non-interactive" in staging2_client and "kubectl" not in staging2_client
+assert "CHESS_STUDIO_REPO" not in staging2_root and "/opt/chess-studio/repo" not in staging2_root
+assert 'LOCAL_PORT = 4100' in staging2_root
+assert 'NAMESPACE = "chess-studio-staging2"' in staging2_root
+assert "port-forward" in staging2_root and "127.0.0.1" in staging2_root
+assert "OCI_K3S_STAGING2_DEPLOY_OK" in staging2_root
+assert "OCI_K3S_STAGING2_STATUS_OK" in staging2_root
+assert "OCI_K3S_STAGING2_ROLLBACK_OK" in staging2_root
+template_text = staging2_template.decode("utf-8")
+for required in ("type: ClusterIP", "strategy:\n    type: Recreate", "runAsNonRoot: true", "path: /api/health", "path: /api/ready"):
+    assert required in template_text, required
+for forbidden in ("type: NodePort", "type: LoadBalancer", "hostNetwork:", "hostPort:"):
+    assert forbidden not in template_text, forbidden
+
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision
+assert 'python3 -S "$staging2_controller" self-test "$staging2_template"' in provision
 assert 'control_target=/usr/local/sbin/chess-studio-k3s-control' in provision
 assert 'status_target=/usr/local/sbin/chess-studio-k3s-status' in provision
+assert 'staging2_target=/usr/local/sbin/chess-studio-k3s-staging2' in provision
+assert 'staging2_template_target=/etc/chess-studio/staging2-backend.yaml.tmpl' in provision
 assert 'install -o root -g root -m 0755 "$controller" "$control_target"' in provision
 assert 'install -o root -g root -m 0755 "$status_probe" "$status_target"' in provision
 assert "OCI_K3S_STATUS_CAPABILITY_READY" in provision
+assert "OCI_K3S_STAGING2_CAPABILITY_READY" in provision
 assert (
     "CHESS_STUDIO_K3S_CONTROL = /usr/local/sbin/chess-studio-k3s-control start, "
     "/usr/local/sbin/chess-studio-k3s-control rollback"
@@ -101,7 +130,10 @@ assert (
 assert "CHESS_STUDIO_K3S_CONTROL *" not in sudoers
 assert "CHESS_STUDIO_K3S_STATUS = /usr/local/sbin/chess-studio-k3s-status" in sudoers
 assert "CHESS_STUDIO_K3S_STATUS *" not in sudoers
-assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS" in sudoers
+assert "CHESS_STUDIO_K3S_STAGING2 = /usr/local/sbin/chess-studio-k3s-staging2 deploy *" in sudoers
+assert "/usr/local/sbin/chess-studio-k3s-staging2 status" in sudoers
+assert "/usr/local/sbin/chess-studio-k3s-staging2 rollback" in sudoers
+assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS, CHESS_STUDIO_K3S_STAGING2" in sudoers
 
 # K3s lifecycle is an explicit experimental control-plane operation, not a side
 # effect of a successful application release. The explicit start owns its own
