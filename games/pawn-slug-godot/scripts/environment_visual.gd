@@ -7,11 +7,13 @@ extends Node2D
 var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
 var _platforms: Array[Rect2] = []
+var _obstacles: Array[Rect2] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2]) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
+    _obstacles = obstacles.duplicate()
     queue_redraw()
 
 func _ready() -> void:
@@ -26,6 +28,7 @@ func _draw() -> void:
     _draw_midground_defences()
     _draw_ground()
     _draw_platforms()
+    _draw_obstacles()
     _draw_foreground_props()
 
 func _draw_sky() -> void:
@@ -172,6 +175,32 @@ func _draw_platforms() -> void:
             Vector2(platform.end.x - 20.0, minf(_floor_y, support_y + 72.0)),
             Color("242c31"),
             7.0
+        )
+
+func _draw_obstacles() -> void:
+    for index in range(_obstacles.size()):
+        var obstacle := _obstacles[index]
+        var body := Color("4a4134") if index % 2 == 0 else Color("384549")
+        var edge := Color("b18b50") if index % 2 == 0 else Color("7b888a")
+        draw_rect(obstacle, body, true)
+        draw_rect(obstacle, edge, false, 2.0)
+        if obstacle.size.x >= 58.0:
+            draw_line(
+                obstacle.position + Vector2(8.0, 8.0),
+                obstacle.end - Vector2(8.0, 8.0),
+                Color(edge.r, edge.g, edge.b, 0.38),
+                2.0,
+            )
+            draw_line(
+                Vector2(obstacle.end.x - 8.0, obstacle.position.y + 8.0),
+                Vector2(obstacle.position.x + 8.0, obstacle.end.y - 8.0),
+                Color(0.10, 0.11, 0.10, 0.48),
+                2.0,
+            )
+        draw_rect(
+            Rect2(obstacle.position + Vector2(0.0, obstacle.size.y - 7.0), Vector2(obstacle.size.x, 7.0)),
+            Color(0.08, 0.09, 0.09, 0.46),
+            true,
         )
 
 func _draw_foreground_props() -> void:
