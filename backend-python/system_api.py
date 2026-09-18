@@ -58,6 +58,21 @@ def _billing_signature_valid(secret: str, timestamp: str, signature: str, body: 
     return hmac.compare_digest(signature, f"sha256={expected}")
 
 
+async def billing_auth_dependency(request: Request) -> None:
+    """Authenticate the machine-only billing ingest with a short-lived HMAC."""
+    secret = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(503, "Billing telemetry auth is not configured.")
+    raw = await request.body()
+    if not _billing_signature_valid(
+        secret,
+        request.headers.get("x-chess-timestamp", ""),
+        request.headers.get("x-chess-signature", ""),
+        raw,
+    ):
+        raise HTTPException(401, "Invalid billing telemetry signature.")
+
+
 def _parse_billing_costs(body: bytes) -> list[tuple[str, float, str]]:
     payload = json.loads(body.decode("utf-8"))
     rows = payload.get("costs") if isinstance(payload, dict) else None
@@ -145,18 +160,11 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
 
     @router.post("/api/internal/billing-costs", status_code=204)
     @limiter.exempt
-    async def ingest_billing_costs(request: Request):
-        secret = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
-        if not secret:
-            raise HTTPException(503, "Billing telemetry auth is not configured.")
+    async def ingest_billing_costs(
+        request: Request,
+        _billing_auth: None = Depends(billing_auth_dependency),
+    ):
         raw = await request.body()
-        if not _billing_signature_valid(
-            secret,
-            request.headers.get("x-chess-timestamp", ""),
-            request.headers.get("x-chess-signature", ""),
-            raw,
-        ):
-            raise HTTPException(401, "Invalid billing telemetry signature.")
         try:
             costs = _parse_billing_costs(raw)
             exported = record_billing_costs_otel(costs)
