@@ -738,18 +738,18 @@ def add_equestrian_statue(materials):
     dark = materials["piece_dark"]
     brass = materials["brass"]
     stone = materials["stone_dark"]
-    x, y = 4.72, 5.68
+    x, y = 5.02, 5.58
 
-    cube("HOME_PROP_equestrian_plinth", (x, y, 2.58), (0.72, 0.55, 0.46), stone, bevel=0.06)
-    sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.34), (0.72, 0.34, 0.46), dark)
+    cube("HOME_PROP_equestrian_plinth", (x, y, 2.82), (0.90, 0.68, 0.70), stone, bevel=0.06)
+    sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.72), (0.88, 0.40, 0.54), dark)
     curve_tube(
         "HOME_PROP_equestrian_horse_neck",
-        [(x + 0.36, y, 3.48), (x + 0.58, y - 0.02, 3.78), (x + 0.76, y - 0.03, 3.92)],
+        [(x + 0.42, y, 3.90), (x + 0.70, y - 0.02, 4.24), (x + 0.92, y - 0.03, 4.42)],
         0.15,
         dark,
     )
-    sphere("HOME_PROP_equestrian_horse_head", (x + 0.86, y - 0.03, 3.96), (0.24, 0.18, 0.20), dark)
-    cone("HOME_PROP_equestrian_horse_ear", (x + 0.92, y - 0.02, 4.18), 0.055, 0.015, 0.20, dark, vertices=12)
+    sphere("HOME_PROP_equestrian_horse_head", (x + 1.04, y - 0.03, 4.48), (0.28, 0.21, 0.24), dark)
+    cone("HOME_PROP_equestrian_horse_ear", (x + 1.10, y - 0.02, 4.72), 0.055, 0.015, 0.20, dark, vertices=12)
 
     for idx, (dx, dz) in enumerate(((-0.42, 0.0), (-0.18, 0.05), (0.25, 0.02), (0.46, 0.10))):
         curve_tube(
@@ -760,17 +760,17 @@ def add_equestrian_statue(materials):
         )
 
     # Rider: deliberately simple in blockout, only the canonical silhouette.
-    cone("HOME_PROP_equestrian_rider_body", (x - 0.02, y, 4.18), 0.22, 0.15, 0.54, dark, vertices=18)
-    sphere("HOME_PROP_equestrian_rider_head", (x - 0.02, y, 4.58), (0.16, 0.14, 0.17), dark)
+    cone("HOME_PROP_equestrian_rider_body", (x - 0.02, y, 4.78), 0.22, 0.15, 0.54, dark, vertices=18)
+    sphere("HOME_PROP_equestrian_rider_head", (x - 0.02, y, 5.18), (0.16, 0.14, 0.17), dark)
     curve_tube(
         "HOME_PROP_equestrian_rider_arm",
-        [(x + 0.10, y, 4.28), (x + 0.36, y - 0.01, 4.70)],
+        [(x + 0.10, y, 4.88), (x + 0.36, y - 0.01, 4.70)],
         0.055,
         dark,
     )
     curve_tube(
         "HOME_PROP_equestrian_lance",
-        [(x + 0.22, y + 0.04, 4.18), (x - 0.40, y + 0.04, 5.18)],
+        [(x + 0.22, y + 0.04, 4.78), (x - 0.48, y + 0.04, 5.98)],
         0.030,
         brass,
     )
@@ -785,8 +785,8 @@ def add_stairs(materials):
     # Canonical Home: the stair rises from the room toward the back-right
     # landing. The Dungeon opening lives under that landing instead of opening
     # as a giant foreground void.
-    lower_x, lower_y, lower_z = 1.92, 1.52, 0.14
-    upper_x, upper_y, upper_z = 6.72, 5.02, 2.18
+    lower_x, lower_y, lower_z = 3.05, 1.95, 0.48
+    upper_x, upper_y, upper_z = 6.82, 5.02, 2.58
 
     steps = 12
     for i in range(steps):
@@ -1203,12 +1203,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     join_meshes("HOME_PROP_dungeon_runner_compact", ("HOME_PROP_dungeon_runner_",))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 38.0
+    camera_data.lens = 40.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (-1.72, -13.85, 3.08)
-    target = (0.18, 2.72, 1.56)
+    camera.location = (-1.88, -15.25, 3.18)
+    target = (0.18, 2.82, 1.66)
     look_at(camera, target)
     scene.camera = camera
 
