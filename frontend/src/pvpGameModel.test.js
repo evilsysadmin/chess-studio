@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   chooseMoveTo,
+  disconnectGraceSeconds,
   lastMoveFromHistory,
   mergeNewerMatch,
   opponentForMatch,
@@ -50,6 +51,12 @@ describe('PvP War Room model', () => {
     expect(opponentPresenceLabel('reconnecting')).toBe('RECONECTANDO');
     expect(opponentPresenceLabel('disconnected')).toBe('SIN CONEXIÓN');
     expect(opponentPresenceLabel(null)).toBe('SIN DATO');
+  });
+
+  it('proyecta la gracia desde un deadline del servidor sin decidir el resultado', () => {
+    expect(disconnectGraceSeconds('2026-09-18T20:01:00Z', Date.parse('2026-09-18T20:00:00Z'))).toBe(60);
+    expect(disconnectGraceSeconds('2026-09-18T20:00:00Z', Date.parse('2026-09-18T20:00:00Z'))).toBe(0);
+    expect(disconnectGraceSeconds(null, 0)).toBeNull();
   });
 
   it('no deja que una respuesta de polling antigua pise una revisión nueva', () => {
