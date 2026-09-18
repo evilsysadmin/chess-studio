@@ -392,9 +392,15 @@ func _draw_playable_architecture() -> void:
     draw_rect(Rect2(Vector2(182.0, _floor_y - 88.0), Vector2(54.0, 88.0)), Color(0.055, 0.062, 0.064, 0.88), true)
     draw_rect(Rect2(Vector2(190.0, _floor_y - 79.0), Vector2(38.0, 52.0)), Color(0.025, 0.031, 0.033, 0.92), true)
     draw_line(Vector2(198.0, _floor_y - 74.0), Vector2(220.0, _floor_y - 74.0), Color(0.76, 0.60, 0.32, 0.40), 2.0)
-    draw_circle(Vector2(252.0, _floor_y - 112.0), 18.0, Color(0.92, 0.62, 0.24, 0.045))
-    draw_circle(Vector2(252.0, _floor_y - 112.0), 5.0, Color(0.95, 0.70, 0.34, 0.72))
-    draw_line(Vector2(252.0, _floor_y - 107.0), Vector2(252.0, _floor_y - 82.0), Color(0.76, 0.60, 0.32, 0.26), 2.0)
+    _draw_warm_lamp_pool(Vector2(252.0, _floor_y - 112.0), _floor_y - 4.0, 17.0)
+    draw_line(Vector2(252.0, _floor_y - 107.0), Vector2(252.0, _floor_y - 82.0), Color(0.76, 0.60, 0.32, 0.30), 2.0)
+    for mark in range(13):
+        var px := bunker.position.x + 16.0 + _detail_noise(mark, 61.1) * (bunker.size.x - 32.0)
+        var py := bunker.position.y + 28.0 + _detail_noise(mark, 61.7) * (bunker.size.y - 40.0)
+        var radius := 1.2 + _detail_noise(mark, 62.3) * 2.4
+        draw_circle(Vector2(px, py), radius, Color(0.035, 0.040, 0.040, 0.34))
+        if mark % 4 == 0:
+            draw_line(Vector2(px - 8.0, py + 4.0), Vector2(px + 6.0, py - 2.0), Color(0.34, 0.28, 0.20, 0.16), 1.4)
     _draw_sandbags(Vector2(166.0, _floor_y - 145.0), 7)
 
     # Dress every authored platform using its actual Rect2, so visual traversal
@@ -425,8 +431,11 @@ func _draw_playable_architecture() -> void:
             var lamp_x := platform.get_center().x
             var lamp_y := platform.end.y + 20.0
             draw_line(Vector2(lamp_x, platform.end.y), Vector2(lamp_x, lamp_y - 5.0), Color(0.14, 0.16, 0.16, 0.72), 2.0)
-            draw_circle(Vector2(lamp_x, lamp_y), 16.0, Color(0.94, 0.64, 0.26, 0.035))
-            draw_circle(Vector2(lamp_x, lamp_y), 4.5, Color(0.95, 0.70, 0.34, 0.72))
+            _draw_warm_lamp_pool(
+                Vector2(lamp_x, lamp_y),
+                minf(_floor_y - 4.0, lamp_y + 104.0),
+                14.0,
+            )
 
         # Sparse sandbags visually anchor selected catwalks without creating
         # fake full-height walls or changing cover/collision rules.
@@ -443,9 +452,11 @@ func _draw_playable_architecture() -> void:
     draw_line(Vector2(tower_x + 82.0, tower_base), Vector2(tower_x, tower_top + 58.0), Color(0.14, 0.16, 0.16, 0.58), 3.0)
     draw_rect(Rect2(Vector2(tower_x - 12.0, tower_top), Vector2(106.0, 62.0)), Color(0.095, 0.11, 0.115, 0.96), true)
     draw_rect(Rect2(Vector2(tower_x - 4.0, tower_top + 10.0), Vector2(90.0, 30.0)), Color(0.045, 0.055, 0.058, 0.92), true)
-    draw_rect(Rect2(Vector2(tower_x + 8.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.88, 0.59, 0.25, 0.32), true)
-    draw_rect(Rect2(Vector2(tower_x + 55.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.88, 0.59, 0.25, 0.26), true)
+    draw_rect(Rect2(Vector2(tower_x + 4.0, tower_top + 13.0), Vector2(78.0, 23.0)), Color(0.95, 0.62, 0.24, 0.055), true)
+    draw_rect(Rect2(Vector2(tower_x + 8.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.46), true)
+    draw_rect(Rect2(Vector2(tower_x + 55.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.38), true)
     draw_line(Vector2(tower_x - 18.0, tower_top), Vector2(tower_x + 100.0, tower_top), Color(0.61, 0.47, 0.25, 0.55), 3.0)
+    _draw_warm_lamp_pool(Vector2(tower_x + 43.0, tower_top + 36.0), _floor_y - 8.0, 18.0)
 
     # Ground-level drain mouths and rubble give the lower third more material
     # variation without implying new traversal.
@@ -465,6 +476,36 @@ func _draw_playable_architecture() -> void:
             Rect2(Vector2(rubble_x, rubble_y - rubble_h), Vector2(rubble_w, rubble_h)),
             Color(0.20, 0.19, 0.16, 0.44),
             true,
+        )
+
+func _draw_warm_lamp_pool(origin: Vector2, bottom_y: float, radius: float = 16.0) -> void:
+    var reach := maxf(36.0, bottom_y - origin.y)
+    var half_width := minf(94.0, 24.0 + reach * 0.30)
+    var beam := PackedVector2Array([
+        origin + Vector2(-3.5, 3.0),
+        Vector2(origin.x - half_width, bottom_y),
+        Vector2(origin.x + half_width, bottom_y),
+        origin + Vector2(3.5, 3.0),
+    ])
+    draw_colored_polygon(beam, Color(0.96, 0.66, 0.28, 0.030))
+    draw_circle(origin, radius + 22.0, Color(0.98, 0.62, 0.20, 0.018))
+    draw_circle(origin, radius + 10.0, Color(0.98, 0.64, 0.22, 0.034))
+    draw_circle(origin, radius, Color(0.98, 0.68, 0.28, 0.070))
+    draw_circle(origin, 4.5, Color(1.0, 0.76, 0.38, 0.86))
+
+    if bottom_y > origin.y + 44.0:
+        var reflection_w := minf(68.0, half_width * 0.64)
+        draw_line(
+            Vector2(origin.x - reflection_w, bottom_y + 2.0),
+            Vector2(origin.x + reflection_w, bottom_y + 2.0),
+            Color(0.92, 0.54, 0.18, 0.10),
+            3.0,
+        )
+        draw_line(
+            Vector2(origin.x - reflection_w * 0.54, bottom_y + 6.0),
+            Vector2(origin.x + reflection_w * 0.42, bottom_y + 6.0),
+            Color(1.0, 0.72, 0.30, 0.075),
+            1.5,
         )
 
 func _draw_foreground_props() -> void:
