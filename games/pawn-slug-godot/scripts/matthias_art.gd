@@ -9,10 +9,10 @@ extends Node2D
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
-const PISTOL_SHOOT_CANONICAL_ATLAS := preload("res://assets/matthias_pistol_shoot_canonical_v7.png")
-const PISTOL_SHOOT_CANONICAL_COLUMNS := 2
-const PISTOL_SHOOT_CANONICAL_FRAME_SIZE := 256
-const PISTOL_SHOOT_CANONICAL_FPS := 12.0
+const PISTOL_FIRE_CANONICAL_ATLAS := preload("res://assets/matthias_pistol_fire_canonical_v7.png")
+const PISTOL_FIRE_CANONICAL_COLUMNS := 2
+const PISTOL_FIRE_CANONICAL_FRAME_SIZE := 256
+const PISTOL_FIRE_CANONICAL_FPS := 12.0
 
 # Strict Godot atlases: exact 8 x 11 grid, 256 x 256 cells, transparent PNG.
 # Do not normalize or rescale these at runtime: each authored cell is consumed
@@ -521,7 +521,7 @@ func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
         frames.add_animation(action)
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
-        if action == "shoot" and weapon_id == "pistol" and _append_canonical_pistol_shoot_frames(frames):
+        if action == "shoot" and weapon_id == "pistol" and _append_canonical_pistol_fire_frames(frames):
             continue
         var row := int(spec["row"])
         if action == "run":
@@ -549,32 +549,32 @@ func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
 
     return frames
 
-func _append_canonical_pistol_shoot_frames(frames: SpriteFrames) -> bool:
-    if PISTOL_SHOOT_CANONICAL_ATLAS == null:
+func _append_canonical_pistol_fire_frames(frames: SpriteFrames) -> bool:
+    if PISTOL_FIRE_CANONICAL_ATLAS == null:
         return false
     var expected_size := Vector2(
-        PISTOL_SHOOT_CANONICAL_COLUMNS * PISTOL_SHOOT_CANONICAL_FRAME_SIZE,
-        PISTOL_SHOOT_CANONICAL_FRAME_SIZE,
+        PISTOL_FIRE_CANONICAL_COLUMNS * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+        PISTOL_FIRE_CANONICAL_FRAME_SIZE,
     )
-    if PISTOL_SHOOT_CANONICAL_ATLAS.get_size() != expected_size:
+    if PISTOL_FIRE_CANONICAL_ATLAS.get_size() != expected_size:
         push_warning(
             "Canonical pistol shoot atlas has invalid dimensions: %s, expected %s"
-            % [PISTOL_SHOOT_CANONICAL_ATLAS.get_size(), expected_size]
+            % [PISTOL_FIRE_CANONICAL_ATLAS.get_size(), expected_size]
         )
         return false
 
-    frames.set_animation_speed("shoot", PISTOL_SHOOT_CANONICAL_FPS)
-    for frame_index in range(PISTOL_SHOOT_CANONICAL_COLUMNS):
+    frames.set_animation_speed("shoot", PISTOL_FIRE_CANONICAL_FPS)
+    for frame_index in range(PISTOL_FIRE_CANONICAL_COLUMNS):
         var texture := AtlasTexture.new()
-        texture.atlas = PISTOL_SHOOT_CANONICAL_ATLAS
+        texture.atlas = PISTOL_FIRE_CANONICAL_ATLAS
         texture.region = Rect2(
-            frame_index * PISTOL_SHOOT_CANONICAL_FRAME_SIZE,
+            frame_index * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
             0,
-            PISTOL_SHOOT_CANONICAL_FRAME_SIZE,
-            PISTOL_SHOOT_CANONICAL_FRAME_SIZE,
+            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
         )
         frames.add_frame("shoot", texture)
-    return frames.get_frame_count("shoot") == PISTOL_SHOOT_CANONICAL_COLUMNS
+    return frames.get_frame_count("shoot") == PISTOL_FIRE_CANONICAL_COLUMNS
 
 func _full_body_y_for_atlas(image: Image) -> float:
     # Strict 256px cells are intentionally consumed as-authored, but their
