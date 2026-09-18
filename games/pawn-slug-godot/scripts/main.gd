@@ -7,7 +7,6 @@ const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
-const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1380.0
@@ -196,8 +195,11 @@ func _process(delta: float) -> void:
     _check_victory()
     queue_redraw()
 
-func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> void:
+func _on_player_fired(origin: Vector2, direction: Vector2, shot: Dictionary) -> void:
     _alert_enemies(origin.x, GUNFIRE_HEARING_RANGE)
+    var safe_direction := direction.normalized()
+    if safe_direction.length_squared() <= 0.001:
+        safe_direction = Vector2.RIGHT
     var speed := float(shot.get("speed", 760.0))
     var damage := int(shot.get("damage", 1))
     var pellets := maxi(1, int(shot.get("pellets", 1)))
@@ -205,11 +207,11 @@ func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> vo
     var explosive := bool(shot.get("explosive", false))
     var weapon := String(shot.get("weapon", "pistol"))
     combat_audio.play_weapon(weapon)
-    _kick_camera_for_weapon(weapon, direction)
-    _add_muzzle_fx(origin, Vector2(direction, 0.0), weapon)
+    _kick_camera_for_weapon(weapon, safe_direction)
+    _add_muzzle_fx(origin, safe_direction, weapon)
     for _pellet in range(pellets):
         var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
-        var velocity := Vector2(direction, 0.0).rotated(angle) * speed
+        var velocity := safe_direction.rotated(angle) * speed
         projectiles.append({
             "position": origin,
             "velocity": velocity,
@@ -1072,10 +1074,7 @@ func _enemy_fire_cooldown(weapon: String) -> float:
     return randf_range(float(profile["cooldown_min"]), float(profile["cooldown_max"]))
 
 func _update_enemy_projectiles(delta: float) -> void:
-    var player_hitbox := Rect2(
-        player.global_position - PLAYER_HITBOX_HALF,
-        PLAYER_HITBOX_HALF * 2.0,
-    )
+    var player_hitbox := player.combat_hitbox_rect()
     for index in range(enemy_projectiles.size() - 1, -1, -1):
         var projectile := enemy_projectiles[index]
         var position: Vector2 = projectile["position"]
@@ -1396,7 +1395,7 @@ func _draw_explosions() -> void:
         draw_circle(position, radius * 0.48, Color(1.0, 0.42, 0.16, alpha * 0.28))
         draw_arc(position, radius, 0.0, TAU, 32, Color(1.0, 0.72, 0.28, alpha * 0.75), 5.0)
 
-func _kick_camera_for_weapon(weapon: String, direction: float) -> void:
+func _kick_camera_for_weapon(weapon: String, direction: Vector2) -> void:
     var strength := 2.2
     match weapon:
         "machinegun":
@@ -1405,7 +1404,10 @@ func _kick_camera_for_weapon(weapon: String, direction: float) -> void:
             strength = 4.4
         "panzerfaust":
             strength = 7.2
-    _add_camera_kick(Vector2(-direction, -0.18), strength)
+    var safe_direction := direction.normalized()
+    if safe_direction.length_squared() <= 0.001:
+        safe_direction = Vector2.RIGHT
+    _add_camera_kick(Vector2(-safe_direction.x, -safe_direction.y - 0.18), strength)
 
 func _add_camera_kick(direction: Vector2, strength: float) -> void:
     if _reduced_motion or camera == null:

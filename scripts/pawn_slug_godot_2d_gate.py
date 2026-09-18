@@ -135,6 +135,25 @@ REQUIRED_PLAYER_FEEL = (
     "landing_speed",
     "landed.emit",
 )
+REQUIRED_PLAYER_MOBILITY = (
+    "signal fired(origin: Vector2, direction: Vector2",
+    "STANDING_HITBOX_SIZE",
+    "CROUCH_HITBOX_SIZE",
+    "STAND_CLEARANCE_SIZE",
+    "_set_crouching",
+    "_can_stand",
+    "_aim_direction",
+    "_quantize_aim",
+    "_find_safe_respawn_position",
+    "_respawn_position_is_clear",
+    "combat_hitbox_rect",
+)
+REQUIRED_DIRECTIONAL_FIRE = (
+    "func _on_player_fired(origin: Vector2, direction: Vector2",
+    "safe_direction.rotated(angle)",
+    "player.combat_hitbox_rect()",
+    "func _kick_camera_for_weapon(weapon: String, direction: Vector2)",
+)
 REQUIRED_AUDIO = (
     "AudioStreamPlayer",
     "AudioStreamWAV",
@@ -177,6 +196,7 @@ REQUIRED_TOUCH = (
     "DisplayServer.is_touchscreen_available",
     "DisplayServer.get_display_safe_area",
     "move_axis",
+    "aim_vector",
     "crouch_pressed",
     "jump_pressed",
     "fire_pressed",
@@ -273,6 +293,8 @@ def validate() -> None:
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_FEEL, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
+    validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_MOBILITY, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_DIRECTIONAL_FIRE, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_ENEMY_AI, violations)
@@ -314,6 +336,9 @@ def self_test() -> None:
     assert "_make_ambient_loop" in REQUIRED_AUDIO
     assert "AudioStreamWAV.LOOP_FORWARD" in REQUIRED_AUDIO
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
+    assert "_find_safe_respawn_position" in REQUIRED_PLAYER_MOBILITY
+    assert "_aim_direction" in REQUIRED_PLAYER_MOBILITY
+    assert "safe_direction.rotated(angle)" in REQUIRED_DIRECTIONAL_FIRE
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "_enemy_engaged" in REQUIRED_ENEMY_AI
@@ -328,6 +353,7 @@ def self_test() -> None:
     assert "MOVING_FIRE_RECOIL_DECAY_PX" in REQUIRED_MATTHIAS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
+    assert "aim_vector" in REQUIRED_TOUCH
     assert "GIRA EL MÓVIL" in REQUIRED_TOUCH
     assert "orientation_blocked" in REQUIRED_TOUCH
     assert "_touch_controls.fire_pressed" in REQUIRED_MOBILE_PLAYER
