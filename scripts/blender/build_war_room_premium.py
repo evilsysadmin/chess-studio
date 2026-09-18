@@ -451,14 +451,30 @@ def add_room(static, mats):
     cylinder("WR_CREST_pawn_stem", (0, 6.47, 4.43), 0.20, 0.55, mats["brass"], static)
     sphere("WR_CREST_pawn_head", (0, 6.47, 4.86), 0.25, mats["brass"], static)
 
-    # Velvet banners with folds.
+    # Tailored velvet banners. A broad backing cloth and shallow relief pleats
+    # read as fabric at runtime distance; the old row of cylinders looked like
+    # organ pipes once projected through the wide War Room camera.
     for side in (-1, 1):
         center = side * 2.13
-        for fold in range(8):
-            x = center + side * (fold - 3.5) * 0.12
-            cylinder(f"WR_CURTAIN_{side}_{fold}", (x, 6.56, 4.72), 0.105, 2.75,
-                     mats["velvet"] if fold % 2 == 0 else mats["velvet_dark"], static, vertices=18)
-        torus(f"WR_CURTAIN_tie_{side}", (center + side * 0.42, 6.38, 4.0), 0.17, 0.026,
+        cube(f"WR_CURTAIN_panel_{side}", (center, 6.55, 4.72), (0.58, 0.045, 1.36),
+             mats["velvet_dark"], static, bevel=0.045)
+        for fold, offset in enumerate((-0.42, -0.21, 0.0, 0.21, 0.42)):
+            half_height = 1.28 if fold in (0, 4) else (1.34 if fold == 2 else 1.31)
+            z = 4.72 + (1.36 - half_height) * 0.32
+            pleat = cube(f"WR_CURTAIN_pleat_{side}_{fold}",
+                         (center + offset, 6.47, z),
+                         (0.075, 0.040, half_height),
+                         mats["velvet"] if fold % 2 == 0 else mats["velvet_dark"],
+                         static, bevel=0.035)
+            pleat.rotation_euler.y = side * (fold - 2) * 0.010
+        cube(f"WR_CURTAIN_hem_{side}", (center, 6.46, 3.39), (0.55, 0.035, 0.035),
+             mats["velvet"], static, bevel=0.018)
+        cube(f"WR_CURTAIN_rod_{side}", (center, 6.48, 6.18), (0.70, 0.040, 0.040),
+             mats["brass_dark"], static, bevel=0.018)
+        for edge in (-1, 1):
+            sphere(f"WR_CURTAIN_finial_{side}_{edge}",
+                   (center + edge * 0.72, 6.48, 6.18), 0.07, mats["brass"], static)
+        torus(f"WR_CURTAIN_tie_{side}", (center + side * 0.43, 6.36, 4.02), 0.17, 0.026,
               mats["brass"], static, rotation=(math.pi / 2, 0, 0))
 
     # Paintings, shelves, books and decorative vessels.
@@ -704,6 +720,7 @@ def validate():
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
+        "WR_CURTAIN_panel_-1", "WR_CURTAIN_panel_1", "WR_CURTAIN_rod_-1", "WR_CURTAIN_rod_1",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
