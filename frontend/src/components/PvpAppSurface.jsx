@@ -21,8 +21,9 @@ export default function PvpAppSurface({ view, replaceView }) {
       acceptChallenge: flow.acceptChallenge,
       declineChallenge: flow.declineChallenge,
     });
-    return clearPvpRuntime;
   }, [flow.acceptChallenge, flow.challenge, flow.declineChallenge, flow.enterMatch, flow.enroll, flow.leave, flow.lobby, flow.menuStatus, flow.refresh]);
+
+  useEffect(() => clearPvpRuntime, []);
 
   return (
     <>
