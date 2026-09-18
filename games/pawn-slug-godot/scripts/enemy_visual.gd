@@ -12,6 +12,7 @@ const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2}
 const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43}
 const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376}
 const REMOTE_BODY_CENTER_Y := 31.0
+const ENEMY_VISUAL_SCALE := 1.18
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0}
 const WEAPON_FRAME := {"pistol": 0, "machinegun": 1, "shotgun": 2, "panzerfaust": 3}
 const WEAPON_POSE := {
@@ -185,7 +186,7 @@ func _apply_type() -> void:
     _using_remote_body = false
     _body.texture = texture
     _body.visible = true
-    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39))
+    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
     _body.scale = Vector2(body_scale, body_scale)
     _body.position = Vector2(0.0, -98.0 * body_scale)
     _apply_body_frame()
@@ -270,7 +271,7 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
     _using_remote_body = true
     _body.texture = texture
     _body.visible = true
-    var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248))
+    var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248)) * ENEMY_VISUAL_SCALE
     # The canonical enemy raster is authored facing left. Weapon/muzzle sockets
     # remain authored facing right, so flip only the body inside FacingRoot.
     _body.scale = Vector2(-body_scale, body_scale)

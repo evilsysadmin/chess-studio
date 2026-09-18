@@ -31,7 +31,10 @@ const BODY_SCALE := 0.50
 const BODY_SCALE_RATIO := BODY_SCALE / AUTHORED_BODY_SCALE
 const PLAYER_FOOT_Y := 42.0
 const RUN_LEG_MOTION_SAMPLE_STEP := 6
-const RUN_LEG_MOTION_MIN_DIFF := 0.008
+const RUN_LEG_MOTION_MIN_DIFF := 0.025
+const RUN_LEG_MOTION_MIN_SCORE := 0.045
+const RUN_LEG_MOTION_RELATIVE_GAIN := 1.08
+const RUN_LEG_PIXEL_DIFF := 0.20
 const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 
@@ -354,6 +357,10 @@ func _build_full_frames(image: Image) -> SpriteFrames:
         if action == "run":
             row = _select_run_source_row(image)
         for frame_index in range(int(spec["count"])):
+            # Generated contact sheets can occasionally contain a transparent
+            # first cell. Never let a blank authored frame become Matthias' idle.
+            if not _cell_has_visible_pixels(image, row, frame_index):
+                continue
             var texture := AtlasTexture.new()
             texture.atlas = atlas_texture
             texture.region = Rect2(
@@ -363,6 +370,12 @@ func _build_full_frames(image: Image) -> SpriteFrames:
                 FULL_ATLAS_CELL_SIZE,
             )
             frames.add_frame(action, texture)
+
+    if frames.get_frame_count("idle") <= 0:
+        for fallback_action in ["walk", "run", "jump"]:
+            if frames.get_frame_count(fallback_action) > 0:
+                frames.add_frame("idle", frames.get_frame_texture(fallback_action, 0))
+                break
 
     # Crouch remains a gameplay state outside the 10-row authored contract.
     # The first FALL frame is the compact legs-tucked pose in strict-v5. Because
@@ -375,6 +388,15 @@ func _build_full_frames(image: Image) -> SpriteFrames:
     return frames
 
 
+func _cell_has_visible_pixels(image: Image, row: int, column: int) -> bool:
+    var rect := Rect2i(
+        column * FULL_ATLAS_CELL_SIZE,
+        row * FULL_ATLAS_CELL_SIZE,
+        FULL_ATLAS_CELL_SIZE,
+        FULL_ATLAS_CELL_SIZE,
+    )
+    return image.get_region(rect).get_used_rect().size != Vector2i.ZERO
+
 func _select_run_source_row(image: Image) -> int:
     var run_spec: Dictionary = FULL_ACTIONS["run"]
     var walk_spec: Dictionary = FULL_ACTIONS["walk"]
@@ -384,7 +406,10 @@ func _select_run_source_row(image: Image) -> int:
     var walk_score := _lower_body_motion_score(image, walk_row, int(walk_spec["count"]))
     if (
         walk_score > run_score + RUN_LEG_MOTION_MIN_DIFF
-        and walk_score > run_score * 1.20
+        and (
+            walk_score > run_score * RUN_LEG_MOTION_RELATIVE_GAIN
+            or run_score < RUN_LEG_MOTION_MIN_SCORE
+        )
     ):
         push_warning(
             "Strict run row has weak lower-body motion; using authored walk stride for running"
@@ -407,9 +432,17 @@ func _lower_body_motion_score(image: Image, row: int, frame_count: int) -> float
         var base_y := row * FULL_ATLAS_CELL_SIZE
         for local_y in range(y_start, y_end, RUN_LEG_MOTION_SAMPLE_STEP):
             for local_x in range(x_start, x_end, RUN_LEG_MOTION_SAMPLE_STEP):
-                var previous_alpha := image.get_pixel(previous_x + local_x, base_y + local_y).a
-                var current_alpha := image.get_pixel(current_x + local_x, base_y + local_y).a
-                if (previous_alpha > 0.18) != (current_alpha > 0.18):
+                var previous := image.get_pixel(previous_x + local_x, base_y + local_y)
+                var current := image.get_pixel(current_x + local_x, base_y + local_y)
+                if maxf(previous.a, current.a) <= 0.10:
+                    continue
+                var pixel_diff := (
+                    absf(previous.r - current.r)
+                    + absf(previous.g - current.g)
+                    + absf(previous.b - current.b)
+                    + absf(previous.a - current.a)
+                )
+                if pixel_diff >= RUN_LEG_PIXEL_DIFF:
                     changed += 1
                 sampled += 1
     if sampled <= 0:
@@ -530,6 +563,9 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     if not _animation_available(_action):
         _action = "idle"
     _play_action()
+    if _body.sprite_frames.get_frame_count(_action) > 0:
+        _body.frame = 0
+    _body.visible = true
     _sync_muzzle()
 
 func _animation_available(name: String) -> bool:

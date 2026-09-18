@@ -111,6 +111,10 @@ func _ready() -> void:
     _art.name = "MatthiasArt"
     add_child(_art)
     _art.set_weapon(weapon)
+    # Prime the canonical idle pose immediately. Remote atlases may finish after
+    # this node is ready, but the art state must already be valid when they land.
+    _art.set_combat_state(0.0, 0.0, false, 0.0)
+    _art.update_visual(0.0, 0.0, true, false, false, 0.0, facing, false)
 
 func _physics_process(delta: float) -> void:
     invuln_remaining = maxf(0.0, invuln_remaining - delta)
