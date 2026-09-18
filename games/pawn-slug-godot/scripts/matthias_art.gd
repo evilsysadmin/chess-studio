@@ -162,6 +162,8 @@ var _aim_direction := Vector2.RIGHT
 var _one_shot_action := ""
 var _hold_one_shot := false
 var _locomotion_frame_accumulator := 0.0
+var _climbing := false
+var _climb_progress := 0.0
 
 var _facing_root: Node2D
 var _fx_root: Node2D
@@ -192,6 +194,19 @@ func set_aim_direction(direction: Vector2) -> void:
     _aim_direction = safe_direction
     if _flash != null:
         _sync_aim_feedback()
+
+func set_climb_state(active: bool, progress: float = 0.0) -> void:
+    _climbing = active
+    _climb_progress = clampf(progress, 0.0, 1.0)
+    if not _climbing:
+        if _body != null and _body.is_playing() == false:
+            _action = ""
+        return
+    _one_shot_action = ""
+    _hold_one_shot = false
+    _muzzle_remaining = 0.0
+    _recoil_x = 0.0
+    _recoil_rotation = 0.0
 
 func set_weapon(kind: String) -> void:
     var next := kind if SOURCE_RECTS.has(kind) else "pistol"
@@ -229,6 +244,17 @@ func set_combat_state(hurt_remaining: float, invuln_remaining: float, dead: bool
 func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, crouching: bool, landed_now: bool, vertical_speed: float, facing: float, fired_now: bool) -> void:
     _facing = -1.0 if facing < 0.0 else 1.0
     _facing_root.scale.x = _facing
+
+    if _climbing and _body_ready and not _dead:
+        _apply_climb_visual()
+        _muzzle_remaining = 0.0
+        _flash.visible = false
+        _fx_root.position.x = 0.0
+        _fx_root.position.y = 0.0
+        _fx_root.rotation = 0.0
+        _sync_muzzle()
+        _sync_modulate()
+        return
 
     var weapon_visual_ready := _rendered_weapon == _weapon
     var locomoting_now := (
@@ -320,6 +346,31 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _sync_muzzle()
     _sync_modulate()
     _flash.visible = _muzzle_remaining > 0.0 and _body_ready and not _dead and not authored_shoot
+
+func _apply_climb_visual() -> void:
+    # Current strict-v6 atlases have no dedicated climb row yet. Prefer a real
+    # "climb" animation automatically when a future atlas provides it; until
+    # then sample jump -> land frames as a deterministic fallback so the
+    # mechanic can ship independently from the next art pass.
+    var animation := "climb" if _animation_available("climb") else "jump"
+    if not _animation_available(animation):
+        animation = "idle"
+    if not _animation_available(animation):
+        return
+    if _body.animation != animation:
+        _body.animation = animation
+    _body.pause()
+    var frame_count := _body.sprite_frames.get_frame_count(animation)
+    if frame_count <= 0:
+        return
+    var sampled_progress := _climb_progress
+    if animation == "jump" and _climb_progress > 0.72 and _animation_available("land"):
+        animation = "land"
+        if _body.animation != animation:
+            _body.animation = animation
+        frame_count = _body.sprite_frames.get_frame_count(animation)
+        sampled_progress = (_climb_progress - 0.72) / 0.28
+    _body.frame = clampi(int(floor(sampled_progress * float(frame_count))), 0, frame_count - 1)
 
 func _resolve_action(speed: float, on_floor: bool, crouching: bool, vertical_speed: float) -> String:
     if not on_floor:

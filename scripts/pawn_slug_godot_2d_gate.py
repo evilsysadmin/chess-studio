@@ -91,6 +91,8 @@ REQUIRED_MATTHIAS = (
     "SHOOT_FACE_REPAIR_SOURCE_FRAMES",
     "SHOOT_FACE_REPAIR_CUT_X",
     "_repair_distorted_shoot_frames",
+    "set_climb_state",
+    "_apply_climb_visual",
 
 )
 FORBIDDEN_MATTHIAS = (
@@ -212,6 +214,11 @@ REQUIRED_PLAYER_MOBILITY = (
     "_quantize_aim",
     "_find_safe_respawn_position",
     "_respawn_position_is_clear",
+    "_find_ledge_climb_target",
+    "_start_ledge_climb",
+    "_update_ledge_climb",
+    "LEDGE_DOUBLE_TAP_WINDOW",
+    "LEDGE_CLIMB_DURATION",
     "combat_hitbox_rect",
     "_art.set_aim_direction(aim_direction)",
     "_update_fire_input(aim_direction: Vector2)",
@@ -222,12 +229,17 @@ REQUIRED_RUNTIME_PROBE = (
     "can_stand_probe",
     "find_safe_respawn_probe",
     "respawn_position_is_clear_probe",
+    "find_ledge_climb_target_probe",
+    "start_ledge_climb_probe",
+    "is_climbing_probe",
     "quantize_aim_probe",
 )
 REQUIRED_RUNTIME_SMOKE = (
     "crouch conserva la línea de pies",
     "Matthias no puede levantarse dentro de un techo bajo",
     "aim 8-way",
+    "ledge climb detecta una cornisa alcanzable",
+    "el segundo toque puede iniciar el estado de escalada",
     "checkpoint legacy de prueba está realmente bloqueado",
     "respawn final queda libre de geometría",
 )

@@ -23,6 +23,15 @@ func find_safe_respawn_probe(preferred: Vector2) -> Vector2:
 func respawn_position_is_clear_probe(candidate: Vector2) -> bool:
     return _respawn_position_is_clear(candidate)
 
+func find_ledge_climb_target_probe() -> Dictionary:
+    return _find_ledge_climb_target()
+
+func start_ledge_climb_probe(target: Vector2) -> void:
+    _start_ledge_climb(target)
+
+func is_climbing_probe() -> bool:
+    return is_climbing()
+
 func quantize_aim_probe(raw: Vector2) -> Vector2:
     return _quantize_aim(raw)
 

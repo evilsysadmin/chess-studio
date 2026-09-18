@@ -33,6 +33,15 @@ const JUMP_SPEED := 610.0
 const GRAVITY := 1550.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
+const LEDGE_DOUBLE_TAP_WINDOW := 0.34
+const LEDGE_WALL_REACH := 42.0
+const LEDGE_SHOULDER_OFFSET_Y := -36.0
+const LEDGE_CLEARANCE_OFFSET_Y := -58.0
+const LEDGE_SCAN_UP := 118.0
+const LEDGE_SCAN_DOWN := 88.0
+const LEDGE_TARGET_INSET := 10.0
+const LEDGE_CLIMB_DURATION := 0.34
+const LEDGE_CLIMB_ARC_HEIGHT := 16.0
 const MAX_HP := 3
 const STARTING_LIVES := 3
 const STARTING_GRENADES := 4
@@ -111,6 +120,11 @@ var _checkpoint_position := Vector2.ZERO
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
+var _ledge_tap_remaining := 0.0
+var _climbing := false
+var _climb_elapsed := 0.0
+var _climb_from := Vector2.ZERO
+var _climb_target := Vector2.ZERO
 var _fire_was_pressed := false
 var _grenade_was_pressed := false
 var _art
@@ -163,7 +177,11 @@ func _physics_process(delta: float) -> void:
     if dead:
         _update_dead_state(delta)
         return
+    if _climbing:
+        _update_ledge_climb(delta)
+        return
 
+    _ledge_tap_remaining = maxf(0.0, _ledge_tap_remaining - delta)
     var was_on_floor := is_on_floor()
     var axis := _movement_axis()
     if absf(axis) > 0.08:
@@ -188,7 +206,15 @@ func _physics_process(delta: float) -> void:
 
     var aiming_up_while_firing := _fire_pressed() and _aim_vertical_axis() < -0.5
     var jump_pressed := _jump_pressed() and not aiming_up_while_firing
-    if jump_pressed and not _jump_was_pressed:
+    var jump_just_pressed := jump_pressed and not _jump_was_pressed
+    if jump_just_pressed:
+        var ledge := _find_ledge_climb_target()
+        if not is_on_floor() and not ledge.is_empty():
+            if _ledge_tap_remaining > 0.0:
+                _jump_was_pressed = jump_pressed
+                _start_ledge_climb(Vector2(ledge["target"]))
+                return
+            _ledge_tap_remaining = LEDGE_DOUBLE_TAP_WINDOW
         _jump_buffer_remaining = JUMP_BUFFER_TIME
     else:
         _jump_buffer_remaining = maxf(0.0, _jump_buffer_remaining - delta)
@@ -426,6 +452,10 @@ func _begin_death() -> void:
     dead = true
     hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
+    _climbing = false
+    _ledge_tap_remaining = 0.0
+    if _art != null:
+        _art.set_climb_state(false, 0.0)
     lives = maxi(0, lives - 1)
     velocity = Vector2.ZERO
     fire_cooldown = float(WEAPONS[weapon]["cadence"])
@@ -478,6 +508,9 @@ func _respawn() -> void:
     _death_remaining = 0.0
     _coyote_remaining = 0.0
     _jump_buffer_remaining = 0.0
+    _ledge_tap_remaining = 0.0
+    _climbing = false
+    _climb_elapsed = 0.0
     _jump_was_pressed = false
     _fire_was_pressed = false
     _grenade_was_pressed = false
@@ -506,6 +539,121 @@ func _set_crouching(value: bool, force := false) -> void:
     _crouching = value
     rect.size = CROUCH_HITBOX_SIZE if value else STANDING_HITBOX_SIZE
     _collision_shape.position.y = CROUCH_HITBOX_OFFSET_Y if value else 0.0
+
+func _find_ledge_climb_target() -> Dictionary:
+    if _crouching or _collision_shape == null:
+        return {}
+    var direction := -1.0 if facing < 0.0 else 1.0
+    var half_width := STANDING_HITBOX_SIZE.x * 0.5
+    var shoulder_from := global_position + Vector2(direction * (half_width - 2.0), LEDGE_SHOULDER_OFFSET_Y)
+    var shoulder_to := shoulder_from + Vector2(direction * LEDGE_WALL_REACH, 0.0)
+    var shoulder_query := PhysicsRayQueryParameters2D.create(
+        shoulder_from,
+        shoulder_to,
+        collision_mask,
+        [get_rid()],
+    )
+    shoulder_query.collide_with_bodies = true
+    shoulder_query.collide_with_areas = false
+    var wall_hit := get_world_2d().direct_space_state.intersect_ray(shoulder_query)
+    if wall_hit.is_empty():
+        return {}
+
+    var clear_from := global_position + Vector2(direction * (half_width - 2.0), LEDGE_CLEARANCE_OFFSET_Y)
+    var clear_to := clear_from + Vector2(direction * LEDGE_WALL_REACH, 0.0)
+    var clear_query := PhysicsRayQueryParameters2D.create(
+        clear_from,
+        clear_to,
+        collision_mask,
+        [get_rid()],
+    )
+    clear_query.collide_with_bodies = true
+    clear_query.collide_with_areas = false
+    if not get_world_2d().direct_space_state.intersect_ray(clear_query).is_empty():
+        return {}
+
+    var wall_position: Vector2 = wall_hit["position"]
+    var scan_x := wall_position.x + direction * LEDGE_TARGET_INSET
+    var down_query := PhysicsRayQueryParameters2D.create(
+        Vector2(scan_x, global_position.y - LEDGE_SCAN_UP),
+        Vector2(scan_x, global_position.y + LEDGE_SCAN_DOWN),
+        collision_mask,
+        [get_rid()],
+    )
+    down_query.collide_with_bodies = true
+    down_query.collide_with_areas = false
+    var top_hit := get_world_2d().direct_space_state.intersect_ray(down_query)
+    if top_hit.is_empty():
+        return {}
+
+    var top_position: Vector2 = top_hit["position"]
+    if top_position.y >= global_position.y - 8.0:
+        return {}
+    var target := Vector2(
+        wall_position.x + direction * (half_width + LEDGE_TARGET_INSET),
+        top_position.y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0,
+    )
+    if not _respawn_position_is_clear(target):
+        target.x += direction * 8.0
+        if not _respawn_position_is_clear(target):
+            return {}
+    return {
+        "target": target,
+        "ledge": top_position,
+    }
+
+func _start_ledge_climb(target: Vector2) -> void:
+    if dead or is_game_over:
+        return
+    _set_crouching(false, true)
+    _climbing = true
+    _climb_elapsed = 0.0
+    _climb_from = global_position
+    _climb_target = target
+    _ledge_tap_remaining = 0.0
+    _jump_buffer_remaining = 0.0
+    velocity = Vector2.ZERO
+    if _art != null:
+        _art.set_climb_state(true, 0.0)
+
+func _update_ledge_climb(delta: float) -> void:
+    _climb_elapsed = minf(LEDGE_CLIMB_DURATION, _climb_elapsed + delta)
+    var progress := clampf(_climb_elapsed / LEDGE_CLIMB_DURATION, 0.0, 1.0)
+    var eased := progress * progress * (3.0 - 2.0 * progress)
+    var arc := -sin(progress * PI) * LEDGE_CLIMB_ARC_HEIGHT
+    global_position = _climb_from.lerp(_climb_target, eased) + Vector2(0.0, arc)
+    velocity = Vector2.ZERO
+
+    _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+    _art.set_aim_direction(Vector2(facing, 0.0))
+    _art.set_climb_state(true, progress)
+    _art.update_visual(
+        delta,
+        0.0,
+        false,
+        false,
+        false,
+        -1.0,
+        facing,
+        false,
+    )
+
+    if progress < 1.0:
+        queue_redraw()
+        return
+    if not _respawn_position_is_clear(_climb_target):
+        _climbing = false
+        _art.set_climb_state(false, 1.0)
+        velocity.y = 60.0
+        return
+    global_position = _climb_target
+    _climbing = false
+    _art.set_climb_state(false, 1.0)
+    _last_safe_position = global_position
+    queue_redraw()
+
+func is_climbing() -> bool:
+    return _climbing
 
 func _can_stand() -> bool:
     return _shape_position_is_clear(
