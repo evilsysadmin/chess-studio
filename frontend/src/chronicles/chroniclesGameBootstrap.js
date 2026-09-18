@@ -95,7 +95,7 @@ export async function chroniclesBootstrapTacticsWorld({
       requestController.abort();
       return localBootstrap(fallbackMapId, seed, 'bootstrap-deadline');
     })
-    .catch(() => localBootstrap(mapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
+    .catch(() => localBootstrap(fallbackMapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
 
   const request = Promise.resolve()
     .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
