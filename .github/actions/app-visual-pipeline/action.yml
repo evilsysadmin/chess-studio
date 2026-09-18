@@ -47,6 +47,8 @@ runs:
     - name: Capture affected canonical surfaces
       if: inputs.mode == 'hans' || (inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none')
       shell: bash
+      env:
+        APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
       run: |
         set -euo pipefail
         groups='${{ steps.scope.outputs.capture_groups }}'
