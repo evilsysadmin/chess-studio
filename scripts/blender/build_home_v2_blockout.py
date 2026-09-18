@@ -393,7 +393,7 @@ def add_table_and_board(materials):
     )
 
     for side in (-1, 1):
-        x = side * 4.02
+        x = -4.02 if side < 0 else 3.18
         chair_y = 0.58 if side < 0 else 1.02
         cube(f"HOME_PROP_chair_frame_{side}", (x, chair_y, 0.50), (0.68, 0.66, 0.12), wood, bevel=0.055)
         cube(f"HOME_PROP_chair_cushion_{side}", (x, chair_y - 0.05, 0.70), (0.62, 0.60, 0.18), banner, bevel=0.14)
@@ -689,7 +689,7 @@ def add_equestrian_statue(materials):
     dark = materials["piece_dark"]
     brass = materials["brass"]
     stone = materials["stone_dark"]
-    x, y = 5.28, 5.72
+    x, y = 4.72, 5.68
 
     cube("HOME_PROP_equestrian_plinth", (x, y, 2.58), (0.72, 0.55, 0.46), stone, bevel=0.06)
     sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.34), (0.72, 0.34, 0.46), dark)
@@ -736,8 +736,8 @@ def add_stairs(materials):
     # Canonical Home: the stair rises from the room toward the back-right
     # landing. The Dungeon opening lives under that landing instead of opening
     # as a giant foreground void.
-    lower_x, lower_y, lower_z = 2.95, 1.54, 0.14
-    upper_x, upper_y, upper_z = 7.15, 5.05, 2.20
+    lower_x, lower_y, lower_z = 1.92, 1.52, 0.14
+    upper_x, upper_y, upper_z = 6.72, 5.02, 2.18
 
     steps = 12
     for i in range(steps):
@@ -773,15 +773,15 @@ def add_stairs(materials):
     cube("HOME_ARCH_dungeon_bridge_lip", (7.55, 4.72, 2.28), (1.34, 0.10, 0.16), stone, bevel=0.04)
 
     # Dungeon portal tucked under the upper landing.
-    cube("HOME_ARCH_dungeon_void", (7.55, 6.54, 0.72), (1.18, 0.08, 1.18), dark, bevel=0.10)
-    arch("HOME_ARCH_dungeon_arch", 7.55, 6.22, 2.55, 0.84, 2.22, -0.48, stone)
-    arch("HOME_ARCH_dungeon_arch_inner", 7.55, 6.08, 2.08, 0.72, 1.92, -0.38, materials["stone_dark"])
+    cube("HOME_ARCH_dungeon_void", (7.15, 5.48, 0.72), (1.18, 0.08, 1.18), dark, bevel=0.10)
+    arch("HOME_ARCH_dungeon_arch", 7.15, 5.22, 2.72, 0.88, 2.32, -0.52, stone)
+    arch("HOME_ARCH_dungeon_arch_inner", 7.15, 5.08, 2.20, 0.76, 2.02, -0.42, materials["stone_dark"])
 
     for idx, x in enumerate((6.82, 7.18, 7.54, 7.90, 8.26)):
-        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 6.04, 0.66), (0.035, 0.035, 0.78), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_gate_cross", (7.54, 6.02, 0.64), (0.88, 0.040, 0.045), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_fire_left", (7.16, 5.96, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
-    cube("HOME_PROP_dungeon_fire_right", (7.94, 5.96, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
+        cube(f"HOME_PROP_dungeon_gate_{idx}", (x - 0.40, 4.98, 0.66), (0.035, 0.035, 0.78), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_gate_cross", (7.14, 4.96, 0.64), (0.88, 0.040, 0.045), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_fire_left", (6.78, 4.92, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
+    cube("HOME_PROP_dungeon_fire_right", (7.50, 4.92, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
 
     # Balustrades track the rising stair.
     rail_points = []
@@ -981,14 +981,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 5.54, 2.62), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 5.54, 2.92), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
-    cube("HOME_ARCH_window_right", (7.18, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
-    gothic_arch("HOME_ARCH_window_right_frame", 7.18, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass"], bevel=0.12)
+    cube("HOME_ARCH_window_right", (6.72, 6.62, 3.72), (1.82, 0.07, 2.00), materials["window"], bevel=0.08)
+    gothic_arch("HOME_ARCH_window_right_frame", 6.72, 6.48, 3.72, 3.08, 5.62, 1.46, materials["brass"], bevel=0.12)
     for offset in (-0.48, 0.0, 0.48):
-        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.18 + offset * 1.28, 6.46, 3.62), (0.035, 0.045, 1.56), materials["brass"], bevel=0.012)
+        cube(f"HOME_PROP_window_mullion_v_{offset}", (6.72 + offset * 1.72, 6.46, 3.62), (0.035, 0.045, 1.56), materials["brass"], bevel=0.012)
     for idx, z in enumerate((2.78, 3.55, 4.25)):
-        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.18, 6.46, z + 0.10), (1.13, 0.045, 0.030), materials["brass"], bevel=0.012)
-    cube("HOME_PROP_window_sill", (7.18, 6.20, 1.80), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
-    sphere("HOME_PROP_window_moon", (7.58, 6.40, 4.52), (0.46, 0.035, 0.46), materials["moon"])
+        cube(f"HOME_PROP_window_mullion_h_{idx}", (6.72, 6.46, z + 0.10), (1.13, 0.045, 0.030), materials["brass"], bevel=0.012)
+    cube("HOME_PROP_window_sill", (6.72, 6.20, 1.68), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
+    sphere("HOME_PROP_window_moon", (7.28, 6.40, 4.58), (0.46, 0.035, 0.46), materials["moon"])
 
     for name, x in (("far_left", -7.55), ("center", 0.0), ("far_right", 7.55)):
         add_banner(name, x, materials)
@@ -1010,13 +1010,26 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         obj.scale.x *= 1.28
         obj.scale.z *= 1.58
 
+    center_crest_origin = Vector((-0.02, 5.73, 4.62))
+    for obj in list(bpy.data.objects):
+        if (
+            obj.name.endswith("_center")
+            and (
+                obj.name.startswith("HOME_PROP_banner_horse_")
+                or obj.name.startswith("HOME_PROP_banner_mark_")
+            )
+        ):
+            rel = obj.location - center_crest_origin
+            obj.location = center_crest_origin + rel * 1.62 + Vector((0.0, -0.01, -0.10))
+            obj.scale *= 1.62
+
     add_table_and_board(materials)
     add_armor(materials)
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
             origin = Vector((-4.92, 5.10, 0.24))
-            obj.location = origin + (obj.location - origin) * 1.34
-            obj.scale *= 1.34
+            obj.location = origin + (obj.location - origin) * 1.03
+            obj.scale *= 1.03
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
