@@ -295,6 +295,11 @@ def add_table_and_board(materials):
         panel_x = side * 2.58
         cube(f"HOME_PROP_table_front_panel_{side}", (panel_x, -0.70, 0.76), (0.48, 0.055, 0.30), materials["wood"], bevel=0.055)
         sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.77, 0.77), (0.095, 0.025, 0.095), materials["gold"])
+        leg_x = side * 3.12
+        cube(f"HOME_PROP_table_front_leg_plinth_{side}", (leg_x, -0.40, 0.24), (0.26, 0.28, 0.18), wood, bevel=0.045)
+        cube(f"HOME_PROP_table_front_leg_shaft_{side}", (leg_x, -0.40, 0.58), (0.18, 0.20, 0.28), wood, bevel=0.05)
+        cube(f"HOME_PROP_table_front_leg_capital_{side}", (leg_x, -0.40, 0.91), (0.28, 0.28, 0.11), wood, bevel=0.045)
+        cylinder(f"HOME_PROP_table_front_leg_band_{side}", (leg_x, -0.40, 0.69), 0.22, 0.055, materials["gold"], vertices=18)
 
     # The canonical board nearly fills the table width; the earlier blockout
     # made it read like a travel set.
@@ -416,7 +421,13 @@ def add_table_and_board(materials):
                 cylinder(f"HOME_PROP_bench_foot_{side}_{dx}_{by}", (bx, by, 0.05), 0.12, 0.10, materials["dark"], vertices=16)
         for tuft in (-0.72, 0.0, 0.72):
             sphere(f"HOME_PROP_bench_tuft_{side}_{tuft}", (x, 1.2 + tuft, 0.91), (0.07, 0.035, 0.035), materials["dark"])
-            sphere(f"HOME_PROP_bench_front_button_{side}_{tuft}", (x - side * 0.70, 1.2 + tuft, 0.73), (0.030, 0.030, 0.030), materials["gold"])
+        for stud, sy in enumerate((-0.88, -0.48, -0.08, 0.32, 0.72, 1.12, 1.52)):
+            sphere(
+                f"HOME_PROP_bench_front_button_{side}_{stud}",
+                (x - side * 0.70, 0.80 + sy, 0.72),
+                (0.027, 0.027, 0.027),
+                materials["gold"],
+            )
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
@@ -476,7 +487,12 @@ def add_bookshelf(materials):
     for idx, z in enumerate((0.55, 1.25, 1.95, 2.65, 3.35, 4.05, 4.75)):
         cube(f"HOME_PROP_library_shelf_{idx}", (x, y - 0.42, z), (1.55, 0.12, 0.075), wood, bevel=0.025)
     for side in (-1, 1):
-        cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), brass, bevel=0.025)
+        cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), wood, bevel=0.025)
+        cylinder(f"HOME_PROP_library_post_band_{side}", (x + side * 1.34, y - 0.46, 2.42), 0.14, 0.055, brass, vertices=16)
+    cube("HOME_PROP_library_cabinet", (x, y - 0.38, 0.46), (1.48, 0.24, 0.40), wood, bevel=0.05)
+    for side in (-1, 1):
+        cube(f"HOME_PROP_library_door_{side}", (x + side * 0.72, y - 0.64, 0.46), (0.62, 0.035, 0.32), materials["wood"], bevel=0.035)
+        sphere(f"HOME_PROP_library_handle_{side}", (x + side * 0.16, y - 0.69, 0.46), (0.035, 0.018, 0.035), brass)
     # Book masses only: enough to match the canonical silhouette before detailing.
     book_colors = (materials["book_red"], materials["book_green"], materials["book_brown"], materials["book_olive"])
     for row, z in enumerate((0.82, 1.5, 2.18, 2.86, 3.54, 4.16)):
@@ -922,7 +938,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             motif = cube(
                 f"HOME_PROP_rug_medallion_{row}_{col}",
                 (x, y, 0.060),
-                (0.035 + 0.008 * ((row + col) % 2), 0.035 + 0.008 * ((row + col) % 2), 0.008),
+                (0.055 + 0.010 * ((row + col) % 2), 0.055 + 0.010 * ((row + col) % 2), 0.010),
                 materials["gold"] if (row + col) % 3 == 0 else materials["stone_dark"],
             )
             motif.rotation_euler[2] = math.radians(45)
@@ -975,6 +991,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.34), (0.27, 0.26, 0.14), materials["stone"], bevel=0.045)
         sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.10, 2.70), (0.10, 0.08, 0.10), materials["gold"])
     cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
+    cube("HOME_PROP_fireplace_right_shield", (5.45, 5.04, 3.38), (0.34, 0.06, 0.42), materials["wood"], bevel=0.08)
+    sphere("HOME_PROP_fireplace_right_shield_emblem", (5.45, 4.96, 3.40), (0.12, 0.025, 0.12), materials["gold"])
+    cylinder("HOME_PROP_fireplace_right_bust_base", (4.45, 5.02, 2.76), 0.14, 0.12, materials["stone_dark"], vertices=18)
+    sphere("HOME_PROP_fireplace_right_bust", (4.45, 5.02, 3.08), (0.18, 0.14, 0.22), materials["arch_stone"])
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
@@ -1123,13 +1143,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 125, (0.68, 0.52, 0.39), 4.8, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 65, (0.10, 0.22, 0.40), 4.5, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 125, (0.68, 0.38, 0.22), 3.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 62, (0.34, 0.24, 0.18), 7.0, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 92, (0.68, 0.52, 0.39), 4.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 48, (0.10, 0.22, 0.40), 4.2, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 96, (0.68, 0.38, 0.22), 3.0, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 82, (0.34, 0.24, 0.18), 6.5, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.15, 0.32, 0.62), 3.8, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 185, (0.88, 0.68, 0.48), 3.0, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 105, (0.82, 0.48, 0.24), 2.2, target=(0, -0.72, 0.58))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 150, (0.88, 0.68, 0.48), 2.8, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 135, (0.82, 0.48, 0.24), 2.0, target=(0, -0.72, 0.42))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 235, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
