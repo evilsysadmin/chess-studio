@@ -1,0 +1,39 @@
+name: Observability · Billing costs
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-billing-cost-export
+  cancel-in-progress: true
+
+jobs:
+  export:
+    name: Export OCI + Cloudflare cost
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_API_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Static billing exporter self-test
+        run: python3 -S scripts/billing_cost_export.py --self-test
+
+      - name: Publish current provider costs to Grafana
+        run: python3 scripts/billing_cost_export.py
