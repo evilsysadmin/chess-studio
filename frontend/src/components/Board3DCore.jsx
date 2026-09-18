@@ -183,7 +183,9 @@ function Board3DCanvas({
     const host = hostRef.current;
     if (!host) return undefined;
 
-    const rendererAttempts = warRoomRendererAttempts();
+    const rendererAttempts = warRoomRendererAttempts({
+      preserveDrawingBuffer: import.meta.env.VITE_APP_VISUAL_CAPTURE === 'true',
+    });
     let renderer = null;
     let rendererAttempt = null;
     let rendererError = null;
