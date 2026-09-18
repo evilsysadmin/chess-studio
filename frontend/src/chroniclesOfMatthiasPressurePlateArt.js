@@ -14,16 +14,16 @@ function worldForEntry(entry, scenePlan) {
   const centerX = Number(scenePlan?.center?.x ?? 0);
   const centerY = Number(scenePlan?.center?.y ?? 0);
   return {
-    x: (Number(entry?.x || 0) - centerX) * CELL,
-    z: (Number(entry?.y || 0) - centerY) * CELL,
+    x: (Number(entry?.position?.x || 0) - centerX) * CELL,
+    z: (Number(entry?.position?.y || 0) - centerY) * CELL,
   };
 }
 
 export function chroniclesTacticsTrapEntries(scenePlan) {
   return (scenePlan?.content || []).filter((entry) => (
     entry?.kind === 'trap'
-    && Number.isFinite(Number(entry.x))
-    && Number.isFinite(Number(entry.y))
+    && Number.isFinite(Number(entry?.position?.x))
+    && Number.isFinite(Number(entry?.position?.y))
   ));
 }
 
