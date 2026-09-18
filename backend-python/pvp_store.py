@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pymongo import ReturnDocument
-from pymongo.errors import PyMongoError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
@@ -22,6 +23,9 @@ _memory_challenges: dict[str, dict[str, Any]] = {}
 _memory_matches: dict[str, dict[str, Any]] = {}
 _memory_lock: asyncio.Lock | None = None
 _memory_lock_loop = None
+_index_lock: asyncio.Lock | None = None
+_index_lock_loop = None
+_indexes_ready = False
 
 
 def utcnow() -> datetime:
@@ -37,10 +41,62 @@ def _memory_guard() -> asyncio.Lock:
     return _memory_lock
 
 
+def _index_guard() -> asyncio.Lock:
+    global _index_lock, _index_lock_loop
+    loop = asyncio.get_running_loop()
+    if _index_lock is None or _index_lock_loop is not loop:
+        _index_lock = asyncio.Lock()
+        _index_lock_loop = loop
+    return _index_lock
+
+
+async def _ensure_indexes(roster, challenges, matches) -> None:
+    """Declare Mongo invariants and hot-query indexes once per process."""
+    global _indexes_ready
+    if _indexes_ready:
+        return
+    async with _index_guard():
+        if _indexes_ready:
+            return
+        try:
+            await roster.create_index(
+                "last_seen",
+                expireAfterSeconds=ROSTER_TTL_SECONDS,
+                name="pvp_roster_last_seen_ttl",
+            )
+            await challenges.create_index(
+                [("pair_key", 1)],
+                unique=True,
+                partialFilterExpression={"status": "pending", "pair_key": {"$type": "string"}},
+                name="pvp_pending_pair_unique",
+            )
+            await challenges.create_index(
+                [("challenger", 1), ("status", 1), ("created_at", -1)],
+                name="pvp_challenger_status_created",
+            )
+            await challenges.create_index(
+                [("opponent", 1), ("status", 1), ("created_at", -1)],
+                name="pvp_opponent_status_created",
+            )
+            await matches.create_index(
+                [("white", 1), ("status", 1), ("updated_at", -1)],
+                name="pvp_white_status_updated",
+            )
+            await matches.create_index(
+                [("black", 1), ("status", 1), ("updated_at", -1)],
+                name="pvp_black_status_updated",
+            )
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("No se pudieron preparar los índices del 1v1.") from exc
+        _indexes_ready = True
+
+
 async def _collections():
     db = await get_db()
     if db is not None:
-        return db[ROSTER_COLLECTION], db[CHALLENGE_COLLECTION], db[MATCH_COLLECTION]
+        collections = db[ROSTER_COLLECTION], db[CHALLENGE_COLLECTION], db[MATCH_COLLECTION]
+        await _ensure_indexes(*collections)
+        return collections
     if persistent_storage_required():
         raise PersistentStorageUnavailable("MongoDB no está disponible para el 1v1 de War Room.")
     return None
@@ -53,6 +109,7 @@ def _public(doc: dict[str, Any] | None) -> dict[str, Any] | None:
     if "_id" in row:
         row.setdefault("id", str(row["_id"]))
         row.pop("_id", None)
+    row.pop("pair_key", None)
     return row
 
 
@@ -62,6 +119,12 @@ def _active_since(now: datetime | None = None) -> datetime:
 
 def _challenge_cutoff(now: datetime | None = None) -> datetime:
     return (now or utcnow()) - timedelta(seconds=CHALLENGE_TTL_SECONDS)
+
+
+def _challenge_pair_key(challenger: str, opponent: str) -> str:
+    """Stable unordered identity for one pair without leaking names into indexes."""
+    left, right = sorted((str(challenger), str(opponent)))
+    return hashlib.sha256(f"{left}\0{right}".encode("utf-8")).hexdigest()
 
 
 async def upsert_roster(username: str, *, rating: int, tier: str) -> dict[str, Any]:
@@ -151,6 +214,7 @@ async def roster_member(username: str, now: datetime | None = None) -> dict[str,
 
 async def create_challenge(challenge: dict[str, Any]) -> dict[str, Any]:
     collections = await _collections()
+    pair_key = _challenge_pair_key(challenge["challenger"], challenge["opponent"])
     if collections is None:
         async with _memory_guard():
             pair = {challenge["challenger"], challenge["opponent"]}
@@ -171,7 +235,19 @@ async def create_challenge(challenge: dict[str, Any]) -> dict[str, Any]:
         })
         if existing:
             return _public(existing) or challenge
-        await challenges.insert_one({"_id": challenge["id"], **{k: v for k, v in challenge.items() if k != "id"}})
+        try:
+            await challenges.insert_one({
+                "_id": challenge["id"],
+                **{k: v for k, v in challenge.items() if k != "id"},
+                "pair_key": pair_key,
+            })
+        except DuplicateKeyError:
+            # Two callers may both observe "no pending challenge". The unique
+            # partial index is the authority; the loser reuses the winner.
+            winner = await challenges.find_one({"status": "pending", "pair_key": pair_key})
+            if winner:
+                return _public(winner) or challenge
+            raise
         return challenge
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo crear el reto 1v1.") from exc
