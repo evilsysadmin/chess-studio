@@ -235,20 +235,35 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.post("/challenges/{challenge_id}/accept")
     async def accept(challenge_id: str, username: str = Depends(auth_dependency)):
         challenge_row = await store.get_challenge(challenge_id)
-        if not challenge_row or challenge_row.get("status") != "pending" or challenge_row.get("opponent") != username:
+        if not challenge_row or challenge_row.get("opponent") != username:
             raise HTTPException(404, "Reto pendiente no encontrado.")
-        if not await store.roster_member(challenge_row["challenger"]):
-            raise HTTPException(409, "El rival ya no está disponible.")
-        if not await store.roster_member(username):
-            raise HTTPException(409, "Ya no figuras en el roster.")
+
+        challenge_status = challenge_row.get("status")
+        if challenge_status == "accepted" and challenge_row.get("match_id"):
+            existing = await store.get_match(challenge_row["match_id"])
+            if existing:
+                # Idempotent response after a lost HTTP response/retry.
+                return {"match": _public_match(existing, username)}
+        elif challenge_status != "pending":
+            raise HTTPException(404, "Reto pendiente no encontrado.")
+
+        # Once the challenge is already accepted we are repairing/resuming the
+        # storage saga and must not require players to still be in the ephemeral
+        # roster. Fresh acceptance still requires both live roster entries.
+        if challenge_status == "pending":
+            if not await store.roster_member(challenge_row["challenger"]):
+                raise HTTPException(409, "El rival ya no está disponible.")
+            if not await store.roster_member(username):
+                raise HTTPException(409, "Ya no figuras en el roster.")
 
         challenger = challenge_row["challenger"]
         challenger_white = bool(secrets.randbits(1))
         white = challenger if challenger_white else username
         black = username if challenger_white else challenger
         now = store.utcnow()
+        match_id = str(challenge_row.get("match_id") or challenge_id)
         match = {
-            "id": uuid.uuid4().hex,
+            "id": match_id,
             "white": white,
             "black": black,
             "white_rating": int(challenge_row["challenger_rating"] if white == challenger else challenge_row["opponent_rating"]),
@@ -269,9 +284,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         accepted = await store.accept_challenge(challenge_id, username, match)
         if not accepted:
             raise HTTPException(409, "El reto ya no está disponible.")
-        await store.leave_roster(white)
-        await store.leave_roster(black)
-        return {"match": _public_match(match, username)}
+        _accepted_challenge, accepted_match = accepted
+        await store.leave_roster(accepted_match["white"])
+        await store.leave_roster(accepted_match["black"])
+        return {"match": _public_match(accepted_match, username)}
 
     @router.get("/matches/{match_id}")
     @limiter.limit("60/minute")
