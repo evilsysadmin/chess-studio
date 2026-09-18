@@ -163,6 +163,19 @@ for (const capture of CAPTURES) {
       if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
+      if (capture.hasTouch) {
+        // On narrow layouts the mission, action pad and party HUD flow below the
+        // battlefield. Keep the battlefield crop for renderer inspection, and
+        // add a full-page proof so human review can judge the complete mobile UI.
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await page.waitForTimeout(120);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/chronicles-tactics-full-${capture.label}.png`,
+          fullPage: true,
+          animations: 'disabled',
+          timeout: 30_000,
+        });
+      }
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
         `${JSON.stringify({ schema: 2, scope: 'chronicles-tactics', capture: { label: capture.label, ...health } }, null, 2)}\n`,
