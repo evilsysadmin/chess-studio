@@ -801,6 +801,35 @@ def add_gothic_canon_v2(static, mats):
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
 
+    def add_pointed_arch_frame(prefix, cx):
+        """Slim timber ribs that give the rear wall gothic vertical rhythm."""
+        y = 6.43
+        span = 1.48
+        jamb_bottom = 3.28
+        shoulder = 5.58
+        peak = 6.34
+        for side in (-1, 1):
+            cube(
+                f"WR_CANON_arch_{prefix}_jamb_{side}",
+                (cx + side * span, y, (jamb_bottom + shoulder) / 2),
+                (0.095, 0.075, (shoulder - jamb_bottom) / 2),
+                mats["trim_wood"], static, bevel=0.032,
+            )
+            start = Vector((cx + side * span, y, shoulder))
+            end = Vector((cx, y, peak))
+            direction = end - start
+            beam = cube(
+                f"WR_CANON_arch_{prefix}_slope_{side}",
+                (start + end) / 2,
+                (0.095, 0.075, direction.length / 2),
+                mats["trim_wood"], static, bevel=0.032,
+            )
+            beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+        sphere(f"WR_CANON_arch_{prefix}_boss", (cx, y - 0.02, peak), 0.10, mats["brass_dark"], static)
+
+    add_pointed_arch_frame("left", -4.55)
+    add_pointed_arch_frame("right", 4.85)
+
     # Four tall heraldic banners frame the existing central rampant-horse crest.
     # Their lower points sit behind the table so they read as architecture, not UI.
     for index, x in enumerate((-6.55, -2.65, 2.65, 6.55)):
@@ -863,6 +892,7 @@ def add_gothic_canon_v2(static, mats):
                mats["fire"], static, scale=(sx, 0.40, sz))
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 300.0,
           (1.0, 0.23, 0.05), static, radius=1.30)
+    anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
 
     # Cold floor globe in the window/fireplace transition.
     gx, gy = 6.82, 4.86
@@ -875,38 +905,38 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 5.98
-    torus("WR_CANON_chandelier_ring", (0, 1.92, cz), 1.58, 0.065, mats["brass"], static)
-    cylinder("WR_CANON_chandelier_hub", (0, 1.04, cz), 0.18, 0.26, mats["brass_dark"], static, vertices=28)
-    cylinder("WR_CANON_chandelier_chain", (0, 1.04, 6.43), 0.032, 0.74, mats["brass_dark"], static, vertices=16)
+    cz = 6.02
+    torus("WR_CANON_chandelier_ring", (0, 2.55, cz), 1.38, 0.060, mats["brass"], static)
+    cylinder("WR_CANON_chandelier_hub", (0, 2.55, cz), 0.18, 0.26, mats["brass_dark"], static, vertices=28)
+    cylinder("WR_CANON_chandelier_chain", (0, 2.55, 6.43), 0.032, 0.66, mats["brass_dark"], static, vertices=16)
     for index in range(8):
         angle = index * math.tau / 8.0
-        x = math.cos(angle) * 1.33
-        y = 1.92 + math.sin(angle) * 1.06
+        x = math.cos(angle) * 1.16
+        y = 2.55 + math.sin(angle) * 0.94
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.23),
                  0.065, 0.40, mats["ivory"], static, vertices=18)
         sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.50), 0.095,
                mats["fire_core"], static, scale=(0.46, 0.46, 1.15))
         # short radial arm from hub; cylinders are aligned to Z by default.
-        midpoint = Vector((x * 0.50, 1.92 + (y - 1.92) * 0.50, cz))
+        midpoint = Vector((x * 0.50, 2.55 + (y - 2.55) * 0.50, cz))
         endpoint = Vector((x, y, cz))
-        origin = Vector((0, 1.92, cz))
+        origin = Vector((0, 2.55, cz))
         direction = endpoint - origin
         arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, 1.92, 5.78), 205.0,
+    light("WR_CANON_chandelier_light", "POINT", (0, 2.55, 5.82), 190.0,
           (1.0, 0.48, 0.18), static, radius=2.2)
 
     # Burgundy heraldic drape on the camera-facing table edge.
     front_y = -5.50
     verts = [
         (-2.85, front_y - 0.035, 0.84), (2.85, front_y - 0.035, 0.84),
-        (2.85, front_y - 0.035, 0.28), (0.0, front_y - 0.035, -0.02),
-        (-2.85, front_y - 0.035, 0.28),
+        (2.85, front_y - 0.035, 0.38), (0.0, front_y - 0.035, 0.18),
+        (-2.85, front_y - 0.035, 0.38),
         (-2.85, front_y + 0.035, 0.84), (2.85, front_y + 0.035, 0.84),
-        (2.85, front_y + 0.035, 0.28), (0.0, front_y + 0.035, -0.02),
-        (-2.85, front_y + 0.035, 0.28),
+        (2.85, front_y + 0.035, 0.38), (0.0, front_y + 0.035, 0.18),
+        (-2.85, front_y + 0.035, 0.38),
     ]
     faces = [
         (0, 4, 3, 2, 1), (5, 6, 7, 8, 9),
@@ -924,16 +954,16 @@ def add_gothic_canon_v2(static, mats):
     # Small rampant horse relief on the drape, intentionally broad rather than
     # anatomically fussy so it survives the gameplay camera.
     emblem_y = front_y - 0.085
-    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.40), 0.24,
+    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.53), 0.24,
                   mats["brass"], static, scale=(1.30, 0.28, 0.72))
     body.rotation_euler.y = -0.26
-    sphere("WR_CANON_table_horse_head", (-0.28, emblem_y, 0.59), 0.13,
+    sphere("WR_CANON_table_horse_head", (-0.28, emblem_y, 0.70), 0.13,
            mats["brass"], static, scale=(1.12, 0.30, 0.78))
-    for index, (x, z, ang) in enumerate(((-0.08, 0.20, -0.72), (0.14, 0.18, 0.58))):
+    for index, (x, z, ang) in enumerate(((-0.08, 0.34, -0.72), (0.14, 0.32, 0.58))):
         leg = cylinder(f"WR_CANON_table_horse_leg_{index}", (x, emblem_y, z),
                        0.035, 0.34, mats["brass"], static, vertices=14)
         leg.rotation_euler.y = ang
-    tail = cylinder("WR_CANON_table_horse_tail", (0.31, emblem_y, 0.47),
+    tail = cylinder("WR_CANON_table_horse_tail", (0.31, emblem_y, 0.59),
                     0.030, 0.30, mats["brass"], static, vertices=14)
     tail.rotation_euler.y = 0.88
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
@@ -1090,7 +1120,7 @@ def validate():
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
         "WR_CANON_banner_1", "WR_CANON_banner_2", "WR_CANON_banner_3",
-        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
         "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
@@ -1314,7 +1344,11 @@ def validate_runtime_glb(path, expected_factors=None):
         raise RuntimeError(f"runtime GLB meshopt coverage suspiciously small: {compressed_views}")
     materials = {row.get("name"): row for row in data.get("materials", [])}
     node_names = {row.get("name") for row in data.get("nodes", [])}
-    required_runtime_anchors = {"WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight"}
+    required_runtime_anchors = {
+        "WR_ANCHOR_fireplace_practical",
+        "WR_ANCHOR_right_fireplace_practical",
+        "WR_ANCHOR_window_moonlight",
+    }
     missing_runtime_anchors = sorted(required_runtime_anchors - node_names)
     if missing_runtime_anchors:
         raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
@@ -1487,6 +1521,7 @@ def export_shell(path):
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
         is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
             "WR_ANCHOR_fireplace_practical",
+            "WR_ANCHOR_right_fireplace_practical",
             "WR_ANCHOR_window_moonlight",
         }
         if is_static_mesh or is_runtime_anchor:
