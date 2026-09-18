@@ -30,15 +30,15 @@ function remoteArea(mapId, seed, title = null) {
   };
 }
 
-function remoteRun(title = 'Cripta remota', seed = 417) {
+function remoteRun(title = 'Cripta remota', seed = 417, currentMapId = DEFAULT_CHRONICLES_MAP_ID) {
   const areas = chroniclesMapIds().map((mapId) => (
-    remoteArea(mapId, seed, mapId === DEFAULT_CHRONICLES_MAP_ID ? title : null)
+    remoteArea(mapId, seed, mapId === currentMapId ? title : null)
   ));
-  const area = areas.find((entry) => entry.mapId === DEFAULT_CHRONICLES_MAP_ID);
+  const area = areas.find((entry) => entry.mapId === currentMapId);
   return {
     runId: '11111111-2222-4333-8444-555555555555',
     seed,
-    currentMapId: DEFAULT_CHRONICLES_MAP_ID,
+    currentMapId,
     contentVersion: area.contentVersion,
     manifestRevision: area.manifestRevision,
     status: 'active',
@@ -70,7 +70,24 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(chroniclesMapById('hollow-bell-tower').title).toMatch(/^Remota · /);
     expect(chroniclesMapById('echo-cistern').title).toMatch(/^Remota · /);
     expect(resolved.areas).toHaveLength(chroniclesMapIds().length);
-    expect(createRun).toHaveBeenCalledWith(DEFAULT_CHRONICLES_MAP_ID, {
+    expect(createRun).toHaveBeenCalledWith(null, {
+      operationId: null,
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('accepts a safe entry map selected by the backend from the run seed', async () => {
+    const createRun = vi.fn().mockResolvedValue(
+      remoteRun('Menagerie procedural', 733, 'menagerie-of-ash'),
+    );
+
+    const resolved = await chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 });
+
+    expect(resolved.source).toBe('remote');
+    expect(resolved.currentMapId).toBe('menagerie-of-ash');
+    expect(resolved.map.id).toBe('menagerie-of-ash');
+    expect(resolved.map.title).toBe('Menagerie procedural');
+    expect(createRun).toHaveBeenCalledWith(null, {
       operationId: null,
       signal: expect.any(AbortSignal),
     });
