@@ -469,6 +469,12 @@
         "scroll": 0.88,
         "z": -8,
         "intensity": 1
+      },
+      {
+        "kind": "near_foreground",
+        "scroll": 1.04,
+        "z": -4,
+        "intensity": 1
       }
     ]
   },
