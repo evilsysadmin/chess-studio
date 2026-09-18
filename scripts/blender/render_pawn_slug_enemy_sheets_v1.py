@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Render canonical Blender-authored Pawn Slug enemy sprite sheets.
 
-Three distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
+Four distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
   pawn   -> light rifle infantry
   knight -> fast assault trooper with swept knight crest
   rook   -> broad heavy gunner with crenellated armour
+  bishop -> tall field officer with mitre crest and brass command trim
 
 Each type renders the real runtime action contract into transparent 2x source frames.
 A lightweight compositor step in CI downsamples them into 96px runtime-style sheets.
@@ -29,7 +30,7 @@ ACTIONS = {
     "climb": 12,
     "death": 14,
 }
-TYPES = ("pawn", "knight", "rook")
+TYPES = ("pawn", "knight", "rook", "bishop")
 PALETTE = {
     "cloth": (0.18, 0.24, 0.18, 1.0),
     "cloth_light": (0.28, 0.34, 0.23, 1.0),
@@ -49,6 +50,8 @@ PALETTE = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--enemy-type", choices=TYPES)
+    parser.add_argument("--smoke", action="store_true", help="Render representative runtime-resolution evidence only")
     tail = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(tail)
 
@@ -143,16 +146,16 @@ def action_pose(enemy_type, action, frame):
         "crouch": 0.0, "leg": 0.0, "arm": 0.0,
         "weapon_pitch": 0.0, "death": 0.0,
     }
-    mass = {"pawn": 1.0, "knight": 1.18, "rook": 0.72}[enemy_type]
+    mass = {"pawn": 1.0, "knight": 1.18, "rook": 0.72, "bishop": 0.86}[enemy_type]
     if action == "idle":
         pose["root_z"] = (1 - c) * 0.006 * mass
         pose["lean"] = s * 0.012 * mass
         pose["arm"] = s * 0.025
     elif action == "run":
-        pose["root_z"] = abs(s) * (0.085 if enemy_type == "knight" else 0.06 if enemy_type == "pawn" else 0.038)
-        pose["root_x"] = s * (0.045 if enemy_type == "knight" else 0.026 if enemy_type == "pawn" else 0.015)
-        pose["lean"] = -0.12 if enemy_type == "knight" else -0.07 if enemy_type == "pawn" else -0.035
-        pose["leg"] = s * (0.88 if enemy_type == "knight" else 0.70 if enemy_type == "pawn" else 0.48)
+        pose["root_z"] = abs(s) * (0.085 if enemy_type == "knight" else 0.06 if enemy_type == "pawn" else 0.05 if enemy_type == "bishop" else 0.038)
+        pose["root_x"] = s * (0.045 if enemy_type == "knight" else 0.026 if enemy_type == "pawn" else 0.020 if enemy_type == "bishop" else 0.015)
+        pose["lean"] = -0.12 if enemy_type == "knight" else -0.07 if enemy_type == "pawn" else -0.05 if enemy_type == "bishop" else -0.035
+        pose["leg"] = s * (0.88 if enemy_type == "knight" else 0.70 if enemy_type == "pawn" else 0.58 if enemy_type == "bishop" else 0.48)
         pose["arm"] = -s * 0.34
     elif action == "jump":
         arc = math.sin(min(1.0, phase) * math.pi)
@@ -193,10 +196,14 @@ def add_helmet(enemy_type, mats, head_z):
         box("helmet_core", (0.34, 0.32, 0.22), mats["steel"], (0, 0, head_z + 0.14), (0, 0.08, -0.03), bevel=0.06)
         box("knight_crest", (0.18, 0.10, 0.38), mats["steel_light"], (0.07, 0.06, head_z + 0.34), (0.14, -0.25, -0.35), bevel=0.04)
         box("knight_brow", (0.38, 0.18, 0.055), mats["steel_light"], (-0.02, -0.12, head_z + 0.12), bevel=0.018)
-    else:
+    elif enemy_type == "rook":
         box("rook_helmet", (0.46, 0.40, 0.25), mats["steel"], (0, 0, head_z + 0.13), bevel=0.045)
         for i, x in enumerate((-0.17, 0.0, 0.17)):
             box(f"rook_crenel_{i}", (0.11, 0.25, 0.11), mats["steel_light"], (x, 0.0, head_z + 0.30), bevel=0.02)
+    else:
+        box("bishop_helmet", (0.34, 0.32, 0.24), mats["steel"], (0, 0, head_z + 0.13), bevel=0.055)
+        box("bishop_mitre", (0.20, 0.18, 0.42), mats["steel_light"], (0.02, 0.02, head_z + 0.38), (0.08, 0.0, -0.08), bevel=0.05)
+        box("bishop_mitre_trim", (0.235, 0.205, 0.055), mats["brass"], (0.02, -0.01, head_z + 0.29), (0.08, 0.0, -0.08), bevel=0.018)
 
 
 def add_weapon(enemy_type, mats, shoulder_z, pose):
@@ -204,6 +211,10 @@ def add_weapon(enemy_type, mats, shoulder_z, pose):
         length, thickness = 1.18, 0.12
         muzzle_x = -0.90
         stock_x = 0.28
+    elif enemy_type == "bishop":
+        length, thickness = 1.06, 0.095
+        muzzle_x = -0.84
+        stock_x = 0.24
     elif enemy_type == "knight":
         length, thickness = 0.92, 0.085
         muzzle_x = -0.75
@@ -227,6 +238,7 @@ def build_enemy(enemy_type, action, frame, mats):
     pose = action_pose(enemy_type, action, frame)
     heavy = enemy_type == "rook"
     fast = enemy_type == "knight"
+    officer = enemy_type == "bishop"
     root_x = pose["root_x"]
     base_z = max(0.02, 0.04 + pose["root_z"])
     crouch = pose["crouch"]
@@ -235,7 +247,7 @@ def build_enemy(enemy_type, action, frame, mats):
     shoulder_z = chest_z + 0.12
     head_z = chest_z + 0.55
     lean = pose["lean"]
-    width = 0.38 if heavy else 0.31 if fast else 0.29
+    width = 0.38 if heavy else 0.31 if fast else 0.33 if officer else 0.29
 
     sphere("torso", width, mats["cloth"], (root_x, 0, chest_z), (1.02 if heavy else 0.90, 0.66, 1.02))
     box("vest", (0.63 if heavy else 0.48, 0.20, 0.42), mats["cloth_dark"], (root_x - 0.02, -0.19, chest_z), (0, 0, lean * 0.12), bevel=0.05)
@@ -246,6 +258,9 @@ def build_enemy(enemy_type, action, frame, mats):
         box("chest_plate", (0.62, 0.09, 0.35), mats["steel"], (root_x, -0.31, chest_z + 0.02), bevel=0.05)
     elif fast:
         box("knight_shoulder", (0.48, 0.28, 0.16), mats["steel"], (root_x + 0.02, -0.02, shoulder_z + 0.01), (0, 0, -0.08), bevel=0.05)
+    elif officer:
+        box("bishop_collar", (0.54, 0.24, 0.15), mats["brass"], (root_x, -0.08, shoulder_z + 0.02), bevel=0.045)
+        box("bishop_chest_trim", (0.12, 0.035, 0.42), mats["brass"], (root_x + 0.12, -0.315, chest_z + 0.02), (0, 0, -0.22), bevel=0.018)
 
     cylinder("neck", 0.075 if not heavy else 0.09, 0.12, mats["skin"], (root_x, 0, chest_z + 0.36), vertices=12)
     sphere("head", 0.19 if not heavy else 0.205, mats["skin"], (root_x, -0.01, head_z), (0.94, 0.88, 1.03))
@@ -285,8 +300,10 @@ def build_enemy(enemy_type, action, frame, mats):
         sphere("pawn_badge", 0.055, mats["brass"], (root_x + 0.17, -0.305, chest_z + 0.12), (1, 0.35, 1), 12, 6)
     elif enemy_type == "knight":
         box("knight_badge", (0.10, 0.025, 0.14), mats["red"], (root_x + 0.18, -0.315, chest_z + 0.12), (0, 0, -0.22), bevel=0.02)
-    else:
+    elif enemy_type == "rook":
         box("rook_badge", (0.15, 0.025, 0.14), mats["brass"], (root_x + 0.18, -0.365, chest_z + 0.12), bevel=0.018)
+    else:
+        box("bishop_badge", (0.11, 0.025, 0.20), mats["brass"], (root_x + 0.18, -0.325, chest_z + 0.13), (0, 0, -0.28), bevel=0.018)
 
     if pose["death"] > 0:
         angle = pose["lean"]
@@ -302,15 +319,16 @@ def look_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
 
-def setup_scene():
+def setup_scene(smoke=False):
     scene = bpy.context.scene
     try:
         scene.render.engine = "BLENDER_EEVEE_NEXT"
     except Exception:
         scene.render.engine = "BLENDER_EEVEE"
     scene.render.film_transparent = True
-    scene.render.resolution_x = 192
-    scene.render.resolution_y = 192
+    render_size = 96 if smoke else 192
+    scene.render.resolution_x = render_size
+    scene.render.resolution_y = render_size
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
@@ -326,7 +344,9 @@ def setup_scene():
     camera = bpy.context.object
     camera.name = "enemy_sheet_camera"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 3.25
+    # Shared framing keeps all archetypes comparable while leaving safe runtime-cell margins
+    # for the tallest jump pose and the widest terminal death pose.
+    camera.data.ortho_scale = 3.42
     look_at(camera, (0, -0.03, 1.08))
     scene.camera = camera
 
@@ -353,10 +373,12 @@ def clear_authored():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def save_preview_blend(out, mats):
+def save_preview_blend(out, mats, types):
     clear_authored()
-    offsets = {"pawn": -1.45, "knight": 0.0, "rook": 1.45}
-    for enemy_type in TYPES:
+    offsets = {"pawn": -2.10, "knight": -0.70, "rook": 0.70, "bishop": 2.10}
+    if len(types) == 1:
+        offsets = {types[0]: 0.0}
+    for enemy_type in types:
         before = set(bpy.context.scene.objects)
         build_enemy(enemy_type, "idle", 0, mats)
         for obj in set(bpy.context.scene.objects) - before:
@@ -368,13 +390,28 @@ def save_preview_blend(out, mats):
     print("Wrote", path)
 
 
-def render_frames(out, mats):
+def selected_frames(action, count, smoke):
+    if not smoke:
+        return list(range(count))
+    # CI visual smoke renders the pose that is actually shown in the review
+    # board for every action. Run/death get one extra phase so we still prove
+    # visible motion without paying for the complete production atlas.
+    mid = count // 2
+    if action == "run":
+        return [0, mid]
+    if action == "death":
+        return [mid, count - 1]
+    return [mid]
+
+
+def render_frames(out, mats, types, smoke=False):
     scene = bpy.context.scene
-    for enemy_type in TYPES:
+    rendered_frames = {action: selected_frames(action, count, smoke) for action, count in ACTIONS.items()}
+    for enemy_type in types:
         for action, count in ACTIONS.items():
             target = out / "frames" / enemy_type / action
             target.mkdir(parents=True, exist_ok=True)
-            for frame in range(count):
+            for frame in rendered_frames[action]:
                 clear_authored()
                 build_enemy(enemy_type, action, frame, mats)
                 scene.render.filepath = str(target / f"{frame:02d}.png")
@@ -383,10 +420,13 @@ def render_frames(out, mats):
         "version": "blender-enemy-v1",
         "blender": bpy.app.version_string,
         "sourceFacing": "left",
+        "mode": "smoke" if smoke else "full",
+        "frameSize": [scene.render.resolution_x, scene.render.resolution_y],
         "frameSize2x": [192, 192],
         "runtimeCell": [96, 96],
+        "renderedFrames": rendered_frames,
         "columns": 16,
-        "types": list(TYPES),
+        "types": list(types),
         "actions": ACTIONS,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -396,11 +436,12 @@ def main():
     args = parse_args()
     out = Path(args.output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    types = (args.enemy_type,) if args.enemy_type else TYPES
     clear_scene()
     mats = build_materials()
-    setup_scene()
-    save_preview_blend(out, mats)
-    render_frames(out, mats)
+    setup_scene(args.smoke)
+    save_preview_blend(out, mats, types)
+    render_frames(out, mats, types, smoke=args.smoke)
     print("Pawn Slug enemy Blender sheets source complete:", out)
 
 

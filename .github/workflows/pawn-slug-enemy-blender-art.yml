@@ -16,39 +16,51 @@ concurrency:
 
 jobs:
   render-enemies:
-    name: Render enemy cast · Blender v1
-    runs-on: ubuntu-latest
-    timeout-minutes: 18
+    name: Render enemy · ${{ matrix.enemy_type }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        enemy_type: [pawn, knight, rook, bishop]
+
     steps:
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-blender-canonical
 
-      - name: Render all enemy actions in one Blender process
+      - name: Render enemy actions
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          ENEMY_TYPE: ${{ matrix.enemy_type }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-enemy-v1
           blender --background \
             --python scripts/blender/render_pawn_slug_enemy_sheets_v1.py \
-            -- --output-dir /tmp/pawn-slug-enemy-v1
+            -- --output-dir /tmp/pawn-slug-enemy-v1 --enemy-type "$ENEMY_TYPE" --smoke
           test -s /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
           test -s /tmp/pawn-slug-enemy-v1/manifest.json
 
-      - name: Compose runtime-style sheets + visual review board
+      - name: Compose runtime-style sheet + per-type review
+        env:
+          ENEMY_TYPE: ${{ matrix.enemy_type }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import hashlib
           import json
+          import os
           from pathlib import Path
-          from PIL import Image, ImageChops, ImageDraw
+          from PIL import Image, ImageDraw
 
           root = Path('/tmp/pawn-slug-enemy-v1')
+          expected_type = os.environ['ENEMY_TYPE']
           manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
           types = tuple(manifest['types'])
           actions = manifest['actions']
+          rendered_frames = manifest.get('renderedFrames') or {}
           row_order = tuple(actions)
           violations = []
 
@@ -57,20 +69,24 @@ jobs:
                   violations.append(str(message))
               return condition
 
-          gate(types == ('pawn', 'knight', 'rook'), f'unexpected types: {types!r}')
+          gate(types == (expected_type,), f'unexpected types: {types!r}; expected {(expected_type,)!r}')
           gate(row_order == ('idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death'), f'unexpected row order: {row_order!r}')
           gate(actions == {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}, f'unexpected action contract: {actions!r}')
           gate(manifest.get('sourceFacing') == 'left', f"sourceFacing={manifest.get('sourceFacing')!r}")
           gate(manifest.get('columns') == 16, f"columns={manifest.get('columns')!r}")
-          gate(manifest.get('frameSize2x') == [192, 192], f"frameSize2x={manifest.get('frameSize2x')!r}")
+          gate(manifest.get('mode') == 'smoke', f"mode={manifest.get('mode')!r}")
+          gate(manifest.get('frameSize') == [96, 96], f"frameSize={manifest.get('frameSize')!r}")
           gate(manifest.get('runtimeCell') == [96, 96], f"runtimeCell={manifest.get('runtimeCell')!r}")
+          for action, count in actions.items():
+              mid = count // 2
+              expected_samples = [0, mid] if action == 'run' else [mid, count - 1] if action == 'death' else [mid]
+              gate(rendered_frames.get(action) == expected_samples, f'{action}: renderedFrames={rendered_frames.get(action)!r}; expected {expected_samples!r}')
 
           cell = 96
           cols = 16
-          sheets = {}
-          representative = {}
           stats = {}
           frame_stats = {}
+          representative = {}
           for enemy_type in types:
               sheet = Image.new('RGBA', (cols * cell, len(row_order) * cell), (0, 0, 0, 0))
               type_stats = {}
@@ -81,15 +97,15 @@ jobs:
                   bboxes = []
                   luminance = []
                   action_frames = []
-                  for frame in range(count):
+                  for frame in rendered_frames.get(action, []):
                       source = root / 'frames' / enemy_type / action / f'{frame:02d}.png'
                       if not source.is_file():
                           gate(False, f'missing frame: {source}')
                           continue
                       image = Image.open(source).convert('RGBA')
-                      if not gate(image.size == (192, 192), f'wrong frame size {source}: {image.size}'):
+                      if not gate(image.size == (cell, cell), f'wrong frame size {source}: {image.size}'):
                           continue
-                      down = image.resize((cell, cell), Image.Resampling.LANCZOS)
+                      down = image
                       alpha = down.getchannel('A').point(lambda value: 255 if value >= 24 else 0)
                       bbox = alpha.getbbox()
                       if bbox is None:
@@ -116,7 +132,10 @@ jobs:
                       action_frames.append({'frame': frame, 'bbox': list(bbox), 'meanLuma': round(mean_luma, 2)})
                       sheet.alpha_composite(down, (frame * cell, row * cell))
                   unique = len(set(hashes))
-                  gate(unique >= 2, f'{enemy_type}/{action} has no authored motion: unique={unique}')
+                  if len(hashes) > 1:
+                      gate(unique >= 2, f'{enemy_type}/{action} has no authored motion: unique={unique}')
+                  else:
+                      gate(unique == 1, f'{enemy_type}/{action} representative frame missing')
                   type_stats[action] = {
                       'frames': count,
                       'observedFrames': len(action_frames),
@@ -131,26 +150,127 @@ jobs:
                   }
                   type_frame_stats[action] = action_frames
                   mid = min(count - 1, max(0, count // 2))
-                  representative[(enemy_type, action)] = sheet.crop((mid * cell, row * cell, (mid + 1) * cell, (row + 1) * cell))
+                  representative[action] = sheet.crop((mid * cell, row * cell, (mid + 1) * cell, (row + 1) * cell))
               png = root / f'enemy_{enemy_type}_blender_v1.png'
               webp = root / f'enemy_{enemy_type}_blender_v1.webp'
               sheet.save(png, optimize=True)
               sheet.save(webp, 'WEBP', quality=90, method=6)
-              gate(webp.stat().st_size > 20_000, f'{webp.name} suspiciously small: {webp.stat().st_size}')
+              gate(webp.stat().st_size > 8_000, f'{webp.name} suspiciously small: {webp.stat().st_size}')
               gate(webp.stat().st_size < 900_000, f'{webp.name} suspiciously large: {webp.stat().st_size}')
-              sheets[enemy_type] = sheet
               stats[enemy_type] = type_stats
               frame_stats[enemy_type] = type_frame_stats
 
-          # The three archetypes must remain visibly different at the same idle frame.
+          tile = 128
+          label_h = 28
+          board = Image.new('RGBA', (len(row_order) * tile, tile + label_h), (14, 16, 18, 255))
+          draw = ImageDraw.Draw(board)
+          draw.text((8, 7), expected_type.upper(), fill=(238, 238, 238, 255))
+          for col, action in enumerate(row_order):
+              draw.text((col * tile + 48, 7), action, fill=(210, 210, 210, 255))
+              image = representative[action].resize((tile, tile), Image.Resampling.NEAREST)
+              board.alpha_composite(image, (col * tile, label_h))
+          board.save(root / f'enemy_{expected_type}_blender_v1_review.png', optimize=True)
+
+          report = {'summary': stats, 'frames': frame_stats, 'violations': violations}
+          (root / 'sheet_stats.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          (root / 'gate_violations.json').write_text(json.dumps(violations, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'summary': stats, 'violationCount': len(violations)}, indent=2))
+          if violations:
+              for violation in violations:
+                  print(f'::error::{violation}')
+              raise SystemExit(f'enemy art gate failed with {len(violations)} violation(s)')
+          PY
+
+      - name: Upload per-enemy Blender evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-enemy-blender-v1-${{ matrix.enemy_type }}-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
+            /tmp/pawn-slug-enemy-v1/manifest.json
+            /tmp/pawn-slug-enemy-v1/sheet_stats.json
+            /tmp/pawn-slug-enemy-v1/gate_violations.json
+            /tmp/pawn-slug-enemy-v1/frames/
+            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.png
+            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.webp
+            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1_review.png
+          if-no-files-found: warn
+          retention-days: 7
+
+  review-cast:
+    name: Review combined enemy cast
+    needs: render-enemies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Download per-enemy evidence
+        uses: actions/download-artifact@v6
+        with:
+          pattern: pawn-slug-enemy-blender-v1-*-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-enemy-cast
+
+      - name: Install Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Validate silhouettes + compose 4x7 review board
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageDraw
+
+          root = Path('/tmp/pawn-slug-enemy-cast')
+          out = Path('/tmp/pawn-slug-enemy-review')
+          out.mkdir(parents=True, exist_ok=True)
+          types = ('pawn', 'knight', 'rook', 'bishop')
+          actions = {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}
+          row_order = tuple(actions)
+          cell = 96
+          cols = 16
+          representative = {}
+          sources = {}
+          violations = []
+
+          def gate(condition, message):
+              if not condition:
+                  violations.append(str(message))
+              return condition
+
+          for enemy_type in types:
+              matches = list(root.rglob(f'enemy_{enemy_type}_blender_v1.png'))
+              if not gate(len(matches) == 1, f'{enemy_type}: expected one sheet, got {len(matches)}'):
+                  continue
+              path = matches[0]
+              sheet = Image.open(path).convert('RGBA')
+              gate(sheet.size == (cols * cell, len(row_order) * cell), f'{enemy_type}: unexpected sheet size {sheet.size}')
+              sources[enemy_type] = str(path.relative_to(root))
+              for row, action in enumerate(row_order):
+                  mid = min(actions[action] - 1, max(0, actions[action] // 2))
+                  representative[(enemy_type, action)] = sheet.crop(
+                      (mid * cell, row * cell, (mid + 1) * cell, (row + 1) * cell)
+                  )
+
           silhouette_diffs = {}
-          for left, right in (('pawn', 'knight'), ('knight', 'rook'), ('pawn', 'rook')):
+          for left, right in (
+              ('pawn', 'knight'),
+              ('knight', 'rook'),
+              ('pawn', 'rook'),
+              ('pawn', 'bishop'),
+              ('rook', 'bishop'),
+          ):
+              if (left, 'idle') not in representative or (right, 'idle') not in representative:
+                  gate(False, f'missing representative for {left}:{right}')
+                  continue
               diff = ImageChops.difference(representative[(left, 'idle')], representative[(right, 'idle')])
               bbox = diff.getbbox()
               silhouette_diffs[f'{left}:{right}'] = list(bbox) if bbox else None
               gate(bbox is not None, f'{left}/{right} silhouettes collapsed')
 
-          # Compact 3x7 review board: types as rows, actions as columns.
           tile = 128
           label_h = 28
           board = Image.new('RGBA', (len(row_order) * tile, len(types) * (tile + label_h)), (14, 16, 18, 255))
@@ -161,37 +281,30 @@ jobs:
               for col, action in enumerate(row_order):
                   if row == 0:
                       draw.text((col * tile + 48, y0 + 7), action, fill=(210, 210, 210, 255))
-                  image = representative[(enemy_type, action)].resize((tile, tile), Image.Resampling.NEAREST)
-                  board.alpha_composite(image, (col * tile, y0 + label_h))
-          board.save(root / 'enemy_cast_blender_v1_review.png', optimize=True)
+                  image = representative.get((enemy_type, action))
+                  if image is not None:
+                      board.alpha_composite(image.resize((tile, tile), Image.Resampling.NEAREST), (col * tile, y0 + label_h))
+          board.save(out / 'enemy_cast_blender_v1_review.png', optimize=True)
 
           report = {
-              'summary': stats,
-              'frames': frame_stats,
+              'types': list(types),
+              'sources': sources,
               'silhouetteDiffBboxes': silhouette_diffs,
               'violations': violations,
           }
-          (root / 'sheet_stats.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
-          (root / 'gate_violations.json').write_text(json.dumps(violations, indent=2) + '\n', encoding='utf-8')
-          print(json.dumps({'summary': stats, 'silhouetteDiffBboxes': silhouette_diffs, 'violationCount': len(violations)}, indent=2))
+          (out / 'combined_cast_stats.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, indent=2))
           if violations:
               for violation in violations:
                   print(f'::error::{violation}')
-              raise SystemExit(f'enemy art gate failed with {len(violations)} violation(s)')
+              raise SystemExit(f'combined enemy cast gate failed with {len(violations)} violation(s)')
           PY
 
-      - name: Upload Blender source + sheets
+      - name: Upload combined enemy review
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pawn-slug-enemy-blender-v1-${{ github.event.pull_request.number || github.run_number }}
-          path: |
-            /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
-            /tmp/pawn-slug-enemy-v1/manifest.json
-            /tmp/pawn-slug-enemy-v1/sheet_stats.json
-            /tmp/pawn-slug-enemy-v1/gate_violations.json
-            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.png
-            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.webp
-            /tmp/pawn-slug-enemy-v1/enemy_cast_blender_v1_review.png
-          if-no-files-found: warn
+          name: pawn-slug-enemy-blender-v1-review-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-enemy-review/
+          if-no-files-found: error
           retention-days: 7
