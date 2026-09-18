@@ -4,6 +4,18 @@ export const WAR_ROOM_V2_STAGING_MODEL_URL =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
 export const WAR_ROOM_V2_BOARD_ANCHOR_Y = 1.12;
 
+function tuneRuntimeMaterial(material) {
+  if (!material?.isMeshStandardMaterial) return;
+  const name = String(material.name || '').toLowerCase();
+  if (name.includes('brass') || name.includes('armor')) material.envMapIntensity = 1.05;
+  else if (name.includes('window')) material.envMapIntensity = 0.78;
+  else if (name.includes('stone')) material.envMapIntensity = 0.34;
+  else if (name.includes('leather') || name.includes('velvet') || name.includes('rug')) material.envMapIntensity = 0.30;
+  else if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) material.envMapIntensity = 0.52;
+  else material.envMapIntensity = 0.46;
+  material.needsUpdate = true;
+}
+
 function disposeShell(root) {
   const geometries = new Set();
   const materials = new Set();
@@ -43,13 +55,21 @@ export async function installWarRoomV2Shell(
   // conversion, while the live Three board uses Y=0 as its tactical datum.
   root.position.set(0, -WAR_ROOM_V2_BOARD_ANCHOR_Y, 0);
   root.rotation.y = whiteSide ? 0 : Math.PI;
+  const tunedMaterials = new Set();
   root.traverse((node) => {
     if (!node.isMesh) return;
     node.castShadow = !coarsePointer;
     node.receiveShadow = true;
     node.frustumCulled = true;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    rows.forEach((material) => {
+      if (!material || tunedMaterials.has(material)) return;
+      tunedMaterials.add(material);
+      tuneRuntimeMaterial(material);
+    });
   });
   root.userData.warRoomVariant = 'v2';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-fidelity-v2';
   scene.add(root);
 
   return () => {
