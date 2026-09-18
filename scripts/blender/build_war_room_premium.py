@@ -757,7 +757,7 @@ def build():
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
         "wall_wood": material("WR_MAT_wall_walnut", (0.020, 0.015, 0.012, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
         "wall_recess": material("WR_MAT_wall_recess", (0.009, 0.008, 0.008, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
-        "wall_plaster": material("WR_MAT_wall_plaster", (0.165, 0.145, 0.125, 1), rough=0.86, coat=0.015, texture="stone", scale=5.1, bump=0.045),
+        "wall_plaster": material("WR_MAT_wall_plaster", (0.105, 0.092, 0.080, 1), rough=0.89, coat=0.010, texture="stone", scale=5.1, bump=0.050),
         "trim_wood": material("WR_MAT_trim_walnut", (0.042, 0.025, 0.017, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
         "floor_dark": material("WR_MAT_floor_underlay", (0.045, 0.043, 0.041, 1), rough=0.76, coat=0.018, texture="stone", scale=4.8, bump=0.055),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
