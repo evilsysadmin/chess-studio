@@ -72,12 +72,6 @@ GATES = (
         workflow="pawn-slug-godot-strict-atlas.yml",
         label="Pawn Slug Godot strict Matthias atlas",
         exact_paths=frozenset({
-            "scripts/blender/render_pawn_slug_matthias_godot_crouch.py",
-            "scripts/blender/render_pawn_slug_matthias_canonical_chibi.py",
-            "scripts/blender/render_pawn_slug_matthias_canonical_heavy.py",
-            "scripts/blender/pawn_slug_matthias_premium_common.py",
-            "scripts/blender/pawn_slug_matthias_premium_weapons.py",
-            "scripts/blender/home_matthias_parts.py",
             "scripts/art/pack_pawn_slug_godot_strict_v6.py",
             ".github/workflows/pawn-slug-godot-strict-atlas.yml",
         }),
@@ -162,11 +156,7 @@ def self_test() -> None:
         "chronicles-party-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"])] == [
-        "pawn-slug-blender-art.yml",
-        "pawn-slug-godot-strict-atlas.yml",
-    ]
-    assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_matthias_godot_crouch.py"])] == [
-        "pawn-slug-godot-strict-atlas.yml"
+        "pawn-slug-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/art/pack_pawn_slug_godot_strict_v6.py"])] == [
         "pawn-slug-godot-strict-atlas.yml"
