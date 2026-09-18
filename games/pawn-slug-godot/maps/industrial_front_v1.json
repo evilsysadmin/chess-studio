@@ -447,6 +447,12 @@
         "intensity": 1
       },
       {
+        "kind": "industrial_landmark",
+        "scroll": 0.23,
+        "z": -63,
+        "intensity": 1
+      },
+      {
         "kind": "ruined_city",
         "scroll": 0.34,
         "z": -55,
