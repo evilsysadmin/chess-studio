@@ -85,12 +85,21 @@ required_public_verifier_fragments = (
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 
-# Runtime configuration is operational state, not application release state.
-# Canonical deploys consume the already-published private OCI bundle. Updating
-# that bundle remains an explicit manual service-control action instead of a
-# hidden side effect of code release, bringup, or K3s lifecycle management.
+# Runtime configuration is operational state. The normal watcher fast-path
+# consumes the already-installed runtime. If that path cannot converge, the
+# canonical fallback first ensures CURRENT Vault + Git runtime; Render is allowed
+# only inside the one-time/idempotent bootstrap recovery owned by the cutover helper.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
+)
+assert "python3 scripts/oci_vault_cutover.py ensure" in staging_deploy, (
+    "OCI fallback deploy must ensure CURRENT Vault + Git runtime before app deploy"
+)
+cutover_block = staging_deploy.split(
+    "- name: Ensure CURRENT Vault + Git runtime", 1
+)[1].split("\n      - name:", 1)[0]
+assert "RENDER_API_KEY" in cutover_block, (
+    "one-time Vault bootstrap recovery must receive Render access only in the cutover step"
 )
 assert "inputs.operation == 'runtime-sync'" in service_control, (
     "OCI service control must keep an explicit runtime-sync operation"
