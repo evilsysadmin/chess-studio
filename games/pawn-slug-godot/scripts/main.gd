@@ -973,8 +973,14 @@ func _update_enemy_projectiles(delta: float) -> void:
                     String(projectile.get("weapon", "pistol")),
                     true,
                 )
-            player.take_damage(1)
+
+            # Consume the projectile before damage signals can mutate the whole
+            # hostile-projectile array. A lethal hit emits player_died
+            # synchronously and that handler clears enemy_projectiles.
             enemy_projectiles.remove_at(index)
+            player.take_damage(1)
+            if player.dead or player.is_game_over:
+                return
             continue
 
         if (

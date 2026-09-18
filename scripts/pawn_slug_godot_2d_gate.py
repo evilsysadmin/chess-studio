@@ -158,6 +158,7 @@ REQUIRED_COMBAT_FAIRNESS = (
     "BOSS_SHELL_WINDUP",
     "checkpoint_changed",
     '_notify_parent("checkpoint")',
+    "Consume the projectile before damage signals can mutate the whole",
 )
 REQUIRED_BOSS_TELEGRAPH = (
     "set_shell_telegraph",
