@@ -5,37 +5,30 @@ import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
-const WAR_ROOM_V2_REVISION_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.json';
+const WAR_ROOM_V2_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 
 async function waitForWarRoomV2Revision(request, expectedRevision) {
   const expected = String(expectedRevision || '').trim();
   if (!expected) return;
   const deadline = Date.now() + 180_000;
-  let observed = '';
+  const revisionUrl = WAR_ROOM_V2_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
   while (Date.now() < deadline) {
     try {
-      const url = WAR_ROOM_V2_REVISION_URL
-        + '?expected=' + encodeURIComponent(expected)
-        + '&ts=' + Date.now();
-      const response = await request.get(url, {
-        headers: { 'cache-control': 'no-cache' },
+      const response = await request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: {
+          'cache-control': 'no-cache',
+          range: 'bytes=0-31',
+        },
         timeout: 10_000,
       });
-      if (response.ok()) {
-        const markerData = await response.json();
-        observed = String((markerData && markerData.revision) || '').trim();
-        if (observed === expected) return;
-      }
+      if (response.ok()) return;
     } catch {
       // Blender may still be publishing; keep polling to the bounded deadline.
     }
     await new Promise((resolve) => setTimeout(resolve, 1_500));
   }
-  throw new Error(
-    'War Room v2 staging revision timeout: expected '
-      + expected + ', observed ' + (observed || 'none'),
-  );
+  throw new Error('War Room v2 revision GLB timeout: ' + expected);
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
