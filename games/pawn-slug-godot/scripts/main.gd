@@ -10,6 +10,8 @@ const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1080.0
+const START_ZONE_END_X := 900.0
+const START_ZONE_AGGRO_RANGE := 650.0
 const KNIGHT_GRAVITY := 880.0
 const KNIGHT_LEAP_SPEED := 300.0
 const KNIGHT_LEAP_RANGE := 300.0
@@ -68,10 +70,10 @@ const ENEMY_SPAWNS := [
     [4070.0, "knight"], [4190.0, "rook"], [4380.0, "pawn"],
 ]
 const ENEMY_TYPES := {
-    "pawn": {"hp": 34, "speed": 54.0, "width": 38.0, "height": 62.0, "standoff": 270.0},
-    "knight": {"hp": 62, "speed": 92.0, "width": 48.0, "height": 68.0, "standoff": 225.0},
-    "rook": {"hp": 112, "speed": 0.0, "width": 58.0, "height": 76.0, "standoff": 420.0},
-    "bishop": {"hp": 310, "speed": 42.0, "width": 78.0, "height": 112.0, "standoff": 430.0},
+    "pawn": {"hp": 34, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
+    "knight": {"hp": 62, "speed": 92.0, "width": 57.0, "height": 80.0, "standoff": 225.0},
+    "rook": {"hp": 112, "speed": 0.0, "width": 68.0, "height": 90.0, "standoff": 420.0},
+    "bishop": {"hp": 310, "speed": 42.0, "width": 90.0, "height": 128.0, "standoff": 430.0},
 }
 const ENEMY_FIRE_PROFILES := {
     "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.05, "cooldown_max": 1.55, "speed": 540.0, "pellets": 1, "spread": 0.0, "explosive": false},
@@ -447,6 +449,13 @@ func _update_explosion_fx(delta: float) -> void:
         else:
             explosion_fx[index] = effect
 
+func _enemy_aggro_range() -> float:
+    # Keep the opening lively without activating the whole first squad before
+    # the player has even established movement and weapon rhythm.
+    if player.global_position.x < START_ZONE_END_X:
+        return START_ZONE_AGGRO_RANGE
+    return ENEMY_AGGRO_RANGE
+
 func _update_enemies(delta: float) -> void:
     for index in range(enemies.size()):
         var enemy := enemies[index]
@@ -460,7 +469,7 @@ func _update_enemies(delta: float) -> void:
         var moved := false
 
         if type == "bishop":
-            if not player.dead and not player.is_game_over and abs_distance <= ENEMY_AGGRO_RANGE:
+            if not player.dead and not player.is_game_over and abs_distance <= _enemy_aggro_range():
                 moved = _update_bishop(enemy, delta, abs_distance, distance_x)
             else:
                 _set_bishop_telegraph(enemy, 0.0, 0.0)
@@ -471,7 +480,7 @@ func _update_enemies(delta: float) -> void:
         if type == "knight":
             enemy["leap_cooldown"] = maxf(0.0, float(enemy["leap_cooldown"]) - delta)
 
-        var player_active: bool = not bool(player.dead) and not bool(player.is_game_over) and abs_distance <= ENEMY_AGGRO_RANGE
+        var player_active: bool = not bool(player.dead) and not bool(player.is_game_over) and abs_distance <= _enemy_aggro_range()
         if player_active:
             var speed := float(stats["speed"])
             var standoff := float(stats["standoff"])
