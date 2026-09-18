@@ -16,6 +16,7 @@ RUNTIME = (("scripts/oci_runtime_config.py", "--self-test"),)
 VAULT_RUNTIME = (("scripts/oci_vault_runtime.py", "--self-test"),)
 VAULT_COMPARE = (("scripts/oci_vault_compare.py", "--self-test"),)
 VAULT_PREVIEW = (("scripts/oci_vault_preview.py", "--self-test"),)
+VAULT_SYNC = (("scripts/oci_vault_sync.py", "--self-test"),)
 VAULT_BOOTSTRAP = (("scripts/oci_vault_bootstrap.py", "--self-test"),)
 BACKEND_DIAG = (("scripts/oci_backend_diagnose.py", "--self-test"),)
 RENDER_MONGO_DIAG = (("scripts/render_mongo_target_diagnose.py", "--self-test"),)
@@ -41,7 +42,7 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "reboot-agent": TRANSPORT,
     "deploy": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
     "bringup": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
-    "runtime-sync": TRANSPORT + RUNTIME,
+    "runtime-sync": TRANSPORT + VAULT_RUNTIME + VAULT_SYNC + RELEASE_DEPLOY + BACKEND_VERIFY,
     "vault-bootstrap": TRANSPORT + VAULT_BOOTSTRAP + VAULT_RUNTIME,
     "vault-validate": TRANSPORT + VAULT_RUNTIME,
     "vault-validate-pending": TRANSPORT + VAULT_RUNTIME,
@@ -88,8 +89,8 @@ def self_test() -> None:
     assert RUNTIME[0] not in deploy and VAULT_RUNTIME[0] not in deploy
 
     runtime_sync = commands_for("runtime-sync")
-    assert runtime_sync == TRANSPORT + RUNTIME
-    assert VAULT_RUNTIME[0] not in runtime_sync and K3S_STATUS[0] not in runtime_sync
+    assert runtime_sync == TRANSPORT + VAULT_RUNTIME + VAULT_SYNC + RELEASE_DEPLOY + BACKEND_VERIFY
+    assert RUNTIME[0] not in runtime_sync and K3S_STATUS[0] not in runtime_sync
 
     vault_validate = commands_for("vault-validate")
     assert vault_validate == TRANSPORT + VAULT_RUNTIME
@@ -119,7 +120,8 @@ def self_test() -> None:
             assert argument in {"--self-test", "self-test"}
 
     workflow = SERVICE_WORKFLOW.read_text(encoding="utf-8")
-    assert "python3 scripts/oci_runtime_config.py sync" in workflow
+    assert "python3 scripts/oci_vault_sync.py sync-current" in workflow
+    assert "python3 scripts/oci_runtime_config.py sync" not in workflow
     assert "Wait for OCI Run Command registration before runtime sync" not in workflow
     assert "for attempt in $(seq 1 60)" not in workflow
     assert "retrying in 10s" not in workflow
@@ -134,6 +136,12 @@ def self_test() -> None:
         assert f'"{operation}"' not in concurrency_block, (
             f"{operation} is non-persistent and must not take the staging mutation mutex"
         )
+
+    runtime_block = workflow.split(
+        "- name: Sync CURRENT Vault + Git runtime to private staging bundle", 1
+    )[1].split("\n      - name:", 1)[0]
+    assert "RENDER_API_KEY" not in runtime_block
+    assert "oci_vault_sync.py sync-current" in runtime_block
 
     compare_block = workflow.split(
         "- name: Compare CURRENT Vault + Git runtime with persisted private runtime source", 1
