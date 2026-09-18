@@ -96,7 +96,7 @@ async function hasGodotMessage(page, type) {
   ), type);
 }
 
-test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin mezclar sprites', async ({ page, request }, testInfo) => {
+test('staging visual · Pawn Slug Godot fullscreen muestra boot, pausa, carrera y pickup SMG', async ({ page, request }, testInfo) => {
   test.setTimeout(150_000);
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
@@ -133,10 +133,19 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   await expect(direct).toBeVisible();
   await direct.click();
 
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  const host = page.locator('.pawn-slug-godot-host');
   const iframe = page.locator('iframe[title="Pawn Slug Godot"]');
+  await expect(host).toBeVisible();
   await expect(iframe).toBeVisible();
-  await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => hasGodotMessage(page, 'ready'), { timeout: 30_000 }).toBeTruthy();
+
+  const viewport = page.viewportSize();
+  const hostBox = await host.boundingBox();
+  expect(hostBox).toBeTruthy();
+  if (viewport && hostBox) {
+    expect(Math.abs(hostBox.width - viewport.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(hostBox.height - viewport.height)).toBeLessThanOrEqual(2);
+  }
 
   const frame = page.frameLocator('iframe[title="Pawn Slug Godot"]');
   const canvas = frame.locator('canvas');
@@ -146,6 +155,12 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   await captureGodot(page, testInfo, '00-godot-boot.png');
 
   await canvas.click({ position: { x: 640, y: 360 } });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => hasGodotMessage(page, 'menu-open'), { timeout: 5_000 }).toBeTruthy();
+  await captureGodot(page, testInfo, '00b-godot-pause-menu.png');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => hasGodotMessage(page, 'menu-close'), { timeout: 5_000 }).toBeTruthy();
+
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(850);
   await captureGodot(page, testInfo, '01-godot-run.png');
