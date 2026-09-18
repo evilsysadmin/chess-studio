@@ -75,6 +75,12 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
       distance: 11.3,
       decay: 2,
     },
+    rightFire: {
+      color: 0xff7f30,
+      intensity: coarsePointer ? 0.95 : 1.85,
+      distance: 9.6,
+      decay: 2,
+    },
     moon: {
       color: 0x6f98ff,
       intensity: coarsePointer ? 1.75 : 2.95,
@@ -245,6 +251,7 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   const profile = warRoomV2PracticalLightProfile({ coarsePointer });
   const entries = [
     ['WR_ANCHOR_fireplace_practical', 'war-room-v2-fire-practical', profile.fire],
+    ['WR_ANCHOR_right_fireplace_practical', 'war-room-v2-right-fire-practical', profile.rightFire],
     ['WR_ANCHOR_window_moonlight', 'war-room-v2-moon-practical', profile.moon],
   ];
 
