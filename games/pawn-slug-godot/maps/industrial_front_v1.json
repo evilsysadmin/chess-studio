@@ -457,6 +457,12 @@
         "scroll": 0.62,
         "z": -32,
         "intensity": 1
+      },
+      {
+        "kind": "near_weather",
+        "scroll": 0.88,
+        "z": -8,
+        "intensity": 1
       }
     ]
   },
