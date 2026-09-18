@@ -61,11 +61,11 @@ def mat_stone(name, dark=False, wet=False):
     noise.inputs["Distortion"].default_value = .15
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     if dark:
-        ramp.color_ramp.elements[0].color = (.020, .018, .017, 1)
-        ramp.color_ramp.elements[1].color = (.115, .085, .058, 1)
+        ramp.color_ramp.elements[0].color = (.018, .020, .024, 1)
+        ramp.color_ramp.elements[1].color = (.105, .090, .076, 1)
     else:
-        ramp.color_ramp.elements[0].color = (.055, .047, .041, 1)
-        ramp.color_ramp.elements[1].color = (.25, .19, .125, 1)
+        ramp.color_ramp.elements[0].color = (.045, .045, .047, 1)
+        ramp.color_ramp.elements[1].color = (.205, .175, .145, 1)
     bump = nt.nodes.new("ShaderNodeBump")
     bump.inputs["Strength"].default_value = .32
     bump.inputs["Distance"].default_value = .14
@@ -120,10 +120,11 @@ def finish(obj, material=None, bevel=.04, smooth=False):
 
 
 def cube(name, loc, scale, mat, rot=(0, 0, 0), bevel=.04):
+    """Create a box from half-extents, matching the authored scene measurements."""
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
     o = bpy.context.object
     o.name = name
-    o.scale = scale
+    o.scale = tuple(v * 2.0 for v in scale)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return finish(o, mat, bevel, False)
 
@@ -241,7 +242,7 @@ def torch(M, x, y, z=1.55, wall_axis="x"):
     cyl("torch_handle", (x, y, z-.20), .045, .50, M["iron"], rot, bevel=.012)
     cyl("torch_bowl", (x, y, z+.08), .11, .08, M["brass"], bevel=.015)
     sphere("torch_flame", (x, y, z+.26), (.09, .09, .20), M["flame"])
-    point_light("torch_light", (x, y, z+.33), 720, (1.0, .25, .055), .72)
+    point_light("torch_light", (x, y, z+.33), 470, (1.0, .22, .045), .62)
 
 
 def banner(M, x, y, z, blue=False):
@@ -459,9 +460,9 @@ def build(M):
     cyl("fallen_shield", (1.35, -1.58, .16), .28, .08, M["steel"], rot=(math.radians(88), 0, 0), vertices=32, bevel=.025)
     cyl("fallen_spear", (.20, -1.78, .16), .025, 1.35, M["brass"], rot=(0, math.radians(72), 0), vertices=16, bevel=.01)
 
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 1050, 6.0, (1.0, .52, .24), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 650, 5.0, (.12, .22, .38), (0, 0, .8))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 900, 4.0, (1.0, .18, .055), (0, 1.0, 1.1))
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 420, 6.0, (.58, .64, .72), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 330, 5.0, (.16, .25, .40), (0, 0, .8))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 520, 4.0, (1.0, .19, .045), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
