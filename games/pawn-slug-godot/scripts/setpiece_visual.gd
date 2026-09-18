@@ -57,6 +57,8 @@ func _draw() -> void:
             _draw_tunnel_portal()
         "destructible_barricade":
             _draw_destructible_barricade()
+        "destructible_platform":
+            _draw_destructible_platform()
         "artillery_barrage":
             _draw_artillery_barrage()
 
@@ -254,3 +256,30 @@ func _draw_artillery_barrage() -> void:
     draw_line(Vector2(-radius, 0.0), Vector2(radius, 0.0), warning_color, 2.0)
     draw_line(Vector2(0.0, -radius * 0.34), Vector2(0.0, radius * 0.34), warning_color, 2.0)
     draw_circle(Vector2.ZERO, 4.0 + sin(_elapsed * 18.0) * 1.5, Color(1.0, 0.86, 0.38, 0.86))
+
+
+func _draw_destructible_platform() -> void:
+    var w := _size.x
+    var h := _size.y
+    var damage := 1.0 - _health_ratio
+    var body := Color("4a4337")
+    var trim := _theme_trim()
+    if _theme == "harbor_dusk":
+        body = Color("35515a")
+    elif _theme == "alpine_night":
+        body = Color("50585b")
+    elif _theme == "jungle_storm":
+        body = Color("4b3b26")
+    body = body.lerp(Color("232425"), damage * 0.48)
+
+    if _destroyed:
+        draw_line(Vector2(-w * 0.46, 0.0), Vector2(-w * 0.08, -h * 0.24), body, 8.0)
+        draw_line(Vector2(w * 0.04, -h * 0.12), Vector2(w * 0.40, h * 0.06), trim, 5.0)
+        return
+
+    var rect := Rect2(Vector2(-w * 0.5, -h * 0.5), Vector2(w, h))
+    draw_rect(rect, body, true)
+    draw_rect(rect, trim, false, 2.0)
+    draw_line(Vector2(-w * 0.5, -h * 0.34), Vector2(w * 0.5, -h * 0.34), Color(0.10, 0.10, 0.09, 0.44), 2.0)
+    for x in range(int(-w * 0.5) + 18, int(w * 0.5) - 8, 34):
+        draw_circle(Vector2(float(x), 0.0), 2.0, Color(0.70, 0.66, 0.54, 0.72))
