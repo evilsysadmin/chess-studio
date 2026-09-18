@@ -55,7 +55,7 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
 def test_entry_catalog_is_versioned_and_references_shipped_maps():
     version, map_ids = chronicles_api.chronicles_entry_catalog()
 
-    assert version == 3
+    assert version == 4
     assert map_ids == (
         "crypt-eight-squares",
         "gallery-of-forks",
@@ -67,13 +67,25 @@ def test_entry_catalog_is_versioned_and_references_shipped_maps():
 
 
 def test_expanded_route_pool_can_select_archive_and_tower():
-    archive_route = chronicles_api.chronicles_route_plan_for_seed(0)
-    tower_route = chronicles_api.chronicles_route_plan_for_seed(4)
+    archive_route = chronicles_api.chronicles_route_plan_for_seed(2)
+    tower_route = chronicles_api.chronicles_route_plan_for_seed(0)
 
     assert "blind-king-archive" in archive_route[:-1]
     assert "hollow-bell-tower" in tower_route[:-1]
     assert archive_route[-1] == "echo-cistern"
     assert tower_route[-1] == "echo-cistern"
+
+
+def test_seeded_route_length_varies_between_three_and_four_areas():
+    short_route = chronicles_api.chronicles_route_plan_for_seed(0)
+    long_route = chronicles_api.chronicles_route_plan_for_seed(2)
+
+    assert len(short_route) == 3
+    assert len(long_route) == 4
+    assert short_route[-1] == "echo-cistern"
+    assert long_route[-1] == "echo-cistern"
+    assert len(set(short_route)) == len(short_route)
+    assert len(set(long_route)) == len(long_route)
 
 
 def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
@@ -99,7 +111,7 @@ def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     assert expected_map_id in chronicles_api.chronicles_entry_map_ids()
     assert payload["area"]["mapId"] == expected_map_id
     assert payload["area"]["mapCode"].endswith("|seed=918273")
-    assert payload["route"]["policyVersion"] == 3
+    assert payload["route"]["policyVersion"] == 4
     assert payload["route"]["mapIds"] == list(route_plan)
     assert route_plan[-1] == "echo-cistern"
 
@@ -173,7 +185,7 @@ def test_idempotent_seeded_route_replays_persisted_snapshot_across_policy_change
     )
     assert stored.status_code == 200
     stored_route = stored.json()["route"]
-    assert stored_route["policyVersion"] == 3
+    assert stored_route["policyVersion"] == 4
     assert stored_route["mapIds"] == first_route
     assert set(stored_route["primaryExitIds"]) == set(first_route[:-1])
 
@@ -190,7 +202,7 @@ def test_idempotent_seeded_route_replays_persisted_snapshot_across_policy_change
     assert repeated.status_code == 201
     assert repeated.json() == first_payload
     assert repeated.json()["seed"] == 111
-    assert repeated.json()["route"]["policyVersion"] == 3
+    assert repeated.json()["route"]["policyVersion"] == 4
     assert repeated.json()["route"]["mapIds"] == first_route
 
 

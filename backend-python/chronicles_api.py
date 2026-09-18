@@ -204,7 +204,8 @@ def chronicles_route_policy() -> dict[str, Any]:
 
     version = payload.get("version") if isinstance(payload, dict) else None
     map_ids = payload.get("mapIds") if isinstance(payload, dict) else None
-    route_length = payload.get("routeLength") if isinstance(payload, dict) else None
+    min_route_length = payload.get("minRouteLength") if isinstance(payload, dict) else None
+    max_route_length = payload.get("maxRouteLength") if isinstance(payload, dict) else None
     final_map_id = payload.get("finalMapId") if isinstance(payload, dict) else None
     primary_exit_ids = payload.get("primaryExitIds") if isinstance(payload, dict) else None
 
@@ -217,12 +218,15 @@ def chronicles_route_policy() -> dict[str, Any]:
     if len(set(map_ids)) != len(map_ids):
         raise HTTPException(500, "El catálogo de entrada de Chronicles contiene mapas duplicados.")
     if (
-        not isinstance(route_length, int)
-        or isinstance(route_length, bool)
-        or route_length < 2
-        or route_length > len(map_ids) + 1
+        not isinstance(min_route_length, int)
+        or isinstance(min_route_length, bool)
+        or not isinstance(max_route_length, int)
+        or isinstance(max_route_length, bool)
+        or min_route_length < 2
+        or min_route_length > max_route_length
+        or max_route_length > len(map_ids) + 1
     ):
-        raise HTTPException(500, "La longitud de ruta de Chronicles es inválida.")
+        raise HTTPException(500, "El rango de longitud de ruta de Chronicles es inválido.")
     if not isinstance(final_map_id, str) or not _MAP_ID_RE.fullmatch(final_map_id):
         raise HTTPException(500, "El mapa final de Chronicles es inválido.")
     if final_map_id in map_ids:
@@ -247,7 +251,8 @@ def chronicles_route_policy() -> dict[str, Any]:
     return {
         "version": version,
         "mapIds": tuple(map_ids),
-        "routeLength": route_length,
+        "minRouteLength": min_route_length,
+        "maxRouteLength": max_route_length,
         "finalMapId": final_map_id,
         "primaryExitIds": dict(primary_exit_ids),
     }
@@ -282,7 +287,12 @@ def chronicles_route_plan_for_seed(seed: int) -> tuple[str, ...]:
             f"chronicles-route-v{version}:{int(seed)}:{map_id}".encode("utf-8")
         ).digest(),
     )
-    prefinal_count = policy["routeLength"] - 1
+    length_digest = hashlib.sha256(
+        f"chronicles-route-length-v{version}:{int(seed)}".encode("utf-8")
+    ).digest()
+    route_span = policy["maxRouteLength"] - policy["minRouteLength"] + 1
+    route_length = policy["minRouteLength"] + int.from_bytes(length_digest[:4], "big") % route_span
+    prefinal_count = route_length - 1
     return tuple(ranked[:prefinal_count]) + (policy["finalMapId"],)
 
 
