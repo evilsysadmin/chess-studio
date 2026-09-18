@@ -655,9 +655,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     ref_image = bpy.data.images.load(str(reference), check_existing=False)
     width, height = int(ref_image.size[0]), int(ref_image.size[1])
     if width <= 0 or height <= 0:
-        width, height = 1814, 867
-    render_width = min(width, max(640, max_width))
-    render_height = round(height * render_width / width)
+        width, height = 320, 180
+    canon_width, canon_height = 1672, 941
+    render_width = min(canon_width, max(640, max_width))
+    render_height = round(canon_height * render_width / canon_width)
     scene.render.resolution_x = render_width
     scene.render.resolution_y = render_height
 
@@ -900,6 +901,7 @@ def main() -> None:
         "reference_contract": "user-approved-home-canon-2026-09-18",
         "reference_size": [width, height],
         "render_size": [render_width, render_height],
+        "canon_full_size": [1672, 941],
         "engine": args.engine,
         "camera": {
             "name": camera.name,
