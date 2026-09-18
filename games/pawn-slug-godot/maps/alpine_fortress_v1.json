@@ -236,111 +236,111 @@
       "type": "pawn"
     },
     {
-      "x": 1140,
+      "x": 1012,
       "type": "scout"
     },
     {
-      "x": 1390,
+      "x": 1184,
       "type": "pawn"
     },
     {
-      "x": 1620,
+      "x": 1356,
       "type": "knight"
     },
     {
-      "x": 1830,
+      "x": 1527,
       "type": "shield"
     },
     {
-      "x": 2030,
+      "x": 1699,
       "type": "rook"
     },
     {
-      "x": 2230,
+      "x": 1871,
       "type": "pawn"
     },
     {
-      "x": 2430,
+      "x": 2043,
       "type": "grenadier"
     },
     {
-      "x": 2630,
+      "x": 2215,
       "type": "knight"
     },
     {
-      "x": 2830,
+      "x": 2387,
       "type": "bishop"
     },
     {
-      "x": 3030,
+      "x": 2559,
       "type": "pawn"
     },
     {
-      "x": 3230,
+      "x": 2730,
       "type": "commando"
     },
     {
-      "x": 3430,
+      "x": 2902,
       "type": "scout"
     },
     {
-      "x": 3630,
+      "x": 3074,
       "type": "rook"
     },
     {
-      "x": 3830,
+      "x": 3246,
       "type": "pawn"
     },
     {
-      "x": 4030,
+      "x": 3418,
       "type": "queen"
     },
     {
-      "x": 4210,
+      "x": 3590,
       "type": "knight"
     },
     {
-      "x": 4390,
+      "x": 3761,
       "type": "shield"
     },
     {
-      "x": 4550,
+      "x": 3933,
       "type": "pawn"
     },
     {
-      "x": 4690,
+      "x": 4105,
       "type": "grenadier"
     },
     {
-      "x": 4810,
+      "x": 4277,
       "type": "rook"
     },
     {
-      "x": 4910,
+      "x": 4449,
       "type": "bishop"
     },
     {
-      "x": 5010,
+      "x": 4621,
       "type": "commando"
     },
     {
-      "x": 5110,
+      "x": 4793,
       "type": "pawn"
     },
     {
-      "x": 5210,
+      "x": 4964,
       "type": "knight"
     },
     {
-      "x": 5310,
+      "x": 5136,
       "type": "scout"
     },
     {
-      "x": 5410,
+      "x": 5308,
       "type": "pawn"
     },
     {
-      "x": 5510,
+      "x": 5480,
       "type": "rook"
     }
   ],
