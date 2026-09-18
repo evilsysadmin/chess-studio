@@ -98,6 +98,7 @@ REQUIRED_ENVIRONMENT = (
 REQUIRED_PAUSE_MENU = (
     "PROCESS_MODE_ALWAYS",
     "KEY_ESCAPE",
+    "DEFAULT_NATIVE_FULLSCREEN := false",
     "get_tree().paused = true",
     "get_tree().paused = false",
     "DisplayServer.WINDOW_MODE_FULLSCREEN",
