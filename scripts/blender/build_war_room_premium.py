@@ -931,29 +931,30 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 6.02
-    torus("WR_CANON_chandelier_ring", (0, 2.55, cz), 1.38, 0.060, mats["brass"], static)
-    cylinder("WR_CANON_chandelier_hub", (0, 2.55, cz), 0.18, 0.26, mats["brass_dark"], static, vertices=28)
-    cylinder("WR_CANON_chandelier_chain", (0, 2.55, 6.43), 0.032, 0.66, mats["brass_dark"], static, vertices=16)
+    cz = 6.16
+    chandelier_y = 3.35
+    torus("WR_CANON_chandelier_ring", (0, chandelier_y, cz), 1.12, 0.055, mats["brass"], static)
+    cylinder("WR_CANON_chandelier_hub", (0, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
+    cylinder("WR_CANON_chandelier_chain", (0, chandelier_y, 6.49), 0.030, 0.52, mats["brass_dark"], static, vertices=16)
     for index in range(8):
         angle = index * math.tau / 8.0
-        x = math.cos(angle) * 1.16
-        y = 2.55 + math.sin(angle) * 0.94
-        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.23),
-                 0.065, 0.40, mats["ivory"], static, vertices=18)
-        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.50), 0.095,
-               mats["fire_core"], static, scale=(0.46, 0.46, 1.15))
+        x = math.cos(angle) * 0.94
+        y = chandelier_y + math.sin(angle) * 0.76
+        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.20),
+                 0.058, 0.34, mats["ivory"], static, vertices=18)
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.43), 0.082,
+               mats["fire_core"], static, scale=(0.44, 0.44, 1.10))
         # short radial arm from hub; cylinders are aligned to Z by default.
-        midpoint = Vector((x * 0.50, 2.55 + (y - 2.55) * 0.50, cz))
+        midpoint = Vector((x * 0.50, chandelier_y + (y - chandelier_y) * 0.50, cz))
         endpoint = Vector((x, y, cz))
-        origin = Vector((0, 2.55, cz))
+        origin = Vector((0, chandelier_y, cz))
         direction = endpoint - origin
-        arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
+        arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.030,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, 2.55, 5.82), 150.0,
-          (1.0, 0.48, 0.18), static, radius=2.2)
-    anchor("WR_ANCHOR_chandelier_practical", (0, 2.55, 5.72), static)
+    light("WR_CANON_chandelier_light", "POINT", (0, chandelier_y, 5.98), 138.0,
+          (1.0, 0.48, 0.18), static, radius=2.0)
+    anchor("WR_ANCHOR_chandelier_practical", (0, chandelier_y, 5.88), static)
 
     # Burgundy heraldic drape on the camera-facing table edge.
     front_y = -5.50
