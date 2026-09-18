@@ -18,7 +18,7 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _seed = seed
     _intensity = clampf(intensity, 0.0, 2.0)
     _preset = preset
-    set_process(_kind in ["sky", "ruined_city", "mid_defence", "near_weather"])
+    set_process(_kind in ["sky", "industrial_landmark", "ruined_city", "mid_defence", "near_weather"])
     queue_redraw()
 
 func _ready() -> void:
@@ -40,6 +40,8 @@ func _draw() -> void:
             _draw_sky()
         "far_ridge":
             _draw_far_ridge()
+        "industrial_landmark":
+            _draw_industrial_landmark()
         "ruined_city":
             _draw_ruined_city()
         "mid_defence":
@@ -170,6 +172,163 @@ func _draw_far_ridge() -> void:
         front.append(Vector2(xf, y))
     front.append(Vector2(_world_size.x, _floor_y))
     draw_colored_polygon(front, Color(0.082, 0.12, 0.14, 0.98))
+
+func _draw_industrial_landmark() -> void:
+    if _preset != "night_front":
+        return
+
+    # Water/low haze band gives the industrial front the deep reflective valley
+    # seen in the approved visual target without becoming playable geometry.
+    draw_rect(
+        Rect2(Vector2(0.0, 410.0), Vector2(_world_size.x, 116.0)),
+        Color(0.035, 0.075, 0.095, 0.76 * _intensity),
+        true,
+    )
+    for index in range(26):
+        var water_x := float(index) * 214.0 + _noise(index, 40.1) * 84.0
+        var water_y := 438.0 + _noise(index, 40.7) * 52.0
+        var shimmer_w := 24.0 + _noise(index, 41.3) * 62.0
+        var shimmer_a := 0.035 + _noise(index, 41.9) * 0.07
+        draw_line(
+            Vector2(water_x, water_y),
+            Vector2(minf(_world_size.x, water_x + shimmer_w), water_y),
+            Color(0.56, 0.70, 0.76, shimmer_a * _intensity),
+            1.4,
+        )
+
+    # Long viaduct silhouette, deliberately sparse so it reads as a landmark
+    # rather than another traversal route.
+    var viaduct_y := 356.0
+    draw_rect(
+        Rect2(Vector2(360.0, viaduct_y), Vector2(_world_size.x - 720.0, 12.0)),
+        Color(0.045, 0.060, 0.070, 0.94),
+        true,
+    )
+    for index in range(15):
+        var x := 410.0 + float(index) * 305.0
+        var pier_h := 58.0 + float((index * 17) % 34)
+        draw_rect(
+            Rect2(Vector2(x, viaduct_y + 10.0), Vector2(16.0, pier_h)),
+            Color(0.045, 0.060, 0.070, 0.90),
+            true,
+        )
+        if index < 14:
+            var arch_center := x + 152.0
+            draw_arc(
+                Vector2(arch_center, viaduct_y + 54.0),
+                72.0,
+                PI,
+                TAU,
+                18,
+                Color(0.075, 0.090, 0.100, 0.68),
+                4.0,
+            )
+
+    # The distant factory is the stage destination: a large, recognisable mass
+    # on a raised cliff, with stacks, conveyors, firelight and smoke.
+    var cliff := PackedVector2Array([
+        Vector2(1540.0, 420.0),
+        Vector2(1760.0, 332.0),
+        Vector2(2060.0, 298.0),
+        Vector2(2380.0, 314.0),
+        Vector2(2680.0, 282.0),
+        Vector2(3020.0, 300.0),
+        Vector2(3340.0, 352.0),
+        Vector2(3520.0, 420.0),
+    ])
+    cliff.append(Vector2(1540.0, 420.0))
+    draw_colored_polygon(cliff, Color(0.055, 0.070, 0.078, 0.96))
+
+    var factory_base := Rect2(Vector2(1810.0, 244.0), Vector2(1510.0, 124.0))
+    draw_rect(factory_base, Color(0.050, 0.060, 0.068, 0.96), true)
+    draw_line(
+        Vector2(factory_base.position.x, factory_base.position.y),
+        Vector2(factory_base.end.x, factory_base.position.y),
+        Color(0.26, 0.19, 0.13, 0.50),
+        3.0,
+    )
+
+    for index in range(13):
+        var block_x := 1840.0 + float(index) * 114.0
+        var block_w := 72.0 + _noise(index, 42.3) * 48.0
+        var block_h := 58.0 + _noise(index, 42.9) * 96.0
+        var block_y := 244.0 - block_h
+        draw_rect(
+            Rect2(Vector2(block_x, block_y), Vector2(block_w, block_h)),
+            Color(0.055, 0.065, 0.072, 0.98),
+            true,
+        )
+        if index % 2 == 0:
+            var stack_h := 78.0 + _noise(index, 43.5) * 96.0
+            var stack_x := block_x + block_w * 0.58
+            draw_rect(
+                Rect2(Vector2(stack_x, block_y - stack_h), Vector2(17.0, stack_h)),
+                Color(0.045, 0.052, 0.058, 0.98),
+                true,
+            )
+            draw_rect(
+                Rect2(Vector2(stack_x - 3.0, block_y - stack_h - 5.0), Vector2(23.0, 6.0)),
+                Color(0.085, 0.075, 0.070, 0.90),
+                true,
+            )
+
+        if index < 12:
+            var conveyor_y := 184.0 + float(index % 3) * 18.0
+            draw_line(
+                Vector2(block_x + block_w * 0.72, conveyor_y),
+                Vector2(block_x + 126.0, conveyor_y - 14.0),
+                Color(0.10, 0.11, 0.11, 0.88),
+                6.0,
+            )
+            draw_line(
+                Vector2(block_x + block_w * 0.72, conveyor_y + 5.0),
+                Vector2(block_x + 126.0, conveyor_y - 9.0),
+                Color(0.20, 0.14, 0.10, 0.42),
+                1.5,
+            )
+
+    for index in range(18):
+        var light_x := 1852.0 + float(index) * 82.0
+        var light_y := 260.0 + float((index * 13) % 72)
+        var flicker := 0.55 + sin(_atmosphere_time * (1.5 + _noise(index, 44.2)) + float(index)) * 0.22
+        draw_circle(
+            Vector2(light_x, light_y),
+            5.0 + _noise(index, 44.8) * 4.0,
+            Color(0.98, 0.38, 0.10, 0.07 * flicker * _intensity),
+        )
+        draw_rect(
+            Rect2(Vector2(light_x - 2.0, light_y - 1.0), Vector2(4.0, 3.0)),
+            Color(0.98, 0.46, 0.16, (0.30 + flicker * 0.24) * _intensity),
+            true,
+        )
+
+    for index in range(7):
+        var smoke_x := 1940.0 + float(index) * 205.0
+        var stack_top := 112.0 + _noise(index, 45.4) * 72.0
+        for puff in range(6):
+            var age := float(puff)
+            var drift := age * 24.0 + sin(_atmosphere_time * 0.45 + float(index) + age) * 8.0
+            var radius := 22.0 + age * 7.0 + _noise(index * 7 + puff, 46.0) * 9.0
+            draw_circle(
+                Vector2(smoke_x + drift, stack_top - age * 24.0),
+                radius,
+                Color(0.14, 0.15, 0.16, maxf(0.018, 0.085 - age * 0.010) * _intensity),
+            )
+
+    for index in range(3):
+        var origin_x := 2020.0 + float(index) * 520.0
+        var phase := _atmosphere_time * (0.24 + float(index) * 0.03) + float(index) * 1.7
+        var sweep := sin(phase) * 260.0
+        var origin := Vector2(origin_x, 218.0 + float(index % 2) * 38.0)
+        var tip := Vector2(origin_x + sweep, 56.0)
+        var beam := PackedVector2Array([
+            origin + Vector2(-5.0, 0.0),
+            tip + Vector2(-46.0, 0.0),
+            tip + Vector2(46.0, 0.0),
+            origin + Vector2(5.0, 0.0),
+        ])
+        draw_colored_polygon(beam, Color(0.72, 0.72, 0.64, 0.020 * _intensity))
+        draw_circle(origin, 5.5, Color(0.88, 0.64, 0.30, 0.46))
 
 func _draw_ruined_city() -> void:
     if _preset == "harbor_dusk":
