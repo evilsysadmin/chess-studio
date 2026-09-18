@@ -1,0 +1,92 @@
+name: Cleanup retired Actions runs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cleanup-retired-action-runs.yml
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Delete runs from retired workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          retired_paths=(
+            ".github/workflows/auto-merge.yml"
+            ".github/workflows/main-delivery-handoff.yml"
+            ".github/workflows/matthias-visual.yml"
+            ".github/workflows/oci-arm64-readiness.yml"
+            ".github/workflows/oci-terraform-readiness.yml"
+            ".github/workflows/war-room-runtime-marathon.yml"
+            ".github/workflows/codeql.yml"
+          )
+
+          jq_filter='.workflow_runs[] | select(.path as $p | $paths | index($p)) | [.id, .name, .path] | @tsv'
+          paths_json="$(printf '%s\n' "${retired_paths[@]}" | jq -R . | jq -s .)"
+
+          mapfile -t rows < <(
+            gh api --paginate "repos/${REPO}/actions/runs?per_page=100" \
+              | jq -r --argjson paths "${paths_json}" "${jq_filter}" \
+              | sort -u
+          )
+
+          if (( ${#rows[@]} == 0 )); then
+            echo "No retired workflow runs found."
+            exit 0
+          fi
+
+          printf 'Found %d retired workflow runs.\n' "${#rows[@]}"
+
+          deleted=0
+          failed=0
+
+          for row in "${rows[@]}"; do
+            IFS=$'\t' read -r run_id run_name run_path <<< "${row}"
+            echo "Deleting run ${run_id}: ${run_name} (${run_path})"
+            if gh api --method DELETE "repos/${REPO}/actions/runs/${run_id}"; then
+              deleted=$((deleted + 1))
+            else
+              echo "::error::Failed to delete run ${run_id} (${run_path})"
+              failed=$((failed + 1))
+            fi
+          done
+
+          echo "Deleted: ${deleted}; failed: ${failed}"
+
+          if (( failed > 0 )); then
+            exit 1
+          fi
+
+      - name: Remove this temporary workflow
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          workflow_path=".github/workflows/cleanup-retired-action-runs.yml"
+          file_sha="$(gh api "repos/${REPO}/contents/${workflow_path}?ref=main" --jq '.sha')"
+
+          if gh api --method DELETE "repos/${REPO}/contents/${workflow_path}" \
+            -f message="chore: remove temporary Actions cleanup workflow" \
+            -f sha="${file_sha}" \
+            -f branch="main"; then
+            echo "Temporary workflow removed from main."
+          else
+            echo "::warning::Cleanup succeeded, but branch protection prevented self-removal. Remove ${workflow_path} with a tiny follow-up PR."
+          fi
