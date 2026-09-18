@@ -232,16 +232,91 @@ def test_active_match_presence_uses_existing_poll_without_revision_churn():
 
     pvp_store._memory_matches[match_id][bob_seen_key] = pvp_store.utcnow() - timedelta(seconds=13)
     disconnected = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
-    assert disconnected.json()["match"]["opponentPresence"] == "disconnected"
+    disconnected_payload = disconnected.json()["match"]
+    assert disconnected_payload["opponentPresence"] == "disconnected"
+    assert disconnected_payload["opponentDisconnectDeadline"]
+    grace_deadline = datetime.fromisoformat(disconnected_payload["opponentDisconnectDeadline"].replace("Z", "+00:00"))
+    assert 58 <= (grace_deadline - pvp_store.utcnow()).total_seconds() <= pvp_api.PVP_DISCONNECT_GRACE_SECONDS
     assert pvp_store._memory_matches[match_id]["revision"] == revision
 
-    # El propio polling/GET de Bob lo vuelve a declarar vivo; Alice lo ve en
-    # la siguiente lectura sin ningún heartbeat o canal adicional.
+    # El propio polling/GET de Bob lo vuelve a declarar vivo, limpia su gracia
+    # en esa misma escritura y Alice lo ve recuperado sin heartbeat adicional.
     bob_poll = as_user(client, "bob", "get", f"/api/pvp/matches/{match_id}")
     assert bob_poll.status_code == 200
     restored = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
     assert restored.json()["match"]["opponentPresence"] == "online"
+    assert restored.json()["match"]["opponentDisconnectDeadline"] is None
     assert pvp_store._memory_matches[match_id]["revision"] == revision
+
+
+def test_disconnect_grace_does_not_award_instant_win_when_both_players_were_absent(monkeypatch):
+    monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    start_match_now(client, match)
+    match_id = match["id"]
+    stored = pvp_store._memory_matches[match_id]
+    revision = stored["revision"]
+    stale = pvp_store.utcnow() - timedelta(minutes=2)
+    stored["white_seen_at"] = stale
+    stored["black_seen_at"] = stale
+    stored.pop("white_disconnect_grace_started_at", None)
+    stored.pop("black_disconnect_grace_started_at", None)
+
+    returned = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert returned.status_code == 200
+    payload = returned.json()["match"]
+    assert payload["status"] == "active"
+    assert payload["opponentPresence"] == "disconnected"
+    assert payload["opponentDisconnectDeadline"]
+    deadline = datetime.fromisoformat(payload["opponentDisconnectDeadline"].replace("Z", "+00:00"))
+    assert 58 <= (deadline - pvp_store.utcnow()).total_seconds() <= pvp_api.PVP_DISCONNECT_GRACE_SECONDS
+    assert pvp_store._memory_matches[match_id]["revision"] == revision
+    assert "pvp_rating_games" not in users_store._memory_users["alice"]
+    assert "pvp_rating_games" not in users_store._memory_users["bob"]
+
+
+def test_disconnect_grace_forfeits_after_deadline_and_settles_rating_once(monkeypatch):
+    monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    assert match["white"] == "alice"
+    assert match["black"] == "bob"
+    start_match_now(client, match)
+    match_id = match["id"]
+    now = pvp_store.utcnow()
+    stored = pvp_store._memory_matches[match_id]
+    stored["black_seen_at"] = now - timedelta(seconds=pvp_api.PVP_PRESENCE_RECONNECTING_SECONDS + 1)
+    stored["black_disconnect_grace_started_at"] = now - timedelta(seconds=pvp_api.PVP_DISCONNECT_GRACE_SECONDS + 1)
+
+    forfeited = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert forfeited.status_code == 200
+    payload = forfeited.json()["match"]
+    assert payload["status"] == "finished"
+    assert payload["result"] == "1-0"
+    assert payload["endReason"] == "disconnect"
+    assert payload["opponentDisconnectDeadline"] is None
+    assert payload["clock"]["runningColor"] is None
+    assert payload["ratingChange"] == {"before": 400, "after": 416, "delta": 16}
+    assert users_store._memory_users["alice"]["pvp_rating"] == 416
+    assert users_store._memory_users["bob"]["pvp_rating"] == 384
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
+
+    # Releer una partida ya cerrada no duplica liquidación ni cambia el motivo.
+    repeated = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert repeated.status_code == 200
+    assert repeated.json()["match"]["endReason"] == "disconnect"
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
 
 
 def test_finished_match_settles_server_elo_once(monkeypatch):
