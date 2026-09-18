@@ -140,7 +140,7 @@ assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS, CHESS_STUDIO_K3S_STAG
 # idempotent bundle reconcile/install prerequisites under the mutation mutex.
 assert "workflow_dispatch:" in service
 assert "workflow_run:" not in service
-assert "workflows: [Staging · deploy]" not in service
+assert "workflows: [Deploy to staging]" not in service
 assert "github.event.workflow_run" not in service
 assert "auto_admission" not in service
 assert "git ls-remote origin refs/heads/main" not in service
