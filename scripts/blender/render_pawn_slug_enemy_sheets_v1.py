@@ -344,7 +344,9 @@ def setup_scene(smoke=False):
     camera = bpy.context.object
     camera.name = "enemy_sheet_camera"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 3.25
+    # Shared framing keeps all archetypes comparable while leaving safe runtime-cell margins
+    # for the tallest jump pose and the widest terminal death pose.
+    camera.data.ortho_scale = 3.42
     look_at(camera, (0, -0.03, 1.08))
     scene.camera = camera
 
