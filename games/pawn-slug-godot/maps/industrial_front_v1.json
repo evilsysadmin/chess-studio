@@ -472,7 +472,7 @@
       },
       {
         "kind": "near_foreground",
-        "scroll": 1.04,
+        "scroll": 0.98,
         "z": -4,
         "intensity": 1
       }
