@@ -49,11 +49,18 @@ from tracing import configure_tracing
 from release_info import APP_RELEASE as BACKEND_RELEASE
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
+_INTERNET_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+_CLOUDFLARE_TUNNEL_ENVIRONMENTS = {"staging", "stage"}
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+# Staging is Internet-facing through Cloudflare Tunnel. A missing invite secret
+# must not silently turn a misconfigured deployment into open registration.
+if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS and ALLOW_REGISTRATION and not INVITE_CODE:
+    raise RuntimeError("INVITE_CODE es obligatorio en staging mientras el registro esté habilitado.")
 
 app = FastAPI(
     title="Estudio de Ajedrez API",
@@ -142,6 +149,15 @@ def rate_limit_key(request: Request) -> str:
     username = _request_username(request)
     if username != "-":
         return f"user:{username}"
+
+    # OCI staging is loopback-only behind Cloudflare Tunnel. There the ASGI peer
+    # is the local proxy/Docker gateway, so using it directly would put every
+    # anonymous visitor in one login/register bucket. CF-Connecting-IP is safe
+    # to consume only inside this network-closed staging trust boundary.
+    if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS:
+        client_ip, _ = _client_network(request)
+        if client_ip:
+            return f"ip:{client_ip}"
     return f"ip:{get_remote_address(request)}"
 
 
@@ -331,8 +347,8 @@ def is_admin(username: str) -> bool:
     return "*" in _ADMIN_USERNAMES or username.lower() in _ADMIN_USERNAMES
 
 
-if ENVIRONMENT in {"production", "prod"} and "*" in _ADMIN_USERNAMES:
-    raise RuntimeError('ADMIN_USERNAMES="*" no está permitido en producción.')
+if ENVIRONMENT in _INTERNET_ENVIRONMENTS and "*" in _ADMIN_USERNAMES:
+    raise RuntimeError('ADMIN_USERNAMES="*" no está permitido en staging/producción.')
 
 
 def api_key_bucket(request: Request) -> str:
@@ -382,7 +398,7 @@ async def security_baseline(request: Request, call_next):
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
     response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-    if ENVIRONMENT in {"production", "prod"}:
+    if ENVIRONMENT in _INTERNET_ENVIRONMENTS:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
 
