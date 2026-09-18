@@ -250,12 +250,12 @@ func _draw_industrial_landmark() -> void:
 
     var haze := Color(0.11, 0.15, 0.17, 0.16 * _intensity)
     var water := Color(0.030, 0.074, 0.096, 0.82 * _intensity)
-    var far_structure := Color(0.075, 0.090, 0.100, 0.96)
-    var factory_dark := Color(0.060, 0.070, 0.078, 0.98)
-    var factory_mid := Color(0.080, 0.088, 0.092, 0.98)
-    var warm_edge := Color(0.44, 0.22, 0.11, 0.60)
-    var fire_glow := Color(1.0, 0.28, 0.055, 0.10 * _intensity)
-    var hot_light := Color(1.0, 0.48, 0.15, 0.74 * _intensity)
+    var far_structure := Color(0.090, 0.108, 0.120, 0.96)
+    var factory_dark := Color(0.082, 0.094, 0.104, 0.98)
+    var factory_mid := Color(0.112, 0.122, 0.128, 0.98)
+    var warm_edge := Color(0.62, 0.30, 0.12, 0.70)
+    var fire_glow := Color(1.0, 0.30, 0.055, 0.16 * _intensity)
+    var hot_light := Color(1.0, 0.52, 0.16, 0.82 * _intensity)
 
     # Reflective valley / water plane.
     draw_rect(Rect2(Vector2(0.0, 402.0), Vector2(_world_size.x, 122.0)), water, true)
@@ -304,7 +304,13 @@ func _draw_industrial_landmark() -> void:
         Vector2(2470.0, 414.0),
     ])
     cliff.append(Vector2(520.0, 414.0))
-    draw_colored_polygon(cliff, Color(0.052, 0.064, 0.070, 0.96))
+    draw_colored_polygon(cliff, Color(0.060, 0.074, 0.082, 0.96))
+
+    # Furnace backglow gives the factory internal light before its darker
+    # structures are drawn on top.
+    draw_circle(Vector2(1140.0, 248.0), 235.0, Color(0.94, 0.22, 0.045, 0.026 * _intensity))
+    draw_circle(Vector2(1540.0, 252.0), 275.0, Color(0.98, 0.26, 0.045, 0.030 * _intensity))
+    draw_circle(Vector2(1890.0, 278.0), 190.0, Color(0.90, 0.20, 0.035, 0.020 * _intensity))
 
     # Segmented terraces instead of one black slab.
     var terraces := [
@@ -317,7 +323,13 @@ func _draw_industrial_landmark() -> void:
         var terrace: Rect2 = terraces[terrace_index]
         var terrace_color := factory_mid if terrace_index % 2 == 0 else factory_dark
         draw_rect(terrace, terrace_color, true)
-        draw_line(terrace.position, Vector2(terrace.end.x, terrace.position.y), warm_edge, 2.0)
+        draw_line(terrace.position, Vector2(terrace.end.x, terrace.position.y), warm_edge, 2.4)
+        draw_line(
+            Vector2(terrace.position.x + 4.0, terrace.position.y + 4.0),
+            Vector2(terrace.position.x + 4.0, terrace.end.y - 12.0),
+            Color(0.40, 0.50, 0.56, 0.20),
+            1.5,
+        )
         draw_rect(
             Rect2(Vector2(terrace.position.x, terrace.end.y - 9.0), Vector2(terrace.size.x, 9.0)),
             Color(0.025, 0.030, 0.032, 0.58),
@@ -335,8 +347,14 @@ func _draw_industrial_landmark() -> void:
         draw_line(
             Vector2(tower_x + 4.0, tower_y),
             Vector2(tower_x + tower_w - 4.0, tower_y),
-            Color(0.18, 0.12, 0.09, 0.55),
+            Color(0.48, 0.24, 0.10, 0.58),
             2.0,
+        )
+        draw_line(
+            Vector2(tower_x + 3.0, tower_y + 4.0),
+            Vector2(tower_x + 3.0, tower_y + tower_h - 5.0),
+            Color(0.45, 0.57, 0.63, 0.22),
+            1.4,
         )
 
         if index % 2 == 0:
@@ -349,8 +367,14 @@ func _draw_industrial_landmark() -> void:
             )
             draw_rect(
                 Rect2(Vector2(stack_x - 3.0, tower_y - stack_h - 5.0), Vector2(20.0, 6.0)),
-                Color(0.14, 0.09, 0.07, 0.92),
+                Color(0.22, 0.12, 0.08, 0.92),
                 true,
+            )
+            draw_line(
+                Vector2(stack_x + 1.0, tower_y - stack_h + 4.0),
+                Vector2(stack_x + 1.0, tower_y - 4.0),
+                Color(0.47, 0.58, 0.62, 0.20),
+                1.2,
             )
 
         if index < 13:
@@ -382,6 +406,14 @@ func _draw_industrial_landmark() -> void:
                 Color(1.0, 0.43, 0.12, (0.28 + flicker * 0.28) * _intensity),
                 true,
             )
+
+    # A few larger furnace mouths break up the facade and cast local warmth.
+    for furnace in range(5):
+        var fx := 810.0 + float(furnace) * 290.0
+        var fy := 300.0 + float(furnace % 2) * 18.0
+        draw_circle(Vector2(fx, fy), 34.0, Color(1.0, 0.25, 0.045, 0.055 * _intensity))
+        draw_rect(Rect2(Vector2(fx - 15.0, fy - 5.0), Vector2(30.0, 10.0)), Color(0.96, 0.39, 0.08, 0.34 * _intensity), true)
+        draw_rect(Rect2(Vector2(fx - 9.0, fy - 3.0), Vector2(18.0, 6.0)), Color(1.0, 0.65, 0.20, 0.46 * _intensity), true)
 
     # Smoke columns are lighter than the architecture so stacks remain readable.
     for index in range(7):
