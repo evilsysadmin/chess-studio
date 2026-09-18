@@ -55,9 +55,9 @@ def mat_stone(name, dark=False, wet=False):
     nt = m.node_tree
     bs = nt.nodes.get("Principled BSDF")
     noise = nt.nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = 3.6 if dark else 4.7
-    noise.inputs["Detail"].default_value = 8.0
-    noise.inputs["Roughness"].default_value = .78
+    noise.inputs["Scale"].default_value = 4.4 if dark else 6.2
+    noise.inputs["Detail"].default_value = 10.0
+    noise.inputs["Roughness"].default_value = .82
     noise.inputs["Distortion"].default_value = .15
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     if dark:
@@ -67,8 +67,8 @@ def mat_stone(name, dark=False, wet=False):
         ramp.color_ramp.elements[0].color = (.045, .045, .047, 1)
         ramp.color_ramp.elements[1].color = (.205, .175, .145, 1)
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = .32
-    bump.inputs["Distance"].default_value = .14
+    bump.inputs["Strength"].default_value = .48
+    bump.inputs["Distance"].default_value = .18
     nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
     nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
     nt.links.new(ramp.outputs["Color"], bs.inputs["Base Color"])
@@ -192,7 +192,7 @@ def material_bank():
         "wood": mat_wood(),
         "highlight": mat_principled("DungeonHighlight", (.03, .27, .42), .36, .08, (.03, .32, .48), 2.5),
         "highlight_warm": mat_principled("DungeonHighlightWarm", (.50, .34, .12), .42, .02, (.68, .38, .08), 1.5),
-        "flame": mat_principled("DungeonFlame", (1.0, .17, .01), .3, 0, (1.0, .15, .01), 12),
+        "flame": mat_principled("DungeonFlame", (1.0, .12, .008), .34, 0, (1.0, .11, .006), 4.5),
         "wax": mat_principled("DungeonWax", (.78, .62, .34), .66, 0),
     }
 
@@ -242,7 +242,7 @@ def torch(M, x, y, z=1.55, wall_axis="x"):
     cyl("torch_handle", (x, y, z-.20), .045, .50, M["iron"], rot, bevel=.012)
     cyl("torch_bowl", (x, y, z+.08), .11, .08, M["brass"], bevel=.015)
     sphere("torch_flame", (x, y, z+.26), (.09, .09, .20), M["flame"])
-    point_light("torch_light", (x, y, z+.33), 470, (1.0, .22, .045), .62)
+    point_light("torch_light", (x, y, z+.33), 620, (1.0, .24, .055), .72)
 
 
 def banner(M, x, y, z, blue=False):
@@ -389,6 +389,7 @@ def setup_scene(out):
     # and rely on emissive materials + physical lights instead of version-fragile glow nodes.
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
+        scene.view_settings.exposure = 0.85
     except Exception:
         pass
     camd = bpy.data.cameras.new("DungeonCamera")
@@ -443,11 +444,11 @@ def build(M):
     rubble(M, -2.0, -1.85, 11, .65)
 
     tile_outline(M, -1.0, .52, warm=True)
-    tile_outline(M, -1.0, -.55, False)
+    tile_outline(M, .15, -.55, False)
     tile_outline(M, 1.6, -1.8, False)
 
     humanoid(M, -1.0, .55, .10, green=True)
-    pawn_piece(M, -1.0, -.55, .10, black=True)
+    pawn_piece(M, .15, -.55, .10, black=True)
     humanoid(M, -.20, -2.0, .10, sleep=True, armored=True)
     zzz(M, -.25, -2.1, 1.05)
     humanoid(M, 1.65, -1.75, .10, sleep=True, armored=True, plume=True)
@@ -460,9 +461,9 @@ def build(M):
     cyl("fallen_shield", (1.35, -1.58, .16), .28, .08, M["steel"], rot=(math.radians(88), 0, 0), vertices=32, bevel=.025)
     cyl("fallen_spear", (.20, -1.78, .16), .025, 1.35, M["brass"], rot=(0, math.radians(72), 0), vertices=16, bevel=.01)
 
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 420, 6.0, (.58, .64, .72), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 330, 5.0, (.16, .25, .40), (0, 0, .8))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 520, 4.0, (1.0, .19, .045), (0, 1.0, 1.1))
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 760, 6.5, (.62, .70, .82), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 520, 5.4, (.16, .27, .46), (0, 0, .8))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 690, 4.4, (1.0, .20, .05), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
