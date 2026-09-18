@@ -52,6 +52,30 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert len(response.content) < 256_000
 
 
+def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 918273)
+
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={"Authorization": "Bearer test-token"},
+        json={},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    expected_map_id = chronicles_api.chronicles_entry_map_for_seed(payload["seed"])
+    assert payload["seed"] == 918273
+    assert payload["currentMapId"] == expected_map_id
+    assert expected_map_id in chronicles_api.CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS
+    assert payload["area"]["mapId"] == expected_map_id
+    assert payload["area"]["mapCode"].endswith("|seed=918273")
+
+
 def test_idempotent_run_bootstrap_replays_identical_area(monkeypatch):
     async def no_collection():
         return None

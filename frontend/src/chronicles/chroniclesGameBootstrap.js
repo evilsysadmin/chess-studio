@@ -22,15 +22,17 @@ function localBootstrap(mapId, seed, fallbackReason) {
   });
 }
 
-function validateRunBootstrap(payload, mapId) {
+function validateRunBootstrap(payload, requestedMapId) {
   if (!payload || typeof payload !== 'object') throw new Error('missing-run');
   if (typeof payload.runId !== 'string' || !payload.runId) throw new Error('invalid-run-id');
-  if (payload.currentMapId !== mapId) throw new Error('run-map-mismatch');
+  const currentMapId = payload.currentMapId;
+  if (!chroniclesMapIds().includes(currentMapId)) throw new Error('unknown-run-map');
+  if (requestedMapId && currentMapId !== requestedMapId) throw new Error('run-map-mismatch');
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
   if (payload.status !== 'active') throw new Error('inactive-run');
 
-  const area = chroniclesValidateAreaEnvelope(payload.area, mapId, payload.seed);
+  const area = chroniclesValidateAreaEnvelope(payload.area, currentMapId, payload.seed);
   if (payload.contentVersion !== area.contentVersion) throw new Error('run-version-mismatch');
   if (payload.manifestRevision !== area.manifestRevision) throw new Error('run-revision-mismatch');
 
@@ -50,7 +52,7 @@ function validateRunBootstrap(payload, mapId) {
     throw new Error('incomplete-area-bundle');
   }
 
-  const bundledCurrent = areas.find((entry) => entry.map.id === mapId);
+  const bundledCurrent = areas.find((entry) => entry.map.id === currentMapId);
   if (!bundledCurrent || bundledCurrent.manifestRevision !== area.manifestRevision) {
     throw new Error('current-area-bundle-mismatch');
   }
@@ -59,13 +61,14 @@ function validateRunBootstrap(payload, mapId) {
     ...area,
     areas: Object.freeze(areas),
     runId: payload.runId,
+    currentMapId,
     worldVersion: payload.worldVersion,
     runStatus: payload.status,
   });
 }
 
 export async function chroniclesBootstrapTacticsWorld({
-  mapId = DEFAULT_CHRONICLES_MAP_ID,
+  mapId = null,
   seed = 0,
   budgetMs = CHRONICLES_BOOTSTRAP_BUDGET_MS,
   signal,
@@ -76,7 +79,8 @@ export async function chroniclesBootstrapTacticsWorld({
   // allowed a realistic WAN budget. The authored bundle remains a safety net for
   // genuine backend/network failure; frame-critical gameplay never waits on it.
   chroniclesClearRuntimeMapDefinitions();
-  if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
+  const fallbackMapId = mapId || DEFAULT_CHRONICLES_MAP_ID;
+  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
 
   const requestController = new AbortController();
   const deadlineController = new AbortController();
@@ -89,15 +93,15 @@ export async function chroniclesBootstrapTacticsWorld({
   const deadline = abortableDelay(Math.max(0, Number(budgetMs) || 0), deadlineController.signal)
     .then(() => {
       requestController.abort();
-      return localBootstrap(mapId, seed, 'bootstrap-deadline');
+      return localBootstrap(fallbackMapId, seed, 'bootstrap-deadline');
     })
-    .catch(() => localBootstrap(mapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
+    .catch(() => localBootstrap(fallbackMapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
 
   const request = Promise.resolve()
     .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
     .then((payload) => validateRunBootstrap(payload, mapId))
     .catch((error) => localBootstrap(
-      mapId,
+      fallbackMapId,
       seed,
       error instanceof Error ? error.message : 'remote-unavailable',
     ));
@@ -110,14 +114,14 @@ export async function chroniclesBootstrapTacticsWorld({
     signal?.removeEventListener('abort', abortPending);
   }
 
-  if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
+  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
   if (resolved?.source !== 'remote') {
-    return localBootstrap(mapId, seed, resolved?.fallbackReason || 'remote-unavailable');
+    return localBootstrap(fallbackMapId, seed, resolved?.fallbackReason || 'remote-unavailable');
   }
 
   resolved.areas.forEach((entry) => {
     chroniclesInstallRuntimeMapDefinition(entry.map);
   });
-  const map = chroniclesMapById(mapId);
+  const map = chroniclesMapById(resolved.currentMapId);
   return Object.freeze({ ...resolved, map });
 }

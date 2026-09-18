@@ -11,7 +11,7 @@ export function chroniclesCreateRun(mapId, { operationId = null, signal } = {}) 
       ...(operationId ? { 'Idempotency-Key': operationId } : {}),
       ...authHeader(),
     },
-    body: JSON.stringify({ mapId }),
+    body: JSON.stringify(mapId ? { mapId } : {}),
     signal,
   });
 }
