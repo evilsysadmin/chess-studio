@@ -168,6 +168,73 @@ def _rollout_wait() -> None:
     )
 
 
+def _safe_diag(value: object, limit: int = 260) -> str:
+    return " ".join(str(value or "").split())[:limit] or "none"
+
+
+def _failure_diagnostics() -> None:
+    deployment = _deployment_payload()
+    for condition in (deployment.get("status") or {}).get("conditions") or []:
+        if not isinstance(condition, dict):
+            continue
+        print(
+            "OCI_K3S_STAGING2_DIAG "
+            f"kind=deployment type={_safe_diag(condition.get('type'), 60)} "
+            f"status={_safe_diag(condition.get('status'), 20)} "
+            f"reason={_safe_diag(condition.get('reason'), 100)} "
+            f"message={_safe_diag(condition.get('message'))}",
+            flush=True,
+        )
+
+    completed = _kubectl(
+        "-n", NAMESPACE, "get", "pods",
+        "-l", "app.kubernetes.io/name=chess-studio-backend,chess-studio.shadowops/track=staging2",
+        "-o", "json", check=False,
+    )
+    if completed.returncode != 0:
+        print(
+            "OCI_K3S_STAGING2_DIAG "
+            f"kind=pods query=failed message={_safe_diag(completed.stderr or completed.stdout)}",
+            flush=True,
+        )
+        return
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        print("OCI_K3S_STAGING2_DIAG kind=pods query=invalid-json", flush=True)
+        return
+    for pod in payload.get("items") or []:
+        if not isinstance(pod, dict):
+            continue
+        name = str((pod.get("metadata") or {}).get("name") or "unknown")
+        phase = str((pod.get("status") or {}).get("phase") or "unknown")
+        statuses = (pod.get("status") or {}).get("containerStatuses") or []
+        if not statuses:
+            print(
+                f"OCI_K3S_STAGING2_DIAG kind=pod name={_safe_diag(name, 120)} "
+                f"phase={_safe_diag(phase, 40)} container_status=missing",
+                flush=True,
+            )
+            continue
+        for status in statuses:
+            if not isinstance(status, dict):
+                continue
+            state = status.get("state") or {}
+            waiting = state.get("waiting") or {}
+            terminated = state.get("terminated") or {}
+            print(
+                "OCI_K3S_STAGING2_DIAG "
+                f"kind=pod name={_safe_diag(name, 120)} phase={_safe_diag(phase, 40)} "
+                f"ready={str(bool(status.get('ready'))).lower()} "
+                f"restarts={int(status.get('restartCount') or 0)} "
+                f"waiting_reason={_safe_diag(waiting.get('reason'), 100)} "
+                f"waiting_message={_safe_diag(waiting.get('message'))} "
+                f"terminated_reason={_safe_diag(terminated.get('reason'), 100)} "
+                f"exit_code={terminated.get('exitCode', 'none')}",
+                flush=True,
+            )
+
+
 def _port_free() -> bool:
     sock = socket.socket()
     try:
@@ -297,6 +364,10 @@ def deploy(sha: str) -> None:
         _write_state(sha)
     except BaseException:
         try:
+            _failure_diagnostics()
+        except BaseException as diag_exc:
+            print(f"OCI_K3S_STAGING2_DIAG kind=diagnostic-error detail={_safe_diag(diag_exc)}", flush=True)
+        try:
             _restore(previous_sha)
         except BaseException as rollback_exc:
             print(f"OCI_K3S_STAGING2_ROLLBACK_FAILED detail={rollback_exc}", file=sys.stderr)
@@ -367,6 +438,7 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_MEM > MIN_POST_MEM
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
+    assert _safe_diag("a\n b") == "a b"
     print("OCI K3s staging2 root capability self-test: OK")
 
 
