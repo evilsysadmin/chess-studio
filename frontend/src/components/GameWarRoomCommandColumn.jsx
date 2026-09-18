@@ -159,6 +159,7 @@ export function WarRoomUtilityMenu({
             <button
               type="button"
               role="menuitemradio"
+              aria-label="War Room"
               aria-checked={warRoomVariant === 'classic'}
               className={warRoomVariant === 'classic' ? 'is-selected' : ''}
               onClick={(event) => {
@@ -171,6 +172,7 @@ export function WarRoomUtilityMenu({
             <button
               type="button"
               role="menuitemradio"
+              aria-label="War Room v2"
               aria-checked={warRoomVariant === 'v2'}
               className={warRoomVariant === 'v2' ? 'is-selected' : ''}
               onClick={(event) => {
