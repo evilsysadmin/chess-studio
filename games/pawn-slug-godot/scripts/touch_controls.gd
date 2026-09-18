@@ -17,6 +17,8 @@ var _jump := false
 var _fire := false
 var _grenade := false
 var _touch_enabled := false
+var _orientation_blocked := false
+var _rotate_notice: PanelContainer
 
 func _ready() -> void:
     layer = 80
@@ -51,6 +53,9 @@ func grenade_pressed() -> bool:
 
 func is_touch_enabled() -> bool:
     return _touch_enabled
+
+func orientation_blocked() -> bool:
+    return _touch_enabled and _orientation_blocked
 
 func release_all() -> void:
     _move_left = false
@@ -88,6 +93,42 @@ func _build_ui() -> void:
     _right_group.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _right_group.size = Vector2(300.0, 190.0)
     _root.add_child(_right_group)
+
+    _rotate_notice = PanelContainer.new()
+    _rotate_notice.name = "RotateNotice"
+    _rotate_notice.visible = false
+    _rotate_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var notice_style := StyleBoxFlat.new()
+    notice_style.bg_color = Color(0.018, 0.022, 0.026, 0.92)
+    notice_style.border_color = Color(0.80, 0.67, 0.38, 0.72)
+    notice_style.set_border_width_all(2)
+    notice_style.corner_radius_top_left = 12
+    notice_style.corner_radius_top_right = 12
+    notice_style.corner_radius_bottom_left = 12
+    notice_style.corner_radius_bottom_right = 12
+    notice_style.content_margin_left = 24.0
+    notice_style.content_margin_right = 24.0
+    notice_style.content_margin_top = 20.0
+    notice_style.content_margin_bottom = 20.0
+    _rotate_notice.add_theme_stylebox_override("panel", notice_style)
+    _root.add_child(_rotate_notice)
+
+    var notice_box := VBoxContainer.new()
+    notice_box.add_theme_constant_override("separation", 8)
+    _rotate_notice.add_child(notice_box)
+    var notice_title := Label.new()
+    notice_title.text = "GIRA EL MÓVIL"
+    notice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    notice_title.add_theme_font_size_override("font_size", 24)
+    notice_title.add_theme_color_override("font_color", Color("f1e7cf"))
+    notice_box.add_child(notice_title)
+    var notice_copy := Label.new()
+    notice_copy.text = "Pawn Slug está diseñado para jugar en horizontal."
+    notice_copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    notice_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    notice_copy.add_theme_font_size_override("font_size", 15)
+    notice_copy.add_theme_color_override("font_color", Color("c8c1b0"))
+    notice_box.add_child(notice_copy)
 
     var left := _make_button("←", BUTTON_SIZE)
     left.position = Vector2(0.0, 64.0)
@@ -168,6 +209,21 @@ func _layout_controls() -> void:
     if _root == null:
         return
     var view := get_viewport().get_visible_rect().size
+    _orientation_blocked = view.y > view.x
+    if _orientation_blocked:
+        release_all()
+    if _left_group != null:
+        _left_group.visible = not _orientation_blocked
+    if _right_group != null:
+        _right_group.visible = not _orientation_blocked
+    if _rotate_notice != null:
+        _rotate_notice.visible = _orientation_blocked
+        _rotate_notice.custom_minimum_size = Vector2(minf(340.0, view.x - 32.0), 0.0)
+        _rotate_notice.position = Vector2(
+            maxf(16.0, (view.x - _rotate_notice.size.x) * 0.5),
+            maxf(16.0, (view.y - _rotate_notice.size.y) * 0.5),
+        )
+
     var safe := _safe_margins(view)
     _left_group.position = Vector2(
         BASE_MARGIN + safe.x,

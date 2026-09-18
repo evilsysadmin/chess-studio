@@ -173,6 +173,9 @@ REQUIRED_TOUCH = (
     "grenade_pressed",
     "pause_requested",
     "weapon_cycle_requested",
+    "orientation_blocked",
+    "GIRA EL MÓVIL",
+    "view.y > view.x",
 )
 REQUIRED_MOBILE_PLAYER = (
     'get_node_or_null("TouchControls")',
@@ -289,6 +292,8 @@ def self_test() -> None:
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
+    assert "GIRA EL MÓVIL" in REQUIRED_TOUCH
+    assert "orientation_blocked" in REQUIRED_TOUCH
     assert "_touch_controls.fire_pressed" in REQUIRED_MOBILE_PLAYER
     assert "screen.orientation.lock(\'landscape\')" in REQUIRED_MOBILE_PAUSE
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")

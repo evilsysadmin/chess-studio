@@ -156,6 +156,10 @@ func _process(delta: float) -> void:
         _startup_ready_sent = true
         _notify_parent("ready")
 
+    if touch_controls != null and touch_controls.orientation_blocked():
+        enemy_projectiles.clear()
+        return
+
     _hostile_fire_gap_remaining = maxf(0.0, _hostile_fire_gap_remaining - delta)
     _spawn_boss_if_needed()
     _update_projectiles(delta)
