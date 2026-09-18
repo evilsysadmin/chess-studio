@@ -365,6 +365,19 @@ def add_banner(name: str, x: float, materials):
     flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
 
+    relief_y = 5.73
+    sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.16, 0.035, 0.14), brass)
+    cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), brass, bevel=0.018)
+    curve_tube(
+        f"HOME_PROP_banner_horse_neck_{name}",
+        [(x + 0.01, relief_y, 4.69), (x + 0.10, relief_y, 4.48), (x + 0.04, relief_y, 4.29)],
+        0.055,
+        brass,
+    )
+    cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, brass, vertices=12)
+    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), brass, bevel=0.01)
+    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), brass, bevel=0.01)
+
 
 def add_armor(materials):
     steel = materials["steel"]
@@ -434,10 +447,11 @@ def add_side_furnishings(materials):
     steel = materials["steel"]
 
     # Left lived-in corner: sofa, side table, helmet/candle and book stack.
-    cube("HOME_PROP_left_sofa_base", (-7.75, 0.65, 0.36), (1.05, 0.72, 0.34), leather, bevel=0.10)
-    cube("HOME_PROP_left_sofa_back", (-8.25, 1.05, 0.98), (0.16, 0.70, 0.64), leather, bevel=0.08)
-    cylinder("HOME_PROP_left_side_table", (-7.05, 2.45, 0.55), 0.54, 1.10, wood, vertices=24)
-    sphere("HOME_PROP_left_helmet", (-7.05, 2.45, 1.26), (0.28, 0.24, 0.24), steel)
+    cube("HOME_PROP_left_sofa_base", (-7.15, 0.58, 0.38), (1.18, 0.82, 0.36), leather, bevel=0.12)
+    cube("HOME_PROP_left_sofa_back", (-7.72, 1.08, 1.08), (0.18, 0.78, 0.70), leather, bevel=0.10)
+    cube("HOME_PROP_left_sofa_arm", (-6.25, 0.60, 0.72), (0.18, 0.70, 0.42), leather, bevel=0.10)
+    cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
+    sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
     cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
     for idx in range(4):
         cube(
@@ -457,14 +471,16 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_library_lamp_base", (-3.10, 3.92, 1.00), (0.09, 0.09, 0.12), brass, bevel=0.02)
     cube("HOME_PROP_library_lamp_shade", (-3.10, 3.92, 1.24), (0.24, 0.18, 0.14), paper, bevel=0.04)
 
-    # Right cabinet + globe, one of the strongest canonical silhouettes.
-    cube("HOME_PROP_right_cabinet", (7.55, 5.18, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
-    cylinder("HOME_PROP_globe_stand", (6.78, 4.72, 1.22), 0.10, 0.66, brass, vertices=24)
-    sphere("HOME_PROP_globe", (6.78, 4.72, 1.82), (0.58, 0.58, 0.58), globe)
+    # Right cabinet + globe, pulled slightly forward so the globe actually reads
+    # beside the right fireplace at canonical camera distance.
+    gx, gy = 7.05, 4.10
+    cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
+    cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
+    sphere("HOME_PROP_globe", (gx, gy, 1.82), (0.68, 0.68, 0.68), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
-            (6.78 + 0.67 * math.cos(i * math.pi / 16), 4.72, 1.82 + 0.67 * math.sin(i * math.pi / 16))
+            (gx + 0.78 * math.cos(i * math.pi / 16), gy, 1.82 + 0.78 * math.sin(i * math.pi / 16))
             for i in range(17)
         ],
         0.025,
@@ -656,13 +672,26 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Chandelier and warm pools of light.
     cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.78), 0.055, 1.46, materials["brass"])
-    curve_tube("HOME_PROP_chandelier_ring", [
-        (1.48 * math.cos(i * math.tau / 20), 2.45 + 0.68 * math.sin(i * math.tau / 20), 4.06)
-        for i in range(21)
-    ], 0.060, materials["brass"])
-    for idx, x in enumerate((-1.02, -0.34, 0.34, 1.02)):
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (x, 2.45, 4.13), (0.055, 0.055, 0.18), materials["fire"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (x, 2.25, 4.22), 52, (1.0, 0.52, 0.20), radius=0.32)
+    ring_points = [
+        (1.52 * math.cos(i * math.tau / 24), 2.45 + 1.02 * math.sin(i * math.tau / 24), 4.05)
+        for i in range(25)
+    ]
+    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
+    for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
+        rx = 1.52 * math.cos(angle)
+        ry = 2.45 + 1.02 * math.sin(angle)
+        curve_tube(
+            f"HOME_PROP_chandelier_chain_{idx}",
+            [(0.0, 2.45, 5.10), (rx, ry, 4.08)],
+            0.025,
+            materials["brass"],
+        )
+    for idx in range(8):
+        angle = idx * math.tau / 8.0
+        cx = 1.40 * math.cos(angle)
+        cy = 2.45 + 0.94 * math.sin(angle)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.20), (0.050, 0.050, 0.20), materials["fire"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.30), 34, (1.0, 0.52, 0.20), radius=0.28)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
