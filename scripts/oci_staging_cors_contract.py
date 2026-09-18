@@ -234,5 +234,6 @@ assert 'tunnel_action="restarted"' in deploy
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" in deploy
 for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
     assert f"phase_done {phase}" in deploy
+assert "OCI_DEPLOY_TIMINGS phases=%s" in deploy
 
 print("OCI staging CORS + runtime deployment contract: OK")
