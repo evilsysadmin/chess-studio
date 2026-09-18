@@ -5,7 +5,12 @@ const EMPTY_PVP_RUNTIME = Object.freeze({
   rivalCount: 0,
   incomingCount: 0,
   activeMatch: null,
+  lobby: null,
   enterMatch: null,
+  refresh: null,
+  challenge: null,
+  acceptChallenge: null,
+  declineChallenge: null,
   enroll: null,
   leave: null,
 });
