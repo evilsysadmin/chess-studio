@@ -162,7 +162,8 @@ def main() -> int:
         ("PLUGIN_REGISTRATION_RETRY_SECONDS = 5", "Run Command registration retry cadence"),
         ("def plugin_registration_is_pending", "Run Command missing-plugin classifier"),
         ("wait_for_registration: bool = False", "Run Command opt-in readiness wait"),
-        ("diagnose_plugin(oci, config, wait_for_registration=True)", "deploy enables readiness wait"),
+        ("wait_for_registration=True,", "deploy enables readiness wait"),
+        ("resolved=resolved,", "deploy reuses admitted OCI target"),
     ):
         require(oci_run_command, needle, label, errors)
 
