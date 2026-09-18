@@ -43,7 +43,7 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
 
-      - name: Admit only current Pawn Slug generations
+      - name: Admit exact staging generation
         id: admission
         shell: bash
         run: |
@@ -51,13 +51,11 @@ jobs:
           echo 'run=false' >> "$GITHUB_OUTPUT"
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
 
-          if [[ "$GITHUB_EVENT_NAME" != 'workflow_dispatch' ]]; then
-            changed="$(git diff-tree --no-commit-id --name-only -r "$DEPLOY_SHA")"
-            if ! grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_|frontend/src/pawnSlugGodotRuntime|frontend/src/components/PawnSlugGodot|frontend/src/pawnSlug|frontend/src/components/PawnSlug|frontend/src/assets/pawnSlug/|frontend/src/assets/r2-assets-manifest\.json|e2e/(pawn-slug|staging-pawn-slug)|\.github/workflows/staging-pawn-slug-visual\.yml)' <<<"$changed"; then
-              echo 'No hay cambios de Pawn Slug en esta generación; captura live omitida.'
-              exit 0
-            fi
-          fi
+          # Every coherent staging generation gets Pawn Slug Godot visual evidence.
+          # Looking only at the deployed commit's file list created false-green
+          # skips when a later unrelated merge superseded the Pawn Slug merge.
+          # The exact backend/frontend SHA checks below already prevent validating
+          # stale or mismatched staging generations.
 
           backend="$RUNNER_TEMP/pawnslug-backend-release.json"
           frontend="$RUNNER_TEMP/pawnslug-frontend-release.json"
