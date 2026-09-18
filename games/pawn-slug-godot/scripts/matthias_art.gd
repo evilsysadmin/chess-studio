@@ -149,6 +149,7 @@ var _recoil_x := 0.0
 var _recoil_rotation := 0.0
 var _moving_recoil_hold_remaining := 0.0
 var _facing := 1.0
+var _aim_direction := Vector2.RIGHT
 var _one_shot_action := ""
 var _hold_one_shot := false
 var _locomotion_frame_accumulator := 0.0
@@ -174,6 +175,14 @@ func body_ready() -> bool:
 
 func current_weapon() -> String:
     return _weapon
+
+func set_aim_direction(direction: Vector2) -> void:
+    var safe_direction := direction.normalized()
+    if safe_direction.length_squared() <= 0.001:
+        safe_direction = Vector2(_facing, 0.0)
+    _aim_direction = safe_direction
+    if _flash != null:
+        _sync_aim_feedback()
 
 func set_weapon(kind: String) -> void:
     var next := kind if SOURCE_RECTS.has(kind) else "pistol"
@@ -859,6 +868,19 @@ func _sync_muzzle() -> void:
         _muzzle.position = Vector2(poses.get(_action, poses["idle"])) * BODY_SCALE_RATIO
     var s := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
     _flash.scale = Vector2(s, s)
+    _sync_aim_feedback()
+
+func _sync_aim_feedback() -> void:
+    if _flash == null:
+        return
+    # FacingRoot mirrors local X for left-facing Matthias. Convert the world
+    # aim vector back into that mirrored local space so the procedural flash
+    # points along the actual projectile direction without rotating the authored
+    # raster body/weapon around the player's feet.
+    var local_aim := Vector2(_aim_direction.x * _facing, _aim_direction.y)
+    if local_aim.length_squared() <= 0.001:
+        local_aim = Vector2.RIGHT
+    _flash.rotation = local_aim.angle()
 
 func _sync_modulate() -> void:
     var color := Color.WHITE
