@@ -627,21 +627,26 @@ def add_side_furnishings(materials):
     cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
     cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
-    sphere("HOME_PROP_left_horse_body", (-7.52, 2.12, 1.50), (0.28, 0.15, 0.18), brass)
+    sphere("HOME_PROP_left_horse_body", (-6.45, 2.42, 1.58), (0.30, 0.16, 0.19), materials["gold"])
     curve_tube(
         "HOME_PROP_left_horse_neck",
-        [(-7.66, 2.12, 1.55), (-7.82, 2.12, 1.74), (-7.94, 2.12, 1.88)],
+        [(-6.58, 2.42, 1.62), (-6.74, 2.42, 1.82), (-6.86, 2.42, 1.96)],
         0.065,
-        brass,
+        materials["gold"],
     )
-    sphere("HOME_PROP_left_horse_head", (-8.02, 2.12, 1.91), (0.12, 0.07, 0.10), brass)
-    for idx, hx in enumerate((-7.68, -7.42)):
+    sphere("HOME_PROP_left_horse_head", (-6.94, 2.42, 1.99), (0.12, 0.07, 0.10), materials["gold"])
+    for idx, hx in enumerate((-6.61, -6.35)):
         curve_tube(
             f"HOME_PROP_left_horse_leg_{idx}",
-            [(hx, 2.12, 1.38), (hx - 0.04, 2.12, 1.10)],
+            [(hx, 2.42, 1.46), (hx - 0.04, 2.42, 1.18)],
             0.035,
-            brass,
+            materials["gold"],
         )
+    for idx, cx in enumerate((-6.90, -6.62, -6.34)):
+        cylinder(f"HOME_PROP_left_candelabra_stem_{idx}", (cx, 2.70, 1.26), 0.035, 0.24, materials["brass_dark"], vertices=12)
+        cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["paper"], bevel=0.012)
+        cone(f"HOME_PROP_left_candelabra_flame_{idx}", (cx, 2.70, 1.68), 0.035, 0.006, 0.10, materials["fire_hot"], vertices=10)
+        add_point_light(f"HOME_LIGHT_left_candelabra_{idx}", (cx, 2.58, 1.72), 18, (1.0, 0.36, 0.08), radius=0.18)
     for idx in range(4):
         cube(
             f"HOME_PROP_left_book_stack_{idx}",
@@ -662,10 +667,10 @@ def add_side_furnishings(materials):
 
     # Right cabinet + globe, pulled slightly forward so the globe actually reads
     # beside the right fireplace at canonical camera distance.
-    gx, gy = 6.32, 4.02
+    gx, gy = 5.95, 4.08
     cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
-    sphere("HOME_PROP_globe", (gx, gy, 1.88), (0.62, 0.62, 0.62), globe)
+    sphere("HOME_PROP_globe", (gx, gy, 1.88), (0.64, 0.64, 0.64), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
@@ -844,7 +849,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
         "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
-        "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
+        "globe": material("HOME_MAT_globe", (0.52, 0.34, 0.15, 1), roughness=0.58, variation=0.10, variation_scale=3.0),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
         "ceramic": material("HOME_MAT_ceramic", (0.48, 0.43, 0.33, 1), roughness=0.52),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
@@ -986,7 +991,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for idx, z in enumerate((2.78, 3.55, 4.25)):
         cube(f"HOME_PROP_window_mullion_h_{idx}", (7.82, 6.46, z + 0.10), (0.86, 0.045, 0.025), materials["brass_dark"], bevel=0.010)
     cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
-    sphere("HOME_PROP_window_moon", (8.14, 6.40, 4.44), (0.38, 0.030, 0.38), materials["moon"])
+    sphere("HOME_PROP_window_moon", (7.95, 6.40, 4.48), (0.44, 0.030, 0.44), materials["moon"])
     for idx, (x1, z1, x2, z2) in enumerate((
         (6.98, 2.35, 8.66, 4.03),
         (6.98, 3.02, 8.66, 4.70),
@@ -1118,17 +1123,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 175, (0.68, 0.52, 0.39), 5.2, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 92, (0.10, 0.22, 0.40), 4.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 165, (0.68, 0.38, 0.22), 3.6, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 125, (0.68, 0.52, 0.39), 4.8, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 65, (0.10, 0.22, 0.40), 4.5, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 125, (0.68, 0.38, 0.22), 3.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 62, (0.34, 0.24, 0.18), 7.0, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.15, 0.32, 0.62), 3.8, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 250, (0.88, 0.68, 0.48), 3.4, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 185, (0.88, 0.68, 0.48), 3.0, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 105, (0.82, 0.48, 0.24), 2.2, target=(0, -0.72, 0.58))
-    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 180, (0.82, 0.48, 0.24), 2.4, target=(-2.65, 5.9, 2.6))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 300, (0.42, 0.52, 0.66), 2.5, target=(1.55, 5.28, 2.4))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 235, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
-    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 165, (0.66, 0.72, 0.78), 1.8, target=(1.55, 5.28, 2.40))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 110, (0.66, 0.72, 0.78), 1.6, target=(1.55, 5.28, 2.40))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
