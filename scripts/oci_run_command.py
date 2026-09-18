@@ -174,7 +174,7 @@ run_deploy() {{
   return "$deploy_rc"
 }}
 emit_success() {{
-  printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${agent_version:-unknown}"
+  printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
   awk -v runtime="$1" '/^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
 }}
 
