@@ -2,9 +2,9 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
-import { WAR_ROOM_VARIANT_STORAGE_KEY } from '../frontend/src/components/WarRoomVariant.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
     label: 'war-room-android-390x844',
