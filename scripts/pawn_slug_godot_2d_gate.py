@@ -46,6 +46,26 @@ REQUIRED_MATTHIAS = (
     "LEGACY_PISTOL_ATLAS_URL",
     "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-",
     "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
+    "V9_ATLAS_COLUMNS := 6",
+    "V9_ATLAS_ROWS := 18",
+    "V9_ATLAS_CELL_SIZE := 416",
+    "V9_ATLAS_SIZE := Vector2i(",
+    "matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png",
+    "matthias_machinegun_godot_strict_6x18_416_v9-05924bc1ef9e0dd2.png",
+    "matthias_shotgun_godot_strict_6x18_416_v9-5a7747da0ff3a359.png",
+    "matthias_panzerfaust_godot_strict_6x18_416_v9-92e0a01777274376.png",
+    "V9_BODY_SCALE := 0.43",
+    "V9_PACKED_FOOT_Y := 382.0",
+    "V9_ACTIONS",
+    '"crouch_walk": {"row": 7',
+    '"shoot_up": {"row": 9',
+    '"shoot_down": {"row": 10',
+    '"shoot_diag_up": {"row": 11',
+    '"shoot_diag_down": {"row": 13',
+    '"shoot_crouch": {"row": 14',
+    "_build_v9_frames",
+    "_v9_muzzle_position",
+    "V9_MUZZLE_LENGTH",
     "FULL_ATLAS_COLUMNS := 8",
     "FULL_ATLAS_ROWS := 11",
     "FULL_ATLAS_CELL_SIZE := 256",
@@ -466,10 +486,13 @@ def self_test() -> None:
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
     assert "SpriteFrames" in REQUIRED_MATTHIAS
+    assert "V9_ATLAS_COLUMNS := 6" in REQUIRED_MATTHIAS
+    assert "V9_ATLAS_ROWS := 18" in REQUIRED_MATTHIAS
+    assert "V9_ATLAS_CELL_SIZE := 416" in REQUIRED_MATTHIAS
+    assert any("matthias_machinegun_godot_strict_6x18_416_v9-" in token for token in REQUIRED_MATTHIAS)
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
-    assert any("matthias_machinegun_generated_source.png" in token for token in REQUIRED_MATTHIAS)
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
     assert "locomoting_now" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS

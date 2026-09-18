@@ -15,10 +15,72 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v6.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v6.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/pistol/matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/machinegun/matthias_machinegun_godot_strict_6x18_416_v9-05924bc1ef9e0dd2.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/shotgun/matthias_shotgun_godot_strict_6x18_416_v9-5a7747da0ff3a359.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/panzerfaust/matthias_panzerfaust_godot_strict_6x18_416_v9-92e0a01777274376.png",
+}
+const V9_ATLAS_COLUMNS := 6
+const V9_ATLAS_ROWS := 18
+const V9_ATLAS_CELL_SIZE := 416
+const V9_ATLAS_SIZE := Vector2i(
+    V9_ATLAS_COLUMNS * V9_ATLAS_CELL_SIZE,
+    V9_ATLAS_ROWS * V9_ATLAS_CELL_SIZE,
+)
+const V9_BODY_SCALE := 0.43
+const V9_PACKED_FOOT_Y := 382.0
+const V9_BODY_Y := -(V9_PACKED_FOOT_Y - float(V9_ATLAS_CELL_SIZE) * 0.5) * V9_BODY_SCALE
+const V9_ACTION_ORDER := [
+    "idle",
+    "walk",
+    "run",
+    "jump",
+    "fall",
+    "land",
+    "crouch",
+    "crouch_walk",
+    "shoot",
+    "shoot_up",
+    "shoot_down",
+    "shoot_diag_up",
+    "shoot_diag_up_alt",
+    "shoot_diag_down",
+    "shoot_crouch",
+    "reload",
+    "hurt",
+    "die",
+]
+const V9_ACTIONS := {
+    "idle": {"row": 0, "fps": 6.0, "loop": true},
+    "walk": {"row": 1, "fps": 10.0, "loop": true},
+    "run": {"row": 2, "fps": 12.0, "loop": true},
+    "jump": {"row": 3, "fps": 10.0, "loop": false},
+    "fall": {"row": 4, "fps": 8.0, "loop": true},
+    "land": {"row": 5, "fps": 12.0, "loop": false},
+    "crouch": {"row": 6, "fps": 6.0, "loop": true},
+    "crouch_walk": {"row": 7, "fps": 8.0, "loop": true},
+    "shoot": {"row": 8, "fps": 15.0, "loop": false},
+    "shoot_up": {"row": 9, "fps": 15.0, "loop": false},
+    "shoot_down": {"row": 10, "fps": 15.0, "loop": false},
+    "shoot_diag_up": {"row": 11, "fps": 15.0, "loop": false},
+    "shoot_diag_up_alt": {"row": 12, "fps": 15.0, "loop": false},
+    "shoot_diag_down": {"row": 13, "fps": 15.0, "loop": false},
+    "shoot_crouch": {"row": 14, "fps": 15.0, "loop": false},
+    "reload": {"row": 15, "fps": 10.0, "loop": false},
+    "hurt": {"row": 16, "fps": 12.0, "loop": false},
+    "die": {"row": 17, "fps": 9.0, "loop": false},
+}
+const V9_MUZZLE_LENGTH := {
+    "pistol": 54.0,
+    "machinegun": 64.0,
+    "shotgun": 70.0,
+    "panzerfaust": 72.0,
+}
+const V9_MUZZLE_PIVOT_Y := {
+    "pistol": -37.0,
+    "machinegun": -36.0,
+    "shotgun": -35.0,
+    "panzerfaust": -34.0,
 }
 const V7_SOURCE_SIZE := Vector2i(1070, 1470)
 const DIRECTIONAL_ATLAS_URLS := {
@@ -208,6 +270,7 @@ static var _full_body_y_by_weapon: Dictionary = {}
 static var _full_muzzle_by_weapon: Dictionary = {}
 static var _directional_ready_by_weapon: Dictionary = {}
 static var _directional_body_y_by_weapon: Dictionary = {}
+static var _v9_ready_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -330,7 +393,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
-    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down"]:
+    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down", "shoot_diag_up", "shoot_diag_down"]:
         _one_shot_action = ""
         _hold_one_shot = false
         _action = ""
@@ -363,14 +426,14 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
             var next := _resolve_action(horizontal_speed_ratio, on_floor, crouching and on_floor, vertical_speed)
             if next != _action:
                 var preserve_stride_phase := (
-                    _action in ["walk", "run"]
-                    and next in ["walk", "run"]
+                    _action in ["walk", "run", "crouch_walk"]
+                    and next in ["walk", "run", "crouch_walk"]
                 )
                 _action = next
                 if not preserve_stride_phase:
                     _locomotion_frame_accumulator = 0.0
                 _play_action()
-            if _action == "walk" or _action == "run":
+            if _action in ["walk", "run", "crouch_walk"]:
                 _advance_locomotion(delta, horizontal_speed_ratio)
 
     var authored_shoot := (
@@ -380,10 +443,10 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and _animation_available(authored_shoot_action)
     )
     if fired_now and not _dead and _hurt_remaining <= 0.0:
-        # Muzzle flash is always procedural and starts at the computed barrel tip.
-        # Authored shoot frames provide the pose only; they no longer decide the
-        # flash origin, which avoids a flash appearing halfway along the weapon.
-        _muzzle_remaining = MUZZLE_FLASH_SECONDS
+        # strict-v9 shooting rows already contain the authored muzzle flash.
+        # Older/fallback locomotion paths keep the procedural flash.
+        var v9_authored_shoot := authored_shoot and _v9_ready_by_weapon.has(_rendered_weapon)
+        _muzzle_remaining = 0.0 if v9_authored_shoot else MUZZLE_FLASH_SECONDS
         _muzzle_flash_boost = 1.0
         if not authored_shoot:
             var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
@@ -426,11 +489,20 @@ func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bo
         return ""
     if on_floor and crouching and _animation_available("shoot_crouch"):
         return "shoot_crouch"
-    var diagonal := absf(_aim_direction.x) > 0.25 and absf(_aim_direction.y) > 0.25
-    if diagonal and _aim_direction.y < 0.0 and _animation_available("shoot_up"):
-        return "shoot_up"
-    if diagonal and _aim_direction.y > 0.0 and _animation_available("shoot_down"):
-        return "shoot_down"
+
+    var has_horizontal := absf(_aim_direction.x) > 0.25
+    var has_vertical := absf(_aim_direction.y) > 0.25
+    if has_vertical and has_horizontal:
+        if _aim_direction.y < 0.0 and _animation_available("shoot_diag_up"):
+            return "shoot_diag_up"
+        if _aim_direction.y > 0.0 and _animation_available("shoot_diag_down"):
+            return "shoot_diag_down"
+    elif has_vertical:
+        if _aim_direction.y < 0.0 and _animation_available("shoot_up"):
+            return "shoot_up"
+        if _aim_direction.y > 0.0 and _animation_available("shoot_down"):
+            return "shoot_down"
+
     if locomoting_now:
         return ""
     return "shoot" if _animation_available("shoot") else ""
@@ -466,6 +538,8 @@ func _resolve_action(speed: float, on_floor: bool, crouching: bool, vertical_spe
             return "fall"
         return "jump"
     if crouching:
+        if speed > 0.08 and _animation_available("crouch_walk"):
+            return "crouch_walk"
         return "crouch"
     # Hysteresis avoids walk/run ping-pong while acceleration hovers around the
     # threshold; once Matthias is running he keeps the stride until clearly slow.
@@ -520,7 +594,7 @@ func _install_or_request_weapon() -> void:
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
         if _atlas_request == null:
-            _request_atlas(_weapon, full_url, "full")
+            _request_atlas(_weapon, full_url, "full-v9")
         if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
             return
         if _weapon == "pistol" and _legacy_pistol_frames != null:
@@ -545,7 +619,7 @@ func _install_or_request_weapon() -> void:
     _ensure_master()
 
 func _ensure_directional_source(weapon_id: String) -> void:
-    if _directional_ready_by_weapon.has(weapon_id):
+    if _v9_ready_by_weapon.has(weapon_id) or _directional_ready_by_weapon.has(weapon_id):
         return
     if not _full_frames_by_weapon.has(weapon_id) or _atlas_request != null:
         return
@@ -567,7 +641,7 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
-        if layout == "full-v7-source" and _request_full_fallback(weapon_id):
+        if layout in ["full-v9", "full-v7-source"] and _request_full_fallback(weapon_id):
             return
         _ensure_master()
 
@@ -581,18 +655,30 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
+        if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
     var image := _decode_raster(bytes)
     if image == null:
-        if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
+        if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
 
-    if requested_layout == "directional-v8":
+    if requested_layout == "full-v9":
+        frames = _build_v9_frames(image)
+        if frames == null:
+            if _request_full_fallback(requested_weapon):
+                return
+        else:
+            _full_frames_by_weapon[requested_weapon] = frames
+            _full_body_y_by_weapon[requested_weapon] = V9_BODY_Y
+            _full_muzzle_by_weapon[requested_weapon] = {}
+            _v9_ready_by_weapon[requested_weapon] = true
+            _directional_ready_by_weapon[requested_weapon] = true
+
+    elif requested_layout == "directional-v8":
         if image.get_size() == DIRECTIONAL_ATLAS_SIZE and _append_directional_atlas_frames(requested_weapon, image):
             _directional_ready_by_weapon[requested_weapon] = true
             if requested_weapon == _weapon:
@@ -642,7 +728,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             _legacy_pistol_frames = frames
 
     if requested_weapon == _weapon and frames != null:
-        _install_frames(frames, requested_layout in ["full-v7-source", "full"])
+        _install_frames(frames, requested_layout in ["full-v9", "full-v7-source", "full"])
     else:
         _install_or_request_weapon()
 
@@ -875,6 +961,39 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
         )
     return repaired
 
+
+func _build_v9_frames(image: Image) -> SpriteFrames:
+    if image.get_size() != V9_ATLAS_SIZE:
+        push_error(
+            "Strict Matthias v9 atlas has invalid dimensions: %s, expected %s"
+            % [image.get_size(), V9_ATLAS_SIZE]
+        )
+        return null
+
+    var atlas_texture := ImageTexture.create_from_image(image)
+    var frames := SpriteFrames.new()
+    frames.remove_animation("default")
+    for action in V9_ACTION_ORDER:
+        var spec: Dictionary = V9_ACTIONS[action]
+        frames.add_animation(action)
+        frames.set_animation_loop(action, bool(spec["loop"]))
+        frames.set_animation_speed(action, float(spec["fps"]))
+        var row := int(spec["row"])
+        for frame_index in range(V9_ATLAS_COLUMNS):
+            var rect := Rect2i(
+                frame_index * V9_ATLAS_CELL_SIZE,
+                row * V9_ATLAS_CELL_SIZE,
+                V9_ATLAS_CELL_SIZE,
+                V9_ATLAS_CELL_SIZE,
+            )
+            if image.get_region(rect).get_used_rect().size == Vector2i.ZERO:
+                push_error("Strict Matthias v9 contains empty cell %s/%d" % [action, frame_index])
+                return null
+            var texture := AtlasTexture.new()
+            texture.atlas = atlas_texture
+            texture.region = Rect2(rect)
+            frames.add_frame(action, texture)
+    return frames
 
 func _build_full_frames(image: Image, weapon_id: String, directional_shoot: bool) -> SpriteFrames:
     if image.get_size() != FULL_ATLAS_SIZE:
@@ -1216,9 +1335,11 @@ func _build_fallback_frames() -> void:
 
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.sprite_frames = frames
-    _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
-    var body_y := -BODY_CENTER_TO_FOOT * BODY_SCALE
-    if authored_full:
+    var v9_ready := _v9_ready_by_weapon.has(_weapon)
+    var body_scale := V9_BODY_SCALE if v9_ready else BODY_SCALE
+    _body.scale = Vector2(body_scale, body_scale)
+    var body_y := V9_BODY_Y if v9_ready else -BODY_CENTER_TO_FOOT * BODY_SCALE
+    if authored_full and not v9_ready:
         body_y = float(_full_body_y_by_weapon.get(_weapon, body_y))
     _body.position = Vector2(0.0, body_y)
     _using_full_atlas = authored_full
@@ -1235,7 +1356,7 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
-    if authored_full:
+    if authored_full and not v9_ready:
         call_deferred("_ensure_directional_source", _rendered_weapon)
 
 func _prefetch_machinegun() -> void:
@@ -1243,7 +1364,7 @@ func _prefetch_machinegun() -> void:
         return
     var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
     if not url.is_empty():
-        _request_atlas("machinegun", url, "full")
+        _request_atlas("machinegun", url, "full-v9")
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
@@ -1252,7 +1373,7 @@ func _play_action() -> void:
     if not _body_ready or _dead or not _animation_available(_action):
         return
     _apply_body_transform(_action, _body.frame)
-    if _action == "walk" or _action == "run":
+    if _action in ["walk", "run", "crouch_walk"]:
         _body.animation = _action
         _body.frame = 0
         _body.pause()
@@ -1319,6 +1440,10 @@ func _on_body_frame_changed() -> void:
     _apply_body_transform(String(_body.animation), _body.frame)
 
 func _apply_body_transform(action: String, frame_index: int) -> void:
+    if _v9_ready_by_weapon.has(_rendered_weapon):
+        _body.scale = Vector2(V9_BODY_SCALE, V9_BODY_SCALE)
+        _body.position.y = V9_BODY_Y
+        return
     var directional_by_action: Dictionary = _directional_body_y_by_weapon.get(_rendered_weapon, {})
     if directional_by_action.has(action):
         var anchors: Array = directional_by_action[action]
@@ -1340,6 +1465,12 @@ func _on_animation_finished() -> void:
 
 func _sync_muzzle() -> void:
     var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
+    if _v9_ready_by_weapon.has(visual_weapon):
+        _muzzle.position = _v9_muzzle_position(visual_weapon)
+        var v9_scale := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
+        _flash.scale = Vector2(v9_scale, v9_scale)
+        _sync_aim_feedback()
+        return
     var strict_poses: Dictionary = _full_muzzle_by_weapon.get(visual_weapon, {})
     if _using_full_atlas and not strict_poses.is_empty():
         var action_key := _action if strict_poses.has(_action) else "idle"
@@ -1355,6 +1486,17 @@ func _sync_muzzle() -> void:
     var s := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
     _flash.scale = Vector2(s, s)
     _sync_aim_feedback()
+
+func _v9_muzzle_position(weapon_id: String) -> Vector2:
+    var local_aim := Vector2(_aim_direction.x * _facing, _aim_direction.y)
+    if local_aim.length_squared() <= 0.001:
+        local_aim = Vector2.RIGHT
+    local_aim = local_aim.normalized()
+    var crouched := _action in ["crouch", "crouch_walk", "shoot_crouch"]
+    var pivot_y := -25.0 if crouched else float(V9_MUZZLE_PIVOT_Y.get(weapon_id, -36.0))
+    var pivot := Vector2(7.0, pivot_y)
+    var length := float(V9_MUZZLE_LENGTH.get(weapon_id, 58.0))
+    return pivot + local_aim * length
 
 func _sync_aim_feedback() -> void:
     if _flash == null:

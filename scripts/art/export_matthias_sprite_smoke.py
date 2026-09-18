@@ -17,6 +17,11 @@ DEFAULT_CELL = 256
 DEFAULT_COLS = 8
 DEFAULT_ROWS = 11
 GENERATED_SOURCE_SIZE = (1070, 1470)
+V9_CELL = 416
+V9_COLS = 6
+V9_ROWS = 18
+V9_ATLAS_SIZE = (V9_CELL * V9_COLS, V9_CELL * V9_ROWS)
+V9_NAME_RE = re.compile(r"_godot_strict_6x18_416_v9(?:-[0-9a-f]{16})?\.png$", re.I)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
@@ -137,6 +142,8 @@ def checkerboard(size: tuple[int, int], tile: int = 16) -> Image.Image:
 
 def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: int, rows: int) -> dict:
     atlas = Image.open(source).convert("RGBA")
+    if V9_NAME_RE.search(source.name):
+        cell, cols, rows = V9_CELL, V9_COLS, V9_ROWS
     expected = (cols * cell, rows * cell)
     source_size = atlas.size
     normalized_from_source = False
@@ -206,7 +213,7 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
 def compose_overview(reports: list[dict], out_root: Path) -> str:
     order = ("pistol", "machinegun", "shotgun", "panzerfaust")
     by_weapon = {item["weapon"]: item for item in reports}
-    tile_w, tile_h, label_h = 512, 704, 28
+    tile_w, tile_h, label_h = 512, 768, 28
     board = Image.new("RGBA", (tile_w * 2, (tile_h + label_h) * 2), (22, 24, 28, 255))
     draw = ImageDraw.Draw(board)
     for index, weapon in enumerate(order):
@@ -215,11 +222,13 @@ def compose_overview(reports: list[dict], out_root: Path) -> str:
             continue
         source = out_root / item["contactSheet"]
         image = Image.open(source).convert("RGBA")
-        image = image.resize((tile_w, tile_h), Image.Resampling.LANCZOS)
+        image.thumbnail((tile_w, tile_h), Image.Resampling.LANCZOS)
         x = (index % 2) * tile_w
         y = (index // 2) * (tile_h + label_h)
         draw.text((x + 8, y + 7), weapon.upper(), fill=(238, 238, 238, 255))
-        board.alpha_composite(image, (x, y + label_h))
+        image_x = x + (tile_w - image.width) // 2
+        image_y = y + label_h + (tile_h - image.height) // 2
+        board.alpha_composite(image, (image_x, image_y))
     path = out_root / "matthias_all_weapons_contact_sheet.png"
     board.save(path, "PNG", optimize=True)
     return str(path.relative_to(out_root))
