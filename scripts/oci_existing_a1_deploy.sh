@@ -37,9 +37,11 @@ now_ms() {
 phase_done() {
   local name="$1"
   local started_ms="$2"
-  local ended_ms
+  local ended_ms duration_ms
   ended_ms="$(now_ms)"
-  printf 'OCI_DEPLOY_PHASE name=%s duration_ms=%s\n' "$name" "$((ended_ms - started_ms))"
+  duration_ms="$((ended_ms - started_ms))"
+  printf 'OCI_DEPLOY_PHASE name=%s duration_ms=%s\n' "$name" "$duration_ms"
+  deploy_phase_summary="${deploy_phase_summary:-}${name}:${duration_ms},"
 }
 
 require git
@@ -347,6 +349,7 @@ for _ in $(seq 1 60); do
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
     phase_done total "$total_started_ms"
+    printf 'OCI_DEPLOY_TIMINGS phases=%s\n' "${deploy_phase_summary%,}"
     echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
