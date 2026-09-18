@@ -33,12 +33,12 @@ function dispose(root) {
 describe('PremiumWarRoomScene', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('construye una sala de guerra teutónica habitable con un solo blasón de peón', () => {
+  it('construye una sala de guerra teutónica habitable con heráldica de caballo rampante', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const mobile = buildPremiumWarRoomLayer(theme, true, true);
     const desktopStats = sceneStats(desktop);
     const mobileStats = sceneStats(mobile);
-    const crest = desktop.getObjectByName('ceremonial-pawn-crest');
+    const crest = desktop.getObjectByName('ceremonial-rampant-horse-crest');
 
     expect(desktop.name).toBe('premium-war-room-layer');
     expect(desktop.userData.premiumWarRoom).toBe(true);
@@ -49,8 +49,10 @@ describe('PremiumWarRoomScene', () => {
     expect(mobile.userData.warRoomDesktopLatePracticalLightsOmitted).toBeUndefined();
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
     expect(crest).toBeTruthy();
-    expect(crest.userData.singlePawnDisplay).toBe(true);
-    expect(desktop.getObjectByName('ceremonial-single-pawn')).toBeTruthy();
+    expect(crest.userData.chessStudioHeraldry).toBe('rampant-horse-v1');
+    expect(desktop.getObjectByName('chess-studio-rampant-horse')).toBeTruthy();
+    expect(desktop.getObjectByName('ceremonial-pawn-crest')).toBeUndefined();
+    expect(desktop.getObjectByName('ceremonial-single-pawn')).toBeUndefined();
     expect(desktop.getObjectByName('command-cabinet')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sofa-left')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sofa-right')).toBeTruthy();

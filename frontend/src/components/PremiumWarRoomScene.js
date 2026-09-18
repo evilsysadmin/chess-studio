@@ -308,32 +308,90 @@ function addLaurel(group, centerX, centerY, z, side, segments) {
   }
 }
 
-function addPawnCrest(group, x, y, z, towardBoard, segments) {
+function addHorseReliefRod(group, brass, x, y, length, angle, radius, z, segments) {
+  const rod = addMesh(
+    group,
+    new THREE.CapsuleGeometry(radius, length, 5, Math.max(8, Math.floor(segments / 2))),
+    brass,
+    [x, y, z],
+    [0, 0, angle],
+  );
+  rod.castShadow = true;
+  return rod;
+}
+
+function addRampantHorseCrest(group, x, y, z, towardBoard, segments) {
   const plaque = material(0x17120f, { metalness: 0.18, roughness: 0.38, clearcoat: 0.58 });
   const brass = material(COLORS.brass, { metalness: 0.9, roughness: 0.18, clearcoat: 0.8, clearcoatRoughness: 0.07 });
+  const burgundy = material(COLORS.burgundyDark, { metalness: 0.12, roughness: 0.48, clearcoat: 0.44 });
   const crest = new THREE.Group();
-  crest.name = 'ceremonial-pawn-crest';
-  crest.userData.singlePawnDisplay = true;
+  crest.name = 'ceremonial-rampant-horse-crest';
+  crest.userData.chessStudioHeraldry = 'rampant-horse-v1';
+
   addMesh(crest, new THREE.CylinderGeometry(1.42, 1.42, 0.12, segments), plaque, [0, 0, 0], [Math.PI / 2, 0, 0]);
   addMesh(crest, new THREE.TorusGeometry(1.18, 0.055, 10, segments), brass, [0, 0, towardBoard * 0.075]);
   addLaurel(crest, 0, -0.04, towardBoard * 0.11, -1, segments);
   addLaurel(crest, 0, -0.04, towardBoard * 0.11, 1, segments);
 
-  const pawn = new THREE.Group();
-  pawn.name = 'ceremonial-single-pawn';
-  addMesh(pawn, new THREE.CylinderGeometry(0.34, 0.48, 0.12, segments), brass, [0, -0.7, 0]);
-  addMesh(pawn, new THREE.CylinderGeometry(0.22, 0.34, 0.6, segments), brass, [0, -0.35, 0]);
-  addMesh(pawn, new THREE.TorusGeometry(0.25, 0.045, 10, segments), brass, [0, -0.02, 0], [Math.PI / 2, 0, 0]);
-  addMesh(pawn, new THREE.SphereGeometry(0.28, segments, Math.max(12, Math.floor(segments / 2))), brass, [0, 0.3, 0]);
-  pawn.position.z = towardBoard * 0.16;
-  pawn.scale.setScalar(0.92);
-  crest.add(pawn);
+  // Broad heraldic shield behind the horse. It deliberately breaks the old
+  // vertical pawn silhouette that read ambiguously at gameplay distance.
+  const shield = new THREE.Group();
+  shield.name = 'war-room-rampant-horse-shield';
+  addMesh(shield, new THREE.BoxGeometry(1.28, 1.34, 0.09), burgundy, [0, -0.02, towardBoard * 0.115], [0, 0, 0], [1, 0.86, 1]);
+  addMesh(shield, new THREE.TorusGeometry(0.63, 0.045, 8, segments), brass, [0, 0.02, towardBoard * 0.175], [0, 0, 0], [1, 1.08, 1]);
+  crest.add(shield);
 
-  addBox(crest, [0.72, 0.12, 0.08], COLORS.brass, [0, 1.55, towardBoard * 0.13], { metalness: 0.88, roughness: 0.18 });
-  for (const crownX of [-0.28, 0, 0.28]) {
-    addMesh(crest, new THREE.ConeGeometry(0.095, 0.35, 12), brass, [crownX, 1.78 + (crownX === 0 ? 0.08 : 0), towardBoard * 0.13]);
-    addMesh(crest, new THREE.SphereGeometry(0.055, 10, 8), brass, [crownX, 1.96 + (crownX === 0 ? 0.08 : 0), towardBoard * 0.13]);
-  }
+  const horse = new THREE.Group();
+  horse.name = 'chess-studio-rampant-horse';
+  horse.position.z = towardBoard * 0.22;
+
+  const body = addMesh(
+    horse,
+    new THREE.SphereGeometry(0.36, segments, Math.max(12, Math.floor(segments / 2))),
+    brass,
+    [0.03, -0.08, 0],
+    [0, 0, -0.16],
+    [1.08, 0.72, 0.34],
+  );
+  body.name = 'rampant-horse-body';
+
+  addHorseReliefRod(horse, brass, -0.18, 0.24, 0.48, -0.56, 0.095, 0, segments);
+  addMesh(
+    horse,
+    new THREE.SphereGeometry(0.19, segments, Math.max(10, Math.floor(segments / 2))),
+    brass,
+    [-0.34, 0.48, 0],
+    [0, 0, -0.2],
+    [1.0, 0.72, 0.34],
+  );
+  addBox(horse, [0.20, 0.11, 0.10], COLORS.brass, [-0.48, 0.43, 0], {
+    metalness: 0.9,
+    roughness: 0.18,
+    rotation: [0, 0, -0.16],
+  });
+
+  // Raised forelegs.
+  addHorseReliefRod(horse, brass, 0.28, 0.18, 0.54, 0.90, 0.065, 0, segments);
+  addHorseReliefRod(horse, brass, 0.32, 0.02, 0.50, 1.14, 0.06, 0, segments);
+  // Hind legs anchoring the silhouette.
+  addHorseReliefRod(horse, brass, -0.08, -0.43, 0.58, -0.28, 0.075, 0, segments);
+  addHorseReliefRod(horse, brass, 0.18, -0.46, 0.56, 0.30, 0.075, 0, segments);
+  // Tail curls away from the body instead of adding another vertical spike.
+  addMesh(
+    horse,
+    new THREE.TorusGeometry(0.30, 0.055, 8, Math.max(16, segments), Math.PI * 1.25),
+    brass,
+    [-0.30, -0.05, 0],
+    [0, 0, 1.88],
+    [1, 1.18, 0.65],
+  );
+
+  // Small mane/ear accents make the horse read at a glance without a crown.
+  addMesh(horse, new THREE.ConeGeometry(0.07, 0.18, 10), brass, [-0.40, 0.68, 0], [0, 0, -0.28]);
+  addMesh(horse, new THREE.ConeGeometry(0.055, 0.14, 10), brass, [-0.28, 0.67, 0], [0, 0, 0.06]);
+
+  horse.scale.setScalar(0.92);
+  crest.add(horse);
   crest.position.set(x, y, z);
   group.add(crest);
 }
@@ -611,7 +669,7 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addCofferedPaneling(group, wallZ, towardBoard, coarsePointer);
   addCurtain(group, -1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, -1, coarsePointer);
   addCurtain(group, 1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, 1, coarsePointer);
-  addPawnCrest(group, 0, 3.25, wallZ + towardBoard * 0.62, towardBoard, segments);
+  addRampantHorseCrest(group, 0, 3.25, wallZ + towardBoard * 0.62, towardBoard, segments);
   addWallSconce(group, -3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 0.7);
   addWallSconce(group, 3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 3.2);
 
