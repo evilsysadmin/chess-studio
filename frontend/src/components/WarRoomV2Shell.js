@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 export const WAR_ROOM_V2_STAGING_MODEL_URL =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
@@ -13,6 +14,12 @@ export function warRoomV2ModelUrl({
   if (!version) return baseUrl;
   const separator = baseUrl.includes('?') ? '&' : '?';
   return `${baseUrl}${separator}build=${encodeURIComponent(version)}`;
+}
+
+export function configureWarRoomV2Loader(loader) {
+  if (!loader?.setMeshoptDecoder) throw new TypeError('War Room v2 loader requires Meshopt support');
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  return loader;
 }
 
 export function warRoomV2EnvMapIntensity(materialName = '') {
@@ -294,7 +301,7 @@ export async function installWarRoomV2Shell(
   } = {},
 ) {
   if (!scene?.add) throw new Error('War Room v2 requires a Three.js scene');
-  const loader = new GLTFLoader();
+  const loader = configureWarRoomV2Loader(new GLTFLoader());
   const gltf = await loader.loadAsync(url);
   const root = gltf?.scene;
   if (!root) throw new Error('War Room v2 GLB has no scene');
