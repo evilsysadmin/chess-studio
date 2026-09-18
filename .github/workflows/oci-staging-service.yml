@@ -76,9 +76,9 @@ jobs:
         run: python3 scripts/render_mongo_target_diagnose.py
 
       # Host/agent registration convergence belongs to the infrastructure apply.
-      # Runtime sync materializes CURRENT Vault values plus versioned Git config;
-      # Render is no longer a runtime source for this operation.
-      - name: Sync CURRENT Vault + Git runtime to private staging bundle
+      # Runtime sync materializes CURRENT Vault values plus versioned Git config
+      # directly on the A1; Render is no longer a runtime source for this operation.
+      - name: Sync CURRENT Vault + Git runtime to staging
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
         run: python3 scripts/oci_vault_sync.py sync-current
 
