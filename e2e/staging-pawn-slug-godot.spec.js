@@ -133,10 +133,12 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   await expect(direct).toBeVisible();
   await direct.click();
 
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  const host = page.locator('.pawn-slug-godot-host');
   const iframe = page.locator('iframe[title="Pawn Slug Godot"]');
+  await expect(host).toBeVisible();
   await expect(iframe).toBeVisible();
-  await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(host).toHaveAttribute('data-runtime-ready', 'true', { timeout: 30_000 });
+  await expect(page.locator('.pawn-slug-godot-host__header')).toHaveCount(0);
 
   const frame = page.frameLocator('iframe[title="Pawn Slug Godot"]');
   const canvas = frame.locator('canvas');
@@ -145,7 +147,16 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   // Captura inmediata tras ready: protege la regresión del primer frame vacío.
   await captureGodot(page, testInfo, '00-godot-boot.png');
 
-  await canvas.click({ position: { x: 640, y: 360 } });
+  const hostBox = await host.boundingBox();
+  const viewport = page.viewportSize();
+  expect(hostBox).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(hostBox.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  expect(hostBox.height).toBeGreaterThanOrEqual(viewport.height - 1);
+
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  await canvas.click({ position: { x: canvasBox.width / 2, y: canvasBox.height / 2 } });
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(850);
   await captureGodot(page, testInfo, '01-godot-run.png');
