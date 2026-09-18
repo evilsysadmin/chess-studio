@@ -15,6 +15,8 @@ k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
+k3s_contract_state_file="$state_dir/k3s-deploy-contract.sha256"
+k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
 port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
 staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
@@ -28,6 +30,8 @@ require git
 require docker
 require curl
 require python3
+require sha256sum
+require systemctl
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
