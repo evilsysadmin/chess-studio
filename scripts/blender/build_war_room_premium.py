@@ -855,16 +855,6 @@ def add_gothic_canon_v2(static, mats):
             (0, 6.555, z), (8.10, 0.018, 0.018),
             mats["stone_dark"], static, bevel=0.006,
         )
-        stagger = 0.68 if course % 2 else 0.0
-        for joint, x in enumerate((-6.55, -4.25, -1.95, 0.35, 2.65, 4.95, 7.25)):
-            px = x + stagger
-            if px > 8.0:
-                continue
-            cube(
-                f"WR_CANON_masonry_joint_{course}_{joint}",
-                (px, 6.553, z - 0.28), (0.014, 0.018, 0.25),
-                mats["stone_dark"], static, bevel=0.004,
-            )
 
     # Four tall heraldic banners frame the existing central rampant-horse crest.
     # Their lower points sit behind the table so they read as architecture, not UI.
