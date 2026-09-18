@@ -9,7 +9,7 @@ import {
 } from './chroniclesMapCatalog.js';
 import { chroniclesCreateRun } from './chroniclesRunClient.js';
 
-export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 250;
+export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 5000;
 
 function localBootstrap(mapId, seed, fallbackReason) {
   return Object.freeze({
@@ -72,9 +72,9 @@ export async function chroniclesBootstrapTacticsWorld({
   operationId = null,
   createRun = chroniclesCreateRun,
 } = {}) {
-  // Every entry starts from the bundled fallback. A remote run + area is only
-  // installed if the single bootstrap request wins the bounded race before
-  // gameplay mounts. The frame-critical runtime never waits on the network.
+  // Chronicles generation happens before gameplay mounts, so this bootstrap is
+  // allowed a realistic WAN budget. The authored bundle remains a safety net for
+  // genuine backend/network failure; frame-critical gameplay never waits on it.
   chroniclesClearRuntimeMapDefinitions();
   if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
 
