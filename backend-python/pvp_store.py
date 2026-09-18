@@ -643,6 +643,7 @@ async def get_match(match_id: str) -> dict[str, Any] | None:
 async def touch_match_presence(
     match_id: str,
     username: str,
+    color: str,
     *,
     now: datetime | None = None,
 ) -> dict[str, Any] | None:
@@ -654,9 +655,9 @@ async def touch_match_presence(
             row = _memory_matches.get(match_id)
             if not row or row.get("acceptance_state") == "staged":
                 return None
-            if row.get("white") == username:
+            if color == "w" and row.get("white") == username:
                 key = "white_seen_at"
-            elif row.get("black") == username:
+            elif color == "b" and row.get("black") == username:
                 key = "black_seen_at"
             else:
                 return None
@@ -664,20 +665,18 @@ async def touch_match_presence(
             return _public(row)
 
     _, _, matches = collections
-    key = "white_seen_at"
-    query = {"_id": match_id, "white": username, "acceptance_state": {"$ne": "staged"}}
+    if color == "w":
+        player_field, seen_field = "white", "white_seen_at"
+    elif color == "b":
+        player_field, seen_field = "black", "black_seen_at"
+    else:
+        return None
     try:
         row = await matches.find_one_and_update(
-            query,
-            {"$set": {key: stamp}},
+            {"_id": match_id, player_field: username, "acceptance_state": {"$ne": "staged"}},
+            {"$set": {seen_field: stamp}},
             return_document=ReturnDocument.AFTER,
         )
-        if row is None:
-            row = await matches.find_one_and_update(
-                {"_id": match_id, "black": username, "acceptance_state": {"$ne": "staged"}},
-                {"$set": {"black_seen_at": stamp}},
-                return_document=ReturnDocument.AFTER,
-            )
         return _public(row)
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo actualizar la presencia del duelo 1v1.") from exc
