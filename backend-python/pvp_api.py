@@ -19,6 +19,8 @@ PVP_INITIAL_MS = 10 * 60 * 1000
 PVP_INCREMENT_MS = 0
 PVP_HANDOFF_SECONDS = 5
 PVP_READY_TIMEOUT_SECONDS = 30
+PVP_PRESENCE_ONLINE_SECONDS = 4
+PVP_PRESENCE_RECONNECTING_SECONDS = 12
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -205,9 +207,24 @@ def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
     return {"before": before, "after": after, "delta": after - before}
 
 
+def _opponent_presence(match: dict, username: str, now: datetime | None = None) -> tuple[str, datetime | None]:
+    stamp = now or store.utcnow()
+    color = _player_color(match, username)
+    seen_at = match.get("black_seen_at") if color == chess.WHITE else match.get("white_seen_at") if color == chess.BLACK else None
+    if not isinstance(seen_at, datetime):
+        return "disconnected", None
+    age_seconds = max(0.0, (stamp - seen_at).total_seconds())
+    if age_seconds <= PVP_PRESENCE_ONLINE_SECONDS:
+        return "online", seen_at
+    if age_seconds <= PVP_PRESENCE_RECONNECTING_SECONDS:
+        return "reconnecting", seen_at
+    return "disconnected", seen_at
+
+
 def _public_match(match: dict, username: str) -> dict:
     color = _player_color(match, username)
     turn = match.get("turn", "w")
+    opponent_presence, opponent_seen_at = _opponent_presence(match, username)
     you_ready = bool(match.get("white_ready")) if color == chess.WHITE else bool(match.get("black_ready")) if color == chess.BLACK else False
     opponent_ready = bool(match.get("black_ready")) if color == chess.WHITE else bool(match.get("white_ready")) if color == chess.BLACK else False
     return {
@@ -225,6 +242,8 @@ def _public_match(match: dict, username: str) -> dict:
         "readyDeadline": _iso(match.get("ready_deadline")),
         "youReady": you_ready,
         "opponentReady": opponent_ready,
+        "opponentPresence": opponent_presence,
+        "opponentSeenAt": _iso(opponent_seen_at),
         "ratingChange": _rating_change(match, color),
         "clock": _clock_snapshot(match),
         "history": _serialize(match.get("history") or []),
@@ -404,6 +423,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             color = _player_color(match or {}, username)
             if not match or color is None:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
+            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
             if match.get("status") == "cancelled":
                 return {"match": _public_match(match, username)}
@@ -440,8 +460,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @limiter.limit("60/minute")
     async def get_match(request: Request, match_id: str, username: str = Depends(auth_dependency)):
         match = await store.get_match(match_id)
-        if not match or _player_color(match, username) is None:
+        color = _player_color(match or {}, username)
+        if not match or color is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
+        match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
         if match.get("status") == "starting":
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
@@ -498,6 +520,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
             if match.get("status") != "active":
                 raise HTTPException(409, "La partida ya ha terminado.")
+            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
 
             board = chess.Board(match["fen"])
             if board.turn != color:

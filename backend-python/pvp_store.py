@@ -640,6 +640,48 @@ async def get_match(match_id: str) -> dict[str, Any] | None:
         raise PersistentStorageUnavailable("No se pudo leer la partida 1v1.") from exc
 
 
+async def touch_match_presence(
+    match_id: str,
+    username: str,
+    color: str,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Record that one duel participant is alive without changing gameplay revision."""
+    stamp = now or utcnow()
+    collections = await _collections()
+    if collections is None:
+        async with _memory_guard():
+            row = _memory_matches.get(match_id)
+            if not row or row.get("acceptance_state") == "staged":
+                return None
+            if color == "w" and row.get("white") == username:
+                key = "white_seen_at"
+            elif color == "b" and row.get("black") == username:
+                key = "black_seen_at"
+            else:
+                return None
+            row[key] = stamp
+            return _public(row)
+
+    _, _, matches = collections
+    if color == "w":
+        player_field, seen_field = "white", "white_seen_at"
+    elif color == "b":
+        player_field, seen_field = "black", "black_seen_at"
+    else:
+        return None
+    try:
+        row = await matches.find_one_and_update(
+            {"_id": match_id, player_field: username, "acceptance_state": {"$ne": "staged"}},
+            {"$set": {seen_field: stamp}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return _public(row)
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo actualizar la presencia del duelo 1v1.") from exc
+
+
 async def update_match(match_id: str, *, expected_revision: int, changes: dict[str, Any]) -> dict[str, Any] | None:
     collections = await _collections()
     if collections is None:
