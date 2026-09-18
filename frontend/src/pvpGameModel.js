@@ -88,3 +88,10 @@ export function opponentPresenceLabel(value) {
   if (value === 'disconnected') return 'SIN CONEXIÓN';
   return 'SIN DATO';
 }
+
+
+export function disconnectGraceSeconds(deadline, nowMs = Date.now()) {
+  const stamp = Date.parse(deadline || '');
+  if (!Number.isFinite(stamp)) return null;
+  return Math.max(0, Math.ceil((stamp - Number(nowMs || 0)) / 1000));
+}
