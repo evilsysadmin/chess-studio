@@ -76,6 +76,6 @@ def test_registering_reused_username_starts_vanilla():
         json={"username": username, "password": "clave123456"},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["username"] == username
     _assert_user_data_gone(username)
