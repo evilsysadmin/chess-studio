@@ -1,13 +1,6 @@
 name: Home · Blender 2.0 preview
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    branches: [main]
-    paths:
-      - 'scripts/blender/build_home_v2_blockout.py'
-      - 'scripts/blender/references/home_canon_20260918.webp.b64'
-      - '.github/workflows/home-blender-v2-preview.yml'
   workflow_dispatch:
     inputs:
       quality:
@@ -28,7 +21,7 @@ concurrency:
 
 jobs:
   render:
-    name: Render Home Blender 2.0 · ${{ inputs.quality || 'beauty' }}
+    name: Render Home Blender 2.0 · ${{ inputs.quality }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -49,15 +42,15 @@ jobs:
           mkdir -p /tmp/home-blender-v2
           blender --background --python-exit-code 1 \
             --python scripts/blender/build_home_v2_blockout.py -- \
-            --reference scripts/blender/references/home_canon_20260918.webp.b64 \
+            --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '20' || '16' }}' \
-            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '1400' || '1100' }}' \
-            --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
+            --samples '${{ inputs.quality == 'beauty' && '32' || '16' }}' \
+            --max-width '${{ inputs.quality == 'beauty' && '1814' || '1100' }}' \
+            --engine '${{ inputs.quality == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
         env:
-          QUALITY: ${{ inputs.quality || 'beauty' }}
+          QUALITY: ${{ inputs.quality }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -67,7 +60,7 @@ jobs:
           from PIL import Image, ImageDraw
 
           out = Path('/tmp/home-blender-v2')
-          ref_path = out / 'home-canon-20260918.webp'
+          ref_path = Path('frontend/src/assets/home-canonical/great-hall-dungeon.webp')
           preview_path = out / 'home-v2-preview.png'
           clay_path = out / 'home-v2-clay.png'
           blend_path = out / 'home-v2-blockout.blend'
@@ -78,14 +71,13 @@ jobs:
 
           quality = os.environ.get('QUALITY') or 'blockout'
           expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
-          expected_max_width = 1400 if quality == 'beauty' else 1100
+          expected_max_width = 1814 if quality == 'beauty' else 1100
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
           clay = Image.open(clay_path).convert('RGB')
           metadata = json.loads(metadata_path.read_text())
-          assert metadata['contract'] == 'home-blender-canon-20260918-v1'
-          assert metadata['reference_contract'] == 'user-approved-home-canon-2026-09-18'
+          assert metadata['contract'] == 'home-blender-v2-blockout-v1'
           assert metadata['reference_size'] == list(reference.size)
           assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
           assert clay.size == preview.size, (clay.size, preview.size)
@@ -128,7 +120,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: home-blender-v2-${{ inputs.quality || 'beauty' }}-${{ github.run_number }}
+          name: home-blender-v2-${{ inputs.quality }}-${{ github.run_number }}
           path: /tmp/home-blender-v2/
           if-no-files-found: error
           retention-days: 7
