@@ -79,7 +79,11 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-    if lower == "scripts/blender/build_war_room_premium.py":
+    if lower in {
+        "scripts/blender/build_war_room_premium.py",
+        "scripts/blender/publish_war_room_v2_staging.py",
+        ".github/workflows/war-room-blender-art.yml",
+    }:
         return {"warroom"}
     if (
         lower in {
@@ -300,6 +304,10 @@ def self_test() -> None:
     assert not hub.chronicles_avatar
 
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
+    blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
+    blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
+    assert blender_publish.capture_groups == "warroom" and not blender_publish.hans
+    assert blender_workflow.capture_groups == "warroom" and not blender_workflow.hans
     assert blender_warroom.capture_groups == "warroom" and not blender_warroom.hans
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
