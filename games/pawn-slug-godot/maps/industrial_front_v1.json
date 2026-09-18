@@ -441,15 +441,15 @@
         "intensity": 1
       },
       {
-        "kind": "far_ridge",
-        "scroll": 0.14,
-        "z": -70,
+        "kind": "industrial_art",
+        "scroll": 0.08,
+        "z": -74,
         "intensity": 1
       },
       {
-        "kind": "industrial_landmark",
-        "scroll": 0.23,
-        "z": -63,
+        "kind": "far_ridge",
+        "scroll": 0.14,
+        "z": -70,
         "intensity": 1
       },
       {
