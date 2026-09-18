@@ -55,8 +55,8 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
       center: { x: 5, y: 4 },
       wallFaces: [],
       content: [
-        { id: 'slag-vent-west', kind: 'trap', visualType: 'slag-vent', x: 5, y: 6 },
-        { id: 'chain-plate-east', kind: 'trap', visualType: 'chain-plate', x: 9, y: 5 },
+        { id: 'slag-vent-west', kind: 'trap', visualType: 'slag-vent', position: { x: 5, y: 6 } },
+        { id: 'chain-plate-east', kind: 'trap', visualType: 'chain-plate', position: { x: 9, y: 5 } },
       ],
     };
 
