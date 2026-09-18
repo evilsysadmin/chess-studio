@@ -222,7 +222,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
     _fx_root.position.x = _recoil_x
     if not _dead:
-        _fx_root.position.y = 3.0 if _action == "crouch" else 0.0
+        _fx_root.position.y = 1.0 if _action == "crouch" else 0.0
     _fx_root.scale = _fx_root.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
     _sync_muzzle()
     _sync_modulate()
@@ -344,7 +344,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     if requested_layout == "full":
         frames = _build_full_frames(image)
         if frames != null:
-            _install_canonical_crouch(frames, requested_weapon)
+            _install_combat_crouch(frames)
             _full_frames_by_weapon[requested_weapon] = frames
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
@@ -566,7 +566,7 @@ func _build_fallback_frames() -> void:
         var frames := SpriteFrames.new()
         frames.remove_animation("default")
         var source: Dictionary = SOURCE_RECTS[weapon_id]
-        for action in ["idle", "walk", "run", "crouch", "jump"]:
+        for action in ["idle", "walk", "run", "jump"]:
             frames.add_animation(action)
             frames.set_animation_loop(action, action in ["idle", "walk", "run"])
             frames.set_animation_speed(action, 1.0)
@@ -574,35 +574,36 @@ func _build_fallback_frames() -> void:
             frame.atlas = _master_texture
             frame.region = source[action]
             frames.add_frame(action, frame)
+        frames.add_animation("crouch")
+        frames.set_animation_loop("crouch", true)
+        frames.set_animation_speed("crouch", 1.0)
+        frames.add_frame("crouch", frames.get_frame_texture("jump", 0))
         _fallback_frames_by_weapon[weapon_id] = frames
 
     for cached_weapon in _full_frames_by_weapon.keys():
-        _install_canonical_crouch(
-            _full_frames_by_weapon[cached_weapon],
-            String(cached_weapon),
-        )
+        _install_combat_crouch(_full_frames_by_weapon[cached_weapon])
 
-func _install_canonical_crouch(frames: SpriteFrames, weapon_id: String) -> bool:
-    if frames == null or not _fallback_frames_by_weapon.has(weapon_id):
+func _install_combat_crouch(frames: SpriteFrames) -> bool:
+    if frames == null:
         return false
-    var fallback: SpriteFrames = _fallback_frames_by_weapon[weapon_id]
-    if (
-        not fallback.has_animation("crouch")
-        or fallback.get_frame_count("crouch") <= 0
-    ):
+    var source := "land"
+    if not frames.has_animation(source) or frames.get_frame_count(source) <= 0:
+        source = "jump"
+    if not frames.has_animation(source) or frames.get_frame_count(source) <= 0:
         return false
 
+    var frame_index := 1 if frames.get_frame_count(source) > 1 else 0
     if frames.has_animation("crouch"):
         frames.remove_animation("crouch")
     frames.add_animation("crouch")
     frames.set_animation_loop("crouch", true)
     frames.set_animation_speed("crouch", 1.0)
-    frames.add_frame("crouch", fallback.get_frame_texture("crouch", 0))
+    frames.add_frame("crouch", frames.get_frame_texture(source, frame_index))
     return true
 
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     if authored_full:
-        _install_canonical_crouch(frames, _weapon)
+        _install_combat_crouch(frames)
     _body.sprite_frames = frames
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
     _using_full_atlas = authored_full
