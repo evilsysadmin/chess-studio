@@ -124,6 +124,7 @@ var _hostile_fire_gap_remaining := 0.0
 @onready var pause_menu = $PauseMenu
 @onready var camera: Camera2D = $Player/Camera2D
 @onready var combat_audio = $CombatAudio
+@onready var touch_controls = $TouchControls
 
 func _ready() -> void:
     _reduced_motion = _prefers_reduced_motion()
@@ -142,6 +143,8 @@ func _ready() -> void:
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
     player.connect("landed", Callable(self, "_on_player_landed"))
     pause_menu.connect("exit_requested", Callable(self, "_on_pause_exit_requested"))
+    touch_controls.connect("pause_requested", Callable(pause_menu, "toggle_pause"))
+    touch_controls.connect("weapon_cycle_requested", Callable(self, "_on_touch_weapon_cycle_requested"))
     _sync_hud()
     queue_redraw()
 
@@ -203,7 +206,11 @@ func _on_player_grenades_changed(_count: int) -> void:
 func _on_player_weapon_changed(_weapon_id: String, _ammo_remaining: int) -> void:
     _notify_parent("weapon-changed")
 
+func _on_touch_weapon_cycle_requested(step: int) -> void:
+    player.cycle_weapon(step)
+
 func _on_pause_exit_requested() -> void:
+    touch_controls.release_all()
     get_tree().paused = false
     if OS.has_feature("web"):
         _notify_parent("exit")
