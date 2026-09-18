@@ -40,7 +40,7 @@ const HIT_INVULN_SECONDS := 0.85
 const HURT_VISUAL_SECONDS := 0.18
 const DEATH_PAUSE_SECONDS := 0.55
 const RESPAWN_INVULN_SECONDS := 1.8
-const CHECKPOINT_X := [110.0, 1480.0, 2980.0, 4140.0]
+const DEFAULT_CHECKPOINT_X := [110.0, 1480.0, 2980.0, 4140.0]
 const WEAPON_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 const WEAPONS := {
     "pistol": {
@@ -118,11 +118,13 @@ var _touch_controls
 var _collision_shape: CollisionShape2D
 var _crouching := false
 var _last_safe_position := Vector2.ZERO
+var _checkpoint_xs: Array[float] = []
 
 func _ready() -> void:
     _touch_controls = get_parent().get_node_or_null("TouchControls")
     _collision_shape = get_node_or_null("CollisionShape2D") as CollisionShape2D
-    global_position.x = CHECKPOINT_X[0]
+    _checkpoint_xs.assign(DEFAULT_CHECKPOINT_X)
+    global_position.x = _checkpoint_xs[0]
     _spawn_position = global_position
     _checkpoint_position = _spawn_position
     _last_safe_position = _spawn_position
@@ -138,6 +140,19 @@ func _ready() -> void:
 
 func visual_ready() -> bool:
     return _art != null and _art.body_ready()
+
+func configure_stage(start_x: float, checkpoints: Array) -> void:
+    _checkpoint_xs.clear()
+    for value in checkpoints:
+        _checkpoint_xs.append(float(value))
+    if _checkpoint_xs.is_empty():
+        _checkpoint_xs.assign(DEFAULT_CHECKPOINT_X)
+    _checkpoint_xs.sort()
+    global_position.x = start_x
+    _spawn_position = global_position
+    _checkpoint_position = _find_safe_respawn_position(_spawn_position)
+    _last_safe_position = _checkpoint_position
+
 
 func _physics_process(delta: float) -> void:
     if not visual_ready():
@@ -384,7 +399,7 @@ func _projectile_origin() -> Vector2:
     return global_position + Vector2(facing * 38.0, -7.0)
 
 func _update_checkpoint() -> void:
-    for checkpoint_x in CHECKPOINT_X:
+    for checkpoint_x in _checkpoint_xs:
         if global_position.x + 0.01 < checkpoint_x:
             break
         if checkpoint_x <= _checkpoint_position.x:
