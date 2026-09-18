@@ -77,11 +77,31 @@ def material(
     if bump_scale is not None:
         noise = nodes.new("ShaderNodeTexNoise")
         noise.inputs["Scale"].default_value = bump_scale
-        noise.inputs["Detail"].default_value = 3.0
-        noise.inputs["Roughness"].default_value = 0.62
+        noise.inputs["Detail"].default_value = 4.0
+        noise.inputs["Roughness"].default_value = 0.68
+
+        ramp = nodes.new("ShaderNodeValToRGB")
+        base = color[:3]
+        ramp.color_ramp.elements[0].position = 0.22
+        ramp.color_ramp.elements[0].color = (
+            max(0.0, base[0] * 0.58),
+            max(0.0, base[1] * 0.58),
+            max(0.0, base[2] * 0.58),
+            1.0,
+        )
+        ramp.color_ramp.elements[1].position = 0.82
+        ramp.color_ramp.elements[1].color = (
+            min(1.0, base[0] * 1.42 + 0.012),
+            min(1.0, base[1] * 1.42 + 0.010),
+            min(1.0, base[2] * 1.42 + 0.008),
+            1.0,
+        )
+        links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+        links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+
         bump = nodes.new("ShaderNodeBump")
         bump.inputs["Strength"].default_value = bump_strength
-        bump.inputs["Distance"].default_value = 0.12
+        bump.inputs["Distance"].default_value = 0.10
         links.new(noise.outputs["Fac"], bump.inputs["Height"])
         links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     return mat
@@ -531,6 +551,27 @@ def add_banner(name: str, x: float, materials):
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
 
     relief_y = 5.73
+    if name == "center":
+        flat_panel(
+            "HOME_PROP_banner_knight_center",
+            [
+                (x - 0.34, 4.02),
+                (x + 0.34, 4.02),
+                (x + 0.28, 4.18),
+                (x + 0.08, 4.34),
+                (x + 0.24, 4.58),
+                (x + 0.16, 4.86),
+                (x - 0.04, 5.02),
+                (x - 0.24, 4.92),
+                (x - 0.08, 4.70),
+                (x - 0.32, 4.52),
+                (x - 0.18, 4.30),
+            ],
+            relief_y,
+            0.055,
+            brass,
+            bevel=0.035,
+        )
     sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.16, 0.035, 0.14), brass)
     cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), brass, bevel=0.018)
     curve_tube(
@@ -550,7 +591,7 @@ def add_armor(materials):
     brass = materials["brass"]
     stone = materials["stone"]
     dark = materials["dark"]
-    x, y = -4.92, 5.10
+    x, y = -5.58, 5.18
 
     cube("HOME_PROP_armor_pedestal", (x, y, 0.24), (0.72, 0.54, 0.24), stone, bevel=0.05)
 
@@ -997,8 +1038,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = library_origin + (obj.location - library_origin) * 1.12
             obj.scale *= 1.12
 
-    cube("HOME_PROP_armor_recess", (-4.92, 6.72, 2.46), (0.90, 0.08, 1.72), materials["dark"], bevel=0.08)
-    gothic_arch("HOME_ARCH_armor_portal", -4.92, 6.18, 2.45, 2.50, 4.65, 0.18, materials["stone"])
+    cube("HOME_PROP_armor_recess", (-5.58, 6.72, 2.46), (0.90, 0.08, 1.72), materials["dark"], bevel=0.08)
+    gothic_arch("HOME_ARCH_armor_portal", -5.58, 6.18, 2.45, 2.50, 4.65, 0.18, materials["stone"])
 
     add_fireplace("fireplace_right", 2.72, materials)
     fireplace_origin = Vector((2.72, 6.10, 0.35))
@@ -1043,15 +1084,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     center_crest_origin = Vector((-0.02, 5.73, 4.62))
     for obj in list(bpy.data.objects):
         if obj.name.endswith("_center") and obj.name.startswith("HOME_PROP_banner_horse_"):
-            rel = obj.location - center_crest_origin
-            obj.location = center_crest_origin + rel * 1.62 + Vector((0.0, -0.01, -0.52))
-            obj.scale *= 1.62
+            obj.hide_render = True
 
     add_table_and_board(materials)
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith((
+            "HOME_PROP_table_",
+            "HOME_PROP_board_",
+            "HOME_PROP_white_",
+            "HOME_PROP_black_",
+            "HOME_PROP_chair_",
+        )):
+            obj.location.y -= 1.12
+
     add_armor(materials)
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
-            origin = Vector((-4.92, 5.10, 0.24))
+            origin = Vector((-5.58, 5.18, 0.24))
             obj.location = origin + (obj.location - origin) * 1.03
             obj.scale *= 1.03
     add_trophy(materials)
@@ -1062,10 +1111,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Chandelier and warm pools of light.
     cylinder("HOME_PROP_chandelier_drop", (-1.05, 2.02, 5.02), 0.075, 1.62, materials["brass"])
     ring_points = [
-        (-1.05 + 2.34 * math.cos(i * math.tau / 24), 2.02 + 1.42 * math.sin(i * math.tau / 24), 4.12)
-        for i in range(25)
+        (-1.05 + 2.34 * math.cos(i * math.tau / 32), 2.02 + 1.42 * math.sin(i * math.tau / 32), 4.12)
+        for i in range(33)
     ]
-    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
+    ring_points_upper = [
+        (-1.05 + 2.22 * math.cos(i * math.tau / 32), 2.02 + 1.34 * math.sin(i * math.tau / 32), 4.34)
+        for i in range(33)
+    ]
+    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.095, materials["brass"])
+    curve_tube("HOME_PROP_chandelier_ring_upper", ring_points_upper, 0.070, materials["brass"])
+    for idx, angle in enumerate((0, math.pi / 4, math.pi / 2, math.pi * 3 / 4, math.pi, math.pi * 5 / 4, math.pi * 3 / 2, math.pi * 7 / 4)):
+        cx = -1.05 + 2.28 * math.cos(angle)
+        cy = 2.02 + 1.38 * math.sin(angle)
+        curve_tube(
+            f"HOME_PROP_chandelier_brace_{idx}",
+            [(cx, cy, 4.10), (cx * 0.985 - 0.016, cy, 4.36)],
+            0.028,
+            materials["brass"],
+        )
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
         rx = 1.74 * math.cos(angle)
         ry = 2.20 + 1.18 * math.sin(angle)
@@ -1112,7 +1175,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 285, (0.14, 0.32, 0.62), 4.4, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 145, (0.84, 0.64, 0.46), 4.5, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 105, (0.78, 0.46, 0.24), 3.0, target=(-5.9, 5.8, 2.6))
-    add_area_light("HOME_LIGHT_armor_rim", (3.8, 3.4, 5.2), 145, (0.38, 0.48, 0.60), 2.8, target=(-4.92, 5.10, 2.4))
+    add_area_light("HOME_LIGHT_armor_rim", (3.8, 3.4, 5.2), 145, (0.38, 0.48, 0.60), 2.8, target=(-5.58, 5.18, 2.4))
 
     # Preserve the visual richness while collapsing repeated geometry. This is
     # deliberately late so modelling stays readable and editable above.
@@ -1134,14 +1197,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ("HOME_PROP_fireplace_right_mantel_candle_", "HOME_PROP_fireplace_right_mantel_flame_"),
     )
     join_meshes("HOME_PROP_torches", ("HOME_PROP_torch_",))
+    join_meshes("HOME_ARCH_back_masonry_compact", ("HOME_ARCH_back_masonry_",))
+    join_meshes("HOME_ARCH_column_detail_compact", ("HOME_ARCH_column_cap_", "HOME_ARCH_column_plinth_"))
+    join_meshes("HOME_PROP_dungeon_runner_compact", ("HOME_PROP_dungeon_runner_",))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 36.0
+    camera_data.lens = 40.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (-2.55, -13.10, 4.02)
-    target = (0.35, 2.80, 1.42)
+    camera.location = (-1.55, -14.20, 4.62)
+    target = (0.22, 2.65, 1.70)
     look_at(camera, target)
     scene.camera = camera
 
