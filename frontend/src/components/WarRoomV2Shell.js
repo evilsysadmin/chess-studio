@@ -42,89 +42,6 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
   };
 }
 
-export function warRoomV2RuntimeSurfaceKind(materialName = '') {
-  const name = String(materialName || '').toLowerCase();
-  if (name.includes('stone') || name.includes('wall_plaster') || name.includes('floor_underlay')) return 'stone';
-  return null;
-}
-
-export function warRoomV2StoneSurfaceProfile({ coarsePointer = false } = {}) {
-  return coarsePointer
-    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1 })
-    : Object.freeze({ enabled: true, size: 32, bumpScale: 0.012, albedoCompensation: 1.10 });
-}
-
-function nextSurfaceNoise(state) {
-  const next = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-  return [next, ((next >>> 8) & 0xffff) / 0xffff];
-}
-
-function createWarRoomV2StoneTexture({ mode = 'albedo', size = 32 } = {}) {
-  const data = new Uint8Array(size * size * 4);
-  let state = mode === 'albedo' ? 0x4b1d : 0x8e37;
-
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      let noise;
-      [state, noise] = nextSurfaceNoise(state);
-      const u = x / Math.max(1, size - 1);
-      const v = y / Math.max(1, size - 1);
-      const broad = Math.sin((u * 1.45 + v * 0.72) * Math.PI * 2) * 16
-        + Math.cos((u * 0.58 - v * 1.18) * Math.PI * 2) * 11;
-      const mineral = Math.sin((u - v) * Math.PI * 4.2) * 5;
-      const random = (noise - 0.5) * (mode === 'albedo' ? 8 : 18);
-      const base = mode === 'albedo' ? 228 : 236;
-      const signal = mode === 'albedo' ? broad + mineral + random : broad * 0.65 + mineral * 1.8 + random;
-      const value = THREE.MathUtils.clamp(
-        Math.round(base + signal),
-        mode === 'albedo' ? 198 : 204,
-        255,
-      );
-      const index = (y * size + x) * 4;
-      data[index] = value;
-      data[index + 1] = value;
-      data[index + 2] = value;
-      data[index + 3] = 255;
-    }
-  }
-
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-stone-${mode}`;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(mode === 'albedo' ? 0.86 : 1.8, mode === 'albedo' ? 0.78 : 1.6);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.colorSpace = mode === 'albedo' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function installRuntimeStoneSurface(material, sharedTextures, { coarsePointer = false } = {}) {
-  if (warRoomV2RuntimeSurfaceKind(material?.name) !== 'stone') return false;
-  const profile = warRoomV2StoneSurfaceProfile({ coarsePointer });
-  if (!profile.enabled) return false;
-
-  sharedTextures.albedo ||= createWarRoomV2StoneTexture({ mode: 'albedo', size: profile.size });
-  sharedTextures.micro ||= createWarRoomV2StoneTexture({ mode: 'micro', size: profile.size });
-
-  if (!material.map) {
-    material.map = sharedTextures.albedo;
-    // The albedo map is intentionally darker than white so broad mineral
-    // mottling survives ACES/8-bit output. Compensate its average loss here so
-    // the authored Blender value stays the visual baseline instead of the whole
-    // room simply becoming darker.
-    material.color.multiplyScalar(profile.albedoCompensation);
-  }
-  if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
-  if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
-  material.bumpScale = profile.bumpScale;
-  material.userData ||= {};
-  material.userData.warRoomV2RuntimeSurface = 'stone-meso-v2';
-  material.needsUpdate = true;
-  return true;
-}
-
 function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   const profile = warRoomV2PracticalLightProfile({ coarsePointer });
   const entries = [
@@ -195,8 +112,6 @@ export async function installWarRoomV2Shell(
   root.position.set(0, -WAR_ROOM_V2_BOARD_ANCHOR_Y, 0);
   root.rotation.y = whiteSide ? 0 : Math.PI;
   const tunedMaterials = new Set();
-  const runtimeStoneTextures = {};
-  let runtimeStoneMaterials = 0;
   root.traverse((node) => {
     if (!node.isMesh) return;
     node.castShadow = !coarsePointer;
@@ -207,15 +122,12 @@ export async function installWarRoomV2Shell(
       if (!material || tunedMaterials.has(material)) return;
       tunedMaterials.add(material);
       tuneRuntimeMaterial(material);
-      if (installRuntimeStoneSurface(material, runtimeStoneTextures, { coarsePointer })) runtimeStoneMaterials += 1;
     });
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v6-visible-stone-variation';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v4-authored-practicals';
   root.userData.warRoomV2PracticalLights = practicalLights;
-  root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
-  root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;
   scene.add(root);
 
   return () => {
