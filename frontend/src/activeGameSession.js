@@ -1,8 +1,24 @@
 import { isActiveSessionRoute } from './activeSessionRoutes.js';
-import { STORAGE_LOCAL, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
 
 export const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
+export const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
 const VERSION = 1;
+
+export function setActiveGameSessionVisible(route) {
+  if (isActiveSessionRoute(route)) {
+    setStorageItem(STORAGE_SESSION, ACTIVE_GAME_VISIBLE_ROUTE_KEY, route);
+    return route;
+  }
+  removeStorageItem(STORAGE_SESSION, ACTIVE_GAME_VISIBLE_ROUTE_KEY);
+  return null;
+}
+
+export function loadVisibleActiveGameSession() {
+  const snapshot = loadActiveGameSession();
+  if (!snapshot) return null;
+  return getStorageItem(STORAGE_SESSION, ACTIVE_GAME_VISIBLE_ROUTE_KEY) === snapshot.route ? snapshot : null;
+}
 
 function safeContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -38,4 +54,5 @@ export function loadActiveGameSession() {
 
 export function clearActiveGameSession() {
   removeStorageItem(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY);
+  removeStorageItem(STORAGE_SESSION, ACTIVE_GAME_VISIBLE_ROUTE_KEY);
 }
