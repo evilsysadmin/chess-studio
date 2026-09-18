@@ -511,26 +511,29 @@ def add_armor(materials):
         lx = x + side * 0.19
         cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
         cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.15, 0.11, 0.70, steel, vertices=24)
-        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.17, 0.13, 0.14), brass)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.17, 0.13, 0.14), steel)
         cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.48, y, 2.27), (x - 0.66, y, 1.95), (x - 0.60, y - 0.02, 1.66)], 0.10, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.48, y, 2.27), (x + 0.66, y, 1.95), (x + 0.60, y - 0.02, 1.66)], 0.10, steel)
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y, 2.34), (0.27, 0.19, 0.22), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y, 2.34), (0.27, 0.19, 0.22), steel)
+    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.69, y, 1.96), (x - 0.61, y - 0.02, 1.65)], 0.125, steel)
+    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.69, y, 1.96), (x + 0.61, y - 0.02, 1.65)], 0.125, steel)
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.83), (0.34, 0.30, 0.34), steel)
-    cube("HOME_PROP_armor_visor", (x, y - 0.285, 2.82), (0.30, 0.05, 0.09), dark, bevel=0.02)
-    cube("HOME_PROP_armor_brow", (x, y - 0.30, 2.95), (0.28, 0.045, 0.045), brass, bevel=0.015)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.83), (0.30, 0.27, 0.32), steel)
+    cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.28, 0.045, 0.08), dark, bevel=0.018)
+    for slot, sx in enumerate((-0.16, -0.08, 0.0, 0.08, 0.16)):
+        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.314, 2.82), (0.020, 0.010, 0.032), dark, bevel=0.005)
+    cube("HOME_PROP_armor_brow", (x, y - 0.285, 2.95), (0.26, 0.040, 0.040), materials["brass_dark"], bevel=0.015)
+    cone("HOME_PROP_armor_helmet_crest", (x, y + 0.02, 3.16), 0.085, 0.015, 0.34, steel, vertices=16)
 
     # Weapon rack frames the armour without becoming part of its body.
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
@@ -856,10 +859,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
                 obj.scale.x *= 0.72
                 obj.scale.z *= 0.62
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.78, 1.52), 190, (1.0, 0.30, 0.07), radius=1.20)
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.90, 1.42), 110, (1.0, 0.28, 0.06), radius=1.05)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
-    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.34, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
+    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.82, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
     cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.22, 2.46), (1.36, 0.28, 0.16), materials["stone"], bevel=0.055)
     for side in (-1, 1):
         px = 4.45 + side * 1.06
@@ -867,6 +870,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.34), (0.27, 0.26, 0.14), materials["stone"], bevel=0.045)
         sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.10, 2.70), (0.10, 0.08, 0.10), materials["gold"])
     cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
+    log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.46, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
+    log_a.rotation_euler[2] = math.radians(10)
+    log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.48, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
+    log_b.rotation_euler[2] = math.radians(-12)
+    cube("HOME_PROP_fireplace_right_ember_bed", (4.45, 5.47, 0.48), (0.72, 0.12, 0.055), materials["fire"], bevel=0.04)
     for idx, cx in enumerate((3.72, 4.45, 5.18)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
@@ -926,7 +934,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
             [(0.0, 2.20, 6.02), (rx, ry, 4.76)],
-            0.020,
+            0.032,
             materials["brass_dark"],
         )
     sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.73), (0.14, 0.14, 0.13), materials["brass_dark"])
