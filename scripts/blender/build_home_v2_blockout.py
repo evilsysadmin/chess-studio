@@ -164,6 +164,29 @@ def curve_tube(name: str, points, bevel_depth: float, mat):
     return obj
 
 
+def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03):
+    half = depth / 2.0
+    front = [(x, y - half, z) for x, z in points_xz]
+    back = [(x, y + half, z) for x, z in points_xz]
+    vertices = front + back
+    count = len(points_xz)
+    faces = [tuple(range(count)), tuple(range(count, count * 2))]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    if bevel:
+        modifier = obj.modifiers.new("Soft edges", "BEVEL")
+        modifier.width = bevel
+        modifier.segments = 2
+    apply_material(obj, mat)
+    return obj
+
+
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
     radius = width / 2.0
     center_z = top_z - radius
@@ -250,9 +273,25 @@ def add_table_and_board(materials):
             )
     cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (board_half, board_half, 0.035), metal, bevel=0.025)
 
-    # The red frontal cloth and side benches are major silhouettes in the
-    # canonical Home, not decorative polish.
-    cube("HOME_PROP_table_banner", (0, -0.28, 0.72), (1.48, 0.055, 0.72), banner, bevel=0.035)
+    # The frontal cloth is one of the master image's strongest silhouettes.
+    # Pull it forward so it cannot disappear inside the table and give it the
+    # canonical pointed lower edge plus a narrow brass backing/trim.
+    drape_points = [
+        (-1.62, 1.20),
+        (1.62, 1.20),
+        (1.62, 0.36),
+        (0.0, 0.08),
+        (-1.62, 0.36),
+    ]
+    flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.43, 0.08, metal, bevel=0.045)
+    flat_panel(
+        "HOME_PROP_table_banner",
+        [(x * 0.955, 0.64 + (z - 0.64) * 0.92) for x, z in drape_points],
+        -0.475,
+        0.055,
+        banner,
+        bevel=0.035,
+    )
     for side in (-1, 1):
         x = side * 3.55
         cube(f"HOME_PROP_bench_{side}", (x, 1.2, 0.43), (0.62, 1.45, 0.28), wood, bevel=0.05)
@@ -316,8 +355,15 @@ def add_bookshelf(materials):
 def add_banner(name: str, x: float, materials):
     banner = materials["banner"]
     brass = materials["brass"]
-    cube(f"HOME_PROP_banner_{name}", (x, 5.88, 4.48), (0.46, 0.045, 1.15), banner, bevel=0.025)
-    cube(f"HOME_PROP_banner_bar_{name}", (x, 5.82, 5.66), (0.58, 0.06, 0.045), brass, bevel=0.015)
+    points = [
+        (x - 0.48, 5.62),
+        (x + 0.48, 5.62),
+        (x + 0.48, 3.84),
+        (x, 3.44),
+        (x - 0.48, 3.84),
+    ]
+    flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
+    cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
 
 
 def add_armor(materials):
@@ -573,8 +619,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
 
-    cube("HOME_ARCH_window_right", (8.0, 6.62, 3.58), (0.78, 0.07, 1.46), materials["window"], bevel=0.08)
-    gothic_arch("HOME_ARCH_window_right_frame", 8.0, 6.48, 1.78, 3.32, 4.72, 2.08, materials["brass"], bevel=0.12)
+    cube("HOME_ARCH_window_right", (7.78, 6.62, 3.62), (0.96, 0.07, 1.64), materials["window"], bevel=0.08)
+    gothic_arch("HOME_ARCH_window_right_frame", 7.78, 6.48, 2.08, 3.24, 4.92, 1.94, materials["brass"], bevel=0.12)
 
     for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
         add_banner(name, x, materials)
@@ -620,12 +666,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 260, (0.74, 0.48, 0.30), 4.0, target=(0, 2.5, 2.2))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 42.0
+    camera_data.lens = 45.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0.0, -15.8, 5.25)
-    target = (0.0, 2.65, 2.00)
+    camera.location = (0.0, -16.45, 4.18)
+    target = (0.0, 2.55, 1.92)
     look_at(camera, target)
     scene.camera = camera
 
