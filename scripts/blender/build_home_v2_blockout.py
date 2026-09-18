@@ -444,12 +444,13 @@ def add_bookshelf(materials):
     for side in (-1, 1):
         cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), brass, bevel=0.025)
     # Book masses only: enough to match the canonical silhouette before detailing.
-    book_colors = (materials["banner"], materials["book_green"], materials["book_brown"])
+    book_colors = (materials["book_red"], materials["book_green"], materials["book_brown"], materials["book_olive"])
     for row, z in enumerate((0.82, 1.5, 2.18, 2.86, 3.54, 4.16)):
         for col in range(9):
             bx = x - 1.15 + col * 0.285
-            h = 0.22 + 0.035 * ((row + col) % 3)
-            cube(f"HOME_PROP_book_{row}_{col}", (bx, y - 0.47, z), (0.09, 0.08, h), book_colors[(row + col) % len(book_colors)])
+            h = 0.18 + 0.030 * ((row * 2 + col) % 4)
+            w = 0.070 + 0.012 * ((row + col) % 3)
+            cube(f"HOME_PROP_book_{row}_{col}", (bx, y - 0.47, z), (w, 0.075, h), book_colors[(row + col * 2) % len(book_colors)], bevel=0.008)
     armillary_center = (x + 0.72, y - 0.58, 3.38)
     sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
     curve_tube(
@@ -462,6 +463,9 @@ def add_bookshelf(materials):
         brass,
     )
     cylinder("HOME_PROP_library_armillary_stand", (armillary_center[0], armillary_center[1], 2.96), 0.055, 0.52, brass, vertices=18)
+    cube("HOME_PROP_library_crown", (x, y - 0.32, 4.92), (1.62, 0.18, 0.12), wood, bevel=0.04)
+    for side in (-1, 1):
+        sphere(f"HOME_PROP_library_finial_{side}", (x + side * 1.28, y - 0.46, 5.08), (0.10, 0.07, 0.10), brass)
 
 
 def add_banner(name: str, x: float, materials):
@@ -676,15 +680,21 @@ def add_stairs(materials):
     curve_tube(
         "HOME_PROP_dungeon_rail",
         [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)],
-        0.045,
-        brass,
+        0.040,
+        materials["brass_dark"],
     )
     curve_tube(
         "HOME_PROP_dungeon_rail_lower",
         [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
-        0.024,
-        brass,
+        0.020,
+        materials["brass_dark"],
     )
+    for idx in range(6):
+        t = idx / 5.0
+        px = 4.78 + 2.55 * t
+        py = 1.48 - 2.10 * t
+        pz = 1.72 - 1.62 * t
+        cylinder(f"HOME_PROP_dungeon_stair_baluster_{idx}", (px, py, pz), 0.045, 0.48, materials["stone_dark"], vertices=16)
     cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 
@@ -738,13 +748,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
         "gold": material("HOME_MAT_gold", (0.58, 0.31, 0.070, 1), roughness=0.25, metallic=0.92),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
-        "steel": material("HOME_MAT_steel", (0.24, 0.25, 0.26, 1), roughness=0.27, metallic=0.90),
+        "steel": material("HOME_MAT_steel", (0.34, 0.35, 0.36, 1), roughness=0.24, metallic=0.92),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
         "banner": material("HOME_MAT_banner", (0.22, 0.012, 0.015, 1), roughness=0.88, bump_scale=20.0, bump_strength=0.05, variation=0.07, variation_scale=8.0),
-        "book_green": material("HOME_MAT_book_green", (0.045, 0.075, 0.048, 1), roughness=0.90),
-        "book_brown": material("HOME_MAT_book_brown", (0.105, 0.040, 0.020, 1), roughness=0.90),
+        "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
+        "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91),
+        "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91),
+        "book_olive": material("HOME_MAT_book_olive", (0.078, 0.068, 0.030, 1), roughness=0.91),
         "piece_light": material("HOME_MAT_piece_light", (0.60, 0.51, 0.38, 1), roughness=0.58),
         "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
         "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
@@ -859,14 +871,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
-    cube("HOME_ARCH_window_right", (7.58, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
-    gothic_arch("HOME_ARCH_window_right_frame", 7.58, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass_dark"], bevel=0.12)
+    cube("HOME_ARCH_window_right", (7.92, 6.62, 3.72), (0.82, 0.07, 1.76), materials["window"], bevel=0.08)
+    gothic_arch("HOME_ARCH_window_right_frame", 7.92, 6.48, 1.82, 3.16, 5.18, 1.84, materials["brass_dark"], bevel=0.11)
     for offset in (-0.48, 0.0, 0.48):
-        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.58 + offset * 1.28, 6.46, 3.62), (0.035, 0.045, 1.56), materials["brass_dark"], bevel=0.012)
+        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.92 + offset * 0.80, 6.46, 3.62), (0.028, 0.045, 1.45), materials["brass_dark"], bevel=0.010)
     for idx, z in enumerate((2.78, 3.55, 4.25)):
-        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.58, 6.46, z + 0.10), (1.13, 0.045, 0.030), materials["brass_dark"], bevel=0.012)
-    cube("HOME_PROP_window_sill", (7.58, 6.20, 1.80), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
-    sphere("HOME_PROP_window_moon", (8.08, 6.40, 4.48), (0.46, 0.035, 0.46), materials["moon"])
+        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.92, 6.46, z + 0.10), (0.72, 0.045, 0.025), materials["brass_dark"], bevel=0.010)
+    cube("HOME_PROP_window_sill", (7.92, 6.20, 1.86), (0.96, 0.26, 0.11), materials["stone"], bevel=0.04)
+    sphere("HOME_PROP_window_moon", (8.18, 6.40, 4.44), (0.34, 0.030, 0.34), materials["moon"])
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
@@ -876,9 +888,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
             origin = Vector((1.55, 5.28, 0.24))
-            obj.location = origin + (obj.location - origin) * 1.16
-            obj.location.y += 0.22
-            obj.scale *= 1.16
+            obj.location = origin + (obj.location - origin) * 1.26
+            obj.location.y += 0.12
+            obj.scale *= 1.26
     cube("HOME_PROP_armor_chest_plate", (1.55, 5.14, 2.70), (0.36, 0.055, 0.30), materials["steel"], bevel=0.07)
     cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.19, 2.55), (0.035, 0.030, 0.14), materials["brass_dark"], bevel=0.01)
     cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.19, 2.59), (0.12, 0.030, 0.035), materials["brass_dark"], bevel=0.01)
@@ -887,14 +899,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.48), 0.055, 1.18, materials["brass_dark"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.36), 0.055, 1.24, materials["brass_dark"])
     ring_points = [
-        (2.02 * math.cos(i * math.tau / 24), 2.20 + 1.22 * math.sin(i * math.tau / 24), 4.72)
+        (2.02 * math.cos(i * math.tau / 24), 2.20 + 1.22 * math.sin(i * math.tau / 24), 4.58)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.050, materials["brass_dark"])
     inner_ring = [
-        (1.36 * math.cos(i * math.tau / 24), 2.20 + 0.82 * math.sin(i * math.tau / 24), 4.68)
+        (1.36 * math.cos(i * math.tau / 24), 2.20 + 0.82 * math.sin(i * math.tau / 24), 4.54)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.032, materials["brass"])
@@ -902,8 +914,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_chandelier_spoke_{idx}",
             [
-                (0.0, 2.20, 4.70),
-                (1.78 * math.cos(angle), 2.20 + 1.06 * math.sin(angle), 4.70),
+                (0.0, 2.20, 4.56),
+                (1.78 * math.cos(angle), 2.20 + 1.06 * math.sin(angle), 4.56),
             ],
             0.026,
             materials["brass_dark"],
@@ -954,7 +966,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 270, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 205, (0.86, 0.69, 0.52), 4.5, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 135, (0.78, 0.48, 0.26), 3.0, target=(-2.65, 5.9, 2.6))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 185, (0.38, 0.48, 0.60), 2.8, target=(1.55, 5.28, 2.4))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 265, (0.40, 0.50, 0.64), 2.8, target=(1.55, 5.28, 2.4))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
