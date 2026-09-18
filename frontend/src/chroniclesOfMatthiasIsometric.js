@@ -112,11 +112,13 @@ export function chroniclesIsometricFovForAspect(aspect, baseFov = 38) {
 
 export function chroniclesIsoInteractionForHit(interaction, hit) {
   if (!interaction?.mode || !hit) return null;
-  if (interaction.mode === 'move' && hit.kind === 'cell') {
+  const moveEnabled = interaction.mode === 'move' || interaction.mode === 'hybrid';
+  const attackEnabled = interaction.mode === 'attack' || interaction.mode === 'hybrid';
+  if (moveEnabled && hit.kind === 'cell') {
     const legal = (interaction.legalMoves || []).some((move) => move.x === hit.x && move.y === hit.y);
     return legal ? { kind: 'cell', x: hit.x, y: hit.y } : null;
   }
-  if (interaction.mode === 'attack' && hit.kind === 'enemy') {
+  if (attackEnabled && hit.kind === 'enemy') {
     const legal = (interaction.legalTargets || []).some((target) => target.enemyId === hit.enemyId);
     return legal ? { kind: 'enemy', enemyId: hit.enemyId } : null;
   }
@@ -816,14 +818,18 @@ export function createChroniclesIsometricGame(host, {
     interactionMarkers.moveMarkers.forEach((marker) => { marker.visible = false; });
     interactionMarkers.attackMarkers.forEach((marker) => { marker.visible = false; });
 
-    if (nextInteraction?.mode === 'move') {
+    const moveEnabled = nextInteraction?.mode === 'move' || nextInteraction?.mode === 'hybrid';
+    const attackEnabled = nextInteraction?.mode === 'attack' || nextInteraction?.mode === 'hybrid';
+
+    if (moveEnabled) {
       (nextInteraction.legalMoves || []).slice(0, interactionMarkers.moveMarkers.length).forEach((move, index) => {
         const marker = interactionMarkers.moveMarkers[index];
         const world = chroniclesIsoWorldForCell(move.x, move.y, initialScenePlan);
         marker.position.set(world.x, 0.055, world.z);
         marker.visible = true;
       });
-    } else if (nextInteraction?.mode === 'attack') {
+    }
+    if (attackEnabled) {
       (nextInteraction.legalTargets || []).slice(0, interactionMarkers.attackMarkers.length).forEach((target, index) => {
         const marker = interactionMarkers.attackMarkers[index];
         const world = chroniclesIsoWorldForCell(target.x, target.y, initialScenePlan);
