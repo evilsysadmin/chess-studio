@@ -12,6 +12,12 @@ compose_file="$repo/infra/oci/runtime/docker-compose.yml"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
 k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
+signal_controller_source="$repo/scripts/oci_staging_signal_controller.sh"
+signal_service_source="$repo/infra/oci/runtime/chess-studio-staging-signal.service"
+signal_timer_source="$repo/infra/oci/runtime/chess-studio-staging-signal.timer"
+signal_controller_target="/usr/local/sbin/chess-studio-staging-signal"
+signal_service_target="/etc/systemd/system/chess-studio-staging-signal.service"
+signal_timer_target="/etc/systemd/system/chess-studio-staging-signal.timer"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
@@ -67,6 +73,14 @@ image_ref() {
 
 legacy_image_ref() {
   printf 'chess-studio-backend:oci-%s' "$1"
+}
+
+prepare_signal_controller_disabled() {
+  install -o root -g root -m 0755 "$signal_controller_source" "$signal_controller_target"
+  install -o root -g root -m 0644 "$signal_service_source" "$signal_service_target"
+  install -o root -g root -m 0644 "$signal_timer_source" "$signal_timer_target"
+  systemctl daemon-reload
+  systemctl disable --now chess-studio-staging-signal.timer >/dev/null 2>&1 || true
 }
 
 image_available_for_rollback() {
@@ -384,6 +398,10 @@ preflight_started_ms="$(now_ms)"
 [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
 [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
 [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
+[[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
+[[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
+[[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
+prepare_signal_controller_disabled
 /bin/bash "$tunnel_connector" --self-test >/dev/null
 phase_done preflight "$preflight_started_ms"
 k3s_started_ms="$(now_ms)"
