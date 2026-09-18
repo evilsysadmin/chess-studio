@@ -22,8 +22,8 @@ MIN_OBSTACLES = 6
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
-ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "collapse_bridge", "waterfall", "tunnel_portal"}
-REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy"}
+ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "collapse_bridge", "waterfall", "tunnel_portal", "destructible_barricade", "destructible_platform", "artillery_barrage"}
+REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "destructible_platform", "artillery_barrage"}
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
@@ -105,6 +105,7 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
 
     low_passages = 0
     platform_heights: set[int] = set()
+    platform_materials: set[str] = set()
     for rect in platforms:
         try:
             y = float(rect["y"]); h = float(rect["h"])
@@ -114,6 +115,13 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         if 56.0 <= clearance < 86.0:
             low_passages += 1
         platform_heights.add(int(round(y / 20.0)) * 20)
+        material = str(rect.get("material", ""))
+        if material not in {"metal", "wood", "stone", "concrete"}:
+            errors.append(f"{stage_name}: platform has unsupported material {material!r}")
+        else:
+            platform_materials.add(material)
+    if len(platform_materials) < 2:
+        errors.append(f"{stage_name}: platform material variety too low")
     if low_passages < 2:
         errors.append(f"{stage_name}: needs at least 2 crouch-height passages")
     if len(platform_heights) < 4:
@@ -164,6 +172,20 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     first_grenadier = min((x for x, kind in spawns if kind == "grenadier"), default=999999.0)
     if first_grenadier < 1200.0:
         errors.append(f"{stage_name}: first grenadier at x={first_grenadier:.0f} is too early")
+
+    idle_enemies = [
+        enemy for enemy in enemies
+        if isinstance(enemy, dict) and str(enemy.get("idle_pose", ""))
+    ]
+    if len(idle_enemies) < 2:
+        errors.append(f"{stage_name}: needs at least 2 authored idle/resting enemies")
+    for enemy in idle_enemies:
+        pose = str(enemy.get("idle_pose", ""))
+        reaction = float(enemy.get("idle_reaction", 0.0))
+        if pose not in {"sit", "lean", "rest"}:
+            errors.append(f"{stage_name}: unsupported idle pose {pose!r}")
+        if not 0.55 <= reaction <= 1.8:
+            errors.append(f"{stage_name}: idle reaction {reaction:g}s outside 0.55..1.8")
 
     for enemy in enemies:
         if not isinstance(enemy, dict) or "y" not in enemy:
@@ -238,6 +260,24 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             speed = float(setpiece.get("speed", 0))
             if not 0 <= start < width or not 0 <= end < width or not 80 <= speed <= 520:
                 errors.append(f"{stage_name}: convoy {setpiece_id} has invalid route/speed")
+        elif kind in {"destructible_barricade", "destructible_platform"}:
+            x = float(setpiece.get("x", -1)); y = float(setpiece.get("y", -1))
+            w = float(setpiece.get("w", 0)); h = float(setpiece.get("h", 0))
+            hp = int(setpiece.get("hp", 0))
+            if w < 60 or h <= 0 or not 30 <= hp <= 240:
+                errors.append(f"{stage_name}: destructible {setpiece_id} has invalid size/hp")
+            if x < 0 or x + w > width or y < 0 or y + h > floor_y:
+                errors.append(f"{stage_name}: destructible {setpiece_id} leaves playable bounds")
+        elif kind == "artillery_barrage":
+            salvos = int(setpiece.get("salvos", 0))
+            telegraph = float(setpiece.get("telegraph", 0))
+            interval = float(setpiece.get("interval", 0))
+            radius = float(setpiece.get("radius", 0))
+            min_x = float(setpiece.get("min_x", -1)); max_x = float(setpiece.get("max_x", -1))
+            if not 1 <= salvos <= 6 or not 0.45 <= telegraph <= 2.0 or not 0.45 <= interval <= 2.0:
+                errors.append(f"{stage_name}: artillery {setpiece_id} has invalid timing/salvos")
+            if not 48 <= radius <= 130 or not 0 <= min_x < max_x < width:
+                errors.append(f"{stage_name}: artillery {setpiece_id} has invalid radius/zone")
         elif kind == "collapse_bridge":
             x = float(setpiece.get("x", -1)); y = float(setpiece.get("y", -1))
             w = float(setpiece.get("w", 0)); h = float(setpiece.get("h", 0))
@@ -324,7 +364,7 @@ def self_test() -> None:
         "world": {"width": 5200, "height": 720, "floor_y": 610, "start_x": 110},
         "checkpoints": [110, 1480, 2980, 4140],
         "platforms": [
-            {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24}
+            {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood"}
             for i in range(18)
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
@@ -335,6 +375,8 @@ def self_test() -> None:
             {"id": "truck", "type": "convoy", "trigger_x": 1600, "start_x": 2200, "end_x": 1300, "y": 606, "speed": 260},
             {"id": "bridge", "type": "collapse_bridge", "x": 3400, "y": 340, "w": 180, "h": 24, "trigger_x": 3620, "warning": 0.7, "fall_gravity": 980},
             {"id": "portal", "type": "tunnel_portal", "x": 3900, "y": 610, "w": 320, "h": 220},
+            {"id": "breakable", "type": "destructible_platform", "x": 3600, "y": 320, "w": 160, "h": 24, "hp": 70},
+            {"id": "shelling", "type": "artillery_barrage", "trigger_x": 2800, "min_x": 2700, "max_x": 3500, "salvos": 3, "telegraph": 0.9, "interval": 0.8, "radius": 80},
         ],
         "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
         "backdrop": {"layers": [
@@ -350,6 +392,10 @@ def self_test() -> None:
              "knight","pawn","rook","grenadier","commando","knight","pawn","queen","bishop",
              "pawn","rook","knight","pawn","grenadier","pawn","rook","knight","pawn"]
     stage["enemies"] = [{"x": 620 + i * 120, "type": kind} for i, kind in enumerate(kinds)]
+    stage["enemies"][5]["idle_pose"] = "sit"
+    stage["enemies"][5]["idle_reaction"] = 0.9
+    stage["enemies"][15]["idle_pose"] = "lean"
+    stage["enemies"][15]["idle_reaction"] = 1.0
     stats = parse_stats(MAIN.read_text(encoding="utf-8"))
     assert not validate_stage(stage, stats, "self-test")
     crowded = json.loads(json.dumps(stage))
