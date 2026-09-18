@@ -353,7 +353,9 @@ def zzz(M, x, y, z):
 
 def setup_scene(out):
     scene = bpy.context.scene
-    prop = scene.bl_rna.properties["render"].fixed_type.properties["engine"]\n    available = {item.identifier for item in prop.enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in available else "BLENDER_EEVEE"
+    prop = scene.bl_rna.properties["render"].fixed_type.properties["engine"]
+    available = {item.identifier for item in prop.enum_items}
+    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in available else "BLENDER_EEVEE"
     scene.render.resolution_x = 1672
     scene.render.resolution_y = 941
     scene.render.resolution_percentage = 100
