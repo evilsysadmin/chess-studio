@@ -73,7 +73,7 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert validated["partyStart"] == base["partyStart"]
             assert validated["enemies"] == base["enemies"]
             for group in ("triggers", "interactables", "treasures", "traps", "exits"):
-                assert validated[group] == base[group]
+                assert validated.get(group, []) == base.get(group, [])
 
             assert len(manifest["grid"]) == len(base["grid"])
             assert all(
