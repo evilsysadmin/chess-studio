@@ -2253,3 +2253,94 @@ def test_admin_matthias_personality_preview_rejects_unknown_preset(monkeypatch):
     monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
     response = client.post("/api/admin/matthias/personality-preview", json={"preset": "inventado"})
     assert response.status_code == 400
+
+
+# ---------- Billing observability P0 ----------
+
+def _billing_headers(secret: str, body: bytes, timestamp: str | None = None) -> dict[str, str]:
+    import hashlib
+    import hmac
+    import time
+
+    stamp = timestamp or str(int(time.time()))
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        stamp.encode("ascii") + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "Content-Type": "application/json",
+        "X-Chess-Timestamp": stamp,
+        "X-Chess-Signature": f"sha256={digest}",
+    }
+
+
+def test_internal_billing_cost_ingest_requires_hmac_and_records_two_providers(monkeypatch):
+    import system_api
+
+    secret = "billing-test-secret"
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", secret)
+    seen = {}
+
+    def capture(costs):
+        seen["costs"] = costs
+        return True
+
+    monkeypatch.setattr(system_api, "record_billing_costs_otel", capture)
+    body = json.dumps(
+        {
+            "costs": [
+                {"provider": "oci", "amount": 0.0, "currency": "EUR"},
+                {"provider": "cloudflare", "amount": 0.25, "currency": "USD"},
+            ]
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+    response = raw_client.post(
+        "/api/internal/billing-costs",
+        content=body,
+        headers=_billing_headers(secret, body),
+    )
+    assert response.status_code == 204
+    assert seen["costs"] == [("oci", 0.0, "EUR"), ("cloudflare", 0.25, "USD")]
+
+
+def test_internal_billing_cost_ingest_rejects_bad_signature(monkeypatch):
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "billing-test-secret")
+    body = b'{"costs":[]}'
+    response = raw_client.post(
+        "/api/internal/billing-costs",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Chess-Timestamp": "1",
+            "X-Chess-Signature": "sha256=bad",
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_internal_billing_cost_ingest_rejects_malformed_signed_payload(monkeypatch):
+    import system_api
+
+    secret = "billing-test-secret"
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", secret)
+    monkeypatch.setattr(system_api, "record_billing_costs_otel", lambda _costs: True)
+    body = json.dumps(
+        {
+            "costs": [
+                {"provider": "oci", "amount": -1, "currency": "EUR"},
+                {"provider": "cloudflare", "amount": 0.0, "currency": "USD"},
+            ]
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    response = raw_client.post(
+        "/api/internal/billing-costs",
+        content=body,
+        headers=_billing_headers(secret, body),
+    )
+    assert response.status_code == 400
