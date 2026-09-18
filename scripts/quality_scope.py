@@ -23,6 +23,7 @@ class Scope:
     run_backend: bool = False
     run_e2e: bool = False
     run_security: bool = False
+    run_pawn_slug_godot: bool = False
     run_pawn_slug_e2e: bool = False
     run_chesscom_e2e: bool = False
     run_trailblazer_e2e: bool = False
@@ -67,6 +68,14 @@ BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
 PACKAGE_METADATA_PATH = "frontend/package.json"
 
+PAWN_SLUG_GODOT_PATHS = {
+    ".github/workflows/pawn-slug-godot-web.yml",
+    ".github/workflows/cicd.yml",
+    "scripts/pawn_slug_godot_bundle.py",
+    "scripts/pawn_slug_godot_2d_gate.py",
+    "scripts/pawn_slug_godot_live_smoke.mjs",
+    "scripts/apply_frontend_csp.mjs",
+}
 PAWN_SLUG_RE = re.compile(
     r"^frontend/src/pawnSlug[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/PawnSlug[^/]*\.(?:js|jsx|css)$|"
@@ -177,6 +186,8 @@ def classify(paths: Iterable[str]) -> Scope:
     for path in changed:
         if path == QUALITY_SCOPE_PATH:
             continue
+        if path.startswith("games/pawn-slug-godot/") or path in PAWN_SLUG_GODOT_PATHS:
+            scope.run_pawn_slug_godot = True
         if path in FRONTEND_HARNESS_PATHS:
             scope.run_frontend = True
             continue
@@ -346,6 +357,10 @@ def self_test() -> None:
     _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_security=True)
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
+    _expect(["games/pawn-slug-godot/scripts/player.gd"], run_pawn_slug_godot=True)
+    _expect(["scripts/pawn_slug_godot_2d_gate.py"], run_pawn_slug_godot=True)
+    _expect(["scripts/apply_frontend_csp.mjs"], run_pawn_slug_godot=True)
+    _expect([".github/workflows/pawn-slug-godot-web.yml"], run_pawn_slug_godot=True)
     _expect_core(
         ["e2e/helpers.js"],
         run_pawn_slug_e2e=True,
