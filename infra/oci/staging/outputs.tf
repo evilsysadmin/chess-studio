@@ -21,12 +21,12 @@ output "reserved_public_ips" {
 }
 
 output "load_balancer_ip" {
-  description = "Public IPv4 of the OCI Always Free 10 Mbps load balancer. DNS cutover is a separate gate."
+  description = "Inventory IPv4 of the dormant OCI emergency load balancer. It is unreachable from the Internet unless load_balancer_ingress_cidr is explicitly set."
   value       = oci_load_balancer_load_balancer.backend.ip_address_details[0].ip_address
 }
 
 output "load_balancer_http_origin" {
-  description = "Temporary public HTTP origin for readiness validation before Cloudflare/TLS cutover."
+  description = "Emergency HTTP probe origin. Its security list denies public ingress by default; canonical staging uses Cloudflare Tunnel."
   value       = "http://${oci_load_balancer_load_balancer.backend.ip_address_details[0].ip_address}"
 }
 
@@ -76,8 +76,8 @@ output "post_apply_checklist" {
     "Create or rotate staging secret values manually in the Terraform-managed Vault; never pass secret plaintext through Terraform variables.",
     "Keep /etc/chess-studio/backend.env as a generated root-only runtime artifact, not a human-maintained secret store.",
     "Keep the private runtime bucket free of Terraform-managed secret objects.",
-    "Verify the backend is reachable on port 4000 only from the load balancer subnet before DNS cutover.",
-    "Require OCI LB /api/ready health to be green before moving api-staging DNS.",
+    "Keep load_balancer_ingress_cidr null during normal operation; canonical staging enters through Cloudflare Tunnel.",
+    "Verify the Cloudflare Tunnel targets http://127.0.0.1:4000 and the public api-staging /api/ready endpoint is green.",
     "Keep Render production serving until the reversible OCI cutover is validated."
   ]
 }
