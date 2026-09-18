@@ -264,7 +264,7 @@ export default function PvPLobbyModal({
                 <span aria-hidden="true">✦</span>
                 <div>
                   <strong>Sin retos pendientes</strong>
-                  <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Entra al roster para poder recibir desafíos.'}</p>
+                  <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Ponte disponible para poder recibir desafíos.'}</p>
                 </div>
               </div>
             ) : (
