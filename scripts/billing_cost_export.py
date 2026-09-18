@@ -67,16 +67,29 @@ def collect_cloudflare_cost() -> tuple[float, str]:
     return _single_currency(totals, "cloudflare")
 
 
+def _oci_month_window(now: datetime) -> tuple[datetime, datetime]:
+    current = now.astimezone(timezone.utc)
+    start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = current.replace(hour=0, minute=0, second=0, microsecond=0)
+    if end <= start:
+        # On the first UTC day of a month OCI has no complete current-month day
+        # yet. Query the previous complete month to preserve a valid billing
+        # currency/sample instead of sending an invalid zero-length interval.
+        end = start
+        previous_day = start.replace(day=1) - __import__("datetime").timedelta(days=1)
+        start = previous_day.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return start, end
+
+
 def collect_oci_cost(oci: Any) -> tuple[float, str]:
     from oci_runtime_config import oci_config
 
     config = oci_config(oci)
-    now = datetime.now(timezone.utc)
-    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start, end = _oci_month_window(datetime.now(timezone.utc))
     details = oci.usage_api.models.RequestSummarizedUsagesDetails(
         tenant_id=config["tenancy"],
         time_usage_started=start,
-        time_usage_ended=now,
+        time_usage_ended=end,
         granularity="MONTHLY",
         is_aggregate_by_time=True,
         query_type="COST",
@@ -144,6 +157,19 @@ def publish_via_staging(oci: Any, costs: list[tuple[str, float, str]]) -> None:
 
 
 def self_test() -> None:
+    sample_now = datetime(2026, 9, 18, 14, 38, 17, 123456, tzinfo=timezone.utc)
+    start, end = _oci_month_window(sample_now)
+    assert start == datetime(2026, 9, 1, tzinfo=timezone.utc)
+    assert end == datetime(2026, 9, 18, tzinfo=timezone.utc)
+    first_day_start, first_day_end = _oci_month_window(
+        datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
+    )
+    assert first_day_start == datetime(2026, 9, 1, tzinfo=timezone.utc)
+    assert first_day_end == datetime(2026, 10, 1, tzinfo=timezone.utc)
+    assert all(
+        value.hour == value.minute == value.second == value.microsecond == 0
+        for value in (start, end, first_day_start, first_day_end)
+    )
     assert _cf_rows({"result": [{"BilledCost": 0.25, "BillingCurrency": "USD"}]})[0]["BilledCost"] == 0.25
     assert _single_currency({"USD": 1.25}, "test") == (1.25, "USD")
     body = encode_payload([("oci", 0.0, "EUR"), ("cloudflare", 0.25, "USD")])
