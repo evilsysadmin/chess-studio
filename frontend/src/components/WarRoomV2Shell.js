@@ -4,6 +4,16 @@ export const WAR_ROOM_V2_STAGING_MODEL_URL =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
 export const WAR_ROOM_V2_BOARD_ANCHOR_Y = 1.12;
 
+export function warRoomV2ModelUrl({
+  buildSha = import.meta.env.VITE_BUILD_SHA,
+  baseUrl = WAR_ROOM_V2_STAGING_MODEL_URL,
+} = {}) {
+  const version = String(buildSha || '').trim();
+  if (!version) return baseUrl;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}build=${encodeURIComponent(version)}`;
+}
+
 function tuneRuntimeMaterial(material) {
   if (!material?.isMeshStandardMaterial) return;
   const name = String(material.name || '').toLowerCase();
@@ -41,7 +51,7 @@ export async function installWarRoomV2Shell(
   {
     whiteSide = true,
     coarsePointer = false,
-    url = WAR_ROOM_V2_STAGING_MODEL_URL,
+    url = warRoomV2ModelUrl(),
   } = {},
 ) {
   if (!scene?.add) throw new Error('War Room v2 requires a Three.js scene');
