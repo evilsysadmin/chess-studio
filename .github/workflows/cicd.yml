@@ -223,7 +223,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-      - name: Detect Docker/dependency/security changes
+      - name: Detect security surface
         id: changes
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -266,15 +266,15 @@ jobs:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-trivy
       - name: Set up Docker Buildx cache backend
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         uses: docker/setup-buildx-action@v4
       - name: Docker image security
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         env:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-images
       - name: Real stack smoke · Docker Compose
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         run: |
           set -euo pipefail
           cleanup() { docker compose down -v || true; }
