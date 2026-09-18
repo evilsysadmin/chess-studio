@@ -305,9 +305,11 @@ assert "WantedBy=timers.target" in signal_timer
 
 # Active fast-path is outbound-only on the existing A1. It adds no OCI
 # resource/listener and the existing Run Command path remains the fallback.
+# The watcher already suppresses same-SHA repeats; an explicit deploy must
+# recreate the backend so a newly installed runtime is actually consumed.
 assert "require flock" in deploy
 assert 'flock -w 120 8' in deploy
-assert "OCI_DEPLOY_ALREADY_CURRENT" in deploy
+assert "OCI_DEPLOY_ALREADY_CURRENT" not in deploy
 assert "prepare_deploy_watcher()" in deploy
 assert "enable_deploy_watcher()" in deploy
 assert 'install -o root -g root -m 0755 "$deploy_watcher_source"' in deploy
