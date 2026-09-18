@@ -10,6 +10,7 @@ var max_hp := 780
 var dead := false
 var _last_hp := 780
 var _flash_remaining := 0.0
+var _shell_telegraph := 0.0
 
 var _facing_root: Node2D
 var _body: Sprite2D
@@ -67,6 +68,10 @@ func sync_state(world_x: float, floor_y: float, facing: float, current_hp: int, 
 func muzzle_global_position() -> Vector2:
     return _muzzle.global_position if _muzzle != null else global_position + Vector2(98.0, -86.0)
 
+func set_shell_telegraph(strength: float) -> void:
+    _shell_telegraph = clampf(strength, 0.0, 1.0)
+    queue_redraw()
+
 func play_fire(explosive := false) -> void:
     if dead or _facing_root == null:
         return
@@ -82,7 +87,16 @@ func play_fire(explosive := false) -> void:
 func _process(delta: float) -> void:
     _flash_remaining = maxf(0.0, _flash_remaining - delta)
     if _muzzle_flash != null:
-        _muzzle_flash.visible = _flash_remaining > 0.0 and not dead
+        var telegraph_visible := _shell_telegraph > 0.0 and not dead
+        _muzzle_flash.visible = (_flash_remaining > 0.0 or telegraph_visible) and not dead
+        if telegraph_visible and _flash_remaining <= 0.0:
+            var pulse := 1.0 + 0.22 * sin(Time.get_ticks_msec() * 0.018)
+            _muzzle_flash.scale = Vector2.ONE * lerpf(0.75, 1.35, _shell_telegraph) * pulse
+            _muzzle_flash.color = Color("ff6d3b")
+        elif _flash_remaining > 0.0:
+            _muzzle_flash.color = Color("ffb05f")
+    if _shell_telegraph > 0.0:
+        queue_redraw()
 
 func _play_hurt() -> void:
     if _facing_root == null:
@@ -93,6 +107,7 @@ func _play_hurt() -> void:
 
 func _play_death() -> void:
     dead = true
+    _shell_telegraph = 0.0
     if _muzzle_flash != null:
         _muzzle_flash.visible = false
     if _facing_root == null:
@@ -112,3 +127,8 @@ func _draw() -> void:
     draw_rect(Rect2(Vector2(-width * 0.5, y), Vector2(width, 10.0)), Color("2b3034"), true)
     draw_rect(Rect2(Vector2(-width * 0.5, y), Vector2(width * ratio, 10.0)), Color("d45745"), true)
     draw_string(ThemeDB.fallback_font, Vector2(-54.0, y - 8.0), "PANZER ROOK", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 15, Color("e7d3a1"))
+    if _shell_telegraph > 0.0:
+        var pulse := 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.016)
+        var warning := Color(1.0, 0.28, 0.12, lerpf(0.30, 0.92, _shell_telegraph) * pulse)
+        var radius := lerpf(54.0, 78.0, _shell_telegraph)
+        draw_arc(Vector2(0.0, -78.0), radius, -PI * 0.80, PI * 0.80, 28, warning, 4.0)
