@@ -148,6 +148,12 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
         "king": (0.11, 0.06, 0.42, 0.11, 0.47),
     }
     r1, r2, depth, head, height = profiles[kind]
+    piece_scale = 1.18
+    r1 *= piece_scale
+    r2 *= piece_scale
+    depth *= piece_scale
+    head *= piece_scale
+    height *= piece_scale
     cylinder(f"{name}_base", (x, y, z + 0.035), r1 * 1.18, 0.07, mat, vertices=24)
     cone(f"{name}_body", (x, y, z + depth / 2 + 0.06), r1, r2, depth, mat, vertices=24)
     sphere(f"{name}_head", (x, y, z + height), (head, head, head), mat)
@@ -437,7 +443,7 @@ def add_armor(materials):
     brass = materials["brass"]
     stone = materials["stone"]
     dark = materials["dark"]
-    x, y = 1.35, 5.35
+    x, y = 1.55, 5.28
 
     cube("HOME_PROP_armor_pedestal", (x, y, 0.24), (0.72, 0.54, 0.24), stone, bevel=0.05)
 
@@ -735,27 +741,32 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
 
-    cube("HOME_ARCH_window_right", (7.78, 6.62, 3.62), (0.96, 0.07, 1.64), materials["window"], bevel=0.08)
-    gothic_arch("HOME_ARCH_window_right_frame", 7.78, 6.48, 2.08, 3.24, 4.92, 1.94, materials["brass"], bevel=0.12)
+    cube("HOME_ARCH_window_right", (7.58, 6.62, 3.72), (1.24, 0.07, 1.86), materials["window"], bevel=0.08)
+    gothic_arch("HOME_ARCH_window_right_frame", 7.58, 6.48, 2.62, 3.14, 5.22, 1.72, materials["brass"], bevel=0.12)
     for offset in (-0.48, 0.0, 0.48):
-        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.78 + offset, 6.46, 3.52), (0.035, 0.045, 1.35), materials["brass"], bevel=0.012)
+        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.58 + offset * 1.28, 6.46, 3.62), (0.035, 0.045, 1.56), materials["brass"], bevel=0.012)
     for idx, z in enumerate((2.78, 3.55, 4.25)):
-        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.78, 6.46, z), (0.88, 0.045, 0.030), materials["brass"], bevel=0.012)
-    cube("HOME_PROP_window_sill", (7.78, 6.20, 1.96), (1.12, 0.28, 0.12), materials["stone"], bevel=0.04)
+        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.58, 6.46, z + 0.10), (1.13, 0.045, 0.030), materials["brass"], bevel=0.012)
+    cube("HOME_PROP_window_sill", (7.58, 6.20, 1.80), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
 
     add_table_and_board(materials)
     add_armor(materials)
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith("HOME_PROP_armor_"):
+            origin = Vector((1.55, 5.28, 0.24))
+            obj.location = origin + (obj.location - origin) * 1.18
+            obj.scale *= 1.18
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 4.90), 0.065, 1.55, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 4.55), 0.070, 1.55, materials["brass"])
     ring_points = [
-        (1.95 * math.cos(i * math.tau / 24), 2.20 + 1.20 * math.sin(i * math.tau / 24), 4.03)
+        (2.08 * math.cos(i * math.tau / 24), 2.20 + 1.28 * math.sin(i * math.tau / 24), 3.72)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
@@ -764,16 +775,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.45 + 1.02 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.28), (rx, ry, 4.08)],
+            [(0.0, 2.20, 5.22), (rx, ry, 3.76)],
             0.025,
             materials["brass"],
         )
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.82 * math.cos(angle)
-        cy = 2.20 + 1.10 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.20), (0.050, 0.050, 0.20), materials["fire"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.30), 34, (1.0, 0.52, 0.20), radius=0.28)
+        cx = 1.92 * math.cos(angle)
+        cy = 2.20 + 1.18 * math.sin(angle)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 3.91), (0.055, 0.055, 0.24), materials["fire"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.02), 38, (1.0, 0.52, 0.20), radius=0.30)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -801,12 +812,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 180, (0.48, 0.40, 0.32), 8.0, target=(0, 1.4, 0.15))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 48.0
+    camera_data.lens = 50.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0.0, -15.35, 3.62)
-    target = (0.0, 2.35, 1.70)
+    camera.location = (0.0, -16.0, 4.85)
+    target = (0.0, 2.30, 1.55)
     look_at(camera, target)
     scene.camera = camera
 
