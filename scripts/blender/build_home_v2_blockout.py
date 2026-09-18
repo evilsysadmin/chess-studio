@@ -153,6 +153,21 @@ def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: fl
     return curve_tube(name, points, 0.19, mat)
 
 
+def gothic_arch(name: str, x: float, y: float, width: float, shoulder_z: float, top_z: float, bottom_z: float, mat, *, bevel=0.19):
+    half = width / 2.0
+    points = [(x - half, y, bottom_z), (x - half, y, shoulder_z)]
+    for i in range(1, 10):
+        t = i / 9.0
+        # Convex rise into a pointed apex; intentionally architectural rather
+        # than mathematically perfect so the silhouette matches the painted master.
+        points.append((x - half * (1.0 - t), y, shoulder_z + (top_z - shoulder_z) * (t ** 0.72)))
+    for i in range(1, 10):
+        t = i / 9.0
+        points.append((x + half * t, y, top_z - (top_z - shoulder_z) * (t ** 1.38)))
+    points.extend([(x + half, y, shoulder_z), (x + half, y, bottom_z)])
+    return curve_tube(name, points, bevel, mat)
+
+
 def look_at(obj, target) -> None:
     direction = Vector(target) - obj.location
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
@@ -241,7 +256,7 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
     cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
-    arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.65, 4.45, 0.12, stone)
+    gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
     cube(f"HOME_PROP_{name}_fire", (x, 5.54, 1.00), (0.92, 0.07, 0.72), fire, bevel=0.12)
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.08, 1.32), 580, (1.0, 0.25, 0.06), radius=0.8)
 
@@ -283,6 +298,15 @@ def add_armor(materials):
     cube("HOME_PROP_armor_visor", (x, y - 0.33, 2.78), (0.33, 0.055, 0.11), brass, bevel=0.02)
     curve_tube("HOME_PROP_armor_left_arm", [(x - 0.44, y, 2.18), (x - 0.7, y, 1.58)], 0.115, steel)
     curve_tube("HOME_PROP_armor_right_arm", [(x + 0.44, y, 2.18), (x + 0.7, y, 1.58)], 0.115, steel)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.46, y, 2.20), (0.18, 0.15, 0.18), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.46, y, 2.20), (0.18, 0.15, 0.18), steel)
+    for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
+        curve_tube(
+            f"HOME_PROP_armor_weapon_{idx}",
+            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.55)],
+            0.035,
+            materials["dark"],
+        )
 
 
 def add_trophy(materials):
@@ -363,8 +387,8 @@ def add_stairs(materials):
 
     # Pull the Dungeon inward: in the master it is a major lower-right mass,
     # not something clipped off the edge.
-    bridge_x = 6.28
-    arch_x = 6.52
+    bridge_x = 5.55
+    arch_x = 5.82
     cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.55, 1.42), (2.18, 0.74, 0.13), stone, bevel=0.05)
     cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.62), (2.10, 0.12, 0.18), stone, bevel=0.04)
 
@@ -379,17 +403,17 @@ def add_stairs(materials):
     cube("HOME_PROP_dungeon_fire_left", (5.85, 1.32, -0.62), (0.18, 0.06, 0.36), fire, bevel=0.09)
     cube("HOME_PROP_dungeon_fire_right", (7.15, 1.32, -0.72), (0.18, 0.06, 0.42), fire, bevel=0.09)
 
-    for idx, x in enumerate((4.82, 5.30, 5.78, 6.26, 6.74, 7.22, 7.70)):
+    for idx, x in enumerate((4.10, 4.58, 5.06, 5.54, 6.02, 6.50, 6.98)):
         cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.77, 1.94), 0.085, 0.58, stone, vertices=20)
-    cube("HOME_ARCH_dungeon_balustrade_top", (6.26, 1.77, 2.26), (1.82, 0.12, 0.10), stone, bevel=0.025)
+    cube("HOME_ARCH_dungeon_balustrade_top", (5.54, 1.77, 2.26), (1.82, 0.12, 0.10), stone, bevel=0.025)
 
-    cylinder("HOME_ARCH_dungeon_post", (4.68, 1.88, 1.40), 0.27, 2.00, stone, vertices=32)
-    sphere("HOME_PROP_dungeon_finial", (4.68, 1.88, 2.50), (0.24, 0.24, 0.24), materials["stone_dark"])
+    cylinder("HOME_ARCH_dungeon_post", (3.98, 1.88, 1.40), 0.27, 2.00, stone, vertices=32)
+    sphere("HOME_PROP_dungeon_finial", (3.98, 1.88, 2.50), (0.24, 0.24, 0.24), materials["stone_dark"])
 
     steps = 12
     for i in range(steps):
         t = i / (steps - 1)
-        x = 5.02 + 2.82 * t
+        x = 4.45 + 2.82 * t
         y = 1.46 - 2.50 * t
         z = 0.76 - 1.72 * t
         cube(
@@ -402,17 +426,17 @@ def add_stairs(materials):
 
     curve_tube(
         "HOME_PROP_dungeon_rail",
-        [(4.62, 1.60, 2.22), (5.72, 0.72, 1.54), (6.90, -0.22, 0.78), (7.90, -1.02, 0.12)],
+        [(3.92, 1.60, 2.22), (5.02, 0.72, 1.54), (6.20, -0.22, 0.78), (7.20, -1.02, 0.12)],
         0.050,
         brass,
     )
     curve_tube(
         "HOME_PROP_dungeon_rail_lower",
-        [(4.62, 1.60, 1.86), (5.72, 0.72, 1.18), (6.90, -0.22, 0.42), (7.90, -1.02, -0.24)],
+        [(3.92, 1.60, 1.86), (5.02, 0.72, 1.18), (6.20, -0.22, 0.42), (7.20, -1.02, -0.24)],
         0.027,
         brass,
     )
-    cube("HOME_ARCH_dungeon_lower_floor", (6.88, -0.62, -1.53), (2.00, 1.78, 0.10), dark, bevel=0.02)
+    cube("HOME_ARCH_dungeon_lower_floor", (6.18, -0.62, -1.53), (2.00, 1.78, 0.10), dark, bevel=0.02)
 
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
@@ -512,11 +536,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_fireplace("fireplace_left", -6.15, materials)
     add_bookshelf(materials)
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
-    arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.35, 0.15, materials["stone"])
+    gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
 
     cube("HOME_ARCH_window_right", (8.0, 6.62, 3.58), (0.78, 0.07, 1.46), materials["window"], bevel=0.08)
-    arch("HOME_ARCH_window_right_frame", 8.0, 6.48, 1.78, 3.32, 4.48, 2.08, materials["brass"])
+    gothic_arch("HOME_ARCH_window_right_frame", 8.0, 6.48, 1.78, 3.32, 4.72, 2.08, materials["brass"], bevel=0.12)
 
     for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
         add_banner(name, x, materials)
