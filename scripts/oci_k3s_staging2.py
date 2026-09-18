@@ -36,7 +36,15 @@ def staging2_command(operation: str, sha: str = "") -> str:
         arguments = operation
     command = f"""set -euo pipefail
 test -x '{WRAPPER}' || {{ echo 'OCI_K3S_STAGING2_WRAPPER_MISSING' >&2; exit 44; }}
-sudo --non-interactive '{WRAPPER}' {arguments}
+set +e
+output="$(sudo --non-interactive '{WRAPPER}' {arguments} 2>&1)"
+rc=$?
+set -e
+printf '%s\\n' "$output"
+if [ "$rc" -ne 0 ]; then
+  printf 'OCI_K3S_STAGING2_REMOTE_FAILED operation=%s rc=%s\\n' '{operation}' "$rc"
+  exit 0
+fi
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -46,7 +54,13 @@ sudo --non-interactive '{WRAPPER}' {arguments}
 
 def validate_output(operation: str, output: str) -> None:
     marker = SUCCESS_MARKERS[operation]
-    if not any(line.startswith(marker) for line in output.splitlines()):
+    lines = output.splitlines()
+    failure = next((line for line in lines if line.startswith("OCI_K3S_STAGING2_REMOTE_FAILED")), "")
+    if failure:
+        diagnostics = [line for line in lines if line.startswith("OCI_K3S_STAGING2_DIAG")]
+        detail = " | ".join(diagnostics[-8:]) or "no safe diagnostics returned"
+        raise SystemExit(f"staging2 remote operation failed: {failure}; {detail}")
+    if not any(line.startswith(marker) for line in lines):
         raise SystemExit(f"staging2 output missing success marker: {marker}")
 
 
@@ -55,6 +69,8 @@ def self_test() -> None:
     for operation in OPERATIONS:
         command = staging2_command(operation, sha if operation == "deploy" else "")
         assert "sudo --non-interactive" in command
+        assert "OCI_K3S_STAGING2_REMOTE_FAILED" in command
+        assert 'printf \'%s\\n\' "$output"' in command
         assert WRAPPER in command
         assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
         validate_output(operation, f"noise\n{SUCCESS_MARKERS[operation]} sample=true\n")
