@@ -13,6 +13,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
+ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -65,6 +66,16 @@ FORBIDDEN_MATTHIAS = (
     "/pawn-slug/matthias/machinegun/",
     "/pawn-slug/matthias/shotgun/",
     "/pawn-slug/matthias/panzerfaust/",
+)
+REQUIRED_ENVIRONMENT = (
+    "_draw_sky",
+    "_draw_haze",
+    "_draw_far_ridge",
+    "_draw_ruined_skyline",
+    "_draw_searchlights",
+    "_draw_midground_defences",
+    "_draw_platforms",
+    "_draw_foreground_props",
 )
 REQUIRED_ENEMIES = (
     "Sprite2D",
@@ -121,6 +132,7 @@ def validate() -> None:
 
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
+    validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -140,6 +152,8 @@ def self_test() -> None:
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
+    assert "_draw_ruined_skyline" in REQUIRED_ENVIRONMENT
+    assert "_draw_foreground_props" in REQUIRED_ENVIRONMENT
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
