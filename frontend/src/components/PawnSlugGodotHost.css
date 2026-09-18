@@ -29,6 +29,7 @@
   border-radius: 18px;
   background: #07090b;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  touch-action: none;
 }
 
 .pawn-slug-godot-host__status {
@@ -80,5 +81,33 @@
 
   .pawn-slug-godot-host__frame {
     min-height: 72vh;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) and (pointer: coarse) {
+  .pawn-slug-godot-host {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .pawn-slug-godot-host__header {
+    display: none;
+  }
+
+  .pawn-slug-godot-host__frame-shell {
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .pawn-slug-godot-host__frame {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+
+  .pawn-slug-godot-host__status {
+    top: max(0.5rem, env(safe-area-inset-top));
+    right: max(0.5rem, env(safe-area-inset-right));
   }
 }
