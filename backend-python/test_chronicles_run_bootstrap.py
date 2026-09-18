@@ -42,6 +42,15 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["generatorVersion"] == 1
     assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
 
+    areas = payload["areas"]
+    expected_ids = list(chronicles_api.chronicles_shipped_map_ids())
+    assert [entry["mapId"] for entry in areas] == expected_ids
+    assert len({entry["mapId"] for entry in areas}) == len(expected_ids)
+    assert all(entry["seed"] == payload["seed"] for entry in areas)
+    assert all(entry["generatorVersion"] == 1 for entry in areas)
+    assert next(entry for entry in areas if entry["mapId"] == payload["currentMapId"]) == area
+    assert len(response.content) < 256_000
+
 
 def test_idempotent_run_bootstrap_replays_identical_area(monkeypatch):
     async def no_collection():

@@ -3,6 +3,7 @@ import {
   DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
   chroniclesMapById,
+  chroniclesMapIds,
 } from './chroniclesMapCatalog.js';
 import { CHRONICLES_DIRECTOR_SCHEMA_VERSION } from './chroniclesGameDirector.js';
 import { chroniclesBootstrapTacticsWorld } from './chroniclesGameBootstrap.js';
@@ -11,31 +12,41 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function remoteRun(title = 'Cripta remota', seed = 417) {
+function remoteArea(mapId, seed, title = null) {
+  const base = clone(chroniclesMapById(mapId));
   const manifest = {
-    ...clone(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID)),
-    title,
+    ...base,
+    title: title || `Remota · ${base.title}`,
   };
   const revision = 'b'.repeat(64);
+  return {
+    schemaVersion: CHRONICLES_DIRECTOR_SCHEMA_VERSION,
+    mapId,
+    contentVersion: manifest.version,
+    seed,
+    instanceId: 'a'.repeat(24),
+    manifestRevision: revision,
+    manifest,
+  };
+}
+
+function remoteRun(title = 'Cripta remota', seed = 417) {
+  const areas = chroniclesMapIds().map((mapId) => (
+    remoteArea(mapId, seed, mapId === DEFAULT_CHRONICLES_MAP_ID ? title : null)
+  ));
+  const area = areas.find((entry) => entry.mapId === DEFAULT_CHRONICLES_MAP_ID);
   return {
     runId: '11111111-2222-4333-8444-555555555555',
     seed,
     currentMapId: DEFAULT_CHRONICLES_MAP_ID,
-    contentVersion: manifest.version,
-    manifestRevision: revision,
+    contentVersion: area.contentVersion,
+    manifestRevision: area.manifestRevision,
     status: 'active',
     worldVersion: 0,
     consumedContentIds: [],
     claimedRewards: [],
-    area: {
-      schemaVersion: CHRONICLES_DIRECTOR_SCHEMA_VERSION,
-      mapId: DEFAULT_CHRONICLES_MAP_ID,
-      contentVersion: manifest.version,
-      seed,
-      instanceId: 'a'.repeat(24),
-      manifestRevision: revision,
-      manifest,
-    },
+    area,
+    areas,
   };
 }
 
@@ -55,6 +66,10 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(resolved.seed).toBe(417);
     expect(resolved.worldVersion).toBe(0);
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta remota');
+    expect(chroniclesMapById('gallery-of-forks').title).toMatch(/^Remota · /);
+    expect(chroniclesMapById('hollow-bell-tower').title).toMatch(/^Remota · /);
+    expect(chroniclesMapById('echo-cistern').title).toMatch(/^Remota · /);
+    expect(resolved.areas).toHaveLength(chroniclesMapIds().length);
     expect(createRun).toHaveBeenCalledWith(DEFAULT_CHRONICLES_MAP_ID, {
       operationId: null,
       signal: expect.any(AbortSignal),
@@ -92,6 +107,22 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     release(remoteRun('Demasiado tarde'));
     await Promise.resolve();
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID)).toBe(local);
+  });
+
+  it('rejects an incomplete area bundle without partially installing remote maps', async () => {
+    const localCryptTitle = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title;
+    const localGalleryTitle = chroniclesMapById('gallery-of-forks').title;
+    const payload = remoteRun();
+    payload.areas = payload.areas.slice(0, -1);
+
+    const resolved = await chroniclesBootstrapTacticsWorld({
+      createRun: vi.fn().mockResolvedValue(payload),
+    });
+
+    expect(resolved.source).toBe('local');
+    expect(resolved.fallbackReason).toBe('incomplete-area-bundle');
+    expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe(localCryptTitle);
+    expect(chroniclesMapById('gallery-of-forks').title).toBe(localGalleryTitle);
   });
 
   it('rejects a run whose authoritative metadata disagrees with its area envelope', async () => {
