@@ -180,7 +180,7 @@ func _ready() -> void:
 
 func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:
-        return "↑/↓ + FIRE · vertical · combina con ←/→ para diagonales"
+        return "EN EL AIRE: ↑/↓ + FIRE · vertical · en suelo sale diagonal"
 
     for platform in PLATFORMS:
         var clearance := FLOOR_Y - platform.end.y
