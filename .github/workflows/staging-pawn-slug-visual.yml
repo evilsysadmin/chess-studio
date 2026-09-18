@@ -3,7 +3,7 @@ name: Staging · Pawn Slug visual
 on:
   workflow_run:
     workflows:
-      - Staging · deploy
+      - Deploy to staging
     types:
       - completed
     branches:
