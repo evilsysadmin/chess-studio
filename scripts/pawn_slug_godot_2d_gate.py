@@ -102,6 +102,8 @@ REQUIRED_PAUSE_MENU = (
     "exitFullscreen",
     "AudioServer.set_bus_volume_db",
     "ConfigFile",
+    "JOY_BUTTON_START",
+    "grab_focus",
 )
 REQUIRED_COMBAT_FX = (
     "muzzle_fx",
@@ -198,6 +200,8 @@ def self_test() -> None:
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
     assert "PROCESS_MODE_ALWAYS" in REQUIRED_PAUSE_MENU
     assert "requestFullscreen" in REQUIRED_PAUSE_MENU
+    assert "JOY_BUTTON_START" in REQUIRED_PAUSE_MENU
+    assert "grab_focus" in REQUIRED_PAUSE_MENU
     assert "_draw_projectile" in REQUIRED_COMBAT_FX
     assert "_draw_muzzle_flashes" in REQUIRED_COMBAT_FX
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
