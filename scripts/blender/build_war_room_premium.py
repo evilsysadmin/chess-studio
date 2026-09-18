@@ -24,6 +24,7 @@ ROLE_PREVIEW = "preview-only"
 ROLE_ANCHOR = "dynamic-anchor"
 PREVIEW_SIZE = (1600, 900)
 BOARD_Z = 1.12
+MESH_COMPRESSION_EXTENSION = "EXT_meshopt_compression"
 
 # Desktop War Room camera parity. These numbers mirror the canonical wide
 # Three.js framing profile (22° vertical FOV, targetY=2.2, targetZ=-0.16,
@@ -1127,6 +1128,18 @@ def read_glb_json(path):
 
 def validate_runtime_glb(path, expected_factors=None):
     data = read_glb_json(path)
+    extensions_used = set(data.get("extensionsUsed", []))
+    if MESH_COMPRESSION_EXTENSION not in extensions_used:
+        raise RuntimeError(
+            f"runtime GLB missing {MESH_COMPRESSION_EXTENSION}: {sorted(extensions_used)}"
+        )
+    compressed_views = sum(
+        1
+        for row in data.get("bufferViews", [])
+        if MESH_COMPRESSION_EXTENSION in row.get("extensions", {})
+    )
+    if compressed_views < 12:
+        raise RuntimeError(f"runtime GLB meshopt coverage suspiciously small: {compressed_views}")
     materials = {row.get("name"): row for row in data.get("materials", [])}
     node_names = {row.get("name") for row in data.get("nodes", [])}
     required_runtime_anchors = {"WR_ANCHOR_fireplace_practical", "WR_ANCHOR_window_moonlight"}
@@ -1189,6 +1202,18 @@ def validate_runtime_glb(path, expected_factors=None):
         raise RuntimeError(f"runtime GLB base-colour factors drifted: {drifted}")
 
 
+def meshopt_export_kwargs():
+    properties = set(bpy.ops.export_scene.gltf.get_rna_type().properties.keys())
+    required = {"export_meshopt_compression_enable", "export_meshopt_extension"}
+    missing = sorted(required - properties)
+    if missing:
+        raise RuntimeError(f"canonical Blender lacks Meshopt glTF export support: {missing}")
+    return {
+        "export_meshopt_compression_enable": True,
+        "export_meshopt_extension": MESH_COMPRESSION_EXTENSION,
+    }
+
+
 def export_shell(path):
     sanitized_links, runtime_textures, base_color_factors = sanitize_runtime_materials()
     bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
@@ -1210,9 +1235,11 @@ def export_shell(path):
     bpy.ops.export_scene.gltf(
         filepath=str(path), export_format="GLB", use_selection=True, export_apply=True,
         export_yup=True, export_cameras=False, export_lights=False,
+        **meshopt_export_kwargs(),
     )
     patched_factors = patch_runtime_glb_base_color_factors(path, base_color_factors)
     bpy.context.scene["war_room_runtime_base_color_factor_count"] = patched_factors
+    bpy.context.scene["war_room_runtime_mesh_compression"] = MESH_COMPRESSION_EXTENSION
     validate_runtime_glb(path, base_color_factors)
     bpy.ops.object.select_all(action="DESELECT")
 
