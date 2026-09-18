@@ -621,39 +621,71 @@ def add_room(static, mats):
         for y in (-5.65, -4.0):
             cylinder(f"WR_BENCH_leg_{side}_{y}", (x, y, 0.35), 0.08, 0.55, mats["walnut"], static, vertices=20)
 
-    # Armour display: layered plates and shoulders rather than two generic blobs.
+    # Ceremonial armour display. Angular plate construction keeps the suits
+    # reading as armour rather than glossy toy figures at the hero camera.
     for side in (-1, 1):
         x = side * 7.33
         cylinder(f"WR_ARMOR_base_{side}", (x, 4.35, 0.33), 0.62, 0.22, mats["charcoal"], static)
         cube(f"WR_ARMOR_stand_{side}", (x, 4.35, 1.12), (0.11, 0.11, 0.78), mats["charcoal"], static, bevel=0.025)
-        sphere(f"WR_ARMOR_breastplate_{side}", (x, 4.35, 1.45), 0.47, mats["armor"], static, scale=(0.82, 0.50, 1.18))
-        torus(f"WR_ARMOR_gorget_{side}", (x, 4.33, 1.90), 0.19, 0.035, mats["brass_dark"], static)
-        torus(f"WR_ARMOR_belt_{side}", (x, 4.35, 1.13), 0.29, 0.035, mats["brass_dark"], static)
-        cube(f"WR_ARMOR_breastplate_ridge_{side}", (x, 4.08, 1.48), (0.035, 0.035, 0.38),
-             mats["brass_dark"], static, bevel=0.012)
+
+        cube(f"WR_ARMOR_breastplate_{side}", (x, 4.34, 1.48), (0.40, 0.25, 0.46),
+             mats["armor"], static, bevel=0.15)
+        cube(f"WR_ARMOR_abdomen_{side}", (x, 4.34, 1.15), (0.33, 0.23, 0.18),
+             mats["armor_dark"], static, bevel=0.09)
+        torus(f"WR_ARMOR_gorget_{side}", (x, 4.32, 1.91), 0.19, 0.035, mats["brass_dark"], static)
+        torus(f"WR_ARMOR_belt_{side}", (x, 4.34, 1.06), 0.30, 0.035, mats["brass_dark"], static)
+        cube(f"WR_ARMOR_breastplate_ridge_{side}", (x, 4.065, 1.50), (0.028, 0.028, 0.34),
+             mats["brass_dark"], static, bevel=0.010)
+        cube(f"WR_ARMOR_breastplate_brow_{side}", (x, 4.06, 1.72), (0.31, 0.030, 0.025),
+             mats["brass_dark"], static, bevel=0.010)
+
+        cube(f"WR_ARMOR_skirt_{side}", (x, 4.34, 0.92), (0.37, 0.27, 0.17),
+             mats["armor_dark"], static, bevel=0.07)
         for leg in (-1, 1):
-            cube(f"WR_ARMOR_greave_{side}_{leg}", (x + leg * 0.18, 4.35, 0.67), (0.11, 0.12, 0.27),
-                 mats["armor"], static, bevel=0.05)
-            sphere(f"WR_ARMOR_sabatons_{side}_{leg}", (x + leg * 0.18, 4.16, 0.38), 0.13,
-                   mats["armor_dark"], static, scale=(0.82, 1.22, 0.48))
+            cube(f"WR_ARMOR_greave_{side}_{leg}", (x + leg * 0.18, 4.34, 0.64), (0.105, 0.12, 0.25),
+                 mats["armor"], static, bevel=0.055)
+            cube(f"WR_ARMOR_sabatons_{side}_{leg}", (x + leg * 0.18, 4.16, 0.37), (0.12, 0.20, 0.075),
+                 mats["armor_dark"], static, bevel=0.065)
+
         for shoulder in (-1, 1):
-            sphere(f"WR_ARMOR_pauldron_{side}_{shoulder}", (x + shoulder * 0.43, 4.35, 1.63), 0.22,
-                   mats["armor"], static, scale=(1.10, 0.72, 0.65))
-            sphere(f"WR_ARMOR_upper_arm_{side}_{shoulder}", (x + shoulder * 0.45, 4.35, 1.34), 0.18,
-                   mats["armor_dark"], static, scale=(0.68, 0.58, 1.15))
-            sphere(f"WR_ARMOR_forearm_{side}_{shoulder}", (x + shoulder * 0.48, 4.34, 1.06), 0.15,
-                   mats["armor"], static, scale=(0.62, 0.55, 1.05))
-        sphere(f"WR_ARMOR_helmet_{side}", (x, 4.35, 2.12), 0.34, mats["armor"], static, scale=(0.88, 0.78, 1.02))
-        cube(f"WR_ARMOR_visor_{side}", (x, 4.13, 2.12), (0.24, 0.035, 0.07), mats["armor_dark"], static, bevel=0.02)
-        cube(f"WR_ARMOR_skirt_{side}", (x, 4.35, 0.98), (0.38, 0.28, 0.23), mats["armor_dark"], static, bevel=0.05)
-        cylinder(f"WR_ARMOR_halberd_{side}", (x - side * 0.50, 4.20, 1.92), 0.03, 3.2, mats["brass_dark"], static, vertices=14)
-        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.16, radius2=0.0, depth=0.48,
-                                       location=(x - side * 0.50, 4.20, 3.58))
-        blade = bpy.context.object
-        blade.name = f"WR_ARMOR_halberd_blade_{side}"
-        blade.data.materials.append(mats["armor"])
-        tag(blade)
-        relink(blade, static)
+            pauldron = cube(f"WR_ARMOR_pauldron_{side}_{shoulder}",
+                            (x + shoulder * 0.43, 4.34, 1.66), (0.22, 0.27, 0.15),
+                            mats["armor"], static, bevel=0.11)
+            pauldron.rotation_euler.y = -shoulder * 0.16
+            cube(f"WR_ARMOR_upper_arm_{side}_{shoulder}",
+                 (x + shoulder * 0.45, 4.34, 1.37), (0.115, 0.14, 0.21),
+                 mats["armor_dark"], static, bevel=0.075)
+            cube(f"WR_ARMOR_forearm_{side}_{shoulder}",
+                 (x + shoulder * 0.47, 4.31, 1.10), (0.105, 0.13, 0.18),
+                 mats["armor"], static, bevel=0.070)
+            cube(f"WR_ARMOR_gauntlet_{side}_{shoulder}",
+                 (x + shoulder * 0.47, 4.28, 0.91), (0.115, 0.13, 0.075),
+                 mats["armor_dark"], static, bevel=0.055)
+
+        cube(f"WR_ARMOR_helmet_{side}", (x, 4.34, 2.16), (0.27, 0.24, 0.27),
+             mats["armor"], static, bevel=0.14)
+        cube(f"WR_ARMOR_helmet_brow_{side}", (x, 4.075, 2.22), (0.25, 0.035, 0.045),
+             mats["armor_dark"], static, bevel=0.020)
+        cube(f"WR_ARMOR_visor_{side}", (x, 4.065, 2.13), (0.22, 0.030, 0.040),
+             mats["charcoal"], static, bevel=0.014)
+        cube(f"WR_ARMOR_helmet_jaw_{side}", (x, 4.10, 2.01), (0.22, 0.16, 0.070),
+             mats["armor_dark"], static, bevel=0.050)
+        cube(f"WR_ARMOR_helmet_ridge_{side}", (x, 4.34, 2.45), (0.025, 0.16, 0.070),
+             mats["brass_dark"], static, bevel=0.014)
+
+        shaft_x = x - side * 0.52
+        cylinder(f"WR_ARMOR_halberd_{side}", (shaft_x, 4.20, 1.92), 0.028, 3.2,
+                 mats["brass_dark"], static, vertices=16)
+        axe = cube(f"WR_ARMOR_halberd_blade_{side}", (shaft_x - side * 0.12, 4.20, 3.43),
+                   (0.14, 0.035, 0.16), mats["armor"], static, bevel=0.035)
+        axe.rotation_euler.y = side * 0.42
+        bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.075, radius2=0.0, depth=0.34,
+                                       location=(shaft_x, 4.20, 3.69))
+        spike = bpy.context.object
+        spike.name = f"WR_ARMOR_halberd_spike_{side}"
+        spike.data.materials.append(mats["armor"])
+        tag(spike)
+        relink(spike, static)
 
 
 def build():
