@@ -464,7 +464,7 @@ def add_fireplace(name: str, x: float, materials):
                 (0.055, 0.040, height * 0.22),
                 hot,
             )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 330, (1.0, 0.30, 0.07), radius=1.05)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
 
 
 def add_bookshelf(materials):
@@ -654,14 +654,14 @@ def add_side_furnishings(materials):
 
     # Right cabinet + globe, pulled slightly forward so the globe actually reads
     # beside the right fireplace at canonical camera distance.
-    gx, gy = 6.92, 3.92
+    gx, gy = 6.32, 4.02
     cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
-    sphere("HOME_PROP_globe", (gx, gy, 1.92), (0.66, 0.66, 0.66), globe)
+    sphere("HOME_PROP_globe", (gx, gy, 1.88), (0.62, 0.62, 0.62), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
-            (gx + 0.76 * math.cos(i * math.pi / 16), gy, 1.92 + 0.76 * math.sin(i * math.pi / 16))
+            (gx + 0.71 * math.cos(i * math.pi / 16), gy, 1.88 + 0.71 * math.sin(i * math.pi / 16))
             for i in range(17)
         ],
         0.025,
@@ -813,13 +813,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "floor_stone": material("HOME_MAT_floor_stone", (0.072, 0.060, 0.050, 1), roughness=0.95, bump_scale=8.0, bump_strength=0.16, variation=0.14, variation_scale=5.6),
         "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10, variation=0.24, variation_scale=2.2),
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
-        "gold": material("HOME_MAT_gold", (0.66, 0.36, 0.085, 1), roughness=0.23, metallic=0.94),
+        "gold": material(
+            "HOME_MAT_gold",
+            (0.78, 0.46, 0.12, 1),
+            roughness=0.22,
+            metallic=0.94,
+            emission=(0.08, 0.028, 0.004, 1),
+            emission_strength=0.22,
+        ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.34, 0.35, 0.36, 1), roughness=0.24, metallic=0.92),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
-        "banner": material("HOME_MAT_banner", (0.22, 0.012, 0.015, 1), roughness=0.88, bump_scale=20.0, bump_strength=0.05, variation=0.07, variation_scale=8.0),
+        "banner": material("HOME_MAT_banner", (0.27, 0.014, 0.018, 1), roughness=0.87, bump_scale=20.0, bump_strength=0.05, variation=0.07, variation_scale=8.0),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
         "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91),
         "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91),
@@ -844,7 +851,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (0.82, 0.86, 0.84, 1),
             roughness=0.42,
             emission=(0.55, 0.66, 0.74, 1),
-            emission_strength=0.85,
+            emission_strength=0.48,
         ),
         "fire": material(
             "HOME_MAT_fire",
@@ -858,7 +865,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (1.0, 0.62, 0.12, 1),
             roughness=0.24,
             emission=(1.0, 0.52, 0.08, 1),
-            emission_strength=1.45,
+            emission_strength=0.90,
         ),
     }
 
@@ -1074,10 +1081,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cx = 1.92 * math.cos(angle)
         cy = 2.20 + 1.18 * math.sin(angle)
         cz = 4.30 + 0.24 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.24), (0.045, 0.045, 0.19), materials["paper"], bevel=0.018)
-        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.48), 0.045, 0.008, 0.14, materials["fire_hot"], vertices=12)
-        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.04), 0.085, 0.065, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, cz + 0.44), 38, (1.0, 0.44, 0.15), radius=0.30)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.28), (0.052, 0.052, 0.25), materials["paper"], bevel=0.018)
+        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.59), 0.052, 0.008, 0.18, materials["fire_hot"], vertices=12)
+        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.035), 0.095, 0.072, materials["brass_dark"], vertices=16)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, cz + 0.56), 44, (1.0, 0.42, 0.13), radius=0.32)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -1105,6 +1112,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 62, (0.34, 0.24, 0.18), 7.0, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 320, (0.15, 0.32, 0.62), 3.8, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 250, (0.88, 0.68, 0.48), 3.4, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 105, (0.82, 0.48, 0.24), 2.2, target=(0, -0.72, 0.58))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 180, (0.82, 0.48, 0.24), 2.4, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 265, (0.40, 0.50, 0.64), 2.8, target=(1.55, 5.28, 2.4))
 
