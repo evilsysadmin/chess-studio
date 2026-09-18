@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { LOCAL_GODOT_BOOTSTRAP_URL, resolvePawnSlugGodotUrl } from '../pawnSlugGodotRuntime.js';
+import { STORAGE_LOCAL, getStorageItem, setStorageItem } from '../safeStorage.js';
 import './PawnSlugGodotHost.css';
 
 const PAWN_SLUG_STAGE_IDS = ['industrial_front_v1', 'harbor_raid_v1', 'alpine_fortress_v1'];
 const PAWN_SLUG_STAGE_INDEX_KEY = 'chess-studio:pawn-slug-stage-index';
 
 function readStageIndex() {
-  try {
-    const raw = Number.parseInt(localStorage.getItem(PAWN_SLUG_STAGE_INDEX_KEY) || '0', 10);
-    if (!Number.isFinite(raw) || raw < 0) return 0;
-    return raw % PAWN_SLUG_STAGE_IDS.length;
-  } catch {
-    return 0;
-  }
+  const raw = Number.parseInt(getStorageItem(STORAGE_LOCAL, PAWN_SLUG_STAGE_INDEX_KEY) || '0', 10);
+  if (!Number.isFinite(raw) || raw < 0) return 0;
+  return raw % PAWN_SLUG_STAGE_IDS.length;
 }
 
 function stageRuntimeUrl(url, stageId) {
@@ -21,12 +18,8 @@ function stageRuntimeUrl(url, stageId) {
 }
 
 function advanceStageIndex() {
-  try {
-    const next = (readStageIndex() + 1) % PAWN_SLUG_STAGE_IDS.length;
-    localStorage.setItem(PAWN_SLUG_STAGE_INDEX_KEY, String(next));
-  } catch {
-    // Storage is optional; runtime remains playable on the current stage.
-  }
+  const next = (readStageIndex() + 1) % PAWN_SLUG_STAGE_IDS.length;
+  setStorageItem(STORAGE_LOCAL, PAWN_SLUG_STAGE_INDEX_KEY, String(next));
 }
 
 export default function PawnSlugGodotHost({ onExit }) {
