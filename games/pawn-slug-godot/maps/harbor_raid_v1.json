@@ -222,111 +222,111 @@
       "type": "pawn"
     },
     {
-      "x": 1120,
+      "x": 977,
       "type": "scout"
     },
     {
-      "x": 1320,
+      "x": 1133,
       "type": "pawn"
     },
     {
-      "x": 1510,
+      "x": 1290,
       "type": "knight"
     },
     {
-      "x": 1690,
+      "x": 1447,
       "type": "commando"
     },
     {
-      "x": 1870,
+      "x": 1603,
       "type": "rook"
     },
     {
-      "x": 2050,
+      "x": 1760,
       "type": "pawn"
+    },
+    {
+      "x": 1917,
+      "type": "shield"
+    },
+    {
+      "x": 2073,
+      "type": "grenadier"
     },
     {
       "x": 2230,
-      "type": "shield"
-    },
-    {
-      "x": 2410,
-      "type": "grenadier"
-    },
-    {
-      "x": 2590,
       "type": "knight"
     },
     {
-      "x": 2770,
+      "x": 2387,
       "type": "bishop"
     },
     {
-      "x": 2950,
+      "x": 2543,
       "type": "pawn"
     },
     {
-      "x": 3130,
+      "x": 2700,
       "type": "scout"
     },
     {
-      "x": 3310,
+      "x": 2857,
       "type": "commando"
     },
     {
-      "x": 3490,
+      "x": 3013,
       "type": "rook"
     },
     {
-      "x": 3670,
+      "x": 3170,
       "type": "pawn"
     },
     {
-      "x": 3850,
+      "x": 3327,
       "type": "queen"
     },
     {
-      "x": 4030,
+      "x": 3483,
       "type": "knight"
     },
     {
-      "x": 4210,
+      "x": 3640,
       "type": "shield"
     },
     {
-      "x": 4390,
+      "x": 3797,
       "type": "pawn"
     },
     {
-      "x": 4510,
+      "x": 3953,
       "type": "grenadier"
     },
     {
-      "x": 4590,
+      "x": 4110,
       "type": "rook"
     },
     {
-      "x": 4670,
+      "x": 4267,
       "type": "bishop"
     },
     {
-      "x": 4750,
+      "x": 4423,
       "type": "commando"
     },
     {
-      "x": 4830,
+      "x": 4580,
       "type": "pawn"
     },
     {
-      "x": 4910,
+      "x": 4737,
       "type": "knight"
     },
     {
-      "x": 4990,
+      "x": 4893,
       "type": "scout"
     },
     {
-      "x": 5070,
+      "x": 5050,
       "type": "pawn"
     }
   ],
