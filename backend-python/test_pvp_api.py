@@ -107,6 +107,8 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     match = accepted.json()["match"]
     assert {match["white"], match["black"]} == {"alice", "bob"}
     assert match["status"] == "starting"
+    assert match["youReady"] is False
+    assert match["opponentReady"] is False
     assert match["revision"] == 0
     assert match["whiteRating"] == pvp_api.DEFAULT_RATING
     assert match["blackRating"] == pvp_api.DEFAULT_RATING
@@ -128,10 +130,14 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     first_ready = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/ready")
     assert first_ready.status_code == 200
     assert first_ready.json()["match"]["status"] == "starting"
+    assert first_ready.json()["match"]["youReady"] is True
+    assert first_ready.json()["match"]["opponentReady"] is False
     second_ready = as_user(client, black, "post", f"/api/pvp/matches/{match_id}/ready")
     assert second_ready.status_code == 200
     prepared = second_ready.json()["match"]
     assert prepared["status"] == "active"
+    assert prepared["youReady"] is True
+    assert prepared["opponentReady"] is True
     assert prepared["startsAt"]
     assert prepared["clock"]["runningColor"] is None
 
