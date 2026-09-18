@@ -8,10 +8,10 @@ const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
 const REMOTE_ATLAS_ROWS := 5
 const FRAMES_PER_TYPE := 8
-const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 8, "shield": 16}
-const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 1, "shield": 2}
-const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.35, "shield": 0.45}
-const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.12, "shield": 1.43}
+const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 0, "shield": 16}
+const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 0, "shield": 2}
+const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.40, "shield": 0.45}
+const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.27, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
 const ENEMY_VISUAL_SCALE := 1.18
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5, "scout": 8.5, "commando": 7.5, "shield": 3.6}
@@ -387,9 +387,11 @@ func _draw_variant_backdrop() -> void:
             Vector2(h * 0.23, -h * 0.70),
         ]), Color("8eb8c9"), 5.0)
     elif enemy_type == "commando":
-        draw_rect(Rect2(Vector2(-h * 0.28, -h * 0.72), Vector2(h * 0.56, h * 0.46)), Color(0.12, 0.10, 0.07, 0.76), true)
-        draw_line(Vector2(-h * 0.24, -h * 0.76), Vector2(h * 0.24, -h * 0.30), Color("b88a4d"), 5.0)
-        draw_line(Vector2(h * 0.24, -h * 0.76), Vector2(-h * 0.24, -h * 0.30), Color("b88a4d"), 5.0)
+        draw_rect(Rect2(Vector2(-h * 0.30, -h * 0.72), Vector2(h * 0.60, h * 0.46)), Color(0.12, 0.10, 0.07, 0.76), true)
+        draw_rect(Rect2(Vector2(-h * 0.44, -h * 0.72), Vector2(h * 0.18, h * 0.19)), Color(0.30, 0.27, 0.22, 0.92), true)
+        draw_rect(Rect2(Vector2(h * 0.26, -h * 0.72), Vector2(h * 0.18, h * 0.19)), Color(0.30, 0.27, 0.22, 0.92), true)
+        draw_line(Vector2(-h * 0.26, -h * 0.78), Vector2(h * 0.26, -h * 0.28), Color("b88a4d"), 5.0)
+        draw_line(Vector2(h * 0.26, -h * 0.78), Vector2(-h * 0.26, -h * 0.28), Color("b88a4d"), 5.0)
     elif enemy_type == "shield":
         var shield := PackedVector2Array([
             Vector2(-h * 0.40, -h * 0.80),

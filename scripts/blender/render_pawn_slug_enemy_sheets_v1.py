@@ -40,7 +40,7 @@ BASE_ARCHETYPE = {
     "queen": "bishop",
     "grenadier": "pawn",
     "scout": "pawn",
-    "commando": "knight",
+    "commando": "pawn",
     "shield": "rook",
 }
 
@@ -371,6 +371,9 @@ def build_enemy(enemy_type, action, frame, mats):
         box("commando_bandolier_a", (0.10, 0.045, 0.72), mats["webbing"], (root_x - 0.02, -0.325, chest_z + 0.01), (0, 0, -0.54), bevel=0.018)
         box("commando_bandolier_b", (0.10, 0.045, 0.72), mats["webbing"], (root_x + 0.02, -0.327, chest_z + 0.01), (0, 0, 0.54), bevel=0.018)
         box("commando_back_plate", (0.46, 0.17, 0.46), mats["steel"], (root_x, 0.18, chest_z - 0.01), bevel=0.04)
+        box("commando_pauldron_left", (0.30, 0.32, 0.19), mats["steel"], (root_x - 0.34, -0.01, shoulder_z + 0.02), (0, 0, -0.15), bevel=0.04)
+        box("commando_pauldron_right", (0.30, 0.32, 0.19), mats["steel"], (root_x + 0.34, -0.01, shoulder_z + 0.02), (0, 0, 0.15), bevel=0.04)
+        cylinder("commando_radio_canister", 0.075, 0.34, mats["steel"], (root_x + 0.34, 0.19, chest_z + 0.02), vertices=12, bevel=0.012)
     elif enemy_type == "shield":
         box("shield_plate", (0.62, 0.08, 0.84), mats["steel"], (root_x - 0.20, -0.43, chest_z - 0.12), (0, 0, -0.04), bevel=0.055)
         box("shield_viewport", (0.24, 0.025, 0.10), mats["black"], (root_x - 0.20, -0.476, chest_z + 0.11), bevel=0.012)
