@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const WAR_ROOM_V2_DEFAULT_MODEL_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
 export const WAR_ROOM_V2_STAGING_MODEL_URL =
-  String(import.meta.env.VITE_WAR_ROOM_V2_MODEL_URL || '').trim() || WAR_ROOM_V2_DEFAULT_MODEL_URL;
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
 export const WAR_ROOM_V2_BOARD_ANCHOR_Y = 1.12;
 
 export function warRoomV2ModelUrl({
