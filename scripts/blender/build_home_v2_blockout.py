@@ -233,6 +233,36 @@ def look_at(obj, target) -> None:
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
+def join_meshes(name: str, prefixes: tuple[str, ...]):
+    """Collapse repeated mesh props without changing their rendered appearance."""
+    candidates = [
+        obj
+        for obj in list(bpy.data.objects)
+        if obj.type == "MESH" and any(obj.name.startswith(prefix) for prefix in prefixes)
+    ]
+    if len(candidates) < 2:
+        return candidates[0] if candidates else None
+
+    # Bake per-object bevels before joining; otherwise Blender keeps only the
+    # active object's modifier stack and the compacted shell visibly changes.
+    baked = []
+    for obj in candidates:
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        if obj.modifiers:
+            bpy.ops.object.convert(target="MESH")
+        baked.append(obj)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in baked:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = baked[0]
+    bpy.ops.object.join()
+    baked[0].name = name
+    return baked[0]
+
+
 def add_area_light(name: str, location, energy: float, color, size: float, target=(0, 2.0, 2.0)):
     data = bpy.data.lights.new(name, type="AREA")
     data.energy = energy
@@ -778,6 +808,21 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
+
+    # One large pointed rib and a heavy cornice give the back wall the gothic
+    # silhouette of the canonical mock instead of reading as a flat stage set.
+    cube("HOME_ARCH_back_cornice", (0.0, 6.70, 5.70), (8.78, 0.20, 0.15), materials["stone_dark"], bevel=0.035)
+    gothic_arch(
+        "HOME_ARCH_master_vault",
+        0.15,
+        6.36,
+        10.6,
+        3.66,
+        6.28,
+        0.18,
+        materials["stone_dark"],
+        bevel=0.105,
+    )
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
 
     # Stone slab seams keep the floor from reading as one flat dark plane.
@@ -815,6 +860,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
             obj.scale *= 0.90
     add_bookshelf(materials)
+    library_origin = Vector((-2.65, 6.20, 2.55))
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith("HOME_PROP_library_") or obj.name.startswith("HOME_PROP_book_"):
+            obj.location = library_origin + (obj.location - library_origin) * 1.10
+            obj.scale *= 1.10
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
@@ -852,27 +902,27 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.18), 0.070, 1.35, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.02, 5.02), 0.075, 1.62, materials["brass"])
     ring_points = [
-        (2.08 * math.cos(i * math.tau / 24), 2.20 + 1.28 * math.sin(i * math.tau / 24), 4.38)
+        (2.34 * math.cos(i * math.tau / 24), 2.02 + 1.42 * math.sin(i * math.tau / 24), 4.12)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
-        rx = 1.52 * math.cos(angle)
-        ry = 2.45 + 1.02 * math.sin(angle)
+        rx = 1.74 * math.cos(angle)
+        ry = 2.20 + 1.18 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.82), (rx, ry, 4.42)],
+            [(0.0, 2.02, 5.84), (rx, ry, 4.16)],
             0.025,
             materials["brass"],
         )
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.92 * math.cos(angle)
-        cy = 2.20 + 1.18 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.56), (0.055, 0.055, 0.24), materials["fire_hot"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.68), 52, (1.0, 0.48, 0.18), radius=0.36)
+        cx = 2.16 * math.cos(angle)
+        cy = 2.02 + 1.32 * math.sin(angle)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.30), (0.055, 0.055, 0.24), materials["fire_hot"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.42), 58, (1.0, 0.46, 0.16), radius=0.40)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -894,8 +944,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 285, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 155, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 235, (0.76, 0.62, 0.48), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 112, (0.14, 0.27, 0.45), 5.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 220, (0.70, 0.42, 0.24), 4.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 105, (0.38, 0.28, 0.20), 8.0, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 270, (0.16, 0.34, 0.62), 4.4, target=(3.2, 2.2, 1.8))
@@ -903,13 +953,34 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 135, (0.78, 0.48, 0.26), 3.0, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 185, (0.38, 0.48, 0.60), 2.8, target=(1.55, 5.28, 2.4))
 
+    # Preserve the visual richness while collapsing repeated geometry. This is
+    # deliberately late so modelling stays readable and editable above.
+    join_meshes("HOME_PROP_board_compact", ("HOME_PROP_board_",))
+    join_meshes("HOME_PROP_white_army", ("HOME_PROP_white_",))
+    join_meshes("HOME_PROP_black_army", ("HOME_PROP_black_",))
+    join_meshes("HOME_PROP_library_books", ("HOME_PROP_book_",))
+    join_meshes("HOME_ARCH_floor_grout_compact", ("HOME_ARCH_floor_grout_",))
+    join_meshes("HOME_PROP_rug_motifs", ("HOME_PROP_rug_front_motif_", "HOME_PROP_rug_inner_motif_"))
+    join_meshes("HOME_PROP_left_book_stack", ("HOME_PROP_left_book_stack_",))
+    join_meshes("HOME_PROP_dungeon_gate", ("HOME_PROP_dungeon_gate_",))
+    join_meshes("HOME_ARCH_dungeon_balusters", ("HOME_ARCH_dungeon_baluster_",))
+    join_meshes("HOME_ARCH_dungeon_steps", ("HOME_ARCH_dungeon_step_",))
+    join_meshes("HOME_PROP_chandelier_candles", ("HOME_PROP_chandelier_candle_",))
+    join_meshes("HOME_PROP_fireplace_left_flames", ("HOME_PROP_fireplace_left_flame_",))
+    join_meshes("HOME_PROP_fireplace_right_flames", ("HOME_PROP_fireplace_right_flame_",))
+    join_meshes(
+        "HOME_PROP_fireplace_right_mantel_candles",
+        ("HOME_PROP_fireplace_right_mantel_candle_", "HOME_PROP_fireplace_right_mantel_flame_"),
+    )
+    join_meshes("HOME_PROP_torches", ("HOME_PROP_torch_",))
+
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 50.0
+    camera_data.lens = 44.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0.0, -16.0, 4.85)
-    target = (0.0, 2.30, 1.55)
+    camera.location = (-0.42, -15.15, 4.48)
+    target = (0.32, 2.42, 1.48)
     look_at(camera, target)
     scene.camera = camera
 
@@ -973,6 +1044,7 @@ def main() -> None:
             "target": list(target),
         },
         "object_count": len(bpy.data.objects),
+        "mesh_count": sum(1 for o in bpy.data.objects if o.type == "MESH"),
         "named_groups": {
             "architecture": sorted(o.name for o in bpy.data.objects if o.name.startswith("HOME_ARCH_")),
             "props": sorted(o.name for o in bpy.data.objects if o.name.startswith("HOME_PROP_")),
@@ -984,7 +1056,12 @@ def main() -> None:
         ],
     }
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"contract": CONTRACT, "output": str(out_dir), "objects": metadata["object_count"]}))
+    print(json.dumps({
+        "contract": CONTRACT,
+        "output": str(out_dir),
+        "objects": metadata["object_count"],
+        "meshes": metadata["mesh_count"],
+    }))
 
 
 if __name__ == "__main__":
