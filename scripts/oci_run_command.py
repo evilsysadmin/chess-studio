@@ -152,30 +152,48 @@ def validate_smoke_output(text: str) -> None:
     raise SystemExit(f"OCI host contract incomplete: {detail}")
 
 
-def deploy_command(repo_ref: str, namespace: str) -> str:
-    """Install the exact build identity privately, then deploy the immutable SHA.
-
-    The Run Command payload contains only the non-secret SHA and Object Storage
-    coordinates. The A1 fetches its existing secret-bearing backend.env with its
-    instance principal, adds COMMIT_SHA locally, installs it through the existing
-    privileged runtime wrapper, and only then restarts the exact release.
-    """
+def deploy_command(repo_ref: str, namespace: str = "") -> str:
+    """Deploy from installed runtime first; recover from private storage only if absent."""
     sha = validate_sha(repo_ref)
-    namespace = validate_namespace(namespace)
+    namespace_hint = validate_namespace(namespace) if namespace else ""
     command = f"""set -euo pipefail
 
 test -x '{DEPLOY_WRAPPER}' || {{ echo 'CHESS_STUDIO_DEPLOY_WRAPPER_MISSING' >&2; exit 44; }}
 test -x '{RUNTIME_WRAPPER}' || {{ echo 'CHESS_STUDIO_RUNTIME_WRAPPER_MISSING' >&2; exit 45; }}
-tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
-trap 'rm -f "$tmp"' EXIT
-venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
-if [ ! -x "$venv/bin/python" ]; then
-  python3 -m venv "$venv"
+log="$(mktemp /tmp/chess-studio-deploy.XXXXXX)"
+tmp=''
+cleanup() {{ rm -f "$log"; [ -z "$tmp" ] || rm -f "$tmp"; }}
+trap cleanup EXIT
+run_deploy() {{
+  : >"$log"
+  set +e
+  sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}' >"$log" 2>&1
+  deploy_rc=$?
+  set -e
+  return "$deploy_rc"
+}}
+emit_success() {{
+  awk -v runtime="$1" '/^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
+}}
+
+if run_deploy; then
+  emit_success installed
+  exit 0
+else
+  deploy_rc=$?
 fi
+if [ "$deploy_rc" -ne 42 ]; then
+  cat "$log" >&2
+  exit "$deploy_rc"
+fi
+
+tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
+venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
+if [ ! -x "$venv/bin/python" ]; then python3 -m venv "$venv"; fi
 if ! "$venv/bin/python" -c 'import oci; raise SystemExit(0 if oci.__version__ == "{OCI_SDK_VERSION}" else 1)' >/dev/null 2>&1; then
   "$venv/bin/python" -m pip install --disable-pip-version-check --quiet --upgrade 'oci=={OCI_SDK_VERSION}'
 fi
-RUNTIME_TMP="$tmp" RUNTIME_NAMESPACE={shlex.quote(namespace)} RUNTIME_SHA='{sha}' "$venv/bin/python" - <<'PY'
+RUNTIME_TMP="$tmp" RUNTIME_NAMESPACE={shlex.quote(namespace_hint)} RUNTIME_SHA='{sha}' "$venv/bin/python" - <<'PY'
 import os
 from pathlib import Path
 import oci
@@ -184,11 +202,10 @@ path = Path(os.environ["RUNTIME_TMP"])
 sha = os.environ["RUNTIME_SHA"]
 signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
 client = oci.object_storage.ObjectStorageClient(config={{}}, signer=signer)
-response = client.get_object(
-    os.environ["RUNTIME_NAMESPACE"],
-    "{RUNTIME_BUCKET}",
-    "{RUNTIME_OBJECT}",
-)
+namespace = os.environ["RUNTIME_NAMESPACE"] or str(client.get_namespace().data or "")
+if not namespace:
+    raise SystemExit("empty OCI Object Storage namespace")
+response = client.get_object(namespace, "{RUNTIME_BUCKET}", "{RUNTIME_OBJECT}")
 data = response.data.content.decode("utf-8")
 if "\\x00" in data or "\\r" in data:
     raise SystemExit("invalid runtime object")
@@ -203,9 +220,16 @@ lines.append(f"COMMIT_SHA={{sha}}")
 path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
 os.chmod(path, 0o600)
 PY
-sudo --non-interactive '{RUNTIME_WRAPPER}' "$tmp"
-trap - EXIT
-sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}'
+sudo --non-interactive '{RUNTIME_WRAPPER}' "$tmp" >/dev/null
+tmp=''
+if run_deploy; then
+  emit_success object-storage
+  exit 0
+else
+  deploy_rc=$?
+fi
+cat "$log" >&2
+exit "$deploy_rc"
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -583,6 +607,10 @@ def self_test() -> None:
     assert RUNTIME_BUCKET in deploy
     assert RUNTIME_OBJECT in deploy
     assert "InstancePrincipalsSecurityTokenSigner" in deploy
+    assert "emit_success installed" in deploy
+    assert "emit_success object-storage" in deploy
+    assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
+    assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
     assert "COMMIT_SHA" in deploy
     assert "sudo --non-interactive" in deploy
     assert f'oci.__version__ == "{OCI_SDK_VERSION}"' in deploy
@@ -659,11 +687,10 @@ def main() -> int:
             wait_for_registration=True,
             resolved=resolved,
         )
-        namespace = runtime_namespace(oci, config)
         execute(
             oci,
             config,
-            deploy_command(args.repo_ref, namespace),
+            deploy_command(args.repo_ref),
             display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
             timeout=900,
             resolved=resolved,
