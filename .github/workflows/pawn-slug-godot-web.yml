@@ -231,8 +231,8 @@ jobs:
           browser-scope: chromium
           restore-frontend-deps: 'false'
           build-frontend: 'false'
-      - name: Browser handshake smoke
-        timeout-minutes: 2
+      - name: Browser lifecycle + gameplay smoke
+        timeout-minutes: 4
         run: node scripts/pawn_slug_godot_live_smoke.mjs
 
   smoke_existing:
@@ -261,6 +261,6 @@ jobs:
           browser-scope: chromium
           restore-frontend-deps: 'false'
           build-frontend: 'false'
-      - name: Browser handshake smoke
-        timeout-minutes: 2
+      - name: Browser lifecycle + gameplay smoke
+        timeout-minutes: 4
         run: node scripts/pawn_slug_godot_live_smoke.mjs
