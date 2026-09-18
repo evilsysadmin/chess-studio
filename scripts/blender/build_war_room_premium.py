@@ -958,15 +958,14 @@ def sanitize_runtime_materials():
         base_socket = socket(bsdf, "Base Color")
         if base_socket is not None:
             base_color_factors[mat.name] = [float(v) for v in base_socket.default_value[:4]]
-        kind = str(mat.get("war_room_texture_kind") or "").strip()
-        if kind and install_runtime_base_color_texture(mat, bsdf, kind):
-            runtime_textures += 1
-        mat["war_room_runtime_material"] = "gltf-safe-pbr-v3-factor-textured"
+        # Runtime albedo is intentionally factor-only for now. Blender keeps
+        # its procedural richness in the editable .blend/preview, while the GLB
+        # gets a deterministic PBR colour that cannot disappear because of UV or
+        # embedded-image exporter quirks.
+        mat["war_room_runtime_material"] = "gltf-safe-pbr-v4-factor-only"
 
     if removed_links < 10:
         raise RuntimeError(f"runtime material sanitization suspiciously small: {removed_links}")
-    if runtime_textures < 12:
-        raise RuntimeError(f"runtime texture coverage suspiciously small: {runtime_textures}")
     return removed_links, runtime_textures, base_color_factors
 
 
@@ -1058,26 +1057,14 @@ def validate_runtime_glb(path, expected_factors=None):
     if missing:
         raise RuntimeError(f"runtime GLB materials missing: {missing}")
 
-    textured_required = {
-        "WR_MAT_wall_walnut",
-        "WR_MAT_trim_walnut",
-        "WR_MAT_parquet",
-        "WR_MAT_table_walnut",
-        "WR_MAT_stone",
-        "WR_MAT_stone_light",
-        "WR_MAT_leather",
-        "WR_MAT_armor",
-    }
-    missing_textures = []
+    unexpected_textures = []
     bleached = []
     drifted = []
     for name in sorted(required_colours):
         pbr = materials[name].get("pbrMetallicRoughness", {})
         has_texture = isinstance(pbr.get("baseColorTexture"), dict)
-        if name in textured_required and not has_texture:
-            missing_textures.append(name)
         if has_texture:
-            continue
+            unexpected_textures.append(name)
         factor = pbr.get("baseColorFactor")
         if not isinstance(factor, list) or len(factor) < 3 or min(factor[:3]) >= 0.95:
             bleached.append((name, factor))
@@ -1085,8 +1072,8 @@ def validate_runtime_glb(path, expected_factors=None):
         if expected is not None and isinstance(factor, list) and len(factor) >= 3:
             if any(abs(float(factor[index]) - float(expected[index])) > 0.012 for index in range(3)):
                 drifted.append((name, factor, expected))
-    if missing_textures:
-        raise RuntimeError(f"runtime GLB lost authored material textures: {missing_textures}")
+    if unexpected_textures:
+        raise RuntimeError(f"runtime GLB unexpectedly depends on base-colour textures: {unexpected_textures}")
     if bleached:
         raise RuntimeError(f"runtime GLB lost authored base colours: {bleached}")
     if drifted:
