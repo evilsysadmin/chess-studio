@@ -92,9 +92,9 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     let controller = null;
     let cycle = 0;
 
-    const schedule = (delay) => {
+    const schedule = (delay, callback) => {
       if (timer !== null) window.clearTimeout(timer);
-      timer = window.setTimeout(poll, delay);
+      timer = window.setTimeout(callback, delay);
     };
 
     const poll = async () => {
@@ -113,14 +113,14 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
             visibilityState: document.visibilityState,
             pollAfterMs: next?.pollAfterMs,
           });
-          schedule(nextPlan.heartbeatOnly ? nextPlan.delay : nextPlan.delay);
+          schedule(nextPlan.delay, poll);
         }
         return;
       }
 
       if (ownCycle !== cycle || !active) return;
       const nextPlan = pvpPollPlan({ visibilityState: document.visibilityState });
-      schedule(nextPlan.heartbeatOnly ? nextPlan.delay : 0);
+      schedule(nextPlan.heartbeatOnly ? nextPlan.delay : 0, poll);
     };
 
     const onVisibility = () => {
@@ -128,7 +128,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
       cycle += 1;
       controller?.abort();
       const plan = pvpPollPlan({ visibilityState: document.visibilityState });
-      schedule(plan.heartbeatOnly ? plan.delay : 0);
+      schedule(plan.heartbeatOnly ? plan.delay : 0, poll);
     };
 
     void poll();
