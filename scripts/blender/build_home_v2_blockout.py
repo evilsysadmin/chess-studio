@@ -332,6 +332,25 @@ def add_table_and_board(materials):
         banner,
         bevel=0.035,
     )
+    curve_tube(
+        "HOME_PROP_table_banner_gold_border",
+        [
+            (-1.80, -0.790, 1.19),
+            (-1.80, -0.790, 0.27),
+            (0.0, -0.790, -0.01),
+            (1.80, -0.790, 0.27),
+            (1.80, -0.790, 1.19),
+        ],
+        0.028,
+        heraldry,
+    )
+    for idx, x in enumerate((-1.50, -1.0, -0.50, 0.0, 0.50, 1.0, 1.50)):
+        sphere(
+            f"HOME_PROP_table_banner_stud_{idx}",
+            (x, -0.802, 1.18),
+            (0.028, 0.014, 0.028),
+            heraldry,
+        )
 
     # Large canonical horse-head relief on the table drape.
     emblem_y = -0.765
@@ -582,6 +601,14 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_left_sofa_back", (-8.42, 0.58, 1.32), (0.22, 1.02, 0.92), leather, bevel=0.12)
     cube("HOME_PROP_left_sofa_arm", (-6.48, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
     cube("HOME_PROP_left_sofa_arm_outer", (-8.42, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
+    for row, z in enumerate((0.95, 1.28, 1.58)):
+        for col, y in enumerate((0.02, 0.44, 0.86)):
+            sphere(
+                f"HOME_PROP_left_sofa_tuft_{row}_{col}",
+                (-8.205, y, z),
+                (0.028, 0.014, 0.028),
+                materials["gold"] if (row + col) % 2 == 0 else materials["dark"],
+            )
     cube("HOME_PROP_left_sideboard", (-7.55, 2.62, 0.62), (1.30, 0.48, 0.62), wood, bevel=0.06)
     cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
@@ -691,24 +718,43 @@ def add_stairs(materials):
             bevel=0.025,
         )
 
+    stair_rail_points = [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)]
     curve_tube(
-        "HOME_PROP_dungeon_rail",
-        [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)],
-        0.040,
-        materials["brass_dark"],
+        "HOME_ARCH_dungeon_stone_rail",
+        stair_rail_points,
+        0.078,
+        stone,
     )
     curve_tube(
-        "HOME_PROP_dungeon_rail_lower",
+        "HOME_PROP_dungeon_gold_rail",
+        [(x, y - 0.02, z + 0.11) for x, y, z in stair_rail_points],
+        0.024,
+        materials["gold"],
+    )
+    curve_tube(
+        "HOME_ARCH_dungeon_lower_stone_rail",
         [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
-        0.020,
-        materials["brass_dark"],
+        0.050,
+        stone,
     )
     for idx in range(6):
         t = idx / 5.0
         px = 4.78 + 2.55 * t
         py = 1.48 - 2.10 * t
         pz = 1.72 - 1.62 * t
-        cylinder(f"HOME_PROP_dungeon_stair_baluster_{idx}", (px, py, pz), 0.045, 0.48, materials["stone_dark"], vertices=16)
+        cylinder(f"HOME_PROP_dungeon_stair_baluster_{idx}", (px, py, pz), 0.050, 0.48, stone, vertices=16)
+        sphere(f"HOME_PROP_dungeon_stair_baluster_cap_{idx}", (px, py, pz + 0.27), (0.065, 0.065, 0.065), materials["stone_dark"])
+    for name, (px, py, pz) in {
+        "top": (4.66, 1.62, 1.80),
+        "bottom": (7.55, -0.82, -0.10),
+    }.items():
+        cube(f"HOME_ARCH_dungeon_newel_{name}", (px, py, pz), (0.16, 0.16, 0.48), stone, bevel=0.05)
+        sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, py, pz + 0.60), (0.14, 0.14, 0.14), materials["stone_dark"])
+        sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.065, 0.065, 0.065), materials["gold"])
+    for idx, (px, py, pz) in enumerate(((5.35, 0.95, 1.18), (6.35, 0.10, 0.53), (7.25, -0.65, -0.06))):
+        cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["paper"], vertices=12)
+        cone(f"HOME_PROP_dungeon_candle_flame_{idx}", (px, py, pz + 0.18), 0.040, 0.008, 0.12, materials["fire_hot"], vertices=10)
+        add_point_light(f"HOME_LIGHT_dungeon_candle_{idx}", (px, py - 0.04, pz + 0.22), 22, (1.0, 0.40, 0.12), radius=0.20)
     cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 
@@ -915,6 +961,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_window_mullion_h_{idx}", (7.82, 6.46, z + 0.10), (0.86, 0.045, 0.025), materials["brass_dark"], bevel=0.010)
     cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
     sphere("HOME_PROP_window_moon", (8.14, 6.40, 4.44), (0.38, 0.030, 0.38), materials["moon"])
+    for idx, (x1, z1, x2, z2) in enumerate((
+        (6.98, 2.35, 8.66, 4.03),
+        (6.98, 3.02, 8.66, 4.70),
+        (6.98, 3.69, 8.42, 5.13),
+        (8.66, 2.35, 6.98, 4.03),
+        (8.66, 3.02, 6.98, 4.70),
+        (8.66, 3.69, 7.22, 5.13),
+    )):
+        curve_tube(
+            f"HOME_PROP_window_lattice_{idx}",
+            [(x1, 6.43, z1), (x2, 6.43, z2)],
+            0.018,
+            materials["brass_dark"],
+        )
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
