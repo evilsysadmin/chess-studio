@@ -38,63 +38,64 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
 
-      - name: Resolve strict-v5 base atlas
+      - name: Resolve approved strict-v6 seed atlas
         id: base
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
+          root='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2'
           case "$WEAPON" in
             pistol)
-              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png'
+              file='matthias_pistol_godot_strict_8x11_256_v6.png'
               ;;
             machinegun)
-              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png'
+              file='matthias_machinegun_godot_strict_8x11_256_v6.png'
               ;;
             shotgun)
-              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png'
+              file='matthias_shotgun_godot_strict_8x11_256_v6.png'
               ;;
             panzerfaust)
-              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png'
+              file='matthias_panzerfaust_godot_strict_8x11_256_v6.png'
               ;;
             *) exit 2 ;;
           esac
-          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "url=$root/$file" >> "$GITHUB_OUTPUT"
 
-      - name: Download strict-v5 base
+      - name: Download approved strict-v6 seed
         env:
           BASE_URL: ${{ steps.base.outputs.url }}
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/pawn-slug-godot-strict
+          ROOT="/tmp/pawn-slug-godot-strict"
+          mkdir -p "$ROOT"
           curl --fail --silent --show-error --location \
             --retry 3 --retry-delay 1 \
             "$BASE_URL" \
-            --output "/tmp/pawn-slug-godot-strict/${WEAPON}-v5.png"
+            --output "$ROOT/matthias_${WEAPON}_godot_strict_8x11_256_v6.png"
 
-      - name: Derive authored-style crouch and pack strict 8x11 atlas
+      - name: Validate strict-v6 atlas and crouch
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
           ROOT="/tmp/pawn-slug-godot-strict"
-          OUT="$ROOT/matthias_${WEAPON}_godot_strict_8x11_256_v6.png"
+          ATLAS="$ROOT/matthias_${WEAPON}_godot_strict_8x11_256_v6.png"
           CROUCH="$ROOT/matthias_${WEAPON}_crouch_strict_v6.png"
-          python3 scripts/art/pack_pawn_slug_godot_strict_v6.py \
-            --base-atlas "$ROOT/${WEAPON}-v5.png" \
-            --output "$OUT" \
-            --crouch-output "$CROUCH"
-          python3 - "$OUT" "$CROUCH" <<'PY'
+          python3 - "$ATLAS" "$CROUCH" <<'PY'
           import sys
           from PIL import Image
-          atlas = Image.open(sys.argv[1])
-          crouch = Image.open(sys.argv[2]).convert("RGBA")
+
+          atlas = Image.open(sys.argv[1]).convert("RGBA")
           assert atlas.size == (2048, 2816), atlas.size
+
+          crouch = atlas.crop((0, 10 * 256, 256, 11 * 256))
           box = crouch.getchannel("A").getbbox()
           assert box is not None
           width, height = box[2] - box[0], box[3] - box[1]
           assert width >= 110 and 150 <= height <= 205, (width, height)
+          crouch.save(sys.argv[2], "PNG", optimize=True)
           print("OK strict-v6 dimensions/crouch", atlas.size, (width, height))
           PY
 
