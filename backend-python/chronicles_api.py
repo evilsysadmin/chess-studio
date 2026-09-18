@@ -496,8 +496,12 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         seed = secrets.randbelow(_MAX_SEED + 1)
-        route_snapshot = chronicles_route_snapshot_for_seed(seed) if body.map_id is None else None
-        selected_map_id = body.map_id or route_snapshot["mapIds"][0]
+        if body.map_id is None:
+            route_snapshot = chronicles_route_snapshot_for_seed(seed)
+            selected_map_id = route_snapshot["mapIds"][0]
+        else:
+            route_snapshot = None
+            selected_map_id = body.map_id
         area = chronicles_area_envelope(selected_map_id, seed, route_snapshot=route_snapshot)
         fingerprint = operation_fingerprint({"mapId": body.map_id})
         try:
