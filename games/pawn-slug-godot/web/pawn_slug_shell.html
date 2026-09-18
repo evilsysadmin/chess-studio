@@ -21,15 +21,50 @@
       outline: 0;
       background: #171b1f;
       touch-action: none;
+      opacity: 0;
+      transition: opacity 90ms linear;
+    }
+
+    #canvas.is-ready {
+      opacity: 1;
+    }
+
+    #boot {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #171b1f;
+      color: #b99a5b;
+      font: 600 12px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.22em;
+      transition: opacity 90ms linear;
+      pointer-events: none;
+    }
+
+    #boot.is-hidden {
+      opacity: 0;
+    }
+
+    #boot > span {
+      border-top: 2px solid rgba(185, 154, 91, 0.72);
+      padding-top: 10px;
     }
   </style>
 </head>
 <body>
   <canvas id="canvas" tabindex="0" aria-label="$GODOT_PROJECT_NAME"></canvas>
+  <div id="boot" aria-hidden="true"><span>PAWN SLUG</span></div>
   <script src="$GODOT_URL"></script>
   <script>
     (() => {
       const canvas = document.getElementById("canvas");
+      const boot = document.getElementById("boot");
+      window.__pawnSlugGodotVisualReady = () => {
+        canvas.classList.add("is-ready");
+        if (boot) boot.classList.add("is-hidden");
+        window.setTimeout(() => boot?.remove(), 120);
+      };
       const engine = new Engine($GODOT_CONFIG);
       engine.startGame({ canvas })
         .then(() => {

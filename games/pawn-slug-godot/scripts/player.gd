@@ -116,7 +116,13 @@ func _ready() -> void:
     _art.set_combat_state(0.0, 0.0, false, 0.0)
     _art.update_visual(0.0, 0.0, true, false, false, 0.0, facing, false)
 
+func visual_ready() -> bool:
+    return _art != null and _art.body_ready()
+
 func _physics_process(delta: float) -> void:
+    if not visual_ready():
+        velocity = Vector2.ZERO
+        return
     invuln_remaining = maxf(0.0, invuln_remaining - delta)
     hurt_visual_remaining = maxf(0.0, hurt_visual_remaining - delta)
     if dead:
