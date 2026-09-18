@@ -38,6 +38,81 @@ def test_manifest_endpoint_requires_auth():
     response = _client().get("/api/chronicles/maps/crypt-eight-squares")
     assert response.status_code == 401
 
+def test_map_code_preview_requires_auth():
+    response = _client().post(
+        "/api/chronicles/map-code/preview",
+        json={
+            "mapCode": (
+                "CM1|theme=water|size=13x10|verbs=sluice,guardian|"
+                "enemies=5|treasures=2|secrets=1|difficulty=3|seed=417"
+            )
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_map_code_preview_is_deterministic_and_versioned():
+    client = _client()
+    headers = {"Authorization": "Bearer test-token"}
+    code = (
+        "CM1|theme=water|size=13x10|verbs=sluice,guardian|"
+        "enemies=5|treasures=2|secrets=1|difficulty=3|seed=417"
+    )
+
+    first = client.post(
+        "/api/chronicles/map-code/preview",
+        headers=headers,
+        json={"mapCode": code},
+    )
+    repeated = client.post(
+        "/api/chronicles/map-code/preview",
+        headers=headers,
+        json={"mapCode": code},
+    )
+
+    assert first.status_code == 200
+    assert first.json() == repeated.json()
+    payload = first.json()
+    assert payload["mapCode"] == code
+    assert payload["generatorVersion"] == 1
+    assert len(payload["layoutRevision"]) == 64
+    assert len(payload["grid"]) == 10
+    assert all(len(row) == 13 for row in payload["grid"])
+    assert payload["grid"][payload["partyStart"]["y"]][payload["partyStart"]["x"]] == "P"
+    assert payload["grid"][payload["exit"]["y"]][payload["exit"]["x"]] == "X"
+
+
+def test_map_code_preview_rejects_invalid_or_impossible_recipe():
+    client = _client()
+    headers = {"Authorization": "Bearer test-token"}
+
+    invalid = client.post(
+        "/api/chronicles/map-code/preview",
+        headers=headers,
+        json={
+            "mapCode": (
+                "CM1|theme=water|size=13x10|verbs=teleport|"
+                "enemies=5|treasures=2|secrets=1|difficulty=3|seed=417"
+            )
+        },
+    )
+    impossible = client.post(
+        "/api/chronicles/map-code/preview",
+        headers=headers,
+        json={
+            "mapCode": (
+                "CM1|theme=water|size=7x7|verbs=sluice,keys,puzzle,traps|"
+                "enemies=8|treasures=4|secrets=3|difficulty=3|seed=1"
+            )
+        },
+    )
+
+    assert invalid.status_code == 400
+    assert impossible.status_code == 400
+    assert "unsupported verb" in invalid.json()["detail"]
+    assert "walkable slots" in impossible.json()["detail"]
+
+
 
 def test_manifest_is_versioned_and_deterministic_by_map_and_seed():
     client = _client()
