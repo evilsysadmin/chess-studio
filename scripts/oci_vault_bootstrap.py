@@ -15,12 +15,10 @@ from __future__ import annotations
 
 import argparse
 import base64
-import urllib.parse
 from typing import Any
 
 KEY_NAME = "chess-studio-staging-secrets"
 INITIAL_VERSION_NAME = "initial-render-migration"
-PRODUCTION_RENDER_SERVICE_NAME = "chess-study-backend"
 PRODUCTION_FALLBACK_KEYS = ("OTEL_EXPORTER_OTLP_ENDPOINT",)
 
 
@@ -46,27 +44,17 @@ def apply_production_fallbacks(staging: dict[str, str], production: dict[str, st
     return merged
 
 
-def resolve_render_service_id_by_name(service_name: str) -> str:
-    from oci_runtime_config import render_api, unwrap_services
-
-    query = urllib.parse.urlencode({"name": service_name, "limit": "20"})
-    rows = [
-        row
-        for row in unwrap_services(render_api("GET", f"/services?{query}"))
-        if str(row.get("name") or "") == service_name and row.get("id")
-    ]
-    if len(rows) != 1:
-        raise SystemExit(f"Expected exactly one Render service named {service_name}; found {len(rows)}")
-    return str(rows[0]["id"])
-
-
 def collect_bootstrap_source() -> dict[str, str]:
     from oci_runtime_config import collect_render_values, list_render_env_values, resolve_render_staging
+    from render_staging_bootstrap import find_production_service
 
     staging = collect_render_values(resolve_render_staging())
     if all(str(staging.get(key) or "") for key in PRODUCTION_FALLBACK_KEYS):
         return staging
-    production_id = resolve_render_service_id_by_name(PRODUCTION_RENDER_SERVICE_NAME)
+    production_service = find_production_service()
+    production_id = str(production_service.get("id") or "").strip()
+    if not production_id:
+        raise SystemExit("Render production resolver returned no service id")
     production = list_render_env_values(production_id)
     merged = apply_production_fallbacks(staging, production)
     inherited = [
@@ -236,6 +224,9 @@ def self_test() -> None:
     assert merged["JWT_SECRET"] == "staging-jwt"
     assert merged["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://otlp.example.test/otlp"
     assert PRODUCTION_FALLBACK_KEYS == ("OTEL_EXPORTER_OTLP_ENDPOINT",)
+    source = open(__file__, encoding="utf-8").read()
+    assert "find_production_service" in source
+    assert "PRODUCTION_RENDER_SERVICE_NAME" not in source
 
     already_set = apply_production_fallbacks(
         {"OTEL_EXPORTER_OTLP_ENDPOINT": "https://staging.example.test/otlp"},
