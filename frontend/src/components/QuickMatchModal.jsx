@@ -70,7 +70,7 @@ export default function QuickMatchModal({
         {onOpenPvp && (
           <button type="button" className="adaptive-difficulty-choice" onClick={onOpenPvp} disabled={loading}>
             <span aria-hidden="true">♙♟</span>
-            <span><b>Jugar contra una persona</b><small>Entra al roster de la War Room, mira el nivel de los presentes y reta a quien quieras.</small></span>
+            <span><b>Jugar contra una persona</b><small>Ponte disponible, elige rival y pulsa Retar. Si alguien te reta primero, te avisaremos.</small></span>
             <i>1 vs 1</i>
           </button>
         )}
