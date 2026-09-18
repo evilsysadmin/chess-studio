@@ -19,6 +19,9 @@ const RESPAWN_HOSTILE_GRACE_SECONDS := 1.10
 const ENEMY_DISENGAGE_RANGE := 1850.0
 const GUNFIRE_HEARING_RANGE := 1550.0
 const GRENADE_HEARING_RANGE := 1750.0
+const STATIC_ALARM_RANGE := 900.0
+const IDLE_SURPRISE_MIN := 0.72
+const ARTILLERY_PLAYER_DAMAGE_RADIUS := 74.0
 const GRENADE_EVADE_RADIUS := 250.0
 const GRENADE_EVADE_SPEED_SCALE := 2.15
 const SUPPRESSION_PUSH_SECONDS := 0.65
@@ -104,12 +107,14 @@ var _boundary_thickness := 40.0
 var _stage_start_x := 110.0
 var _checkpoints: Array = [110.0]
 var _platforms: Array[Rect2] = []
+var _platform_specs: Array[Dictionary] = []
 var _obstacles: Array[Rect2] = []
 var _enemy_spawns: Array[Dictionary] = []
 var _setpieces: Array[Dictionary] = []
 var _setpiece_nodes: Dictionary = {}
 var _moving_platforms: Array[Dictionary] = []
 var _collapsing_platforms: Array[Dictionary] = []
+var _destructible_setpieces: Array[Dictionary] = []
 var _boss_x := 4580.0
 var _boss_hp := 780
 var _boss_size := Vector2(190.0, 150.0)
@@ -216,7 +221,11 @@ func _load_stage_manifest(stage_id: String) -> bool:
     _stage_start_x = float(world.get("start_x", 110.0))
 
     _checkpoints = _stage_manifest.get("checkpoints", [_stage_start_x]).duplicate(true)
-    _platforms = _stage_rects(_stage_manifest.get("platforms", []))
+    _platform_specs.clear()
+    for entry in _stage_manifest.get("platforms", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _platform_specs.append(Dictionary(entry).duplicate(true))
+    _platforms = _stage_rects(_platform_specs)
     _obstacles = _stage_rects(_stage_manifest.get("obstacles", []))
 
     _enemy_spawns.clear()
@@ -925,7 +934,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")))
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
