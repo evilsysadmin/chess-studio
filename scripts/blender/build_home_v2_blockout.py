@@ -421,7 +421,8 @@ def add_fireplace(name: str, x: float, materials):
         cube(f"HOME_PROP_{name}_jamb_{side}", (x + side * 1.18, 6.02, 1.20), (0.18, 0.34, 1.15), stone, bevel=0.05)
         cube(f"HOME_PROP_{name}_corbel_{side}", (x + side * 1.22, 5.82, 1.95), (0.24, 0.28, 0.18), stone, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
-    gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
+    cube(f"HOME_ARCH_{name}_lintel", (x, 5.98, 2.38), (1.30, 0.28, 0.18), stone, bevel=0.05)
+    cube(f"HOME_ARCH_{name}_upper_block", (x, 6.18, 2.82), (1.08, 0.20, 0.30), stone, bevel=0.04)
     for bar in (-0.54, -0.18, 0.18, 0.54):
         cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.48, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
     cube(f"HOME_PROP_{name}_grate_cross", (x, 5.47, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
@@ -619,16 +620,16 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_library_lamp_base", (-3.10, 3.92, 1.00), (0.09, 0.09, 0.12), brass, bevel=0.02)
     cube("HOME_PROP_library_lamp_shade", (-3.10, 3.92, 1.24), (0.24, 0.18, 0.14), paper, bevel=0.04)
 
-    # Right cabinet + globe, pulled slightly forward so the globe actually reads
-    # beside the right fireplace at canonical camera distance.
-    gx, gy = 7.18, 3.86
-    cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
-    cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
-    sphere("HOME_PROP_globe", (gx, gy, 2.00), (0.82, 0.82, 0.82), globe)
+    # Canonical globe sits in the left foreground study zone. Keep the right
+    # staircase clear so the Dungeon path reads immediately.
+    gx, gy = -7.55, -0.15
+    cube("HOME_PROP_right_cabinet", (7.55, 5.55, 0.82), (0.88, 0.38, 0.82), wood, bevel=0.04)
+    cylinder("HOME_PROP_globe_stand", (gx, gy, 0.64), 0.11, 0.72, brass, vertices=24)
+    sphere("HOME_PROP_globe", (gx, gy, 1.48), (0.72, 0.72, 0.72), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
-            (gx + 0.94 * math.cos(i * math.pi / 16), gy, 2.00 + 0.94 * math.sin(i * math.pi / 16))
+            (gx + 0.82 * math.cos(i * math.pi / 16), gy, 1.48 + 0.82 * math.sin(i * math.pi / 16))
             for i in range(17)
         ],
         0.025,
@@ -646,6 +647,48 @@ def add_side_furnishings(materials):
         )
 
 
+def add_equestrian_statue(materials):
+    dark = materials["steel"]
+    brass = materials["brass"]
+    stone = materials["stone_dark"]
+    x, y = 6.10, 5.92
+
+    cube("HOME_PROP_equestrian_plinth", (x, y, 2.58), (0.72, 0.55, 0.46), stone, bevel=0.06)
+    sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.34), (0.62, 0.30, 0.42), dark)
+    curve_tube(
+        "HOME_PROP_equestrian_horse_neck",
+        [(x + 0.36, y, 3.48), (x + 0.58, y - 0.02, 3.78), (x + 0.76, y - 0.03, 3.92)],
+        0.15,
+        dark,
+    )
+    sphere("HOME_PROP_equestrian_horse_head", (x + 0.86, y - 0.03, 3.96), (0.24, 0.18, 0.20), dark)
+    cone("HOME_PROP_equestrian_horse_ear", (x + 0.92, y - 0.02, 4.18), 0.055, 0.015, 0.20, dark, vertices=12)
+
+    for idx, (dx, dz) in enumerate(((-0.42, 0.0), (-0.18, 0.05), (0.25, 0.02), (0.46, 0.10))):
+        curve_tube(
+            f"HOME_PROP_equestrian_leg_{idx}",
+            [(x + dx, y, 3.15), (x + dx * 1.15, y + 0.02, 2.78 + dz)],
+            0.07,
+            dark,
+        )
+
+    # Rider: deliberately simple in blockout, only the canonical silhouette.
+    cone("HOME_PROP_equestrian_rider_body", (x - 0.02, y, 4.18), 0.22, 0.15, 0.54, dark, vertices=18)
+    sphere("HOME_PROP_equestrian_rider_head", (x - 0.02, y, 4.58), (0.16, 0.14, 0.17), dark)
+    curve_tube(
+        "HOME_PROP_equestrian_rider_arm",
+        [(x + 0.10, y, 4.28), (x + 0.36, y - 0.01, 4.10)],
+        0.055,
+        dark,
+    )
+    curve_tube(
+        "HOME_PROP_equestrian_lance",
+        [(x + 0.22, y + 0.04, 4.18), (x - 0.40, y + 0.04, 5.18)],
+        0.030,
+        brass,
+    )
+
+
 def add_stairs(materials):
     stone = materials["stone"]
     brass = materials["brass"]
@@ -655,8 +698,8 @@ def add_stairs(materials):
     # Canonical Home: the stair rises from the room toward the back-right
     # landing. The Dungeon opening lives under that landing instead of opening
     # as a giant foreground void.
-    lower_x, lower_y, lower_z = 4.78, 1.72, 0.18
-    upper_x, upper_y, upper_z = 7.42, 5.10, 2.12
+    lower_x, lower_y, lower_z = 4.20, 1.62, 0.16
+    upper_x, upper_y, upper_z = 7.40, 5.08, 2.18
 
     steps = 12
     for i in range(steps):
@@ -875,14 +918,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_armor_recess", (-4.92, 6.72, 2.46), (0.90, 0.08, 1.72), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", -4.92, 6.18, 2.45, 2.50, 4.65, 0.18, materials["stone"])
 
-    add_fireplace("fireplace_right", 3.55, materials)
-    fireplace_origin = Vector((3.55, 6.10, 0.35))
+    add_fireplace("fireplace_right", 2.72, materials)
+    fireplace_origin = Vector((2.72, 6.10, 0.35))
     for obj in list(bpy.data.objects):
         if ("fireplace_right" in obj.name) and obj.type != "LIGHT":
             obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.12
             obj.scale *= 1.12
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (3.55, 4.78, 1.46), 165, (1.0, 0.30, 0.07), radius=1.12)
-    for idx, cx in enumerate((2.92, 3.55, 4.18)):
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (2.72, 4.78, 1.46), 165, (1.0, 0.30, 0.07), radius=1.12)
+    for idx, cx in enumerate((2.10, 2.72, 3.34)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 5.54, 2.62), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 5.54, 2.92), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
@@ -905,8 +948,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     ]
     banner_origin = Vector((0.0, 5.82, 4.55))
     for obj in center_banner_objects:
-        obj.location = banner_origin + (obj.location - banner_origin) * 1.48
-        obj.scale *= 1.48
+        obj.location = banner_origin + (obj.location - banner_origin) * 1.22
+        obj.scale *= 1.22
 
     add_table_and_board(materials)
     add_armor(materials)
@@ -918,6 +961,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
+    add_equestrian_statue(materials)
 
     # Chandelier and warm pools of light.
     cylinder("HOME_PROP_chandelier_drop", (-1.05, 2.02, 5.02), 0.075, 1.62, materials["brass"])
