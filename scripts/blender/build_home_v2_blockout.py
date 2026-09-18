@@ -290,6 +290,11 @@ def add_table_and_board(materials):
         for y in (-0.30, 2.40):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
             cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
+            cylinder(f"HOME_PROP_table_leg_foot_{x}_{y}", (x, y, 0.14), 0.22, 0.12, wood, vertices=20)
+    for side in (-1, 1):
+        panel_x = side * 2.58
+        cube(f"HOME_PROP_table_front_panel_{side}", (panel_x, -0.70, 0.76), (0.48, 0.055, 0.30), materials["wood"], bevel=0.055)
+        sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.77, 0.77), (0.095, 0.025, 0.095), materials["gold"])
 
     # The canonical board nearly fills the table width; the earlier blockout
     # made it read like a travel set.
@@ -383,6 +388,7 @@ def add_table_and_board(materials):
                 cylinder(f"HOME_PROP_bench_foot_{side}_{dx}_{by}", (bx, by, 0.05), 0.12, 0.10, materials["dark"], vertices=16)
         for tuft in (-0.72, 0.0, 0.72):
             sphere(f"HOME_PROP_bench_tuft_{side}_{tuft}", (x, 1.2 + tuft, 0.91), (0.07, 0.035, 0.035), materials["dark"])
+            sphere(f"HOME_PROP_bench_front_button_{side}_{tuft}", (x - side * 0.70, 1.2 + tuft, 0.73), (0.030, 0.030, 0.030), materials["gold"])
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
@@ -410,27 +416,27 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
     gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
     for bar in (-0.54, -0.18, 0.18, 0.54):
-        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.48, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
-    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.47, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
+        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.78, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
+    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.77, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
     hot = materials["fire_hot"]
-    cube(f"HOME_PROP_{name}_embers", (x, 5.54, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
+    cube(f"HOME_PROP_{name}_embers", (x, 5.91, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
     for idx, offset in enumerate(flame_offsets):
         height = 0.34 + 0.13 * ((idx * 5) % 4)
         sphere(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.53, 0.67 + height * 0.42),
+            (x + offset, 5.92, 0.67 + height * 0.42),
             (0.12 + 0.02 * (idx % 2), 0.055, height * 0.42),
             fire,
         )
         if idx % 2 == 0:
             sphere(
                 f"HOME_PROP_{name}_flame_hot_{idx}",
-                (x + offset * 0.98, 5.49, 0.66 + height * 0.22),
+                (x + offset * 0.98, 5.88, 0.66 + height * 0.22),
                 (0.055, 0.040, height * 0.22),
                 hot,
             )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 360, (1.0, 0.30, 0.07), radius=1.15)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.42, 1.20), 330, (1.0, 0.30, 0.07), radius=1.05)
 
 
 def add_bookshelf(materials):
@@ -856,11 +862,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         if ("fireplace_left" in obj.name) and obj.type != "LIGHT":
             obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
             obj.scale *= 0.90
-    left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.56, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
+    left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.90, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_a.rotation_euler[2] = math.radians(9)
-    left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.57, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
+    left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.91, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_b.rotation_euler[2] = math.radians(-11)
-    cube("HOME_PROP_fireplace_left_ember_bed", (-6.15, 5.58, 0.47), (0.66, 0.10, 0.050), materials["fire"], bevel=0.04)
+    cube("HOME_PROP_fireplace_left_ember_bed", (-6.15, 5.92, 0.47), (0.66, 0.10, 0.050), materials["fire"], bevel=0.04)
     add_bookshelf(materials)
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
@@ -876,7 +882,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.90, 1.42), 110, (1.0, 0.28, 0.06), radius=1.05)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
-    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 5.82, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
+    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 6.18, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
     cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.22, 2.46), (1.36, 0.28, 0.16), materials["stone"], bevel=0.055)
     for side in (-1, 1):
         px = 4.45 + side * 1.06
@@ -884,11 +890,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.34), (0.27, 0.26, 0.14), materials["stone"], bevel=0.045)
         sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.10, 2.70), (0.10, 0.08, 0.10), materials["gold"])
     cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
-    log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.46, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
+    log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.88, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
-    log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.48, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
+    log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.90, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_b.rotation_euler[2] = math.radians(-12)
-    cube("HOME_PROP_fireplace_right_ember_bed", (4.45, 5.47, 0.48), (0.72, 0.12, 0.055), materials["fire"], bevel=0.04)
+    cube("HOME_PROP_fireplace_right_ember_bed", (4.45, 5.91, 0.48), (0.72, 0.12, 0.055), materials["fire"], bevel=0.04)
     for idx, cx in enumerate((3.72, 4.45, 5.18)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
