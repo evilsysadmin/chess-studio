@@ -63,7 +63,10 @@ const MOVING_FIRE_RECOIL_BOOST := {
 }
 const MOVING_FIRE_FLASH_BOOST := {
     "pistol": 1.50,
-    "machinegun": 2.15,
+    # The authored stationary SMG shoot frame carries a much larger baked flash.
+    # Running keeps the locomotion sprite, so its procedural burst must match
+    # that apparent footprint rather than merely its raw polygon scale.
+    "machinegun": 3.60,
     "shotgun": 1.55,
     "panzerfaust": 1.40,
 }
