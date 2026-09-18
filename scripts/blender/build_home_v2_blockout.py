@@ -411,7 +411,7 @@ def add_fireplace(name: str, x: float, materials):
     fire = materials["fire"]
     # Tall dark recess is essential to the canonical silhouette.
     cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
-    cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
+    cube(f"HOME_PROP_{name}_hearth", (x, 6.52, 0.88), (1.15, 0.10, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_hearth_slab", (x, 5.62, 0.28), (1.42, 0.46, 0.12), stone, bevel=0.05)
     for side in (-1, 1):
         cube(f"HOME_PROP_{name}_jamb_{side}", (x + side * 1.18, 6.02, 1.20), (0.18, 0.34, 1.15), stone, bevel=0.05)
@@ -419,23 +419,23 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
     gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
     for bar in (-0.54, -0.18, 0.18, 0.54):
-        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.70, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
-    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.69, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
+        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.56, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
+    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.55, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
     hot = materials["fire_hot"]
-    cube(f"HOME_PROP_{name}_embers", (x, 5.72, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
+    cube(f"HOME_PROP_{name}_embers", (x, 5.65, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
     for idx, offset in enumerate(flame_offsets):
         height = 0.34 + 0.13 * ((idx * 5) % 4)
         sphere(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.73, 0.67 + height * 0.42),
+            (x + offset, 5.66, 0.67 + height * 0.42),
             (0.12 + 0.02 * (idx % 2), 0.055, height * 0.42),
             fire,
         )
         if idx % 2 == 0:
             sphere(
                 f"HOME_PROP_{name}_flame_hot_{idx}",
-                (x + offset * 0.98, 5.69, 0.66 + height * 0.22),
+                (x + offset * 0.98, 5.63, 0.66 + height * 0.22),
                 (0.055, 0.040, height * 0.22),
                 hot,
             )
