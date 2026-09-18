@@ -1,6 +1,6 @@
 {
   "id": "iron-foundry",
-  "version": 1,
+  "version": 2,
   "progressionKey": "foundry-01",
   "title": "Fundición de Hierro Negro",
   "grid": [
@@ -318,7 +318,7 @@
       "id": "foundry-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abrir portón con el sello del capataz",
+      "openLabel": "Abrir portón hacia la Basílica de las Cadenas",
       "lockedLabel": "Examinar portón de hierro negro",
       "requirements": [
         { "itemId": "forgemaster-seal", "quantity": 1, "message": "El portón exige el Sello del Maestro de Forja." }
@@ -334,13 +334,13 @@
             "objective": "Fundición superada.",
             "order": 60
           },
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "chain-basilica" }
         ],
-        "message": "El sello encaja y el portón sube entre cadenas. Matthias declara la Fundición clausurada por exceso de hostilidad laboral.",
+        "message": "El sello encaja y el portón sube entre cadenas. Al otro lado espera una basílica que ha confundido liturgia con ferretería pesada.",
         "journal": {
           "id": "iron-foundry-cleared",
-          "title": "La Fundición cae en silencio",
-          "body": "Guardianes destruidos, maquinaria saboteada y portón abierto. La compañía deja atrás el hierro negro y conserva todos los miembros que la contabilidad permita.",
+          "title": "De la fundición a la basílica",
+          "body": "La Fundición queda atrás y el portón del capataz conduce a una nave de hierro donde tres guardianes llevan eslabones rituales.",
           "sigil": "XIV"
         }
       }
