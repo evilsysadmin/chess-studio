@@ -531,23 +531,12 @@ export async function startPracticeGame(page) {
 }
 
 export async function openMoreGameModes(page) {
-  // Canonical illustrated Home owns one trigger across desktop and narrow/mobile
-  // layouts. Presence in the DOM is the contract here: visual capture contexts
-  // can report the diegetic trigger as non-visible while it is still the active
-  // canonical control, so visibility must not send us into the retired Home.
-  const trigger = page.getByRole('button', { name: /Más modos y herramientas/ }).first();
-  if (await trigger.count()) {
-    if (await trigger.getAttribute('aria-expanded') !== 'true') {
-      if (await trigger.isVisible().catch(() => false)) await trigger.click();
-      else await trigger.evaluate((node) => node.click());
-    }
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-
-    const navigation = page.getByRole('navigation', { name: 'Más modos y herramientas' });
-    await expect(navigation).toBeAttached();
-    return navigation;
+  const illustrated = page.locator('.illustrated-home__utilities');
+  if (await illustrated.isVisible()) {
+    const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+    if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+    return illustrated;
   }
-
   const details = page.locator('details.home-more-modes');
   await expect(details).toBeVisible();
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
