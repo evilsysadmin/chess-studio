@@ -18,6 +18,7 @@ PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
 COMBAT_AUDIO = GODOT_ROOT / "scripts/combat_audio.gd"
+BOSS = GODOT_ROOT / "scripts/boss_visual.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -143,6 +144,19 @@ REQUIRED_FEEL = (
     "combat_audio.play_weapon",
     "combat_audio.play_explosion",
 )
+REQUIRED_COMBAT_FAIRNESS = (
+    "MAX_HOSTILE_PROJECTILES",
+    "MAX_HOSTILE_EXPLOSIVES",
+    "HOSTILE_FIRE_GAP",
+    "_world_x_is_combat_visible",
+    "_can_spawn_hostile_shot",
+    "BOSS_SHELL_WINDUP",
+)
+REQUIRED_BOSS_TELEGRAPH = (
+    "set_shell_telegraph",
+    "_shell_telegraph",
+    "draw_arc",
+)
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -204,6 +218,8 @@ def validate() -> None:
     validate_contract(MAIN, "main.gd", REQUIRED_FEEL, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
+    validate_contract(BOSS, "boss_visual.gd", REQUIRED_BOSS_TELEGRAPH, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -236,6 +252,8 @@ def self_test() -> None:
     assert "_prefers_reduced_motion" in REQUIRED_FEEL
     assert "AudioStreamWAV" in REQUIRED_AUDIO
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
+    assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
+    assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 
