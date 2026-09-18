@@ -15,6 +15,8 @@ k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
+k3s_contract_state_file="$state_dir/k3s-deploy-contract.sha256"
+k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
 port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
 staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
@@ -28,6 +30,8 @@ require git
 require docker
 require curl
 require python3
+require sha256sum
+require systemctl
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
@@ -62,6 +66,62 @@ compose() {
   CHESS_STUDIO_BACKEND_PORT="$port" \
   CHESS_STUDIO_CORS_ORIGINS="$staging_origin" \
   docker compose -p "$project" -f "$compose_file" "$@"
+}
+
+k3s_is_armed() {
+  local enabled
+  [[ -e "$k3s_start_approval" || -L "$k3s_start_approval" ]] && return 0
+  systemctl is-active --quiet k3s.service && return 0
+  enabled="$(systemctl is-enabled k3s.service 2>/dev/null || true)"
+  [[ "$enabled" =~ ^(enabled|enabled-runtime|linked|linked-runtime)$ ]]
+}
+
+k3s_contract_digest() {
+  local file
+  local files=(
+    "$repo/scripts/oci_k3s_capability_provision.sh"
+    "$repo/scripts/oci_k3s_assets_root.py"
+    "$repo/scripts/oci_k3s_control_root.py"
+    "$repo/scripts/oci_k3s_status_root.py"
+    "$repo/scripts/oci_k3s_service_prepare.py"
+    "$repo/infra/oci/runtime/ocarun.sudoers"
+    "$repo/infra/oci/k3s/config.yaml"
+    "$repo/infra/oci/k3s/k3s.service"
+  )
+  for file in "${files[@]}"; do
+    [[ -f "$file" && ! -L "$file" ]] || {
+      echo "missing K3s deploy-contract input: $file" >&2
+      return 1
+    }
+  done
+  sha256sum "${files[@]}" | sha256sum | awk '{print $1}'
+}
+
+record_k3s_contract_digest() {
+  local digest="$1"
+  local tmp
+  tmp="$(mktemp "$state_dir/k3s-deploy-contract.sha256.XXXXXX")"
+  printf '%s\n' "$digest" >"$tmp"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$k3s_contract_state_file"
+}
+
+reconcile_k3s_contract() {
+  local digest cached=''
+  digest="$(k3s_contract_digest)"
+  if [[ -s "$k3s_contract_state_file" ]]; then
+    cached="$(tr -d '\r\n' < "$k3s_contract_state_file")"
+  fi
+
+  if ! k3s_is_armed && [[ "$cached" == "$digest" ]]; then
+    echo "OCI_K3S_DEPLOY_CONTRACT_REUSED digest=$digest"
+    return 0
+  fi
+
+  /bin/bash "$k3s_capability_provision"
+  python3 -S "$k3s_service_prepare"
+  record_k3s_contract_digest "$digest"
+  echo "OCI_K3S_DEPLOY_CONTRACT_REFRESHED digest=$digest"
 }
 
 cors_attest() {
@@ -195,8 +255,7 @@ fi
 [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
 [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
 /bin/bash "$tunnel_connector" --self-test
-/bin/bash "$k3s_capability_provision"
-python3 -S "$k3s_service_prepare"
+reconcile_k3s_contract
 
 # CI already built and published the exact linux/arm64 backend image. Pull that
 # immutable artifact before touching the serving container; do not invoke
