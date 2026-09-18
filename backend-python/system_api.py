@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
+import math
+import os
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
@@ -22,6 +28,7 @@ from auth import verify_password
 from feature_flags import public_feature_flags
 from observability import record_process_ready
 from observability_history import record_presence_snapshot
+from tracing import record_billing_costs_otel
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 from pvp_api import build_pvp_router
@@ -29,6 +36,70 @@ from chronicles_api import build_chronicles_router
 from pawn_slug_api import build_pawn_slug_router
 
 _logger = logging.getLogger("chess.system")
+
+_BILLING_SIGNATURE_MAX_SKEW_SECONDS = 300
+
+
+def _billing_signature_valid(secret: str, timestamp: str, signature: str, body: bytes, *, now: int | None = None) -> bool:
+    if not secret or not timestamp or not signature:
+        return False
+    try:
+        stamp = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    current = int(time.time()) if now is None else int(now)
+    if abs(current - stamp) > _BILLING_SIGNATURE_MAX_SKEW_SECONDS:
+        return False
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        timestamp.encode("ascii") + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(signature, f"sha256={expected}")
+
+
+async def billing_auth_dependency(request: Request) -> None:
+    """Authenticate the machine-only billing ingest with a short-lived HMAC."""
+    secret = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(503, "Billing telemetry auth is not configured.")
+    raw = await request.body()
+    if not _billing_signature_valid(
+        secret,
+        request.headers.get("x-chess-timestamp", ""),
+        request.headers.get("x-chess-signature", ""),
+        raw,
+    ):
+        raise HTTPException(401, "Invalid billing telemetry signature.")
+
+
+def _parse_billing_costs(body: bytes) -> list[tuple[str, float, str]]:
+    payload = json.loads(body.decode("utf-8"))
+    rows = payload.get("costs") if isinstance(payload, dict) else None
+    if not isinstance(rows, list) or len(rows) != 2:
+        raise ValueError("expected exactly two billing rows")
+    costs: list[tuple[str, float, str]] = []
+    providers: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("invalid billing row")
+        provider = str(row.get("provider") or "").strip().lower()
+        currency = str(row.get("currency") or "").strip().upper()
+        try:
+            amount = float(row.get("amount"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid billing amount") from exc
+        if provider not in {"oci", "cloudflare"} or provider in providers:
+            raise ValueError("invalid billing provider")
+        if not math.isfinite(amount) or amount < 0:
+            raise ValueError("invalid billing amount")
+        if len(currency) != 3 or not currency.isalpha():
+            raise ValueError("invalid billing currency")
+        providers.add(provider)
+        costs.append((provider, amount, currency))
+    if providers != {"oci", "cloudflare"}:
+        raise ValueError("both billing providers are required")
+    return costs
 
 
 def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
@@ -86,6 +157,22 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
             )
         # Conservamos deliberadamente el shape público de readiness.
         return {"ok": True, "storage": storage}
+
+    @router.post("/api/internal/billing-costs", status_code=204)
+    @limiter.exempt
+    async def ingest_billing_costs(
+        request: Request,
+        _billing_auth: None = Depends(billing_auth_dependency),
+    ):
+        raw = await request.body()
+        try:
+            costs = _parse_billing_costs(raw)
+            exported = record_billing_costs_otel(costs)
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+            raise HTTPException(400, "Invalid billing telemetry payload.") from None
+        if not exported:
+            raise HTTPException(503, "Metrics export is not configured.")
+        return Response(status_code=204)
 
     @router.get("/api/features")
     async def public_features(_username: str = Depends(auth_dependency)):

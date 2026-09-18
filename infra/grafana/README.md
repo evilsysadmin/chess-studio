@@ -96,3 +96,12 @@ El scrape recomendado es cada 60 s. El exporter oficial refresca sus datos en ba
 El dashboard `Chess Studio · Edge / Cloudflare` responde a preguntas operativas: requests, 4xx/5xx, países, acciones WAF/firewall, Workers AI y cache. **Un request no equivale a una persona**: crawlers, scanners y bots también cuentan.
 
 Para medir popularidad humana (visitantes, pageviews y navegación SPA), usa **Cloudflare Web Analytics/RUM** sobre el hostname de producción. `scripts/cloudflare_production_pages.py` intenta activarlo durante el cutover de Pages; si el token de CI no tiene permisos `Account Settings`, la migración no falla y el workflow lo deja como aviso para configurarlo aparte.
+
+
+## Costes P0 · OCI + Cloudflare
+
+El dashboard **Chess Studio · Salud operativa** incluye dos stats P0 al principio: coste OCI del mes y coste variable Cloudflare del ciclo. Ambos leen `chess_studio_billing_cost_current_cycle` desde Prometheus y usan `last_over_time(...[12h])`: una ejecución perdida no borra el último coste inmediatamente, pero más de 12 horas sin una muestra válida aparece como **SIN DATOS** en vez de mentir con 0.
+
+`.github/workflows/billing-cost-export.yml` ejecuta `scripts/billing_cost_export.py` cada seis horas. Reutiliza las credenciales OCI ya presentes en Actions, consulta OCI Usage API con `query_type=COST` y el endpoint de Cloudflare Billing `/accounts/<id>/billable-usage`. Después lee únicamente `CHESS_AI_SHARED_SECRET` —ya permitido para el runner— y envía un payload HMAC pequeño al backend de staging. El backend mantiene el gauge observable y lo exporta por su OTLP existente; `OTEL_EXPORTER_OTLP_HEADERS` no sale del runtime privado de OCI.
+
+Para Cloudflare se prefiere el secreto `CLOUDFLARE_BILLING_API_TOKEN` con permiso mínimo **Account · Billing: Read**. Mientras no exista, el colector intenta `CLOUDFLARE_API_TOKEN` como compatibilidad; si ese token no puede leer Billing, la ejecución falla de forma explícita. El widget de Cloudflare cubre cargos **usage-based** y no cuotas fijas de plan/suscripción. OCI Cost Analysis puede llevar retraso de ingestión del proveedor, por lo que el valor no debe interpretarse como tiempo real al segundo.
