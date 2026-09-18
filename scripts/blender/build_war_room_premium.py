@@ -159,6 +159,7 @@ def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
             node.inputs["Distance"].default_value = 0.035
             links.new(fac, node.inputs["Height"])
             links.new(node.outputs["Normal"], bsdf.inputs["Normal"])
+    mat["war_room_texture_kind"] = texture or ""
     return mat
 
 
@@ -724,6 +725,73 @@ def validate():
         raise RuntimeError("hero camera contract failed")
 
 
+def runtime_texture_factor(kind, u, v):
+    """Small deterministic colour variation that survives glTF export."""
+    if kind == "wood":
+        grain = 0.5 + 0.5 * math.sin((u * 7.0 + 0.16 * math.sin(v * 11.0)) * math.tau)
+        fine = 0.5 + 0.5 * math.sin((u * 31.0 + v * 1.6) * math.tau)
+        return 0.80 + grain * 0.16 + fine * 0.05
+    if kind == "stone":
+        broad = 0.5 + 0.5 * math.sin((u * 5.0 + v * 7.0 + 0.22 * math.sin(u * 17.0)) * math.tau)
+        fleck = 0.5 + 0.5 * math.sin((u * 23.0 - v * 19.0) * math.tau)
+        return 0.84 + broad * 0.12 + fleck * 0.05
+    if kind == "fabric":
+        warp = abs(math.sin(u * math.tau * 24.0))
+        weft = abs(math.sin(v * math.tau * 28.0))
+        return 0.82 + (warp * 0.07) + (weft * 0.07)
+    if kind == "leather":
+        pores = 0.5 + 0.5 * math.sin((u * 37.0 + v * 41.0 + math.sin(v * 13.0)) * math.tau)
+        cloud = 0.5 + 0.5 * math.sin((u * 4.0 - v * 5.0) * math.tau)
+        return 0.82 + pores * 0.06 + cloud * 0.11
+    if kind == "metal":
+        brush = 0.5 + 0.5 * math.sin((u * 3.0 + v * 46.0) * math.tau)
+        return 0.88 + brush * 0.12
+    return 0.90 + (0.5 + 0.5 * math.sin((u * 9.0 + v * 11.0) * math.tau)) * 0.10
+
+
+def install_runtime_base_color_texture(mat, bsdf, kind, *, size=64):
+    """Attach a tiny glTF-safe UV texture while keeping the editable material procedural."""
+    base_socket = socket(bsdf, "Base Color")
+    if base_socket is None:
+        return False
+
+    rgba = tuple(float(v) for v in base_socket.default_value)
+    image_name = f"{mat.name}_runtime_basecolor"
+    old = bpy.data.images.get(image_name)
+    if old is not None:
+        bpy.data.images.remove(old)
+    image = bpy.data.images.new(image_name, width=size, height=size, alpha=False)
+    pixels = [0.0] * (size * size * 4)
+    cursor = 0
+    for y in range(size):
+        v = (y + 0.5) / size
+        for x in range(size):
+            u = (x + 0.5) / size
+            factor = runtime_texture_factor(kind, u, v)
+            pixels[cursor] = max(0.0, min(1.0, rgba[0] * factor))
+            pixels[cursor + 1] = max(0.0, min(1.0, rgba[1] * factor))
+            pixels[cursor + 2] = max(0.0, min(1.0, rgba[2] * factor))
+            pixels[cursor + 3] = 1.0
+            cursor += 4
+    image.pixels.foreach_set(pixels)
+    image.colorspace_settings.name = "sRGB"
+    image.pack()
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    uv = nodes.new("ShaderNodeTexCoord")
+    uv.name = f"{mat.name}_runtime_uv"
+    tex = nodes.new("ShaderNodeTexImage")
+    tex.name = f"{mat.name}_runtime_basecolor"
+    tex.image = image
+    tex.interpolation = "Linear"
+    tex.extension = "REPEAT"
+    links.new(uv.outputs["UV"], tex.inputs["Vector"])
+    links.new(tex.outputs["Color"], base_socket)
+    mat["war_room_runtime_texture"] = "uv-basecolor-v1"
+    return True
+
+
 def sanitize_runtime_materials():
     """Disconnect Blender-only procedural links before the glTF runtime export.
 
@@ -742,6 +810,7 @@ def sanitize_runtime_materials():
                 materials[mat.name] = mat
 
     removed_links = 0
+    runtime_textures = 0
     for mat in materials.values():
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf is None:
@@ -753,11 +822,17 @@ def sanitize_runtime_materials():
             for link in list(target.links):
                 mat.node_tree.links.remove(link)
                 removed_links += 1
-        mat["war_room_runtime_material"] = "gltf-safe-pbr-v1"
+
+        kind = str(mat.get("war_room_texture_kind") or "").strip()
+        if kind and install_runtime_base_color_texture(mat, bsdf, kind):
+            runtime_textures += 1
+        mat["war_room_runtime_material"] = "gltf-safe-pbr-v2-textured"
 
     if removed_links < 10:
         raise RuntimeError(f"runtime material sanitization suspiciously small: {removed_links}")
-    return removed_links
+    if runtime_textures < 12:
+        raise RuntimeError(f"runtime texture coverage suspiciously small: {runtime_textures}")
+    return removed_links, runtime_textures
 
 
 def read_glb_json(path):
@@ -797,19 +872,38 @@ def validate_runtime_glb(path):
     if missing:
         raise RuntimeError(f"runtime GLB materials missing: {missing}")
 
+    textured_required = {
+        "WR_MAT_wall_walnut",
+        "WR_MAT_trim_walnut",
+        "WR_MAT_parquet",
+        "WR_MAT_table_walnut",
+        "WR_MAT_stone",
+        "WR_MAT_stone_light",
+        "WR_MAT_leather",
+        "WR_MAT_armor",
+    }
+    missing_textures = []
     bleached = []
     for name in sorted(required_colours):
         pbr = materials[name].get("pbrMetallicRoughness", {})
+        has_texture = isinstance(pbr.get("baseColorTexture"), dict)
+        if name in textured_required and not has_texture:
+            missing_textures.append(name)
+        if has_texture:
+            continue
         factor = pbr.get("baseColorFactor")
         if not isinstance(factor, list) or len(factor) < 3 or min(factor[:3]) >= 0.95:
             bleached.append((name, factor))
+    if missing_textures:
+        raise RuntimeError(f"runtime GLB lost authored material textures: {missing_textures}")
     if bleached:
         raise RuntimeError(f"runtime GLB lost authored base colours: {bleached}")
 
 
 def export_shell(path):
-    sanitized_links = sanitize_runtime_materials()
+    sanitized_links, runtime_textures = sanitize_runtime_materials()
     bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
+    bpy.context.scene["war_room_runtime_texture_count"] = runtime_textures
     bpy.ops.object.select_all(action="DESELECT")
     selected = 0
     for obj in bpy.context.scene.objects:
