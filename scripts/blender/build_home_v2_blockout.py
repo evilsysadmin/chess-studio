@@ -296,10 +296,10 @@ def add_table_and_board(materials):
 
     table_y = 1.05
     table_z = 1.12
-    cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.72, 1.72, 0.18), wood, bevel=0.10)
-    cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
-    cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
-    for x in (-3.20, 3.20):
+    cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.35, 1.62, 0.18), wood, bevel=0.10)
+    cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.06, 0.10, 0.22), wood, bevel=0.045)
+    cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.06, 0.10, 0.22), wood, bevel=0.045)
+    for x in (-2.88, 2.88):
         for y in (-0.30, 2.40):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
             cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
@@ -622,19 +622,31 @@ def add_side_furnishings(materials):
 
     # Canonical globe sits in the left foreground study zone. Keep the right
     # staircase clear so the Dungeon path reads immediately.
-    gx, gy = -7.55, -0.15
+    gx, gy = -7.15, -1.62
     cube("HOME_PROP_right_cabinet", (7.55, 5.55, 0.82), (0.88, 0.38, 0.82), wood, bevel=0.04)
     cylinder("HOME_PROP_globe_stand", (gx, gy, 0.64), 0.11, 0.72, brass, vertices=24)
-    sphere("HOME_PROP_globe", (gx, gy, 1.48), (0.72, 0.72, 0.72), globe)
+    sphere("HOME_PROP_globe", (gx, gy, 1.40), (0.86, 0.86, 0.86), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
-            (gx + 0.82 * math.cos(i * math.pi / 16), gy, 1.48 + 0.82 * math.sin(i * math.pi / 16))
+            (gx + 0.96 * math.cos(i * math.pi / 16), gy, 1.40 + 0.96 * math.sin(i * math.pi / 16))
             for i in range(17)
         ],
         0.025,
         brass,
     )
+
+    cube("HOME_PROP_left_foreground_table", (-6.25, -1.75, 0.55), (1.20, 0.62, 0.12), wood, bevel=0.07)
+    for idx, z in enumerate((0.73, 0.82, 0.91)):
+        cube(
+            f"HOME_PROP_left_foreground_book_{idx}",
+            (-6.55 + idx * 0.08, -1.76, z),
+            (0.58 - idx * 0.04, 0.34, 0.045),
+            materials["book_brown"] if idx != 1 else materials["book_green"],
+            bevel=0.022,
+        )
+    cylinder("HOME_PROP_left_foreground_candle_base", (-5.52, -1.72, 0.78), 0.12, 0.06, brass, vertices=18)
+    cube("HOME_PROP_left_foreground_candle", (-5.52, -1.72, 0.98), (0.045, 0.045, 0.18), paper, bevel=0.014)
 
     # Plant and ceramic pot mark the stair edge in the master.
     cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
@@ -651,10 +663,10 @@ def add_equestrian_statue(materials):
     dark = materials["steel"]
     brass = materials["brass"]
     stone = materials["stone_dark"]
-    x, y = 6.10, 5.92
+    x, y = 5.72, 5.70
 
     cube("HOME_PROP_equestrian_plinth", (x, y, 2.58), (0.72, 0.55, 0.46), stone, bevel=0.06)
-    sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.34), (0.62, 0.30, 0.42), dark)
+    sphere("HOME_PROP_equestrian_horse_body", (x, y, 3.34), (0.72, 0.34, 0.46), dark)
     curve_tube(
         "HOME_PROP_equestrian_horse_neck",
         [(x + 0.36, y, 3.48), (x + 0.58, y - 0.02, 3.78), (x + 0.76, y - 0.03, 3.92)],
@@ -698,8 +710,8 @@ def add_stairs(materials):
     # Canonical Home: the stair rises from the room toward the back-right
     # landing. The Dungeon opening lives under that landing instead of opening
     # as a giant foreground void.
-    lower_x, lower_y, lower_z = 4.20, 1.62, 0.16
-    upper_x, upper_y, upper_z = 7.40, 5.08, 2.18
+    lower_x, lower_y, lower_z = 2.95, 1.54, 0.14
+    upper_x, upper_y, upper_z = 7.15, 5.05, 2.20
 
     steps = 12
     for i in range(steps):
@@ -710,9 +722,23 @@ def add_stairs(materials):
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
             (x, y, z),
-            (0.72, 0.34, 0.075),
+            (0.90, 0.36, 0.075),
             stone,
             bevel=0.028,
+        )
+
+    # Burgundy runner makes the stair read as one deliberate progression path.
+    for i in range(steps):
+        t = i / (steps - 1)
+        x = lower_x + (upper_x - lower_x) * t
+        y = lower_y + (upper_y - lower_y) * t - 0.01
+        z = lower_z + (upper_z - lower_z) * t + 0.086
+        cube(
+            f"HOME_PROP_dungeon_runner_{i}",
+            (x, y, z),
+            (0.42, 0.25, 0.012),
+            materials["banner"],
+            bevel=0.010,
         )
 
     # Upper gallery / bridge creates the horizontal silhouette visible below
@@ -941,15 +967,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for name, x in (("far_left", -7.55), ("center", 0.0), ("far_right", 7.55)):
         add_banner(name, x, materials)
 
-    # The central standard is a major landmark in the approved mock.
+    # The central standard is a major landmark in the approved mock: wider,
+    # longer and lower than the small flank banners.
     center_banner_objects = [
         obj for obj in list(bpy.data.objects)
         if obj.name.endswith("_center") and obj.name.startswith("HOME_PROP_banner_")
     ]
     banner_origin = Vector((0.0, 5.82, 4.55))
     for obj in center_banner_objects:
-        obj.location = banner_origin + (obj.location - banner_origin) * 1.22
-        obj.scale *= 1.22
+        rel = obj.location - banner_origin
+        obj.location = Vector((
+            banner_origin.x + rel.x * 1.28,
+            banner_origin.y + rel.y,
+            banner_origin.z - 0.46 + rel.z * 1.58,
+        ))
+        obj.scale.x *= 1.28
+        obj.scale.z *= 1.58
 
     add_table_and_board(materials)
     add_armor(materials)
@@ -1037,12 +1070,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     join_meshes("HOME_PROP_torches", ("HOME_PROP_torch_",))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 42.0
+    camera_data.lens = 36.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (-1.10, -15.45, 4.18)
-    target = (0.10, 2.62, 1.42)
+    camera.location = (-2.55, -13.10, 4.02)
+    target = (0.35, 2.80, 1.42)
     look_at(camera, target)
     scene.camera = camera
 
