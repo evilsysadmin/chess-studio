@@ -43,10 +43,11 @@ BCRYPT_ROUNDS = max(4, min(BCRYPT_ROUNDS, 16))
 # Fallar cerrado en Internet. Es preferible que Render marque el deploy como
 # fallido a arrancar con una clave conocida por cualquiera que vea el repo.
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
-if _ENVIRONMENT in {"production", "prod"} and (
+_DEPLOYED_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+if _ENVIRONMENT in _DEPLOYED_ENVIRONMENTS and (
     JWT_SECRET == _DEV_JWT_SECRET or len(JWT_SECRET) < 32
 ):
-    raise RuntimeError("JWT_SECRET debe configurarse con al menos 32 caracteres en producción.")
+    raise RuntimeError("JWT_SECRET debe configurarse con al menos 32 caracteres en staging/producción.")
 
 
 def hash_password(password: str) -> str:
