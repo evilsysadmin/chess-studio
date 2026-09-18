@@ -91,6 +91,14 @@ func _draw_sky() -> void:
         var storm_glow := Vector2(760.0, 128.0)
         draw_circle(storm_glow, 74.0, Color(0.46, 0.67, 0.52, 0.05 * _intensity))
         draw_circle(storm_glow, 28.0, Color(0.66, 0.78, 0.62, 0.20 * _intensity))
+    elif _preset == "night_front":
+        var moon := Vector2(315.0, 98.0)
+        draw_circle(moon, 96.0, Color(0.60, 0.72, 0.82, 0.025 * _intensity))
+        draw_circle(moon, 70.0, Color(0.70, 0.80, 0.86, 0.045 * _intensity))
+        draw_circle(moon, 43.0, Color(0.84, 0.89, 0.91, 0.78 * _intensity))
+        draw_circle(moon + Vector2(-15.0, -10.0), 10.0, Color(0.47, 0.54, 0.59, 0.20))
+        draw_circle(moon + Vector2(14.0, 12.0), 6.0, Color(0.47, 0.54, 0.59, 0.18))
+        draw_circle(moon + Vector2(7.0, -18.0), 4.5, Color(0.47, 0.54, 0.59, 0.15))
     else:
         var moon := Vector2(690.0, 132.0)
         draw_circle(moon, 58.0, Color(0.76, 0.83, 0.87, 0.10 * _intensity))
@@ -111,6 +119,10 @@ func _draw_sky() -> void:
     _draw_cloud_bands()
 
 func _draw_cloud_bands() -> void:
+    if _preset == "night_front":
+        _draw_industrial_cloud_deck()
+        return
+
     var cloud_color := Color(0.34, 0.39, 0.43, 0.055 * _intensity)
     var glow_color := Color(0.62, 0.64, 0.61, 0.025 * _intensity)
     if _preset == "harbor_dusk":
@@ -143,6 +155,65 @@ func _draw_cloud_bands() -> void:
                 glow_color,
                 maxf(1.0, 2.0 * scale),
             )
+
+func _draw_industrial_cloud_deck() -> void:
+    # Long horizontal decks avoid the old "bubble cloud" look and keep the
+    # moon readable through broken gaps, matching the approved visual target.
+    var drift := fposmod(_atmosphere_time * 3.2, 340.0)
+    for band in range(6):
+        var base_y := 42.0 + float(band) * 46.0
+        var thickness := 26.0 + _noise(band, 51.2) * 34.0
+        var top_points := PackedVector2Array()
+        var bottom_points := PackedVector2Array()
+        for step in range(72):
+            var x := -440.0 + float(step) * 88.0 + drift * (0.32 + float(band) * 0.055)
+            var wave := sin(float(step) * 0.72 + float(band) * 1.4) * 9.0
+            var noise := (_noise(step + band * 73, 51.9) - 0.5) * 18.0
+            var top_y := base_y + wave + noise
+            var bottom_y := top_y + thickness + sin(float(step) * 0.38 + float(band)) * 7.0
+            top_points.append(Vector2(x, top_y))
+            bottom_points.append(Vector2(x, bottom_y))
+
+        var cloud := PackedVector2Array()
+        for point in top_points:
+            cloud.append(point)
+        for index in range(bottom_points.size() - 1, -1, -1):
+            cloud.append(bottom_points[index])
+
+        var alpha := 0.13 - float(band) * 0.010
+        var cloud_color := Color(
+            0.11 + float(band) * 0.012,
+            0.15 + float(band) * 0.012,
+            0.18 + float(band) * 0.013,
+            alpha * _intensity
+        )
+        draw_colored_polygon(cloud, cloud_color)
+
+        # Cold lower rim, strongest around upper cloud decks.
+        for step in range(0, bottom_points.size() - 1, 4):
+            var p0 := bottom_points[step]
+            var p1 := bottom_points[step + 1]
+            draw_line(
+                p0,
+                p1,
+                Color(0.54, 0.62, 0.67, (0.045 - float(band) * 0.004) * _intensity),
+                1.2,
+            )
+
+    # A softer low mist bank ties sky to ridge without flattening the horizon.
+    var mist_points := PackedVector2Array([
+        Vector2(-120.0, 286.0),
+        Vector2(340.0, 268.0),
+        Vector2(760.0, 282.0),
+        Vector2(1180.0, 260.0),
+        Vector2(1640.0, 278.0),
+        Vector2(2100.0, 266.0),
+        Vector2(2600.0, 284.0),
+        Vector2(_world_size.x + 120.0, 272.0),
+        Vector2(_world_size.x + 120.0, 338.0),
+        Vector2(-120.0, 338.0),
+    ])
+    draw_colored_polygon(mist_points, Color(0.32, 0.39, 0.44, 0.040 * _intensity))
 
 func _draw_far_ridge() -> void:
     if _preset == "harbor_dusk":
