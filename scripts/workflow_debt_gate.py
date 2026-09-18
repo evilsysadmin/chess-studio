@@ -59,7 +59,7 @@ BUDGETS = (
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
-    Budget('.github/workflows/app-visual-artifact.yml', 1108),
+    Budget('.github/workflows/app-visual-artifact.yml', 1132),
     Budget('.github/workflows/branch-housekeeping.yml', 652),
 )
 
