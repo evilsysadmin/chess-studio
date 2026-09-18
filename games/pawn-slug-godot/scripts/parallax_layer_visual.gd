@@ -249,11 +249,14 @@ func _draw_industrial_art() -> void:
         return
     # Approved mock-derived far art: sky, mountains and distant factory only.
     # The lower edge fades to transparency and never defines traversal/collision.
+    # Overscan past both viewport edges so slow parallax drift never exposes
+    # the raster boundary. A small horizontal stretch is preferable to a hard
+    # rectangular seam in the approved background art.
     draw_texture_rect(
         _industrial_far_art,
-        Rect2(Vector2(250.0, 0.0), Vector2(1536.0, 604.0)),
+        Rect2(Vector2(-240.0, 0.0), Vector2(1960.0, 604.0)),
         false,
-        Color(0.94, 0.96, 0.98, 0.92 * _intensity),
+        Color(0.94, 0.96, 0.98, 0.94 * _intensity),
     )
 
 func _draw_far_ridge() -> void:
@@ -506,16 +509,16 @@ func _draw_ruined_city() -> void:
 
     # Mid-city must frame the distant megafactory, not bury it. Use fewer,
     # narrower silhouettes with gaps and higher tonal separation.
-    for index in range(20):
-        var x := 36.0 + float(index) * 258.0
-        var w := 74.0 + _noise(index, 4.2) * 72.0
-        var h := 58.0 + _noise(index, 4.8) * 112.0
-        var y := _floor_y - 104.0 - h
+    for index in range(15):
+        var x := 54.0 + float(index) * 346.0
+        var w := 68.0 + _noise(index, 4.2) * 66.0
+        var h := 46.0 + _noise(index, 4.8) * 92.0
+        var y := _floor_y - 72.0 - h
         var building := Color(
-            0.090 + _noise(index, 47.1) * 0.020,
-            0.108 + _noise(index, 47.7) * 0.020,
-            0.120 + _noise(index, 48.3) * 0.020,
-            0.88
+            0.096 + _noise(index, 47.1) * 0.018,
+            0.114 + _noise(index, 47.7) * 0.018,
+            0.126 + _noise(index, 48.3) * 0.018,
+            0.74
         )
 
         draw_rect(Rect2(Vector2(x, y), Vector2(w, h)), building, true)
@@ -568,13 +571,13 @@ func _draw_ruined_city() -> void:
                     true,
                 )
 
-        if index < 19 and index % 2 == 0:
-            var bridge_y := y + 34.0 + _noise(index, 50.9) * 26.0
+        if index < 14 and index % 2 == 0:
+            var bridge_y := y + 32.0 + _noise(index, 50.9) * 24.0
             draw_line(
                 Vector2(x + w, bridge_y),
-                Vector2(x + 258.0, bridge_y - 6.0),
-                Color(0.12, 0.14, 0.15, 0.48),
-                3.0,
+                Vector2(x + 346.0, bridge_y - 5.0),
+                Color(0.12, 0.14, 0.15, 0.34),
+                2.5,
             )
 
     # Low ribbon of warm points helps separate this plane from the water and
