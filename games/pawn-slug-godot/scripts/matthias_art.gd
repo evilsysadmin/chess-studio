@@ -105,6 +105,7 @@ const RECOIL := {"pistol": 4.0, "machinegun": 3.0, "shotgun": 7.0, "panzerfaust"
 const FLASH_SCALE := {"pistol": 0.75, "machinegun": 0.95, "shotgun": 1.20, "panzerfaust": 1.55}
 
 static var _full_frames_by_weapon: Dictionary = {}
+static var _full_body_y_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -367,6 +368,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         frames = _build_full_frames(image)
         if frames != null:
             _full_frames_by_weapon[requested_weapon] = frames
+            _full_body_y_by_weapon[requested_weapon] = _full_body_y_for_atlas(image)
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
         if frames != null:
@@ -425,6 +427,34 @@ func _build_full_frames(image: Image) -> SpriteFrames:
 
     return frames
 
+func _full_body_y_for_atlas(image: Image) -> float:
+    # Strict 256px cells are intentionally consumed as-authored, but their
+    # visible feet do not share the legacy 192px normalized pivot. Derive one
+    # stable grounded foot line per atlas and move only the Sprite2D node; this
+    # preserves every authored pixel while keeping Matthias on top of platforms.
+    var foot_samples: Array[int] = []
+    for action in ["idle", "walk", "run", "crouch"]:
+        var spec: Dictionary = FULL_ACTIONS[action]
+        var row := int(spec["row"])
+        if action == "run":
+            row = _select_run_source_row(image)
+        for frame_index in range(int(spec["count"])):
+            var rect := Rect2i(
+                frame_index * FULL_ATLAS_CELL_SIZE,
+                row * FULL_ATLAS_CELL_SIZE,
+                FULL_ATLAS_CELL_SIZE,
+                FULL_ATLAS_CELL_SIZE,
+            )
+            var used := image.get_region(rect).get_used_rect()
+            if used.size == Vector2i.ZERO:
+                continue
+            foot_samples.append(used.position.y + used.size.y)
+
+    if foot_samples.is_empty():
+        return -BODY_CENTER_TO_FOOT * BODY_SCALE
+    foot_samples.sort()
+    var foot_y := float(foot_samples[int(foot_samples.size() / 2)])
+    return -(foot_y - float(FULL_ATLAS_CELL_SIZE) * 0.5) * BODY_SCALE
 
 func _cell_has_visible_pixels(image: Image, row: int, column: int) -> bool:
     var rect := Rect2i(
@@ -597,6 +627,10 @@ func _build_fallback_frames() -> void:
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.sprite_frames = frames
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
+    var body_y := -BODY_CENTER_TO_FOOT * BODY_SCALE
+    if authored_full:
+        body_y = float(_full_body_y_by_weapon.get(_weapon, body_y))
+    _body.position = Vector2(0.0, body_y)
     _using_full_atlas = authored_full
     _rendered_weapon = _weapon
     _body_ready = true
