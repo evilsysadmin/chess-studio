@@ -76,8 +76,8 @@ async def billing_auth_dependency(request: Request) -> None:
 def _parse_billing_costs(body: bytes) -> list[tuple[str, float, str]]:
     payload = json.loads(body.decode("utf-8"))
     rows = payload.get("costs") if isinstance(payload, dict) else None
-    if not isinstance(rows, list) or len(rows) != 2:
-        raise ValueError("expected exactly two billing rows")
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 2:
+        raise ValueError("expected one or two billing rows")
     costs: list[tuple[str, float, str]] = []
     providers: set[str] = set()
     for row in rows:
@@ -97,8 +97,8 @@ def _parse_billing_costs(body: bytes) -> list[tuple[str, float, str]]:
             raise ValueError("invalid billing currency")
         providers.add(provider)
         costs.append((provider, amount, currency))
-    if providers != {"oci", "cloudflare"}:
-        raise ValueError("both billing providers are required")
+    if not providers:
+        raise ValueError("at least one billing provider is required")
     return costs
 
 
