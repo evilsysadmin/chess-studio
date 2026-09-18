@@ -5,6 +5,7 @@ import {
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
+  chroniclesMapIds,
 } from './chroniclesMapCatalog.js';
 import { chroniclesCreateRun } from './chroniclesRunClient.js';
 
@@ -33,8 +34,30 @@ function validateRunBootstrap(payload, mapId) {
   if (payload.contentVersion !== area.contentVersion) throw new Error('run-version-mismatch');
   if (payload.manifestRevision !== area.manifestRevision) throw new Error('run-revision-mismatch');
 
+  if (!Array.isArray(payload.areas)) throw new Error('missing-area-bundle');
+  const expectedMapIds = chroniclesMapIds();
+  const expected = new Set(expectedMapIds);
+  const seen = new Set();
+  const areas = payload.areas.map((entry) => {
+    if (!entry || typeof entry.mapId !== 'string' || !expected.has(entry.mapId)) {
+      throw new Error('unknown-bundled-map');
+    }
+    if (seen.has(entry.mapId)) throw new Error('duplicate-bundled-map');
+    seen.add(entry.mapId);
+    return chroniclesValidateAreaEnvelope(entry, entry.mapId, payload.seed);
+  });
+  if (seen.size !== expected.size || expectedMapIds.some((id) => !seen.has(id))) {
+    throw new Error('incomplete-area-bundle');
+  }
+
+  const bundledCurrent = areas.find((entry) => entry.map.id === mapId);
+  if (!bundledCurrent || bundledCurrent.manifestRevision !== area.manifestRevision) {
+    throw new Error('current-area-bundle-mismatch');
+  }
+
   return Object.freeze({
     ...area,
+    areas: Object.freeze(areas),
     runId: payload.runId,
     worldVersion: payload.worldVersion,
     runStatus: payload.status,
@@ -92,6 +115,9 @@ export async function chroniclesBootstrapTacticsWorld({
     return localBootstrap(mapId, seed, resolved?.fallbackReason || 'remote-unavailable');
   }
 
-  const map = chroniclesInstallRuntimeMapDefinition(resolved.map);
+  resolved.areas.forEach((entry) => {
+    chroniclesInstallRuntimeMapDefinition(entry.map);
+  });
+  const map = chroniclesMapById(mapId);
   return Object.freeze({ ...resolved, map });
 }
