@@ -577,54 +577,57 @@ def add_room(static, mats):
     torus("WR_CREST_ring", (0, 6.59, 4.65), 1.13, 0.055, mats["brass"], static, rotation=(math.pi / 2, 0, 0))
     cube("WR_CREST_shield", (0, 6.51, 4.64), (0.68, 0.055, 0.70), mats["book_a"], static, bevel=0.22)
 
-    horse_body = sphere("WR_CREST_horse_body", (0.10, 6.43, 4.67), 0.42, mats["brass"], static,
-                        scale=(0.82, 0.34, 1.03))
-    horse_body.rotation_euler.y = -0.40
-    horse_haunch = sphere("WR_CREST_horse_haunch", (0.31, 6.43, 4.46), 0.30, mats["brass"], static,
-                          scale=(0.90, 0.34, 0.74))
-    horse_haunch.rotation_euler.y = -0.18
+    # Broad, side-on rampant silhouette. At gameplay distance the crest must
+    # read as a horse first and as sculpture second, so the anatomy is deliberately
+    # exaggerated in profile instead of chasing small realistic detail.
+    horse_body = sphere("WR_CREST_horse_body", (0.00, 6.43, 4.72), 0.47, mats["brass"], static,
+                        scale=(0.92, 0.26, 1.15))
+    horse_body.rotation_euler.y = -0.32
+    horse_haunch = sphere("WR_CREST_horse_haunch", (0.31, 6.43, 4.45), 0.33, mats["brass"], static,
+                          scale=(1.04, 0.26, 0.78))
+    horse_haunch.rotation_euler.y = -0.12
 
-    horse_neck = cylinder("WR_CREST_horse_neck", (-0.16, 6.41, 5.00),
-                          0.105, 0.62, mats["brass"], static, vertices=24)
-    horse_neck.rotation_euler.y = -0.61
-    horse_head = sphere("WR_CREST_horse_head", (-0.40, 6.40, 5.25), 0.21, mats["brass"], static,
-                        scale=(1.12, 0.34, 0.76))
-    horse_head.rotation_euler.y = -0.14
-    horse_muzzle = cube("WR_CREST_horse_muzzle", (-0.57, 6.39, 5.17),
-                        (0.17, 0.060, 0.075), mats["brass"], static, bevel=0.055)
-    horse_muzzle.rotation_euler.y = -0.14
+    horse_neck = cylinder("WR_CREST_horse_neck", (-0.20, 6.41, 5.06),
+                          0.13, 0.66, mats["brass"], static, vertices=24)
+    horse_neck.rotation_euler.y = -0.55
+    horse_head = sphere("WR_CREST_horse_head", (-0.47, 6.40, 5.34), 0.23, mats["brass"], static,
+                        scale=(1.25, 0.26, 0.82))
+    horse_head.rotation_euler.y = -0.10
+    horse_muzzle = cube("WR_CREST_horse_muzzle", (-0.68, 6.39, 5.24),
+                        (0.20, 0.052, 0.085), mats["brass"], static, bevel=0.060)
+    horse_muzzle.rotation_euler.y = -0.10
 
-    for index, (x, z, angle) in enumerate(((-0.47, 5.44, -0.24), (-0.31, 5.43, 0.10))):
+    for index, (x, z, angle) in enumerate(((-0.54, 5.55, -0.28), (-0.35, 5.53, 0.12))):
         ear = cube(f"WR_CREST_horse_ear_{index}", (x, 6.40, z),
-                   (0.042, 0.048, 0.105), mats["brass"], static, bevel=0.032)
+                   (0.046, 0.044, 0.12), mats["brass"], static, bevel=0.034)
         ear.rotation_euler.y = angle
 
-    # Raised forelegs stop above the lower half of the shield so the silhouette
-    # reads as rearing rather than as four legs standing under a horizontal body.
+    # Raised forelegs are spread and longer so the rearing pose survives the
+    # wide War Room camera instead of collapsing into one central gold blob.
     for index, (x, z, angle, depth) in enumerate((
-        (-0.08, 4.88, -0.96, 0.46),
-        (0.10, 4.80, -1.14, 0.42),
+        (-0.18, 4.91, -0.84, 0.50),
+        (0.08, 4.82, -1.12, 0.47),
     )):
         leg = cylinder(f"WR_CREST_horse_foreleg_{index}", (x, 6.40, z),
-                       0.058, depth, mats["brass"], static, vertices=18)
+                       0.062, depth, mats["brass"], static, vertices=18)
         leg.rotation_euler.y = angle
 
-    # Hind legs carry the weight and keep the rampant pose grounded.
+    # Hind legs widen the base and keep the silhouette visibly rampant.
     for index, (x, z, angle, depth) in enumerate((
-        (0.16, 4.20, -0.24, 0.60),
-        (0.40, 4.18, 0.34, 0.56),
+        (0.14, 4.14, -0.18, 0.64),
+        (0.46, 4.14, 0.38, 0.60),
     )):
         leg = cylinder(f"WR_CREST_horse_hindleg_{index}", (x, 6.40, z),
-                       0.067, depth, mats["brass"], static, vertices=18)
+                       0.070, depth, mats["brass"], static, vertices=18)
         leg.rotation_euler.y = angle
 
-    tail_root = cylinder("WR_CREST_horse_tail_0", (0.48, 6.41, 4.51),
-                         0.052, 0.43, mats["brass"], static, vertices=18)
-    tail_root.rotation_euler.y = 0.96
-    tail_tip = cylinder("WR_CREST_horse_tail_1", (0.65, 6.41, 4.68),
-                        0.044, 0.34, mats["brass"], static, vertices=18)
-    tail_tip.rotation_euler.y = 0.36
-    bpy.context.scene["war_room_heraldry"] = "rampant-horse-v1"
+    tail_root = cylinder("WR_CREST_horse_tail_0", (0.52, 6.41, 4.49),
+                         0.056, 0.50, mats["brass"], static, vertices=18)
+    tail_root.rotation_euler.y = 1.05
+    tail_tip = cylinder("WR_CREST_horse_tail_1", (0.76, 6.41, 4.69),
+                        0.046, 0.40, mats["brass"], static, vertices=18)
+    tail_tip.rotation_euler.y = 0.45
+    bpy.context.scene["war_room_heraldry"] = "rampant-horse-v2-readable"
 
     # Draped velvet banners: the cloth silhouette now narrows into the tieback
     # and fans out below it, with real shallow fold relief instead of vertical
