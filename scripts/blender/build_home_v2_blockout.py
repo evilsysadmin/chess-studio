@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference", default=DEFAULT_REFERENCE)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--samples", type=int, default=32)
+    parser.add_argument("--max-width", type=int, default=1280)
     return parser.parse_args(argv_after_double_dash())
 
 
@@ -215,7 +216,7 @@ def add_stairs(materials):
     arch("HOME_ARCH_dungeon_arch", x0, 5.6, 2.45, 2.7, 3.9, 0.2, stone)
 
 
-def build_scene(reference: Path, samples: int):
+def build_scene(reference: Path, samples: int, max_width: int):
     reset_scene()
     scene = bpy.context.scene
     try:
@@ -230,8 +231,10 @@ def build_scene(reference: Path, samples: int):
     width, height = int(ref_image.size[0]), int(ref_image.size[1])
     if width <= 0 or height <= 0:
         width, height = 1814, 867
-    scene.render.resolution_x = width
-    scene.render.resolution_y = height
+    render_width = min(width, max(640, max_width))
+    render_height = round(height * render_width / width)
+    scene.render.resolution_x = render_width
+    scene.render.resolution_y = render_height
 
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
@@ -334,7 +337,7 @@ def build_scene(reference: Path, samples: int):
     scene.camera = camera
 
     scene.view_settings.look = "AgX - Medium High Contrast"
-    return scene, camera, target, width, height
+    return scene, camera, target, width, height, render_width, render_height
 
 
 def render(scene, path: Path) -> None:
@@ -352,7 +355,7 @@ def main() -> None:
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    scene, camera, target, width, height = build_scene(reference, args.samples)
+    scene, camera, target, width, height, render_width, render_height = build_scene(reference, args.samples, args.max_width)
 
     blend_path = out_dir / "home-v2-blockout.blend"
     beauty_path = out_dir / "home-v2-preview.png"
@@ -373,6 +376,7 @@ def main() -> None:
         "contract": CONTRACT,
         "reference": args.reference,
         "reference_size": [width, height],
+        "render_size": [render_width, render_height],
         "camera": {
             "name": camera.name,
             "lens_mm": camera.data.lens,
