@@ -121,6 +121,8 @@ def main() -> int:
         ("admitted=false", "superseded clean exit"),
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
+        ("Backend · publish approved GHCR signal", "generation approved backend signal"),
+        ("oci-staging-approved", "generation GHCR approved signal tag"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
@@ -181,13 +183,13 @@ def main() -> int:
     ):
         require(oci_runtime_bundle, needle, label, errors)
 
-    names = ("prepare", "backend", "frontend", "worker", "smoke", "summary")
+    names = ("prepare", "backend_signal", "backend", "frontend", "worker", "smoke", "summary")
     blocks = split_jobs(staging_deploy, names, errors)
     if blocks:
         forbid(staging_deploy, "\n  render_reconcile:\n", "staging generation: Render reconcile volvió a job separado", errors)
         forbid(staging_deploy, "\n  parity:\n", "staging generation: parity volvió a job separado", errors)
 
-        for name in ("backend", "frontend", "worker", "smoke", "summary"):
+        for name in ("backend_signal", "backend", "frontend", "worker", "smoke", "summary"):
             require(
                 blocks[name],
                 "if: needs.prepare.outputs.admitted == 'true'",
@@ -195,7 +197,12 @@ def main() -> int:
                 errors,
             )
 
-        require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
+        require(blocks["backend_signal"], "needs: prepare", "backend signal arranca tras admission", errors)
+        require(blocks["backend_signal"], "packages: write", "backend signal permiso GHCR estrecho", errors)
+        require(blocks["backend_signal"], "docker buildx imagetools create", "backend signal retag server-side", errors)
+        require(blocks["backend_signal"], "oci-staging-approved", "backend signal mutable tag", errors)
+        forbid(blocks["backend_signal"], "OCI_", "backend signal no usa credenciales OCI", errors)
+        require(blocks["backend"], "needs: [prepare, backend_signal]", "backend espera señal GHCR aprobada", errors)
         require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
         for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
             forbid(blocks["backend"], needle, "backend no depende de Render", errors)
@@ -247,11 +254,12 @@ def main() -> int:
                 require(parity_block, needle, label, errors)
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
+    signal_step = staging_deploy.find("Promote immutable image to approved staging signal")
     backend_step = staging_deploy.find("Deploy exact backend commit to OCI staging")
     frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
     worker_step = staging_deploy.find("run: python3 scripts/deploy_staging_ai_worker.py")
-    if stale_step >= 0 and all(step >= 0 for step in (backend_step, frontend_step, worker_step)):
-        if not all(stale_step < step for step in (backend_step, frontend_step, worker_step)):
+    if stale_step >= 0 and all(step >= 0 for step in (signal_step, backend_step, frontend_step, worker_step)):
+        if not all(stale_step < step for step in (signal_step, backend_step, frontend_step, worker_step)):
             errors.append("staging generation: stale supersede guard no está antes de todas las ramas operativas")
     if "::error::CI aprobó" in staging_deploy:
         errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")

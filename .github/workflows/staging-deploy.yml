@@ -82,11 +82,51 @@ jobs:
           echo 'admitted=true' >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
+  # Publish only a mutable GHCR manifest pointer after the exact SHA has passed
+  # main admission and the stale-main guard. This creates no OCI resource and
+  # does not activate the dormant host-side controller yet.
+  backend_signal:
+    name: Backend · publish approved GHCR signal
+    needs: prepare
+    if: needs.prepare.outputs.admitted == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
+    steps:
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote immutable image to approved staging signal
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          source="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          signal="ghcr.io/${owner}/chess-studio-backend:oci-staging-approved"
+
+          docker buildx imagetools create --tag "$signal" "$source"
+
+          source_digest="$(docker buildx imagetools inspect "$source" | awk '$1 == "Digest:" {print $2; exit}')"
+          signal_digest="$(docker buildx imagetools inspect "$signal" | awk '$1 == "Digest:" {print $2; exit}')"
+          [[ "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Digest immutable inválido: ${source_digest:-missing}"; exit 1; }
+          [[ "$signal_digest" == "$source_digest" ]] || { echo "::error::La señal GHCR no apunta al digest immutable aprobado"; exit 1; }
+          echo "Approved backend signal: $DEPLOY_SHA -> $signal_digest"
+
   # OCI owns the canonical staging backend generation. Persistent runtime
   # configuration lives in private OCI Object Storage; production is untouched.
   backend:
     name: Backend · exact OCI generation
-    needs: prepare
+    needs: [prepare, backend_signal]
     if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
