@@ -193,7 +193,23 @@ jobs:
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
+          python3 -S scripts/oci_vault_sync.py --self-test
+          python3 -S scripts/oci_vault_cutover.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
+
+      - name: Ensure CURRENT Vault + Git runtime
+        if: steps.watcher.outputs.converged != 'true'
+        shell: bash
+        env:
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 scripts/oci_vault_cutover.py ensure
 
       - name: Deploy exact backend commit to OCI staging
         if: steps.watcher.outputs.converged != 'true'
