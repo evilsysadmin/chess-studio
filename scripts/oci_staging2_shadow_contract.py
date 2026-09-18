@@ -23,6 +23,7 @@ for required in (
     "steps.admission.outputs.admitted == 'true'",
     'python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_SHA"',
     "python3 scripts/oci_k3s_staging2.py status",
+    "always() && steps.admission.outputs.admitted == 'true'",
     "python3 scripts/verify_backend_staging.py",
     '--sha "$SHADOW_SHA"',
 ):
@@ -42,6 +43,7 @@ for forbidden in (
     assert forbidden not in workflow, f"shadow workflow gained forbidden coupling: {forbidden}"
 
 assert workflow.index("Admit only the current main SHA") < workflow.index("Restore cached OCI SDK toolchain")
+assert workflow.count("always() && steps.admission.outputs.admitted == 'true'") == 2
 assert workflow.index("Deploy exact backend SHA into isolated K3s shadow") < workflow.index(
     "Re-prove canonical Compose staging is unchanged"
 )
