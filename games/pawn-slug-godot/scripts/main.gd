@@ -91,10 +91,11 @@ const PLATFORMS: Array[Rect2] = [
 ]
 const ENEMY_SPAWNS := [
     [620.0, "pawn"], [790.0, "pawn"], [1080.0, "pawn"], [1210.0, "knight"], [1380.0, "pawn"],
-    [1560.0, "rook"], [1710.0, "pawn"], [1940.0, "knight"], [2110.0, "pawn"], [2250.0, "pawn"],
-    [2380.0, "bishop"], [2590.0, "rook"], [2730.0, "pawn"], [2890.0, "knight"], [3070.0, "pawn"],
-    [3210.0, "pawn"], [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "pawn"],
-    [4070.0, "knight"], [4190.0, "rook"], [4380.0, "pawn"],
+    [1490.0, "pawn"], [1560.0, "rook"], [1710.0, "pawn"], [1840.0, "pawn"], [1940.0, "knight"],
+    [2110.0, "pawn"], [2250.0, "pawn"], [2380.0, "bishop"], [2515.0, "knight"], [2590.0, "rook"],
+    [2730.0, "pawn"], [2890.0, "knight"], [3070.0, "pawn"], [3210.0, "pawn"], [3335.0, "pawn"],
+    [3430.0, "rook"], [3560.0, "knight"], [3740.0, "bishop"], [3950.0, "pawn"], [4070.0, "knight"],
+    [4190.0, "rook"], [4380.0, "pawn"],
 ]
 const ENEMY_TYPES := {
     "pawn": {"hp": 34, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
