@@ -53,7 +53,8 @@ REQUIRED_MATTHIAS = (
     "animation_finished.connect",
     "_advance_locomotion",
     "_apply_locomotion_polish",
-    "_install_canonical_crouch",
+    "_install_combat_crouch",
+    'source := "land"',
     "RUN_ENTER_SPEED_RATIO",
     "RUN_EXIT_SPEED_RATIO",
     "RUN_CYCLE_HZ_MIN",
@@ -157,7 +158,8 @@ def self_test() -> None:
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
     assert "matthias_smg_godot_strict_8x10_256_v5.png" in REQUIRED_MATTHIAS
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
-    assert "_install_canonical_crouch" in REQUIRED_MATTHIAS
+    assert "_install_combat_crouch" in REQUIRED_MATTHIAS
+    assert 'source := "land"' in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
