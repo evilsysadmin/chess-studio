@@ -38,7 +38,7 @@ func _process(delta: float) -> void:
     _elapsed += delta
     if _fire_flash > 0.0:
         _fire_flash = maxf(0.0, _fire_flash - delta)
-    if _fire_flash > 0.0 or _warning or _kind == "waterfall":
+    if _fire_flash > 0.0 or _warning or _kind in ["waterfall", "artillery_barrage"]:
         queue_redraw()
 
 func _draw() -> void:
@@ -55,6 +55,10 @@ func _draw() -> void:
             _draw_waterfall()
         "tunnel_portal":
             _draw_tunnel_portal()
+        "destructible_barricade":
+            _draw_destructible_barricade()
+        "artillery_barrage":
+            _draw_artillery_barrage()
 
 func _theme_trim() -> Color:
     match _theme:
@@ -211,3 +215,42 @@ func _draw_tunnel_portal() -> void:
         Color(0.015, 0.025, 0.028, 0.20),
         true,
     )
+
+
+func _draw_destructible_barricade() -> void:
+    var w := _size.x
+    var h := _size.y
+    var damage := 1.0 - _health_ratio
+    var body := Color("4a4337").lerp(Color("272624"), damage * 0.55)
+    var trim := _theme_trim()
+    if _theme == "harbor_dusk":
+        body = Color("35515a").lerp(Color("263338"), damage * 0.55)
+    elif _theme == "alpine_night":
+        body = Color("52595b").lerp(Color("303638"), damage * 0.55)
+    elif _theme == "jungle_storm":
+        body = Color("4b3a26").lerp(Color("2b291f"), damage * 0.55)
+
+    if _destroyed:
+        draw_line(Vector2(-w * 0.44, 0.0), Vector2(w * 0.20, -h * 0.26), body, 12.0)
+        draw_line(Vector2(-w * 0.12, 0.0), Vector2(w * 0.42, -h * 0.18), trim, 4.0)
+        return
+
+    draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w, h)), body, true)
+    draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w, h)), trim, false, 2.0)
+    for plank in range(3):
+        var y := -h + 12.0 + float(plank) * maxf(16.0, (h - 24.0) / 2.0)
+        draw_line(Vector2(-w * 0.44, y), Vector2(w * 0.44, y + float((plank % 2) * 6)), Color(0.10, 0.10, 0.09, 0.42), 4.0)
+    draw_line(Vector2(-w * 0.40, -h * 0.88), Vector2(w * 0.36, -h * 0.12), Color(0.12, 0.11, 0.09, 0.55), 6.0)
+    draw_line(Vector2(w * 0.34, -h * 0.88), Vector2(-w * 0.34, -h * 0.12), Color(0.12, 0.11, 0.09, 0.55), 6.0)
+
+func _draw_artillery_barrage() -> void:
+    if not _warning:
+        return
+    var radius := maxf(36.0, _size.x * 0.5)
+    var pulse := 0.72 + sin(_elapsed * 12.0) * 0.18
+    var warning_color := Color(0.95, 0.34, 0.16, pulse)
+    draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, warning_color, 3.0)
+    draw_arc(Vector2.ZERO, radius * 0.58, 0.0, TAU, 32, Color(1.0, 0.72, 0.24, pulse * 0.72), 2.0)
+    draw_line(Vector2(-radius, 0.0), Vector2(radius, 0.0), warning_color, 2.0)
+    draw_line(Vector2(0.0, -radius * 0.34), Vector2(0.0, radius * 0.34), warning_color, 2.0)
+    draw_circle(Vector2.ZERO, 4.0 + sin(_elapsed * 18.0) * 1.5, Color(1.0, 0.86, 0.38, 0.86))
