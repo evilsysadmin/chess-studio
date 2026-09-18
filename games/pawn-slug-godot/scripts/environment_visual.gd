@@ -33,6 +33,7 @@ func _draw() -> void:
     _draw_ground()
     _draw_platforms()
     _draw_obstacles()
+    _draw_playable_architecture()
     _draw_foreground_props()
     _draw_foreground_story_props()
     _draw_near_depth_dressing()
@@ -375,6 +376,94 @@ func _draw_obstacles() -> void:
         draw_rect(
             Rect2(obstacle.position + Vector2(0.0, obstacle.size.y - 7.0), Vector2(obstacle.size.x, 7.0)),
             Color(0.08, 0.09, 0.09, 0.46),
+            true,
+        )
+
+func _draw_playable_architecture() -> void:
+    if _theme != "night_front":
+        return
+
+    # Start-zone bunker sits visually behind Matthias. It has no collision and
+    # deliberately stays below/behind the authored traversal silhouettes.
+    var bunker := Rect2(150.0, _floor_y - 142.0, 190.0, 142.0)
+    draw_rect(bunker, Color(0.115, 0.125, 0.125, 0.96), true)
+    draw_rect(Rect2(bunker.position + Vector2(8.0, 9.0), Vector2(bunker.size.x - 16.0, 11.0)), Color(0.20, 0.17, 0.12, 0.58), true)
+    draw_line(Vector2(bunker.position.x, bunker.position.y), Vector2(bunker.end.x, bunker.position.y), Color(0.56, 0.43, 0.24, 0.62), 3.0)
+    draw_rect(Rect2(Vector2(182.0, _floor_y - 88.0), Vector2(54.0, 88.0)), Color(0.055, 0.062, 0.064, 0.88), true)
+    draw_rect(Rect2(Vector2(190.0, _floor_y - 79.0), Vector2(38.0, 52.0)), Color(0.025, 0.031, 0.033, 0.92), true)
+    draw_line(Vector2(198.0, _floor_y - 74.0), Vector2(220.0, _floor_y - 74.0), Color(0.76, 0.60, 0.32, 0.40), 2.0)
+    draw_circle(Vector2(252.0, _floor_y - 112.0), 18.0, Color(0.92, 0.62, 0.24, 0.045))
+    draw_circle(Vector2(252.0, _floor_y - 112.0), 5.0, Color(0.95, 0.70, 0.34, 0.72))
+    draw_line(Vector2(252.0, _floor_y - 107.0), Vector2(252.0, _floor_y - 82.0), Color(0.76, 0.60, 0.32, 0.26), 2.0)
+    _draw_sandbags(Vector2(166.0, _floor_y - 145.0), 7)
+
+    # Dress every authored platform using its actual Rect2, so visual traversal
+    # continues to match collision geometry exactly.
+    for index in range(_platforms.size()):
+        var platform := _platforms[index]
+        if platform.position.x > 1650.0:
+            continue
+
+        var rail_color := Color(0.26, 0.29, 0.29, 0.78)
+        var rail_highlight := Color(0.58, 0.45, 0.27, 0.34)
+        var rail_y := platform.position.y - 27.0
+        var left := platform.position.x + 8.0
+        var right := platform.end.x - 8.0
+
+        if platform.size.x >= 110.0 and index % 3 != 1:
+            draw_line(Vector2(left, rail_y), Vector2(right, rail_y), rail_color, 3.0)
+            draw_line(Vector2(left, rail_y + 12.0), Vector2(right, rail_y + 12.0), Color(rail_color.r, rail_color.g, rail_color.b, 0.52), 2.0)
+            var post_count := maxi(2, int(platform.size.x / 64.0))
+            for post in range(post_count + 1):
+                var t := float(post) / float(post_count)
+                var px := lerpf(left, right, t)
+                draw_line(Vector2(px, platform.position.y - 2.0), Vector2(px, rail_y), rail_color, 2.0)
+                draw_circle(Vector2(px, rail_y), 1.8, rail_highlight)
+
+        # Lamps are offset under platforms, never on the walk surface.
+        if index % 3 == 0 and platform.size.x >= 140.0:
+            var lamp_x := platform.get_center().x
+            var lamp_y := platform.end.y + 20.0
+            draw_line(Vector2(lamp_x, platform.end.y), Vector2(lamp_x, lamp_y - 5.0), Color(0.14, 0.16, 0.16, 0.72), 2.0)
+            draw_circle(Vector2(lamp_x, lamp_y), 16.0, Color(0.94, 0.64, 0.26, 0.035))
+            draw_circle(Vector2(lamp_x, lamp_y), 4.5, Color(0.95, 0.70, 0.34, 0.72))
+
+        # Sparse sandbags visually anchor selected catwalks without creating
+        # fake full-height walls or changing cover/collision rules.
+        if index in [0, 4, 11] and platform.size.x >= 145.0:
+            _draw_sandbags(Vector2(platform.position.x + 18.0, platform.position.y - 3.0), 5)
+
+    # Watch post behind the opening high route, echoing the approved mock.
+    var tower_x := 1038.0
+    var tower_base := _floor_y
+    var tower_top := 346.0
+    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x, tower_top + 58.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
+    draw_line(Vector2(tower_x + 82.0, tower_base), Vector2(tower_x + 82.0, tower_top + 58.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
+    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x + 82.0, tower_top + 58.0), Color(0.14, 0.16, 0.16, 0.70), 4.0)
+    draw_line(Vector2(tower_x + 82.0, tower_base), Vector2(tower_x, tower_top + 58.0), Color(0.14, 0.16, 0.16, 0.58), 3.0)
+    draw_rect(Rect2(Vector2(tower_x - 12.0, tower_top), Vector2(106.0, 62.0)), Color(0.095, 0.11, 0.115, 0.96), true)
+    draw_rect(Rect2(Vector2(tower_x - 4.0, tower_top + 10.0), Vector2(90.0, 30.0)), Color(0.045, 0.055, 0.058, 0.92), true)
+    draw_rect(Rect2(Vector2(tower_x + 8.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.88, 0.59, 0.25, 0.32), true)
+    draw_rect(Rect2(Vector2(tower_x + 55.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.88, 0.59, 0.25, 0.26), true)
+    draw_line(Vector2(tower_x - 18.0, tower_top), Vector2(tower_x + 100.0, tower_top), Color(0.61, 0.47, 0.25, 0.55), 3.0)
+
+    # Ground-level drain mouths and rubble give the lower third more material
+    # variation without implying new traversal.
+    for index in range(3):
+        var drain_x := 420.0 + float(index) * 420.0
+        var drain_y := _floor_y + 64.0
+        draw_circle(Vector2(drain_x, drain_y), 25.0, Color(0.075, 0.080, 0.078, 0.90))
+        draw_arc(Vector2(drain_x, drain_y), 25.0, PI, TAU, 18, Color(0.48, 0.40, 0.28, 0.36), 3.0)
+        draw_line(Vector2(drain_x - 18.0, drain_y + 5.0), Vector2(drain_x + 18.0, drain_y + 5.0), Color(0.02, 0.03, 0.03, 0.70), 3.0)
+
+    for index in range(18):
+        var rubble_x := 90.0 + float(index) * 83.0
+        var rubble_y := _floor_y - 2.0
+        var rubble_w := 5.0 + _detail_noise(index, 13.1) * 12.0
+        var rubble_h := 3.0 + _detail_noise(index, 13.7) * 8.0
+        draw_rect(
+            Rect2(Vector2(rubble_x, rubble_y - rubble_h), Vector2(rubble_w, rubble_h)),
+            Color(0.20, 0.19, 0.16, 0.44),
             true,
         )
 
