@@ -279,3 +279,89 @@ jobs:
       - name: Browser lifecycle + gameplay smoke
         timeout-minutes: 4
         run: node scripts/pawn_slug_godot_live_smoke.mjs
+
+
+  pr_visual_capture:
+    name: PR visual evidence · Pawn Slug Godot
+    if: github.event_name == 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore pinned Godot editor and Web templates
+        uses: actions/cache@v6
+        with:
+          path: |
+            .godot-ci/${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_debug.zip
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_release.zip
+          key: pawn-slug-godot-web-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-nothreads-v3
+      - name: Install pinned Godot editor + Web templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            editor_archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3               "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"               -o "$editor_archive"
+            echo "$GODOT_EDITOR_SHA256  $editor_archive" | sha256sum -c -
+            unzip -q "$editor_archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          template_dir="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_VERSION"
+          debug_template="$template_dir/web_nothreads_debug.zip"
+          release_template="$template_dir/web_nothreads_release.zip"
+          if [[ ! -f "$debug_template" || ! -f "$release_template" ]]; then
+            template_archive="$RUNNER_TEMP/godot-templates.tpz"
+            unpack="$RUNNER_TEMP/godot-templates"
+            rm -rf "$unpack"
+            curl -fL --retry 3               "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_export_templates.tpz"               -o "$template_archive"
+            echo "$GODOT_TEMPLATES_SHA256  $template_archive" | sha256sum -c -
+            mkdir -p "$template_dir" "$unpack"
+            unzip -q "$template_archive"               templates/web_nothreads_debug.zip               templates/web_nothreads_release.zip               -d "$unpack"
+            install -m 0644 "$unpack/templates/web_nothreads_debug.zip" "$debug_template"
+            install -m 0644 "$unpack/templates/web_nothreads_release.zip" "$release_template"
+          fi
+          "$godot" --version
+      - name: Export local PR Web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf games/pawn-slug-godot/build/web
+          mkdir -p games/pawn-slug-godot/build/web
+          pushd games/pawn-slug-godot >/dev/null
+          "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless --export-release Web build/web/index.html
+          popd >/dev/null
+          python3 -S scripts/pawn_slug_godot_bundle.py check
+      - name: Restore browser runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
+      - name: Capture industrial runtime PNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4179 --directory games/pawn-slug-godot/build/web >"$RUNNER_TEMP/pawn-slug-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" >/dev/null 2>&1 || true' EXIT
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS "http://127.0.0.1:4179/index.html?stage=industrial_front_v1" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          PAWN_SLUG_GODOT_INDEX_URL="http://127.0.0.1:4179/index.html?stage=industrial_front_v1"             node scripts/pawn_slug_godot_pr_capture.mjs
+      - name: Upload Pawn Slug runtime visual evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-godot-visual-pr-${{ github.event.pull_request.number }}
+          path: /tmp/pawn-slug-visual/
+          if-no-files-found: error
+          retention-days: 7
