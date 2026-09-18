@@ -440,10 +440,15 @@ def add_room(static, mats):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
     for x in (-7.3, -4.2, -1.55, 1.55, 4.2, 7.3):
         cube(f"WR_ARCH_back_stile_{x}", (x, 6.78, 3.35), (0.05, 0.06, 2.45), mats["trim_wood"], static, bevel=0.018)
-    for idx in range(15):
-        x = -8.15 + idx * 1.16
-        cube(f"WR_ARCH_floor_plank_{idx}", (x, 0.1, 0.012), (0.54, 6.55, 0.025),
-             mats["parquet"], static, bevel=0.012)
+    # Expose the mineral floor instead of carpeting the entire room with
+    # parquet. The canonical v2 room uses wood as furniture/joinery and stone as
+    # the visual breathing space around the command table.
+    for x in (-6.20, -2.05, 2.10, 6.25):
+        cube(f"WR_ARCH_floor_joint_x_{x}", (x, 0.05, 0.006), (0.018, 6.58, 0.008),
+             mats["stone_dark"], static, bevel=0.004)
+    for y in (-4.55, -0.55, 3.45):
+        cube(f"WR_ARCH_floor_joint_y_{y}", (0, y, 0.006), (8.22, 0.018, 0.008),
+             mats["stone_dark"], static, bevel=0.004)
 
     # Premium room moulding: wood-on-wood relief catches grazing light without
     # turning the room into dashboard ornamentation.
@@ -468,7 +473,7 @@ def add_room(static, mats):
     for side in (-1, 1):
         cube(f"WR_DECOR_rug_x_{side}", (0, side * 6.31, 0.105), (6.25, 0.06, 0.012), mats["brass_dark"], static, bevel=0.01)
         cube(f"WR_DECOR_rug_y_{side}", (side * 6.31, 0, 0.105), (0.06, 6.25, 0.012), mats["brass_dark"], static, bevel=0.01)
-    cube("WR_TABLE_main", (0, 0, 0.47), (5.86, 5.86, 0.38), mats["table_wood"], static, bevel=0.13)
+    cube("WR_TABLE_main", (0, 0, 0.47), (5.32, 5.32, 0.38), mats["table_wood"], static, bevel=0.13)
     cube("WR_TABLE_board_frame", (0, 0, 0.96), (4.62, 4.62, 0.12), mats["frame_wood"], static, bevel=0.09)
     # Restrained leather band: furniture detail, not a second frame competing with the board.
     for side in (-1, 1):
@@ -754,8 +759,8 @@ def build():
         "wall_recess": material("WR_MAT_wall_recess", (0.009, 0.008, 0.008, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
         "wall_plaster": material("WR_MAT_wall_plaster", (0.165, 0.145, 0.125, 1), rough=0.86, coat=0.015, texture="stone", scale=5.1, bump=0.045),
         "trim_wood": material("WR_MAT_trim_walnut", (0.042, 0.025, 0.017, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
-        "parquet": material("WR_MAT_parquet", (0.036, 0.028, 0.024, 1), rough=0.62, coat=0.05, texture="wood", scale=5.3, bump=0.055),
-        "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.021, 0.022, 1), rough=0.70, coat=0.025, texture="stone", scale=4.8, bump=0.040),
+        "parquet": material("WR_MAT_parquet", (0.030, 0.025, 0.022, 1), rough=0.64, coat=0.04, texture="wood", scale=5.3, bump=0.055),
+        "floor_dark": material("WR_MAT_floor_underlay", (0.045, 0.043, 0.041, 1), rough=0.76, coat=0.018, texture="stone", scale=4.8, bump=0.055),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.030, 0.018, 0.012, 1), rough=0.37, coat=0.28, texture="wood", scale=3.2, bump=0.04),
         "brass": material("WR_MAT_brass", (0.38, 0.16, 0.035, 1), metal=0.92, rough=0.27, coat=0.20, texture="metal", scale=22, bump=0.032),
