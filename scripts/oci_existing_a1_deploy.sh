@@ -55,12 +55,20 @@ require curl
 require python3
 require sha256sum
 require systemctl
+require flock
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
 install -d -m 0755 "$state_dir"
+deploy_lock_file="$state_dir/deploy.lock"
+exec 8>"$deploy_lock_file"
+if ! flock -w 120 8; then
+  echo 'timed out waiting for host deploy lock' >&2
+  exit 75
+fi
+
 previous_sha=''
 if [[ -s "$state_file" ]]; then
   previous_sha="$(tr -d '\r\n' < "$state_file")"
@@ -75,12 +83,19 @@ legacy_image_ref() {
   printf 'chess-studio-backend:oci-%s' "$1"
 }
 
-prepare_signal_controller_disabled() {
+prepare_signal_controller() {
   install -o root -g root -m 0755 "$signal_controller_source" "$signal_controller_target"
   install -o root -g root -m 0644 "$signal_service_source" "$signal_service_target"
   install -o root -g root -m 0644 "$signal_timer_source" "$signal_timer_target"
   systemctl daemon-reload
-  systemctl disable --now chess-studio-staging-signal.timer >/dev/null 2>&1 || true
+}
+
+enable_signal_controller() {
+  if systemctl enable --now chess-studio-staging-signal.timer >/dev/null 2>&1; then
+    signal_controller_state="enabled"
+  else
+    signal_controller_state="fallback-only"
+  fi
 }
 
 image_available_for_rollback() {
@@ -401,7 +416,7 @@ preflight_started_ms="$(now_ms)"
 [[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
 [[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
 [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
-prepare_signal_controller_disabled
+prepare_signal_controller
 /bin/bash "$tunnel_connector" --self-test >/dev/null
 phase_done preflight "$preflight_started_ms"
 k3s_started_ms="$(now_ms)"
@@ -448,6 +463,7 @@ for _ in $(seq 1 60); do
     fi
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
+    enable_signal_controller
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
     printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
