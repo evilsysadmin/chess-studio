@@ -35,8 +35,22 @@ def staging2_command(operation: str, sha: str = "") -> str:
             raise SystemExit(f"staging2 {operation} does not accept a SHA")
         arguments = operation
     command = f"""set -euo pipefail
-test -x '{WRAPPER}' || {{ echo 'OCI_K3S_STAGING2_WRAPPER_MISSING' >&2; exit 44; }}
-sudo --non-interactive '{WRAPPER}' {arguments}
+log="$(mktemp /tmp/chess-studio-staging2.XXXXXX)"
+cleanup() {{ rm -f "$log"; }}
+trap cleanup EXIT
+rc=0
+if test -x '{WRAPPER}'; then
+  set +e
+  sudo --non-interactive '{WRAPPER}' {arguments} >"$log" 2>&1
+  rc=$?
+  set -e
+else
+  echo 'OCI_K3S_STAGING2_WRAPPER_MISSING' >"$log"
+  rc=44
+fi
+cat "$log"
+printf 'OCI_K3S_STAGING2_REMOTE_RC=%s\\n' "$rc"
+exit 0
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -45,8 +59,18 @@ sudo --non-interactive '{WRAPPER}' {arguments}
 
 
 def validate_output(operation: str, output: str) -> None:
+    lines = output.splitlines()
+    rc_lines = [line for line in lines if line.startswith("OCI_K3S_STAGING2_REMOTE_RC=")]
+    if len(rc_lines) != 1:
+        raise SystemExit("staging2 output missing unique remote rc marker")
+    try:
+        remote_rc = int(rc_lines[0].split("=", 1)[1])
+    except ValueError as exc:
+        raise SystemExit("staging2 output returned invalid remote rc marker") from exc
+    if remote_rc != 0:
+        raise SystemExit(f"staging2 remote wrapper failed rc={remote_rc}")
     marker = SUCCESS_MARKERS[operation]
-    if not any(line.startswith(marker) for line in output.splitlines()):
+    if not any(line.startswith(marker) for line in lines):
         raise SystemExit(f"staging2 output missing success marker: {marker}")
 
 
@@ -57,7 +81,16 @@ def self_test() -> None:
         assert "sudo --non-interactive" in command
         assert WRAPPER in command
         assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
-        validate_output(operation, f"noise\n{SUCCESS_MARKERS[operation]} sample=true\n")
+        validate_output(
+            operation,
+            f"noise\n{SUCCESS_MARKERS[operation]} sample=true\nOCI_K3S_STAGING2_REMOTE_RC=0\n",
+        )
+    try:
+        validate_output("deploy", "OCI_K3S_STAGING2_REMOTE_RC=9\n")
+    except SystemExit as exc:
+        assert "rc=9" in str(exc)
+    else:
+        raise AssertionError("non-zero staging2 remote rc must fail closed")
     for bad in ("main", "ABC", "0" * 39):
         try:
             staging2_command("deploy", bad)
