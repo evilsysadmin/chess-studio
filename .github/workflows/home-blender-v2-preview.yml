@@ -2,7 +2,7 @@ name: Home · Blender 2.0 preview
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     paths:
       - 'scripts/blender/build_home_v2_blockout.py'
       - '.github/workflows/home-blender-v2-preview.yml'
@@ -42,7 +42,7 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ inputs.samples }}'
+            --samples '${{ inputs.samples || '32' }}'
 
       - name: Validate render envelope and build comparison sheet
         run: |
