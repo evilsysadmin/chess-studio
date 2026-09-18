@@ -1,0 +1,28 @@
+[Unit]
+Description=Chess Studio staging zero-cost deploy watcher
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ocarun
+Group=ocarun
+ExecStart=/usr/bin/python3 -S /usr/local/libexec/chess-studio-deploy-watcher
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
