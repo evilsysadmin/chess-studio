@@ -155,6 +155,8 @@ REQUIRED_COMBAT_FAIRNESS = (
     "_world_x_is_combat_visible",
     "_can_spawn_hostile_shot",
     "BOSS_SHELL_WINDUP",
+    "checkpoint_changed",
+    '_notify_parent("checkpoint")',
 )
 REQUIRED_BOSS_TELEGRAPH = (
     "set_shell_telegraph",
@@ -284,6 +286,7 @@ def self_test() -> None:
     assert "AudioStreamWAV.LOOP_FORWARD" in REQUIRED_AUDIO
     assert "landed.emit" in REQUIRED_PLAYER_FEEL
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
+    assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
     assert "DisplayServer.get_display_safe_area" in REQUIRED_TOUCH
     assert "_touch_controls.fire_pressed" in REQUIRED_MOBILE_PLAYER
