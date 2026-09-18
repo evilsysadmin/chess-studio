@@ -52,6 +52,12 @@ test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', 
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /PAWN SLUG GODOT/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Pawn Slug$/ })).toHaveCount(0);
+
+  // Re-entry must create exactly one new canonical Godot host, never a zombie
+  // iframe left behind by the previous experiment mount.
+  await page.getByRole('button', { name: /PAWN SLUG GODOT/i }).click();
+  await expectGodotHost(page);
+  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toHaveCount(1);
 });
 
 test('Pawn Slug · el host Godot móvil no introduce overflow horizontal', async ({ page }) => {
@@ -66,6 +72,29 @@ test('Pawn Slug · el host Godot móvil no introduce overflow horizontal', async
   expect(box).not.toBeNull();
   expect(box.x).toBeGreaterThanOrEqual(-1);
   expect(box.x + box.width).toBeLessThanOrEqual(391);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('Pawn Slug · landscape compacto mantiene el runtime dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await authenticate(page);
+  await openExperiments(page);
+  await page.getByRole('button', { name: /PAWN SLUG GODOT/i }).click();
+  await expectGodotHost(page);
+
+  const shell = page.locator('.pawn-slug-godot-host__frame-shell');
+  const frame = page.locator('iframe[title="Pawn Slug Godot"]');
+  const [shellBox, frameBox] = await Promise.all([shell.boundingBox(), frame.boundingBox()]);
+  expect(shellBox).not.toBeNull();
+  expect(frameBox).not.toBeNull();
+  expect(shellBox.x).toBeGreaterThanOrEqual(-1);
+  expect(shellBox.x + shellBox.width).toBeLessThanOrEqual(845);
+  expect(frameBox.x).toBeGreaterThanOrEqual(-1);
+  expect(frameBox.x + frameBox.width).toBeLessThanOrEqual(845);
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

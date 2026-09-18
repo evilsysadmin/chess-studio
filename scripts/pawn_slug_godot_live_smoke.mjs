@@ -178,6 +178,27 @@ try {
 
   if (!engineStarted) fail('direct-engine-start', diagnostics);
   if (!directReady) fail('direct-gdscript-bridge', diagnostics);
+
+  // F5/reload contract: a fresh Godot lifecycle must boot and publish ready again
+  // without depending on state left by the previous engine instance.
+  await direct.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+  let directReloadReady = true;
+  try {
+    await direct.waitForFunction(() => !document.getElementById('status'), null, { timeout: 30_000 });
+    await direct.waitForFunction(
+      () => Array.isArray(window.__pawnSlugGodotMessages)
+        && window.__pawnSlugGodotMessages.some(
+          (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
+        ),
+      null,
+      { timeout: 5_000 },
+    );
+  } catch {
+    directReloadReady = false;
+  }
+  diagnostics.direct.reloadReady = directReloadReady;
+  diagnostics.direct.afterReload = await snapshotFrame(direct.mainFrame());
+  if (!directReloadReady) fail('direct-reload-ready', diagnostics);
   await direct.close();
 
   // Stage 2: serve a loopback parent. Browsers treat loopback as potentially trustworthy,
@@ -275,12 +296,44 @@ try {
   if (escapeExitMessages.length > 0) fail('iframe-escape-must-pause-not-exit', diagnostics);
   if (!diagnostics.iframe.canvasAfterEscape) fail('iframe-escape-keeps-runtime-alive', diagnostics);
 
+  // Exit/re-enter lifecycle contract: tear down the iframe runtime and mount the
+  // same published release again. The new instance must become ready with one
+  // live child frame/canvas and without an implicit exit message.
+  await parent.evaluate(() => {
+    document.body.dataset.godotReady = '';
+    const frame = document.getElementById('godot');
+    frame.src = 'about:blank';
+  });
+  await parent.waitForTimeout(120);
+  await parent.evaluate((url) => {
+    const frame = document.getElementById('godot');
+    frame.src = url;
+  }, indexUrl);
+
+  let remountReady = true;
+  try {
+    await parent.waitForFunction(() => document.body.dataset.godotReady === '1', null, { timeout: 30_000 });
+  } catch {
+    remountReady = false;
+  }
+  const remountedChildren = parent.frames().filter(
+    (candidate) => candidate !== parent.mainFrame() && candidate.url().startsWith(parsedIndex.origin),
+  );
+  diagnostics.iframe.remountReady = remountReady;
+  diagnostics.iframe.remountedFrameCount = remountedChildren.length;
+  diagnostics.iframe.remountedChild = remountedChildren[0] ? await snapshotFrame(remountedChildren[0]) : null;
+  if (!remountReady) fail('iframe-remount-ready', diagnostics);
+  if (remountedChildren.length !== 1) fail('iframe-remount-single-runtime', diagnostics);
+  const remountedCanvas = remountedChildren[0].locator('canvas');
+  await remountedCanvas.waitFor({ state: 'visible', timeout: 5_000 });
+  if (!(await remountedCanvas.boundingBox())) fail('iframe-remount-canvas', diagnostics);
+
   if (diagnostics.pageErrors.length || diagnostics.requestFailures.length || diagnostics.badResponses.length) {
     fail('browser-errors', diagnostics);
   }
 
   console.log(
-    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas + ESC pause contract · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
+    `pawn-slug-godot browser smoke OK · engine + ready + secure cross-origin iframe + visible canvas + ESC pause + reload/remount lifecycle · direct=${diagnostics.timings.directMs}ms iframe=${diagnostics.timings.iframeMs}ms · ${indexUrl}`,
   );
 } finally {
   await closeServer(hostServer);
