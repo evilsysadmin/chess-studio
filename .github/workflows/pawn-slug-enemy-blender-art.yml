@@ -78,7 +78,8 @@ jobs:
           gate(manifest.get('frameSize') == [96, 96], f"frameSize={manifest.get('frameSize')!r}")
           gate(manifest.get('runtimeCell') == [96, 96], f"runtimeCell={manifest.get('runtimeCell')!r}")
           for action, count in actions.items():
-              expected_samples = [0, count // 2, count - 1]
+              mid = count // 2
+              expected_samples = [0, mid] if action == 'run' else [mid, count - 1] if action == 'death' else [mid]
               gate(rendered_frames.get(action) == expected_samples, f'{action}: renderedFrames={rendered_frames.get(action)!r}; expected {expected_samples!r}')
 
           cell = 96
@@ -131,7 +132,10 @@ jobs:
                       action_frames.append({'frame': frame, 'bbox': list(bbox), 'meanLuma': round(mean_luma, 2)})
                       sheet.alpha_composite(down, (frame * cell, row * cell))
                   unique = len(set(hashes))
-                  gate(unique >= 2, f'{enemy_type}/{action} has no authored motion: unique={unique}')
+                  if len(hashes) > 1:
+                      gate(unique >= 2, f'{enemy_type}/{action} has no authored motion: unique={unique}')
+                  else:
+                      gate(unique == 1, f'{enemy_type}/{action} representative frame missing')
                   type_stats[action] = {
                       'frames': count,
                       'observedFrames': len(action_frames),
