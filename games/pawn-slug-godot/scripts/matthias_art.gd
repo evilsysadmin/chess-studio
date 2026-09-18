@@ -50,8 +50,10 @@ const MUZZLE_SCAN_ALPHA := 0.12
 const MUZZLE_SCAN_Y_MIN_RATIO := 0.26
 const MUZZLE_SCAN_Y_MAX_RATIO := 0.73
 const MUZZLE_TIP_PAD_PX := 2.0
-const RUN_FIRE_RECOIL_DEGREES := 1.55
-const RUN_FIRE_RECOIL_DECAY_DEGREES := 72.0
+const RUN_FIRE_RECOIL_DEGREES := 2.35
+const RUN_FIRE_RECOIL_DECAY_DEGREES := 78.0
+const MOVING_FIRE_RECOIL_BOOST := 1.35
+const MOVING_FIRE_FLASH_BOOST := 1.34
 
 const FULL_ACTION_ORDER := [
     "idle", "walk", "run", "jump", "fall", "land", "shoot", "reload", "hurt", "die", "crouch",
@@ -126,6 +128,7 @@ var _dead := false
 var _hurt_remaining := 0.0
 var _invuln_remaining := 0.0
 var _muzzle_remaining := 0.0
+var _muzzle_flash_boost := 1.0
 var _recoil_x := 0.0
 var _recoil_rotation := 0.0
 var _facing := 1.0
@@ -245,15 +248,22 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
         var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
-        _recoil_x = -_facing * float(RECOIL.get(visual_weapon, 4.0))
+        var recoil_strength := float(RECOIL.get(visual_weapon, 4.0))
+        _muzzle_flash_boost = 1.0
         if locomoting_now:
-            # Keep the authored run stride, but let the upper silhouette kick a
-            # fraction on every shot instead of skating with a rigid weapon.
+            # Static fire already has a strong authored shoot pose. Locomotion
+            # keeps the stride, so compensate deliberately: the shot must not
+            # read weaker just because Matthias is moving.
+            recoil_strength *= MOVING_FIRE_RECOIL_BOOST
+            _muzzle_flash_boost = MOVING_FIRE_FLASH_BOOST
             _recoil_rotation = deg_to_rad(-RUN_FIRE_RECOIL_DEGREES)
+        _recoil_x = -_facing * recoil_strength
     if landed_now and not _dead and not (_using_full_atlas and _animation_available("land")):
         _fx_root.scale = Vector2(1.03, 0.95)
 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
+    if _muzzle_remaining <= 0.0:
+        _muzzle_flash_boost = 1.0
     _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
     _recoil_rotation = move_toward(
         _recoil_rotation,
@@ -824,7 +834,7 @@ func _sync_muzzle() -> void:
     else:
         var poses: Dictionary = MUZZLE_POS.get(visual_weapon, MUZZLE_POS["pistol"])
         _muzzle.position = Vector2(poses.get(_action, poses["idle"])) * BODY_SCALE_RATIO
-    var s := float(FLASH_SCALE.get(visual_weapon, 1.0))
+    var s := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
     _flash.scale = Vector2(s, s)
 
 func _sync_modulate() -> void:
