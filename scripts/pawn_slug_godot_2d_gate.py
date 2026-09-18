@@ -39,10 +39,10 @@ REQUIRED_MATTHIAS = (
     "FULL_ATLAS_ROWS := 11",
     "FULL_ATLAS_CELL_SIZE := 256",
     "FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)",
-    "pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6",
-    "pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6",
-    "pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v6",
-    "pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v6",
+    "/pawn-slug-godot/matthias/strict-v6/pistol/matthias_pistol_godot_strict_8x11_256_v6",
+    "/pawn-slug-godot/matthias/strict-v6/machinegun/matthias_machinegun_godot_strict_8x11_256_v6",
+    "/pawn-slug-godot/matthias/strict-v6/shotgun/matthias_shotgun_godot_strict_8x11_256_v6",
+    "/pawn-slug-godot/matthias/strict-v6/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v6",
     "FULL_ACTIONS",
     '"shoot": {"row": 6, "count": 6',
     '"die": {"row": 9, "count": 8',
@@ -158,7 +158,7 @@ def self_test() -> None:
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
-    assert "matthias_machinegun_godot_strict_8x11_256_v6" in REQUIRED_MATTHIAS
+    assert any("matthias_machinegun_godot_strict_8x11_256_v6" in token for token in REQUIRED_MATTHIAS)
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
     assert "locomoting_now" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
