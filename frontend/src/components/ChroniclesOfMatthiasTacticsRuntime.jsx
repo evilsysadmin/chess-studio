@@ -50,6 +50,15 @@ const MOVEMENT = Object.freeze({
   D: Object.freeze({ dx: 1, dy: 0 }),
 });
 
+function chroniclesBattlefieldInteraction(state, memberId) {
+  if (!state || state.turnPhase === 'enemy' || state.phase === 'defeated' || state.phase === 'escaped') return null;
+  return {
+    mode: 'hybrid',
+    legalMoves: chroniclesTacticsLegalMoves(state),
+    legalTargets: chroniclesTacticsTargets(state, memberId),
+  };
+}
+
 function createActionState(progression) {
   return applyChroniclesProgressionToTacticsState({
     ...createChroniclesState(),
@@ -91,6 +100,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   );
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
   const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
+  const battlefieldInteraction = useMemo(
+    () => chroniclesBattlefieldInteraction(state, selectedMemberId),
+    [selectedMemberId, state],
+  );
 
   const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
     const previous = stateRef.current;
@@ -228,7 +241,11 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           onMemberClick: (memberId) => openMemberSheet(memberId),
         });
         engineRef.current = engine;
-        engine.renderState(stateRef.current, selectedMemberRef.current, null);
+        engine.renderState(
+          stateRef.current,
+          selectedMemberRef.current,
+          chroniclesBattlefieldInteraction(stateRef.current, selectedMemberRef.current),
+        );
       })
       .catch((error) => {
         console.error('Chronicles of Matthias Tactics renderer failed', error);
@@ -246,8 +263,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   }, [attackEnemy, moveParty, openMemberSheet, state.mapId]);
 
   useEffect(() => {
-    engineRef.current?.renderState(state, selectedMemberId, null);
-  }, [selectedMemberId, state]);
+    engineRef.current?.renderState(state, selectedMemberId, battlefieldInteraction);
+  }, [battlefieldInteraction, selectedMemberId, state]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
