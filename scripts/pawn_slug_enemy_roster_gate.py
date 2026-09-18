@@ -122,6 +122,31 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             platform_materials.add(material)
     if len(platform_materials) < 2:
         errors.append(f"{stage_name}: platform material variety too low")
+
+    climb_platforms = [
+        rect for rect in platforms
+        if isinstance(rect, dict) and str(rect.get("route", "")) == "climb"
+    ]
+    if len(climb_platforms) < 4:
+        errors.append(f"{stage_name}: needs at least 4 platforms in an authored climb route")
+    else:
+        climb_levels = sorted({float(rect.get("y", 0)) for rect in climb_platforms})
+        if len(climb_levels) < 3:
+            errors.append(f"{stage_name}: climb route needs at least 3 distinct elevations")
+        for lower, upper in zip(climb_levels, climb_levels[1:]):
+            if upper - lower > 100.0:
+                errors.append(
+                    f"{stage_name}: climb route vertical step {upper - lower:.0f}px exceeds 100px"
+                )
+        ordered_climb = sorted(climb_platforms, key=lambda rect: float(rect.get("x", 0)))
+        for previous, current in zip(ordered_climb, ordered_climb[1:]):
+            previous_end = float(previous.get("x", 0)) + float(previous.get("w", 0))
+            current_x = float(current.get("x", 0))
+            if current_x - previous_end > 48.0:
+                errors.append(
+                    f"{stage_name}: climb route has horizontal break of {current_x - previous_end:.0f}px"
+                )
+
     if low_passages < 2:
         errors.append(f"{stage_name}: needs at least 2 crouch-height passages")
     if len(platform_heights) < 4:
@@ -310,6 +335,23 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     pickups = stage.get("pickups") or []
     if not any(str(p.get("type", "")) == "machinegun" for p in pickups if isinstance(p, dict)):
         errors.append(f"{stage_name}: opening machinegun pickup missing")
+    climb_pickups = [
+        pickup for pickup in pickups
+        if isinstance(pickup, dict) and str(pickup.get("route", "")) == "climb"
+    ]
+    if not climb_pickups:
+        errors.append(f"{stage_name}: climb route needs an optional elevated reward")
+    elif not any(float(pickup.get("y", floor_y)) <= floor_y - 150.0 for pickup in climb_pickups):
+        errors.append(f"{stage_name}: climb reward is not meaningfully elevated")
+
+    climb_rooks = [
+        enemy for enemy in enemies
+        if isinstance(enemy, dict)
+        and str(enemy.get("route", "")) == "climb"
+        and str(enemy.get("type", "")) == "rook"
+    ]
+    if not climb_rooks:
+        errors.append(f"{stage_name}: climb route needs an elevated rook encounter")
 
     backdrop = stage.get("backdrop") or {}
     layers = backdrop.get("layers") or []
@@ -366,6 +408,11 @@ def self_test() -> None:
         "platforms": [
             {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood"}
             for i in range(18)
+        ] + [
+            {"x": 900, "y": 430, "w": 150, "h": 24, "material": "metal", "route": "climb"},
+            {"x": 980, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
+            {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
+            {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
         "setpieces": [
@@ -378,7 +425,10 @@ def self_test() -> None:
             {"id": "breakable", "type": "destructible_platform", "x": 3600, "y": 320, "w": 160, "h": 24, "hp": 70},
             {"id": "shelling", "type": "artillery_barrage", "trigger_x": 2800, "min_x": 2700, "max_x": 3500, "salvos": 3, "telegraph": 0.9, "interval": 0.8, "radius": 80},
         ],
-        "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
+        "pickups": [
+            {"x": 1200, "y": 566, "type": "machinegun"},
+            {"x": 1140, "y": 216, "type": "grenade", "route": "climb", "optional": True},
+        ],
         "backdrop": {"layers": [
             {"kind": "sky", "scroll": 0.03},
             {"kind": "far_ridge", "scroll": 0.14},
@@ -396,6 +446,8 @@ def self_test() -> None:
     stage["enemies"][5]["idle_reaction"] = 0.9
     stage["enemies"][15]["idle_pose"] = "lean"
     stage["enemies"][15]["idle_reaction"] = 1.0
+    stage["enemies"][6]["y"] = 345
+    stage["enemies"][6]["route"] = "climb"
     stats = parse_stats(MAIN.read_text(encoding="utf-8"))
     assert not validate_stage(stage, stats, "self-test")
     crowded = json.loads(json.dumps(stage))

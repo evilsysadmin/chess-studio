@@ -55,7 +55,8 @@
       "w": 170,
       "h": 24,
       "kind": "wood_bridge",
-      "material": "wood"
+      "material": "wood",
+      "route": "climb"
     },
     {
       "x": 1620,
@@ -168,6 +169,33 @@
       "h": 24,
       "kind": "ruin_ledge",
       "material": "stone"
+    },
+    {
+      "x": 1470,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_bridge",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
+      "x": 1570,
+      "y": 275,
+      "w": 155,
+      "h": 24,
+      "kind": "canopy_perch",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
+      "x": 1700,
+      "y": 360,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_bridge",
+      "material": "wood",
+      "route": "climb"
     }
   ],
   "obstacles": [
@@ -257,9 +285,10 @@
       "type": "commando"
     },
     {
-      "x": 1540,
+      "x": 1640,
       "type": "rook",
-      "y": 446
+      "y": 275,
+      "route": "climb"
     },
     {
       "x": 1742,
@@ -387,6 +416,13 @@
       "x": 4680,
       "y": 566,
       "type": "grenade"
+    },
+    {
+      "x": 1640,
+      "y": 231,
+      "type": "medkit",
+      "route": "climb",
+      "optional": true
     }
   ],
   "boss": {

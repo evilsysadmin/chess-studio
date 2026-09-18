@@ -95,7 +95,8 @@
       "w": 220,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "wood",
+      "route": "climb"
     },
     {
       "x": 2960,
@@ -168,6 +169,33 @@
       "h": 24,
       "kind": "dock",
       "material": "wood"
+    },
+    {
+      "x": 2760,
+      "y": 365,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_dock",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
+      "x": 2860,
+      "y": 280,
+      "w": 155,
+      "h": 24,
+      "kind": "crane_perch",
+      "material": "metal",
+      "route": "climb"
+    },
+    {
+      "x": 2990,
+      "y": 365,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_dock",
+      "material": "wood",
+      "route": "climb"
     }
   ],
   "obstacles": [
@@ -296,9 +324,10 @@
       "type": "commando"
     },
     {
-      "x": 3013,
+      "x": 2940,
       "type": "rook",
-      "y": 372
+      "y": 280,
+      "route": "climb"
     },
     {
       "x": 3170,
@@ -387,6 +416,13 @@
       "x": 4680,
       "y": 566,
       "type": "grenade"
+    },
+    {
+      "x": 2930,
+      "y": 236,
+      "type": "medkit",
+      "route": "climb",
+      "optional": true
     }
   ],
   "boss": {

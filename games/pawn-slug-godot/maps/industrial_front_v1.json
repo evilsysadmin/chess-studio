@@ -63,7 +63,8 @@
       "w": 160,
       "h": 24,
       "kind": "catwalk",
-      "material": "concrete"
+      "material": "concrete",
+      "route": "climb"
     },
     {
       "x": 1840,
@@ -168,6 +169,33 @@
       "h": 24,
       "kind": "high_catwalk",
       "material": "wood"
+    },
+    {
+      "x": 1740,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "metal",
+      "route": "climb"
+    },
+    {
+      "x": 1840,
+      "y": 280,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "metal",
+      "route": "climb"
+    },
+    {
+      "x": 1970,
+      "y": 360,
+      "w": 155,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "wood",
+      "route": "climb"
     }
   ],
   "obstacles": [
@@ -250,9 +278,10 @@
       "type": "grenadier"
     },
     {
-      "x": 1940,
+      "x": 1900,
       "type": "rook",
-      "y": 366
+      "y": 280,
+      "route": "climb"
     },
     {
       "x": 2110,
@@ -380,6 +409,13 @@
       "x": 4310,
       "y": 566,
       "type": "grenade"
+    },
+    {
+      "x": 1915,
+      "y": 236,
+      "type": "grenade",
+      "route": "climb",
+      "optional": true
     }
   ],
   "boss": {
