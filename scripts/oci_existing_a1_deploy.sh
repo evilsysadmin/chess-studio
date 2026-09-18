@@ -317,7 +317,7 @@ phase_done k3s "$k3s_started_ms"
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
 target_image="$(image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
-if ! docker pull "$target_image"; then
+if ! docker pull --quiet "$target_image"; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
