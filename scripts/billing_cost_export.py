@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 CLOUDFLARE_API = "https://api.cloudflare.com/client/v4"
@@ -76,7 +76,7 @@ def _oci_month_window(now: datetime) -> tuple[datetime, datetime]:
         # yet. Query the previous complete month to preserve a valid billing
         # currency/sample instead of sending an invalid zero-length interval.
         end = start
-        previous_day = start.replace(day=1) - __import__("datetime").timedelta(days=1)
+        previous_day = start - timedelta(days=1)
         start = previous_day.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
