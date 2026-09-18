@@ -4,14 +4,14 @@ signal exit_requested
 
 const SETTINGS_PATH := "user://pawn_slug_settings.cfg"
 const DEFAULT_VOLUME := 0.85
+const DEFAULT_NATIVE_FULLSCREEN := false
 const WINDOWED_SIZE := Vector2i(1280, 720)
 
 var _overlay: ColorRect
 var _content: VBoxContainer
-var _fullscreen_enabled := true
+var _fullscreen_enabled := DEFAULT_NATIVE_FULLSCREEN
 var _master_volume := DEFAULT_VOLUME
 var _last_nonzero_volume := DEFAULT_VOLUME
-var _pending_web_fullscreen := false
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -20,20 +20,12 @@ func _ready() -> void:
     _overlay.visible = false
     _apply_audio()
 
-    if OS.has_feature("web"):
-        # Browsers require a user gesture before requestFullscreen(). Keep
-        # fullscreen as the default preference and enter it on the first
-        # gameplay gesture instead of showing a blocking launcher screen.
-        _pending_web_fullscreen = _fullscreen_enabled
-    else:
+    # Web already fills the app viewport. Native browser fullscreen remains an
+    # explicit menu choice so ESC is reserved for the pause menu by default.
+    if not OS.has_feature("web"):
         _apply_display_mode(_fullscreen_enabled)
 
 func _input(event: InputEvent) -> void:
-    var user_activation := _is_user_activation(event)
-    if _pending_web_fullscreen and user_activation and not _is_pause_event(event):
-        _pending_web_fullscreen = false
-        _apply_display_mode(true)
-
     if not _is_pause_event(event):
         return
 
@@ -56,15 +48,6 @@ func _is_pause_event(event: InputEvent) -> bool:
         and event.pressed
         and event.button_index == JOY_BUTTON_START
     )
-
-func _is_user_activation(event: InputEvent) -> bool:
-    if event is InputEventKey:
-        return event.pressed and not event.echo
-    if event is InputEventMouseButton:
-        return event.pressed
-    if event is InputEventScreenTouch:
-        return event.pressed
-    return false
 
 func toggle_pause() -> void:
     if _overlay.visible:
@@ -154,13 +137,15 @@ func _render_main() -> void:
 func _render_options() -> void:
     _clear_content()
     _content.add_child(_section_title("OPCIONES"))
-    var mode_label := "Modo preferido: PANTALLA COMPLETA" if _fullscreen_enabled else "Modo preferido: VENTANA"
+    var mode_label := "Pantalla completa del navegador: ACTIVADA" if _fullscreen_enabled else "Pantalla completa del navegador: DESACTIVADA"
+    if not OS.has_feature("web"):
+        mode_label = "Pantalla completa: ACTIVADA" if _fullscreen_enabled else "Pantalla completa: DESACTIVADA"
     var mode_button := _make_button(mode_label, _toggle_display_mode)
     _content.add_child(mode_button)
     mode_button.grab_focus()
 
     var hint := Label.new()
-    hint.text = "Pantalla completa es el modo principal. En navegador se activa con el primer gesto permitido por el sistema."
+    hint.text = "Pawn Slug ya ocupa todo el viewport. El fullscreen nativo del navegador es opcional y sólo se activa desde aquí."
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_font_size_override("font_size", 13)
     hint.add_theme_color_override("font_color", Color("aeb6b8"))
@@ -229,7 +214,6 @@ func _make_button(text: String, callback: Callable, danger: bool = false) -> But
 
 func _toggle_display_mode() -> void:
     _fullscreen_enabled = not _fullscreen_enabled
-    _pending_web_fullscreen = false
     _apply_display_mode(_fullscreen_enabled)
     _save_settings()
     _render_options()
@@ -308,13 +292,13 @@ func _load_settings() -> void:
     var config := ConfigFile.new()
     if config.load(SETTINGS_PATH) != OK:
         return
-    _fullscreen_enabled = bool(config.get_value("display", "fullscreen", true))
+    _fullscreen_enabled = bool(config.get_value("display", "native_fullscreen", DEFAULT_NATIVE_FULLSCREEN))
     _master_volume = clampf(float(config.get_value("audio", "master_volume", DEFAULT_VOLUME)), 0.0, 1.0)
     if _master_volume > 0.001:
         _last_nonzero_volume = _master_volume
 
 func _save_settings() -> void:
     var config := ConfigFile.new()
-    config.set_value("display", "fullscreen", _fullscreen_enabled)
+    config.set_value("display", "native_fullscreen", _fullscreen_enabled)
     config.set_value("audio", "master_volume", _master_volume)
     config.save(SETTINGS_PATH)
