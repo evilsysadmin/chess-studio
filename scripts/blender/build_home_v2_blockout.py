@@ -370,22 +370,45 @@ def add_armor(materials):
     steel = materials["steel"]
     brass = materials["brass"]
     stone = materials["stone"]
+    dark = materials["dark"]
     x, y = 1.35, 5.35
-    cube("HOME_PROP_armor_pedestal", (x, y, 0.3), (0.68, 0.52, 0.3), stone, bevel=0.05)
-    cylinder("HOME_PROP_armor_legs", (x, y, 1.03), 0.25, 1.25, steel)
-    sphere("HOME_PROP_armor_torso", (x, y, 1.9), (0.56, 0.36, 0.73), steel)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.78), (0.37, 0.34, 0.38), steel)
-    cube("HOME_PROP_armor_visor", (x, y - 0.33, 2.78), (0.33, 0.055, 0.11), brass, bevel=0.02)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.44, y, 2.18), (x - 0.7, y, 1.58)], 0.115, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.44, y, 2.18), (x + 0.7, y, 1.58)], 0.115, steel)
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.46, y, 2.20), (0.18, 0.15, 0.18), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.46, y, 2.20), (0.18, 0.15, 0.18), steel)
+
+    cube("HOME_PROP_armor_pedestal", (x, y, 0.24), (0.72, 0.54, 0.24), stone, bevel=0.05)
+
+    # Humanoid stance: two distinct greaves instead of the old single pawn-like
+    # cylinder, plus pelvis, tapered cuirass and articulated limbs.
+    for side in (-1, 1):
+        lx = x + side * 0.19
+        cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
+        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.15, 0.11, 0.70, steel, vertices=24)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.17, 0.13, 0.14), brass)
+        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
+
+    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
+    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
+    cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
+
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.48, y, 2.34), (0.22, 0.18, 0.20), steel)
+    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.48, y, 2.27), (x - 0.66, y, 1.95), (x - 0.60, y - 0.02, 1.66)], 0.10, steel)
+    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.48, y, 2.27), (x + 0.66, y, 1.95), (x + 0.60, y - 0.02, 1.66)], 0.10, steel)
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.62), (0.13, 0.11, 0.13), brass)
+
+    # Helmet with neck gap and a face slit, much closer to the canonical suit
+    # of armour silhouette than a round pawn head.
+    cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.83), (0.34, 0.30, 0.34), steel)
+    cube("HOME_PROP_armor_visor", (x, y - 0.285, 2.82), (0.30, 0.05, 0.09), dark, bevel=0.02)
+    cube("HOME_PROP_armor_brow", (x, y - 0.30, 2.95), (0.28, 0.045, 0.045), brass, bevel=0.015)
+
+    # Weapon rack frames the armour without becoming part of its body.
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
         curve_tube(
             f"HOME_PROP_armor_weapon_{idx}",
             [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.55)],
             0.035,
-            materials["dark"],
+            dark,
         )
 
 
@@ -465,58 +488,58 @@ def add_stairs(materials):
     dark = materials["dark"]
     fire = materials["fire"]
 
-    # Pull the Dungeon inward: in the master it is a major lower-right mass,
-    # not something clipped off the edge.
-    bridge_x = 5.55
-    arch_x = 5.82
-    cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.55, 1.42), (2.18, 0.74, 0.13), stone, bevel=0.05)
-    cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.62), (2.10, 0.12, 0.18), stone, bevel=0.04)
+    # Keep the Dungeon a strong lower-right destination without letting it
+    # consume a third of the room. The canonical opening is mostly an arch,
+    # balustrade and descending stair tucked against the right edge.
+    bridge_x = 6.25
+    arch_x = 6.52
+    cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.48, 1.36), (1.70, 0.66, 0.12), stone, bevel=0.05)
+    cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.54), (1.62, 0.11, 0.16), stone, bevel=0.04)
 
-    cube("HOME_ARCH_dungeon_void", (arch_x, 1.72, -0.05), (1.78, 0.10, 1.50), dark, bevel=0.12)
-    arch("HOME_ARCH_dungeon_arch", arch_x, 1.55, 3.58, 0.68, 1.58, -1.58, stone)
-    arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.10, 1.42, 2.92, 0.52, 1.24, -1.50, materials["stone_dark"])
+    cube("HOME_ARCH_dungeon_void", (arch_x, 1.78, -0.12), (1.42, 0.09, 1.42), dark, bevel=0.12)
+    arch("HOME_ARCH_dungeon_arch", arch_x, 1.60, 2.95, 0.58, 1.42, -1.56, stone)
+    arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.08, 1.48, 2.42, 0.44, 1.12, -1.46, materials["stone_dark"])
 
-    # Gate/fire read even in Workbench and make the lower chamber unambiguous.
-    for idx, x in enumerate((5.65, 6.00, 6.35, 6.70, 7.05, 7.40)):
-        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 1.48, -0.25), (0.045, 0.045, 0.98), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_gate_cross", (6.52, 1.46, -0.22), (1.12, 0.05, 0.055), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_fire_left", (5.85, 1.32, -0.62), (0.18, 0.06, 0.36), fire, bevel=0.09)
-    cube("HOME_PROP_dungeon_fire_right", (7.15, 1.32, -0.72), (0.18, 0.06, 0.42), fire, bevel=0.09)
+    for idx, x in enumerate((5.62, 5.93, 6.24, 6.55, 6.86, 7.17)):
+        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 1.51, -0.30), (0.040, 0.040, 0.88), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_gate_cross", (6.40, 1.49, -0.25), (0.94, 0.045, 0.050), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_fire_left", (5.88, 1.36, -0.66), (0.15, 0.05, 0.30), fire, bevel=0.08)
+    cube("HOME_PROP_dungeon_fire_right", (6.96, 1.36, -0.70), (0.15, 0.05, 0.34), fire, bevel=0.08)
 
-    for idx, x in enumerate((4.10, 4.58, 5.06, 5.54, 6.02, 6.50, 6.98)):
-        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.77, 1.94), 0.085, 0.58, stone, vertices=20)
-    cube("HOME_ARCH_dungeon_balustrade_top", (5.54, 1.77, 2.26), (1.82, 0.12, 0.10), stone, bevel=0.025)
+    for idx, x in enumerate((4.98, 5.38, 5.78, 6.18, 6.58, 6.98, 7.38)):
+        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.80, 1.86), 0.075, 0.52, stone, vertices=20)
+    cube("HOME_ARCH_dungeon_balustrade_top", (6.18, 1.80, 2.14), (1.52, 0.11, 0.09), stone, bevel=0.025)
 
-    cylinder("HOME_ARCH_dungeon_post", (3.98, 1.88, 1.40), 0.27, 2.00, stone, vertices=32)
-    sphere("HOME_PROP_dungeon_finial", (3.98, 1.88, 2.50), (0.24, 0.24, 0.24), materials["stone_dark"])
+    cylinder("HOME_ARCH_dungeon_post", (4.72, 1.90, 1.33), 0.24, 1.78, stone, vertices=32)
+    sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.21, 0.21, 0.21), materials["stone_dark"])
 
-    steps = 12
+    steps = 11
     for i in range(steps):
         t = i / (steps - 1)
-        x = 4.45 + 2.82 * t
-        y = 1.46 - 2.50 * t
-        z = 0.76 - 1.72 * t
+        x = 5.28 + 2.45 * t
+        y = 1.45 - 2.28 * t
+        z = 0.68 - 1.58 * t
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
             (x, y, z),
-            (0.72, 0.38, 0.08),
+            (0.61, 0.33, 0.075),
             stone,
             bevel=0.025,
         )
 
     curve_tube(
         "HOME_PROP_dungeon_rail",
-        [(3.92, 1.60, 2.22), (5.02, 0.72, 1.54), (6.20, -0.22, 0.78), (7.20, -1.02, 0.12)],
-        0.050,
+        [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)],
+        0.045,
         brass,
     )
     curve_tube(
         "HOME_PROP_dungeon_rail_lower",
-        [(3.92, 1.60, 1.86), (5.02, 0.72, 1.18), (6.20, -0.22, 0.42), (7.20, -1.02, -0.24)],
-        0.027,
+        [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
+        0.024,
         brass,
     )
-    cube("HOME_ARCH_dungeon_lower_floor", (6.18, -0.62, -1.53), (2.00, 1.78, 0.10), dark, bevel=0.02)
+    cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
@@ -632,14 +655,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 5.10), 0.055, 1.55, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.78), 0.055, 1.46, materials["brass"])
     curve_tube("HOME_PROP_chandelier_ring", [
-        (1.38 * math.cos(i * math.tau / 20), 2.45 + 0.62 * math.sin(i * math.tau / 20), 4.34)
+        (1.48 * math.cos(i * math.tau / 20), 2.45 + 0.68 * math.sin(i * math.tau / 20), 4.06)
         for i in range(21)
     ], 0.060, materials["brass"])
-    for idx, x in enumerate((-0.95, -0.32, 0.32, 0.95)):
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (x, 2.45, 4.40), (0.055, 0.055, 0.18), materials["fire"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (x, 2.25, 4.48), 52, (1.0, 0.52, 0.20), radius=0.32)
+    for idx, x in enumerate((-1.02, -0.34, 0.34, 1.02)):
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (x, 2.45, 4.13), (0.055, 0.055, 0.18), materials["fire"])
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (x, 2.25, 4.22), 52, (1.0, 0.52, 0.20), radius=0.32)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
