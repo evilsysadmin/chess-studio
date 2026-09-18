@@ -28,6 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Reject broken Blender builder syntax before toolchain setup
+        run: python3 -m py_compile scripts/blender/build_home_v2_blockout.py
+
       - uses: ./.github/actions/setup-blender-canonical
         with:
           extra-packages: webp
