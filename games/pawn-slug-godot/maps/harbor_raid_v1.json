@@ -22,133 +22,152 @@
       "y": 520,
       "w": 180,
       "h": 24,
-      "kind": "low_dock"
+      "kind": "low_dock",
+      "material": "wood"
     },
     {
       "x": 650,
       "y": 466,
       "w": 150,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 860,
       "y": 396,
       "w": 220,
       "h": 24,
-      "kind": "crane_walk"
+      "kind": "crane_walk",
+      "material": "metal"
     },
     {
       "x": 1140,
       "y": 520,
       "w": 210,
       "h": 24,
-      "kind": "low_dock"
+      "kind": "low_dock",
+      "material": "wood"
     },
     {
       "x": 1410,
       "y": 448,
       "w": 160,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 1680,
       "y": 378,
       "w": 210,
       "h": 24,
-      "kind": "crane_walk"
+      "kind": "crane_walk",
+      "material": "metal"
     },
     {
       "x": 1960,
       "y": 488,
       "w": 190,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 2210,
       "y": 430,
       "w": 140,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 2420,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_dock"
+      "kind": "low_dock",
+      "material": "wood"
     },
     {
       "x": 2680,
       "y": 452,
       "w": 220,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 2960,
       "y": 372,
       "w": 190,
       "h": 24,
-      "kind": "crane_walk"
+      "kind": "crane_walk",
+      "material": "metal"
     },
     {
       "x": 3230,
       "y": 500,
       "w": 170,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 3470,
       "y": 438,
       "w": 150,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 3700,
       "y": 520,
       "w": 210,
       "h": 24,
-      "kind": "low_dock"
+      "kind": "low_dock",
+      "material": "wood"
     },
     {
       "x": 3980,
       "y": 404,
       "w": 240,
       "h": 24,
-      "kind": "crane_walk"
+      "kind": "crane_walk",
+      "material": "metal"
     },
     {
       "x": 4300,
       "y": 474,
       "w": 170,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     },
     {
       "x": 4530,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_dock"
+      "kind": "low_dock",
+      "material": "wood"
     },
     {
       "x": 4800,
       "y": 390,
       "w": 240,
       "h": 24,
-      "kind": "crane_walk"
+      "kind": "crane_walk",
+      "material": "metal"
     },
     {
       "x": 5120,
       "y": 456,
       "w": 220,
       "h": 24,
-      "kind": "dock"
+      "kind": "dock",
+      "material": "wood"
     }
   ],
   "obstacles": [
@@ -256,7 +275,9 @@
     },
     {
       "x": 2230,
-      "type": "knight"
+      "type": "knight",
+      "idle_pose": "sit",
+      "idle_reaction": 0.86
     },
     {
       "x": 2387,
@@ -281,7 +302,9 @@
     },
     {
       "x": 3170,
-      "type": "pawn"
+      "type": "pawn",
+      "idle_pose": "lean",
+      "idle_reaction": 0.94
     },
     {
       "x": 3327,
@@ -313,7 +336,9 @@
     },
     {
       "x": 4423,
-      "type": "commando"
+      "type": "commando",
+      "idle_pose": "rest",
+      "idle_reaction": 1.02
     },
     {
       "x": 4580,
@@ -482,6 +507,37 @@
       "y": 610,
       "w": 350,
       "h": 210
+    },
+    {
+      "id": "cargo-wall",
+      "type": "destructible_barricade",
+      "x": 2650,
+      "y": 546,
+      "w": 104,
+      "h": 64,
+      "hp": 100
+    },
+    {
+      "id": "loading-ramp",
+      "type": "destructible_platform",
+      "x": 3650,
+      "y": 328,
+      "w": 180,
+      "h": 24,
+      "hp": 72
+    },
+    {
+      "id": "harbor-mortar",
+      "type": "artillery_barrage",
+      "trigger_x": 3050,
+      "min_x": 3000,
+      "max_x": 3920,
+      "salvos": 4,
+      "telegraph": 1,
+      "interval": 0.82,
+      "radius": 84,
+      "damage": 90,
+      "lead": 78
     }
   ]
 }

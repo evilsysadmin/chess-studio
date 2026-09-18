@@ -9,13 +9,15 @@ var _floor_y := 610.0
 var _platforms: Array[Rect2] = []
 var _obstacles: Array[Rect2] = []
 var _theme := "night_front"
+var _platform_specs: Array[Dictionary] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front") -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
     _obstacles = obstacles.duplicate()
     _theme = theme
+    _platform_specs = platform_specs.duplicate(true)
     queue_redraw()
 
 func _ready() -> void:
@@ -166,32 +168,57 @@ func _draw_ground() -> void:
         )
 
 func _draw_platforms() -> void:
-    var top_color := Color("303b42")
-    var body_color := Color("252e34")
-    var trim := Color("b08a48")
-    var rivet := Color("69747a")
-    var support := Color("242c31")
-    match _theme:
-        "harbor_dusk":
-            top_color = Color("294047")
-            body_color = Color("1e3137")
-            trim = Color("6f98a4")
-            rivet = Color("8ba4aa")
-            support = Color("203237")
-        "alpine_night":
-            top_color = Color("3b454a")
-            body_color = Color("2b3438")
-            trim = Color("aab9bd")
-            rivet = Color("c1c9cb")
-            support = Color("30393d")
-        "jungle_storm":
-            top_color = Color("4b4732")
-            body_color = Color("302f22")
-            trim = Color("9a7f4d")
-            rivet = Color("776a4b")
-            support = Color("28342b")
+    for index in range(_platforms.size()):
+        var platform := _platforms[index]
+        var spec: Dictionary = _platform_specs[index] if index < _platform_specs.size() else {}
+        var material := String(spec.get("material", "metal"))
 
-    for platform in _platforms:
+        var top_color := Color("303b42")
+        var body_color := Color("252e34")
+        var trim := Color("b08a48")
+        var rivet := Color("69747a")
+        var support := Color("242c31")
+
+        match material:
+            "wood":
+                top_color = Color("5b4630")
+                body_color = Color("3c3124")
+                trim = Color("a47c49")
+                rivet = Color("786248")
+                support = Color("342b22")
+            "stone":
+                top_color = Color("545958")
+                body_color = Color("393e3d")
+                trim = Color("8b9492")
+                rivet = Color("707876")
+                support = Color("343938")
+            "concrete":
+                top_color = Color("5b5f60")
+                body_color = Color("404446")
+                trim = Color("9aa0a1")
+                rivet = Color("747b7d")
+                support = Color("353a3c")
+            "metal":
+                match _theme:
+                    "harbor_dusk":
+                        top_color = Color("294047")
+                        body_color = Color("1e3137")
+                        trim = Color("6f98a4")
+                        rivet = Color("8ba4aa")
+                        support = Color("203237")
+                    "alpine_night":
+                        top_color = Color("3b454a")
+                        body_color = Color("2b3438")
+                        trim = Color("aab9bd")
+                        rivet = Color("c1c9cb")
+                        support = Color("30393d")
+                    "jungle_storm":
+                        top_color = Color("4b4732")
+                        body_color = Color("302f22")
+                        trim = Color("9a7f4d")
+                        rivet = Color("776a4b")
+                        support = Color("28342b")
+
         draw_rect(platform, top_color, true)
         draw_rect(
             Rect2(platform.position + Vector2(0.0, 4.0), Vector2(platform.size.x, platform.size.y - 4.0)),
@@ -205,8 +232,26 @@ func _draw_platforms() -> void:
             Color(0.06, 0.08, 0.09, 0.75),
             3.0
         )
-        for rivet_x in range(int(platform.position.x) + 18, int(platform.end.x) - 10, 34):
-            draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, rivet)
+
+        if material == "wood":
+            for seam_x in range(int(platform.position.x) + 28, int(platform.end.x) - 8, 42):
+                draw_line(
+                    Vector2(float(seam_x), platform.position.y + 4.0),
+                    Vector2(float(seam_x), platform.end.y - 3.0),
+                    Color(0.12, 0.10, 0.07, 0.42),
+                    2.0,
+                )
+        elif material in ["stone", "concrete"]:
+            for seam_x in range(int(platform.position.x) + 52, int(platform.end.x) - 8, 74):
+                draw_line(
+                    Vector2(float(seam_x), platform.position.y + 3.0),
+                    Vector2(float(seam_x), platform.end.y - 3.0),
+                    Color(0.14, 0.15, 0.15, 0.34),
+                    1.5,
+                )
+        else:
+            for rivet_x in range(int(platform.position.x) + 18, int(platform.end.x) - 10, 34):
+                draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, rivet)
 
         var support_y := platform.end.y
         draw_line(

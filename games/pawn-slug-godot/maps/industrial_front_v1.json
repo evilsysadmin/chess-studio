@@ -22,133 +22,152 @@
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_catwalk"
+      "kind": "low_catwalk",
+      "material": "metal"
     },
     {
       "x": 670,
       "y": 456,
       "w": 160,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "concrete"
     },
     {
       "x": 900,
       "y": 400,
       "w": 220,
       "h": 24,
-      "kind": "high_catwalk"
+      "kind": "high_catwalk",
+      "material": "metal"
     },
     {
       "x": 1180,
       "y": 476,
       "w": 150,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "wood"
     },
     {
       "x": 1370,
       "y": 520,
       "w": 250,
       "h": 24,
-      "kind": "low_catwalk"
+      "kind": "low_catwalk",
+      "material": "metal"
     },
     {
       "x": 1660,
       "y": 446,
       "w": 160,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "concrete"
     },
     {
       "x": 1840,
       "y": 366,
       "w": 220,
       "h": 24,
-      "kind": "high_catwalk"
+      "kind": "high_catwalk",
+      "material": "metal"
     },
     {
       "x": 2130,
       "y": 488,
       "w": 180,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "metal"
     },
     {
       "x": 2380,
       "y": 430,
       "w": 140,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "wood"
     },
     {
       "x": 2580,
       "y": 458,
       "w": 250,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "concrete"
     },
     {
       "x": 2870,
       "y": 510,
       "w": 150,
       "h": 24,
-      "kind": "low_catwalk"
+      "kind": "low_catwalk",
+      "material": "metal"
     },
     {
       "x": 3050,
       "y": 390,
       "w": 220,
       "h": 24,
-      "kind": "high_catwalk"
+      "kind": "high_catwalk",
+      "material": "metal"
     },
     {
       "x": 3330,
       "y": 452,
       "w": 150,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "metal"
     },
     {
       "x": 3510,
       "y": 512,
       "w": 230,
       "h": 24,
-      "kind": "low_catwalk"
+      "kind": "low_catwalk",
+      "material": "concrete"
     },
     {
       "x": 3820,
       "y": 426,
       "w": 220,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "metal"
     },
     {
       "x": 4110,
       "y": 358,
       "w": 150,
       "h": 24,
-      "kind": "high_catwalk"
+      "kind": "high_catwalk",
+      "material": "metal"
     },
     {
       "x": 4310,
       "y": 498,
       "w": 200,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "metal"
     },
     {
       "x": 4600,
       "y": 456,
       "w": 130,
       "h": 24,
-      "kind": "catwalk"
+      "kind": "catwalk",
+      "material": "concrete"
     },
     {
       "x": 4750,
       "y": 406,
       "w": 300,
       "h": 24,
-      "kind": "high_catwalk"
+      "kind": "high_catwalk",
+      "material": "wood"
     }
   ],
   "obstacles": [
@@ -237,7 +256,9 @@
     },
     {
       "x": 2110,
-      "type": "pawn"
+      "type": "pawn",
+      "idle_pose": "sit",
+      "idle_reaction": 0.86
     },
     {
       "x": 2250,
@@ -274,7 +295,9 @@
     },
     {
       "x": 3130,
-      "type": "scout"
+      "type": "scout",
+      "idle_pose": "lean",
+      "idle_reaction": 0.94
     },
     {
       "x": 3210,
@@ -310,7 +333,9 @@
     },
     {
       "x": 4070,
-      "type": "knight"
+      "type": "knight",
+      "idle_pose": "rest",
+      "idle_reaction": 1.02
     },
     {
       "x": 4190,
@@ -475,6 +500,37 @@
       "y": 610,
       "w": 330,
       "h": 220
+    },
+    {
+      "id": "blast-wall",
+      "type": "destructible_barricade",
+      "x": 2360,
+      "y": 548,
+      "w": 92,
+      "h": 62,
+      "hp": 105
+    },
+    {
+      "id": "service-deck",
+      "type": "destructible_platform",
+      "x": 3350,
+      "y": 330,
+      "w": 170,
+      "h": 24,
+      "hp": 78
+    },
+    {
+      "id": "factory-barrage",
+      "type": "artillery_barrage",
+      "trigger_x": 2820,
+      "min_x": 2740,
+      "max_x": 3540,
+      "salvos": 3,
+      "telegraph": 0.95,
+      "interval": 0.86,
+      "radius": 86,
+      "damage": 95,
+      "lead": 90
     }
   ]
 }

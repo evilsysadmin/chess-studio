@@ -22,147 +22,168 @@
       "y": 520,
       "w": 170,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "concrete"
     },
     {
       "x": 620,
       "y": 450,
       "w": 150,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 830,
       "y": 362,
       "w": 180,
       "h": 24,
-      "kind": "cliff"
+      "kind": "cliff",
+      "material": "stone"
     },
     {
       "x": 1060,
       "y": 430,
       "w": 150,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "concrete"
     },
     {
       "x": 1270,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "stone"
     },
     {
       "x": 1530,
       "y": 448,
       "w": 160,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 1760,
       "y": 350,
       "w": 210,
       "h": 24,
-      "kind": "cliff"
+      "kind": "cliff",
+      "material": "concrete"
     },
     {
       "x": 2040,
       "y": 420,
       "w": 160,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 2260,
       "y": 520,
       "w": 210,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "stone"
     },
     {
       "x": 2540,
       "y": 458,
       "w": 150,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "concrete"
     },
     {
       "x": 2750,
       "y": 378,
       "w": 190,
       "h": 24,
-      "kind": "cliff"
+      "kind": "cliff",
+      "material": "stone"
     },
     {
       "x": 3010,
       "y": 448,
       "w": 180,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 3260,
       "y": 520,
       "w": 220,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "concrete"
     },
     {
       "x": 3550,
       "y": 400,
       "w": 210,
       "h": 24,
-      "kind": "cliff"
+      "kind": "cliff",
+      "material": "stone"
     },
     {
       "x": 3830,
       "y": 468,
       "w": 160,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 4050,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "concrete"
     },
     {
       "x": 4320,
       "y": 360,
       "w": 210,
       "h": 24,
-      "kind": "cliff"
+      "kind": "cliff",
+      "material": "stone"
     },
     {
       "x": 4610,
       "y": 438,
       "w": 170,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     },
     {
       "x": 4860,
       "y": 520,
       "w": 190,
       "h": 24,
-      "kind": "low_ledge"
+      "kind": "low_ledge",
+      "material": "concrete"
     },
     {
       "x": 5130,
       "y": 390,
       "w": 250,
       "h": 24,
-      "kind": "fortress_walk"
+      "kind": "fortress_walk",
+      "material": "metal"
     },
     {
       "x": 5450,
       "y": 456,
       "w": 200,
       "h": 24,
-      "kind": "ledge"
+      "kind": "ledge",
+      "material": "stone"
     }
   ],
   "obstacles": [
@@ -258,7 +279,9 @@
     },
     {
       "x": 1871,
-      "type": "pawn"
+      "type": "pawn",
+      "idle_pose": "sit",
+      "idle_reaction": 0.86
     },
     {
       "x": 2043,
@@ -299,7 +322,9 @@
     },
     {
       "x": 3590,
-      "type": "knight"
+      "type": "knight",
+      "idle_pose": "lean",
+      "idle_reaction": 0.94
     },
     {
       "x": 3761,
@@ -323,7 +348,9 @@
     },
     {
       "x": 4621,
-      "type": "commando"
+      "type": "commando",
+      "idle_pose": "rest",
+      "idle_reaction": 1.02
     },
     {
       "x": 4793,
@@ -497,6 +524,37 @@
       "y": 610,
       "w": 360,
       "h": 240
+    },
+    {
+      "id": "snow-barricade",
+      "type": "destructible_barricade",
+      "x": 2480,
+      "y": 544,
+      "w": 98,
+      "h": 66,
+      "hp": 115
+    },
+    {
+      "id": "timber-bridge",
+      "type": "destructible_platform",
+      "x": 3890,
+      "y": 320,
+      "w": 170,
+      "h": 24,
+      "hp": 74
+    },
+    {
+      "id": "mountain-shelling",
+      "type": "artillery_barrage",
+      "trigger_x": 3300,
+      "min_x": 3260,
+      "max_x": 4140,
+      "salvos": 3,
+      "telegraph": 1.08,
+      "interval": 0.92,
+      "radius": 90,
+      "damage": 100,
+      "lead": 72
     }
   ]
 }

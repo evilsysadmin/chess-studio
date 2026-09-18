@@ -50,6 +50,8 @@ var _visual_time := 0.0
 var _bishop_shell_telegraph := 0.0
 var _bishop_suppression_telegraph := 0.0
 var _using_remote_body := false
+var _idle_pose := ""
+var _surprise_remaining := 0.0
 
 var _facing_root: Node2D
 var _body: Sprite2D
@@ -94,6 +96,38 @@ func sync_state(world_x: float, floor_y: float, facing: float, is_moving: bool, 
     _last_hp = hp
     queue_redraw()
 
+func set_idle_state(pose: String, surprise_strength: float = 0.0) -> void:
+    _idle_pose = pose
+    _surprise_remaining = maxf(_surprise_remaining, surprise_strength)
+    _apply_idle_pose()
+    queue_redraw()
+
+func _apply_idle_pose() -> void:
+    if _facing_root == null or dead:
+        return
+    _facing_root.position = Vector2.ZERO
+    _facing_root.rotation = 0.0
+    if _weapon_root != null:
+        var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
+        _weapon_root.position = pose["position"]
+        _weapon_root.rotation = float(pose["rotation"])
+    if _idle_pose == "sit":
+        _facing_root.position.y = 14.0
+        if _weapon_root != null:
+            _weapon_root.position += Vector2(-6.0, 12.0)
+            _weapon_root.rotation += 0.58
+    elif _idle_pose == "lean":
+        _facing_root.rotation = -0.07
+        _facing_root.position.y = 5.0
+        if _weapon_root != null:
+            _weapon_root.position += Vector2(-4.0, 8.0)
+            _weapon_root.rotation += 0.38
+    elif _idle_pose == "rest":
+        _facing_root.position.y = 9.0
+        if _weapon_root != null:
+            _weapon_root.position += Vector2(-7.0, 10.0)
+            _weapon_root.rotation += 0.48
+
 func set_bishop_telegraph(shell_strength: float, suppression_strength: float) -> void:
     if enemy_type != "bishop":
         return
@@ -120,6 +154,7 @@ func _process(delta: float) -> void:
         return
     _visual_time += delta
     _fire_flash = maxf(0.0, _fire_flash - delta)
+    _surprise_remaining = maxf(0.0, _surprise_remaining - delta)
     if _muzzle_flash != null:
         _muzzle_flash.visible = _fire_flash > 0.0
 
@@ -344,6 +379,20 @@ func _play_death() -> void:
 func _draw() -> void:
     if dead:
         return
+    if _idle_pose != "":
+        _draw_idle_prop()
+    if _surprise_remaining > 0.0:
+        var pulse := 0.80 + 0.20 * sin(_visual_time * 18.0)
+        draw_circle(Vector2(0.0, -visual_height - 46.0), 13.0, Color(0.98, 0.76, 0.20, 0.16 * pulse))
+        draw_string(
+            ThemeDB.fallback_font,
+            Vector2(-4.0, -visual_height - 40.0),
+            "!",
+            HORIZONTAL_ALIGNMENT_LEFT,
+            -1.0,
+            22,
+            Color(1.0, 0.86, 0.28, pulse),
+        )
     if enemy_type == "bishop":
         _draw_bishop()
     elif enemy_type in ["queen", "grenadier", "scout", "commando", "shield"]:
@@ -405,6 +454,26 @@ func _draw_variant_backdrop() -> void:
         shield_outline.append(shield[0])
         draw_polyline(shield_outline, Color("aab4bf"), 4.0)
 
+
+func _draw_idle_prop() -> void:
+    var h := visual_height
+    match _idle_pose:
+        "sit":
+            draw_rect(
+                Rect2(Vector2(-h * 0.24, -h * 0.20), Vector2(h * 0.46, h * 0.18)),
+                Color("4c4332"),
+                true,
+            )
+            draw_line(Vector2(-h * 0.18, -h * 0.03), Vector2(-h * 0.20, h * 0.16), Color("2d2b24"), 4.0)
+            draw_line(Vector2(h * 0.14, -h * 0.03), Vector2(h * 0.18, h * 0.16), Color("2d2b24"), 4.0)
+        "lean":
+            draw_line(Vector2(h * 0.36, -h * 0.96), Vector2(h * 0.40, h * 0.10), Color("30383a"), 7.0)
+        "rest":
+            draw_rect(
+                Rect2(Vector2(-h * 0.33, -h * 0.10), Vector2(h * 0.66, h * 0.12)),
+                Color("3b4638"),
+                true,
+            )
 
 func _draw_bishop() -> void:
     var h := visual_height
