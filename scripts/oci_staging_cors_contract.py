@@ -25,6 +25,8 @@ k3s_unit = (ROOT / "infra" / "oci" / "k3s" / "k3s.service").read_text(encoding="
 signal_controller = (ROOT / "scripts" / "oci_staging_signal_controller.sh").read_text(encoding="utf-8")
 signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.service").read_text(encoding="utf-8")
 signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
+deploy_watcher = (ROOT / "scripts" / "oci_staging_deploy_watcher.py").read_text(encoding="utf-8")
+deploy_watcher_unit = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-deploy-watcher.service").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -272,32 +274,47 @@ assert "poll_errors" in deploy and "backoff" in deploy and "transport_errors" in
 assert "agent_diag_summary ||" in deploy
 assert 'cat "$log"' not in deploy.split("agent_diag_summary()", 1)[1].split("total_started_ms=", 1)[0]
 
-# The GHCR signal controller is root-owned, host-local and bounded. It creates
-# no OCI resource and the exact Run Command path remains available as fallback.
-assert "prepare_signal_controller()" in deploy
-assert "enable_signal_controller()" in deploy
-assert "systemctl enable --now chess-studio-staging-signal.timer" in deploy
-assert "systemctl disable --now chess-studio-staging-signal.timer" not in deploy
+# The GHCR signal controller is staged but deliberately dormant in this change.
+# It adds no OCI resource, no inbound port and no polling traffic until a later
+# reviewed change explicitly enables the timer.
+assert "prepare_signal_controller_disabled()" in deploy
+assert "systemctl disable --now chess-studio-staging-signal.timer" in deploy
 assert 'install -o root -g root -m 0755 "$signal_controller_source"' in deploy
 assert 'install -o root -g root -m 0644 "$signal_service_source"' in deploy
 assert 'install -o root -g root -m 0644 "$signal_timer_source"' in deploy
-assert "require flock" in deploy
-assert 'flock -w 120 8' in deploy
-assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind("enable_signal_controller")
+assert "systemctl enable --now chess-studio-staging-signal.timer" not in deploy
 assert "oci-staging-approved" in signal_controller
 assert "org.opencontainers.image.revision" in signal_controller
 assert "org.opencontainers.image.source" in signal_controller
 assert "flock -n 9" in signal_controller
 assert "docker pull --quiet" in signal_controller
 assert "approved and immutable image identities differ" in signal_controller
-assert "failure_cooldown_s=60" in signal_controller
-assert "staging-signal-failure" in signal_controller
-assert '[[ "$failed_sha" == "$sha"' in signal_controller
 assert "ssh " not in signal_controller.lower()
 assert "object_storage" not in signal_controller.lower()
 assert "bastion" not in signal_controller.lower()
 assert "ExecStart=/usr/local/sbin/chess-studio-staging-signal" in signal_service
 assert "OnUnitActiveSec=15s" in signal_timer
 assert "WantedBy=timers.target" in signal_timer
+
+# The active fast-path reuses the existing A1 and public staging Worker only.
+# It adds no OCI API dependency or inbound listener; Run Command stays fallback.
+assert "require flock" in deploy
+assert 'flock -w 120 8' in deploy
+assert "prepare_deploy_watcher()" in deploy
+assert "enable_deploy_watcher()" in deploy
+assert 'install -o root -g root -m 0755 "$deploy_watcher_source"' in deploy
+assert 'install -o root -g root -m 0644 "$deploy_watcher_unit_source"' in deploy
+assert "DEPLOY_WATCH_ENABLED" in deploy
+assert "systemctl enable --now chess-studio-deploy-watcher.service" in deploy
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind("enable_deploy_watcher")
+assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
+assert "refs/heads/main" in deploy_watcher
+assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
+assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
+assert "import oci" not in deploy_watcher
+assert "User=ocarun" in deploy_watcher_unit
+assert "PrivateTmp=true" in deploy_watcher_unit
+assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in deploy_watcher_unit
+assert "ListenStream" not in deploy_watcher_unit
 
 print("OCI staging CORS + runtime deployment contract: OK")
