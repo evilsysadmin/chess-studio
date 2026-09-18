@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export const WAR_ROOM_V2_STAGING_MODEL_URL =
@@ -22,6 +23,45 @@ export function warRoomV2EnvMapIntensity(materialName = '') {
   if (name.includes('leather') || name.includes('velvet') || name.includes('rug')) return 0.16;
   if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) return 0.32;
   return 0.28;
+}
+
+export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
+  return {
+    fire: {
+      color: 0xff8a38,
+      intensity: coarsePointer ? 1.35 : 2.05,
+      distance: 10.5,
+      decay: 2,
+    },
+    moon: {
+      color: 0x6f98ff,
+      intensity: coarsePointer ? 1.65 : 2.75,
+      distance: 13.5,
+      decay: 2,
+    },
+  };
+}
+
+function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
+  const profile = warRoomV2PracticalLightProfile({ coarsePointer });
+  const entries = [
+    ['WR_ANCHOR_fireplace_practical', 'war-room-v2-fire-practical', profile.fire],
+    ['WR_ANCHOR_window_moonlight', 'war-room-v2-moon-practical', profile.moon],
+  ];
+
+  let installed = 0;
+  for (const [anchorName, lightName, spec] of entries) {
+    const authoredAnchor = root.getObjectByName(anchorName);
+    if (!authoredAnchor) continue;
+    const practical = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
+    practical.name = lightName;
+    practical.castShadow = false;
+    practical.userData.warRoomV2Practical = anchorName;
+    authoredAnchor.add(practical);
+    installed += 1;
+  }
+  root.userData.warRoomV2PracticalLights = installed;
+  return installed;
 }
 
 function tuneRuntimeMaterial(material) {
@@ -84,8 +124,10 @@ export async function installWarRoomV2Shell(
       tuneRuntimeMaterial(material);
     });
   });
+  const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v3';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v4-authored-practicals';
+  root.userData.warRoomV2PracticalLights = practicalLights;
   scene.add(root);
 
   return () => {
