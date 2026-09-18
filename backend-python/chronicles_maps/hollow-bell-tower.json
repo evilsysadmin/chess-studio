@@ -1,0 +1,446 @@
+{
+  "id": "hollow-bell-tower",
+  "version": 1,
+  "progressionKey": "hollow-bell-tower-01",
+  "title": "Torre de las Campanas Huecas",
+  "grid": [
+    "###########",
+    "#P...#...X#",
+    "#.#.#.#.#.#",
+    "#.#...#...#",
+    "#.###.#.#.#",
+    "#.....#.#.#",
+    "###.#...#.#",
+    "#...###...#",
+    "#.#.....#.#",
+    "#.........#",
+    "###########"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {
+    "towerBriefingRead": false,
+    "westBrakeSet": false,
+    "eastBrakeSet": false,
+    "masterClapperClaimed": false,
+    "bellwrightCacheOpened": false
+  },
+  "enemies": [
+    {
+      "id": "hollow-bell-keeper",
+      "visualType": "gate-jailer",
+      "visualScale": 1.08,
+      "visualMotion": "grounded",
+      "name": "campanero hueco",
+      "x": 5,
+      "y": 9,
+      "hpKey": "hollowBellKeeperHp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          {
+            "x": 5,
+            "y": 9
+          },
+          {
+            "x": 6,
+            "y": 9
+          },
+          {
+            "x": 7,
+            "y": 9
+          },
+          {
+            "x": 6,
+            "y": 9
+          }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 5
+      }
+    },
+    {
+      "id": "west-chain-hound",
+      "visualType": "bone-hound",
+      "visualScale": 1,
+      "visualMotion": "grounded",
+      "name": "sabueso del freno oeste",
+      "x": 3,
+      "y": 5,
+      "hpKey": "westChainHoundHp",
+      "maxHp": 7,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1
+      }
+    },
+    {
+      "id": "east-bell-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.98,
+      "visualMotion": "skitter",
+      "name": "araña del freno este",
+      "x": 9,
+      "y": 7,
+      "hpKey": "eastBellSpiderHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      }
+    },
+    {
+      "id": "bell-archivist",
+      "visualType": "spectral-bishop",
+      "visualScale": 1,
+      "visualMotion": "hover",
+      "name": "archivista de campanas",
+      "x": 7,
+      "y": 3,
+      "hpKey": "bellArchivistHp",
+      "maxHp": 8,
+      "retaliation": 2,
+      "retaliationReach": 3,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 3,
+        "requiresLineOfSight": true
+      }
+    },
+    {
+      "id": "toll-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.82,
+      "visualMotion": "hover",
+      "name": "eco de badajo",
+      "x": 3,
+      "y": 3,
+      "hpKey": "tollWispHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} dispersa el eco de badajo con {attack}. Queda una esquirla que vibra sin que nadie la haya invitado.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "hollow-chime-shard",
+            "name": "Esquirla de Campana Hueca",
+            "description": "Metal ligero que vibra al acercarse a cavidades profundas. Trofeo opcional con tendencias acústicas sospechosas.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "tower-inscription",
+      "kind": "lore",
+      "x": 1,
+      "y": 1,
+      "label": "Leer orden del campanero",
+      "when": [
+        {
+          "key": "towerBriefingRead",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "towerBriefingRead",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "silence-hollow-bells",
+            "title": "Callar las campanas huecas",
+            "description": "Dos frenos laterales gobiernan el mecanismo; el Campanero Hueco custodia el badajo maestro.",
+            "objective": "Libera los dos frenos laterales y derrota al Campanero Hueco.",
+            "order": 80
+          }
+        ],
+        "message": "La orden de servicio exige dos frenos, un campanero y silencio absoluto. Por primera vez, la burocracia local propone algo razonable.",
+        "journal": {
+          "id": "hollow-bell-order",
+          "title": "Dos frenos y un campanero",
+          "body": "El mecanismo de la torre queda bloqueado por dos frenos en alas opuestas. El Campanero Hueco patrulla el anillo inferior.",
+          "sigil": "XVI"
+        }
+      }
+    },
+    {
+      "id": "west-bell-brake",
+      "kind": "lever",
+      "visualType": "bell-brake",
+      "x": 1,
+      "y": 5,
+      "label": "Accionar freno oeste",
+      "when": [
+        {
+          "key": "westChainHoundHp",
+          "lte": 0
+        },
+        {
+          "key": "westBrakeSet",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "westBrakeSet",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-hollow-bells",
+            "title": "Callar las campanas huecas",
+            "description": "Uno de los frenos laterales ya inmoviliza el mecanismo.",
+            "objective": "Activa ambos frenos y derrota al Campanero Hueco.",
+            "order": 80
+          }
+        ],
+        "message": "El freno oeste cae con un golpe seco. Media torre deja de gemir. La otra mitad toma nota y sigue molestando.",
+        "journal": {
+          "id": "west-bell-brake-set",
+          "title": "Freno oeste",
+          "body": "El mecanismo occidental queda bloqueado tras caer su sabueso guardián.",
+          "sigil": "W"
+        }
+      }
+    },
+    {
+      "id": "east-bell-brake",
+      "kind": "lever",
+      "visualType": "bell-brake",
+      "x": 9,
+      "y": 5,
+      "label": "Accionar freno este",
+      "when": [
+        {
+          "key": "eastBellSpiderHp",
+          "lte": 0
+        },
+        {
+          "key": "eastBrakeSet",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "eastBrakeSet",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-hollow-bells",
+            "title": "Callar las campanas huecas",
+            "description": "Uno de los frenos laterales ya inmoviliza el mecanismo.",
+            "objective": "Activa ambos frenos y derrota al Campanero Hueco.",
+            "order": 80
+          }
+        ],
+        "message": "El freno este encaja y la cadena se tensa. La torre descubre el concepto revolucionario de estarse quieta.",
+        "journal": {
+          "id": "east-bell-brake-set",
+          "title": "Freno este",
+          "body": "El mecanismo oriental queda bloqueado tras limpiar la seda de su guardián.",
+          "sigil": "E"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "master-clapper",
+      "kind": "pickup",
+      "visualType": "chain-altar",
+      "x": 5,
+      "y": 5,
+      "label": "Recuperar Badajo Maestro",
+      "when": [
+        {
+          "key": "westBrakeSet",
+          "equals": true
+        },
+        {
+          "key": "eastBrakeSet",
+          "equals": true
+        },
+        {
+          "key": "hollowBellKeeperHp",
+          "lte": 0
+        },
+        {
+          "key": "masterClapperClaimed",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "masterClapperClaimed",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "master-clapper",
+            "name": "Badajo Maestro",
+            "description": "Una pieza de bronce ennegrecido que gobierna las campanas de la torre y, convenientemente, su compuerta superior.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-hollow-bells",
+            "title": "Callar las campanas huecas",
+            "description": "Los dos frenos están puestos y el Campanero ha caído. El badajo maestro ya está en manos de la compañía.",
+            "objective": "Lleva el Badajo Maestro hasta la compuerta superior.",
+            "order": 80
+          }
+        ],
+        "message": "Con los frenos inmóviles y el Campanero en el suelo, el Badajo Maestro se libera. Pesa lo suficiente para justificar varias malas decisiones.",
+        "journal": {
+          "id": "master-clapper-claimed",
+          "title": "El badajo maestro",
+          "body": "La compañía retira el badajo central tras inmovilizar ambos frenos.",
+          "sigil": "●"
+        }
+      }
+    },
+    {
+      "id": "bellwright-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 7,
+      "y": 7,
+      "label": "Abrir archivo del campanero",
+      "when": [
+        {
+          "key": "bellArchivistHp",
+          "lte": 0
+        },
+        {
+          "key": "bellwrightCacheOpened",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "bellwrightCacheOpened",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bellwright-oil",
+            "name": "Aceite de Campanero",
+            "description": "Aceite mineral oscuro para mecanismos antiguos. Opcional, útil y probablemente imposible de quitar de la ropa.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "refill-class-abilities"
+          }
+        ],
+        "message": "El archivo guarda herramientas, aceite y cero libros. Por una vez, un archivista ha catalogado cosas que sirven.",
+        "journal": {
+          "id": "bellwright-cache-opened",
+          "title": "El archivo útil",
+          "body": "Tras caer el archivista, la compañía recupera aceite y repone fuerzas.",
+          "sigil": "⚙"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "tower-upper-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abrir compuerta con el Badajo Maestro",
+      "lockedLabel": "Examinar compuerta superior",
+      "requirements": [
+        {
+          "itemId": "master-clapper",
+          "quantity": 1,
+          "message": "La compuerta superior responde al Badajo Maestro."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "master-clapper",
+            "quantity": 1
+          },
+          {
+            "type": "complete-quest",
+            "questId": "silence-hollow-bells",
+            "title": "Callar las campanas huecas",
+            "description": "Los frenos quedaron clavados, el Campanero cayó y la torre perdió su badajo.",
+            "objective": "Torre superada.",
+            "order": 80
+          },
+          {
+            "type": "set",
+            "key": "phase",
+            "value": "escaped"
+          }
+        ],
+        "message": "El Badajo Maestro encaja en el cierre y la compuerta cede. La torre queda muda. Matthias parece sinceramente emocionado por el concepto.",
+        "journal": {
+          "id": "hollow-bell-tower-cleared",
+          "title": "La torre aprende silencio",
+          "body": "Ambos frenos quedan inmóviles y el Badajo Maestro abre la compuerta superior.",
+          "sigil": "XVI"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "hollow-bell-tower-entry",
+    "title": "Torre de las Campanas Huecas",
+    "body": "La basílica desemboca en una torre de dos alas y un anillo inferior. Dos frenos gobiernan un mecanismo que no sabe cuándo callarse.",
+    "sigil": "XVI"
+  },
+  "introMessage": "Torre de las Campanas Huecas. Dos frenos, un campanero y una acústica diseñada por alguien con enemigos."
+}
