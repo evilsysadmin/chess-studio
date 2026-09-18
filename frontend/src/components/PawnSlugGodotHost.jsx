@@ -3,7 +3,7 @@ import { LOCAL_GODOT_BOOTSTRAP_URL, resolvePawnSlugGodotUrl } from '../pawnSlugG
 import { STORAGE_LOCAL, getStorageItem, setStorageItem } from '../safeStorage.js';
 import './PawnSlugGodotHost.css';
 
-const PAWN_SLUG_STAGE_IDS = ['industrial_front_v1', 'harbor_raid_v1', 'alpine_fortress_v1'];
+const PAWN_SLUG_STAGE_IDS = ['industrial_front_v1', 'harbor_raid_v1', 'alpine_fortress_v1', 'jungle_relay_v1'];
 const PAWN_SLUG_STAGE_INDEX_KEY = 'chess-studio:pawn-slug-stage-index';
 
 function readStageIndex() {
