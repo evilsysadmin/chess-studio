@@ -218,8 +218,7 @@ def add_stairs(materials):
 def build_scene(reference: Path, samples: int):
     reset_scene()
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.image_settings.file_format = "PNG"
+    try:\n        scene.render.engine = "BLENDER_EEVEE_NEXT"\n    except TypeError:\n        scene.render.engine = "BLENDER_EEVEE"\n    scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     scene.render.resolution_percentage = 100
 
