@@ -22,6 +22,8 @@ MIN_OBSTACLES = 6
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
+ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy"}
+REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy"}
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
@@ -163,6 +165,84 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     if first_grenadier < 1200.0:
         errors.append(f"{stage_name}: first grenadier at x={first_grenadier:.0f} is too early")
 
+    for enemy in enemies:
+        if not isinstance(enemy, dict) or "y" not in enemy:
+            continue
+        spawn_y = float(enemy["y"])
+        spawn_x = float(enemy.get("x", -1))
+        kind = str(enemy.get("type", ""))
+        if abs(spawn_y - floor_y) <= 1.0:
+            continue
+        if kind != "rook":
+            errors.append(f"{stage_name}: elevated enemy {kind} at x={spawn_x:.0f} must be a stationary rook")
+            continue
+        supported = any(
+            float(rect.get("x", 0)) <= spawn_x <= float(rect.get("x", 0)) + float(rect.get("w", 0))
+            and abs(float(rect.get("y", -999)) - spawn_y) <= 2.0
+            for rect in platforms
+            if isinstance(rect, dict)
+        )
+        if not supported:
+            errors.append(f"{stage_name}: elevated rook at x={spawn_x:.0f}, y={spawn_y:.0f} lacks platform support")
+
+    setpieces = stage.get("setpieces") or []
+    ids: set[str] = set()
+    kinds: set[str] = set()
+    if len(setpieces) < 3:
+        errors.append(f"{stage_name}: needs at least 3 authored set pieces")
+    for index, setpiece in enumerate(setpieces):
+        if not isinstance(setpiece, dict):
+            errors.append(f"{stage_name}: setpieces[{index}] must be an object")
+            continue
+        setpiece_id = str(setpiece.get("id", ""))
+        kind = str(setpiece.get("type", ""))
+        if not setpiece_id or setpiece_id in ids:
+            errors.append(f"{stage_name}: setpieces[{index}] needs a unique id")
+        ids.add(setpiece_id)
+        kinds.add(kind)
+        if kind not in ALLOWED_SETPIECES:
+            errors.append(f"{stage_name}: unsupported set-piece type {kind!r}")
+            continue
+        trigger_x = float(setpiece.get("trigger_x", 0.0))
+        if trigger_x < 0 or trigger_x >= width:
+            errors.append(f"{stage_name}: {setpiece_id} trigger_x outside world")
+        if kind == "moving_platform":
+            x = float(setpiece.get("x", -1)); y = float(setpiece.get("y", -1))
+            w = float(setpiece.get("w", 0)); h = float(setpiece.get("h", 0))
+            tx = float(setpiece.get("travel_x", 0)); ty = float(setpiece.get("travel_y", 0))
+            period = float(setpiece.get("period", 0))
+            if w <= 0 or h <= 0 or not 1.5 <= period <= 12.0:
+                errors.append(f"{stage_name}: moving platform {setpiece_id} has invalid size/period")
+            if min(x, x + tx) < 0 or max(x + w, x + tx + w) > width:
+                errors.append(f"{stage_name}: moving platform {setpiece_id} leaves horizontal world bounds")
+            if min(y, y + ty) < 0 or max(y + h, y + ty + h) > floor_y:
+                errors.append(f"{stage_name}: moving platform {setpiece_id} leaves playable vertical bounds")
+        elif kind == "bunker_turret":
+            x = float(setpiece.get("x", -1)); hp = int(setpiece.get("hp", 0))
+            if not 0 < x < width or not 50 <= hp <= 400:
+                errors.append(f"{stage_name}: bunker {setpiece_id} has invalid x/hp")
+        elif kind == "reinforcement_wave":
+            wave = setpiece.get("enemies") or []
+            if not 1 <= len(wave) <= 4:
+                errors.append(f"{stage_name}: wave {setpiece_id} must contain 1..4 enemies")
+            for reinforcement in wave:
+                if not isinstance(reinforcement, dict):
+                    errors.append(f"{stage_name}: wave {setpiece_id} has invalid enemy")
+                    continue
+                rx = float(reinforcement.get("x", -1))
+                rtype = str(reinforcement.get("type", ""))
+                if not 0 <= rx < width or rtype not in stats:
+                    errors.append(f"{stage_name}: wave {setpiece_id} has invalid spawn {rtype}@{rx:.0f}")
+        elif kind == "convoy":
+            start = float(setpiece.get("start_x", -1)); end = float(setpiece.get("end_x", -1))
+            speed = float(setpiece.get("speed", 0))
+            if not 0 <= start < width or not 0 <= end < width or not 80 <= speed <= 520:
+                errors.append(f"{stage_name}: convoy {setpiece_id} has invalid route/speed")
+
+    missing_setpieces = sorted(REQUIRED_SETPIECE_TYPES - kinds)
+    if missing_setpieces:
+        errors.append(f"{stage_name}: missing set-piece types: " + ", ".join(missing_setpieces))
+
     pickups = stage.get("pickups") or []
     if not any(str(p.get("type", "")) == "machinegun" for p in pickups if isinstance(p, dict)):
         errors.append(f"{stage_name}: opening machinegun pickup missing")
@@ -224,6 +304,12 @@ def self_test() -> None:
             for i in range(18)
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
+        "setpieces": [
+            {"id": "lift", "type": "moving_platform", "x": 900, "y": 360, "w": 140, "h": 24, "travel_y": 100, "period": 4.0},
+            {"id": "bunker", "type": "bunker_turret", "x": 2500, "y": 610, "w": 126, "h": 82, "hp": 180, "trigger_x": 2000},
+            {"id": "wave", "type": "reinforcement_wave", "trigger_x": 3000, "enemies": [{"x": 2900, "type": "pawn"}]},
+            {"id": "truck", "type": "convoy", "trigger_x": 1600, "start_x": 2200, "end_x": 1300, "y": 606, "speed": 260},
+        ],
         "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
         "backdrop": {"layers": [
             {"kind": "sky", "scroll": 0.03},

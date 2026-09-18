@@ -5,6 +5,7 @@ const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
+const SetpieceVisual := preload("res://scripts/setpiece_visual.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
 const STAGE_CATALOG := ["industrial_front_v1", "harbor_raid_v1", "alpine_fortress_v1", "jungle_relay_v1"]
 const VIEW_SIZE := Vector2(1280.0, 720.0)
@@ -105,6 +106,9 @@ var _checkpoints: Array = [110.0]
 var _platforms: Array[Rect2] = []
 var _obstacles: Array[Rect2] = []
 var _enemy_spawns: Array[Dictionary] = []
+var _setpieces: Array[Dictionary] = []
+var _setpiece_nodes: Dictionary = {}
+var _moving_platforms: Array[Dictionary] = []
 var _boss_x := 4580.0
 var _boss_hp := 780
 var _boss_size := Vector2(190.0, 150.0)
@@ -158,6 +162,7 @@ func _ready() -> void:
         camera.limit_bottom = int(_world_size.y)
     _build_parallax_backdrop()
     _build_environment_visual()
+    _build_stage_setpieces()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
     _build_extraction_visual()
@@ -217,6 +222,11 @@ func _load_stage_manifest(stage_id: String) -> bool:
     for entry in _stage_manifest.get("enemies", []):
         if typeof(entry) == TYPE_DICTIONARY:
             _enemy_spawns.append(Dictionary(entry).duplicate(true))
+
+    _setpieces.clear()
+    for entry in _stage_manifest.get("setpieces", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _setpieces.append(Dictionary(entry).duplicate(true))
 
     pickups.clear()
     for entry in _stage_manifest.get("pickups", []):
@@ -299,6 +309,9 @@ func _point_hits_stage_geometry(point: Vector2) -> bool:
     for rect in _obstacles:
         if rect.has_point(point):
             return true
+    for rect in _moving_platform_rects():
+        if rect.has_point(point):
+            return true
     return false
 
 func contextual_movement_hint(player_x: float) -> String:
@@ -334,6 +347,7 @@ func _process(delta: float) -> void:
     _hostile_fire_gap_remaining = maxf(0.0, _hostile_fire_gap_remaining - delta)
     _hostile_grace_remaining = maxf(0.0, _hostile_grace_remaining - delta)
     _enemy_suppression_remaining = maxf(0.0, _enemy_suppression_remaining - delta)
+    _update_stage_setpieces(delta)
     _spawn_boss_if_needed()
     _update_projectiles(delta)
     _update_grenades(delta)
@@ -472,40 +486,294 @@ func _sync_hud() -> void:
 func _build_enemy_roster() -> Array[Dictionary]:
     var roster: Array[Dictionary] = []
     for index in range(_enemy_spawns.size()):
-        var spawn: Dictionary = _enemy_spawns[index]
-        var spawn_x := float(spawn.get("x", 0.0))
-        var type := String(spawn.get("type", "pawn"))
-        var stats: Dictionary = ENEMY_TYPES[type]
-        var weapon := _enemy_weapon_for(type, index)
-        var role := "hold"
-        if type in ["pawn", "knight", "queen", "grenadier", "scout", "commando", "shield"]:
-            role = "support" if weapon in ["machinegun", "panzerfaust"] and index % 3 != 0 else "assaulter"
-        var enemy := {
-            "id": "%s-%d" % [type, index],
-            "type": type,
-            "x": spawn_x,
-            "spawn_x": spawn_x,
-            "alerted": false,
-            "reaction": _initial_enemy_reaction(spawn_x, index),
-            "y": _floor_y,
-            "vy": 0.0,
-            "on_ground": true,
-            "hp": int(stats["hp"]),
-            "max_hp": int(stats["hp"]),
-            "weapon": weapon,
-            "role": role,
-            "cooldown": 0.35 + float(index % 5) * 0.08,
-        }
-        if type == "bishop":
-            enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
-            enemy["suppression_cooldown"] = 2.35 + randf_range(0.0, 0.70)
-            enemy["suppression_shots"] = 0
-            enemy["suppression_index"] = 0
-            enemy["suppression_shot_cooldown"] = 0.0
-        elif type == "knight":
-            enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
-        roster.append(enemy)
+        roster.append(_enemy_from_spawn(_enemy_spawns[index], index, "base"))
     return roster
+
+func _enemy_from_spawn(spawn: Dictionary, variant: int, id_prefix: String) -> Dictionary:
+    var spawn_x := float(spawn.get("x", 0.0))
+    var spawn_y := float(spawn.get("y", _floor_y))
+    var type := String(spawn.get("type", "pawn"))
+    var stats: Dictionary = ENEMY_TYPES[type]
+    var weapon := _enemy_weapon_for(type, variant)
+    var role := "hold"
+    if type in ["pawn", "knight", "queen", "grenadier", "scout", "commando", "shield"]:
+        role = "support" if weapon in ["machinegun", "panzerfaust"] and variant % 3 != 0 else "assaulter"
+    var enemy := {
+        "id": "%s-%s-%d" % [id_prefix, type, variant],
+        "type": type,
+        "x": spawn_x,
+        "spawn_x": spawn_x,
+        "alerted": false,
+        "reaction": _initial_enemy_reaction(spawn_x, variant),
+        "y": spawn_y,
+        "vy": 0.0,
+        "on_ground": true,
+        "hp": int(stats["hp"]),
+        "max_hp": int(stats["hp"]),
+        "weapon": weapon,
+        "role": role,
+        "cooldown": 0.35 + float(variant % 5) * 0.08,
+    }
+    if type == "bishop":
+        enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
+        enemy["suppression_cooldown"] = 2.35 + randf_range(0.0, 0.70)
+        enemy["suppression_shots"] = 0
+        enemy["suppression_index"] = 0
+        enemy["suppression_shot_cooldown"] = 0.0
+    elif type == "knight":
+        enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
+    return enemy
+
+func _build_stage_setpieces() -> void:
+    _setpiece_nodes.clear()
+    _moving_platforms.clear()
+    var theme := String(_stage_manifest.get("theme", "night_front"))
+
+    for index in range(_setpieces.size()):
+        var setpiece := _setpieces[index]
+        var kind := String(setpiece.get("type", ""))
+        var id := String(setpiece.get("id", "%s-%02d" % [kind, index]))
+        setpiece["_id"] = id
+        setpiece["_triggered"] = false
+        setpiece["_complete"] = false
+
+        if kind == "moving_platform":
+            var width := float(setpiece.get("w", 140.0))
+            var height := float(setpiece.get("h", 24.0))
+            var body := AnimatableBody2D.new()
+            body.name = "Setpiece_%s" % id
+            body.position = Vector2(
+                float(setpiece.get("x", 0.0)) + width * 0.5,
+                float(setpiece.get("y", _floor_y - 120.0)) + height * 0.5,
+            )
+            body.sync_to_physics = true
+            var collision := CollisionShape2D.new()
+            var shape := RectangleShape2D.new()
+            shape.size = Vector2(width, height)
+            collision.shape = shape
+            body.add_child(collision)
+            var visual = SetpieceVisual.new()
+            visual.configure(kind, Vector2(width, height), theme)
+            body.add_child(visual)
+            add_child(body)
+            var moving := {
+                "id": id,
+                "body": body,
+                "origin": body.position,
+                "travel": Vector2(
+                    float(setpiece.get("travel_x", 0.0)),
+                    float(setpiece.get("travel_y", 0.0)),
+                ),
+                "period": maxf(1.5, float(setpiece.get("period", 4.0))),
+                "phase": float(setpiece.get("phase", 0.0)),
+                "elapsed": 0.0,
+                "size": Vector2(width, height),
+            }
+            _moving_platforms.append(moving)
+            _setpiece_nodes[id] = body
+        elif kind == "bunker_turret":
+            var visual = SetpieceVisual.new()
+            visual.name = "Setpiece_%s" % id
+            visual.position = Vector2(
+                float(setpiece.get("x", 0.0)),
+                float(setpiece.get("y", _floor_y)),
+            )
+            visual.z_index = 1
+            var size := Vector2(
+                float(setpiece.get("w", 126.0)),
+                float(setpiece.get("h", 82.0)),
+            )
+            visual.configure(kind, size, theme)
+            add_child(visual)
+            setpiece["_hp"] = int(setpiece.get("hp", 180))
+            setpiece["_max_hp"] = int(setpiece.get("hp", 180))
+            setpiece["_cooldown"] = float(setpiece.get("reaction", 0.70))
+            _setpiece_nodes[id] = visual
+        elif kind == "convoy":
+            var visual = SetpieceVisual.new()
+            visual.name = "Setpiece_%s" % id
+            visual.position = Vector2(
+                float(setpiece.get("start_x", 0.0)),
+                float(setpiece.get("y", _floor_y - 4.0)),
+            )
+            visual.z_index = 2
+            visual.configure(
+                kind,
+                Vector2(float(setpiece.get("w", 150.0)), float(setpiece.get("h", 68.0))),
+                theme,
+            )
+            visual.visible = false
+            add_child(visual)
+            _setpiece_nodes[id] = visual
+
+        _setpieces[index] = setpiece
+
+func _physics_process(delta: float) -> void:
+    for index in range(_moving_platforms.size()):
+        var moving := _moving_platforms[index]
+        var body = moving.get("body")
+        if body == null:
+            continue
+        moving["elapsed"] = float(moving.get("elapsed", 0.0)) + delta
+        var period := float(moving["period"])
+        var phase := float(moving["phase"])
+        var wave := (sin((float(moving["elapsed"]) / period + phase) * TAU) + 1.0) * 0.5
+        body.position = Vector2(moving["origin"]) + Vector2(moving["travel"]) * wave
+        _moving_platforms[index] = moving
+
+func _moving_platform_rects() -> Array[Rect2]:
+    var rects: Array[Rect2] = []
+    for moving in _moving_platforms:
+        var body = moving.get("body")
+        if body == null:
+            continue
+        var size: Vector2 = moving["size"]
+        rects.append(Rect2(Vector2(body.position) - size * 0.5, size))
+    return rects
+
+func _update_stage_setpieces(delta: float) -> void:
+    for index in range(_setpieces.size()):
+        var setpiece := _setpieces[index]
+        var kind := String(setpiece.get("type", ""))
+        match kind:
+            "reinforcement_wave":
+                if (
+                    not bool(setpiece.get("_triggered", false))
+                    and player.global_position.x >= float(setpiece.get("trigger_x", 0.0))
+                ):
+                    setpiece["_triggered"] = true
+                    _spawn_reinforcement_wave(setpiece, index)
+            "bunker_turret":
+                _update_bunker_turret(setpiece, delta)
+            "convoy":
+                _update_convoy_setpiece(setpiece, delta)
+        _setpieces[index] = setpiece
+
+func _spawn_reinforcement_wave(setpiece: Dictionary, setpiece_index: int) -> void:
+    var wave: Array = setpiece.get("enemies", [])
+    var base_reaction := float(setpiece.get("reaction", 0.45))
+    for wave_index in range(wave.size()):
+        var raw = wave[wave_index]
+        if typeof(raw) != TYPE_DICTIONARY:
+            continue
+        var spawn := Dictionary(raw)
+        var variant := enemies.size() + wave_index
+        var enemy := _enemy_from_spawn(spawn, variant, "wave-%02d" % setpiece_index)
+        enemy["alerted"] = true
+        enemy["reaction"] = base_reaction + float(wave_index) * 0.08
+        enemies.append(enemy)
+        _add_enemy_visual(enemy)
+
+func _update_bunker_turret(setpiece: Dictionary, delta: float) -> void:
+    if int(setpiece.get("_hp", 0)) <= 0:
+        return
+    var trigger_x := float(setpiece.get("trigger_x", setpiece.get("x", 0.0) - 620.0))
+    if player.global_position.x < trigger_x:
+        return
+
+    setpiece["_triggered"] = true
+    setpiece["_cooldown"] = maxf(0.0, float(setpiece.get("_cooldown", 0.0)) - delta)
+    var bunker_x := float(setpiece.get("x", 0.0))
+    var bunker_y := float(setpiece.get("y", _floor_y))
+    var width := float(setpiece.get("w", 126.0))
+    var height := float(setpiece.get("h", 82.0))
+    var origin := Vector2(bunker_x - width * 0.56, bunker_y - height * 0.64)
+    var target := Vector2(player.global_position) + Vector2(0.0, -18.0)
+    var max_range := float(setpiece.get("range", 760.0))
+    if origin.distance_to(target) > max_range:
+        return
+    if _platform_blocks_line(origin, target):
+        return
+    if float(setpiece["_cooldown"]) > 0.0:
+        return
+    if not _can_spawn_hostile_shot(origin, "machinegun", 1):
+        return
+
+    var profile: Dictionary = ENEMY_FIRE_PROFILES["machinegun"]
+    var direction := (target - origin).normalized()
+    enemy_projectiles.append({
+        "position": origin,
+        "velocity": direction * float(profile["speed"]),
+        "weapon": "machinegun",
+        "explosive": false,
+    })
+    _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
+    setpiece["_cooldown"] = randf_range(
+        float(setpiece.get("cooldown_min", 0.72)),
+        float(setpiece.get("cooldown_max", 1.08)),
+    )
+    var visual = _setpiece_nodes.get(String(setpiece.get("_id", "")))
+    if visual != null:
+        visual.pulse_fire()
+
+func _update_convoy_setpiece(setpiece: Dictionary, delta: float) -> void:
+    var id := String(setpiece.get("_id", ""))
+    var visual = _setpiece_nodes.get(id)
+    if visual == null:
+        return
+    if not bool(setpiece.get("_triggered", false)):
+        if player.global_position.x < float(setpiece.get("trigger_x", 0.0)):
+            return
+        setpiece["_triggered"] = true
+        visual.visible = true
+
+    if bool(setpiece.get("_complete", false)):
+        return
+
+    var end_x := float(setpiece.get("end_x", visual.position.x))
+    var speed := maxf(40.0, float(setpiece.get("speed", 260.0)))
+    var direction := 1.0 if end_x >= visual.position.x else -1.0
+    visual.position.x += direction * speed * delta
+    if (
+        (direction > 0.0 and visual.position.x >= end_x)
+        or (direction < 0.0 and visual.position.x <= end_x)
+    ):
+        visual.position.x = end_x
+        visual.visible = false
+        setpiece["_complete"] = true
+
+func _bunker_hitbox(setpiece: Dictionary) -> Rect2:
+    var width := float(setpiece.get("w", 126.0))
+    var height := float(setpiece.get("h", 82.0))
+    return Rect2(
+        Vector2(float(setpiece.get("x", 0.0)) - width * 0.5, float(setpiece.get("y", _floor_y)) - height),
+        Vector2(width, height),
+    )
+
+func _damage_bunker_at(point: Vector2, damage: int) -> bool:
+    for index in range(_setpieces.size()):
+        var setpiece := _setpieces[index]
+        if String(setpiece.get("type", "")) != "bunker_turret" or int(setpiece.get("_hp", 0)) <= 0:
+            continue
+        if not _bunker_hitbox(setpiece).has_point(point):
+            continue
+        _damage_bunker(index, damage)
+        return true
+    return false
+
+func _damage_bunkers_in_radius(position: Vector2, radius: float, damage: int) -> void:
+    for index in range(_setpieces.size()):
+        var setpiece := _setpieces[index]
+        if String(setpiece.get("type", "")) != "bunker_turret" or int(setpiece.get("_hp", 0)) <= 0:
+            continue
+        var distance := position.distance_to(_bunker_hitbox(setpiece).get_center())
+        if distance > radius:
+            continue
+        _damage_bunker(index, _explosion_damage(damage, distance, radius))
+
+func _damage_bunker(index: int, damage: int) -> void:
+    var setpiece := _setpieces[index]
+    var next_hp := maxi(0, int(setpiece.get("_hp", 0)) - damage)
+    setpiece["_hp"] = next_hp
+    var max_hp := maxi(1, int(setpiece.get("_max_hp", 1)))
+    var visual = _setpiece_nodes.get(String(setpiece.get("_id", "")))
+    if visual != null:
+        visual.set_health_ratio(float(next_hp) / float(max_hp))
+        if next_hp <= 0:
+            visual.set_destroyed(true)
+    if next_hp <= 0:
+        _add_explosion_fx(_bunker_hitbox(setpiece).get_center(), 72.0)
+    _setpieces[index] = setpiece
 
 func _build_parallax_backdrop() -> void:
     if _parallax_root != null:
@@ -551,22 +819,27 @@ func _build_environment_visual() -> void:
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
-        var id := String(enemy["id"])
-        var type := String(enemy["type"])
-        var stats: Dictionary = ENEMY_TYPES[type]
-        var visual = EnemyVisual.new()
-        visual.name = "Enemy_%s" % id
-        visual.z_index = 1
-        add_child(visual)
-        visual.configure(
-            type,
-            String(enemy["weapon"]),
-            float(stats["height"]),
-            int(enemy["hp"]),
-            int(enemy["max_hp"]),
-        )
-        enemy_visuals[id] = visual
-        _sync_enemy_visual(enemy, 0.0)
+        _add_enemy_visual(enemy)
+
+func _add_enemy_visual(enemy: Dictionary) -> void:
+    var id := String(enemy["id"])
+    if enemy_visuals.has(id):
+        return
+    var type := String(enemy["type"])
+    var stats: Dictionary = ENEMY_TYPES[type]
+    var visual = EnemyVisual.new()
+    visual.name = "Enemy_%s" % id
+    visual.z_index = 1
+    add_child(visual)
+    visual.configure(
+        type,
+        String(enemy["weapon"]),
+        float(stats["height"]),
+        int(enemy["hp"]),
+        int(enemy["max_hp"]),
+    )
+    enemy_visuals[id] = visual
+    _sync_enemy_visual(enemy, 0.0)
 
 func _build_extraction_visual() -> void:
     extraction_visual = ExtractionVisual.new()
@@ -655,6 +928,20 @@ func _update_projectiles(delta: float) -> void:
         position += velocity * delta
         projectile["position"] = position
         projectiles[index] = projectile
+
+        var direct_bunker_damage := 0 if bool(projectile["explosive"]) else int(projectile["damage"])
+        if _damage_bunker_at(position, direct_bunker_damage):
+            if bool(projectile["explosive"]):
+                _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
+            else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    false,
+                )
+            projectiles.remove_at(index)
+            continue
 
         if _point_hits_stage_geometry(position):
             if bool(projectile["explosive"]):
@@ -746,6 +1033,7 @@ func _update_grenades(delta: float) -> void:
 
 func _explode_player_weapon(position: Vector2, radius: float, damage: int) -> void:
     _add_explosion_fx(position, radius)
+    _damage_bunkers_in_radius(position, radius, damage)
     for enemy_index in range(enemies.size()):
         var enemy := enemies[enemy_index]
         if int(enemy["hp"]) <= 0:
@@ -894,6 +1182,14 @@ func _platform_blocks_line(origin: Vector2, target: Vector2) -> bool:
         var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
         var line_y := lerpf(origin.y, target.y, t)
         if line_y >= obstacle.position.y - 3.0 and line_y <= obstacle.end.y + 3.0:
+            return true
+    for platform in _moving_platform_rects():
+        if platform.end.x < line_min_x or platform.position.x > line_max_x:
+            continue
+        var sample_x := clampf(platform.get_center().x, line_min_x, line_max_x)
+        var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
+        var line_y := lerpf(origin.y, target.y, t)
+        if line_y >= platform.position.y - 3.0 and line_y <= platform.end.y + 3.0:
             return true
     return false
 
@@ -1054,7 +1350,7 @@ func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
 func _knight_has_support(world_x: float, foot_y: float) -> bool:
     if is_equal_approx(foot_y, _floor_y):
         return true
-    for platform in _platforms:
+    for platform in _platforms + _moving_platform_rects():
         if (
             absf(foot_y - platform.position.y) <= 2.0
             and world_x >= platform.position.x
@@ -1065,7 +1361,7 @@ func _knight_has_support(world_x: float, foot_y: float) -> bool:
 
 func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
     var landing_y := -1.0
-    for platform in _platforms:
+    for platform in _platforms + _moving_platform_rects():
         var top := platform.position.y
         if (
             world_x >= platform.position.x

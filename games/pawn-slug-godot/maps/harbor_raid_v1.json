@@ -238,8 +238,9 @@
       "type": "commando"
     },
     {
-      "x": 1603,
-      "type": "rook"
+      "x": 1520,
+      "type": "rook",
+      "y": 448
     },
     {
       "x": 1760,
@@ -275,7 +276,8 @@
     },
     {
       "x": 3013,
-      "type": "rook"
+      "type": "rook",
+      "y": 372
     },
     {
       "x": 3170,
@@ -403,5 +405,64 @@
         "intensity": 1
       }
     ]
-  }
+  },
+  "setpieces": [
+    {
+      "id": "dock-crane-lift",
+      "type": "moving_platform",
+      "x": 1850,
+      "y": 300,
+      "w": 160,
+      "h": 22,
+      "travel_x": 0,
+      "travel_y": 160,
+      "period": 5.2,
+      "phase": 0.28
+    },
+    {
+      "id": "dock-truck",
+      "type": "convoy",
+      "trigger_x": 2380,
+      "start_x": 3120,
+      "end_x": 2140,
+      "y": 606,
+      "w": 168,
+      "h": 72,
+      "speed": 350
+    },
+    {
+      "id": "harbor-pillbox",
+      "type": "bunker_turret",
+      "x": 4540,
+      "y": 610,
+      "w": 138,
+      "h": 86,
+      "hp": 220,
+      "trigger_x": 3980,
+      "range": 840,
+      "cooldown_min": 0.74,
+      "cooldown_max": 1.05,
+      "reaction": 0.68
+    },
+    {
+      "id": "dock-reinforcements",
+      "type": "reinforcement_wave",
+      "trigger_x": 3440,
+      "reaction": 0.52,
+      "enemies": [
+        {
+          "x": 3320,
+          "type": "pawn"
+        },
+        {
+          "x": 3600,
+          "type": "commando"
+        },
+        {
+          "x": 3730,
+          "type": "scout"
+        }
+      ]
+    }
+  ]
 }
