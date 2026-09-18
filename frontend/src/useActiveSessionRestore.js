@@ -318,9 +318,13 @@ export function useActiveSessionRestore({
   ]);
 
   useEffect(() => {
-    const saved = loadVisibleActiveGameSession();
-    if (!shouldAutoRestoreActiveSession({ currentView, saved }) || startupRestoreAttempted.current) return;
+    // Esta decisión pertenece al arranque de App, no a cada navegación.
+    // Marcarla como consumida antes de mirar la ruta evita que entrar en una
+    // partida durante la misma sesión dispare una falsa "restauración".
+    if (startupRestoreAttempted.current) return;
     startupRestoreAttempted.current = true;
+    const saved = loadVisibleActiveGameSession();
+    if (!shouldAutoRestoreActiveSession({ currentView, saved })) return;
     restoreActiveSession(saved);
   }, [currentView, restoreActiveSession]);
 
