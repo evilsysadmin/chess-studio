@@ -2,10 +2,43 @@ import { useEffect, useRef, useState } from 'react';
 import { LOCAL_GODOT_BOOTSTRAP_URL, resolvePawnSlugGodotUrl } from '../pawnSlugGodotRuntime.js';
 import './PawnSlugGodotHost.css';
 
+const PAWN_SLUG_STAGE_IDS = ['industrial_front_v1', 'harbor_raid_v1', 'alpine_fortress_v1'];
+const PAWN_SLUG_STAGE_INDEX_KEY = 'chess-studio:pawn-slug-stage-index';
+
+function readStageIndex() {
+  try {
+    const raw = Number.parseInt(localStorage.getItem(PAWN_SLUG_STAGE_INDEX_KEY) || '0', 10);
+    if (!Number.isFinite(raw) || raw < 0) return 0;
+    return raw % PAWN_SLUG_STAGE_IDS.length;
+  } catch {
+    return 0;
+  }
+}
+
+function stageRuntimeUrl(url, stageId) {
+  const joiner = url.includes('?') ? '&' : '?';
+  return `${url}${joiner}stage=${encodeURIComponent(stageId)}`;
+}
+
+function advanceStageIndex() {
+  try {
+    const next = (readStageIndex() + 1) % PAWN_SLUG_STAGE_IDS.length;
+    localStorage.setItem(PAWN_SLUG_STAGE_INDEX_KEY, String(next));
+  } catch {
+    // Storage is optional; runtime remains playable on the current stage.
+  }
+}
+
 export default function PawnSlugGodotHost({ onExit }) {
   const iframeRef = useRef(null);
+  const stageIdRef = useRef(PAWN_SLUG_STAGE_IDS[readStageIndex()]);
+  const victoryAdvancedRef = useRef(false);
   const [runtimeReady, setRuntimeReady] = useState(false);
-  const [runtime, setRuntime] = useState({ url: LOCAL_GODOT_BOOTSTRAP_URL, source: 'resolving', release: '' });
+  const [runtime, setRuntime] = useState({
+    url: stageRuntimeUrl(LOCAL_GODOT_BOOTSTRAP_URL, stageIdRef.current),
+    source: 'resolving',
+    release: '',
+  });
 
   useEffect(() => {
     const html = document.documentElement;
@@ -25,7 +58,10 @@ export default function PawnSlugGodotHost({ onExit }) {
     resolvePawnSlugGodotUrl().then((resolved) => {
       if (cancelled) return;
       setRuntimeReady(false);
-      setRuntime(resolved);
+      setRuntime({
+        ...resolved,
+        url: stageRuntimeUrl(resolved.url, stageIdRef.current),
+      });
     });
     return () => { cancelled = true; };
   }, []);
@@ -37,6 +73,10 @@ export default function PawnSlugGodotHost({ onExit }) {
       if (!message || message.source !== 'pawn-slug-godot') return;
 
       if (message.type === 'ready') setRuntimeReady(true);
+      if (message.type === 'victory' && !victoryAdvancedRef.current) {
+        victoryAdvancedRef.current = true;
+        advanceStageIndex();
+      }
       if (message.type === 'exit') onExit();
     }
 
