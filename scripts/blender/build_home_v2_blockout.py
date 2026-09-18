@@ -292,6 +292,21 @@ def add_table_and_board(materials):
         banner,
         bevel=0.035,
     )
+
+    # Large canonical horse-head relief on the table drape.
+    emblem_y = -0.515
+    sphere("HOME_PROP_table_horse_head", (-0.10, emblem_y, 0.73), (0.28, 0.040, 0.24), metal)
+    cube("HOME_PROP_table_horse_muzzle", (-0.31, emblem_y, 0.66), (0.15, 0.032, 0.070), metal, bevel=0.022)
+    curve_tube(
+        "HOME_PROP_table_horse_neck",
+        [(0.00, emblem_y, 0.66), (0.15, emblem_y, 0.37), (0.04, emblem_y, 0.18)],
+        0.085,
+        metal,
+    )
+    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y, 1.02), 0.075, 0.018, 0.25, metal, vertices=14)
+    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.28), (0.040, 0.028, 0.15), metal, bevel=0.01)
+    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.13, 0.028, 0.040), metal, bevel=0.01)
+
     for side in (-1, 1):
         x = side * 3.55
         cube(f"HOME_PROP_bench_{side}", (x, 1.2, 0.43), (0.62, 1.45, 0.28), wood, bevel=0.05)
@@ -664,6 +679,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
+
+    # Stone slab seams keep the floor from reading as one flat dark plane.
+    grout = materials["stone_dark"]
+    for idx, x in enumerate((-8.0, -6.4, -4.8, -3.2, 3.2, 4.8, 6.4, 8.0)):
+        cube(f"HOME_ARCH_floor_grout_v_{idx}", (x, 2.25, 0.018), (0.018, 5.55, 0.010), grout)
+    for idx, y in enumerate((-2.2, -0.8, 0.6, 4.8, 6.2)):
+        cube(f"HOME_ARCH_floor_grout_h_{idx}", (0, y, 0.018), (8.75, 0.018, 0.010), grout)
+
+    # Narrow brass/brown rug border approximates the ornate woven edge from the master.
+    rug_border = materials["brass"]
+    cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
