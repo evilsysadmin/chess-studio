@@ -148,30 +148,24 @@ async function waitForBridgeCount(page, type, minimum = 1, timeout = 15_000) {
 
 async function gameplayAutopilot(parent, canvas, diagnostics) {
   await canvas.click();
-
-  // The first checkpoint can fire during the ready→focus handoff because it sits
-  // close to spawn. Preserve that legitimate event instead of zeroing it and
-  // then forcing the bot to survive all the way to the next checkpoint.
-  const bootCounts = await bridgeCounts(parent);
-  await parent.evaluate((checkpointCount) => {
-    window.__pawnSlugGodotEventCounts = checkpointCount > 0
-      ? { checkpoint: checkpointCount }
-      : {};
-  }, Number(bootCounts.checkpoint || 0));
+  await parent.evaluate(() => {
+    window.__pawnSlugGodotEventCounts = {};
+  });
 
   const keyboard = parent.keyboard;
   let counts = {};
   await keyboard.down('ArrowRight');
   try {
-    for (let step = 0; step < 150; step += 1) {
+    for (let step = 0; step < 120; step += 1) {
       await keyboard.press('z');
       if (step % 8 === 2) await keyboard.press('Space');
-      if (step % 18 === 7) await keyboard.press('x');
+      if (step % 18 === 2) await keyboard.press('x');
       await parent.waitForTimeout(105);
 
-      if (step % 5 !== 0) continue;
+      if (step % 4 !== 0) continue;
       counts = await bridgeCounts(parent);
-      if (counts['weapon-pickup'] && counts.checkpoint) break;
+      if (counts['weapon-pickup'] && counts['grenade-thrown']) break;
+      if (counts.gameover) break;
     }
   } finally {
     await keyboard.up('ArrowRight');
@@ -180,17 +174,17 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   counts = await bridgeCounts(parent);
   diagnostics.iframe.gameplaySmoke = counts;
 
-  // Browser smoke proves the real gameplay loop is alive without requiring a
-  // deterministic AI bot to beat the whole campaign. These events cover world
-  // traversal, collision/progression, inventory transition and active input.
-  if (!counts.checkpoint) fail('gameplay-checkpoint', diagnostics);
+  // Crossing the first weapon pickup proves world traversal/collision. The
+  // player starts exactly on checkpoint 110, so requiring a checkpoint event
+  // here would incorrectly force the bot to survive until checkpoint 1480.
   if (!counts['weapon-pickup']) fail('gameplay-weapon-pickup', diagnostics);
   if (!counts['weapon-changed']) fail('gameplay-weapon-change', diagnostics);
   if (!counts['grenade-thrown']) fail('gameplay-grenade-input', diagnostics);
+  if (counts.gameover) fail('gameplay-gameover-before-pickup-contract', diagnostics);
 
-  // Exercise the exact regression path from this iteration: fire while moving
-  // after the SMG pickup. The smoke intentionally checks for runtime health,
-  // not whether an unscripted bot can defeat every enemy and boss.
+  // Exercise the exact visual regression path: after the SMG pickup, keep
+  // locomotion active while holding fire. Runtime health here protects the
+  // moving-fire path without asking an unscripted bot to beat the campaign.
   await keyboard.down('ArrowRight');
   await keyboard.down('z');
   await parent.waitForTimeout(900);
@@ -287,7 +281,7 @@ try {
   const hostHtml = `<!doctype html>
     <meta charset="utf-8">
     <style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#07090b}</style>
-    <iframe id="godot" title="Pawn Slug Godot live smoke" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
+    <iframe id="godot" title="Pawn Slug Godot live smoke" allow="autoplay; fullscreen; gamepad"></iframe>
     <script>
       const frame = document.getElementById('godot');
       window.__pawnSlugGodotMessages = [];
