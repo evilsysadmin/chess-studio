@@ -8,6 +8,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
+      - .github/workflows/cicd.yml
       - scripts/apply_frontend_csp.mjs
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
+      - .github/workflows/cicd.yml
       - scripts/apply_frontend_csp.mjs
   workflow_dispatch:
 
