@@ -164,6 +164,7 @@ def main() -> int:
         ("wait_for_registration: bool = False", "Run Command opt-in readiness wait"),
         ("wait_for_registration=True,", "deploy enables readiness wait"),
         ("resolved=resolved,", "deploy reuses admitted OCI target"),
+        ("include_desired_config=False,", "deploy skips redundant desired-state lookup"),
     ):
         require(oci_run_command, needle, label, errors)
 
