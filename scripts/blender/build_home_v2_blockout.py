@@ -423,6 +423,13 @@ def add_table_and_board(materials):
                 materials["dark"],
             )
 
+    left_chair_origin = Vector((-4.02, 0.58, 0.62))
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith("HOME_PROP_chair_") and "_-1" in obj.name:
+            rel = obj.location - left_chair_origin
+            obj.location = left_chair_origin + rel * 1.24 + Vector((0.0, -0.38, 0.02))
+            obj.scale *= 1.24
+
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
     order = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
@@ -533,8 +540,9 @@ def add_banner(name: str, x: float, materials):
         brass,
     )
     cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, brass, vertices=12)
-    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), brass, bevel=0.01)
-    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), brass, bevel=0.01)
+    if name != "center":
+        cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), brass, bevel=0.01)
+        cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), brass, bevel=0.01)
 
 
 def add_armor(materials):
@@ -920,10 +928,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         3.66,
         6.28,
         0.18,
-        materials["stone_dark"],
-        bevel=0.105,
+        materials["stone"],
+        bevel=0.150,
     )
-    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
+    cube("HOME_ARCH_rug", (0, 1.45, 0.018), (4.05, 5.20, 0.018), materials["rug"])
 
     # Stone slab seams keep the floor from reading as one flat dark plane.
     grout = materials["stone_dark"]
@@ -934,10 +942,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Narrow brass/brown rug border approximates the ornate woven edge from the master.
     rug_border = materials["brass"]
-    cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_front", (0, -3.64, 0.050), (4.02, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_back", (0, 6.54, 0.050), (4.02, 0.035, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_left", (-4.00, 1.45, 0.050), (0.035, 5.10, 0.014), rug_border)
+    cube("HOME_PROP_rug_border_right", (4.00, 1.45, 0.050), (0.035, 5.10, 0.014), rug_border)
     for idx, x in enumerate((-2.95, -2.25, -1.55, -0.85, 0.0, 0.85, 1.55, 2.25, 2.95)):
         motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.12, 0.066), (0.085, 0.085, 0.010), rug_border)
         motif.rotation_euler[2] = math.radians(45)
@@ -947,7 +955,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
-    for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
+    for x in (-7.85, -5.10, -1.82, 1.82, 5.15, 8.05):
         cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
@@ -1012,15 +1020,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     center_crest_origin = Vector((-0.02, 5.73, 4.62))
     for obj in list(bpy.data.objects):
-        if (
-            obj.name.endswith("_center")
-            and (
-                obj.name.startswith("HOME_PROP_banner_horse_")
-                or obj.name.startswith("HOME_PROP_banner_mark_")
-            )
-        ):
+        if obj.name.endswith("_center") and obj.name.startswith("HOME_PROP_banner_horse_"):
             rel = obj.location - center_crest_origin
-            obj.location = center_crest_origin + rel * 1.62 + Vector((0.0, -0.01, -0.10))
+            obj.location = center_crest_origin + rel * 1.62 + Vector((0.0, -0.01, -0.52))
             obj.scale *= 1.62
 
     add_table_and_board(materials)
@@ -1056,7 +1058,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cx = -1.05 + 2.16 * math.cos(angle)
         cy = 2.02 + 1.32 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.30), (0.055, 0.055, 0.24), materials["fire_hot"])
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.42), 58, (1.0, 0.46, 0.16), radius=0.40)
+        if idx % 2 == 0:
+            add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.42), 72, (1.0, 0.46, 0.16), radius=0.44)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
