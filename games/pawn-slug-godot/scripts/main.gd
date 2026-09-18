@@ -18,6 +18,10 @@ const GUNFIRE_HEARING_RANGE := 1550.0
 const GRENADE_HEARING_RANGE := 1750.0
 const GRENADE_EVADE_RADIUS := 250.0
 const GRENADE_EVADE_SPEED_SCALE := 2.15
+const SUPPRESSION_PUSH_SECONDS := 0.65
+const SUPPRESSION_ASSAULT_STANDOFF_BONUS := 95.0
+const SUPPRESSION_ASSAULT_SPEED_MULTIPLIER := 1.18
+const BLOCKED_LOS_PUSH_BONUS := 80.0
 const SOLDIER_SPRINT_MARGIN := 180.0
 const SOLDIER_ADVANCE_MARGIN := 80.0
 const SOLDIER_COMFORT_MARGIN := 24.0
@@ -133,6 +137,7 @@ var _startup_ready_sent := false
 var _camera_kick := Vector2.ZERO
 var _reduced_motion := false
 var _hostile_fire_gap_remaining := 0.0
+var _enemy_suppression_remaining := 0.0
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
@@ -176,6 +181,7 @@ func _process(delta: float) -> void:
         return
 
     _hostile_fire_gap_remaining = maxf(0.0, _hostile_fire_gap_remaining - delta)
+    _enemy_suppression_remaining = maxf(0.0, _enemy_suppression_remaining - delta)
     _spawn_boss_if_needed()
     _update_projectiles(delta)
     _update_grenades(delta)
@@ -306,6 +312,10 @@ func _build_enemy_roster() -> Array[Dictionary]:
         var spawn = ENEMY_SPAWNS[index]
         var type := String(spawn[1])
         var stats: Dictionary = ENEMY_TYPES[type]
+        var weapon := _enemy_weapon_for(type, index)
+        var role := "hold"
+        if type == "pawn" or type == "knight":
+            role = "support" if weapon == "machinegun" and index % 3 != 0 else "assaulter"
         var enemy := {
             "id": "%s-%d" % [type, index],
             "type": type,
@@ -318,7 +328,8 @@ func _build_enemy_roster() -> Array[Dictionary]:
             "on_ground": true,
             "hp": int(stats["hp"]),
             "max_hp": int(stats["hp"]),
-            "weapon": _enemy_weapon_for(type, index),
+            "weapon": weapon,
+            "role": role,
             "cooldown": 0.35 + float(index % 5) * 0.08,
         }
         if type == "bishop":
@@ -585,15 +596,47 @@ func _enemy_engaged(enemy: Dictionary, abs_distance: float) -> bool:
     return true
 
 func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
+    var standoff := float(stats["standoff"])
     match String(enemy.get("weapon", "pistol")):
         "shotgun":
-            return 205.0
+            standoff = 205.0
         "machinegun":
-            return 330.0
+            standoff = 330.0
         "panzerfaust":
-            return 590.0
-        _:
-            return float(stats["standoff"])
+            standoff = 590.0
+    if _enemy_suppression_remaining > 0.0 and String(enemy.get("role", "")) == "assaulter":
+        standoff = maxf(145.0, standoff - SUPPRESSION_ASSAULT_STANDOFF_BONUS)
+    if not _enemy_has_line_of_sight(enemy, stats):
+        standoff = maxf(140.0, standoff - BLOCKED_LOS_PUSH_BONUS)
+    return standoff
+
+func _enemy_has_line_of_sight(enemy: Dictionary, stats: Dictionary) -> bool:
+    var origin := Vector2(
+        float(enemy["x"]),
+        float(enemy.get("y", FLOOR_Y)) - float(stats["height"]) * 0.58,
+    )
+    var target := Vector2(player.global_position) + Vector2(0.0, -18.0)
+    return not _platform_blocks_line(origin, target)
+
+func _platform_blocks_line(origin: Vector2, target: Vector2) -> bool:
+    var dx := target.x - origin.x
+    if absf(dx) < 0.001:
+        return false
+    var line_min_x := minf(origin.x, target.x)
+    var line_max_x := maxf(origin.x, target.x)
+    for platform in PLATFORMS:
+        var platform_min_x := platform.position.x
+        var platform_max_x := platform.position.x + platform.size.x
+        if platform_max_x < line_min_x or platform_min_x > line_max_x:
+            continue
+        var sample_x := clampf(platform.get_center().x, line_min_x, line_max_x)
+        var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
+        var line_y := lerpf(origin.y, target.y, t)
+        var top := platform.position.y - 3.0
+        var bottom := platform.position.y + platform.size.y + 3.0
+        if line_y >= top and line_y <= bottom:
+            return true
+    return false
 
 func _grenade_evade_direction(enemy_x: float) -> float:
     var nearest_distance := GRENADE_EVADE_RADIUS + 1.0
@@ -706,6 +749,13 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
     else:
         return 0.0
+
+    if (
+        _enemy_suppression_remaining > 0.0
+        and String(enemy.get("role", "")) == "assaulter"
+        and is_equal_approx(move_direction, toward_player)
+    ):
+        speed_scale *= SUPPRESSION_ASSAULT_SPEED_MULTIPLIER
 
     var previous_x := float(enemy["x"])
     enemy["x"] = clampf(
@@ -941,6 +991,8 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
     var origin: Vector2 = _enemy_fire_origin(enemy)
     var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
+    if _platform_blocks_line(origin, target):
+        return
     var target_delta: Vector2 = target - origin
     var distance: float = target_delta.length()
     var pellets := maxi(1, int(profile["pellets"]))
@@ -959,6 +1011,10 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
             "explosive": bool(profile["explosive"]),
         })
     _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
+    if weapon == "machinegun" and String(enemy.get("role", "")) == "support":
+        # Local squad coordination: a support burst briefly encourages assault
+        # units to close distance while the gunner keeps Matthias occupied.
+        _enemy_suppression_remaining = SUPPRESSION_PUSH_SECONDS
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
         visual.play_fire()

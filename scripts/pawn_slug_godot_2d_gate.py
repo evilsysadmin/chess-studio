@@ -202,6 +202,10 @@ REQUIRED_ENEMY_AI = (
     "GRENADE_EVADE_RADIUS",
     "SOLDIER_SPRINT_MULTIPLIER",
     "SOLDIER_BACKPEDAL_MULTIPLIER",
+    "_enemy_has_line_of_sight",
+    "_platform_blocks_line",
+    "SUPPRESSION_PUSH_SECONDS",
+    "SUPPRESSION_ASSAULT_STANDOFF_BONUS",
 )
 
 REQUIRED_ENEMIES = (
@@ -309,6 +313,8 @@ def self_test() -> None:
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "_enemy_engaged" in REQUIRED_ENEMY_AI
     assert "GRENADE_EVADE_RADIUS" in REQUIRED_ENEMY_AI
+    assert "_platform_blocks_line" in REQUIRED_ENEMY_AI
+    assert "SUPPRESSION_PUSH_SECONDS" in REQUIRED_ENEMY_AI
     assert "_full_muzzle_positions_for_atlas" in REQUIRED_MATTHIAS
     assert "RUN_FIRE_RECOIL_DEGREES" in REQUIRED_MATTHIAS
     assert "set_shell_telegraph" in REQUIRED_BOSS_TELEGRAPH
