@@ -100,14 +100,29 @@ func _run() -> void:
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.DOWN, true),
-        Vector2(1.0, 1.0).normalized(),
-        "vertical abajo en suelo se convierte en diagonal según facing",
+        Vector2.RIGHT,
+        "abajo en suelo queda horizontal para poder agacharse y disparar",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2(1.0, 1.0).normalized(), true),
+        Vector2.RIGHT,
+        "derecha + abajo en suelo conserva crouch-walk con disparo horizontal",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2(-1.0, 1.0).normalized(), true),
+        Vector2.LEFT,
+        "izquierda + abajo en suelo conserva crouch-walk con disparo horizontal",
     )
     player.facing = -1.0
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.UP, true),
         Vector2(-1.0, -1.0).normalized(),
-        "vertical en suelo respeta facing izquierdo",
+        "vertical arriba en suelo respeta facing izquierdo",
+    )
+    _expect_vector(
+        player.constrain_vertical_aim_probe(Vector2.DOWN, true),
+        Vector2.LEFT,
+        "abajo en suelo respeta facing izquierdo sin abandonar crouch",
     )
     _expect_vector(player.quantize_aim_probe(Vector2.ZERO), Vector2.LEFT, "aim neutro conserva facing")
 
