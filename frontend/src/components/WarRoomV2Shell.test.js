@@ -23,6 +23,10 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
     expect(desktop.moon.intensity).toBeGreaterThan(coarse.moon.intensity);
     expect(desktop.fire.distance).toBeLessThan(desktop.moon.distance);
+    expect(desktop.fire.intensity).toBe(2.45);
+    expect(desktop.fire.distance).toBe(11.3);
+    expect(desktop.moon.intensity).toBe(2.95);
+    expect(desktop.moon.distance).toBe(13.9);
   });
 
   it('keeps nocturnal materials below the old bright IBL levels', () => {
