@@ -1,5 +1,4 @@
 import { chromium, expect, test } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
@@ -10,19 +9,11 @@ const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 
 function expectedWarRoomV2Revision() {
-  const explicit = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '').trim();
-  if (explicit) return explicit;
-  try {
-    const eventPath = String(process.env.GITHUB_EVENT_PATH || '').trim();
-    if (eventPath) {
-      const event = JSON.parse(readFileSync(eventPath, 'utf8'));
-      const head = String(event?.pull_request?.head?.sha || event?.after || '').trim();
-      if (head) return head;
-    }
-  } catch {
-    // Local visual runs have no GitHub event payload.
-  }
-  return String(process.env.GITHUB_SHA || '').trim();
+  return String(
+    process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION
+      || process.env.GITHUB_SHA
+      || '',
+  ).trim();
 }
 
 async function installWarRoomV2RevisionRoute(page) {
