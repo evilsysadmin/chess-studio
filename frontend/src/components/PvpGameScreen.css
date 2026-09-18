@@ -132,6 +132,7 @@
   font-style:normal;
   font-weight:700;
   letter-spacing:.08em;
+  white-space:nowrap;
 }
 .pvp-war-room__opponent-meta.is-online em { color:#78c884; }
 .pvp-war-room__opponent-meta.is-reconnecting em { color:#d5a855; }
