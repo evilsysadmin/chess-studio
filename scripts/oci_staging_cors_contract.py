@@ -25,6 +25,8 @@ k3s_unit = (ROOT / "infra" / "oci" / "k3s" / "k3s.service").read_text(encoding="
 signal_controller = (ROOT / "scripts" / "oci_staging_signal_controller.sh").read_text(encoding="utf-8")
 signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.service").read_text(encoding="utf-8")
 signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
+deploy_watcher = (ROOT / "scripts" / "oci_staging_deploy_watcher.py").read_text(encoding="utf-8")
+deploy_watcher_unit = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-deploy-watcher.service").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -293,5 +295,26 @@ assert "bastion" not in signal_controller.lower()
 assert "ExecStart=/usr/local/sbin/chess-studio-staging-signal" in signal_service
 assert "OnUnitActiveSec=15s" in signal_timer
 assert "WantedBy=timers.target" in signal_timer
+
+# Active fast-path is outbound-only on the existing A1. It adds no OCI
+# resource/listener and the existing Run Command path remains the fallback.
+assert "require flock" in deploy
+assert 'flock -w 120 8' in deploy
+assert "OCI_DEPLOY_ALREADY_CURRENT" in deploy
+assert "prepare_deploy_watcher()" in deploy
+assert "enable_deploy_watcher()" in deploy
+assert 'install -o root -g root -m 0755 "$deploy_watcher_source"' in deploy
+assert 'install -o root -g root -m 0644 "$deploy_watcher_unit_source"' in deploy
+assert "DEPLOY_WATCH_ENABLED" in deploy
+assert "systemctl enable --now chess-studio-deploy-watcher.service" in deploy
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind("enable_deploy_watcher")
+assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
+assert "refs/heads/main" in deploy_watcher
+assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
+assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
+assert "import oci" not in deploy_watcher
+assert "User=ocarun" in deploy_watcher_unit
+assert "PrivateTmp=true" in deploy_watcher_unit
+assert "ListenStream" not in deploy_watcher_unit
 
 print("OCI staging CORS + runtime deployment contract: OK")

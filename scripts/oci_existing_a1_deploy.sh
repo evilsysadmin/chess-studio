@@ -18,9 +18,14 @@ signal_timer_source="$repo/infra/oci/runtime/chess-studio-staging-signal.timer"
 signal_controller_target="/usr/local/sbin/chess-studio-staging-signal"
 signal_service_target="/etc/systemd/system/chess-studio-staging-signal.service"
 signal_timer_target="/etc/systemd/system/chess-studio-staging-signal.timer"
+deploy_watcher_source="$repo/scripts/oci_staging_deploy_watcher.py"
+deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.service"
+deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
+deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
+deploy_watcher_enable_marker="$state_dir/DEPLOY_WATCH_ENABLED"
 k3s_contract_state_file="$state_dir/k3s-deploy-contract.sha256"
 k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
@@ -55,6 +60,7 @@ require curl
 require python3
 require sha256sum
 require systemctl
+require flock
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
@@ -81,6 +87,28 @@ prepare_signal_controller_disabled() {
   install -o root -g root -m 0644 "$signal_timer_source" "$signal_timer_target"
   systemctl daemon-reload
   systemctl disable --now chess-studio-staging-signal.timer >/dev/null 2>&1 || true
+}
+
+prepare_deploy_watcher() {
+  python3 -S "$deploy_watcher_source" --self-test >/dev/null
+  install -d -o root -g root -m 0755 /usr/local/libexec
+  install -o root -g root -m 0755 "$deploy_watcher_source" "$deploy_watcher_target"
+  install -o root -g root -m 0644 "$deploy_watcher_unit_source" "$deploy_watcher_unit_target"
+  systemctl daemon-reload
+}
+
+enable_deploy_watcher() {
+  local marker_tmp
+  marker_tmp="$(mktemp "$state_dir/DEPLOY_WATCH_ENABLED.XXXXXX")"
+  : >"$marker_tmp"
+  chmod 0644 "$marker_tmp"
+  mv -f "$marker_tmp" "$deploy_watcher_enable_marker"
+  if systemctl enable --now chess-studio-deploy-watcher.service >/dev/null 2>&1; then
+    echo 'OCI_DEPLOY_WATCHER state=enabled'
+  else
+    rm -f "$deploy_watcher_enable_marker"
+    echo 'OCI_DEPLOY_WATCHER state=fallback-only' >&2
+  fi
 }
 
 image_available_for_rollback() {
@@ -384,6 +412,24 @@ agent_diag_summary() {
     "$version" "$active" "$restarts" "$bytes" "$age" "$recent_lines" "$poll_errors" "$backoff" "$throttled" "$transport_errors"
 }
 
+deploy_lock_file="$state_dir/deploy.lock"
+exec 8>"$deploy_lock_file"
+if ! flock -w 120 8; then
+  echo 'timed out waiting for host deploy lock' >&2
+  exit 75
+fi
+
+previous_sha=''
+if [[ -s "$state_file" ]]; then
+  previous_sha="$(tr -d '\r\n' < "$state_file")"
+  [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || previous_sha=''
+fi
+if [[ "$previous_sha" == "$sha" ]] && attest "$sha"; then
+  echo "OCI_DEPLOY_ALREADY_CURRENT repo_ref=$sha"
+  echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=reused image=reused"
+  exit 0
+fi
+
 total_started_ms="$(now_ms)"
 checkout_started_ms="$total_started_ms"
 cd "$repo"
@@ -403,7 +449,10 @@ preflight_started_ms="$(now_ms)"
 [[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
 [[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
 [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
+[[ -f "$deploy_watcher_source" && ! -L "$deploy_watcher_source" ]] || { echo "missing zero-cost deploy watcher in $sha" >&2; exit 66; }
+[[ -f "$deploy_watcher_unit_source" && ! -L "$deploy_watcher_unit_source" ]] || { echo "missing zero-cost deploy watcher unit in $sha" >&2; exit 66; }
 prepare_signal_controller_disabled
+prepare_deploy_watcher
 /bin/bash "$tunnel_connector" --self-test >/dev/null
 phase_done preflight "$preflight_started_ms"
 k3s_started_ms="$(now_ms)"
@@ -450,6 +499,7 @@ for _ in $(seq 1 60); do
     fi
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
+    enable_deploy_watcher
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
     printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"

@@ -141,11 +141,6 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
-      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
-      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -153,20 +148,62 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
+      - name: Validate zero-cost host watcher contract
+        run: python3 -S scripts/oci_staging_deploy_watcher.py --self-test
+
+      - name: Wait for zero-cost host watcher fast-path
+        id: watcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          converged=false
+          for attempt in {1..46}; do
+            body="$RUNNER_TEMP/backend-watcher-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then
+              converged=true
+              break
+            fi
+            [[ "$attempt" -eq 46 ]] || sleep 1
+          done
+          echo "converged=$converged" >> "$GITHUB_OUTPUT"
+          if [[ "$converged" == true ]]; then
+            echo "::notice title=OCI zero-cost fast-path::La A1 aplicó $DEPLOY_SHA mediante el watcher saliente."
+          else
+            echo "::warning title=OCI fallback::El watcher no convergió; se usa Run Command."
+          fi
+
       - name: Restore cached OCI SDK toolchain
+        if: steps.watcher.outputs.converged != 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
 
       - name: Validate OCI deploy contracts
+        if: steps.watcher.outputs.converged != 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Deploy exact backend commit to OCI staging
+        if: steps.watcher.outputs.converged != 'true'
         shell: bash
+        env:
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"

@@ -123,7 +123,9 @@ def main() -> int:
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("Backend · publish approved GHCR signal", "generation approved backend signal"),
         ("oci-staging-approved", "generation GHCR approved signal tag"),
-        ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
+        ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
+        ("OCI zero-cost fast-path", "generation watcher success marker"),
+        ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker generation", "generation Worker deploy"),
@@ -204,6 +206,9 @@ def main() -> int:
         forbid(blocks["backend_signal"], "OCI_", "backend signal no usa credenciales OCI", errors)
         require(blocks["backend"], "needs: [prepare, backend_signal]", "backend espera señal GHCR aprobada", errors)
         require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
+        require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
+        require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
+        require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
         for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
             forbid(blocks["backend"], needle, "backend no depende de Render", errors)
 
