@@ -42,6 +42,7 @@ INVENTORY = {
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
     'pawn-slug-godot-strict-atlas.yml': 'art-generation',
+    'pawn-slug-godot-strict-v9.yml': 'art-generation',
     'pawn-slug-matthias-sprite-smoke.yml': 'visual-staging-evidence',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
