@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { saveActiveGameSession } from './activeGameSession.js';
+import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { SAVE_STATUS } from './saveStatus.js';
 
 export function activeSessionPersistenceDescriptor({
@@ -43,9 +43,13 @@ export function useActiveGameSessionPersistence({
     const descriptor = activeSessionPersistenceDescriptor({
       view, game, tournamentGame, learningMode, gameContext, timeControlId,
     });
-    if (!descriptor) return;
+    if (!descriptor) {
+      setActiveGameSessionVisible(null);
+      return;
+    }
 
     const persisted = saveActiveGameSession(descriptor);
+    setActiveGameSessionVisible(persisted ? descriptor.route : null);
     // "Guardado" exige backend confirmado + sobre local durable para F5/deploy.
     onPersistenceState?.(persistenceStateAfterSnapshot({ descriptor, persisted }));
   }, [view, game, tournamentGame, learningMode, gameContext, timeControlId, onPersistenceState]);
