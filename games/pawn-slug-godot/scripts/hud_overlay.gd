@@ -14,6 +14,8 @@ var _primary: Label
 var _secondary: Label
 var _objective_panel: ColorRect
 var _objective: Label
+var _movement_hint_panel: ColorRect
+var _movement_hint: Label
 var _last_signature := ""
 
 func _ready() -> void:
@@ -76,6 +78,33 @@ func _build_labels() -> void:
     _objective.add_theme_color_override("font_color", Color("d5c69d"))
     _objective_panel.add_child(_objective)
 
+    _movement_hint_panel = ColorRect.new()
+    _movement_hint_panel.name = "MovementHintPanel"
+    _movement_hint_panel.anchor_left = 0.5
+    _movement_hint_panel.anchor_right = 0.5
+    _movement_hint_panel.offset_left = -190.0
+    _movement_hint_panel.offset_top = 88.0
+    _movement_hint_panel.offset_right = 190.0
+    _movement_hint_panel.offset_bottom = 124.0
+    _movement_hint_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _movement_hint_panel.color = Color(0.02, 0.025, 0.03, 0.70)
+    _movement_hint_panel.visible = false
+    add_child(_movement_hint_panel)
+
+    _movement_hint = Label.new()
+    _movement_hint.name = "MovementHint"
+    _movement_hint.anchor_right = 1.0
+    _movement_hint.anchor_bottom = 1.0
+    _movement_hint.offset_left = 12.0
+    _movement_hint.offset_top = 5.0
+    _movement_hint.offset_right = -12.0
+    _movement_hint.offset_bottom = -5.0
+    _movement_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _movement_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _movement_hint.add_theme_font_size_override("font_size", 13)
+    _movement_hint.add_theme_color_override("font_color", Color("d8cda9"))
+    _movement_hint_panel.add_child(_movement_hint)
+
 func _refresh(force: bool) -> void:
     if _player == null or not is_instance_valid(_player):
         return
@@ -86,6 +115,9 @@ func _refresh(force: bool) -> void:
     var weapon := String(_player.get("weapon"))
     var ammo := int(_player.call("current_ammo")) if _player.has_method("current_ammo") else -1
     var checkpoint := float(_player.call("current_checkpoint_x")) if _player.has_method("current_checkpoint_x") else 110.0
+    var movement_hint := ""
+    if _root.has_method("contextual_movement_hint"):
+        movement_hint = String(_root.call("contextual_movement_hint", _player.global_position.x))
     var progress := clampf(_player.global_position.x / EXTRACTION_X, 0.0, 1.0)
     var boss_spawned := bool(_root.get("boss_spawned"))
     var boss_defeated := bool(_root.get("boss_defeated"))
@@ -97,7 +129,7 @@ func _refresh(force: bool) -> void:
         boss_hp = int(boss_data.get("hp", -1))
         boss_max_hp = int(boss_data.get("max_hp", -1))
 
-    var signature := "%d:%d:%d:%s:%d:%d:%d:%d:%d:%d" % [
+    var signature := ("%d:%d:%d:%s:%d:%d:%d:%d:%d:%d" % [
         hp,
         lives,
         grenades,
@@ -108,7 +140,7 @@ func _refresh(force: bool) -> void:
         1 if boss_spawned else 0,
         1 if boss_defeated else 0,
         boss_hp,
-    ]
+    ]) + ":" + movement_hint
     if not force and signature == _last_signature:
         return
     _last_signature = signature
@@ -121,6 +153,9 @@ func _refresh(force: bool) -> void:
         int(checkpoint),
         int(round(progress * 100.0)),
     ]
+
+    _movement_hint.text = movement_hint
+    _movement_hint_panel.visible = not movement_hint.is_empty() and not mission_complete
 
     if mission_complete:
         _objective.text = "OPERACIÓN COMPLETA"

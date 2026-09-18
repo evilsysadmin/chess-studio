@@ -76,6 +76,10 @@ const BISHOP_SUPPRESSION_LANES := [
     {"height": 134.0, "speed": 652.0},
     {"height": 86.0, "speed": 676.0},
 ]
+const PLAYER_STANDING_HEIGHT := 84.0
+const PLAYER_CROUCH_HEIGHT := 48.0
+const MOVEMENT_HINT_LOOKAHEAD := 180.0
+const MOVEMENT_HINT_TRAIL := 36.0
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
@@ -170,6 +174,25 @@ func _ready() -> void:
     touch_controls.connect("weapon_cycle_requested", Callable(self, "_on_touch_weapon_cycle_requested"))
     _sync_hud()
     queue_redraw()
+
+func contextual_movement_hint(player_x: float) -> String:
+    if player_x < 420.0:
+        return "↑/↓ + FIRE · vertical · combina con ←/→ para diagonales"
+
+    for platform in PLATFORMS:
+        var clearance := FLOOR_Y - platform.end.y
+        var crouch_only := (
+            clearance < PLAYER_STANDING_HEIGHT + 2.0
+            and clearance >= PLAYER_CROUCH_HEIGHT + 8.0
+        )
+        if not crouch_only:
+            continue
+        if (
+            player_x >= platform.position.x - MOVEMENT_HINT_LOOKAHEAD
+            and player_x <= platform.end.x + MOVEMENT_HINT_TRAIL
+        ):
+            return "↓ + MOVER · pasa agachado bajo la plataforma"
+    return ""
 
 func _process(delta: float) -> void:
     if not _startup_ready_sent:
