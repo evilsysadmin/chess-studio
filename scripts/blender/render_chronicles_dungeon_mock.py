@@ -293,21 +293,29 @@ def tile_outline(M, x, y, warm=False):
     cube("tile_edge", (x+.47, y, z), (t, .47, .025), m, bevel=.012)
 
 
+def parent_keep_world(obj, root):
+    world = obj.matrix_world.copy()
+    obj.parent = root
+    obj.matrix_world = world
+    return obj
+
+
 def pawn_piece(M, x, y, z=.15, black=False, red_rings=False, tilt=0):
     root = bpy.data.objects.new("pawn_root", None)
     bpy.context.collection.objects.link(root)
     root.location = (x, y, z)
-    root.rotation_euler = (0, math.radians(tilt), 0)
     mat = M["black"] if black else M["ivory"]
     for name, zz, r, d in (("base", .08, .32, .12), ("foot", .20, .26, .16), ("body", .45, .18, .48), ("collar", .72, .22, .09)):
         o = cyl("pawn_"+name, (x, y, z+zz), r, d, mat, vertices=32, bevel=.035)
-        o.parent = root
+        parent_keep_world(o, root)
     h = sphere("pawn_head", (x, y, z+.96), (.19, .19, .19), mat)
-    h.parent = root
+    parent_keep_world(h, root)
     if red_rings:
         for zz, rr in ((.42, .205), (.68, .235)):
             o = cyl("red_ring", (x, y, z+zz), rr, .045, M["red"], vertices=32, bevel=.02)
-            o.parent = root
+            parent_keep_world(o, root)
+    if tilt:
+        root.rotation_euler = (0, math.radians(tilt), 0)
     return root
 
 
@@ -315,26 +323,35 @@ def humanoid(M, x, y, z=.10, green=False, sleep=False, armored=False, plume=Fals
     root = bpy.data.objects.new("humanoid_root", None)
     bpy.context.collection.objects.link(root)
     root.location = (x, y, z)
-    if sleep:
-        root.rotation_euler = (math.radians(78), 0, math.radians(random.uniform(-12, 12)))
     torso_mat = M["steel"] if armored else (M["green"] if green else M["stone_dark"])
     skin = M["skin"]
-    body = cyl("hero_body", (x, y, z+.75), .24, .65, torso_mat, vertices=28, bevel=.035); body.parent = root
-    head = sphere("hero_head", (x, y-.02, z+1.25), (.22, .20, .23), skin); head.parent = root
-    cap = cyl("hero_cap", (x, y, z+1.47), .24, .08, M["ivory" if green else "black"], vertices=28, bevel=.025); cap.parent = root
+    body = cyl("hero_body", (x, y, z+.75), .24, .65, torso_mat, vertices=28, bevel=.035)
+    parent_keep_world(body, root)
+    head = sphere("hero_head", (x, y-.02, z+1.25), (.22, .20, .23), skin)
+    parent_keep_world(head, root)
+    cap = cyl("hero_cap", (x, y, z+1.47), .24, .08, M["ivory" if green else "black"], vertices=28, bevel=.025)
+    parent_keep_world(cap, root)
     if plume:
-        p = cyl("hero_plume", (x, y, z+1.69), .045, .34, M["red"], rot=(0, math.radians(18), 0), vertices=16, bevel=.02); p.parent = root
+        p = cyl("hero_plume", (x, y, z+1.69), .045, .34, M["red"], rot=(0, math.radians(18), 0), vertices=16, bevel=.02)
+        parent_keep_world(p, root)
     for side in (-1, 1):
-        leg = cyl("hero_leg", (x+side*.11, y, z+.28), .07, .38, M["iron"], vertices=20, bevel=.018); leg.parent = root
-        arm = cyl("hero_arm", (x+side*.33, y-.02, z+.78), .065, .45, M["steel" if armored else torso_mat],
-                  rot=(0, math.radians(12*side), 0), vertices=20, bevel=.018); arm.parent = root
+        leg = cyl("hero_leg", (x+side*.11, y, z+.28), .07, .38, M["iron"], vertices=20, bevel=.018)
+        parent_keep_world(leg, root)
+        arm_mat = M["steel"] if armored else torso_mat
+        arm = cyl("hero_arm", (x+side*.33, y-.02, z+.78), .065, .45, arm_mat,
+                  rot=(0, math.radians(12*side), 0), vertices=20, bevel=.018)
+        parent_keep_world(arm, root)
     if green:
-        staff = cyl("hero_staff", (x+.42, y-.03, z+.78), .035, 1.35, M["brass"], vertices=18, bevel=.012); staff.parent = root
-        orb = sphere("hero_orb", (x+.42, y-.03, z+1.49), (.10, .10, .10), M["brass"]); orb.parent = root
+        staff = cyl("hero_staff", (x+.42, y-.03, z+.78), .035, 1.35, M["brass"], vertices=18, bevel=.012)
+        parent_keep_world(staff, root)
+        orb = sphere("hero_orb", (x+.42, y-.03, z+1.49), (.10, .10, .10), M["brass"])
+        parent_keep_world(orb, root)
     if armored:
-        chest = cube("hero_chest", (x, y-.20, z+.80), (.22, .06, .26), M["steel"], bevel=.055); chest.parent = root
+        chest = cube("hero_chest", (x, y-.20, z+.80), (.22, .06, .26), M["steel"], bevel=.055)
+        parent_keep_world(chest, root)
+    if sleep:
+        root.rotation_euler = (math.radians(78), 0, math.radians(random.uniform(-12, 12)))
     return root
-
 
 def zzz(M, x, y, z):
     for i in range(3):
