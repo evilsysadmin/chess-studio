@@ -137,24 +137,33 @@ export default function PvPLobbyModal({
             <h2>Elige rival</h2>
             <p>Ponte disponible, elige a alguien y pulsa Retar. Puedes cerrar esta ventana: seguirás visible y los desafíos llegarán como aviso global.</p>
           </div>
-          <div className="pvp-lobby__seal" aria-hidden="true">
-            <span>1 VS 1</span>
-            <strong>WAR ROOM</strong>
-            <small>ONLINE</small>
+          <div className="pvp-lobby__header-status" aria-hidden="true">
+            <span className={`pvp-lobby__availability${self ? ' is-live' : ''}`}>
+              <i />
+              {self ? 'Disponible' : 'No disponible'}
+            </span>
+            <span className="pvp-lobby__metric">
+              <b>{rivalCount}</b>
+              <small>rivales</small>
+            </span>
+            <span className={`pvp-lobby__metric${challengeCount > 0 ? ' has-attention' : ''}`}>
+              <b>{challengeCount}</b>
+              <small>retos</small>
+            </span>
           </div>
         </header>
 
         {!liveLobby.activeMatch && (
           <ol className="pvp-lobby__flow" aria-label="Cómo jugar 1 contra 1">
-            <li className={self ? 'is-done' : ''}>
+            <li className={self ? 'is-done' : 'is-current'}>
               <b aria-hidden="true">1</b>
               <span><strong>Ponte disponible</strong><small>{self ? 'Ya estás visible' : 'Activa tu ficha'}</small></span>
             </li>
-            <li className={rivalCount > 0 ? 'is-ready' : ''}>
+            <li className={!self ? '' : rivalCount > 0 ? 'is-done' : 'is-current'}>
               <b aria-hidden="true">2</b>
               <span><strong>Elige rival</strong><small>{rivalCount > 0 ? `${rivalCount} ahora mismo` : 'Aparecerán aquí'}</small></span>
             </li>
-            <li>
+            <li className={self && rivalCount > 0 ? 'is-current' : ''}>
               <b aria-hidden="true">3</b>
               <span><strong>Pulsa Retar</strong><small>El rival decide si acepta</small></span>
             </li>
@@ -173,7 +182,7 @@ export default function PvPLobbyModal({
           </aside>
         )}
 
-        <section className={`pvp-lobby__identity${self ? ' is-active' : ''}`} aria-label="Tu disponibilidad para 1 contra 1">
+        <section className={`pvp-lobby__identity${self ? ' is-active' : ' is-idle'}`} aria-label="Tu disponibilidad para 1 contra 1">
           <div className="pvp-lobby__identity-main">
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
@@ -206,7 +215,7 @@ export default function PvPLobbyModal({
         {error && <p className="pvp-lobby__error" role="alert">{error}</p>}
 
         <div className="pvp-lobby__grid">
-          <section className="pvp-lobby__panel pvp-lobby__panel--roster" aria-labelledby="pvp-roster-title">
+          <section className={`pvp-lobby__panel pvp-lobby__panel--roster${rivalCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-roster-title">
             <header>
               <div>
                 <small>RIVALES EN LÍNEA</small>
@@ -250,7 +259,7 @@ export default function PvPLobbyModal({
             )}
           </section>
 
-          <section className="pvp-lobby__panel pvp-lobby__panel--challenges" aria-labelledby="pvp-challenges-title">
+          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
             <header>
               <div>
                 <small>DESPACHO DE RETOS</small>
