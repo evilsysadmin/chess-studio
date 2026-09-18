@@ -14,6 +14,7 @@ GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
+PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 
 TEXT_SUFFIXES = {".gd", ".tscn", ".tres", ".godot", ".cfg", ".svg", ".md"}
 FORBIDDEN = (
@@ -89,6 +90,18 @@ REQUIRED_ENVIRONMENT = (
     "_draw_platforms",
     "_draw_foreground_props",
 )
+REQUIRED_PAUSE_MENU = (
+    "PROCESS_MODE_ALWAYS",
+    "KEY_ESCAPE",
+    "get_tree().paused = true",
+    "get_tree().paused = false",
+    "DisplayServer.WINDOW_MODE_FULLSCREEN",
+    "DisplayServer.WINDOW_MODE_WINDOWED",
+    "requestFullscreen",
+    "exitFullscreen",
+    "AudioServer.set_bus_volume_db",
+    "ConfigFile",
+)
 REQUIRED_ENEMIES = (
     "Sprite2D",
     "Marker2D",
@@ -145,6 +158,7 @@ def validate() -> None:
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
+    validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
 
     if violations:
         raise GateError("\n".join(violations))
@@ -168,6 +182,8 @@ def self_test() -> None:
     assert "_draw_foreground_props" in REQUIRED_ENVIRONMENT
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
+    assert "PROCESS_MODE_ALWAYS" in REQUIRED_PAUSE_MENU
+    assert "requestFullscreen" in REQUIRED_PAUSE_MENU
     print("OK Pawn Slug Godot 2D SpriteFrames gate self-test")
 
 
