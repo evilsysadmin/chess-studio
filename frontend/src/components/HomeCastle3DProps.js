@@ -19,12 +19,6 @@ export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
 
-export const HOME_CASTLE_HERALDIC_CREST_ANCHOR = Object.freeze({
-  x: 0,
-  y: -0.565,
-  z: 0.39,
-});
-
 export const HOME_CASTLE_DUST_MOTE_COUNT = 24;
 
 const DESTINATION_PROP_REFERENCE_ASPECT = 1.6;
@@ -93,107 +87,6 @@ function createHomeCastleDust() {
   dust.name = 'home-castle-dust';
   dust.renderOrder = 2;
   return { dust, geometry, material };
-}
-
-function createCrestRod(resources, material, start, end, radius = 0.008) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
-  const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
-  resources.geometries.push(geometry);
-  const rod = new THREE.Mesh(geometry, material);
-  rod.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, start.z);
-  rod.rotation.z = -Math.atan2(dx, dy);
-  return rod;
-}
-
-function createHeraldicHorseCrest(resources) {
-  const group = new THREE.Group();
-  group.name = 'home-castle-heraldic-horse-crest';
-  group.position.set(
-    HOME_CASTLE_HERALDIC_CREST_ANCHOR.x,
-    HOME_CASTLE_HERALDIC_CREST_ANCHOR.y,
-    HOME_CASTLE_HERALDIC_CREST_ANCHOR.z,
-  );
-
-  const shieldMaterial = new THREE.MeshStandardMaterial({
-    color: 0x5a1010,
-    roughness: 0.78,
-    metalness: 0.04,
-    emissive: 0x180505,
-    emissiveIntensity: 0.05,
-  });
-  const insetMaterial = new THREE.MeshStandardMaterial({
-    color: 0x24130f,
-    roughness: 0.84,
-    metalness: 0.02,
-  });
-  const brass = new THREE.MeshStandardMaterial({
-    color: 0xc7a15b,
-    roughness: 0.48,
-    metalness: 0.55,
-    emissive: 0x2d1b08,
-    emissiveIntensity: 0.06,
-  });
-  resources.materials.push(shieldMaterial, insetMaterial, brass);
-
-  const shieldShape = new THREE.Shape();
-  shieldShape.moveTo(-0.235, 0.145);
-  shieldShape.lineTo(0.235, 0.145);
-  shieldShape.lineTo(0.22, -0.045);
-  shieldShape.quadraticCurveTo(0.17, -0.135, 0, -0.19);
-  shieldShape.quadraticCurveTo(-0.17, -0.135, -0.22, -0.045);
-  shieldShape.closePath();
-
-  const shieldGeometry = new THREE.ExtrudeGeometry(shieldShape, {
-    depth: 0.028,
-    bevelEnabled: true,
-    bevelSegments: 2,
-    bevelSize: 0.012,
-    bevelThickness: 0.008,
-  });
-  shieldGeometry.center();
-  resources.geometries.push(shieldGeometry);
-  const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
-  shield.rotation.x = 0.02;
-
-  const insetShape = shieldShape.clone();
-  const insetGeometry = new THREE.ShapeGeometry(insetShape, 10);
-  insetGeometry.scale(0.84, 0.84, 1);
-  resources.geometries.push(insetGeometry);
-  const inset = new THREE.Mesh(insetGeometry, insetMaterial);
-  inset.position.z = 0.022;
-
-  const bodyGeometry = new THREE.SphereGeometry(0.052, 14, 10);
-  const headGeometry = new THREE.SphereGeometry(0.024, 12, 8);
-  const muzzleGeometry = new THREE.BoxGeometry(0.03, 0.018, 0.016);
-  resources.geometries.push(bodyGeometry, headGeometry, muzzleGeometry);
-
-  const body = new THREE.Mesh(bodyGeometry, brass);
-  body.scale.set(1.35, 0.82, 0.30);
-  body.position.set(0.015, 0.002, 0.044);
-
-  const head = new THREE.Mesh(headGeometry, brass);
-  head.scale.set(1.05, 0.78, 0.34);
-  head.position.set(-0.065, 0.078, 0.044);
-
-  const muzzle = new THREE.Mesh(muzzleGeometry, brass);
-  muzzle.position.set(-0.093, 0.067, 0.044);
-  muzzle.rotation.z = -0.12;
-
-  const rods = [
-    [{ x: -0.005, y: 0.025, z: 0.044 }, { x: -0.048, y: 0.066, z: 0.044 }, 0.010],
-    [{ x: 0.047, y: 0.020, z: 0.044 }, { x: 0.105, y: 0.078, z: 0.044 }, 0.008],
-    [{ x: 0.050, y: 0.006, z: 0.044 }, { x: 0.118, y: 0.038, z: 0.044 }, 0.007],
-    [{ x: -0.010, y: -0.022, z: 0.044 }, { x: -0.058, y: -0.094, z: 0.044 }, 0.009],
-    [{ x: 0.030, y: -0.024, z: 0.044 }, { x: 0.080, y: -0.094, z: 0.044 }, 0.009],
-    [{ x: -0.042, y: 0.004, z: 0.044 }, { x: -0.105, y: 0.036, z: 0.044 }, 0.007],
-    [{ x: -0.105, y: 0.036, z: 0.044 }, { x: -0.125, y: 0.015, z: 0.044 }, 0.006],
-  ].map(([start, end, radius]) => createCrestRod(resources, brass, start, end, radius));
-
-  group.add(shield, inset, body, head, muzzle, ...rods);
-  group.scale.set(0.94, 0.94, 0.94);
-  return group;
 }
 
 function createTournamentCup(resources) {
@@ -509,8 +402,7 @@ export function createHomeCastleDestinationProps() {
   const train = createTrainingLectern(resources);
   const play = createPlayRook(resources);
   const daily = createDailyBrazier(resources);
-  const heraldicCrest = createHeraldicHorseCrest(resources);
-  group.add(tournament, train, play, daily, heraldicCrest);
+  group.add(tournament, train, play, daily);
 
   return {
     group,
@@ -518,7 +410,6 @@ export function createHomeCastleDestinationProps() {
     train,
     play,
     daily,
-    heraldicCrest,
     dispose() {
       for (const geometry of resources.geometries) geometry.dispose();
       for (const material of resources.materials) material.dispose();
