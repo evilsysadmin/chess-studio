@@ -6,6 +6,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
@@ -16,6 +17,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
@@ -99,6 +101,10 @@ jobs:
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/player_runtime_smoke.gd
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
+      - name: Enemy roster composition gate
+        run: |
+          python3 -S scripts/pawn_slug_enemy_roster_gate.py self-test
+          python3 -S scripts/pawn_slug_enemy_roster_gate.py
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded
@@ -124,7 +130,7 @@ jobs:
             if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
               changed="$(git diff --name-only HEAD^ HEAD)"
               printf 'Changed files:\n%s\n' "$changed"
-              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
+              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|scripts/pawn_slug_enemy_roster_gate\.py$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
                 export_required=true
               fi
             else
