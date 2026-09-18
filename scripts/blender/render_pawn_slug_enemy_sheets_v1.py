@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Render canonical Blender-authored Pawn Slug enemy sprite sheets.
 
-Four distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
-  pawn   -> light rifle infantry
-  knight -> fast assault trooper with swept knight crest
-  rook   -> broad heavy gunner with crenellated armour
-  bishop -> tall field officer with mitre crest and brass command trim
+Six distinct military-chess enemy silhouettes are authored in Blender-native Z-up:
+  pawn      -> light rifle infantry
+  knight    -> fast assault trooper with swept knight crest
+  rook      -> broad heavy gunner with crenellated armour
+  bishop    -> tall field officer with mitre crest and brass command trim
+  queen     -> elite command assault officer with crown crest and cape armour
+  grenadier -> demolition infantry with explosive pack and under-barrel launcher
 
 Each type renders the real runtime action contract into transparent 2x source frames.
 A lightweight compositor step in CI downsamples them into 96px runtime-style sheets.
@@ -30,7 +32,12 @@ ACTIONS = {
     "climb": 12,
     "death": 14,
 }
-TYPES = ("pawn", "knight", "rook", "bishop")
+TYPES = ("pawn", "knight", "rook", "bishop", "queen", "grenadier")
+BASE_ARCHETYPE = {"queen": "bishop", "grenadier": "pawn"}
+
+
+def archetype(enemy_type):
+    return BASE_ARCHETYPE.get(enemy_type, enemy_type)
 PALETTE = {
     "cloth": (0.18, 0.24, 0.18, 1.0),
     "cloth_light": (0.28, 0.34, 0.23, 1.0),
@@ -136,6 +143,7 @@ def capsule(name, start, end, radius, mat):
 
 
 def action_pose(enemy_type, action, frame):
+    kind = archetype(enemy_type)
     count = ACTIONS[action]
     phase = frame / max(1, count - (0 if action in ("hurt", "death") else 1))
     cycle = phase * math.tau
@@ -146,16 +154,16 @@ def action_pose(enemy_type, action, frame):
         "crouch": 0.0, "leg": 0.0, "arm": 0.0,
         "weapon_pitch": 0.0, "death": 0.0,
     }
-    mass = {"pawn": 1.0, "knight": 1.18, "rook": 0.72, "bishop": 0.86}[enemy_type]
+    mass = {"pawn": 1.0, "knight": 1.18, "rook": 0.72, "bishop": 0.86}[kind]
     if action == "idle":
         pose["root_z"] = (1 - c) * 0.006 * mass
         pose["lean"] = s * 0.012 * mass
         pose["arm"] = s * 0.025
     elif action == "run":
-        pose["root_z"] = abs(s) * (0.085 if enemy_type == "knight" else 0.06 if enemy_type == "pawn" else 0.05 if enemy_type == "bishop" else 0.038)
-        pose["root_x"] = s * (0.045 if enemy_type == "knight" else 0.026 if enemy_type == "pawn" else 0.020 if enemy_type == "bishop" else 0.015)
-        pose["lean"] = -0.12 if enemy_type == "knight" else -0.07 if enemy_type == "pawn" else -0.05 if enemy_type == "bishop" else -0.035
-        pose["leg"] = s * (0.88 if enemy_type == "knight" else 0.70 if enemy_type == "pawn" else 0.58 if enemy_type == "bishop" else 0.48)
+        pose["root_z"] = abs(s) * (0.085 if kind == "knight" else 0.06 if kind == "pawn" else 0.05 if kind == "bishop" else 0.038)
+        pose["root_x"] = s * (0.045 if kind == "knight" else 0.026 if kind == "pawn" else 0.020 if kind == "bishop" else 0.015)
+        pose["lean"] = -0.12 if kind == "knight" else -0.07 if kind == "pawn" else -0.05 if kind == "bishop" else -0.035
+        pose["leg"] = s * (0.88 if kind == "knight" else 0.70 if kind == "pawn" else 0.58 if kind == "bishop" else 0.48)
         pose["arm"] = -s * 0.34
     elif action == "jump":
         arc = math.sin(min(1.0, phase) * math.pi)
@@ -189,14 +197,15 @@ def action_pose(enemy_type, action, frame):
 
 
 def add_helmet(enemy_type, mats, head_z):
-    if enemy_type == "pawn":
+    kind = archetype(enemy_type)
+    if kind == "pawn":
         cylinder("helmet", 0.205, 0.115, mats["cloth_dark"], (0.0, 0.0, head_z + 0.17), vertices=16)
         box("helmet_brim", (0.34, 0.18, 0.045), mats["cloth_dark"], (-0.025, -0.08, head_z + 0.14), bevel=0.018)
-    elif enemy_type == "knight":
+    elif kind == "knight":
         box("helmet_core", (0.34, 0.32, 0.22), mats["steel"], (0, 0, head_z + 0.14), (0, 0.08, -0.03), bevel=0.06)
         box("knight_crest", (0.18, 0.10, 0.38), mats["steel_light"], (0.07, 0.06, head_z + 0.34), (0.14, -0.25, -0.35), bevel=0.04)
         box("knight_brow", (0.38, 0.18, 0.055), mats["steel_light"], (-0.02, -0.12, head_z + 0.12), bevel=0.018)
-    elif enemy_type == "rook":
+    elif kind == "rook":
         box("rook_helmet", (0.46, 0.40, 0.25), mats["steel"], (0, 0, head_z + 0.13), bevel=0.045)
         for i, x in enumerate((-0.17, 0.0, 0.17)):
             box(f"rook_crenel_{i}", (0.11, 0.25, 0.11), mats["steel_light"], (x, 0.0, head_z + 0.30), bevel=0.02)
@@ -205,17 +214,25 @@ def add_helmet(enemy_type, mats, head_z):
         box("bishop_mitre", (0.20, 0.18, 0.42), mats["steel_light"], (0.02, 0.02, head_z + 0.38), (0.08, 0.0, -0.08), bevel=0.05)
         box("bishop_mitre_trim", (0.235, 0.205, 0.055), mats["brass"], (0.02, -0.01, head_z + 0.29), (0.08, 0.0, -0.08), bevel=0.018)
 
+    if enemy_type == "queen":
+        box("queen_crown_band", (0.44, 0.30, 0.08), mats["brass"], (0.0, -0.01, head_z + 0.31), bevel=0.025)
+        for index, x in enumerate((-0.15, -0.05, 0.05, 0.15)):
+            box(f"queen_crown_spike_{index}", (0.055, 0.07, 0.20 + (0.04 if index in (1, 2) else 0.0)), mats["brass"], (x, -0.01, head_z + 0.42), (0, 0, (-0.08 + index * 0.05)), bevel=0.018)
+    elif enemy_type == "grenadier":
+        box("grenadier_helmet_wrap", (0.39, 0.22, 0.07), mats["red"], (-0.01, -0.10, head_z + 0.13), (0, 0, -0.03), bevel=0.018)
+
 
 def add_weapon(enemy_type, mats, shoulder_z, pose):
-    if enemy_type == "rook":
+    kind = archetype(enemy_type)
+    if kind == "rook":
         length, thickness = 1.18, 0.12
         muzzle_x = -0.90
         stock_x = 0.28
-    elif enemy_type == "bishop":
+    elif kind == "bishop":
         length, thickness = 1.06, 0.095
         muzzle_x = -0.84
         stock_x = 0.24
-    elif enemy_type == "knight":
+    elif kind == "knight":
         length, thickness = 0.92, 0.085
         muzzle_x = -0.75
         stock_x = 0.20
@@ -227,18 +244,26 @@ def add_weapon(enemy_type, mats, shoulder_z, pose):
     pitch = pose["weapon_pitch"]
     box("weapon_receiver", (length * 0.54, thickness, thickness * 1.15), mats["black"], (-0.28, -0.28, z), (0, pitch, 0), bevel=0.018)
     cylinder("weapon_barrel", thickness * 0.22, length * 0.55, mats["steel_light"], (muzzle_x + 0.16, -0.28, z + 0.01), (0, math.pi / 2 + pitch, 0), vertices=10, bevel=0.004)
-    box("weapon_stock", (0.34 if enemy_type != "rook" else 0.42, thickness * 1.3, thickness * 1.25), mats["wood" if enemy_type == "pawn" else "black"], (stock_x, -0.27, z - 0.01), (0, pitch, 0), bevel=0.025)
-    box("weapon_mag", (0.12 if enemy_type != "rook" else 0.17, thickness * 1.12, 0.22), mats["black"], (-0.18, -0.27, z - 0.13), (0, 0.12, -0.08), bevel=0.018)
-    if enemy_type == "rook":
+    box("weapon_stock", (0.34 if kind != "rook" else 0.42, thickness * 1.3, thickness * 1.25), mats["wood" if enemy_type == "pawn" else "black"], (stock_x, -0.27, z - 0.01), (0, pitch, 0), bevel=0.025)
+    box("weapon_mag", (0.12 if kind != "rook" else 0.17, thickness * 1.12, 0.22), mats["black"], (-0.18, -0.27, z - 0.13), (0, 0.12, -0.08), bevel=0.018)
+    if kind == "rook":
         box("weapon_box_mag", (0.28, 0.14, 0.24), mats["black"], (-0.05, -0.26, z - 0.15), bevel=0.025)
         cylinder("weapon_muzzle", 0.055, 0.13, mats["steel_light"], (muzzle_x - 0.18, -0.28, z + 0.01), (0, math.pi / 2, 0), vertices=10)
 
+    if enemy_type == "queen":
+        box("queen_weapon_scope", (0.30, 0.08, 0.08), mats["brass"], (-0.30, -0.285, z + 0.11), (0, pitch, 0), bevel=0.018)
+        box("queen_weapon_shroud", (0.42, 0.12, 0.12), mats["steel_light"], (-0.57, -0.28, z + 0.01), (0, pitch, 0), bevel=0.016)
+    elif enemy_type == "grenadier":
+        cylinder("grenadier_launcher", 0.052, 0.44, mats["steel"], (-0.42, -0.28, z - 0.10), (0, math.pi / 2 + pitch, 0), vertices=12, bevel=0.008)
+        cylinder("grenadier_drum", 0.10, 0.13, mats["black"], (-0.28, -0.28, z - 0.15), (math.pi / 2, 0, 0), vertices=12, bevel=0.010)
+
 
 def build_enemy(enemy_type, action, frame, mats):
+    kind = archetype(enemy_type)
     pose = action_pose(enemy_type, action, frame)
-    heavy = enemy_type == "rook"
-    fast = enemy_type == "knight"
-    officer = enemy_type == "bishop"
+    heavy = kind == "rook"
+    fast = kind == "knight"
+    officer = kind == "bishop"
     root_x = pose["root_x"]
     base_z = max(0.02, 0.04 + pose["root_z"])
     crouch = pose["crouch"]
@@ -296,14 +321,26 @@ def build_enemy(enemy_type, action, frame, mats):
 
     add_weapon(enemy_type, mats, shoulder_z, pose)
 
-    if enemy_type == "pawn":
+    if kind == "pawn":
         sphere("pawn_badge", 0.055, mats["brass"], (root_x + 0.17, -0.305, chest_z + 0.12), (1, 0.35, 1), 12, 6)
-    elif enemy_type == "knight":
+    elif kind == "knight":
         box("knight_badge", (0.10, 0.025, 0.14), mats["red"], (root_x + 0.18, -0.315, chest_z + 0.12), (0, 0, -0.22), bevel=0.02)
-    elif enemy_type == "rook":
+    elif kind == "rook":
         box("rook_badge", (0.15, 0.025, 0.14), mats["brass"], (root_x + 0.18, -0.365, chest_z + 0.12), bevel=0.018)
     else:
         box("bishop_badge", (0.11, 0.025, 0.20), mats["brass"], (root_x + 0.18, -0.325, chest_z + 0.13), (0, 0, -0.28), bevel=0.018)
+
+
+    if enemy_type == "queen":
+        box("queen_cape", (0.62, 0.08, 0.66), mats["red"], (root_x + 0.04, 0.20, chest_z - 0.08), (0.08, 0.0, -0.03), bevel=0.035)
+        box("queen_pauldron_left", (0.31, 0.34, 0.18), mats["brass"], (root_x - 0.34, -0.01, shoulder_z + 0.02), (0, 0, -0.16), bevel=0.045)
+        box("queen_pauldron_right", (0.31, 0.34, 0.18), mats["brass"], (root_x + 0.34, -0.01, shoulder_z + 0.02), (0, 0, 0.16), bevel=0.045)
+    elif enemy_type == "grenadier":
+        box("grenadier_pack", (0.46, 0.24, 0.54), mats["cloth_dark"], (root_x + 0.03, 0.23, chest_z - 0.04), (0.05, 0.0, 0.02), bevel=0.05)
+        for index, x in enumerate((-0.20, 0.0, 0.20)):
+            cylinder(f"grenade_{index}", 0.055, 0.12, mats["steel"], (root_x + x, -0.31, chest_z - 0.10), (math.pi / 2, 0, 0), vertices=10, bevel=0.008)
+        box("grenadier_bandolier", (0.10, 0.045, 0.70), mats["webbing"], (root_x + 0.02, -0.325, chest_z + 0.01), (0, 0, -0.48), bevel=0.018)
+
 
     if pose["death"] > 0:
         angle = pose["lean"]
@@ -375,7 +412,7 @@ def clear_authored():
 
 def save_preview_blend(out, mats, types):
     clear_authored()
-    offsets = {"pawn": -2.10, "knight": -0.70, "rook": 0.70, "bishop": 2.10}
+    offsets = {"pawn": -3.15, "knight": -1.90, "rook": -0.65, "bishop": 0.65, "queen": 1.90, "grenadier": 3.15}
     if len(types) == 1:
         offsets = {types[0]: 0.0}
     for enemy_type in types:
