@@ -455,7 +455,7 @@ def add_fireplace(name: str, x: float, materials):
 def add_bookshelf(materials):
     wood = materials["wood"]
     brass = materials["brass"]
-    x, y = -2.65, 6.20
+    x, y = -6.55, 6.18
     cube("HOME_PROP_library_back", (x, y, 2.55), (1.70, 0.34, 2.48), materials["dark"], bevel=0.05)
     cube("HOME_PROP_library_frame", (x, y - 0.22, 2.55), (1.58, 0.22, 2.38), wood, bevel=0.06)
     for idx, z in enumerate((0.55, 1.25, 1.95, 2.65, 3.35, 4.05, 4.75)):
@@ -515,7 +515,7 @@ def add_armor(materials):
     brass = materials["brass"]
     stone = materials["stone"]
     dark = materials["dark"]
-    x, y = 1.55, 5.28
+    x, y = -4.92, 5.10
 
     cube("HOME_PROP_armor_pedestal", (x, y, 0.24), (0.72, 0.54, 0.24), stone, bevel=0.05)
 
@@ -652,59 +652,64 @@ def add_stairs(materials):
     dark = materials["dark"]
     fire = materials["fire"]
 
-    # Keep the Dungeon a strong lower-right destination without letting it
-    # consume a third of the room. The canonical opening is mostly an arch,
-    # balustrade and descending stair tucked against the right edge.
-    bridge_x = 6.25
-    arch_x = 6.52
-    cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.48, 1.36), (1.70, 0.66, 0.12), stone, bevel=0.05)
-    cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.54), (1.62, 0.11, 0.16), stone, bevel=0.04)
+    # Canonical Home: the stair rises from the room toward the back-right
+    # landing. The Dungeon opening lives under that landing instead of opening
+    # as a giant foreground void.
+    lower_x, lower_y, lower_z = 4.78, 1.72, 0.18
+    upper_x, upper_y, upper_z = 7.42, 5.10, 2.12
 
-    cube("HOME_ARCH_dungeon_void", (arch_x, 1.78, -0.12), (1.42, 0.09, 1.42), dark, bevel=0.12)
-    arch("HOME_ARCH_dungeon_arch", arch_x, 1.60, 2.95, 0.58, 1.42, -1.56, stone)
-    arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.08, 1.48, 2.42, 0.44, 1.12, -1.46, materials["stone_dark"])
-
-    for idx, x in enumerate((5.62, 5.93, 6.24, 6.55, 6.86, 7.17)):
-        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 1.51, -0.30), (0.040, 0.040, 0.88), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_gate_cross", (6.40, 1.49, -0.25), (0.94, 0.045, 0.050), materials["steel"], bevel=0.01)
-    cube("HOME_PROP_dungeon_fire_left", (5.88, 1.36, -0.66), (0.15, 0.05, 0.30), fire, bevel=0.08)
-    cube("HOME_PROP_dungeon_fire_right", (6.96, 1.36, -0.70), (0.15, 0.05, 0.34), fire, bevel=0.08)
-
-    for idx, x in enumerate((4.98, 5.38, 5.78, 6.18, 6.58, 6.98, 7.38)):
-        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.80, 1.86), 0.075, 0.52, stone, vertices=20)
-    cube("HOME_ARCH_dungeon_balustrade_top", (6.18, 1.80, 2.14), (1.52, 0.11, 0.09), stone, bevel=0.025)
-
-    cylinder("HOME_ARCH_dungeon_post", (4.72, 1.90, 1.33), 0.24, 1.78, stone, vertices=32)
-    sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.21, 0.21, 0.21), materials["stone_dark"])
-
-    steps = 11
+    steps = 12
     for i in range(steps):
         t = i / (steps - 1)
-        x = 5.28 + 2.45 * t
-        y = 1.45 - 2.28 * t
-        z = 0.68 - 1.58 * t
+        x = lower_x + (upper_x - lower_x) * t
+        y = lower_y + (upper_y - lower_y) * t
+        z = lower_z + (upper_z - lower_z) * t
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
             (x, y, z),
-            (0.61, 0.33, 0.075),
+            (0.72, 0.34, 0.075),
             stone,
-            bevel=0.025,
+            bevel=0.028,
         )
 
-    curve_tube(
-        "HOME_PROP_dungeon_rail",
-        [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)],
-        0.045,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_dungeon_rail_lower",
-        [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
-        0.024,
-        brass,
-    )
-    cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
+    # Upper gallery / bridge creates the horizontal silhouette visible below
+    # the moonlit windows.
+    cube("HOME_ARCH_dungeon_bridge", (7.55, 5.26, 2.08), (1.40, 0.64, 0.12), stone, bevel=0.05)
+    cube("HOME_ARCH_dungeon_bridge_lip", (7.55, 4.72, 2.28), (1.34, 0.10, 0.16), stone, bevel=0.04)
 
+    # Dungeon portal tucked under the upper landing.
+    cube("HOME_ARCH_dungeon_void", (7.55, 6.54, 0.72), (1.18, 0.08, 1.18), dark, bevel=0.10)
+    arch("HOME_ARCH_dungeon_arch", 7.55, 6.22, 2.55, 0.84, 2.22, -0.48, stone)
+    arch("HOME_ARCH_dungeon_arch_inner", 7.55, 6.08, 2.08, 0.72, 1.92, -0.38, materials["stone_dark"])
+
+    for idx, x in enumerate((6.82, 7.18, 7.54, 7.90, 8.26)):
+        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 6.04, 0.66), (0.035, 0.035, 0.78), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_gate_cross", (7.54, 6.02, 0.64), (0.88, 0.040, 0.045), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_fire_left", (7.16, 5.96, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
+    cube("HOME_PROP_dungeon_fire_right", (7.94, 5.96, 0.18), (0.12, 0.05, 0.24), fire, bevel=0.07)
+
+    # Balustrades track the rising stair.
+    rail_points = []
+    rail_lower = []
+    for i in range(7):
+        t = i / 6.0
+        x = lower_x - 0.18 + (upper_x - lower_x) * t
+        y = lower_y + (upper_y - lower_y) * t
+        z = lower_z + 1.10 + (upper_z - lower_z) * t
+        cylinder(f"HOME_ARCH_dungeon_baluster_{i}", (x, y, z - 0.34), 0.065, 0.58, stone, vertices=18)
+        rail_points.append((x, y, z))
+        rail_lower.append((x, y, z - 0.28))
+
+    curve_tube("HOME_PROP_dungeon_rail", rail_points, 0.045, brass)
+    curve_tube("HOME_PROP_dungeon_rail_lower", rail_lower, 0.025, brass)
+
+    # Far-right gallery balustrade above the portal.
+    for idx, x in enumerate((6.45, 6.85, 7.25, 7.65, 8.05, 8.45)):
+        cylinder(f"HOME_ARCH_dungeon_gallery_baluster_{idx}", (x, 5.02, 2.62), 0.065, 0.54, stone, vertices=18)
+    cube("HOME_ARCH_dungeon_balustrade_top", (7.45, 5.02, 2.93), (1.28, 0.10, 0.085), stone, bevel=0.025)
+
+    cylinder("HOME_ARCH_dungeon_post", (4.56, 1.58, 0.88), 0.22, 1.52, stone, vertices=28)
+    sphere("HOME_PROP_dungeon_finial", (4.56, 1.58, 1.74), (0.19, 0.19, 0.19), materials["stone_dark"])
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
@@ -853,28 +858,31 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
 
-    add_fireplace("fireplace_left", -6.15, materials)
-    fireplace_left_origin = Vector((-6.15, 6.10, 0.35))
+    add_fireplace("fireplace_left", -3.55, materials)
+    fireplace_left_origin = Vector((-3.55, 6.10, 0.35))
     for obj in list(bpy.data.objects):
         if ("fireplace_left" in obj.name) and obj.type != "LIGHT":
-            obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
-            obj.scale *= 0.90
+            obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 1.12
+            obj.scale *= 1.12
+
     add_bookshelf(materials)
-    library_origin = Vector((-2.65, 6.20, 2.55))
+    library_origin = Vector((-6.55, 6.18, 2.55))
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_library_") or obj.name.startswith("HOME_PROP_book_"):
-            obj.location = library_origin + (obj.location - library_origin) * 1.10
-            obj.scale *= 1.10
-    cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
-    gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["stone"])
-    add_fireplace("fireplace_right", 4.45, materials)
-    fireplace_origin = Vector((4.45, 6.10, 0.35))
+            obj.location = library_origin + (obj.location - library_origin) * 1.12
+            obj.scale *= 1.12
+
+    cube("HOME_PROP_armor_recess", (-4.92, 6.72, 2.46), (0.90, 0.08, 1.72), materials["dark"], bevel=0.08)
+    gothic_arch("HOME_ARCH_armor_portal", -4.92, 6.18, 2.45, 2.50, 4.65, 0.18, materials["stone"])
+
+    add_fireplace("fireplace_right", 3.55, materials)
+    fireplace_origin = Vector((3.55, 6.10, 0.35))
     for obj in list(bpy.data.objects):
         if ("fireplace_right" in obj.name) and obj.type != "LIGHT":
-            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.38
-            obj.scale *= 1.38
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.78, 1.52), 190, (1.0, 0.30, 0.07), radius=1.20)
-    for idx, cx in enumerate((3.72, 4.45, 5.18)):
+            obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.12
+            obj.scale *= 1.12
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (3.55, 4.78, 1.46), 165, (1.0, 0.30, 0.07), radius=1.12)
+    for idx, cx in enumerate((2.92, 3.55, 4.18)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 5.54, 2.62), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 5.54, 2.92), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
 
@@ -887,14 +895,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_window_sill", (7.58, 6.20, 1.80), (1.42, 0.28, 0.12), materials["stone"], bevel=0.04)
     sphere("HOME_PROP_window_moon", (8.08, 6.40, 4.48), (0.46, 0.035, 0.46), materials["moon"])
 
-    for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
+    for name, x in (("far_left", -7.55), ("center", 0.0), ("far_right", 7.55)):
         add_banner(name, x, materials)
+
+    # The central standard is a major landmark in the approved mock.
+    center_banner_objects = [
+        obj for obj in list(bpy.data.objects)
+        if obj.name.endswith("_center") and obj.name.startswith("HOME_PROP_banner_")
+    ]
+    banner_origin = Vector((0.0, 5.82, 4.55))
+    for obj in center_banner_objects:
+        obj.location = banner_origin + (obj.location - banner_origin) * 1.48
+        obj.scale *= 1.48
 
     add_table_and_board(materials)
     add_armor(materials)
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
-            origin = Vector((1.55, 5.28, 0.24))
+            origin = Vector((-4.92, 5.10, 0.24))
             obj.location = origin + (obj.location - origin) * 1.34
             obj.scale *= 1.34
     add_trophy(materials)
@@ -902,9 +920,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.02, 5.02), 0.075, 1.62, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (-1.05, 2.02, 5.02), 0.075, 1.62, materials["brass"])
     ring_points = [
-        (2.34 * math.cos(i * math.tau / 24), 2.02 + 1.42 * math.sin(i * math.tau / 24), 4.12)
+        (-1.05 + 2.34 * math.cos(i * math.tau / 24), 2.02 + 1.42 * math.sin(i * math.tau / 24), 4.12)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
@@ -913,13 +931,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.20 + 1.18 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.02, 5.84), (rx, ry, 4.16)],
+            [(-1.05, 2.02, 5.84), (rx - 1.05, ry, 4.16)],
             0.025,
             materials["brass"],
         )
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 2.16 * math.cos(angle)
+        cx = -1.05 + 2.16 * math.cos(angle)
         cy = 2.02 + 1.32 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.30), (0.055, 0.055, 0.24), materials["fire_hot"])
         add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.42), 58, (1.0, 0.46, 0.16), radius=0.40)
@@ -975,12 +993,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     join_meshes("HOME_PROP_torches", ("HOME_PROP_torch_",))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 44.0
+    camera_data.lens = 42.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (-0.42, -15.15, 4.48)
-    target = (0.32, 2.42, 1.48)
+    camera.location = (-1.10, -15.45, 4.18)
+    target = (0.10, 2.62, 1.42)
     look_at(camera, target)
     scene.camera = camera
 
