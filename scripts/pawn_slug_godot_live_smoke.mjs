@@ -154,13 +154,26 @@ try {
   } catch {
     engineStarted = false;
   }
+  let directReady = false;
+  if (engineStarted) {
+    try {
+      await direct.waitForFunction(
+        () => Array.isArray(window.__pawnSlugGodotMessages)
+          && window.__pawnSlugGodotMessages.some(
+            (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
+          ),
+        null,
+        { timeout: 5_000 },
+      );
+      directReady = true;
+    } catch {
+      directReady = false;
+    }
+  }
+
   diagnostics.direct = await snapshotFrame(direct.mainFrame());
   diagnostics.direct.engineStarted = engineStarted;
-
-  const directReady = diagnostics.direct.messages?.some(
-    (message) => message?.data?.source === 'pawn-slug-godot' && message?.data?.type === 'ready',
-  );
-  diagnostics.direct.readyMessage = Boolean(directReady);
+  diagnostics.direct.readyMessage = directReady;
   diagnostics.timings.directMs = Date.now() - directStartedAt;
 
   if (!engineStarted) fail('direct-engine-start', diagnostics);
