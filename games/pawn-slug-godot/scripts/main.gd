@@ -929,7 +929,8 @@ func _update_projectiles(delta: float) -> void:
         projectile["position"] = position
         projectiles[index] = projectile
 
-        if _damage_bunker_at(position, int(projectile["damage"])):
+        var direct_bunker_damage := 0 if bool(projectile["explosive"]) else int(projectile["damage"])
+        if _damage_bunker_at(position, direct_bunker_damage):
             if bool(projectile["explosive"]):
                 _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
             else:
