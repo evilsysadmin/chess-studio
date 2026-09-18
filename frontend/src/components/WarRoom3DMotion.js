@@ -84,9 +84,9 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
 export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) {
   return {
     exposure: coarsePointer ? 0.97 : 1.0,
-    hemisphere: coarsePointer ? 0.62 : 0.44,
-    keyMax: coarsePointer ? 1.48 : 1.34,
-    warmMax: coarsePointer ? 2.1 : 1.55,
+    hemisphere: coarsePointer ? 0.66 : 0.52,
+    keyMax: coarsePointer ? 1.52 : 1.40,
+    warmMax: coarsePointer ? 2.15 : 1.82,
     background: 0x070504,
     fog: 0x0d0907,
     grade: 'nocturnal-walnut-v2',
