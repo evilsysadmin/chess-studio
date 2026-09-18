@@ -198,11 +198,21 @@ def _disconnect_grace_key(color: chess.Color) -> str:
     return "white_disconnect_grace_started_at" if color == chess.WHITE else "black_disconnect_grace_started_at"
 
 
+def _player_was_recently_present(match: dict, color: chess.Color, now: datetime) -> bool:
+    seen_key = "white_seen_at" if color == chess.WHITE else "black_seen_at"
+    seen_at = match.get(seen_key)
+    if not isinstance(seen_at, datetime):
+        return False
+    return max(0.0, (now - seen_at).total_seconds()) <= PVP_PRESENCE_RECONNECTING_SECONDS
+
+
 async def _ensure_disconnect_grace(
     match_id: str,
     match: dict,
     username: str,
     now: datetime | None = None,
+    *,
+    observer_was_live: bool = True,
 ) -> dict:
     if match.get("status") != "active":
         return match
@@ -213,12 +223,15 @@ async def _ensure_disconnect_grace(
     opponent_color = not color
     opponent_presence, _seen_at = _opponent_presence(match, username, stamp)
     grace_key = _disconnect_grace_key(opponent_color)
-    if opponent_presence != "disconnected" or isinstance(match.get(grace_key), datetime):
+    if opponent_presence != "disconnected":
+        return match
+    if observer_was_live and isinstance(match.get(grace_key), datetime):
         return match
     return await store.begin_disconnect_grace(
         match_id,
         "w" if opponent_color == chess.WHITE else "b",
         now=stamp,
+        restart=not observer_was_live,
     ) or match
 
 
@@ -266,6 +279,8 @@ async def _apply_active_lifecycle(
     match: dict,
     username: str,
     now: datetime | None = None,
+    *,
+    observer_was_live: bool = True,
 ) -> dict:
     if match.get("status") != "active":
         return match
@@ -279,7 +294,13 @@ async def _apply_active_lifecycle(
     if match.get("status") != "active":
         return match
 
-    match = await _ensure_disconnect_grace(match_id, match, username, stamp)
+    match = await _ensure_disconnect_grace(
+        match_id,
+        match,
+        username,
+        stamp,
+        observer_was_live=observer_was_live,
+    )
     disconnected = await _finish_disconnect_forfeit(match_id, match, username, stamp)
     if disconnected is None:
         return await store.get_match(match_id) or match
@@ -566,11 +587,24 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         color = _player_color(match or {}, username)
         if not match or color is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
-        match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
+        now = store.utcnow()
+        observer_was_live = _player_was_recently_present(match, color, now)
+        match = await store.touch_match_presence(
+            match_id,
+            username,
+            "w" if color == chess.WHITE else "b",
+            now=now,
+        ) or match
         if match.get("status") == "starting":
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
-            match = await _apply_active_lifecycle(match_id, match, username)
+            match = await _apply_active_lifecycle(
+                match_id,
+                match,
+                username,
+                now,
+                observer_was_live=observer_was_live,
+            )
         if match.get("status") == "finished":
             # Reintento idempotente: si el request que dio mate, la bandera o
             # la rendición se cortó tras guardar la partida pero antes de
@@ -619,8 +653,21 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
             if match.get("status") != "active":
                 raise HTTPException(409, "La partida ya ha terminado.")
-            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
-            match = await _apply_active_lifecycle(match_id, match, username)
+            lifecycle_now = store.utcnow()
+            observer_was_live = _player_was_recently_present(match, color, lifecycle_now)
+            match = await store.touch_match_presence(
+                match_id,
+                username,
+                "w" if color == chess.WHITE else "b",
+                now=lifecycle_now,
+            ) or match
+            match = await _apply_active_lifecycle(
+                match_id,
+                match,
+                username,
+                lifecycle_now,
+                observer_was_live=observer_was_live,
+            )
             if match.get("status") == "finished":
                 await rating_store.settle_match(match_id, match)
                 return {"match": _public_match(match, username)}
