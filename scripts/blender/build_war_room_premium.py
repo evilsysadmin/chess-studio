@@ -786,7 +786,7 @@ def add_gothic_canon_v2(static, mats):
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
     )
     burgundy_dark = material(
-        "WR_MAT_canon_burgundy_dark", (0.060, 0.006, 0.010, 1),
+        "WR_MAT_canon_burgundy_dark", (0.145, 0.010, 0.018, 1),
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
 
@@ -864,38 +864,38 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 5.76
-    torus("WR_CANON_chandelier_ring", (0, 0.80, cz), 2.05, 0.075, mats["brass"], static)
-    cylinder("WR_CANON_chandelier_hub", (0, 0.80, cz), 0.20, 0.30, mats["brass_dark"], static, vertices=28)
-    cylinder("WR_CANON_chandelier_chain", (0, 0.80, 6.45), 0.035, 1.20, mats["brass_dark"], static, vertices=16)
+    cz = 5.98
+    torus("WR_CANON_chandelier_ring", (0, 1.04, cz), 1.58, 0.065, mats["brass"], static)
+    cylinder("WR_CANON_chandelier_hub", (0, 1.04, cz), 0.18, 0.26, mats["brass_dark"], static, vertices=28)
+    cylinder("WR_CANON_chandelier_chain", (0, 1.04, 6.43), 0.032, 0.74, mats["brass_dark"], static, vertices=16)
     for index in range(8):
         angle = index * math.tau / 8.0
-        x = math.cos(angle) * 1.72
-        y = 0.80 + math.sin(angle) * 1.48
+        x = math.cos(angle) * 1.33
+        y = 1.04 + math.sin(angle) * 1.14
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.23),
                  0.065, 0.40, mats["ivory"], static, vertices=18)
         sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.50), 0.095,
                mats["fire_core"], static, scale=(0.46, 0.46, 1.15))
         # short radial arm from hub; cylinders are aligned to Z by default.
-        midpoint = Vector((x * 0.50, 0.80 + (y - 0.80) * 0.50, cz))
+        midpoint = Vector((x * 0.50, 1.04 + (y - 1.04) * 0.50, cz))
         endpoint = Vector((x, y, cz))
-        origin = Vector((0, 0.80, cz))
+        origin = Vector((0, 1.04, cz))
         direction = endpoint - origin
         arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.035,
                        direction.length, mats["brass_dark"], static, vertices=14)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (0, 0.80, 5.62), 220.0,
+    light("WR_CANON_chandelier_light", "POINT", (0, 1.04, 5.78), 205.0,
           (1.0, 0.48, 0.18), static, radius=2.2)
 
     # Burgundy heraldic drape on the camera-facing table edge.
-    front_y = -5.44
+    front_y = -5.50
     verts = [
-        (-2.25, front_y - 0.035, 0.79), (2.25, front_y - 0.035, 0.79),
-        (2.25, front_y - 0.035, 0.26), (0.0, front_y - 0.035, -0.06),
-        (-2.25, front_y - 0.035, 0.26),
-        (-2.25, front_y + 0.035, 0.79), (2.25, front_y + 0.035, 0.79),
-        (2.25, front_y + 0.035, 0.26), (0.0, front_y + 0.035, -0.06),
-        (-2.25, front_y + 0.035, 0.26),
+        (-2.85, front_y - 0.035, 0.84), (2.85, front_y - 0.035, 0.84),
+        (2.85, front_y - 0.035, 0.28), (0.0, front_y - 0.035, -0.02),
+        (-2.85, front_y - 0.035, 0.28),
+        (-2.85, front_y + 0.035, 0.84), (2.85, front_y + 0.035, 0.84),
+        (2.85, front_y + 0.035, 0.28), (0.0, front_y + 0.035, -0.02),
+        (-2.85, front_y + 0.035, 0.28),
     ]
     faces = [
         (0, 4, 3, 2, 1), (5, 6, 7, 8, 9),
@@ -946,14 +946,14 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.52
+    scene.view_settings.exposure = -0.38
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.004, 0.006, 0.012, 1.0)
-    bg.inputs["Strength"].default_value = 0.065
+    bg.inputs["Strength"].default_value = 0.078
 
     static = collection("WR_STATIC_SHELL")
     dynamic = collection("WR_PREVIEW_DYNAMIC")
@@ -1364,8 +1364,8 @@ def runtime_batch_cell(obj):
     """Keep static batches spatially local so frustum culling still has useful granularity."""
     x, y, z = obj.matrix_world.translation
     return (
-        math.floor((float(x) + 3.0) / 6.0),
-        math.floor((float(y) + 3.0) / 6.0),
+        math.floor((float(x) + 3.5) / 7.0),
+        math.floor((float(y) + 3.5) / 7.0),
         math.floor((float(z) + 2.0) / 4.0),
     )
 
