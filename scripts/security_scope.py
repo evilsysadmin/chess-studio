@@ -49,10 +49,10 @@ def requires_iac_security(files: list[str]) -> bool:
     return any(IAC_PATTERN.search(path) is not None for path in normalize_files(files))
 
 
-def output_lines(run_security: bool, run_iac_security: bool = False) -> list[str]:
+def output_lines(run_security: bool, run_docker_security: bool = False) -> list[str]:
     return [
         f"run_security={'true' if run_security else 'false'}",
-        f"run_iac_security={'true' if run_iac_security else 'false'}",
+        f"run_docker_security={'true' if run_docker_security else 'false'}",
     ]
 
 
@@ -135,9 +135,9 @@ def self_test() -> None:
     assert not requires_heavy_security([])
     assert not requires_iac_security([])
     assert normalize_files(["", "  README.md  ", "\n"]) == ["README.md"]
-    assert output_lines(True, True) == ["run_security=true", "run_iac_security=true"]
-    assert output_lines(False, True) == ["run_security=false", "run_iac_security=true"]
-    assert output_lines(False, False) == ["run_security=false", "run_iac_security=false"]
+    assert output_lines(True, True) == ["run_security=true", "run_docker_security=true"]
+    assert output_lines(True, False) == ["run_security=true", "run_docker_security=false"]
+    assert output_lines(False, False) == ["run_security=false", "run_docker_security=false"]
     print("security-scope self-test OK · IaC runs Trivy without forcing Docker/Compose")
 
 
@@ -153,9 +153,10 @@ def main() -> int:
         return 0
 
     files = [] if args.all else sys.stdin.read().splitlines()
-    run_security = True if args.all else requires_heavy_security(files)
+    run_docker_security = True if args.all else requires_heavy_security(files)
     run_iac_security = True if args.all else requires_iac_security(files)
-    write_output(output_lines(run_security, run_iac_security), args.github_output)
+    run_security = run_docker_security or run_iac_security
+    write_output(output_lines(run_security, run_docker_security), args.github_output)
     return 0
 
 
