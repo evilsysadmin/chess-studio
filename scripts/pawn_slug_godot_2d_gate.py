@@ -55,6 +55,14 @@ REQUIRED_MATTHIAS = (
     "matthias_machinegun_godot_strict_8x11_256_v6.png",
     "matthias_shotgun_godot_strict_8x11_256_v6.png",
     "matthias_panzerfaust_godot_strict_8x11_256_v6.png",
+    "matthias_pistol_godot_strict_8x11_256_v7.png",
+    "matthias_machinegun_godot_strict_8x11_256_v7.png",
+    "matthias_shotgun_godot_strict_8x11_256_v7.png",
+    "matthias_panzerfaust_godot_strict_8x11_256_v7.png",
+    "FULL_ATLAS_FALLBACK_URLS",
+    '"shoot_up"',
+    '"shoot_down"',
+    '"shoot_crouch"',
     "FULL_ACTIONS",
     '"shoot": {"row": 6, "count": 6',
     '"die": {"row": 9, "count": 8',
@@ -222,6 +230,7 @@ REQUIRED_PLAYER_MOBILITY = (
     "combat_hitbox_rect",
     "_art.set_aim_direction(aim_direction)",
     "_update_fire_input(aim_direction: Vector2)",
+    "KEY_SPACE",
 )
 REQUIRED_RUNTIME_PROBE = (
     'extends "res://scripts/player.gd"',
@@ -444,7 +453,7 @@ def self_test() -> None:
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
-    assert any("matthias_machinegun_godot_strict_8x11_256_v6" in token for token in REQUIRED_MATTHIAS)
+    assert any("matthias_machinegun_godot_strict_8x11_256_v7" in token for token in REQUIRED_MATTHIAS)
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
     assert "locomoting_now" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS

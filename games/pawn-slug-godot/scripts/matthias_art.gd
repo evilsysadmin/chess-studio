@@ -2,22 +2,23 @@ extends Node2D
 
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
-# The strict-v6 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
-# shoot/reload/hurt/die/crouch), 256 x 256 per cell, published as immutable R2 objects.
+# The strict-v7 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
+# directional shoot/reload/hurt/die/crouch), 256 x 256 per cell, published in R2.
 # Godot consumes those authored cells directly; the old canonical assets remain
 # only as a graceful fallback if a remote strict atlas cannot be loaded.
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
-const PISTOL_FIRE_CANONICAL_ATLAS := preload("res://assets/matthias_pistol_fire_canonical_v7.png")
-const PISTOL_FIRE_CANONICAL_COLUMNS := 2
-const PISTOL_FIRE_CANONICAL_FRAME_SIZE := 256
-const PISTOL_FIRE_CANONICAL_FPS := 12.0
-
 # Strict Godot atlases: exact 8 x 11 grid, 256 x 256 cells, transparent PNG.
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v7.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v7.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v7.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
+}
+const FULL_ATLAS_FALLBACK_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v6.png",
@@ -27,6 +28,14 @@ const FULL_ATLAS_COLUMNS := 8
 const FULL_ATLAS_ROWS := 11
 const FULL_ATLAS_CELL_SIZE := 256
 const FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)
+const DIRECTIONAL_SHOOT_ROW := 6
+const DIRECTIONAL_SHOOT_FPS := 15.0
+const DIRECTIONAL_SHOOT_COLUMNS := {
+    "shoot": [0, 1, 2],
+    "shoot_up": [3, 4, 5],
+    "shoot_down": [6, 7],
+}
+const CROUCH_SHOOT_COLUMNS := [4, 5, 6]
 const NORMALIZED_FRAME_SIZE := 192
 const NORMALIZED_FOOT_GUTTER := 24
 const CELL_GUARD_PX := 2
@@ -266,15 +275,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
-    # The approved canonical pistol shot is a grounded, standing horizontal pose.
-    # Crouch, air and diagonal fire keep their locomotion/crouch frame and use the
-    # procedural muzzle flash so aim never lies about the actual projectile vector.
-    var canonical_ground_shoot := (
-        on_floor
-        and not crouching
-        and not locomoting_now
-        and absf(_aim_direction.y) < 0.25
-    )
+    var authored_shoot_action := _shoot_action_for_state(on_floor, crouching, locomoting_now)
     if locomoting_now and _one_shot_action == "shoot":
         _one_shot_action = ""
         _hold_one_shot = false
@@ -286,17 +287,17 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
                 _play_one_shot("hurt")
         elif (
             fired_now
-            and canonical_ground_shoot
+            and not authored_shoot_action.is_empty()
             and weapon_visual_ready
             and _using_full_atlas
-            and _animation_available("shoot")
+            and _animation_available(authored_shoot_action)
         ):
-            if _one_shot_action == "shoot":
-                _action = "shoot"
+            if _one_shot_action == authored_shoot_action:
+                _action = authored_shoot_action
                 _body.frame = 0
-                _body.play("shoot")
+                _body.play(authored_shoot_action)
             else:
-                _play_one_shot("shoot")
+                _play_one_shot(authored_shoot_action)
         elif landed_now and _using_full_atlas and _animation_available("land") and _one_shot_action.is_empty():
             _play_one_shot("land")
         elif _one_shot_action.is_empty():
@@ -314,10 +315,10 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
                 _advance_locomotion(delta, horizontal_speed_ratio)
 
     var authored_shoot := (
-        canonical_ground_shoot
+        not authored_shoot_action.is_empty()
         and weapon_visual_ready
         and _using_full_atlas
-        and _animation_available("shoot")
+        and _animation_available(authored_shoot_action)
     )
     if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
@@ -359,6 +360,20 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _sync_muzzle()
     _sync_modulate()
     _flash.visible = _muzzle_remaining > 0.0 and _body_ready and not _dead and not authored_shoot
+
+func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bool) -> String:
+    if not _using_full_atlas:
+        return ""
+    if on_floor and crouching and absf(_aim_direction.y) < 0.25 and _animation_available("shoot_crouch"):
+        return "shoot_crouch"
+    var diagonal := absf(_aim_direction.x) > 0.25 and absf(_aim_direction.y) > 0.25
+    if diagonal and _aim_direction.y < 0.0 and _animation_available("shoot_up"):
+        return "shoot_up"
+    if diagonal and _aim_direction.y > 0.0 and _animation_available("shoot_down"):
+        return "shoot_down"
+    if locomoting_now:
+        return ""
+    return "shoot" if _animation_available("shoot") else ""
 
 func _apply_climb_visual() -> void:
     # Current strict-v6 atlases have no dedicated climb row yet. Prefer a real
@@ -444,7 +459,7 @@ func _install_or_request_weapon() -> void:
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
         if _atlas_request == null:
-            _request_atlas(_weapon, full_url, "full")
+            _request_atlas(_weapon, full_url, "full-v7")
         if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
             return
         if _weapon == "pistol" and _legacy_pistol_frames != null:
@@ -481,6 +496,8 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
+        if layout == "full-v7" and _request_full_fallback(weapon_id):
+            return
         _ensure_master()
 
 func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArray, bytes: PackedByteArray) -> void:
@@ -493,31 +510,50 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        if requested_layout == "full-v7" and _request_full_fallback(requested_weapon):
+            return
         _ensure_master()
         return
     var image := _decode_raster(bytes)
     if image == null:
+        if requested_layout == "full-v7" and _request_full_fallback(requested_weapon):
+            return
         _ensure_master()
         return
 
     var frames: SpriteFrames
-    if requested_layout == "full":
-        var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
-        frames = _build_full_frames(render_image, requested_weapon)
+    if requested_layout == "full-v7":
+        var render_image := image
+        frames = _build_full_frames(render_image, requested_weapon, true)
         if frames != null:
             var body_y := _full_body_y_for_atlas(render_image)
             _full_frames_by_weapon[requested_weapon] = frames
             _full_body_y_by_weapon[requested_weapon] = body_y
-            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y)
+            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, true)
+    elif requested_layout == "full":
+        var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
+        frames = _build_full_frames(render_image, requested_weapon, false)
+        if frames != null:
+            var body_y := _full_body_y_for_atlas(render_image)
+            _full_frames_by_weapon[requested_weapon] = frames
+            _full_body_y_by_weapon[requested_weapon] = body_y
+            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, false)
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
         if frames != null:
             _legacy_pistol_frames = frames
 
     if requested_weapon == _weapon and frames != null:
-        _install_frames(frames, requested_layout == "full")
+        _install_frames(frames, requested_layout in ["full-v7", "full"])
     else:
         _install_or_request_weapon()
+
+func _request_full_fallback(weapon_id: String) -> bool:
+    var fallback_url := String(FULL_ATLAS_FALLBACK_URLS.get(weapon_id, ""))
+    if fallback_url.is_empty():
+        return false
+    _request_atlas(weapon_id, fallback_url, "full")
+    return true
 
 func _decode_raster(bytes: PackedByteArray) -> Image:
     var image := Image.new()
@@ -559,7 +595,7 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
     return repaired
 
 
-func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
+func _build_full_frames(image: Image, weapon_id: String, directional_shoot: bool) -> SpriteFrames:
     if image.get_size() != FULL_ATLAS_SIZE:
         push_error("Strict Matthias atlas has invalid dimensions: %s, expected %s" % [image.get_size(), FULL_ATLAS_SIZE])
         return null
@@ -572,9 +608,10 @@ func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
         frames.add_animation(action)
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
-        if action == "shoot" and weapon_id == "pistol" and _append_canonical_pistol_fire_frames(frames):
-            continue
         var row := int(spec["row"])
+        if action == "shoot" and directional_shoot:
+            _append_animation_columns(frames, action, atlas_texture, row, DIRECTIONAL_SHOOT_COLUMNS["shoot"])
+            continue
         if action == "run":
             row = _select_run_source_row(image)
         for frame_index in range(int(spec["count"])):
@@ -592,6 +629,20 @@ func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
             )
             frames.add_frame(action, texture)
 
+    if directional_shoot:
+        frames.add_animation("shoot_up")
+        frames.set_animation_loop("shoot_up", false)
+        frames.set_animation_speed("shoot_up", DIRECTIONAL_SHOOT_FPS)
+        _append_animation_columns(frames, "shoot_up", atlas_texture, DIRECTIONAL_SHOOT_ROW, DIRECTIONAL_SHOOT_COLUMNS["shoot_up"])
+        frames.add_animation("shoot_down")
+        frames.set_animation_loop("shoot_down", false)
+        frames.set_animation_speed("shoot_down", DIRECTIONAL_SHOOT_FPS)
+        _append_animation_columns(frames, "shoot_down", atlas_texture, DIRECTIONAL_SHOOT_ROW, DIRECTIONAL_SHOOT_COLUMNS["shoot_down"])
+        frames.add_animation("shoot_crouch")
+        frames.set_animation_loop("shoot_crouch", false)
+        frames.set_animation_speed("shoot_crouch", DIRECTIONAL_SHOOT_FPS)
+        _append_animation_columns(frames, "shoot_crouch", atlas_texture, int(FULL_ACTIONS["crouch"]["row"]), CROUCH_SHOOT_COLUMNS)
+
     if frames.get_frame_count("idle") <= 0:
         for fallback_action in ["walk", "run", "jump"]:
             if frames.get_frame_count(fallback_action) > 0:
@@ -600,32 +651,20 @@ func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
 
     return frames
 
-func _append_canonical_pistol_fire_frames(frames: SpriteFrames) -> bool:
-    if PISTOL_FIRE_CANONICAL_ATLAS == null:
-        return false
-    var expected_size := Vector2(
-        PISTOL_FIRE_CANONICAL_COLUMNS * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
-        PISTOL_FIRE_CANONICAL_FRAME_SIZE,
-    )
-    if PISTOL_FIRE_CANONICAL_ATLAS.get_size() != expected_size:
-        push_warning(
-            "Canonical pistol shoot atlas has invalid dimensions: %s, expected %s"
-            % [PISTOL_FIRE_CANONICAL_ATLAS.get_size(), expected_size]
-        )
-        return false
-
-    frames.set_animation_speed("shoot", PISTOL_FIRE_CANONICAL_FPS)
-    for frame_index in range(PISTOL_FIRE_CANONICAL_COLUMNS):
+func _append_animation_columns(frames: SpriteFrames, animation: String, atlas_texture: Texture2D, row: int, columns: Array) -> void:
+    for column_value in columns:
+        var column := int(column_value)
+        if column < 0 or column >= FULL_ATLAS_COLUMNS:
+            continue
         var texture := AtlasTexture.new()
-        texture.atlas = PISTOL_FIRE_CANONICAL_ATLAS
+        texture.atlas = atlas_texture
         texture.region = Rect2(
-            frame_index * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
-            0,
-            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
-            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+            column * FULL_ATLAS_CELL_SIZE,
+            row * FULL_ATLAS_CELL_SIZE,
+            FULL_ATLAS_CELL_SIZE,
+            FULL_ATLAS_CELL_SIZE,
         )
-        frames.add_frame("shoot", texture)
-    return frames.get_frame_count("shoot") == PISTOL_FIRE_CANONICAL_COLUMNS
+        frames.add_frame(animation, texture)
 
 func _full_body_y_for_atlas(image: Image) -> float:
     # Strict 256px cells are intentionally consumed as-authored, but their
@@ -656,7 +695,7 @@ func _full_body_y_for_atlas(image: Image) -> float:
     var foot_y := float(foot_samples[int(foot_samples.size() / 2)])
     return -(foot_y - float(FULL_ATLAS_CELL_SIZE) * 0.5) * BODY_SCALE
 
-func _full_muzzle_positions_for_atlas(image: Image, body_y: float) -> Dictionary:
+func _full_muzzle_positions_for_atlas(image: Image, body_y: float, directional_shoot: bool) -> Dictionary:
     # The weapon is baked into each strict frame. Treat the authored barrel tip
     # as the single source of truth instead of maintaining hand-tuned offsets
     # that drift whenever atlas grounding/scale changes.
@@ -673,6 +712,16 @@ func _full_muzzle_positions_for_atlas(image: Image, body_y: float) -> Dictionary
             positions.append(_muzzle_from_full_cell(image, row, frame_index, body_y))
         if not positions.is_empty():
             result[action] = positions
+    if directional_shoot:
+        for shoot_action in ["shoot", "shoot_up", "shoot_down"]:
+            var shoot_positions: Array = []
+            for column_value in DIRECTIONAL_SHOOT_COLUMNS[shoot_action]:
+                shoot_positions.append(_muzzle_from_full_cell(image, DIRECTIONAL_SHOOT_ROW, int(column_value), body_y))
+            result[shoot_action] = shoot_positions
+        var crouch_positions: Array = []
+        for column_value in CROUCH_SHOOT_COLUMNS:
+            crouch_positions.append(_muzzle_from_full_cell(image, int(FULL_ACTIONS["crouch"]["row"]), int(column_value), body_y))
+        result["shoot_crouch"] = crouch_positions
     return result
 
 func _muzzle_from_full_cell(image: Image, row: int, column: int, body_y: float) -> Vector2:
@@ -912,7 +961,7 @@ func _prefetch_machinegun() -> void:
         return
     var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
     if not url.is_empty():
-        _request_atlas("machinegun", url, "full")
+        _request_atlas("machinegun", url, "full-v7")
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0

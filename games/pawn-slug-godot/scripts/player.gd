@@ -204,8 +204,7 @@ func _physics_process(delta: float) -> void:
         _coyote_remaining = maxf(0.0, _coyote_remaining - delta)
         velocity.y += GRAVITY * delta
 
-    var aiming_up_while_firing := _fire_pressed() and _aim_vertical_axis() < -0.5
-    var jump_pressed := _jump_pressed() and not aiming_up_while_firing
+    var jump_pressed := _jump_pressed()
     var jump_just_pressed := jump_pressed and not _jump_was_pressed
     if jump_just_pressed:
         var ledge := _find_ledge_climb_target()
@@ -784,7 +783,7 @@ func _constrain_vertical_aim(direction: Vector2, grounded: bool) -> Vector2:
             return Vector2(signf(direction.x), 0.0)
         return Vector2(facing, 0.0)
     if grounded and absf(direction.x) < 0.25 and direction.y < -0.75:
-        return Vector2(facing, -1.0).normalized()
+        return Vector2(facing, 0.0)
     return direction
 
 func _movement_axis() -> float:
@@ -820,7 +819,7 @@ func _crouch_pressed() -> bool:
 func _jump_pressed() -> bool:
     if _touch_controls != null and bool(_touch_controls.jump_pressed()):
         return true
-    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_SPACE):
+    if Input.is_key_pressed(KEY_SPACE):
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_A)
