@@ -29,18 +29,42 @@ def parse_args():
 
 
 def apply_combat_crouch(rig, weapon: str) -> None:
-    weighted.apply_frame_pose(rig, weapon, "crouch", 9, 10)
+    # Author the gameplay crouch explicitly instead of deriving it from the
+    # legacy/master crouch. The side-scroller read needs clear knee flexion,
+    # asymmetric feet and an aimed weapon, not a seated/tucked silhouette.
+    base.reset_pose(rig)
+    base.weapon_stance(rig, weapon)
     d = math.radians
 
-    # Stay visibly crouched: the canonical pose already has the correct knee
-    # geometry. Lift it only a touch to avoid the old "sitting" read, then add
-    # forward combat intent without straightening either leg.
-    rig.pose.bones["root"].location.z += 0.025
-    rig.pose.bones["root"].rotation_euler[1] += d(-3.0)
-    rig.pose.bones["spine"].rotation_euler[1] += d(-4.0)
-    rig.pose.bones["head"].rotation_euler[1] += d(2.0)
-    rig.pose.bones["weapon_socket"].location.z += 0.015
-    rig.pose.bones["weapon_socket"].rotation_euler[1] += d(-2.0)
+    root = rig.pose.bones["root"]
+    spine = rig.pose.bones["spine"]
+    head = rig.pose.bones["head"]
+    root.location.z = -0.18
+    root.location.x = -0.035
+    root.rotation_euler[1] = d(-14.0)
+    spine.rotation_euler[1] = d(-17.0)
+    head.rotation_euler[1] = d(8.0)
+
+    rig.pose.bones["thigh.L"].rotation_euler[1] = d(58.0)
+    rig.pose.bones["shin.L"].rotation_euler[1] = d(-82.0)
+    rig.pose.bones["foot.L"].rotation_euler[1] = d(-12.0)
+    rig.pose.bones["thigh.R"].rotation_euler[1] = d(-46.0)
+    rig.pose.bones["shin.R"].rotation_euler[1] = d(72.0)
+    rig.pose.bones["foot.R"].rotation_euler[1] = d(13.0)
+
+    socket = rig.pose.bones["weapon_socket"]
+    socket.location.z -= 0.015
+    socket.rotation_euler[1] += d(-3.0)
+
+    # Preserve a little extra load on the torso for the heavy weapons without
+    # changing the leg geometry that makes the crouch readable.
+    profile = weighted.HEAVY_MOTION.get(weapon)
+    if profile:
+        load_lean = float(profile["load_lean_deg"])
+        root.rotation_euler[1] += d(load_lean * 0.30)
+        spine.rotation_euler[1] += d(load_lean * 0.55)
+        socket.location.z -= float(profile["crouch_weapon_drop"]) * 0.35
+
     bpy.context.view_layer.update()
 
 
