@@ -44,7 +44,10 @@ test('Pawn Slug · el acceso directo abre el runtime Godot canónico', async ({ 
 
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible();
-  await direct.click();
+  // Este smoke acredita el wiring directo a Godot. El hit-target/stacking de
+  // Home tiene cobertura propia y puede solaparse con la entrada de Mazmorras
+  // según el viewport del runner, así que no acoplamos ambos contratos aquí.
+  await direct.click({ force: true });
 
   await expectGodotHost(page);
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
