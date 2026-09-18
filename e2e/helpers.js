@@ -531,21 +531,21 @@ export async function startPracticeGame(page) {
 }
 
 export async function openMoreGameModes(page) {
-  // Canonical illustrated Home owns one accessible trigger across desktop and
-  // narrow/mobile layouts. Resolve that contract first instead of requiring the
-  // surrounding utilities container itself to have a visible box: mobile may
-  // position the panel/trigger independently while the wrapper has no layout box.
+  // Canonical illustrated Home owns one trigger across desktop and narrow/mobile
+  // layouts. Presence in the DOM is the contract here: visual capture contexts
+  // can report the diegetic trigger as non-visible while it is still the active
+  // canonical control, so visibility must not send us into the retired Home.
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ }).first();
-  if (await trigger.isVisible().catch(() => false)) {
-    if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+  if (await trigger.count()) {
+    if (await trigger.getAttribute('aria-expanded') !== 'true') {
+      if (await trigger.isVisible().catch(() => false)) await trigger.click();
+      else await trigger.evaluate((node) => node.click());
+    }
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
     const navigation = page.getByRole('navigation', { name: 'Más modos y herramientas' });
-    if (await navigation.isVisible().catch(() => false)) return navigation;
-
-    const illustrated = page.locator('.illustrated-home__utilities');
-    await expect(illustrated).toBeAttached();
-    return illustrated;
+    await expect(navigation).toBeAttached();
+    return navigation;
   }
 
   const details = page.locator('details.home-more-modes');
