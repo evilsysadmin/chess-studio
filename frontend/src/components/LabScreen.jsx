@@ -129,8 +129,8 @@ export default function LabScreen({ onExit, onStart }){
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--pawnslug-godot" data-glyph="G" onClick={()=>setLabMode('pawnslug-godot')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
               <strong>PAWN SLUG GODOT</strong>
-              <span>Reemplazo experimental con motor de juego propio: Godot manda; React sólo abre la puerta.</span>
-              <b>Probar el nuevo runtime</b>
+              <span>Runtime canónico con motor propio: Godot manda; React sólo abre la puerta.</span>
+              <b>Entrar en operación</b>
             </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>
