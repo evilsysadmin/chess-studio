@@ -214,7 +214,7 @@ jobs:
         continue-on-error: true
         run: make security-be
   security:
-    name: Security · Trivy + Docker when relevant
+    name: Security · Trivy + Docker
     needs: preflight
     if: needs.preflight.outputs.run_security == 'true'
     runs-on: ubuntu-24.04
@@ -223,7 +223,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-      - name: Detect security scan surface
+      - name: Detect security surface
         id: changes
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -243,15 +243,15 @@ jobs:
 
           printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
       - name: Security gate skipped · no sensitive surface changed
-        if: steps.changes.outputs.run_security != 'true' && steps.changes.outputs.run_iac_security != 'true'
+        if: steps.changes.outputs.run_security != 'true'
         run: |
           echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
       - name: Resolve Trivy cache epoch
-        if: (steps.changes.outputs.run_security == 'true' || steps.changes.outputs.run_iac_security == 'true')
+        if: steps.changes.outputs.run_security == 'true'
         id: trivy_epoch
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache Trivy binary and vulnerability DB
-        if: (steps.changes.outputs.run_security == 'true' || steps.changes.outputs.run_iac_security == 'true')
+        if: steps.changes.outputs.run_security == 'true'
         uses: actions/cache@v6
         with:
           path: |
@@ -261,20 +261,20 @@ jobs:
           restore-keys: |
             trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
       - name: Trivy filesystem
-        if: (steps.changes.outputs.run_security == 'true' || steps.changes.outputs.run_iac_security == 'true')
+        if: steps.changes.outputs.run_security == 'true'
         env:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-trivy
       - name: Set up Docker Buildx cache backend
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         uses: docker/setup-buildx-action@v4
       - name: Docker image security
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         env:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-images
       - name: Real stack smoke · Docker Compose
-        if: steps.changes.outputs.run_security == 'true'
+        if: steps.changes.outputs.run_docker_security == 'true'
         run: |
           set -euo pipefail
           cleanup() { docker compose down -v || true; }
