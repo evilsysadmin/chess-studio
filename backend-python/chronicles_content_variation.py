@@ -16,6 +16,7 @@ from typing import Any
 
 
 CHRONICLES_COMPOSITION_VERSION = 1
+CHRONICLES_TREASURE_VARIATION_VERSION = 1
 _SAFE_OPTIONAL_DEFEAT_EFFECTS = frozenset({
     "grant-item",
     "heal-party",
@@ -184,3 +185,126 @@ def apply_chronicles_seeded_composition(
         if enemy.get("id") not in omitted
     ]
     return ChroniclesComposedManifest(manifest=composed, plan=plan)
+
+
+@dataclass(frozen=True, slots=True)
+class ChroniclesTreasureBoon:
+    treasure_id: str
+    effect_type: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "treasureId": self.treasure_id,
+            "effectType": self.effect_type,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ChroniclesTreasureVariationPlan:
+    boons: tuple[ChroniclesTreasureBoon, ...]
+    revision: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "version": CHRONICLES_TREASURE_VARIATION_VERSION,
+            "boons": [boon.as_dict() for boon in self.boons],
+            "revision": self.revision,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ChroniclesTreasureVariedManifest:
+    manifest: dict[str, Any]
+    plan: ChroniclesTreasureVariationPlan
+
+
+def _treasure_boon_candidates(
+    manifest: dict[str, Any],
+) -> tuple[ChroniclesTreasureBoon, ...]:
+    candidates: list[ChroniclesTreasureBoon] = []
+    for treasure in manifest.get("treasures", []):
+        treasure_id = str(treasure.get("id") or "")
+        action = treasure.get("action")
+        if not treasure_id or not isinstance(action, dict):
+            continue
+        effects = action.get("effects") or []
+        existing_types = {
+            effect.get("type")
+            for effect in effects
+            if isinstance(effect, dict)
+        }
+        if "heal-party" not in existing_types:
+            candidates.append(ChroniclesTreasureBoon(treasure_id, "heal-party"))
+        if "refill-class-abilities" not in existing_types:
+            candidates.append(ChroniclesTreasureBoon(treasure_id, "refill-class-abilities"))
+    return tuple(candidates)
+
+
+def _treasure_plan_revision(
+    map_id: str,
+    seed: int,
+    boons: tuple[ChroniclesTreasureBoon, ...],
+) -> str:
+    payload = {
+        "version": CHRONICLES_TREASURE_VARIATION_VERSION,
+        "mapId": map_id,
+        "seed": int(seed),
+        "boons": [boon.as_dict() for boon in boons],
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def chronicles_seeded_treasure_variation_plan(
+    manifest: dict[str, Any],
+    seed: int,
+) -> ChroniclesTreasureVariationPlan:
+    map_id = str(manifest.get("id") or "")
+    candidates = _treasure_boon_candidates(manifest)
+    material = (
+        f"chronicles-treasure-v{CHRONICLES_TREASURE_VARIATION_VERSION}:"
+        f"{map_id}:{int(seed)}"
+    ).encode("utf-8")
+    digest = hashlib.sha256(material).digest()
+
+    selected: tuple[ChroniclesTreasureBoon, ...] = ()
+    # About 37.5% of map+seed combinations keep authored rewards untouched.
+    # Otherwise exactly one small non-structural boon is added.
+    if candidates and digest[0] >= 96:
+        index = int.from_bytes(digest[1:5], "big") % len(candidates)
+        selected = (candidates[index],)
+
+    return ChroniclesTreasureVariationPlan(
+        boons=selected,
+        revision=_treasure_plan_revision(map_id, seed, selected),
+    )
+
+
+def apply_chronicles_seeded_treasure_boons(
+    manifest: dict[str, Any],
+    seed: int,
+) -> ChroniclesTreasureVariedManifest:
+    plan = chronicles_seeded_treasure_variation_plan(manifest, seed)
+    varied = deepcopy(manifest)
+    by_id = {
+        treasure.get("id"): treasure
+        for treasure in varied.get("treasures", [])
+        if isinstance(treasure, dict)
+    }
+
+    for boon in plan.boons:
+        treasure = by_id.get(boon.treasure_id)
+        if not treasure:
+            continue
+        action = treasure.get("action")
+        if not isinstance(action, dict):
+            continue
+        effects = list(action.get("effects") or [])
+        if boon.effect_type == "heal-party":
+            effects.append({"type": "heal-party", "amount": 1})
+        elif boon.effect_type == "refill-class-abilities":
+            effects.append({"type": "refill-class-abilities"})
+        action["effects"] = effects
+
+    return ChroniclesTreasureVariedManifest(manifest=varied, plan=plan)

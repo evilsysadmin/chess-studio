@@ -1,4 +1,5 @@
 from collections import deque
+from copy import deepcopy
 from pathlib import Path
 
 import chronicles_api
@@ -79,8 +80,21 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             generated_enemy_ids = {enemy["id"] for enemy in validated.get("enemies", [])}
             assert mandatory_enemy_ids <= generated_enemy_ids
             assert generated_enemy_ids <= {enemy["id"] for enemy in base.get("enemies", [])}
-            for group in ("triggers", "interactables", "treasures", "traps", "exits"):
+            for group in ("triggers", "interactables", "traps", "exits"):
                 assert validated.get(group, []) == base.get(group, [])
+
+            authored_treasures = {entry["id"]: entry for entry in base.get("treasures", [])}
+            generated_treasures = {entry["id"]: entry for entry in validated.get("treasures", [])}
+            assert generated_treasures.keys() == authored_treasures.keys()
+            for treasure_id, authored in authored_treasures.items():
+                generated_treasure = deepcopy(generated_treasures[treasure_id])
+                authored_effects = (authored.get("action") or {}).get("effects") or []
+                generated_effects = (generated_treasure.get("action") or {}).get("effects") or []
+                assert generated_effects[:len(authored_effects)] == authored_effects
+                assert len(generated_effects) <= len(authored_effects) + 1
+                if generated_treasure.get("action") is not None:
+                    generated_treasure["action"]["effects"] = deepcopy(authored_effects)
+                assert generated_treasure == authored
 
             assert len(manifest["grid"]) == len(base["grid"])
             assert all(
@@ -107,6 +121,9 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert manifest["generation"]["compositionVersion"] == 1
             assert len(manifest["generation"]["compositionRevision"]) == 64
             assert set(manifest["generation"]["omittedOptionalEnemyIds"]).isdisjoint(mandatory_enemy_ids)
+            assert manifest["generation"]["treasureVariationVersion"] == 1
+            assert len(manifest["generation"]["treasureVariationRevision"]) == 64
+            assert len(manifest["generation"]["treasureBoons"]) <= 1
 
 
 def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():
