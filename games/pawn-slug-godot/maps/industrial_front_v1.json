@@ -369,6 +369,32 @@
   },
   "backdrop": {
     "preset": "night_front",
-    "seed": 17
+    "seed": 17,
+    "layers": [
+      {
+        "kind": "sky",
+        "scroll": 0.03,
+        "z": -80,
+        "intensity": 1
+      },
+      {
+        "kind": "far_ridge",
+        "scroll": 0.14,
+        "z": -70,
+        "intensity": 1
+      },
+      {
+        "kind": "ruined_city",
+        "scroll": 0.34,
+        "z": -55,
+        "intensity": 1
+      },
+      {
+        "kind": "mid_defence",
+        "scroll": 0.62,
+        "z": -32,
+        "intensity": 1
+      }
+    ]
   }
 }
