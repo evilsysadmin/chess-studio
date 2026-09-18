@@ -318,6 +318,7 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
     gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
+    hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.54, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
     for idx, offset in enumerate(flame_offsets):
@@ -331,7 +332,17 @@ def add_fireplace(name: str, x: float, materials):
             fire,
             vertices=18,
         )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 260, (1.0, 0.30, 0.08), radius=0.95)
+        if idx % 2 == 0:
+            cone(
+                f"HOME_PROP_{name}_flame_hot_{idx}",
+                (x + offset * 0.98, 5.50, 0.65 + height * 0.30),
+                0.070,
+                0.012,
+                height * 0.52,
+                hot,
+                vertices=14,
+            )
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.00, 1.22), 235, (1.0, 0.33, 0.09), radius=1.05)
 
 
 def add_bookshelf(materials):
@@ -597,23 +608,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.075
+    bg.inputs["Strength"].default_value = 0.115
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.20, 0.16, 0.12, 1), roughness=0.90, bump_scale=5.0, bump_strength=0.22),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.065, 0.052, 0.045, 1), roughness=0.96, bump_scale=6.5, bump_strength=0.18),
-        "wood": material("HOME_MAT_wood", (0.13, 0.055, 0.025, 1), roughness=0.76, bump_scale=4.0, bump_strength=0.11),
+        "stone": material("HOME_MAT_stone", (0.25, 0.21, 0.17, 1), roughness=0.90, bump_scale=5.0, bump_strength=0.22),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.075, 0.060, 0.050, 1), roughness=0.96, bump_scale=6.5, bump_strength=0.18),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.20, 0.15, 0.105, 1), roughness=0.91, bump_scale=7.0, bump_strength=0.16),
+        "wood": material("HOME_MAT_wood", (0.19, 0.080, 0.032, 1), roughness=0.74, bump_scale=4.0, bump_strength=0.10),
         "brass": material("HOME_MAT_brass", (0.47, 0.25, 0.055, 1), roughness=0.32, metallic=0.82),
         "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.42, metallic=0.72),
         "board_light": material("HOME_MAT_board_light", (0.52, 0.33, 0.16, 1), roughness=0.65),
         "board_dark": material("HOME_MAT_board_dark", (0.08, 0.035, 0.018, 1), roughness=0.75),
-        "rug": material("HOME_MAT_rug", (0.24, 0.012, 0.014, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
-        "banner": material("HOME_MAT_banner", (0.30, 0.012, 0.010, 1), roughness=0.86, bump_scale=18.0, bump_strength=0.07),
+        "rug": material("HOME_MAT_rug", (0.34, 0.016, 0.020, 1), roughness=0.92, bump_scale=24.0, bump_strength=0.10),
+        "banner": material("HOME_MAT_banner", (0.43, 0.018, 0.014, 1), roughness=0.84, bump_scale=18.0, bump_strength=0.06),
         "book_green": material("HOME_MAT_book_green", (0.08, 0.16, 0.10, 1), roughness=0.88),
         "book_brown": material("HOME_MAT_book_brown", (0.22, 0.08, 0.035, 1), roughness=0.88),
         "piece_light": material("HOME_MAT_piece_light", (0.76, 0.66, 0.48, 1), roughness=0.55),
         "piece_dark": material("HOME_MAT_piece_dark", (0.035, 0.025, 0.022, 1), roughness=0.52),
-        "leather": material("HOME_MAT_leather", (0.22, 0.012, 0.012, 1), roughness=0.78, bump_scale=16.0, bump_strength=0.06),
+        "leather": material("HOME_MAT_leather", (0.30, 0.018, 0.018, 1), roughness=0.76, bump_scale=16.0, bump_strength=0.06),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
         "globe": material("HOME_MAT_globe", (0.36, 0.28, 0.16, 1), roughness=0.62),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
@@ -628,10 +640,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.55, 0.08, 0.01, 1),
-            roughness=0.35,
-            emission=(1.0, 0.10, 0.012, 1),
-            emission_strength=1.65,
+            (0.92, 0.16, 0.018, 1),
+            roughness=0.30,
+            emission=(1.0, 0.20, 0.018, 1),
+            emission_strength=2.15,
+        ),
+        "fire_hot": material(
+            "HOME_MAT_fire_hot",
+            (1.0, 0.62, 0.12, 1),
+            roughness=0.24,
+            emission=(1.0, 0.52, 0.08, 1),
+            emission_strength=3.10,
         ),
     }
 
@@ -639,8 +658,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # from great-hall-dungeon.webp before adding any decorative detail.
     # Split the floor so the Dungeon can actually descend below the Great Hall
     # rather than sitting on top of a solid slab.
-    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["stone_dark"])
-    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["stone_dark"])
+    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
+    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
@@ -708,14 +727,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     for idx, x in enumerate((-6.0, -3.0, 3.0, 6.0)):
         cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass"], bevel=0.025)
-        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), 0.10, 0.018, 0.34, materials["fire"], vertices=16)
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 72, (1.0, 0.32, 0.08), radius=0.42)
+        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.92, 2.82), 0.10, 0.018, 0.34, materials["fire_hot"], vertices=16)
+        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.55, 2.85), 78, (1.0, 0.36, 0.10), radius=0.44)
 
-    # Global lights only establish readability. Warmth should come primarily
-    # from fireplaces, torches and chandelier candles.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 310, (0.72, 0.60, 0.50), 6.0, target=(0, 2.4, 1.8))
-    add_area_light("HOME_LIGHT_fill", (5.0, 1.0, 5.2), 210, (0.20, 0.30, 0.44), 5.0, target=(0, 3.2, 2.0))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 260, (0.74, 0.48, 0.30), 4.0, target=(0, 2.5, 2.2))
+    # Global lights establish readable stone/wood while practicals keep the
+    # warmth local. Cool right-side fill hints at the window/exterior.
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 430, (0.82, 0.72, 0.62), 6.5, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 285, (0.22, 0.34, 0.52), 5.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 320, (0.76, 0.50, 0.34), 4.2, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 180, (0.48, 0.40, 0.32), 8.0, target=(0, 1.4, 0.15))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 45.0
