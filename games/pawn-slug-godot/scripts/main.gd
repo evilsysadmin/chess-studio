@@ -108,6 +108,7 @@ var _startup_ready_sent := false
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
+@onready var pause_menu = $PauseMenu
 
 func _ready() -> void:
     _build_environment_visual()
@@ -123,6 +124,7 @@ func _ready() -> void:
     player.connect("respawned", Callable(self, "_on_player_respawned"))
     player.connect("game_over", Callable(self, "_on_player_game_over"))
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
+    pause_menu.connect("exit_requested", Callable(self, "_on_pause_exit_requested"))
     _sync_hud()
     queue_redraw()
 
@@ -144,11 +146,6 @@ func _process(delta: float) -> void:
     _enforce_boss_arena()
     _check_victory()
     queue_redraw()
-
-func _unhandled_key_input(event: InputEvent) -> void:
-    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-        _notify_parent("exit")
-        get_viewport().set_input_as_handled()
 
 func _on_player_fired(origin: Vector2, direction: float, shot: Dictionary) -> void:
     var speed := float(shot.get("speed", 760.0))
@@ -182,6 +179,13 @@ func _on_player_grenades_changed(_count: int) -> void:
 
 func _on_player_weapon_changed(_weapon_id: String, _ammo_remaining: int) -> void:
     _notify_parent("weapon-changed")
+
+func _on_pause_exit_requested() -> void:
+    get_tree().paused = false
+    if OS.has_feature("web"):
+        _notify_parent("exit")
+    else:
+        get_tree().quit()
 
 func _on_player_hurt(_current_hp: int, _max_hp: int) -> void:
     _sync_hud()
