@@ -243,34 +243,6 @@ func _resolve_action(speed: float, on_floor: bool, crouching: bool, vertical_spe
         return "walk"
     return "idle"
 
-func _draw() -> void:
-    if _body_ready:
-        return
-    _draw_boot_fallback()
-
-func _draw_boot_fallback() -> void:
-    var foot_y := PLAYER_FOOT_Y
-    var dir := _facing
-    draw_circle(Vector2(0.0, foot_y + 1.0), 20.0, Color(0.0, 0.0, 0.0, 0.20))
-    draw_colored_polygon(PackedVector2Array([
-        Vector2(-17.0, foot_y - 48.0), Vector2(17.0, foot_y - 48.0),
-        Vector2(20.0, foot_y - 10.0), Vector2(9.0, foot_y - 4.0),
-        Vector2(5.0, foot_y - 26.0), Vector2(-5.0, foot_y - 26.0),
-        Vector2(-9.0, foot_y - 4.0), Vector2(-20.0, foot_y - 10.0),
-    ]), Color("111923"))
-    draw_line(Vector2(-8.0, foot_y - 4.0), Vector2(-11.0, foot_y + 1.0), Color("202b35"), 8.0)
-    draw_line(Vector2(8.0, foot_y - 4.0), Vector2(11.0, foot_y + 1.0), Color("202b35"), 8.0)
-    var head := Vector2(0.0, foot_y - 70.0)
-    draw_circle(head, 22.0, Color("c6ad82"))
-    draw_circle(head + Vector2(-7.0, -1.0), 3.2, Color("101418"))
-    draw_circle(head + Vector2(7.0, -1.0), 3.2, Color("101418"))
-    draw_line(head + Vector2(-11.0, -8.0), head + Vector2(-3.0, -10.0), Color("15191c"), 2.5)
-    draw_line(head + Vector2(3.0, -10.0), head + Vector2(11.0, -8.0), Color("15191c"), 2.5)
-    draw_rect(Rect2(head + Vector2(-19.0, -28.0), Vector2(38.0, 10.0)), Color("0c1117"), true)
-    draw_rect(Rect2(head + Vector2(-13.0, -34.0), Vector2(26.0, 9.0)), Color("151c24"), true)
-    draw_line(head + Vector2(10.0 * dir, 8.0), head + Vector2(35.0 * dir, 17.0), Color("29333c"), 6.0)
-    draw_line(head + Vector2(31.0 * dir, 17.0), head + Vector2(43.0 * dir, 17.0), Color("6e7477"), 4.0)
-
 func _build_nodes() -> void:
     _facing_root = Node2D.new()
     _facing_root.name = "FacingRoot"
