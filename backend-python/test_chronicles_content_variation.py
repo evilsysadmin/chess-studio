@@ -4,11 +4,14 @@ from pathlib import Path
 import chronicles_api
 from chronicles_content_variation import (
     CHRONICLES_COMPOSITION_VERSION,
+    CHRONICLES_MODULE_VARIATION_VERSION,
     CHRONICLES_TREASURE_VARIATION_VERSION,
     apply_chronicles_seeded_composition,
+    apply_chronicles_seeded_modules,
     apply_chronicles_seeded_treasure_boons,
     chronicles_seeded_treasure_variation_plan,
     chronicles_optional_enemy_is_variable,
+    chronicles_seeded_module_variation_plan,
     chronicles_seeded_composition_plan,
 )
 
@@ -214,3 +217,80 @@ def test_treasure_plan_never_duplicates_existing_safe_boon_type():
     for seed in range(64):
         plan = chronicles_seeded_treasure_variation_plan(manifest, seed)
         assert all(boon.effect_type != "heal-party" for boon in plan.boons)
+
+
+
+def _group_entry_ids(manifest, group):
+    return {
+        entry["id"]
+        for entry in manifest.get(group, [])
+        if isinstance(entry, dict) and entry.get("id")
+    }
+
+
+def _module_member_ids(manifest, module_id):
+    return {
+        entry["id"]
+        for group in ("enemies", "triggers", "interactables", "treasures", "traps", "exits")
+        for entry in manifest.get(group, [])
+        if isinstance(entry, dict)
+        and entry.get("proceduralModule") == module_id
+    }
+
+
+def test_seeded_secret_modules_are_all_or_none_and_never_remove_main_exits():
+    expected = {
+        "menagerie-of-ash": "ash-vault-route",
+        "chain-basilica": "black-glass-route",
+    }
+    saw_active = set()
+    saw_omitted = set()
+
+    for map_id, module_id in expected.items():
+        base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        original = deepcopy(base)
+        authored_members = _module_member_ids(base, module_id)
+        main_exit_ids = {
+            entry["id"]
+            for entry in base.get("exits", [])
+            if not entry.get("proceduralModule")
+        }
+
+        assert authored_members
+        assert main_exit_ids
+
+        for seed in range(128):
+            left = apply_chronicles_seeded_modules(base, seed)
+            right = apply_chronicles_seeded_modules(base, seed)
+
+            assert left == right
+            assert left.plan.revision == right.plan.revision
+            assert len(left.plan.revision) == 64
+            assert set(left.plan.active_module_ids).isdisjoint(left.plan.omitted_module_ids)
+            assert main_exit_ids <= _group_entry_ids(left.manifest, "exits")
+
+            surviving_members = _module_member_ids(left.manifest, module_id)
+            if module_id in left.plan.active_module_ids:
+                saw_active.add((map_id, module_id))
+                assert surviving_members == authored_members
+            else:
+                saw_omitted.add((map_id, module_id))
+                assert module_id in left.plan.omitted_module_ids
+                assert surviving_members == set()
+
+        assert base == original
+
+    expected_pairs = set(expected.items())
+    assert saw_active == expected_pairs
+    assert saw_omitted == expected_pairs
+    assert CHRONICLES_MODULE_VARIATION_VERSION == 1
+
+
+def test_maps_without_authored_modules_get_an_empty_stable_module_plan():
+    base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
+
+    plan = chronicles_seeded_module_variation_plan(base, 417)
+
+    assert plan.active_module_ids == ()
+    assert plan.omitted_module_ids == ()
+    assert len(plan.revision) == 64
