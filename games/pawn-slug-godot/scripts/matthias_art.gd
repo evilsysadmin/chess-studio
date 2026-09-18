@@ -9,6 +9,10 @@ extends Node2D
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
+const PISTOL_FIRE_CANONICAL_ATLAS := preload("res://assets/matthias_pistol_fire_canonical_v7.png")
+const PISTOL_FIRE_CANONICAL_COLUMNS := 2
+const PISTOL_FIRE_CANONICAL_FRAME_SIZE := 256
+const PISTOL_FIRE_CANONICAL_FPS := 12.0
 
 # Strict Godot atlases: exact 8 x 11 grid, 256 x 256 cells, transparent PNG.
 # Do not normalize or rescale these at runtime: each authored cell is consumed
@@ -262,6 +266,15 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
+    # The approved canonical pistol shot is a grounded, standing horizontal pose.
+    # Crouch, air and diagonal fire keep their locomotion/crouch frame and use the
+    # procedural muzzle flash so aim never lies about the actual projectile vector.
+    var canonical_ground_shoot := (
+        on_floor
+        and not crouching
+        and not locomoting_now
+        and absf(_aim_direction.y) < 0.25
+    )
     if locomoting_now and _one_shot_action == "shoot":
         _one_shot_action = ""
         _hold_one_shot = false
@@ -273,7 +286,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
                 _play_one_shot("hurt")
         elif (
             fired_now
-            and not locomoting_now
+            and canonical_ground_shoot
             and weapon_visual_ready
             and _using_full_atlas
             and _animation_available("shoot")
@@ -301,7 +314,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
                 _advance_locomotion(delta, horizontal_speed_ratio)
 
     var authored_shoot := (
-        not locomoting_now
+        canonical_ground_shoot
         and weapon_visual_ready
         and _using_full_atlas
         and _animation_available("shoot")
@@ -490,7 +503,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     var frames: SpriteFrames
     if requested_layout == "full":
         var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
-        frames = _build_full_frames(render_image)
+        frames = _build_full_frames(render_image, requested_weapon)
         if frames != null:
             var body_y := _full_body_y_for_atlas(render_image)
             _full_frames_by_weapon[requested_weapon] = frames
@@ -546,7 +559,7 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
     return repaired
 
 
-func _build_full_frames(image: Image) -> SpriteFrames:
+func _build_full_frames(image: Image, weapon_id: String) -> SpriteFrames:
     if image.get_size() != FULL_ATLAS_SIZE:
         push_error("Strict Matthias atlas has invalid dimensions: %s, expected %s" % [image.get_size(), FULL_ATLAS_SIZE])
         return null
@@ -559,6 +572,8 @@ func _build_full_frames(image: Image) -> SpriteFrames:
         frames.add_animation(action)
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
+        if action == "shoot" and weapon_id == "pistol" and _append_canonical_pistol_fire_frames(frames):
+            continue
         var row := int(spec["row"])
         if action == "run":
             row = _select_run_source_row(image)
@@ -584,6 +599,33 @@ func _build_full_frames(image: Image) -> SpriteFrames:
                 break
 
     return frames
+
+func _append_canonical_pistol_fire_frames(frames: SpriteFrames) -> bool:
+    if PISTOL_FIRE_CANONICAL_ATLAS == null:
+        return false
+    var expected_size := Vector2(
+        PISTOL_FIRE_CANONICAL_COLUMNS * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+        PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+    )
+    if PISTOL_FIRE_CANONICAL_ATLAS.get_size() != expected_size:
+        push_warning(
+            "Canonical pistol shoot atlas has invalid dimensions: %s, expected %s"
+            % [PISTOL_FIRE_CANONICAL_ATLAS.get_size(), expected_size]
+        )
+        return false
+
+    frames.set_animation_speed("shoot", PISTOL_FIRE_CANONICAL_FPS)
+    for frame_index in range(PISTOL_FIRE_CANONICAL_COLUMNS):
+        var texture := AtlasTexture.new()
+        texture.atlas = PISTOL_FIRE_CANONICAL_ATLAS
+        texture.region = Rect2(
+            frame_index * PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+            0,
+            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+            PISTOL_FIRE_CANONICAL_FRAME_SIZE,
+        )
+        frames.add_frame("shoot", texture)
+    return frames.get_frame_count("shoot") == PISTOL_FIRE_CANONICAL_COLUMNS
 
 func _full_body_y_for_atlas(image: Image) -> float:
     # Strict 256px cells are intentionally consumed as-authored, but their
