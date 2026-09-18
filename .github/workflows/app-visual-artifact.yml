@@ -1,7 +1,7 @@
 name: App · visual artifact
 on:
   pull_request:
-    paths: &visual_paths
+    paths:
       - frontend/src/**/*.jsx
       - frontend/src/**/*.css
       - frontend/src/components/**
@@ -20,11 +20,10 @@ on:
       - scripts/war_room_visual_freeze_check.mjs
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
-  push:
-    branches: [main]
-    paths: *visual_paths
   workflow_dispatch:
-concurrency: ${{ github.ref }}
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 permissions: {contents: read}
 jobs:
   capture:
