@@ -134,8 +134,12 @@ func _build_ui() -> void:
     shell.add_child(_content)
 
 func _clear_content() -> void:
+    var focus_owner := get_viewport().gui_get_focus_owner()
+    if focus_owner != null and _content.is_ancestor_of(focus_owner):
+        focus_owner.release_focus()
     for child in _content.get_children():
-        child.free()
+        _content.remove_child(child)
+        child.queue_free()
 
 func _render_main() -> void:
     _clear_content()
