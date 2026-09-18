@@ -1248,6 +1248,20 @@ func _update_projectiles(delta: float) -> void:
         projectile["position"] = position
         projectiles[index] = projectile
 
+        var direct_destructible_damage := 0 if bool(projectile["explosive"]) else int(projectile["damage"])
+        if _damage_destructible_at(position, direct_destructible_damage):
+            if bool(projectile["explosive"]):
+                _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
+            else:
+                _add_impact_fx(
+                    position,
+                    velocity,
+                    String(projectile.get("weapon", "pistol")),
+                    false,
+                )
+            projectiles.remove_at(index)
+            continue
+
         var direct_bunker_damage := 0 if bool(projectile["explosive"]) else int(projectile["damage"])
         if _damage_bunker_at(position, direct_bunker_damage):
             if bool(projectile["explosive"]):
@@ -1356,6 +1370,7 @@ func _update_grenades(delta: float) -> void:
 func _explode_player_weapon(position: Vector2, radius: float, damage: int) -> void:
     _add_explosion_fx(position, radius)
     _damage_bunkers_in_radius(position, radius, damage)
+    _damage_destructibles_in_radius(position, radius, damage)
     for enemy_index in range(enemies.size()):
         var enemy := enemies[enemy_index]
         if int(enemy["hp"]) <= 0:
@@ -1546,13 +1561,21 @@ func _platform_blocks_line(origin: Vector2, target: Vector2) -> bool:
         var line_y := lerpf(origin.y, target.y, t)
         if line_y >= obstacle.position.y - 3.0 and line_y <= obstacle.end.y + 3.0:
             return true
-    for platform in _moving_platform_rects():
+    for platform in _dynamic_platform_rects():
         if platform.end.x < line_min_x or platform.position.x > line_max_x:
             continue
         var sample_x := clampf(platform.get_center().x, line_min_x, line_max_x)
         var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
         var line_y := lerpf(origin.y, target.y, t)
         if line_y >= platform.position.y - 3.0 and line_y <= platform.end.y + 3.0:
+            return true
+    for obstacle in _destructible_geometry_rects():
+        if obstacle.end.x < line_min_x or obstacle.position.x > line_max_x:
+            continue
+        var sample_x := clampf(obstacle.get_center().x, line_min_x, line_max_x)
+        var t := clampf((sample_x - origin.x) / dx, 0.0, 1.0)
+        var line_y := lerpf(origin.y, target.y, t)
+        if line_y >= obstacle.position.y - 3.0 and line_y <= obstacle.end.y + 3.0:
             return true
     return false
 
