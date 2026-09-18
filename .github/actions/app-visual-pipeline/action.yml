@@ -40,6 +40,7 @@ runs:
       uses: ./.github/actions/setup-browser-e2e
       env:
         VITE_WAR_ROOM_V2_ENABLE: 'true'
+        VITE_APP_VISUAL_CAPTURE: 'true'
       with:
         browser-scope: chromium
         build-frontend: 'true'
