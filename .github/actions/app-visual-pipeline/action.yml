@@ -62,6 +62,32 @@ runs:
       shell: bash
       run: node scripts/war_room_visual_freeze_check.mjs
 
+    - name: Validate canonical PNG contract
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
+      shell: bash
+      run: |
+        set -euo pipefail
+        groups='${{ steps.scope.outputs.capture_groups }}'
+        artifact_dir='.artifacts/app-visual'
+        [[ -d "$artifact_dir" ]] || {
+          echo "::error::Canonical visual capture produced no artifact directory."
+          exit 1
+        }
+
+        # Browser health-only changes are metrics contracts, not screenshot
+        # surfaces. Every other canonical visual scope must prove at least one
+        # inspectable PNG before the PR can claim visual coverage.
+        if [[ "$groups" != "health" ]]; then
+          png_count="$(find "$artifact_dir" -type f -name '*.png' -print | wc -l | tr -d ' ')"
+          if [[ "$png_count" -lt 1 ]]; then
+            echo "::error::Visual PR produced no PNG screenshots in $artifact_dir."
+            find "$artifact_dir" -maxdepth 2 -type f -print || true
+            exit 1
+          fi
+          echo "Canonical visual PNGs: $png_count"
+          find "$artifact_dir" -type f -name '*.png' -print | sort
+        fi
+
     - name: Validate summary
       if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
@@ -78,7 +104,7 @@ runs:
       with:
         name: app-visual-${{ github.event.pull_request.number || github.run_id }}
         path: .artifacts/app-visual/
-        if-no-files-found: warn
+        if-no-files-found: error
         retention-days: 7
         # PNG/WebP are already compressed. Recompressing them burns runner CPU
         # for very little size reduction and makes the visual lane finish later.
