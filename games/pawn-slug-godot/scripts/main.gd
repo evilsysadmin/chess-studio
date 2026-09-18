@@ -13,6 +13,16 @@ const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1080.0
 const START_ZONE_END_X := 900.0
 const START_ZONE_AGGRO_RANGE := 650.0
+const SOLDIER_SPRINT_MARGIN := 180.0
+const SOLDIER_ADVANCE_MARGIN := 80.0
+const SOLDIER_COMFORT_MARGIN := 24.0
+const SOLDIER_RETREAT_RATIO := 0.64
+const SOLDIER_SPRINT_MULTIPLIER := 2.35
+const SOLDIER_ADVANCE_MULTIPLIER := 1.30
+const SOLDIER_CREEP_MULTIPLIER := 0.62
+const SOLDIER_BACKPEDAL_MULTIPLIER := 0.76
+const SOLDIER_ROAM_LIMIT := 540.0
+const KNIGHT_SPRINT_MULTIPLIER := 1.45
 const KNIGHT_GRAVITY := 880.0
 const KNIGHT_LEAP_SPEED := 300.0
 const KNIGHT_LEAP_RANGE := 300.0
@@ -337,7 +347,7 @@ func _build_enemy_visuals() -> void:
             int(enemy["max_hp"]),
         )
         enemy_visuals[id] = visual
-        _sync_enemy_visual(enemy, false)
+        _sync_enemy_visual(enemy, 0.0)
 
 func _build_extraction_visual() -> void:
     extraction_visual = ExtractionVisual.new()
@@ -347,18 +357,21 @@ func _build_extraction_visual() -> void:
     add_child(extraction_visual)
     extraction_visual.set_unlocked(false)
 
-func _sync_enemy_visual(enemy: Dictionary, moving: bool) -> void:
+func _sync_enemy_visual(enemy: Dictionary, move_speed_scale: float) -> void:
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual == null:
         return
+    # Enemies keep their torso/weapon facing Matthias even while retreating,
+    # which reads as deliberate backpedalling instead of blind wandering.
     var direction := -1.0 if player.global_position.x < float(enemy["x"]) else 1.0
     visual.sync_state(
         float(enemy["x"]),
         float(enemy.get("y", FLOOR_Y)),
         direction,
-        moving,
+        move_speed_scale > 0.05,
         int(enemy["hp"]),
         int(enemy["max_hp"]),
+        move_speed_scale,
     )
 
 func _enemy_weapon_for(type: String, variant: int) -> String:
@@ -431,7 +444,7 @@ func _update_projectiles(delta: float) -> void:
                 )
                 enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
                 enemies[enemy_index] = enemy
-                _sync_enemy_visual(enemy, false)
+                _sync_enemy_visual(enemy, 0.0)
             hit_target = true
             break
 
@@ -500,7 +513,7 @@ func _explode_player_weapon(position: Vector2, radius: float, damage: int) -> vo
         var applied := _explosion_damage(damage, distance, radius)
         enemy["hp"] = maxi(0, int(enemy["hp"]) - applied)
         enemies[enemy_index] = enemy
-        _sync_enemy_visual(enemy, false)
+        _sync_enemy_visual(enemy, 0.0)
 
     if boss_spawned and not boss_defeated and not boss.is_empty():
         var distance := position.distance_to(_boss_rect().get_center())
@@ -544,20 +557,20 @@ func _update_enemies(delta: float) -> void:
     for index in range(enemies.size()):
         var enemy := enemies[index]
         if int(enemy["hp"]) <= 0:
-            _sync_enemy_visual(enemy, false)
+            _sync_enemy_visual(enemy, 0.0)
             continue
         var type := String(enemy["type"])
         var stats: Dictionary = ENEMY_TYPES[type]
         var distance_x: float = float(player.global_position.x) - float(enemy["x"])
         var abs_distance: float = absf(distance_x)
-        var moved := false
+        var movement_speed_scale := 0.0
 
         if type == "bishop":
             if not player.dead and not player.is_game_over and abs_distance <= _enemy_aggro_range():
-                moved = _update_bishop(enemy, delta, abs_distance, distance_x)
+                movement_speed_scale = 1.0 if _update_bishop(enemy, delta, abs_distance, distance_x) else 0.0
             else:
                 _set_bishop_telegraph(enemy, 0.0, 0.0)
-            _sync_enemy_visual(enemy, moved)
+            _sync_enemy_visual(enemy, movement_speed_scale)
             enemies[index] = enemy
             continue
 
@@ -570,13 +583,20 @@ func _update_enemies(delta: float) -> void:
             var standoff := float(stats["standoff"])
             if type == "knight":
                 var move_direction := 1.0 if distance_x > 0.0 else -1.0
-                var knight_speed := speed if abs_distance > standoff else speed * KNIGHT_NEAR_SPEED_SCALE
+                var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
+                if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+                    knight_speed_scale = KNIGHT_SPRINT_MULTIPLIER
+                elif abs_distance > standoff:
+                    knight_speed_scale = 1.0
+                var knight_speed := speed * knight_speed_scale
+                var previous_x := float(enemy["x"])
                 enemy["x"] = clampf(
-                    float(enemy["x"]) + move_direction * knight_speed * delta,
+                    previous_x + move_direction * knight_speed * delta,
                     maxf(0.0, float(enemy["spawn_x"]) - 360.0),
                     minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
                 )
-                moved = knight_speed > 0.0
+                if not is_equal_approx(previous_x, float(enemy["x"])):
+                    movement_speed_scale = knight_speed_scale
                 if (
                     float(enemy["leap_cooldown"]) <= 0.0
                     and abs_distance < KNIGHT_LEAP_RANGE
@@ -585,24 +605,53 @@ func _update_enemies(delta: float) -> void:
                     enemy["vy"] = -KNIGHT_LEAP_SPEED
                     enemy["on_ground"] = false
                     enemy["leap_cooldown"] = randf_range(KNIGHT_LEAP_COOLDOWN_MIN, KNIGHT_LEAP_COOLDOWN_MAX)
-            elif speed > 0.0 and abs_distance > standoff:
-                var move_direction := 1.0 if distance_x > 0.0 else -1.0
-                enemy["x"] = clampf(
-                    float(enemy["x"]) + move_direction * speed * delta,
-                    maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                    minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + 360.0),
-                )
-                moved = true
+            elif speed > 0.0:
+                movement_speed_scale = _update_soldier_movement(enemy, stats, distance_x, abs_distance, delta)
 
         if type == "knight":
             _update_knight_vertical(enemy, delta)
 
-        _sync_enemy_visual(enemy, moved)
+        _sync_enemy_visual(enemy, movement_speed_scale)
         enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
         if player_active and float(enemy["cooldown"]) <= 0.0:
             _try_enemy_fire(enemy)
             enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
         enemies[index] = enemy
+
+func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, distance_x: float, abs_distance: float, delta: float) -> float:
+    var speed := float(stats["speed"])
+    var standoff := float(stats["standoff"])
+    if speed <= 0.0:
+        return 0.0
+
+    var toward_player := 1.0 if distance_x > 0.0 else -1.0
+    var move_direction := 0.0
+    var speed_scale := 0.0
+    if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+        move_direction = toward_player
+        speed_scale = SOLDIER_SPRINT_MULTIPLIER
+    elif abs_distance > standoff + SOLDIER_ADVANCE_MARGIN:
+        move_direction = toward_player
+        speed_scale = SOLDIER_ADVANCE_MULTIPLIER
+    elif abs_distance > standoff + SOLDIER_COMFORT_MARGIN:
+        move_direction = toward_player
+        speed_scale = SOLDIER_CREEP_MULTIPLIER
+    elif abs_distance < standoff * SOLDIER_RETREAT_RATIO:
+        # Too close: create firing room while keeping the visual facing Matthias.
+        move_direction = -toward_player
+        speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
+    else:
+        return 0.0
+
+    var previous_x := float(enemy["x"])
+    enemy["x"] = clampf(
+        previous_x + move_direction * speed * speed_scale * delta,
+        maxf(0.0, float(enemy["spawn_x"]) - SOLDIER_ROAM_LIMIT),
+        minf(WORLD_SIZE.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
+    )
+    if is_equal_approx(previous_x, float(enemy["x"])):
+        return 0.0
+    return speed_scale
 
 func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
     var foot_y := float(enemy.get("y", FLOOR_Y))
