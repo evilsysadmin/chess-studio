@@ -5,6 +5,7 @@ import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { checkedKingSquare } from '../boardState.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 import {
   chooseMoveTo,
   lastMoveFromHistory,
@@ -29,6 +30,27 @@ function resultCopy(result) {
   return null;
 }
 
+function pvpEndReasonLabel(endReason) {
+  if (endReason === 'timeout') return 'Tiempo';
+  if (endReason === 'resignation') return 'Rendición';
+  return 'Tablero';
+}
+
+function pvpMatthiasVerdict(result, endReason) {
+  if (endReason === 'timeout') {
+    if (result === 'win') return 'Ganaste por tiempo. El reloj hizo el trabajo sucio; cuenta igual, pero no te pongas poético.';
+    if (result === 'loss') return 'Perdiste por tiempo. El tablero quizá tenía opiniones; el reloj no negocia.';
+    return 'Tablas con el reloj de por medio. Una forma particularmente administrativa de sobrevivir.';
+  }
+  if (endReason === 'resignation') {
+    if (result === 'win') return 'Tu rival se rindió. Eso es un dato; la causa exacta no la inventaremos. El duelo, en cambio, sí está cerrado.';
+    if (result === 'loss') return 'Te rendiste. Puede ser criterio o desesperación; sin análisis no voy a fingir cuál de las dos.';
+  }
+  if (result === 'win') return 'Victoria en tablero. Bien. El resultado está registrado; las pullas tácticas vendrán cuando haya pruebas para sostenerlas.';
+  if (result === 'loss') return 'Derrota en tablero. Nada de inventar culpables: el resultado está claro; las causas requieren análisis.';
+  return 'Tablas. Nadie se lleva el cadáver. El resultado está claro y no hace falta disfrazarlo con estadísticas de feria.';
+}
+
 export default function PvpGameScreen({ initialMatch, onExit }) {
   const [match, setMatch] = useState(initialMatch);
   const [selected, setSelected] = useState(null);
@@ -48,6 +70,8 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const opponent = useMemo(() => opponentForMatch(match), [match]);
   const result = useMemo(() => playerResult(match), [match]);
   const resultText = resultCopy(result);
+  const endReasonLabel = resultText ? pvpEndReasonLabel(match?.endReason) : '';
+  const matthiasVerdict = resultText ? pvpMatthiasVerdict(result, match?.endReason) : '';
   const moves = useMemo(
     () => match?.yourTurn && !busy ? selectableMoves(match.fen, selected, match.youAre) : [],
     [busy, match?.fen, match?.youAre, match?.yourTurn, selected],
@@ -245,8 +269,20 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                 </aside>
 
                 {resultText && (
-                  <aside className="pvp-war-room__result" role="status">
-                    <small>DUELO CERRADO</small><strong>{resultText.title}</strong><span>{resultText.detail}</span>
+                  <aside className="pvp-war-room__result" role="dialog" aria-label="Resumen del duelo">
+                    <small className="pvp-war-room__result-kicker">MATTHIAS // DEBRIEF 1 VS 1</small>
+                    <strong className="pvp-war-room__result-title">{resultText.title}</strong>
+                    <p className="pvp-war-room__result-lead">{resultText.detail}</p>
+                    <blockquote className="pvp-war-room__result-verdict">
+                      <span>
+                        <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+                        <b>{CPU_IDENTITY.name}</b>
+                      </span>
+                      <p>{matthiasVerdict}</p>
+                    </blockquote>
+                    <p className="pvp-war-room__result-facts">
+                      Contra <b>{opponent.username}</b> · {opponent.rating} rating · {endReasonLabel} · {(match.history || []).length} jugadas registradas
+                    </p>
                     <button type="button" className="primary-btn" onClick={onExit}>Volver al lobby</button>
                   </aside>
                 )}
