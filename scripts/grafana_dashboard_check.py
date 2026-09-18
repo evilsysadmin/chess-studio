@@ -14,6 +14,8 @@ EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-expo
 EXPORTER_CONFIG = ROOT / "scripts" / "cloudflare_exporter_config.py"
 EXPORTER_HEALTH = ROOT / "scripts" / "cloudflare_exporter_health.py"
 ALLOY_EXAMPLE = INFRA / "alloy" / "cloudflare-exporter.alloy.example"
+BILLING_WORKFLOW = ROOT / ".github" / "workflows" / "billing-cost-export.yml"
+BILLING_EXPORTER = ROOT / "scripts" / "billing_cost_export.py"
 
 
 def fail(message: str) -> None:
@@ -212,6 +214,49 @@ def main() -> int:
                 target_ds = (target.get("datasource") or {}).get("type")
                 if target_ds and target_ds != "prometheus":
                     fail(f"{panel.get('title')}: panel Prometheus conserva target {target_ds}")
+    billing_titles = {"P0 · OCI · coste mes", "P0 · Cloudflare · coste variable ciclo"}
+    overview_titles = {str(row.get("title") or "") for row in overview_data.get("panels") or []}
+    if billing_titles - overview_titles:
+        fail("overview perdió los dos widgets P0 de billing")
+    for provider in ("oci", "cloudflare"):
+        token = f'last_over_time(chess_studio_billing_cost_current_cycle{{provider="{provider}"}}[12h])'
+        if token not in overview:
+            fail(f"overview billing no cubre {provider} con ventana de frescura 12h")
+    if 'or vector(0)' in "\n".join(
+        str(target.get("expr") or "")
+        for row in overview_data.get("panels") or []
+        if str(row.get("title") or "").startswith("P0 ·")
+        for target in (row.get("targets") or [])
+    ):
+        fail("billing P0 no debe convertir ausencia de datos en coste cero")
+
+    billing_workflow = BILLING_WORKFLOW.read_text(encoding="utf-8") if BILLING_WORKFLOW.exists() else ""
+    for token in (
+        "cron: '17 */6 * * *'",
+        "CLOUDFLARE_BILLING_API_TOKEN",
+        "CLOUDFLARE_API_TOKEN",
+        "OCI_TENANCY_OCID",
+        "setup-oci-sdk",
+        "billing_cost_export.py --self-test",
+        "python3 scripts/billing_cost_export.py",
+    ):
+        if token not in billing_workflow:
+            fail(f"workflow billing incompleto: {token}")
+    billing_exporter = BILLING_EXPORTER.read_text(encoding="utf-8") if BILLING_EXPORTER.exists() else ""
+    for token in (
+        "/billable-usage",
+        "RequestSummarizedUsagesDetails",
+        'query_type="COST"',
+        "computed_amount",
+        "BilledCost",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        "chess_studio_billing_cost_current_cycle",
+        "/v1/metrics",
+    ):
+        if token not in billing_exporter:
+            fail(f"exporter billing incompleto: {token}")
+
     for panel_id in (2, 4, 5):
         panel = next((row for row in overview_data.get("panels") or [] if row.get("id") == panel_id), None)
         if not panel or "vector(0)" not in str((panel.get("targets") or [{}])[0].get("expr") or ""):
