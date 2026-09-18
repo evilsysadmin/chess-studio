@@ -17,6 +17,8 @@ from typing import Any
 
 CHRONICLES_COMPOSITION_VERSION = 1
 CHRONICLES_TREASURE_VARIATION_VERSION = 1
+CHRONICLES_MODULE_VARIATION_VERSION = 1
+_MODULE_GROUPS = ("enemies", "triggers", "interactables", "treasures", "traps", "exits")
 _SAFE_OPTIONAL_DEFEAT_EFFECTS = frozenset({
     "grant-item",
     "heal-party",
@@ -308,3 +310,111 @@ def apply_chronicles_seeded_treasure_boons(
         action["effects"] = effects
 
     return ChroniclesTreasureVariedManifest(manifest=varied, plan=plan)
+
+
+
+@dataclass(frozen=True, slots=True)
+class ChroniclesModuleVariationPlan:
+    active_module_ids: tuple[str, ...]
+    omitted_module_ids: tuple[str, ...]
+    revision: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "version": CHRONICLES_MODULE_VARIATION_VERSION,
+            "activeModuleIds": list(self.active_module_ids),
+            "omittedModuleIds": list(self.omitted_module_ids),
+            "revision": self.revision,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ChroniclesModuleVariedManifest:
+    manifest: dict[str, Any]
+    plan: ChroniclesModuleVariationPlan
+
+
+def _procedural_module_ids(manifest: dict[str, Any]) -> tuple[str, ...]:
+    ids = {
+        str(entry.get("proceduralModule") or "")
+        for group in _MODULE_GROUPS
+        for entry in manifest.get(group, [])
+        if isinstance(entry, dict) and entry.get("proceduralModule")
+    }
+    return tuple(sorted(module_id for module_id in ids if module_id))
+
+
+def _include_procedural_module(map_id: str, seed: int, module_id: str) -> bool:
+    material = (
+        f"chronicles-module-v{CHRONICLES_MODULE_VARIATION_VERSION}:"
+        f"{map_id}:{int(seed)}:{module_id}"
+    ).encode("utf-8")
+    # Secret branches exist in about 62.5% of seeds. The exact distribution
+    # is versioned and replay-stable; authored main routes are never tagged.
+    return hashlib.sha256(material).digest()[0] < 160
+
+
+def _module_plan_revision(
+    map_id: str,
+    seed: int,
+    active: tuple[str, ...],
+    omitted: tuple[str, ...],
+) -> str:
+    payload = {
+        "version": CHRONICLES_MODULE_VARIATION_VERSION,
+        "mapId": map_id,
+        "seed": int(seed),
+        "active": active,
+        "omitted": omitted,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def chronicles_seeded_module_variation_plan(
+    manifest: dict[str, Any],
+    seed: int,
+) -> ChroniclesModuleVariationPlan:
+    map_id = str(manifest.get("id") or "")
+    active: list[str] = []
+    omitted: list[str] = []
+
+    for module_id in _procedural_module_ids(manifest):
+        if _include_procedural_module(map_id, seed, module_id):
+            active.append(module_id)
+        else:
+            omitted.append(module_id)
+
+    active_ids = tuple(active)
+    omitted_ids = tuple(omitted)
+    return ChroniclesModuleVariationPlan(
+        active_module_ids=active_ids,
+        omitted_module_ids=omitted_ids,
+        revision=_module_plan_revision(map_id, seed, active_ids, omitted_ids),
+    )
+
+
+def apply_chronicles_seeded_modules(
+    manifest: dict[str, Any],
+    seed: int,
+) -> ChroniclesModuleVariedManifest:
+    plan = chronicles_seeded_module_variation_plan(manifest, seed)
+    omitted = set(plan.omitted_module_ids)
+    varied = deepcopy(manifest)
+
+    if omitted:
+        for group in _MODULE_GROUPS:
+            entries = varied.get(group)
+            if not isinstance(entries, list):
+                continue
+            varied[group] = [
+                entry
+                for entry in entries
+                if not (
+                    isinstance(entry, dict)
+                    and entry.get("proceduralModule") in omitted
+                )
+            ]
+
+    return ChroniclesModuleVariedManifest(manifest=varied, plan=plan)
