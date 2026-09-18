@@ -72,6 +72,24 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(chroniclesIsoWorldsForContentKind(plan, 'lever')).toEqual([]);
   });
 
+  it('preserves every authored lever for the renderer instead of collapsing to the first one', () => {
+    const plan = {
+      content: [
+        { id: 'west-bell-brake', kind: 'lever', visualType: 'bell-brake', world: { x: -4.9, y: 0, z: 2.45 } },
+        { id: 'east-bell-brake', kind: 'lever', visualType: 'bell-brake', world: { x: 4.9, y: 0, z: 2.45 } },
+      ],
+    };
+
+    const levers = chroniclesIsoWorldsForContentKind(plan, 'lever');
+
+    expect(levers.map((entry) => entry.id)).toEqual(['west-bell-brake', 'east-bell-brake']);
+    expect(levers.map((entry) => entry.visualType)).toEqual(['bell-brake', 'bell-brake']);
+    expect(levers.map((entry) => [entry.world.x, entry.world.y, entry.world.z])).toEqual([
+      [-4.9, 0, 2.45],
+      [4.9, 0, 2.45],
+    ]);
+  });
+
   it('keeps legacy crypt dressing opt-in through the scene style contract', () => {
     expect(chroniclesIsoUsesLegacyDressing({
       sceneStyle: { dressing: 'crypt-legacy' },
