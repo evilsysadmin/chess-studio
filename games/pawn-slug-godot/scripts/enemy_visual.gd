@@ -7,13 +7,17 @@ const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
 const FRAMES_PER_TYPE := 8
-const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16}
-const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2}
-const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43}
-const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376}
+const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0}
+const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0}
+const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42}
+const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34}
 const REMOTE_BODY_CENTER_Y := 31.0
 const ENEMY_VISUAL_SCALE := 1.18
-const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0}
+const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5}
+const TYPE_TINT := {
+    "queen": Color(1.0, 0.76, 0.78, 1.0),
+    "grenadier": Color(0.82, 0.92, 0.72, 1.0),
+}
 const WEAPON_FRAME := {"pistol": 0, "machinegun": 1, "shotgun": 2, "panzerfaust": 3}
 const WEAPON_POSE := {
     "pistol": {"position": Vector2(18.0, -45.0), "rotation": -0.03, "scale": Vector2(0.20, 0.20), "muzzle": Vector2(38.0, 0.0)},
@@ -188,6 +192,7 @@ func _apply_type() -> void:
     _using_remote_body = false
     _body.texture = texture
     _body.visible = true
+    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
     var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
     _body.scale = Vector2(body_scale, body_scale)
     _body.position = Vector2(0.0, -98.0 * body_scale)
@@ -273,6 +278,7 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
     _using_remote_body = true
     _body.texture = texture
     _body.visible = true
+    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
     var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248)) * ENEMY_VISUAL_SCALE
     # The canonical enemy raster is authored facing left. Weapon/muzzle sockets
     # remain authored facing right, so flip only the body inside FacingRoot.
@@ -292,7 +298,7 @@ func _apply_weapon() -> void:
     var index := int(WEAPON_FRAME.get(weapon, 0))
     _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
     var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
-    var type_y_adjust := -7.0 if enemy_type == "bishop" else (2.0 if enemy_type == "rook" else 0.0)
+    var type_y_adjust := -7.0 if enemy_type == "bishop" else (-2.0 if enemy_type == "queen" else (3.0 if enemy_type == "grenadier" else (2.0 if enemy_type == "rook" else 0.0)))
     _weapon_root.position = pose["position"] + Vector2(0.0, type_y_adjust)
     _weapon_root.rotation = float(pose["rotation"])
     _weapon_sprite.scale = pose["scale"]
@@ -321,6 +327,8 @@ func _draw() -> void:
         return
     if enemy_type == "bishop":
         _draw_bishop()
+    elif enemy_type == "queen" or enemy_type == "grenadier":
+        _draw_variant_backdrop()
     if hp <= 0:
         return
     var hp_width := maxf(44.0, visual_height * 0.72)
@@ -328,6 +336,30 @@ func _draw() -> void:
     var bar_y := -visual_height - 28.0
     draw_rect(Rect2(Vector2(-hp_width * 0.5, bar_y), Vector2(hp_width, 6.0)), Color("2f3438"), true)
     draw_rect(Rect2(Vector2(-hp_width * 0.5, bar_y), Vector2(hp_width * hp_ratio, 6.0)), Color("c7634e"), true)
+
+func _draw_variant_backdrop() -> void:
+    var h := visual_height
+    if enemy_type == "queen":
+        var cape := PackedVector2Array([
+            Vector2(-h * 0.30, -h * 0.78),
+            Vector2(h * 0.20, -h * 0.76),
+            Vector2(h * 0.34, -h * 0.12),
+            Vector2(-h * 0.24, -h * 0.10),
+        ])
+        draw_colored_polygon(cape, Color(0.42, 0.05, 0.08, 0.72))
+        draw_polyline(PackedVector2Array([
+            Vector2(-h * 0.17, -h * 1.02),
+            Vector2(-h * 0.06, -h * 1.16),
+            Vector2(0.0, -h * 1.06),
+            Vector2(h * 0.07, -h * 1.18),
+            Vector2(h * 0.18, -h * 1.02),
+        ]), Color("d7b45c"), 4.0)
+    elif enemy_type == "grenadier":
+        draw_rect(Rect2(Vector2(-h * 0.31, -h * 0.70), Vector2(h * 0.62, h * 0.50)), Color(0.10, 0.14, 0.08, 0.78), true)
+        for x in [-0.21, 0.0, 0.21]:
+            draw_circle(Vector2(h * x, -h * 0.43), maxf(3.0, h * 0.055), Color("58624a"))
+            draw_line(Vector2(h * x, -h * 0.49), Vector2(h * x, -h * 0.56), Color("b9a66b"), 2.0)
+
 
 func _draw_bishop() -> void:
     var h := visual_height
