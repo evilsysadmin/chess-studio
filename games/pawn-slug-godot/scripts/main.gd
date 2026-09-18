@@ -1074,7 +1074,7 @@ func _enemy_fire_cooldown(weapon: String) -> float:
     return randf_range(float(profile["cooldown_min"]), float(profile["cooldown_max"]))
 
 func _update_enemy_projectiles(delta: float) -> void:
-    var player_hitbox := player.combat_hitbox_rect()
+    var player_hitbox: Rect2 = player.combat_hitbox_rect()
     for index in range(enemy_projectiles.size() - 1, -1, -1):
         var projectile := enemy_projectiles[index]
         var position: Vector2 = projectile["position"]
