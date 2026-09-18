@@ -3,8 +3,10 @@ extends Node2D
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
 # The strict-v7 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
-# directional shoot/reload/hurt/die/crouch), 256 x 256 per cell, published in R2.
-# Godot consumes those authored cells directly; the old canonical assets remain
+# directional shoot/reload/hurt/die/crouch), 256 x 256 per cell.
+# v7 is derived deterministically from the uploaded 1070 x 1470 R2 source sheets
+# with Lanczos, reproducing the packaged 2048 x 2816 strict atlases exactly.
+# Godot consumes those normalized cells directly; the old canonical assets remain
 # only as a graceful fallback if a remote strict atlas cannot be loaded.
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
@@ -13,85 +15,12 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/pistol/matthias_pistol_godot_strict_8x11_256_v7-38bf87ab2e7606ce.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/machinegun/matthias_machinegun_godot_strict_8x11_256_v7-b669654342af0499.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/shotgun/matthias_shotgun_godot_strict_8x11_256_v7-f6b6cb545bc52cc0.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v7-817940e0de15aee3.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_generated_source.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_generated_source.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_generated_source.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_generated_source.png",
 }
-const FULL_ATLAS_ALTERNATE_URLS := {
-    "pistol": [
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/pistol/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/pistol/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/pistol/matthias_pistol_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/pistol/strict_8x11_256/matthias_pistol_godot_strict_8x11_256_v7.png",
-    ],
-    "machinegun": [
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/machinegun/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/machinegun/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/machinegun/matthias_machinegun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/machinegun/strict_8x11_256/matthias_machinegun_godot_strict_8x11_256_v7.png",
-    ],
-    "shotgun": [
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/shotgun/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/shotgun/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/shotgun/matthias_shotgun_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/shotgun/strict_8x11_256/matthias_shotgun_godot_strict_8x11_256_v7.png",
-    ],
-    "panzerfaust": [
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/panzerfaust/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-        "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/panzerfaust/strict_8x11_256/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
-    ],
-}
+const V7_SOURCE_SIZE := Vector2i(1070, 1470)
 const FULL_ATLAS_FALLBACK_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v6.png",
@@ -262,7 +191,6 @@ var _master_request: HTTPRequest
 var _atlas_request: HTTPRequest
 var _atlas_request_weapon := ""
 var _atlas_request_layout := ""
-var _atlas_request_v7_index := -1
 
 func _ready() -> void:
     _build_nodes()
@@ -534,7 +462,7 @@ func _install_or_request_weapon() -> void:
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
         if _atlas_request == null:
-            _request_v7_atlas(_weapon, 0)
+            _request_atlas(_weapon, full_url, "full-v7-source")
         if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
             return
         if _weapon == "pistol" and _legacy_pistol_frames != null:
@@ -558,29 +486,6 @@ func _install_or_request_weapon() -> void:
         return
     _ensure_master()
 
-func _v7_urls_for_weapon(weapon_id: String) -> Array[String]:
-    var urls: Array[String] = []
-    var primary := String(FULL_ATLAS_URLS.get(weapon_id, ""))
-    if not primary.is_empty():
-        urls.append(primary)
-    var alternates: Array = FULL_ATLAS_ALTERNATE_URLS.get(weapon_id, [])
-    for value in alternates:
-        var candidate := String(value)
-        if not candidate.is_empty() and not urls.has(candidate):
-            urls.append(candidate)
-    return urls
-
-func _request_v7_atlas(weapon_id: String, candidate_index: int) -> bool:
-    var urls := _v7_urls_for_weapon(weapon_id)
-    if candidate_index < 0 or candidate_index >= urls.size():
-        return _request_full_fallback(weapon_id)
-    _atlas_request_v7_index = candidate_index
-    _request_atlas(weapon_id, urls[candidate_index], "full-v7")
-    return true
-
-func _request_next_v7_candidate(weapon_id: String) -> bool:
-    return _request_v7_atlas(weapon_id, _atlas_request_v7_index + 1)
-
 func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
     if _atlas_request != null:
         return
@@ -594,7 +499,7 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
-        if layout == "full-v7" and _request_next_v7_candidate(weapon_id):
+        if layout == "full-v7-source" and _request_full_fallback(weapon_id):
             return
         _ensure_master()
 
@@ -608,30 +513,30 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        if requested_layout == "full-v7" and _request_next_v7_candidate(requested_weapon):
+        if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
     var image := _decode_raster(bytes)
     if image == null:
-        if requested_layout == "full-v7" and _request_next_v7_candidate(requested_weapon):
+        if requested_layout == "full-v7-source" and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
 
     var frames: SpriteFrames
-    if requested_layout == "full-v7":
-        var render_image := image
-        frames = _build_full_frames(render_image, requested_weapon, true)
-        if frames == null:
-            if _request_next_v7_candidate(requested_weapon):
+    if requested_layout == "full-v7-source":
+        var render_image := _normalize_v7_source(image)
+        if render_image == null:
+            if _request_full_fallback(requested_weapon):
                 return
         else:
-            _atlas_request_v7_index = -1
-            var body_y := _full_body_y_for_atlas(render_image)
-            _full_frames_by_weapon[requested_weapon] = frames
-            _full_body_y_by_weapon[requested_weapon] = body_y
-            _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, true)
+            frames = _build_full_frames(render_image, requested_weapon, true)
+            if frames != null:
+                var body_y := _full_body_y_for_atlas(render_image)
+                _full_frames_by_weapon[requested_weapon] = frames
+                _full_body_y_by_weapon[requested_weapon] = body_y
+                _full_muzzle_by_weapon[requested_weapon] = _full_muzzle_positions_for_atlas(render_image, body_y, true)
     elif requested_layout == "full":
         var render_image := _repair_distorted_shoot_frames(image, requested_weapon)
         frames = _build_full_frames(render_image, requested_weapon, false)
@@ -646,17 +551,29 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             _legacy_pistol_frames = frames
 
     if requested_weapon == _weapon and frames != null:
-        _install_frames(frames, requested_layout in ["full-v7", "full"])
+        _install_frames(frames, requested_layout in ["full-v7-source", "full"])
     else:
         _install_or_request_weapon()
 
 func _request_full_fallback(weapon_id: String) -> bool:
-    _atlas_request_v7_index = -1
     var fallback_url := String(FULL_ATLAS_FALLBACK_URLS.get(weapon_id, ""))
     if fallback_url.is_empty():
         return false
     _request_atlas(weapon_id, fallback_url, "full")
     return true
+
+func _normalize_v7_source(image: Image) -> Image:
+    if image.get_size() != V7_SOURCE_SIZE:
+        push_error("Matthias v7 source has invalid dimensions: %s, expected %s" % [image.get_size(), V7_SOURCE_SIZE])
+        return null
+    var normalized: Image = image.duplicate() as Image
+    if normalized == null:
+        return null
+    normalized.resize(FULL_ATLAS_SIZE.x, FULL_ATLAS_SIZE.y, Image.INTERPOLATE_LANCZOS)
+    if normalized.get_size() != FULL_ATLAS_SIZE:
+        push_error("Matthias v7 normalization failed: %s" % [normalized.get_size()])
+        return null
+    return normalized
 
 func _decode_raster(bytes: PackedByteArray) -> Image:
     var image := Image.new()
@@ -1064,7 +981,7 @@ func _prefetch_machinegun() -> void:
         return
     var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
     if not url.is_empty():
-        _request_v7_atlas("machinegun", 0)
+        _request_atlas("machinegun", url, "full-v7-source")
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
