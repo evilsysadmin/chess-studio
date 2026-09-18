@@ -182,6 +182,17 @@ def load_chronicles_manifest(map_id: str, *, root: Path | None = None) -> tuple[
         raise HTTPException(500, "El manifiesto de Chronicles no supera validación.") from exc
     return json.loads(json.dumps(manifest, ensure_ascii=False)), revision
 
+@lru_cache(maxsize=1)
+def chronicles_shipped_map_ids() -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            path.stem
+            for path in CHRONICLES_MAP_ROOT.glob("*.json")
+            if path.is_file()
+        )
+    )
+
+
 
 def chronicles_area_envelope(map_id: str, seed: int, *, root: Path | None = None) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
@@ -213,13 +224,22 @@ def _run_id(username: str, idempotency_key: str | None) -> str:
 
 
 def _run_bootstrap_payload(run: dict[str, Any]) -> dict[str, Any]:
-    area = chronicles_area_envelope(run["currentMapId"], run["seed"])
+    areas = [
+        chronicles_area_envelope(map_id, run["seed"])
+        for map_id in chronicles_shipped_map_ids()
+    ]
+    area = next(
+        (candidate for candidate in areas if candidate["mapId"] == run["currentMapId"]),
+        None,
+    )
+    if area is None:
+        raise HTTPException(409, "El mapa actual de esta run ya no está disponible.")
     if (
         area["contentVersion"] != run["contentVersion"]
         or area["manifestRevision"] != run["manifestRevision"]
     ):
         raise HTTPException(409, "La revisión de contenido de esta run ya no está disponible.")
-    return {**run, "area": area}
+    return {**run, "area": area, "areas": areas}
 
 
 def build_chronicles_router(*, auth_dependency) -> APIRouter:
