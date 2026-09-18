@@ -237,10 +237,12 @@ def add_fireplace(name: str, x: float, materials):
     stone = materials["stone"]
     dark = materials["stone_dark"]
     fire = materials["fire"]
+    # Tall dark recess is essential to the canonical silhouette.
+    cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
     cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
-    arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.65, 4.45, 0.12, dark)
-    cube(f"HOME_PROP_{name}_fire", (x, 5.56, 0.9), (0.86, 0.07, 0.62), fire, bevel=0.12)
+    arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.65, 4.45, 0.12, stone)
+    cube(f"HOME_PROP_{name}_fire", (x, 5.54, 1.00), (0.92, 0.07, 0.72), fire, bevel=0.12)
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.08, 1.32), 580, (1.0, 0.25, 0.06), radius=0.8)
 
 
@@ -357,31 +359,39 @@ def add_stairs(materials):
     stone = materials["stone"]
     brass = materials["brass"]
     dark = materials["dark"]
+    fire = materials["fire"]
 
-    # Canonical Dungeon: broad stone bridge with balustrade, a large arched
-    # lower chamber, then a diagonal stair disappearing into the foreground.
-    cube("HOME_ARCH_dungeon_bridge", (7.02, 2.62, 1.38), (2.12, 0.74, 0.13), stone, bevel=0.05)
-    cube("HOME_ARCH_dungeon_bridge_lip", (7.02, 1.98, 1.58), (2.04, 0.12, 0.18), stone, bevel=0.04)
+    # Pull the Dungeon inward: in the master it is a major lower-right mass,
+    # not something clipped off the edge.
+    bridge_x = 6.28
+    arch_x = 6.52
+    cube("HOME_ARCH_dungeon_bridge", (bridge_x, 2.55, 1.42), (2.18, 0.74, 0.13), stone, bevel=0.05)
+    cube("HOME_ARCH_dungeon_bridge_lip", (bridge_x, 1.92, 1.62), (2.10, 0.12, 0.18), stone, bevel=0.04)
 
-    cube("HOME_ARCH_dungeon_void", (7.28, 2.16, -0.05), (1.72, 0.10, 1.45), dark, bevel=0.12)
-    arch("HOME_ARCH_dungeon_arch", 7.28, 1.99, 3.48, 0.65, 1.52, -1.52, stone)
-    # Secondary inner arch gives the lower chamber visible depth.
-    arch("HOME_ARCH_dungeon_arch_inner", 7.42, 1.86, 2.82, 0.48, 1.20, -1.44, materials["stone_dark"])
+    cube("HOME_ARCH_dungeon_void", (arch_x, 1.72, -0.05), (1.78, 0.10, 1.50), dark, bevel=0.12)
+    arch("HOME_ARCH_dungeon_arch", arch_x, 1.55, 3.58, 0.68, 1.58, -1.58, stone)
+    arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.10, 1.42, 2.92, 0.52, 1.24, -1.50, materials["stone_dark"])
 
-    # Canonical balustrade across the bridge.
-    for idx, x in enumerate((5.55, 6.05, 6.55, 7.05, 7.55, 8.05, 8.55)):
-        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.83, 1.90), 0.085, 0.58, stone, vertices=20)
-    cube("HOME_ARCH_dungeon_balustrade_top", (7.05, 1.83, 2.22), (1.82, 0.12, 0.10), stone, bevel=0.025)
+    # Gate/fire read even in Workbench and make the lower chamber unambiguous.
+    for idx, x in enumerate((5.65, 6.00, 6.35, 6.70, 7.05, 7.40)):
+        cube(f"HOME_PROP_dungeon_gate_{idx}", (x, 1.48, -0.25), (0.045, 0.045, 0.98), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_gate_cross", (6.52, 1.46, -0.22), (1.12, 0.05, 0.055), materials["steel"], bevel=0.01)
+    cube("HOME_PROP_dungeon_fire_left", (5.85, 1.32, -0.62), (0.18, 0.06, 0.36), fire, bevel=0.09)
+    cube("HOME_PROP_dungeon_fire_right", (7.15, 1.32, -0.72), (0.18, 0.06, 0.42), fire, bevel=0.09)
 
-    cylinder("HOME_ARCH_dungeon_post", (5.18, 1.92, 1.36), 0.27, 2.00, stone, vertices=32)
-    sphere("HOME_PROP_dungeon_finial", (5.18, 1.92, 2.46), (0.24, 0.24, 0.24), materials["stone_dark"])
+    for idx, x in enumerate((4.82, 5.30, 5.78, 6.26, 6.74, 7.22, 7.70)):
+        cylinder(f"HOME_ARCH_dungeon_baluster_{idx}", (x, 1.77, 1.94), 0.085, 0.58, stone, vertices=20)
+    cube("HOME_ARCH_dungeon_balustrade_top", (6.26, 1.77, 2.26), (1.82, 0.12, 0.10), stone, bevel=0.025)
+
+    cylinder("HOME_ARCH_dungeon_post", (4.68, 1.88, 1.40), 0.27, 2.00, stone, vertices=32)
+    sphere("HOME_PROP_dungeon_finial", (4.68, 1.88, 2.50), (0.24, 0.24, 0.24), materials["stone_dark"])
 
     steps = 12
     for i in range(steps):
         t = i / (steps - 1)
-        x = 5.55 + 2.90 * t
-        y = 1.52 - 2.70 * t
-        z = 0.74 - 1.78 * t
+        x = 5.02 + 2.82 * t
+        y = 1.46 - 2.50 * t
+        z = 0.76 - 1.72 * t
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
             (x, y, z),
@@ -392,17 +402,17 @@ def add_stairs(materials):
 
     curve_tube(
         "HOME_PROP_dungeon_rail",
-        [(5.10, 1.66, 2.18), (6.20, 0.75, 1.50), (7.50, -0.32, 0.70), (8.52, -1.18, 0.02)],
+        [(4.62, 1.60, 2.22), (5.72, 0.72, 1.54), (6.90, -0.22, 0.78), (7.90, -1.02, 0.12)],
         0.050,
         brass,
     )
     curve_tube(
         "HOME_PROP_dungeon_rail_lower",
-        [(5.10, 1.66, 1.82), (6.20, 0.75, 1.14), (7.50, -0.32, 0.34), (8.52, -1.18, -0.34)],
+        [(4.62, 1.60, 1.86), (5.72, 0.72, 1.18), (6.90, -0.22, 0.42), (7.90, -1.02, -0.24)],
         0.027,
         brass,
     )
-    cube("HOME_ARCH_dungeon_lower_floor", (7.45, -0.72, -1.55), (1.95, 1.80, 0.10), dark, bevel=0.02)
+    cube("HOME_ARCH_dungeon_lower_floor", (6.88, -0.62, -1.53), (2.00, 1.78, 0.10), dark, bevel=0.02)
 
 
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
@@ -501,7 +511,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     add_fireplace("fireplace_left", -6.15, materials)
     add_bookshelf(materials)
-    arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.35, 0.15, materials["stone_dark"])
+    cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
+    arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.35, 0.15, materials["stone"])
     add_fireplace("fireplace_right", 4.45, materials)
 
     cube("HOME_ARCH_window_right", (8.0, 6.62, 3.58), (0.78, 0.07, 1.46), materials["window"], bevel=0.08)
@@ -554,7 +565,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
     camera.location = (0.0, -15.8, 5.25)
-    target = (0.0, 2.65, 1.82)
+    target = (0.0, 2.65, 2.00)
     look_at(camera, target)
     scene.camera = camera
 
