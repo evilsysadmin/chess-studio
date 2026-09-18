@@ -252,9 +252,12 @@ def add_table_and_board(materials):
     table_y = 1.25
     table_z = 1.08
     cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.05, 1.5, 0.15), wood, bevel=0.08)
+    cube("HOME_PROP_table_apron_front", (0.0, -0.18, 0.91), (2.78, 0.09, 0.16), wood, bevel=0.035)
+    cube("HOME_PROP_table_apron_back", (0.0, 2.68, 0.91), (2.78, 0.09, 0.16), wood, bevel=0.035)
     for x in (-2.58, 2.58):
         for y in (0.05, 2.45):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
+            cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
 
     # The canonical board nearly fills the table width; the earlier blockout
     # made it read like a travel set.
@@ -309,8 +312,15 @@ def add_table_and_board(materials):
 
     for side in (-1, 1):
         x = side * 3.55
-        cube(f"HOME_PROP_bench_{side}", (x, 1.2, 0.43), (0.62, 1.45, 0.28), wood, bevel=0.05)
-        cube(f"HOME_PROP_bench_cushion_{side}", (x, 1.2, 0.73), (0.58, 1.38, 0.08), banner, bevel=0.05)
+        cube(f"HOME_PROP_bench_frame_{side}", (x, 1.2, 0.50), (0.62, 1.45, 0.12), wood, bevel=0.045)
+        cube(f"HOME_PROP_bench_cushion_{side}", (x, 1.2, 0.72), (0.59, 1.38, 0.18), banner, bevel=0.11)
+        for by in (0.08, 2.32):
+            for dx in (-0.40, 0.40):
+                bx = x + dx
+                cube(f"HOME_PROP_bench_leg_{side}_{dx}_{by}", (bx, by, 0.26), (0.10, 0.10, 0.26), wood, bevel=0.03)
+                cylinder(f"HOME_PROP_bench_foot_{side}_{dx}_{by}", (bx, by, 0.05), 0.12, 0.10, materials["dark"], vertices=16)
+        for tuft in (-0.72, 0.0, 0.72):
+            sphere(f"HOME_PROP_bench_tuft_{side}_{tuft}", (x, 1.2 + tuft, 0.91), (0.07, 0.035, 0.035), materials["dark"])
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
@@ -331,8 +341,15 @@ def add_fireplace(name: str, x: float, materials):
     # Tall dark recess is essential to the canonical silhouette.
     cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
     cube(f"HOME_PROP_{name}_hearth", (x, 6.1, 0.88), (1.3, 0.5, 0.88), dark, bevel=0.05)
+    cube(f"HOME_PROP_{name}_hearth_slab", (x, 5.62, 0.28), (1.42, 0.46, 0.12), stone, bevel=0.05)
+    for side in (-1, 1):
+        cube(f"HOME_PROP_{name}_jamb_{side}", (x + side * 1.18, 6.02, 1.20), (0.18, 0.34, 1.15), stone, bevel=0.05)
+        cube(f"HOME_PROP_{name}_corbel_{side}", (x + side * 1.22, 5.82, 1.95), (0.24, 0.28, 0.18), stone, bevel=0.05)
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
     gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, stone)
+    for bar in (-0.54, -0.18, 0.18, 0.54):
+        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.48, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
+    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.47, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
     hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.54, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
@@ -699,6 +716,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
         cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
+        cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
+        cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
 
     add_fireplace("fireplace_left", -6.15, materials)
     add_bookshelf(materials)
@@ -708,6 +727,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     cube("HOME_ARCH_window_right", (7.78, 6.62, 3.62), (0.96, 0.07, 1.64), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.78, 6.48, 2.08, 3.24, 4.92, 1.94, materials["brass"], bevel=0.12)
+    for offset in (-0.48, 0.0, 0.48):
+        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.78 + offset, 6.46, 3.52), (0.035, 0.045, 1.35), materials["brass"], bevel=0.012)
+    for idx, z in enumerate((2.78, 3.55, 4.25)):
+        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.78, 6.46, z), (0.88, 0.045, 0.030), materials["brass"], bevel=0.012)
+    cube("HOME_PROP_window_sill", (7.78, 6.20, 1.96), (1.12, 0.28, 0.12), materials["stone"], bevel=0.04)
 
     for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
         add_banner(name, x, materials)
