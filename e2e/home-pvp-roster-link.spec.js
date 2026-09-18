@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-test('Home · el roster 1 vs 1 abre directamente la sala de duelo', async ({ page }) => {
+test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page }) => {
   await mockApi(page);
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
     status: 200,
@@ -19,4 +19,11 @@ test('Home · el roster 1 vs 1 abre directamente la sala de duelo', async ({ pag
   await expect(lobby).toBeVisible();
   await expect(lobby.getByRole('heading', { name: 'Roster de duelo' })).toBeVisible();
   await expect(rosterLink).toBeHidden();
+
+  const minimizeButton = lobby.getByRole('button', { name: 'Minimizar roster y seguir jugando' });
+  await expect(minimizeButton).toBeVisible();
+  await minimizeButton.click();
+
+  await expect(lobby).toBeHidden();
+  await expect(rosterLink).toBeVisible();
 });

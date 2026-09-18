@@ -39,6 +39,12 @@
   right: 1rem;
 }
 
+.pvp-lobby .pvp-lobby__minimize {
+  right: 3.7rem;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
 .pvp-lobby__header {
   position: relative;
   z-index: 1;
@@ -46,7 +52,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 1.3rem;
-  padding: .1rem 3rem .4rem 0;
+  padding: .1rem 5.8rem .4rem 0;
 }
 
 .pvp-lobby__header-copy { min-width: 0; }
@@ -545,7 +551,7 @@
 
   .pvp-lobby__header {
     grid-template-columns: 1fr;
-    padding-right: 2.5rem;
+    padding-right: 5.4rem;
   }
 
   .pvp-lobby__seal { display: none; }
