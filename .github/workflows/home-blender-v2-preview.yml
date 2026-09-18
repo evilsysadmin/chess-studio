@@ -43,7 +43,8 @@ jobs:
             --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
             --out-dir /tmp/home-blender-v2 \
             --samples '${{ inputs.samples || '16' }}' \
-            --max-width 1280
+            --max-width 1100 \
+            --engine workbench
 
       - name: Validate render envelope and build comparison sheet
         run: |
@@ -71,7 +72,8 @@ jobs:
           assert metadata['reference_size'] == list(reference.size)
           assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
           assert clay.size == preview.size, (clay.size, preview.size)
-          assert preview.width <= 1280
+          assert preview.width <= 1100
+          assert metadata['engine'] == 'workbench'
           assert metadata['object_count'] >= 80, metadata['object_count']
           assert metadata['named_groups']['architecture']
           assert metadata['named_groups']['props']
