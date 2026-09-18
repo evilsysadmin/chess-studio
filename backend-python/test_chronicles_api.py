@@ -132,7 +132,13 @@ def test_manifest_is_versioned_and_deterministic_by_map_and_seed():
     assert payload["seed"] == 417
     assert len(payload["manifestRevision"]) == 64
     assert len(payload["instanceId"]) == 24
-    assert other_seed.json()["manifestRevision"] == payload["manifestRevision"]
+    assert payload["mapCode"].endswith("|seed=417")
+    assert payload["generatorVersion"] == 1
+    assert len(payload["layoutRevision"]) == 64
+    assert payload["manifest"]["generation"]["mapCode"] == payload["mapCode"]
+    assert payload["manifest"]["generation"]["layoutRevision"] == payload["layoutRevision"]
+    assert other_seed.json()["manifestRevision"] != payload["manifestRevision"]
+    assert other_seed.json()["manifest"]["grid"] != payload["manifest"]["grid"]
     assert other_seed.json()["instanceId"] != payload["instanceId"]
 
 
@@ -185,11 +191,14 @@ def test_run_creation_binds_server_seed_and_manifest_revision(monkeypatch):
     )
     assert response.status_code == 201
     run = response.json()
-    manifest, revision = chronicles_api.load_chronicles_manifest("gallery-of-forks")
+    manifest, _authored_revision = chronicles_api.load_chronicles_manifest("gallery-of-forks")
+    expected_area = chronicles_api.chronicles_area_envelope("gallery-of-forks", run["seed"])
     assert 0 <= run["seed"] <= 2_147_483_647
     assert run["currentMapId"] == "gallery-of-forks"
     assert run["contentVersion"] == manifest["version"]
-    assert run["manifestRevision"] == revision
+    assert run["manifestRevision"] == expected_area["manifestRevision"]
+    assert run["area"]["mapCode"] == expected_area["mapCode"]
+    assert run["area"]["layoutRevision"] == expected_area["layoutRevision"]
     assert run["worldVersion"] == 0
     assert run["consumedContentIds"] == []
     assert run["claimedRewards"] == []
