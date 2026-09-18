@@ -424,12 +424,6 @@ if [[ -s "$state_file" ]]; then
   previous_sha="$(tr -d '\r\n' < "$state_file")"
   [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || previous_sha=''
 fi
-if [[ "$previous_sha" == "$sha" ]] && attest "$sha"; then
-  echo "OCI_DEPLOY_ALREADY_CURRENT repo_ref=$sha"
-  echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=reused image=reused"
-  exit 0
-fi
-
 total_started_ms="$(now_ms)"
 checkout_started_ms="$total_started_ms"
 cd "$repo"
