@@ -11,6 +11,7 @@ import argparse
 import json
 import math
 import os
+import struct
 import sys
 from pathlib import Path
 
@@ -600,7 +601,92 @@ def validate():
         raise RuntimeError("hero camera contract failed")
 
 
+def sanitize_runtime_materials():
+    """Disconnect Blender-only procedural links before the glTF runtime export.
+
+    The editable .blend and hero preview keep the rich procedural materials. glTF
+    cannot represent our Noise/Mapping/ColorRamp chains, though, and otherwise
+    falls back to white for Base Color. The Principled sockets still retain the
+    authored PBR fallback values, so disconnecting only for export gives Three.js
+    a faithful coloured shell instead of a bleached room.
+    """
+    materials = {}
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH" or obj.get("war_room_role") != ROLE_STATIC:
+            continue
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes and mat.node_tree:
+                materials[mat.name] = mat
+
+    removed_links = 0
+    for mat in materials.values():
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf is None:
+            continue
+        for socket_name in ("Base Color", "Normal"):
+            target = bsdf.inputs.get(socket_name)
+            if target is None:
+                continue
+            for link in list(target.links):
+                mat.node_tree.links.remove(link)
+                removed_links += 1
+        mat["war_room_runtime_material"] = "gltf-safe-pbr-v1"
+
+    if removed_links < 10:
+        raise RuntimeError(f"runtime material sanitization suspiciously small: {removed_links}")
+    return removed_links
+
+
+def read_glb_json(path):
+    raw = Path(path).read_bytes()
+    if len(raw) < 20 or raw[:4] != b"glTF":
+        raise RuntimeError(f"invalid GLB header: {path}")
+    _magic, version, declared_size = struct.unpack_from("<4sII", raw, 0)
+    if version != 2 or declared_size != len(raw):
+        raise RuntimeError(f"invalid GLB envelope: version={version} declared={declared_size} actual={len(raw)}")
+
+    offset = 12
+    while offset + 8 <= len(raw):
+        chunk_length, chunk_type = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        chunk = raw[offset:offset + chunk_length]
+        offset += chunk_length
+        if chunk_type == 0x4E4F534A:
+            return json.loads(chunk.decode("utf-8").rstrip("\x00 \t\r\n"))
+    raise RuntimeError(f"GLB JSON chunk missing: {path}")
+
+
+def validate_runtime_glb(path):
+    data = read_glb_json(path)
+    materials = {row.get("name"): row for row in data.get("materials", [])}
+    required_colours = {
+        "WR_MAT_wall_walnut",
+        "WR_MAT_trim_walnut",
+        "WR_MAT_parquet",
+        "WR_MAT_table_walnut",
+        "WR_MAT_frame_walnut",
+        "WR_MAT_stone",
+        "WR_MAT_stone_light",
+        "WR_MAT_leather",
+        "WR_MAT_armor",
+    }
+    missing = sorted(required_colours - set(materials))
+    if missing:
+        raise RuntimeError(f"runtime GLB materials missing: {missing}")
+
+    bleached = []
+    for name in sorted(required_colours):
+        pbr = materials[name].get("pbrMetallicRoughness", {})
+        factor = pbr.get("baseColorFactor")
+        if not isinstance(factor, list) or len(factor) < 3 or min(factor[:3]) >= 0.95:
+            bleached.append((name, factor))
+    if bleached:
+        raise RuntimeError(f"runtime GLB lost authored base colours: {bleached}")
+
+
 def export_shell(path):
+    sanitized_links = sanitize_runtime_materials()
+    bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
     bpy.ops.object.select_all(action="DESELECT")
     selected = 0
     for obj in bpy.context.scene.objects:
@@ -614,6 +700,7 @@ def export_shell(path):
         filepath=str(path), export_format="GLB", use_selection=True, export_apply=True,
         export_yup=True, export_cameras=False, export_lights=False,
     )
+    validate_runtime_glb(path)
     bpy.ops.object.select_all(action="DESELECT")
 
 
