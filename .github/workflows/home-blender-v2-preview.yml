@@ -1,17 +1,16 @@
 name: Home · Blender 2.0 preview
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    paths:
-      - 'scripts/blender/build_home_v2_blockout.py'
-      - '.github/workflows/home-blender-v2-preview.yml'
   workflow_dispatch:
     inputs:
-      samples:
-        description: Eevee render samples for the blockout preview
-        required: false
-        default: '32'
+      quality:
+        description: Render mode
+        required: true
+        default: blockout
+        type: choice
+        options:
+          - blockout
+          - beauty
 
 permissions:
   contents: read
@@ -22,7 +21,7 @@ concurrency:
 
 jobs:
   render:
-    name: Render Home Blender 2.0 blockout
+    name: Render Home Blender 2.0 · ${{ inputs.quality }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -45,16 +44,19 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ inputs.samples || '16' }}' \
-            --max-width 1100 \
-            --engine workbench
+            --samples '${{ inputs.quality == 'beauty' && '32' || '16' }}' \
+            --max-width '${{ inputs.quality == 'beauty' && '1814' || '1100' }}' \
+            --engine '${{ inputs.quality == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
+        env:
+          QUALITY: ${{ inputs.quality }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import json
+          import os
           from PIL import Image, ImageDraw
 
           out = Path('/tmp/home-blender-v2')
@@ -67,6 +69,10 @@ jobs:
           for path in (preview_path, clay_path, blend_path, metadata_path):
               assert path.is_file() and path.stat().st_size > 1_000, path
 
+          quality = os.environ.get('QUALITY') or 'blockout'
+          expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
+          expected_max_width = 1814 if quality == 'beauty' else 1100
+
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
           clay = Image.open(clay_path).convert('RGB')
@@ -75,8 +81,8 @@ jobs:
           assert metadata['reference_size'] == list(reference.size)
           assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
           assert clay.size == preview.size, (clay.size, preview.size)
-          assert preview.width <= 1100
-          assert metadata['engine'] == 'workbench'
+          assert preview.width <= expected_max_width
+          assert metadata['engine'] == expected_engine
           assert metadata['object_count'] >= 80, metadata['object_count']
           assert metadata['named_groups']['architecture']
           assert metadata['named_groups']['props']
@@ -88,7 +94,7 @@ jobs:
 
           rows = [
               ('CANONICAL REFERENCE', scaled(reference)),
-              ('BLENDER 2.0 BLOCKOUT', scaled(preview)),
+              (f'BLENDER 2.0 {quality.upper()}', scaled(preview)),
               ('CLAY / GEOMETRY CHECK', scaled(clay)),
           ]
           label_h = 54
@@ -104,6 +110,7 @@ jobs:
           sheet.save(out / 'home-v2-comparison.png', optimize=True)
           reference.save(out / 'home-v2-reference.png', optimize=True)
           print(json.dumps({
+              'quality': quality,
               'reference_size': reference.size,
               'objects': metadata['object_count'],
               'camera': metadata['camera'],
@@ -113,7 +120,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: home-blender-v2-${{ github.run_number }}
+          name: home-blender-v2-${{ inputs.quality }}-${{ github.run_number }}
           path: /tmp/home-blender-v2/
           if-no-files-found: error
           retention-days: 7
