@@ -20,6 +20,7 @@ k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
 port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
 staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
+staging_api_url="${CHESS_STUDIO_STAGING_API_URL:-https://api-staging.chess-studio.shadowops.dpdns.org/api}"
 registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
 
 require() {
@@ -209,6 +210,36 @@ PY
   cors_attest
 }
 
+public_tunnel_attest() {
+  local expected="$1"
+  local release
+  release="$(mktemp)"
+
+  if ! curl --fail --silent --show-error \
+    --connect-timeout 3 --max-time 6 \
+    -H 'Accept: application/json' \
+    -H 'Cache-Control: no-cache' \
+    "${staging_api_url}/release?sha=${expected}" >"$release"; then
+    rm -f "$release"
+    return 1
+  fi
+
+  if python3 - "$release" "$expected" <<'PY'
+import json
+import pathlib
+import sys
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+expected = sys.argv[2].lower()
+raise SystemExit(0 if str(payload.get('build') or '').lower() == expected else 1)
+PY
+  then
+    rm -f "$release"
+    return 0
+  fi
+  rm -f "$release"
+  return 1
+}
+
 rollback() {
   local failed_sha="$1"
   if [[ -z "$previous_sha" || "$previous_sha" == "$failed_sha" ]]; then
@@ -274,12 +305,18 @@ fi
 
 for _ in $(seq 1 60); do
   if attest "$sha"; then
-    if ! /bin/bash "$tunnel_connector"; then
-      echo "OCI backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
-      exit 46
+    tunnel_action="reused"
+    if public_tunnel_attest "$sha"; then
+      echo "CHESS_STUDIO_TUNNEL_REUSED repo_ref=$sha"
+    else
+      tunnel_action="restarted"
+      if ! /bin/bash "$tunnel_connector"; then
+        echo "OCI backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
+        exit 46
+      fi
     fi
     record_successful_backend "$sha"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process image=pulled"
+    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
   sleep 2
