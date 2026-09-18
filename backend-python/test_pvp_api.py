@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
@@ -220,6 +220,35 @@ def test_challenge_guards_self_absent_opponent_and_wrong_acceptor():
     challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
     wrong = as_user(client, "alice", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
     assert wrong.status_code == 404
+
+
+def test_outgoing_challenge_cancel_is_idempotent_and_expiry_is_server_factual():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    created = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"})
+    assert created.status_code == 201
+    challenge = created.json()["challenge"]
+    assert challenge["direction"] == "outgoing"
+    created_at = datetime.fromisoformat(challenge["createdAt"].replace("Z", "+00:00"))
+    expires_at = datetime.fromisoformat(challenge["expiresAt"].replace("Z", "+00:00"))
+    assert (expires_at - created_at).total_seconds() == pvp_store.CHALLENGE_TTL_SECONDS
+
+    wrong_actor = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/cancel")
+    assert wrong_actor.status_code == 404
+
+    cancelled = as_user(client, "alice", "post", f"/api/pvp/challenges/{challenge['id']}/cancel")
+    assert cancelled.status_code == 200
+    assert cancelled.json()["challenge"]["status"] == "cancelled"
+    assert cancelled.json()["challenge"]["resolvedAt"]
+
+    repeated = as_user(client, "alice", "post", f"/api/pvp/challenges/{challenge['id']}/cancel")
+    assert repeated.status_code == 200
+    assert repeated.json()["challenge"]["status"] == "cancelled"
+
+    assert as_user(client, "alice", "get", "/api/pvp/lobby").json()["challenges"] == []
+    assert as_user(client, "bob", "get", "/api/pvp/lobby").json()["challenges"] == []
 
 
 def test_resignation_is_authoritative_and_settles_rating(monkeypatch):
