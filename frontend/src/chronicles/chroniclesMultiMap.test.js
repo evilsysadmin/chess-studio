@@ -27,7 +27,7 @@ describe('Chronicles multi-map campaign', () => {
     const menagerie = chroniclesMapById('menagerie-of-ash');
     const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
     const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
-    expect(menagerie.version).toBe(5);
+    expect(menagerie.version).toBe(6);
     expect(menagerie.enemies).toHaveLength(4);
     expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
     expect(menagerie.interactables.map((entry) => entry.id)).toEqual(expect.arrayContaining([
@@ -36,6 +36,10 @@ describe('Chronicles multi-map campaign', () => {
       'ash-secret-door',
     ]));
     expect(menagerie.treasures.map((entry) => entry.id)).toContain('ember-cache');
+    expect(menagerie.interactables.find((entry) => entry.id === 'ash-secret-door')).toMatchObject({
+      kind: 'secret-door',
+      proceduralModule: 'ash-vault-route',
+    });
     expect(gate.requirements.map((requirement) => requirement.key)).not.toContain('emberWispHp');
 
     const vault = chroniclesMapById('ash-vault');
