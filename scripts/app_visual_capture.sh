@@ -48,7 +48,9 @@ case "$mode" in
         has_producer chronicles-gameplay && specs+=(chronicles-gameplay-visual-artifact.spec.js)
       fi
 
-      if [[ "$experiments_scope" != "chronicles" ]] && has_producer experiments-hub; then
+      if [[ "$experiments_scope" == "pawnslug" ]] && has_producer experiments-hub; then
+        specs+=(pawn-slug-godot-visual-artifact.spec.js)
+      elif [[ "$experiments_scope" != "chronicles" ]] && has_producer experiments-hub; then
         specs+=(experiments-visual-artifact.spec.js)
       fi
 
