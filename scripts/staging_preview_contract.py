@@ -121,7 +121,9 @@ def main() -> int:
         ("admitted=false", "superseded clean exit"),
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
-        ("Backend · publish approved GHCR signal", "generation approved backend signal"),
+        ("Promote immutable image to approved staging signal", "generation approved backend signal"),
+        ("Wait for host signal controller fast-path", "generation backend signal fast-path"),
+        ("OCI fallback", "generation Run Command fallback marker"),
         ("oci-staging-approved", "generation GHCR approved signal tag"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
@@ -183,13 +185,13 @@ def main() -> int:
     ):
         require(oci_runtime_bundle, needle, label, errors)
 
-    names = ("prepare", "backend_signal", "backend", "frontend", "worker", "smoke", "summary")
+    names = ("prepare", "backend", "frontend", "worker", "smoke", "summary")
     blocks = split_jobs(staging_deploy, names, errors)
     if blocks:
         forbid(staging_deploy, "\n  render_reconcile:\n", "staging generation: Render reconcile volvió a job separado", errors)
         forbid(staging_deploy, "\n  parity:\n", "staging generation: parity volvió a job separado", errors)
 
-        for name in ("backend_signal", "backend", "frontend", "worker", "smoke", "summary"):
+        for name in ("backend", "frontend", "worker", "smoke", "summary"):
             require(
                 blocks[name],
                 "if: needs.prepare.outputs.admitted == 'true'",
@@ -197,13 +199,15 @@ def main() -> int:
                 errors,
             )
 
-        require(blocks["backend_signal"], "needs: prepare", "backend signal arranca tras admission", errors)
-        require(blocks["backend_signal"], "packages: write", "backend signal permiso GHCR estrecho", errors)
-        require(blocks["backend_signal"], "docker buildx imagetools create", "backend signal retag server-side", errors)
-        require(blocks["backend_signal"], "oci-staging-approved", "backend signal mutable tag", errors)
-        forbid(blocks["backend_signal"], "OCI_", "backend signal no usa credenciales OCI", errors)
-        require(blocks["backend"], "needs: [prepare, backend_signal]", "backend espera señal GHCR aprobada", errors)
-        require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
+        require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
+        require(blocks["backend"], OCI_MUTATION_MUTEX, "backend signal+deploy comparte mutex OCI con Terraform", errors)
+        require(blocks["backend"], "packages: write", "backend permiso GHCR estrecho", errors)
+        require(blocks["backend"], "docker buildx imagetools create", "backend signal retag server-side", errors)
+        require(blocks["backend"], "oci-staging-approved", "backend signal mutable tag", errors)
+        require(blocks["backend"], "id: signal", "backend signal convergence output", errors)
+        require(blocks["backend"], "steps.signal.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
+        require(blocks["backend"], "Restore cached OCI SDK toolchain for fallback", "backend OCI SDK sólo en fallback", errors)
+        require(blocks["backend"], "Deploy exact backend commit through Run Command fallback", "backend Run Command fallback", errors)
         for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
             forbid(blocks["backend"], needle, "backend no depende de Render", errors)
 
