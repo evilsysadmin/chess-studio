@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 DEFAULT_CELL = 256
 DEFAULT_COLS = 8
 DEFAULT_ROWS = 11
+GENERATED_SOURCE_SIZE = (1070, 1470)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
@@ -137,8 +138,16 @@ def checkerboard(size: tuple[int, int], tile: int = 16) -> Image.Image:
 def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: int, rows: int) -> dict:
     atlas = Image.open(source).convert("RGBA")
     expected = (cols * cell, rows * cell)
-    if atlas.size != expected:
-        raise SystemExit(f"{weapon}: atlas size {atlas.size}, expected {expected}")
+    source_size = atlas.size
+    normalized_from_source = False
+    if atlas.size == GENERATED_SOURCE_SIZE:
+        atlas = atlas.resize(expected, Image.Resampling.LANCZOS)
+        normalized_from_source = True
+    elif atlas.size != expected:
+        raise SystemExit(
+            f"{weapon}: atlas size {atlas.size}, expected strict {expected} "
+            f"or generated source {GENERATED_SOURCE_SIZE}"
+        )
 
     weapon_dir = out_root / weapon
     frames_dir = weapon_dir / "frames"
@@ -182,6 +191,8 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     return {
         "weapon": weapon,
         "source": source.name,
+        "sourceSize": list(source_size),
+        "normalizedFromGeneratedSource": normalized_from_source,
         "atlasSize": list(atlas.size),
         "cellSize": cell,
         "visibleFrames": len(frames),

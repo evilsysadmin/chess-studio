@@ -55,11 +55,15 @@ REQUIRED_MATTHIAS = (
     "matthias_machinegun_godot_strict_8x11_256_v6.png",
     "matthias_shotgun_godot_strict_8x11_256_v6.png",
     "matthias_panzerfaust_godot_strict_8x11_256_v6.png",
-    "matthias_pistol_godot_strict_8x11_256_v7-",
-    "matthias_machinegun_godot_strict_8x11_256_v7-",
-    "matthias_shotgun_godot_strict_8x11_256_v7-",
-    "matthias_panzerfaust_godot_strict_8x11_256_v7-",
+    "matthias_pistol_generated_source.png",
+    "matthias_machinegun_generated_source.png",
+    "matthias_shotgun_generated_source.png",
+    "matthias_panzerfaust_generated_source.png",
     "FULL_ATLAS_FALLBACK_URLS",
+    "V7_SOURCE_SIZE",
+    "_normalize_v7_source",
+    "Image.INTERPOLATE_LANCZOS",
+    '"full-v7-source"',
     '"shoot_up"',
     '"shoot_down"',
     '"shoot_crouch"',
@@ -453,7 +457,7 @@ def self_test() -> None:
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
-    assert any("matthias_machinegun_godot_strict_8x11_256_v7" in token for token in REQUIRED_MATTHIAS)
+    assert any("matthias_machinegun_generated_source.png" in token for token in REQUIRED_MATTHIAS)
     assert "_advance_locomotion" in REQUIRED_MATTHIAS
     assert "locomoting_now" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
