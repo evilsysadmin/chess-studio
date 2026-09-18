@@ -9,6 +9,7 @@ It never mutates runtime Home assets.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
 import sys
@@ -18,8 +19,8 @@ import bpy
 from mathutils import Vector
 
 
-CONTRACT = "home-blender-v2-blockout-v1"
-DEFAULT_REFERENCE = "frontend/src/assets/home-canonical/great-hall-dungeon.webp"
+CONTRACT = "home-blender-canon-20260918-v1"
+DEFAULT_REFERENCE = "scripts/blender/references/home_canon_20260918.webp.b64"
 
 
 def argv_after_double_dash() -> list[str]:
@@ -40,6 +41,14 @@ def parse_args() -> argparse.Namespace:
 
 def reset_scene() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
+
+
+def materialize_reference(reference: Path, out_dir: Path) -> Path:
+    if reference.suffix != ".b64":
+        return reference
+    target = out_dir / "home-canon-20260918.webp"
+    target.write_bytes(base64.b64decode(reference.read_text(encoding="utf-8").strip()))
+    return target
 
 
 def material(
@@ -249,19 +258,19 @@ def add_table_and_board(materials):
     metal = materials["brass"]
     banner = materials["banner"]
 
-    table_y = 1.25
-    table_z = 1.08
-    cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.05, 1.5, 0.15), wood, bevel=0.08)
-    cube("HOME_PROP_table_apron_front", (0.0, -0.18, 0.91), (2.78, 0.09, 0.16), wood, bevel=0.035)
-    cube("HOME_PROP_table_apron_back", (0.0, 2.68, 0.91), (2.78, 0.09, 0.16), wood, bevel=0.035)
-    for x in (-2.58, 2.58):
-        for y in (0.05, 2.45):
+    table_y = 1.05
+    table_z = 1.12
+    cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.72, 1.72, 0.18), wood, bevel=0.10)
+    cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
+    cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
+    for x in (-3.20, 3.20):
+        for y in (-0.30, 2.40):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
             cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
 
     # The canonical board nearly fills the table width; the earlier blockout
     # made it read like a travel set.
-    square = 0.47
+    square = 0.50
     board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
@@ -280,24 +289,24 @@ def add_table_and_board(materials):
     # Pull it forward so it cannot disappear inside the table and give it the
     # canonical pointed lower edge plus a narrow brass backing/trim.
     drape_points = [
-        (-1.62, 1.20),
-        (1.62, 1.20),
-        (1.62, 0.36),
-        (0.0, 0.08),
-        (-1.62, 0.36),
+        (-1.92, 1.28),
+        (1.92, 1.28),
+        (1.92, 0.22),
+        (0.0, -0.10),
+        (-1.92, 0.22),
     ]
-    flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.43, 0.08, metal, bevel=0.045)
+    flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.68, 0.08, metal, bevel=0.045)
     flat_panel(
         "HOME_PROP_table_banner",
         [(x * 0.955, 0.64 + (z - 0.64) * 0.92) for x, z in drape_points],
-        -0.475,
+        -0.725,
         0.055,
         banner,
         bevel=0.035,
     )
 
     # Large canonical horse-head relief on the table drape.
-    emblem_y = -0.515
+    emblem_y = -0.765
     sphere("HOME_PROP_table_horse_head", (-0.10, emblem_y, 0.73), (0.28, 0.040, 0.24), metal)
     cube("HOME_PROP_table_horse_muzzle", (-0.31, emblem_y, 0.66), (0.15, 0.032, 0.070), metal, bevel=0.022)
     curve_tube(
@@ -311,9 +320,9 @@ def add_table_and_board(materials):
     cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.32), (0.13, 0.028, 0.040), metal, bevel=0.01)
 
     for side in (-1, 1):
-        x = side * 3.55
-        cube(f"HOME_PROP_bench_frame_{side}", (x, 1.2, 0.50), (0.62, 1.45, 0.12), wood, bevel=0.045)
-        cube(f"HOME_PROP_bench_cushion_{side}", (x, 1.2, 0.72), (0.59, 1.38, 0.18), banner, bevel=0.11)
+        x = side * 4.18
+        cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
+        cube(f"HOME_PROP_bench_cushion_{side}", (x, 0.98, 0.74), (0.69, 1.55, 0.20), banner, bevel=0.12)
         for by in (0.08, 2.32):
             for dx in (-0.40, 0.40):
                 bx = x + dx
@@ -380,10 +389,11 @@ def add_fireplace(name: str, x: float, materials):
 def add_bookshelf(materials):
     wood = materials["wood"]
     brass = materials["brass"]
-    x, y = -2.55, 6.22
-    cube("HOME_PROP_library_back", (x, y, 2.35), (1.45, 0.28, 2.25), wood, bevel=0.04)
-    for idx, z in enumerate((0.5, 1.18, 1.86, 2.54, 3.22, 3.9, 4.48)):
-        cube(f"HOME_PROP_library_shelf_{idx}", (x, y - 0.33, z), (1.45, 0.12, 0.065), brass, bevel=0.02)
+    x, y = -2.65, 6.20
+    cube("HOME_PROP_library_back", (x, y, 2.55), (1.70, 0.34, 2.48), materials["dark"], bevel=0.05)
+    cube("HOME_PROP_library_frame", (x, y - 0.22, 2.55), (1.58, 0.22, 2.38), wood, bevel=0.06)
+    for idx, z in enumerate((0.55, 1.25, 1.95, 2.65, 3.35, 4.05, 4.75)):
+        cube(f"HOME_PROP_library_shelf_{idx}", (x, y - 0.42, z), (1.55, 0.12, 0.075), wood, bevel=0.025)
     for side in (-1, 1):
         cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), brass, bevel=0.025)
     # Book masses only: enough to match the canonical silhouette before detailing.
@@ -490,9 +500,9 @@ def add_side_furnishings(materials):
     steel = materials["steel"]
 
     # Left lived-in corner: sofa, side table, helmet/candle and book stack.
-    cube("HOME_PROP_left_sofa_base", (-7.15, 0.58, 0.38), (1.18, 0.82, 0.36), leather, bevel=0.12)
-    cube("HOME_PROP_left_sofa_back", (-7.72, 1.08, 1.08), (0.18, 0.78, 0.70), leather, bevel=0.10)
-    cube("HOME_PROP_left_sofa_arm", (-6.25, 0.60, 0.72), (0.18, 0.70, 0.42), leather, bevel=0.10)
+    cube("HOME_PROP_left_sofa_base", (-7.75, -0.05, 0.42), (1.55, 1.05, 0.40), leather, bevel=0.14)
+    cube("HOME_PROP_left_sofa_back", (-8.42, 0.58, 1.32), (0.22, 1.02, 0.92), leather, bevel=0.12)
+    cube("HOME_PROP_left_sofa_arm", (-6.48, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
     cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
     cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
@@ -516,14 +526,14 @@ def add_side_furnishings(materials):
 
     # Right cabinet + globe, pulled slightly forward so the globe actually reads
     # beside the right fireplace at canonical camera distance.
-    gx, gy = 7.05, 4.10
+    gx, gy = 7.18, 3.86
     cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
-    sphere("HOME_PROP_globe", (gx, gy, 1.82), (0.68, 0.68, 0.68), globe)
+    sphere("HOME_PROP_globe", (gx, gy, 2.00), (0.82, 0.82, 0.82), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
         [
-            (gx + 0.78 * math.cos(i * math.pi / 16), gy, 1.82 + 0.78 * math.sin(i * math.pi / 16))
+            (gx + 0.94 * math.cos(i * math.pi / 16), gy, 2.00 + 0.94 * math.sin(i * math.pi / 16))
             for i in range(17)
         ],
         0.025,
@@ -733,7 +743,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_window_mullion_h_{idx}", (7.78, 6.46, z), (0.88, 0.045, 0.030), materials["brass"], bevel=0.012)
     cube("HOME_PROP_window_sill", (7.78, 6.20, 1.96), (1.12, 0.28, 0.12), materials["stone"], bevel=0.04)
 
-    for name, x in (("left", -4.7), ("center", -0.15), ("right", 3.05), ("far_right", 7.2)):
+    for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
 
     add_table_and_board(materials)
@@ -743,9 +753,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_stairs(materials)
 
     # Chandelier and warm pools of light.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.45, 4.78), 0.055, 1.46, materials["brass"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 4.90), 0.065, 1.55, materials["brass"])
     ring_points = [
-        (1.52 * math.cos(i * math.tau / 24), 2.45 + 1.02 * math.sin(i * math.tau / 24), 4.05)
+        (1.95 * math.cos(i * math.tau / 24), 2.20 + 1.20 * math.sin(i * math.tau / 24), 4.03)
         for i in range(25)
     ]
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.060, materials["brass"])
@@ -754,14 +764,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.45 + 1.02 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.45, 5.10), (rx, ry, 4.08)],
+            [(0.0, 2.20, 5.28), (rx, ry, 4.08)],
             0.025,
             materials["brass"],
         )
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.40 * math.cos(angle)
-        cy = 2.45 + 0.94 * math.sin(angle)
+        cx = 1.82 * math.cos(angle)
+        cy = 2.20 + 1.10 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, 4.20), (0.050, 0.050, 0.20), materials["fire"])
         add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.08, 4.30), 34, (1.0, 0.52, 0.20), radius=0.28)
 
@@ -791,12 +801,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 180, (0.48, 0.40, 0.32), 8.0, target=(0, 1.4, 0.15))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
-    camera_data.lens = 45.0
+    camera_data.lens = 48.0
     camera_data.sensor_width = 36.0
     camera = bpy.data.objects.new("HOME_CAMERA_CANONICAL", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0.0, -16.45, 4.18)
-    target = (0.0, 2.55, 1.92)
+    camera.location = (0.0, -15.35, 3.62)
+    target = (0.0, 2.35, 1.70)
     look_at(camera, target)
     scene.camera = camera
 
@@ -818,12 +828,13 @@ def render(scene, path: Path) -> None:
 def main() -> None:
     args = parse_args()
     root = Path.cwd()
-    reference = (root / args.reference).resolve()
-    if not reference.is_file():
-        raise SystemExit(f"Canonical Home reference not found: {reference}")
-
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    reference_source = (root / args.reference).resolve()
+    if not reference_source.is_file():
+        raise SystemExit(f"Canonical Home reference not found: {reference_source}")
+    reference = materialize_reference(reference_source, out_dir)
 
     scene, camera, target, width, height, render_width, render_height = build_scene(reference, args.samples, args.max_width, args.engine)
 
@@ -845,6 +856,7 @@ def main() -> None:
     metadata = {
         "contract": CONTRACT,
         "reference": args.reference,
+        "reference_contract": "user-approved-home-canon-2026-09-18",
         "reference_size": [width, height],
         "render_size": [render_width, render_height],
         "engine": args.engine,
@@ -863,7 +875,7 @@ def main() -> None:
             "lights": sorted(o.name for o in bpy.data.objects if o.name.startswith("HOME_LIGHT_")),
         },
         "notes": [
-            "Blockout only: camera, silhouette and destination masses before detail.",
+            "The 2026-09-18 user-approved mock is the visual source of truth.",
             "The current runtime Home is intentionally untouched and remains the rollback baseline.",
         ],
     }
