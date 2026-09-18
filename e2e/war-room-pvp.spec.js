@@ -3,7 +3,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-function matchPayload() {
+function matchPayload(overrides = {}) {
   return {
     id: 'pvp-e2e-1',
     white: 'e2e',
@@ -21,6 +21,7 @@ function matchPayload() {
     createdAt: '2026-09-16T05:00:00Z',
     updatedAt: '2026-09-16T05:00:00Z',
     clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    ...overrides,
   };
 }
 
@@ -49,15 +50,16 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
       pollAfterMs: 3000,
     }),
   }));
+  let liveMatch = matchPayload();
   await page.route('**/api/pvp/challenges/challenge-e2e-1/accept', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ match: matchPayload() }),
+    body: JSON.stringify({ match: liveMatch }),
   }));
   await page.route('**/api/pvp/matches/pvp-e2e-1', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ match: matchPayload(), pollAfterMs: 1250 }),
+    body: JSON.stringify({ match: liveMatch, pollAfterMs: 1250 }),
   }));
 
   await login(page);
@@ -97,4 +99,25 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   const roomCenter = roomBox.x + roomBox.width / 2;
   const boardCenter = boardBox.x + boardBox.width / 2;
   expect(Math.abs(boardCenter - roomCenter) / roomBox.width).toBeLessThan(0.12);
+
+  liveMatch = matchPayload({
+    status: 'finished',
+    result: '0-1',
+    endReason: 'timeout',
+    yourTurn: false,
+    revision: 1,
+    history: [
+      { ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' },
+      { ply: 2, uci: 'e7e5', san: 'e5', by: 'bob' },
+    ],
+    clock: { id: '10+0', whiteMs: 0, blackMs: 584000, incrementMs: 0, runningColor: null },
+  });
+
+  const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
+  await expect(debrief).toBeVisible({ timeout: 5_000 });
+  await expect(debrief).toContainText('MATTHIAS // DEBRIEF 1 VS 1');
+  await expect(debrief).toContainText('Derrota');
+  await expect(debrief).toContainText('Perdiste por tiempo');
+  await expect(debrief).toContainText('Contra bob · 1210 rating · Tiempo · 2 jugadas registradas');
+  await expect(debrief.getByRole('button', { name: 'Volver al lobby' })).toBeVisible();
 });
