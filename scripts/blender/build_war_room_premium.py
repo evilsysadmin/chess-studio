@@ -1524,6 +1524,7 @@ def export_shell(path):
         is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
             "WR_ANCHOR_fireplace_practical",
             "WR_ANCHOR_right_fireplace_practical",
+            "WR_ANCHOR_chandelier_practical",
             "WR_ANCHOR_window_moonlight",
         }
         if is_static_mesh or is_runtime_anchor:
