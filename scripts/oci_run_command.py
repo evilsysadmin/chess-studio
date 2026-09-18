@@ -175,7 +175,7 @@ run_deploy() {{
 }}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
-  awk -v runtime="$1" '/^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
+  awk -v runtime="$1" '/^OCI_AGENT_DIAG / {{print}} /^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
 }}
 
 if run_deploy; then
@@ -642,6 +642,7 @@ def self_test() -> None:
     assert "emit_success installed" in deploy
     assert "OCI_RUN_COMMAND_AGENT version=%s" in deploy
     assert "snap list oracle-cloud-agent" in deploy
+    assert "/^OCI_AGENT_DIAG / {print}" in deploy
     assert "emit_success object-storage" in deploy
     assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
     assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
