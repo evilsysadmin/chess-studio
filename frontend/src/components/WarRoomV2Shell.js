@@ -14,15 +14,21 @@ export function warRoomV2ModelUrl({
   return `${baseUrl}${separator}build=${encodeURIComponent(version)}`;
 }
 
+export function warRoomV2EnvMapIntensity(materialName = '') {
+  const name = String(materialName || '').toLowerCase();
+  if (name.includes('brass') || name.includes('armor')) return 0.88;
+  if (name.includes('window')) return 0.62;
+  if (name.includes('stone')) return 0.20;
+  if (name.includes('leather') || name.includes('velvet') || name.includes('rug')) return 0.16;
+  if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) return 0.32;
+  return 0.28;
+}
+
 function tuneRuntimeMaterial(material) {
   if (!material?.isMeshStandardMaterial) return;
-  const name = String(material.name || '').toLowerCase();
-  if (name.includes('brass') || name.includes('armor')) material.envMapIntensity = 1.05;
-  else if (name.includes('window')) material.envMapIntensity = 0.78;
-  else if (name.includes('stone')) material.envMapIntensity = 0.34;
-  else if (name.includes('leather') || name.includes('velvet') || name.includes('rug')) material.envMapIntensity = 0.30;
-  else if (name.includes('walnut') || name.includes('wood') || name.includes('parquet')) material.envMapIntensity = 0.52;
-  else material.envMapIntensity = 0.46;
+  material.envMapIntensity = warRoomV2EnvMapIntensity(material.name);
+  material.userData ||= {};
+  material.userData.warRoomV2Finish = 'nocturnal-walnut-v2';
   material.needsUpdate = true;
 }
 
@@ -79,7 +85,7 @@ export async function installWarRoomV2Shell(
     });
   });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-fidelity-v2';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-nocturnal-v3';
   scene.add(root);
 
   return () => {
