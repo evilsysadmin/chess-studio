@@ -226,107 +226,107 @@
       "type": "scout"
     },
     {
-      "x": 1360,
+      "x": 1320,
       "type": "pawn"
     },
     {
-      "x": 1580,
+      "x": 1510,
       "type": "knight"
     },
     {
-      "x": 1790,
+      "x": 1690,
       "type": "commando"
     },
     {
-      "x": 1990,
+      "x": 1870,
       "type": "rook"
     },
     {
-      "x": 2190,
+      "x": 2050,
       "type": "pawn"
     },
     {
-      "x": 2380,
+      "x": 2230,
       "type": "shield"
     },
     {
-      "x": 2570,
+      "x": 2410,
       "type": "grenadier"
     },
     {
-      "x": 2750,
+      "x": 2590,
       "type": "knight"
     },
     {
-      "x": 2920,
+      "x": 2770,
       "type": "bishop"
     },
     {
-      "x": 3100,
+      "x": 2950,
       "type": "pawn"
     },
     {
-      "x": 3260,
+      "x": 3130,
       "type": "scout"
     },
     {
-      "x": 3440,
+      "x": 3310,
       "type": "commando"
     },
     {
-      "x": 3610,
+      "x": 3490,
       "type": "rook"
     },
     {
-      "x": 3780,
+      "x": 3670,
       "type": "pawn"
     },
     {
-      "x": 3950,
+      "x": 3850,
       "type": "queen"
     },
     {
-      "x": 4110,
+      "x": 4030,
       "type": "knight"
     },
     {
-      "x": 4270,
+      "x": 4210,
       "type": "shield"
     },
     {
-      "x": 4430,
+      "x": 4390,
       "type": "pawn"
     },
     {
-      "x": 4590,
+      "x": 4510,
       "type": "grenadier"
     },
     {
-      "x": 4750,
+      "x": 4590,
       "type": "rook"
     },
     {
-      "x": 4900,
+      "x": 4670,
       "type": "bishop"
     },
     {
-      "x": 5050,
+      "x": 4750,
       "type": "commando"
     },
     {
-      "x": 5200,
+      "x": 4830,
       "type": "pawn"
     },
     {
-      "x": 5335,
+      "x": 4910,
       "type": "knight"
     },
     {
-      "x": 5450,
+      "x": 4990,
       "type": "scout"
     },
     {
-      "x": 5520,
+      "x": 5070,
       "type": "pawn"
     }
   ],
@@ -363,16 +363,16 @@
     }
   ],
   "boss": {
-    "x": 5000,
+    "x": 5350,
     "hp": 820,
     "width": 190,
     "height": 150,
-    "trigger_x": 4300,
-    "arena_left": 4450,
-    "arena_right": 5480
+    "trigger_x": 5150,
+    "arena_left": 5200,
+    "arena_right": 5580
   },
   "extraction": {
-    "x": 5470
+    "x": 5520
   },
   "backdrop": {
     "preset": "harbor_dusk",
