@@ -1,0 +1,145 @@
+name: Pawn Slug · Godot strict Matthias atlas
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/render_pawn_slug_matthias_godot_crouch.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_common.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
+      - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/art/pack_pawn_slug_godot_strict_v6.py'
+      - '.github/workflows/pawn-slug-godot-strict-atlas.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/blender/render_pawn_slug_matthias_godot_crouch.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_common.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
+      - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/art/pack_pawn_slug_godot_strict_v6.py'
+      - '.github/workflows/pawn-slug-godot-strict-atlas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-godot-strict-atlas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PAWN_SLUG_CANONICAL_SAMPLES: '32'
+
+jobs:
+  build-strict-v6:
+    name: Build strict-v6 · ${{ matrix.weapon }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+
+      - name: Resolve strict-v5 base atlas
+        id: base
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          case "$WEAPON" in
+            pistol)
+              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png'
+              ;;
+            machinegun)
+              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png'
+              ;;
+            shotgun)
+              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png'
+              ;;
+            panzerfaust)
+              url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png'
+              ;;
+            *) exit 2 ;;
+          esac
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Download strict-v5 base
+        env:
+          BASE_URL: ${{ steps.base.outputs.url }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-godot-strict
+          curl --fail --silent --show-error --location \
+            --retry 3 --retry-delay 1 \
+            "$BASE_URL" \
+            --output "/tmp/pawn-slug-godot-strict/${WEAPON}-v5.png"
+
+      - name: Render authored 256px combat crouch
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          OUT="/tmp/pawn-slug-godot-strict/${WEAPON}-crouch"
+          mkdir -p "$OUT"
+          blender --background -noaudio \
+            --python-expr "import bpy, os; scene=bpy.context.scene; samples=max(1, int(os.environ.get('PAWN_SLUG_CANONICAL_SAMPLES', '32'))); eevee=getattr(scene, 'eevee', None); setattr(eevee, 'taa_render_samples', samples) if eevee is not None and hasattr(eevee, 'taa_render_samples') else None; scene.render.use_persistent_data=True" \
+            --python scripts/blender/render_pawn_slug_matthias_godot_crouch.py \
+            -- --output-dir "$OUT" --weapon "$WEAPON"
+          test -s "$OUT/matthias_${WEAPON}_crouch_strict_00.png"
+
+      - name: Pack strict 8x11 atlas
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict"
+          OUT="$ROOT/matthias_${WEAPON}_godot_strict_8x11_256_v6.png"
+          python3 scripts/art/pack_pawn_slug_godot_strict_v6.py \
+            --base-atlas "$ROOT/${WEAPON}-v5.png" \
+            --crouch-frame "$ROOT/${WEAPON}-crouch/matthias_${WEAPON}_crouch_strict_00.png" \
+            --output "$OUT"
+          python3 - "$OUT" <<'PY'
+          import sys
+          from PIL import Image
+          image = Image.open(sys.argv[1])
+          assert image.size == (2048, 2816), image.size
+          print("OK strict-v6 dimensions", image.size)
+          PY
+
+      - name: Publish immutable strict-v6 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ATLAS="/tmp/pawn-slug-godot-strict/matthias_${WEAPON}_godot_strict_8x11_256_v6.png"
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$ATLAS" \
+            --logical-id "pawnSlug.godot.matthias.${WEAPON}.strictV6" \
+            --prefix "pawn-slug-godot/matthias/strict-v6/${WEAPON}" \
+            | tee "/tmp/pawn-slug-godot-strict-${WEAPON}-publish.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v6-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict/matthias_${{ matrix.weapon }}_godot_strict_8x11_256_v6.png
+            /tmp/pawn-slug-godot-strict/${{ matrix.weapon }}-crouch/
+            /tmp/pawn-slug-godot-strict-${{ matrix.weapon }}-publish.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
