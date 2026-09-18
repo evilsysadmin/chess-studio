@@ -38,6 +38,8 @@ runs:
         steps.scope.outputs.hans == 'true' ||
         steps.scope.outputs.chesscom == 'true'
       uses: ./.github/actions/setup-browser-e2e
+      env:
+        VITE_WAR_ROOM_V2_ENABLE: 'true'
       with:
         browser-scope: chromium
         build-frontend: 'true'
