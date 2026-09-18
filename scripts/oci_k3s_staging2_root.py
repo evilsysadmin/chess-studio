@@ -161,6 +161,112 @@ def _release_from_payload(payload: dict) -> str:
     return value if SHA_RE.fullmatch(value) else ""
 
 
+def _clean_diag(value: object, limit: int = 260) -> str:
+    text = str(value or "").replace("\\r", " ").replace("\\n", " ").strip()
+    return text[:limit]
+
+
+def _failure_diagnostics() -> None:
+    """Emit bounded workload state without pod logs or Secret contents."""
+    print("OCI_K3S_STAGING2_DIAG_BEGIN", file=sys.stderr, flush=True)
+    deployment = _deployment_payload()
+    if deployment:
+        status_payload = deployment.get("status") or {}
+        print(
+            "OCI_K3S_STAGING2_DIAG_DEPLOYMENT "
+            f"replicas={int(status_payload.get('replicas') or 0)} "
+            f"ready={int(status_payload.get('readyReplicas') or 0)} "
+            f"available={int(status_payload.get('availableReplicas') or 0)} "
+            f"unavailable={int(status_payload.get('unavailableReplicas') or 0)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        for condition in status_payload.get("conditions") or []:
+            if not isinstance(condition, dict):
+                continue
+            print(
+                "OCI_K3S_STAGING2_DIAG_DEPLOYMENT_CONDITION "
+                f"type={_clean_diag(condition.get('type'), 64)} "
+                f"status={_clean_diag(condition.get('status'), 32)} "
+                f"reason={_clean_diag(condition.get('reason'), 96)} "
+                f"message={_clean_diag(condition.get('message'))}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    pods_raw = _kubectl(
+        "-n", NAMESPACE, "get", "pods",
+        "-l", "app.kubernetes.io/name=chess-studio-backend,chess-studio.shadowops/track=staging2",
+        "-o", "json", check=False,
+    )
+    if pods_raw.returncode == 0:
+        try:
+            pods = json.loads(pods_raw.stdout).get("items") or []
+        except (json.JSONDecodeError, AttributeError):
+            pods = []
+        for pod in pods[:4]:
+            if not isinstance(pod, dict):
+                continue
+            metadata = pod.get("metadata") or {}
+            pod_status = pod.get("status") or {}
+            print(
+                "OCI_K3S_STAGING2_DIAG_POD "
+                f"name={_clean_diag(metadata.get('name'), 96)} "
+                f"phase={_clean_diag(pod_status.get('phase'), 32)} "
+                f"reason={_clean_diag(pod_status.get('reason'), 96)} "
+                f"message={_clean_diag(pod_status.get('message'))}",
+                file=sys.stderr,
+                flush=True,
+            )
+            for container in pod_status.get("containerStatuses") or []:
+                if not isinstance(container, dict):
+                    continue
+                state = container.get("state") or {}
+                state_name = "unknown"
+                state_payload: dict = {}
+                for candidate in ("waiting", "terminated", "running"):
+                    candidate_payload = state.get(candidate)
+                    if isinstance(candidate_payload, dict):
+                        state_name = candidate
+                        state_payload = candidate_payload
+                        break
+                print(
+                    "OCI_K3S_STAGING2_DIAG_CONTAINER "
+                    f"name={_clean_diag(container.get('name'), 64)} "
+                    f"ready={bool(container.get('ready'))} "
+                    f"restarts={int(container.get('restartCount') or 0)} "
+                    f"state={state_name} "
+                    f"reason={_clean_diag(state_payload.get('reason'), 96)} "
+                    f"message={_clean_diag(state_payload.get('message'))}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+    events_raw = _kubectl(
+        "-n", NAMESPACE, "get", "events", "--sort-by=.lastTimestamp", "-o", "json",
+        check=False,
+    )
+    if events_raw.returncode == 0:
+        try:
+            events = json.loads(events_raw.stdout).get("items") or []
+        except (json.JSONDecodeError, AttributeError):
+            events = []
+        for event in events[-8:]:
+            if not isinstance(event, dict):
+                continue
+            involved = event.get("involvedObject") or {}
+            print(
+                "OCI_K3S_STAGING2_DIAG_EVENT "
+                f"type={_clean_diag(event.get('type'), 32)} "
+                f"reason={_clean_diag(event.get('reason'), 96)} "
+                f"object={_clean_diag(involved.get('kind'), 48)}/{_clean_diag(involved.get('name'), 96)} "
+                f"message={_clean_diag(event.get('message'))}",
+                file=sys.stderr,
+                flush=True,
+            )
+    print("OCI_K3S_STAGING2_DIAG_END", file=sys.stderr, flush=True)
+
+
 def _rollout_wait() -> None:
     _kubectl(
         "-n", NAMESPACE, "rollout", "status", f"deployment/{DEPLOYMENT}",
@@ -295,7 +401,21 @@ def deploy(sha: str) -> None:
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
         _write_state(sha)
-    except BaseException:
+    except BaseException as exc:
+        print(
+            "OCI_K3S_STAGING2_DEPLOY_FAILED "
+            f"type={type(exc).__name__} detail={_clean_diag(exc, 500)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            _failure_diagnostics()
+        except BaseException as diag_exc:
+            print(
+                f"OCI_K3S_STAGING2_DIAG_FAILED detail={_clean_diag(diag_exc, 300)}",
+                file=sys.stderr,
+                flush=True,
+            )
         try:
             _restore(previous_sha)
         except BaseException as rollback_exc:
@@ -367,6 +487,12 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_MEM > MIN_POST_MEM
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
+    source = Path(__file__).read_text(encoding="utf-8")
+    assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
+    assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
+    assert "OCI_K3S_STAGING2_DIAG_EVENT" in source
+    assert "kubectl logs" not in source
+    assert "get secret" not in source
     print("OCI K3s staging2 root capability self-test: OK")
 
 
