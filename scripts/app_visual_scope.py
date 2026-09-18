@@ -272,7 +272,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
-    pawn = classify(["frontend/src/pawnSlugThree.js"])
+    pawn = classify(["games/pawn-slug-godot/main.gd"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
