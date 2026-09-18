@@ -90,11 +90,14 @@ test('Roster 1v1 · un reto saliente con contrato nuevo puede cancelarse', async
   await page.getByRole('button', { name: 'Abrir roster 1 contra 1 de War Room' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
-  await expect(lobby.getByText('RETO ENVIADO', { exact: true })).toBeVisible();
-  await expect(lobby.getByText(/caduca/i)).toBeVisible();
+  const outgoingChallenge = lobby.locator('.pvp-lobby__challenge').filter({ hasText: 'bob' });
+  const cancelButton = outgoingChallenge.getByRole('button', { name: 'Cancelar reto a bob' });
+  await expect(outgoingChallenge.getByText('RETO ENVIADO', { exact: true })).toBeVisible();
+  await expect(outgoingChallenge.getByText(/caduca/i)).toBeVisible();
+  await expect(cancelButton).toBeVisible();
 
-  await lobby.getByRole('button', { name: 'Cancelar reto a bob' }).click();
+  await cancelButton.click();
 
   await expect.poll(() => cancelled).toBe(true);
-  await expect(lobby.getByText('RETO ENVIADO', { exact: true })).toBeHidden();
+  await expect(outgoingChallenge).toBeHidden();
 });
