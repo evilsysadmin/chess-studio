@@ -29,14 +29,14 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
   return {
     fire: {
       color: 0xff8a38,
-      intensity: coarsePointer ? 1.35 : 2.05,
-      distance: 10.5,
+      intensity: coarsePointer ? 1.50 : 2.45,
+      distance: 11.3,
       decay: 2,
     },
     moon: {
       color: 0x6f98ff,
-      intensity: coarsePointer ? 1.65 : 2.75,
-      distance: 13.5,
+      intensity: coarsePointer ? 1.75 : 2.95,
+      distance: 13.9,
       decay: 2,
     },
   };
