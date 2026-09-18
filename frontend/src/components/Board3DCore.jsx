@@ -31,12 +31,7 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
-import {
-  buildClassicWarRoomShell,
-  createWarRoomClassicShellController,
-  shouldShowClassicWarRoomShell,
-  startWarRoomVariantScene,
-} from './WarRoomSceneVariant.js';
+import { createClassicWarRoomShellController, shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -295,19 +290,10 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const classicShellController = createWarRoomClassicShellController({
-      eager: shouldShowClassicWarRoomShell({
-        selectable: warRoomVariantSelectable,
-        variant: warRoomVariant,
-      }),
-      build: () => buildClassicWarRoomShell({
-        scene,
-        boardGroup,
-        theme,
-        whiteSide,
-        renderLite,
-      }).classicShellObjects,
-    });
+    const classicShellController = createClassicWarRoomShellController(
+      { scene, boardGroup, theme, whiteSide, renderLite },
+      shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
+    );
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
@@ -738,8 +724,7 @@ function Board3DCanvas({
     if (!state) return undefined;
     return startWarRoomVariantScene({
       scene: state.scene,
-      classicShellObjects: state.classicShellController.current(),
-      ensureClassicShell: state.classicShellController.ensure,
+      classicShellController: state.classicShellController,
       variant: warRoomVariant,
       selectable: warRoomVariantSelectable,
       whiteSide: state.whiteSide,
