@@ -22,7 +22,7 @@ MIN_OBSTACLES = 6
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
-ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy"}
+ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "collapse_bridge", "waterfall", "tunnel_portal"}
 REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy"}
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
@@ -238,10 +238,34 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             speed = float(setpiece.get("speed", 0))
             if not 0 <= start < width or not 0 <= end < width or not 80 <= speed <= 520:
                 errors.append(f"{stage_name}: convoy {setpiece_id} has invalid route/speed")
+        elif kind == "collapse_bridge":
+            x = float(setpiece.get("x", -1)); y = float(setpiece.get("y", -1))
+            w = float(setpiece.get("w", 0)); h = float(setpiece.get("h", 0))
+            warning = float(setpiece.get("warning", 0)); gravity = float(setpiece.get("fall_gravity", 0))
+            if w < 100 or h <= 0 or not 0.20 <= warning <= 2.5 or not 300 <= gravity <= 1800:
+                errors.append(f"{stage_name}: collapse bridge {setpiece_id} has invalid size/timing")
+            if x < 0 or x + w > width or y < 0 or y + h > floor_y:
+                errors.append(f"{stage_name}: collapse bridge {setpiece_id} leaves playable bounds")
+            if trigger_x <= x + w:
+                errors.append(f"{stage_name}: collapse bridge {setpiece_id} must trigger after Matthias crosses it")
+        elif kind in {"waterfall", "tunnel_portal"}:
+            x = float(setpiece.get("x", -1)); y = float(setpiece.get("y", -1))
+            w = float(setpiece.get("w", 0)); h = float(setpiece.get("h", 0))
+            if w <= 0 or h <= 0 or x - w * 0.5 < 0 or x + w * 0.5 > width:
+                errors.append(f"{stage_name}: section landmark {setpiece_id} has invalid width/x")
+            if kind == "waterfall":
+                if y < 0 or y + h > floor_y:
+                    errors.append(f"{stage_name}: waterfall {setpiece_id} leaves playable vertical bounds")
+            elif y - h < 0 or y > floor_y + 1:
+                errors.append(f"{stage_name}: tunnel portal {setpiece_id} leaves playable vertical bounds")
 
     missing_setpieces = sorted(REQUIRED_SETPIECE_TYPES - kinds)
     if missing_setpieces:
         errors.append(f"{stage_name}: missing set-piece types: " + ", ".join(missing_setpieces))
+    if "collapse_bridge" not in kinds:
+        errors.append(f"{stage_name}: needs at least one collapsing traversal set piece")
+    if not ({"waterfall", "tunnel_portal"} & kinds):
+        errors.append(f"{stage_name}: needs at least one section-transition landmark")
 
     pickups = stage.get("pickups") or []
     if not any(str(p.get("type", "")) == "machinegun" for p in pickups if isinstance(p, dict)):
@@ -309,6 +333,8 @@ def self_test() -> None:
             {"id": "bunker", "type": "bunker_turret", "x": 2500, "y": 610, "w": 126, "h": 82, "hp": 180, "trigger_x": 2000},
             {"id": "wave", "type": "reinforcement_wave", "trigger_x": 3000, "enemies": [{"x": 2900, "type": "pawn"}]},
             {"id": "truck", "type": "convoy", "trigger_x": 1600, "start_x": 2200, "end_x": 1300, "y": 606, "speed": 260},
+            {"id": "bridge", "type": "collapse_bridge", "x": 3400, "y": 340, "w": 180, "h": 24, "trigger_x": 3620, "warning": 0.7, "fall_gravity": 980},
+            {"id": "portal", "type": "tunnel_portal", "x": 3900, "y": 610, "w": 320, "h": 220},
         ],
         "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
         "backdrop": {"layers": [

@@ -124,8 +124,15 @@ REQUIRED_SETPIECE_VISUAL = (
     '"moving_platform"',
     '"bunker_turret"',
     '"convoy"',
+    '"collapse_bridge"',
+    '"waterfall"',
+    '"tunnel_portal"',
     "func pulse_fire",
     "func set_destroyed",
+    "func set_warning",
+    "func _draw_collapse_bridge",
+    "func _draw_waterfall",
+    "func _draw_tunnel_portal",
 )
 REQUIRED_SETPIECE_MAIN = (
     "SetpieceVisual",
@@ -136,6 +143,10 @@ REQUIRED_SETPIECE_MAIN = (
     "_update_convoy_setpiece",
     "AnimatableBody2D.new()",
     "_moving_platform_rects",
+    "_collapsing_platform_rects",
+    "_dynamic_platform_rects",
+    '"state": "idle"',
+    '"state"] = "falling"',
 )
 
 REQUIRED_PAUSE_MENU = (

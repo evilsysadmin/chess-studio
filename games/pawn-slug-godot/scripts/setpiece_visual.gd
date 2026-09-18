@@ -9,6 +9,8 @@ var _theme := "night_front"
 var _health_ratio := 1.0
 var _fire_flash := 0.0
 var _destroyed := false
+var _warning := false
+var _elapsed := 0.0
 
 func configure(kind: String, size: Vector2, theme: String) -> void:
     _kind = kind
@@ -28,11 +30,16 @@ func set_destroyed(value: bool) -> void:
     _destroyed = value
     queue_redraw()
 
-func _process(delta: float) -> void:
-    if _fire_flash <= 0.0:
-        return
-    _fire_flash = maxf(0.0, _fire_flash - delta)
+func set_warning(value: bool) -> void:
+    _warning = value
     queue_redraw()
+
+func _process(delta: float) -> void:
+    _elapsed += delta
+    if _fire_flash > 0.0:
+        _fire_flash = maxf(0.0, _fire_flash - delta)
+    if _fire_flash > 0.0 or _warning or _kind == "waterfall":
+        queue_redraw()
 
 func _draw() -> void:
     match _kind:
@@ -42,6 +49,12 @@ func _draw() -> void:
             _draw_bunker_turret()
         "convoy":
             _draw_convoy()
+        "collapse_bridge":
+            _draw_collapse_bridge()
+        "waterfall":
+            _draw_waterfall()
+        "tunnel_portal":
+            _draw_tunnel_portal()
 
 func _theme_trim() -> Color:
     match _theme:
@@ -133,3 +146,68 @@ func _draw_convoy() -> void:
     draw_circle(Vector2(w * 0.27, 0.0), h * 0.18, Color("111517"))
     draw_circle(Vector2(-w * 0.28, 0.0), h * 0.08, Color("626b6d"))
     draw_circle(Vector2(w * 0.27, 0.0), h * 0.08, Color("626b6d"))
+
+
+func _draw_collapse_bridge() -> void:
+    var rect := Rect2(-_size * 0.5, _size)
+    var timber := Color("58442d")
+    var edge := Color("9b7b4d")
+    if _theme == "harbor_dusk":
+        timber = Color("34464a")
+        edge = Color("73929a")
+    elif _theme == "alpine_night":
+        timber = Color("454c4f")
+        edge = Color("a9b5b8")
+    elif _theme == "jungle_storm":
+        timber = Color("4b3b26")
+        edge = Color("8b7548")
+    if _warning and int(_elapsed * 12.0) % 2 == 0:
+        edge = Color("d18a3c")
+    draw_rect(rect, timber, true)
+    draw_rect(rect, edge, false, 2.0)
+    var segment_w := 28.0
+    var x := -_size.x * 0.5 + segment_w
+    while x < _size.x * 0.5:
+        draw_line(Vector2(x, -_size.y * 0.5), Vector2(x, _size.y * 0.5), Color(0.10, 0.10, 0.09, 0.55), 2.0)
+        x += segment_w
+    draw_line(Vector2(-_size.x * 0.42, -_size.y * 0.15), Vector2(-_size.x * 0.10, _size.y * 0.22), Color(0.11, 0.09, 0.07, 0.72), 3.0)
+    draw_line(Vector2(_size.x * 0.08, -_size.y * 0.24), Vector2(_size.x * 0.31, _size.y * 0.18), Color(0.11, 0.09, 0.07, 0.72), 3.0)
+
+func _draw_waterfall() -> void:
+    var w := _size.x
+    var h := _size.y
+    draw_rect(Rect2(Vector2(-w * 0.5, 0.0), Vector2(w, h)), Color(0.28, 0.54, 0.58, 0.12), true)
+    for lane in range(9):
+        var base_x := -w * 0.46 + float(lane) * w / 8.5
+        var sway := sin(_elapsed * (1.7 + float(lane) * 0.05) + float(lane) * 0.7) * 5.0
+        draw_line(
+            Vector2(base_x, 0.0),
+            Vector2(base_x + sway, h),
+            Color(0.58, 0.82, 0.84, 0.20 + float(lane % 3) * 0.035),
+            3.0 + float(lane % 2),
+        )
+    for puff in range(7):
+        var px := -w * 0.42 + float(puff) * w / 6.2
+        var radius := 13.0 + float((puff * 7) % 9)
+        draw_circle(Vector2(px, h - 3.0), radius, Color(0.72, 0.87, 0.85, 0.10))
+
+func _draw_tunnel_portal() -> void:
+    var w := _size.x
+    var h := _size.y
+    var stone := Color("242b2d")
+    var trim := _theme_trim()
+    if _theme == "jungle_storm":
+        stone = Color("263126")
+    elif _theme == "alpine_night":
+        stone = Color("30383b")
+    elif _theme == "harbor_dusk":
+        stone = Color("24383d")
+    draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w * 0.16, h)), stone, true)
+    draw_rect(Rect2(Vector2(w * 0.34, -h), Vector2(w * 0.16, h)), stone, true)
+    draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w, h * 0.22)), stone, true)
+    draw_line(Vector2(-w * 0.5, -h * 0.78), Vector2(w * 0.5, -h * 0.78), trim, 3.0)
+    draw_rect(
+        Rect2(Vector2(-w * 0.34, -h * 0.78), Vector2(w * 0.68, h * 0.78)),
+        Color(0.015, 0.025, 0.028, 0.20),
+        true,
+    )

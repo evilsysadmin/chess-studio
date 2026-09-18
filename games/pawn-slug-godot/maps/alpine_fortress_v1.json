@@ -478,6 +478,25 @@
           "type": "commando"
         }
       ]
+    },
+    {
+      "id": "ravine-bridge",
+      "type": "collapse_bridge",
+      "x": 2310,
+      "y": 350,
+      "w": 190,
+      "h": 24,
+      "trigger_x": 2530,
+      "warning": 0.82,
+      "fall_gravity": 920
+    },
+    {
+      "id": "fortress-gate",
+      "type": "tunnel_portal",
+      "x": 4920,
+      "y": 610,
+      "w": 360,
+      "h": 240
     }
   ]
 }

@@ -456,6 +456,25 @@
           "type": "scout"
         }
       ]
+    },
+    {
+      "id": "service-bridge",
+      "type": "collapse_bridge",
+      "x": 2720,
+      "y": 332,
+      "w": 190,
+      "h": 24,
+      "trigger_x": 2940,
+      "warning": 0.72,
+      "fall_gravity": 980
+    },
+    {
+      "id": "factory-tunnel",
+      "type": "tunnel_portal",
+      "x": 3260,
+      "y": 610,
+      "w": 330,
+      "h": 220
     }
   ]
 }
