@@ -443,6 +443,18 @@ def build_command_content(models: Any, command: str) -> Any:
     )
 
 
+def bounded_command_output(text: str, *, head_chars: int = 2000, tail_chars: int = 2000) -> str:
+    """Keep useful start/end diagnostics without increasing the previous 4K log cap."""
+    if len(text) <= head_chars + tail_chars:
+        return text
+    omitted = len(text) - head_chars - tail_chars
+    return (
+        text[:head_chars]
+        + f"\n... OCI Run Command output omitted chars={omitted} ...\n"
+        + text[-tail_chars:]
+    )
+
+
 def execute(
     oci: Any,
     config: dict[str, str],
@@ -486,7 +498,7 @@ def execute(
             text = (getattr(content, "text", "") or "").strip()
             message = (getattr(content, "message", "") or "").strip()
             if text:
-                print(text[:4000], flush=True)
+                print(bounded_command_output(text), flush=True)
             if state != "SUCCEEDED" or exit_code not in (None, 0):
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
@@ -521,6 +533,11 @@ def self_test() -> None:
     assert not plugin_status_is_healthy("NOT_SUPPORTED")
     assert not plugin_status_is_healthy("INVALID")
     assert safe_plugin_message("line one\nline two") == "line one line two"
+    bounded = bounded_command_output("A" * 2500 + "TAIL_MARKER", head_chars=1000, tail_chars=1000)
+    assert len(bounded) < 2100
+    assert bounded.startswith("A" * 1000)
+    assert "omitted chars=" in bounded
+    assert bounded.endswith("TAIL_MARKER")
 
     class MissingPluginError(Exception):
         status = 404
