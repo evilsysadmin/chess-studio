@@ -45,8 +45,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
+      ORIGINAL_SHA: d433af11232a216dab9260ae55093940a6530ac6
     steps:
-      - name: Delete retired workflow runs only
+      - name: Delete retired workflow runs in bounded parallel
         shell: bash
         run: |
           set -euo pipefail
@@ -65,33 +66,35 @@ jobs:
             | sort -un > /tmp/retired-run-ids
 
           total="$(wc -l < /tmp/retired-run-ids)"
-          echo "Retired runs found: ${total}"
+          echo "Retired runs remaining: ${total}"
 
-          deleted=0
-          while IFS= read -r run_id; do
-            [[ -n "${run_id}" ]] || continue
-            gh api --method DELETE "repos/${REPO}/actions/runs/${run_id}"
-            deleted=$((deleted + 1))
-          done < /tmp/retired-run-ids
+          delete_run() {
+            local run_id="$1"
+            for attempt in 1 2 3; do
+              if gh api --method DELETE "repos/${REPO}/actions/runs/${run_id}" >/dev/null; then
+                echo "Deleted ${run_id}"
+                return 0
+              fi
+              sleep "${attempt}"
+            done
+            echo "::error::Failed to delete run ${run_id}"
+            return 1
+          }
+          export -f delete_run
+          export GH_TOKEN REPO
 
-          echo "Retired runs deleted: ${deleted}"
+          xargs -r -n1 -P4 bash -c 'delete_run "$1"' _ < /tmp/retired-run-ids
 
-      - name: Restore synthetic workflow from previous main
+      - name: Restore canonical synthetic workflow
         shell: bash
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
           path=".github/workflows/synthetic-health.yml"
           current_sha="$(gh api "repos/${REPO}/contents/${path}?ref=main" --jq '.sha')"
-          original_b64="$(gh api "repos/${REPO}/contents/${path}?ref=${BEFORE_SHA}" --jq '.content' | tr -d '\n')"
+          original_b64="$(gh api "repos/${REPO}/contents/${path}?ref=${ORIGINAL_SHA}" --jq '.content' | tr -d '\n')"
 
-          if gh api --method PUT "repos/${REPO}/contents/${path}" \
+          gh api --method PUT "repos/${REPO}/contents/${path}" \
             -f message="chore: restore synthetic workflow after one-shot cleanup" \
             -f content="${original_b64}" \
             -f sha="${current_sha}" \
-            -f branch="main"; then
-            echo "Synthetic workflow restored."
-          else
-            echo "::warning::Cleanup succeeded but branch protection blocked self-restore."
-          fi
+            -f branch="main"
