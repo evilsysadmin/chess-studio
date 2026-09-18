@@ -82,25 +82,19 @@ function addBanners(group, wallZ, towardBoard, coarse) {
   const cloth = new THREE.InstancedMesh(bannerGeometry(), red, xs.length);
   const rods = new THREE.InstancedMesh(new THREE.BoxGeometry(1.02, 0.08, 0.08), brass, xs.length);
   const heads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.18, coarse ? 10 : 16, coarse ? 7 : 10), brass, xs.length);
-  const muzzles = new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.09, 0.06), brass, xs.length);
   const crossesV = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.26, 0.05), brass, xs.length);
-  const crossesH = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 0.05, 0.05), brass, xs.length);
 
   xs.forEach((x, i) => {
     instance(cloth, i, [x, 4.18, z]);
     instance(rods, i, [x, 5.14, z]);
     instance(heads, i, [x - 0.04, 4.46, z + towardBoard * 0.05], [1, 1.16, 0.34]);
-    instance(muzzles, i, [x - 0.18, 4.39, z + towardBoard * 0.06], [1, 1, 1], [0, 0, -0.12]);
     instance(crossesV, i, [x, 3.62, z + towardBoard * 0.06]);
-    instance(crossesH, i, [x, 3.67, z + towardBoard * 0.06]);
   });
   group.add(
     finish(cloth, 'war-room-canon-banners'),
     finish(rods, 'war-room-canon-banner-rods'),
     finish(heads, 'war-room-canon-banner-horse-heads'),
-    finish(muzzles, 'war-room-canon-banner-horse-muzzles'),
     finish(crossesV, 'war-room-canon-banner-crosses-v'),
-    finish(crossesH, 'war-room-canon-banner-crosses-h'),
   );
 }
 
@@ -111,8 +105,10 @@ function addBookshelf(group, wallZ, towardBoard, coarse) {
   const wood = mat(C.walnut, { roughness: 0.52, clearcoat: 0.28 });
   const dark = mat(C.walnutDark, { roughness: 0.72 });
   box(shelf, [2.45, 4.15, 0.28], dark, [0, 2.4, 0], 'war-room-canon-bookshelf-back');
-  box(shelf, [0.16, 4.35, 0.42], wood, [-1.12, 2.4, 0]);
-  box(shelf, [0.16, 4.35, 0.42], wood, [1.12, 2.4, 0]);
+  const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 4.35, 0.42), wood, 2);
+  instance(posts, 0, [-1.12, 2.4, 0]);
+  instance(posts, 1, [1.12, 2.4, 0]);
+  shelf.add(finish(posts, 'war-room-canon-bookshelf-posts'));
   const count = coarse ? 4 : 6;
   const shelves = new THREE.InstancedMesh(new THREE.BoxGeometry(2.3, 0.1, 0.48), wood, count);
   for (let i = 0; i < count; i += 1) instance(shelves, i, [0, 0.48 + i * 0.68, -towardBoard * 0.05]);
@@ -135,7 +131,6 @@ function addChandelier(group, coarse) {
   const fixture = new THREE.Group();
   fixture.name = 'war-room-canon-chandelier';
   mesh(fixture, new THREE.TorusGeometry(2.05, 0.07, 10, coarse ? 28 : 44), brass, [0, 4.95, 0], 'war-room-canon-chandelier-ring', [Math.PI / 2, 0, 0]);
-  box(fixture, [0.1, 1.4, 0.1], brass, [0, 5.62, 0], 'war-room-canon-chandelier-drop');
   const n = coarse ? 4 : 8;
   const candles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.075, 0.42, 10), wax, n);
   const flames = new THREE.InstancedMesh(new THREE.ConeGeometry(0.06, 0.18, 10), flameMat, n);
@@ -187,16 +182,7 @@ function addWindowGlobeAndDescent(group, wallZ, towardBoard, coarse) {
   mesh(globe, new THREE.CylinderGeometry(0.13, 0.21, 0.72, 14), brass, [0, 0.58, 0], 'war-room-canon-globe-stand');
   group.add(globe);
 
-  const descent = new THREE.Group();
-  descent.name = 'war-room-canon-right-descent';
-  descent.position.set(6.2, 0, wallZ + towardBoard * 4.25);
-  box(descent, [2.7, 0.2, 1.0], stone, [0, 1.0, 0], 'war-room-canon-balcony');
-  const balusters = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 10), stone, coarse ? 4 : 7);
-  const count = coarse ? 4 : 7;
-  for (let i = 0; i < count; i += 1) instance(balusters, i, [-1.0 + i * (2.0 / Math.max(1, count - 1)), 1.45, -towardBoard * 0.42]);
-  descent.add(finish(balusters, 'war-room-canon-balusters'));
-  box(descent, [2.45, 0.1, 0.1], brass, [0, 1.82, -towardBoard * 0.42], 'war-room-canon-balustrade-rail');
-  group.add(descent);
+
 }
 
 function addCentralArmor(group, wallZ, towardBoard, coarse) {
@@ -221,11 +207,10 @@ export function addWarRoomCanonStudyLayer(group, { wallZ, towardBoard, coarsePoi
   canon.name = 'war-room-canon-2026-09-18';
   canon.userData.warRoomVisualCanon = WAR_ROOM_VISUAL_CANON_VERSION;
   addBanners(canon, wallZ, towardBoard, coarsePointer);
-  addBookshelf(canon, wallZ, towardBoard, coarsePointer);
+  if (!coarsePointer) addBookshelf(canon, wallZ, towardBoard, coarsePointer);
   addChandelier(canon, coarsePointer);
   addRightFireplace(canon, wallZ, towardBoard, coarsePointer);
   addWindowGlobeAndDescent(canon, wallZ, towardBoard, coarsePointer);
-  addCentralArmor(canon, wallZ, towardBoard, coarsePointer);
   group.add(canon);
   group.userData.warRoomVisualCanon = WAR_ROOM_VISUAL_CANON_VERSION;
   return canon;
@@ -255,7 +240,6 @@ function addDrape(group, z, facing, coarse) {
 export function addWarRoomCanonTableLayer(group, { coarsePointer = false } = {}) {
   if (!group) return group;
   addDrape(group, -5.29, -1, coarsePointer);
-  addDrape(group, 5.29, 1, coarsePointer);
   group.userData.warRoomVisualCanon = WAR_ROOM_VISUAL_CANON_VERSION;
   return group;
 }
