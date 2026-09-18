@@ -111,6 +111,23 @@ func _run() -> void:
     )
     _expect_vector(player.quantize_aim_probe(Vector2.ZERO), Vector2.LEFT, "aim neutro conserva facing")
 
+    # Ledge-climb probe: shoulder sees the platform wall while the head ray is
+    # clear, then the downward scan resolves a safe standing point on top.
+    player.force_crouching(false)
+    player.facing = 1.0
+    player.position = Vector2(0.0, 132.0)
+    _static_rect(world, "ClimbLedge", Vector2(70.0, 90.0), Vector2(80.0, 24.0))
+    await physics_frame
+    var ledge_target := player.find_ledge_climb_target_probe()
+    _expect(not ledge_target.is_empty(), "ledge climb detecta una cornisa alcanzable")
+    if not ledge_target.is_empty():
+        var target: Vector2 = ledge_target["target"]
+        _expect(absf(target.x - 64.0) <= 1.0, "ledge climb entra lo suficiente sobre la plataforma")
+        _expect(absf(target.y - 36.0) <= 1.0, "ledge climb termina con los pies sobre la cara superior")
+        _expect(player.respawn_position_is_clear_probe(target), "ledge climb sólo acepta un destino de pie libre")
+        player.start_ledge_climb_probe(target)
+        _expect(player.is_climbing_probe(), "el segundo toque puede iniciar el estado de escalada")
+
     # Reproduce the old checkpoint failure: y=137 intersects this platform.
     # Safe respawn must raycast its real top (118) and place the 84px standing
     # body above it, rather than restoring the fixed ground Y inside geometry.
@@ -129,7 +146,7 @@ func _run() -> void:
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + safe respawn")
         quit(0)
         return
     print("FAILED Pawn Slug Godot runtime mechanics smoke · %d fallo(s)" % _failures.size())
