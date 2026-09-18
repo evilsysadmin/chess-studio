@@ -859,6 +859,7 @@ def add_stairs(materials):
 def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
     scene = bpy.context.scene
+    scene["home_visual_iteration"] = "canonical-depth-materials-v2"
     if engine == "workbench":
         scene.render.engine = "BLENDER_WORKBENCH"
         scene.display.shading.light = "STUDIO"
