@@ -3,6 +3,7 @@ extends Node2D
 const EnemyVisual := preload("res://scripts/enemy_visual.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
+const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
@@ -102,11 +103,13 @@ var mission_complete := false
 var boss: Dictionary = {}
 var boss_visual
 var extraction_visual
+var environment_visual
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
 
 func _ready() -> void:
+    _build_environment_visual()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
     _build_extraction_visual()
@@ -251,6 +254,13 @@ func _build_enemy_roster() -> Array[Dictionary]:
             enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
         roster.append(enemy)
     return roster
+
+func _build_environment_visual() -> void:
+    environment_visual = EnvironmentVisual.new()
+    environment_visual.name = "PremiumEnvironment"
+    environment_visual.z_index = -20
+    add_child(environment_visual)
+    environment_visual.configure(WORLD_SIZE, FLOOR_Y, PLATFORMS)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
@@ -859,18 +869,8 @@ func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
     return Vector2(float(enemy["x"]) + direction * rect.size.x * 0.42, rect.position.y + rect.size.y * 0.42)
 
 func _draw() -> void:
-    draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("10161d"))
-    draw_rect(Rect2(Vector2(0.0, FLOOR_Y), Vector2(WORLD_SIZE.x, WORLD_SIZE.y - FLOOR_Y)), Color("222a2f"))
-    draw_line(Vector2(0.0, FLOOR_Y), Vector2(WORLD_SIZE.x, FLOOR_Y), Color("8b7451"), 4.0)
-
-    for x in range(0, int(WORLD_SIZE.x), 80):
-        var tower_height := 55.0 + float((x / 80) % 4) * 18.0
-        draw_rect(Rect2(Vector2(float(x), FLOOR_Y - tower_height), Vector2(48.0, tower_height)), Color(0.10, 0.13, 0.16, 0.68))
-
-    for platform in PLATFORMS:
-        draw_rect(platform, Color("39434b"), true)
-        draw_line(platform.position, platform.position + Vector2(platform.size.x, 0.0), Color("b5883e"), 3.0)
-
+    # The static world art lives in EnvironmentVisual so gameplay drawing stays
+    # focused on readable combat FX and pickups.
     _draw_pickups()
     _draw_grenades()
     _draw_explosions()
