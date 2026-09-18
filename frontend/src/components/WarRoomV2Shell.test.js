@@ -48,11 +48,13 @@ describe('War Room v2 staging asset URL', () => {
       enabled: true,
       size: 32,
       bumpScale: 0.012,
+      albedoCompensation: 1.10,
     });
     expect(warRoomV2StoneSurfaceProfile({ coarsePointer: true })).toEqual({
       enabled: false,
       size: 0,
       bumpScale: 0,
+      albedoCompensation: 1,
     });
   });
 
