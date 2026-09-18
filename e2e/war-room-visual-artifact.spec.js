@@ -113,11 +113,39 @@ async function freezeVisualFrame(page) {
 }
 
 async function captureViewportPng(context, page, path) {
-  // WebGL defaults to preserveDrawingBuffer=false. Force one synchronous
-  // renderer paint immediately before CDP captures the compositor surface so
-  // quiet v2 scenes never turn into an all-black PNG after animation freeze.
-  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-  await page.waitForTimeout(20);
+  // CDP + headless SwiftShader can omit WebGL compositor layers even when the
+  // canvas is visibly rendered. In visual-artifact builds the renderer keeps
+  // its drawing buffer, so rasterize the canvas into a temporary DOM image and
+  // let the normal viewport screenshot capture scene + HUD together.
+  const staged = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
+    return canvases.map((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const image = document.createElement('img');
+      image.src = canvas.toDataURL('image/png');
+      image.alt = '';
+      image.dataset.warRoomWebglCapture = String(index);
+      Object.assign(image.style, {
+        position: 'fixed',
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: '1',
+        pointerEvents: 'none',
+        objectFit: 'fill',
+      });
+      document.body.appendChild(image);
+      return image.dataset.warRoomWebglCapture;
+    });
+  });
+  if (staged.length) {
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('img[data-war-room-webgl-capture]')]
+        .every((image) => image.complete && image.naturalWidth > 0),
+    );
+  }
+
   const session = await context.newCDPSession(page);
   try {
     const { data } = await session.send('Page.captureScreenshot', {
@@ -128,6 +156,9 @@ async function captureViewportPng(context, page, path) {
     await writeFile(path, Buffer.from(data, 'base64'));
   } finally {
     await session.detach();
+    await page.evaluate(() => {
+      document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
+    });
   }
 }
 
