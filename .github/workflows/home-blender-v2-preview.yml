@@ -42,7 +42,8 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference frontend/src/assets/home-canonical/great-hall-dungeon.webp \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ inputs.samples || '32' }}'
+            --samples '${{ inputs.samples || '16' }}' \
+            --max-width 1280
 
       - name: Validate render envelope and build comparison sheet
         run: |
@@ -65,12 +66,12 @@ jobs:
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
           clay = Image.open(clay_path).convert('RGB')
-          assert preview.size == reference.size, (preview.size, reference.size)
-          assert clay.size == reference.size, (clay.size, reference.size)
-
           metadata = json.loads(metadata_path.read_text())
           assert metadata['contract'] == 'home-blender-v2-blockout-v1'
           assert metadata['reference_size'] == list(reference.size)
+          assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
+          assert clay.size == preview.size, (clay.size, preview.size)
+          assert preview.width <= 1280
           assert metadata['object_count'] >= 80, metadata['object_count']
           assert metadata['named_groups']['architecture']
           assert metadata['named_groups']['props']
