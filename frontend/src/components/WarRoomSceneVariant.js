@@ -78,6 +78,8 @@ export function startWarRoomVariantScene({
 
   if (!selectable || variant !== 'v2') {
     setClassicShellVisible(classicShellObjects, true);
+    scene.userData ||= {};
+    scene.userData.warRoomRenderedVariant = 'classic';
     setStatus('idle', 'classic');
     return () => {};
   }
@@ -89,12 +91,16 @@ export function startWarRoomVariantScene({
       if (cancelled) return release?.();
       releaseV2 = release;
       setClassicShellVisible(classicShellObjects, false);
+      scene.userData ||= {};
+      scene.userData.warRoomRenderedVariant = 'v2';
       setStatus('ready', 'v2');
       onPaint?.();
     })
     .catch(() => {
       if (cancelled) return;
       setClassicShellVisible(classicShellObjects, true);
+      scene.userData ||= {};
+      scene.userData.warRoomRenderedVariant = 'classic';
       setStatus('fallback', 'classic-fallback');
       onPaint?.();
     });
@@ -103,5 +109,7 @@ export function startWarRoomVariantScene({
     cancelled = true;
     releaseV2?.();
     releaseV2 = null;
+    scene.userData ||= {};
+    scene.userData.warRoomRenderedVariant = 'classic';
   };
 }
