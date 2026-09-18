@@ -157,6 +157,28 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     }
 
 
+def compose_overview(reports: list[dict], out_root: Path) -> str:
+    order = ("pistol", "machinegun", "shotgun", "panzerfaust")
+    by_weapon = {item["weapon"]: item for item in reports}
+    tile_w, tile_h, label_h = 512, 704, 28
+    board = Image.new("RGBA", (tile_w * 2, (tile_h + label_h) * 2), (22, 24, 28, 255))
+    draw = ImageDraw.Draw(board)
+    for index, weapon in enumerate(order):
+        item = by_weapon.get(weapon)
+        if item is None:
+            continue
+        source = out_root / item["contactSheet"]
+        image = Image.open(source).convert("RGBA")
+        image = image.resize((tile_w, tile_h), Image.Resampling.LANCZOS)
+        x = (index % 2) * tile_w
+        y = (index // 2) * (tile_h + label_h)
+        draw.text((x + 8, y + 7), weapon.upper(), fill=(238, 238, 238, 255))
+        board.alpha_composite(image, (x, y + label_h))
+    path = out_root / "matthias_all_weapons_contact_sheet.png"
+    board.save(path, "PNG", optimize=True)
+    return str(path.relative_to(out_root))
+
+
 def main() -> None:
     cfg = parse_args()
     if min(cfg.cell_size, cfg.columns, cfg.rows) <= 0:
@@ -175,7 +197,13 @@ def main() -> None:
                 cols=cfg.columns,
                 rows=cfg.rows,
             ))
-    summary = {"schema": 1, "scope": "pawn-slug-godot-matthias-sprite-smoke", "atlases": reports}
+    overview = compose_overview(reports, cfg.output_dir)
+    summary = {
+        "schema": 2,
+        "scope": "pawn-slug-godot-matthias-sprite-smoke",
+        "overview": overview,
+        "atlases": reports,
+    }
     (cfg.output_dir / "matthias_sprite_smoke.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
