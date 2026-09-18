@@ -20,6 +20,7 @@ import statistics
 
 from PIL import Image
 
+STRICT_VERSION = "v9"
 SRC_SIZE = (724, 2172)
 COLS = 6
 ROWS = 18
@@ -238,6 +239,7 @@ def validate(atlas: Image.Image) -> None:
 
 
 def self_test() -> None:
+    assert STRICT_VERSION == "v9"
     assert len(ROW_NAMES) == ROWS
     assert OUT_SIZE == (2496, 7488)
     sample = Image.new("RGBA", SRC_SIZE, (0, 0, 0, 0))
@@ -267,7 +269,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     atlas.save(args.output, "PNG", optimize=True)
     print(
-        f"Packed strict-v9 {args.weapon}: {args.output} {atlas.size} "
+        f"Packed strict-{STRICT_VERSION} {args.weapon}: {args.output} {atlas.size} "
         f"rows={','.join(ROW_NAMES)}"
     )
     return 0
