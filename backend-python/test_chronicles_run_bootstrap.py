@@ -52,6 +52,18 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert len(response.content) < 256_000
 
 
+def test_entry_catalog_is_versioned_and_references_shipped_maps():
+    version, map_ids = chronicles_api.chronicles_entry_catalog()
+
+    assert version == 1
+    assert map_ids == (
+        "crypt-eight-squares",
+        "menagerie-of-ash",
+        "echo-cistern",
+    )
+    assert set(map_ids) <= set(chronicles_api.chronicles_shipped_map_ids())
+
+
 def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     async def no_collection():
         return None
@@ -71,7 +83,7 @@ def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     expected_map_id = chronicles_api.chronicles_entry_map_for_seed(payload["seed"])
     assert payload["seed"] == 918273
     assert payload["currentMapId"] == expected_map_id
-    assert expected_map_id in chronicles_api.CHRONICLES_PROCEDURAL_ENTRY_MAP_IDS
+    assert expected_map_id in chronicles_api.chronicles_entry_map_ids()
     assert payload["area"]["mapId"] == expected_map_id
     assert payload["area"]["mapCode"].endswith("|seed=918273")
 
