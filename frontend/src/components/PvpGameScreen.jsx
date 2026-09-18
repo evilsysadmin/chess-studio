@@ -11,6 +11,7 @@ import {
   lastMoveFromHistory,
   mergeNewerMatch,
   opponentForMatch,
+  opponentPresenceLabel,
   playerResult,
   projectPvpClock,
   selectableMoves,
@@ -87,6 +88,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const lastMove = useMemo(() => lastMoveFromHistory(match?.history), [match?.history]);
   const checkSquare = useMemo(() => checkedKingSquare(match?.fen), [match?.fen]);
   const orientation = match?.youAre === 'b' ? 'black' : 'white';
+  const opponentPresence = opponentPresenceLabel(match?.opponentPresence);
   const tone = busy || !connectionLive ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
   const turnLabel = !connectionLive
     ? 'Reconectando con el árbitro…'
@@ -315,7 +317,13 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
 
                 <aside className={`pvp-war-room__duel-pill is-${tone}`} aria-label="Estado del duelo">
                   <span className="pvp-war-room__opponent-mark" aria-hidden="true">♟</span>
-                  <span className="pvp-war-room__identity"><strong>{opponent.username}</strong><small>{opponent.rating} Elo 1v1</small></span>
+                  <span className="pvp-war-room__identity">
+                    <strong>{opponent.username}</strong>
+                    <small className={`pvp-war-room__opponent-meta is-${match.opponentPresence || 'unknown'}`}>
+                      <span>{opponent.rating} Elo 1v1</span>
+                      <em>{opponentPresence}</em>
+                    </small>
+                  </span>
                   <span className="pvp-war-room__divider" aria-hidden="true" />
                   <span className="pvp-war-room__light" aria-hidden="true" />
                   <strong role="status" aria-live="polite">{turnLabel}</strong>
