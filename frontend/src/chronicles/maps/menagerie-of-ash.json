@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 5,
+  "version": 6,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -64,6 +64,7 @@
     },
     {
       "id": "ember-wisp",
+      "proceduralModule": "ash-vault-route",
       "visualType": "ember-wisp",
       "visualScale": 0.78,
       "visualMotion": "hover",
@@ -117,6 +118,7 @@
   "interactables": [
     {
       "id": "ember-scorchmarks",
+      "proceduralModule": "ash-vault-route",
       "kind": "lore",
       "x": 1,
       "y": 5,
@@ -147,6 +149,7 @@
     },
     {
       "id": "ash-wall-seam",
+      "proceduralModule": "ash-vault-route",
       "kind": "lore",
       "x": 1,
       "y": 3,
@@ -178,6 +181,7 @@
     },
     {
       "id": "ash-secret-door",
+      "proceduralModule": "ash-vault-route",
       "kind": "secret-door",
       "x": 1,
       "y": 3,
@@ -212,6 +216,7 @@
   "treasures": [
     {
       "id": "ember-cache",
+      "proceduralModule": "ash-vault-route",
       "kind": "pickup",
       "visualType": "ember-cache",
       "x": 3,

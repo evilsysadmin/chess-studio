@@ -1,6 +1,6 @@
 {
   "id": "chain-basilica",
-  "version": 3,
+  "version": 4,
   "progressionKey": "chain-basilica-01",
   "title": "Basílica de las Cadenas",
   "grid": [
@@ -253,6 +253,7 @@
     },
     {
       "id": "black-glass-oculus",
+      "proceduralModule": "black-glass-route",
       "kind": "relic-socket",
       "x": 5,
       "y": 1,
@@ -291,6 +292,7 @@
     },
     {
       "id": "resonant-seam",
+      "proceduralModule": "black-glass-route",
       "kind": "lore",
       "x": 7,
       "y": 1,
@@ -324,6 +326,7 @@
     },
     {
       "id": "black-glass-secret-door",
+      "proceduralModule": "black-glass-route",
       "kind": "secret-door",
       "x": 7,
       "y": 1,
@@ -450,6 +453,7 @@
     },
     {
       "id": "oculus-cache",
+      "proceduralModule": "black-glass-route",
       "kind": "pickup",
       "visualType": "ember-cache",
       "x": 7,
