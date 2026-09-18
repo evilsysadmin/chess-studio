@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePvpRosterPresence } from './usePvpRosterPresence.js';
 
 async function loadPvpApi() {
@@ -14,7 +14,9 @@ export function usePvpAppFlow({ view, replaceView }) {
   const [match, setMatch] = useState(null);
   const [handoffMatch, setHandoffMatch] = useState(null);
   const [handoffError, setHandoffError] = useState('');
-  const presence = usePvpRosterPresence({ enabled: view !== 'pvpGame' });
+  const terminalHandoffIdRef = useRef('');
+  const handoffInProgress = handoffMatch?.status === 'starting' || handoffMatch?.status === 'active';
+  const presence = usePvpRosterPresence({ enabled: view !== 'pvpGame' && !handoffInProgress });
 
   const enterPreparedMatch = useCallback((nextMatch) => {
     if (!nextMatch?.id) return false;
@@ -46,7 +48,12 @@ export function usePvpAppFlow({ view, replaceView }) {
 
   useEffect(() => {
     const nextMatch = presence.activeMatch;
-    if (!nextMatch?.id || nextMatch.id === match?.id || nextMatch.id === handoffMatch?.id) return;
+    if (!nextMatch?.id) {
+      terminalHandoffIdRef.current = '';
+      return;
+    }
+    if (nextMatch.id === terminalHandoffIdRef.current) return;
+    if (nextMatch.id === match?.id || nextMatch.id === handoffMatch?.id) return;
     enterMatch(nextMatch);
   }, [enterMatch, handoffMatch?.id, match?.id, presence.activeMatch]);
 
@@ -72,8 +79,10 @@ export function usePvpAppFlow({ view, replaceView }) {
         if (!active || !result?.match) return;
         setHandoffMatch((previous) => previous?.id === matchId ? result.match : previous);
         setHandoffError('');
-        if (result.match.status === 'starting' || !result.match.startsAt) {
+        if (result.match.status === 'starting' || (result.match.status === 'active' && !result.match.startsAt)) {
           timer = window.setTimeout(sync, 400);
+        } else if (result.match.status !== 'active') {
+          terminalHandoffIdRef.current = matchId;
         }
       } catch (err) {
         if (!active || err?.name === 'AbortError') return;
@@ -93,6 +102,13 @@ export function usePvpAppFlow({ view, replaceView }) {
     if (!handoffMatch?.id || handoffMatch.status !== 'active') return false;
     return enterPreparedMatch(handoffMatch);
   }, [enterPreparedMatch, handoffMatch]);
+
+  const cancelHandoff = useCallback(() => {
+    if (handoffMatch?.id) terminalHandoffIdRef.current = handoffMatch.id;
+    setHandoffMatch(null);
+    setHandoffError('');
+    replaceView('menu');
+  }, [handoffMatch?.id, replaceView]);
 
   const exitMatch = useCallback(() => {
     setMatch(null);
@@ -116,6 +132,7 @@ export function usePvpAppFlow({ view, replaceView }) {
     enterMatch,
     acceptIncoming,
     completeHandoff,
+    cancelHandoff,
     exitMatch,
   };
 }
