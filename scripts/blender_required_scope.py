@@ -69,6 +69,20 @@ GATES = (
         }),
     ),
     Gate(
+        workflow="pawn-slug-godot-strict-atlas.yml",
+        label="Pawn Slug Godot strict Matthias atlas",
+        exact_paths=frozenset({
+            "scripts/blender/render_pawn_slug_matthias_godot_crouch.py",
+            "scripts/blender/render_pawn_slug_matthias_canonical_chibi.py",
+            "scripts/blender/render_pawn_slug_matthias_canonical_heavy.py",
+            "scripts/blender/pawn_slug_matthias_premium_common.py",
+            "scripts/blender/pawn_slug_matthias_premium_weapons.py",
+            "scripts/blender/home_matthias_parts.py",
+            "scripts/art/pack_pawn_slug_godot_strict_v6.py",
+            ".github/workflows/pawn-slug-godot-strict-atlas.yml",
+        }),
+    ),
+    Gate(
         workflow="pawn-slug-enemy-blender-art.yml",
         label="Pawn Slug enemy art",
         exact_paths=frozenset({
@@ -148,7 +162,14 @@ def self_test() -> None:
         "chronicles-party-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"])] == [
-        "pawn-slug-blender-art.yml"
+        "pawn-slug-blender-art.yml",
+        "pawn-slug-godot-strict-atlas.yml",
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_matthias_godot_crouch.py"])] == [
+        "pawn-slug-godot-strict-atlas.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/art/pack_pawn_slug_godot_strict_v6.py"])] == [
+        "pawn-slug-godot-strict-atlas.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"])] == [
         "pawn-slug-enemy-blender-art.yml"
@@ -169,7 +190,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS no despierta Blender; siete lanes path-aware")
+    print("blender-required-scope self-test OK · CSS no despierta Blender; ocho lanes path-aware")
 
 
 def main() -> int:

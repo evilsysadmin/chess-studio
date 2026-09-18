@@ -38,6 +38,7 @@ INVENTORY = {
     'pawn-slug-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
+    'pawn-slug-godot-strict-atlas.yml': 'art-generation',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
