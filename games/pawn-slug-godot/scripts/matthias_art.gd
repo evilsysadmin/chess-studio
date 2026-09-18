@@ -2,25 +2,25 @@ extends Node2D
 
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
-# The strict-v5 contract is an exact 8 x 10 sheet (idle/walk/run/jump/fall/land/
-# shoot/reload/hurt/die), 256 x 256 per cell, published as immutable R2 objects.
+# The strict-v6 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
+# shoot/reload/hurt/die/crouch), 256 x 256 per cell, published as immutable R2 objects.
 # Godot consumes those authored cells directly; the old canonical assets remain
 # only as a graceful fallback if a remote strict atlas cannot be loaded.
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
 
-# Strict Godot atlases: exact 8 x 10 grid, 256 x 256 cells, transparent PNG.
+# Strict Godot atlases: exact 8 x 11 grid, 256 x 256 cells, transparent PNG.
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/pistol/matthias_pistol_godot_strict_8x11_256_v6-ddf7c33aeee756d6.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/machinegun/matthias_machinegun_godot_strict_8x11_256_v6-db1032ff05baf74c.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/shotgun/matthias_shotgun_godot_strict_8x11_256_v6-6e1406db72b96cd8.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v6/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v6-b8a6a674117915c7.png",
 }
 const FULL_ATLAS_COLUMNS := 8
-const FULL_ATLAS_ROWS := 10
+const FULL_ATLAS_ROWS := 11
 const FULL_ATLAS_CELL_SIZE := 256
 const FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)
 const NORMALIZED_FRAME_SIZE := 192
@@ -48,7 +48,7 @@ const BODY_CENTER_TO_FOOT := 72.0
 const MUZZLE_FLASH_SECONDS := 0.055
 
 const FULL_ACTION_ORDER := [
-    "idle", "walk", "run", "jump", "fall", "land", "shoot", "reload", "hurt", "die",
+    "idle", "walk", "run", "jump", "fall", "land", "shoot", "reload", "hurt", "die", "crouch",
 ]
 const FULL_ACTIONS := {
     "idle": {"row": 0, "count": 4, "fps": 6.0, "loop": true},
@@ -61,6 +61,7 @@ const FULL_ACTIONS := {
     "reload": {"row": 7, "count": 6, "fps": 10.0, "loop": false},
     "hurt": {"row": 8, "count": 4, "fps": 12.0, "loop": false},
     "die": {"row": 9, "count": 8, "fps": 9.0, "loop": false},
+    "crouch": {"row": 10, "count": 1, "fps": 1.0, "loop": true},
 }
 const LEGACY_PISTOL_ACTIONS := {
     "idle": {"row": 0, "count": 1, "fps": 6.0, "loop": true},
@@ -183,11 +184,27 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _facing_root.scale.x = _facing
 
     var weapon_visual_ready := _rendered_weapon == _weapon
+    var locomoting_now := (
+        on_floor
+        and not crouching
+        and horizontal_speed_ratio > 0.08
+    )
+    if locomoting_now and _one_shot_action == "shoot":
+        _one_shot_action = ""
+        _hold_one_shot = false
+        _action = ""
+
     if _body_ready and not _dead:
         if _using_full_atlas and _hurt_remaining > 0.0 and _animation_available("hurt"):
             if _one_shot_action != "hurt":
                 _play_one_shot("hurt")
-        elif fired_now and weapon_visual_ready and _using_full_atlas and _animation_available("shoot"):
+        elif (
+            fired_now
+            and not locomoting_now
+            and weapon_visual_ready
+            and _using_full_atlas
+            and _animation_available("shoot")
+        ):
             if _one_shot_action == "shoot":
                 _action = "shoot"
                 _body.frame = 0
@@ -210,7 +227,12 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
             if _action == "walk" or _action == "run":
                 _advance_locomotion(delta, horizontal_speed_ratio)
 
-    var authored_shoot := weapon_visual_ready and _using_full_atlas and _animation_available("shoot")
+    var authored_shoot := (
+        not locomoting_now
+        and weapon_visual_ready
+        and _using_full_atlas
+        and _animation_available("shoot")
+    )
     if fired_now and not _dead and _hurt_remaining <= 0.0 and not authored_shoot:
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
         var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
@@ -221,8 +243,8 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
     _muzzle_remaining = maxf(0.0, _muzzle_remaining - delta)
     _recoil_x = move_toward(_recoil_x, 0.0, 70.0 * delta)
     _fx_root.position.x = _recoil_x
-    if not _dead:
-        _fx_root.position.y = 1.0 if _action == "crouch" else 0.0
+    if not _dead and _action != "walk" and _action != "run":
+        _fx_root.position.y = 0.0
     _fx_root.scale = _fx_root.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
     _sync_muzzle()
     _sync_modulate()
@@ -344,7 +366,6 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     if requested_layout == "full":
         frames = _build_full_frames(image)
         if frames != null:
-            _install_combat_crouch(frames)
             _full_frames_by_weapon[requested_weapon] = frames
     elif requested_layout == "legacy-pistol":
         frames = _build_legacy_pistol_frames(image)
@@ -402,13 +423,6 @@ func _build_full_frames(image: Image) -> SpriteFrames:
                 frames.add_frame("idle", frames.get_frame_texture(fallback_action, 0))
                 break
 
-    # Crouch lives outside the strict 10-row contract. Until the canonical
-    # master crop is available, use the first JUMP anticipation pose as a
-    # grounded emergency fallback. The old FALL tuck looked airborne.
-    frames.add_animation("crouch")
-    frames.set_animation_loop("crouch", true)
-    frames.set_animation_speed("crouch", 1.0)
-    frames.add_frame("crouch", frames.get_frame_texture("jump", 0))
     return frames
 
 
@@ -580,30 +594,7 @@ func _build_fallback_frames() -> void:
         frames.add_frame("crouch", frames.get_frame_texture("jump", 0))
         _fallback_frames_by_weapon[weapon_id] = frames
 
-    for cached_weapon in _full_frames_by_weapon.keys():
-        _install_combat_crouch(_full_frames_by_weapon[cached_weapon])
-
-func _install_combat_crouch(frames: SpriteFrames) -> bool:
-    if frames == null:
-        return false
-    var source := "land"
-    if not frames.has_animation(source) or frames.get_frame_count(source) <= 0:
-        source = "jump"
-    if not frames.has_animation(source) or frames.get_frame_count(source) <= 0:
-        return false
-
-    var frame_index := 1 if frames.get_frame_count(source) > 1 else 0
-    if frames.has_animation("crouch"):
-        frames.remove_animation("crouch")
-    frames.add_animation("crouch")
-    frames.set_animation_loop("crouch", true)
-    frames.set_animation_speed("crouch", 1.0)
-    frames.add_frame("crouch", frames.get_frame_texture(source, frame_index))
-    return true
-
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
-    if authored_full:
-        _install_combat_crouch(frames)
     _body.sprite_frames = frames
     _body.scale = Vector2(BODY_SCALE, BODY_SCALE)
     _using_full_atlas = authored_full
