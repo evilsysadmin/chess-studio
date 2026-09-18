@@ -204,6 +204,46 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert len(second.json()["match"]["history"]) == 2
 
 
+def test_active_match_presence_uses_existing_poll_without_revision_churn():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    start_match_now(client, match)
+    match_id = match["id"]
+    stored = pvp_store._memory_matches[match_id]
+    revision = stored["revision"]
+
+    alice_color = "white" if stored["white"] == "alice" else "black"
+    bob_seen_key = "black_seen_at" if alice_color == "white" else "white_seen_at"
+
+    online = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert online.status_code == 200
+    assert online.json()["match"]["opponentPresence"] == "online"
+    assert online.json()["match"]["opponentSeenAt"]
+    assert pvp_store._memory_matches[match_id]["revision"] == revision
+
+    pvp_store._memory_matches[match_id][bob_seen_key] = pvp_store.utcnow() - timedelta(seconds=6)
+    reconnecting = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert reconnecting.json()["match"]["opponentPresence"] == "reconnecting"
+    assert pvp_store._memory_matches[match_id]["revision"] == revision
+
+    pvp_store._memory_matches[match_id][bob_seen_key] = pvp_store.utcnow() - timedelta(seconds=13)
+    disconnected = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert disconnected.json()["match"]["opponentPresence"] == "disconnected"
+    assert pvp_store._memory_matches[match_id]["revision"] == revision
+
+    # El propio polling/GET de Bob lo vuelve a declarar vivo; Alice lo ve en
+    # la siguiente lectura sin ningún heartbeat o canal adicional.
+    bob_poll = as_user(client, "bob", "get", f"/api/pvp/matches/{match_id}")
+    assert bob_poll.status_code == 200
+    restored = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
+    assert restored.json()["match"]["opponentPresence"] == "online"
+    assert pvp_store._memory_matches[match_id]["revision"] == revision
+
+
 def test_finished_match_settles_server_elo_once(monkeypatch):
     monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
     client = make_client()
