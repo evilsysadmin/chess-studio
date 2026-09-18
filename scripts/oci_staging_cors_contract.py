@@ -95,16 +95,23 @@ assert "oci_runtime_config.py publish" not in staging_deploy, (
 assert "inputs.operation == 'runtime-sync'" in service_control, (
     "OCI service control must keep an explicit runtime-sync operation"
 )
-assert "python3 scripts/oci_runtime_config.py sync" in service_control, (
-    "runtime-sync must remain the owner of Render-to-OCI runtime synchronization"
+assert "python3 scripts/oci_vault_sync.py sync-current" in service_control, (
+    "runtime-sync must materialize the CURRENT Vault + Git runtime"
+)
+assert "python3 scripts/oci_runtime_config.py sync" not in service_control, (
+    "runtime-sync must no longer source staging runtime from Render"
 )
 assert (
     "if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'"
     in service_control
 ), "runtime sync must remain workflow_dispatch-only instead of a release side effect"
 assert "inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'" not in service_control, (
-    "bringup must consume the persisted OCI runtime bundle without resynchronizing Render"
+    "bringup must consume the persisted OCI runtime bundle without an implicit runtime sync"
 )
+runtime_sync_block = service_control.split(
+    "- name: Sync CURRENT Vault + Git runtime to private staging bundle", 1
+)[1].split("\n      - name:", 1)[0]
+assert "RENDER_API_KEY" not in runtime_sync_block
 
 # Mutating service operations share the native mutex with canonical backend
 # deploy and Terraform. Read-only diagnostics deliberately get a per-run group
