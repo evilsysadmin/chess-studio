@@ -52,12 +52,13 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | `oci-readiness.yml` | Validación OCI path-aware para PR: contratos, runtime bundle y ARM64 sólo cuando cambia la imagen backend/su smoke o la propia lane ARM64. `workflow_dispatch` añade validaciones Terraform estáticas. **No muta staging ni publica K3s al mergear.** |
 | `oci-staging-deploy.yml` | `terraform apply` manual y exacto sobre `main`, seguido por convergencia del agente OCI y egress reservado. Es el único apply de infraestructura production-grade de OCI staging. |
 | `oci-staging-service.yml` | Front-door manual para diagnóstico y operaciones del host/runtime. `deploy`, `runtime-sync`, `vault-bootstrap`, K3s lifecycle, egress y recuperación toman el mutex de mutación; diagnósticos, validaciones y `k3s-status` son observación y no bloquean releases. |
+| `oci-vault-cutover-once.yml` | Migración one-shot y auto-disparada sólo al añadirse: si CURRENT Vault aún no sirve, bootstrap idempotente desde Render, validación y materialización en la A1. Se retira tras acreditar el primer cutover. |
 | `oci-staging-lab.yml` | Laboratorio manual Terraform limitado a `probe`, `plan`, `bootstrap` y `destroy`; no ofrece un segundo `apply` desnudo. |
 | `oci-staging-tunnel.yml` | Reconciliación manual del túnel/DNS de staging, serializada sólo porque sí muta control-plane. |
 
 K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
 
-La retirada de Render staging es deliberadamente gradual: el **release normal y `runtime-sync` ya no dependen de Render**. `vault-bootstrap` y diagnósticos de migración concretos todavía pueden usarlo como puente mientras se completa la retirada. Render producción no forma parte de esa migración.
+La retirada de Render staging es deliberadamente gradual: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**. El primer cutover se completa fuera de esa línea mediante `oci-vault-cutover-once.yml`, que puede usar Render una única vez para poblar Vault si hace falta; después ese workflow se retira. Render producción no forma parte de esa migración.
 
 ## Calidad especializada
 

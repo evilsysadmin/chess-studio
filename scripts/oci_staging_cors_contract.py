@@ -85,12 +85,21 @@ required_public_verifier_fragments = (
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 
-# Runtime configuration is operational state, not application release state.
-# Canonical deploys consume the already-published private OCI bundle. Updating
-# that bundle remains an explicit manual service-control action instead of a
-# hidden side effect of code release, bringup, or K3s lifecycle management.
+# Runtime configuration is operational state. The normal watcher fast-path
+# consumes the already-installed runtime. If that path cannot converge, the
+# canonical fallback ensures CURRENT Vault + Git runtime without any Render
+# availability or credentials. Initial Vault population lives in a separate one-shot workflow.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
+)
+assert "python3 scripts/oci_vault_sync.py sync-current" in staging_deploy, (
+    "OCI fallback deploy must ensure CURRENT Vault + Git runtime before app deploy"
+)
+cutover_block = staging_deploy.split(
+    "- name: Ensure CURRENT Vault + Git runtime", 1
+)[1].split("\n      - name:", 1)[0]
+assert "RENDER_API_KEY" not in cutover_block, (
+    "canonical Vault sync must remain independent from Render"
 )
 assert "inputs.operation == 'runtime-sync'" in service_control, (
     "OCI service control must keep an explicit runtime-sync operation"
@@ -326,4 +335,9 @@ assert "User=ocarun" in deploy_watcher_unit
 assert "PrivateTmp=true" in deploy_watcher_unit
 assert "ListenStream" not in deploy_watcher_unit
 
+from oci_vault_cutover import self_test as vault_cutover_self_test
+from oci_vault_sync import self_test as vault_sync_self_test
+
+vault_sync_self_test()
+vault_cutover_self_test()
 print("OCI staging CORS + runtime deployment contract: OK")

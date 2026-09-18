@@ -122,8 +122,8 @@ jobs:
           [[ "$signal_digest" == "$source_digest" ]] || { echo "::error::La señal GHCR no apunta al digest immutable aprobado"; exit 1; }
           echo "Approved backend signal: $DEPLOY_SHA -> $signal_digest"
 
-  # OCI owns the canonical staging backend generation. Persistent runtime
-  # configuration lives in private OCI Object Storage; production is untouched.
+  # OCI owns the canonical staging backend generation. The normal fast-path
+  # consumes installed runtime; fallback reconciles CURRENT Vault + Git first.
   backend:
     name: Backend · exact OCI generation
     needs: [prepare, backend_signal]
@@ -193,7 +193,21 @@ jobs:
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
+          python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
+
+      - name: Ensure CURRENT Vault + Git runtime
+        if: steps.watcher.outputs.converged != 'true'
+        shell: bash
+        env:
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/oci_vault_sync.py sync-current
 
       - name: Deploy exact backend commit to OCI staging
         if: steps.watcher.outputs.converged != 'true'
@@ -529,7 +543,7 @@ jobs:
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
-            echo '- OCI runtime config: `bundle privado persistente; cambios explícitos vía OCI staging · service control → runtime-sync`'
+            echo '- OCI runtime config: `CURRENT Vault + Git; runtime-sync manual para rotaciones`'
             echo '- Canonical staging Render dependency: `none`'
             echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'

@@ -1,0 +1,53 @@
+name: OCI staging · Vault cutover once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/oci-vault-cutover-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-mutations
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    name: Materialize initial Vault runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+
+      - name: Validate one-shot Vault cutover contracts
+        run: |
+          python3 -S scripts/oci_vault_bootstrap.py --self-test
+          python3 -S scripts/oci_vault_runtime.py --self-test
+          python3 -S scripts/oci_vault_sync.py --self-test
+          python3 -S scripts/oci_vault_cutover.py --self-test
+
+      - name: Bootstrap only if CURRENT Vault runtime is not usable
+        run: python3 scripts/oci_vault_cutover.py ensure
+
+      - name: Validate CURRENT Vault runtime after cutover
+        run: python3 scripts/oci_vault_runtime.py validate
