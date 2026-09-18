@@ -17,6 +17,17 @@ const pushBounded = (list, value) => {
   if (list.length > LIMIT) list.shift();
 };
 
+function isIgnorableRequestFailure(request) {
+  try {
+    const url = new URL(request.url());
+    return request.method() === 'POST'
+      && url.pathname === '/cdn-cgi/rum'
+      && String(request.failure()?.errorText || '').includes('ERR_ABORTED');
+  } catch {
+    return false;
+  }
+}
+
 function attachDiagnostics(page, label, diagnostics) {
   page.on('console', (message) => {
     pushBounded(diagnostics.console, { label, type: message.type(), text: clip(message.text()) });
@@ -25,6 +36,7 @@ function attachDiagnostics(page, label, diagnostics) {
     pushBounded(diagnostics.pageErrors, { label, message: clip(error?.message || error) });
   });
   page.on('requestfailed', (request) => {
+    if (isIgnorableRequestFailure(request)) return;
     pushBounded(diagnostics.requestFailures, {
       label,
       method: request.method(),
@@ -206,7 +218,7 @@ try {
   const hostHtml = `<!doctype html>
     <meta charset="utf-8">
     <style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#07090b}</style>
-    <iframe id="godot" title="Pawn Slug Godot live smoke"></iframe>
+    <iframe id="godot" title="Pawn Slug Godot live smoke" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
     <script>
       const frame = document.getElementById('godot');
       window.__pawnSlugGodotMessages = [];
