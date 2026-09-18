@@ -101,7 +101,12 @@ def _surface_groups(path: str) -> set[str] | None:
             "home-3d-focus-visual.spec.js",
         }:
             return {"home"}
-        if name in {"experiments-visual-artifact.spec.js", "chronicles-avatar-visual-artifact.spec.js"}:
+        if name in {
+            "experiments-visual-artifact.spec.js",
+            "chronicles-avatar-visual-artifact.spec.js",
+            "chronicles-gameplay-visual-artifact.spec.js",
+            "chronicles-tactics-visual-artifact.spec.js",
+        }:
             return {"experiments"}
         if name == "training-visual-artifact.spec.js":
             return {"training"}
@@ -263,6 +268,10 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/pawnSlugThree.js"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
+    assert chronicles_visual.capture_groups == "experiments"
+    assert chronicles_visual.experiments_scope == "chronicles"
+    assert not chronicles_visual.hans and not chronicles_visual.chesscom
     chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
     assert chronicles_logic.capture_groups == "experiments"
     assert chronicles_logic.experiments_scope == "chronicles"
