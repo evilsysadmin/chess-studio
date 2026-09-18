@@ -82,21 +82,35 @@ jobs:
           echo 'admitted=true' >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
-  # Publish only a mutable GHCR manifest pointer after the exact SHA has passed
-  # main admission and the stale-main guard. This creates no OCI resource and
-  # does not activate the dormant host-side controller yet.
-  backend_signal:
-    name: Backend · publish approved GHCR signal
+  # OCI owns the canonical staging backend generation. Persistent runtime
+  # configuration lives in private OCI Object Storage; production is untouched.
+  backend:
+    name: Backend · exact OCI generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 20
+    # Serialize application deploys with explicit Terraform infrastructure work
+    # using Actions' repository-wide concurrency primitive instead of polling the
+    # workflow-runs API from inside the job.
+    concurrency:
+      group: oci-staging-mutations
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
     permissions:
       contents: read
       packages: write
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
+
     steps:
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
       - uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
@@ -115,49 +129,11 @@ jobs:
           signal="ghcr.io/${owner}/chess-studio-backend:oci-staging-approved"
 
           docker buildx imagetools create --tag "$signal" "$source"
-
           source_digest="$(docker buildx imagetools inspect "$source" | awk '$1 == "Digest:" {print $2; exit}')"
           signal_digest="$(docker buildx imagetools inspect "$signal" | awk '$1 == "Digest:" {print $2; exit}')"
           [[ "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Digest immutable inválido: ${source_digest:-missing}"; exit 1; }
           [[ "$signal_digest" == "$source_digest" ]] || { echo "::error::La señal GHCR no apunta al digest immutable aprobado"; exit 1; }
           echo "Approved backend signal: $DEPLOY_SHA -> $signal_digest"
-
-  # OCI owns the canonical staging backend generation. Persistent runtime
-  # configuration lives in private OCI Object Storage; production is untouched.
-  backend:
-    name: Backend · exact OCI generation
-    needs: [prepare, backend_signal]
-    if: needs.prepare.outputs.admitted == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    # Serialize application deploys with explicit Terraform infrastructure work
-    # using Actions' repository-wide concurrency primitive instead of polling the
-    # workflow-runs API from inside the job.
-    concurrency:
-      group: oci-staging-mutations
-      cancel-in-progress: false
-    environment:
-      name: staging
-      url: https://staging.chess-studio.shadowops.dpdns.org
-    env:
-      DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
-      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
-      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-
-    steps:
-      - name: Checkout CI-approved commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-
-      - name: Restore cached OCI SDK toolchain
-        uses: ./.github/actions/setup-oci-sdk
-        with:
-          version: '2.185.2'
-          python-version: '3.13'
 
       - name: Validate OCI deploy contracts
         run: |
@@ -165,8 +141,52 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
-      - name: Deploy exact backend commit to OCI staging
+      - name: Wait for host signal controller fast-path
+        id: signal
         shell: bash
+        run: |
+          set -euo pipefail
+          signal_ok=false
+          for attempt in {1..21}; do
+            body="$RUNNER_TEMP/backend-signal-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 3 --max-time 6 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then
+              signal_ok=true
+              break
+            fi
+            [[ "$attempt" -eq 21 ]] || sleep 2
+          done
+          echo "converged=$signal_ok" >> "$GITHUB_OUTPUT"
+          if [[ "$signal_ok" == true ]]; then
+            echo "::notice title=OCI fast-path::La A1 aplicó $DEPLOY_SHA mediante la señal GHCR."
+          else
+            echo "::warning title=OCI fallback::La señal no convergió en 40s; se usa Run Command."
+          fi
+
+      - name: Restore cached OCI SDK toolchain for fallback
+        if: steps.signal.outputs.converged != 'true'
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+
+      - name: Deploy exact backend commit through Run Command fallback
+        if: steps.signal.outputs.converged != 'true'
+        shell: bash
+        env:
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
