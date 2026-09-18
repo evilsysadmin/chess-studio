@@ -229,4 +229,10 @@ assert 'CHESS_STUDIO_TUNNEL_REUSED' in deploy
 assert 'if ! /bin/bash "$tunnel_connector"; then' in deploy
 assert 'tunnel_action="restarted"' in deploy
 
+# Deploy timing markers are observational only: they expose where time is spent
+# without weakening or bypassing any readiness/integrity gate.
+assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" in deploy
+for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
+    assert f"phase_done {phase}" in deploy
+
 print("OCI staging CORS + runtime deployment contract: OK")
