@@ -446,10 +446,8 @@ def self_test() -> None:
     stage["enemies"][5]["idle_reaction"] = 0.9
     stage["enemies"][15]["idle_pose"] = "lean"
     stage["enemies"][15]["idle_reaction"] = 1.0
-    stage["enemies"][10]["type"] = "rook"
-    stage["enemies"][10]["x"] = 1140
-    stage["enemies"][10]["y"] = 260
-    stage["enemies"][10]["route"] = "climb"
+    stage["enemies"][6]["y"] = 345
+    stage["enemies"][6]["route"] = "climb"
     stats = parse_stats(MAIN.read_text(encoding="utf-8"))
     assert not validate_stage(stage, stats, "self-test")
     crowded = json.loads(json.dumps(stage))
