@@ -15,6 +15,7 @@ MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
+SETPIECES = GODOT_ROOT / "scripts/setpiece_visual.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
@@ -119,6 +120,24 @@ REQUIRED_PARALLAX = (
     "func _draw_mid_defence",
     "func _noise",
 )
+REQUIRED_SETPIECE_VISUAL = (
+    '"moving_platform"',
+    '"bunker_turret"',
+    '"convoy"',
+    "func pulse_fire",
+    "func set_destroyed",
+)
+REQUIRED_SETPIECE_MAIN = (
+    "SetpieceVisual",
+    "_build_stage_setpieces",
+    "_update_stage_setpieces",
+    "_spawn_reinforcement_wave",
+    "_update_bunker_turret",
+    "_update_convoy_setpiece",
+    "AnimatableBody2D.new()",
+    "_moving_platform_rects",
+)
+
 REQUIRED_PAUSE_MENU = (
     "PROCESS_MODE_ALWAYS",
     "KEY_ESCAPE",
@@ -350,6 +369,8 @@ def validate() -> None:
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
     validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)
+    validate_contract(SETPIECES, "setpiece_visual.gd", REQUIRED_SETPIECE_VISUAL, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_SETPIECE_MAIN, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_PARALLAX_MAIN, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
@@ -387,7 +408,7 @@ def self_test() -> None:
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
-    assert "_draw_ruined_skyline" in REQUIRED_ENVIRONMENT
+    assert "_draw_obstacles" in REQUIRED_ENVIRONMENT
     assert "_draw_foreground_props" in REQUIRED_ENVIRONMENT
     assert "HTTPRequest" in REQUIRED_ENEMIES
     assert "/pawn-slug/enemies/premium-raster/" in REQUIRED_ENEMIES
