@@ -236,3 +236,49 @@
   .home-pvp-roster-link.is-enrolled:hover,
   .home-pvp-roster-link.is-enrolled:focus-visible { transform:none; }
 }
+
+/* 1v1 discovery pass: the compact Home entry explains the next action at a glance. */
+.home-pvp-roster-link__signal {
+  background: #8b7457;
+  box-shadow: 0 0 0 3px rgba(139, 116, 87, .08);
+}
+
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__signal,
+.home-pvp-roster-link.has-active-match .home-pvp-roster-link__signal {
+  background: #73b47a;
+  box-shadow: 0 0 12px rgba(115, 180, 122, .58);
+}
+
+.home-pvp-roster-link.is-enrolled {
+  width: min(390px, calc(100vw - 36px));
+}
+
+.home-pvp-roster-link.is-enrolled .home-pvp-roster-link__copy > span {
+  color: rgba(242, 232, 211, .7);
+}
+
+.home-pvp-roster-link.has-rivals .home-pvp-roster-link__action,
+.home-pvp-roster-link.has-challenge .home-pvp-roster-link__action {
+  border-color: rgba(232, 190, 110, .42);
+  color: #f0d69e;
+  background: rgba(207, 151, 70, .14);
+  box-shadow: inset 0 1px rgba(255, 231, 185, .05);
+}
+
+.home-pvp-roster-link.has-challenge::before {
+  background: linear-gradient(180deg, rgba(244, 201, 116, 1), rgba(160, 95, 31, .36));
+  box-shadow: 0 0 26px rgba(231, 179, 83, .38);
+}
+
+@media (max-width: 620px) {
+  .home-pvp-roster-link.is-enrolled {
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-pvp-roster-link.is-enrolled .home-pvp-roster-link__signal,
+  .home-pvp-roster-link.has-active-match .home-pvp-roster-link__signal {
+    box-shadow: none;
+  }
+}
