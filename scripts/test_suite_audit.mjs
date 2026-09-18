@@ -199,7 +199,15 @@ if (checkCiWiring) {
   if (!setupBrowserSource.includes('playwright-${{ inputs.browser-scope }}-')) fail('Playwright debe separar la cache por browser-scope');
   if (!setupBrowserSource.includes('chromium firefox webkit')) fail('setup-browser-e2e debe conservar instalación multi-browser');
   if (!mainCiSource.includes('trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}')) fail('Trivy CI debe usar cache diaria/versionada, no una cache por run');
-  if (!mainCiSource.includes('docker/setup-buildx-action@v4')) fail('Security images debe preparar Buildx para reutilizar capas GHA');
+  if (!mainCiSource.includes('docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069')) fail('Security images debe preparar el Buildx pinneado para reutilizar capas GHA');
+
+  for (const match of mainCiSource.matchAll(/\buses:\s*([^\s#]+)/g)) {
+    const actionRef = match[1];
+    if (actionRef.startsWith('./')) continue;
+    const at = actionRef.lastIndexOf('@');
+    const revision = at >= 0 ? actionRef.slice(at + 1) : '';
+    if (!/^[0-9a-f]{40}$/i.test(revision)) fail(`Quality CI usa una action externa sin SHA inmutable: ${actionRef}`);
+  }
 
   if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; sólo valida calidad');
   for (const forbidden of ['Cloudflare Worker · Terraform', 'actions/deploy-pages@', 'RENDER_API_KEY', '  terraform:\n', '  pages:\n']) {
@@ -248,7 +256,7 @@ if (checkCiWiring) {
   for (const [label, block] of [['core', lanesBlock], ['specialized', specializedBlock]]) {
     if (!block.includes('needs: [preflight, e2e_build]')) fail(`Las lanes ${label} deben esperar el único build compartido`);
     if (!block.includes("build-frontend: 'false'")) fail(`Las lanes ${label} no deben recompilar el frontend`);
-    if (!block.includes('actions/download-artifact@v6')) fail(`Las lanes ${label} deben consumir el dist compartido`);
+    if (!block.includes('actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53')) fail(`Las lanes ${label} deben consumir el dist compartido con download-artifact pinneado`);
   }
   if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
   if (!lanesBlock.includes('fail-fast: false') || !specializedBlock.includes('fail-fast: false')) fail('Las matrices Playwright deben completar diagnóstico aunque falle una lane');
