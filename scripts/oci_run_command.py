@@ -508,6 +508,8 @@ def execute(
     command_id = created.id
     deadline = time.monotonic() + command_poll_budget(timeout)
     last_state = ""
+    last_delivery_state = ""
+    poll_started = time.monotonic()
     while time.monotonic() < deadline:
         execution = client.get_instance_agent_command_execution(
             instance_agent_command_id=command_id,
@@ -515,8 +517,26 @@ def execute(
             retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
         ).data
         state = str(execution.lifecycle_state or "UNKNOWN")
+        delivery_state = str(getattr(execution, "delivery_state", None) or "UNKNOWN")
+        if delivery_state != last_delivery_state:
+            elapsed = time.monotonic() - poll_started
+            print(
+                "OCI Run Command delivery: "
+                f"state={delivery_state} elapsed_s={elapsed:.1f} "
+                f"time_created={getattr(execution, 'time_created', None)} "
+                f"time_updated={getattr(execution, 'time_updated', None)}",
+                flush=True,
+            )
+            last_delivery_state = delivery_state
         if state != last_state:
-            print(f"OCI Run Command state: {state}", flush=True)
+            elapsed = time.monotonic() - poll_started
+            print(
+                "OCI Run Command state: "
+                f"{state} elapsed_s={elapsed:.1f} "
+                f"time_created={getattr(execution, 'time_created', None)} "
+                f"time_updated={getattr(execution, 'time_updated', None)}",
+                flush=True,
+            )
             last_state = state
         if state in TERMINAL_STATES:
             content = execution.content
@@ -529,7 +549,7 @@ def execute(
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
             return text
-        time.sleep(3)
+        time.sleep(1)
     raise SystemExit("OCI Run Command polling timed out waiting for delivery/execution")
 
 
@@ -553,6 +573,11 @@ def self_test() -> None:
     assert PLUGIN_REGISTRATION_TIMEOUT_SECONDS == 300
     assert PLUGIN_REGISTRATION_RETRY_SECONDS == 5
     assert command_poll_budget(120) == 450
+    source = open(__file__, encoding="utf-8").read()
+    assert "OCI Run Command delivery:" in source
+    assert "elapsed_s=" in source
+    assert "time_created=" in source and "time_updated=" in source
+    assert "time.sleep(1)" in source
     assert plugin_status_is_healthy("RUNNING")
     assert plugin_status_is_healthy(" running ")
     assert not plugin_status_is_healthy("STOPPED")
