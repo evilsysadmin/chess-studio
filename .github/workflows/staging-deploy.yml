@@ -116,8 +116,8 @@ jobs:
 
           docker buildx imagetools create --tag "$signal" "$source"
 
-          source_digest="$(docker buildx imagetools inspect "$source" | awk '$1 == "Digest:" {print $2; exit}')"
-          signal_digest="$(docker buildx imagetools inspect "$signal" | awk '$1 == "Digest:" {print $2; exit}')"
+          source_digest="$(docker buildx imagetools inspect "$source" | awk '$1 == "Digest:" && digest == "" {digest=$2} END {print digest}')"
+          signal_digest="$(docker buildx imagetools inspect "$signal" | awk '$1 == "Digest:" && digest == "" {digest=$2} END {print digest}')"
           [[ "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Digest immutable inválido: ${source_digest:-missing}"; exit 1; }
           [[ "$signal_digest" == "$source_digest" ]] || { echo "::error::La señal GHCR no apunta al digest immutable aprobado"; exit 1; }
           echo "Approved backend signal: $DEPLOY_SHA -> $signal_digest"
