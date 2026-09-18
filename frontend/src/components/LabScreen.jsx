@@ -15,7 +15,6 @@ import './LabWorkshopHotfix.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
-const PawnSlug = lazy(() => import('./PawnSlug.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
@@ -45,7 +44,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -78,7 +77,6 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='pawnslug') return <Suspense fallback={<LabModeFallback />}><PawnSlug onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
