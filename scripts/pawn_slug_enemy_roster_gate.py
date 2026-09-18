@@ -231,7 +231,7 @@ def self_test() -> None:
             {"kind": "ruined_city", "scroll": 0.34},
             {"kind": "mid_defence", "scroll": 0.62},
         ]},
-        "boss": {"x": 4580},
+        "boss": {"x": 4580, "trigger_x": 4300},
         "extraction": {"x": 5050},
     }
     kinds = ["pawn","scout","pawn","knight","shield","pawn","rook","pawn","grenadier","bishop",
