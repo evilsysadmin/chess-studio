@@ -1,0 +1,457 @@
+{
+  "id": "chain-basilica",
+  "version": 1,
+  "progressionKey": "chain-basilica-01",
+  "title": "Basílica de las Cadenas",
+  "grid": [
+    "#############",
+    "#P....#....X#",
+    "#.#.#.#.###.#",
+    "#.#...#.....#",
+    "#.###.###.#.#",
+    "#.....#...#.#",
+    "#.###...#...#",
+    "#...........#",
+    "#############"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {
+    "basilicaBriefingRead": false,
+    "chainAltarOpened": false,
+    "glassOculusAwake": false,
+    "oculusCacheOpened": false
+  },
+  "enemies": [
+    {
+      "id": "iron-deacon",
+      "visualType": "gate-jailer",
+      "visualScale": 1.04,
+      "visualMotion": "grounded",
+      "name": "diácono de hierro",
+      "x": 6,
+      "y": 6,
+      "hpKey": "ironDeaconHp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          {
+            "x": 6,
+            "y": 6
+          },
+          {
+            "x": 7,
+            "y": 6
+          },
+          {
+            "x": 7,
+            "y": 7
+          },
+          {
+            "x": 6,
+            "y": 7
+          }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba al diácono de hierro con {attack}. Un eslabón ceremonial cae de su cíngulo con una dignidad francamente excesiva.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "liturgical-link",
+            "name": "Eslabón Litúrgico",
+            "description": "Un eslabón de hierro negro grabado con letanías mecánicas. El altar parece exigir tres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "Los guardianes de la nave portan los eslabones que gobiernan el altar.",
+            "objective": "Reúne tres Eslabones Litúrgicos y derriba al Prelado de las Cadenas.",
+            "order": 70
+          }
+        ]
+      }
+    },
+    {
+      "id": "chain-prelate",
+      "visualType": "spectral-bishop",
+      "visualScale": 1.02,
+      "visualMotion": "hover",
+      "name": "prelado de las cadenas",
+      "x": 9,
+      "y": 3,
+      "hpKey": "chainPrelateHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "retaliationReach": 3,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 3,
+        "requiresLineOfSight": true
+      }
+    },
+    {
+      "id": "choir-hound",
+      "visualType": "bone-hound",
+      "visualScale": 0.98,
+      "visualMotion": "grounded",
+      "name": "sabueso del coro",
+      "x": 3,
+      "y": 5,
+      "hpKey": "choirHoundHp",
+      "maxHp": 7,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba al sabueso del coro con {attack}. Entre las costillas tintinea otro eslabón del altar.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "liturgical-link",
+            "name": "Eslabón Litúrgico",
+            "description": "Un eslabón de hierro negro grabado con letanías mecánicas. El altar parece exigir tres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "Los guardianes de la nave portan los eslabones que gobiernan el altar.",
+            "objective": "Reúne tres Eslabones Litúrgicos y derriba al Prelado de las Cadenas.",
+            "order": 70
+          }
+        ]
+      }
+    },
+    {
+      "id": "nave-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.96,
+      "visualMotion": "skitter",
+      "name": "araña de la nave",
+      "x": 11,
+      "y": 6,
+      "hpKey": "naveSpiderHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} aplasta a la araña de la nave con {attack}. En su seda aparece el tercer tipo de objeto que nadie debería haber cosido a una araña: un eslabón litúrgico.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "liturgical-link",
+            "name": "Eslabón Litúrgico",
+            "description": "Un eslabón de hierro negro grabado con letanías mecánicas. El altar parece exigir tres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "Los guardianes de la nave portan los eslabones que gobiernan el altar.",
+            "objective": "Reúne tres Eslabones Litúrgicos y derriba al Prelado de las Cadenas.",
+            "order": 70
+          }
+        ]
+      }
+    },
+    {
+      "id": "censer-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.82,
+      "visualMotion": "hover",
+      "name": "incensario errante",
+      "x": 8,
+      "y": 1,
+      "hpKey": "censerWispHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} apaga el incensario errante con {attack}. Queda una brasa perfumada que no sirve para abrir la salida, gracias a todos los santos.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "incense-ember",
+            "name": "Brasa de Incensario",
+            "description": "Una brasa aromática de la basílica. Trofeo opcional, todavía caliente y probablemente blasfemo.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "basilica-inscription",
+      "kind": "lore",
+      "x": 1,
+      "y": 1,
+      "label": "Leer letanía de entrada",
+      "when": [
+        {
+          "key": "basilicaBriefingRead",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "basilicaBriefingRead",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "Tres guardianes de la nave llevan los eslabones del altar; el Prelado custodia el mecanismo final.",
+            "objective": "Reúne tres Eslabones Litúrgicos y derriba al Prelado de las Cadenas.",
+            "order": 70
+          }
+        ],
+        "message": "La inscripción exige tres eslabones, un prelado muerto y reverencia. Matthias acepta negociar sólo las dos primeras.",
+        "journal": {
+          "id": "chain-basilica-litany",
+          "title": "Tres eslabones para una campana",
+          "body": "El altar central sólo responde a tres Eslabones Litúrgicos cuando el Prelado de las Cadenas ha caído.",
+          "sigil": "XV"
+        }
+      }
+    },
+    {
+      "id": "black-glass-oculus",
+      "kind": "relic-socket",
+      "x": 5,
+      "y": 1,
+      "label": "Acercar Gota de Vidrio Negro",
+      "when": [
+        {
+          "itemId": "black-glass-drop",
+          "quantity": 1
+        },
+        {
+          "key": "glassOculusAwake",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "black-glass-drop",
+            "quantity": 1
+          },
+          {
+            "type": "set",
+            "key": "glassOculusAwake",
+            "value": true
+          }
+        ],
+        "message": "La gota se funde en el óculo y la pared refleja una capilla que no estaba allí hace un segundo. Excelente arquitectura, pésima señal.",
+        "journal": {
+          "id": "black-glass-oculus-awake",
+          "title": "El óculo recuerda el fuego",
+          "body": "La Gota de Vidrio Negro del Archivo despierta un hueco secreto en la basílica.",
+          "sigil": "◈"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "chain-altar",
+      "kind": "pickup",
+      "visualType": "chain-altar",
+      "x": 9,
+      "y": 5,
+      "label": "Forjar Llave de Campana",
+      "when": [
+        {
+          "itemId": "liturgical-link",
+          "quantity": 3
+        },
+        {
+          "key": "chainPrelateHp",
+          "lte": 0
+        },
+        {
+          "key": "chainAltarOpened",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "liturgical-link",
+            "quantity": 3
+          },
+          {
+            "type": "set",
+            "key": "chainAltarOpened",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bell-key",
+            "name": "Llave de Campana",
+            "description": "Tres eslabones fundidos en una llave larga que abre la reja superior de la basílica.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "El altar ha fundido los tres eslabones en una llave.",
+            "objective": "Lleva la Llave de Campana hasta la reja superior.",
+            "order": 70
+          }
+        ],
+        "message": "Los tres eslabones desaparecen en el altar y reaparecen como una llave. Liturgia industrial: absurda, ruidosa y sorprendentemente eficaz.",
+        "journal": {
+          "id": "chain-altar-forged",
+          "title": "La llave hecha de tres",
+          "body": "El altar consume los tres eslabones y entrega una Llave de Campana para la reja superior.",
+          "sigil": "III"
+        }
+      }
+    },
+    {
+      "id": "oculus-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 7,
+      "y": 1,
+      "label": "Registrar capilla de vidrio",
+      "when": [
+        {
+          "key": "glassOculusAwake",
+          "equals": true
+        },
+        {
+          "key": "oculusCacheOpened",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "oculusCacheOpened",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "resonant-lamina",
+            "name": "Lámina Resonante",
+            "description": "Una lámina de vidrio negro que vibra cerca de mampostería hueca. Huele a futura puerta secreta.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "refill-class-abilities"
+          }
+        ],
+        "message": "La capilla oculta guarda una lámina de vidrio negro que zumba contra la piedra. Matthias la archiva bajo «cosas que abrirán problemas después».",
+        "journal": {
+          "id": "oculus-cache-opened",
+          "title": "La lámina que oye paredes",
+          "body": "La recompensa del wisp del Archivo conduce a una Lámina Resonante escondida en la basílica.",
+          "sigil": "◈"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "basilica-upper-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abrir reja con la Llave de Campana",
+      "lockedLabel": "Examinar reja superior",
+      "requirements": [
+        {
+          "itemId": "bell-key",
+          "quantity": 1,
+          "message": "La reja exige la Llave de Campana forjada en el altar."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "bell-key",
+            "quantity": 1
+          },
+          {
+            "type": "complete-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "El altar quedó mudo y la reja superior cedió.",
+            "objective": "Basílica superada.",
+            "order": 70
+          },
+          {
+            "type": "set",
+            "key": "phase",
+            "value": "escaped"
+          }
+        ],
+        "message": "La Llave de Campana gira y la reja sube. No suena ninguna campana. Matthias considera el silencio una mejora litúrgica objetiva.",
+        "journal": {
+          "id": "chain-basilica-cleared",
+          "title": "La basílica queda muda",
+          "body": "Tres eslabones, un prelado y una cantidad innecesaria de hierro después, la compañía abre la reja superior.",
+          "sigil": "XV"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "chain-basilica-entry",
+    "title": "Basílica de las Cadenas",
+    "body": "La fundición desemboca en una nave de hierro y piedra. Tres guardianes llevan eslabones rituales; un prelado vigila el altar.",
+    "sigil": "XV"
+  },
+  "introMessage": "Basílica de las Cadenas. Trece casillas de ancho, una liturgia mecánica y exactamente cero motivos para confiar en las campanas."
+}
