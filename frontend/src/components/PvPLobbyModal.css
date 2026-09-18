@@ -1419,3 +1419,14 @@
     transform: none;
   }
 }
+
+
+.pvp-lobby__player.is-cooldown .pvp-lobby__rank-mark i,
+.pvp-lobby__player.is-cooldown .pvp-lobby__player-state i {
+  background: #c7a15f;
+  box-shadow: none;
+}
+
+.pvp-lobby__player.is-cooldown .pvp-lobby__player-state span {
+  color: rgba(225, 195, 139, .72);
+}
