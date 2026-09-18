@@ -165,6 +165,8 @@ def main() -> int:
         ("wait_for_registration=True,", "deploy enables readiness wait"),
         ("resolved=resolved,", "deploy reuses admitted OCI target"),
         ("include_desired_config=False,", "deploy skips redundant desired-state lookup"),
+        ("OCI Run Command delivery:", "Run Command delivery-state telemetry"),
+        ("time.sleep(1)", "Run Command one-second terminal polling"),
     ):
         require(oci_run_command, needle, label, errors)
 
