@@ -69,9 +69,19 @@ def mat_stone(name, dark=False, wet=False):
     bump = nt.nodes.new("ShaderNodeBump")
     bump.inputs["Strength"].default_value = .48
     bump.inputs["Distance"].default_value = .18
+    obj = nt.nodes.new("ShaderNodeObjectInfo")
+    obj_ramp = nt.nodes.new("ShaderNodeValToRGB")
+    obj_ramp.color_ramp.elements[0].color = (.72, .72, .72, 1)
+    obj_ramp.color_ramp.elements[1].color = (1.0, .96, .90, 1)
+    tint = nt.nodes.new("ShaderNodeMixRGB")
+    tint.blend_type = "MULTIPLY"
+    tint.inputs[0].default_value = 1.0
     nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
     nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
-    nt.links.new(ramp.outputs["Color"], bs.inputs["Base Color"])
+    nt.links.new(obj.outputs["Random"], obj_ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], tint.inputs[1])
+    nt.links.new(obj_ramp.outputs["Color"], tint.inputs[2])
+    nt.links.new(tint.outputs["Color"], bs.inputs["Base Color"])
     nt.links.new(bump.outputs["Normal"], bs.inputs["Normal"])
     bs.inputs["Roughness"].default_value = .48 if wet else .80
     if "Coat Weight" in bs.inputs:
@@ -315,6 +325,7 @@ def pawn_piece(M, x, y, z=.15, black=False, red_rings=False, tilt=0):
         for zz, rr in ((.42, .205), (.68, .235)):
             o = cyl("red_ring", (x, y, z+zz), rr, .045, M["red"], vertices=32, bevel=.02)
             parent_keep_world(o, root)
+    root.scale = (.84, .84, .84)
     if tilt:
         root.rotation_euler = (0, math.radians(tilt), 0)
     return root
@@ -351,7 +362,11 @@ def humanoid(M, x, y, z=.10, green=False, sleep=False, armored=False, plume=Fals
         chest = cube("hero_chest", (x, y-.20, z+.80), (.22, .06, .26), M["steel"], bevel=.055)
         parent_keep_world(chest, root)
     if sleep:
-        root.rotation_euler = (math.radians(78), 0, math.radians(random.uniform(-12, 12)))
+        root.rotation_euler = (
+            math.radians(random.uniform(68, 86)),
+            math.radians(random.uniform(-12, 12)),
+            math.radians(random.uniform(-24, 24)),
+        )
     return root
 
 def zzz(M, x, y, z):
@@ -417,12 +432,12 @@ def build(M):
     for x, y in coords:
         tile(M, x, y)
 
-    wall_segment(M, -4.55, .6, 8, "y", 3.0)
-    wall_segment(M, 0.0, 4.55, 8, "x", 2.8)
-    wall_segment(M, 4.55, .8, 6, "y", 2.4)
-    wall_segment(M, 2.0, 1.55, 4, "x", 2.45)
-    wall_segment(M, 1.55, 3.2, 3, "y", 2.2)
-    wall_segment(M, -1.8, -1.0, 3, "x", 1.7)
+    wall_segment(M, -4.55, .6, 8, "y", 2.20)
+    wall_segment(M, 0.0, 4.55, 8, "x", 2.05)
+    wall_segment(M, 4.55, .8, 6, "y", 1.95)
+    wall_segment(M, 2.0, 1.55, 4, "x", 1.55)
+    wall_segment(M, 1.55, 3.2, 3, "y", 1.45)
+    wall_segment(M, -1.8, -1.0, 3, "x", 1.20)
     arch(M, -1.0, 1.42, 1.55, 2.15, .62)
     pillar(M, -3.55, -1.20, 3.2)
     pillar(M, -3.55, 3.45, 3.0)
@@ -435,9 +450,9 @@ def build(M):
     banner(M, -2.75, 4.18, 1.58, blue=True)
     banner(M, .35, 4.18, 1.58, blue=True)
     banner(M, -3.95, -1.0, 1.25, blue=False)
-    crate(M, 3.25, 2.45, .38, .48)
-    crate(M, 3.75, -2.1, .38, .44)
-    urn(M, 2.55, 2.55, .28)
+    crate(M, 2.85, .55, .38, .44)
+    crate(M, 3.55, -2.0, .38, .40)
+    urn(M, 2.35, .72, .28)
     candles(M, -3.20, -2.25, .02)
     rubble(M, 2.5, -1.45, 18, .95)
     rubble(M, 3.1, 2.3, 12, .72)
