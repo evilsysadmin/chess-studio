@@ -20,6 +20,7 @@ PLAYER = GODOT_ROOT / "scripts/player.gd"
 COMBAT_AUDIO = GODOT_ROOT / "scripts/combat_audio.gd"
 BOSS = GODOT_ROOT / "scripts/boss_visual.gd"
 TOUCH = GODOT_ROOT / "scripts/touch_controls.gd"
+HUD = GODOT_ROOT / "scripts/hud_overlay.gd"
 PLAYER_PROBE = GODOT_ROOT / "tests/player_probe.gd"
 RUNTIME_SMOKE = GODOT_ROOT / "tests/player_runtime_smoke.gd"
 
@@ -172,6 +173,21 @@ REQUIRED_RUNTIME_SMOKE = (
     "respawn final queda libre de geometría",
 )
 
+REQUIRED_CONTEXTUAL_MOVEMENT_HINT = (
+    "contextual_movement_hint",
+    "PLAYER_STANDING_HEIGHT",
+    "PLAYER_CROUCH_HEIGHT",
+    "MOVEMENT_HINT_LOOKAHEAD",
+    "↑/↓ + FIRE",
+    "↓ + MOVER",
+)
+REQUIRED_HUD_MOVEMENT_HINT = (
+    'name = "MovementHintPanel"',
+    'name = "MovementHint"',
+    'has_method("contextual_movement_hint")',
+    "_movement_hint_panel.visible",
+)
+
 REQUIRED_DIRECTIONAL_FIRE = (
     "func _on_player_fired(origin: Vector2, direction: Vector2",
     "safe_direction.rotated(angle)",
@@ -319,6 +335,8 @@ def validate() -> None:
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_MOBILITY, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_DIRECTIONAL_FIRE, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_CONTEXTUAL_MOVEMENT_HINT, violations)
+    validate_contract(HUD, "hud_overlay.gd", REQUIRED_HUD_MOVEMENT_HINT, violations)
     validate_contract(PLAYER_PROBE, "tests/player_probe.gd", REQUIRED_RUNTIME_PROBE, violations)
     validate_contract(RUNTIME_SMOKE, "tests/player_runtime_smoke.gd", REQUIRED_RUNTIME_SMOKE, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
@@ -367,6 +385,8 @@ def self_test() -> None:
     assert "safe_direction.rotated(angle)" in REQUIRED_DIRECTIONAL_FIRE
     assert "quantize_aim_probe" in REQUIRED_RUNTIME_PROBE
     assert "respawn final queda libre de geometría" in REQUIRED_RUNTIME_SMOKE
+    assert "contextual_movement_hint" in REQUIRED_CONTEXTUAL_MOVEMENT_HINT
+    assert '_movement_hint_panel.visible' in REQUIRED_HUD_MOVEMENT_HINT
     assert "_can_spawn_hostile_shot" in REQUIRED_COMBAT_FAIRNESS
     assert '_notify_parent("checkpoint")' in REQUIRED_COMBAT_FAIRNESS
     assert "_enemy_engaged" in REQUIRED_ENEMY_AI
