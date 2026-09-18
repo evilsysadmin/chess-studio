@@ -365,6 +365,12 @@ def add_room(static, mats):
     cube("WR_FIREPLACE_mantel_shadow", (-4.55, 5.08, 3.42), (1.84, 0.08, 0.07), mats["stone_dark"], static, bevel=0.025)
     cube("WR_FIREPLACE_hearth", (-4.55, 5.35, 0.72), (1.48, 0.78, 0.12), mats["stone_light"], static, bevel=0.08)
     cube("WR_FIREPLACE_inner_lintel", (-4.55, 5.69, 2.58), (1.05, 0.09, 0.12), mats["stone_dark"], static, bevel=0.035)
+    # A soot-darkened inner reveal stops the surround reading as a bright toy block.
+    cube("WR_FIREPLACE_soot_header", (-4.55, 5.73, 2.38), (0.90, 0.035, 0.055),
+         mats["charcoal"], static, bevel=0.018)
+    for px in (-5.43, -3.67):
+        cube(f"WR_FIREPLACE_soot_jamb_{px}", (px, 5.73, 1.67), (0.045, 0.035, 0.66),
+             mats["charcoal"], static, bevel=0.014)
     for px in (-5.57, -3.53):
         cube(f"WR_FIREPLACE_inner_jamb_{px}", (px, 5.69, 1.70), (0.11, 0.09, 0.76), mats["stone_dark"], static, bevel=0.03)
     for px in (-5.78, -3.32):
@@ -409,10 +415,16 @@ def add_room(static, mats):
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
     cube("WR_DESK_blotter", (0.18, 5.45, 2.33), (0.92, 0.26, 0.025), mats["desk_leather"], static, bevel=0.025)
     cube("WR_DESK_blotter_edge", (0.18, 5.17, 2.34), (0.98, 0.025, 0.028), mats["brass_dark"], static, bevel=0.012)
+    # Give the rear desk furniture weight at the runtime camera distance.
+    cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["frame_wood"], static, bevel=0.045)
+    cube("WR_DESK_center_shadow", (0, 6.16, 1.33), (0.72, 0.12, 0.55), mats["wall_recess"], static, bevel=0.04)
     for x in (-1.48, 1.48):
         cube(f"WR_DESK_pedestal_{x}", (x, 6.18, 1.27), (0.35, 0.43, 0.78), mats["frame_wood"], static, bevel=0.06)
         for row in range(3):
-            sphere(f"WR_DESK_knob_{x}_{row}", (x, 5.73, 1.02 + row * 0.38), 0.045, mats["brass"], static)
+            drawer_z = 1.02 + row * 0.38
+            cube(f"WR_DESK_drawer_{x}_{row}", (x, 5.72, drawer_z), (0.27, 0.035, 0.14),
+                 mats["wall_recess"], static, bevel=0.022)
+            sphere(f"WR_DESK_knob_{x}_{row}", (x, 5.67, drawer_z), 0.045, mats["brass"], static)
     cylinder("WR_DESK_lamp_base", (-0.72, 5.58, 2.39), 0.24, 0.08, mats["brass"], static)
     cylinder("WR_DESK_lamp_stem", (-0.72, 5.58, 2.68), 0.035, 0.55, mats["brass"], static)
     sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34, mats["green"], static, scale=(1.4, 0.65, 0.45))
@@ -559,12 +571,12 @@ def build():
     mats = {
         "walnut": material("WR_MAT_board_walnut", (0.17, 0.070, 0.032, 1), rough=0.42, coat=0.20, texture="wood", scale=4.4, bump=0.09),
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
-        "wall_wood": material("WR_MAT_wall_walnut", (0.058, 0.020, 0.011, 1), rough=0.58, coat=0.08, texture="wood", scale=2.9, bump=0.045),
-        "wall_recess": material("WR_MAT_wall_recess", (0.032, 0.010, 0.007, 1), rough=0.64, coat=0.04, texture="wood", scale=3.1, bump=0.035),
-        "trim_wood": material("WR_MAT_trim_walnut", (0.095, 0.032, 0.015, 1), rough=0.41, coat=0.22, texture="wood", scale=3.5, bump=0.045),
-        "parquet": material("WR_MAT_parquet", (0.12, 0.043, 0.020, 1), rough=0.50, coat=0.11, texture="wood", scale=5.1, bump=0.06),
+        "wall_wood": material("WR_MAT_wall_walnut", (0.046, 0.025, 0.018, 1), rough=0.60, coat=0.07, texture="wood", scale=3.1, bump=0.042),
+        "wall_recess": material("WR_MAT_wall_recess", (0.024, 0.014, 0.012, 1), rough=0.66, coat=0.03, texture="wood", scale=3.3, bump=0.032),
+        "trim_wood": material("WR_MAT_trim_walnut", (0.074, 0.036, 0.022, 1), rough=0.43, coat=0.20, texture="wood", scale=3.7, bump=0.042),
+        "parquet": material("WR_MAT_parquet", (0.095, 0.050, 0.029, 1), rough=0.52, coat=0.10, texture="wood", scale=5.3, bump=0.055),
         "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.009, 0.007, 1), rough=0.72, coat=0.03, texture="wood", scale=2.6, bump=0.025),
-        "table_wood": material("WR_MAT_table_walnut", (0.105, 0.030, 0.013, 1), rough=0.37, coat=0.30, texture="wood", scale=3.9, bump=0.05),
+        "table_wood": material("WR_MAT_table_walnut", (0.078, 0.034, 0.018, 1), rough=0.40, coat=0.27, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.052, 0.016, 0.010, 1), rough=0.33, coat=0.34, texture="wood", scale=3.2, bump=0.04),
         "brass": material("WR_MAT_brass", (0.38, 0.16, 0.035, 1), metal=0.92, rough=0.27, coat=0.20, texture="metal", scale=22, bump=0.032),
         "brass_dark": material("WR_MAT_brass_dark", (0.13, 0.052, 0.016, 1), metal=0.88, rough=0.36, coat=0.14, texture="metal", scale=26, bump=0.028),
@@ -576,8 +588,8 @@ def build():
         "leather": material("WR_MAT_leather", (0.16, 0.012, 0.018, 1), rough=0.46, coat=0.22, sheen=0.18, texture="leather", scale=45, bump=0.12),
         "leather_dark": material("WR_MAT_leather_dark", (0.048, 0.005, 0.008, 1), rough=0.56, coat=0.14, texture="leather", scale=48, bump=0.09),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
-        "stone": material("WR_MAT_stone", (0.30, 0.27, 0.22, 1), rough=0.66, coat=0.035, texture="stone", scale=4.1, bump=0.10),
-        "stone_light": material("WR_MAT_stone_light", (0.48, 0.43, 0.36, 1), rough=0.60, coat=0.045, texture="stone", scale=3.9, bump=0.085),
+        "stone": material("WR_MAT_stone", (0.235, 0.225, 0.205, 1), rough=0.70, coat=0.028, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.39, 0.37, 0.34, 1), rough=0.64, coat=0.035, texture="stone", scale=4.1, bump=0.080),
         "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.18, 0.007, 0.013, 1), rough=0.94, sheen=0.30, texture="fabric", scale=52, bump=0.14),
         "armor": material("WR_MAT_armor", (0.095, 0.105, 0.12, 1), metal=0.94, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.035),
@@ -665,7 +677,7 @@ def validate():
     scene = bpy.context.scene
     required = {
         "WR_ARCH_floor", "WR_ARCH_back_wall", "WR_TABLE_main", "WR_TABLE_board_frame",
-        "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_CREST_plaque",
+        "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_ART_relief_right_ring",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
