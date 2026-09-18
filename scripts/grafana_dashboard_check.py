@@ -255,13 +255,20 @@ def main() -> int:
         'query_type="COST"',
         "computed_amount",
         "BilledCost",
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "OTEL_EXPORTER_OTLP_HEADERS",
-        "chess_studio_billing_cost_current_cycle",
-        "/v1/metrics",
+        "read_private_runtime_value",
+        "CHESS_AI_SHARED_SECRET",
+        "/api/internal/billing-costs",
+        "X-Chess-Signature",
     ):
         if token not in billing_exporter:
             fail(f"exporter billing incompleto: {token}")
+
+    system_api = (ROOT / "backend-python" / "system_api.py").read_text(encoding="utf-8")
+    for token in ("/api/internal/billing-costs", "X-Chess-Signature", "record_billing_costs_otel"):
+        if token not in system_api:
+            fail(f"backend billing ingest incompleto: {token}")
+    if "chess_studio_billing_cost_current_cycle" not in tracing or "create_observable_gauge" not in tracing:
+        fail("backend perdió el gauge observable de billing")
 
     for panel_id in (2, 4, 5):
         panel = next((row for row in overview_data.get("panels") or [] if row.get("id") == panel_id), None)
