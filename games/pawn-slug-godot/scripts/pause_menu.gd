@@ -30,11 +30,11 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
     var user_activation := _is_user_activation(event)
-    if _pending_web_fullscreen and user_activation and not _is_escape(event):
+    if _pending_web_fullscreen and user_activation and not _is_pause_event(event):
         _pending_web_fullscreen = false
         _apply_display_mode(true)
 
-    if not _is_escape(event):
+    if not _is_pause_event(event):
         return
 
     if _overlay.visible:
@@ -49,6 +49,15 @@ func _is_escape(event: InputEvent) -> bool:
         and event.pressed
         and not event.echo
         and event.keycode == KEY_ESCAPE
+    )
+
+func _is_pause_event(event: InputEvent) -> bool:
+    if _is_escape(event):
+        return true
+    return (
+        event is InputEventJoypadButton
+        and event.pressed
+        and event.button_index == JOY_BUTTON_START
     )
 
 func _is_user_activation(event: InputEvent) -> bool:
@@ -127,17 +136,21 @@ func _clear_content() -> void:
 
 func _render_main() -> void:
     _clear_content()
-    _content.add_child(_make_button("Continuar", _resume_game))
+    var resume := _make_button("Continuar", _resume_game)
+    _content.add_child(resume)
     _content.add_child(_make_button("Opciones", _render_options))
     _content.add_child(_make_button("Audio", _render_audio))
     _content.add_child(_make_button("Controles", _render_controls))
     _content.add_child(_make_button("Salir del juego", _request_exit, true))
+    resume.grab_focus()
 
 func _render_options() -> void:
     _clear_content()
     _content.add_child(_section_title("OPCIONES"))
-    var mode_label := "Pantalla: COMPLETA" if _fullscreen_enabled else "Pantalla: VENTANA"
-    _content.add_child(_make_button(mode_label, _toggle_display_mode))
+    var mode_label := "Modo preferido: PANTALLA COMPLETA" if _fullscreen_enabled else "Modo preferido: VENTANA"
+    var mode_button := _make_button(mode_label, _toggle_display_mode)
+    _content.add_child(mode_button)
+    mode_button.grab_focus()
 
     var hint := Label.new()
     hint.text = "Pantalla completa es el modo principal. En navegador se activa con el primer gesto permitido por el sistema."
@@ -169,6 +182,7 @@ func _render_audio() -> void:
     slider.value_changed.connect(_on_master_volume_changed)
     row.add_child(slider)
     _content.add_child(row)
+    slider.grab_focus()
 
     var mute_label := "Restaurar sonido" if _master_volume <= 0.001 else "Silenciar"
     _content.add_child(_make_button(mute_label, _toggle_mute))
@@ -179,12 +193,14 @@ func _render_controls() -> void:
     _content.add_child(_section_title("CONTROLES"))
 
     var controls := Label.new()
-    controls.text = "A / D o ← / →    Mover\nS o ↓            Agacharse\nW / ↑ / Espacio  Saltar\nZ / J / Enter     Disparar\nX / K             Granada\n1–4               Seleccionar arma\nQ / E             Cambiar arma\nESC               Pausa\n\nMando: stick/D-pad · A saltar · X disparar · Y granada"
+    controls.text = "A / D o ← / →    Mover\nS o ↓            Agacharse\nW / ↑ / Espacio  Saltar\nZ / J / Enter     Disparar\nX / K             Granada\n1–4               Seleccionar arma\nQ / E             Cambiar arma\nESC               Pausa\n\nMando: stick/D-pad · A saltar · X disparar · Y granada · Start pausa"
     controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     controls.add_theme_font_size_override("font_size", 15)
     controls.add_theme_color_override("font_color", Color("d8d0bd"))
     _content.add_child(controls)
-    _content.add_child(_make_button("← Volver", _render_main))
+    var back := _make_button("← Volver", _render_main)
+    _content.add_child(back)
+    back.grab_focus()
 
 func _section_title(text: String) -> Label:
     var label := Label.new()
