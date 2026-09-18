@@ -18,7 +18,7 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _seed = seed
     _intensity = clampf(intensity, 0.0, 2.0)
     _preset = preset
-    set_process(_kind in ["sky", "ruined_city", "mid_defence"])
+    set_process(_kind in ["sky", "ruined_city", "mid_defence", "near_weather"])
     queue_redraw()
 
 func _ready() -> void:
@@ -44,6 +44,8 @@ func _draw() -> void:
             _draw_ruined_city()
         "mid_defence":
             _draw_mid_defence()
+        "near_weather":
+            _draw_near_weather()
 
 func _noise(index: int, salt: float = 0.0) -> float:
     var raw := sin(float(index) * 12.9898 + float(_seed) * 41.137 + salt * 78.233) * 43758.5453
@@ -373,6 +375,65 @@ func _draw_jungle_midground() -> void:
         var base := Vector2(x, _floor_y - 4.0)
         draw_line(base + Vector2(-24.0, 0.0), base + Vector2(0.0, -34.0), Color(0.31, 0.36, 0.26, 0.68), 4.0)
         draw_line(base + Vector2(24.0, 0.0), base + Vector2(0.0, -34.0), Color(0.31, 0.36, 0.26, 0.68), 4.0)
+
+func _draw_near_weather() -> void:
+    var particle_count := 56
+    if _preset == "alpine_night":
+        particle_count = 74
+    elif _preset == "jungle_storm":
+        particle_count = 64
+
+    for index in range(particle_count):
+        var depth := 0.45 + _noise(index, 30.2) * 0.75
+        var base_x := _noise(index, 30.8) * _world_size.x
+        var base_y := 36.0 + _noise(index, 31.4) * maxf(120.0, _floor_y - 76.0)
+
+        if _preset == "harbor_dusk":
+            var rain_speed := 178.0 + _noise(index, 32.0) * 110.0
+            var x := fposmod(base_x - _atmosphere_time * 34.0 * depth, _world_size.x)
+            var y := fposmod(base_y + _atmosphere_time * rain_speed * depth, _floor_y - 24.0)
+            var length := 8.0 + depth * 14.0
+            draw_line(
+                Vector2(x, y),
+                Vector2(x - 5.0 * depth, y + length),
+                Color(0.58, 0.72, 0.76, 0.11 + depth * 0.05),
+                maxf(1.0, depth * 1.4),
+            )
+        elif _preset == "alpine_night":
+            var snow_speed := 18.0 + _noise(index, 32.7) * 26.0
+            var sway := sin(_atmosphere_time * (0.65 + depth * 0.45) + float(index) * 1.7) * (14.0 + depth * 14.0)
+            var x := fposmod(base_x + sway, _world_size.x)
+            var y := fposmod(base_y + _atmosphere_time * snow_speed * depth, _floor_y - 20.0)
+            var radius := 1.1 + depth * 1.7
+            draw_circle(Vector2(x, y), radius, Color(0.84, 0.90, 0.93, 0.16 + depth * 0.12))
+        elif _preset == "jungle_storm":
+            var rain_speed := 220.0 + _noise(index, 33.4) * 150.0
+            var x := fposmod(base_x - _atmosphere_time * 58.0 * depth, _world_size.x)
+            var y := fposmod(base_y + _atmosphere_time * rain_speed * depth, _floor_y - 18.0)
+            var length := 10.0 + depth * 18.0
+            draw_line(
+                Vector2(x, y),
+                Vector2(x - 8.0 * depth, y + length),
+                Color(0.50, 0.66, 0.52, 0.10 + depth * 0.06),
+                maxf(1.0, depth * 1.5),
+            )
+            if index % 11 == 0:
+                var leaf_phase := _atmosphere_time * (0.8 + depth * 0.3) + float(index)
+                draw_line(
+                    Vector2(x + sin(leaf_phase) * 18.0, y - 26.0),
+                    Vector2(x + sin(leaf_phase) * 18.0 + 7.0, y - 19.0),
+                    Color(0.34, 0.47, 0.24, 0.26),
+                    2.0,
+                )
+        else:
+            var drift_speed := 14.0 + _noise(index, 34.1) * 24.0
+            var x := fposmod(base_x + _atmosphere_time * drift_speed * depth, _world_size.x)
+            var y := base_y + sin(_atmosphere_time * (0.4 + depth * 0.35) + float(index)) * (12.0 + depth * 8.0)
+            var ember := index % 13 == 0
+            var mote_color := Color(0.56, 0.55, 0.51, 0.08 + depth * 0.06)
+            if ember:
+                mote_color = Color(0.92, 0.48, 0.18, 0.14 + depth * 0.08)
+            draw_circle(Vector2(x, y), 0.9 + depth * 1.2, mote_color)
 
 func _draw_mid_defence() -> void:
     if _preset == "harbor_dusk":
