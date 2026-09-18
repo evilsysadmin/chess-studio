@@ -50,8 +50,8 @@ assert(!/script-src[^;]*'unsafe-inline'/.test(FRONTEND_CSP), 'script-src permite
 assert(!/script-src[^;]*'unsafe-eval'/.test(FRONTEND_CSP), 'script-src permite unsafe-eval genérico');
 assert(FRONTEND_CSP.includes("object-src 'none'") && FRONTEND_CSP.includes("base-uri 'self'"), 'CSP carece de object/base hardening');
 assert(pagesHeaders.includes('X-Content-Type-Options: nosniff'), 'Cloudflare Pages no envía nosniff');
-assert(pagesHeaders.includes('X-Frame-Options: DENY'), 'Cloudflare Pages no bloquea framing');
-assert(pagesHeaders.includes("Content-Security-Policy: frame-ancestors 'none'"), 'Cloudflare Pages no bloquea frame-ancestors por cabecera HTTP');
+assert(pagesHeaders.includes('X-Frame-Options: SAMEORIGIN'), 'Cloudflare Pages no restringe framing a same-origin');
+assert(pagesHeaders.includes("Content-Security-Policy: frame-ancestors 'self'"), 'Cloudflare Pages no restringe frame-ancestors a same-origin por cabecera HTTP');
 assert(pagesHeaders.includes('Referrer-Policy: no-referrer'), 'Cloudflare Pages no aplica Referrer-Policy');
 assert(pagesHeaders.includes('Permissions-Policy: camera=(), microphone=(), geolocation=()'), 'Cloudflare Pages no restringe permisos sensibles');
 assert(pagesHeaders.includes('Strict-Transport-Security: max-age=31536000'), 'Cloudflare Pages no aplica HSTS');
