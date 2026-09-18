@@ -58,6 +58,31 @@ async function withCapturePage(browser, capture, callback) {
   }
 }
 
+async function withPawnSlugCapturePage(browser, capture, callback) {
+  const context = await browser.newContext({
+    viewport: { width: capture.width, height: capture.height },
+    hasTouch: capture.hasTouch,
+    isMobile: capture.hasTouch,
+  });
+  const page = await context.newPage();
+  try {
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+    await dismissMatthiasSpeech(page);
+    const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
+    await expect(direct).toBeVisible({ timeout: 20_000 });
+    await direct.click();
+    return await callback(page);
+  } finally {
+    await context.close();
+  }
+}
+
 async function captureFrozenFrame(page, options) {
   const style = await page.addStyleTag({
     content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
@@ -317,11 +342,7 @@ if (scopeEnabled('pawnslug')) {
       { label: 'android-landscape-844x390', width: 844, height: 390, hasTouch: true },
     ];
     for (const capture of pawnSlugCaptures) {
-      await withCapturePage(browser, capture, async (page) => {
-        const godot = page.getByRole('button', { name: /PAWN SLUG GODOT/i });
-        await expect(godot).toBeVisible();
-        await godot.click();
-
+      await withPawnSlugCapturePage(browser, capture, async (page) => {
         await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
         const frame = page.locator('iframe[title="Pawn Slug Godot"]');
         await expect(frame).toBeVisible();
