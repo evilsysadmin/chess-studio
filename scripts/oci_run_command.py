@@ -292,8 +292,10 @@ def diagnose_plugin(
     *,
     wait_for_registration: bool = False,
     registration_timeout: int = PLUGIN_REGISTRATION_TIMEOUT_SECONDS,
+    resolved: tuple[str, str] | None = None,
+    include_egress_diagnostic: bool = False,
 ) -> str:
-    compartment_id, instance_id = resolve_staging(oci, config)
+    compartment_id, instance_id = resolved or resolve_staging(oci, config)
     compute = oci.core.ComputeClient(config)
     instance = compute.get_instance(
         instance_id,
@@ -348,25 +350,25 @@ def diagnose_plugin(
     if not plugin_status_is_healthy(status):
         raise SystemExit(f"OCI Run Command plugin is not running: status={status}")
 
-    # Temporary staging diagnostic: the A1 uses its public VNIC address directly
-    # for Internet Gateway egress. Emit that address before every backend deploy
-    # without launching an additional Run Command. The deeper external probe
-    # remains available through scripts/oci_egress_diagnose.py when needed.
-    try:
-        from oci_egress_diagnose import DEFAULT_EXPECTED_IPV4, assigned_public_ipv4
+    if include_egress_diagnostic:
+        # Reserved-egress details are diagnostic control-plane state, not part of
+        # every immutable backend release. Keep them available on explicit
+        # diagnose without paying the VNIC lookup cost on deploy/smoke.
+        try:
+            from oci_egress_diagnose import DEFAULT_EXPECTED_IPV4, assigned_public_ipv4
 
-        assigned = assigned_public_ipv4(oci, config)
-        print(f"OCI_VNIC_PUBLIC_IPV4={assigned}", flush=True)
-        print(f"OCI_EGRESS_EXPECTED_IPV4={DEFAULT_EXPECTED_IPV4}", flush=True)
-        print(
-            f"OCI_VNIC_MATCH_EXPECTED={'yes' if assigned == DEFAULT_EXPECTED_IPV4 else 'no'}",
-            flush=True,
-        )
-    except BaseException as exc:
-        print(
-            f"OCI_EGRESS_DIAGNOSTIC_ERROR={type(exc).__name__}:{str(exc)[:240]}",
-            flush=True,
-        )
+            assigned = assigned_public_ipv4(oci, config)
+            print(f"OCI_VNIC_PUBLIC_IPV4={assigned}", flush=True)
+            print(f"OCI_EGRESS_EXPECTED_IPV4={DEFAULT_EXPECTED_IPV4}", flush=True)
+            print(
+                f"OCI_VNIC_MATCH_EXPECTED={'yes' if assigned == DEFAULT_EXPECTED_IPV4 else 'no'}",
+                flush=True,
+            )
+        except BaseException as exc:
+            print(
+                f"OCI_EGRESS_DIAGNOSTIC_ERROR={type(exc).__name__}:{str(exc)[:240]}",
+                flush=True,
+            )
     return status
 
 
@@ -441,9 +443,17 @@ def build_command_content(models: Any, command: str) -> Any:
     )
 
 
-def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> str:
+def execute(
+    oci: Any,
+    config: dict[str, str],
+    command: str,
+    *,
+    display_name: str,
+    timeout: int = 180,
+    resolved: tuple[str, str] | None = None,
+) -> str:
     assert_nonsecret_command(command)
-    compartment_id, instance_id = resolve_staging(oci, config)
+    compartment_id, instance_id = resolved or resolve_staging(oci, config)
     models = oci.compute_instance_agent.models
     client = oci.compute_instance_agent.ComputeInstanceAgentClient(config)
     details = models.CreateInstanceAgentCommandDetails(
@@ -609,21 +619,29 @@ def main() -> int:
 
     config = config_from_env(oci)
     if args.operation == "diagnose":
-        diagnose_plugin(oci, config)
+        diagnose_plugin(oci, config, include_egress_diagnostic=True)
     elif args.operation == "reboot-agent":
         reboot_agent(oci, config)
     elif args.operation == "smoke":
-        diagnose_plugin(oci, config)
+        resolved = resolve_staging(oci, config)
+        diagnose_plugin(oci, config, resolved=resolved)
         output = execute(
             oci,
             config,
             smoke_command(),
             display_name="chess-studio-agent-smoke",
             timeout=120,
+            resolved=resolved,
         )
         validate_smoke_output(output)
     else:
-        diagnose_plugin(oci, config, wait_for_registration=True)
+        resolved = resolve_staging(oci, config)
+        diagnose_plugin(
+            oci,
+            config,
+            wait_for_registration=True,
+            resolved=resolved,
+        )
         namespace = runtime_namespace(oci, config)
         execute(
             oci,
@@ -631,6 +649,7 @@ def main() -> int:
             deploy_command(args.repo_ref, namespace),
             display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
             timeout=900,
+            resolved=resolved,
         )
     return 0
 
