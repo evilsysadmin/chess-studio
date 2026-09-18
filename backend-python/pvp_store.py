@@ -286,6 +286,70 @@ async def list_challenges(username: str, now: datetime | None = None) -> list[di
         raise PersistentStorageUnavailable("No se pudieron leer los retos 1v1.") from exc
 
 
+async def head_to_head_for_user(username: str, opponents: list[str]) -> dict[str, dict[str, Any]]:
+    """Summarize persisted finished matches against currently relevant opponents."""
+    opponent_set = {str(name) for name in opponents if name and str(name) != username}
+    if not opponent_set:
+        return {}
+
+    def accumulate(rows):
+        records: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            if row.get("status") != "finished":
+                continue
+            white = row.get("white")
+            black = row.get("black")
+            opponent = black if white == username else white if black == username else None
+            if opponent not in opponent_set:
+                continue
+            result = row.get("result")
+            if result not in {"1-0", "0-1", "1/2-1/2"}:
+                continue
+            record = records.setdefault(opponent, {
+                "games": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "last_played_at": None,
+            })
+            record["games"] += 1
+            if result == "1/2-1/2":
+                record["draws"] += 1
+            else:
+                user_won = (white == username and result == "1-0") or (black == username and result == "0-1")
+                record["wins" if user_won else "losses"] += 1
+            stamp = row.get("updated_at") or row.get("created_at")
+            if isinstance(stamp, datetime) and (record["last_played_at"] is None or stamp > record["last_played_at"]):
+                record["last_played_at"] = stamp
+        return records
+
+    collections = await _collections()
+    if collections is None:
+        async with _memory_guard():
+            return accumulate(list(_memory_matches.values()))
+
+    _, _, matches = collections
+    try:
+        cursor = matches.find({
+            "status": "finished",
+            "result": {"$in": ["1-0", "0-1", "1/2-1/2"]},
+            "$or": [
+                {"white": username, "black": {"$in": list(opponent_set)}},
+                {"black": username, "white": {"$in": list(opponent_set)}},
+            ],
+        }, {
+            "white": 1,
+            "black": 1,
+            "result": 1,
+            "status": 1,
+            "created_at": 1,
+            "updated_at": 1,
+        })
+        return accumulate([row async for row in cursor])
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo resumir el historial 1v1.") from exc
+
+
 async def get_challenge(challenge_id: str) -> dict[str, Any] | None:
     collections = await _collections()
     if collections is None:

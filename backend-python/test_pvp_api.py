@@ -90,6 +90,41 @@ def test_roster_uses_server_account_rating_and_hides_stale_members():
     assert {row["username"] for row in lobby["roster"]} == {"alice"}
 
 
+def test_lobby_exposes_head_to_head_only_from_persisted_finished_matches():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    now = pvp_store.utcnow()
+    pvp_store._memory_matches.update({
+        "finished-win": {
+            "id": "finished-win", "white": "alice", "black": "bob",
+            "status": "finished", "result": "1-0", "updated_at": now - timedelta(minutes=2),
+        },
+        "finished-draw": {
+            "id": "finished-draw", "white": "bob", "black": "alice",
+            "status": "finished", "result": "1/2-1/2", "updated_at": now - timedelta(minutes=1),
+        },
+        "unfinished-ignore": {
+            "id": "unfinished-ignore", "white": "alice", "black": "bob",
+            "status": "finished", "result": None, "updated_at": now,
+        },
+    })
+
+    lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
+    alice = next(row for row in lobby["roster"] if row["username"] == "alice")
+    bob = next(row for row in lobby["roster"] if row["username"] == "bob")
+
+    assert "headToHead" not in alice
+    assert bob["headToHead"] == {
+        "games": 2,
+        "wins": 1,
+        "draws": 1,
+        "losses": 0,
+        "lastPlayedAt": (now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+    }
+
+
 def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     client = make_client()
     for user in ("alice", "bob"):

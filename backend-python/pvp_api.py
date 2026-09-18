@@ -61,14 +61,23 @@ def _serialize(value):
     return value
 
 
-def _public_roster(row: dict, username: str) -> dict:
-    return {
+def _public_roster(row: dict, username: str, head_to_head: dict | None = None) -> dict:
+    payload = {
         "username": row["username"],
         "rating": int(row.get("rating", DEFAULT_RATING)),
         "tier": row.get("tier") or _rating_tier(int(row.get("rating", DEFAULT_RATING))),
         "joinedAt": _iso(row.get("joined_at")),
         "isSelf": row["username"] == username,
     }
+    if head_to_head and row["username"] != username:
+        payload["headToHead"] = {
+            "games": int(head_to_head.get("games", 0)),
+            "wins": int(head_to_head.get("wins", 0)),
+            "draws": int(head_to_head.get("draws", 0)),
+            "losses": int(head_to_head.get("losses", 0)),
+            "lastPlayedAt": _iso(head_to_head.get("last_played_at")),
+        }
+    return payload
 
 
 def _public_challenge(row: dict, username: str) -> dict:
@@ -226,10 +235,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @limiter.limit("40/minute")
     async def lobby(request: Request, username: str = Depends(auth_dependency)):
         roster = await store.active_roster()
+        rivals = [row["username"] for row in roster if row.get("username") != username]
+        head_to_head = await store.head_to_head_for_user(username, rivals)
         challenges = await store.list_challenges(username)
         active_match = await store.active_match_for_user(username)
         return {
-            "roster": [_public_roster(row, username) for row in roster],
+            "roster": [_public_roster(row, username, head_to_head.get(row["username"])) for row in roster],
             "challenges": [_public_challenge(row, username) for row in challenges],
             "activeMatch": _public_match(active_match, username) if active_match else None,
             "pollAfterMs": 3000,
