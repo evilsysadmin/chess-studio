@@ -1,0 +1,264 @@
+{
+  "id": "black-glass-chapel",
+  "version": 1,
+  "progressionKey": "black-glass-chapel-01",
+  "title": "Capilla de Vidrio Negro",
+  "grid": [
+    "#########",
+    "#P..#..X#",
+    "#.#.#.#.#",
+    "#.......#",
+    "#.###.#.#",
+    "#.......#",
+    "#########"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {
+    "chapelLitanyRead": false,
+    "chapelPrismClaimed": false
+  },
+  "enemies": [
+    {
+      "id": "glass-deacon",
+      "visualType": "gate-jailer",
+      "visualScale": 1.02,
+      "visualMotion": "grounded",
+      "name": "diácono de vidrio",
+      "x": 4,
+      "y": 3,
+      "hpKey": "glassDeaconHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1
+      }
+    },
+    {
+      "id": "obsidian-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.96,
+      "visualMotion": "skitter",
+      "name": "araña de obsidiana",
+      "x": 6,
+      "y": 5,
+      "hpKey": "obsidianSpiderHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      }
+    },
+    {
+      "id": "reflection-hound",
+      "visualType": "bone-hound",
+      "visualScale": 0.98,
+      "visualMotion": "grounded",
+      "name": "sabueso del reflejo",
+      "x": 2,
+      "y": 5,
+      "hpKey": "reflectionHoundHp",
+      "maxHp": 7,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1
+      }
+    },
+    {
+      "id": "mirror-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.82,
+      "visualMotion": "hover",
+      "name": "fuego del espejo",
+      "x": 6,
+      "y": 1,
+      "hpKey": "mirrorWispHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} apaga el fuego del espejo con {attack}. Queda una brasa que devuelve una imagen con medio segundo de retraso. Nada inquietante.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "mirror-cinder",
+            "name": "Ascua Especular",
+            "description": "Una brasa fría que refleja luz ajena. Trofeo opcional de la Capilla de Vidrio Negro.",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "chapel-litany",
+      "kind": "lore",
+      "x": 2,
+      "y": 3,
+      "label": "Leer inscripción del espejo",
+      "when": [
+        {
+          "key": "chapelLitanyRead",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "chapelLitanyRead",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "through-black-glass",
+            "title": "Tras el vidrio negro",
+            "description": "La capilla protege un prisma que responde a la caída de tres guardianes materiales.",
+            "objective": "Derrota al diácono, la araña y el sabueso; el fuego del espejo es opcional.",
+            "order": 75
+          }
+        ],
+        "message": "La inscripción enumera tres custodios y deja fuera al fuego flotante. Incluso el culto del espejo sabía redactar requisitos sin ambigüedad.",
+        "journal": {
+          "id": "black-glass-chapel-litany",
+          "title": "Tres reflejos materiales",
+          "body": "El prisma de la capilla responde al diácono, la araña y el sabueso. El fuego del espejo no forma parte del sello.",
+          "sigil": "III"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "chapel-prism",
+      "kind": "pickup",
+      "visualType": "ash-reliquary",
+      "x": 5,
+      "y": 3,
+      "label": "Extraer Prisma de Vidrio Negro",
+      "when": [
+        {
+          "key": "glassDeaconHp",
+          "lte": 0
+        },
+        {
+          "key": "obsidianSpiderHp",
+          "lte": 0
+        },
+        {
+          "key": "reflectionHoundHp",
+          "lte": 0
+        },
+        {
+          "key": "chapelPrismClaimed",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "chapelPrismClaimed",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "black-glass-prism",
+            "name": "Prisma de Vidrio Negro",
+            "description": "Un prisma pesado que divide la luz en reflejos demasiado precisos. Evidentemente acabará abriendo otra cosa.",
+            "quantity": 1
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "advance-quest",
+            "questId": "through-black-glass",
+            "title": "Tras el vidrio negro",
+            "description": "El prisma ya está en manos de la compañía.",
+            "objective": "Encuentra la salida de la Capilla de Vidrio Negro.",
+            "order": 75
+          }
+        ],
+        "message": "El relicario libera un prisma negro que parte la luz sin pedir permiso a la geometría. Matthias lo guarda, por supuesto.",
+        "journal": {
+          "id": "black-glass-prism-claimed",
+          "title": "El prisma que divide la sombra",
+          "body": "La compañía recupera el Prisma de Vidrio Negro después de derribar los tres custodios obligatorios.",
+          "sigil": "◇"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "black-glass-chapel-exit",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Salir hacia la Torre de las Campanas Huecas",
+      "lockedLabel": "Examinar arco de vidrio",
+      "requirements": [
+        {
+          "key": "chapelPrismClaimed",
+          "equals": true,
+          "message": "El arco no refleja ninguna salida mientras el prisma siga en su relicario."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "complete-quest",
+            "questId": "through-black-glass",
+            "title": "Tras el vidrio negro",
+            "description": "La compañía saqueó la capilla escondida y encontró una salida hacia la torre.",
+            "objective": "Capilla secreta superada.",
+            "order": 75
+          },
+          {
+            "type": "transition-map",
+            "mapId": "hollow-bell-tower"
+          }
+        ],
+        "message": "El arco devuelve por fin un pasillo real. La Capilla queda atrás y la Torre de las Campanas Huecas espera delante.",
+        "journal": {
+          "id": "black-glass-chapel-cleared",
+          "title": "El atajo detrás del reflejo",
+          "body": "La ruta secreta converge en la Torre con un Prisma de Vidrio Negro que no figuraba en ningún plano sensato.",
+          "sigil": "◇"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "black-glass-chapel-entry",
+    "title": "Capilla de Vidrio Negro",
+    "body": "La Lámina Resonante abre una capilla imposible detrás de la Basílica. Tres custodios materiales protegen un prisma; un fuego especular flota aparte.",
+    "sigil": "◇"
+  },
+  "introMessage": "Capilla de Vidrio Negro. Veintisiete casillas transitables y demasiados reflejos para una habitación que oficialmente no existe."
+}

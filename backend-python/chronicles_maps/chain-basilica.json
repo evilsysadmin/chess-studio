@@ -1,6 +1,6 @@
 {
   "id": "chain-basilica",
-  "version": 2,
+  "version": 3,
   "progressionKey": "chain-basilica-01",
   "title": "Basílica de las Cadenas",
   "grid": [
@@ -23,7 +23,8 @@
     "basilicaBriefingRead": false,
     "chainAltarOpened": false,
     "glassOculusAwake": false,
-    "oculusCacheOpened": false
+    "oculusCacheOpened": false,
+    "blackGlassDoorFound": false
   },
   "enemies": [
     {
@@ -285,6 +286,101 @@
           "title": "El óculo recuerda el fuego",
           "body": "La Gota de Vidrio Negro del Archivo despierta un hueco secreto en la basílica.",
           "sigil": "◈"
+        }
+      }
+    },
+    {
+      "id": "resonant-seam",
+      "kind": "lore",
+      "x": 7,
+      "y": 1,
+      "label": "Escuchar la junta con la Lámina Resonante",
+      "when": [
+        {
+          "itemId": "resonant-lamina",
+          "quantity": 1
+        },
+        {
+          "key": "blackGlassDoorFound",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "blackGlassDoorFound",
+            "value": true
+          }
+        ],
+        "message": "La Lámina Resonante zumba contra la pared y dibuja una junta que no estaba en el inventario arquitectónico. Muy discreto todo.",
+        "journal": {
+          "id": "black-glass-door-found",
+          "title": "La pared que responde",
+          "body": "La Lámina Resonante revela una puerta oculta detrás de la capilla del óculo. La Llave de Campana parece encajar en su cierre.",
+          "sigil": "◇"
+        }
+      }
+    },
+    {
+      "id": "black-glass-secret-door",
+      "kind": "secret-door",
+      "x": 7,
+      "y": 1,
+      "label": "Abrir puerta de vidrio negro",
+      "when": [
+        {
+          "key": "blackGlassDoorFound",
+          "equals": true
+        },
+        {
+          "itemId": "resonant-lamina",
+          "quantity": 1
+        },
+        {
+          "itemId": "bell-key",
+          "quantity": 1
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "resonant-lamina",
+            "quantity": 1
+          },
+          {
+            "type": "consume-item",
+            "itemId": "bell-key",
+            "quantity": 1
+          },
+          {
+            "type": "complete-quest",
+            "questId": "silence-chain-basilica",
+            "title": "Silenciar la Basílica",
+            "description": "La compañía abrió una ruta secreta después de resolver el altar de la Basílica.",
+            "objective": "Basílica superada por la ruta secreta.",
+            "order": 70
+          },
+          {
+            "type": "start-quest",
+            "questId": "through-black-glass",
+            "title": "Tras el vidrio negro",
+            "description": "La Lámina Resonante abrió una capilla que no figuraba en ningún plano.",
+            "objective": "Explora la Capilla de Vidrio Negro y encuentra qué protege.",
+            "order": 75
+          },
+          {
+            "type": "transition-map",
+            "mapId": "black-glass-chapel"
+          }
+        ],
+        "message": "La Lámina canta, la Llave de Campana gira y la pared se abre. Detrás espera una capilla cuyo arquitecto claramente odiaba la luz natural.",
+        "journal": {
+          "id": "chain-basilica-secret-crossing",
+          "title": "La puerta detrás del reflejo",
+          "body": "La compañía abandona la Basílica por una ruta secreta de vidrio negro. La torre sigue siendo el destino; el rodeo parece tener botín.",
+          "sigil": "◇"
         }
       }
     }
