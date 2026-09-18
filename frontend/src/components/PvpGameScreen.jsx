@@ -8,6 +8,7 @@ import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPref
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import {
   chooseMoveTo,
+  disconnectGraceSeconds,
   lastMoveFromHistory,
   mergeNewerMatch,
   opponentForMatch,
@@ -24,7 +25,11 @@ import './PvpGameScreen.css';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
-function resultCopy(result) {
+function resultCopy(result, endReason) {
+  if (endReason === 'disconnect') {
+    if (result === 'win') return { title: 'Victoria', detail: 'El rival agotó los 60 s de gracia de reconexión.' };
+    if (result === 'loss') return { title: 'Derrota', detail: 'Se agotaron tus 60 s de gracia de reconexión.' };
+  }
   if (result === 'win') return { title: 'Victoria', detail: 'La sala reconoce al superviviente.' };
   if (result === 'loss') return { title: 'Derrota', detail: 'El rival se lleva esta. La mesa sigue en pie.' };
   if (result === 'draw') return { title: 'Tablas', detail: 'Nadie sale con la espada completamente limpia.' };
@@ -34,6 +39,7 @@ function resultCopy(result) {
 function pvpEndReasonLabel(endReason) {
   if (endReason === 'timeout') return 'Tiempo';
   if (endReason === 'resignation') return 'Rendición';
+  if (endReason === 'disconnect') return 'Desconexión';
   return 'Tablero';
 }
 
@@ -46,6 +52,10 @@ function pvpMatthiasVerdict(result, endReason) {
   if (endReason === 'resignation') {
     if (result === 'win') return 'Tu rival se rindió. Eso es un dato; la causa exacta no la inventaremos. El duelo, en cambio, sí está cerrado.';
     if (result === 'loss') return 'Te rendiste. Puede ser criterio o desesperación; sin análisis no voy a fingir cuál de las dos.';
+  }
+  if (endReason === 'disconnect') {
+    if (result === 'win') return 'El rival no volvió dentro del margen. Victoria administrativa, sí; regalarla desenchufando el cable habría sido peor.';
+    if (result === 'loss') return 'La conexión no volvió a tiempo. El servidor esperó sesenta segundos y luego cerró la persiana, con bastante menos romanticismo que un mate.';
   }
   if (result === 'win') return 'Victoria en tablero. Bien. El resultado está registrado; las pullas tácticas vendrán cuando haya pruebas para sostenerlas.';
   if (result === 'loss') return 'Derrota en tablero. Nada de inventar culpables: el resultado está claro; las causas requieren análisis.';
@@ -73,7 +83,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
 
   const opponent = useMemo(() => opponentForMatch(match), [match]);
   const result = useMemo(() => playerResult(match), [match]);
-  const resultText = resultCopy(result);
+  const resultText = resultCopy(result, match?.endReason);
   const endReasonLabel = resultText ? pvpEndReasonLabel(match?.endReason) : '';
   const matthiasVerdict = resultText ? pvpMatthiasVerdict(result, match?.endReason) : '';
   const eloChange = match?.ratingChange || null;
@@ -88,7 +98,13 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const lastMove = useMemo(() => lastMoveFromHistory(match?.history), [match?.history]);
   const checkSquare = useMemo(() => checkedKingSquare(match?.fen), [match?.fen]);
   const orientation = match?.youAre === 'b' ? 'black' : 'white';
-  const opponentPresence = opponentPresenceLabel(match?.opponentPresence);
+  const disconnectSeconds = useMemo(
+    () => disconnectGraceSeconds(match?.opponentDisconnectDeadline, Date.now()),
+    [clockElapsedMs, match?.opponentDisconnectDeadline],
+  );
+  const opponentPresence = match?.opponentPresence === 'disconnected' && disconnectSeconds !== null
+    ? `SIN CONEXIÓN · ${disconnectSeconds} s`
+    : opponentPresenceLabel(match?.opponentPresence);
   const tone = busy || !connectionLive ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
   const turnLabel = !connectionLive
     ? 'Reconectando con el árbitro…'
@@ -319,7 +335,10 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                   <span className="pvp-war-room__opponent-mark" aria-hidden="true">♟</span>
                   <span className="pvp-war-room__identity">
                     <strong>{opponent.username}</strong>
-                    <small className={`pvp-war-room__opponent-meta is-${match.opponentPresence || 'unknown'}`}>
+                    <small
+                      className={`pvp-war-room__opponent-meta is-${match.opponentPresence || 'unknown'}`}
+                      aria-label={`Estado de ${opponent.username}: ${opponentPresence}`}
+                    >
                       <span>{opponent.rating} Elo 1v1</span>
                       <em>{opponentPresence}</em>
                     </small>
