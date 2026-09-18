@@ -175,7 +175,8 @@ def self_test() -> None:
         elif isinstance(node, ast.ImportFrom):
             imported.append(node.module or "")
     assert not any(name == "oci" or name.startswith("oci.") for name in imported)
-    assert "oraclecloud.com" not in source.lower()
+    forbidden_oci_api_host = "oracle" + "cloud.com"
+    assert forbidden_oci_api_host not in source.lower()
     assert "ls-remote" in source
     assert "refs/heads/main" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
