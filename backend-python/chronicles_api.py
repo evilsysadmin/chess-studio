@@ -286,9 +286,67 @@ def chronicles_route_plan_for_seed(seed: int) -> tuple[str, ...]:
     return tuple(ranked[:prefinal_count]) + (policy["finalMapId"],)
 
 
-def _route_revision(seed: int, route_plan: tuple[str, ...]) -> str:
-    version = chronicles_route_policy()["version"]
-    material = f"chronicles-route-v{version}:{int(seed)}:" + "|".join(route_plan)
+def chronicles_route_snapshot_for_seed(seed: int) -> dict[str, Any]:
+    policy = chronicles_route_policy()
+    route_plan = chronicles_route_plan_for_seed(seed)
+    return {
+        "policyVersion": policy["version"],
+        "mapIds": route_plan,
+        "primaryExitIds": {
+            map_id: policy["primaryExitIds"][map_id]
+            for map_id in route_plan[:-1]
+        },
+    }
+
+
+def _normalize_route_snapshot(route_snapshot: dict[str, Any] | None) -> dict[str, Any] | None:
+    if route_snapshot is None:
+        return None
+    if not isinstance(route_snapshot, dict):
+        raise ChroniclesManifestError("route snapshot must be an object")
+
+    version = route_snapshot.get("policyVersion")
+    raw_map_ids = route_snapshot.get("mapIds")
+    raw_exit_ids = route_snapshot.get("primaryExitIds")
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise ChroniclesManifestError("route snapshot has invalid policy version")
+    if not isinstance(raw_map_ids, (list, tuple)) or len(raw_map_ids) < 2:
+        raise ChroniclesManifestError("route snapshot requires at least two maps")
+    map_ids = tuple(raw_map_ids)
+    if (
+        any(not isinstance(map_id, str) or not _MAP_ID_RE.fullmatch(map_id) for map_id in map_ids)
+        or len(set(map_ids)) != len(map_ids)
+    ):
+        raise ChroniclesManifestError("route snapshot contains invalid map ids")
+    if any(map_id not in set(chronicles_shipped_map_ids()) for map_id in map_ids):
+        raise ChroniclesManifestError("route snapshot references missing maps")
+    if not isinstance(raw_exit_ids, dict) or set(raw_exit_ids) != set(map_ids[:-1]):
+        raise ChroniclesManifestError("route snapshot has invalid primary exits")
+
+    primary_exit_ids = dict(raw_exit_ids)
+    for map_id in map_ids[:-1]:
+        exit_id = primary_exit_ids.get(map_id)
+        if not isinstance(exit_id, str) or not exit_id:
+            raise ChroniclesManifestError("route snapshot has invalid primary exit")
+        manifest, _revision = load_chronicles_manifest(map_id)
+        exit_entry = next((entry for entry in manifest.get("exits", []) if entry.get("id") == exit_id), None)
+        effects = ((exit_entry or {}).get("action") or {}).get("effects") or []
+        if sum(1 for effect in effects if effect.get("type") == "transition-map") != 1:
+            raise ChroniclesManifestError("route snapshot primary exit is not routable")
+
+    return {
+        "policyVersion": version,
+        "mapIds": map_ids,
+        "primaryExitIds": primary_exit_ids,
+    }
+
+
+def _route_revision(seed: int, route_snapshot: dict[str, Any]) -> str:
+    snapshot = _normalize_route_snapshot(route_snapshot)
+    material = (
+        f"chronicles-route-v{snapshot['policyVersion']}:{int(seed)}:"
+        + "|".join(snapshot["mapIds"])
+    )
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
@@ -296,17 +354,18 @@ def _apply_route_plan(
     manifest: dict[str, Any],
     *,
     seed: int,
-    route_plan: tuple[str, ...] | None,
+    route_snapshot: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    if route_plan is None or manifest["id"] not in route_plan:
+    snapshot = _normalize_route_snapshot(route_snapshot)
+    if snapshot is None or manifest["id"] not in snapshot["mapIds"]:
         return manifest
 
+    route_plan = snapshot["mapIds"]
     route_index = route_plan.index(manifest["id"])
     next_map_id = route_plan[route_index + 1] if route_index + 1 < len(route_plan) else None
-    policy = chronicles_route_policy()
 
     if next_map_id is not None:
-        exit_id = policy["primaryExitIds"].get(manifest["id"])
+        exit_id = snapshot["primaryExitIds"].get(manifest["id"])
         if exit_id is None:
             raise ChroniclesManifestError("route map has no configured primary exit")
         exit_entry = next((entry for entry in manifest.get("exits", []) if entry.get("id") == exit_id), None)
@@ -323,8 +382,8 @@ def _apply_route_plan(
         effects[transition_indexes[0]] = {"type": "transition-map", "mapId": next_map_id}
 
     manifest.setdefault("generation", {})["route"] = {
-        "policyVersion": policy["version"],
-        "revision": _route_revision(seed, route_plan),
+        "policyVersion": snapshot["policyVersion"],
+        "revision": _route_revision(seed, snapshot),
         "index": route_index,
         "length": len(route_plan),
         "nextMapId": next_map_id,
@@ -338,14 +397,14 @@ def chronicles_area_envelope(
     seed: int,
     *,
     root: Path | None = None,
-    route_plan: tuple[str, ...] | None = None,
+    route_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     generated = proceduralize_chronicles_manifest(authored_manifest, seed)
     routed_manifest = _apply_route_plan(
         generated.manifest,
         seed=seed,
-        route_plan=route_plan,
+        route_snapshot=route_snapshot,
     )
     manifest = _validate_manifest(routed_manifest, expected_map_id=authored_manifest["id"])
     revision = hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
@@ -376,10 +435,10 @@ def _run_id(username: str, idempotency_key: str | None) -> str:
 def _run_bootstrap_payload(
     run: dict[str, Any],
     *,
-    route_plan: tuple[str, ...] | None = None,
+    route_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     areas = [
-        chronicles_area_envelope(map_id, run["seed"], route_plan=route_plan)
+        chronicles_area_envelope(map_id, run["seed"], route_snapshot=route_snapshot)
         for map_id in chronicles_shipped_map_ids()
     ]
     area = next(
@@ -394,11 +453,12 @@ def _run_bootstrap_payload(
     ):
         raise HTTPException(409, "La revisión de contenido de esta run ya no está disponible.")
     payload = {**run, "area": area, "areas": areas}
-    if route_plan is not None:
+    snapshot = _normalize_route_snapshot(route_snapshot)
+    if snapshot is not None:
         payload["route"] = {
-            "policyVersion": chronicles_route_policy()["version"],
-            "revision": _route_revision(run["seed"], route_plan),
-            "mapIds": list(route_plan),
+            "policyVersion": snapshot["policyVersion"],
+            "revision": _route_revision(run["seed"], snapshot),
+            "mapIds": list(snapshot["mapIds"]),
         }
     return payload
 
@@ -436,13 +496,10 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         seed = secrets.randbelow(_MAX_SEED + 1)
-        route_plan = chronicles_route_plan_for_seed(seed) if body.map_id is None else None
-        selected_map_id = body.map_id or route_plan[0]
-        area = chronicles_area_envelope(selected_map_id, seed, route_plan=route_plan)
-        fingerprint_payload = {"mapId": body.map_id}
-        if body.map_id is None:
-            fingerprint_payload["entryPolicyVersion"] = chronicles_route_policy()["version"]
-        fingerprint = operation_fingerprint(fingerprint_payload)
+        route_snapshot = chronicles_route_snapshot_for_seed(seed) if body.map_id is None else None
+        selected_map_id = body.map_id or route_snapshot["mapIds"][0]
+        area = chronicles_area_envelope(selected_map_id, seed, route_snapshot=route_snapshot)
+        fingerprint = operation_fingerprint({"mapId": body.map_id})
         try:
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=_run_id(username, idempotency_key),
@@ -452,9 +509,12 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 content_version=area["contentVersion"],
                 manifest_revision=area["manifestRevision"],
                 create_fingerprint=fingerprint,
+                route_snapshot=route_snapshot,
             )
-            stable_route_plan = chronicles_route_plan_for_seed(run["seed"]) if body.map_id is None else None
-            return _run_bootstrap_payload(run, route_plan=stable_route_plan)
+            stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
+            if body.map_id is None and stable_route_snapshot is None:
+                stable_route_snapshot = chronicles_route_snapshot_for_seed(run["seed"])
+            return _run_bootstrap_payload(run, route_snapshot=stable_route_snapshot)
         except ValueError as exc:
             if str(exc) == "idempotency-conflict":
                 raise HTTPException(409, "La misma Idempotency-Key se reutilizó con otra configuración de run.") from exc
