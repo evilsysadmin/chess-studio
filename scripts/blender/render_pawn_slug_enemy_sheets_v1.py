@@ -51,6 +51,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--enemy-type", choices=TYPES)
+    parser.add_argument("--smoke", action="store_true", help="Render representative runtime-resolution evidence only")
     tail = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(tail)
 
@@ -318,15 +319,16 @@ def look_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
 
-def setup_scene():
+def setup_scene(smoke=False):
     scene = bpy.context.scene
     try:
         scene.render.engine = "BLENDER_EEVEE_NEXT"
     except Exception:
         scene.render.engine = "BLENDER_EEVEE"
     scene.render.film_transparent = True
-    scene.render.resolution_x = 192
-    scene.render.resolution_y = 192
+    render_size = 96 if smoke else 192
+    scene.render.resolution_x = render_size
+    scene.render.resolution_y = render_size
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
@@ -386,13 +388,23 @@ def save_preview_blend(out, mats, types):
     print("Wrote", path)
 
 
-def render_frames(out, mats, types):
+def selected_frames(action, count, smoke):
+    if not smoke:
+        return list(range(count))
+    # Smoke evidence samples the authored start, middle and end pose. This
+    # catches clipping/silhouette regressions and proves motion without paying
+    # for the full production atlas on every PR.
+    return sorted({0, count // 2, count - 1})
+
+
+def render_frames(out, mats, types, smoke=False):
     scene = bpy.context.scene
+    rendered_frames = {action: selected_frames(action, count, smoke) for action, count in ACTIONS.items()}
     for enemy_type in types:
         for action, count in ACTIONS.items():
             target = out / "frames" / enemy_type / action
             target.mkdir(parents=True, exist_ok=True)
-            for frame in range(count):
+            for frame in rendered_frames[action]:
                 clear_authored()
                 build_enemy(enemy_type, action, frame, mats)
                 scene.render.filepath = str(target / f"{frame:02d}.png")
@@ -401,8 +413,11 @@ def render_frames(out, mats, types):
         "version": "blender-enemy-v1",
         "blender": bpy.app.version_string,
         "sourceFacing": "left",
+        "mode": "smoke" if smoke else "full",
+        "frameSize": [scene.render.resolution_x, scene.render.resolution_y],
         "frameSize2x": [192, 192],
         "runtimeCell": [96, 96],
+        "renderedFrames": rendered_frames,
         "columns": 16,
         "types": list(types),
         "actions": ACTIONS,
@@ -417,9 +432,9 @@ def main():
     types = (args.enemy_type,) if args.enemy_type else TYPES
     clear_scene()
     mats = build_materials()
-    setup_scene()
+    setup_scene(args.smoke)
     save_preview_blend(out, mats, types)
-    render_frames(out, mats, types)
+    render_frames(out, mats, types, smoke=args.smoke)
     print("Pawn Slug enemy Blender sheets source complete:", out)
 
 
