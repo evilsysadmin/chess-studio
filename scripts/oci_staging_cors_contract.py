@@ -272,21 +272,27 @@ assert "poll_errors" in deploy and "backoff" in deploy and "transport_errors" in
 assert "agent_diag_summary ||" in deploy
 assert 'cat "$log"' not in deploy.split("agent_diag_summary()", 1)[1].split("total_started_ms=", 1)[0]
 
-# The GHCR signal controller is staged but deliberately dormant in this change.
-# It adds no OCI resource, no inbound port and no polling traffic until a later
-# reviewed change explicitly enables the timer.
-assert "prepare_signal_controller_disabled()" in deploy
-assert "systemctl disable --now chess-studio-staging-signal.timer" in deploy
+# The GHCR signal controller is root-owned, host-local and bounded. It creates
+# no OCI resource and the exact Run Command path remains available as fallback.
+assert "prepare_signal_controller()" in deploy
+assert "enable_signal_controller()" in deploy
+assert "systemctl enable --now chess-studio-staging-signal.timer" in deploy
+assert "systemctl disable --now chess-studio-staging-signal.timer" not in deploy
 assert 'install -o root -g root -m 0755 "$signal_controller_source"' in deploy
 assert 'install -o root -g root -m 0644 "$signal_service_source"' in deploy
 assert 'install -o root -g root -m 0644 "$signal_timer_source"' in deploy
-assert "systemctl enable --now chess-studio-staging-signal.timer" not in deploy
+assert "require flock" in deploy
+assert 'flock -w 120 8' in deploy
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind("enable_signal_controller")
 assert "oci-staging-approved" in signal_controller
 assert "org.opencontainers.image.revision" in signal_controller
 assert "org.opencontainers.image.source" in signal_controller
 assert "flock -n 9" in signal_controller
 assert "docker pull --quiet" in signal_controller
 assert "approved and immutable image identities differ" in signal_controller
+assert "failure_cooldown_s=60" in signal_controller
+assert "staging-signal-failure" in signal_controller
+assert 'failed_sha == "$sha"' in signal_controller
 assert "ssh " not in signal_controller.lower()
 assert "object_storage" not in signal_controller.lower()
 assert "bastion" not in signal_controller.lower()
