@@ -253,7 +253,7 @@ def add_stairs(materials):
     curve_tube("HOME_PROP_dungeon_rail", [(5.76, 4.85, 1.25), (5.76, 3.55, 0.92), (5.76, 2.2, 0.62)], 0.045, brass)
 
 
-def build_scene(reference: Path, samples: int, max_width: int, engine: str):def build_scene(reference: Path, samples: int, max_width: int, engine: str):
+def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
     scene = bpy.context.scene
     if engine == "workbench":
