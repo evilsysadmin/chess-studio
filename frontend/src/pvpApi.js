@@ -52,6 +52,10 @@ export const pvpApi = {
     return jsonRequest(`/matches/${matchId}`, { signal });
   },
 
+  readyMatch(matchId, { signal } = {}) {
+    return jsonRequest(`/matches/${matchId}/ready`, { method: 'POST', signal });
+  },
+
   playMove(matchId, from, to, promotion = null, { signal } = {}) {
     return jsonRequest(`/matches/${matchId}/move`, {
       method: 'POST',

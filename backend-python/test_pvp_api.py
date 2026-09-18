@@ -58,6 +58,18 @@ def as_user(client, username, method, path, **kwargs):
     return getattr(client, method)(path, headers={"x-test-user": username}, **kwargs)
 
 
+def start_match_now(client, match):
+    first = as_user(client, match["white"], "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert first.status_code == 200
+    second = as_user(client, match["black"], "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert second.status_code == 200
+    assert second.json()["match"]["status"] == "active"
+    started = pvp_store.utcnow() - timedelta(seconds=1)
+    pvp_store._memory_matches[match["id"]]["start_at"] = started
+    pvp_store._memory_matches[match["id"]]["turn_started_at"] = started
+    return second.json()["match"]
+
+
 def test_roster_uses_server_account_rating_and_hides_stale_members():
     users_store._memory_users["alice"]["pvp_rating"] = 1180
     users_store._memory_users["bob"]["pvp_rating"] = 1325
@@ -94,11 +106,12 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert accepted.status_code == 200
     match = accepted.json()["match"]
     assert {match["white"], match["black"]} == {"alice", "bob"}
-    assert match["status"] == "active"
+    assert match["status"] == "starting"
     assert match["revision"] == 0
     assert match["whiteRating"] == pvp_api.DEFAULT_RATING
     assert match["blackRating"] == pvp_api.DEFAULT_RATING
     assert match["clock"]["id"] == "10+0"
+    assert match["clock"]["runningColor"] is None
     assert 590_000 <= match["clock"]["whiteMs"] <= 600_000
     assert 590_000 <= match["clock"]["blackMs"] <= 600_000
     assert match["id"] == challenge_id
@@ -112,9 +125,24 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     white = match["white"]
     black = match["black"]
     match_id = match["id"]
+    first_ready = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/ready")
+    assert first_ready.status_code == 200
+    assert first_ready.json()["match"]["status"] == "starting"
+    second_ready = as_user(client, black, "post", f"/api/pvp/matches/{match_id}/ready")
+    assert second_ready.status_code == 200
+    prepared = second_ready.json()["match"]
+    assert prepared["status"] == "active"
+    assert prepared["startsAt"]
+    assert prepared["clock"]["runningColor"] is None
+
+    early = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/move", json={"from": "e2", "to": "e4"})
+    assert early.status_code == 409
+    started = pvp_store.utcnow() - timedelta(seconds=1)
+    pvp_store._memory_matches[match_id]["start_at"] = started
+    pvp_store._memory_matches[match_id]["turn_started_at"] = started
     first = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/move", json={"from": "e2", "to": "e4"})
     assert first.status_code == 200
-    assert first.json()["match"]["revision"] == 1
+    assert first.json()["match"]["revision"] == 3
     assert first.json()["match"]["history"][0]["uci"] == "e2e4"
 
     wrong_turn = as_user(client, white, "post", f"/api/pvp/matches/{match_id}/move", json={"from": "d2", "to": "d4"})
@@ -122,7 +150,7 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
 
     second = as_user(client, black, "post", f"/api/pvp/matches/{match_id}/move", json={"from": "e7", "to": "e5"})
     assert second.status_code == 200
-    assert second.json()["match"]["revision"] == 2
+    assert second.json()["match"]["revision"] == 4
     assert len(second.json()["match"]["history"]) == 2
 
 
@@ -136,6 +164,7 @@ def test_finished_match_settles_server_elo_once(monkeypatch):
     match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
     assert match["white"] == "alice"
     assert match["black"] == "bob"
+    start_match_now(client, match)
     match_id = match["id"]
 
     sequence = [
@@ -157,6 +186,7 @@ def test_finished_match_settles_server_elo_once(monkeypatch):
 
     assert last.json()["match"]["status"] == "finished"
     assert last.json()["match"]["result"] == "0-1"
+    assert last.json()["match"]["ratingChange"] == {"before": 400, "after": 416, "delta": 16}
     assert pvp_rating.next_ratings(400, 400, "0-1") == (384, 416)
     assert users_store._memory_users["alice"]["pvp_rating"] == 384
     assert users_store._memory_users["bob"]["pvp_rating"] == 416
@@ -199,6 +229,7 @@ def test_resignation_is_authoritative_and_settles_rating(monkeypatch):
         assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
     challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
     match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    start_match_now(client, match)
 
     response = as_user(client, "alice", "post", f"/api/pvp/matches/{match['id']}/resign")
     assert response.status_code == 200
@@ -222,6 +253,7 @@ def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
         assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
     challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
     match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    start_match_now(client, match)
     match_id = match["id"]
 
     # Blancas empiezan: simula una pestaña que deja correr más de los 10 min.

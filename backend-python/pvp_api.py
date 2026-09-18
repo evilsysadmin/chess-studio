@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -17,6 +17,7 @@ DEFAULT_RATING = rating_store.DEFAULT_RATING
 PVP_TIME_CONTROL_ID = "10+0"
 PVP_INITIAL_MS = 10 * 60 * 1000
 PVP_INCREMENT_MS = 0
+PVP_HANDOFF_SECONDS = 5
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -96,8 +97,12 @@ def _clock_snapshot(match: dict, now: datetime | None = None) -> dict:
     stamp = now or store.utcnow()
     white_ms = max(0, int(match.get("white_clock_ms", PVP_INITIAL_MS)))
     black_ms = max(0, int(match.get("black_clock_ms", PVP_INITIAL_MS)))
-    running = match.get("turn", "w") if match.get("status") == "active" else None
     started = match.get("turn_started_at")
+    running = (
+        match.get("turn", "w")
+        if match.get("status") == "active" and isinstance(started, datetime) and started <= stamp
+        else None
+    )
     if running in {"w", "b"} and isinstance(started, datetime):
         elapsed_ms = max(0, int((stamp - started).total_seconds() * 1000))
         if running == "w":
@@ -140,6 +145,20 @@ async def _finish_timeout(match_id: str, match: dict, now: datetime | None = Non
     )
 
 
+def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
+    if color is None or match.get("status") != "finished":
+        return None
+    result = str(match.get("result") or "")
+    if result not in {"1-0", "0-1", "1/2-1/2"}:
+        return None
+    white_before = int(match.get("white_rating", DEFAULT_RATING))
+    black_before = int(match.get("black_rating", DEFAULT_RATING))
+    white_after, black_after = rating_store.next_ratings(white_before, black_before, result)
+    before = white_before if color == chess.WHITE else black_before
+    after = white_after if color == chess.WHITE else black_after
+    return {"before": before, "after": after, "delta": after - before}
+
+
 def _public_match(match: dict, username: str) -> dict:
     color = _player_color(match, username)
     turn = match.get("turn", "w")
@@ -154,6 +173,8 @@ def _public_match(match: dict, username: str) -> dict:
         "status": match.get("status", "active"),
         "result": match.get("result"),
         "endReason": match.get("end_reason"),
+        "startsAt": _iso(match.get("start_at")),
+        "ratingChange": _rating_change(match, color),
         "clock": _clock_snapshot(match),
         "history": _serialize(match.get("history") or []),
         "revision": int(match.get("revision", 0)),
@@ -270,13 +291,16 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "black_rating": int(challenge_row["opponent_rating"] if black == username else challenge_row["challenger_rating"]),
             "fen": chess.STARTING_FEN,
             "turn": "w",
-            "status": "active",
+            "status": "starting",
             "result": None,
             "history": [],
             "revision": 0,
             "white_clock_ms": PVP_INITIAL_MS,
             "black_clock_ms": PVP_INITIAL_MS,
-            "turn_started_at": now,
+            "white_ready": False,
+            "black_ready": False,
+            "start_at": None,
+            "turn_started_at": None,
             "end_reason": None,
             "created_at": now,
             "updated_at": now,
@@ -288,6 +312,37 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         await store.leave_roster(accepted_match["white"])
         await store.leave_roster(accepted_match["black"])
         return {"match": _public_match(accepted_match, username)}
+
+    @router.post("/matches/{match_id}/ready")
+    async def ready_match(match_id: str, username: str = Depends(auth_dependency)):
+        for _attempt in range(4):
+            match = await store.get_match(match_id)
+            color = _player_color(match or {}, username)
+            if not match or color is None:
+                raise HTTPException(404, "Partida 1v1 no encontrada.")
+            if match.get("status") == "active":
+                return {"match": _public_match(match, username)}
+            if match.get("status") != "starting":
+                raise HTTPException(409, "La partida ya no está preparando el arranque.")
+
+            own_key = "white_ready" if color == chess.WHITE else "black_ready"
+            other_key = "black_ready" if color == chess.WHITE else "white_ready"
+            if match.get(own_key) and not match.get(other_key):
+                return {"match": _public_match(match, username)}
+
+            now = store.utcnow()
+            changes = {own_key: True, "updated_at": now}
+            if match.get(other_key):
+                start_at = now + timedelta(seconds=PVP_HANDOFF_SECONDS)
+                changes.update(status="active", start_at=start_at, turn_started_at=start_at)
+            updated = await store.update_match(
+                match_id,
+                expected_revision=int(match.get("revision", 0)),
+                changes=changes,
+            )
+            if updated:
+                return {"match": _public_match(updated, username)}
+        raise HTTPException(409, "El duelo cambió mientras sincronizábamos a los jugadores.")
 
     @router.get("/matches/{match_id}")
     @limiter.limit("60/minute")
@@ -354,6 +409,9 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             if board.turn != color:
                 raise HTTPException(409, "No es tu turno.")
             now = store.utcnow()
+            start_at = match.get("start_at")
+            if isinstance(start_at, datetime) and now < start_at:
+                raise HTTPException(409, "El duelo todavía está en la cuenta atrás.")
             clock = _clock_snapshot(match, now)
             mover_clock = clock["whiteMs"] if color == chess.WHITE else clock["blackMs"]
             if mover_clock <= 0:

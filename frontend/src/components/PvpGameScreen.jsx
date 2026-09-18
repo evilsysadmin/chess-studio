@@ -72,6 +72,8 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const resultText = resultCopy(result);
   const endReasonLabel = resultText ? pvpEndReasonLabel(match?.endReason) : '';
   const matthiasVerdict = resultText ? pvpMatthiasVerdict(result, match?.endReason) : '';
+  const eloChange = match?.ratingChange || null;
+  const eloDeltaLabel = eloChange ? `${eloChange.delta >= 0 ? '+' : ''}${eloChange.delta}` : '';
   const moves = useMemo(
     () => match?.yourTurn && !busy ? selectableMoves(match.fen, selected, match.youAre) : [],
     [busy, match?.fen, match?.youAre, match?.yourTurn, selected],
@@ -211,7 +213,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       <div className="pvp-war-room__topbar">
         <button type="button" className="secondary-btn" onClick={onExit}>← Lobby</button>
         <span>WAR ROOM · 1 VS 1</span>
-        <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} rating</small>
+        <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
       </div>
 
       <div className="game-layout game-layout-3d pvp-war-room__layout">
@@ -242,7 +244,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
 
                 <aside className={`pvp-war-room__duel-pill is-${tone}`} aria-label="Estado del duelo">
                   <span className="pvp-war-room__opponent-mark" aria-hidden="true">♟</span>
-                  <span className="pvp-war-room__identity"><strong>{opponent.username}</strong><small>{opponent.rating} rating</small></span>
+                  <span className="pvp-war-room__identity"><strong>{opponent.username}</strong><small>{opponent.rating} Elo 1v1</small></span>
                   <span className="pvp-war-room__divider" aria-hidden="true" />
                   <span className="pvp-war-room__light" aria-hidden="true" />
                   <strong role="status" aria-live="polite">{turnLabel}</strong>
@@ -280,8 +282,14 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                       </span>
                       <p>{matthiasVerdict}</p>
                     </blockquote>
+                    {eloChange && (
+                      <div className="pvp-war-room__elo-change" aria-label={`Elo 1 contra 1: ${eloChange.before}, ahora ${eloChange.after}, cambio ${eloDeltaLabel}`}>
+                        <small>ELO 1 VS 1</small>
+                        <span><b>{eloChange.before}</b><i>→</i><strong>{eloChange.after}</strong><em className={eloChange.delta >= 0 ? 'is-up' : 'is-down'}>{eloDeltaLabel}</em></span>
+                      </div>
+                    )}
                     <p className="pvp-war-room__result-facts">
-                      Contra <b>{opponent.username}</b> · {opponent.rating} rating · {endReasonLabel} · {(match.history || []).length} jugadas registradas
+                      Contra <b>{opponent.username}</b> · {opponent.rating} Elo 1v1 inicial · {endReasonLabel} · {(match.history || []).length} jugadas registradas
                     </p>
                     <button type="button" className="primary-btn" onClick={onExit}>Volver al lobby</button>
                   </aside>

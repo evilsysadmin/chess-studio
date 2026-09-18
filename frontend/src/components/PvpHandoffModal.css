@@ -1,0 +1,23 @@
+.pvp-handoff-backdrop {
+  position:fixed; z-index:190; inset:0; display:grid; place-items:center; padding:1rem;
+  background:rgba(5,7,9,.66); backdrop-filter:blur(8px);
+}
+.pvp-handoff-modal {
+  width:min(470px,calc(100vw - 2rem)); display:grid; justify-items:center; gap:.55rem;
+  padding:1.2rem 1.25rem 1.1rem; border:1px solid rgba(218,179,105,.36); border-radius:18px;
+  color:#f3e8d3; text-align:center;
+  background:radial-gradient(circle at 50% 0%,rgba(177,119,54,.18),transparent 42%),linear-gradient(150deg,rgba(30,23,17,.98),rgba(9,11,13,.98));
+  box-shadow:0 26px 70px rgba(0,0,0,.58),inset 0 1px rgba(255,226,171,.06);
+}
+.pvp-handoff-modal__eyebrow { color:rgba(224,195,139,.62); font-family:var(--font-mono); font-size:.56rem; letter-spacing:.14em; }
+.pvp-handoff-modal__versus { display:grid; place-items:center; width:44px; height:44px; border:1px solid rgba(218,179,105,.24); border-radius:50%; color:#e0bc76; background:rgba(164,104,45,.12); font-size:1.15rem; }
+.pvp-handoff-modal h2 { margin:0; font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.35rem,4vw,1.9rem); font-weight:600; }
+.pvp-handoff-modal h2 b { color:#efc978; font-variant-numeric:tabular-nums; }
+.pvp-handoff-modal p { margin:0; color:rgba(243,232,211,.82); font-size:.88rem; }
+.pvp-handoff-modal small { color:rgba(243,232,211,.5); font-size:.68rem; }
+.pvp-handoff-modal__ticks { display:flex; gap:.38rem; margin-top:.2rem; }
+.pvp-handoff-modal__ticks i { display:grid; place-items:center; width:27px; height:27px; border:1px solid rgba(218,179,105,.14); border-radius:50%; color:rgba(243,232,211,.3); font-family:var(--font-mono); font-size:.62rem; font-style:normal; transition:border-color .16s ease,color .16s ease,background .16s ease; }
+.pvp-handoff-modal__ticks i.is-lit { border-color:rgba(218,179,105,.48); color:#f0cf8d; background:rgba(185,126,56,.12); }
+.pvp-handoff-modal em { color:#e3a39a; font-size:.65rem; font-style:normal; }
+@media (max-width:520px){.pvp-handoff-modal{padding:1rem .9rem}.pvp-handoff-modal__ticks i{width:25px;height:25px}}
+@media (prefers-reduced-motion:reduce){.pvp-handoff-modal__ticks i{transition:none}}

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import PvpChallengeNudge from './PvpChallengeNudge.jsx';
+import PvpHandoffModal from './PvpHandoffModal.jsx';
 import { usePvpAppFlow } from '../usePvpAppFlow.js';
 import { clearPvpRuntime, publishPvpRuntime } from '../pvpRuntimeBridge.js';
 
@@ -20,11 +21,18 @@ export default function PvpAppSurface({ view, replaceView }) {
 
   return (
     <>
-      {view !== 'pvpGame' && flow.incomingChallenge && (
+      {view !== 'pvpGame' && !flow.handoffMatch && flow.incomingChallenge && (
         <PvpChallengeNudge
           challenge={flow.incomingChallenge}
           onAccept={flow.acceptIncoming}
           onDecline={flow.declineChallenge}
+        />
+      )}
+      {flow.handoffMatch && (
+        <PvpHandoffModal
+          match={flow.handoffMatch}
+          error={flow.handoffError}
+          onComplete={flow.completeHandoff}
         />
       )}
       {view === 'pvpGame' && flow.match && (

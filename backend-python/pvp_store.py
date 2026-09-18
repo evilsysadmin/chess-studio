@@ -465,7 +465,7 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
         async with _memory_guard():
             rows = [
                 row for row in _memory_matches.values()
-                if row.get("status") == "active"
+                if row.get("status") in {"starting", "active"}
                 and row.get("acceptance_state") != "staged"
                 and username in {row.get("white"), row.get("black")}
             ]
@@ -476,7 +476,7 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
     try:
         row = await matches.find_one(
             {
-                "status": "active",
+                "status": {"$in": ["starting", "active"]},
                 "acceptance_state": {"$ne": "staged"},
                 "$or": [{"white": username}, {"black": username}],
             },
