@@ -515,6 +515,8 @@ func _enemy_from_spawn(spawn: Dictionary, variant: int, id_prefix: String) -> Di
         "spawn_x": spawn_x,
         "alerted": false,
         "reaction": _initial_enemy_reaction(spawn_x, variant),
+        "idle_pose": String(spawn.get("idle_pose", "")),
+        "idle_reaction": maxf(IDLE_SURPRISE_MIN, float(spawn.get("idle_reaction", IDLE_SURPRISE_MIN))),
         "y": spawn_y,
         "vy": 0.0,
         "on_ground": true,
@@ -984,6 +986,14 @@ func _sync_enemy_visual(enemy: Dictionary, move_speed_scale: float) -> void:
         int(enemy["max_hp"]),
         move_speed_scale,
     )
+    var idle_pose := ""
+    var surprise := 0.0
+    if String(enemy.get("idle_pose", "")) != "":
+        if not bool(enemy.get("alerted", false)):
+            idle_pose = String(enemy["idle_pose"])
+        elif float(enemy.get("reaction", 0.0)) > 0.0:
+            surprise = 0.32
+    visual.set_idle_state(idle_pose, surprise)
 
 func _enemy_weapon_for(type: String, variant: int) -> String:
     match type:
@@ -1093,6 +1103,9 @@ func _update_projectiles(delta: float) -> void:
                 )
                 enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
                 enemies[enemy_index] = enemy
+                if _enemy_is_static_sentry(enemy):
+                    _raise_enemy_alarm(enemy_index)
+                    enemy = enemies[enemy_index]
                 _sync_enemy_visual(enemy, 0.0)
             hit_target = true
             break
@@ -1163,6 +1176,9 @@ func _explode_player_weapon(position: Vector2, radius: float, damage: int) -> vo
         var applied := _explosion_damage(damage, distance, radius)
         enemy["hp"] = maxi(0, int(enemy["hp"]) - applied)
         enemies[enemy_index] = enemy
+        if int(enemy["hp"]) > 0 and _enemy_is_static_sentry(enemy):
+            _raise_enemy_alarm(enemy_index)
+            enemy = enemies[enemy_index]
         _sync_enemy_visual(enemy, 0.0)
 
     if boss_spawned and not boss_defeated and not boss.is_empty():
@@ -1242,14 +1258,52 @@ func _enemy_engaged(enemy: Dictionary, abs_distance: float) -> bool:
         return false
     if player.global_position.x < OPENING_SAFE_UNTIL_X:
         return false
-    if abs_distance <= _enemy_aggro_range():
+    if abs_distance <= _enemy_aggro_range() and not bool(enemy.get("alerted", false)):
         enemy["alerted"] = true
+        if String(enemy.get("idle_pose", "")) != "":
+            enemy["reaction"] = maxf(
+                float(enemy.get("reaction", 0.0)),
+                float(enemy.get("idle_reaction", IDLE_SURPRISE_MIN)),
+            )
     if not bool(enemy.get("alerted", false)):
         return false
     if abs_distance > ENEMY_DISENGAGE_RANGE:
         enemy["alerted"] = false
         return false
     return true
+
+func _enemy_is_static_sentry(enemy: Dictionary) -> bool:
+    return (
+        String(enemy.get("idle_pose", "")) != ""
+        or String(enemy.get("type", "")) in ["rook", "bishop"]
+        or String(enemy.get("role", "")) == "hold"
+    )
+
+func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -> void:
+    if source_index < 0 or source_index >= enemies.size():
+        return
+    var source := enemies[source_index]
+    source["alerted"] = true
+    source["reaction"] = minf(float(source.get("reaction", 0.0)), 0.18)
+    enemies[source_index] = source
+    var source_x := float(source["x"])
+    for index in range(enemies.size()):
+        if index == source_index:
+            continue
+        var enemy := enemies[index]
+        if int(enemy.get("hp", 0)) <= 0:
+            continue
+        if absf(float(enemy["x"]) - source_x) > radius:
+            continue
+        enemy["alerted"] = true
+        if String(enemy.get("idle_pose", "")) != "":
+            enemy["reaction"] = maxf(
+                float(enemy.get("reaction", 0.0)),
+                float(enemy.get("idle_reaction", IDLE_SURPRISE_MIN)),
+            )
+        else:
+            enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.22)
+        enemies[index] = enemy
 
 func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
     var standoff := float(stats["standoff"])
