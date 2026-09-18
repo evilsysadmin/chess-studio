@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument("--max-width", type=int, default=1280)
+    parser.add_argument("--engine", choices=("workbench", "eevee"), default="workbench")
     return parser.parse_args(argv_after_double_dash())
 
 
@@ -216,13 +217,20 @@ def add_stairs(materials):
     arch("HOME_ARCH_dungeon_arch", x0, 5.6, 2.45, 2.7, 3.9, 0.2, stone)
 
 
-def build_scene(reference: Path, samples: int, max_width: int):
+def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     reset_scene()
     scene = bpy.context.scene
-    try:
-        scene.render.engine = "BLENDER_EEVEE_NEXT"
-    except TypeError:
-        scene.render.engine = "BLENDER_EEVEE"
+    if engine == "workbench":
+        scene.render.engine = "BLENDER_WORKBENCH"
+        scene.display.shading.light = "STUDIO"
+        scene.display.shading.color_type = "MATERIAL"
+        scene.display.shading.show_shadows = True
+        scene.display.shading.show_cavity = True
+    else:
+        try:
+            scene.render.engine = "BLENDER_EEVEE_NEXT"
+        except TypeError:
+            scene.render.engine = "BLENDER_EEVEE"
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     scene.render.resolution_percentage = 100
@@ -355,7 +363,7 @@ def main() -> None:
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    scene, camera, target, width, height, render_width, render_height = build_scene(reference, args.samples, args.max_width)
+    scene, camera, target, width, height, render_width, render_height = build_scene(reference, args.samples, args.max_width, args.engine)
 
     blend_path = out_dir / "home-v2-blockout.blend"
     beauty_path = out_dir / "home-v2-preview.png"
@@ -377,6 +385,7 @@ def main() -> None:
         "reference": args.reference,
         "reference_size": [width, height],
         "render_size": [render_width, render_height],
+        "engine": args.engine,
         "camera": {
             "name": camera.name,
             "lens_mm": camera.data.lens,
