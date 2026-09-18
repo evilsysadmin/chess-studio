@@ -467,13 +467,3 @@ func _grenade_pressed() -> bool:
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_Y)
-
-func _draw() -> void:
-    if _art == null or not _art.body_ready():
-        draw_rect(Rect2(Vector2(-24.0, -26.0), Vector2(48.0, 58.0)), Color("20262c"), true)
-        draw_circle(Vector2(0.0, -43.0), 24.0, Color("d7c2a0"))
-        draw_rect(Rect2(Vector2(-30.0, -69.0), Vector2(60.0, 10.0)), Color("11151a"), true)
-        draw_rect(Rect2(Vector2(-18.0, -78.0), Vector2(36.0, 12.0)), Color("171c21"), true)
-
-        var gun_origin := Vector2(facing * 14.0, -7.0)
-        draw_line(gun_origin, gun_origin + Vector2(facing * 42.0, 0.0), Color("a4abb1"), 9.0)
