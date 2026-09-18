@@ -370,27 +370,38 @@ function buildIsoDungeon({
   sigil.rotation.x = -Math.PI / 2;
   sigil.visible = Boolean(sigilWorld);
 
-  const leverCell = chroniclesIsoWorldForContentKind(geometryPlan, 'lever');
-  const leverRoot = new THREE.Group();
-  leverRoot.name = 'chronicles-iso-rune-cache-lever';
-  leverRoot.position.set((leverCell?.x ?? 0) + 0.62, 0, (leverCell?.z ?? 0) - 0.56);
-  leverRoot.visible = Boolean(leverCell);
-  const leverBase = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.34), wallTrim);
-  leverBase.position.y = 0.13;
-  leverBase.castShadow = !coarsePointer;
-  leverBase.receiveShadow = true;
-  leverRoot.add(leverBase);
-  const leverPivot = new THREE.Group();
-  leverPivot.position.y = 0.28;
-  const leverStem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.72, 8), brass);
-  leverStem.position.y = 0.34;
-  leverStem.castShadow = !coarsePointer;
-  const leverKnob = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), brass);
-  leverKnob.position.y = 0.72;
-  leverKnob.castShadow = !coarsePointer;
-  leverPivot.add(leverStem, leverKnob);
-  leverRoot.add(leverPivot);
-  root.add(leverRoot);
+  const leverProps = chroniclesIsoWorldsForContentKind(geometryPlan, 'lever').map((entry) => {
+    const leverRoot = new THREE.Group();
+    leverRoot.name = `chronicles-iso-lever-${entry.id}`;
+    leverRoot.position.set(entry.world.x + 0.62, 0, entry.world.z - 0.56);
+    leverRoot.userData.chroniclesIsoContentId = entry.id;
+    leverRoot.userData.chroniclesIsoVisualType = entry.visualType;
+
+    const leverBase = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.34), wallTrim);
+    leverBase.position.y = 0.13;
+    leverBase.castShadow = !coarsePointer;
+    leverBase.receiveShadow = true;
+    leverRoot.add(leverBase);
+
+    const pivot = new THREE.Group();
+    pivot.position.y = 0.28;
+    const leverStem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.72, 8), brass);
+    leverStem.position.y = 0.34;
+    leverStem.castShadow = !coarsePointer;
+    const leverKnob = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), brass);
+    leverKnob.position.y = 0.72;
+    leverKnob.castShadow = !coarsePointer;
+    pivot.add(leverStem, leverKnob);
+    leverRoot.add(pivot);
+    root.add(leverRoot);
+
+    return Object.freeze({
+      id: entry.id,
+      visualType: entry.visualType,
+      root: leverRoot,
+      pivot,
+    });
+  });
 
   const pickupProps = chroniclesIsoWorldsForContentKind(geometryPlan, 'pickup').map((entry, index) => {
     const pickupRoot = new THREE.Group();
@@ -453,7 +464,7 @@ function buildIsoDungeon({
     root,
     sigilMaterial: brass,
     floorTargets,
-    leverPivot,
+    leverProps,
     pickupProps,
     runeMaterial,
   };
@@ -871,9 +882,13 @@ export function createChroniclesIsometricGame(host, {
     const worldObjects = chroniclesIsoWorldObjectState(state);
     dungeon.sigilMaterial.emissive.setHex(worldObjects.triggerActivated ? 0x8c3f0d : 0x160a02);
     dungeon.sigilMaterial.emissiveIntensity = worldObjects.triggerActivated ? 1.25 : 0.24;
-    dungeon.leverPivot.rotation.z = worldObjects.leverActivated ? -0.74 : 0.58;
 
     const contentVisualById = new Map(chroniclesContentVisualStates(state).map((entry) => [entry.id, entry]));
+    dungeon.leverProps.forEach((lever) => {
+      const visual = contentVisualById.get(lever.id);
+      lever.root.visible = Boolean(visual?.visible);
+      lever.pivot.rotation.z = visual?.activated ? -0.74 : 0.58;
+    });
     dungeon.pickupProps.forEach((pickup) => {
       const visual = contentVisualById.get(pickup.id);
       pickup.root.visible = Boolean(visual?.visible);
