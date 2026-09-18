@@ -1402,11 +1402,7 @@ def validate_runtime_glb(path, expected_factors=None):
         raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
     required_heraldry = {
         "WR_CREST_shield",
-        "WR_CREST_horse_body",
-        "WR_CREST_horse_head",
-        "WR_CREST_horse_foreleg_0",
-        "WR_CREST_horse_hindleg_0",
-        "WR_CREST_horse_tail_0",
+        "WR_CREST_horse_relief",
     }
     missing_heraldry = sorted(required_heraldry - node_names)
     if missing_heraldry:
