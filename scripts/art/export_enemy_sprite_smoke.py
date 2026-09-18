@@ -17,7 +17,8 @@ URL_RE = re.compile(r'^\s*const BODY_ATLAS_URL\s*:=\s*"(?P<url>https?://[^"]+)"\
 FRAME_RE = re.compile(r'^\s*const REMOTE_FRAME_SIZE\s*:=\s*Vector2\((?P<w>[0-9.]+),\s*(?P<h>[0-9.]+)\)\s*$', re.M)
 ROWS_RE = re.compile(r'^\s*const REMOTE_ATLAS_ROWS\s*:=\s*(?P<rows>\d+)\s*$', re.M)
 COLS_RE = re.compile(r'^\s*const FRAMES_PER_TYPE\s*:=\s*(?P<cols>\d+)\s*$', re.M)
-MAP_BLOCK_RE = re.compile(r'^\s*const REMOTE_TYPE_ROW\s*:=\s*\{(?P<body>[^}]*)\}\s*
+MAP_BLOCK_RE = re.compile(r'const REMOTE_TYPE_ROW\s*:=\s*\{(?P<body>[^}]*)\}')
+MAP_ROW_RE = re.compile(r'"(?P<type>[a-z0-9_-]+)"\s*:\s*(?P<row>\d+)')
 
 
 def parse_args() -> argparse.Namespace:
