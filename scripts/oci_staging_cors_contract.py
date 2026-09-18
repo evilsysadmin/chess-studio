@@ -109,7 +109,7 @@ assert "inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'" not
     "bringup must consume the persisted OCI runtime bundle without an implicit runtime sync"
 )
 runtime_sync_block = service_control.split(
-    "- name: Sync CURRENT Vault + Git runtime to private staging bundle", 1
+    "- name: Sync CURRENT Vault + Git runtime to staging", 1
 )[1].split("\n      - name:", 1)[0]
 assert "RENDER_API_KEY" not in runtime_sync_block
 
