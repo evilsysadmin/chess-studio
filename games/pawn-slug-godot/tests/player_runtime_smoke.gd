@@ -95,8 +95,8 @@ func _run() -> void:
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.UP, true),
-        Vector2(1.0, -1.0).normalized(),
-        "vertical arriba en suelo se convierte en diagonal según facing",
+        Vector2.RIGHT,
+        "arriba solo en suelo conserva disparo horizontal",
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.DOWN, true),
@@ -116,8 +116,8 @@ func _run() -> void:
     player.facing = -1.0
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.UP, true),
-        Vector2(-1.0, -1.0).normalized(),
-        "vertical arriba en suelo respeta facing izquierdo",
+        Vector2.LEFT,
+        "arriba solo en suelo conserva facing izquierdo horizontal",
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.DOWN, true),

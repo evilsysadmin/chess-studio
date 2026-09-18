@@ -329,7 +329,7 @@ func _point_hits_stage_geometry(point: Vector2) -> bool:
 
 func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:
-        return "SUELO: ↓ agacha · ←/→ + ↑ FIRE diagonal · EN AIRE: ↑/↓ + FIRE 8-way"
+        return "SPACE salta · ↑ + FIRE horizontal · ←/→ + ↑ FIRE diagonal · ↓ agacha"
 
     for platform in _platforms:
         var clearance := _floor_y - platform.end.y

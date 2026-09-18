@@ -64,24 +64,59 @@ def parse_sources(cfg: argparse.Namespace) -> dict[str, str]:
     return sources
 
 
+def _v7_url_candidates(source: str) -> list[str]:
+    parsed = urllib.parse.urlparse(source)
+    if parsed.scheme not in {"http", "https"}:
+        return [source]
+    name = Path(parsed.path).name
+    plain_name = re.sub(r"-[0-9a-f]{16}(?=\.png$)", "", name, flags=re.I)
+    match = re.match(r"matthias_(?P<weapon>[a-z0-9_-]+)_godot_strict_8x11_256_v7\.png$", plain_name, re.I)
+    if not match:
+        return [source]
+    weapon = match.group("weapon").lower()
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    release = "/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2"
+    prefixes = [
+        release,
+        f"{release}/strict_8x11_256",
+        f"{release}/pawn_slug_matthias_godot_strict_v7",
+        f"{release}/pawn_slug_matthias_godot_strict_v7/strict_8x11_256",
+        "/pawn_slug_matthias_godot_strict_v7",
+        "/pawn_slug_matthias_godot_strict_v7/strict_8x11_256",
+        "/PawnSlug_Matthias_Godot_Strict_v7",
+        "/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256",
+        "/strict_8x11_256",
+        "/pawn-slug-godot/strict_8x11_256",
+        f"/pawn-slug-godot/matthias/strict-v7/{weapon}",
+        f"/pawn-slug-godot/matthias/strict-v7/{weapon}/strict_8x11_256",
+        "/pawn-slug-godot/matthias/strict-v7",
+        "/pawn-slug-godot/matthias/strict-v7/strict_8x11_256",
+        f"/pawn-slug-godot/matthias/strict-v6/{weapon}",
+        f"/pawn-slug-godot/matthias/strict-v6/{weapon}/strict_8x11_256",
+    ]
+    candidates = [source, *(f"{origin}{prefix}/{plain_name}" for prefix in prefixes)]
+    return list(dict.fromkeys(candidates))
+
+
 def acquire(source: str, temp_dir: Path) -> Path:
     parsed = urllib.parse.urlparse(source)
     if parsed.scheme in {"http", "https"}:
-        target = temp_dir / (Path(parsed.path).name or "atlas.png")
-        request = urllib.request.Request(source, headers={"User-Agent": "ChessStudio-PawnSlug-Smoke/1"})
         last_error = None
-        for attempt in range(1, 4):
+        for candidate in _v7_url_candidates(source):
+            candidate_parsed = urllib.parse.urlparse(candidate)
+            target = temp_dir / (Path(candidate_parsed.path).name or "atlas.png")
+            request = urllib.request.Request(candidate, headers={"User-Agent": "ChessStudio-PawnSlug-Smoke/1"})
             try:
-                with urllib.request.urlopen(request, timeout=30) as response, target.open("wb") as stream:
+                with urllib.request.urlopen(request, timeout=20) as response, target.open("wb") as stream:
                     shutil.copyfileobj(response, stream)
+                if candidate != source:
+                    print(f"Matthias sprite smoke resolved R2 fallback: {candidate}")
                 return target
             except Exception as exc:
                 last_error = exc
                 if target.exists():
                     target.unlink()
-                if attempt == 3:
-                    break
-        raise SystemExit(f"failed to download {source} after 3 attempts: {last_error}")
+        raise SystemExit(f"failed to download {source} or known v7 R2 variants: {last_error}")
     path = Path(source)
     if not path.is_file():
         raise SystemExit(f"missing atlas: {source}")
