@@ -164,6 +164,7 @@ log="$(mktemp /tmp/chess-studio-deploy.XXXXXX)"
 tmp=''
 cleanup() {{ rm -f "$log"; [ -z "$tmp" ] || rm -f "$tmp"; }}
 trap cleanup EXIT
+agent_version="$(snap list oracle-cloud-agent 2>/dev/null | awk 'NR == 2 {{print $2; exit}}' || true)"
 run_deploy() {{
   : >"$log"
   set +e
@@ -173,6 +174,7 @@ run_deploy() {{
   return "$deploy_rc"
 }}
 emit_success() {{
+  printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
   awk -v runtime="$1" '/^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
 }}
 
@@ -638,6 +640,8 @@ def self_test() -> None:
     assert RUNTIME_OBJECT in deploy
     assert "InstancePrincipalsSecurityTokenSigner" in deploy
     assert "emit_success installed" in deploy
+    assert "OCI_RUN_COMMAND_AGENT version=%s" in deploy
+    assert "snap list oracle-cloud-agent" in deploy
     assert "emit_success object-storage" in deploy
     assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
     assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
