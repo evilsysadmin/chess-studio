@@ -81,6 +81,43 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   return hemisphere;
 }
 
+export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) {
+  return {
+    exposure: coarsePointer ? 0.97 : 1.0,
+    hemisphere: coarsePointer ? 0.62 : 0.44,
+    keyMax: coarsePointer ? 1.48 : 1.34,
+    warmMax: coarsePointer ? 2.1 : 1.55,
+    background: 0x070504,
+    fog: 0x0d0907,
+    grade: 'nocturnal-walnut-v2',
+  };
+}
+
+export function applyWarRoomV2RuntimeLightingGrade(
+  scene,
+  renderer,
+  {
+    coarsePointer = false,
+    hemisphere = null,
+    key = null,
+    warmFill = null,
+  } = {},
+) {
+  if (!scene || scene.userData?.warRoomRenderedVariant !== 'v2') return null;
+  const profile = warRoomV2RuntimeLightingProfile({ coarsePointer });
+
+  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
+  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  if (hemisphere) hemisphere.intensity = profile.hemisphere;
+  if (key && Number.isFinite(key.intensity)) key.intensity = Math.min(key.intensity, profile.keyMax);
+  if (warmFill && Number.isFinite(warmFill.intensity)) warmFill.intensity = Math.min(warmFill.intensity, profile.warmMax);
+  if (renderer && 'toneMappingExposure' in renderer) renderer.toneMappingExposure = profile.exposure;
+
+  scene.userData.warRoomV2LightingGrade = profile.grade;
+  scene.userData.warRoomV2Exposure = profile.exposure;
+  return profile;
+}
+
 export function warRoomAtmosphereProfile() {
   return {
     background: 0x100b08,
@@ -448,6 +485,16 @@ function installWarRoomRenderDiscipline() {
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
       this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
+    }
+    const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, this, {
+      coarsePointer,
+      hemisphere,
+      key: boardKey,
+      warmFill,
+    });
+    if (v2Lighting && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
+      this.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
