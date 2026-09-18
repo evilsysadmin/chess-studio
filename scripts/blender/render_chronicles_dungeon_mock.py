@@ -222,7 +222,7 @@ def material_bank():
         "wood": mat_wood(),
         "highlight": mat_principled("DungeonHighlight", (.03, .27, .42), .36, .08, (.03, .32, .48), 2.5),
         "highlight_warm": mat_principled("DungeonHighlightWarm", (.50, .34, .12), .42, .02, (.68, .38, .08), 1.5),
-        "flame": mat_principled("DungeonFlame", (1.0, .12, .008), .40, 0, (1.0, .035, .002), 1.6),
+        "flame": mat_principled("DungeonFlame", (1.0, .075, .003), .42, 0, (1.0, .018, .001), 1.15),
         "wax": mat_principled("DungeonWax", (.78, .62, .34), .66, 0),
     }
 
@@ -495,6 +495,33 @@ def zzz(M, x, y, z):
 
 
 
+
+def floor_sigil(M, x, y, z=.018):
+    # Thin inset brass/chalk geometry: readable tactical landmark, not UI.
+    m = M["brass"]
+    t = .014
+    for dx, dy, sx, sy in (
+        (0, -.34, .24, t), (0, .34, .24, t), (-.34, 0, t, .24), (.34, 0, t, .24),
+        (0, -.15, .11, t), (0, .15, .11, t), (-.15, 0, t, .11), (.15, 0, t, .11),
+    ):
+        cube("floor_sigil", (x+dx, y+dy, z), (sx, sy, .006), m, bevel=.003)
+    for a in (45, 135, 225, 315):
+        r = math.radians(a)
+        px, py = x+math.cos(r)*.42, y+math.sin(r)*.42
+        cube("floor_sigil_tick", (px, py, z), (.10, t, .006), m, (0,0,r), .003)
+
+
+def sword_prop(M, x, y, z=.10, angle=0.0):
+    r = math.radians(angle)
+    blade = cube("fallen_sword_blade", (x, y, z), (.38,.025,.018), M["steel"], (0,0,r), .008)
+    hilt_x = x-math.cos(r)*.40
+    hilt_y = y-math.sin(r)*.40
+    cube("fallen_sword_guard", (hilt_x, hilt_y, z+.005), (.07,.018,.025), M["brass"], (0,0,r+math.pi/2), .006)
+    cyl("fallen_sword_grip", (hilt_x-math.cos(r)*.10, hilt_y-math.sin(r)*.10, z), .022, .18,
+        M["black"], rot=(0,math.radians(90),r), vertices=16, bevel=.006)
+    return blade
+
+
 def setup_scene(out):
     scene = bpy.context.scene
     prop = scene.bl_rna.properties["render"].fixed_type.properties["engine"]
@@ -510,10 +537,10 @@ def setup_scene(out):
     scene.render.film_transparent = False
     if scene.world is None:
         scene.world = bpy.data.worlds.new("DungeonWorld")
-    scene.world.color = (.0025, .0022, .0035)
+    scene.world.color = (.006, .007, .010)
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
-        scene.view_settings.exposure = 0.48
+        scene.view_settings.exposure = 0.56
     except Exception:
         pass
 
@@ -558,13 +585,16 @@ def build(M):
     torch(M, -.25, 4.15, 1.72, "x")
     torch(M, 3.90, 1.1, 1.65, "y")
     torch(M, -3.55, -.45, 1.4, "x")
-    banner(M, -2.75, 4.18, 1.58, blue=True)
-    banner(M, .35, 4.18, 1.58, blue=True)
-    banner(M, -3.95, -1.0, 1.25, blue=False)
+    banner(M, -2.75, 4.18, 1.52, blue=True)
+    banner(M, .35, 4.18, 1.52, blue=True)
+    banner(M, -3.18, -1.08, 1.22, blue=False)
+    banner(M, 3.55, 1.36, 1.15, blue=True)
 
     crate(M, 2.85, .55, .38, .44)
     crate(M, 3.55, -2.0, .38, .40)
+    crate(M, -3.42, -2.05, .30, .30)
     urn(M, 2.35, .72, .28)
+    urn(M, 3.15, .82, .24)
     candles(M, -3.20, -2.25, .02)
     rubble(M, 2.5, -1.45, 24, 1.00)
     rubble(M, 3.1, 2.3, 15, .76)
@@ -579,6 +609,7 @@ def build(M):
     tile_outline(M, -1.0, .52, warm=True)
     tile_outline(M, .15, -.55, False)
     tile_outline(M, 1.6, -1.8, False)
+    floor_sigil(M, 2.55, -.15)
 
     humanoid(M, -1.0, .55, .10, green=True)
     pawn_piece(M, .15, -.55, .10, black=True)
@@ -594,11 +625,14 @@ def build(M):
 
     cyl("fallen_shield", (1.35, -1.58, .16), .28, .08, M["steel"], rot=(math.radians(88), 0, 0), vertices=32, bevel=.025)
     cyl("fallen_spear", (.20, -1.78, .16), .025, 1.35, M["brass"], rot=(0, math.radians(72), 0), vertices=16, bevel=.01)
+    sword_prop(M, 2.30, -2.05, .10, angle=-18)
+    sword_prop(M, -.70, -1.72, .10, angle=16)
 
     # Cool ambient fill + warm practicals: torches should own the image.
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 520, 7.0, (.42, .48, .60), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 430, 6.2, (.17, .22, .34), (0, 0, .8))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 190, 5.2, (1.0, .11, .018), (0, 1.0, 1.1))
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 470, 7.2, (.42, .48, .60), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 590, 6.4, (.20, .27, .42), (0, 0, .8))
+    area_light("DungeonTopFill", (.5, 2.0, 11.0), 210, 5.0, (.38, .40, .43), (0, .7, .6))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 150, 5.2, (1.0, .10, .016), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
