@@ -99,9 +99,6 @@ jobs:
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
-    permissions:
-      contents: read
-      packages: write
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
 
@@ -111,44 +108,21 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - uses: docker/setup-buildx-action@v4
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Promote immutable image to approved staging signal
-        shell: bash
-        run: |
-          set -euo pipefail
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          source="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
-          signal="ghcr.io/${owner}/chess-studio-backend:oci-staging-approved"
-
-          docker buildx imagetools create --tag "$signal" "$source"
-          source_digest="$(docker buildx imagetools inspect "$source" | awk '$1 == "Digest:" {print $2; exit}')"
-          signal_digest="$(docker buildx imagetools inspect "$signal" | awk '$1 == "Digest:" {print $2; exit}')"
-          [[ "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Digest immutable inválido: ${source_digest:-missing}"; exit 1; }
-          [[ "$signal_digest" == "$source_digest" ]] || { echo "::error::La señal GHCR no apunta al digest immutable aprobado"; exit 1; }
-          echo "Approved backend signal: $DEPLOY_SHA -> $signal_digest"
-
       - name: Validate OCI deploy contracts
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
+          python3 -S scripts/oci_staging_deploy_watcher.py --self-test
 
-      - name: Wait for host signal controller fast-path
-        id: signal
+      - name: Wait for zero-cost host watcher fast-path
+        id: watcher
         shell: bash
         run: |
           set -euo pipefail
-          signal_ok=false
-          for attempt in {1..21}; do
-            body="$RUNNER_TEMP/backend-signal-$attempt.json"
+          converged=false
+          for attempt in {1..46}; do
+            body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 6 \
               --output "$body" --write-out '%{http_code}' \
               -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
@@ -159,27 +133,27 @@ jobs:
           raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
           PY
             then
-              signal_ok=true
+              converged=true
               break
             fi
-            [[ "$attempt" -eq 21 ]] || sleep 2
+            [[ "$attempt" -eq 46 ]] || sleep 1
           done
-          echo "converged=$signal_ok" >> "$GITHUB_OUTPUT"
-          if [[ "$signal_ok" == true ]]; then
-            echo "::notice title=OCI fast-path::La A1 aplicó $DEPLOY_SHA mediante la señal GHCR."
+          echo "converged=$converged" >> "$GITHUB_OUTPUT"
+          if [[ "$converged" == true ]]; then
+            echo "::notice title=OCI zero-cost fast-path::La A1 aplicó $DEPLOY_SHA mediante el watcher saliente."
           else
-            echo "::warning title=OCI fallback::La señal no convergió en 40s; se usa Run Command."
+            echo "::warning title=OCI fallback::El watcher no convergió en 45s; se usa Run Command."
           fi
 
       - name: Restore cached OCI SDK toolchain for fallback
-        if: steps.signal.outputs.converged != 'true'
+        if: steps.watcher.outputs.converged != 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
 
       - name: Deploy exact backend commit through Run Command fallback
-        if: steps.signal.outputs.converged != 'true'
+        if: steps.watcher.outputs.converged != 'true'
         shell: bash
         env:
           OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
