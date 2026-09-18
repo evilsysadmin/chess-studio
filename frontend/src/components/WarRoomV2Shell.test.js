@@ -8,7 +8,10 @@ import {
   warRoomV2StoneSurfaceProfile,
   warRoomV2WoodSurfaceProfile,
 } from './WarRoomV2Shell.js';
-import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
+import {
+  createWarRoomClassicShellController,
+  shouldShowClassicWarRoomShell,
+} from './WarRoomSceneVariant.js';
 
 describe('War Room v2 staging asset URL', () => {
   it('never paints classic first when persisted v2 is available', () => {
@@ -16,6 +19,42 @@ describe('War Room v2 staging asset URL', () => {
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v2' })).toBe(false);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'classic' })).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: false, variant: 'v2' })).toBe(true);
+  });
+
+  it('does not construct the classic room for persisted v2 until fallback needs it', () => {
+    let builds = 0;
+    const shell = { name: 'classic-shell' };
+    const controller = createWarRoomClassicShellController({
+      eager: false,
+      build: () => {
+        builds += 1;
+        return [shell];
+      },
+    });
+
+    expect(controller.isBuilt()).toBe(false);
+    expect(controller.current()).toEqual([]);
+    expect(builds).toBe(0);
+
+    expect(controller.ensure()).toEqual([shell]);
+    expect(controller.ensure()).toEqual([shell]);
+    expect(controller.isBuilt()).toBe(true);
+    expect(builds).toBe(1);
+  });
+
+  it('keeps classic eager behavior when the classic variant is actually active', () => {
+    let builds = 0;
+    const controller = createWarRoomClassicShellController({
+      eager: true,
+      build: () => {
+        builds += 1;
+        return [{ name: 'classic-shell' }];
+      },
+    });
+
+    expect(controller.isBuilt()).toBe(true);
+    expect(controller.current()).toHaveLength(1);
+    expect(builds).toBe(1);
   });
 
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {

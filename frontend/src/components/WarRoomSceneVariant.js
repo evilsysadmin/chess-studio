@@ -80,11 +80,48 @@ function setClassicShellVisible(objects, visible) {
   objects.forEach((object) => { if (object) object.visible = visible; });
 }
 
+export function createWarRoomClassicShellController({ build, eager = false } = {}) {
+  if (typeof build !== 'function') throw new TypeError('Classic War Room shell requires a builder');
+  let objects = [];
+  let built = false;
+
+  const ensure = () => {
+    if (!built) {
+      const result = build();
+      objects = Array.isArray(result) ? result : result?.classicShellObjects || [];
+      built = true;
+    }
+    return objects;
+  };
+
+  if (eager) ensure();
+
+  return {
+    ensure,
+    current: () => objects,
+    isBuilt: () => built,
+  };
+}
+
+export function createClassicWarRoomShellController(
+  { scene, boardGroup, theme, whiteSide, renderLite } = {},
+  eager = false,
+) {
+  return createWarRoomClassicShellController({
+    eager,
+    build: () => buildClassicWarRoomShell({
+      scene, boardGroup, theme, whiteSide, renderLite,
+    }).classicShellObjects,
+  });
+}
+
 export function startWarRoomVariantScene({
-  scene, classicShellObjects, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
+  scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
   let cancelled = false;
   let releaseV2 = null;
+  const classicShellObjects = classicShellController?.current?.() || [];
+  const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
       canvas.dataset.warRoomV2Status = status;
@@ -94,13 +131,17 @@ export function startWarRoomVariantScene({
   };
 
   if (shouldShowClassicWarRoomShell({ selectable, variant })) {
-    setClassicShellVisible(classicShellObjects, true);
+    const visibleClassicShell = ensureClassicShell?.() || classicShellObjects;
+    setClassicShellVisible(visibleClassicShell, true);
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
     setStatus('idle', 'classic');
     return () => {};
   }
 
+  // A persisted v2 session must not pay the construction cost of the procedural
+  // classic room. Only hide an already-built classic shell; build it lazily if
+  // the user switches back or if v2 loading actually fails.
   setClassicShellVisible(classicShellObjects, false);
   scene.userData ||= {};
   scene.userData.warRoomRenderedVariant = 'v2-loading';
@@ -119,7 +160,8 @@ export function startWarRoomVariantScene({
     })
     .catch(() => {
       if (cancelled) return;
-      setClassicShellVisible(classicShellObjects, true);
+      const fallbackClassicShell = ensureClassicShell?.() || classicShellObjects;
+      setClassicShellVisible(fallbackClassicShell, true);
       scene.userData ||= {};
       scene.userData.warRoomRenderedVariant = 'classic';
       setStatus('fallback', 'classic-fallback');
