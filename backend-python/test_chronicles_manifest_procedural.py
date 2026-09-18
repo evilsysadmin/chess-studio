@@ -71,7 +71,14 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert validated["id"] == base["id"]
             assert validated["version"] == base["version"]
             assert validated["partyStart"] == base["partyStart"]
-            assert validated["enemies"] == base["enemies"]
+            mandatory_enemy_ids = {
+                enemy["id"]
+                for enemy in base.get("enemies", [])
+                if enemy.get("optional") is not True
+            }
+            generated_enemy_ids = {enemy["id"] for enemy in validated.get("enemies", [])}
+            assert mandatory_enemy_ids <= generated_enemy_ids
+            assert generated_enemy_ids <= {enemy["id"] for enemy in base.get("enemies", [])}
             for group in ("triggers", "interactables", "treasures", "traps", "exits"):
                 assert validated.get(group, []) == base.get(group, [])
 
@@ -97,6 +104,9 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert manifest["generation"]["mapCode"] == generated.map_code
             assert manifest["generation"]["generatorVersion"] == generated.generator_version
             assert manifest["generation"]["layoutRevision"] == generated.layout_revision
+            assert manifest["generation"]["compositionVersion"] == 1
+            assert len(manifest["generation"]["compositionRevision"]) == 64
+            assert set(manifest["generation"]["omittedOptionalEnemyIds"]).isdisjoint(mandatory_enemy_ids)
 
 
 def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():

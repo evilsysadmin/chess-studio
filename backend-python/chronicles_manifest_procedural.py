@@ -13,6 +13,10 @@ from dataclasses import dataclass
 import hashlib
 from typing import Any
 
+from chronicles_content_variation import (
+    CHRONICLES_COMPOSITION_VERSION,
+    apply_chronicles_seeded_composition,
+)
 from chronicles_map_code import ChroniclesMapCode, encode_chronicles_map_code
 from chronicles_map_generator import (
     CHRONICLES_MAP_GENERATOR_VERSION,
@@ -214,7 +218,9 @@ def proceduralize_chronicles_manifest(
     manifest: dict[str, Any],
     seed: int,
 ) -> ChroniclesProceduralManifest:
-    recipe = chronicles_map_code_for_manifest(manifest, seed)
+    composition = apply_chronicles_seeded_composition(manifest, seed)
+    composed_manifest = composition.manifest
+    recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
     map_code = encode_chronicles_map_code(recipe)
     layout = generate_chronicles_layout(recipe)
 
@@ -227,23 +233,28 @@ def proceduralize_chronicles_manifest(
     ]
     open_cells = _open_cells(grid)
 
-    for anchor in sorted(_anchor_positions(manifest), key=lambda point: (point[1], point[0])):
+    for anchor in sorted(_anchor_positions(composed_manifest), key=lambda point: (point[1], point[0])):
         _connect_anchor(grid, open_cells, anchor, map_code)
 
-    for (x, y), marker in _base_marker_positions(manifest).items():
+    for (x, y), marker in _base_marker_positions(composed_manifest).items():
         grid[y][x] = marker
 
-    start = manifest["partyStart"]
+    start = composed_manifest["partyStart"]
     grid[int(start["y"])][int(start["x"])] = "P"
     final_grid = ["".join(row) for row in grid]
 
-    generated = deepcopy(manifest)
+    generated = deepcopy(composed_manifest)
     generated["grid"] = final_grid
     generated["generation"] = {
         "kind": "seeded-layout",
         "mapCode": map_code,
         "generatorVersion": CHRONICLES_MAP_GENERATOR_VERSION,
         "layoutRevision": _layout_revision(map_code, final_grid),
+        "compositionVersion": CHRONICLES_COMPOSITION_VERSION,
+        "compositionRevision": composition.plan.revision,
+        "activeOptionalEnemyIds": list(composition.plan.active_optional_enemy_ids),
+        "omittedOptionalEnemyIds": list(composition.plan.omitted_optional_enemy_ids),
+        "protectedOptionalEnemyIds": list(composition.plan.protected_optional_enemy_ids),
     }
 
     return ChroniclesProceduralManifest(
