@@ -30,6 +30,11 @@ const BOSS_HP := 780
 const BOSS_SIZE := Vector2(190.0, 150.0)
 const BOSS_REGULAR_RANGE := 1280.0
 const BOSS_SHELL_RANGE := 1440.0
+const BOSS_SHELL_WINDUP := 0.62
+const ENEMY_FIRE_SCREEN_MARGIN := 84.0
+const MAX_HOSTILE_PROJECTILES := 9
+const MAX_HOSTILE_EXPLOSIVES := 2
+const HOSTILE_FIRE_GAP := 0.055
 const GRENADE_START_SPEED := Vector2(540.0, -600.0)
 const GRENADE_GRAVITY := 1116.0
 const GRENADE_FUSE := 1.35
@@ -112,6 +117,7 @@ var environment_visual
 var _startup_ready_sent := false
 var _camera_kick := Vector2.ZERO
 var _reduced_motion := false
+var _hostile_fire_gap_remaining := 0.0
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
@@ -146,6 +152,7 @@ func _process(delta: float) -> void:
         _startup_ready_sent = true
         _notify_parent("ready")
 
+    _hostile_fire_gap_remaining = maxf(0.0, _hostile_fire_gap_remaining - delta)
     _spawn_boss_if_needed()
     _update_projectiles(delta)
     _update_grenades(delta)
@@ -242,6 +249,10 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
     if boss_spawned and not boss_defeated:
         boss["regular_cooldown"] = 0.65
         boss["shell_cooldown"] = 1.35
+        boss["shell_windup"] = 0.0
+        boss["shell_armed"] = false
+        if boss_visual != null:
+            boss_visual.set_shell_telegraph(0.0)
     _sync_hud()
     _notify_parent("player-respawn")
 
@@ -356,6 +367,8 @@ func _spawn_boss_if_needed() -> void:
         "max_hp": BOSS_HP,
         "regular_cooldown": 0.45,
         "shell_cooldown": 1.55,
+        "shell_windup": 0.0,
+        "shell_armed": false,
     }
     boss_visual = BossVisual.new()
     boss_visual.name = "BossPanzerRook"
@@ -715,12 +728,15 @@ func _fire_bishop_shell(enemy: Dictionary) -> void:
     var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
     var direction: Vector2 = (target - origin).normalized()
     var profile: Dictionary = ENEMY_FIRE_PROFILES["panzerfaust"]
+    if not _can_spawn_hostile_shot(origin, "panzerfaust", 1):
+        return
     enemy_projectiles.append({
         "position": origin,
         "velocity": direction * float(profile["speed"]),
         "weapon": "panzerfaust",
         "explosive": true,
     })
+    _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     if visual != null:
         visual.play_fire()
 
@@ -728,12 +744,15 @@ func _fire_bishop_suppression(enemy: Dictionary, shot_index: int) -> void:
     var lane: Dictionary = BISHOP_SUPPRESSION_LANES[shot_index % BISHOP_SUPPRESSION_LANES.size()]
     var direction := 1.0 if player.global_position.x > float(enemy["x"]) else -1.0
     var origin := Vector2(float(enemy["x"]) + direction * 48.0, FLOOR_Y - float(lane["height"]))
+    if not _can_spawn_hostile_shot(origin, "machinegun", 1):
+        return
     enemy_projectiles.append({
         "position": origin,
         "velocity": Vector2(direction * float(lane["speed"]), 0.0),
         "weapon": "machinegun",
         "explosive": false,
     })
+    _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
         visual.play_fire()
@@ -743,19 +762,50 @@ func _update_boss(delta: float) -> void:
         return
     _sync_boss_visual()
     if player.dead or player.is_game_over:
+        if boss_visual != null:
+            boss_visual.set_shell_telegraph(0.0)
         return
 
     var distance: float = absf(float(player.global_position.x) - float(boss["x"]))
+    var boss_visible := _world_x_is_combat_visible(float(boss["x"]))
     boss["regular_cooldown"] = maxf(0.0, float(boss["regular_cooldown"]) - delta)
     boss["shell_cooldown"] = maxf(0.0, float(boss["shell_cooldown"]) - delta)
 
-    if distance <= BOSS_REGULAR_RANGE and float(boss["regular_cooldown"]) <= 0.0:
-        _fire_boss(false)
-        boss["regular_cooldown"] = _enemy_fire_cooldown("machinegun")
+    if boss_visible and distance <= BOSS_REGULAR_RANGE and float(boss["regular_cooldown"]) <= 0.0:
+        if _fire_boss(false):
+            boss["regular_cooldown"] = _enemy_fire_cooldown("machinegun")
+        else:
+            boss["regular_cooldown"] = 0.12
 
-    if distance <= BOSS_SHELL_RANGE and distance >= float(ENEMY_FIRE_PROFILES["panzerfaust"]["min_range"]) and float(boss["shell_cooldown"]) <= 0.0:
-        _fire_boss(true)
-        boss["shell_cooldown"] = randf_range(1.65, 2.10)
+    if bool(boss.get("shell_armed", false)):
+        boss["shell_windup"] = maxf(0.0, float(boss["shell_windup"]) - delta)
+        var strength := 1.0 - clampf(float(boss["shell_windup"]) / BOSS_SHELL_WINDUP, 0.0, 1.0)
+        if boss_visual != null:
+            boss_visual.set_shell_telegraph(strength)
+        if not boss_visible:
+            boss["shell_armed"] = false
+            boss["shell_windup"] = 0.0
+            boss["shell_cooldown"] = maxf(float(boss["shell_cooldown"]), 0.45)
+            if boss_visual != null:
+                boss_visual.set_shell_telegraph(0.0)
+        elif float(boss["shell_windup"]) <= 0.0:
+            if _fire_boss(true):
+                boss["shell_cooldown"] = randf_range(1.75, 2.25)
+            else:
+                boss["shell_cooldown"] = 0.18
+            boss["shell_armed"] = false
+            if boss_visual != null:
+                boss_visual.set_shell_telegraph(0.0)
+    elif (
+        boss_visible
+        and distance <= BOSS_SHELL_RANGE
+        and distance >= float(ENEMY_FIRE_PROFILES["panzerfaust"]["min_range"])
+        and float(boss["shell_cooldown"]) <= 0.0
+    ):
+        boss["shell_armed"] = true
+        boss["shell_windup"] = BOSS_SHELL_WINDUP
+        if boss_visual != null:
+            boss_visual.set_shell_telegraph(0.01)
 
 func _try_enemy_fire(enemy: Dictionary) -> void:
     var weapon := String(enemy["weapon"])
@@ -764,10 +814,12 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
     var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
     var target_delta: Vector2 = target - origin
     var distance: float = target_delta.length()
+    var pellets := maxi(1, int(profile["pellets"]))
     if distance > float(profile["range"]) or distance < float(profile["min_range"]):
         return
+    if not _can_spawn_hostile_shot(origin, weapon, pellets):
+        return
     var base_direction: Vector2 = target_delta.normalized()
-    var pellets := maxi(1, int(profile["pellets"]))
     var spread := float(profile["spread"])
     for _pellet in range(pellets):
         var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
@@ -777,16 +829,19 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
             "weapon": weapon,
             "explosive": bool(profile["explosive"]),
         })
+    _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
         visual.play_fire()
 
-func _fire_boss(explosive: bool) -> void:
+func _fire_boss(explosive: bool) -> bool:
     if boss_visual == null or player.dead or player.is_game_over:
-        return
+        return false
     var weapon := "panzerfaust" if explosive else "machinegun"
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
     var origin: Vector2 = boss_visual.muzzle_global_position()
+    if not _can_spawn_hostile_shot(origin, weapon, 1):
+        return false
     var target: Vector2 = Vector2(player.global_position) + Vector2(0.0, -18.0)
     var direction: Vector2 = (target - origin).normalized()
     var spread := 0.0 if explosive else float(profile["spread"])
@@ -797,7 +852,31 @@ func _fire_boss(explosive: bool) -> void:
         "weapon": weapon,
         "explosive": explosive,
     })
+    _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     boss_visual.play_fire(explosive)
+    return true
+
+func _world_x_is_combat_visible(world_x: float) -> bool:
+    var half_width := VIEW_SIZE.x * 0.5 + ENEMY_FIRE_SCREEN_MARGIN
+    return absf(world_x - player.global_position.x) <= half_width
+
+func _hostile_explosive_count() -> int:
+    var count := 0
+    for projectile in enemy_projectiles:
+        if bool(projectile.get("explosive", false)):
+            count += 1
+    return count
+
+func _can_spawn_hostile_shot(origin: Vector2, weapon: String, projectile_count: int) -> bool:
+    if not _world_x_is_combat_visible(origin.x):
+        return false
+    if _hostile_fire_gap_remaining > 0.0:
+        return false
+    if enemy_projectiles.size() + projectile_count > MAX_HOSTILE_PROJECTILES:
+        return false
+    if weapon == "panzerfaust" and _hostile_explosive_count() >= MAX_HOSTILE_EXPLOSIVES:
+        return false
+    return true
 
 func _enemy_fire_cooldown(weapon: String) -> float:
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
