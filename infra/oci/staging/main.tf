@@ -149,6 +149,12 @@ resource "oci_core_instance" "backend" {
     }
   }
 
+  # The application does not need legacy OCI metadata endpoints. Keep the
+  # VM on IMDSv2-only so a future SSRF primitive cannot fall back to IMDSv1.
+  instance_options {
+    are_legacy_imds_endpoints_disabled = true
+  }
+
   create_vnic_details {
     assign_public_ip = true
     display_name     = "${var.instance_name}-primary"

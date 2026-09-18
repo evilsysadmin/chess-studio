@@ -28,6 +28,7 @@ SECURITY_PATTERN = re.compile(
     r"|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$"
     r"|^\.github/workflows/cicd\.yml$"
     r"|^\.github/actions/cache-python-venv/action\.yml$"
+    r"|^infra/(?:oci|cloudflare|terraform)/"
     r"|^deploy/"
     r"|^render\.ya?ml$"
 )
@@ -79,6 +80,10 @@ def self_test() -> None:
         "scripts/install_trivy.sh",
         ".github/workflows/cicd.yml",
         ".github/actions/cache-python-venv/action.yml",
+        "infra/oci/staging/main.tf",
+        "infra/oci/runtime/docker-compose.yml",
+        "infra/cloudflare/main.tf",
+        "infra/terraform/main.tf",
         "deploy/render.sh",
         "render.yml",
         "render.yaml",
@@ -97,10 +102,6 @@ def self_test() -> None:
         "docs/security-notes.md",
         "frontend/package-lock.json.bak",
         "backend-python/requirements.md",
-        "infra/oci/staging/main.tf",
-        "infra/oci/bootstrap/outputs.tf",
-        "infra/cloudflare/main.tf",
-        "infra/terraform/main.tf",
         "infrared/example.txt",
         "deployment-notes.md",
         "render.json",
@@ -109,12 +110,12 @@ def self_test() -> None:
         assert not requires_heavy_security([path]), f"no debía activar security pesado: {path}"
 
     assert requires_heavy_security(["README.md", "deploy/service.yaml"])
-    assert not requires_heavy_security(["README.md", "infra/oci/staging/main.tf"])
+    assert requires_heavy_security(["README.md", "infra/oci/staging/main.tf"])
     assert not requires_heavy_security([])
     assert normalize_files(["", "  README.md  ", "\n"]) == ["README.md"]
     assert output_lines(True) == ["run_security=true"]
     assert output_lines(False) == ["run_security=false"]
-    print("security-scope self-test OK · pure IaC skips heavy Trivy/Docker")
+    print("security-scope self-test OK · IaC activa Trivy/Docker")
 
 
 def main() -> int:
