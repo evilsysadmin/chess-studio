@@ -21,6 +21,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
   const [error, setError] = useState('');
   const self = useMemo(() => lobby.roster.find((row) => row.isSelf) || null, [lobby.roster]);
   const roster = useMemo(() => sortedRoster(lobby.roster), [lobby.roster]);
+  const rivals = useMemo(() => roster.filter((row) => !row.isSelf), [roster]);
   const incoming = useMemo(() => lobby.challenges.filter((row) => row.direction === 'incoming' && row.status === 'pending'), [lobby.challenges]);
   const outgoing = useMemo(() => lobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [lobby.challenges]);
   const opponent = opponentForMatch(lobby.activeMatch);
@@ -85,7 +86,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
     if (result?.match) onMatchReady(result.match);
   }
 
-  const rivalCount = Math.max(0, roster.length - (self ? 1 : 0));
+  const rivalCount = rivals.length;
   const challengeCount = incoming.length + outgoing.length;
 
   return (
@@ -97,12 +98,12 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
           <div className="pvp-lobby__header-copy">
             <span className="eyebrow">War Room · humano contra humano</span>
             <h2>Roster de duelo</h2>
-            <p>Entra en servicio y sigue jugando cualquier modo. Mientras estés enrolado, aparecerás disponible y te avisaremos si alguien te reta.</p>
+            <p>Entra en servicio, cierra esta ventana y sigue jugando. Los retos llegarán como aviso global.</p>
           </div>
           <div className="pvp-lobby__seal" aria-hidden="true">
             <span>1 VS 1</span>
             <strong>WAR ROOM</strong>
-            <small>DUELO ONLINE</small>
+            <small>ONLINE</small>
           </div>
         </header>
 
@@ -124,8 +125,8 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
               <small>{self ? 'EN SERVICIO' : 'FUERA DEL ROSTER'}</small>
-              <strong>{self ? 'Disponible para retos' : 'Entra para jugar 1 contra 1'}</strong>
-              <span>{self ? `${self.username} · sigues en servicio aunque minimices esta ventana; los retos llegarán como aviso global` : 'Podrás ver rivales, retar y recibir desafíos.'}</span>
+              <strong>{self ? self.username : 'Entra para jugar 1 contra 1'}</strong>
+              <span>{self ? 'Disponible para retos · puedes minimizar y seguir jugando' : 'Activa tu ficha para retar y recibir desafíos.'}</span>
             </div>
           </div>
           {self && (
@@ -154,9 +155,9 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
           <section className="pvp-lobby__panel pvp-lobby__panel--roster" aria-labelledby="pvp-roster-title">
             <header>
               <div>
-                <small>OFICIALES PRESENTES</small>
-                <h3 id="pvp-roster-title">Roster</h3>
-                <p>Jugadores disponibles en esta sala.</p>
+                <small>REGISTRO DE DUELO</small>
+                <h3 id="pvp-roster-title">Rivales disponibles</h3>
+                <p>Presencia activa en la War Room.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
@@ -168,17 +169,18 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
             ) : (
               <>
                 <div className="pvp-lobby__roster-list">
-                  {roster.map((row) => {
+                  {rivals.map((row) => {
                     const pending = outgoing.find((item) => item.opponent === row.username);
                     return (
-                      <article key={row.username} className={`pvp-lobby__player${row.isSelf ? ' is-self' : ''}`}>
+                      <article key={row.username} className={`pvp-lobby__player${pending ? ' is-pending' : ''}`}>
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
-                          <strong>{row.username}{row.isSelf && <em>tú</em>}</strong>
-                          <span>{row.tier}{row.isSelf ? ' · tu puesto en la sala' : ' · listo para duelo'}</span>
+                          <strong>{row.username}</strong>
+                          <span>{row.tier}</span>
                         </div>
+                        <div className="pvp-lobby__player-state"><i aria-hidden="true" /><span>{pending ? 'RETO ENVIADO' : 'DISPONIBLE'}</span></div>
                         <div className="pvp-lobby__player-rating"><small>ELO 1V1</small><b>{row.rating}</b></div>
-                        {!row.isSelf && <button type="button" className="secondary-btn" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => pvpApi.challenge(row.username))}>{pending ? 'Reto enviado' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>}
+                        <button type="button" className="secondary-btn pvp-lobby__challenge-cta" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => pvpApi.challenge(row.username))}>{pending ? 'En espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>
                       </article>
                     );
                   })}
@@ -198,7 +200,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
               <div>
                 <small>DESPACHO DE RETOS</small>
                 <h3 id="pvp-challenges-title">Retos</h3>
-                <p>Entrantes y desafíos enviados.</p>
+                <p>Órdenes que requieren tu atención.</p>
               </div>
               <span>{challengeCount}</span>
             </header>
@@ -214,18 +216,18 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
               <div className="pvp-lobby__challenge-list">
                 {incoming.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
-                    <div><small>TE RETA</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} rating</span></div>
+                    <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1</span></div>
                     <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
                   </article>
                 ))}
-                {outgoing.map((challenge) => <article key={challenge.id} className="pvp-lobby__challenge"><div><small>RETO ENVIADO</small><strong>{challenge.opponent}</strong><span>{challenge.opponentRating} rating · esperando respuesta</span></div></article>)}
+                {outgoing.map((challenge) => <article key={challenge.id} className="pvp-lobby__challenge"><div><small>RETO ENVIADO</small><strong>{challenge.opponent}</strong><span>{challenge.opponentRating} Elo 1v1 · esperando respuesta</span></div></article>)}
               </div>
             )}
           </section>
         </div>
 
         <footer className="pvp-lobby__footer">
-          <span>El Elo 1v1 es competitivo y server-authoritative. Es independiente del nivel estimado contra Matthias.</span>
+          <span>Elo 1v1 competitivo · validado por servidor · independiente del nivel contra Matthias.</span>
           <button type="button" className="secondary-btn pvp-lobby__refresh" onClick={() => refresh()} disabled={loading || Boolean(busyKey)}><span aria-hidden="true">↻</span>{loading ? 'Actualizando…' : 'Actualizar sala'}</button>
         </footer>
       </section>
