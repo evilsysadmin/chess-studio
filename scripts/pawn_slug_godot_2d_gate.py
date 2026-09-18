@@ -14,6 +14,7 @@ GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
+PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
@@ -105,14 +106,18 @@ FORBIDDEN_MATTHIAS = (
     "/pawn-slug/matthias/panzerfaust/",
 )
 REQUIRED_ENVIRONMENT = (
-    "_draw_sky",
-    "_draw_haze",
-    "_draw_far_ridge",
-    "_draw_ruined_skyline",
-    "_draw_searchlights",
-    "_draw_midground_defences",
+    "_draw_ground",
     "_draw_platforms",
+    "_draw_obstacles",
     "_draw_foreground_props",
+    "_draw_foreground_story_props",
+)
+REQUIRED_PARALLAX = (
+    "func _draw_sky",
+    "func _draw_far_ridge",
+    "func _draw_ruined_city",
+    "func _draw_mid_defence",
+    "func _noise",
 )
 REQUIRED_PAUSE_MENU = (
     "PROCESS_MODE_ALWAYS",
@@ -129,6 +134,13 @@ REQUIRED_PAUSE_MENU = (
     "JOY_BUTTON_START",
     "grab_focus",
 )
+REQUIRED_PARALLAX_MAIN = (
+    "ParallaxLayerVisual",
+    "Parallax2D.new()",
+    "_build_parallax_backdrop",
+    "scroll_scale",
+)
+
 REQUIRED_COMBAT_FX = (
     "muzzle_fx",
     "impact_fx",
@@ -337,7 +349,9 @@ def validate() -> None:
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
+    validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
+    validate_contract(MAIN, "main.gd", REQUIRED_PARALLAX_MAIN, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_FEEL, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_PLAYER_FEEL, violations)

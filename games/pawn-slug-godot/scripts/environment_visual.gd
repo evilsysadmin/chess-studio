@@ -20,16 +20,13 @@ func _ready() -> void:
     queue_redraw()
 
 func _draw() -> void:
-    _draw_sky()
-    _draw_haze()
-    _draw_far_ridge()
-    _draw_ruined_skyline()
-    _draw_searchlights()
-    _draw_midground_defences()
+    # Sky, distant skyline and midground now live in real Parallax2D layers.
+    # This node owns only world-locked ground/traversal/foreground dressing.
     _draw_ground()
     _draw_platforms()
     _draw_obstacles()
     _draw_foreground_props()
+    _draw_foreground_story_props()
 
 func _draw_sky() -> void:
     var top := Color("071018")
@@ -213,6 +210,32 @@ func _draw_foreground_props() -> void:
     for index in range(6):
         var x := 940.0 + float(index) * 820.0
         _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
+
+func _draw_foreground_story_props() -> void:
+    # Sparse close silhouettes sell a battlefield without becoming collision.
+    for index in range(5):
+        var x := 760.0 + float(index) * 980.0
+        var base := Vector2(x, _floor_y - 2.0)
+        draw_line(base + Vector2(-42.0, 0.0), base + Vector2(38.0, -25.0), Color(0.18, 0.20, 0.20, 0.72), 7.0)
+        draw_line(base + Vector2(-18.0, -14.0), base + Vector2(12.0, -52.0), Color(0.20, 0.22, 0.22, 0.68), 6.0)
+        draw_circle(base + Vector2(-30.0, -3.0), 12.0, Color(0.11, 0.13, 0.13, 0.88))
+        draw_circle(base + Vector2(28.0, -12.0), 10.0, Color(0.11, 0.13, 0.13, 0.88))
+
+    for index in range(6):
+        var x := 520.0 + float(index) * 840.0
+        var post_top := Vector2(x, _floor_y - 86.0)
+        draw_line(Vector2(x, _floor_y), post_top, Color("303638"), 5.0)
+        draw_rect(Rect2(post_top + Vector2(-26.0, -4.0), Vector2(52.0, 24.0)), Color("5a4a35"), true)
+        draw_rect(Rect2(post_top + Vector2(-26.0, -4.0), Vector2(52.0, 24.0)), Color(0.72, 0.56, 0.31, 0.58), false, 2.0)
+        draw_line(post_top + Vector2(-15.0, 8.0), post_top + Vector2(15.0, 8.0), Color(0.14, 0.12, 0.10, 0.65), 2.0)
+
+    for index in range(5):
+        var x := 1120.0 + float(index) * 900.0
+        var y := _floor_y - 14.0
+        for barb in range(5):
+            var bx := x + float(barb) * 17.0
+            draw_line(Vector2(bx, y), Vector2(bx + 12.0, y - 18.0), Color(0.28, 0.31, 0.31, 0.58), 1.5)
+            draw_line(Vector2(bx + 12.0, y - 18.0), Vector2(bx + 22.0, y), Color(0.28, 0.31, 0.31, 0.58), 1.5)
 
 func _draw_crate(origin: Vector2, size: float) -> void:
     var rect := Rect2(origin + Vector2(-size * 0.5, -size), Vector2(size, size))

@@ -4,6 +4,7 @@ const EnemyVisual := preload("res://scripts/enemy_visual.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
+const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const PICKUP_RADIUS_X := 44.0
@@ -128,6 +129,7 @@ var boss: Dictionary = {}
 var boss_visual
 var extraction_visual
 var environment_visual
+var _parallax_root: Node2D
 var _startup_ready_sent := false
 var _camera_kick := Vector2.ZERO
 var _reduced_motion := false
@@ -152,6 +154,7 @@ func _ready() -> void:
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
+    _build_parallax_backdrop()
     _build_environment_visual()
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
@@ -487,6 +490,40 @@ func _build_enemy_roster() -> Array[Dictionary]:
             enemy["leap_cooldown"] = randf_range(KNIGHT_INITIAL_LEAP_MIN, KNIGHT_INITIAL_LEAP_MAX)
         roster.append(enemy)
     return roster
+
+func _build_parallax_backdrop() -> void:
+    if _parallax_root != null:
+        _parallax_root.queue_free()
+    _parallax_root = Node2D.new()
+    _parallax_root.name = "ParallaxBackdrop"
+    add_child(_parallax_root)
+
+    var backdrop: Dictionary = _stage_manifest.get("backdrop", {})
+    var seed := int(backdrop.get("seed", 1))
+    var layers: Array = backdrop.get("layers", [])
+    for index in range(layers.size()):
+        var layer_spec = layers[index]
+        if typeof(layer_spec) != TYPE_DICTIONARY:
+            continue
+        var spec: Dictionary = layer_spec
+        var kind := String(spec.get("kind", "far_ridge"))
+        var parallax := Parallax2D.new()
+        parallax.name = "Parallax_%s_%02d" % [kind, index]
+        var scroll := float(spec.get("scroll", 0.35))
+        parallax.scroll_scale = Vector2(scroll, 1.0)
+        parallax.z_index = int(spec.get("z", -60))
+        _parallax_root.add_child(parallax)
+
+        var visual = ParallaxLayerVisual.new()
+        visual.name = "LayerVisual"
+        parallax.add_child(visual)
+        visual.configure(
+            _world_size,
+            _floor_y,
+            kind,
+            seed + index * 97,
+            float(spec.get("intensity", 1.0)),
+        )
 
 func _build_environment_visual() -> void:
     environment_visual = EnvironmentVisual.new()

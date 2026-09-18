@@ -167,6 +167,25 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     if not any(str(p.get("type", "")) == "machinegun" for p in pickups if isinstance(p, dict)):
         errors.append(f"{stage_name}: opening machinegun pickup missing")
 
+    backdrop = stage.get("backdrop") or {}
+    layers = backdrop.get("layers") or []
+    required_layer_kinds = {"sky", "far_ridge", "ruined_city", "mid_defence"}
+    layer_kinds = {str(layer.get("kind", "")) for layer in layers if isinstance(layer, dict)}
+    missing_layers = sorted(required_layer_kinds - layer_kinds)
+    if missing_layers:
+        errors.append(f"{stage_name}: missing parallax layer kinds: " + ", ".join(missing_layers))
+    previous_scroll = -1.0
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        scroll = float(layer.get("scroll", -1.0))
+        if not 0.0 <= scroll <= 1.0:
+            errors.append(f"{stage_name}: parallax scroll {scroll:g} outside 0..1")
+        if scroll < previous_scroll:
+            errors.append(f"{stage_name}: parallax layers must progress from far to near")
+            break
+        previous_scroll = scroll
+
     boss = stage.get("boss") or {}
     extraction = stage.get("extraction") or {}
     boss_x = float(boss.get("x", -1))
@@ -201,6 +220,12 @@ def self_test() -> None:
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
         "pickups": [{"x": 1200, "y": 566, "type": "machinegun"}],
+        "backdrop": {"layers": [
+            {"kind": "sky", "scroll": 0.03},
+            {"kind": "far_ridge", "scroll": 0.14},
+            {"kind": "ruined_city", "scroll": 0.34},
+            {"kind": "mid_defence", "scroll": 0.62},
+        ]},
         "boss": {"x": 4580},
         "extraction": {"x": 5050},
     }
