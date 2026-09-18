@@ -132,12 +132,17 @@ describe('War Room v2 staging asset URL', () => {
     const desktop = warRoomV2PracticalLightProfile();
     const coarse = warRoomV2PracticalLightProfile({ coarsePointer: true });
     expect(desktop.fire.color).toBe(0xff8a38);
+    expect(desktop.rightFire.color).toBe(0xff7f30);
     expect(desktop.moon.color).toBe(0x6f98ff);
     expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
+    expect(desktop.rightFire.intensity).toBeGreaterThan(coarse.rightFire.intensity);
     expect(desktop.moon.intensity).toBeGreaterThan(coarse.moon.intensity);
+    expect(desktop.rightFire.distance).toBeLessThan(desktop.fire.distance);
     expect(desktop.fire.distance).toBeLessThan(desktop.moon.distance);
     expect(desktop.fire.intensity).toBe(2.45);
     expect(desktop.fire.distance).toBe(11.3);
+    expect(desktop.rightFire.intensity).toBe(1.85);
+    expect(desktop.rightFire.distance).toBe(9.6);
     expect(desktop.moon.intensity).toBe(2.95);
     expect(desktop.moon.distance).toBe(13.9);
   });
