@@ -78,7 +78,7 @@ These values are configuration, not secrets, and should remain declarative/versi
 - `OTEL_LOGS_ENABLED`
 - `OTEL_EXPORTER_OTLP_PROTOCOL`
 
-The declarative source is `infra/oci/runtime/backend.staging.env`. `runtime-sync` composes it with CURRENT OCI Vault values on the A1, persists the private Object Storage bundle, and installs `/etc/chess-studio/backend.env` without exposing plaintext to the runner.
+The declarative source is `infra/oci/runtime/backend.staging.env`. `runtime-sync` composes it with CURRENT OCI Vault values directly on the A1 and atomically installs `/etc/chess-studio/backend.env` without exposing plaintext to the runner. The older Object Storage bundle remains a compatibility source for narrowly allow-listed CI reads during the migration, not the canonical runtime materializer.
 
 ## Runtime materialization contract
 
