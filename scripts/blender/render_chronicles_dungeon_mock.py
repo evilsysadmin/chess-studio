@@ -49,43 +49,62 @@ def mat_principled(name, base, rough=.6, metallic=0.0, emission=None, emission_s
     return m
 
 
+
 def mat_stone(name, dark=False, wet=False):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
     bs = nt.nodes.get("Principled BSDF")
-    noise = nt.nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = 4.4 if dark else 6.2
-    noise.inputs["Detail"].default_value = 10.0
-    noise.inputs["Roughness"].default_value = .82
-    noise.inputs["Distortion"].default_value = .15
+
+    macro = nt.nodes.new("ShaderNodeTexNoise")
+    macro.inputs["Scale"].default_value = 3.2 if dark else 4.5
+    macro.inputs["Detail"].default_value = 7.0
+    macro.inputs["Roughness"].default_value = .78
+    macro.inputs["Distortion"].default_value = .22
+
+    micro = nt.nodes.new("ShaderNodeTexNoise")
+    micro.inputs["Scale"].default_value = 38.0
+    micro.inputs["Detail"].default_value = 3.0
+    micro.inputs["Roughness"].default_value = .68
+
+    mix_noise = nt.nodes.new("ShaderNodeMixRGB")
+    mix_noise.blend_type = "MULTIPLY"
+    mix_noise.inputs[0].default_value = .72
+    nt.links.new(macro.outputs["Fac"], mix_noise.inputs[1])
+    nt.links.new(micro.outputs["Fac"], mix_noise.inputs[2])
+
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     if dark:
-        ramp.color_ramp.elements[0].color = (.018, .020, .024, 1)
-        ramp.color_ramp.elements[1].color = (.105, .090, .076, 1)
+        ramp.color_ramp.elements[0].color = (.010, .012, .015, 1)
+        ramp.color_ramp.elements[1].color = (.105, .075, .050, 1)
     else:
-        ramp.color_ramp.elements[0].color = (.045, .045, .047, 1)
-        ramp.color_ramp.elements[1].color = (.205, .175, .145, 1)
-    bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = .48
-    bump.inputs["Distance"].default_value = .18
+        ramp.color_ramp.elements[0].color = (.030, .031, .034, 1)
+        ramp.color_ramp.elements[1].color = (.255, .185, .105, 1)
+
     obj = nt.nodes.new("ShaderNodeObjectInfo")
     obj_ramp = nt.nodes.new("ShaderNodeValToRGB")
-    obj_ramp.color_ramp.elements[0].color = (.72, .72, .72, 1)
-    obj_ramp.color_ramp.elements[1].color = (1.0, .96, .90, 1)
+    obj_ramp.color_ramp.elements[0].color = (.72, .72, .70, 1)
+    obj_ramp.color_ramp.elements[1].color = (1.08, .98, .84, 1)
+
     tint = nt.nodes.new("ShaderNodeMixRGB")
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
-    nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
-    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = .72
+    bump.inputs["Distance"].default_value = .115
+
+    nt.links.new(mix_noise.outputs["Color"], ramp.inputs["Fac"])
     nt.links.new(obj.outputs["Random"], obj_ramp.inputs["Fac"])
     nt.links.new(ramp.outputs["Color"], tint.inputs[1])
     nt.links.new(obj_ramp.outputs["Color"], tint.inputs[2])
     nt.links.new(tint.outputs["Color"], bs.inputs["Base Color"])
+    nt.links.new(micro.outputs["Fac"], bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"], bs.inputs["Normal"])
-    bs.inputs["Roughness"].default_value = .48 if wet else .80
+
+    bs.inputs["Roughness"].default_value = .43 if wet else .77
     if "Coat Weight" in bs.inputs:
-        bs.inputs["Coat Weight"].default_value = .08 if wet else .0
+        bs.inputs["Coat Weight"].default_value = .13 if wet else .01
     return m
 
 
@@ -202,21 +221,37 @@ def material_bank():
         "wood": mat_wood(),
         "highlight": mat_principled("DungeonHighlight", (.03, .27, .42), .36, .08, (.03, .32, .48), 2.5),
         "highlight_warm": mat_principled("DungeonHighlightWarm", (.50, .34, .12), .42, .02, (.68, .38, .08), 1.5),
-        "flame": mat_principled("DungeonFlame", (1.0, .12, .008), .34, 0, (1.0, .11, .006), 4.5),
+        "flame": mat_principled("DungeonFlame", (1.0, .10, .005), .36, 0, (1.0, .055, .004), 4.5),
         "wax": mat_principled("DungeonWax", (.78, .62, .34), .66, 0),
     }
 
 
-def tile(M, x, y, z=0.0, size=.98):
-    zz = z + random.uniform(-.025, .025)
-    rz = math.radians(random.uniform(-.5, .5))
-    return cube(f"floor_{x}_{y}", (x, y, zz-.12), (size*.5, size*.5, .12), M["floor"], (0, 0, rz), .055)
+
+def tile(M, x, y, z=0.0, size=.96):
+    zz = z + random.uniform(-.022, .022)
+    rz = math.radians(random.uniform(-.32, .32))
+    slab = cube(f"floor_{x}_{y}", (x, y, zz-.10), (size*.5, size*.5, .10), M["floor"], (0, 0, rz), .028)
+    if random.random() < .44:
+        # Shallow, dark hairline fracture that breaks the toy-block regularity.
+        angle = math.radians(random.choice((-34, -18, 22, 41)))
+        length = random.uniform(.20, .42)
+        crack = cube("floor_crack", (x+random.uniform(-.18,.18), y+random.uniform(-.18,.18), zz+.012),
+                     (length, .009, .008), M["black"], (0, 0, angle), .002)
+        crack["dungeon_detail"] = "floor-crack"
+    return slab
+
 
 
 def wall_block(M, x, y, z, sx=.5, sy=.5, sz=.33, dark=False):
-    rot = (0, 0, math.radians(random.uniform(-.5, .5)))
-    return cube("wall_block", (x+random.uniform(-.018, .018), y+random.uniform(-.018, .018), z),
-                (sx, sy, sz), M["stone_dark" if dark else "stone"], rot, .075)
+    rot = (math.radians(random.uniform(-.30,.30)),
+           math.radians(random.uniform(-.30,.30)),
+           math.radians(random.uniform(-.65,.65)))
+    jx = random.uniform(.94, 1.04)
+    jy = random.uniform(.94, 1.04)
+    jz = random.uniform(.94, 1.035)
+    return cube("wall_block",
+                (x+random.uniform(-.022,.022), y+random.uniform(-.022,.022), z+random.uniform(-.012,.012)),
+                (sx*jx, sy*jy, sz*jz), M["stone_dark" if dark else "stone"], rot, .034)
 
 
 def wall_segment(M, x, y, length=4, axis="x", height=2.6):
@@ -247,12 +282,19 @@ def arch(M, x, y, width=1.8, height=2.25, depth=.45):
         cube("arch_block", (xx, y, zz), (.22, depth*.56, .22), M["stone"], (0, -a+math.pi/2, 0), .055)
 
 
+
 def torch(M, x, y, z=1.55, wall_axis="x"):
     rot = (0, math.radians(90), 0) if wall_axis == "x" else (math.radians(90), 0, 0)
-    cyl("torch_handle", (x, y, z-.20), .045, .50, M["iron"], rot, bevel=.012)
-    cyl("torch_bowl", (x, y, z+.08), .11, .08, M["brass"], bevel=.015)
-    sphere("torch_flame", (x, y, z+.26), (.09, .09, .20), M["flame"])
-    point_light("torch_light", (x, y, z+.33), 620, (1.0, .24, .055), .72)
+    cyl("torch_handle", (x, y, z-.22), .035, .48, M["iron"], rot, bevel=.010)
+    cyl("torch_bowl", (x, y, z+.035), .105, .075, M["brass"], bevel=.012)
+    # Tapered flame, with a small hot core, avoids the old glowing-egg silhouette.
+    bpy.ops.mesh.primitive_cone_add(vertices=28, radius1=.075, radius2=.010, depth=.28,
+                                    location=(x, y, z+.22))
+    flame = bpy.context.object
+    flame.name = "torch_flame"
+    finish(flame, M["flame"], .010, True)
+    sphere("torch_core", (x, y, z+.13), (.038, .038, .075), M["flame"])
+    point_light("torch_light", (x, y, z+.30), 430, (1.0, .19, .035), .58)
 
 
 def banner(M, x, y, z, blue=False):
@@ -331,57 +373,102 @@ def pawn_piece(M, x, y, z=.15, black=False, red_rings=False, tilt=0):
     return root
 
 
+
 def humanoid(M, x, y, z=.10, green=False, sleep=False, armored=False, plume=False):
     root = bpy.data.objects.new("humanoid_root", None)
     bpy.context.collection.objects.link(root)
     root.location = (x, y, z)
+
     torso_mat = M["steel"] if armored else (M["green"] if green else M["stone_dark"])
-    skin = M["skin"]
-    body = cyl("hero_body", (x, y, z+.75), .24, .65, torso_mat, vertices=28, bevel=.035)
-    parent_keep_world(body, root)
-    head = sphere("hero_head", (x, y-.02, z+1.25), (.22, .20, .23), skin)
+    trim_mat = M["brass"] if armored or green else M["iron"]
+
+    pelvis = cube("hero_pelvis", (x, y, z+.54), (.20, .15, .13), torso_mat, bevel=.055)
+    parent_keep_world(pelvis, root)
+    chest = cube("hero_torso", (x, y, z+.87), (.25, .17, .28), torso_mat, bevel=.085)
+    parent_keep_world(chest, root)
+    belt = cube("hero_belt", (x, y-.175, z+.63), (.22, .028, .038), trim_mat, bevel=.012)
+    parent_keep_world(belt, root)
+
+    head = sphere("hero_head", (x, y-.02, z+1.29), (.205, .19, .22), M["skin"])
     parent_keep_world(head, root)
-    cap = cyl("hero_cap", (x, y, z+1.47), .24, .08, M["ivory" if green else "black"], vertices=28, bevel=.025)
+    neck = cyl("hero_neck", (x, y, z+1.09), .075, .13, M["skin"], vertices=22, bevel=.012)
+    parent_keep_world(neck, root)
+
+    cap = cyl("hero_cap", (x, y, z+1.47), .225, .075, M["ivory" if green else "black"], vertices=30, bevel=.022)
     parent_keep_world(cap, root)
+    crown = sphere("hero_cap_crown", (x, y+.01, z+1.515), (.19,.18,.075), M["ivory" if green else "black"])
+    parent_keep_world(crown, root)
     if plume:
-        p = cyl("hero_plume", (x, y, z+1.69), .045, .34, M["red"], rot=(0, math.radians(18), 0), vertices=16, bevel=.02)
+        p = cyl("hero_plume", (x+.01, y, z+1.70), .038, .33, M["red"],
+                rot=(0, math.radians(13), 0), vertices=16, bevel=.014)
         parent_keep_world(p, root)
-    for side in (-1, 1):
-        leg = cyl("hero_leg", (x+side*.11, y, z+.28), .07, .38, M["iron"], vertices=20, bevel=.018)
-        parent_keep_world(leg, root)
-        arm_mat = M["steel"] if armored else torso_mat
-        arm = cyl("hero_arm", (x+side*.33, y-.02, z+.78), .065, .45, arm_mat,
-                  rot=(0, math.radians(12*side), 0), vertices=20, bevel=.018)
-        parent_keep_world(arm, root)
-    if green:
-        staff = cyl("hero_staff", (x+.42, y-.03, z+.78), .035, 1.35, M["brass"], vertices=18, bevel=.012)
-        parent_keep_world(staff, root)
-        orb = sphere("hero_orb", (x+.42, y-.03, z+1.49), (.10, .10, .10), M["brass"])
-        parent_keep_world(orb, root)
+
     if armored:
-        chest = cube("hero_chest", (x, y-.20, z+.80), (.22, .06, .26), M["steel"], bevel=.055)
-        parent_keep_world(chest, root)
+        plate = cube("hero_breastplate", (x, y-.185, z+.90), (.205, .042, .205), M["steel"], bevel=.045)
+        parent_keep_world(plate, root)
+        for side in (-1, 1):
+            paul = sphere("hero_pauldron", (x+side*.30, y, z+.99), (.12,.15,.10), M["steel"])
+            parent_keep_world(paul, root)
+
+    for side in (-1, 1):
+        hip = (x+side*.115, y, z+.48)
+        knee = (x+side*.13, y-.015, z+.27)
+        bootp = (x+side*.14, y-.035, z+.09)
+        thigh = cyl("hero_thigh", ((hip[0]+knee[0])/2,(hip[1]+knee[1])/2,(hip[2]+knee[2])/2),
+                    .068, .24, M["iron"], vertices=20, bevel=.015)
+        thigh.rotation_euler.y = math.radians(side*4)
+        parent_keep_world(thigh, root)
+        shin = cyl("hero_shin", ((knee[0]+bootp[0])/2,(knee[1]+bootp[1])/2,(knee[2]+bootp[2])/2),
+                   .060, .22, M["iron"], vertices=20, bevel=.014)
+        parent_keep_world(shin, root)
+        boot = cube("hero_boot", (bootp[0], bootp[1]-.055, bootp[2]), (.085,.13,.055), M["black"], bevel=.025)
+        parent_keep_world(boot, root)
+
+        arm_mat = M["steel"] if armored else torso_mat
+        upper = cyl("hero_arm", (x+side*.31, y-.005, z+.89), .058, .32, arm_mat,
+                    rot=(0, math.radians(side*13), 0), vertices=20, bevel=.015)
+        parent_keep_world(upper, root)
+        hand = sphere("hero_hand", (x+side*.36, y-.03, z+.72), (.062,.060,.070), M["skin"])
+        parent_keep_world(hand, root)
+
+    if green:
+        coat_tail = cube("hero_coat_tail", (x, y+.115, z+.49), (.22,.055,.22), M["green"], bevel=.045)
+        parent_keep_world(coat_tail, root)
+        staff = cyl("hero_staff", (x+.42, y-.03, z+.78), .030, 1.35, M["brass"], vertices=18, bevel=.010)
+        parent_keep_world(staff, root)
+        orb = sphere("hero_orb", (x+.42, y-.03, z+1.49), (.095,.095,.095), M["brass"])
+        parent_keep_world(orb, root)
+
     if sleep:
+        # Side-fall rather than a straight barrel: a small yaw makes each "siesta" distinct.
         root.rotation_euler = (
-            math.radians(random.uniform(68, 86)),
-            math.radians(random.uniform(-12, 12)),
-            math.radians(random.uniform(-24, 24)),
+            math.radians(random.uniform(75, 88)),
+            math.radians(random.uniform(-8, 8)),
+            math.radians(random.uniform(-32, 32)),
         )
+        root.location.z += .055
     return root
 
+
+
 def zzz(M, x, y, z):
+    cam = bpy.context.scene.camera
     for i in range(3):
         curve = bpy.data.curves.new(f"zzz_{i}", "FONT")
         curve.body = "Z"
         curve.align_x = "CENTER"
         curve.align_y = "CENTER"
-        curve.size = .22+i*.06
-        curve.extrude = .008
+        curve.size = .20+i*.055
+        curve.extrude = .010
+        curve.bevel_depth = .004
         o = bpy.data.objects.new(f"zzz_{i}", curve)
         bpy.context.collection.objects.link(o)
-        o.location = (x+.10*i, y, z+.12*i)
-        o.rotation_euler = (math.radians(72), 0, 0)
+        o.location = (x+.10*i, y-.03*i, z+.14*i)
+        if cam is not None:
+            direction = cam.location - o.location
+            o.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
         curve.materials.append(M["ivory"])
+
 
 
 def setup_scene(out):
@@ -399,23 +486,23 @@ def setup_scene(out):
     scene.render.film_transparent = False
     if scene.world is None:
         scene.world = bpy.data.worlds.new("DungeonWorld")
-    scene.world.color = (.004, .003, .004)
-    # Blender 5.2 compositor ownership changed; keep the lookdev render self-contained
-    # and rely on emissive materials + physical lights instead of version-fragile glow nodes.
+    scene.world.color = (.0025, .0022, .0035)
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
-        scene.view_settings.exposure = 0.85
+        scene.view_settings.exposure = 0.28
     except Exception:
         pass
+
     camd = bpy.data.cameras.new("DungeonCamera")
     cam = bpy.data.objects.new("DungeonCamera", camd)
     bpy.context.collection.objects.link(cam)
-    cam.location = (11.8, -14.0, 11.2)
+    cam.location = (11.2, -14.8, 12.6)
     camd.type = "ORTHO"
-    camd.ortho_scale = 10.7
-    look_at(cam, (.2, .45, .65))
+    camd.ortho_scale = 10.55
+    look_at(cam, (.05, .35, .55))
     scene.camera = cam
     return scene
+
 
 
 def build(M):
@@ -432,16 +519,16 @@ def build(M):
     for x, y in coords:
         tile(M, x, y)
 
-    wall_segment(M, -4.55, .6, 8, "y", 2.20)
-    wall_segment(M, 0.0, 4.55, 8, "x", 2.05)
-    wall_segment(M, 4.55, .8, 6, "y", 1.95)
-    wall_segment(M, 2.0, 1.55, 4, "x", 1.55)
-    wall_segment(M, 1.55, 3.2, 3, "y", 1.45)
-    wall_segment(M, -1.8, -1.0, 3, "x", 1.20)
+    wall_segment(M, -4.55, .6, 8, "y", 2.30)
+    wall_segment(M, 0.0, 4.55, 8, "x", 2.12)
+    wall_segment(M, 4.55, .8, 6, "y", 2.02)
+    wall_segment(M, 2.0, 1.55, 4, "x", 1.62)
+    wall_segment(M, 1.55, 3.2, 3, "y", 1.52)
+    wall_segment(M, -1.8, -1.0, 3, "x", 1.22)
     arch(M, -1.0, 1.42, 1.55, 2.15, .62)
-    pillar(M, -3.55, -1.20, 3.2)
-    pillar(M, -3.55, 3.45, 3.0)
-    pillar(M, 3.65, 3.55, 2.8)
+    pillar(M, -3.55, -1.20, 3.15)
+    pillar(M, -3.55, 3.45, 2.95)
+    pillar(M, 3.65, 3.55, 2.75)
 
     torch(M, -3.95, 1.20, 1.55, "y")
     torch(M, -.25, 4.15, 1.72, "x")
@@ -450,13 +537,20 @@ def build(M):
     banner(M, -2.75, 4.18, 1.58, blue=True)
     banner(M, .35, 4.18, 1.58, blue=True)
     banner(M, -3.95, -1.0, 1.25, blue=False)
+
     crate(M, 2.85, .55, .38, .44)
     crate(M, 3.55, -2.0, .38, .40)
     urn(M, 2.35, .72, .28)
     candles(M, -3.20, -2.25, .02)
-    rubble(M, 2.5, -1.45, 18, .95)
-    rubble(M, 3.1, 2.3, 12, .72)
-    rubble(M, -2.0, -1.85, 11, .65)
+    rubble(M, 2.5, -1.45, 24, 1.00)
+    rubble(M, 3.1, 2.3, 15, .76)
+    rubble(M, -2.0, -1.85, 15, .70)
+    rubble(M, -3.65, .55, 10, .45)
+
+    # Layered background architecture below the playable slab for cinematic depth.
+    for dx, dy, h in ((-6.0, 2.8, 2.8), (-5.8, -1.5, 2.2), (5.9, 3.0, 2.5), (5.7, -1.8, 2.0)):
+        pillar(M, dx, dy, h)
+        point_light("distant_ember", (dx, dy, h*.72), 95, (1.0,.10,.025), .35)
 
     tile_outline(M, -1.0, .52, warm=True)
     tile_outline(M, .15, -.55, False)
@@ -464,21 +558,23 @@ def build(M):
 
     humanoid(M, -1.0, .55, .10, green=True)
     pawn_piece(M, .15, -.55, .10, black=True)
+
     humanoid(M, -.20, -2.0, .10, sleep=True, armored=True)
-    zzz(M, -.25, -2.1, 1.05)
+    zzz(M, -.25, -2.1, 1.08)
     humanoid(M, 1.65, -1.75, .10, sleep=True, armored=True, plume=True)
-    zzz(M, 1.65, -1.8, 1.05)
+    zzz(M, 1.65, -1.8, 1.10)
     humanoid(M, 2.65, -1.25, .10, sleep=True, armored=False, plume=True)
-    zzz(M, 2.65, -1.25, 1.05)
+    zzz(M, 2.65, -1.25, 1.12)
     pawn_piece(M, 3.45, -1.35, .10, black=True, red_rings=True, tilt=-18)
-    zzz(M, 3.45, -1.35, 1.25)
+    zzz(M, 3.45, -1.35, 1.34)
 
     cyl("fallen_shield", (1.35, -1.58, .16), .28, .08, M["steel"], rot=(math.radians(88), 0, 0), vertices=32, bevel=.025)
     cyl("fallen_spear", (.20, -1.78, .16), .025, 1.35, M["brass"], rot=(0, math.radians(72), 0), vertices=16, bevel=.01)
 
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 760, 6.5, (.62, .70, .82), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 520, 5.4, (.16, .27, .46), (0, 0, .8))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 690, 4.4, (1.0, .20, .05), (0, 1.0, 1.1))
+    # Cool ambient fill + warm practicals: torches should own the image.
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 410, 7.0, (.34, .44, .62), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 260, 6.0, (.10, .18, .34), (0, 0, .8))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 330, 4.8, (1.0, .13, .025), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
