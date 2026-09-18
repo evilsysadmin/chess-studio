@@ -72,6 +72,12 @@ def _public_roster(row: dict, username: str) -> dict:
 
 
 def _public_challenge(row: dict, username: str) -> dict:
+    created_at = row.get("created_at")
+    expires_at = (
+        created_at + timedelta(seconds=store.CHALLENGE_TTL_SECONDS)
+        if isinstance(created_at, datetime)
+        else None
+    )
     return {
         "id": row["id"],
         "challenger": row["challenger"],
@@ -80,7 +86,9 @@ def _public_challenge(row: dict, username: str) -> dict:
         "opponentRating": int(row.get("opponent_rating", DEFAULT_RATING)),
         "status": row["status"],
         "direction": "incoming" if row["opponent"] == username else "outgoing",
-        "createdAt": _iso(row.get("created_at")),
+        "createdAt": _iso(created_at),
+        "expiresAt": _iso(expires_at),
+        "resolvedAt": _iso(row.get("resolved_at")),
         "matchId": row.get("match_id"),
     }
 
@@ -244,6 +252,13 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "status": "pending",
             "created_at": now,
         })
+        return {"challenge": _public_challenge(row, username)}
+
+    @router.post("/challenges/{challenge_id}/cancel")
+    async def cancel(challenge_id: str, username: str = Depends(auth_dependency)):
+        row = await store.cancel_challenge(challenge_id, username)
+        if not row:
+            raise HTTPException(404, "Reto saliente pendiente no encontrado.")
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/decline")
