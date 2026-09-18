@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { api, STORAGE_KEY } from './api.js';
-import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
+import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
 import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
 import { timeControlById } from './clock.js';
 import { clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun } from './career.js';
@@ -10,6 +10,7 @@ import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from
 import { hasRecoverableCombatState } from './combatRecoveryProbe.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition, assertActiveSessionInvariant } from './activeSessionMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
+import { isActiveSessionRoute } from './activeSessionRoutes.js';
 
 export const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 export { hasRecoverableCombatState };
@@ -22,6 +23,10 @@ export function classifyRestoreFailure(error) {
 
 export function shouldLeaveActiveRouteAfterRestoreFailure(error) {
   return classifyRestoreFailure(error) === 'stale-session';
+}
+
+export function shouldAutoRestoreActiveSession({ currentView, saved } = {}) {
+  return Boolean(saved?.gameId && saved.route === currentView && isActiveSessionRoute(currentView));
 }
 
 export function resolveRestoredGameContext(saved, found, storedRun) {
@@ -313,11 +318,11 @@ export function useActiveSessionRestore({
   ]);
 
   useEffect(() => {
-    const saved = loadActiveGameSession();
-    if (!saved || startupRestoreAttempted.current) return;
+    const saved = loadVisibleActiveGameSession();
+    if (!shouldAutoRestoreActiveSession({ currentView, saved }) || startupRestoreAttempted.current) return;
     startupRestoreAttempted.current = true;
     restoreActiveSession(saved);
-  }, [restoreActiveSession]);
+  }, [currentView, restoreActiveSession]);
 
   return {
     restoreActiveSession,
