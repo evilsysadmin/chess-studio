@@ -230,6 +230,13 @@ assert "os.O_NOFOLLOW" in k3s_service_prepare
 assert "info.st_uid != 0" in k3s_service_prepare and "info.st_gid != 0" in k3s_service_prepare
 assert "_sha256_with_fingerprint" in k3s_service_prepare
 
+# Successful K3s reconciliation stays compact so OCI Run Command does not lose
+# the deploy tail, while failures retain the complete child diagnostic output.
+assert "run_k3s_reconcile_steps" in deploy
+assert '{ /bin/bash "$k3s_capability_provision" && python3 -S "$k3s_service_prepare"; }' in deploy
+assert 'cat "$log" >&2' in deploy
+assert "awk '/^OCI_K3S_/ {print}'" in deploy
+
 # Healthy public routing of the exact new SHA is sufficient to reuse the
 # existing tunnel. Any probe failure must retain the full connector self-heal.
 assert "public_tunnel_attest" in deploy
