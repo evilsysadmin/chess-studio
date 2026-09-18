@@ -11,15 +11,48 @@ from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "feedback"
 _memory_feedback: dict[str, dict] = {}
+_indexes_ready = False
+_LIST_PROJECTION = {"attachments.data": 0}
+
+
+async def _ensure_indexes(col) -> None:
+    """Prepare feedback query indexes; failure is performance-only, not outage."""
+    global _indexes_ready
+    if _indexes_ready or col is None:
+        return
+    try:
+        await col.create_index([("created_at", -1)], name="feedback_created_desc")
+        await col.create_index(
+            [("username", 1), ("created_at", -1)],
+            name="feedback_username_created_desc",
+        )
+        await col.create_index([("status", 1)], name="feedback_status")
+    except PyMongoError:
+        # Feedback remains correct without these indexes. Do not turn a
+        # permissions/index-maintenance issue into loss of the feedback path.
+        pass
+    finally:
+        _indexes_ready = True
 
 
 async def _get_collection():
     db = await get_db()
     if db is not None:
-        return db[COLLECTION]
+        col = db[COLLECTION]
+        await _ensure_indexes(col)
+        return col
     if persistent_storage_required():
         raise PersistentStorageUnavailable("MongoDB no está disponible para feedback.")
     return None
+
+
+def _public_cursor(col, query: dict):
+    """List metadata without pulling screenshot bytes out of Mongo."""
+    try:
+        return col.find(query, _LIST_PROJECTION)
+    except TypeError:
+        # Minimal collection doubles used by older tests may only accept query.
+        return col.find(query)
 
 
 def _public_feedback(row: dict) -> dict:
@@ -68,7 +101,7 @@ async def list_feedback(*, limit: int = 100) -> list[dict]:
     col = await _get_collection()
     if col is not None:
         try:
-            cursor = col.find({}).sort("created_at", -1).limit(safe_limit)
+            cursor = _public_cursor(col, {}).sort("created_at", -1).limit(safe_limit)
             result = []
             async for row in cursor:
                 result.append(_public_feedback({
@@ -109,7 +142,7 @@ async def list_feedback_for_user(username: str, *, limit: int = 20) -> list[dict
     col = await _get_collection()
     if col is not None:
         try:
-            cursor = col.find({"username": username}).sort("created_at", -1).limit(safe_limit)
+            cursor = _public_cursor(col, {"username": username}).sort("created_at", -1).limit(safe_limit)
             result = []
             async for row in cursor:
                 result.append(_public_feedback({"id": str(row.pop("_id")), **row}))
