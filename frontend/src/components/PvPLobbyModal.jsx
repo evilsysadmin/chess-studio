@@ -111,13 +111,13 @@ export default function PvPLobbyModal({
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="pvp-lobby" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
-        <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás en el roster' : 'Cerrar ventana del roster'} title={self ? 'Cerrar ventana · sigues en el roster' : 'Cerrar'}>×</button>
+        <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>
 
         <header className="pvp-lobby__header">
           <div className="pvp-lobby__header-copy">
-            <span className="eyebrow">War Room · humano contra humano</span>
-            <h2>Roster de duelo</h2>
-            <p>Entra en servicio, cierra esta ventana y sigue jugando. Los retos llegarán como aviso global.</p>
+            <span className="eyebrow">War Room · duelos entre jugadores</span>
+            <h2>Elige rival</h2>
+            <p>Ponte disponible, elige a alguien y pulsa Retar. Puedes cerrar esta ventana: seguirás visible y los desafíos llegarán como aviso global.</p>
           </div>
           <div className="pvp-lobby__seal" aria-hidden="true">
             <span>1 VS 1</span>
@@ -125,6 +125,23 @@ export default function PvPLobbyModal({
             <small>ONLINE</small>
           </div>
         </header>
+
+        {!liveLobby.activeMatch && (
+          <ol className="pvp-lobby__flow" aria-label="Cómo jugar 1 contra 1">
+            <li className={self ? 'is-done' : ''}>
+              <b aria-hidden="true">1</b>
+              <span><strong>Ponte disponible</strong><small>{self ? 'Ya estás visible' : 'Activa tu ficha'}</small></span>
+            </li>
+            <li className={rivalCount > 0 ? 'is-ready' : ''}>
+              <b aria-hidden="true">2</b>
+              <span><strong>Elige rival</strong><small>{rivalCount > 0 ? `${rivalCount} ahora mismo` : 'Aparecerán aquí'}</small></span>
+            </li>
+            <li>
+              <b aria-hidden="true">3</b>
+              <span><strong>Pulsa Retar</strong><small>El rival decide si acepta</small></span>
+            </li>
+          </ol>
+        )}
 
         {liveLobby.activeMatch && opponent && (
           <aside className="pvp-lobby__active" aria-label="Partida 1 contra 1 activa">
@@ -138,14 +155,14 @@ export default function PvPLobbyModal({
           </aside>
         )}
 
-        <section className={`pvp-lobby__identity${self ? ' is-active' : ''}`} aria-label="Tu estado en el roster">
+        <section className={`pvp-lobby__identity${self ? ' is-active' : ''}`} aria-label="Tu disponibilidad para 1 contra 1">
           <div className="pvp-lobby__identity-main">
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
-              <small>{self ? 'EN SERVICIO' : 'FUERA DEL ROSTER'}</small>
-              <strong>{self ? self.username : 'Entra para jugar 1 contra 1'}</strong>
-              <span>{self ? 'Disponible para retos · puedes minimizar y seguir jugando' : 'Activa tu ficha para retar y recibir desafíos.'}</span>
+              <small>{self ? 'DISPONIBLE PARA RETOS' : 'NO DISPONIBLE'}</small>
+              <strong>{self ? self.username : 'Activa tu ficha para jugar 1 contra 1'}</strong>
+              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Cuando estés disponible podrás retar y recibir desafíos.'}</span>
             </div>
           </div>
           {self && (
@@ -159,12 +176,12 @@ export default function PvPLobbyModal({
             <div className="pvp-lobby__identity-actions">
               <button type="button" className="secondary-btn pvp-lobby__minimize-cta" onClick={onClose}>
                 <span aria-hidden="true">—</span>
-                Minimizar y seguir jugando
+                Cerrar y seguir disponible
               </button>
-              <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster(), { refreshAfter: false })}>{busyKey === 'leave' ? 'Saliendo…' : 'Salir del roster'}</button>
+              <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster(), { refreshAfter: false })}>{busyKey === 'leave' ? 'Saliendo…' : 'Dejar de estar disponible'}</button>
             </div>
           ) : (
-            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Entrando…' : 'Entrar al roster'}</button>
+            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Activando…' : 'Ponerme disponible'}</button>
           )}
         </section>
 
@@ -174,16 +191,16 @@ export default function PvPLobbyModal({
           <section className="pvp-lobby__panel pvp-lobby__panel--roster" aria-labelledby="pvp-roster-title">
             <header>
               <div>
-                <small>REGISTRO DE DUELO</small>
-                <h3 id="pvp-roster-title">Rivales disponibles</h3>
-                <p>Presencia activa en la War Room.</p>
+                <small>RIVALES EN LÍNEA</small>
+                <h3 id="pvp-roster-title">Elige a quién retar</h3>
+                <p>Pulsa Retar junto al jugador que quieras desafiar.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
             {loading ? <p className="pvp-lobby__empty" role="status">Consultando la sala…</p> : roster.length === 0 ? (
               <div className="pvp-lobby__empty-state">
                 <span aria-hidden="true">♟</span>
-                <div><strong>La sala está vacía</strong><p>Entra al roster para quedar visible cuando aparezca otro jugador.</p></div>
+                <div><strong>Nadie disponible aún</strong><p>{self ? 'Puedes cerrar: seguirás visible y te avisaremos si alguien te reta.' : 'Ponte disponible para aparecer aquí cuando llegue otro jugador.'}</p></div>
               </div>
             ) : (
               <>
@@ -207,7 +224,7 @@ export default function PvPLobbyModal({
                 {self && rivalCount === 0 && (
                   <div className="pvp-lobby__quiet-note">
                     <span aria-hidden="true">◇</span>
-                    <div><strong>De momento, sólo tú.</strong><p>Minimiza la ventana y sigue jugando: permanecerás en el roster. Si entra alguien y te reta, Chess Studio te avisará estés donde estés.</p></div>
+                    <div><strong>Estás disponible.</strong><p>Cierra la ventana y sigue jugando. Cuando aparezca un rival podrás retarlo desde aquí; si te reta él primero, Chess Studio te avisará estés donde estés.</p></div>
                   </div>
                 )}
               </>
