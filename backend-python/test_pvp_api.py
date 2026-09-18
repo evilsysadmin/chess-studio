@@ -264,8 +264,10 @@ def test_disconnect_grace_does_not_award_instant_win_when_both_players_were_abse
     stale = pvp_store.utcnow() - timedelta(minutes=2)
     stored["white_seen_at"] = stale
     stored["black_seen_at"] = stale
+    # Bob ya tenía una gracia antigua, pero Alice también desapareció. Al
+    # volver Alice, esa reclamación vieja debe reiniciarse en vez de cobrar win.
+    stored["black_disconnect_grace_started_at"] = stale
     stored.pop("white_disconnect_grace_started_at", None)
-    stored.pop("black_disconnect_grace_started_at", None)
 
     returned = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
     assert returned.status_code == 200
