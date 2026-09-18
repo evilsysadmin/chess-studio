@@ -30,6 +30,7 @@ from chronicles_map_generator import (
     ChroniclesMapGenerationError,
     generate_chronicles_layout,
 )
+from chronicles_manifest_procedural import proceduralize_chronicles_manifest
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -183,7 +184,10 @@ def load_chronicles_manifest(map_id: str, *, root: Path | None = None) -> tuple[
 
 
 def chronicles_area_envelope(map_id: str, seed: int, *, root: Path | None = None) -> dict[str, Any]:
-    manifest, revision = load_chronicles_manifest(map_id, root=root)
+    authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
+    generated = proceduralize_chronicles_manifest(authored_manifest, seed)
+    manifest = _validate_manifest(generated.manifest, expected_map_id=authored_manifest["id"])
+    revision = hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
     instance_material = (
         f"chronicles-area-v{CHRONICLES_MANIFEST_SCHEMA_VERSION}:{manifest['id']}:{manifest['version']}:{seed}:{revision}"
     ).encode("utf-8")
@@ -195,6 +199,9 @@ def chronicles_area_envelope(map_id: str, seed: int, *, root: Path | None = None
         "seed": seed,
         "instanceId": instance_id,
         "manifestRevision": revision,
+        "mapCode": generated.map_code,
+        "generatorVersion": generated.generator_version,
+        "layoutRevision": generated.layout_revision,
         "manifest": manifest,
     }
 
@@ -247,16 +254,17 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         except InvalidIdempotencyKey as exc:
             raise HTTPException(400, str(exc)) from exc
 
-        manifest, revision = load_chronicles_manifest(body.map_id)
+        seed = secrets.randbelow(_MAX_SEED + 1)
+        area = chronicles_area_envelope(body.map_id, seed)
         fingerprint = operation_fingerprint({"mapId": body.map_id})
         try:
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=_run_id(username, idempotency_key),
                 owner=username,
-                seed=secrets.randbelow(_MAX_SEED + 1),
+                seed=seed,
                 map_id=body.map_id,
-                content_version=manifest["version"],
-                manifest_revision=revision,
+                content_version=area["contentVersion"],
+                manifest_revision=area["manifestRevision"],
                 create_fingerprint=fingerprint,
             )
             return _run_bootstrap_payload(run)
