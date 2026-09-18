@@ -140,6 +140,11 @@ func _draw_ground() -> void:
             ground_deep = Color("171d20")
             edge = Color("a7b4b8")
             crack = Color(0.56, 0.61, 0.62, 0.22)
+        "jungle_storm":
+            ground_main = Color("1c2922")
+            ground_deep = Color("121b16")
+            edge = Color("7a6b43")
+            crack = Color(0.28, 0.38, 0.25, 0.28)
 
     draw_rect(
         Rect2(Vector2(0.0, _floor_y), Vector2(_world_size.x, _world_size.y - _floor_y)),
@@ -179,6 +184,12 @@ func _draw_platforms() -> void:
             trim = Color("aab9bd")
             rivet = Color("c1c9cb")
             support = Color("30393d")
+        "jungle_storm":
+            top_color = Color("4b4732")
+            body_color = Color("302f22")
+            trim = Color("9a7f4d")
+            rivet = Color("776a4b")
+            support = Color("28342b")
 
     for platform in _platforms:
         draw_rect(platform, top_color, true)
@@ -222,6 +233,9 @@ func _draw_obstacles() -> void:
         elif _theme == "alpine_night":
             body = Color("4a5051") if index % 2 == 0 else Color("343c40")
             edge = Color("b7c1c3") if index % 2 == 0 else Color("7f8d92")
+        elif _theme == "jungle_storm":
+            body = Color("43513a") if index % 2 == 0 else Color("4b4030")
+            edge = Color("74845e") if index % 2 == 0 else Color("9a7b4d")
         draw_rect(obstacle, body, true)
         draw_rect(obstacle, edge, false, 2.0)
         if obstacle.size.x >= 58.0:
@@ -256,6 +270,12 @@ func _draw_foreground_props() -> void:
                 _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
                 if index % 2 == 0:
                     _draw_crate(Vector2(x + 105.0, _floor_y - 3.0), 30.0)
+        "jungle_storm":
+            for index in range(9):
+                var x := 500.0 + float(index) * 590.0
+                _draw_crate(Vector2(x, _floor_y - 3.0), 30.0 + float((index % 3) * 3))
+                if index % 2 == 0:
+                    _draw_sandbags(Vector2(x + 82.0, _floor_y - 3.0), 5)
         _:
             for index in range(8):
                 var x := 540.0 + float(index) * 640.0
@@ -273,6 +293,8 @@ func _draw_foreground_story_props() -> void:
             _draw_harbor_story_props()
         "alpine_night":
             _draw_alpine_story_props()
+        "jungle_storm":
+            _draw_jungle_story_props()
         _:
             _draw_front_story_props()
 
@@ -308,6 +330,29 @@ func _draw_alpine_story_props() -> void:
         var x := 850.0 + float(index) * 840.0
         draw_circle(Vector2(x, _floor_y - 4.0), 24.0, Color(0.50, 0.56, 0.58, 0.16))
         draw_circle(Vector2(x + 18.0, _floor_y - 3.0), 18.0, Color(0.67, 0.72, 0.73, 0.12))
+
+func _draw_jungle_story_props() -> void:
+    for index in range(9):
+        var x := 360.0 + float(index) * 610.0
+        var base := Vector2(x, _floor_y)
+        var trunk := Color("3c3022")
+        draw_line(base, base + Vector2(8.0, -92.0), trunk, 10.0)
+        draw_circle(base + Vector2(-18.0, -88.0), 26.0, Color(0.13, 0.24, 0.14, 0.74))
+        draw_circle(base + Vector2(18.0, -104.0), 30.0, Color(0.15, 0.28, 0.16, 0.70))
+        draw_circle(base + Vector2(34.0, -82.0), 22.0, Color(0.11, 0.22, 0.13, 0.68))
+
+    for index in range(6):
+        var x := 840.0 + float(index) * 820.0
+        var y := _floor_y - 4.0
+        draw_line(Vector2(x - 42.0, y), Vector2(x + 42.0, y - 26.0), Color("5a4930"), 8.0)
+        draw_line(Vector2(x - 30.0, y - 8.0), Vector2(x - 2.0, y - 38.0), Color("4b3d2b"), 5.0)
+
+    for index in range(5):
+        var x := 1180.0 + float(index) * 920.0
+        var top := _floor_y - 104.0
+        draw_rect(Rect2(Vector2(x, top), Vector2(74.0, 104.0)), Color(0.20, 0.24, 0.18, 0.78), true)
+        draw_rect(Rect2(Vector2(x + 12.0, top + 18.0), Vector2(18.0, 30.0)), Color(0.08, 0.11, 0.08, 0.75), true)
+        draw_line(Vector2(x - 8.0, top), Vector2(x + 82.0, top), Color(0.45, 0.49, 0.34, 0.42), 3.0)
 
 func _draw_crate(origin: Vector2, size: float) -> void:
     var rect := Rect2(origin + Vector2(-size * 0.5, -size), Vector2(size, size))

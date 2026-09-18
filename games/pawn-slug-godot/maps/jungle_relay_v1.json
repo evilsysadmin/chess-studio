@@ -1,0 +1,407 @@
+{
+  "id": "jungle_relay_v1",
+  "version": 1,
+  "theme": "jungle_storm",
+  "world": {
+    "width": 5500,
+    "height": 720,
+    "floor_y": 610,
+    "start_x": 110,
+    "floor_depth": 110,
+    "boundary_thickness": 40
+  },
+  "checkpoints": [
+    110,
+    1580,
+    3160,
+    4480
+  ],
+  "platforms": [
+    {
+      "x": 410,
+      "y": 520,
+      "w": 180,
+      "h": 24,
+      "kind": "low_bridge"
+    },
+    {
+      "x": 650,
+      "y": 458,
+      "w": 150,
+      "h": 24,
+      "kind": "wood_bridge"
+    },
+    {
+      "x": 860,
+      "y": 382,
+      "w": 210,
+      "h": 24,
+      "kind": "canopy_walk"
+    },
+    {
+      "x": 1130,
+      "y": 520,
+      "w": 200,
+      "h": 24,
+      "kind": "low_bridge"
+    },
+    {
+      "x": 1390,
+      "y": 446,
+      "w": 170,
+      "h": 24,
+      "kind": "wood_bridge"
+    },
+    {
+      "x": 1620,
+      "y": 370,
+      "w": 220,
+      "h": 24,
+      "kind": "canopy_walk"
+    },
+    {
+      "x": 1910,
+      "y": 492,
+      "w": 180,
+      "h": 24,
+      "kind": "ruin_ledge"
+    },
+    {
+      "x": 2160,
+      "y": 426,
+      "w": 140,
+      "h": 24,
+      "kind": "wood_bridge"
+    },
+    {
+      "x": 2370,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_bridge"
+    },
+    {
+      "x": 2630,
+      "y": 456,
+      "w": 210,
+      "h": 24,
+      "kind": "ruin_ledge"
+    },
+    {
+      "x": 2900,
+      "y": 378,
+      "w": 200,
+      "h": 24,
+      "kind": "canopy_walk"
+    },
+    {
+      "x": 3170,
+      "y": 500,
+      "w": 170,
+      "h": 24,
+      "kind": "wood_bridge"
+    },
+    {
+      "x": 3410,
+      "y": 438,
+      "w": 150,
+      "h": 24,
+      "kind": "ruin_ledge"
+    },
+    {
+      "x": 3640,
+      "y": 520,
+      "w": 220,
+      "h": 24,
+      "kind": "low_bridge"
+    },
+    {
+      "x": 3930,
+      "y": 404,
+      "w": 230,
+      "h": 24,
+      "kind": "canopy_walk"
+    },
+    {
+      "x": 4230,
+      "y": 472,
+      "w": 170,
+      "h": 24,
+      "kind": "wood_bridge"
+    },
+    {
+      "x": 4460,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_bridge"
+    },
+    {
+      "x": 4720,
+      "y": 392,
+      "w": 230,
+      "h": 24,
+      "kind": "canopy_walk"
+    },
+    {
+      "x": 5020,
+      "y": 454,
+      "w": 210,
+      "h": 24,
+      "kind": "ruin_ledge"
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 720,
+      "y": 548,
+      "w": 78,
+      "h": 62,
+      "kind": "fallen_log"
+    },
+    {
+      "x": 1260,
+      "y": 536,
+      "w": 64,
+      "h": 74,
+      "kind": "stone_ruin"
+    },
+    {
+      "x": 1840,
+      "y": 548,
+      "w": 88,
+      "h": 62,
+      "kind": "sandbags"
+    },
+    {
+      "x": 2300,
+      "y": 532,
+      "w": 62,
+      "h": 78,
+      "kind": "root_mass"
+    },
+    {
+      "x": 3060,
+      "y": 540,
+      "w": 92,
+      "h": 70,
+      "kind": "stone_ruin"
+    },
+    {
+      "x": 3530,
+      "y": 548,
+      "w": 84,
+      "h": 62,
+      "kind": "fallen_log"
+    },
+    {
+      "x": 4120,
+      "y": 532,
+      "w": 66,
+      "h": 78,
+      "kind": "root_mass"
+    },
+    {
+      "x": 4660,
+      "y": 540,
+      "w": 90,
+      "h": 70,
+      "kind": "stone_ruin"
+    },
+    {
+      "x": 5140,
+      "y": 548,
+      "w": 84,
+      "h": 62,
+      "kind": "fallen_log"
+    }
+  ],
+  "enemies": [
+    {
+      "x": 800,
+      "type": "pawn"
+    },
+    {
+      "x": 957,
+      "type": "scout"
+    },
+    {
+      "x": 1114,
+      "type": "pawn"
+    },
+    {
+      "x": 1271,
+      "type": "knight"
+    },
+    {
+      "x": 1428,
+      "type": "commando"
+    },
+    {
+      "x": 1585,
+      "type": "rook"
+    },
+    {
+      "x": 1742,
+      "type": "pawn"
+    },
+    {
+      "x": 1899,
+      "type": "shield"
+    },
+    {
+      "x": 2056,
+      "type": "grenadier"
+    },
+    {
+      "x": 2213,
+      "type": "knight"
+    },
+    {
+      "x": 2370,
+      "type": "bishop"
+    },
+    {
+      "x": 2527,
+      "type": "pawn"
+    },
+    {
+      "x": 2684,
+      "type": "scout"
+    },
+    {
+      "x": 2841,
+      "type": "commando"
+    },
+    {
+      "x": 2999,
+      "type": "rook"
+    },
+    {
+      "x": 3156,
+      "type": "pawn"
+    },
+    {
+      "x": 3313,
+      "type": "queen"
+    },
+    {
+      "x": 3470,
+      "type": "knight"
+    },
+    {
+      "x": 3627,
+      "type": "shield"
+    },
+    {
+      "x": 3784,
+      "type": "pawn"
+    },
+    {
+      "x": 3941,
+      "type": "grenadier"
+    },
+    {
+      "x": 4098,
+      "type": "rook"
+    },
+    {
+      "x": 4255,
+      "type": "bishop"
+    },
+    {
+      "x": 4412,
+      "type": "commando"
+    },
+    {
+      "x": 4569,
+      "type": "pawn"
+    },
+    {
+      "x": 4726,
+      "type": "knight"
+    },
+    {
+      "x": 4883,
+      "type": "scout"
+    },
+    {
+      "x": 5040,
+      "type": "pawn"
+    }
+  ],
+  "pickups": [
+    {
+      "x": 1220,
+      "y": 566,
+      "type": "machinegun"
+    },
+    {
+      "x": 2020,
+      "y": 566,
+      "type": "grenade"
+    },
+    {
+      "x": 2780,
+      "y": 566,
+      "type": "shotgun"
+    },
+    {
+      "x": 3480,
+      "y": 566,
+      "type": "medkit"
+    },
+    {
+      "x": 4060,
+      "y": 566,
+      "type": "panzerfaust"
+    },
+    {
+      "x": 4680,
+      "y": 566,
+      "type": "grenade"
+    }
+  ],
+  "boss": {
+    "x": 5270,
+    "hp": 840,
+    "width": 190,
+    "height": 150,
+    "trigger_x": 5150,
+    "arena_left": 5060,
+    "arena_right": 5480
+  },
+  "extraction": {
+    "x": 5440
+  },
+  "backdrop": {
+    "preset": "jungle_storm",
+    "seed": 71,
+    "layers": [
+      {
+        "kind": "sky",
+        "scroll": 0.025,
+        "z": -80,
+        "intensity": 1
+      },
+      {
+        "kind": "far_ridge",
+        "scroll": 0.11,
+        "z": -70,
+        "intensity": 1
+      },
+      {
+        "kind": "ruined_city",
+        "scroll": 0.29,
+        "z": -55,
+        "intensity": 1
+      },
+      {
+        "kind": "mid_defence",
+        "scroll": 0.57,
+        "z": -32,
+        "intensity": 1
+      }
+    ]
+  }
+}

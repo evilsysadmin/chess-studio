@@ -43,6 +43,9 @@ func _draw_sky() -> void:
     elif _preset == "alpine_night":
         top = Color("050d18")
         bottom = Color("23313c")
+    elif _preset == "jungle_storm":
+        top = Color("07130f")
+        bottom = Color("26372a")
     var bands := 18
     var band_h := _floor_y / float(bands)
     for band in range(bands):
@@ -64,6 +67,10 @@ func _draw_sky() -> void:
         var sun := Vector2(820.0, 178.0)
         draw_circle(sun, 62.0, Color(1.0, 0.48, 0.24, 0.08 * _intensity))
         draw_circle(sun, 34.0, Color(1.0, 0.66, 0.37, 0.62 * _intensity))
+    elif _preset == "jungle_storm":
+        var storm_glow := Vector2(760.0, 128.0)
+        draw_circle(storm_glow, 74.0, Color(0.46, 0.67, 0.52, 0.05 * _intensity))
+        draw_circle(storm_glow, 28.0, Color(0.66, 0.78, 0.62, 0.20 * _intensity))
     else:
         var moon := Vector2(690.0, 132.0)
         draw_circle(moon, 58.0, Color(0.76, 0.83, 0.87, 0.10 * _intensity))
@@ -88,6 +95,9 @@ func _draw_far_ridge() -> void:
         return
     if _preset == "alpine_night":
         _draw_alpine_peaks()
+        return
+    if _preset == "jungle_storm":
+        _draw_jungle_canopy()
         return
 
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
@@ -114,6 +124,9 @@ func _draw_ruined_city() -> void:
         return
     if _preset == "alpine_night":
         _draw_alpine_fortress()
+        return
+    if _preset == "jungle_storm":
+        _draw_jungle_ruins()
         return
 
     for index in range(34):
@@ -260,12 +273,64 @@ func _draw_alpine_midground() -> void:
         draw_line(Vector2(x - 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
         draw_line(Vector2(x + 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
 
+func _draw_jungle_canopy() -> void:
+    var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for x in range(0, int(_world_size.x) + 141, 140):
+        var xf := float(x)
+        var y := 334.0 + sin(xf * 0.0041) * 30.0 + (_noise(x / 140, 16.2) - 0.5) * 46.0
+        rear.append(Vector2(xf, y))
+    rear.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(rear, Color(0.045, 0.11, 0.07, 0.98))
+
+    var front := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for x in range(0, int(_world_size.x) + 101, 100):
+        var xf := float(x)
+        var y := 418.0 + sin(xf * 0.0074 + 0.7) * 22.0 + (_noise(x / 100, 16.9) - 0.5) * 28.0
+        front.append(Vector2(xf, y))
+    front.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(front, Color(0.07, 0.16, 0.09, 0.98))
+
+func _draw_jungle_ruins() -> void:
+    for index in range(13):
+        var x := 120.0 + float(index) * 420.0
+        var base_y := _floor_y - 130.0
+        var tower_h := 96.0 + _noise(index, 17.4) * 90.0
+        draw_rect(Rect2(Vector2(x, base_y - tower_h), Vector2(96.0, tower_h)), Color(0.09, 0.13, 0.09, 0.92), true)
+        draw_rect(Rect2(Vector2(x + 14.0, base_y - tower_h + 22.0), Vector2(20.0, 30.0)), Color(0.035, 0.055, 0.04, 0.76), true)
+        draw_line(Vector2(x - 12.0, base_y - tower_h), Vector2(x + 108.0, base_y - tower_h), Color(0.34, 0.40, 0.26, 0.28), 3.0)
+        if index % 2 == 0:
+            draw_line(Vector2(x + 72.0, base_y - tower_h), Vector2(x + 120.0, base_y - tower_h - 52.0), Color(0.16, 0.26, 0.14, 0.45), 4.0)
+
+    for index in range(18):
+        var x := 60.0 + float(index) * 310.0
+        var y := 250.0 + _noise(index, 18.1) * 130.0
+        draw_circle(Vector2(x, y), 24.0 + _noise(index, 18.7) * 22.0, Color(0.08, 0.20, 0.10, 0.18))
+
+func _draw_jungle_midground() -> void:
+    for index in range(12):
+        var x := 100.0 + float(index) * 450.0
+        var y := _floor_y - 50.0
+        draw_rect(Rect2(Vector2(x, y), Vector2(110.0, 50.0)), Color("283326"), true)
+        draw_line(Vector2(x + 8.0, y + 12.0), Vector2(x + 102.0, y + 12.0), Color(0.53, 0.49, 0.30, 0.32), 3.0)
+        if index % 3 == 0:
+            draw_line(Vector2(x + 54.0, y), Vector2(x + 54.0, y - 68.0), Color("3d4937"), 5.0)
+            draw_line(Vector2(x + 54.0, y - 68.0), Vector2(x + 94.0, y - 94.0), Color("3d4937"), 4.0)
+
+    for index in range(8):
+        var x := 340.0 + float(index) * 650.0
+        var base := Vector2(x, _floor_y - 4.0)
+        draw_line(base + Vector2(-24.0, 0.0), base + Vector2(0.0, -34.0), Color(0.31, 0.36, 0.26, 0.68), 4.0)
+        draw_line(base + Vector2(24.0, 0.0), base + Vector2(0.0, -34.0), Color(0.31, 0.36, 0.26, 0.68), 4.0)
+
 func _draw_mid_defence() -> void:
     if _preset == "harbor_dusk":
         _draw_harbor_midground()
         return
     if _preset == "alpine_night":
         _draw_alpine_midground()
+        return
+    if _preset == "jungle_storm":
+        _draw_jungle_midground()
         return
 
     for index in range(10):
