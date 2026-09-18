@@ -51,6 +51,8 @@ REQUIRED_MATTHIAS = (
     "load_webp_from_buffer",
     "animation_finished.connect",
     "_advance_locomotion",
+    "_cell_has_visible_pixels",
+    "RUN_LEG_MOTION_MIN_SCORE",
     'frames.get_frame_texture("fall", 0)',
     'name = "WeaponRoot"',
 )
@@ -72,6 +74,7 @@ REQUIRED_ENEMIES = (
     "/pawn-slug/enemies/premium-raster/",
     "enemy_premium_raster_v5",
     "load_webp_from_buffer",
+    "ENEMY_VISUAL_SCALE",
 )
 
 
