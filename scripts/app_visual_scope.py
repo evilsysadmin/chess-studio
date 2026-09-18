@@ -79,6 +79,8 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
+    if lower == "scripts/blender/build_war_room_premium.py":
+        return {"warroom"}
     if (
         lower in {
             "scripts/app_visual_scope.py",
@@ -296,6 +298,9 @@ def self_test() -> None:
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
     assert hub.experiments_scope == "landing,chronicles,pawnslug"
     assert not hub.chronicles_avatar
+
+    blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
+    assert blender_warroom.capture_groups == "warroom" and not blender_warroom.hans
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
