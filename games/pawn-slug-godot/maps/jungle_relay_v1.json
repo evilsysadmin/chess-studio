@@ -463,6 +463,25 @@
           "type": "commando"
         }
       ]
+    },
+    {
+      "id": "ruin-bridge",
+      "type": "collapse_bridge",
+      "x": 2070,
+      "y": 346,
+      "w": 190,
+      "h": 24,
+      "trigger_x": 2290,
+      "warning": 0.7,
+      "fall_gravity": 1010
+    },
+    {
+      "id": "temple-falls",
+      "type": "waterfall",
+      "x": 3890,
+      "y": 198,
+      "w": 140,
+      "h": 400
     }
   ]
 }
