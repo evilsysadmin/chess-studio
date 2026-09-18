@@ -51,8 +51,8 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '12' || '12' }}' \
-            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '1100' || '900' }}' \
+            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '8' || '8' }}' \
+            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '900' || '800' }}' \
             --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
@@ -78,7 +78,7 @@ jobs:
 
           quality = os.environ.get('QUALITY') or 'blockout'
           expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
-          expected_max_width = 1100 if quality == 'beauty' else 900
+          expected_max_width = 900 if quality == 'beauty' else 800
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
