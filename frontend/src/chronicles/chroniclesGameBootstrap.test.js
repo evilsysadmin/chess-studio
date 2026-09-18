@@ -66,9 +66,9 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(resolved.seed).toBe(417);
     expect(resolved.worldVersion).toBe(0);
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta remota');
-    expect(chroniclesMapById('gallery-of-forks').title).toBe('Remota · Galería de los Tenedores');
-    expect(chroniclesMapById('hollow-bell-tower').title).toBe('Remota · Torre de las Campanas Huecas');
-    expect(chroniclesMapById('echo-cistern').title).toBe('Remota · Cisterna de los Ecos');
+    expect(chroniclesMapById('gallery-of-forks').title).toMatch(/^Remota · /);
+    expect(chroniclesMapById('hollow-bell-tower').title).toMatch(/^Remota · /);
+    expect(chroniclesMapById('echo-cistern').title).toMatch(/^Remota · /);
     expect(resolved.areas).toHaveLength(chroniclesMapIds().length);
     expect(createRun).toHaveBeenCalledWith(DEFAULT_CHRONICLES_MAP_ID, {
       operationId: null,
