@@ -607,7 +607,7 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 570.0, (0.16, 0.30, 1.0), static, size=3.6)
+    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 410.0, (0.12, 0.25, 0.82), static, size=3.6)
 
     # Leather benches.
     for side in (-1, 1):
@@ -707,42 +707,42 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.40
+    scene.view_settings.exposure = -0.52
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.004, 0.006, 0.012, 1.0)
-    bg.inputs["Strength"].default_value = 0.11
+    bg.inputs["Strength"].default_value = 0.065
 
     static = collection("WR_STATIC_SHELL")
     dynamic = collection("WR_PREVIEW_DYNAMIC")
     mats = {
         "walnut": material("WR_MAT_board_walnut", (0.17, 0.070, 0.032, 1), rough=0.42, coat=0.20, texture="wood", scale=4.4, bump=0.09),
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
-        "wall_wood": material("WR_MAT_wall_walnut", (0.046, 0.025, 0.018, 1), rough=0.60, coat=0.07, texture="wood", scale=3.1, bump=0.042),
-        "wall_recess": material("WR_MAT_wall_recess", (0.024, 0.014, 0.012, 1), rough=0.66, coat=0.03, texture="wood", scale=3.3, bump=0.032),
-        "trim_wood": material("WR_MAT_trim_walnut", (0.074, 0.036, 0.022, 1), rough=0.43, coat=0.20, texture="wood", scale=3.7, bump=0.042),
-        "parquet": material("WR_MAT_parquet", (0.095, 0.050, 0.029, 1), rough=0.52, coat=0.10, texture="wood", scale=5.3, bump=0.055),
-        "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.009, 0.007, 1), rough=0.72, coat=0.03, texture="wood", scale=2.6, bump=0.025),
-        "table_wood": material("WR_MAT_table_walnut", (0.078, 0.034, 0.018, 1), rough=0.40, coat=0.27, texture="wood", scale=4.1, bump=0.047),
-        "frame_wood": material("WR_MAT_frame_walnut", (0.052, 0.016, 0.010, 1), rough=0.33, coat=0.34, texture="wood", scale=3.2, bump=0.04),
+        "wall_wood": material("WR_MAT_wall_walnut", (0.026, 0.013, 0.008, 1), rough=0.61, coat=0.06, texture="wood", scale=3.1, bump=0.042),
+        "wall_recess": material("WR_MAT_wall_recess", (0.012, 0.008, 0.007, 1), rough=0.69, coat=0.025, texture="wood", scale=3.3, bump=0.032),
+        "trim_wood": material("WR_MAT_trim_walnut", (0.058, 0.026, 0.014, 1), rough=0.45, coat=0.18, texture="wood", scale=3.7, bump=0.042),
+        "parquet": material("WR_MAT_parquet", (0.050, 0.026, 0.017, 1), rough=0.58, coat=0.07, texture="wood", scale=5.3, bump=0.055),
+        "floor_dark": material("WR_MAT_floor_underlay", (0.020, 0.021, 0.022, 1), rough=0.70, coat=0.025, texture="stone", scale=4.8, bump=0.040),
+        "table_wood": material("WR_MAT_table_walnut", (0.052, 0.022, 0.011, 1), rough=0.41, coat=0.25, texture="wood", scale=4.1, bump=0.047),
+        "frame_wood": material("WR_MAT_frame_walnut", (0.038, 0.013, 0.008, 1), rough=0.35, coat=0.31, texture="wood", scale=3.2, bump=0.04),
         "brass": material("WR_MAT_brass", (0.38, 0.16, 0.035, 1), metal=0.92, rough=0.27, coat=0.20, texture="metal", scale=22, bump=0.032),
         "brass_dark": material("WR_MAT_brass_dark", (0.13, 0.052, 0.016, 1), metal=0.88, rough=0.36, coat=0.14, texture="metal", scale=26, bump=0.028),
         "ivory": material("WR_MAT_ivory", (0.80, 0.70, 0.55, 1), rough=0.43, coat=0.17, texture="stone", scale=5.2, bump=0.055),
         "ebony": material("WR_MAT_ebony", (0.008, 0.010, 0.014, 1), metal=0.08, rough=0.24, coat=0.58, texture="stone", scale=6.2, bump=0.025),
         "red": material("WR_MAT_red_metal", (0.30, 0.012, 0.016, 1), metal=0.74, rough=0.24, coat=0.50),
-        "velvet": material("WR_MAT_velvet", (0.20, 0.008, 0.016, 1), rough=0.84, sheen=0.68, texture="fabric", scale=38, bump=0.08),
-        "velvet_dark": material("WR_MAT_velvet_dark", (0.060, 0.003, 0.007, 1), rough=0.92, sheen=0.50, texture="fabric", scale=44, bump=0.06),
+        "velvet": material("WR_MAT_velvet", (0.035, 0.012, 0.014, 1), rough=0.87, sheen=0.54, texture="fabric", scale=38, bump=0.08),
+        "velvet_dark": material("WR_MAT_velvet_dark", (0.012, 0.006, 0.007, 1), rough=0.93, sheen=0.38, texture="fabric", scale=44, bump=0.06),
         "leather": material("WR_MAT_leather", (0.082, 0.026, 0.022, 1), rough=0.50, coat=0.18, sheen=0.14, texture="leather", scale=47, bump=0.105),
         "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.235, 0.225, 0.205, 1), rough=0.70, coat=0.028, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.31, 0.30, 0.285, 1), rough=0.67, coat=0.028, texture="stone", scale=4.3, bump=0.075),
-        "stone_dark": material("WR_MAT_stone_shadow", (0.16, 0.135, 0.105, 1), rough=0.72, coat=0.02, texture="stone", scale=4.4, bump=0.075),
-        "rug": material("WR_MAT_rug", (0.075, 0.016, 0.020, 1), rough=0.95, sheen=0.24, texture="fabric", scale=54, bump=0.12),
+        "stone": material("WR_MAT_stone", (0.075, 0.070, 0.064, 1), rough=0.73, coat=0.022, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.125, 0.116, 0.104, 1), rough=0.70, coat=0.022, texture="stone", scale=4.3, bump=0.075),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.035, 0.031, 0.028, 1), rough=0.76, coat=0.015, texture="stone", scale=4.4, bump=0.075),
+        "rug": material("WR_MAT_rug", (0.012, 0.026, 0.022, 1), rough=0.96, sheen=0.18, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.16, 0.17, 0.20, 1), metal=0.93, rough=0.31, coat=0.18, texture="metal", scale=28, bump=0.035),
         "armor_dark": material("WR_MAT_armor_dark", (0.055, 0.062, 0.078, 1), metal=0.90, rough=0.40, coat=0.12, texture="metal", scale=22, bump=0.025),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
@@ -765,14 +765,14 @@ def build():
     add_room(static, mats)
     add_preview_board(dynamic, mats)
 
-    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 690.0, (1.0, 0.70, 0.50), static, size=5.8)
+    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 560.0, (1.0, 0.67, 0.42), static, size=5.8)
     look_at(key, (0, 0.5, 1.1))
-    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 455.0, (0.32, 0.46, 1.0), static, size=5.4)
+    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 330.0, (0.24, 0.36, 0.82), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
-    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 300.0, (1.0, 0.58, 0.32), static, size=5.0)
+    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 220.0, (1.0, 0.54, 0.29), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
-        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 115.0, (1.0, 0.31, 0.08), static, radius=1.35)
+        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 92.0, (1.0, 0.34, 0.10), static, radius=1.35)
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
     cam = bpy.data.objects.new("WR_CAMERA_hero", cam_data)
@@ -856,27 +856,27 @@ def validate():
 
 
 def runtime_texture_factor(kind, u, v):
-    """Small deterministic colour variation that survives glTF export."""
+    """Neutral microvariation multiplied by an explicit authored glTF base-color factor."""
     if kind == "wood":
         grain = 0.5 + 0.5 * math.sin((u * 7.0 + 0.16 * math.sin(v * 11.0)) * math.tau)
         fine = 0.5 + 0.5 * math.sin((u * 31.0 + v * 1.6) * math.tau)
-        return 0.80 + grain * 0.16 + fine * 0.05
+        return 0.86 + grain * 0.11 + fine * 0.035
     if kind == "stone":
         broad = 0.5 + 0.5 * math.sin((u * 5.0 + v * 7.0 + 0.22 * math.sin(u * 17.0)) * math.tau)
         fleck = 0.5 + 0.5 * math.sin((u * 23.0 - v * 19.0) * math.tau)
-        return 0.84 + broad * 0.12 + fleck * 0.05
+        return 0.88 + broad * 0.08 + fleck * 0.03
     if kind == "fabric":
         warp = abs(math.sin(u * math.tau * 24.0))
         weft = abs(math.sin(v * math.tau * 28.0))
-        return 0.82 + (warp * 0.07) + (weft * 0.07)
+        return 0.86 + (warp * 0.055) + (weft * 0.055)
     if kind == "leather":
         pores = 0.5 + 0.5 * math.sin((u * 37.0 + v * 41.0 + math.sin(v * 13.0)) * math.tau)
         cloud = 0.5 + 0.5 * math.sin((u * 4.0 - v * 5.0) * math.tau)
-        return 0.82 + pores * 0.06 + cloud * 0.11
+        return 0.86 + pores * 0.04 + cloud * 0.075
     if kind == "metal":
         brush = 0.5 + 0.5 * math.sin((u * 3.0 + v * 46.0) * math.tau)
-        return 0.88 + brush * 0.12
-    return 0.90 + (0.5 + 0.5 * math.sin((u * 9.0 + v * 11.0) * math.tau)) * 0.10
+        return 0.91 + brush * 0.075
+    return 0.90 + (0.5 + 0.5 * math.sin((u * 9.0 + v * 11.0) * math.tau)) * 0.07
 
 
 def install_runtime_base_color_texture(mat, bsdf, kind, *, size=64):
@@ -898,12 +898,13 @@ def install_runtime_base_color_texture(mat, bsdf, kind, *, size=64):
         for x in range(size):
             u = (x + 0.5) / size
             factor = runtime_texture_factor(kind, u, v)
-            pixels[cursor] = max(0.0, min(1.0, rgba[0] * factor))
-            pixels[cursor + 1] = max(0.0, min(1.0, rgba[1] * factor))
-            pixels[cursor + 2] = max(0.0, min(1.0, rgba[2] * factor))
+            pixels[cursor] = max(0.0, min(1.0, factor))
+            pixels[cursor + 1] = max(0.0, min(1.0, factor))
+            pixels[cursor + 2] = max(0.0, min(1.0, factor))
             pixels[cursor + 3] = 1.0
             cursor += 4
     image.pixels.foreach_set(pixels)
+    image.update()
     image.colorspace_settings.name = "sRGB"
     image.pack()
 
@@ -941,6 +942,7 @@ def sanitize_runtime_materials():
 
     removed_links = 0
     runtime_textures = 0
+    base_color_factors = {}
     for mat in materials.values():
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf is None:
@@ -953,16 +955,70 @@ def sanitize_runtime_materials():
                 mat.node_tree.links.remove(link)
                 removed_links += 1
 
+        base_socket = socket(bsdf, "Base Color")
+        if base_socket is not None:
+            base_color_factors[mat.name] = [float(v) for v in base_socket.default_value[:4]]
         kind = str(mat.get("war_room_texture_kind") or "").strip()
         if kind and install_runtime_base_color_texture(mat, bsdf, kind):
             runtime_textures += 1
-        mat["war_room_runtime_material"] = "gltf-safe-pbr-v2-textured"
+        mat["war_room_runtime_material"] = "gltf-safe-pbr-v3-factor-textured"
 
     if removed_links < 10:
         raise RuntimeError(f"runtime material sanitization suspiciously small: {removed_links}")
     if runtime_textures < 12:
         raise RuntimeError(f"runtime texture coverage suspiciously small: {runtime_textures}")
-    return removed_links, runtime_textures
+    return removed_links, runtime_textures, base_color_factors
+
+
+def patch_runtime_glb_base_color_factors(path, factors):
+    """Persist authored albedo independently from optional runtime microtextures.
+
+    glTF multiplies baseColorFactor by baseColorTexture. Carrying the authored
+    room palette in the factor means a missing/unsupported texture can never
+    bleach the War Room back to default white.
+    """
+    raw = Path(path).read_bytes()
+    if len(raw) < 20 or raw[:4] != b"glTF":
+        raise RuntimeError(f"invalid GLB header: {path}")
+
+    _magic, version, _declared_size = struct.unpack_from("<4sII", raw, 0)
+    if version != 2:
+        raise RuntimeError(f"unsupported GLB version: {version}")
+
+    chunks = []
+    offset = 12
+    patched = 0
+    while offset + 8 <= len(raw):
+        chunk_length, chunk_type = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        chunk = raw[offset:offset + chunk_length]
+        offset += chunk_length
+        if chunk_type == 0x4E4F534A:
+            data = json.loads(chunk.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for row in data.get("materials", []):
+                name = row.get("name")
+                factor = factors.get(name)
+                if factor is None:
+                    continue
+                pbr = row.setdefault("pbrMetallicRoughness", {})
+                pbr["baseColorFactor"] = [round(float(v), 6) for v in factor]
+                patched += 1
+            encoded = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            encoded += b" " * ((4 - len(encoded) % 4) % 4)
+            chunks.append((chunk_type, encoded))
+        else:
+            chunks.append((chunk_type, chunk))
+
+    if patched < 12:
+        raise RuntimeError(f"runtime GLB base-color factor patch suspiciously small: {patched}")
+
+    total = 12 + sum(8 + len(chunk) for _chunk_type, chunk in chunks)
+    out = bytearray(struct.pack("<4sII", b"glTF", 2, total))
+    for chunk_type, chunk in chunks:
+        out.extend(struct.pack("<II", len(chunk), chunk_type))
+        out.extend(chunk)
+    Path(path).write_bytes(out)
+    return patched
 
 
 def read_glb_json(path):
@@ -984,7 +1040,7 @@ def read_glb_json(path):
     raise RuntimeError(f"GLB JSON chunk missing: {path}")
 
 
-def validate_runtime_glb(path):
+def validate_runtime_glb(path, expected_factors=None):
     data = read_glb_json(path)
     materials = {row.get("name"): row for row in data.get("materials", [])}
     required_colours = {
@@ -1014,6 +1070,7 @@ def validate_runtime_glb(path):
     }
     missing_textures = []
     bleached = []
+    drifted = []
     for name in sorted(required_colours):
         pbr = materials[name].get("pbrMetallicRoughness", {})
         has_texture = isinstance(pbr.get("baseColorTexture"), dict)
@@ -1024,14 +1081,20 @@ def validate_runtime_glb(path):
         factor = pbr.get("baseColorFactor")
         if not isinstance(factor, list) or len(factor) < 3 or min(factor[:3]) >= 0.95:
             bleached.append((name, factor))
+        expected = (expected_factors or {}).get(name)
+        if expected is not None and isinstance(factor, list) and len(factor) >= 3:
+            if any(abs(float(factor[index]) - float(expected[index])) > 0.012 for index in range(3)):
+                drifted.append((name, factor, expected))
     if missing_textures:
         raise RuntimeError(f"runtime GLB lost authored material textures: {missing_textures}")
     if bleached:
         raise RuntimeError(f"runtime GLB lost authored base colours: {bleached}")
+    if drifted:
+        raise RuntimeError(f"runtime GLB base-colour factors drifted: {drifted}")
 
 
 def export_shell(path):
-    sanitized_links, runtime_textures = sanitize_runtime_materials()
+    sanitized_links, runtime_textures, base_color_factors = sanitize_runtime_materials()
     bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
     bpy.context.scene["war_room_runtime_texture_count"] = runtime_textures
     bpy.ops.object.select_all(action="DESELECT")
@@ -1047,7 +1110,9 @@ def export_shell(path):
         filepath=str(path), export_format="GLB", use_selection=True, export_apply=True,
         export_yup=True, export_cameras=False, export_lights=False,
     )
-    validate_runtime_glb(path)
+    patched_factors = patch_runtime_glb_base_color_factors(path, base_color_factors)
+    bpy.context.scene["war_room_runtime_base_color_factor_count"] = patched_factors
+    validate_runtime_glb(path, base_color_factors)
     bpy.ops.object.select_all(action="DESELECT")
 
 
