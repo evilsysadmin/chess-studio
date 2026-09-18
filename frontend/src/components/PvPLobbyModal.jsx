@@ -130,7 +130,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
           </div>
           {self && (
             <div className="pvp-lobby__identity-rating" aria-label={`${self.rating} de rating, ${self.tier}`}>
-              <small>RATING</small>
+              <small>ELO 1V1</small>
               <strong>{self.rating}</strong>
               <span>{self.tier}</span>
             </div>
@@ -171,7 +171,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
                           <strong>{row.username}{row.isSelf && <em>tú</em>}</strong>
                           <span>{row.tier}{row.isSelf ? ' · tu puesto en la sala' : ' · listo para duelo'}</span>
                         </div>
-                        <div className="pvp-lobby__player-rating"><small>RATING</small><b>{row.rating}</b></div>
+                        <div className="pvp-lobby__player-rating"><small>ELO 1V1</small><b>{row.rating}</b></div>
                         {!row.isSelf && <button type="button" className="secondary-btn" disabled={!self || Boolean(pending) || Boolean(busyKey) || Boolean(lobby.activeMatch)} onClick={() => run(`challenge:${row.username}`, () => pvpApi.challenge(row.username))}>{pending ? 'Reto enviado' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}</button>}
                       </article>
                     );
@@ -219,7 +219,7 @@ export default function PvPLobbyModal({ onClose, onMatchReady, onJoinRoster = nu
         </div>
 
         <footer className="pvp-lobby__footer">
-          <span>El rating mostrado es tu nivel real de Chess Studio; no existe una progresión PvP paralela.</span>
+          <span>El Elo 1v1 es competitivo y server-authoritative. Es independiente del nivel estimado contra Matthias.</span>
           <button type="button" className="secondary-btn pvp-lobby__refresh" onClick={() => refresh()} disabled={loading || Boolean(busyKey)}><span aria-hidden="true">↻</span>{loading ? 'Actualizando…' : 'Actualizar sala'}</button>
         </footer>
       </section>

@@ -3,7 +3,7 @@ import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-function matchPayload() {
+function matchPayload({ status = 'active', startsAt = null } = {}) {
   return {
     id: 'pvp-global-1',
     white: 'e2e',
@@ -12,7 +12,7 @@ function matchPayload() {
     blackRating: 1210,
     fen: START_FEN,
     turn: 'w',
-    status: 'active',
+    status,
     result: null,
     history: [],
     revision: 0,
@@ -20,7 +20,8 @@ function matchPayload() {
     yourTurn: true,
     createdAt: '2026-09-18T00:00:00Z',
     updatedAt: '2026-09-18T00:00:00Z',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    startsAt,
+    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
   };
 }
 
@@ -30,6 +31,9 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
 
   let enrolled = false;
   let challengeReady = false;
+  let accepted = false;
+  let synchronized = false;
+  let startsAt = null;
   const challenge = {
     id: 'challenge-global-1',
     challenger: 'bob',
@@ -67,20 +71,34 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
         { username: 'bob', rating: 1210, tier: 'Intermedio', isSelf: false },
       ] : [],
       challenges: enrolled && challengeReady ? [challenge] : [],
-      activeMatch: null,
-      pollAfterMs: 2000,
+      activeMatch: accepted
+        ? matchPayload({ status: synchronized ? 'active' : 'starting', startsAt })
+        : null,
+      pollAfterMs: 500,
     }),
   }));
 
-  await page.route('**/api/pvp/challenges/challenge-global-1/accept', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({ match: matchPayload() }),
-  }));
+  await page.route('**/api/pvp/challenges/challenge-global-1/accept', (route) => {
+    accepted = true;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ match: matchPayload({ status: 'starting' }) }),
+    });
+  });
+  await page.route('**/api/pvp/matches/pvp-global-1/ready', (route) => {
+    synchronized = true;
+    startsAt = new Date(Date.now() + 5000).toISOString();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ match: matchPayload({ status: 'active', startsAt }) }),
+    });
+  });
   await page.route('**/api/pvp/matches/pvp-global-1', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ match: matchPayload(), pollAfterMs: 1250 }),
+    body: JSON.stringify({ match: matchPayload({ status: synchronized ? 'active' : 'starting', startsAt }), pollAfterMs: 500 }),
   }));
 
   await login(page);
@@ -102,8 +120,16 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await expect(nudge).toBeVisible({ timeout: 8_000 });
   await nudge.getByRole('button', { name: 'Aceptar', exact: true }).click();
 
+  const handoff = page.getByRole('dialog', { name: 'Entrando en 1 contra 1' });
+  await expect(handoff).toBeVisible();
+  await expect(handoff.getByText(/Entrando en 1 vs 1 en 5/)).toBeVisible();
+  await expect(handoff.getByText('Tu progreso aquí no se perderá.', { exact: true })).toBeVisible();
+
   const warRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
   await expect(warRoom).toBeVisible({ timeout: 20_000 });
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'War Room 1 contra 1' })).toBeVisible({ timeout: 12_000 });
 });

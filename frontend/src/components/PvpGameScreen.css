@@ -102,3 +102,13 @@
   .pvp-war-room__duel-pill { gap:.3rem; padding-inline:.42rem; }
   .pvp-war-room__clock { min-width:39px; }
 }
+
+.pvp-war-room__elo-change { display:flex; align-items:center; justify-content:space-between; gap:.8rem; padding:.55rem .65rem; border:1px solid rgba(214,183,121,.18); border-radius:10px; background:rgba(214,183,121,.045); }
+.pvp-war-room__elo-change>small { color:rgba(226,199,148,.56); font-family:var(--font-mono); font-size:.52rem; letter-spacing:.12em; }
+.pvp-war-room__elo-change>span { display:flex; align-items:baseline; gap:.34rem; font-variant-numeric:tabular-nums; }
+.pvp-war-room__elo-change b { color:rgba(241,231,211,.55); font-size:.78rem; }
+.pvp-war-room__elo-change i { color:rgba(241,231,211,.32); font-style:normal; }
+.pvp-war-room__elo-change strong { color:#f2dfb8; font-size:1rem; }
+.pvp-war-room__elo-change em { min-width:2.5rem; text-align:right; font-family:var(--font-mono); font-size:.65rem; font-style:normal; }
+.pvp-war-room__elo-change em.is-up { color:#83c58a; }
+.pvp-war-room__elo-change em.is-down { color:#df8e84; }

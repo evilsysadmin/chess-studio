@@ -25,7 +25,7 @@ export default function PvpChallengeNudge({ challenge, onAccept, onDecline }) {
       <div className="pvp-challenge-nudge__copy">
         <small>WAR ROOM · RETO ENTRANTE</small>
         <strong>{challenge.challenger} te reta</strong>
-        <span>{challenge.challengerRating} rating · aceptar te lleva al 1v1; tu actividad actual queda guardada.</span>
+        <span>{challenge.challengerRating} Elo 1v1 · aceptar prepara el duelo; tu actividad actual queda guardada.</span>
         {error && <em role="alert">{error}</em>}
       </div>
       <div className="pvp-challenge-nudge__actions">
