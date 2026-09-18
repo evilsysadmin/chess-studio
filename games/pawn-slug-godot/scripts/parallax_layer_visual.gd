@@ -5,13 +5,15 @@ var _floor_y := 610.0
 var _kind := "far_ridge"
 var _seed := 1
 var _intensity := 1.0
+var _preset := "night_front"
 
-func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, intensity: float = 1.0) -> void:
+func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, intensity: float = 1.0, preset: String = "night_front") -> void:
     _world_size = world_size
     _floor_y = floor_y
     _kind = kind
     _seed = seed
     _intensity = clampf(intensity, 0.0, 2.0)
+    _preset = preset
     queue_redraw()
 
 func _ready() -> void:
@@ -35,6 +37,12 @@ func _noise(index: int, salt: float = 0.0) -> float:
 func _draw_sky() -> void:
     var top := Color("061019")
     var bottom := Color("26323b")
+    if _preset == "harbor_dusk":
+        top = Color("102334")
+        bottom = Color("714b45")
+    elif _preset == "alpine_night":
+        top = Color("050d18")
+        bottom = Color("23313c")
     var bands := 18
     var band_h := _floor_y / float(bands)
     for band in range(bands):
@@ -52,11 +60,16 @@ func _draw_sky() -> void:
         var alpha := 0.16 + _noise(index, 1.21) * 0.36
         draw_circle(Vector2(x, y), radius, Color(0.78, 0.84, 0.88, alpha * _intensity))
 
-    var moon := Vector2(690.0, 132.0)
-    draw_circle(moon, 58.0, Color(0.76, 0.83, 0.87, 0.10 * _intensity))
-    draw_circle(moon, 39.0, Color(0.81, 0.87, 0.89, 0.58 * _intensity))
-    draw_circle(moon + Vector2(-14.0, -11.0), 9.0, Color(0.47, 0.54, 0.59, 0.22))
-    draw_circle(moon + Vector2(17.0, 13.0), 6.0, Color(0.47, 0.54, 0.59, 0.18))
+    if _preset == "harbor_dusk":
+        var sun := Vector2(820.0, 178.0)
+        draw_circle(sun, 62.0, Color(1.0, 0.48, 0.24, 0.08 * _intensity))
+        draw_circle(sun, 34.0, Color(1.0, 0.66, 0.37, 0.62 * _intensity))
+    else:
+        var moon := Vector2(690.0, 132.0)
+        draw_circle(moon, 58.0, Color(0.76, 0.83, 0.87, 0.10 * _intensity))
+        draw_circle(moon, 39.0, Color(0.81, 0.87, 0.89, 0.58 * _intensity))
+        draw_circle(moon + Vector2(-14.0, -11.0), 9.0, Color(0.47, 0.54, 0.59, 0.22))
+        draw_circle(moon + Vector2(17.0, 13.0), 6.0, Color(0.47, 0.54, 0.59, 0.18))
 
     draw_rect(
         Rect2(Vector2(0.0, 250.0), Vector2(_world_size.x, 118.0)),
@@ -70,6 +83,13 @@ func _draw_sky() -> void:
     )
 
 func _draw_far_ridge() -> void:
+    if _preset == "harbor_dusk":
+        _draw_harbor_horizon()
+        return
+    if _preset == "alpine_night":
+        _draw_alpine_peaks()
+        return
+
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
     for x in range(0, int(_world_size.x) + 161, 160):
         var xf := float(x)
@@ -89,6 +109,13 @@ func _draw_far_ridge() -> void:
     draw_colored_polygon(front, Color(0.082, 0.12, 0.14, 0.98))
 
 func _draw_ruined_city() -> void:
+    if _preset == "harbor_dusk":
+        _draw_harbor_skyline()
+        return
+    if _preset == "alpine_night":
+        _draw_alpine_fortress()
+        return
+
     for index in range(34):
         var x := 30.0 + float(index) * 160.0
         var w := 70.0 + _noise(index, 4.2) * 70.0
@@ -148,7 +175,99 @@ func _draw_ruined_city() -> void:
         draw_colored_polygon(beam, Color(0.77, 0.72, 0.53, 0.034 * _intensity))
         draw_circle(origin, 8.0, Color(0.84, 0.70, 0.36, 0.58))
 
+func _draw_harbor_horizon() -> void:
+    draw_rect(Rect2(Vector2(0.0, 390.0), Vector2(_world_size.x, _floor_y - 390.0)), Color("102a33"), true)
+    draw_line(Vector2(0.0, 390.0), Vector2(_world_size.x, 390.0), Color(0.52, 0.66, 0.69, 0.18), 2.0)
+    for index in range(12):
+        var x := 120.0 + float(index) * 470.0
+        var hull_w := 90.0 + _noise(index, 11.2) * 100.0
+        var y := 420.0 + _noise(index, 11.8) * 36.0
+        draw_rect(Rect2(Vector2(x, y), Vector2(hull_w, 10.0)), Color(0.06, 0.11, 0.13, 0.78), true)
+        draw_line(Vector2(x + hull_w * 0.55, y), Vector2(x + hull_w * 0.55, y - 38.0), Color(0.12, 0.18, 0.20, 0.72), 3.0)
+
+func _draw_alpine_peaks() -> void:
+    var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for index in range(18):
+        var x := float(index) * 360.0
+        var peak_y := 190.0 + _noise(index, 12.4) * 130.0
+        rear.append(Vector2(x, 430.0))
+        rear.append(Vector2(x + 180.0, peak_y))
+        rear.append(Vector2(x + 360.0, 430.0))
+    rear.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(rear, Color(0.08, 0.12, 0.16, 0.98))
+    for index in range(16):
+        var x := float(index) * 380.0 + 90.0
+        var peak_y := 245.0 + _noise(index, 13.1) * 110.0
+        var snow := PackedVector2Array([
+            Vector2(x, peak_y),
+            Vector2(x - 42.0, peak_y + 58.0),
+            Vector2(x, peak_y + 42.0),
+            Vector2(x + 42.0, peak_y + 58.0),
+        ])
+        draw_colored_polygon(snow, Color(0.48, 0.56, 0.62, 0.20))
+
+func _draw_harbor_skyline() -> void:
+    for index in range(12):
+        var x := 170.0 + float(index) * 450.0
+        var base_y := _floor_y - 148.0
+        var mast_h := 140.0 + _noise(index, 14.3) * 90.0
+        draw_line(Vector2(x, base_y), Vector2(x, base_y - mast_h), Color("17272c"), 8.0)
+        draw_line(Vector2(x, base_y - mast_h + 16.0), Vector2(x + 125.0, base_y - mast_h + 42.0), Color("22363c"), 6.0)
+        draw_line(Vector2(x + 120.0, base_y - mast_h + 42.0), Vector2(x + 120.0, base_y - 42.0), Color("23373d"), 4.0)
+        draw_rect(Rect2(Vector2(x - 42.0, base_y), Vector2(120.0, 42.0)), Color("15252a"), true)
+    for index in range(18):
+        var x := 40.0 + float(index) * 305.0
+        draw_rect(Rect2(Vector2(x, _floor_y - 92.0), Vector2(180.0, 54.0)), Color(0.07, 0.13, 0.15, 0.92), true)
+
+func _draw_alpine_fortress() -> void:
+    for index in range(8):
+        var x := 220.0 + float(index) * 680.0
+        var base_y := _floor_y - 120.0
+        draw_rect(Rect2(Vector2(x, base_y - 88.0), Vector2(240.0, 88.0)), Color("12191e"), true)
+        draw_rect(Rect2(Vector2(x + 30.0, base_y - 150.0), Vector2(54.0, 62.0)), Color("10171c"), true)
+        draw_rect(Rect2(Vector2(x + 156.0, base_y - 138.0), Vector2(48.0, 50.0)), Color("10171c"), true)
+        draw_line(Vector2(x, base_y - 88.0), Vector2(x + 240.0, base_y - 88.0), Color(0.53, 0.61, 0.64, 0.18), 3.0)
+        if index % 2 == 0:
+            var beam := PackedVector2Array([
+                Vector2(x + 54.0, base_y - 150.0),
+                Vector2(x + 360.0, 110.0),
+                Vector2(x + 440.0, 110.0),
+                Vector2(x + 70.0, base_y - 148.0),
+            ])
+            draw_colored_polygon(beam, Color(0.75, 0.82, 0.85, 0.025))
+
+func _draw_harbor_midground() -> void:
+    for index in range(14):
+        var x := 120.0 + float(index) * 390.0
+        var y := _floor_y - 54.0
+        var container := Color("304c53") if index % 3 == 0 else Color("594433")
+        draw_rect(Rect2(Vector2(x, y), Vector2(110.0, 54.0)), container, true)
+        draw_rect(Rect2(Vector2(x + 10.0, y + 8.0), Vector2(90.0, 3.0)), Color(0.66, 0.78, 0.80, 0.20), true)
+    for index in range(9):
+        var x := 300.0 + float(index) * 620.0
+        draw_line(Vector2(x, _floor_y), Vector2(x, _floor_y - 84.0), Color("263c41"), 7.0)
+        draw_circle(Vector2(x, _floor_y - 86.0), 8.0, Color(0.93, 0.70, 0.31, 0.42))
+
+func _draw_alpine_midground() -> void:
+    for index in range(11):
+        var x := 150.0 + float(index) * 520.0
+        var y := _floor_y - 58.0
+        draw_rect(Rect2(Vector2(x, y), Vector2(124.0, 58.0)), Color("303a3f"), true)
+        draw_rect(Rect2(Vector2(x + 14.0, y + 12.0), Vector2(96.0, 8.0)), Color("1f282c"), true)
+        draw_line(Vector2(x, y), Vector2(x + 124.0, y), Color(0.67, 0.74, 0.76, 0.30), 3.0)
+    for index in range(10):
+        var x := 420.0 + float(index) * 560.0
+        draw_line(Vector2(x - 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
+        draw_line(Vector2(x + 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
+
 func _draw_mid_defence() -> void:
+    if _preset == "harbor_dusk":
+        _draw_harbor_midground()
+        return
+    if _preset == "alpine_night":
+        _draw_alpine_midground()
+        return
+
     for index in range(10):
         var x := 180.0 + float(index) * 560.0
         var y := _floor_y - 52.0
