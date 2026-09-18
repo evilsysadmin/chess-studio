@@ -6,6 +6,7 @@ const POOL_SIZE := 12
 var _players: Array[AudioStreamPlayer] = []
 var _streams: Dictionary = {}
 var _cursor := 0
+var _ambient_player: AudioStreamPlayer
 
 func _ready() -> void:
     for index in range(POOL_SIZE):
@@ -14,6 +15,15 @@ func _ready() -> void:
         add_child(player)
         _players.append(player)
     _build_streams()
+    _start_ambient()
+
+func _start_ambient() -> void:
+    _ambient_player = AudioStreamPlayer.new()
+    _ambient_player.name = "BattlefieldAmbience"
+    _ambient_player.stream = _make_ambient_loop(8.0)
+    _ambient_player.volume_db = -29.0
+    add_child(_ambient_player)
+    _ambient_player.play()
 
 func play_weapon(weapon: String) -> void:
     var key := "weapon:%s" % weapon
@@ -103,6 +113,31 @@ func _make_chirp(duration: float, start_hz: float, end_hz: float, gain: float) -
         data.encode_s16(index * 2, int(round(sample * 32767.0)))
 
     return _wav_from_data(data)
+
+func _make_ambient_loop(duration: float) -> AudioStreamWAV:
+    var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+    var data := PackedByteArray()
+    data.resize(sample_count * 2)
+
+    for index in range(sample_count):
+        var time := float(index) / float(MIX_RATE)
+        var cycle := TAU * time / duration
+        # All components complete whole cycles over the buffer so the loop seam
+        # stays quiet. Keep this texture deliberately below combat SFX/music.
+        var low_rumble := sin(TAU * 41.0 * time) * 0.16
+        low_rumble += sin(TAU * 67.0 * time) * 0.07
+        var wind := sin(TAU * 131.0 * time + sin(cycle) * 1.7) * 0.026
+        wind += sin(TAU * 173.0 * time + sin(cycle * 2.0) * 1.2) * 0.018
+        var distant_pulse := sin(TAU * 3.0 * time) * sin(TAU * 47.0 * time) * 0.018
+        var breathe := 0.72 + 0.28 * sin(cycle - PI * 0.35)
+        var sample := clampf((low_rumble * breathe) + wind + distant_pulse, -1.0, 1.0)
+        data.encode_s16(index * 2, int(round(sample * 32767.0)))
+
+    var stream := _wav_from_data(data)
+    stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+    stream.loop_begin = 0
+    stream.loop_end = sample_count
+    return stream
 
 func _wav_from_data(data: PackedByteArray) -> AudioStreamWAV:
     var stream := AudioStreamWAV.new()
