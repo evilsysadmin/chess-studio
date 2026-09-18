@@ -77,11 +77,11 @@ jobs:
         run: python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_SHA"
 
       - name: Read isolated shadow status
-        if: steps.admission.outputs.admitted == 'true'
+        if: always() && steps.admission.outputs.admitted == 'true'
         run: python3 scripts/oci_k3s_staging2.py status
 
       - name: Re-prove canonical Compose staging is unchanged
-        if: steps.admission.outputs.admitted == 'true'
+        if: always() && steps.admission.outputs.admitted == 'true'
         run: >-
           python3 scripts/verify_backend_staging.py
           --api-url "$STAGING_API_URL"
