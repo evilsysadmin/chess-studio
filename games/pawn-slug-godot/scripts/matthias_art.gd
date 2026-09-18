@@ -13,10 +13,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Do not normalize or rescale these at runtime: each authored cell is consumed
 # directly as an AtlasTexture region.
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v7.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_machinegun_godot_strict_8x11_256_v7.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x11_256_v7.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_panzerfaust_godot_strict_8x11_256_v7.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/pistol/matthias_pistol_godot_strict_8x11_256_v7-38bf87ab2e7606ce.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/machinegun/matthias_machinegun_godot_strict_8x11_256_v7-b669654342af0499.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/shotgun/matthias_shotgun_godot_strict_8x11_256_v7-f6b6cb545bc52cc0.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v7/panzerfaust/matthias_panzerfaust_godot_strict_8x11_256_v7-817940e0de15aee3.png",
 }
 const FULL_ATLAS_FALLBACK_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x11_256_v6.png",
