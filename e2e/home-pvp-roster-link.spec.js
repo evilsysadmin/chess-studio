@@ -6,7 +6,12 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ roster: [], challenges: [], activeMatch: null, pollAfterMs: 3000 }),
+    body: JSON.stringify({
+      roster: [{ username: 'evilsysadmin', isSelf: true, rating: 384, tier: 'Principiante' }],
+      challenges: [],
+      activeMatch: null,
+      pollAfterMs: 3000,
+    }),
   }));
 
   await login(page);
@@ -20,8 +25,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await expect(lobby.getByRole('heading', { name: 'Roster de duelo' })).toBeVisible();
   await expect(rosterLink).toBeHidden();
 
-  const minimizeButton = lobby.getByRole('button', { name: 'Minimizar roster y seguir jugando' });
+  const minimizeButton = lobby.getByRole('button', { name: 'Minimizar y seguir jugando' });
   await expect(minimizeButton).toBeVisible();
+  await expect(lobby.getByRole('button', { name: 'Salir del roster' })).toBeVisible();
+  await expect(lobby.getByText('sigues en servicio aunque minimices esta ventana', { exact: false })).toBeVisible();
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
