@@ -3,6 +3,7 @@ import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
   HOME_CASTLE_DESTINATION_PROP_ANCHORS,
   HOME_CASTLE_DUST_MOTE_COUNT,
+  HOME_CASTLE_HERALDIC_CREST_ANCHOR,
   HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR,
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleDestinationProps,
@@ -72,6 +73,13 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.z).toBeGreaterThan(0.25);
   });
 
+  it('places the heraldic horse crest over the old central hanging banner zone', () => {
+    expect(Math.abs(HOME_CASTLE_HERALDIC_CREST_ANCHOR.x)).toBeLessThan(0.02);
+    expect(HOME_CASTLE_HERALDIC_CREST_ANCHOR.y).toBeLessThan(-0.5);
+    expect(HOME_CASTLE_HERALDIC_CREST_ANCHOR.y).toBeGreaterThan(-0.7);
+    expect(HOME_CASTLE_HERALDIC_CREST_ANCHOR.z).toBeGreaterThan(0.34);
+  });
+
   it('scales destination props by real viewport aspect and visible stage width', () => {
     expect(homeCastleDestinationPropScale(1.6)).toBe(1);
     expect(homeCastleDestinationPropScale(16 / 9)).toBe(1);
@@ -94,6 +102,9 @@ describe('HomeCastle3DProps', () => {
     expect(props.play.userData.destination).toBe('play');
     expect(props.daily.name).toBe('home-castle-prop-daily');
     expect(props.daily.userData.destination).toBe('daily');
+    expect(props.heraldicCrest.name).toBe('home-castle-heraldic-horse-crest');
+    expect(props.heraldicCrest.userData.destination).toBeUndefined();
+    expect(props.heraldicCrest.children.length).toBeGreaterThan(8);
     expect(props.tournament.userData.baseScale).toBeGreaterThan(1.1);
     expect(props.tournament.userData.baseScale).toBeLessThan(1.2);
     expect(props.train.userData.baseScale).toBeGreaterThan(0.65);
