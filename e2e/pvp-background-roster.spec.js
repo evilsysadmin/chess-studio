@@ -3,7 +3,7 @@ import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-function matchPayload({ status = 'active', startsAt = null } = {}) {
+function matchPayload({ status = 'active', startsAt = null, ...overrides } = {}) {
   return {
     id: 'pvp-global-1',
     white: 'e2e',
@@ -22,10 +22,19 @@ function matchPayload({ status = 'active', startsAt = null } = {}) {
     updatedAt: '2026-09-18T00:00:00Z',
     startsAt,
     clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
+    ...overrides,
   };
 }
 
-test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace handoff a War Room', async ({ page }) => {
+async function setVisibility(page, state) {
+  await page.evaluate((nextState) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => nextState });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => nextState !== 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+}
+
+test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace handoff a War Room', async ({ page, context }) => {
   test.setTimeout(90_000);
   await mockApi(page);
 
@@ -34,6 +43,8 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   let accepted = false;
   let synchronized = false;
   let startsAt = null;
+  let matchReads = 0;
+  let authoritativeOverrides = {};
   const challenge = {
     id: 'challenge-global-1',
     challenger: 'bob',
@@ -95,11 +106,17 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
       body: JSON.stringify({ match: matchPayload({ status: 'active', startsAt }) }),
     });
   });
-  await page.route('**/api/pvp/matches/pvp-global-1', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({ match: matchPayload({ status: synchronized ? 'active' : 'starting', startsAt }), pollAfterMs: 500 }),
-  }));
+  await page.route('**/api/pvp/matches/pvp-global-1', (route) => {
+    matchReads += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        match: matchPayload({ status: synchronized ? 'active' : 'starting', startsAt, ...authoritativeOverrides }),
+        pollAfterMs: 500,
+      }),
+    });
+  });
 
   await login(page);
 
@@ -132,5 +149,35 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
 
   await page.reload();
-  await expect(page.getByRole('region', { name: 'War Room 1 contra 1' })).toBeVisible({ timeout: 12_000 });
+  const restoredWarRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
+  await expect(restoredWarRoom).toBeVisible({ timeout: 12_000 });
+
+  const duelStatus = restoredWarRoom.getByRole('status');
+  await expect(duelStatus).toHaveText('Tu turno');
+
+  // Background suspends network polling. Returning to foreground must force an
+  // immediate authoritative read instead of waiting for the next periodic tick.
+  await setVisibility(page, 'hidden');
+  await page.waitForTimeout(700);
+  const readsWhileHidden = matchReads;
+  authoritativeOverrides = { revision: 1, yourTurn: false, turn: 'b' };
+  await page.waitForTimeout(700);
+  expect(matchReads).toBe(readsWhileHidden);
+  await setVisibility(page, 'visible');
+  await expect(duelStatus).toHaveText('Reconectando con el árbitro…');
+  await expect.poll(() => matchReads, { timeout: 1200 }).toBeGreaterThan(readsWhileHidden);
+  await expect(duelStatus).toHaveText('bob juega');
+
+  // A real network loss also freezes interaction immediately. When the browser
+  // comes online, the next server snapshot wins before the board is usable again.
+  await context.setOffline(true);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+  await expect(duelStatus).toHaveText('Reconectando con el árbitro…');
+  const readsBeforeOnline = matchReads;
+  authoritativeOverrides = { revision: 2, yourTurn: true, turn: 'w' };
+  await context.setOffline(false);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+  await expect.poll(() => matchReads, { timeout: 1200 }).toBeGreaterThan(readsBeforeOnline);
+  await expect(duelStatus).toHaveText('Tu turno');
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
