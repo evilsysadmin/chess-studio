@@ -138,7 +138,7 @@ def self_test() -> None:
         )
 
     runtime_block = workflow.split(
-        "- name: Sync CURRENT Vault + Git runtime to private staging bundle", 1
+        "- name: Sync CURRENT Vault + Git runtime to staging", 1
     )[1].split("\n      - name:", 1)[0]
     assert "RENDER_API_KEY" not in runtime_block
     assert "oci_vault_sync.py sync-current" in runtime_block
