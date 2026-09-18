@@ -46,10 +46,7 @@ def test_staging_and_production_cannot_cross_databases():
 
 def _reset_db_state(monkeypatch, *, clock=100.0):
     if db._client is not None:
-        try:
-            db._client.close()
-        except Exception:
-            pass
+        asyncio.run(db._close_client(db._client))
     monkeypatch.setattr(db, "_db", None)
     monkeypatch.setattr(db, "_client", None)
     monkeypatch.setattr(db, "_warned", False)
