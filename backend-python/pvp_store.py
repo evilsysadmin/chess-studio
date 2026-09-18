@@ -17,6 +17,7 @@ CHALLENGE_COLLECTION = "pvp_challenges"
 MATCH_COLLECTION = "pvp_matches"
 ROSTER_TTL_SECONDS = 45
 CHALLENGE_TTL_SECONDS = 75
+CHALLENGE_PAIR_COOLDOWN_SECONDS = 20
 
 _memory_roster: dict[str, dict[str, Any]] = {}
 _memory_challenges: dict[str, dict[str, Any]] = {}
@@ -77,6 +78,10 @@ async def _ensure_indexes(roster, challenges, matches) -> None:
             await challenges.create_index(
                 [("opponent", 1), ("status", 1), ("created_at", -1)],
                 name="pvp_opponent_status_created",
+            )
+            await challenges.create_index(
+                [("pair_key", 1), ("cooldown_until", -1)],
+                name="pvp_pair_cooldown",
             )
             await matches.create_index(
                 [("white", 1), ("status", 1), ("updated_at", -1)],
@@ -212,6 +217,33 @@ async def roster_member(username: str, now: datetime | None = None) -> dict[str,
         return _public(await roster.find_one({"_id": username, "last_seen": {"$gte": cutoff}}))
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo consultar el roster 1v1.") from exc
+
+
+async def challenge_cooldown_until(challenger: str, opponent: str, *, now: datetime | None = None) -> datetime | None:
+    stamp = now or utcnow()
+    pair_key = _challenge_pair_key(challenger, opponent)
+    collections = await _collections()
+    if collections is None:
+        pair = {challenger, opponent}
+        async with _memory_guard():
+            active = [
+                row.get("cooldown_until")
+                for row in _memory_challenges.values()
+                if {row.get("challenger"), row.get("opponent")} == pair
+                and isinstance(row.get("cooldown_until"), datetime)
+                and row["cooldown_until"] > stamp
+            ]
+            return max(active) if active else None
+    _, challenges, _ = collections
+    try:
+        row = await challenges.find_one(
+            {"pair_key": pair_key, "cooldown_until": {"$gt": stamp}},
+            sort=[("cooldown_until", -1)],
+            projection={"cooldown_until": 1},
+        )
+        return row.get("cooldown_until") if row else None
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo comprobar el cooldown de retos 1v1.") from exc
 
 
 async def create_challenge(challenge: dict[str, Any]) -> dict[str, Any]:
@@ -377,7 +409,11 @@ async def cancel_challenge(challenge_id: str, username: str) -> dict[str, Any] |
                 return dict(row)
             if row.get("status") != "pending" or row.get("created_at") < cutoff:
                 return None
-            row.update(status="cancelled", resolved_at=now)
+            row.update(
+                status="cancelled",
+                resolved_at=now,
+                cooldown_until=now + timedelta(seconds=CHALLENGE_PAIR_COOLDOWN_SECONDS),
+            )
             return dict(row)
     _, challenges, _ = collections
     try:
@@ -388,7 +424,11 @@ async def cancel_challenge(challenge_id: str, username: str) -> dict[str, Any] |
                 "challenger": username,
                 "created_at": {"$gte": cutoff},
             },
-            {"$set": {"status": "cancelled", "resolved_at": now}},
+            {"$set": {
+                "status": "cancelled",
+                "resolved_at": now,
+                "cooldown_until": now + timedelta(seconds=CHALLENGE_PAIR_COOLDOWN_SECONDS),
+            }},
             return_document=ReturnDocument.AFTER,
         )
         if row is not None:
@@ -410,13 +450,21 @@ async def decline_challenge(challenge_id: str, username: str) -> dict[str, Any] 
             row = _memory_challenges.get(challenge_id)
             if not row or row.get("status") != "pending" or row.get("opponent") != username:
                 return None
-            row.update(status="declined", resolved_at=now)
+            row.update(
+                status="declined",
+                resolved_at=now,
+                cooldown_until=now + timedelta(seconds=CHALLENGE_PAIR_COOLDOWN_SECONDS),
+            )
             return dict(row)
     _, challenges, _ = collections
     try:
         row = await challenges.find_one_and_update(
             {"_id": challenge_id, "status": "pending", "opponent": username},
-            {"$set": {"status": "declined", "resolved_at": now}},
+            {"$set": {
+                "status": "declined",
+                "resolved_at": now,
+                "cooldown_until": now + timedelta(seconds=CHALLENGE_PAIR_COOLDOWN_SECONDS),
+            }},
             return_document=ReturnDocument.AFTER,
         )
         return _public(row)
