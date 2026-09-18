@@ -76,15 +76,25 @@ def _v7_url_candidates(source: str) -> list[str]:
     weapon = match.group("weapon").lower()
     origin = f"{parsed.scheme}://{parsed.netloc}"
     release = "/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2"
-    candidates = [
-        source,
-        f"{origin}{release}/{plain_name}",
-        f"{origin}{release}/strict_8x11_256/{plain_name}",
-        f"{origin}{release}/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/{plain_name}",
-        f"{origin}/pawn_slug_matthias_godot_strict_v7/strict_8x11_256/{plain_name}",
-        f"{origin}/pawn-slug-godot/matthias/strict-v7/{weapon}/{plain_name}",
-        f"{origin}/pawn-slug-godot/matthias/strict-v7/{weapon}/strict_8x11_256/{plain_name}",
+    prefixes = [
+        release,
+        f"{release}/strict_8x11_256",
+        f"{release}/pawn_slug_matthias_godot_strict_v7",
+        f"{release}/pawn_slug_matthias_godot_strict_v7/strict_8x11_256",
+        "/pawn_slug_matthias_godot_strict_v7",
+        "/pawn_slug_matthias_godot_strict_v7/strict_8x11_256",
+        "/PawnSlug_Matthias_Godot_Strict_v7",
+        "/PawnSlug_Matthias_Godot_Strict_v7/strict_8x11_256",
+        "/strict_8x11_256",
+        "/pawn-slug-godot/strict_8x11_256",
+        f"/pawn-slug-godot/matthias/strict-v7/{weapon}",
+        f"/pawn-slug-godot/matthias/strict-v7/{weapon}/strict_8x11_256",
+        "/pawn-slug-godot/matthias/strict-v7",
+        "/pawn-slug-godot/matthias/strict-v7/strict_8x11_256",
+        f"/pawn-slug-godot/matthias/strict-v6/{weapon}",
+        f"/pawn-slug-godot/matthias/strict-v6/{weapon}/strict_8x11_256",
     ]
+    candidates = [source, *(f"{origin}{prefix}/{plain_name}" for prefix in prefixes)]
     return list(dict.fromkeys(candidates))
 
 
