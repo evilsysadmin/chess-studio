@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource path="res://scripts/main.gd" type="Script" id="1_main"]
 [ext_resource path="res://scripts/player.gd" type="Script" id="2_player"]
@@ -10,107 +10,8 @@
 [sub_resource type="RectangleShape2D" id="Rectangle_player"]
 size = Vector2(48, 84)
 
-[sub_resource type="RectangleShape2D" id="Rectangle_floor"]
-size = Vector2(5200, 110)
-
-[sub_resource type="RectangleShape2D" id="Rectangle_wall"]
-size = Vector2(40, 720)
-
-[sub_resource type="RectangleShape2D" id="Rectangle_platform_280"]
-size = Vector2(280, 24)
-
-[sub_resource type="RectangleShape2D" id="Rectangle_platform_240"]
-size = Vector2(240, 24)
-
-[sub_resource type="RectangleShape2D" id="Rectangle_platform_320"]
-size = Vector2(320, 24)
-
 [node name="PawnSlugGodot" type="Node2D"]
 script = ExtResource("1_main")
-
-[node name="Floor" type="StaticBody2D" parent="."]
-position = Vector2(2600, 665)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
-shape = SubResource("Rectangle_floor")
-
-[node name="LeftBoundary" type="StaticBody2D" parent="."]
-position = Vector2(-20, 360)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftBoundary"]
-shape = SubResource("Rectangle_wall")
-
-[node name="RightBoundary" type="StaticBody2D" parent="."]
-position = Vector2(5220, 360)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="RightBoundary"]
-shape = SubResource("Rectangle_wall")
-
-[node name="Platform1" type="StaticBody2D" parent="."]
-position = Vector2(600, 510)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform1"]
-shape = SubResource("Rectangle_platform_280")
-
-[node name="Platform2" type="StaticBody2D" parent="."]
-position = Vector2(1040, 430)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
-shape = SubResource("Rectangle_platform_240")
-
-[node name="Platform3" type="StaticBody2D" parent="."]
-position = Vector2(1460, 520)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform3"]
-shape = SubResource("Rectangle_platform_320")
-
-[node name="Platform4" type="StaticBody2D" parent="."]
-position = Vector2(1900, 400)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform4"]
-shape = SubResource("Rectangle_platform_280")
-
-[node name="Platform5" type="StaticBody2D" parent="."]
-position = Vector2(2260, 500)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform5"]
-shape = SubResource("Rectangle_platform_240")
-
-[node name="Platform6" type="StaticBody2D" parent="."]
-position = Vector2(2720, 470)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform6"]
-shape = SubResource("Rectangle_platform_280")
-
-[node name="Platform7" type="StaticBody2D" parent="."]
-position = Vector2(3120, 400)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform7"]
-shape = SubResource("Rectangle_platform_240")
-
-[node name="Platform8" type="StaticBody2D" parent="."]
-position = Vector2(3580, 520)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform8"]
-shape = SubResource("Rectangle_platform_320")
-
-[node name="Platform9" type="StaticBody2D" parent="."]
-position = Vector2(4000, 440)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
-shape = SubResource("Rectangle_platform_280")
-
-[node name="Platform10" type="StaticBody2D" parent="."]
-position = Vector2(4420, 510)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform10"]
-shape = SubResource("Rectangle_platform_240")
-
-[node name="Platform11" type="StaticBody2D" parent="."]
-position = Vector2(4860, 420)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform11"]
-shape = SubResource("Rectangle_platform_320")
 
 [node name="Player" type="CharacterBody2D" parent="."]
 position = Vector2(180, 568)
