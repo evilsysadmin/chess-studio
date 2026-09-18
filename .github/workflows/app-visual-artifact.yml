@@ -16,9 +16,8 @@ on:
       - '!frontend/public/audio/**'
       - e2e/*visual*.spec.js
       - e2e/browser-*-health.spec.js
-      - scripts/app_visual_*
-      - scripts/war_room_visual_freeze_check.mjs
-      - scripts/blender/build_war_room_premium.py
+      - scripts/*visual*
+      - scripts/**/build_war_room_premium.py
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
