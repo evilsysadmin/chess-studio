@@ -58,11 +58,6 @@ const hotspots = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
 const legacyBoundaries = [
   {
-    legacyModule: 'pawnSlugSpritesLegacy.js',
-    owner: 'pawnSlugSpriteCore.js',
-    label: 'Pawn Slug legacy sprite boundary',
-  },
-  {
     legacyModule: 'ambientProfilesLegacy.js',
     owner: 'ambientProfileBase.js',
     label: 'Ambient profile legacy boundary',
