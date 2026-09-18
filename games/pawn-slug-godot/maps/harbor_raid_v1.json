@@ -463,6 +463,25 @@
           "type": "scout"
         }
       ]
+    },
+    {
+      "id": "dock-bridge",
+      "type": "collapse_bridge",
+      "x": 3360,
+      "y": 350,
+      "w": 200,
+      "h": 24,
+      "trigger_x": 3590,
+      "warning": 0.68,
+      "fall_gravity": 1040
+    },
+    {
+      "id": "container-tunnel",
+      "type": "tunnel_portal",
+      "x": 3980,
+      "y": 610,
+      "w": 350,
+      "h": 210
     }
   ]
 }
