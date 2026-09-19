@@ -30,6 +30,7 @@ import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
+import { quickMatchRecalibration } from './quickMatchDifficulty.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
@@ -419,6 +420,7 @@ function AppInner({ isAdminUser }) {
     const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
     let ratingSummary = { ratingApplied: false };
+    let nextRatingState = null;
     if (shouldApplyCompetitiveProgress(outcome, { learningMode, trainingPosition })) {
       if (activeSeries && !activeSeries.winner) {
         seriesSnapshot = recordSeriesGame(activeSeries, outcome, {
@@ -447,6 +449,7 @@ function AppInner({ isAdminUser }) {
       saveRating(details.next);
       recordRatingHistory(details.next.rating);
       setRating(details.next);
+      nextRatingState = details.next;
       ratingSummary = {
         ratingApplied: true,
         eloDelta: details.delta,
@@ -485,6 +488,14 @@ function AppInner({ isAdminUser }) {
     };
     setHistoryList(saveGameRecord(record));
     recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
+    const adaptiveRecalibration = gameContext.adaptiveDifficulty && !activeSeries && nextRatingState
+      ? quickMatchRecalibration(
+        finishedGame.difficulty,
+        nextRatingState.rating,
+        null,
+        nextRatingState.games,
+      )
+      : null;
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
@@ -494,7 +505,7 @@ function AppInner({ isAdminUser }) {
     const detail = ratingSummary.ratingApplied
       ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
       : 'Esta modalidad no afecta a tu rating.';
-    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, ...ratingSummary };
+    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveRecalibration, ...ratingSummary };
     setCasualResult(summary);
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);

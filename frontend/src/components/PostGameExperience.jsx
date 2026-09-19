@@ -115,6 +115,9 @@ export default function PostGameExperience({
           <p className="endgame-rating-impact">
             <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
             <span>{resultSummary.detail}</span>
+            {resultSummary.adaptiveRecalibration && (
+              <span>Próximo reto adaptativo · Matthias ≈ {resultSummary.adaptiveRecalibration.opponentRating} Elo</span>
+            )}
           </p>
         )}
         <blockquote className="endgame-cpu-verdict endgame-matthias-verdict">

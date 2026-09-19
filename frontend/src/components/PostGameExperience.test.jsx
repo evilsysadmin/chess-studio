@@ -39,6 +39,23 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('Entrenar mis errores');
   });
 
+  it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
+    const html = render({
+      resultSummary: {
+        ratingApplied: true,
+        detail: 'Rating +12 · 1000 → 1012',
+        adaptiveRecalibration: { difficulty: 57, opponentRating: 1060, leadElo: 48 },
+      },
+    });
+    expect(html).toContain('Próximo reto adaptativo');
+    expect(html).toContain('Matthias ≈ 1060 Elo');
+
+    const stable = render({
+      resultSummary: { ratingApplied: true, detail: 'Rating +2 · 1000 → 1002' },
+    });
+    expect(stable).not.toContain('Próximo reto adaptativo');
+  });
+
   it('prioriza el comentario real de Matthias sobre el fallback editorial', () => {
     const html = render({ lastCpuComment: 'Ese mate ha sido limpio. No te acostumbres al elogio.' });
     expect(html).toContain('Ese mate ha sido limpio. No te acostumbres al elogio.');
