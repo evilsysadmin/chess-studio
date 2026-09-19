@@ -877,7 +877,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     try {
       const resolved = await resolveCombatCpuTurnSuggestion({
         fen: currentFen, difficulty, registry: currentRegistry, focus: focusRef.current,
-        analyzePosition: (positionFen, level) => api.analyzePosition(positionFen, level, { signal: controller.signal, candidateLimit: 5 }, cpuDoctrine?.style || null),
+        analyzePosition: (positionFen, level) => api.analyzePosition(positionFen, level, { signal: controller.signal }, cpuDoctrine?.style || null, 5),
       });
       if (!combatAsync.isCurrent(cpuOperation)) return;
       suggestion = resolved.suggestion;
