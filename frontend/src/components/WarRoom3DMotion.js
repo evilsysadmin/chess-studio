@@ -83,13 +83,16 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
 
 export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) {
   return {
-    exposure: coarsePointer ? 1.0 : 1.03,
-    hemisphere: coarsePointer ? 0.72 : 0.60,
-    keyMax: coarsePointer ? 1.58 : 1.48,
-    warmMax: coarsePointer ? 2.22 : 2.02,
-    background: 0x070504,
-    fog: 0x0d0907,
-    grade: 'nocturnal-walnut-v3',
+    // The Blender review render already has the desired architectural depth.
+    // Keep touch conservative, but let desktop preserve more of that authored
+    // separation instead of crushing the shell back toward near-black.
+    exposure: coarsePointer ? 1.0 : 1.12,
+    hemisphere: coarsePointer ? 0.72 : 0.76,
+    keyMax: coarsePointer ? 1.58 : 1.60,
+    warmMax: coarsePointer ? 2.22 : 2.18,
+    background: 0x0b0705,
+    fog: 0x120b08,
+    grade: 'nocturnal-walnut-v4',
   };
 }
 
