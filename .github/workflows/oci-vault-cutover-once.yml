@@ -10,6 +10,9 @@ on:
       - scripts/oci_vault_runtime.py
       - scripts/oci_vault_sync.py
       - scripts/oci_vault_cutover.py
+      - scripts/oci_staging_lifecycle.sh
+      - infra/oci/Makefile
+      - infra/oci/staging/runtime-config.tf
 
 permissions:
   contents: read
@@ -29,6 +32,7 @@ jobs:
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
       OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
       OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      OCI_TFSTATE_BUCKET: ${{ vars.OCI_TFSTATE_BUCKET || 'chess-studio-tfstate' }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
     steps:
@@ -36,6 +40,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+
+      - name: Apply narrow Vault consumer IAM cutover
+        run: make -C infra/oci vault-iam
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
