@@ -14,6 +14,8 @@ import re
 import shlex
 from typing import Any
 
+from oci_runtime_config import OPTIONAL_KEYS
+
 VAULT_NAME = "chess-studio-staging"
 VAULT_OCID_RE = re.compile(r"^ocid1\.vault\.[A-Za-z0-9._-]+$")
 OCI_SDK_VERSION = "2.185.2"
@@ -26,6 +28,7 @@ SECRET_NAMES = (
     ("OTEL_EXPORTER_OTLP_HEADERS", "chess-studio-staging-otel-headers"),
 )
 SECRET_KEYS = tuple(key for key, _name in SECRET_NAMES)
+OPTIONAL_SECRET_KEYS = tuple(key for key in SECRET_KEYS if key in OPTIONAL_KEYS)
 
 
 def validate_vault_id(value: str) -> str:
@@ -76,6 +79,7 @@ import os
 import oci
 
 secret_rows = {secret_rows}
+optional_keys = set({OPTIONAL_SECRET_KEYS!r})
 pending_key = os.environ.get("PENDING_KEY", "")
 signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
 client = oci.secrets.SecretsClient(config={{}}, signer=signer)
@@ -90,6 +94,9 @@ for key, name in secret_rows:
         )
     except oci.exceptions.ServiceError as exc:
         if exc.status == 404:
+            if stage == "CURRENT" and key in optional_keys:
+                print(f"OCI_VAULT_SECRET_OPTIONAL_MISSING key={{key}} name={{name}} stage={{stage}}")
+                continue
             missing.append((name, stage))
             continue
         raise
@@ -138,6 +145,9 @@ def validate_output(text: str, pending_key: str = "") -> None:
     for key, name in SECRET_NAMES:
         stage = "PENDING" if pending_key and key == pending_key else "CURRENT"
         prefix = f"OCI_VAULT_SECRET_OK key={key} name={name} stage={stage} version="
+        optional_missing = f"OCI_VAULT_SECRET_OPTIONAL_MISSING key={key} name={name} stage={stage}"
+        if stage == "CURRENT" and key in OPTIONAL_SECRET_KEYS and optional_missing in lines:
+            continue
         if not any(line.startswith(prefix) for line in lines):
             raise SystemExit(f"OCI Vault validation output missing {stage} marker for {name}")
 
@@ -208,8 +218,18 @@ def self_test() -> None:
         assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
         assert_nonsecret_command(command)
     assert 'stage = "PENDING" if pending_key and key == pending_key else "CURRENT"' in pending
+    assert "OCI_VAULT_SECRET_OPTIONAL_MISSING" in current
     validate_output(sample_output())
     validate_output(sample_output("JWT_SECRET"), "JWT_SECRET")
+    optional_headers_ok = (
+        "OCI_VAULT_SECRET_OK key=OTEL_EXPORTER_OTLP_HEADERS "
+        "name=chess-studio-staging-otel-headers stage=CURRENT version=6"
+    )
+    optional_headers_missing = (
+        "OCI_VAULT_SECRET_OPTIONAL_MISSING key=OTEL_EXPORTER_OTLP_HEADERS "
+        "name=chess-studio-staging-otel-headers stage=CURRENT"
+    )
+    validate_output(sample_output().replace(optional_headers_ok, optional_headers_missing))
     try:
         validate_output("OCI_VAULT_SECRET_MISSING name=chess-studio-staging-jwt-secret stage=PENDING", "JWT_SECRET")
     except SystemExit as exc:
