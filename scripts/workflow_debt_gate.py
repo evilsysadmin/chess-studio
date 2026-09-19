@@ -30,6 +30,7 @@ INVENTORY = {
     'grafana-dashboards.yml': 'observability',
     'home-matthias-blender-art.yml': 'art-generation',
     'home-blender-v2-preview.yml': 'art-generation',
+    'home-blender-v2-runtime.yml': 'art-generation',
     'home-r2-assets.yml': 'infra-assets',
     'main-admission.yml': 'delivery-admission',
     'oci-readiness.yml': 'infra-readiness',
