@@ -21,8 +21,11 @@ const FULL_ATLAS_URLS := {
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/panzerfaust/matthias_panzerfaust_godot_strict_6x18_416_v9-ae9884d16a05ae6a.png",
 }
 
-# v10 overlays fluid variable-frame pistol locomotion onto the proven v9 combat
-# atlas. v9 remains resident for directional fire, reload, hurt, die and rollback.
+# v10 remains an experimental candidate until its live runtime evidence is
+# visually coherent. The current source mixes tactical/no-cape and long-coat
+# silhouettes inside the same run cycle, so production deliberately stays on
+# the coherent strict-v9 tactical set while CI keeps exercising v10 end-to-end.
+const V10_RUNTIME_PROMOTION_ENABLED := false
 const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
 const V10_ATLAS_COLUMNS := 12
 const V10_ATLAS_ROWS := 9
@@ -664,6 +667,8 @@ func _install_or_request_weapon() -> void:
     _ensure_master()
 
 func _ensure_v10_locomotion(weapon_id: String) -> void:
+    if not V10_RUNTIME_PROMOTION_ENABLED:
+        return
     if weapon_id != "pistol" or _v10_ready_by_weapon.has(weapon_id):
         return
     if _atlas_request != null or not _v9_ready_by_weapon.has(weapon_id):
