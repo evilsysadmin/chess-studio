@@ -95,8 +95,8 @@ func _run() -> void:
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.UP, true),
-        Vector2.RIGHT,
-        "arriba solo en suelo conserva disparo horizontal",
+        Vector2.UP,
+        "arriba solo en suelo permite disparo vertical real",
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.DOWN, true),
@@ -116,8 +116,8 @@ func _run() -> void:
     player.facing = -1.0
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.UP, true),
-        Vector2.LEFT,
-        "arriba solo en suelo conserva facing izquierdo horizontal",
+        Vector2.UP,
+        "arriba solo en suelo es vertical aunque el facing sea izquierdo",
     )
     _expect_vector(
         player.constrain_vertical_aim_probe(Vector2.DOWN, true),
