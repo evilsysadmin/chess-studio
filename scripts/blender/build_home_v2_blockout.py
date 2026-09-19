@@ -1258,17 +1258,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.62, 0.075, 0.004, 1),
-            roughness=0.38,
-            emission=(0.90, 0.075, 0.004, 1),
-            emission_strength=0.024,
+            (0.92, 0.24, 0.012, 1),
+            roughness=0.40,
+            emission=(1.0, 0.16, 0.008, 1),
+            emission_strength=0.016,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.48, 0.055, 1),
-            roughness=0.30,
-            emission=(1.0, 0.24, 0.012, 1),
-            emission_strength=0.052,
+            (1.0, 0.76, 0.16, 1),
+            roughness=0.32,
+            emission=(1.0, 0.46, 0.040, 1),
+            emission_strength=0.030,
         ),
     }
 
