@@ -101,10 +101,13 @@ function addReadabilityLighting(root, { coarsePointer }) {
   const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.88 : 0.8);
   ambient.name = 'chronicles-readability-ambient';
 
+  // Keep the carried torch as a foreground cue rather than an orange wash over
+  // the whole corridor. The entry still reads warm, but the mid/far planes are
+  // deliberately left for the cooler crypt lighting below.
   const entryBounce = new THREE.PointLight(
     0xd99554,
-    coarsePointer ? 3.55 : 3.15,
-    13.5,
+    coarsePointer ? 3.25 : 2.72,
+    12.8,
     1.95,
   );
   entryBounce.name = 'chronicles-readability-entry-bounce';
@@ -113,7 +116,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
 
   const cryptBounce = new THREE.PointLight(
     0x7d96b0,
-    coarsePointer ? 2.65 : 2.25,
+    coarsePointer ? 2.72 : 2.38,
     16.5,
     1.9,
   );
@@ -125,59 +128,56 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // exposure. Damp slabs and bump relief catch it while the ceiling stays dark.
   const floorBounce = new THREE.PointLight(
     0xcd8147,
-    coarsePointer ? 2.9 : 2.55,
-    coarsePointer ? 9.4 : 10.4,
+    coarsePointer ? 2.62 : 2.18,
+    coarsePointer ? 9.0 : 9.8,
     2.05,
   );
   floorBounce.name = 'chronicles-readability-floor-bounce';
   floorBounce.position.set(-2.8, 0.42, 8.05);
   floorBounce.castShadow = false;
 
-  // Broad corridor fill recovers the middle distance. It is intentionally cool
-  // and shadowless so it reads as bounced dungeon light rather than a seventh
-  // visible torch.
+  // Broad corridor fill recovers the middle distance. Its blue-grey temperature
+  // separates damp stone from the party torch and gives the corridor real depth.
   const corridorFill = new THREE.PointLight(
-    0x9aa9b5,
-    coarsePointer ? 2.1 : 1.8,
-    18,
+    0x91aabd,
+    coarsePointer ? 2.34 : 2.16,
+    18.5,
     1.55,
   );
   corridorFill.name = 'chronicles-readability-corridor-fill';
-  corridorFill.position.set(0.8, 2.3, 7.9);
+  corridorFill.position.set(0.8, 2.35, 7.9);
   corridorFill.castShadow = false;
 
-  // A restrained far fill keeps silhouettes and the end wall readable without
-  // bleaching the foreground. This is especially useful on darker Android
-  // displays where ACES plus fog otherwise collapses the last third to black.
+  // The far wall is intentionally cool: enemies keep their warm/red practicals,
+  // while the architecture behind them recedes into a colder plane. This creates
+  // silhouette separation without adding another visible lamp to the fiction.
   const farFill = new THREE.PointLight(
-    0xb58d68,
-    coarsePointer ? 1.35 : 1.08,
-    11.5,
-    1.85,
+    0x6f8fa8,
+    coarsePointer ? 1.62 : 1.46,
+    12.8,
+    1.82,
   );
   farFill.name = 'chronicles-readability-far-fill';
-  farFill.position.set(7.1, 1.7, 8.0);
+  farFill.position.set(7.25, 2.15, 8.0);
   farFill.castShadow = false;
 
   // The party is explicitly carrying torches. These two shadowless practicals
-  // travel with the first-person camera so the light follows Matthias and the
-  // group instead of vanishing between authored wall torches. The key light is
-  // warm and shoulder-height; the lower bounce gives the floor and nearby stone
-  // enough reflected light to read without flattening the far end of the crypt.
+  // travel with the first-person camera. They now stay local to the foreground,
+  // leaving the authored cold fills enough room to model the middle distance.
   const partyTorchKey = new THREE.PointLight(
-    0xffa15a,
-    coarsePointer ? 6.3 : 6.8,
-    coarsePointer ? 15.0 : 16.0,
-    1.55,
+    0xffad67,
+    coarsePointer ? 5.85 : 5.72,
+    coarsePointer ? 13.8 : 14.6,
+    1.58,
   );
   partyTorchKey.name = 'chronicles-party-torch-key';
   partyTorchKey.castShadow = false;
 
   const partyTorchBounce = new THREE.PointLight(
     0xd47b3f,
-    coarsePointer ? 3.15 : 3.0,
-    coarsePointer ? 10.4 : 11.0,
-    1.72,
+    coarsePointer ? 2.72 : 2.38,
+    coarsePointer ? 9.4 : 9.8,
+    1.76,
   );
   partyTorchBounce.name = 'chronicles-party-torch-bounce';
   partyTorchBounce.castShadow = false;
