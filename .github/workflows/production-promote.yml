@@ -4,6 +4,10 @@ on:
   schedule:
     # GitHub cron is UTC. One of these is 08:00 Europe/Madrid across CET/CEST.
     - cron: '0 6,7 * * *'
+  push:
+    branches: [main]
+    paths:
+      - .github/production-deploy.env
   workflow_dispatch:
     inputs:
       force:
@@ -53,6 +57,12 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             [[ "$GITHUB_REF" == refs/heads/main ]] || { echo '::error::La promoción manual sólo puede salir de main.'; exit 1; }
             echo 'should_run=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            [[ "$GITHUB_REF" == refs/heads/main ]] || { echo '::error::El cambio de DEPLOY_TARGET sólo puede promocionarse desde main.'; exit 1; }
+            echo 'should_run=true' >> "$GITHUB_OUTPUT"
+            echo '::notice title=Production target switch::DEPLOY_TARGET cambió en main; ejecutando el mismo release train sobre el último SHA acreditado.'
             exit 0
           fi
           if [[ "$(TZ=Europe/Madrid date +%H)" == 08 ]]; then

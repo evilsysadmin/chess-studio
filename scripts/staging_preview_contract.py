@@ -298,11 +298,18 @@ def main() -> int:
     )
 
     # Production remains a daily release train over immutable staging accreditation.
+    # Changing the versioned hosting switch on main is an explicit immediate promotion event
+    # that reuses the same accreditation/gates instead of inventing a second deploy path.
     for needle, label in (
         ("schedule:", "production daily schedule"),
         ("- cron: '0 6,7 * * *'", "production CET/CEST UTC pair"),
         ("Release train · 08:00 Europe/Madrid", "production Madrid release window"),
         ("workflow_dispatch:", "production manual hotfix path"),
+        ("push:", "production target-switch push path"),
+        ("branches: [main]", "production target-switch main-only trigger"),
+        ("- .github/production-deploy.env", "production target-switch path scope"),
+        ("$GITHUB_EVENT_NAME\" == push", "production target-switch immediate admission"),
+        ("Production target switch", "production target-switch audit notice"),
         ("La promoción manual sólo puede salir de main", "production manual main-only guard"),
         ("Resolve latest immutable staging accreditation", "production accreditation selector"),
         ("staging-promotion-accreditation", "production immutable staging proof"),
