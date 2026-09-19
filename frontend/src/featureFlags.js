@@ -1,7 +1,6 @@
 export const DEFAULT_FEATURE_FLAGS = Object.freeze({
   homeGuide: true,
   postGameFeedback: true,
-  rivalGhost: true,
   spectator: true,
 });
 

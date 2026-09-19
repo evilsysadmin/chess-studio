@@ -103,25 +103,6 @@ class AdminMatthiasPreviewRequest(BaseModel):
     preset: str = Field(default="veteran", max_length=32)
 
 
-class GhostStyle(BaseModel):
-    # Sesgos derivados de partidas reales del usuario. El rango estrecho
-    # evita que un cliente manipulado convierta el desempate de estilo en una
-    # orden arbitraria para el motor. ``balance`` es un bit interno que usa
-    # Partida rápida adaptativa para habilitar sólo allí la política score-gap;
-    # no convierte la partida en Modo espejo ni altera los rasgos de estilo.
-    capture: float = Field(default=0.0, ge=-1.0, le=1.0)
-    pawn: float = Field(default=0.0, ge=-1.0, le=1.0)
-    queen: float = Field(default=0.0, ge=-1.0, le=1.0)
-    check: float = Field(default=0.0, ge=-1.0, le=1.0)
-    castle: float = Field(default=0.0, ge=-1.0, le=1.0)
-    balance: bool = False
-
-    def model_dump(self, *args, **kwargs):
-        data = super().model_dump(*args, **kwargs)
-        if not self.balance:
-            data.pop("balance", None)
-        return data
-
 
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -129,7 +110,6 @@ class NewGameRequest(BaseModel):
     color: str = "w"
     handicap: Optional[str] = Field(default=None, max_length=16)  # None | "pawn" | "knight" | "rook" | "queen"
     starting_fen: Optional[str] = Field(default=None, alias="startingFen", max_length=128)
-    ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
 
 
 class MoveRequest(BaseModel):
@@ -143,7 +123,6 @@ class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fen: str = Field(max_length=128)
     level: float = HINT_STRENGTH
-    ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
     candidate_limit: Optional[int] = Field(default=None, alias="candidateLimit", ge=2, le=5)
 
 

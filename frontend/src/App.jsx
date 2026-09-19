@@ -146,7 +146,7 @@ function AppInner({ isAdminUser }) {
     const record = buildGameCrimeReplayRecord(finishedGame, mode, outcome);
     if (!record) return;
     record.gameChat = loadActiveGameChat(finishedGame.id);
-    if (mode === 'casual' || mode === 'practice' || mode === 'ghost') {
+    if (mode === 'casual' || mode === 'practice') {
       removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
       removeStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY);
       setHasSavedGame(false);
@@ -328,7 +328,7 @@ function AppInner({ isAdminUser }) {
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
       const operationId = gameLaunch.operationId(launch, [difficulty, color, handicap?.id ?? null, null]);
-      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
+      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
       gameLaunch.confirmCreated(launch);
       const isLearning = !!opts?.learning;
@@ -516,7 +516,7 @@ function AppInner({ isAdminUser }) {
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
       const handicap = handicapForGap(rating.rating, activeSeries.difficulty);
       const operationId = gameLaunch.operationId(launch, [activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null]);
-      const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
+      const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty });
@@ -567,7 +567,7 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const operationId = gameLaunch.operationId(launch, [difficulty || 50, humanColor || 'w', null, fen, null]);
-      const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, null, { signal: launch.controller.signal, operationId });
+      const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
       const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };
@@ -605,7 +605,7 @@ function AppInner({ isAdminUser }) {
     try {
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
       const operationId = gameLaunch.operationId(launch, [run.difficulty, 'random', null, null, null]);
-      const created = await api.createGame(run.difficulty, 'random', null, null, null, { signal: launch.controller.signal, operationId });
+      const created = await api.createGame(run.difficulty, 'random', null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
       gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak', difficulty: created.difficulty });
@@ -648,7 +648,7 @@ function AppInner({ isAdminUser }) {
       const level = levelForPoints(tournament.progressPoints || 0);
       const cpuDifficulty = difficultyForLevel(level);
       const operationId = gameLaunch.operationId(launch, [cpuDifficulty, color, null, null, null]);
-      const created = await api.createGame(cpuDifficulty, color, null, null, null, { signal: launch.controller.signal, operationId });
+      const created = await api.createGame(cpuDifficulty, color, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
