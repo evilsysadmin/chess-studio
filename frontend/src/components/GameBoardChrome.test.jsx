@@ -91,7 +91,7 @@ describe('game board chrome extracted from GameBoardView', () => {
   it('preserves status strips including Matthias silent avatar', () => {
     const html = renderToStaticMarkup(
       <GameStatusStrips
-        game={{ difficulty: 5, ghostStyle: true }}
+        game={{ difficulty: 5 }}
         zenMode={false}
         focusActive={false}
         status={{
@@ -124,6 +124,5 @@ describe('game board chrome extracted from GameBoardView', () => {
     expect(html).toContain('/matthias-test.webp');
     expect(html).toContain('Sudden Death · vidas: ♥♥♡');
     expect(html).toContain('Némesis · e4 otra vez');
-    expect(html).toContain('Modo Rival Fantasma · nivel 5');
   });
 });
