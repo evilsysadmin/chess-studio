@@ -43,12 +43,14 @@ describe('PostGameExperience', () => {
     const html = render({
       resultSummary: {
         ratingApplied: true,
-        detail: 'Rating +12 · 1000 → 1012',
-        adaptiveRecalibration: { difficulty: 57, opponentRating: 1060, leadElo: 48 },
+        adaptiveDifficulty: true,
+        eloAfter: 1000,
+        ratingGames: 20,
+        detail: 'Rating +12 · 988 → 1000',
       },
     });
     expect(html).toContain('Próximo reto adaptativo');
-    expect(html).toContain('Matthias ≈ 1060 Elo');
+    expect(html).toContain('Matthias ≈ 1047 Elo');
 
     const stable = render({
       resultSummary: { ratingApplied: true, detail: 'Rating +2 · 1000 → 1002' },
