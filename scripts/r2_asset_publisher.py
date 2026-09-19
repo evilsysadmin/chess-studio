@@ -96,22 +96,15 @@ def upload_object(token: str, account_id: str, bucket: str, key: str, data: byte
     if len(data) > REST_UPLOAD_LIMIT:
         raise PublishError("Asset >300 MB: requiere S3/multipart")
 
-    boundary = f"----chess-studio-{uuid.uuid4().hex}"
-    filename = pathlib.PurePosixPath(key).name
-    part_head = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="body"; filename="{filename}"\r\n'
-        f"Content-Type: {content_type}\r\n\r\n"
-    ).encode("utf-8")
-    body = part_head + data + f"\r\n--{boundary}--\r\n".encode("ascii")
+    # The R2 REST "put object" endpoint takes the raw body; multipart/form-data now returns HTTP 501.
     request = urllib.request.Request(
         API_BASE + object_path(account_id, bucket, key),
-        data=body,
+        data=data,
         method="PUT",
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "Content-Type": content_type,
             "cf-r2-storage-class": "Standard",
             "User-Agent": "chess-studio-r2-publisher/1",
         },

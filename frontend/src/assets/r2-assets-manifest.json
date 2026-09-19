@@ -49,6 +49,13 @@
       "sha256": "7b62f19661e36c2cafcdf5e2033bffb35d12081ebca84c7ca6d5170c2555a272",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
     },
+    "pawnSlug.godot.enemies.atlasV2": {
+      "bytes": 5267272,
+      "contentType": "image/png",
+      "key": "pawn-slug-godot/enemies/strict-v2/pawn_slug_enemy_godot_strict_8x117_128_v2-6c665cbb06c2b945.png",
+      "sha256": "6c665cbb06c2b9454f504ab884d2810043042ad392df356d241ca4d47089ade5",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/enemies/strict-v2/pawn_slug_enemy_godot_strict_8x117_128_v2-6c665cbb06c2b945.png"
+    },
     "pawnSlug.matthias.canonicalMaster": {
       "bytes": 3119009,
       "contentType": "image/png",
