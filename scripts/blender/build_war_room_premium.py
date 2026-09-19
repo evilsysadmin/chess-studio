@@ -909,26 +909,12 @@ def add_gothic_canon_v2(static, mats):
     # Shallow mortar courses break the upper wall into believable masonry.
     # They stay behind the hero props and use one existing material so runtime
     # batching can collapse them aggressively.
-    masonry_courses = (3.62, 4.18, 4.74, 5.30, 5.86, 6.36)
-    for course, z in enumerate(masonry_courses):
+    for course, z in enumerate((3.62, 4.18, 4.74, 5.30, 5.86, 6.36)):
         cube(
             f"WR_CANON_masonry_course_{course}",
             (0, 6.555, z), (8.10, 0.018, 0.018),
             mats["stone_dark"], static, bevel=0.006,
         )
-        # Staggered vertical joints stop the rear wall reading as one smooth
-        # beige board. Keep them shallow: they should catch grazing firelight,
-        # not turn the background into a checkerboard.
-        joint_offset = 0.82 if course % 2 else 0.0
-        for joint, x in enumerate((-4.30, -2.15, 0.0, 2.15, 4.30)):
-            jx = x + joint_offset
-            if abs(jx) > 7.70:
-                continue
-            cube(
-                f"WR_CANON_masonry_joint_{course}_{joint}",
-                (jx, 6.535, z + 0.28), (0.016, 0.025, 0.25),
-                mats["stone_dark"], static, bevel=0.005,
-            )
 
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
     for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
