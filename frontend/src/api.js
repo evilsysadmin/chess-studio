@@ -43,7 +43,7 @@ export const api = {
     return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
-  analyzePosition(fen, level, { signal, candidateLimit = null } = {}, ghostStyle = null) {
+  analyzePosition(fen, level, { signal } = {}, ghostStyle = null, candidateLimit = null) {
     const rawCandidateLimit = Number(candidateLimit);
     const requestedCandidateLimit = Number.isFinite(rawCandidateLimit)
       ? Math.max(2, Math.min(5, Math.round(rawCandidateLimit)))
