@@ -68,7 +68,7 @@ def test_get_cpu_move_skips_randomness_and_search_when_move_is_forced(monkeypatc
         lambda _board, move: {"from": chess.square_name(move.from_square), "to": chess.square_name(move.to_square), "san": "e4"},
     )
 
-    assert get_cpu_move(ForcedBoard(), 0, {"capture": 1}) == {"from": "e2", "to": "e4", "san": "e4"}
+    assert get_cpu_move(ForcedBoard(), 0) == {"from": "e2", "to": "e4", "san": "e4"}
 
 
 def test_iterative_search_reuses_previous_root_pv_for_ordering(monkeypatch):
