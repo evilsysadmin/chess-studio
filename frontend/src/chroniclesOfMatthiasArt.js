@@ -250,6 +250,21 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   add(root, new THREE.DodecahedronGeometry(0.14, 0), scarMetal, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
   add(root, new THREE.BoxGeometry(0.28, 0.055, 0.04), glow, [-0.08, 1.2, 0.275], [0, 0, -0.44], null, 'corrupted-pawn-neck-fissure');
   add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), scarMetal, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
+
+  // A very short cold rim travels with the pawn so the dark iron body has a
+  // readable contour against the crypt. It is deliberately non-shadowing and
+  // restrained: corruption remains red, this light only reveals volume.
+  const silhouetteRim = new THREE.PointLight(
+    0x7899b2,
+    coarsePointer ? 0.34 : 0.52,
+    2.7,
+    2,
+  );
+  silhouetteRim.name = 'corrupted-pawn-silhouette-rim';
+  silhouetteRim.position.set(-0.62, 1.42, -0.42);
+  silhouetteRim.castShadow = false;
+  root.add(silhouetteRim);
+
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 1.7;
   return root;
