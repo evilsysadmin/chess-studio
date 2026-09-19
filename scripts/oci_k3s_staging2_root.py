@@ -402,6 +402,67 @@ def _deployment_payload() -> dict:
     return payload
 
 
+def _service_payload() -> dict:
+    completed = _kubectl(
+        "-n", NAMESPACE, "get", "service", SERVICE, "-o", "json",
+        check=False,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        if _kubectl_reports_not_found(detail):
+            return {}
+        raise SystemExit(
+            "staging2 service probe failed "
+            f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
+        )
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("staging2 service probe returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("staging2 service probe returned non-object JSON")
+    return payload
+
+
+def _service_contract_ok(payload: dict) -> bool:
+    if not payload:
+        return False
+    metadata = payload.get("metadata") or {}
+    labels = metadata.get("labels") or {}
+    required = {
+        "app.kubernetes.io/name": "chess-studio-backend",
+        "chess-studio.shadowops/track": "staging2",
+    }
+    if not all(str(labels.get(key) or "") == value for key, value in required.items()):
+        return False
+
+    spec = payload.get("spec") or {}
+    if str(spec.get("type") or "") != "ClusterIP":
+        return False
+    cluster_ip = str(spec.get("clusterIP") or "")
+    if not cluster_ip or cluster_ip.lower() == "none":
+        return False
+    selector = spec.get("selector") or {}
+    if not all(str(selector.get(key) or "") == value for key, value in required.items()):
+        return False
+
+    ports = spec.get("ports") or []
+    if len(ports) != 1 or not isinstance(ports[0], dict):
+        return False
+    port = ports[0]
+    return (
+        str(port.get("name") or "") == "http"
+        and int(port.get("port") or 0) == 4000
+        and str(port.get("targetPort") or "") == "http"
+        and str(port.get("protocol") or "TCP") == "TCP"
+    )
+
+
+def _require_service_contract(payload: dict) -> None:
+    if not _service_contract_ok(payload):
+        raise SystemExit("staging2 live Service contract drifted")
+
+
 def _release_from_payload(payload: dict) -> str:
     annotations = (((payload.get("spec") or {}).get("template") or {}).get("metadata") or {}).get("annotations") or {}
     value = str(annotations.get("chess-studio.shadowops/release") or "")
@@ -552,6 +613,22 @@ def _failure_diagnostics() -> None:
                 file=sys.stderr,
                 flush=True,
             )
+
+    service = _service_payload()
+    if service:
+        spec = service.get("spec") or {}
+        ports = spec.get("ports") or []
+        port = ports[0] if ports and isinstance(ports[0], dict) else {}
+        print(
+            "OCI_K3S_STAGING2_DIAG_SERVICE "
+            f"type={_clean_diag(spec.get('type'), 32)} "
+            f"cluster_ip_present={bool(spec.get('clusterIP'))} "
+            f"selector_ok={_service_contract_ok(service)} "
+            f"port={int(port.get('port') or 0)} "
+            f"target={_clean_diag(port.get('targetPort'), 32)}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     pods_raw = _kubectl(
         "-n", NAMESPACE, "get", "pods",
@@ -756,6 +833,7 @@ def _restore(previous_sha: str, previous_image_ref: str = "") -> None:
         _apply_text(_render(previous_sha, previous_image, runtime_digest))
         _rollout_wait()
         _require_deployment_contract(_deployment_payload())
+        _require_service_contract(_service_payload())
         _attest(previous_sha)
         _write_state(previous_sha)
         print(
@@ -786,6 +864,7 @@ def deploy(sha: str) -> None:
         _apply_text(_render(sha, pinned_image, runtime_digest))
         _rollout_wait()
         _require_deployment_contract(_deployment_payload())
+        _require_service_contract(_service_payload())
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
         _write_state(sha)
@@ -881,10 +960,13 @@ def status() -> None:
     runtime_contract = "match" if runtime_digest == expected_runtime_digest else "drift"
     deployment_contract_ok = _deployment_contract_ok(payload)
     deployment_contract = "match" if deployment_contract_ok else "drift"
+    service_payload = _service_payload()
+    service_contract_ok = _service_contract_ok(service_payload)
+    service_contract = "match" if service_contract_ok else "drift"
     desired, updated, ready, available, generation, observed_generation = (
         _deployment_rollout_state(payload)
     )
-    if (not deployment_contract_ok) or _status_needs_diagnostics(
+    if (not deployment_contract_ok) or (not service_contract_ok) or _status_needs_diagnostics(
         desired,
         updated,
         ready,
@@ -901,6 +983,7 @@ def status() -> None:
             "OCI_K3S_STAGING2_STATUS_DEGRADED present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
             f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
+            f"service_contract={service_contract} "
             f"desired={desired} updated={updated} ready={ready} available={available} "
             f"generation={generation} observed_generation={observed_generation} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -932,6 +1015,7 @@ def status() -> None:
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
         f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
+        f"service_contract={service_contract} "
         f"desired={desired} updated={updated} ready={ready} available={available} "
         f"generation={generation} observed_generation={observed_generation} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -1148,6 +1232,47 @@ def self_test(template_path: Path) -> None:
         else:
             bad_contract["spec"]["template"]["spec"]["automountServiceAccountToken"] = True
         assert not _deployment_contract_ok(bad_contract), mutate
+
+    service_contract_payload = {
+        "metadata": {
+            "labels": {
+                "app.kubernetes.io/name": "chess-studio-backend",
+                "chess-studio.shadowops/track": "staging2",
+            }
+        },
+        "spec": {
+            "type": "ClusterIP",
+            "clusterIP": "10.43.0.77",
+            "selector": {
+                "app.kubernetes.io/name": "chess-studio-backend",
+                "chess-studio.shadowops/track": "staging2",
+            },
+            "ports": [
+                {
+                    "name": "http",
+                    "port": 4000,
+                    "targetPort": "http",
+                    "protocol": "TCP",
+                }
+            ],
+        },
+    }
+    assert _service_contract_ok(service_contract_payload)
+    for mutate in ("type", "selector", "port", "target", "headless", "label"):
+        bad_service = json.loads(json.dumps(service_contract_payload))
+        if mutate == "type":
+            bad_service["spec"]["type"] = "NodePort"
+        elif mutate == "selector":
+            bad_service["spec"]["selector"]["chess-studio.shadowops/track"] = "other"
+        elif mutate == "port":
+            bad_service["spec"]["ports"][0]["port"] = 80
+        elif mutate == "target":
+            bad_service["spec"]["ports"][0]["targetPort"] = "wrong"
+        elif mutate == "headless":
+            bad_service["spec"]["clusterIP"] = "None"
+        else:
+            bad_service["metadata"]["labels"]["app.kubernetes.io/name"] = "other"
+        assert not _service_contract_ok(bad_service), mutate
     assert not _status_needs_diagnostics(
         1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
         sample_runtime_digest, sample_runtime_digest
@@ -1215,6 +1340,10 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded" not in source
     assert "runtime_contract=" in source
     assert "deployment_contract=" in source
+    assert "service_contract=" in source
+    assert "OCI_K3S_STAGING2_DIAG_SERVICE" in source
+    assert "staging2 service probe failed" in source
+    assert "staging2 live Service contract drifted" in source
     assert "staging2 live Deployment contract drifted" in source
     assert "chess-studio.shadowops/runtime-sha256" in source
     assert "staging2 runtime env changed during Secret materialization" in source
@@ -1236,6 +1365,7 @@ def self_test(template_path: Path) -> None:
     assert "runtime_digest = _runtime_env_sha256()" in restore_source
     assert "_ensure_namespace_and_secret(runtime_digest)" in restore_source
     assert "_require_deployment_contract(_deployment_payload())" in restore_source
+    assert "_require_service_contract(_service_payload())" in restore_source
     assert restore_source.index("_pinned_digest_from_image_ref(previous_image_ref)") < restore_source.index(
         "_preflight_image(previous_sha)"
     )
@@ -1252,6 +1382,7 @@ def self_test(template_path: Path) -> None:
     assert "_ensure_namespace_and_secret(runtime_digest)" in deploy_source
     assert "_render(sha, pinned_image, runtime_digest)" in deploy_source
     assert "_require_deployment_contract(_deployment_payload())" in deploy_source
+    assert "_require_service_contract(_service_payload())" in deploy_source
     assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
         "_ensure_namespace_and_secret()"
