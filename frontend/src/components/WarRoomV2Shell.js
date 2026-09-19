@@ -139,6 +139,12 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
 
 export function warRoomV2RuntimeSurfaceKind(materialName = '') {
   const name = String(materialName || '').toLowerCase();
+  if (
+    name.includes('brass')
+    || name.includes('armor')
+    || name.includes('hearth_iron')
+    || name.includes('red_metal')
+  ) return 'metal';
   if (name.includes('stone') || name.includes('wall_plaster') || name.includes('floor_underlay')) return 'stone';
   if (name.includes('walnut') || name.includes('wood')) return 'wood';
   return null;
@@ -154,6 +160,12 @@ export function warRoomV2WoodSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
     ? Object.freeze({ enabled: true, size: 32, bumpScale: 0, albedoCompensation: 1.055 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.007, albedoCompensation: 1.055 });
+}
+
+export function warRoomV2MetalSurfaceProfile({ coarsePointer = false } = {}) {
+  return coarsePointer
+    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.02 })
+    : Object.freeze({ enabled: true, size: 48, bumpScale: 0.0045, albedoCompensation: 1.025 });
 }
 
 function nextSurfaceNoise(state) {
@@ -195,6 +207,48 @@ function createWarRoomV2StoneTexture({ mode = 'albedo', size = 32 } = {}) {
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 0.86 : 1.8, mode === 'albedo' ? 0.78 : 1.6);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.colorSpace = mode === 'albedo' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createWarRoomV2MetalTexture({ mode = 'albedo', size = 48 } = {}) {
+  const data = new Uint8Array(size * size * 4);
+  let state = mode === 'albedo' ? 0xb347 : 0xc821;
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let noise;
+      [state, noise] = nextSurfaceNoise(state);
+      const u = x / Math.max(1, size - 1);
+      const v = y / Math.max(1, size - 1);
+      const brushed = Math.sin((v * 31.0 + Math.sin(u * Math.PI * 2) * 0.18) * Math.PI * 2) * 5.2;
+      const broad = Math.sin((u * 1.8 + v * 0.22) * Math.PI * 2) * 2.8;
+      const random = (noise - 0.5) * (mode === 'albedo' ? 2.6 : 16);
+      const base = mode === 'albedo' ? 248 : 226;
+      const signal = mode === 'albedo'
+        ? brushed * 0.42 + broad + random
+        : brushed * 1.15 + broad * 0.45 + random;
+      const value = THREE.MathUtils.clamp(
+        Math.round(base + signal),
+        mode === 'albedo' ? 232 : 190,
+        255,
+      );
+      const index = (y * size + x) * 4;
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.name = `war-room-v2-metal-${mode}`;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(mode === 'albedo' ? 1.25 : 1.8, mode === 'albedo' ? 5.4 : 7.2);
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.colorSpace = mode === 'albedo' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -263,6 +317,29 @@ function installRuntimeWoodSurface(material, sharedTextures, { coarsePointer = f
   material.bumpScale = profile.bumpScale;
   material.userData ||= {};
   material.userData.warRoomV2RuntimeSurface = 'walnut-grain-v1';
+  material.needsUpdate = true;
+  return true;
+}
+
+function installRuntimeMetalSurface(material, sharedTextures, { coarsePointer = false } = {}) {
+  if (warRoomV2RuntimeSurfaceKind(material?.name) !== 'metal') return false;
+  const profile = warRoomV2MetalSurfaceProfile({ coarsePointer });
+  if (!profile.enabled) return false;
+
+  sharedTextures.albedo ||= createWarRoomV2MetalTexture({ mode: 'albedo', size: profile.size });
+
+  if (!material.map) {
+    material.map = sharedTextures.albedo;
+    material.color.multiplyScalar(profile.albedoCompensation);
+  }
+  if (profile.bumpScale > 0) {
+    sharedTextures.micro ||= createWarRoomV2MetalTexture({ mode: 'micro', size: profile.size });
+    if (!material.roughnessMap) material.roughnessMap = sharedTextures.micro;
+    if (!material.bumpMap) material.bumpMap = sharedTextures.micro;
+  }
+  material.bumpScale = profile.bumpScale;
+  material.userData ||= {};
+  material.userData.warRoomV2RuntimeSurface = 'brushed-metal-v1';
   material.needsUpdate = true;
   return true;
 }
@@ -385,8 +462,10 @@ export async function installWarRoomV2Shell(
   const tunedMaterials = new Set();
   const runtimeStoneTextures = {};
   const runtimeWoodTextures = {};
+  const runtimeMetalTextures = {};
   let runtimeStoneMaterials = 0;
   let runtimeWoodMaterials = 0;
+  let runtimeMetalMaterials = 0;
   const deferredShadowMeshes = [];
   root.traverse((node) => {
     if (!node.isMesh) return;
@@ -404,16 +483,19 @@ export async function installWarRoomV2Shell(
       tuneRuntimeMaterial(material);
       if (installRuntimeStoneSurface(material, runtimeStoneTextures, { coarsePointer })) runtimeStoneMaterials += 1;
       if (installRuntimeWoodSurface(material, runtimeWoodTextures, { coarsePointer })) runtimeWoodMaterials += 1;
+      if (installRuntimeMetalSurface(material, runtimeMetalTextures, { coarsePointer })) runtimeMetalMaterials += 1;
     });
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-cinematic-gothic-v9';
+  root.userData.warRoomRuntimeFinish = 'gltf-pbr-cinematic-gothic-v10';
   root.userData.warRoomV2PracticalLights = practicalLights;
   root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;
   root.userData.warRoomV2RuntimeWoodMaterials = runtimeWoodMaterials;
   root.userData.warRoomV2RuntimeWoodTextures = Object.keys(runtimeWoodTextures).length;
+  root.userData.warRoomV2RuntimeMetalMaterials = runtimeMetalMaterials;
+  root.userData.warRoomV2RuntimeMetalTextures = Object.keys(runtimeMetalTextures).length;
   root.userData.warRoomV2ShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
   root.userData.warRoomV2ShadowCasterCount = 0;
   scene.add(root);
