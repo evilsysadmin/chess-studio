@@ -8,6 +8,7 @@ must never be trusted solely to client storage.
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
@@ -70,6 +71,8 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
     }
     if route is not None:
         payload["route"] = route
+    if row.get("plannerSnapshot") is not None:
+        payload["plannerSnapshot"] = deepcopy(row["plannerSnapshot"])
     return payload
 
 
@@ -83,6 +86,7 @@ async def create_or_replay_run(
     manifest_revision: str,
     create_fingerprint: str,
     route_snapshot: dict[str, Any] | None = None,
+    planner_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = utcnow()
     document = {
@@ -104,6 +108,8 @@ async def create_or_replay_run(
         document["routePolicyVersion"] = int(route_snapshot["policyVersion"])
         document["routeMapIds"] = list(route_snapshot["mapIds"])
         document["routePrimaryExitIds"] = dict(route_snapshot["primaryExitIds"])
+    if planner_snapshot is not None:
+        document["plannerSnapshot"] = deepcopy(planner_snapshot)
     collection = await _collection()
     if collection is None:
         async with _memory_guard():

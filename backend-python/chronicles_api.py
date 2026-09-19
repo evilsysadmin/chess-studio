@@ -31,6 +31,7 @@ from chronicles_map_generator import (
     generate_chronicles_layout,
 )
 from chronicles_manifest_procedural import proceduralize_chronicles_manifest
+from chronicles_map_planner import normalize_chronicles_planner_proposal
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -45,6 +46,7 @@ CHRONICLES_RUN_NAMESPACE = uuid.UUID("e73c9496-fffd-4dc4-a0d0-8c7b6060a116")
 _MAP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _MAX_SEED = CHRONICLES_MAP_CODE_MAX_SEED
+CHRONICLES_PLANNER_SNAPSHOT_VERSION = 1
 
 
 class ChroniclesManifestError(ValueError):
@@ -402,15 +404,72 @@ def _apply_route_plan(
 
 
 
+def _normalize_planner_snapshot(
+    planner_snapshot: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if planner_snapshot is None:
+        return None
+    if not isinstance(planner_snapshot, dict):
+        raise ChroniclesManifestError("planner snapshot must be an object")
+    if set(planner_snapshot) != {"version", "areas"}:
+        raise ChroniclesManifestError("planner snapshot fields are invalid")
+
+    version = planner_snapshot.get("version")
+    areas = planner_snapshot.get("areas")
+    if (
+        not isinstance(version, int)
+        or isinstance(version, bool)
+        or version != CHRONICLES_PLANNER_SNAPSHOT_VERSION
+    ):
+        raise ChroniclesManifestError("planner snapshot version is invalid")
+    if not isinstance(areas, dict) or not areas:
+        raise ChroniclesManifestError("planner snapshot requires at least one area")
+
+    shipped = set(chronicles_shipped_map_ids())
+    if len(areas) > len(shipped):
+        raise ChroniclesManifestError("planner snapshot contains too many areas")
+
+    normalized_areas: dict[str, dict[str, Any]] = {}
+    for map_id, proposal in sorted(areas.items()):
+        if (
+            not isinstance(map_id, str)
+            or not _MAP_ID_RE.fullmatch(map_id)
+            or map_id not in shipped
+        ):
+            raise ChroniclesManifestError("planner snapshot references an unknown map")
+        try:
+            normalized_areas[map_id] = normalize_chronicles_planner_proposal(proposal)
+        except (ValueError, TypeError) as exc:
+            raise ChroniclesManifestError(
+                f"planner snapshot proposal is invalid for {map_id}"
+            ) from exc
+
+    return {
+        "version": CHRONICLES_PLANNER_SNAPSHOT_VERSION,
+        "areas": normalized_areas,
+    }
+
+
 def chronicles_area_envelope(
     map_id: str,
     seed: int,
     *,
     root: Path | None = None,
     route_snapshot: dict[str, Any] | None = None,
+    planner_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
-    generated = proceduralize_chronicles_manifest(authored_manifest, seed)
+    stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
+    planner_proposal = (
+        stable_planner_snapshot["areas"].get(map_id)
+        if stable_planner_snapshot is not None
+        else None
+    )
+    generated = proceduralize_chronicles_manifest(
+        authored_manifest,
+        seed,
+        planner_proposal=planner_proposal,
+    )
     routed_manifest = _apply_route_plan(
         generated.manifest,
         seed=seed,
@@ -446,9 +505,20 @@ def _run_bootstrap_payload(
     run: dict[str, Any],
     *,
     route_snapshot: dict[str, Any] | None = None,
+    planner_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    stable_planner_snapshot = _normalize_planner_snapshot(
+        planner_snapshot
+        if planner_snapshot is not None
+        else run.get("plannerSnapshot")
+    )
     areas = [
-        chronicles_area_envelope(map_id, run["seed"], route_snapshot=route_snapshot)
+        chronicles_area_envelope(
+            map_id,
+            run["seed"],
+            route_snapshot=route_snapshot,
+            planner_snapshot=stable_planner_snapshot,
+        )
         for map_id in chronicles_shipped_map_ids()
     ]
     area = next(
