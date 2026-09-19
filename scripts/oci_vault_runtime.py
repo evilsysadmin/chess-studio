@@ -95,7 +95,7 @@ for key, name in secret_rows:
     except oci.exceptions.ServiceError as exc:
         if exc.status == 404:
             if stage == "CURRENT" and key in optional_keys:
-                print(f"OCI_VAULT_SECRET_OPTIONAL_MISSING key={key} name={name} stage={stage}")
+                print(f"OCI_VAULT_SECRET_OPTIONAL_MISSING key={{key}} name={{name}} stage={{stage}}")
                 continue
             missing.append((name, stage))
             continue
