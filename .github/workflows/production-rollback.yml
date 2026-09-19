@@ -136,7 +136,7 @@ jobs:
               payload.get('schema') == 1
               and str(payload.get('sha') or '').lower() == expected_sha
               and payload.get('promotion_run_id') == expected_run
-              and payload.get('event') in {'schedule', 'workflow_dispatch'}
+              and payload.get('event') in {'schedule', 'workflow_dispatch', 'push'}
           )
           raise SystemExit(0 if ok else 1)
           PY
@@ -157,6 +157,7 @@ jobs:
         run: |
           python3 -S scripts/render_production_deploy.py --self-test
           python3 -S scripts/cloudflare_production_pages.py --self-test
+          python3 -S scripts/production_release_train.py --self-test
 
       - name: Record current production release best-effort
         shell: bash
