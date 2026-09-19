@@ -22,7 +22,7 @@ V9_COLS = 6
 V9_ROWS = 18
 V9_ATLAS_SIZE = (V9_CELL * V9_COLS, V9_CELL * V9_ROWS)
 V9_NAME_RE = re.compile(r"_godot_strict_6x18_416_v9(?:-[0-9a-f]{16})?\.png$", re.I)
-STRICT_8X18_NAME_RE = re.compile(r"_godot_strict_8x18_416_v(?:11|12)(?:-[0-9a-f]{16})?\\.png$", re.I)
+STRICT_8X18_NAME_RE = re.compile(r"_godot_strict_8x18_416_v(?:11|12)(?:-[0-9a-f]{16})?\.png$", re.I)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
