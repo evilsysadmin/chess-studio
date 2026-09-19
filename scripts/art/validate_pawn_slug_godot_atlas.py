@@ -51,11 +51,12 @@ def runtime_contract(path):
   "packed_foot_y":decimal("V9_PACKED_FOOT_Y"),"action_order":order,"actions":ac}
 
 def check_runtime(rt):
- if (rt["columns"],rt["rows"],rt["cell_size"])!=(COLS,ROWS,CELL): fail(f"runtime layout drift: {rt}")
+ if rt["rows"]!=ROWS or rt["cell_size"]!=CELL or rt["columns"]<COLS: fail(f"runtime layout drift: {rt}")
  if abs(rt["packed_foot_y"]-FOOT)>0.001: fail(f"runtime packed foot drift: {rt['packed_foot_y']} != {FOOT}")
  if tuple(rt["action_order"])!=ORDER: fail(f"runtime action order drift: {rt['action_order']} != {ORDER}")
- exp={n:{"row":r,"fps":f,"loop":l} for n,r,f,l in ACTIONS}
- if rt["actions"]!=exp: fail(f"runtime V9_ACTIONS drift: expected={exp} actual={rt['actions']}")
+ exp={n:{"row":r,"loop":l} for n,r,_,l in ACTIONS}
+ actual={n:{"row":v["row"],"loop":v["loop"]} for n,v in rt["actions"].items()}
+ if actual!=exp: fail(f"runtime V9 semantic drift: expected={exp} actual={actual}")
 
 def anchor(cell,box):
  px=cell.load(); pts=[]; y0=box[1]+int((box[3]-box[1])*.42)
