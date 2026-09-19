@@ -19,6 +19,7 @@ provision = (ROOT / "scripts/oci_k3s_capability_provision.sh").read_text(encodin
 sudoers = (ROOT / "infra/oci/runtime/ocarun.sudoers").read_text(encoding="utf-8")
 config = (ROOT / "infra/oci/k3s/config.yaml").read_bytes()
 unit = (ROOT / "infra/oci/k3s/k3s.service").read_bytes()
+backend_dockerfile = (ROOT / "backend-python/Dockerfile").read_text(encoding="utf-8")
 install_source = probe.split("\ndef install_command", 1)[1].split("\ndef _run", 1)[0]
 
 assert workflow.count("'infra/oci/k3s/**'") >= 1, "K3s infra must participate in PR readiness"
@@ -111,6 +112,14 @@ for required in ("type: ClusterIP", "strategy:\n    type: Recreate", "runAsNonRo
     assert required in template_text, required
 for forbidden in ("type: NodePort", "type: LoadBalancer", "hostNetwork:", "hostPort:"):
     assert forbidden not in template_text, forbidden
+
+# Kubernetes runAsNonRoot validates the OCI image-config USER before container
+# start. Keep it numeric and aligned with the unprivileged account baked into
+# the backend image so staging2 cannot fail with a non-numeric-user rejection.
+assert "addgroup -S -g 10001 chess" in backend_dockerfile
+assert "adduser -S -D -H -h /app -u 10001 -G chess chess" in backend_dockerfile
+assert "\nUSER 10001:10001\n" in backend_dockerfile
+assert "\nUSER chess\n" not in backend_dockerfile
 
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision
