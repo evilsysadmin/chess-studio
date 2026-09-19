@@ -31,6 +31,7 @@ env:
   GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
 
 jobs:
+  # strict-v13 candidate gate: temporary bridge until v13 lives on main
   build-strict-v12:
     name: Build + gate strict-v12 · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
