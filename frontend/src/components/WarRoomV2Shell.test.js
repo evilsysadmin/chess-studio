@@ -10,6 +10,7 @@ import {
   warRoomV2RuntimeSurfaceKind,
   warRoomV2StoneSurfaceProfile,
   warRoomV2WoodSurfaceProfile,
+  warRoomV2MetalSurfaceProfile,
 } from './WarRoomV2Shell.js';
 import {
   createWarRoomClassicShellController,
@@ -185,7 +186,9 @@ describe('War Room v2 staging asset URL', () => {
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_stone_light')).toBe('stone');
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_wall_walnut')).toBe('wood');
     expect(warRoomV2RuntimeSurfaceKind('WR_MAT_table_walnut')).toBe('wood');
-    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_armor')).toBe(null);
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_brass')).toBe('metal');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_canon_heraldic_brass')).toBe('metal');
+    expect(warRoomV2RuntimeSurfaceKind('WR_MAT_armor')).toBe('metal');
 
     expect(warRoomV2StoneSurfaceProfile()).toEqual({
       enabled: true,
@@ -211,6 +214,19 @@ describe('War Room v2 staging asset URL', () => {
       size: 32,
       bumpScale: 0,
       albedoCompensation: 1.055,
+    });
+
+    expect(warRoomV2MetalSurfaceProfile()).toEqual({
+      enabled: true,
+      size: 48,
+      bumpScale: 0.0045,
+      albedoCompensation: 1.025,
+    });
+    expect(warRoomV2MetalSurfaceProfile({ coarsePointer: true })).toEqual({
+      enabled: true,
+      size: 24,
+      bumpScale: 0,
+      albedoCompensation: 1.02,
     });
   });
 
