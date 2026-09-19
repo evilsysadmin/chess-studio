@@ -37,12 +37,14 @@ describe('Chronicles Tactics premium materials', () => {
     const root = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer: true });
 
     expect(root?.name).toBe('chronicles-tactics-premium-materials');
-    expect(root?.userData.chroniclesMaterialFinish).toBe('procedural-pbr-stone-v1');
+    expect(root?.userData.chroniclesMaterialFinish).toBe('procedural-pbr-stone-v2');
     expect(root?.userData.chroniclesMaterialCount).toBe(1);
     expect(sourceMaterial.map?.isTexture).toBe(true);
     expect(sourceMaterial.roughnessMap?.isTexture).toBe(true);
     expect(sourceMaterial.normalMap?.isTexture).toBe(true);
     expect(sourceMaterial.normalScale.x).toBe(CHRONICLES_TACTICS_MATERIAL_STYLE.floorNormalStrength);
+    expect(sourceMaterial.map.name).toContain('chronicles-stone-color-');
+    expect(sourceMaterial.map.repeat.x).toBe(CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat);
 
     root.userData.chroniclesArtCancel();
     expect(sourceMaterial.map).toBeNull();
