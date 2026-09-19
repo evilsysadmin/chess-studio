@@ -103,13 +103,8 @@ def resolve_engine_move_or_fallback(board: chess.Board, suggestion: Optional[dic
     return move, move_to_dict(board, move)
 
 
-def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost_style: Optional[dict] = None) -> tuple[chess.Move, dict] | None:
-    """Resolve Matthias through the single factual difficulty policy.
-
-    ghost_style remains as a temporary transport-compatibility argument for
-    persisted legacy games, but it has no behavioral effect. New canonical
-    games no longer create or expose a Rival Fantasma mode.
-    """
+def compute_engine_move_or_fallback(board: chess.Board, difficulty: float) -> tuple[chess.Move, dict] | None:
+    """Resolve Matthias through the single factual difficulty policy."""
     try:
         suggestion = get_factual_difficulty_cpu_move(board, difficulty)
     except Exception as exc:
@@ -165,7 +160,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         # comportamiento clásico de CPU abriendo cuando el humano lleva negras.
         cpu_to_move = (board.turn == chess.WHITE and cpu_color == "w") or (board.turn == chess.BLACK and cpu_color == "b")
         if cpu_to_move:
-            resolved_opening = await run_engine_work(compute_engine_move_or_fallback, board, rounded_difficulty, ghost_style)
+            resolved_opening = await run_engine_work(compute_engine_move_or_fallback, board, rounded_difficulty)
             if resolved_opening:
                 opening_move, opening = resolved_opening
                 board.push(opening_move)
@@ -364,7 +359,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         }
 
         if not board.is_game_over(claim_draw=True):
-            resolved_cpu = await run_engine_work(compute_engine_move_or_fallback, board, entry["difficulty"], entry.get("ghostStyle"))
+            resolved_cpu = await run_engine_work(compute_engine_move_or_fallback, board, entry["difficulty"])
             if resolved_cpu:
                 cpu_move_obj, cpu_move = resolved_cpu
                 board.push(cpu_move_obj)
