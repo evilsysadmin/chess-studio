@@ -857,18 +857,18 @@ def add_gothic_canon_v2(static, mats):
             cube(
                 f"WR_CANON_arch_{prefix}_jamb_{side}",
                 (cx + side * span, y, (jamb_bottom + shoulder) / 2),
-                (0.105, 0.080, (shoulder - jamb_bottom) / 2),
-                mats["stone"], static, bevel=0.038,
+                (0.155, 0.105, (shoulder - jamb_bottom) / 2),
+                mats["stone"], static, bevel=0.052,
             )
             cube(
                 f"WR_CANON_arch_{prefix}_foot_{side}",
                 (cx + side * span, y - 0.01, jamb_bottom + 0.08),
-                (0.18, 0.105, 0.095), mats["stone_light"], static, bevel=0.038,
+                (0.25, 0.130, 0.120), mats["stone_light"], static, bevel=0.050,
             )
             cube(
                 f"WR_CANON_arch_{prefix}_capital_{side}",
                 (cx + side * span, y - 0.01, shoulder),
-                (0.18, 0.105, 0.105), mats["stone_light"], static, bevel=0.040,
+                (0.26, 0.135, 0.135), mats["stone_light"], static, bevel=0.052,
             )
             points = (
                 Vector((cx + side * span, y, shoulder)),
@@ -884,8 +884,8 @@ def add_gothic_canon_v2(static, mats):
                 beam = cube(
                     f"WR_CANON_arch_{prefix}_curve_{side}_{segment}",
                     (start + end) / 2,
-                    (0.095, 0.075, direction.length / 2),
-                    mats["stone"], static, bevel=0.035,
+                    (0.145, 0.100, direction.length / 2),
+                    mats["stone"], static, bevel=0.048,
                 )
                 beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
     add_pointed_arch_frame("left", -4.55)
@@ -919,9 +919,9 @@ def add_gothic_canon_v2(static, mats):
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
     for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
         cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
-             (0.16, 0.090, 1.62), mats["stone"], static, bevel=0.050)
+             (0.22, 0.115, 1.62), mats["stone"], static, bevel=0.065)
         cube(f"WR_CANON_rear_pilaster_cap_{index}", (x, 6.47, 6.16),
-             (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
+             (0.31, 0.135, 0.12), mats["stone"], static, bevel=0.050)
         cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
              (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
