@@ -87,22 +87,34 @@ export default function QuickMatchModal({
           <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>{adaptiveCalibrating ? 'Calibrando tu nivel · la siguiente partida se ajusta, nunca ésta' : 'Reto adaptativo · Matthias intenta mantenerse ligeramente por encima de tu nivel'}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
-        <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={autoDifficulty ? adaptiveLevel : difficulty}
-            disabled={autoDifficulty}
-            onChange={(e) => setDifficulty(Number(e.target.value))}
-            aria-label="Nivel de dificultad de la CPU"
-            className="difficulty-slider"
-          />
-          <div className="difficulty-readout">
-            <span className="difficulty-number">{autoDifficulty ? adaptiveLevel : difficulty}</span>
-            <span className="difficulty-word">{autoDifficulty ? 'Automático' : difficultyLabel(difficulty)}</span>
+        {!autoDifficulty && (
+          <div className="difficulty-slider-row friendly-difficulty-main">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={difficulty}
+              onChange={(e) => setDifficulty(Number(e.target.value))}
+              aria-label="Nivel de dificultad de la CPU"
+              className="difficulty-slider"
+            />
+            <div className="difficulty-readout">
+              <span className="difficulty-number">{difficulty}</span>
+              <span className="difficulty-word">{difficultyLabel(difficulty)}</span>
+            </div>
           </div>
-        </div>
+        )}
+
+        {autoDifficulty && (
+          <details className="friendly-subdisclosure adaptive-difficulty-details">
+            <summary>Cómo se ajusta Matthias</summary>
+            <div className="friendly-disclosure-body">
+              <p className="hint-text">
+                Usa tu rating y forma reciente antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
+              </p>
+            </div>
+          </details>
+        )}
 
         {autoDifficulty && <button type="button" className="text-action adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
 
