@@ -16,7 +16,14 @@ from pathlib import Path
 
 import bpy
 
-import render_chronicles_dungeon_mock as base
+import importlib.util
+
+_BASE_PATH = Path(__file__).with_name("render_chronicles_dungeon_mock.py")
+_SPEC = importlib.util.spec_from_file_location("chronicles_dungeon_base", _BASE_PATH)
+if _SPEC is None or _SPEC.loader is None:
+    raise RuntimeError(f"Could not load canonical dungeon renderer: {_BASE_PATH}")
+base = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(base)
 
 
 def parse_args():
