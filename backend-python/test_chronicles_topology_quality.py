@@ -74,7 +74,9 @@ def test_quality_gate_rejects_corridor_dominated_by_articulation_points():
     )
 
     assert report.accepted is False
-    assert "articulation-ratio-high" in report.reasons
+    assert "corridor-dominated" in report.reasons
+    assert report.cycle_rank == 0
+    assert report.corridor_ratio > 0.75
 
 
 def test_quality_gate_reports_authored_guard_on_exit_without_rejecting_it():
@@ -126,7 +128,7 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
 
     reports = iter(
         (
-            FakeQuality(False, ("articulation-ratio-high",)),
+            FakeQuality(False, ("corridor-dominated",)),
             FakeQuality(True, ()),
         )
     )
@@ -152,6 +154,6 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
     assert metadata["plannerReason"] == "quality-rejected"
     assert metadata["plannerQualityFallback"] is True
     assert metadata["plannerQualityRejectedReasons"] == [
-        "articulation-ratio-high"
+        "corridor-dominated"
     ]
     assert metadata["topologyQuality"]["accepted"] is True

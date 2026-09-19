@@ -10,7 +10,8 @@ CHRONICLES_TOPOLOGY_QUALITY_VERSION = 1
 _MIN_EXIT_DISTANCE = 4
 _MIN_OPEN_RATIO = 0.25
 _MAX_DEAD_END_RATIO = 0.50
-_MAX_ARTICULATION_RATIO = 0.82
+_CORRIDOR_ARTICULATION_RATIO = 0.82
+_CORRIDOR_DEGREE_TWO_RATIO = 0.75
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 
@@ -29,6 +30,8 @@ class ChroniclesTopologyQuality:
     dead_end_ratio: float
     articulation_count: int
     articulation_ratio: float
+    cycle_rank: int
+    corridor_ratio: float
     critical_anchor_count: int
     unreachable_anchor_count: int
     enemy_exit_overlap_count: int
@@ -48,6 +51,8 @@ class ChroniclesTopologyQuality:
             "deadEndRatio": round(self.dead_end_ratio, 4),
             "articulationCount": self.articulation_count,
             "articulationRatio": round(self.articulation_ratio, 4),
+            "cycleRank": self.cycle_rank,
+            "corridorRatio": round(self.corridor_ratio, 4),
             "criticalAnchorCount": self.critical_anchor_count,
             "unreachableAnchorCount": self.unreachable_anchor_count,
             "enemyExitOverlapCount": self.enemy_exit_overlap_count,
@@ -214,7 +219,7 @@ def evaluate_chronicles_topology(
     ):
         return ChroniclesTopologyQuality(
             False, ("invalid-grid",), 0, 0, 0, None, None,
-            0.0, 0, 0.0, 0, 0.0, 0, 0, 0,
+            0.0, 0, 0.0, 0, 0.0, 0, 0.0, 0, 0, 0,
         )
 
     grid = list(raw_grid)
@@ -273,10 +278,14 @@ def evaluate_chronicles_topology(
     if open_ratio < _MIN_OPEN_RATIO:
         reasons.append("open-ratio-low")
 
+    degrees = {
+        point: len(_neighbors(point, walkable))
+        for point in walkable
+    }
     dead_ends = {
         point
-        for point in walkable
-        if len(_neighbors(point, walkable)) <= 1
+        for point, degree in degrees.items()
+        if degree <= 1
     }
     dead_end_ratio = len(dead_ends) / max(1, len(walkable))
     if dead_end_ratio > _MAX_DEAD_END_RATIO:
@@ -284,8 +293,18 @@ def evaluate_chronicles_topology(
 
     articulations = _articulation_points(walkable)
     articulation_ratio = len(articulations) / max(1, len(walkable))
-    if articulation_ratio > _MAX_ARTICULATION_RATIO:
-        reasons.append("articulation-ratio-high")
+    edge_count = sum(degrees.values()) // 2
+    # The normal accepted case is connected; disconnected layouts already fail
+    # above. For a connected graph E - V + 1 is the exact cycle rank.
+    cycle_rank = max(0, edge_count - len(walkable) + 1)
+    corridor_count = sum(1 for degree in degrees.values() if degree == 2)
+    corridor_ratio = corridor_count / max(1, len(walkable))
+    if (
+        cycle_rank == 0
+        and articulation_ratio > _CORRIDOR_ARTICULATION_RATIO
+        and corridor_ratio > _CORRIDOR_DEGREE_TWO_RATIO
+    ):
+        reasons.append("corridor-dominated")
 
     return ChroniclesTopologyQuality(
         accepted=not reasons,
@@ -300,6 +319,8 @@ def evaluate_chronicles_topology(
         dead_end_ratio=dead_end_ratio,
         articulation_count=len(articulations),
         articulation_ratio=articulation_ratio,
+        cycle_rank=cycle_rank,
+        corridor_ratio=corridor_ratio,
         critical_anchor_count=len(anchors),
         unreachable_anchor_count=len(unreachable_anchors),
         enemy_exit_overlap_count=enemy_exit_overlap_count,
