@@ -1,0 +1,40 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v14",
+  "status": "candidate-awaiting-ci-visual-review",
+  "validated_contract": {
+    "generation": "strict-v14",
+    "source_generation": "strict-v13",
+    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "geometry": "alpha byte-identical to promoted strict-v13",
+    "visual_pass": "reduce dark clothing speckle; increase weapon/material separation; restore canonical stern brow/eye/frown cues on upright frames"
+  },
+  "source_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/pistol/v13-5c28bf8632a67c82.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/machinegun/v13-66f55797e9447a8d.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/shotgun/v13-52731c02ef5fe0f1.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/panzerfaust/v13-0d4d195a1f0b8ad2.png"
+  },
+  "local_evidence": {
+    "pistol_visual_review": "inspected v13/v14 detail board; silhouette and foot line preserved, weapon/clothing separation improved, stern face cues visible",
+    "pistol_gate": {
+      "frames": 144,
+      "rows": 18,
+      "all_rows_8_distinct": true,
+      "alpha_byte_identical": true,
+      "changed_rgb_pixels": 3560742,
+      "face_cue_frames": 114,
+      "max_luma_spread_delta": 0.446
+    },
+    "image_generation_trials": "rejected before repo write because free generation drifted from canonical Matthias identity; no generated non-canonical frames are used"
+  },
+  "resume": {
+    "next": "run strict-v14 CI across all four weapons, inspect every PNG review artifact, fix any regression, then merge to publish immutable R2 assets and promote runtime in a separate PR",
+    "source_of_truth": "promoted strict-v13 runtime plus strict-v14 workflow artifacts"
+  }
+}
