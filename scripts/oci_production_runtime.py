@@ -15,33 +15,164 @@ PRODUCTION_ORIGIN = "https://chess-studio.shadowops.dpdns.org"
 PRODUCTION_AI_URL = "https://ai.shadowops.dpdns.org"
 OK_MARKER = "OCI_PRODUCTION_RUNTIME_SYNC_OK"
 
+PRODUCTION_ALLOWED_KEYS = (
+    "MONGO_URL",
+    "MONGO_DB_NAME",
+    "JWT_SECRET",
+    "RESEND_API_KEY",
+    "PASSWORD_RESET_URL",
+    "PASSWORD_RESET_FROM",
+    "ENVIRONMENT",
+    "EXPOSE_API_DOCS",
+    "ALLOW_REGISTRATION",
+    "INVITE_CODE",
+    "ENABLE_EMAIL_RECOVERY",
+    "ADMIN_USERNAMES",
+    "CF_AI_WORKER_URL",
+    "CHESS_AI_SHARED_SECRET",
+    "CORS_ORIGINS",
+    "OTEL_SERVICE_NAME",
+    "OTEL_TRACES_ENABLED",
+    "OTEL_METRICS_ENABLED",
+    "OTEL_LOGS_ENABLED",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "OTEL_TRACES_SAMPLER",
+    "OTEL_TRACES_SAMPLER_ARG",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_HEADERS",
+    "CHESS_STUDIO_RUNTIME_SCHEMA",
+)
+PRODUCTION_DEFAULTS = {
+    "MONGO_DB_NAME": PRODUCTION_DB,
+    "PASSWORD_RESET_URL": PRODUCTION_ORIGIN + "/",
+    "PASSWORD_RESET_FROM": "Chess Studio <onboarding@resend.dev>",
+    "ENVIRONMENT": "production",
+    "EXPOSE_API_DOCS": "false",
+    "ALLOW_REGISTRATION": "true",
+    "ENABLE_EMAIL_RECOVERY": "true",
+    "CF_AI_WORKER_URL": PRODUCTION_AI_URL,
+    "CORS_ORIGINS": PRODUCTION_ORIGIN,
+    "OTEL_SERVICE_NAME": "chess-studio-backend",
+    "OTEL_TRACES_ENABLED": "true",
+    "OTEL_METRICS_ENABLED": "true",
+    "OTEL_LOGS_ENABLED": "true",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+    "OTEL_TRACES_SAMPLER": "parentbased_traceidratio",
+    "OTEL_TRACES_SAMPLER_ARG": "1.0",
+    "CHESS_STUDIO_RUNTIME_SCHEMA": "render-production-lift-v2",
+}
+PRODUCTION_SECRET_KEYS = (
+    "MONGO_URL",
+    "JWT_SECRET",
+    "RESEND_API_KEY",
+    "INVITE_CODE",
+    "CHESS_AI_SHARED_SECRET",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_HEADERS",
+)
+PRODUCTION_ALWAYS_REQUIRED = (
+    "MONGO_URL",
+    "MONGO_DB_NAME",
+    "JWT_SECRET",
+    "PASSWORD_RESET_URL",
+    "PASSWORD_RESET_FROM",
+    "ENVIRONMENT",
+    "EXPOSE_API_DOCS",
+    "ALLOW_REGISTRATION",
+    "ENABLE_EMAIL_RECOVERY",
+    "CF_AI_WORKER_URL",
+    "CHESS_AI_SHARED_SECRET",
+    "CORS_ORIGINS",
+    "OTEL_SERVICE_NAME",
+    "OTEL_TRACES_ENABLED",
+    "OTEL_METRICS_ENABLED",
+    "OTEL_LOGS_ENABLED",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "OTEL_TRACES_SAMPLER",
+    "OTEL_TRACES_SAMPLER_ARG",
+    "CHESS_STUDIO_RUNTIME_SCHEMA",
+)
+TRUE_VALUES = {"1", "true", "yes", "on"}
 
-def validate_production_values(values: dict[str, str]) -> bytes:
-    from oci_runtime_config import render_env_file
 
-    db_name = str(values.get("MONGO_DB_NAME") or "").strip()
-    if db_name != PRODUCTION_DB or db_name == STAGING_DB:
+def _clean_value(key: str, value: object, *, allow_empty: bool = False) -> str:
+    text = "" if value is None else str(value)
+    if any(ch in text for ch in ("\x00", "\r", "\n")):
+        raise SystemExit(f"Production OCI runtime contains invalid control characters for {key}")
+    if not allow_empty and not text:
+        raise SystemExit(f"Production OCI runtime value {key} is missing or empty")
+    return text
+
+
+def effective_production_values(actual: dict[str, str]) -> dict[str, str]:
+    """Compose the effective Render production runtime without leaking unknown keys."""
+    values = dict(PRODUCTION_DEFAULTS)
+    allowed = set(PRODUCTION_ALLOWED_KEYS)
+    for key, raw in actual.items():
+        if key not in allowed:
+            continue
+        value = _clean_value(key, raw, allow_empty=True)
+        if value:
+            values[key] = value
+        elif key in {"INVITE_CODE", "ADMIN_USERNAMES"}:
+            values[key] = ""
+
+    for key in PRODUCTION_ALWAYS_REQUIRED:
+        _clean_value(key, values.get(key, ""))
+
+    if str(values["MONGO_DB_NAME"]).strip() != PRODUCTION_DB:
         raise SystemExit(
-            f"Production OCI runtime must use MONGO_DB_NAME={PRODUCTION_DB}; actual={db_name or '<missing>'}"
+            f"Production OCI runtime must use MONGO_DB_NAME={PRODUCTION_DB}; "
+            f"actual={values.get('MONGO_DB_NAME') or '<missing>'}"
         )
-    environment = str(values.get("ENVIRONMENT") or "").strip().lower()
-    if environment != "production":
-        raise SystemExit(f"Production OCI runtime requires ENVIRONMENT=production; actual={environment or '<missing>'}")
-    cors = str(values.get("CORS_ORIGINS") or "").strip()
+    if str(values["ENVIRONMENT"]).strip().lower() != "production":
+        raise SystemExit(
+            f"Production OCI runtime requires ENVIRONMENT=production; "
+            f"actual={values.get('ENVIRONMENT') or '<missing>'}"
+        )
+
+    cors = str(values["CORS_ORIGINS"]).strip()
     if PRODUCTION_ORIGIN not in cors or "staging" in cors.lower():
         raise SystemExit("Production OCI runtime has unsafe CORS_ORIGINS")
-    ai_url = str(values.get("CF_AI_WORKER_URL") or "").strip()
+    ai_url = str(values["CF_AI_WORKER_URL"]).strip()
     if ai_url != PRODUCTION_AI_URL or "staging" in ai_url.lower():
         raise SystemExit("Production OCI runtime has unsafe CF_AI_WORKER_URL")
-    return render_env_file(values)
+
+    email_enabled = str(values["ENABLE_EMAIL_RECOVERY"]).strip().lower() in TRUE_VALUES
+    if email_enabled:
+        _clean_value("RESEND_API_KEY", values.get("RESEND_API_KEY", ""))
+        reset_url = str(values["PASSWORD_RESET_URL"]).strip()
+        if not reset_url.startswith(PRODUCTION_ORIGIN) or "staging" in reset_url.lower():
+            raise SystemExit("Production OCI runtime has unsafe PASSWORD_RESET_URL")
+
+    return values
+
+
+def render_production_env(values: dict[str, str]) -> bytes:
+    unknown = set(values) - set(PRODUCTION_ALLOWED_KEYS)
+    if unknown:
+        raise SystemExit(
+            "Refusing unexpected production runtime keys: " + ", ".join(sorted(unknown))
+        )
+    for key in PRODUCTION_ALWAYS_REQUIRED:
+        _clean_value(key, values.get(key, ""))
+    ordered = [key for key in PRODUCTION_ALLOWED_KEYS if key in values]
+    return "".join(
+        f"{key}={_clean_value(key, values[key], allow_empty=key in {'INVITE_CODE', 'ADMIN_USERNAMES'})}\n"
+        for key in ordered
+    ).encode("utf-8")
+
+
+def validate_production_values(values: dict[str, str]) -> bytes:
+    return render_production_env(effective_production_values(values))
 
 
 def collect_render_production() -> bytes:
-    from oci_runtime_config import collect_render_values
+    from oci_runtime_config import list_render_env_values
     from render_production_deploy import resolve_and_validate
 
     service_id, _service_name = resolve_and_validate()
-    return validate_production_values(collect_render_values(service_id))
+    return validate_production_values(list_render_env_values(service_id))
 
 
 def create_secret_details(
@@ -109,7 +240,7 @@ def bootstrap(oci: Any) -> None:
 
 def host_sync_command(vault_id: str) -> str:
     from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
-    from oci_runtime_config import ALLOWED_KEYS, REQUIRED_KEYS, RUNTIME_INSTALLER
+    from oci_runtime_config import RUNTIME_INSTALLER
     from oci_vault_runtime import OCI_SDK_VERSION, validate_vault_id
 
     vault_id = validate_vault_id(vault_id)
@@ -126,8 +257,8 @@ VAULT_ID={shlex.quote(vault_id)} RUNTIME_TMP="$tmp" "$venv/bin/python" - <<'PY'
 import base64, os, re
 from pathlib import Path
 import oci
-required=set({REQUIRED_KEYS!r})
-allowed=set({ALLOWED_KEYS!r})
+required=set({PRODUCTION_ALWAYS_REQUIRED!r})
+allowed=set({PRODUCTION_ALLOWED_KEYS!r})
 client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
 response=client.get_secret_bundle_by_name(secret_name={SECRET_NAME!r}, vault_id=os.environ["VAULT_ID"], stage="CURRENT")
 encoded=str(getattr(response.data.secret_bundle_content,"content","") or "")
@@ -156,6 +287,11 @@ if {PRODUCTION_ORIGIN!r} not in cors or "staging" in cors.lower():
     raise SystemExit("production runtime CORS guard failed")
 if values.get("CF_AI_WORKER_URL")!={PRODUCTION_AI_URL!r}:
     raise SystemExit("production runtime AI target guard failed")
+if values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r} and not values.get("RESEND_API_KEY"):
+    raise SystemExit("production runtime email recovery secret guard failed")
+reset_url=values.get("PASSWORD_RESET_URL","")
+if values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r} and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
+    raise SystemExit("production runtime password reset target guard failed")
 path=Path(os.environ["RUNTIME_TMP"])
 path.write_text(text if text.endswith("\n") else text+"\n",encoding="utf-8")
 os.chmod(path,0o600)
@@ -198,29 +334,58 @@ def sync_current(oci: Any) -> None:
 
 
 def self_test() -> None:
-    from oci_runtime_config import REQUIRED_KEYS
     from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
 
-    values = {key: f"sample-{index}" for index, key in enumerate(REQUIRED_KEYS, start=1)}
-    values.update({
+    actual = {
         "MONGO_URL": "mongodb+srv://example.invalid/",
-        "MONGO_DB_NAME": PRODUCTION_DB,
-        "ENVIRONMENT": "production",
-        "CORS_ORIGINS": PRODUCTION_ORIGIN,
-        "CF_AI_WORKER_URL": PRODUCTION_AI_URL,
-    })
-    rendered = validate_production_values(values).decode("utf-8")
+        "JWT_SECRET": "jwt-secret",
+        "RESEND_API_KEY": "resend-secret",
+        "INVITE_CODE": "invite-secret",
+        "CHESS_AI_SHARED_SECRET": "ai-secret",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otel.example.test",
+        "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic sample",
+        "PASSWORD_RESET_FROM": "Chess Studio <prod@example.test>",
+        "ALLOW_REGISTRATION": "false",
+        "ADMIN_USERNAMES": "evilsysadmin",
+    }
+    effective = effective_production_values(actual)
+    assert effective["MONGO_DB_NAME"] == PRODUCTION_DB
+    assert effective["ENVIRONMENT"] == "production"
+    assert effective["EXPOSE_API_DOCS"] == "false"
+    assert effective["ENABLE_EMAIL_RECOVERY"] == "true"
+    assert effective["PASSWORD_RESET_URL"] == PRODUCTION_ORIGIN + "/"
+    assert effective["PASSWORD_RESET_FROM"] == "Chess Studio <prod@example.test>"
+    assert effective["ALLOW_REGISTRATION"] == "false"
+    assert effective["RESEND_API_KEY"] == "resend-secret"
+    rendered = render_production_env(effective).decode("utf-8")
     assert f"MONGO_DB_NAME={PRODUCTION_DB}\n" in rendered
     assert "MONGO_DB_NAME=chess_study_staging" not in rendered
+    assert "EXPOSE_API_DOCS=false\n" in rendered
+    assert "ENABLE_EMAIL_RECOVERY=true\n" in rendered
+    assert "RESEND_API_KEY=resend-secret\n" in rendered
+    assert "PASSWORD_RESET_URL=https://chess-studio.shadowops.dpdns.org/\n" in rendered
+    assert "OTEL_TRACES_SAMPLER=parentbased_traceidratio\n" in rendered
+    assert "SURPRISE" not in rendered
 
-    bad = dict(values)
-    bad["MONGO_DB_NAME"] = STAGING_DB
+    bad_db = dict(actual, MONGO_DB_NAME=STAGING_DB)
     try:
-        validate_production_values(bad)
+        effective_production_values(bad_db)
     except SystemExit:
         pass
     else:
         raise AssertionError("staging database must be rejected for production")
+
+    missing_resend = dict(actual)
+    missing_resend.pop("RESEND_API_KEY")
+    try:
+        effective_production_values(missing_resend)
+    except SystemExit as exc:
+        assert "RESEND_API_KEY" in str(exc)
+    else:
+        raise AssertionError("email-enabled production must require RESEND_API_KEY")
+
+    email_disabled = dict(missing_resend, ENABLE_EMAIL_RECOVERY="false")
+    assert effective_production_values(email_disabled)["ENABLE_EMAIL_RECOVERY"] == "false"
 
     sample_vault = "ocid1.vault.oc1.eu-frankfurt-1.testvault"
     command = host_sync_command(sample_vault)
@@ -228,6 +393,7 @@ def self_test() -> None:
     assert "InstancePrincipalsSecurityTokenSigner" in command
     assert "chess-studio-backend.env.production.XXXXXX" in command
     assert PRODUCTION_DB in command and STAGING_DB in command
+    assert "RESEND_API_KEY=" not in command
     assert "RENDER_API_KEY" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert_nonsecret_command(command)
