@@ -483,26 +483,30 @@ def add_fireplace(name: str, x: float, materials):
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
     for idx, offset in enumerate(flame_offsets):
         height = 0.34 + 0.13 * ((idx * 5) % 4)
-        cone(
+        flame = cone(
             f"HOME_PROP_{name}_flame_{idx}",
             (x + offset, 5.66, 0.61 + height * 0.50),
-            0.115 + 0.018 * (idx % 2),
-            0.012,
+            0.100 + 0.016 * (idx % 2),
+            0.010,
             height,
             fire,
             vertices=18,
         )
+        flame.rotation_euler[0] = math.radians((-4, 3, -2, 5, -5, 2)[idx])
+        flame.rotation_euler[1] = math.radians((-8, 5, 9, -6, 7, -4)[idx])
         if idx % 2 == 0:
-            inner_h = height * 0.58
-            cone(
+            inner_h = height * 0.56
+            inner = cone(
                 f"HOME_PROP_{name}_flame_hot_{idx}",
                 (x + offset * 0.98, 5.625, 0.61 + inner_h * 0.50),
-                0.060,
-                0.008,
+                0.050,
+                0.006,
                 inner_h,
                 hot,
                 vertices=14,
             )
+            inner.rotation_euler[0] = flame.rotation_euler[0] * 0.65
+            inner.rotation_euler[1] = flame.rotation_euler[1] * 0.65
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
 
 
@@ -909,7 +913,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.052
+    bg.inputs["Strength"].default_value = 0.030
 
     materials = {
         "stone": material("HOME_MAT_stone", (0.138, 0.122, 0.102, 1), roughness=0.92, bump_scale=5.6, bump_strength=0.23, variation=0.18, variation_scale=3.8),
@@ -1278,17 +1282,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 80, (0.66, 0.50, 0.38), 4.4, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 48, (0.10, 0.22, 0.40), 4.2, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 78, (0.66, 0.36, 0.21), 3.0, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 122, (0.34, 0.24, 0.18), 6.3, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 350, (0.14, 0.34, 0.68), 3.8, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 150, (0.88, 0.68, 0.48), 2.8, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 168, (0.82, 0.48, 0.24), 2.0, target=(0, -0.72, 0.30))
-    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 235, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
-    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
-    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 142, (0.66, 0.72, 0.78), 1.55, target=(1.55, 5.28, 2.40))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 58, (0.66, 0.50, 0.38), 4.0, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 30, (0.10, 0.22, 0.40), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 60, (0.66, 0.36, 0.21), 2.8, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 82, (0.34, 0.24, 0.18), 5.8, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 250, (0.14, 0.34, 0.68), 3.5, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 188, (0.90, 0.66, 0.44), 2.45, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 172, (0.82, 0.48, 0.24), 1.9, target=(0, -0.72, 0.30))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 118, (0.82, 0.48, 0.24), 2.0, target=(-2.65, 5.9, 2.6))
+    add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 155, (1.0, 0.34, 0.10), 2.0, target=(-6.15, 5.65, 1.35))
+    add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 230, (1.0, 0.34, 0.10), 2.1, target=(4.45, 5.65, 1.45))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 205, (0.42, 0.52, 0.66), 2.1, target=(1.55, 5.28, 2.4))
+    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 142, (0.82, 0.52, 0.28), 1.9, target=(1.55, 5.28, 2.35))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 112, (0.66, 0.72, 0.78), 1.45, target=(1.55, 5.28, 2.40))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
