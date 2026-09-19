@@ -1,0 +1,181 @@
+name: Pawn Slug · Godot strict Matthias v12
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v12.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v12.py'
+      - 'scripts/art/build_pawn_slug_v12_review.py'
+      - 'games/pawn-slug-godot/tests/matthias_strict_v12_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v12.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v12.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v12.py'
+      - 'scripts/art/build_pawn_slug_v12_review.py'
+      - 'games/pawn-slug-godot/tests/matthias_strict_v12_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v12.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-godot-strict-v12-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+  GODOT_RELEASE: '4.7.2-stable'
+  GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+
+jobs:
+  build-strict-v12:
+    name: Build + gate strict-v12 · ${{ matrix.weapon }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install deterministic 2D sprite toolchain
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: \
+            'numpy==2.2.6' 'opencv-python-headless==4.12.0.88' 'Pillow==12.3.0'
+
+      - name: Strict v12 tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v12.py --self-test
+          python3 -m py_compile \
+            scripts/art/pack_pawn_slug_godot_strict_v12.py \
+            scripts/art/validate_pawn_slug_godot_atlas_v12.py \
+            scripts/art/build_pawn_slug_v12_review.py
+
+      - name: Restore pinned Godot editor
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 \
+              "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" \
+              -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+
+      - name: Resolve strict-v11 canonical source
+        id: source
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          case "$WEAPON" in
+            pistol) HASH='b4219e6c40d76230' ;;
+            machinegun) HASH='c454e89e661e746d' ;;
+            shotgun) HASH='7511dabc1c50558f' ;;
+            panzerfaust) HASH='a09a49129703bb1d' ;;
+            *) exit 2 ;;
+          esac
+          echo "url=https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v11/$WEAPON/matthias_${WEAPON}_godot_strict_8x18_416_v11-${HASH}.png" >> "$GITHUB_OUTPUT"
+
+      - name: Download strict-v11 baseline
+        env:
+          SOURCE_URL: ${{ steps.source.outputs.url }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict-v12"
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$SOURCE_URL" --output "$ROOT/matthias_${WEAPON}_strict_v11_baseline.png"
+
+      - name: Build strict-v12 atlas
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict-v12"
+          python3 scripts/art/pack_pawn_slug_godot_strict_v12.py \
+            --source "$ROOT/matthias_${WEAPON}_strict_v11_baseline.png" \
+            --output "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v12.png" \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v12_manifest.json" \
+            --weapon "$WEAPON"
+
+      - name: Gate geometry, motion and visual readability
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict-v12"
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v12.py \
+            --atlas "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v12.png" \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v12_manifest.json" \
+            --baseline "$ROOT/matthias_${WEAPON}_strict_v11_baseline.png" \
+            --report "$ROOT/matthias_${WEAPON}_strict_v12_health.json"
+          python3 scripts/art/build_pawn_slug_v12_review.py \
+            --baseline "$ROOT/matthias_${WEAPON}_strict_v11_baseline.png" \
+            --atlas "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v12.png" \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v12_manifest.json" \
+            --report "$ROOT/matthias_${WEAPON}_strict_v12_health.json" \
+            --output "$ROOT/matthias_${WEAPON}_strict_v12_review.png"
+
+      - name: Consume generated atlas in real Godot SpriteFrames
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict-v12"
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          "$godot" --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_strict_v12_atlas_smoke.gd -- \
+            "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v12.png" \
+            "$ROOT/matthias_${WEAPON}_strict_v12_manifest.json"
+
+      - name: Publish immutable strict-v12 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ATLAS="/tmp/pawn-slug-godot-strict-v12/matthias_${WEAPON}_godot_strict_8x18_416_v12.png"
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$ATLAS" \
+            --logical-id "pawnSlug.godot.matthias.${WEAPON}.strictV12" \
+            --prefix "pawn-slug-godot/matthias/strict-v12/${WEAPON}" \
+            | tee "/tmp/pawn-slug-godot-strict-v12-${WEAPON}-publish.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v12-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict-v12/matthias_${{ matrix.weapon }}_godot_strict_8x18_416_v12.png
+            /tmp/pawn-slug-godot-strict-v12/matthias_${{ matrix.weapon }}_strict_v12_manifest.json
+            /tmp/pawn-slug-godot-strict-v12/matthias_${{ matrix.weapon }}_strict_v12_review.png
+            /tmp/pawn-slug-godot-strict-v12/matthias_${{ matrix.weapon }}_strict_v12_health.json
+            /tmp/pawn-slug-godot-strict-v12-${{ matrix.weapon }}-publish.txt
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
