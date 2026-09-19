@@ -1126,7 +1126,17 @@ def build():
     top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 175.0, (1.0, 0.48, 0.24), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
-        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 78.0, (1.0, 0.31, 0.09), static, radius=1.35)
+        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 128.0, (1.0, 0.31, 0.09), static, radius=1.45)
+
+    # Canon lighting pass: reveal the gothic shell without competing with the
+    # board. These broad washes target the rear architecture rather than the
+    # tactical surface.
+    rear_left = light("WR_LIGHT_rear_wash_left", "AREA", (-5.7, 0.6, 5.7), 390.0,
+                      (1.0, 0.54, 0.30), static, size=4.2)
+    look_at(rear_left, (-4.5, 6.2, 3.35))
+    rear_right = light("WR_LIGHT_rear_wash_right", "AREA", (5.8, 0.7, 5.4), 330.0,
+                       (0.64, 0.58, 0.48), static, size=4.0)
+    look_at(rear_right, (4.8, 6.2, 3.35))
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
     cam = bpy.data.objects.new("WR_CAMERA_hero", cam_data)
