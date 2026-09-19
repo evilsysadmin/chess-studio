@@ -1,14 +1,10 @@
-import { difficultyForRating } from './playerRating.js';
-import { calibrateQuickMatchDifficulty } from './quickMatchDifficulty.js';
+import { difficultyForQuickMatchRating } from './quickMatchDifficulty.js';
 
-// Práctica usa la misma señal adaptativa que Partida rápida, pero baja un
-// pequeño escalón ANTES de calibrar contra los saltos internos del motor.
-// Así sigue siendo deliberadamente más amable sin volver a caer justo en los
-// precipicios de profundidad 70/90/98. Es un ajuste PRE-partida: nunca cambia
-// la fuerza de Matthias a mitad del tablero y nunca participa en el rating.
+// Práctica comparte la misma señal Elo de War Room, pero juega un pequeño
+// escalón por debajo. El ajuste ocurre antes de empezar y nunca cambia la CPU
+// dentro de una partida.
 export const PRACTICE_ADAPTIVE_RELIEF = 6;
 
 export function difficultyForPracticeRating(rating, activity = null, games = null) {
-  const raw = Math.max(0, difficultyForRating(rating, activity, games) - PRACTICE_ADAPTIVE_RELIEF);
-  return calibrateQuickMatchDifficulty(raw);
+  return Math.max(0, difficultyForQuickMatchRating(rating, activity, games) - PRACTICE_ADAPTIVE_RELIEF);
 }

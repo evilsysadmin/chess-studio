@@ -41,6 +41,7 @@ export default function QuickMatchModal({
   useEscapeToClose(onClose);
   const handicap = rating ? handicapForGap(rating.rating, difficulty) : null;
   const adaptiveLevel = difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0);
+  const adaptiveCalibrating = Number(rating?.games || 0) < 12;
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
@@ -83,7 +84,7 @@ export default function QuickMatchModal({
         )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
-          <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>Busca un nivel exigente pero accesible según tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+          <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>{adaptiveCalibrating ? 'Calibrando tu nivel · la siguiente partida se ajusta, nunca ésta' : 'Reto adaptativo · Matthias intenta mantenerse ligeramente por encima de tu nivel'}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
         <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>

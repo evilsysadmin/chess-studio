@@ -249,7 +249,7 @@ export default function Menu({
             const previousRenderer = getBoardRenderer();
             if (requestedRenderer) setBoardRenderer(requestedRenderer);
             const started = await onNewGame(
-              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400) : difficulty,
+              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0) : difficulty,
               color,
               {
                 timeControlId,

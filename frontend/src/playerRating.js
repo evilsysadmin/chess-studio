@@ -155,6 +155,24 @@ export function cpuRatingForDifficulty(rawDifficulty) {
   return CPU_RATING_ANCHORS[CPU_RATING_ANCHORS.length - 1][1];
 }
 
+export function difficultyForCpuRating(rawRating) {
+  const numeric = Number(rawRating);
+  const target = Number.isFinite(numeric) ? numeric : CPU_RATING_ANCHORS[0][1];
+  const [minDifficulty, minRating] = CPU_RATING_ANCHORS[0];
+  if (target <= minRating) return minDifficulty;
+
+  for (let i = 1; i < CPU_RATING_ANCHORS.length; i += 1) {
+    const [rightDifficulty, rightRating] = CPU_RATING_ANCHORS[i];
+    const [leftDifficulty, leftRating] = CPU_RATING_ANCHORS[i - 1];
+    if (target <= rightRating) {
+      const span = rightRating - leftRating || 1;
+      const t = (target - leftRating) / span;
+      return Math.max(0, Math.min(100, Math.round(leftDifficulty + (rightDifficulty - leftDifficulty) * t)));
+    }
+  }
+  return CPU_RATING_ANCHORS[CPU_RATING_ANCHORS.length - 1][0];
+}
+
 export function ratingScoreForOutcome(outcome) {
   return outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
 }
