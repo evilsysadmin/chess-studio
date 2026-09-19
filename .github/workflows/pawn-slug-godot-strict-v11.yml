@@ -1,0 +1,165 @@
+name: Pawn Slug Â· Godot strict Matthias v11
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v11.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v11.py'
+      - 'games/pawn-slug-godot/tests/matthias_strict_v11_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v11.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v11.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v11.py'
+      - 'games/pawn-slug-godot/tests/matthias_strict_v11_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-godot-strict-v11-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+  GODOT_RELEASE: '4.7.2-stable'
+  GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+
+jobs:
+  build-strict-v11:
+    name: Build + gate strict-v11 Â· ${{ matrix.weapon }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Strict-v11 tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v11.py --self-test
+          python3 -m py_compile \
+            scripts/art/pack_pawn_slug_godot_strict_v11.py \
+            scripts/art/validate_pawn_slug_godot_atlas_v11.py
+
+      - name: Resolve current coherent strict-v9 runtime atlas
+        id: source
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          case "$WEAPON" in
+            pistol) HASH='73da3b359ce6c33e' ;;
+            machinegun) HASH='1b56615d3306470a' ;;
+            shotgun) HASH='395c486f4d42fb84' ;;
+            panzerfaust) HASH='ae9884d16a05ae6a' ;;
+            *) exit 2 ;;
+          esac
+          echo "url=https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/$WEAPON/matthias_${WEAPON}_godot_strict_6x18_416_v9-${HASH}.png" >> "$GITHUB_OUTPUT"
+
+      - name: Download strict-v9 baseline
+        env:
+          SOURCE_URL: ${{ steps.source.outputs.url }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v11/$WEAPON"
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$SOURCE_URL" --output "$ROOT/v9.png"
+
+      - name: Pack strict-v11 8x18 bank
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v11/$WEAPON"
+          python3 scripts/art/pack_pawn_slug_godot_strict_v11.py \
+            --source "$ROOT/v9.png" \
+            --output "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v11.png" \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v11_manifest.json" \
+            --weapon "$WEAPON"
+
+      - name: Gate geometry, proportions and aim semantics
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v11/$WEAPON"
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v11.py \
+            --atlas "$ROOT/matthias_${WEAPON}_godot_strict_8x18_416_v11.png" \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v11_manifest.json" \
+            --baseline "$ROOT/v9.png" \
+            --report "$ROOT/matthias_${WEAPON}_strict_v11_health.json"
+
+      - name: Build v9 â†” v11 visual review PNG
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v11/$WEAPON"
+          python3 - "$ROOT" "$WEAPON" <<'PY'
+          import json, sys
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          root=Path(sys.argv[1]); weapon=sys.argv[2]
+          old=Image.open(root/'v9.png').convert('RGBA')
+          new=Image.open(root/f'matthias_{weapon}_godot_strict_8x18_416_v11.png').convert('RGBA')
+          data=json.loads((root/f'matthias_{weapon}_strict_v11_manifest.json').read_text())
+         Ù[MMŽÈ[XNÈX™[LNÈØ\NÈ›Ý×Ú][XŠŒŠÌÍˆ›Ø\™R[XYÙK›™]Ê	Ô‘ÐIË
+X™[
+Î
+[XŠÙØ\[Š]VÉØXÝ[ÛœÉ×JJœ›Ý×Ú
+K
+NNNMJJNÈR[XYÙQ˜]Ë‘˜]Ê›Ø\™
+BˆÝš\Ï\›ÛÝÉÜÝš\ÉÎÈÝš\Ë›ZÙ\Š^\ÝÛÚÏUYJBˆ›ÜˆXÝ[Ûˆ[ˆ]VÉØXÝ[ÛœÉ×N‚ˆXXÝ[Û–ÉÜ›ÝÉ×NÈ˜[YOXXÝ[Û–ÉÛ˜[YI×NÈO\Šœ›Ý×Úˆ^
+
+JÍ
+K‰ÞÜŽŒ™HÛ˜[Y_IËš[JKKKMJJBˆ^
+
+JÌŒŠK	ÝŽH™ˆ8¡¤ˆŒLH‰Ëš[JMKMKMKMJJBˆÛÜÝš\[Û˜Ü›Ü
+
+Š˜Ù[Š˜Ù[
+ŠÌJJ˜Ù[
+JNÈÛÜÝš\œØ]™JÝš\ËÙ‰ÞÜŽŒ™WÞÛ˜[Y_WÝŽKœ™ÉÊBˆ™]×ÜÝš\[™]Ë˜Ü›Ü
+
+Š˜Ù[
+˜Ù[
+ŠÌJJ˜Ù[
+JNÈ™]×ÜÝš\œØ]™JÝš\ËÙ‰ÞÜŽŒ™WÞÛ˜[Y_WÝŒLKœ™ÉÊBˆ›ÜˆÈ[ˆ˜[™ÙJŠN‚ˆ[O[Û˜Ü›Ü
+
+Ê˜Ù[Š˜Ù[
+ÊÌJJ˜Ù[
+ŠÌJJ˜Ù[
+JNÈ[K[X›˜Z[
+
+[X‹[XŠK[XYÙK”™\Ø[\[™Ë“SÖ“ÔÊNÈ›Ø\™˜[WØÛÛ\ÜÚ]J[K
+X™[
+ØÊ[X‹JÌŽ
+JBˆ›ÜˆÈ[ˆ˜[™ÙJ
+N‚ˆ[O[™]Ë˜Ü›Ü
+
+Ê˜Ù[Š˜Ù[
+ÊÌJJ˜Ù[
+ŠÌJJ˜Ù[
+JNÈ[K[X›˜Z[
+
+[X‹[XŠK[XYÙK”™\Ø[\[™Ë“SÖ“ÔÊNÈ›Ø\™˜[WØÛÛ\ÜÚ]J[K
+X™[
+ØÊ[X‹JÌŽ
+Ý[XŠJBˆ›Ø\™œØ]™J›ÛÝÙ‰ÛX]X\×ÞÝÙX\ÛŸWÜÝšXÝÝŒLWÜ™]šY]Ëœ™ÉË	Ô‘ÉËÜ[Z^™OUYJBˆB‚ˆH˜[YNˆ™\ÝÜ™H[›™YÛÙÝY]Ü‚ˆ\Ù\ÎˆXÝ[ÛœËØØXÚP‚ˆÚ]‚ˆ]ˆ™ÛÙÝXÚKÉÞÈ[‹‘ÓÑÕÕ‘T”ÒSÓˆ_BˆÙ^Nˆ]Û‹\ÛYË\ÝšXÝYÛÙÝIÞÈ[›™\‹›ÜÈ_KIÞÈ[›™\‹˜\˜Ú_KIÞÈ[‹‘ÓÑÕÔ‘SPTÑH_B‚ˆH˜[YNˆ[œÝ[[›™YÛÙÝY]Ü‚ˆÚ[ˆ˜\Úˆ[ŽˆˆÙ]Y][È\Y˜Z[ˆÛÛÙ\H‰ÒUP—ÕÓÔ’ÔÔPÑKË™ÛÙÝXÚKÉÓÑÕÕ‘T”ÒSÓˆ‚ˆÛÙÝH‰ÛÛÙ\‹ÙÛÙÝ‚ˆYˆÖÈH^‰ÛÙÝˆWNÈ[‚ˆZÙ\ˆ\‰ÛÛÙ\ˆ‚ˆ\˜Ú]™OH‰•S“‘T—ÕSTÙÛÙÝYY]Ü‹žš\‚ˆÝ\›Y“K\™]žHÈšÎ‹ËÙÚ]X‹˜ÛÛKÙÛÙÝ[™Ú[™KÙÛÙÝXZ[ËÜ™[X\Ù\ËÙÝÛ›ØYÉÓÑÕÔ‘SPTÑKÑÛÙÝÝ‰ÑÓÑÕÔ‘SPTÑ_WÛ[^ž—Ížš\ˆ[È‰\˜Ú]™H‚ˆXÚÈ‰ÓÑÕÑQUÔ—ÔÒLMˆ	\˜Ú]™HˆÚLMœÝ[HXÈBˆ[žš\\H‰\˜Ú]™HˆY‰ÛÛÙ\ˆ‚ˆ]ˆ‰ÛÛÙ\‹ÑÛÙÝÝ‰ÑÓÑÕÔ‘SPTÑ_WÛ[^ž—Íˆ‰ÛÙÝ‚ˆÚ[Ù
+Þ‰ÛÙÝ‚ˆšBˆ‰ÛÙÝˆK]™\œÚ[Û‚‚ˆH˜[YNˆÛÛœÝ[YHŒLH]\È[ˆ™X[ÛÙÝÜš]Qœ˜[Y\Âˆ[Ž‚ˆÑPTÓŽˆ	ÞÈX]š^ÙX\Ûˆ_Bˆ[ŽˆˆÙ]Y][È\Y˜Z[ˆ“ÓÕH‰•S“‘T—ÕSTÛX]X\Ë]ŒLKÉÑPTÓˆ‚ˆ‰ÒUP—ÕÓÔ’ÔÔPÑKË™ÛÙÝXÚKÉÓÑÕÕ‘T”ÒSÓ‹ÙÛÙÝˆKZXY\ÜÈˆK\]Ø[Y\ËÜ]Û‹\ÛYËYÛÙÝˆK\ØÜš\™\Î‹ËÝ\ÝËÛX]X\×ÜÝšXÝÝŒLWØ]\×ÜÛ[ÚÙK™ÙKHˆ‰“ÓÕÛX]X\×ÉÕÑPTÓŸWÙÛÙÝÜÝšXÝÎNÍM—ÝŒLKœ™Èˆˆ‰“ÓÕÛX]X\×ÉÕÑPTÓŸWÜÝšXÝÝŒLWÛX[šY™\ÝšœÛÛˆ‚‚ˆH˜[YNˆX›\Ú[[]]X›HÝšXÝ]ŒLHÈŒ‚ˆYŽˆÚ]X‹™]™[Û˜[YHOH	Ü\Ú	È	‰ˆÚ]X‹œ™YˆOH	Ü™YœËÚXYËÛXZ[‰Âˆ[Ž‚ˆÓÕQ“T‘WÐTWÕÒÑSŽˆ	ÞÈÙXÜ™]ËÓÕQ“T‘WÐTWÕÒÑSˆ_BˆÓÕQ“T‘WÐPÐÓÕS•ÒQˆ	ÞÈÙXÜ™]ËÓÕQ“T‘WÐPÐÓÕS•ÒQ_BˆÑPTÓŽˆ	ÞÈX]š^ÙX\Ûˆ_Bˆ[ŽˆˆÙ]Y][È\Y˜Z[ˆ“ÓÕH‰•S“‘T—ÕSTÛX]X\Ë]ŒLKÉÑPTÓˆ‚ˆ]ÛŒÈTÈØÜš\ËÜŒ—Ø\ÜÙ]ÜX›\ÚœHX›\Úˆ‰“ÓÕÛX]X\×ÉÕÑPTÓŸWÙÛÙÝÜÝšXÝÎNÍM—ÝŒLKœ™ÈˆˆK[ÙÚXØ[ZYœ]Û”ÛYË™ÛÙÝ›X]X\Ë‰ÕÑPTÓŸKœÝšXÝŒLHˆˆK\™Yš^œ]Û‹\ÛYËYÛÙÝÛX]X\ËÜÝšXÝ]ŒLKÉÕÑPTÓŸHˆˆYH‰“ÓÕÜX›\Ú‚‚ˆH\Ù\ÎˆXÝ[ÛœËÝ\ØYX\Y˜XÝˆYŽˆ[Ø^\Ê
+BˆÚ]‚ˆ˜[YNˆ]Û‹\ÛYËYÛÙÝ\ÝšXÝ]ŒLKIÞÈX]š^ÙX\Ûˆ_KIÞÈÚ]X‹™]™[œ[Ü™\]Y\Ý›[X™\ˆÚ]X‹œ[—Û[X™\ˆ_Bˆ]ˆˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÛX]X\×ÉÞÈX]š^ÙX\Ûˆ_WÙÛÙÝÜÝšXÝÎNÍM—ÝŒLKœ™Âˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÛX]X\×ÉÞÈX]š^ÙX\Ûˆ_WÜÝšXÝÝŒLWÛX[šY™\ÝšœÛÛ‚ˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÛX]X\×ÉÞÈX]š^ÙX\Ûˆ_WÜÝšXÝÝŒLWÚX[šœÛÛ‚ˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÛX]X\×ÉÞÈX]š^ÙX\Ûˆ_WÜÝšXÝÝŒLWÜ™]šY]Ëœ™Âˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÜÝš\ËÊ‹œ™Âˆ	ÞÈ[›™\‹[\_KÛX]X\Ë]ŒLKÉÞÈX]š^ÙX\Ûˆ_KÜX›\ÚˆY‹[›ËYš[\ËY›Ý[™ˆØ\›‚ˆ™][[Û‹Y^\ÎˆMˆÛÛ\™\ÜÚ[Û‹[]™[ˆ
