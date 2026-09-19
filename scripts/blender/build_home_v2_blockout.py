@@ -776,7 +776,7 @@ def add_banner(name: str, x: float, materials):
 
 
 def add_armor(materials):
-    steel = materials["steel"]
+    steel = materials["armor_steel"]
     brass = materials["brass"]
     stone = materials["stone"]
     dark = materials["dark"]
@@ -790,19 +790,19 @@ def add_armor(materials):
         lx = x + side * 0.19
         cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
         cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.15, 0.11, 0.70, steel, vertices=24)
-        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.17, 0.13, 0.14), steel)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.135, 0.095, 0.090), steel)
         cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.285, 0.145, 0.115), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.285, 0.145, 0.115), steel)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.69, y, 1.96), (x - 0.61, y - 0.02, 1.65)], 0.125, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.69, y, 1.96), (x + 0.61, y - 0.02, 1.65)], 0.125, steel)
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
+    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.66, y, 1.98), (x - 0.60, y - 0.02, 1.65)], 0.070, steel)
+    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.66, y, 1.98), (x + 0.60, y - 0.02, 1.65)], 0.070, steel)
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
@@ -1136,6 +1136,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.195, 0.210, 0.228, 1), roughness=0.22, metallic=0.92),
+        "armor_steel": material("HOME_MAT_armor_steel", (0.34, 0.38, 0.43, 1), roughness=0.26, metallic=0.74),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.105, 0.006, 0.010, 1), roughness=0.95, bump_scale=26.0, bump_strength=0.08, variation=0.10, variation_scale=9.0),
@@ -1553,33 +1554,161 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.scale.x *= 0.78
             obj.scale.y *= 0.92
             obj.scale.z *= 1.14
-    flat_panel(
+    # Armour overlays are viewed from camera-side (-Y). flat_panel's default
+    # polygon winding points the front-face normals toward +Y, which made the
+    # focal metal render nearly black despite dedicated key/rim lights.
+    def armor_panel(name, points_xz, y, depth, mat, *, bevel=0.03):
+        return flat_panel(name, list(reversed(points_xz)), y, depth, mat, bevel=bevel)
+
+    # Keep the dark drapery as a recess accent rather than a rectangular cape
+    # behind the helmet. The canonical suit must read as articulated metal first.
+    armor_panel(
         "HOME_PROP_armor_cape",
-        [(1.05, 3.76), (2.05, 3.76), (1.96, 0.78), (1.55, 0.50), (1.14, 0.78)],
-        5.80,
-        0.045,
+        [(1.17, 2.62), (1.93, 2.62), (1.86, 0.92), (1.55, 0.66), (1.24, 0.92)],
+        5.82,
+        0.040,
         materials["velvet_dark"],
         bevel=0.025,
     )
     flat_panel(
         "HOME_PROP_armor_chest_plate",
-        [(1.27, 2.88), (1.83, 2.88), (1.74, 2.32), (1.55, 2.08), (1.36, 2.32)],
+        [
+            (1.24, 2.78), (1.86, 2.78),
+            (1.82, 2.43), (1.70, 2.12),
+            (1.55, 1.96),
+            (1.40, 2.12), (1.28, 2.43),
+        ],
         5.505,
-        0.050,
-        materials["steel"],
-        bevel=0.045,
+        0.045,
+        materials["armor_steel"],
+        bevel=0.040,
     )
+    # Two narrow fauld lames instead of the old bright three-bar robot belt.
+    for idx, (z, half_w) in enumerate(((1.92, 0.30), (1.82, 0.325))):
+        cube(
+            f"HOME_PROP_armor_fauld_{idx}",
+            (1.55, 5.47, z),
+            (half_w, 0.022, 0.030),
+            materials["armor_steel"],
+            bevel=0.018,
+        )
+
+    for side in (-1, 1):
+        # Sharp pauldron overlay masks the spherical construction underneath.
+        px = 1.55 + side * 0.42
+        if side < 0:
+            pauldron_points = [
+                (1.35, 2.46), (1.15, 2.45), (1.02, 2.35),
+                (1.10, 2.25), (1.30, 2.27),
+            ]
+        else:
+            pauldron_points = [
+                (1.75, 2.46), (1.95, 2.45), (2.08, 2.35),
+                (2.00, 2.25), (1.80, 2.27),
+            ]
+        armor_panel(
+            f"HOME_PROP_armor_pauldron_front_{side}",
+            pauldron_points,
+            5.575,
+            0.032,
+            materials["armor_steel"],
+            bevel=0.026,
+        )
+
+        # Separate upper-arm and forearm plates preserve the elbow break.
+        if side < 0:
+            upper_arm = [
+                (1.18, 2.31), (1.07, 2.27), (0.99, 2.04),
+                (1.03, 1.94), (1.12, 1.98), (1.25, 2.24),
+            ]
+            forearm = [
+                (1.04, 1.91), (0.98, 1.84), (1.00, 1.64),
+                (1.08, 1.57), (1.16, 1.67), (1.14, 1.86),
+            ]
+        else:
+            upper_arm = [
+                (1.92, 2.31), (2.03, 2.27), (2.11, 2.04),
+                (2.07, 1.94), (1.98, 1.98), (1.85, 2.24),
+            ]
+            forearm = [
+                (2.06, 1.91), (2.12, 1.84), (2.10, 1.64),
+                (2.02, 1.57), (1.94, 1.67), (1.96, 1.86),
+            ]
+        armor_panel(
+            f"HOME_PROP_armor_arm_plate_{side}",
+            upper_arm,
+            5.590,
+            0.032,
+            materials["armor_steel"],
+            bevel=0.022,
+        )
+        armor_panel(
+            f"HOME_PROP_armor_forearm_plate_{side}",
+            forearm,
+            5.600,
+            0.030,
+            materials["armor_steel"],
+            bevel=0.020,
+        )
+
+        cx = 1.55 + side * 0.145
+        armor_panel(
+            f"HOME_PROP_armor_shin_plate_{side}",
+            [
+                (cx - 0.090, 0.54), (cx + 0.090, 0.54),
+                (cx + 0.105, 1.13), (cx + 0.065, 1.30),
+                (cx, 1.36),
+                (cx - 0.065, 1.30), (cx - 0.105, 1.13),
+            ],
+            5.67,
+            0.034,
+            materials["armor_steel"],
+            bevel=0.024,
+        )
+        armor_panel(
+            f"HOME_PROP_armor_thigh_plate_{side}",
+            [
+                (cx - 0.105, 1.34), (cx + 0.105, 1.34),
+                (cx + 0.120, 1.66), (cx + 0.080, 1.73),
+                (cx - 0.080, 1.73), (cx - 0.120, 1.66),
+            ],
+            5.635,
+            0.032,
+            materials["armor_steel"],
+            bevel=0.024,
+        )
+
+        tx = 1.55 + side * 0.205
+        armor_panel(
+            f"HOME_PROP_armor_tasset_front_{side}",
+            [
+                (tx - 0.125, 1.82), (tx + 0.125, 1.82),
+                (tx + 0.105, 1.52), (tx, 1.42), (tx - 0.105, 1.52),
+            ],
+            5.585,
+            0.032,
+            materials["armor_steel"],
+            bevel=0.025,
+        )
+
+        curve_tube(
+            f"HOME_PROP_armor_greave_ridge_{side}",
+            [(cx, 5.635, 0.63), (cx, 5.625, 1.18), (cx, 5.620, 1.30)],
+            0.012,
+            materials["brass_dark"],
+        )
+
     curve_tube(
         "HOME_PROP_armor_chest_v_left",
         [(1.28, 5.445, 2.78), (1.43, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.020,
-        materials["brass_dark"],
+        0.012,
+        materials["armor_steel"],
     )
     curve_tube(
         "HOME_PROP_armor_chest_v_right",
         [(1.82, 5.445, 2.78), (1.67, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.020,
-        materials["brass_dark"],
+        0.012,
+        materials["armor_steel"],
     )
     add_trophy(materials)
     add_side_furnishings(materials)
