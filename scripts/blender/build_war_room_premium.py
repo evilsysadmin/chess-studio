@@ -900,11 +900,11 @@ def add_gothic_canon_v2(static, mats):
         for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
             torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
                   (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
-                  mats["stone_dark"], static, rotation=(math.pi / 2, 0, 0))
+                  mats["stone"], static, rotation=(math.pi / 2, 0, 0))
         cube(f"WR_CANON_arch_{prefix}_tracery_v", (cx, 6.30, 5.18),
-             (0.038, 0.035, 0.48), mats["stone_dark"], static, bevel=0.014)
+             (0.038, 0.035, 0.48), mats["stone"], static, bevel=0.014)
         cube(f"WR_CANON_arch_{prefix}_tracery_h", (cx, 6.30, 5.42),
-             (0.48, 0.035, 0.038), mats["stone_dark"], static, bevel=0.014)
+             (0.48, 0.035, 0.038), mats["stone"], static, bevel=0.014)
 
     # Shallow mortar courses break the upper wall into believable masonry.
     # They stay behind the hero props and use one existing material so runtime
@@ -921,9 +921,9 @@ def add_gothic_canon_v2(static, mats):
         cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
              (0.16, 0.090, 1.62), mats["stone"], static, bevel=0.050)
         cube(f"WR_CANON_rear_pilaster_cap_{index}", (x, 6.47, 6.16),
-             (0.24, 0.110, 0.10), mats["stone_light"], static, bevel=0.040)
+             (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
         cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
-             (0.24, 0.110, 0.10), mats["stone_dark"], static, bevel=0.040)
+             (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
     # Four tall heraldic banners frame the existing central rampant-horse crest.
     # Their lower points sit behind the table so they read as architecture, not UI.
