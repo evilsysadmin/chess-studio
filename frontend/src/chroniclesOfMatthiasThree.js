@@ -135,7 +135,13 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   scene.add(gate);
 
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
-  const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa44, roughness: 0.5, emissive: 0xff5b16, emissiveIntensity: 2.4 });
+  const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xff9b35, roughness: 0.42, emissive: 0xff5414, emissiveIntensity: 2.8 });
+  const flameCoreMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffe1a0,
+    transparent: true,
+    opacity: 0.94,
+    depthWrite: false,
+  });
   const torches = [];
   CHRONICLES_TORCH_PLACEMENTS.forEach(({ x, y, side, intensity = 1, flameScale = 1 }, index) => {
     const transform = chroniclesTorchTransform(x, y, side);
@@ -149,23 +155,29 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     bracket.position.x = 0.2;
     bracket.rotation.z = Math.PI / 2;
     bracket.castShadow = true;
-    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), flameMaterial);
-    flame.scale.set(0.92 * flameScale, 1.76 * flameScale, 0.92 * flameScale);
-    flame.position.set(0.51, 0.2, 0);
+    // A tapered outer flame plus a small hot core reads as fire instead of a
+    // glowing sphere, while keeping the same single practical light per torch.
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, coarsePointer ? 8 : 12), flameMaterial);
+    flame.scale.set(0.94 * flameScale, 1.08 * flameScale, 0.94 * flameScale);
+    flame.position.set(0.51, 0.28, 0);
+    const flameCore = new THREE.Mesh(new THREE.SphereGeometry(0.068, coarsePointer ? 7 : 10, 6), flameCoreMaterial);
+    flameCore.scale.set(0.9 * flameScale, 1.28 * flameScale, 0.9 * flameScale);
+    flameCore.position.set(0.51, 0.18, 0);
+    flameCore.renderOrder = 2;
     const baseIntensity = (coarsePointer ? 1.5 : 1.95) * intensity;
     const light = new THREE.PointLight(0xff7a32, baseIntensity, 9.5, 2);
-    light.position.set(0.51, 0.2, 0);
+    light.position.set(0.51, 0.22, 0);
     if (!coarsePointer && (index === 2 || index === 3)) {
       light.castShadow = true;
       light.shadow.mapSize.set(256, 256);
       light.shadow.bias = -0.001;
       light.shadow.normalBias = 0.04;
     }
-    root.add(wallPlate, bracket, flame, light);
+    root.add(wallPlate, bracket, flame, flameCore, light);
     root.position.copy(transform.position);
     root.rotation.y = transform.yaw;
     scene.add(root);
-    torches.push({ root, flame, light, baseIntensity, flameScale, phase: index * 1.7 });
+    torches.push({ root, flame, flameCore, light, baseIntensity, flameScale, phase: index * 1.7 });
   });
 
   return { enemies: enemyModels, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
@@ -355,8 +367,15 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         torch.light.intensity = torch.baseIntensity * pulse;
         const width = 0.91 + (pulse - 0.9) * 0.42;
         const flameScale = torch.flameScale || 1;
-        torch.flame.scale.set(width * flameScale, (1.54 + pulse * 0.24) * flameScale, width * flameScale);
-        torch.flame.rotation.z = Math.sin(time * 5.7 + torch.phase) * 0.07;
+        torch.flame.scale.set(width * flameScale, (1.03 + pulse * 0.13) * flameScale, width * flameScale);
+        torch.flame.rotation.z = Math.sin(time * 5.7 + torch.phase) * 0.085;
+        const corePulse = 0.88 + (pulse - 0.9) * 0.32;
+        torch.flameCore.scale.set(
+          corePulse * flameScale,
+          (1.22 + (pulse - 0.9) * 0.28) * flameScale,
+          corePulse * flameScale,
+        );
+        torch.flameCore.position.y = 0.18 + Math.sin(time * 9.4 + torch.phase) * 0.008;
       });
       CHRONICLES_ENEMIES.forEach((enemyDefinition, index) => {
         const enemy = dungeon.enemies[enemyDefinition.id];
