@@ -831,11 +831,11 @@ def add_gothic_canon_v2(static, mats):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     burgundy = material(
-        "WR_MAT_canon_burgundy", (0.135, 0.009, 0.016, 1),
+        "WR_MAT_canon_burgundy", (0.205, 0.012, 0.022, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
     )
     burgundy_dark = material(
-        "WR_MAT_canon_burgundy_dark", (0.092, 0.007, 0.013, 1),
+        "WR_MAT_canon_burgundy_dark", (0.128, 0.009, 0.016, 1),
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
     heraldic_brass = material(
@@ -1097,7 +1097,7 @@ def build():
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
         "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
         "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
-        "wall_plaster": material("WR_MAT_wall_plaster", (0.155, 0.145, 0.132, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.058),
+        "wall_plaster": material("WR_MAT_wall_plaster", (0.205, 0.188, 0.168, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.058),
         "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
         "floor_dark": material("WR_MAT_floor_underlay", (0.052, 0.051, 0.050, 1), rough=0.76, coat=0.018, texture="stone", scale=4.8, bump=0.055),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
@@ -1109,13 +1109,13 @@ def build():
         "red": material("WR_MAT_red_metal", (0.30, 0.012, 0.016, 1), metal=0.74, rough=0.24, coat=0.50),
         "velvet": material("WR_MAT_velvet", (0.018, 0.012, 0.014, 1), rough=0.90, sheen=0.24, texture="fabric", scale=38, bump=0.08),
         "velvet_dark": material("WR_MAT_velvet_dark", (0.006, 0.005, 0.006, 1), rough=0.95, sheen=0.18, texture="fabric", scale=44, bump=0.06),
-        "leather": material("WR_MAT_leather", (0.082, 0.026, 0.022, 1), rough=0.50, coat=0.18, sheen=0.14, texture="leather", scale=47, bump=0.105),
-        "leather_dark": material("WR_MAT_leather_dark", (0.028, 0.012, 0.011, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
+        "leather": material("WR_MAT_leather", (0.112, 0.034, 0.028, 1), rough=0.50, coat=0.18, sheen=0.14, texture="leather", scale=47, bump=0.105),
+        "leather_dark": material("WR_MAT_leather_dark", (0.040, 0.016, 0.014, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.085, 0.086, 0.092, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.145, 0.142, 0.145, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
-        "stone_dark": material("WR_MAT_stone_shadow", (0.032, 0.033, 0.036, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
+        "stone": material("WR_MAT_stone", (0.118, 0.120, 0.128, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.205, 0.198, 0.200, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.046, 0.047, 0.052, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
         "rug": material("WR_MAT_rug", (0.074, 0.010, 0.016, 1), rough=0.94, sheen=0.22, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.165, 0.185, 0.225, 1), metal=0.93, rough=0.35, coat=0.14, texture="metal", scale=28, bump=0.035),
         "armor_dark": material("WR_MAT_armor_dark", (0.060, 0.072, 0.095, 1), metal=0.90, rough=0.43, coat=0.09, texture="metal", scale=22, bump=0.025),
