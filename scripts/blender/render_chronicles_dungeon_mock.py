@@ -97,11 +97,6 @@ def mat_stone(name, dark=False, wet=False):
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
 
-    patina = nt.nodes.new("ShaderNodeMixRGB")
-    patina.blend_type = "MULTIPLY"
-    patina.inputs[0].default_value = .20
-    patina.inputs[2].default_value = (.34, .39, .34, 1)
-
     bump_mix = nt.nodes.new("ShaderNodeMixRGB")
     bump_mix.blend_type = "MULTIPLY"
     bump_mix.inputs[0].default_value = .58
@@ -114,15 +109,13 @@ def mat_stone(name, dark=False, wet=False):
     nt.links.new(obj.outputs["Random"], obj_ramp.inputs["Fac"])
     nt.links.new(ramp.outputs["Color"], tint.inputs[1])
     nt.links.new(obj_ramp.outputs["Color"], tint.inputs[2])
-    nt.links.new(tint.outputs["Color"], patina.inputs[1])
-    nt.links.new(stain.outputs["Fac"], patina.inputs["Fac"])
-    nt.links.new(patina.outputs["Color"], bs.inputs["Base Color"])
+    nt.links.new(tint.outputs["Color"], bs.inputs["Base Color"])
     nt.links.new(micro.outputs["Fac"], bump_mix.inputs[1])
     nt.links.new(macro.outputs["Fac"], bump_mix.inputs[2])
     nt.links.new(bump_mix.outputs["Color"], bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"], bs.inputs["Normal"])
 
-    bs.inputs["Roughness"].default_value = .30 if wet else .62
+    bs.inputs["Roughness"].default_value = .34 if wet else .64
     if "Coat Weight" in bs.inputs:
         bs.inputs["Coat Weight"].default_value = .18 if wet else .015
     return m
@@ -313,7 +306,7 @@ def torch(M, x, y, z=1.55, wall_axis="x"):
     flame = bpy.context.object
     flame.name = "torch_flame"
     finish(flame, M["flame"], .009, True)
-    point_light("torch_light", (x, y, z+.28), 220, (1.0, .20, .045), .52)
+    point_light("torch_light", (x, y, z+.28), 232, (1.0, .24, .065), .54)
 
 
 def banner(M, x, y, z, blue=False):
@@ -598,7 +591,7 @@ def setup_scene(out):
     scene.world.color = (.004, .007, .012)
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
-        scene.view_settings.exposure = 0.42
+        scene.view_settings.exposure = 0.53
     except Exception:
         pass
 
@@ -696,10 +689,10 @@ def build(M):
     sword_prop(M, -.70, -1.72, .10, angle=16)
 
     # Cool ambient fill + warm practicals: torches should own the image.
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 420, 7.2, (.34, .43, .58), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 650, 6.4, (.14, .24, .42), (0, 0, .8))
-    area_light("DungeonTopFill", (.5, 2.0, 11.0), 245, 5.0, (.30, .38, .48), (0, .7, .6))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 125, 5.2, (1.0, .22, .050), (0, 1.0, 1.1))
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 470, 7.2, (.36, .45, .60), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 625, 6.4, (.16, .27, .46), (0, 0, .8))
+    area_light("DungeonTopFill", (.5, 2.0, 11.0), 250, 5.0, (.34, .42, .52), (0, .7, .6))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 132, 5.2, (1.0, .24, .060), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
