@@ -40,7 +40,7 @@ def check_runtime(rt):
  if rt["actions"]!=exp: fail(f"runtime V9_ACTIONS drift: expected={exp} actual={rt['actions']}")
 
 def anchor(cell,box):
- px=cell.load(); pts=[]; y0=max(box[1],int(CELL*.42))
+ px=cell.load(); pts=[]; y0=box[1]+int((box[3]-box[1])*.42)
  for y in range(y0,box[3]):
   for x in range(box[0],box[2]):
    r,g,b,a=px[x,y]
