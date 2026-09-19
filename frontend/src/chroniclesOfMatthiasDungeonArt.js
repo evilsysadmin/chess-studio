@@ -560,7 +560,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     add(root, new THREE.TorusGeometry(0.24, 0.035, 8, coarsePointer ? 14 : 22), iron, [wx - 1.55, 1.72, wz], [Math.PI / 2, 0, 0], `chronicles-chain-ring-${index}`);
   });
 
-  [[1, 2], [5, 2], [1, 5], [5, 5]].forEach(([x, y], index) => addRubble(root, edgeMat, x, y, index, coarsePointer));
+  [[1, 2], [5, 2], [1, 5], [4, 5], [5, 5]].forEach(([x, y], index) => addRubble(root, edgeMat, x, y, index, coarsePointer));
   [[3, 2], [3, 4]].forEach(([x, y], index) => addCeilingRib(root, edgeMat, x, y, index, coarsePointer));
 
   // The opening east-west corridor now uses true transverse ribs: the arch
