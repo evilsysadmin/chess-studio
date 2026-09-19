@@ -4,7 +4,7 @@ import {
   applyWarRoomHemisphereGrade,
   applyWarRoomKeyLightGrade,
   applyWarRoomV2RuntimeLightingGrade,
-  warRoomBudgetCoarsePointer,
+  warRoomLightingCoarsePointer,
   warRoomV2RuntimeLightingProfile,
 } from './WarRoom3DMotion.js';
 
@@ -33,11 +33,17 @@ function position(x, y, z) {
 }
 
 describe('War Room canonical warm lighting', () => {
-  it('keeps input modality independent from the shadow quality tier', () => {
-    expect(warRoomBudgetCoarsePointer({ coarsePointer: false, shadowMapSize: 512 })).toBe(false);
-    expect(warRoomBudgetCoarsePointer({ coarsePointer: true, shadowMapSize: 1024 })).toBe(true);
-    expect(warRoomBudgetCoarsePointer({ shadowMapSize: 512 })).toBe(true);
-    expect(warRoomBudgetCoarsePointer({ shadowMapSize: 1024 })).toBe(false);
+  it('keeps lighting modality independent from the shadow quality tier', () => {
+    expect(warRoomLightingCoarsePointer({
+      budget: { shadowMapSize: 512 },
+      mediaQuery: () => ({ matches: false }),
+    })).toBe(false);
+    expect(warRoomLightingCoarsePointer({
+      budget: { shadowMapSize: 1024 },
+      mediaQuery: () => ({ matches: true }),
+    })).toBe(true);
+    expect(warRoomLightingCoarsePointer({ budget: { shadowMapSize: 512 } })).toBe(true);
+    expect(warRoomLightingCoarsePointer({ budget: { shadowMapSize: 1024 } })).toBe(false);
   });
 
   it('grades the room and vertical board wash to a luminous warm club look', () => {
