@@ -175,6 +175,8 @@ func _run() -> void:
     if one_way_shape != null:
         _expect(one_way_shape.one_way_collision, "plataforma one-way permite atravesarla desde abajo")
         _expect(one_way_shape.one_way_collision_margin >= 4.0, "plataforma one-way conserva margen estable")
+    geometry_probe._map_geometry_root.free()
+    geometry_probe._map_geometry_root = null
     geometry_probe.free()
 
     world.queue_free()
