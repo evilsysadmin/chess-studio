@@ -920,7 +920,7 @@ def add_gothic_canon_v2(static, mats):
         # beige board. Keep them shallow: they should catch grazing firelight,
         # not turn the background into a checkerboard.
         joint_offset = 0.82 if course % 2 else 0.0
-        for joint, x in enumerate((-6.45, -4.30, -2.15, 0.0, 2.15, 4.30, 6.45)):
+        for joint, x in enumerate((-4.30, -2.15, 0.0, 2.15, 4.30)):
             jx = x + joint_offset
             if abs(jx) > 7.70:
                 continue
@@ -1040,16 +1040,9 @@ def add_gothic_canon_v2(static, mats):
                     mats["stone"] if (row + (1 if side > 0 else 0)) % 2 else mats["stone_light"],
                     static, bevel=0.030,
                 )
-            cube(
-                f"WR_CANON_fireplace_block_{prefix}_corbel_{side}",
-                (cx + side * 1.36, 5.30, 3.25), (0.18, 0.20, 0.23),
-                mats["stone_dark"], static, bevel=0.055,
-            )
-            cube(
-                f"WR_CANON_fireplace_block_{prefix}_mantel_key_{side}",
-                (cx + side * 0.86, 5.41, 3.50), (0.30, 0.10, 0.075),
-                mats["stone_light"], static, bevel=0.032,
-            )
+            # The lintel/jamb rhythm carries the masonry scale by itself. Keep
+            # the surround lean enough to stay inside the runtime batching
+            # budget; extra corbels/keys were visually redundant at hero scale.
 
     add_fireplace_blockwork("left", -4.55)
     add_fireplace_blockwork("right", rx)
