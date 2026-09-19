@@ -23,7 +23,7 @@ jobs:
   render:
     name: Render Home Blender 2.0 · ${{ inputs.quality || 'beauty' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -37,15 +37,17 @@ jobs:
       - name: Build editable scene + preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-blender-v2
           blender --background --python-exit-code 1 \
+            --python scripts/blender/configure_eevee_premium.py \
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '8' || '8' }}' \
-            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '900' || '800' }}' \
+            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '64' || '8' }}' \
+            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '1600' || '800' }}' \
             --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
@@ -71,7 +73,7 @@ jobs:
 
           quality = os.environ.get('QUALITY') or 'blockout'
           expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
-          expected_max_width = 900 if quality == 'beauty' else 800
+          expected_max_width = 1600 if quality == 'beauty' else 800
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
