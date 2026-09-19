@@ -264,10 +264,11 @@ export function chroniclesEnemyThreatCells(state, enemy, position = chroniclesRu
   return cells;
 }
 
-// "If you end your turn now": what every active creature will do. The preview
-// is the real resolver run on a copy of the state (it is pure and has no
-// randomness), so telegraphed intent is exact by construction. It is recomputed
-// after each party action; it is not a promise about a future, changed state.
+// What every active creature will do in response to the state exactly as given
+// (e.g. the state right after a candidate party action). The preview is the real
+// resolver run on a copy of the state (it is pure and has no randomness), so the
+// telegraphed intent is exact by construction. Callers decide whether the
+// resolver would actually run for a given action (see chroniclesTacticsResolvePlayerAction).
 export function chroniclesPreviewEnemyTurn(state) {
   const empty = Object.freeze({
     round: Number(state?.round || 0),
