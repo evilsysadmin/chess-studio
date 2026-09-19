@@ -1060,14 +1060,14 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.46
+    scene.view_settings.exposure = -0.32
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.004, 0.006, 0.012, 1.0)
-    bg.inputs["Strength"].default_value = 0.066
+    bg.inputs["Strength"].default_value = 0.082
 
     static = collection("WR_STATIC_SHELL")
     dynamic = collection("WR_PREVIEW_DYNAMIC")
