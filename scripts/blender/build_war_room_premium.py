@@ -1639,7 +1639,9 @@ def collapse_runtime_static_shell():
         1 for obj in bpy.context.scene.objects
         if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
     )
-    if remaining > 150:
+    # 150 batches plus the right hearth's own ember/core flame groups: those two
+    # materials have no other mesh in that spatial cell, so they cannot merge.
+    if remaining > 152:
         raise RuntimeError(f"runtime static batching ineffective: {source_count} -> {remaining}")
     if merged_away < 120:
         raise RuntimeError(f"runtime static batching merged too little: {merged_away}")
