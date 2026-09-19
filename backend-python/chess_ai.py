@@ -562,8 +562,9 @@ def _root_search(
     deadline: float,
     tt: dict[tuple, TTEntry],
     ghost_style: Optional[dict] = None,
+    preferred_move: Optional[chess.Move] = None,
 ) -> tuple[Optional[chess.Move], float]:
-    moves = _order_moves(board, list(board.legal_moves))
+    moves = _order_moves(board, list(board.legal_moves), preferred_move)
     if not moves:
         return None, 0.0
 
@@ -652,16 +653,29 @@ def _search(board: chess.Board, settings: LevelSettings, ghost_style: Optional[d
 
     # El último resultado COMPLETO de una profundidad es el que se conserva.
     # Si el reloj corta una profundidad nueva, nunca devolvemos una jugada
-    # parcialmente analizada.
+    # parcialmente analizada. En juego normal, la PV raíz de la profundidad
+    # anterior se busca primero en la siguiente: misma respuesta a profundidad
+    # completa, más poda alpha-beta. Rival Fantasma conserva el orden histórico
+    # para no volver dependiente del orden su desempate estilístico.
+    preferred_move: Optional[chess.Move] = None
     for depth in range(1, settings.max_depth + 1):
         if time.monotonic() >= deadline:
             break
         try:
-            move, score = _root_search(board, depth, deadline, tt, ghost_style)
+            move, score = _root_search(
+                board,
+                depth,
+                deadline,
+                tt,
+                ghost_style,
+                preferred_move if ghost_style is None else None,
+            )
         except TimeoutError:
             break
         if move is not None:
             best, best_score = move, score
+            if ghost_style is None:
+                preferred_move = move
 
     return best, best_score
 

@@ -71,6 +71,54 @@ def test_get_cpu_move_skips_randomness_and_search_when_move_is_forced(monkeypatc
     assert get_cpu_move(ForcedBoard(), 0, {"capture": 1}) == {"from": "e2", "to": "e4", "san": "e4"}
 
 
+def test_iterative_search_reuses_previous_root_pv_for_ordering(monkeypatch):
+    board = chess.Board()
+    settings = ai_module.LevelSettings(level=80, max_depth=3, randomness=0.0, noise=0.0, time_budget_s=1.0)
+    sequence = [
+        chess.Move.from_uci("e2e4"),
+        chess.Move.from_uci("d2d4"),
+        chess.Move.from_uci("g1f3"),
+    ]
+    seen = []
+
+    monkeypatch.setattr(ai_module, "_static_best_move", lambda *_args: (chess.Move.from_uci("a2a3"), 0.0))
+
+    def fake_root(_board, depth, _deadline, _tt, _style=None, preferred_move=None):
+        seen.append((depth, preferred_move))
+        return sequence[depth - 1], float(depth)
+
+    monkeypatch.setattr(ai_module, "_root_search", fake_root)
+
+    best, score = ai_module._search(board, settings)
+
+    assert best == sequence[-1]
+    assert score == 3.0
+    assert seen == [
+        (1, None),
+        (2, sequence[0]),
+        (3, sequence[1]),
+    ]
+
+
+def test_styled_search_does_not_change_root_order_from_previous_iteration(monkeypatch):
+    board = chess.Board()
+    settings = ai_module.LevelSettings(level=80, max_depth=2, randomness=0.0, noise=0.0, time_budget_s=1.0)
+    sequence = [chess.Move.from_uci("e2e4"), chess.Move.from_uci("d2d4")]
+    seen = []
+
+    monkeypatch.setattr(ai_module, "_static_best_move", lambda *_args: (chess.Move.from_uci("a2a3"), 0.0))
+
+    def fake_root(_board, depth, _deadline, _tt, _style=None, preferred_move=None):
+        seen.append(preferred_move)
+        return sequence[depth - 1], float(depth)
+
+    monkeypatch.setattr(ai_module, "_root_search", fake_root)
+
+    ai_module._search(board, settings, {"capture": 1.0})
+
+    assert seen == [None, None]
+
+
 def test_get_cpu_move_finds_mate_in_one():
     board = chess.Board("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1")
     move = get_cpu_move(board, 100)
