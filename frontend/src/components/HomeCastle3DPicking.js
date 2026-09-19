@@ -1,7 +1,12 @@
 export const HOME_CASTLE_PICKABLE_DESTINATIONS = Object.freeze([
   'tournament',
+  'train',
   'combat',
+  'daily',
+  'history',
   'play',
+  'pawnslug',
+  'dungeon',
 ]);
 
 const PICKABLE_DESTINATION_SET = new Set(HOME_CASTLE_PICKABLE_DESTINATIONS);

@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { homeCastleKnownRoom, homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
+import { HOME_CASTLE_PICKABLE_DESTINATIONS } from './HomeCastle3DPicking.js';
 
 describe('HomeCastle3DRoomFocus', () => {
+  it('keeps every diegetic and utility object pickable', () => {
+    expect(HOME_CASTLE_PICKABLE_DESTINATIONS).toEqual([
+      'tournament',
+      'train',
+      'combat',
+      'daily',
+      'history',
+      'play',
+      'pawnslug',
+      'dungeon',
+    ]);
+  });
+
   it('maps every canonical destination to a bounded local focus', () => {
     for (const room of ['tournament', 'train', 'combat', 'daily', 'history', 'play']) {
       expect(homeCastleKnownRoom(room)).toBe(true);

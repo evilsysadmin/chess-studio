@@ -17,17 +17,28 @@ function destinationGroup(destination) {
 }
 
 describe('HomeCastle3DPicking', () => {
-  it('limits direct mesh picking to the primary object-led destinations', () => {
+  it('allows direct mesh picking for every object-led destination', () => {
     const tournament = destinationGroup('tournament').group;
     const combat = destinationGroup('combat').group;
     const play = destinationGroup('play').group;
     const train = destinationGroup('train').group;
+    const daily = destinationGroup('daily').group;
+    const history = destinationGroup('history').group;
+    const pawnslug = destinationGroup('pawnslug').group;
+    const dungeon = destinationGroup('dungeon').group;
 
-    expect(HOME_CASTLE_PICKABLE_DESTINATIONS).toEqual(['tournament', 'combat', 'play']);
-    expect(homeCastlePickableGroups({ tournament, combat, play, train })).toEqual([
+    expect(HOME_CASTLE_PICKABLE_DESTINATIONS).toEqual([
+      'tournament', 'train', 'combat', 'daily', 'history', 'play', 'pawnslug', 'dungeon',
+    ]);
+    expect(homeCastlePickableGroups({ tournament, combat, play, train, daily, history, pawnslug, dungeon })).toEqual([
       tournament,
+      train,
       combat,
+      daily,
+      history,
       play,
+      pawnslug,
+      dungeon,
     ]);
   });
 
@@ -39,7 +50,7 @@ describe('HomeCastle3DPicking', () => {
   });
 
   it('uses the nearest supported intersection and ignores unrelated scene meshes', () => {
-    const unrelated = destinationGroup('train');
+    const unrelated = destinationGroup('unrelated');
     const combat = destinationGroup('combat');
 
     expect(homeCastleDestinationFromIntersections([

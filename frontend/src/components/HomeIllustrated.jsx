@@ -85,8 +85,13 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const activateSceneDestination = (destination) => {
     if (loading) return;
     if (destination === 'tournament') onTournament();
+    else if (destination === 'train') onTrain();
     else if (destination === 'combat') onCombat();
+    else if (destination === 'daily') onDaily();
+    else if (destination === 'history') onHistory();
     else if (destination === 'play') (hasSavedGame ? onContinue : onPlay)();
+    else if (destination === 'pawnslug') openPawnSlug();
+    else if (destination === 'dungeon') setToolsOpen(true);
   };
 
   useEffect(() => {
