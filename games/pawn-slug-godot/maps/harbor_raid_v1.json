@@ -136,7 +136,9 @@
       "w": 240,
       "h": 24,
       "kind": "crane_walk",
-      "material": "metal"
+      "material": "metal",
+      "one_way": true,
+      "route": "crane_assault"
     },
     {
       "x": 4300,
@@ -196,6 +198,46 @@
       "kind": "climb_dock",
       "material": "wood",
       "route": "climb"
+    },
+    {
+      "x": 4060,
+      "y": 318,
+      "w": 165,
+      "h": 24,
+      "kind": "crane_perch",
+      "material": "metal",
+      "route": "crane_assault",
+      "one_way": true
+    },
+    {
+      "x": 4190,
+      "y": 240,
+      "w": 170,
+      "h": 24,
+      "kind": "crane_perch",
+      "material": "metal",
+      "route": "crane_assault",
+      "one_way": true
+    },
+    {
+      "x": 4340,
+      "y": 318,
+      "w": 170,
+      "h": 24,
+      "kind": "crane_perch",
+      "material": "metal",
+      "route": "crane_assault",
+      "one_way": true
+    },
+    {
+      "x": 4470,
+      "y": 404,
+      "w": 180,
+      "h": 24,
+      "kind": "crane_walk",
+      "material": "metal",
+      "route": "crane_assault",
+      "one_way": true
     }
   ],
   "obstacles": [
@@ -357,7 +399,9 @@
     },
     {
       "x": 4110,
-      "type": "rook"
+      "type": "rook",
+      "y": 318,
+      "route": "crane_assault"
     },
     {
       "x": 4267,
@@ -413,9 +457,11 @@
       "type": "panzerfaust"
     },
     {
-      "x": 4680,
-      "y": 566,
-      "type": "grenade"
+      "x": 4410,
+      "y": 274,
+      "type": "grenade",
+      "route": "crane_assault",
+      "optional": true
     },
     {
       "x": 2930,
