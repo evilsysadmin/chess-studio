@@ -159,9 +159,20 @@ assert "python3 scripts/oci_k3s_control.py rollback" in service
 assert "Read K3s status and resource snapshot" in service
 assert "python3 scripts/oci_k3s_status.py" in service
 assert "inputs.operation == 'k3s-status'" in service
+assert "Deploy exact backend into isolated K3s staging2" in service
+assert 'python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_REF"' in service
+assert "Roll back isolated K3s staging2 backend" in service
+assert "python3 scripts/oci_k3s_staging2.py rollback" in service
+assert "Read isolated K3s staging2 status" in service
+assert "python3 scripts/oci_k3s_staging2.py status" in service
 assert "Prove Docker staging survived K3s lifecycle change" in service
 assert 'EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}' in service
 assert '--sha "$EXPECTED_SHA"' in service
+
+concurrency_block = service.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
+assert '"k3s-staging2-deploy"' in concurrency_block
+assert '"k3s-staging2-rollback"' in concurrency_block
+assert '"k3s-staging2-status"' not in concurrency_block
 
 manual_only_fragments = (
     "inputs.operation == 'mongo-target-diagnose'",
@@ -175,6 +186,9 @@ manual_only_fragments = (
     "inputs.operation == 'k3s-start'",
     "inputs.operation == 'k3s-status'",
     "inputs.operation == 'k3s-rollback'",
+    "inputs.operation == 'k3s-staging2-deploy'",
+    "inputs.operation == 'k3s-staging2-status'",
+    "inputs.operation == 'k3s-staging2-rollback'",
     "inputs.operation == 'deploy' || inputs.operation == 'bringup'",
 )
 for fragment in manual_only_fragments:
