@@ -22,6 +22,7 @@ from typing import Any
 CF_API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
+PRODUCTION_API_HOSTNAME = "api.chess-studio.shadowops.dpdns.org"
 TUNNEL_NAME = "chess-studio-staging"
 OCI_COMPARTMENT_NAME = "chess-studio-staging"
 RUNTIME_BUCKET = "chess-studio-staging-runtime"
@@ -113,6 +114,11 @@ def desired_ingress() -> dict[str, object]:
                 {
                     "hostname": API_HOSTNAME,
                     "service": "http://127.0.0.1:4000",
+                    "originRequest": {},
+                },
+                {
+                    "hostname": PRODUCTION_API_HOSTNAME,
+                    "service": "http://127.0.0.1:4100",
                     "originRequest": {},
                 },
                 {"service": "http_status:404"},
@@ -360,6 +366,8 @@ def self_test() -> None:
     rules = ingress["config"]["ingress"]  # type: ignore[index]
     assert rules[0]["hostname"] == API_HOSTNAME
     assert rules[0]["service"] == "http://127.0.0.1:4000"
+    assert rules[1]["hostname"] == PRODUCTION_API_HOSTNAME
+    assert rules[1]["service"] == "http://127.0.0.1:4100"
     assert rules[-1]["service"] == "http_status:404"
     command = host_command("namespace", RUNTIME_BUCKET, TOKEN_OBJECT)
     assert "--token-file" in command
