@@ -468,6 +468,22 @@ def add_fireplace(name: str, x: float, materials):
     fire = materials["fire"]
     # Tall dark recess is essential to the canonical silhouette.
     cube(f"HOME_PROP_{name}_recess", (x, 6.70, 2.42), (1.10, 0.08, 1.76), dark, bevel=0.08)
+    cube(f"HOME_PROP_{name}_firebox_back", (x, 6.585, 1.22), (0.92, 0.025, 0.74), materials["soot_stone"], bevel=0.045)
+    for course, z in enumerate((0.66, 0.94, 1.22, 1.50, 1.78)):
+        cube(
+            f"HOME_PROP_{name}_firebox_course_{course}",
+            (x, 6.552, z),
+            (0.86, 0.012, 0.010),
+            materials["stone_dark"],
+        )
+        offset = 0.24 if course % 2 else -0.24
+        for joint, jx in enumerate((-0.52, 0.0, 0.52)):
+            cube(
+                f"HOME_PROP_{name}_firebox_joint_{course}_{joint}",
+                (x + jx + offset, 6.548, z + 0.13),
+                (0.010, 0.012, 0.11),
+                materials["stone_dark"],
+            )
     cube(f"HOME_PROP_{name}_hearth", (x, 6.52, 0.88), (1.15, 0.10, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_hearth_slab", (x, 5.62, 0.28), (1.42, 0.46, 0.12), stone, bevel=0.05)
     for side in (-1, 1):
@@ -935,9 +951,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steel": material("HOME_MAT_steel", (0.245, 0.265, 0.285, 1), roughness=0.24, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
-        "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
-        "banner": material("HOME_MAT_banner", (0.27, 0.014, 0.018, 1), roughness=0.87, bump_scale=20.0, bump_strength=0.05, variation=0.07, variation_scale=8.0),
-        "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.005, 0.009, 1), roughness=0.93, bump_scale=22.0, bump_strength=0.035, variation=0.05, variation_scale=9.0),
+        "rug": material("HOME_MAT_rug", (0.105, 0.006, 0.010, 1), roughness=0.95, bump_scale=26.0, bump_strength=0.08, variation=0.10, variation_scale=9.0),
+        "banner": material("HOME_MAT_banner", (0.160, 0.007, 0.011, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.10, variation_scale=8.0),
+        "velvet_dark": material("HOME_MAT_velvet_dark", (0.060, 0.004, 0.008, 1), roughness=0.94, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
+        "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
         "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91),
         "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91),
