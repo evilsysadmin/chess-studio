@@ -404,17 +404,17 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-dressing';
 
-  const floorMat = material(0x5b5146, {
+  const floorMat = material(0x505354, {
     roughness: 0.88,
     surface: { pattern: 'flagstone', seed: 11, repeat: [1.3, 1.3] },
     bumpScale: 0.075,
   });
-  const floorAlt = material(0x48423b, {
+  const floorAlt = material(0x414547, {
     roughness: 0.92,
     surface: { pattern: 'flagstone', seed: 23, repeat: [1.3, 1.3] },
     bumpScale: 0.07,
   });
-  const floorInset = material(0x423c35, {
+  const floorInset = material(0x343a3d, {
     roughness: 0.92,
     transparent: true,
     opacity: 0.78,
@@ -422,26 +422,29 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     surface: { pattern: 'worn', seed: 31, repeat: [1.35, 1.2] },
     bumpScale: 0.032,
   });
-  const wallStone = material(0x776b5b, {
+  const wallStone = material(0x687073, {
     roughness: 0.89,
     surface: { pattern: 'masonry', seed: 41, repeat: [1.08, 1] },
     bumpScale: 0.11,
   });
-  const wallStoneAlt = material(0x625a4e, {
+  const wallStoneAlt = material(0x555d60, {
     roughness: 0.92,
     surface: { pattern: 'masonry', seed: 53, repeat: [1.08, 1] },
     bumpScale: 0.1,
   });
-  const edgeMat = material(0x655947, {
+  const edgeMat = material(0x596064, {
     roughness: 0.88,
     surface: { pattern: 'worn', seed: 67, repeat: [1.05, 1.05] },
     bumpScale: 0.05,
   });
-  const wallAccent = material(0x87745f, {
+  const wallAccent = material(0x737576, {
     roughness: 0.84,
     surface: { pattern: 'worn', seed: 79, repeat: [1.05, 1.05] },
     bumpScale: 0.045,
   });
+  // Keep the masonry neutral enough that warm torchlight and the colder crypt
+  // fills define the scene's palette instead of baking a permanent brown cast
+  // into every surface. Relief, wear and procedural texture remain unchanged.
   const iron = material(0x302e2f, { metalness: 0.68, roughness: 0.37, clearcoat: 0.08 });
   const rune = material(0xa96a2b, { metalness: 0.46, roughness: 0.32, emissive: 0x4b1d05, emissiveIntensity: 0.55 });
   const wetStone = material(0x151b1d, { roughness: 0.24, clearcoat: 0.96, clearcoatRoughness: 0.12, transparent: true, opacity: 0.7, depthWrite: false });
