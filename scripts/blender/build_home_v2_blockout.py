@@ -1207,9 +1207,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_point_light(
         "HOME_LIGHT_fireplace_left_inner",
         (-6.15, 5.10, 1.02),
-        92,
-        (1.0, 0.30, 0.07),
-        radius=0.70,
+        74,
+        (1.0, 0.28, 0.065),
+        radius=0.62,
     )
     for idx, (dx, h, lean) in enumerate((
         (-0.42, 0.23, -0.04),
