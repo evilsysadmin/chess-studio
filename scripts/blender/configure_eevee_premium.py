@@ -59,6 +59,7 @@ def _render_pre(scene, *_args) -> None:
     apply_eevee_review_profile(scene)
 
 
-apply_eevee_review_profile(bpy.context.scene)
+# Apply only immediately before a render. This keeps review-quality settings
+# out of editable .blend state and runtime GLB generation.
 if _render_pre not in bpy.app.handlers.render_pre:
     bpy.app.handlers.render_pre.append(_render_pre)
