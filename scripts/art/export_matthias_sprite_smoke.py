@@ -27,6 +27,7 @@ V9_NAME_RE = re.compile(r"_godot_strict_6x18_416_v9(?:-[0-9a-f]{16})?\.png$", re
 # legacy 8x11 defaults and the runtime sprite smoke rejected valid 3328x7488
 # Godot atlases.
 STRICT_8X18_NAME_RE = re.compile(r"_godot_strict_8x18_416_v(?:11|12)(?:-[0-9a-f]{16})?\.png$", re.I)
+STRICT_8X18_SIZE = (416 * 8, 416 * 18)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
