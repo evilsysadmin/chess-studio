@@ -1060,17 +1060,17 @@ def status() -> None:
         or (not service_contract_ok)
         or (not pod_contract_ok)
         or _status_needs_diagnostics(
-        desired,
-        updated,
-        ready,
-        available,
-        generation,
-        observed_generation,
-        sha,
-        state_sha,
-        image_ref,
-        runtime_digest,
-        expected_runtime_digest,
+            desired,
+            updated,
+            ready,
+            available,
+            generation,
+            observed_generation,
+            sha,
+            state_sha,
+            image_ref,
+            runtime_digest,
+            expected_runtime_digest,
         )
     ):
         print(
