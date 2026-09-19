@@ -301,7 +301,10 @@ e2e-critical: ensure-e2e-deps frontend-build
 
 e2e: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
-	cd e2e && ./node_modules/.bin/playwright test
+	# Same discovery mode as e2e-full.yml: the regression aggregator is skipped and
+	# regression-journeys-core.js is picked up directly. Without it Playwright loads
+	# the aggregator plus the standalone specs it re-imports and refuses to run.
+	cd e2e && PLAYWRIGHT_FULL_SWEEP=1 ./node_modules/.bin/playwright test
 
 e2e-combat-dom: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
