@@ -6,6 +6,7 @@ on:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v10.yml'
   push:
     branches: [main]
@@ -13,6 +14,7 @@ on:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v10.yml'
   workflow_dispatch:
 
