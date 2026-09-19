@@ -6,7 +6,7 @@ export const CHRONICLES_TACTICS_MATERIAL_STYLE = Object.freeze({
   desktopTextureSize: 192,
   coarseTextureSize: 64,
   floorRepeat: 2.55,
-  wallRepeat: 1.8,
+  wallRepeat: 1.25,
   floorNormalStrength: 0.3,
   wallNormalStrength: 0.36,
   minRoughness: 0.7,
@@ -23,6 +23,32 @@ function noise(x, y, seed) {
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function masonryGroove(x, y, size, role) {
+  if (role !== 'wall') return 0;
+  const courseHeight = size / 4;
+  const brickWidth = size / 2;
+  const joint = Math.max(1, size / 96);
+  const row = Math.floor(y / courseHeight);
+  const rowY = y - row * courseHeight;
+  const stagger = row % 2 ? brickWidth / 2 : 0;
+  const brickX = (x + stagger) % brickWidth;
+  const horizontalJoint = Math.min(rowY, courseHeight - rowY) < joint;
+  const verticalJoint = Math.min(brickX, brickWidth - brickX) < joint;
+  if (horizontalJoint) return -0.34;
+  if (verticalJoint) return -0.28;
+  return 0;
+}
+
+function masonryBlockTone(x, y, size, seed, role) {
+  if (role !== 'wall') return 0;
+  const courseHeight = size / 4;
+  const brickWidth = size / 2;
+  const row = Math.floor(y / courseHeight);
+  const stagger = row % 2 ? brickWidth / 2 : 0;
+  const column = Math.floor(((x + stagger) % size) / brickWidth);
+  return (noise(column, row, seed + 131) - 0.5) * 14;
 }
 
 function heightField(size, seed) {
@@ -63,7 +89,8 @@ function createStoneTextureSet({ size, seed, repeat, normalStrength, role }) {
   const at = (x, y) => {
     const wrappedX = (x + size) % size;
     const wrappedY = (y + size) % size;
-    return heights[wrappedY * size + wrappedX];
+    return heights[wrappedY * size + wrappedX]
+      + masonryGroove(wrappedX, wrappedY, size, role);
   };
 
   for (let y = 0; y < size; y += 1) {
@@ -80,9 +107,10 @@ function createStoneTextureSet({ size, seed, repeat, normalStrength, role }) {
       const warmBias = role === 'floor' ? 5 : 1;
       const coolBias = role === 'wall' ? 5 : 2;
       const stain = (broadStain - 0.5) * 10;
-      colorData[index] = clampByte(shade + mineral * 7 + warmBias + stain);
-      colorData[index + 1] = clampByte(shade + mineral * 3 + stain * 0.55);
-      colorData[index + 2] = clampByte(shade - mineral * 4 + coolBias - stain * 0.3);
+      const blockTone = masonryBlockTone(x, y, size, seed, role);
+      colorData[index] = clampByte(shade + mineral * 7 + warmBias + stain + blockTone);
+      colorData[index + 1] = clampByte(shade + mineral * 3 + stain * 0.55 + blockTone * 0.72);
+      colorData[index + 2] = clampByte(shade - mineral * 4 + coolBias - stain * 0.3 + blockTone * 0.45);
       colorData[index + 3] = 255;
 
       const roughness = 196 + (1 - Math.max(-0.2, Math.min(0.8, height))) * 34 + fine * 15 + Math.abs(strata) * 5;
@@ -214,7 +242,8 @@ export function installChroniclesTacticsPremiumMaterials(scene, { coarsePointer 
       set.normal.dispose();
     });
   };
-  root.userData.chroniclesMaterialFinish = 'procedural-pbr-stone-v2';
+  root.userData.chroniclesMaterialFinish = 'procedural-pbr-stone-v3';
+  root.userData.chroniclesMasonryProfile = 'staggered-courses-v1';
   root.userData.chroniclesMaterialCount = visited.size;
   scene.add(root);
   return root;
