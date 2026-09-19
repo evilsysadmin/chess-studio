@@ -14,7 +14,6 @@ export default function GameStatusStrips({ game, zenMode, focusActive, status, c
       {!focusActive && context.memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0, context.suddenLives))}{'♡'.repeat(Math.max(0, 3 - context.suddenLives))}</div>}
       {context.controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{context.controlPrompt}</span><button className="secondary-btn" onClick={context.onContinueControl}>Ya lo he mirado · que siga</button></div>}
       {!zenMode && !focusActive && context.memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {context.memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}
-      {!zenMode && !focusActive && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
       {!zenMode && !focusActive && context.seriesState && (
         <div className={`series-strip series-live-strip ${context.seriesState.winner ? 'finished' : ''}`}>
           <span>{seriesStatusText(context.seriesState)}</span>

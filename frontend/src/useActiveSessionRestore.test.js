@@ -16,14 +16,14 @@ import { saveClockSnapshot } from './clockPersistence.js';
 beforeEach(() => localStorage.clear());
 
 describe('active session restore helpers', () => {
-  it('prioriza el contexto persistido y cae a run/ghost sólo cuando falta', () => {
-    const found = { id: 'g-1', ghostStyle: 'solid' };
+  it('prioriza contexto persistido/run e ignora metadatos ghost de saves legacy', () => {
+    const found = { id: 'g-1', ghostStyle: 'legacy-retired' };
     expect(resolveRestoredGameContext({ gameContext: { lab: true } }, found, { active: true, currentGameId: 'g-1', mode: 'cup' }))
       .toEqual({ lab: true, resumed: 'g-1' });
     expect(resolveRestoredGameContext({ gameContext: {} }, found, { active: true, currentGameId: 'g-1', mode: 'cup' }))
       .toEqual({ runMode: 'cup', resumed: 'g-1' });
     expect(resolveRestoredGameContext({ gameContext: {} }, found, null))
-      .toEqual({ ghost: true, ghostStyle: 'solid', resumed: 'g-1' });
+      .toEqual({ resumed: 'g-1' });
   });
 
   it('sólo auto-restaura si la ruta activa era la pantalla visible al recargar', () => {

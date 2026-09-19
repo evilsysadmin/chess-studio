@@ -183,7 +183,6 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         "history": history,
         "lastMove": entry.get("lastMove"),
         "initialFen": entry.get("initialFen"),
-        "ghostStyle": entry.get("ghostStyle"),
     }
 
 

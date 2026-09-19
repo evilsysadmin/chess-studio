@@ -139,7 +139,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         human_color = resolve_human_color(body.color)
         cpu_color = "b" if human_color == "w" else "w"
         rounded_difficulty = round(float(body.difficulty))
-        ghost_style = body.ghost_style.model_dump() if body.ghost_style is not None else None
         last_move = None
         initial_fen = None
 
@@ -181,7 +180,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             "handicap": None if initial_fen else body.handicap,
             "initialFen": initial_fen,
             "lastMove": last_move,
-            "ghostStyle": ghost_style,
             "createOperation": {"key": op_key, "fingerprint": create_fingerprint} if op_key else None,
         }
         if op_key:

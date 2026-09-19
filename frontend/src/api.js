@@ -24,11 +24,11 @@ export const api = {
       fetchManifest: api.getChroniclesMapManifest,
     });
   },
-  createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null, { signal, operationId = null } = {}) {
+  createGame(difficulty, color = 'w', handicap = null, startingFen = null, { signal, operationId = null } = {}) {
     return requestJson(`${BASE_URL}/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
-      body: JSON.stringify({ difficulty, color, handicap, startingFen, ghostStyle }),
+      body: JSON.stringify({ difficulty, color, handicap, startingFen }),
       signal,
     }).then((payload) => requireGamePayload(payload));
   },
@@ -43,18 +43,17 @@ export const api = {
     return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
-  analyzePosition(fen, level, { signal } = {}, ghostStyle = null, candidateLimit = null) {
+  analyzePosition(fen, level, { signal } = {}, candidateLimit = null) {
     const rawCandidateLimit = candidateLimit == null ? null : Number(candidateLimit);
     const requestedCandidateLimit = rawCandidateLimit != null && Number.isFinite(rawCandidateLimit)
       ? Math.max(2, Math.min(5, Math.round(rawCandidateLimit)))
-      : (ghostStyle ? 5 : null);
+      : null;
     return requestJson(`${BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({
         fen,
         level,
-        ...(ghostStyle ? { ghostStyle } : {}),
         ...(requestedCandidateLimit ? { candidateLimit: requestedCandidateLimit } : {}),
       }),
       timeoutMs: 8000,

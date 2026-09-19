@@ -74,7 +74,6 @@ def test_public_features_require_auth_and_expose_only_known_boolean_flags(monkey
         "features": {
             "homeGuide": True,
             "postGameFeedback": True,
-            "rivalGhost": True,
             "spectator": False,
         }
     }
@@ -272,17 +271,6 @@ def test_create_game_rejects_invalid_difficulty():
     r = client.post("/api/games", json={"difficulty": 500, "color": "w"})
     assert r.status_code == 400
 
-
-def test_create_game_accepts_bounded_ghost_style_and_returns_it():
-    style = {"capture": 0.5, "pawn": -0.25, "queen": 0.1, "check": 1.0, "castle": -1.0}
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "ghostStyle": style})
-    assert r.status_code == 201
-    assert r.json()["ghostStyle"] == style
-
-
-def test_create_game_rejects_ghost_style_outside_safe_range():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "ghostStyle": {"capture": 99}})
-    assert r.status_code == 422
 
 
 def test_create_game_rejects_invalid_color():
@@ -572,27 +560,6 @@ def test_analyze_endpoint():
     assert r.status_code == 200
     body = r.json()
     assert "from" in body and "to" in body and "san" in body
-
-
-def test_analyze_endpoint_ignores_retired_ghost_style(monkeypatch):
-    import game_api
-
-    seen = []
-    def fake_cpu(board, level, style=None):
-        seen.append(style)
-        return game_api.move_to_dict(board, next(iter(board.legal_moves)))
-
-    monkeypatch.setattr(game_api, "get_cpu_move", fake_cpu)
-    r = client.post(
-        "/api/analyze",
-        json={
-            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            "level": 30,
-            "ghostStyle": {"capture": 0.9, "pawn": 0.1, "queen": 0.2, "check": 0.8, "castle": -0.3},
-        },
-    )
-    assert r.status_code == 200
-    assert seen == [None]
 
 
 

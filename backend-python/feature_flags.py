@@ -12,7 +12,6 @@ import os
 PUBLIC_FEATURE_DEFAULTS = {
     "homeGuide": True,
     "postGameFeedback": True,
-    "rivalGhost": True,
     "spectator": True,
 }
 

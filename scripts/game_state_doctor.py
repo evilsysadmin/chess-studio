@@ -43,7 +43,6 @@ def _stable_fingerprint(game_id: str, entry: dict[str, Any], canonical: dict[str
         "humanColor": entry.get("humanColor"),
         "handicap": entry.get("handicap"),
         "initialFen": entry.get("initialFen"),
-        "ghostStyle": entry.get("ghostStyle"),
         "fen": canonical.get("fen"),
         "turn": canonical.get("turn"),
         "status": canonical.get("status"),
