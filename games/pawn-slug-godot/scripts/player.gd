@@ -775,14 +775,12 @@ func _quantize_aim(raw: Vector2) -> Vector2:
 
 func _constrain_vertical_aim(direction: Vector2, grounded: bool) -> Vector2:
     # Grounded DOWN belongs to crouch/crouch-walk, not to diagonal-down aim.
-    # This preserves horizontal crouched fire while UP can still combine with
-    # left/right for the expected diagonal shot. Full vertical aim remains an
-    # airborne action.
+    # UP is a real firing direction even while grounded, so Matthias can engage
+    # enemies on gantries/canopies without first jumping. Diagonal-up remains
+    # available naturally through the 8-way quantizer.
     if grounded and direction.y > 0.25:
         if absf(direction.x) > 0.25:
             return Vector2(signf(direction.x), 0.0)
-        return Vector2(facing, 0.0)
-    if grounded and absf(direction.x) < 0.25 and direction.y < -0.75:
         return Vector2(facing, 0.0)
     return direction
 
