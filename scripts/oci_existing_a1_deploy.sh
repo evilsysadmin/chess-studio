@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 || ! "$1" =~ ^[0-9a-f]{40}$ ]]; then
-  echo 'usage: oci_existing_a1_deploy.sh <40-char git sha>' >&2
+target=staging
+if [[ $# -eq 1 && "$1" =~ ^[0-9a-f]{40}$ ]]; then
+  sha="$1"
+elif [[ $# -eq 2 && "$1" =~ ^(staging|production)$ && "$2" =~ ^[0-9a-f]{40}$ ]]; then
+  target="$1"
+  sha="$2"
+else
+  echo 'usage: oci_existing_a1_deploy.sh [staging|production] <40-char git sha>' >&2
   exit 64
 fi
-
-sha="$1"
 repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 compose_file="$repo/infra/oci/runtime/docker-compose.yml"
+source_launcher="$repo/scripts/oci_staging_deploy_launcher.sh"
+target_launcher="/usr/local/sbin/chess-studio-deploy"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
 k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
@@ -22,17 +28,31 @@ deploy_watcher_source="$repo/scripts/oci_staging_deploy_watcher.py"
 deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.service"
 deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
 deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
-env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
-state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
+registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
+
+case "$target" in
+  staging)
+    env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
+    state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
+    project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
+    port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
+    cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+    public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api-staging.chess-studio.shadowops.dpdns.org/api}"
+    ;;
+  production)
+    env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/production/backend.env}"
+    state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio-production}"
+    project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-production}"
+    port="${CHESS_STUDIO_BACKEND_PORT:-4100}"
+    cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://chess-studio.shadowops.dpdns.org}"
+    public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api.chess-studio.shadowops.dpdns.org/api}"
+    ;;
+esac
+
 state_file="$state_dir/deployed.sha"
 deploy_watcher_enable_marker="$state_dir/DEPLOY_WATCH_ENABLED"
-k3s_contract_state_file="$state_dir/k3s-deploy-contract.sha256"
+k3s_contract_state_file="/var/lib/chess-studio/k3s-deploy-contract.sha256"
 k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
-project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
-port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
-staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
-staging_api_url="${CHESS_STUDIO_STAGING_API_URL:-https://api-staging.chess-studio.shadowops.dpdns.org/api}"
-registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
@@ -123,7 +143,7 @@ compose() {
   GIT_COMMIT_SHA="$target_sha" \
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
-  CHESS_STUDIO_CORS_ORIGINS="$staging_origin" \
+  CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
   docker compose -p "$project" -f "$compose_file" "$@"
 }
 
@@ -212,7 +232,7 @@ cors_attest() {
   set +e
   curl --fail --silent --show-error --max-time 8 \
     -X OPTIONS \
-    -H "Origin: $staging_origin" \
+    -H "Origin: $cors_origin" \
     -H 'Access-Control-Request-Method: GET' \
     -H 'Access-Control-Request-Headers: authorization,x-client-release' \
     -D "$headers" \
@@ -224,7 +244,7 @@ cors_attest() {
     rm -f "$headers"
     return "$rc"
   fi
-  if ! python3 - "$headers" "$staging_origin" <<'PY'
+  if ! python3 - "$headers" "$cors_origin" <<'PY'
 import pathlib
 import sys
 headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
@@ -300,7 +320,7 @@ public_tunnel_attest() {
     --connect-timeout 3 --max-time 6 \
     -H 'Accept: application/json' \
     -H 'Cache-Control: no-cache' \
-    "${staging_api_url}/release?sha=${expected}" >"$release"; then
+    "${public_api_url}/release?sha=${expected}" >"$release"; then
     rm -f "$release"
     return 1
   fi
@@ -412,7 +432,7 @@ agent_diag_summary() {
     "$version" "$active" "$restarts" "$bytes" "$age" "$recent_lines" "$poll_errors" "$backoff" "$throttled" "$transport_errors"
 }
 
-deploy_lock_file="$state_dir/deploy.lock"
+deploy_lock_file="/var/lib/chess-studio/deploy.lock"
 exec 8>"$deploy_lock_file"
 if ! flock -w 120 8; then
   echo 'timed out waiting for host deploy lock' >&2
@@ -437,20 +457,30 @@ fi
 phase_done checkout "$checkout_started_ms"
 preflight_started_ms="$(now_ms)"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
-[[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
-[[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
-[[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
-[[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
-[[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
-[[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
-[[ -f "$deploy_watcher_source" && ! -L "$deploy_watcher_source" ]] || { echo "missing zero-cost deploy watcher in $sha" >&2; exit 66; }
-[[ -f "$deploy_watcher_unit_source" && ! -L "$deploy_watcher_unit_source" ]] || { echo "missing zero-cost deploy watcher unit in $sha" >&2; exit 66; }
-prepare_signal_controller_disabled
-prepare_deploy_watcher
-/bin/bash "$tunnel_connector" --self-test >/dev/null
+[[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
+install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
+
+if [[ "$target" == staging ]]; then
+  [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
+  [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
+  [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
+  [[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
+  [[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
+  [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
+  [[ -f "$deploy_watcher_source" && ! -L "$deploy_watcher_source" ]] || { echo "missing zero-cost deploy watcher in $sha" >&2; exit 66; }
+  [[ -f "$deploy_watcher_unit_source" && ! -L "$deploy_watcher_unit_source" ]] || { echo "missing zero-cost deploy watcher unit in $sha" >&2; exit 66; }
+  prepare_signal_controller_disabled
+  prepare_deploy_watcher
+  /bin/bash "$tunnel_connector" --self-test >/dev/null
+fi
 phase_done preflight "$preflight_started_ms"
 k3s_started_ms="$(now_ms)"
-reconcile_k3s_contract
+if [[ "$target" == staging ]]; then
+  reconcile_k3s_contract
+else
+  k3s_contract_action="skipped"
+  k3s_success_summary="integrity=skipped,service=skipped"
+fi
 phase_done k3s "$k3s_started_ms"
 
 # CI already built and published the exact linux/arm64 backend image. Pull that
@@ -481,23 +511,28 @@ for _ in $(seq 1 60); do
   if attest "$sha"; then
     phase_done readiness "$readiness_started_ms"
     tunnel_started_ms="$(now_ms)"
-    tunnel_action="reused"
-    if public_tunnel_attest "$sha"; then
-      :
-    else
-      tunnel_action="restarted"
-      if ! /bin/bash "$tunnel_connector"; then
-        echo "OCI backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
-        exit 46
+    tunnel_action="local-only"
+    if [[ "$target" == staging ]]; then
+      tunnel_action="reused"
+      if public_tunnel_attest "$sha"; then
+        :
+      else
+        tunnel_action="restarted"
+        if ! /bin/bash "$tunnel_connector"; then
+          echo "OCI staging backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
+          exit 46
+        fi
       fi
     fi
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
-    enable_deploy_watcher
+    if [[ "$target" == staging ]]; then
+      enable_deploy_watcher
+    fi
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
-    printf 'OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s\n' "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process tunnel_action=$tunnel_action image=pulled"
+    printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s k3s=%s,contract=%s tunnel=%s\n' "$target" "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
+    echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled"
     exit 0
   fi
   sleep 2
