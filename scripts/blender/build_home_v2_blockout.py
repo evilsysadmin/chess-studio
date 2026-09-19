@@ -1518,20 +1518,130 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                     obj.scale.z *= 0.52
                     obj.location.z -= 0.15
     add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 112, (1.0, 0.26, 0.050), radius=0.82)
-    # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
-    # firebox push the right fireplace toward the approved mock.
-    cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 6.08, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
-    cube("HOME_PROP_fireplace_right_canon_mantel", (4.45, 5.22, 2.46), (1.36, 0.28, 0.16), materials["stone"], bevel=0.055)
+
+    # The shared fireplace helper leaves a wide domestic mantel/corbel set.
+    # Remove those foreground pieces so the authored Gothic surround owns the
+    # silhouette while the helper still supplies the deep alcove and fire.
+    for legacy_name in (
+        "HOME_PROP_fireplace_right_mantel",
+        "HOME_PROP_fireplace_right_corbel_-1",
+        "HOME_PROP_fireplace_right_corbel_1",
+        "HOME_PROP_fireplace_right_jamb_-1",
+        "HOME_PROP_fireplace_right_jamb_1",
+    ):
+        legacy = bpy.data.objects.get(legacy_name)
+        if legacy is not None:
+            bpy.data.objects.remove(legacy, do_unlink=True)
+
+    # Deep nested firebox: outer soot shadow, inner recess and stepped stone
+    # surround. Narrower proportions match the canonical right-hand hearth.
+    cube(
+        "HOME_PROP_fireplace_right_canon_firebox",
+        (4.45, 6.08, 1.22),
+        (0.76, 0.075, 0.88),
+        materials["soot_stone"],
+        bevel=0.045,
+    )
+    cube(
+        "HOME_PROP_fireplace_right_inner_firebox",
+        (4.45, 5.91, 1.18),
+        (0.61, 0.055, 0.68),
+        materials["dark"],
+        bevel=0.035,
+    )
+    gothic_arch(
+        "HOME_ARCH_fireplace_right_canon_hood",
+        4.45,
+        5.42,
+        2.45,
+        2.52,
+        3.78,
+        0.28,
+        materials["arch_stone"],
+        bevel=0.080,
+    )
+    gothic_arch(
+        "HOME_ARCH_fireplace_right_inner_hood",
+        4.45,
+        5.31,
+        1.86,
+        2.23,
+        3.28,
+        0.42,
+        materials["stone_dark"],
+        bevel=0.040,
+    )
+    cube(
+        "HOME_PROP_fireplace_right_canon_mantel",
+        (4.45, 5.18, 2.38),
+        (1.17, 0.22, 0.13),
+        materials["stone"],
+        bevel=0.050,
+    )
     for side in (-1, 1):
-        px = 4.45 + side * 1.06
-        cube(f"HOME_PROP_fireplace_right_canon_pilaster_{side}", (px, 5.40, 1.40), (0.18, 0.20, 1.12), materials["stone"], bevel=0.05)
-        cube(f"HOME_PROP_fireplace_right_canon_cap_{side}", (px, 5.24, 2.34), (0.27, 0.26, 0.14), materials["stone"], bevel=0.045)
-        sphere(f"HOME_PROP_fireplace_right_canon_finial_{side}", (px, 5.10, 2.70), (0.10, 0.08, 0.10), materials["gold"])
-    cube("HOME_PROP_fireplace_right_canon_crest", (4.45, 5.02, 2.91), (0.36, 0.08, 0.24), materials["stone_dark"], bevel=0.06)
-    cube("HOME_PROP_fireplace_right_shield", (5.45, 5.04, 3.38), (0.34, 0.06, 0.42), materials["wood"], bevel=0.08)
-    sphere("HOME_PROP_fireplace_right_shield_emblem", (5.45, 4.96, 3.40), (0.12, 0.025, 0.12), materials["gold"])
-    cylinder("HOME_PROP_fireplace_right_bust_base", (4.45, 5.02, 2.76), 0.14, 0.12, materials["stone_dark"], vertices=18)
-    sphere("HOME_PROP_fireplace_right_bust", (4.45, 5.02, 3.08), (0.18, 0.14, 0.22), materials["arch_stone"])
+        px = 4.45 + side * 0.91
+        cube(
+            f"HOME_PROP_fireplace_right_canon_pilaster_{side}",
+            (px, 5.37, 1.39),
+            (0.15, 0.18, 1.14),
+            materials["arch_stone"],
+            bevel=0.045,
+        )
+        cube(
+            f"HOME_PROP_fireplace_right_inner_jamb_{side}",
+            (4.45 + side * 0.69, 5.24, 1.28),
+            (0.075, 0.105, 0.86),
+            materials["stone_dark"],
+            bevel=0.028,
+        )
+        cube(
+            f"HOME_PROP_fireplace_right_canon_cap_{side}",
+            (px, 5.22, 2.39),
+            (0.23, 0.22, 0.12),
+            materials["stone"],
+            bevel=0.040,
+        )
+        cube(
+            f"HOME_PROP_fireplace_right_corbel_{side}",
+            (4.45 + side * 1.01, 5.17, 2.18),
+            (0.20, 0.20, 0.18),
+            materials["stone_dark"],
+            bevel=0.045,
+        )
+        for flute in (-0.055, 0.055):
+            cube(
+                f"HOME_PROP_fireplace_right_flute_{side}_{flute}",
+                (px + flute, 5.175, 1.40),
+                (0.020, 0.025, 0.78),
+                materials["stone_dark"],
+                bevel=0.008,
+            )
+    cube(
+        "HOME_PROP_fireplace_right_canon_crest",
+        (4.45, 5.09, 3.07),
+        (0.30, 0.07, 0.20),
+        materials["stone_dark"],
+        bevel=0.055,
+    )
+    sphere(
+        "HOME_PROP_fireplace_right_canon_crest_emblem",
+        (4.45, 5.005, 3.08),
+        (0.085, 0.022, 0.085),
+        materials["gold"],
+    )
+    cube(
+        "HOME_PROP_fireplace_right_shield",
+        (5.37, 5.08, 3.24),
+        (0.25, 0.055, 0.34),
+        materials["wood"],
+        bevel=0.070,
+    )
+    sphere(
+        "HOME_PROP_fireplace_right_shield_emblem",
+        (5.37, 5.015, 3.25),
+        (0.085, 0.020, 0.085),
+        materials["gold"],
+    )
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
