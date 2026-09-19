@@ -52,7 +52,7 @@ jobs:
           mkdir -p "$ROOT/source"
           blender --background \
             --python scripts/blender/render_pawn_slug_enemy_sheets_v1.py \
-            -- --output-dir "$ROOT/source" --enemy-type "$ENEMY_TYPE"
+            -- --output-dir "$ROOT/source" --enemy-type "$ENEMY_TYPE" --strict-runtime
           test -s "$ROOT/source/manifest.json"
 
       - name: Install Pillow
