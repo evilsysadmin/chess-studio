@@ -161,7 +161,8 @@ export function selectCombatAwareRemoteSuggestion(remote) {
   if (!primary) return remote;
 
   const chosen = chooseCombatCandidate(candidates);
-  if (!chosen || sameCombatMove(chosen, primary)) return remote;
+  if (!chosen) return remote;
+  if (sameCombatMove(chosen, primary)) return chosen;
   if (primary.isMate === true) return remote;
   if (chosen.isMate === true) return chosen;
 
