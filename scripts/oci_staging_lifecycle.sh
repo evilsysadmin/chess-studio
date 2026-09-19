@@ -7,6 +7,10 @@ probe="$root/infra/oci/probe"
 staging="$root/infra/oci/staging"
 bootstrap_key="chess-studio/bootstrap/terraform.tfstate"
 staging_key="chess-studio/staging/terraform.tfstate"
+vault_iam_targets=(
+  -target=oci_identity_policy.staging_runtime_config
+  -target=data.oci_core_images.arm64_ubuntu
+)
 
 die() { echo "OCI staging lifecycle: FAIL · $*" >&2; exit 1; }
 
@@ -270,7 +274,7 @@ run_staging() {
   plan="${RUNNER_TEMP:-/tmp}/oci-staging.tfplan"
   case "$operation" in
     vault-iam)
-      terraform -chdir="$staging" plan -no-color         -target=oci_identity_policy.staging_runtime_config -out="$plan"
+      terraform -chdir="$staging" plan -no-color "${vault_iam_targets[@]}" -out="$plan"
       require_current_main
       terraform -chdir="$staging" apply -no-color -auto-approve "$plan"
       ;;
@@ -294,6 +298,8 @@ run_staging() {
 
 self_test() {
   for op in probe bootstrap plan apply vault-iam destroy; do valid_operation "$op" || exit 1; done
+  [[ "${vault_iam_targets[*]}" == *"-target=oci_identity_policy.staging_runtime_config"* ]] || exit 1
+  [[ "${vault_iam_targets[*]}" == *"-target=data.oci_core_images.arm64_ubuntu"* ]] || exit 1
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
