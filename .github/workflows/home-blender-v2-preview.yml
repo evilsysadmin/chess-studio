@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   render:
-    name: Render Home Blender 2.0 · ${{ inputs.quality }}
+    name: Render Home Blender 2.0 · ${{ inputs.quality || 'beauty' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -44,13 +44,13 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ inputs.quality == 'beauty' && '32' || '16' }}' \
-            --max-width '${{ inputs.quality == 'beauty' && '1814' || '1100' }}' \
-            --engine '${{ inputs.quality == 'beauty' && 'eevee' || 'workbench' }}'
+            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '8' || '8' }}' \
+            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '900' || '800' }}' \
+            --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
         env:
-          QUALITY: ${{ inputs.quality }}
+          QUALITY: ${{ inputs.quality || 'beauty' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -71,7 +71,7 @@ jobs:
 
           quality = os.environ.get('QUALITY') or 'blockout'
           expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
-          expected_max_width = 1814 if quality == 'beauty' else 1100
+          expected_max_width = 900 if quality == 'beauty' else 800
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
@@ -121,7 +121,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: home-blender-v2-${{ inputs.quality }}-${{ github.run_number }}
+          name: home-blender-v2-${{ inputs.quality || 'beauty' }}-${{ github.run_number }}
           path: /tmp/home-blender-v2/
           if-no-files-found: error
           retention-days: 7
