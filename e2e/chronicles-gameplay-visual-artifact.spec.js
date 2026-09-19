@@ -17,6 +17,13 @@ async function openVisualMoreModes(page) {
   try {
     await trigger.click({ timeout: 5_000 });
   } catch (error) {
+    // Playwright can time out after the click itself has already landed while it
+    // waits for unrelated scheduled navigation work. Accept the interaction if
+    // Home has in fact opened the tools panel instead of throwing away a valid
+    // desktop visual capture.
+    const tools = page.locator('#illustrated-home-tools');
+    if (await tools.isVisible().catch(() => false)) return;
+
     const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
     if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
     await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
