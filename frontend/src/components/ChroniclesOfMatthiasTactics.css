@@ -418,6 +418,27 @@
   font-size: .6rem;
   letter-spacing: .015em;
 }
+/* Move forecast: only present in combat, when a step would draw a creature response. */
+.chronicles-tactics__actions > button .chronicles-tactics__forecast {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  padding: 0 3px;
+  font-size: .58rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #f0d8b8;
+  background: rgba(120, 45, 33, .9);
+}
+.chronicles-tactics__actions > button[data-forecast='hit'] {
+  border-color: #a95745;
+  box-shadow: inset 0 0 0 1px rgba(169, 87, 69, .5), inset 0 -10px 18px rgba(0, 0, 0, .15);
+}
+.chronicles-tactics__actions > button[data-forecast='lethal'],
+.chronicles-tactics__actions > button[data-forecast='fall'] {
+  border-color: #c2452f;
+  box-shadow: inset 0 0 0 2px rgba(194, 69, 47, .7), inset 0 -10px 18px rgba(0, 0, 0, .15);
+}
 .chronicles-tactics__actions > button:disabled {
   opacity: .46;
   cursor: not-allowed;
