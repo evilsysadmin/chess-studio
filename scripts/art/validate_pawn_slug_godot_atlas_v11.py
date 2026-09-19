@@ -28,7 +28,7 @@ def anchor(cell):
 def tip_y(cell):
  a=cell.getchannel('A'); box=a.getbbox()
  if box is None: fail('empty aim cell')
- vals=a.load(); x0=max(AIM_FORWARD_X_MIM,int(round(box[0]+.72*(box[2]-box[0])))); pts=[]
+ vals=a.load(); x0=max(AIM_FORWARD_X_MIN,int(round(box[0]+.72*(box[2]-box[0])))); pts=[]
  for y in range(box[1],box[3]):
   for x in range(x0,box[2]):
    if vals[x,y]>ALPHA: pts.append((x,y))
