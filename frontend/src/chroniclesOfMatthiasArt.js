@@ -234,6 +234,7 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   root.userData.chroniclesEnemy = 'corrupted-pawn';
   const iron = material(0x191a1c, { metalness: 0.48, roughness: 0.38, clearcoat: 0.18 });
   const crust = material(0x322421, { metalness: 0.2, roughness: 0.72 });
+  const scarMetal = material(0x596166, { metalness: 0.72, roughness: 0.34, clearcoat: 0.08 });
   const glow = material(0x3a0708, { metalness: 0.08, roughness: 0.42, emissive: 0xd0161b, emissiveIntensity: 1.7 });
   basePlinth(root, crust, iron, segments);
   lathe(root, [[0.35, 0.34], [0.29, 0.54], [0.27, 0.82], [0.35, 1.06], [0.29, 1.18]], iron, segments, 'corrupted-pawn-body');
@@ -244,11 +245,11 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   add(root, new THREE.ConeGeometry(0.1, 0.44, 7), crust, [-0.26, 1.2, -0.04], [0.1, 0, -0.72], null, 'corrupted-pawn-spike-left');
   add(root, new THREE.ConeGeometry(0.08, 0.36, 7), crust, [0.28, 1.12, -0.08], [-0.1, 0, 0.82], null, 'corrupted-pawn-spike-right');
   add(root, new THREE.BoxGeometry(0.05, 0.58, 0.03), glow, [0.03, 0.91, 0.28], [0, 0, -0.12], null, 'corrupted-pawn-chest-fissure');
-  add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), crust, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
-  add(root, new THREE.DodecahedronGeometry(0.17, 0), crust, [-0.29, 1.08, 0.01], [0.18, 0, -0.38], [1.25, 0.5, 0.92], 'corrupted-pawn-pauldron-left');
-  add(root, new THREE.DodecahedronGeometry(0.14, 0), crust, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
+  add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), scarMetal, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
+  add(root, new THREE.DodecahedronGeometry(0.17, 0), scarMetal, [-0.29, 1.08, 0.01], [0.18, 0, -0.38], [1.25, 0.5, 0.92], 'corrupted-pawn-pauldron-left');
+  add(root, new THREE.DodecahedronGeometry(0.14, 0), scarMetal, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
   add(root, new THREE.BoxGeometry(0.28, 0.055, 0.04), glow, [-0.08, 1.2, 0.275], [0, 0, -0.44], null, 'corrupted-pawn-neck-fissure');
-  add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), crust, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
+  add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), scarMetal, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 1.7;
   return root;
