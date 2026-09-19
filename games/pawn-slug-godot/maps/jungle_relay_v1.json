@@ -399,7 +399,9 @@
     },
     {
       "x": 4098,
-      "type": "rook"
+      "type": "rook",
+      "y": 318,
+      "route": "canopy_assault"
     },
     {
       "x": 4255,
@@ -426,24 +428,6 @@
     {
       "x": 5040,
       "type": "pawn"
-    },
-    {
-      "x": 4095,
-      "type": "rook",
-      "y": 318,
-      "route": "canopy_assault"
-    },
-    {
-      "x": 4230,
-      "type": "scout",
-      "y": 236,
-      "route": "canopy_assault"
-    },
-    {
-      "x": 4385,
-      "type": "grenadier",
-      "y": 318,
-      "route": "canopy_assault"
     }
   ],
   "pickups": [
