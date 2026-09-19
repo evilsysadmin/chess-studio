@@ -6,7 +6,7 @@ import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSur
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { adaptiveRenderScale, applyWarRoomRenderDiscipline, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -421,6 +421,7 @@ function Board3DCanvas({
     function render() {
       scene.userData.warRoomHansCallReleased = !latestPropsRef.current.hansFireCallEnabled
         || renderer.domElement.dataset.warRoomHansCallReleased === 'true';
+      applyWarRoomRenderDiscipline(renderer, scene);
       applyWarRoomLightDiagnostics(renderer.domElement, {
         grade: 'reactive-v9',
         keyIntensity: key.intensity,
