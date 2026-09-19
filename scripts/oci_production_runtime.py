@@ -43,23 +43,19 @@ PRODUCTION_ALLOWED_KEYS = (
     "CHESS_STUDIO_RUNTIME_SCHEMA",
 )
 PRODUCTION_DEFAULTS = {
+    # Mirror backend defaults for keys that are safe to materialize explicitly.
+    # Environment identity/origin are pinned because this stack is production.
     "MONGO_DB_NAME": PRODUCTION_DB,
-    "PASSWORD_RESET_URL": PRODUCTION_ORIGIN + "/",
-    "PASSWORD_RESET_FROM": "Chess Studio <onboarding@resend.dev>",
     "ENVIRONMENT": "production",
     "EXPOSE_API_DOCS": "false",
     "ALLOW_REGISTRATION": "true",
-    "ENABLE_EMAIL_RECOVERY": "true",
-    "CF_AI_WORKER_URL": PRODUCTION_AI_URL,
+    "ENABLE_EMAIL_RECOVERY": "false",
     "CORS_ORIGINS": PRODUCTION_ORIGIN,
     "OTEL_SERVICE_NAME": "chess-studio-backend",
-    "OTEL_TRACES_ENABLED": "true",
-    "OTEL_METRICS_ENABLED": "true",
-    "OTEL_LOGS_ENABLED": "true",
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
     "OTEL_TRACES_SAMPLER": "parentbased_traceidratio",
-    "OTEL_TRACES_SAMPLER_ARG": "1.0",
-    "CHESS_STUDIO_RUNTIME_SCHEMA": "render-production-lift-v2",
+    "OTEL_TRACES_SAMPLER_ARG": "0.20",
+    "CHESS_STUDIO_RUNTIME_SCHEMA": "render-production-lift-v3",
 }
 PRODUCTION_SECRET_KEYS = (
     "MONGO_URL",
@@ -74,22 +70,11 @@ PRODUCTION_ALWAYS_REQUIRED = (
     "MONGO_URL",
     "MONGO_DB_NAME",
     "JWT_SECRET",
-    "PASSWORD_RESET_URL",
-    "PASSWORD_RESET_FROM",
     "ENVIRONMENT",
     "EXPOSE_API_DOCS",
     "ALLOW_REGISTRATION",
     "ENABLE_EMAIL_RECOVERY",
-    "CF_AI_WORKER_URL",
-    "CHESS_AI_SHARED_SECRET",
     "CORS_ORIGINS",
-    "OTEL_SERVICE_NAME",
-    "OTEL_TRACES_ENABLED",
-    "OTEL_METRICS_ENABLED",
-    "OTEL_LOGS_ENABLED",
-    "OTEL_EXPORTER_OTLP_PROTOCOL",
-    "OTEL_TRACES_SAMPLER",
-    "OTEL_TRACES_SAMPLER_ARG",
     "CHESS_STUDIO_RUNTIME_SCHEMA",
 )
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -134,14 +119,16 @@ def effective_production_values(actual: dict[str, str]) -> dict[str, str]:
     cors = str(values["CORS_ORIGINS"]).strip()
     if PRODUCTION_ORIGIN not in cors or "staging" in cors.lower():
         raise SystemExit("Production OCI runtime has unsafe CORS_ORIGINS")
-    ai_url = str(values["CF_AI_WORKER_URL"]).strip()
-    if ai_url != PRODUCTION_AI_URL or "staging" in ai_url.lower():
-        raise SystemExit("Production OCI runtime has unsafe CF_AI_WORKER_URL")
+    ai_url = str(values.get("CF_AI_WORKER_URL") or "").strip()
+    if ai_url:
+        if ai_url != PRODUCTION_AI_URL or "staging" in ai_url.lower():
+            raise SystemExit("Production OCI runtime has unsafe CF_AI_WORKER_URL")
+        _clean_value("CHESS_AI_SHARED_SECRET", values.get("CHESS_AI_SHARED_SECRET", ""))
 
     email_enabled = str(values["ENABLE_EMAIL_RECOVERY"]).strip().lower() in TRUE_VALUES
     if email_enabled:
         _clean_value("RESEND_API_KEY", values.get("RESEND_API_KEY", ""))
-        reset_url = str(values["PASSWORD_RESET_URL"]).strip()
+        reset_url = str(values.get("PASSWORD_RESET_URL") or "").strip()
         if not reset_url.startswith(PRODUCTION_ORIGIN) or "staging" in reset_url.lower():
             raise SystemExit("Production OCI runtime has unsafe PASSWORD_RESET_URL")
 
@@ -285,12 +272,16 @@ if values.get("ENVIRONMENT","").lower()!="production":
 cors=values.get("CORS_ORIGINS","")
 if {PRODUCTION_ORIGIN!r} not in cors or "staging" in cors.lower():
     raise SystemExit("production runtime CORS guard failed")
-if values.get("CF_AI_WORKER_URL")!={PRODUCTION_AI_URL!r}:
+ai_url=values.get("CF_AI_WORKER_URL","")
+if ai_url and (ai_url!={PRODUCTION_AI_URL!r} or "staging" in ai_url.lower()):
     raise SystemExit("production runtime AI target guard failed")
-if values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r} and not values.get("RESEND_API_KEY"):
+if ai_url and not values.get("CHESS_AI_SHARED_SECRET"):
+    raise SystemExit("production runtime AI secret guard failed")
+email_enabled=values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r}
+if email_enabled and not values.get("RESEND_API_KEY"):
     raise SystemExit("production runtime email recovery secret guard failed")
 reset_url=values.get("PASSWORD_RESET_URL","")
-if values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r} and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
+if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
     raise SystemExit("production runtime password reset target guard failed")
 path=Path(os.environ["RUNTIME_TMP"])
 path.write_text(text if text.endswith("\n") else text+"\n",encoding="utf-8")
@@ -336,15 +327,15 @@ def sync_current(oci: Any) -> None:
 def self_test() -> None:
     from oci_run_command import RUN_COMMAND_INLINE_MAX_BYTES, assert_nonsecret_command
 
+    # Missing optional flags must behave exactly like the backend defaults:
+    # email recovery stays OFF, OTEL enablement is endpoint-driven, and AI
+    # narrative stays disabled unless Render explicitly configured its URL.
     actual = {
         "MONGO_URL": "mongodb+srv://example.invalid/",
         "JWT_SECRET": "jwt-secret",
-        "RESEND_API_KEY": "resend-secret",
         "INVITE_CODE": "invite-secret",
-        "CHESS_AI_SHARED_SECRET": "ai-secret",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otel.example.test",
         "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic sample",
-        "PASSWORD_RESET_FROM": "Chess Studio <prod@example.test>",
         "ALLOW_REGISTRATION": "false",
         "ADMIN_USERNAMES": "evilsysadmin",
     }
@@ -352,20 +343,59 @@ def self_test() -> None:
     assert effective["MONGO_DB_NAME"] == PRODUCTION_DB
     assert effective["ENVIRONMENT"] == "production"
     assert effective["EXPOSE_API_DOCS"] == "false"
-    assert effective["ENABLE_EMAIL_RECOVERY"] == "true"
-    assert effective["PASSWORD_RESET_URL"] == PRODUCTION_ORIGIN + "/"
-    assert effective["PASSWORD_RESET_FROM"] == "Chess Studio <prod@example.test>"
+    assert effective["ENABLE_EMAIL_RECOVERY"] == "false"
+    assert "RESEND_API_KEY" not in effective
+    assert "PASSWORD_RESET_URL" not in effective
+    assert "CF_AI_WORKER_URL" not in effective
+    assert "OTEL_TRACES_ENABLED" not in effective
+    assert effective["OTEL_TRACES_SAMPLER_ARG"] == "0.20"
     assert effective["ALLOW_REGISTRATION"] == "false"
-    assert effective["RESEND_API_KEY"] == "resend-secret"
+
     rendered = render_production_env(effective).decode("utf-8")
     assert f"MONGO_DB_NAME={PRODUCTION_DB}\n" in rendered
     assert "MONGO_DB_NAME=chess_study_staging" not in rendered
     assert "EXPOSE_API_DOCS=false\n" in rendered
-    assert "ENABLE_EMAIL_RECOVERY=true\n" in rendered
-    assert "RESEND_API_KEY=resend-secret\n" in rendered
-    assert "PASSWORD_RESET_URL=https://chess-studio.shadowops.dpdns.org/\n" in rendered
-    assert "OTEL_TRACES_SAMPLER=parentbased_traceidratio\n" in rendered
-    assert "SURPRISE" not in rendered
+    assert "ENABLE_EMAIL_RECOVERY=false\n" in rendered
+    assert "RESEND_API_KEY=" not in rendered
+    assert "PASSWORD_RESET_URL=" not in rendered
+    assert "CF_AI_WORKER_URL=" not in rendered
+    assert "OTEL_TRACES_SAMPLER_ARG=0.20\n" in rendered
+
+    email_enabled = {
+        **actual,
+        "ENABLE_EMAIL_RECOVERY": "true",
+        "RESEND_API_KEY": "resend-secret",
+        "PASSWORD_RESET_URL": PRODUCTION_ORIGIN + "/",
+        "PASSWORD_RESET_FROM": "Chess Studio <prod@example.test>",
+    }
+    enabled = effective_production_values(email_enabled)
+    assert enabled["ENABLE_EMAIL_RECOVERY"] == "true"
+    assert enabled["RESEND_API_KEY"] == "resend-secret"
+    assert enabled["PASSWORD_RESET_URL"] == PRODUCTION_ORIGIN + "/"
+
+    missing_resend = dict(email_enabled)
+    missing_resend.pop("RESEND_API_KEY")
+    try:
+        effective_production_values(missing_resend)
+    except SystemExit as exc:
+        assert "RESEND_API_KEY" in str(exc)
+    else:
+        raise AssertionError("explicit email recovery must require RESEND_API_KEY")
+
+    ai_enabled = {
+        **actual,
+        "CF_AI_WORKER_URL": PRODUCTION_AI_URL,
+        "CHESS_AI_SHARED_SECRET": "ai-secret",
+    }
+    assert effective_production_values(ai_enabled)["CF_AI_WORKER_URL"] == PRODUCTION_AI_URL
+
+    bad_ai = dict(ai_enabled, CF_AI_WORKER_URL="https://ai-staging.shadowops.dpdns.org")
+    try:
+        effective_production_values(bad_ai)
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("staging AI URL must be rejected for production")
 
     bad_db = dict(actual, MONGO_DB_NAME=STAGING_DB)
     try:
@@ -374,18 +404,6 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("staging database must be rejected for production")
-
-    missing_resend = dict(actual)
-    missing_resend.pop("RESEND_API_KEY")
-    try:
-        effective_production_values(missing_resend)
-    except SystemExit as exc:
-        assert "RESEND_API_KEY" in str(exc)
-    else:
-        raise AssertionError("email-enabled production must require RESEND_API_KEY")
-
-    email_disabled = dict(missing_resend, ENABLE_EMAIL_RECOVERY="false")
-    assert effective_production_values(email_disabled)["ENABLE_EMAIL_RECOVERY"] == "false"
 
     sample_vault = "ocid1.vault.oc1.eu-frankfurt-1.testvault"
     command = host_sync_command(sample_vault)
