@@ -1579,27 +1579,62 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
-    gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["brass_dark"], bevel=0.11)
-    for offset in (-0.48, 0.0, 0.48):
-        cube(f"HOME_PROP_window_mullion_v_{offset}", (7.82 + offset * 0.98, 6.46, 3.62), (0.028, 0.045, 1.49), materials["brass_dark"], bevel=0.010)
-    for idx, z in enumerate((2.78, 3.55, 4.25)):
-        cube(f"HOME_PROP_window_mullion_h_{idx}", (7.82, 6.46, z + 0.10), (0.86, 0.045, 0.025), materials["brass_dark"], bevel=0.010)
-    cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
-    sphere("HOME_PROP_window_moon", (7.95, 6.40, 4.48), (0.44, 0.030, 0.44), materials["moon"])
-    for idx, (x1, z1, x2, z2) in enumerate((
-        (6.98, 2.35, 8.66, 4.03),
-        (6.98, 3.02, 8.66, 4.70),
-        (6.98, 3.69, 8.42, 5.13),
-        (8.66, 2.35, 6.98, 4.03),
-        (8.66, 3.02, 6.98, 4.70),
-        (8.66, 3.69, 7.22, 5.13),
-    )):
+    # Canonical right window: tall Gothic lancets with clean mullions and
+    # restrained tracery. Avoid the old criss-cross lattice that read as
+    # branches/wires at Home scale.
+    gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["arch_stone"], bevel=0.105)
+    gothic_arch("HOME_ARCH_window_right_inner_frame", 7.82, 6.43, 1.82, 3.18, 5.03, 1.92, materials["stone_dark"], bevel=0.035)
+    for idx, offset in enumerate((-0.34, 0.0, 0.34)):
+        cube(
+            f"HOME_PROP_window_mullion_v_{idx}",
+            (7.82 + offset, 6.40, 3.47),
+            (0.024 if offset else 0.030, 0.040, 1.42),
+            materials["brass_dark"],
+            bevel=0.009,
+        )
+    for idx, z in enumerate((2.78, 3.46, 4.10)):
+        cube(
+            f"HOME_PROP_window_transom_{idx}",
+            (7.82, 6.40, z),
+            (0.76, 0.040, 0.022),
+            materials["brass_dark"],
+            bevel=0.009,
+        )
+    # Twin upper lancets and a small rose keep the silhouette architectural
+    # instead of turning the glass into a diagonal cage.
+    for side in (-1, 1):
+        gothic_arch(
+            f"HOME_PROP_window_lancet_{side}",
+            7.82 + side * 0.36,
+            6.39,
+            0.54,
+            4.22,
+            4.92,
+            3.96,
+            materials["brass_dark"],
+            bevel=0.024,
+        )
+    rose_points = [
+        (
+            7.82 + 0.23 * math.cos(i * math.tau / 24),
+            6.385,
+            4.72 + 0.23 * math.sin(i * math.tau / 24),
+        )
+        for i in range(25)
+    ]
+    curve_tube("HOME_PROP_window_rose", rose_points, 0.020, materials["brass_dark"])
+    for idx, angle in enumerate((0.0, math.pi / 2, math.pi, math.pi * 1.5)):
         curve_tube(
-            f"HOME_PROP_window_lattice_{idx}",
-            [(x1, 6.43, z1), (x2, 6.43, z2)],
-            0.018,
+            f"HOME_PROP_window_rose_spoke_{idx}",
+            [
+                (7.82, 6.382, 4.72),
+                (7.82 + 0.19 * math.cos(angle), 6.382, 4.72 + 0.19 * math.sin(angle)),
+            ],
+            0.010,
             materials["brass_dark"],
         )
+    cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
+    sphere("HOME_PROP_window_moon", (8.30, 6.40, 4.86), (0.20, 0.026, 0.20), materials["moon"])
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
