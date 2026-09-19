@@ -180,7 +180,7 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   await expect(quickDialog).toBeVisible();
   const settings = quickDialog.locator('details.quick-match-settings');
   if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
-  const specialRules = quickDialog.locator('details.friendly-subdisclosure');
+  const specialRules = quickDialog.locator('details.friendly-subdisclosure').filter({ hasText: 'Reglas especiales' });
   if (!(await specialRules.evaluate((node) => node.open))) await specialRules.locator(':scope > summary').click();
   await quickDialog.getByRole('checkbox', { name: /Sudden Death/ }).check();
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();

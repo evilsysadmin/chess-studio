@@ -4,7 +4,30 @@ set -eu
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
+# `make tests` records the git tree it verified in the stamp file. If every ref being pushed
+# points at a verified tree, the gate is already green and is not repeated. Anything else
+# (new commits, another tree, no stamp) runs the full gate.
+stamp="$(git rev-parse --git-path quality-gate-ok)"
+zero="0000000000000000000000000000000000000000"
+verified=1
+seen=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  seen=1
+  tree="$(git rev-parse "$local_sha^{tree}")"
+  if [ ! -f "$stamp" ] || ! grep -qx "$tree" "$stamp"; then
+    verified=0
+  fi
+done
+
+if [ "$seen" = 1 ] && [ "$verified" = 1 ]; then
+  echo "==> Quality gate local ya verde para el árbol que se sube; no se repite. Push permitido."
+  exit 0
+fi
+
 echo "==> Chess Studio pre-push quality gate: make tests"
+echo "    (tarda varios minutos y GitHub puede cortar la conexión inactiva: ejecuta 'make tests' antes de 'git push'"
+echo "     y este hook reutilizará el resultado.)"
 if ! make tests; then
   echo >&2 ""
   echo >&2 "Push cancelado: el quality gate local ha fallado."

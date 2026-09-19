@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Parallel sessions/worktrees each need their own preview port; GitHub Actions keeps the default.
+const e2ePort = Number(process.env.E2E_PORT || 4173);
+const e2eOrigin = `http://127.0.0.1:${e2ePort}/chess-studio/`;
 const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
@@ -44,7 +47,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173/chess-studio/',
+    baseURL: e2eOrigin,
     // Los journeys E2E mockean red con page.route(). Un Service Worker activo
     // puede interceptar esas peticiones antes que Playwright y volver invisibles
     // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
@@ -68,8 +71,8 @@ export default defineConfig({
     video: visualArtifactMode ? 'off' : 'retain-on-failure',
   },
   webServer: {
-    command: 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173/chess-studio/',
+    command: `python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port ${e2ePort}`,
+    url: e2eOrigin,
     reuseExistingServer: !ciMode,
     timeout: 20_000,
   },

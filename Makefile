@@ -9,6 +9,13 @@ BACKEND_VENV_PY := $(VENV_PY)
 FRONTEND_VITEST := ./node_modules/.bin/vitest
 TRIVY := .tools/trivy
 SECURITY_DIR := .security
+E2E_WORKERS ?= 2
+# One free preview port per make invocation so concurrent sessions/worktrees never collide
+# (override with E2E_PORT=). GitHub Actions calls Playwright directly and keeps 4173.
+ifndef E2E_PORT
+E2E_PORT := $(shell python3 -S -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+endif
+export E2E_PORT
 ifeq ($(GITHUB_ACTIONS),true)
 TRIVY_CACHE ?= $(CURDIR)/.trivy-cache
 CRITICAL_E2E_WORKERS ?= 2
@@ -114,7 +121,30 @@ ensure-hook-script:
 			'ROOT="$$(git rev-parse --show-toplevel)"' \
 			'cd "$$ROOT"' \
 			'' \
+			'# `make tests` records the git tree it verified in the stamp file. If every ref being pushed' \
+			'# points at a verified tree, the gate is already green and is not repeated. Anything else' \
+			'# (new commits, another tree, no stamp) runs the full gate.' \
+			'stamp="$$(git rev-parse --git-path quality-gate-ok)"' \
+			'zero="0000000000000000000000000000000000000000"' \
+			'verified=1' \
+			'seen=0' \
+			'while read -r _local_ref local_sha _remote_ref _remote_sha; do' \
+			'  [ "$$local_sha" = "$$zero" ] && continue' \
+			'  seen=1' \
+			'  tree="$$(git rev-parse "$$local_sha^{tree}")"' \
+			'  if [ ! -f "$$stamp" ] || ! grep -qx "$$tree" "$$stamp"; then' \
+			'    verified=0' \
+			'  fi' \
+			'done' \
+			'' \
+			'if [ "$$seen" = 1 ] && [ "$$verified" = 1 ]; then' \
+			'  echo "==> Quality gate local ya verde para el árbol que se sube; no se repite. Push permitido."' \
+			'  exit 0' \
+			'fi' \
+			'' \
 			'echo "==> Chess Studio pre-push quality gate: make tests"' \
+			'echo "    (tarda varios minutos y GitHub puede cortar la conexión inactiva: ejecuta '\''make tests'\'' antes de '\''git push'\''"' \
+			'echo "     y este hook reutilizará el resultado.)"' \
 			'if ! make tests; then' \
 			'  echo >&2 ""' \
 			'  echo >&2 "Push cancelado: el quality gate local ha fallado."' \
@@ -236,6 +266,13 @@ gate-critical: test-backend-smoke test-frontend-smoke
 ## backend enseña smoke → integration; Playwright ejecuta todos los journeys.
 ## `git push` no sale si falla ninguna de estas capas.
 tests: ensure-hooks static-preflight tests-fe tests-be security e2e
+	@if git diff --quiet HEAD -- 2>/dev/null; then \
+		tree="$$(git rev-parse 'HEAD^{tree}')"; \
+		echo "$$tree" >> "$$(git rev-parse --git-path quality-gate-ok)"; \
+		echo "==> Quality gate registrado para el árbol $$tree (el hook pre-push lo reutiliza)."; \
+	else \
+		echo "AVISO: hay cambios sin commitear; el gate no se registra para git push."; \
+	fi
 
 test: tests
 quality-gate: tests
@@ -304,7 +341,10 @@ e2e: ensure-e2e-deps frontend-build
 	# Same discovery mode as e2e-full.yml: the regression aggregator is skipped and
 	# regression-journeys-core.js is picked up directly. Without it Playwright loads
 	# the aggregator plus the standalone specs it re-imports and refuses to run.
-	cd e2e && PLAYWRIGHT_FULL_SWEEP=1 ./node_modules/.bin/playwright test
+	# CI=1 + 2 workers mirror GitHub Actions (playwright.config.js budgets and e2e-full.yml
+	# --workers=2). Without them a laptop runs one worker per core on software WebGL with
+	# the tight local timeouts and fails on load, not on product behavior.
+	cd e2e && CI=1 PLAYWRIGHT_FULL_SWEEP=1 ./node_modules/.bin/playwright test --workers=$(E2E_WORKERS)
 
 e2e-combat-dom: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
