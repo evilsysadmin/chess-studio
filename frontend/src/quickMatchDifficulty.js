@@ -145,3 +145,27 @@ export function difficultyForQuickMatchRating(rating, activity = null, games = n
 
   return difficultyForCpuRating(targetOpponentRating);
 }
+
+
+export function quickMatchRecalibration(previousDifficulty, rating, activity = null, games = null) {
+  const rawPrevious = Number(previousDifficulty);
+  const rawRating = Number(rating);
+  if (!Number.isFinite(rawPrevious) || !Number.isFinite(rawRating)) return null;
+
+  const previous = clamp(Math.round(rawPrevious), 0, 100);
+  const playerRating = rawRating;
+  const nextDifficulty = difficultyForQuickMatchRating(playerRating, activity, games);
+  if (nextDifficulty === previous) return null;
+
+  const previousOpponentRating = cpuRatingForDifficulty(previous);
+  const opponentRating = cpuRatingForDifficulty(nextDifficulty);
+  const deltaOpponentElo = opponentRating - previousOpponentRating;
+  if (Math.abs(deltaOpponentElo) < QUICK_MATCH_HYSTERESIS_ELO) return null;
+
+  return {
+    difficulty: nextDifficulty,
+    opponentRating,
+    leadElo: opponentRating - playerRating,
+    deltaOpponentElo,
+  };
+}

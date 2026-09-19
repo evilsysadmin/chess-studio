@@ -5,6 +5,7 @@ import {
   QUICK_MATCH_TARGET_LEAD_ELO,
   difficultyForQuickMatchRating,
   provisionalQuickMatchLeadElo,
+  quickMatchRecalibration,
 } from './quickMatchDifficulty.js';
 
 function adaptiveGame(gameId, outcome, difficulty = 56) {
@@ -75,6 +76,25 @@ describe('quick-match Elo chaser', () => {
     const relieved = difficultyForQuickMatchRating(1000, losses, 20);
     expect(relieved).toBeLessThan(baseline);
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
+  });
+
+  it('reports a factual post-game recalibration only when the opponent changes materially', () => {
+    const changed = quickMatchRecalibration(
+      45,
+      1000,
+      [{ gameId: 'old', state: 'started', detail: 'adaptive-difficulty', difficulty: 45, mode: 'casual' }],
+      20,
+    );
+    expect(changed).toMatchObject({ difficulty: 56 });
+    expect(changed.opponentRating - 1000).toBeGreaterThanOrEqual(25);
+
+    const stable = quickMatchRecalibration(
+      55,
+      1000,
+      [{ gameId: 'steady', state: 'started', detail: 'adaptive-difficulty', difficulty: 55, mode: 'casual' }],
+      20,
+    );
+    expect(stable).toBeNull();
   });
 
   it('caps honestly at engine strength instead of inventing Elo above level 100', () => {

@@ -3,6 +3,7 @@ import { nextBestAction } from '../nextBestAction.js';
 import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import { seriesLiveMoment, seriesNextActionLabel } from '../series.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { quickMatchRecalibration } from '../quickMatchDifficulty.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 import './WarRoomDebrief.css';
 
@@ -79,6 +80,9 @@ export default function PostGameExperience({
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
+  const adaptiveRecalibration = !seriesState && resultSummary?.adaptiveDifficulty && resultSummary?.ratingApplied
+    ? quickMatchRecalibration(game.difficulty, resultSummary.eloAfter, null, resultSummary.ratingGames)
+    : null;
   const hasReport = game.history.length > 0;
   const matthiasVerdict = matthiasClosingLine({
     finalOutcome,
@@ -115,6 +119,9 @@ export default function PostGameExperience({
           <p className="endgame-rating-impact">
             <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
             <span>{resultSummary.detail}</span>
+            {adaptiveRecalibration && (
+              <span>Próximo reto adaptativo · Matthias ≈ {adaptiveRecalibration.opponentRating} Elo</span>
+            )}
           </p>
         )}
         <blockquote className="endgame-cpu-verdict endgame-matthias-verdict">

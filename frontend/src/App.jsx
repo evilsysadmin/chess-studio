@@ -451,7 +451,7 @@ function AppInner({ isAdminUser }) {
         ratingApplied: true,
         eloDelta: details.delta,
         eloBefore: rating.rating,
-        eloAfter: details.next.rating,
+        eloAfter: details.next.rating, ratingGames: details.next.games,
       };
     }
 
@@ -494,7 +494,7 @@ function AppInner({ isAdminUser }) {
     const detail = ratingSummary.ratingApplied
       ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
       : 'Esta modalidad no afecta a tu rating.';
-    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, ...ratingSummary };
+    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
     setCasualResult(summary);
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);
