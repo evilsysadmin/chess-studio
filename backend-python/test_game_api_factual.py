@@ -175,6 +175,40 @@ def test_analyze_keeps_legacy_shape_without_candidate_limit(monkeypatch):
     assert response.json() == suggestion
 
 
+def test_analyze_skips_candidate_search_when_only_one_legal_move_exists(monkeypatch):
+    suggestion = {"from": "e2", "to": "e4", "san": "e4", "piece": "p", "promotion": None, "captured": False}
+
+    class OneLegalMoves:
+        def count(self):
+            return 1
+
+    class ForcedBoard:
+        legal_moves = OneLegalMoves()
+
+        def is_game_over(self, claim_draw=True):
+            return False
+
+    monkeypatch.setattr(game_api, "board_from_valid_fen", lambda _fen: ForcedBoard())
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: suggestion)
+    monkeypatch.setattr(
+        game_api,
+        "factual_candidate_payloads_for_level",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("one legal move has no shortlist to rank")),
+    )
+
+    response = _client().post(
+        "/api/analyze",
+        json={
+            "fen": "forced-position",
+            "level": 70,
+            "candidateLimit": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == suggestion
+
+
 def test_analyze_adds_bounded_candidates_when_requested(monkeypatch):
     seen = {}
     suggestion = {"from": "e2", "to": "e4", "san": "e4", "piece": "p", "promotion": None, "captured": False}
