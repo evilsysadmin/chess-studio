@@ -25,7 +25,7 @@ A missing remote image therefore fails before the currently served backend is re
 
 The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, registry images, or Run Command payloads.
 
-The Compose project defaults to `chess-studio-staging`. `CHESS_STUDIO_COMPOSE_PROJECT`, `CHESS_STUDIO_BACKEND_PORT`, and `CHESS_STUDIO_ENV_FILE` are parameterized so a later production stack can coexist without changing the application image.
+The default target remains `staging`. The host deploy contract also accepts an explicit `production` target so the same A1 can run a second isolated Compose stack without changing the application image. Production defaults to project `chess-studio-production`, loopback port `4100`, runtime file `/etc/chess-studio/production/backend.env`, and state directory `/var/lib/chess-studio-production`. Staging remains on project `chess-studio-staging`, port `4000`, `/etc/chess-studio/backend.env`, and `/var/lib/chess-studio`. A single host deploy lock serializes both targets because they intentionally share the immutable Git checkout.
 
 ## Staging exposure
 
@@ -62,3 +62,15 @@ sudo /usr/local/sbin/chess-studio-deploy <CI_APPROVED_40_CHAR_SHA>
 ```
 
 The wrapper checks out the exact runtime contract, pulls the exact prebuilt GHCR image, starts the new Compose service without building or pulling during `up`, requires Mongo readiness plus exact build identity and CORS, persists the successful SHA, and attempts rollback to the previous immutable cached image if the new deployment fails attestation.
+
+
+## Temporary production target
+
+The installed wrapper remains backwards compatible:
+
+```bash
+sudo /usr/local/sbin/chess-studio-deploy <SHA>                 # staging
+sudo /usr/local/sbin/chess-studio-deploy production <SHA>      # production
+```
+
+A staging deploy refreshes the stable wrapper from the accredited repository revision, so the host can learn the target-aware contract without reprovisioning the A1. Production deployment in this layer is deliberately local-only: it validates Mongo readiness, exact build identity and production CORS on loopback, but does not mutate the staging tunnel, staging deploy watcher, staging signal timer or K3s assets. Public production cutover is a separate guarded step.
