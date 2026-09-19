@@ -26,9 +26,14 @@ def parse_args():
     return parser.parse_args()
 
 
-def thumb(cell: Image.Image) -> Image.Image:
-    out = cell.copy()
-    out.thumbnail((THUMB, THUMB), Image.Resampling.LANCZOS)
+def thumb(cell: Image.Image, guides: bool = False) -> Image.Image:
+    out = cell.resize((THUMB, THUMB), Image.Resampling.LANCZOS)
+    if guides:
+        draw = ImageDraw.Draw(out)
+        pivot_x = int(round(200.0 / CELL * THUMB))
+        foot_y = int(round(382.0 / CELL * THUMB))
+        draw.line((pivot_x, 0, pivot_x, THUMB - 1), fill=(65, 190, 255, 145))
+        draw.line((0, foot_y, THUMB - 1, foot_y), fill=(255, 195, 70, 160))
     return out
 
 
@@ -51,14 +56,16 @@ def main():
         row = int(action["row"])
         name = str(action["name"])
         y = row * ROW_H
+        metas = action.get("frames_meta", [])
+        unique = len({str(item.get("sha256_rgba", "")) for item in metas if item.get("sha256_rgba")})
         draw.text((8, y + 4), f"{row:02d} {name}", fill=(245, 245, 245, 255))
-        draw.text((8, y + 20), "v9 / v11", fill=(160, 160, 160, 255))
+        draw.text((8, y + 20), f"v9 · 6 keys / v11 · 8 ({unique} distinct)", fill=(160, 160, 160, 255))
         for col in range(OLD_COLS):
             cell = old.crop((col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL))
             board.alpha_composite(thumb(cell), (LABEL + col * THUMB, y + 28))
         for col in range(NEW_COLS):
             cell = new.crop((col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL))
-            board.alpha_composite(thumb(cell), (LABEL + col * THUMB, y + 28 + THUMB))
+            board.alpha_composite(thumb(cell, guides=True), (LABEL + col * THUMB, y + 28 + THUMB))
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
     board.save(cfg.output, "PNG", optimize=True)
     print(f"Wrote {cfg.output}")
