@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/oci-readiness.yml").read_text(encoding="utf-8")
 service = (ROOT / ".github/workflows/oci-staging-service.yml").read_text(encoding="utf-8")
-quality = (ROOT / ".github/workflows/cicd.yml").read_text(encoding="utf-8")
+makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
 client = (ROOT / "scripts/oci_k3s_control.py").read_text(encoding="utf-8")
 root_control = (ROOT / "scripts/oci_k3s_control_root.py").read_text(encoding="utf-8")
@@ -140,7 +140,7 @@ root_self_test_command = (
     "infra/oci/gitops/staging2/backend.yaml.tmpl"
 )
 assert root_self_test_command in workflow
-assert root_self_test_command in quality
+assert root_self_test_command in makefile
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision
 assert 'python3 -S "$staging2_controller" self-test "$staging2_template"' in provision
