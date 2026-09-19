@@ -37,7 +37,7 @@ export function warRoomV2MaterialFinishProfile(materialName = '') {
   const name = String(materialName || '').toLowerCase();
   if (name.includes('canon_burgundy') || name.includes('burgundy')) {
     return Object.freeze({
-      colorScale: [0.78, 0.56, 0.62],
+      colorScale: [0.86, 0.60, 0.54],
       roughness: [0.84, 1],
       clearcoatMax: 0.02,
     });
@@ -51,21 +51,21 @@ export function warRoomV2MaterialFinishProfile(materialName = '') {
   }
   if (name.includes('armor')) {
     return Object.freeze({
-      colorScale: [0.80, 0.86, 0.98],
+      colorScale: [0.92, 0.90, 0.86],
       roughness: [0.34, 0.52],
       clearcoatMax: 0.18,
     });
   }
   if (name.includes('stone') || name.includes('wall_plaster')) {
     return Object.freeze({
-      colorScale: [0.88, 0.91, 0.98],
+      colorScale: [0.97, 0.95, 0.90],
       roughness: [0.76, 0.96],
       clearcoatMax: 0.05,
     });
   }
   if (name.includes('walnut') || name.includes('wood')) {
     return Object.freeze({
-      colorScale: [0.90, 0.82, 0.76],
+      colorScale: [0.95, 0.87, 0.78],
       roughness: [0.48, 0.70],
       clearcoatMax: 0.18,
     });
@@ -112,13 +112,13 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
   return {
     fire: {
       color: 0xff8a38,
-      intensity: coarsePointer ? 1.42 : 2.30,
+      intensity: coarsePointer ? 1.55 : 2.55,
       distance: 10.8,
       decay: 2,
     },
     rightFire: {
       color: 0xff7f30,
-      intensity: coarsePointer ? 0.88 : 1.68,
+      intensity: coarsePointer ? 1.05 : 1.95,
       distance: 9.2,
       decay: 2,
     },
@@ -129,8 +129,8 @@ export function warRoomV2PracticalLightProfile({ coarsePointer = false } = {}) {
       decay: 2,
     },
     moon: {
-      color: 0x7ba6ff,
-      intensity: coarsePointer ? 2.02 : 3.42,
+      color: 0xb4c0dc,
+      intensity: coarsePointer ? 1.10 : 1.90,
       distance: 15.2,
       decay: 2,
     },

@@ -138,7 +138,7 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.fire.color).toBe(0xff8a38);
     expect(desktop.rightFire.color).toBe(0xff7f30);
     expect(desktop.chandelier.color).toBe(0xffb457);
-    expect(desktop.moon.color).toBe(0x7ba6ff);
+    expect(desktop.moon.color).toBe(0xb4c0dc);
     expect(desktop.fire.intensity).toBeGreaterThan(coarse.fire.intensity);
     expect(desktop.rightFire.intensity).toBeGreaterThan(coarse.rightFire.intensity);
     expect(desktop.chandelier.intensity).toBeGreaterThan(coarse.chandelier.intensity);
@@ -146,13 +146,13 @@ describe('War Room v2 staging asset URL', () => {
     expect(desktop.moon.intensity).toBeGreaterThan(coarse.moon.intensity);
     expect(desktop.rightFire.distance).toBeLessThan(desktop.fire.distance);
     expect(desktop.fire.distance).toBeLessThan(desktop.moon.distance);
-    expect(desktop.fire.intensity).toBe(2.30);
+    expect(desktop.fire.intensity).toBe(2.55);
     expect(desktop.fire.distance).toBe(10.8);
-    expect(desktop.rightFire.intensity).toBe(1.68);
+    expect(desktop.rightFire.intensity).toBe(1.95);
     expect(desktop.rightFire.distance).toBe(9.2);
     expect(desktop.chandelier.intensity).toBe(0.92);
     expect(desktop.chandelier.distance).toBe(7.8);
-    expect(desktop.moon.intensity).toBe(3.42);
+    expect(desktop.moon.intensity).toBe(1.90);
     expect(desktop.moon.distance).toBe(15.2);
   });
 
@@ -165,7 +165,7 @@ describe('War Room v2 staging asset URL', () => {
 
   it('uses restrained cinematic finish profiles instead of glossy mockup materials', () => {
     expect(warRoomV2MaterialFinishProfile('WR_MAT_canon_burgundy')).toEqual({
-      colorScale: [0.78, 0.56, 0.62],
+      colorScale: [0.86, 0.60, 0.54],
       roughness: [0.84, 1],
       clearcoatMax: 0.02,
     });
@@ -175,7 +175,7 @@ describe('War Room v2 staging asset URL', () => {
       clearcoatMax: 0.24,
     });
     expect(warRoomV2MaterialFinishProfile('WR_MAT_stone_light')).toEqual({
-      colorScale: [0.88, 0.91, 0.98],
+      colorScale: [0.97, 0.95, 0.90],
       roughness: [0.76, 0.96],
       clearcoatMax: 0.05,
     });
