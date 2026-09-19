@@ -52,7 +52,17 @@ describe('analyzeGame', () => {
       analyzeMove: async (fen, from, to) => {
         callCount += 1;
         if (from === 'd1' && to === 'h5') {
-          return { suggested: { san: 'Nf3', from: 'g1', to: 'f3' }, evalAfterSuggested: 30, evalAfterPlayed: 10 };
+          return {
+            suggested: { san: 'Nf3', from: 'g1', to: 'f3' },
+            suggestedLine: [
+              { san: 'Nf3', from: 'g1', to: 'f3' },
+              { san: 'Nf6', from: 'g8', to: 'f6' },
+              { san: 'Nc3', from: 'b1', to: 'c3' },
+            ],
+            playedLine: [{ san: 'Qh5', from: 'd1', to: 'h5' }],
+            evalAfterSuggested: 30,
+            evalAfterPlayed: 10,
+          };
         }
         return { suggested: { san: 'algo', from: 'a1', to: 'a2' }, evalAfterSuggested: 20, evalAfterPlayed: 20 };
       },
@@ -72,6 +82,8 @@ describe('analyzeGame', () => {
     expect(badMove.playedTo).toBe('h5');
     expect(badMove.suggestedFrom).toBe('g1');
     expect(badMove.suggestedTo).toBe('f3');
+    expect(badMove.suggestedLine.map((move) => move.san)).toEqual(['Nf3', 'Nf6', 'Nc3']);
+    expect(badMove.playedLine.map((move) => move.san)).toEqual(['Qh5']);
     expect(badMove.severity).toBe('inaccuracy'); // pérdida de 20
   });
 

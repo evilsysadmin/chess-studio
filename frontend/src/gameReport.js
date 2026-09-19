@@ -96,6 +96,8 @@ function factualReportFields(result) {
   return {
     suggestedReply: result?.suggestedReply || null,
     playedReply: result?.playedReply || null,
+    suggestedLine: Array.isArray(result?.suggestedLine) ? result.suggestedLine : [],
+    playedLine: Array.isArray(result?.playedLine) ? result.playedLine : [],
     factualEvalAfterSuggested: Number.isFinite(result?.factualEvalAfterSuggested) ? result.factualEvalAfterSuggested : null,
     factualEvalAfterPlayed: Number.isFinite(result?.factualEvalAfterPlayed) ? result.factualEvalAfterPlayed : null,
     analysisDepth: Number.isFinite(result?.analysisDepth) ? result.analysisDepth : null,

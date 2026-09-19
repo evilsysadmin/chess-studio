@@ -11,6 +11,21 @@ function normalizeEngineMove(move) {
   };
 }
 
+function normalizeEngineLine(line) {
+  if (!Array.isArray(line)) return [];
+  return line.map(normalizeEngineMove).filter(Boolean);
+}
+
+function sameMove(left, right) {
+  if (!left || !right) return false;
+  if (left.from && left.to && right.from && right.to) {
+    return left.from === right.from
+      && left.to === right.to
+      && String(left.promotion || '') === String(right.promotion || '');
+  }
+  return Boolean(left.san && right.san && left.san === right.san);
+}
+
 function applyMove(board, move) {
   if (!move) return null;
   try {
@@ -36,6 +51,7 @@ export function counterfactualInputFromReportMove(move) {
     fen: evidence.fenBefore,
     suggested: evidence.suggested,
     suggestedReply: normalizeEngineMove(move?.suggestedReply),
+    suggestedLine: normalizeEngineLine(move?.suggestedLine),
   };
 }
 
@@ -43,6 +59,7 @@ export async function buildShortCounterfactual({
   fen,
   suggested,
   suggestedReply = null,
+  suggestedLine = [],
   analyzeMove,
   level = 95,
   maxPlies = 3,
@@ -63,7 +80,17 @@ export async function buildShortCounterfactual({
   if (!first) return null;
   line.push(first);
 
-  if (line.length < safePlies && !board.isGameOver()) {
+  const provenLine = normalizeEngineLine(suggestedLine);
+  if (provenLine.length && sameMove(first, provenLine[0])) {
+    for (const move of provenLine.slice(1)) {
+      if (line.length >= safePlies || board.isGameOver()) break;
+      const applied = applyMove(board, move);
+      if (!applied) break;
+      line.push(applied);
+    }
+  }
+
+  if (line.length < safePlies && line.length < 2 && !board.isGameOver()) {
     const factualReply = applyMove(board, normalizeEngineMove(suggestedReply));
     if (factualReply) line.push(factualReply);
   }
