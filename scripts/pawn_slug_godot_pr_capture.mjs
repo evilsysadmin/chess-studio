@@ -28,7 +28,7 @@ await page.addInitScript(() => {
 await page.goto(indexUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 });
 await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
 await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
-await page.waitForTimeout(1400);
+await page.waitForTimeout(2200);
 
 const canvasLocator = page.locator('canvas');
 const canvas = await canvasLocator.boundingBox();
