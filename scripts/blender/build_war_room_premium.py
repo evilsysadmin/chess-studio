@@ -891,6 +891,21 @@ def add_gothic_canon_v2(static, mats):
     add_pointed_arch_frame("left", -4.55)
     add_pointed_arch_frame("right", 4.85)
 
+    # Canon parity: shallow gothic tracery inside the rear lancets.
+    for prefix, cx in (("left", -4.55), ("right", 4.85)):
+        cube(f"WR_CANON_arch_{prefix}_keystone", (cx, 6.34, 6.18),
+             (0.18, 0.055, 0.20), mats["stone"], static, bevel=0.055)
+        cube(f"WR_CANON_arch_{prefix}_sill", (cx, 6.36, 3.26),
+             (1.33, 0.055, 0.075), mats["stone"], static, bevel=0.030)
+        for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
+            torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
+                  (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
+                  mats["stone"], static, rotation=(math.pi / 2, 0, 0))
+        cube(f"WR_CANON_arch_{prefix}_tracery_v", (cx, 6.30, 5.18),
+             (0.038, 0.035, 0.48), mats["stone"], static, bevel=0.014)
+        cube(f"WR_CANON_arch_{prefix}_tracery_h", (cx, 6.30, 5.42),
+             (0.48, 0.035, 0.038), mats["stone"], static, bevel=0.014)
+
     # Shallow mortar courses break the upper wall into believable masonry.
     # They stay behind the hero props and use one existing material so runtime
     # batching can collapse them aggressively.
@@ -900,6 +915,15 @@ def add_gothic_canon_v2(static, mats):
             (0, 6.555, z), (8.10, 0.018, 0.018),
             mats["stone_dark"], static, bevel=0.006,
         )
+
+    # Rear-wall pilasters give the canon its layered stone/wood cadence.
+    for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
+        cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
+             (0.16, 0.090, 1.62), mats["stone"], static, bevel=0.050)
+        cube(f"WR_CANON_rear_pilaster_cap_{index}", (x, 6.47, 6.16),
+             (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
+        cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
+             (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
     # Four tall heraldic banners frame the existing central rampant-horse crest.
     # Their lower points sit behind the table so they read as architecture, not UI.
