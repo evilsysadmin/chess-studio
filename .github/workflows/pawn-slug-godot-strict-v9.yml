@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v9.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas.py'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v9.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v9.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas.py'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v9.yml'
   workflow_dispatch:
 
@@ -21,7 +25,7 @@ concurrency:
 
 jobs:
   build-strict-v9:
-    name: Build strict-v9 · ${{ matrix.weapon }}
+    name: Build + gate strict-v9 · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     strategy:
@@ -38,8 +42,11 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
 
-      - name: Packer self-test
-        run: python3 scripts/art/pack_pawn_slug_godot_strict_v9.py --self-test
+      - name: Strict tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v9.py --self-test
+          python3 -m py_compile scripts/art/validate_pawn_slug_godot_atlas.py
 
       - name: Resolve uploaded v9 source
         id: source
@@ -74,18 +81,19 @@ jobs:
             --output "$ROOT/matthias_${WEAPON}_godot_strict_6x18_416_v9.png" \
             --weapon "$WEAPON"
 
-      - name: Validate output contract
+      - name: Godot strict contract gate + review artifacts
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
-          python3 - "/tmp/pawn-slug-godot-strict-v9/matthias_${WEAPON}_godot_strict_6x18_416_v9.png" <<'PY'
-          import sys
-          from PIL import Image
-          image = Image.open(sys.argv[1]).convert("RGBA")
-          assert image.size == (2496, 7488), image.size
-          assert image.getchannel("A").getbbox() is not None
-          print("OK strict-v9 Godot atlas", image.size)
-          PY
+          set -euo pipefail
+          ROOT="/tmp/pawn-slug-godot-strict-v9"
+          python3 scripts/art/validate_pawn_slug_godot_atlas.py \
+            --atlas "$ROOT/matthias_${WEAPON}_godot_strict_6x18_416_v9.png" \
+            --weapon "$WEAPON" \
+            --runtime games/pawn-slug-godot/scripts/matthias_art.gd \
+            --manifest "$ROOT/matthias_${WEAPON}_strict_v9_manifest.json" \
+            --contact-sheet "$ROOT/matthias_${WEAPON}_strict_v9_contact_sheet.png" \
+            --strips-dir "$ROOT/matthias_${WEAPON}_strict_v9_strips"
 
       - name: Publish immutable strict-v9 to R2
         if: >-
@@ -110,7 +118,10 @@ jobs:
           name: pawn-slug-godot-strict-v9-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
           path: |
             /tmp/pawn-slug-godot-strict-v9/matthias_${{ matrix.weapon }}_godot_strict_6x18_416_v9.png
+            /tmp/pawn-slug-godot-strict-v9/matthias_${{ matrix.weapon }}_strict_v9_manifest.json
+            /tmp/pawn-slug-godot-strict-v9/matthias_${{ matrix.weapon }}_strict_v9_contact_sheet.png
+            /tmp/pawn-slug-godot-strict-v9/matthias_${{ matrix.weapon }}_strict_v9_strips/*.png
             /tmp/pawn-slug-godot-strict-v9-${{ matrix.weapon }}-publish.txt
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 14
           compression-level: 0
