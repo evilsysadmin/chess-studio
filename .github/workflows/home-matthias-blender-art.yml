@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_home_matthias.py'
+      - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/home_matthias_parts.py'
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
@@ -28,7 +29,7 @@ jobs:
   render:
     name: Render canonical Home Matthias
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,11 +41,13 @@ jobs:
       - name: Build editable blend + animated runtime GLB + preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
+          BLENDER_EEVEE_PREMIUM: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-matthias-art
           blender --background \
+            --python scripts/blender/configure_eevee_premium.py \
             --python scripts/blender/build_home_matthias.py \
             -- \
             --blend /tmp/home-matthias-art/matthias-home-canonical.blend \
