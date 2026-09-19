@@ -4,6 +4,27 @@ import hint_analysis_service as service
 from engine_analysis import PrincipalVariationAnalysis
 
 
+def test_hint_payload_skips_search_when_only_one_legal_move_exists(monkeypatch):
+    board = chess.Board()
+    forced = chess.Move.from_uci("e2e4")
+    monkeypatch.setattr(service, "only_legal_move", lambda _board: forced)
+
+    def unexpected_search(*_args, **_kwargs):
+        raise AssertionError("forced move must not launch minimax")
+
+    monkeypatch.setattr(service, "principal_variation", unexpected_search)
+    monkeypatch.setattr(service, "get_cpu_move", unexpected_search)
+
+    payload = service.build_hint_payload(board, 95)
+
+    assert payload["from"] == "e2"
+    assert payload["to"] == "e4"
+    assert payload["forced"] is True
+    assert payload["analysisDepth"] == 0
+    assert payload["candidateCount"] == 1
+    assert [move["san"] for move in payload["line"]] == ["e4"]
+
+
 def test_hint_payload_exposes_proven_reply_and_line(monkeypatch):
     board = chess.Board()
     pv = PrincipalVariationAnalysis(
