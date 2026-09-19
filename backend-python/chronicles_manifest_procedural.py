@@ -22,6 +22,10 @@ from chronicles_content_variation import (
     apply_chronicles_seeded_treasure_boons,
 )
 from chronicles_map_code import ChroniclesMapCode, encode_chronicles_map_code
+from chronicles_map_planner import (
+    CHRONICLES_PLANNER_CONTRACT_VERSION,
+    resolve_chronicles_planner_recipe,
+)
 from chronicles_map_generator import (
     CHRONICLES_MAP_GENERATOR_VERSION,
     generate_chronicles_layout,
@@ -221,6 +225,8 @@ def _layout_revision(map_code: str, grid: list[str]) -> str:
 def proceduralize_chronicles_manifest(
     manifest: dict[str, Any],
     seed: int,
+    *,
+    planner_proposal: Any = None,
 ) -> ChroniclesProceduralManifest:
     module_variation = apply_chronicles_seeded_modules(manifest, seed)
     composition = apply_chronicles_seeded_composition(
@@ -232,7 +238,9 @@ def proceduralize_chronicles_manifest(
         seed,
     )
     composed_manifest = treasure_variation.manifest
-    recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
+    base_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
+    planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
+    recipe = planner.recipe
     map_code = encode_chronicles_map_code(recipe)
     layout = generate_chronicles_layout(recipe)
 
@@ -262,6 +270,11 @@ def proceduralize_chronicles_manifest(
         "mapCode": map_code,
         "generatorVersion": CHRONICLES_MAP_GENERATOR_VERSION,
         "layoutRevision": _layout_revision(map_code, final_grid),
+        "plannerContractVersion": CHRONICLES_PLANNER_CONTRACT_VERSION,
+        "plannerAccepted": planner.accepted,
+        "plannerSource": planner.source,
+        "plannerProposalRevision": planner.proposal_revision,
+        "plannerReason": planner.reason,
         "moduleVariationVersion": CHRONICLES_MODULE_VARIATION_VERSION,
         "moduleVariationRevision": module_variation.plan.revision,
         "activeProceduralModuleIds": list(module_variation.plan.active_module_ids),
