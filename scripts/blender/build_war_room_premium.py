@@ -443,20 +443,20 @@ def add_room(static, mats):
     for side in (-1, 1):
         pier_y = (-4.35, -1.65, 1.05) if side < 0 else (-4.35, -1.65, 0.15)
         for index, y in enumerate(pier_y):
-            cube(f"WR_ARCH_side_pier_{side}_{index}", (side * 8.34, y, 3.20),
-                 (0.14, 0.17, 2.78), mats["stone"], static, bevel=0.050)
-            cube(f"WR_ARCH_side_pier_base_{side}_{index}", (side * 8.22, y, 0.48),
-                 (0.23, 0.25, 0.18), mats["stone_dark"], static, bevel=0.045)
-            cube(f"WR_ARCH_side_pier_cap_{side}_{index}", (side * 8.22, y, 5.82),
-                 (0.23, 0.25, 0.16), mats["stone_light"], static, bevel=0.045)
-        cube(f"WR_ARCH_side_wainscot_rail_{side}", (side * 8.32, -1.62, 2.40),
-             (0.11, 4.55, 0.10), mats["trim_wood"], static, bevel=0.030)
-        cube(f"WR_ARCH_side_base_rail_{side}", (side * 8.32, -1.62, 0.52),
-             (0.11, 4.55, 0.14), mats["trim_wood"], static, bevel=0.032)
+            cube(f"WR_ARCH_side_pier_{side}_{index}", (side * 8.45, y, 3.20),
+                 (0.08, 0.19, 2.78), mats["stone_dark"], static, bevel=0.050)
+            cube(f"WR_ARCH_side_pier_base_{side}_{index}", (side * 8.39, y, 0.48),
+                 (0.12, 0.28, 0.18), mats["stone_dark"], static, bevel=0.045)
+            cube(f"WR_ARCH_side_pier_cap_{side}_{index}", (side * 8.39, y, 5.82),
+                 (0.12, 0.28, 0.16), mats["stone"], static, bevel=0.045)
+        cube(f"WR_ARCH_side_wainscot_rail_{side}", (side * 8.44, -1.62, 2.40),
+             (0.07, 4.55, 0.10), mats["trim_wood"], static, bevel=0.030)
+        cube(f"WR_ARCH_side_base_rail_{side}", (side * 8.44, -1.62, 0.52),
+             (0.07, 4.55, 0.14), mats["trim_wood"], static, bevel=0.032)
         panel_y = (-3.02, -0.28) if side < 0 else (-3.02,)
         for index, y in enumerate(panel_y):
-            cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.43, y, 1.40),
-                 (0.035, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
+            cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.475, y, 1.40),
+                 (0.018, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
 
     for z in (1.25, 3.15, 5.45):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
