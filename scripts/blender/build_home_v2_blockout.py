@@ -1442,6 +1442,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 obj.scale.x *= 0.28
                 obj.scale.z *= 0.15
                 obj.location.y += 0.32
+            if "_grate_" in obj.name:
+                if obj.data and hasattr(obj.data, "materials"):
+                    obj.data.materials.clear()
+                    obj.data.materials.append(materials["brass_dark"])
+                if "grate_cross" not in obj.name:
+                    obj.scale.z *= 0.52
+                    obj.location.z -= 0.15
     add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 112, (1.0, 0.26, 0.050), radius=0.82)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
