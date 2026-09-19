@@ -28,7 +28,12 @@ from chronicles_map_planner import (
 )
 from chronicles_map_generator import (
     CHRONICLES_MAP_GENERATOR_VERSION,
+    ChroniclesMapGenerationError,
     generate_chronicles_layout,
+)
+from chronicles_topology_quality import (
+    CHRONICLES_TOPOLOGY_QUALITY_VERSION,
+    evaluate_chronicles_topology,
 )
 
 
@@ -222,6 +227,39 @@ def _layout_revision(map_code: str, grid: list[str]) -> str:
     return hashlib.sha256(material).hexdigest()
 
 
+def _materialize_recipe(
+    composed_manifest: dict[str, Any],
+    recipe: ChroniclesMapCode,
+) -> tuple[dict[str, Any], str, str]:
+    map_code = encode_chronicles_map_code(recipe)
+    layout = generate_chronicles_layout(recipe)
+    grid = [
+        [
+            "." if cell in {"P", "X"} else cell
+            for cell in row
+        ]
+        for row in layout.grid
+    ]
+    open_cells = _open_cells(grid)
+
+    for anchor in sorted(
+        _anchor_positions(composed_manifest),
+        key=lambda point: (point[1], point[0]),
+    ):
+        _connect_anchor(grid, open_cells, anchor, map_code)
+
+    for (x, y), marker in _base_marker_positions(composed_manifest).items():
+        grid[y][x] = marker
+
+    start = composed_manifest["partyStart"]
+    grid[int(start["y"])][int(start["x"])] = "P"
+    final_grid = ["".join(row) for row in grid]
+
+    generated = deepcopy(composed_manifest)
+    generated["grid"] = final_grid
+    return generated, map_code, _layout_revision(map_code, final_grid)
+
+
 def proceduralize_chronicles_manifest(
     manifest: dict[str, Any],
     seed: int,
@@ -240,41 +278,47 @@ def proceduralize_chronicles_manifest(
     composed_manifest = treasure_variation.manifest
     base_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
     planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
-    recipe = planner.recipe
-    map_code = encode_chronicles_map_code(recipe)
-    layout = generate_chronicles_layout(recipe)
+    generated, map_code, layout_revision = _materialize_recipe(
+        composed_manifest,
+        planner.recipe,
+    )
+    quality = evaluate_chronicles_topology(generated)
+    planner_quality_fallback = False
+    planner_quality_reasons: tuple[str, ...] = ()
+    planner_applied = planner.accepted
+    planner_reason = planner.reason
 
-    grid = [
-        [
-            "." if cell in {"P", "X"} else cell
-            for cell in row
-        ]
-        for row in layout.grid
-    ]
-    open_cells = _open_cells(grid)
+    if planner.accepted and not quality.accepted:
+        planner_quality_fallback = True
+        planner_quality_reasons = quality.reasons
+        generated, map_code, layout_revision = _materialize_recipe(
+            composed_manifest,
+            base_recipe,
+        )
+        quality = evaluate_chronicles_topology(generated)
+        planner_applied = False
+        planner_reason = "quality-rejected"
 
-    for anchor in sorted(_anchor_positions(composed_manifest), key=lambda point: (point[1], point[0])):
-        _connect_anchor(grid, open_cells, anchor, map_code)
+    if not quality.accepted:
+        detail = ",".join(quality.reasons) or "unknown"
+        raise ChroniclesMapGenerationError(
+            f"generated Chronicles topology failed quality gate: {detail}"
+        )
 
-    for (x, y), marker in _base_marker_positions(composed_manifest).items():
-        grid[y][x] = marker
-
-    start = composed_manifest["partyStart"]
-    grid[int(start["y"])][int(start["x"])] = "P"
-    final_grid = ["".join(row) for row in grid]
-
-    generated = deepcopy(composed_manifest)
-    generated["grid"] = final_grid
     generated["generation"] = {
         "kind": "seeded-layout",
         "mapCode": map_code,
         "generatorVersion": CHRONICLES_MAP_GENERATOR_VERSION,
-        "layoutRevision": _layout_revision(map_code, final_grid),
+        "layoutRevision": layout_revision,
+        "topologyQualityVersion": CHRONICLES_TOPOLOGY_QUALITY_VERSION,
+        "topologyQuality": quality.as_dict(),
         "plannerContractVersion": CHRONICLES_PLANNER_CONTRACT_VERSION,
-        "plannerAccepted": planner.accepted,
+        "plannerAccepted": planner_applied,
         "plannerSource": planner.source,
         "plannerProposalRevision": planner.proposal_revision,
-        "plannerReason": planner.reason,
+        "plannerReason": planner_reason,
+        "plannerQualityFallback": planner_quality_fallback,
+        "plannerQualityRejectedReasons": list(planner_quality_reasons),
         "moduleVariationVersion": CHRONICLES_MODULE_VARIATION_VERSION,
         "moduleVariationRevision": module_variation.plan.revision,
         "activeProceduralModuleIds": list(module_variation.plan.active_module_ids),
