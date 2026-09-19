@@ -152,9 +152,9 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
   const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xff9b35, roughness: 0.42, emissive: 0xff5414, emissiveIntensity: 2.8 });
   const flameCoreMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffe1a0,
+    color: 0xffc978,
     transparent: true,
-    opacity: 0.94,
+    opacity: 0.82,
     depthWrite: false,
   });
   const sootMaterial = new THREE.MeshBasicMaterial({
