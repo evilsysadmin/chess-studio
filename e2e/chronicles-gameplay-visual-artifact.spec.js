@@ -12,10 +12,10 @@ async function openVisualMoreModes(page) {
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
   await expect(trigger).toBeVisible();
 
-  // Keep the first attempt short so a known transient blocker can be
-  // diagnosed and removed without burning Playwright's full action timeout.
+  // Keep the first attempt bounded but long enough for the illustrated Home
+  // entrance motion to settle; known blockers still avoid the full 30 s burn.
   try {
-    await trigger.click({ timeout: 1_500 });
+    await trigger.click({ timeout: 5_000 });
   } catch (error) {
     const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
     if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
