@@ -176,9 +176,27 @@ for (const capture of CAPTURES) {
           timeout: 30_000,
         });
       }
+
+      // Required visual gameplay proof: move the party through the real React
+      // action into a safe canonical cell, assert the resulting runtime message,
+      // then capture the post-movement WebGL state for human inspection.
+      const narrator = mode.locator('.chronicles-tactics__narrator p');
+      const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+      await expect(moveNorth).toBeEnabled();
+      await moveNorth.evaluate((button) => button.click());
+      await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
+      await page.waitForTimeout(180);
+      const movementMessage = ((await narrator.textContent()) || '').trim();
+      await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
+
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 2, scope: 'chronicles-tactics', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        `${JSON.stringify({
+          schema: 3,
+          scope: 'chronicles-tactics',
+          capture: { label: capture.label, ...health },
+          gameplay: { movedNorth: true, message: movementMessage },
+        }, null, 2)}\n`,
         'utf8',
       );
     } finally {
