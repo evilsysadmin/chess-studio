@@ -1,0 +1,102 @@
+name: Home · publish Blender runtime scene
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+    paths:
+      - 'scripts/blender/build_home_v2_blockout.py'
+      - 'scripts/blender/export_home_v2_runtime.py'
+      - 'scripts/blender/references/home_canon_20260918.webp.b64'
+      - 'scripts/r2_asset_publish.py'
+      - 'scripts/r2_asset_publisher.py'
+      - '.github/workflows/home-blender-v2-runtime.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/blender/build_home_v2_blockout.py'
+      - 'scripts/blender/export_home_v2_runtime.py'
+      - 'scripts/blender/references/home_canon_20260918.webp.b64'
+      - 'scripts/r2_asset_publish.py'
+      - 'scripts/r2_asset_publisher.py'
+      - '.github/workflows/home-blender-v2-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: home-blender-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build · Home Blender runtime GLB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Reject broken exporter syntax before Blender setup
+        run: python3 -m py_compile scripts/blender/export_home_v2_runtime.py
+      - uses: ./.github/actions/setup-blender-canonical
+        with:
+          extra-packages: webp
+      - name: Export canonical Home runtime GLB
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/home-v2-runtime
+          blender --background --python-exit-code 1 \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/export_home_v2_runtime.py -- \
+            --reference scripts/blender/references/home_canon_20260918.webp.b64 \
+            --out-dir /tmp/home-v2-runtime \
+            --samples 16 \
+            --max-width 1000
+          test "$(head -c 4 /tmp/home-v2-runtime/home-v2-runtime.glb)" = 'glTF'
+          test "$(stat -c%s /tmp/home-v2-runtime/home-v2-runtime.glb)" -lt 52428800
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path('/tmp/home-v2-runtime')
+          meta = json.loads((root / 'home-v2-runtime.json').read_text())
+          assert meta['contract'] == 'home-blender-runtime-v1'
+          assert meta['source_contract'] == 'home-blender-canon-20260918-v1'
+          assert meta['logical_id'] == 'home.scene.runtime'
+          assert meta['mesh_count'] >= 80
+          assert meta['bytes'] == (root / 'home-v2-runtime.glb').stat().st_size
+          print(json.dumps(meta, indent=2))
+          PY
+      - name: Validate R2 publish contract
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py self-test
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-v2-runtime/home-v2-runtime.glb \
+            --logical-id home.scene.runtime \
+            --prefix home/scene/canonical \
+            --dry-run
+      - name: Publish immutable runtime scene
+        if: github.event_name != 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          python3 -S scripts/r2_asset_publish.py publish /tmp/home-v2-runtime/home-v2-runtime.glb \
+            --logical-id home.scene.runtime \
+            --prefix home/scene/canonical
+          python3 -S scripts/r2_asset_publish.py check-manifest
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: home-blender-runtime-${{ github.run_number }}
+          path: |
+            /tmp/home-v2-runtime/
+            frontend/src/assets/r2-assets-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
