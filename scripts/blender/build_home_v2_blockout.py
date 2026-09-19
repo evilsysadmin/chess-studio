@@ -776,7 +776,7 @@ def add_banner(name: str, x: float, materials):
 
 
 def add_armor(materials):
-    steel = materials["steel"]
+    steel = materials["armor_steel"]
     brass = materials["brass"]
     stone = materials["stone"]
     dark = materials["dark"]
@@ -1136,6 +1136,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.195, 0.210, 0.228, 1), roughness=0.22, metallic=0.92),
+        "armor_steel": material("HOME_MAT_armor_steel", (0.34, 0.38, 0.43, 1), roughness=0.26, metallic=0.74),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.105, 0.006, 0.010, 1), roughness=0.95, bump_scale=26.0, bump_strength=0.08, variation=0.10, variation_scale=9.0),
@@ -1579,7 +1580,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ],
         5.505,
         0.045,
-        materials["steel"],
+        materials["armor_steel"],
         bevel=0.040,
     )
     # Two narrow fauld lames instead of the old bright three-bar robot belt.
@@ -1588,7 +1589,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_armor_fauld_{idx}",
             (1.55, 5.47, z),
             (half_w, 0.022, 0.030),
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.018,
         )
 
@@ -1610,7 +1611,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             pauldron_points,
             5.575,
             0.032,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.026,
         )
 
@@ -1638,7 +1639,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             upper_arm,
             5.590,
             0.032,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.022,
         )
         armor_panel(
@@ -1646,7 +1647,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             forearm,
             5.600,
             0.030,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.020,
         )
 
@@ -1661,7 +1662,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             ],
             5.67,
             0.034,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.024,
         )
         armor_panel(
@@ -1673,7 +1674,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             ],
             5.635,
             0.032,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.024,
         )
 
@@ -1686,7 +1687,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             ],
             5.585,
             0.032,
-            materials["steel"],
+            materials["armor_steel"],
             bevel=0.025,
         )
 
@@ -1700,14 +1701,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     curve_tube(
         "HOME_PROP_armor_chest_v_left",
         [(1.28, 5.445, 2.78), (1.43, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.020,
-        materials["brass_dark"],
+        0.012,
+        materials["armor_steel"],
     )
     curve_tube(
         "HOME_PROP_armor_chest_v_right",
         [(1.82, 5.445, 2.78), (1.67, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.020,
-        materials["brass_dark"],
+        0.012,
+        materials["armor_steel"],
     )
     add_trophy(materials)
     add_side_furnishings(materials)
