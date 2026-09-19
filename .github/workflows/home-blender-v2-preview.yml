@@ -1,6 +1,13 @@
 name: Home · Blender 2.0 preview
 
 on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+    paths:
+      - 'scripts/blender/build_home_v2_blockout.py'
+      - 'scripts/blender/references/home_canon_20260918.webp.b64'
+      - '.github/workflows/home-blender-v2-preview.yml'
   workflow_dispatch:
     inputs:
       quality:
