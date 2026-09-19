@@ -1292,6 +1292,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         if ("fireplace_left" in obj.name) and obj.type != "LIGHT":
             obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
             obj.scale *= 0.90
+            if "_flame_" in obj.name or "_flame_hot_" in obj.name:
+                # The v36 architectural overlay owns the visible flame silhouette.
+                # Keep legacy tongues only as a buried glow so we do not render
+                # a second row of vertical spikes behind the grate.
+                obj.scale.x *= 0.46
+                obj.scale.z *= 0.32
+                obj.location.y += 0.24
     left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.72, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_a.rotation_euler[2] = math.radians(9)
     left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.73, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
@@ -1338,15 +1345,28 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     sphere(
         "HOME_PROP_fireplace_left_front_ember_glow",
         (-6.15, 5.39, 0.60),
-        (0.67, 0.032, 0.078),
+        (0.72, 0.032, 0.082),
         materials["fire_hot"],
     )
+    sphere(
+        "HOME_PROP_fireplace_left_inner_glow",
+        (-6.15, 5.93, 0.86),
+        (0.62, 0.045, 0.22),
+        materials["fire"],
+    )
+    add_point_light(
+        "HOME_LIGHT_fireplace_left_inner",
+        (-6.15, 5.10, 1.02),
+        74,
+        (1.0, 0.28, 0.065),
+        radius=0.62,
+    )
     for idx, (dx, h, lean) in enumerate((
-        (-0.43, 0.29, -0.04),
-        (-0.20, 0.46, 0.04),
-        (0.02, 0.58, -0.02),
-        (0.24, 0.40, 0.05),
-        (0.44, 0.27, -0.03),
+        (-0.42, 0.23, -0.04),
+        (-0.20, 0.36, 0.04),
+        (0.02, 0.46, -0.02),
+        (0.23, 0.33, 0.05),
+        (0.43, 0.21, -0.03),
     )):
         cx = -6.15 + dx
         base = 0.58
