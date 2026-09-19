@@ -38,7 +38,6 @@ INVENTORY = {
     'oci-staging-service.yml': 'infra-staging-service-control',
     'oci-staging-tunnel.yml': 'infra-staging-edge',
     'oci-vault-cutover-once.yml': 'infra-staging-migration',
-    'pawn-slug-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
     'pawn-slug-godot-strict-atlas.yml': 'art-generation',
