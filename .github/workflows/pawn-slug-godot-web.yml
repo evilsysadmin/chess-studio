@@ -7,6 +7,8 @@ on:
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_enemy_roster_gate.py
+      - scripts/art/*pawn_slug_enemy_v2.py
+      - scripts/art/render_pawn_slug_enemy_frames.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
@@ -19,6 +21,8 @@ on:
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_enemy_roster_gate.py
+      - scripts/art/*pawn_slug_enemy_v2.py
+      - scripts/art/render_pawn_slug_enemy_frames.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
@@ -107,6 +111,13 @@ jobs:
         run: |
           python3 -S scripts/pawn_slug_enemy_roster_gate.py self-test
           python3 -S scripts/pawn_slug_enemy_roster_gate.py
+      - name: Enemy atlas v2 contract gate
+        run: |
+          python3 -m pip install --quiet Pillow==12.3.0 numpy==2.3.5
+          python3 scripts/art/validate_pawn_slug_enemy_v2.py \
+            --atlas games/pawn-slug-godot/art/enemies-v2/pawn_slug_enemy_godot_strict_8x117_128_v2.png \
+            --worksheet games/pawn-slug-godot/art/enemies-v2/worksheet.json \
+            --grips-gd games/pawn-slug-godot/scripts/enemy_grips_v2.gd
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded

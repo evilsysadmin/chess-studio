@@ -14,3 +14,19 @@ Pillow, NumPy and opencv-python-headless are required. The script verifies the m
 The 768×960 atlas uses right-facing poses only, silhouette-guided background matting, a shared scale, 192px cells and a 24px foot anchor. Pistol uses the complete approved character, without a second head overlay. Firing uses the aim pose and crouching keeps its armed crouch pose. The sheet has no jump sequence, so the aim pose uses existing runtime jump motion. Walk and run use four source poses; rear views and presentation lettering are excluded.
 
 Other weapons are immutable R2 assets referenced through `frontend/src/assets/r2-assets-manifest.json`; they never silently display pistol art. Failed weapon loads remain hidden and can retry; stale completions are disposed.
+
+# Pawn Slug enemy atlas v2
+
+Enemy soldiers (pawn, knight, rook, bishop, queen, grenadier, scout, commando, shield) ship as one strict 8x117 grid of 128px cells (13 actions x 8 frames per type; foot line y=116, pivot x=64). Weapons are not baked into the body: `scripts/enemy_grips_v2.gd` gives the grip anchor, aim angle and visibility for every frame so the runtime weapon overlay follows the hands for pistol, machinegun, shotgun and panzerfaust.
+
+```bash
+python3 scripts/art/render_pawn_slug_enemy_frames.py --frames-root games/pawn-slug-godot/art/enemies-v2/frames
+python3 scripts/art/pack_pawn_slug_enemy_v2.py --frames-root games/pawn-slug-godot/art/enemies-v2/frames \
+  --output games/pawn-slug-godot/art/enemies-v2/pawn_slug_enemy_godot_strict_8x117_128_v2.png \
+  --review games/pawn-slug-godot/art/enemies-v2/review \
+  --worksheet games/pawn-slug-godot/art/enemies-v2/worksheet.json \
+  --grips-gd games/pawn-slug-godot/scripts/enemy_grips_v2.gd
+python3 scripts/art/validate_pawn_slug_enemy_v2.py --atlas ... --worksheet ... --grips-gd ... --mark-validated
+```
+
+`render_pawn_slug_enemy_frames.py` is the frame-source stage (a deterministic 2D rig). Isolated frames from Image Generation can replace it: drop 128x128 RGBA frames at `frames/<type>/<action>/NN.png` plus `grips.json`, then run the same packer and validator. `worksheet.json` is the resume point.

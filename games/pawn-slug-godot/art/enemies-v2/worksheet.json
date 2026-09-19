@@ -1,0 +1,57 @@
+{
+  "worksheet": "pawn-slug-enemies-v2",
+  "status": "validated-local",
+  "atlas": {
+    "path": "games/pawn-slug-godot/art/enemies-v2/pawn_slug_enemy_godot_strict_8x117_128_v2.png",
+    "width": 1024,
+    "height": 14976,
+    "cell": 128,
+    "columns": 8,
+    "rows": 117,
+    "sha256": "6c665cbb06c2b9454f504ab884d2810043042ad392df356d241ca4d47089ade5"
+  },
+  "types": [
+    "pawn",
+    "knight",
+    "rook",
+    "bishop",
+    "queen",
+    "grenadier",
+    "scout",
+    "commando",
+    "shield"
+  ],
+  "actions": [
+    "idle",
+    "run",
+    "jump",
+    "crouch",
+    "hurt",
+    "climb",
+    "death",
+    "shoot",
+    "shoot_up",
+    "shoot_down",
+    "shoot_diag_up",
+    "shoot_diag_down",
+    "shoot_crouch"
+  ],
+  "frames_per_action": 8,
+  "pivot_x": 64,
+  "foot_y": 116,
+  "weapons": [
+    "pistol",
+    "machinegun",
+    "shotgun",
+    "panzerfaust"
+  ],
+  "weapon_mode": "runtime overlay anchored per frame by enemy_grips_v2.gd (grip x/y/angle/visible)",
+  "source": "procedural-2d-rig-v2 (render_pawn_slug_enemy_frames.py)",
+  "resume": "regenerate: render_pawn_slug_enemy_frames.py -> pack_pawn_slug_enemy_v2.py -> validate_pawn_slug_enemy_v2.py",
+  "validation": {
+    "validator": "scripts/art/validate_pawn_slug_enemy_v2.py",
+    "types": 9,
+    "actions": 13,
+    "frames": 936
+  }
+}
