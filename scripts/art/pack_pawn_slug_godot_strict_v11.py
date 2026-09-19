@@ -36,25 +36,28 @@ TARGET_FOOT_Y = 382.0
 ALPHA = 40
 CELL_GUARD = 4
 
+# Preserve the strict-v9 action duration after expanding each bank from six
+# to eight runtime frames: fps scales by 8/6 while the visual cadence stays the
+# same. Locomotion is phase-driven in gameplay, but the manifest remains honest.
 ACTIONS = (
-    ("idle", 6.0, True),
-    ("walk", 10.0, True),
-    ("run", 12.0, True),
-    ("jump", 10.0, False),
-    ("fall", 8.0, True),
-    ("land", 12.0, False),
-    ("crouch", 6.0, True),
-    ("crouch_walk", 8.0, True),
-    ("shoot", 15.0, False),
-    ("shoot_up", 15.0, False),
-    ("shoot_down", 15.0, False),
-    ("shoot_diag_up", 15.0, False),
-    ("shoot_diag_up_alt", 15.0, False),
-    ("shoot_diag_down", 15.0, False),
-    ("shoot_crouch", 15.0, False),
-    ("reload", 10.0, False),
-    ("hurt", 12.0, False),
-    ("die", 9.0, False),
+    ("idle", 8.0, True),
+    ("walk", 13.333333, True),
+    ("run", 16.0, True),
+    ("jump", 13.333333, False),
+    ("fall", 10.666667, True),
+    ("land", 16.0, False),
+    ("crouch", 8.0, True),
+    ("crouch_walk", 10.666667, True),
+    ("shoot", 20.0, False),
+    ("shoot_up", 20.0, False),
+    ("shoot_down", 20.0, False),
+    ("shoot_diag_up", 20.0, False),
+    ("shoot_diag_up_alt", 20.0, False),
+    ("shoot_diag_down", 20.0, False),
+    ("shoot_crouch", 20.0, False),
+    ("reload", 13.333333, False),
+    ("hurt", 16.0, False),
+    ("die", 12.0, False),
 )
 
 SOURCE_PHASES = (0.0, 1.0, 1.5, 2.0, 3.0, 4.0, 4.5, 5.0)
