@@ -62,23 +62,19 @@ def main():
    hs.append(box[3]-box[1])
   heights[name]=float(statistics.median(hs))
  idle=heights['idle']
- # Same authored size/proportions: non-crouch utility rows stay close to idle.
  for name in ('walk','run','jump','fall','land','shoot','shoot_up','shoot_down','shoot_diag_up','shoot_diag_up_alt','shoot_diag_down','reload','hurt'):
   if abs(heights[name]-idle)>85: fail(f'body-size discontinuity {name}: idle={idle} row={heights[name]}')
  for name in ('crouch','crouch_walk','shoot_crouch'):
   if heights[name]>=idle-8: fail(f'{name} is not visibly crouched: idle={idle} row={heights[name]}')
- # Aim semantics: measure medians across the eight exact runtime cells.
  row_tip=lambda r: statistics.median(tip_y(im.crop((c*CELL,r*CELL,(c+1)*CELL,(r+1)*CELL))) for c in range(COLS))
  horiz=row_tip(8); measures={9:row_tip(9),10:row_tip(10),11:row_tip(11),12:row_tip(12),13:row_tip(13)}
- if measures[9]>horiz-AIM_DELTA or measures[11]>horiz-AIM_DELTA or measures[12]>horiz-AIM_DELTA: fail(f'up-aim semantics drift h={horix:.1f} rows={measures}')
+ if measures[9]>horiz-AIM_DELTA or measures[11]>horiz-AIM_DELTA or measures[12]>horiz-AIM_DELTA: fail(f'up-aim semantics drift h={horiz:.1f} rows={measures}')
  if measures[10]<horiz+AIM_DELTA or measures[13]<horiz+AIM_DELTA: fail(f'down-aim semantics drift h={horiz:.1f} rows={measures}')
  report={'version':'v11','frames_per_pose':8,'total_frames':ROWS*COLS,'median_heights':heights,'aim_tip_y':{'horizontal':horiz,**{str(k):v for k,v in measures.items()}},'anchor_max_error_px':max(max(abs(x-PIVOT),abs(y-FOOT)) for _,_,x,y in anchors)}
  if a.baseline:
   base=Image.open(a.baseline).convert('RGBA')
   if base.size!=(6*CELL,ROWS*CELL): fail(f'baseline size mismatch {base.size}')
   report['baseline']='strict-v9'
-  # Every v11 frame must be sourced from the existing coherent bank, so alpha area
-  # must remain within the v9 row envelope (no accidental scale change/cropping).
   for row,name in enumerate(NAMES):
    areas=[]
    for col in range(6):
