@@ -343,16 +343,16 @@ def add_table_and_board(materials):
     # Pull it forward so it cannot disappear inside the table and give it the
     # canonical pointed lower edge plus a narrow brass backing/trim.
     drape_points = [
-        (-1.92, 1.28),
-        (1.92, 1.28),
-        (1.92, -0.10),
-        (0.0, -0.55),
-        (-1.92, -0.10),
+        (-1.72, 1.26),
+        (1.72, 1.26),
+        (1.72, 0.28),
+        (0.0, 0.04),
+        (-1.72, 0.28),
     ]
     flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.68, 0.08, metal, bevel=0.045)
     flat_panel(
         "HOME_PROP_table_banner",
-        [(x * 0.955, 0.64 + (z - 0.64) * 0.92) for x, z in drape_points],
+        [(x * 0.975, 0.65 + (z - 0.65) * 0.96) for x, z in drape_points],
         -0.725,
         0.055,
         banner,
@@ -361,19 +361,19 @@ def add_table_and_board(materials):
     curve_tube(
         "HOME_PROP_table_banner_gold_border",
         [
-            (-1.80, -0.790, 1.19),
-            (-1.80, -0.790, -0.02),
-            (0.0, -0.790, -0.46),
-            (1.80, -0.790, -0.02),
-            (1.80, -0.790, 1.19),
+            (-1.60, -0.790, 1.17),
+            (-1.60, -0.790, 0.30),
+            (0.0, -0.790, 0.08),
+            (1.60, -0.790, 0.30),
+            (1.60, -0.790, 1.17),
         ],
         0.028,
         heraldry,
     )
-    for idx, x in enumerate((-1.50, -1.0, -0.50, 0.0, 0.50, 1.0, 1.50)):
+    for idx, x in enumerate((-1.35, -0.90, -0.45, 0.0, 0.45, 0.90, 1.35)):
         sphere(
             f"HOME_PROP_table_banner_stud_{idx}",
-            (x, -0.802, 1.18),
+            (x, -0.802, 1.16),
             (0.028, 0.014, 0.028),
             heraldry,
         )
@@ -388,30 +388,30 @@ def add_table_and_board(materials):
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
-        [(x * 0.76 + 0.03, (z - 0.58) * 0.76 + 0.62) for x, z in horse_points],
+        [(x * 0.72 + 0.03, (z - 0.58) * 0.72 + 0.69) for x, z in horse_points],
         emblem_y,
         0.040,
         heraldry,
         bevel=0.018,
     )
-    cone("HOME_PROP_table_horse_ear", (-0.19, emblem_y - 0.035, 0.92), 0.055, 0.008, 0.18, heraldry, vertices=12)
+    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y - 0.035, 0.98), 0.050, 0.008, 0.16, heraldry, vertices=12)
     for idx, (mx, mz) in enumerate(((0.09, 0.80), (0.14, 0.68), (0.16, 0.56))):
         cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.046, 0.006, 0.125, heraldry, vertices=10)
-    sphere("HOME_PROP_table_horse_eye", (-0.16, emblem_y - 0.055, 0.77), (0.016, 0.009, 0.016), materials["dark"])
+    sphere("HOME_PROP_table_horse_eye", (-0.14, emblem_y - 0.055, 0.82), (0.014, 0.009, 0.014), materials["dark"])
     curve_tube(
         "HOME_PROP_table_horse_jaw_line",
-        [(-0.50, emblem_y - 0.058, 0.61), (-0.33, emblem_y - 0.060, 0.49), (-0.10, emblem_y - 0.060, 0.46)],
+        [(-0.44, emblem_y - 0.058, 0.67), (-0.29, emblem_y - 0.060, 0.56), (-0.08, emblem_y - 0.060, 0.53)],
         0.018,
         materials["dark"],
     )
     curve_tube(
         "HOME_PROP_table_horse_mane_line",
-        [(0.02, emblem_y - 0.058, 0.88), (0.13, emblem_y - 0.060, 0.72), (0.10, emblem_y - 0.060, 0.56)],
+        [(0.02, emblem_y - 0.058, 0.94), (0.12, emblem_y - 0.060, 0.79), (0.09, emblem_y - 0.060, 0.63)],
         0.016,
         materials["dark"],
     )
-    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, -0.20), (0.035, 0.024, 0.12), heraldry, bevel=0.01)
-    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, -0.17), (0.10, 0.024, 0.035), heraldry, bevel=0.01)
+    cube("HOME_PROP_table_mark_v", (0.0, emblem_y, 0.17), (0.032, 0.024, 0.095), heraldry, bevel=0.01)
+    cube("HOME_PROP_table_mark_h", (0.0, emblem_y, 0.20), (0.085, 0.024, 0.030), heraldry, bevel=0.01)
 
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
