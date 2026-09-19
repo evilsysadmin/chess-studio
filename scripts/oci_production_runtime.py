@@ -291,7 +291,7 @@ reset_url=values.get("PASSWORD_RESET_URL","")
 if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
     raise SystemExit("production runtime password reset target guard failed")
 path=Path(os.environ["RUNTIME_TMP"])
-path.write_text(text if text.endswith("\n") else text+"\n",encoding="utf-8")
+path.write_text(text if text.endswith("\\n") else text+"\\n",encoding="utf-8")
 os.chmod(path,0o600)
 PY
 sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
@@ -422,6 +422,8 @@ def self_test() -> None:
     assert "RENDER_API_KEY" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert_nonsecret_command(command)
+    embedded = command.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    compile(embedded, "<oci-production-runtime-sync>", "exec")
     validate_sync_output(f"{OK_MARKER} target=production db={PRODUCTION_DB} mode=0600")
     print("OCI production runtime self-test: OK")
 
