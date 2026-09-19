@@ -1,4 +1,4 @@
-name: Pawn Slug · Godot strict Matthias v9
+name: Pawn Slug · Godot strict Matthias art
 
 on:
   pull_request:
@@ -32,6 +32,9 @@ env:
 
 jobs:
   build-strict-v9:
+    # Authoritative Matthias art path for Pawn Slug Godot.
+    # The source sheets are immutable AI-authored raster assets in R2; Blender
+    # is intentionally not part of this pipeline.
     name: Build + gate strict-v9 · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -56,14 +59,12 @@ jobs:
           python3 -m py_compile scripts/art/validate_pawn_slug_godot_atlas.py
 
       - name: Restore pinned Godot editor for runtime smoke
-        if: matrix.weapon == 'pistol'
         uses: actions/cache@v6
         with:
           path: .godot-ci/${{ env.GODOT_VERSION }}
           key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
 
       - name: Install pinned Godot editor for runtime smoke
-        if: matrix.weapon == 'pistol'
         shell: bash
         run: |
           set -euo pipefail
@@ -82,7 +83,7 @@ jobs:
           fi
           "$godot" --version
 
-      - name: Resolve uploaded v9 source
+      - name: Resolve immutable AI-authored v9 source
         id: source
         env:
           WEAPON: ${{ matrix.weapon }}
@@ -131,7 +132,6 @@ jobs:
             --strips-dir "$ROOT/matthias_${WEAPON}_strict_v9_strips"
 
       - name: Consume generated atlas in real Godot SpriteFrames
-        if: matrix.weapon == 'pistol'
         env:
           WEAPON: ${{ matrix.weapon }}
         shell: bash
