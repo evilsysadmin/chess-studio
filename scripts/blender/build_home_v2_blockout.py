@@ -176,6 +176,7 @@ def cone(name: str, location, radius1: float, radius2: float, depth: float, mat,
 
 
 def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
+    """Build a readable stylised tournament piece at Home-camera distance."""
     profiles = {
         "pawn": (0.085, 0.055, 0.20, 0.085, 0.26),
         "rook": (0.10, 0.075, 0.27, 0.10, 0.30),
@@ -191,14 +192,117 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
     depth *= piece_scale
     head *= piece_scale
     height *= piece_scale
-    cylinder(f"{name}_base", (x, y, z + 0.035), r1 * 1.18, 0.07, mat, vertices=24)
-    cone(f"{name}_body", (x, y, z + depth / 2 + 0.06), r1, r2, depth, mat, vertices=24)
-    sphere(f"{name}_head", (x, y, z + height), (head, head, head), mat)
+
+    # Shared turned base. Two stepped rings give every piece a deliberate
+    # carved silhouette instead of the old cone+sphere placeholder.
+    cylinder(f"{name}_foot", (x, y, z + 0.025), r1 * 1.28, 0.050, mat, vertices=28)
+    cylinder(f"{name}_base", (x, y, z + 0.066), r1 * 1.12, 0.045, mat, vertices=28)
+    cone(f"{name}_body", (x, y, z + depth / 2 + 0.075), r1, r2, depth, mat, vertices=28)
+    cylinder(f"{name}_collar", (x, y, z + depth + 0.080), r2 * 1.34, 0.038, mat, vertices=24)
+
+    if kind == "pawn":
+        sphere(f"{name}_head", (x, y, z + height + 0.025), (head, head, head), mat)
+        return
+
     if kind == "rook":
-        cylinder(f"{name}_crown", (x, y, z + height + 0.075), head * 1.08, 0.09, mat, vertices=12)
-    elif kind == "king":
-        cube(f"{name}_cross_v", (x, y, z + height + 0.12), (0.025, 0.025, 0.10), mat, bevel=0.01)
-        cube(f"{name}_cross_h", (x, y, z + height + 0.15), (0.07, 0.025, 0.025), mat, bevel=0.01)
+        crown_z = z + height + 0.050
+        cylinder(f"{name}_crown", (x, y, crown_z), head * 1.16, 0.105, mat, vertices=20)
+        for idx, (dx, dy) in enumerate((
+            (-head * 0.74, -head * 0.74),
+            (head * 0.74, -head * 0.74),
+            (-head * 0.74, head * 0.74),
+            (head * 0.74, head * 0.74),
+        )):
+            cube(
+                f"{name}_merlon_{idx}",
+                (x + dx, y + dy, crown_z + 0.075),
+                (head * 0.28, head * 0.28, 0.055),
+                mat,
+                bevel=0.012,
+            )
+        return
+
+    if kind == "knight":
+        # Side-profile horse heads are intentionally oriented toward board
+        # centre so their silhouette survives the fixed frontal Home camera.
+        facing = -1.0 if x >= 0.0 else 1.0
+        neck = cone(
+            f"{name}_neck",
+            (x, y, z + height - 0.010),
+            head * 0.72,
+            head * 0.48,
+            0.23,
+            mat,
+            vertices=22,
+        )
+        neck.rotation_euler[1] = math.radians(18.0 * facing)
+        sphere(
+            f"{name}_head",
+            (x + facing * head * 0.38, y, z + height + 0.105),
+            (head * 0.92, head * 0.70, head * 0.78),
+            mat,
+        )
+        sphere(
+            f"{name}_muzzle",
+            (x + facing * head * 1.12, y, z + height + 0.055),
+            (head * 0.72, head * 0.54, head * 0.42),
+            mat,
+        )
+        for ear_idx, ex in enumerate((-0.30, 0.18)):
+            ear = cone(
+                f"{name}_ear_{ear_idx}",
+                (x + facing * head * ex, y, z + height + 0.225),
+                head * 0.22,
+                0.006,
+                0.105,
+                mat,
+                vertices=12,
+            )
+            ear.rotation_euler[1] = math.radians(-8.0 * facing)
+        return
+
+    if kind == "bishop":
+        sphere(
+            f"{name}_head",
+            (x, y, z + height + 0.010),
+            (head * 0.76, head * 0.76, head * 0.92),
+            mat,
+        )
+        mitre = cone(
+            f"{name}_mitre",
+            (x, y, z + height + 0.105),
+            head * 0.50,
+            0.008,
+            0.155,
+            mat,
+            vertices=20,
+        )
+        mitre.rotation_euler[1] = math.radians(7.0)
+        return
+
+    if kind == "queen":
+        crown_z = z + height + 0.010
+        sphere(f"{name}_head", (x, y, crown_z), (head * 0.76, head * 0.76, head * 0.76), mat)
+        cylinder(f"{name}_crown_ring", (x, y, crown_z + 0.090), head * 1.02, 0.040, mat, vertices=20)
+        for idx in range(6):
+            angle = idx * math.tau / 6.0
+            sphere(
+                f"{name}_crown_bead_{idx}",
+                (
+                    x + math.cos(angle) * head * 0.78,
+                    y + math.sin(angle) * head * 0.78,
+                    crown_z + 0.135,
+                ),
+                (head * 0.18, head * 0.18, head * 0.18),
+                mat,
+            )
+        sphere(f"{name}_finial", (x, y, crown_z + 0.175), (head * 0.22, head * 0.22, head * 0.22), mat)
+        return
+
+    # King: compact orb plus a crisp cross, visibly taller than the queen.
+    sphere(f"{name}_head", (x, y, z + height), (head * 0.72, head * 0.72, head * 0.72), mat)
+    cube(f"{name}_cross_v", (x, y, z + height + 0.145), (0.023, 0.023, 0.105), mat, bevel=0.010)
+    cube(f"{name}_cross_h", (x, y, z + height + 0.175), (0.073, 0.023, 0.023), mat, bevel=0.010)
 
 
 def curve_tube(name: str, points, bevel_depth: float, mat):
