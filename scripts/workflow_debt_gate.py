@@ -49,6 +49,7 @@ INVENTORY = {
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
+    'production-target-smoke.yml': 'delivery-observability',
     'r2-assets-infra.yml': 'infra-assets',
     'render-production-guardrail.yml': 'delivery-guardrail',
     'staging-ai-worker.yml': 'delivery-accreditation',
