@@ -30,6 +30,6 @@ docker run --rm \
   --platform linux/arm64 \
   --entrypoint python \
   "$TAG" \
-  -c "import platform; import fastapi, uvicorn, chess, pymongo, pydantic, bcrypt, jwt, httpx; assert hasattr(pymongo, 'AsyncMongoClient'); machine=platform.machine().lower(); assert machine in {'aarch64','arm64'}, machine; print(f'OCI ARM64 smoke OK · arch={machine} · FastAPI={fastapi.__version__} · Pydantic={pydantic.__version__}')"
+  -c "import os, platform; import fastapi, uvicorn, chess, pymongo, pydantic, bcrypt, jwt, httpx; assert hasattr(pymongo, 'AsyncMongoClient'); machine=platform.machine().lower(); assert machine in {'aarch64','arm64'}, machine; assert os.getuid() == 10001, os.getuid(); assert os.getgid() == 10001, os.getgid(); print(f'OCI ARM64 smoke OK · arch={machine} · uid={os.getuid()} · gid={os.getgid()} · FastAPI={fastapi.__version__} · Pydantic={pydantic.__version__}')"
 
 echo "==> OCI ARM64 OK · imagen backend construible y ejecutable en Ampere/AArch64"
