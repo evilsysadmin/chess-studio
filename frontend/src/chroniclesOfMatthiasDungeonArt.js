@@ -538,7 +538,13 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
       }
       addWallAge(root, grime, mineral, px, pz, rotY, horizontal, outward, index);
 
-      const nicheFace = (x === 0 && y === 3 && side === 'east') || (x === 6 && y === 3 && side === 'west') || (x === 2 && y === 2 && side === 'south');
+      // One offset memorial niche breaks the opening corridor's mirror symmetry
+      // and gives the first encounter a memorable landmark without narrowing the
+      // walkable space. Keep it desktop-only with the rest of the premium dressing.
+      const nicheFace = (x === 0 && y === 3 && side === 'east')
+        || (x === 6 && y === 3 && side === 'west')
+        || (x === 2 && y === 2 && side === 'south')
+        || (x === 3 && y === 6 && side === 'north');
       if (nicheFace) addWallNiche(root, nicheVoid, wallAccent, urnStone, px, pz, facingYaw, index);
 
       const chainFace = (x === 0 && y === 4 && side === 'east') || (x === 6 && y === 2 && side === 'west');
