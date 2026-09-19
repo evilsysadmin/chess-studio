@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { difficultyForRating } from './playerRating.js';
-import { calibrateQuickMatchDifficulty } from './quickMatchDifficulty.js';
 import { difficultyForPracticeRating, PRACTICE_ADAPTIVE_RELIEF } from './practiceDifficulty.js';
+import { difficultyForQuickMatchRating } from './quickMatchDifficulty.js';
 
 describe('practice adaptive difficulty', () => {
-  it('uses the normal adaptive signal with relief before engine calibration', () => {
-    const normal = difficultyForRating(1100, [], 12);
-    const relieved = Math.max(0, normal - PRACTICE_ADAPTIVE_RELIEF);
-    expect(difficultyForPracticeRating(1100, [], 12)).toBe(calibrateQuickMatchDifficulty(relieved));
+  it('uses the War Room Elo signal with a six-level practice relief', () => {
+    const quick = difficultyForQuickMatchRating(1100, [], 12);
+    expect(difficultyForPracticeRating(1100, [], 12)).toBe(Math.max(0, quick - PRACTICE_ADAPTIVE_RELIEF));
     expect(PRACTICE_ADAPTIVE_RELIEF).toBe(6);
   });
 
