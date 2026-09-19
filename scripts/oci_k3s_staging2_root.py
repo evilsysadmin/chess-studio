@@ -27,6 +27,10 @@ TEMPLATE_SHA256 = "5a286332bcab79433ad46425f94125ce7f91f0c96e043aac2af5fbab412d9
 RUNTIME_ENV = Path("/etc/chess-studio/backend.env")
 STATE = Path("/var/lib/chess-studio/staging2-deployed.sha")
 NAMESPACE = "chess-studio-staging2"
+NAMESPACE_LABELS = {
+    "app.kubernetes.io/part-of": "chess-studio",
+    "chess-studio.shadowops/track": "staging2",
+}
 DEPLOYMENT = "backend"
 SERVICE = "backend"
 SECRET = "backend-runtime"
@@ -243,11 +247,68 @@ def _apply_text(text: str) -> None:
     _kubectl("apply", "-f", "-", stdin=text, timeout=60)
 
 
+def _namespace_payload() -> dict:
+    completed = _kubectl("get", "namespace", NAMESPACE, "-o", "json", check=False, timeout=15)
+    if completed.returncode == 0:
+        try:
+            payload = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            raise SystemExit("staging2 namespace probe returned invalid JSON") from exc
+        if not isinstance(payload, dict):
+            raise SystemExit("staging2 namespace probe returned non-object JSON")
+        return payload
+    detail = (completed.stderr or completed.stdout or "").strip()
+    lowered = detail.lower()
+    if "notfound" in lowered or "not found" in lowered:
+        return {}
+    raise SystemExit(
+        "staging2 namespace probe failed "
+        f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
+    )
+
+
+def _namespace_owned(payload: dict) -> bool:
+    labels = ((payload.get("metadata") or {}).get("labels") or {}) if payload else {}
+    return isinstance(labels, dict) and all(
+        str(labels.get(key) or "") == value for key, value in NAMESPACE_LABELS.items()
+    )
+
+
+def _require_namespace_owned(payload: dict) -> None:
+    if payload and not _namespace_owned(payload):
+        raise SystemExit(
+            "refusing to manage foreign staging2 namespace without canonical ownership labels"
+        )
+
+
+def _verify_namespace_contract_if_present() -> None:
+    payload = _namespace_payload()
+    if payload:
+        _require_namespace_owned(payload)
+
+
 def _ensure_namespace_and_secret() -> None:
-    namespace_yaml = _kubectl(
-        "create", "namespace", NAMESPACE, "--dry-run=client", "-o", "yaml"
+    existing = _namespace_payload()
+    if existing:
+        _require_namespace_owned(existing)
+
+    namespace_json = _kubectl(
+        "create", "namespace", NAMESPACE, "--dry-run=client", "-o", "json"
     ).stdout
-    _apply_text(namespace_yaml)
+    try:
+        namespace_payload = json.loads(namespace_json)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("staging2 namespace dry-run returned invalid JSON") from exc
+    metadata = namespace_payload.setdefault("metadata", {})
+    labels = metadata.setdefault("labels", {})
+    labels.update(NAMESPACE_LABELS)
+    _apply_text(json.dumps(namespace_payload, separators=(",", ":")))
+
+    applied = _namespace_payload()
+    _require_namespace_owned(applied)
+    if not applied:
+        raise SystemExit("staging2 namespace disappeared immediately after apply")
+
     secret_yaml = _kubectl(
         "-n", NAMESPACE, "create", "secret", "generic", SECRET,
         f"--from-env-file={RUNTIME_ENV}", "--dry-run=client", "-o", "yaml",
@@ -256,19 +317,14 @@ def _ensure_namespace_and_secret() -> None:
 
 
 def _namespace_present() -> bool:
-    completed = _kubectl("get", "namespace", NAMESPACE, "-o", "name", check=False, timeout=15)
-    if completed.returncode == 0:
-        return True
-    detail = (completed.stderr or completed.stdout or "").strip().lower()
-    if "notfound" in detail or "not found" in detail:
-        return False
-    raise SystemExit(
-        "staging2 namespace probe failed "
-        f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
-    )
+    return bool(_namespace_payload())
 
 
 def _delete_namespace_and_verify_absent() -> None:
+    payload = _namespace_payload()
+    if not payload:
+        return
+    _require_namespace_owned(payload)
     _kubectl(
         "delete", "namespace", NAMESPACE,
         "--ignore-not-found=true", "--wait=true", "--timeout=60s",
@@ -544,6 +600,7 @@ def _restore(previous_sha: str) -> None:
 
 def deploy(sha: str) -> None:
     _verify_host_contract()
+    _verify_namespace_contract_if_present()
     pre_mem, pre_disk, pre_load = _resource_gate(MIN_PRE_MEM, MIN_PRE_DISK, "pre-deploy")
     previous_sha = _release_from_payload(_deployment_payload())
     _preflight_image(sha)
@@ -597,6 +654,7 @@ def _status_needs_diagnostics(
 
 def status() -> None:
     _verify_host_contract()
+    _verify_namespace_contract_if_present()
     payload = _deployment_payload()
     state_sha = _state_marker()
     mem, disk, load1 = _resources()
@@ -664,6 +722,8 @@ def self_test(template_path: Path) -> None:
     data = template_path.read_text(encoding="utf-8")
     assert hashlib.sha256(data.encode("utf-8")).hexdigest() == TEMPLATE_SHA256
     assert data.count("__SHA__") == 3
+    for key, value in NAMESPACE_LABELS.items():
+        assert f"{key}: {value}" in data
     for required in (
         "name: chess-studio-staging2",
         "type: ClusterIP",
@@ -712,6 +772,18 @@ def self_test(template_path: Path) -> None:
         },
     }
     assert _validate_image_payload(sample_sha, sample_payload) == f"sha256:{'a' * 64}"
+    owned_namespace = {"metadata": {"labels": dict(NAMESPACE_LABELS)}}
+    foreign_namespace = {
+        "metadata": {
+            "labels": {
+                "app.kubernetes.io/part-of": "something-else",
+                "chess-studio.shadowops/track": "staging2",
+            }
+        }
+    }
+    assert _namespace_owned(owned_namespace)
+    assert not _namespace_owned(foreign_namespace)
+    assert not _namespace_owned({})
     for mutation in ("tag", "digest", "arch", "user"):
         bad = json.loads(json.dumps(sample_payload))
         if mutation == "tag":
@@ -746,6 +818,8 @@ def self_test(template_path: Path) -> None:
     assert "staging2 image inspect missing canonical sha256 repo digest" in source
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
+    assert "refusing to manage foreign staging2 namespace" in source
+    assert "_verify_namespace_contract_if_present()" in source
     assert "state_sha=" in source
     assert "staging2 deployed state must remain root-owned" in source
     assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
