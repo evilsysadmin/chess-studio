@@ -31,6 +31,13 @@ func _static_rect(parent: Node, body_name: String, position: Vector2, size: Vect
     parent.add_child(body)
     return body
 
+func _static_one_way_rect(parent: Node, body_name: String, position: Vector2, size: Vector2) -> StaticBody2D:
+    var body := _static_rect(parent, body_name, position, size)
+    var collision := body.get_node("CollisionShape2D") as CollisionShape2D
+    collision.one_way_collision = true
+    collision.one_way_collision_margin = 7.0
+    return body
+
 func _make_player(parent: Node, position: Vector2):
     var player := PlayerProbe.new()
     player.name = "PlayerProbe"
@@ -126,6 +133,23 @@ func _run() -> void:
         "abajo en suelo respeta facing izquierdo sin abandonar crouch",
     )
     _expect_vector(player.quantize_aim_probe(Vector2.ZERO), Vector2.LEFT, "aim neutro conserva facing")
+
+    # Drop-through probe: crouch+jump targets only the one-way support below
+    # Matthias, leaves solid geometry alone, and gives him downward momentum.
+    var drop_platform := _static_one_way_rect(
+        world,
+        "DropPlatform",
+        Vector2(320.0, 130.0),
+        Vector2(180.0, 24.0),
+    )
+    player.position = Vector2(320.0, 76.0)
+    player.velocity = Vector2.ZERO
+    await physics_frame
+    _expect(player.try_drop_through_probe(), "drop-through reconoce la plataforma one-way bajo los pies")
+    _expect(player.drop_through_body_probe() == drop_platform, "drop-through ignora sólo la plataforma actual")
+    _expect(player.velocity.y > 0.0, "drop-through aplica impulso descendente")
+    player.clear_drop_through_probe()
+    _expect(player.drop_through_body_probe() == null, "drop-through retira la excepción tras finalizar")
 
     # Ledge-climb probe: shoulder sees the platform wall while the head ray is
     # clear, then the downward scan resolves a safe standing point on top.

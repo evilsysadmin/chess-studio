@@ -33,6 +33,9 @@ const JUMP_SPEED := 610.0
 const GRAVITY := 1550.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
+const DROP_THROUGH_SPEED := 150.0
+const DROP_THROUGH_IGNORE_SECONDS := 0.24
+const DROP_THROUGH_RAY_DEPTH := 16.0
 const LEDGE_DOUBLE_TAP_WINDOW := 0.34
 const LEDGE_WALL_REACH := 42.0
 const LEDGE_SHOULDER_OFFSET_Y := -36.0
@@ -120,6 +123,8 @@ var _checkpoint_position := Vector2.ZERO
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
+var _drop_through_remaining := 0.0
+var _drop_through_body: PhysicsBody2D
 var _ledge_tap_remaining := 0.0
 var _climbing := false
 var _climb_elapsed := 0.0
@@ -174,6 +179,7 @@ func _physics_process(delta: float) -> void:
         return
     invuln_remaining = maxf(0.0, invuln_remaining - delta)
     hurt_visual_remaining = maxf(0.0, hurt_visual_remaining - delta)
+    _update_drop_through(delta)
     if dead:
         _update_dead_state(delta)
         return
@@ -207,14 +213,18 @@ func _physics_process(delta: float) -> void:
     var jump_pressed := _jump_pressed()
     var jump_just_pressed := jump_pressed and not _jump_was_pressed
     if jump_just_pressed:
-        var ledge := _find_ledge_climb_target()
-        if not is_on_floor() and not ledge.is_empty():
-            if _ledge_tap_remaining > 0.0:
-                _jump_was_pressed = jump_pressed
-                _start_ledge_climb(Vector2(ledge["target"]))
-                return
-            _ledge_tap_remaining = LEDGE_DOUBLE_TAP_WINDOW
-        _jump_buffer_remaining = JUMP_BUFFER_TIME
+        if _crouch_pressed() and is_on_floor() and _try_drop_through_one_way():
+            _jump_buffer_remaining = 0.0
+            _coyote_remaining = 0.0
+        else:
+            var ledge := _find_ledge_climb_target()
+            if not is_on_floor() and not ledge.is_empty():
+                if _ledge_tap_remaining > 0.0:
+                    _jump_was_pressed = jump_pressed
+                    _start_ledge_climb(Vector2(ledge["target"]))
+                    return
+                _ledge_tap_remaining = LEDGE_DOUBLE_TAP_WINDOW
+            _jump_buffer_remaining = JUMP_BUFFER_TIME
     else:
         _jump_buffer_remaining = maxf(0.0, _jump_buffer_remaining - delta)
 
@@ -448,6 +458,7 @@ func _fallback_to_pistol() -> void:
     select_weapon("pistol")
 
 func _begin_death() -> void:
+    _clear_drop_through_exception()
     dead = true
     hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
@@ -497,6 +508,7 @@ func _update_dead_state(delta: float) -> void:
     queue_redraw()
 
 func _respawn() -> void:
+    _clear_drop_through_exception()
     global_position = _find_safe_respawn_position(_checkpoint_position)
     _set_crouching(false, true)
     velocity = Vector2.ZERO
@@ -516,6 +528,56 @@ func _respawn() -> void:
     select_weapon("pistol")
     _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
+
+func _update_drop_through(delta: float) -> void:
+    if _drop_through_body == null:
+        _drop_through_remaining = 0.0
+        return
+    _drop_through_remaining = maxf(0.0, _drop_through_remaining - delta)
+    if _drop_through_remaining <= 0.0:
+        _clear_drop_through_exception()
+
+func _clear_drop_through_exception() -> void:
+    if _drop_through_body != null and is_instance_valid(_drop_through_body):
+        remove_collision_exception_with(_drop_through_body)
+    _drop_through_body = null
+    _drop_through_remaining = 0.0
+
+func _try_drop_through_one_way() -> bool:
+    var body := _one_way_body_below_feet()
+    if body == null:
+        return false
+    _clear_drop_through_exception()
+    add_collision_exception_with(body)
+    _drop_through_body = body
+    _drop_through_remaining = DROP_THROUGH_IGNORE_SECONDS
+    velocity.y = maxf(velocity.y, DROP_THROUGH_SPEED)
+    return true
+
+func _one_way_body_below_feet() -> PhysicsBody2D:
+    var foot_y := global_position.y + STANDING_HITBOX_SIZE.y * 0.5
+    var ray := PhysicsRayQueryParameters2D.create(
+        Vector2(global_position.x, foot_y - 3.0),
+        Vector2(global_position.x, foot_y + DROP_THROUGH_RAY_DEPTH),
+        collision_mask,
+        [get_rid()],
+    )
+    ray.collide_with_bodies = true
+    ray.collide_with_areas = false
+    var hit := get_world_2d().direct_space_state.intersect_ray(ray)
+    if hit.is_empty():
+        return null
+    var body := hit.get("collider") as PhysicsBody2D
+    if body == null or not _body_has_one_way_shape(body):
+        return null
+    return body
+
+func _body_has_one_way_shape(body: PhysicsBody2D) -> bool:
+    for child in body.get_children():
+        var collision := child as CollisionShape2D
+        if collision != null and not collision.disabled and collision.one_way_collision:
+            return true
+    return false
 
 func _update_crouch_state() -> void:
     if _collision_shape == null:
