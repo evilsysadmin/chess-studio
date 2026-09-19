@@ -2,7 +2,7 @@
 """Render the next Chronicles of Matthias Tactics dungeon lookdev pass.
 
 This deliberately builds on the existing deterministic dungeon scene instead of
-forking its gameplay-readable layout. The v7 pass concentrates on the playable
+forking its gameplay-readable layout. The v8 pass concentrates on the playable
 plane: masonry silhouette, drainage, metalwork, damp clutter and practical-light
 fixtures. Camera and sleeping-unit gag remain recognizable for A/B review.
 """
@@ -359,8 +359,39 @@ def tune_camera_and_light(scene):
     cam.location = (11.0, -15.25, 12.15)
     cam.data.ortho_scale = 10.32
     base.look_at(cam, (.02, .32, .58))
+
+    # The richer v5-v7 stone started competing with the party. Pull the broad
+    # environment lights back slightly, then add one large soft party key.
+    # This changes hierarchy, not mood: torches still own the warm highlights.
+    energy_overrides = {
+        "DungeonKey": 410,
+        "DungeonFill": 560,
+        "DungeonTopFill": 215,
+        "DungeonStoneGraze": 125,
+    }
+    for name, energy in energy_overrides.items():
+        obj = bpy.data.objects.get(name)
+        if obj is not None and getattr(obj, "data", None) is not None:
+            obj.data.energy = energy
+
+    base.area_light(
+        "TacticsPartyFocus",
+        (-1.0, -4.4, 6.2),
+        118,
+        4.2,
+        (.46, .57, .72),
+        (.35, -.55, .62),
+    )
+    base.area_light(
+        "TacticsPartyWarmEdge",
+        (4.0, -2.7, 3.8),
+        42,
+        2.7,
+        (1.0, .31, .10),
+        (1.15, -.75, .55),
+    )
     try:
-        scene.view_settings.exposure = .56
+        scene.view_settings.exposure = .50
     except Exception:
         pass
 
@@ -381,10 +412,10 @@ def main():
     wall_masonry_hardware(M)
     tune_camera_and_light(scene)
 
-    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v7"
-    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v6"
+    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v8"
+    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v7"
     bpy.ops.render.render(write_still=True)
-    print("Chronicles Tactics dungeon v7:", out)
+    print("Chronicles Tactics dungeon v8:", out)
 
 
 if __name__ == "__main__":
