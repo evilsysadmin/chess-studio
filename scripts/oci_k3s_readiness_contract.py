@@ -99,6 +99,9 @@ template_sha = hashlib.sha256(staging2_template).hexdigest()
 assert f'TEMPLATE_SHA256 = "{template_sha}"' in staging2_root
 assert 'OPERATIONS = ("deploy", "status", "rollback")' in staging2_client
 assert 'WRAPPER = "/usr/local/sbin/chess-studio-k3s-staging2"' in staging2_client
+assert "root_capability_sha256" in staging2_client
+assert "staging2 remote capability stale" in staging2_client
+assert "capability_sha256=" in staging2_root
 assert "sudo --non-interactive" in staging2_client and "kubectl" not in staging2_client
 assert "CHESS_STUDIO_REPO" not in staging2_root and "/opt/chess-studio/repo" not in staging2_root
 assert 'LOCAL_PORT = 4100' in staging2_root
