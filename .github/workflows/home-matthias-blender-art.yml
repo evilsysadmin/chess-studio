@@ -1,6 +1,7 @@
 name: Home Matthias · Blender canonical art
 
 # Path-scoped canonical-art lane: the consolidated required gate waits for this workflow when these sources change.
+# Premium Home Matthias source is explicitly part of the canonical trigger set below.
 # This workflow is intentionally read-only. Updating an open PR with GITHUB_TOKEN causes GitHub to create
 # approval-required pull_request runs, so generated binaries must already be semantically current in the PR head.
 on:
@@ -8,6 +9,7 @@ on:
     paths:
       - 'scripts/blender/build_home_matthias.py'
       - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/blender/home_matthias_premium.py'
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
       - 'scripts/blender/validate_home_matthias_contract.py'

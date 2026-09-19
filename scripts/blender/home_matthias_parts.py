@@ -171,6 +171,12 @@ def cyl_between(name,start,end,radius,material,verts=48,bevel=.018):
 
 
 def parent_bone(obj,rig,bone):
+    # Objects created through bpy.data.objects.new (front_prism/front_ellipse)
+    # can still have a stale matrix_world immediately after assigning location.
+    # Evaluate the dependency graph before preserving world space; otherwise
+    # bone-parenting silently snaps authored face/badge/cross geometry to the
+    # bone origin and the GLB exports a faceless pawn with buried insignia.
+    bpy.context.view_layer.update()
     world=obj.matrix_world.copy(); obj.parent=rig; obj.parent_type='BONE'; obj.parent_bone=bone; obj.matrix_world=world
 
 

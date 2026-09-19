@@ -2,18 +2,24 @@ Chess Studio · Home Matthias canonical visual reference
 
 Approved reference: 2026-09-16
 Reference image: frontend/art-source/matthias-home-canonical-reference.webp
-Reference image dimensions: 512x512
-SHA-256: beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975
+Reference image dimensions: 128x140
+SHA-256: 24ce1e4da043ce32ded8cd2b7ee8a901494c15806f9489cd5625d7b6c2ce9650
+Reference origin: user-approved Home render in the Chess Studio project conversation.
 
 Identity contract:
-- pawn first, character second
-- compact, heavy dark pawn body with restrained brass detailing
-- clean ivory spherical head
-- broad curved peaked officer cap with oxblood band and visible visor
-- minimal black oval eyes, hard inward-sloping brows, permanent frown
-- large black/brass iron-cross chest insignia with real visual weight
-- no moustache, beard, humanoid torso, oversized shoulders, cream chest panel or white skirt
-- arms are invisible in neutral Idle and appear only for authored actions
-- sarcastic/vacilón attitude belongs to dialogue context; neutral visual expression stays stern/angry
+- THIS exact approved render is Matthias; use it as the visual target, not loose inspiration
+- pawn first, character second: unmistakable chess-pawn silhouette, no humanoid torso drift
+- compact glossy midnight/black body with warm restrained gold service trim
+- warm ivory spherical head with dimensional eyes rather than flat stickers
+- serious, slightly angry / concentrated expression: heavy inward brows and a restrained frown
+- broad curved peaked officer cap, black leather visor, oxblood band, gold piping and pawn service badge
+- prominent black/gold iron-cross chest insignia, with a small authored service braid below
+- no moustache, beard, cream chest panel, white skirt, oversized shoulders or cartoon limbs in neutral Idle
+- arms and props remain subordinate and appear only for authored routines
+- the Home animation rig may move Matthias, but it must not change his identity, proportions, face or material language
 
-The WebP above is the visual source of truth. The Blender contract in scripts/blender/home_matthias_contract.py is its executable guardrail. Changing the canonical reference requires deliberately replacing the WebP and updating its SHA-256 in both this provenance file and the executable contract; silent drift is forbidden.
+The WebP above is the visual source of truth. The Blender contract in
+scripts/blender/home_matthias_contract.py is its executable guardrail. App-level
+visual artifacts must be inspected against this reference before the change is
+considered complete; a structurally valid GLB that looks materially different is
+not acceptable.

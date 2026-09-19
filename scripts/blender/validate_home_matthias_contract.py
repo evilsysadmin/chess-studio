@@ -204,6 +204,11 @@ def main():
             continue
         if obj.name.startswith("Routine") or obj.name.startswith("Hand."):
             continue
+        # This guard targets broad ivory/light panels, not legitimate metallic
+        # service trim. Use the material contract rather than a brittle list of
+        # gold object names so future badges/cords do not become false positives.
+        if metallic(obj) >= BRASS_MIN_METALLIC:
+            continue
         _, z1 = world_z_bounds(obj)
         if z1 >= 1.35 or world_width(obj) <= 0.18:
             continue
