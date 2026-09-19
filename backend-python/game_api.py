@@ -296,7 +296,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         suggestion = await run_engine_work(get_cpu_move, board, level, ghost_style)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
-        if body.candidate_limit:
+        if body.candidate_limit and board.legal_moves.count() > 1:
             candidates = await run_engine_work(factual_candidate_payloads_for_level, board, level, body.candidate_limit)
             if candidates:
                 return {**suggestion, "candidates": candidates}
