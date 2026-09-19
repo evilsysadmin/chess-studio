@@ -256,6 +256,24 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      - name: Resolve Cloudflare zone for Worker Terraform
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          zone_body="$RUNNER_TEMP/cf-zone.json"
+          zone_status="$(curl --silent --show-error --output "$zone_body" --write-out '%{http_code}' --get \
+            --data-urlencode "name=$CF_DNS_ZONE_NAME" \
+            --data-urlencode "account.id=$CLOUDFLARE_ACCOUNT_ID" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            'https://api.cloudflare.com/client/v4/zones')"
+          [[ "$zone_status" == 200 ]] || { cat "$zone_body" >&2; exit 1; }
+          zone_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("result") or []; len(rows)==1 or sys.exit(f"Se esperaba una única zona activa: {rows}"); print(rows[0]["id"])' "$zone_body")"
+          echo "TF_VAR_cloudflare_zone_id=$zone_id" >> "$GITHUB_ENV"
+
       - name: Probe existing Cloudflare Worker state
         id: cf_state
         shell: bash
