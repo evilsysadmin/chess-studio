@@ -74,3 +74,10 @@ sudo /usr/local/sbin/chess-studio-deploy production <SHA>      # production
 ```
 
 A staging deploy refreshes the stable wrapper from the accredited repository revision, so the host can learn the target-aware contract without reprovisioning the A1. Production deployment in this layer is deliberately local-only: it validates Mongo readiness, exact build identity and production CORS on loopback, but does not mutate the staging tunnel, staging deploy watcher, staging signal timer or K3s assets. Public production cutover is a separate guarded step.
+
+
+## Isolated production runtime snapshot
+
+Temporary production uses a separate root-owned env file at `/etc/chess-studio/production/backend.env`. The one-time `production-runtime-bootstrap` operation reads the already-guarded Render production service and stores only the allow-listed backend runtime as the encrypted Vault secret `chess-studio-production-runtime-env`. The plaintext payload is never written to Git, Terraform state, GitHub output, or OCI Run Command.
+
+`production-runtime-sync` asks the A1 to fetch that CURRENT secret with its Instance Principal, validates `MONGO_DB_NAME=chess_study`, `ENVIRONMENT=production`, production CORS and the absence of staging targets, then installs it mode 0600 through the narrow root-owned installer. Staging remains at `/etc/chess-studio/backend.env` with `MONGO_DB_NAME=chess_study_staging`.

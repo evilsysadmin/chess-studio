@@ -15,6 +15,8 @@ repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 compose_file="$repo/infra/oci/runtime/docker-compose.yml"
 source_launcher="$repo/scripts/oci_staging_deploy_launcher.sh"
 target_launcher="/usr/local/sbin/chess-studio-deploy"
+source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
+target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
 k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
@@ -458,7 +460,9 @@ phase_done checkout "$checkout_started_ms"
 preflight_started_ms="$(now_ms)"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
+[[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
+install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"
 
 if [[ "$target" == staging ]]; then
   [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }

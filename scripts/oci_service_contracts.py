@@ -17,6 +17,7 @@ VAULT_RUNTIME = (("scripts/oci_vault_runtime.py", "--self-test"),)
 VAULT_COMPARE = (("scripts/oci_vault_compare.py", "--self-test"),)
 VAULT_PREVIEW = (("scripts/oci_vault_preview.py", "--self-test"),)
 VAULT_SYNC = (("scripts/oci_vault_sync.py", "--self-test"),)
+PRODUCTION_RUNTIME = (("scripts/oci_production_runtime.py", "--self-test"),)
 VAULT_BOOTSTRAP = (("scripts/oci_vault_bootstrap.py", "--self-test"),)
 BACKEND_DIAG = (("scripts/oci_backend_diagnose.py", "--self-test"),)
 RENDER_MONGO_DIAG = (("scripts/render_mongo_target_diagnose.py", "--self-test"),)
@@ -51,6 +52,8 @@ OPERATIONS: dict[str, tuple[tuple[str, ...], ...]] = {
     "deploy": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
     "bringup": TRANSPORT + RELEASE_DEPLOY + BACKEND_VERIFY,
     "runtime-sync": TRANSPORT + VAULT_RUNTIME + VAULT_SYNC + RELEASE_DEPLOY + BACKEND_VERIFY,
+    "production-runtime-bootstrap": TRANSPORT + PRODUCTION_RUNTIME,
+    "production-runtime-sync": TRANSPORT + PRODUCTION_RUNTIME,
     "vault-bootstrap": TRANSPORT + VAULT_BOOTSTRAP + VAULT_RUNTIME,
     "vault-validate": TRANSPORT + VAULT_RUNTIME,
     "vault-validate-pending": TRANSPORT + VAULT_RUNTIME,
@@ -85,7 +88,7 @@ def self_test() -> None:
     expected = {
         "diagnose", "backend-diagnose", "mongo-target-diagnose", "mongo-network-diagnose",
         "reserved-egress", "smoke", "reboot-agent", "deploy", "bringup", "runtime-sync",
-        "vault-bootstrap", "vault-validate", "vault-validate-pending", "vault-compare-current",
+        "production-runtime-bootstrap", "production-runtime-sync", "vault-bootstrap", "vault-validate", "vault-validate-pending", "vault-compare-current",
         "vault-preview-current", "k3s-start", "k3s-status", "k3s-rollback",
         "k3s-staging2-deploy", "k3s-staging2-status", "k3s-staging2-rollback",
     }
@@ -104,6 +107,11 @@ def self_test() -> None:
     runtime_sync = commands_for("runtime-sync")
     assert runtime_sync == TRANSPORT + VAULT_RUNTIME + VAULT_SYNC + RELEASE_DEPLOY + BACKEND_VERIFY
     assert RUNTIME[0] not in runtime_sync and K3S_STATUS[0] not in runtime_sync
+
+    for operation in ("production-runtime-bootstrap", "production-runtime-sync"):
+        production_runtime = commands_for(operation)
+        assert production_runtime == TRANSPORT + PRODUCTION_RUNTIME
+        assert VAULT_SYNC[0] not in production_runtime and RELEASE_DEPLOY[0] not in production_runtime
 
     vault_validate = commands_for("vault-validate")
     assert vault_validate == TRANSPORT + VAULT_RUNTIME
@@ -149,6 +157,8 @@ def self_test() -> None:
 
     workflow = SERVICE_WORKFLOW.read_text(encoding="utf-8")
     assert "python3 scripts/oci_vault_sync.py sync-current" in workflow
+    assert "python3 scripts/oci_production_runtime.py bootstrap" in workflow
+    assert "python3 scripts/oci_production_runtime.py sync-current" in workflow
     assert "python3 scripts/oci_runtime_config.py sync" not in workflow
     assert "Wait for OCI Run Command registration before runtime sync" not in workflow
     assert "for attempt in $(seq 1 60)" not in workflow
