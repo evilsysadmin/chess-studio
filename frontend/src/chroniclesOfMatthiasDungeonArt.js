@@ -36,7 +36,7 @@ function surfaceSample(pattern, x, y, seed) {
     const localX = (x + (band % 2) * 13) % 36;
     joint = localY < 2 || localX < 2;
     edge = localY < 6 || localX < 6;
-    if (joint) value = 102 + noise * 0.065;
+    if (joint) value = 116 + noise * 0.05;
     else if (edge) value -= 17;
     const wornCenter = Math.abs(localX - 18) + Math.abs(localY - 18) < 12;
     if (wornCenter) value += 7;
