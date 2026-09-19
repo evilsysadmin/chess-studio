@@ -419,9 +419,9 @@ def configure_cinematic_compositor(scene) -> None:
 
     glare.inputs["Type"].default_value = "Fog Glow"
     glare.inputs["Quality"].default_value = "High"
-    glare.inputs["Threshold"].default_value = 0.62
-    glare.inputs["Size"].default_value = 0.58
-    glare.inputs["Strength"].default_value = 0.32
+    glare.inputs["Threshold"].default_value = 1.00
+    glare.inputs["Size"].default_value = 0.72
+    glare.inputs["Strength"].default_value = 0.56
 
     links.new(layers.outputs["Image"], glare.inputs["Image"])
     links.new(glare.outputs["Image"], output.inputs["Image"])
