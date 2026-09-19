@@ -1553,9 +1553,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.scale.x *= 0.78
             obj.scale.y *= 0.92
             obj.scale.z *= 1.14
+    # Armour overlays are viewed from camera-side (-Y). flat_panel's default
+    # polygon winding points the front-face normals toward +Y, which made the
+    # focal metal render nearly black despite dedicated key/rim lights.
+    def armor_panel(name, points_xz, y, depth, mat, *, bevel=0.03):
+        return flat_panel(name, list(reversed(points_xz)), y, depth, mat, bevel=bevel)
+
     # Keep the dark drapery as a recess accent rather than a rectangular cape
     # behind the helmet. The canonical suit must read as articulated metal first.
-    flat_panel(
+    armor_panel(
         "HOME_PROP_armor_cape",
         [(1.17, 2.62), (1.93, 2.62), (1.86, 0.92), (1.55, 0.66), (1.24, 0.92)],
         5.82,
@@ -1599,7 +1605,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 (1.75, 2.46), (1.95, 2.45), (2.08, 2.35),
                 (2.00, 2.25), (1.80, 2.27),
             ]
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_pauldron_front_{side}",
             pauldron_points,
             5.575,
@@ -1627,7 +1633,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 (2.06, 1.91), (2.12, 1.84), (2.10, 1.64),
                 (2.02, 1.57), (1.94, 1.67), (1.96, 1.86),
             ]
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_arm_plate_{side}",
             upper_arm,
             5.590,
@@ -1635,7 +1641,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["steel"],
             bevel=0.022,
         )
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_forearm_plate_{side}",
             forearm,
             5.600,
@@ -1645,7 +1651,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
         cx = 1.55 + side * 0.145
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_shin_plate_{side}",
             [
                 (cx - 0.090, 0.54), (cx + 0.090, 0.54),
@@ -1658,7 +1664,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["steel"],
             bevel=0.024,
         )
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_thigh_plate_{side}",
             [
                 (cx - 0.105, 1.34), (cx + 0.105, 1.34),
@@ -1672,7 +1678,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
         tx = 1.55 + side * 0.205
-        flat_panel(
+        armor_panel(
             f"HOME_PROP_armor_tasset_front_{side}",
             [
                 (tx - 0.125, 1.82), (tx + 0.125, 1.82),
