@@ -1168,10 +1168,12 @@ def build():
     look_at(key, (0, 0.5, 1.1))
     fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 390.0, (0.20, 0.34, 0.92), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
-    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 175.0, (1.0, 0.48, 0.24), static, size=5.0)
+    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 195.0, (1.0, 0.48, 0.24), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
-        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2), 128.0, (1.0, 0.31, 0.09), static, radius=1.45)
+        sconce_energy = 142.0 if side < 0 else 96.0
+        light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2),
+              sconce_energy, (1.0, 0.31, 0.09), static, radius=1.55)
 
     # Canon lighting pass: reveal the gothic shell without competing with the
     # board. These broad washes target the rear architecture rather than the
