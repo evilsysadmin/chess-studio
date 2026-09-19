@@ -44,8 +44,8 @@ export const api = {
       .then((payload) => requireGamePayload(payload, id));
   },
   analyzePosition(fen, level, { signal } = {}, ghostStyle = null, candidateLimit = null) {
-    const rawCandidateLimit = Number(candidateLimit);
-    const requestedCandidateLimit = Number.isFinite(rawCandidateLimit)
+    const rawCandidateLimit = candidateLimit == null ? null : Number(candidateLimit);
+    const requestedCandidateLimit = rawCandidateLimit != null && Number.isFinite(rawCandidateLimit)
       ? Math.max(2, Math.min(5, Math.round(rawCandidateLimit)))
       : (ghostStyle ? 5 : null);
     return requestJson(`${BASE_URL}/analyze`, {
