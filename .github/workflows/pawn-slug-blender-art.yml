@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_godot_v11.py'
       - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_canonical_chibi.py'
+      - 'scripts/blender/render_pawn_slug_matthias_godot_v11.py'
       - 'scripts/blender/render_pawn_slug_matthias_canonical_heavy.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
@@ -67,6 +69,39 @@ jobs:
         with:
           name: pawn-slug-canonical-${{ matrix.weapon }}-proof-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/pawn-slug-canonical-${{ matrix.weapon }}-proof/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  godot-v11-pistol-proof:
+    if: github.event_name != 'push'
+    name: Render Godot v11 pistol locomotion proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render coherent Godot v11 locomotion proof
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          OUT="/tmp/pawn-slug-matthias-v11-pistol-proof"
+          rm -rf "$OUT"
+          blender --background -noaudio \
+            --python-expr "import bpy, os; scene=bpy.context.scene; samples=max(1, int(os.environ.get('PAWN_SLUG_CANONICAL_SAMPLES', '32'))); eevee=getattr(scene, 'eevee', None); setattr(eevee, 'taa_render_samples', samples) if eevee is not None and hasattr(eevee, 'taa_render_samples') else None; scene.render.use_persistent_data=True" \
+            --python scripts/blender/render_pawn_slug_matthias_godot_v11.py \
+            -- --output-dir "$OUT" --weapon pistol --profile proof
+          test -s "$OUT/matthias_pistol_idle_00.png"
+          test -s "$OUT/matthias_pistol_run_00.png"
+          test -s "$OUT/matthias_pistol_crouch_walk_00.png"
+          test -s "$OUT/matthias_pistol_fall_00.png"
+          test -s "$OUT/matthias_pistol_land_00.png"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-matthias-godot-v11-pistol-proof-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-matthias-v11-pistol-proof/
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
