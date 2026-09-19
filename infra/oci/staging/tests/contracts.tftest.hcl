@@ -213,8 +213,8 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 2
-    error_message = "Runtime IAM should contain only Object Storage read and self-scoped Run Command execution permissions."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
+    error_message = "Runtime IAM should contain only Object Storage read, self-scoped Run Command and read-only Vault permissions."
   }
 
   assert {
@@ -238,11 +238,16 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "to read secret-bundles")
+    error_message = "Staging instances need read-only Vault bundle access now that OCI Secrets is the active runtime source."
+  }
+
+  assert {
     condition = alltrue([
       for statement in oci_identity_policy.staging_runtime_config.statements :
-      !strcontains(statement, "secret-bundles")
+      !strcontains(statement, "manage secret-family")
     ])
-    error_message = "Runtime IAM must not grant secret-bundle access until OCI Secrets is actually consumed."
+    error_message = "Runtime IAM must never allow the instance to create or rotate secrets."
   }
 }
 
