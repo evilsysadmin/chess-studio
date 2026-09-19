@@ -203,7 +203,7 @@ export default function Menu({
         ]}
       />
 
-      {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
+      {!showQuickMatch && !showPracticeMatch && !showPvpLobby && (
         <HomePvpRosterLink
           onOpen={() => {
             if (pvpFlow?.activeMatch) {
