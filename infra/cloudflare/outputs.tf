@@ -19,6 +19,6 @@ output "frontend_url" {
 }
 
 output "api_url" {
-  description = "Public Render API base URL."
-  value       = "https://${cloudflare_dns_record.render_api.name}/api"
+  description = "Public production API base URL. Backend target routing is managed outside Terraform."
+  value       = "https://api.chess-studio.shadowops.dpdns.org/api"
 }
