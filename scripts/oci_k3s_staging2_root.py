@@ -543,13 +543,39 @@ def status() -> None:
     sha = _release_from_payload(payload) or "unknown"
     desired = int(spec.get("replicas") or 0)
     available = int(stat.get("availableReplicas") or 0)
+    if _status_needs_diagnostics(desired, available, sha, state_sha):
+        print(
+            "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
+            f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
+            f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
+        )
+        _failure_diagnostics()
+        return
+
+    try:
+        _attest(sha)
+    except BaseException as exc:
+        print(
+            "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED "
+            f"sha={sha} detail={_clean_diag(exc, 400)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            _failure_diagnostics()
+        except BaseException as diag_exc:
+            print(
+                f"OCI_K3S_STAGING2_DIAG_FAILED detail={_clean_diag(diag_exc, 300)}",
+                file=sys.stderr,
+                flush=True,
+            )
+        raise
+
     print(
-        "OCI_K3S_STAGING2_STATUS_OK present=true "
+        "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
     )
-    if _status_needs_diagnostics(desired, available, sha, state_sha):
-        _failure_diagnostics()
 
 
 def rollback() -> None:
@@ -613,6 +639,13 @@ def self_test(template_path: Path) -> None:
     assert "staging2 namespace still exists after bounded rollback" in source
     assert "state_sha=" in source
     assert "staging2 deployed state must remain root-owned" in source
+    assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
+    assert "runtime=attested" in source
+    status_source = source.split("\ndef status() -> None:", 1)[1].split(
+        "\ndef rollback() -> None:", 1
+    )[0]
+    assert "_attest(sha)" in status_source
+    assert status_source.index("_status_needs_diagnostics") < status_source.index("_attest(sha)")
     restore_source = source.split("\ndef _restore(previous_sha: str) -> None:", 1)[1].split(
         "\ndef deploy(sha: str) -> None:", 1
     )[0]
