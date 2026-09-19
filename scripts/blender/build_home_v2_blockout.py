@@ -1294,9 +1294,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
             obj.scale *= 0.90
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
-                obj.scale.x *= 0.46
-                obj.scale.z *= 0.32
-                obj.location.y += 0.24
+                # Match the right hearth contract: legacy tongues are depth glow
+                # only. The foreground organic lobe cluster owns the silhouette.
+                obj.scale.x *= 0.28
+                obj.scale.z *= 0.15
+                obj.location.y += 0.32
     left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.72, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_a.rotation_euler[2] = math.radians(9)
     left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.73, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
@@ -1354,47 +1356,53 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (1.0, 0.28, 0.065),
         radius=0.50,
     )
-    for idx, (dx, h, lean) in enumerate((
-        (-0.40, 0.20, -0.035),
-        (-0.19, 0.30, 0.035),
-        (0.02, 0.40, -0.020),
-        (0.22, 0.28, 0.040),
-        (0.41, 0.18, -0.030),
-    )):
-        cx = -6.15 + dx
-        base = 0.58
-        w = 0.090
-        flat_panel(
-            f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            [
-                (cx - w, base),
-                (cx - w * 0.68, base + h * 0.28),
-                (cx - w * 0.34, base + h * 0.52),
-                (cx + lean, base + h),
-                (cx + w * 0.38, base + h * 0.54),
-                (cx + w * 0.76, base + h * 0.24),
-                (cx + w, base),
-            ],
-            5.385,
-            0.026,
-            materials["fire"],
-            bevel=0.016,
-        )
-        inner_h = h * 0.52
-        flat_panel(
-            f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            [
-                (cx - w * 0.44, base),
-                (cx - w * 0.20, base + inner_h * 0.36),
-                (cx + lean * 0.42, base + inner_h),
-                (cx + w * 0.24, base + inner_h * 0.34),
-                (cx + w * 0.44, base),
-            ],
-            5.355,
-            0.022,
-            materials["fire_hot"],
-            bevel=0.010,
-        )
+    # One continuous irregular flame silhouette reads as a hearth fire at
+    # Home distance; separate lobes collapse into a row of candle-like spikes.
+    sphere(
+        "HOME_PROP_fireplace_left_front_ember_glow",
+        (-6.15, 5.400, 0.595),
+        (0.62, 0.026, 0.070),
+        materials["fire"],
+    )
+    flat_panel(
+        "HOME_PROP_fireplace_left_front_flame_mass",
+        [
+            (-6.72, 0.58),
+            (-6.66, 0.68),
+            (-6.52, 0.64),
+            (-6.42, 0.84),
+            (-6.29, 0.70),
+            (-6.17, 0.97),
+            (-6.03, 0.72),
+            (-5.91, 0.88),
+            (-5.79, 0.67),
+            (-5.60, 0.62),
+            (-5.58, 0.58),
+        ],
+        5.380,
+        0.034,
+        materials["fire"],
+        bevel=0.032,
+    )
+    flat_panel(
+        "HOME_PROP_fireplace_left_front_hot_mass",
+        [
+            (-6.55, 0.59),
+            (-6.48, 0.66),
+            (-6.37, 0.64),
+            (-6.28, 0.78),
+            (-6.19, 0.66),
+            (-6.12, 0.86),
+            (-6.02, 0.66),
+            (-5.92, 0.74),
+            (-5.82, 0.61),
+        ],
+        5.342,
+        0.024,
+        materials["fire_hot"],
+        bevel=0.022,
+    )
+
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
