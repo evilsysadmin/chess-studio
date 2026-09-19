@@ -108,6 +108,7 @@ jobs:
           python3 -S scripts/quality_provenance.py --self-test
           python3 -S scripts/pr_merge_diff.py --self-test
           python3 -S scripts/security_scope.py --self-test
+          python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
   frontend:
