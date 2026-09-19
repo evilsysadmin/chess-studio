@@ -424,6 +424,8 @@ def self_test() -> None:
     assert "RENDER_API_KEY" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert_nonsecret_command(command)
+    embedded = command.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    compile(embedded, "<oci-production-runtime-sync>", "exec")
     validate_sync_output(f"{OK_MARKER} target=production db={PRODUCTION_DB} mode=0600")
     print("OCI production runtime self-test: OK")
 
