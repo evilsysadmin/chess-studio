@@ -425,6 +425,17 @@ def _attest(sha: str) -> None:
             proc.wait(timeout=5)
 
 
+def _state_marker() -> str:
+    if not STATE.exists() and not STATE.is_symlink():
+        return "absent"
+    _regular(STATE, "staging2 deployed state")
+    stat = STATE.stat()
+    if stat.st_uid != 0 or (stat.st_mode & 0o022):
+        raise SystemExit("staging2 deployed state must remain root-owned and non-writable by group/world")
+    value = STATE.read_text(encoding="utf-8").strip()
+    return value if SHA_RE.fullmatch(value) else "invalid"
+
+
 def _write_state(sha: str) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
     fd, tmp = tempfile.mkstemp(prefix=".staging2-deployed.", dir=STATE.parent)
@@ -502,19 +513,30 @@ def deploy(sha: str) -> None:
     )
 
 
-def _status_needs_diagnostics(desired: int, available: int, sha: str) -> bool:
-    return desired < 1 or available != desired or not SHA_RE.fullmatch(sha)
+def _status_needs_diagnostics(
+    desired: int, available: int, sha: str, state_sha: str
+) -> bool:
+    return (
+        desired < 1
+        or available != desired
+        or not SHA_RE.fullmatch(sha)
+        or state_sha != sha
+    )
 
 
 def status() -> None:
     _verify_host_contract()
     payload = _deployment_payload()
+    state_sha = _state_marker()
     mem, disk, load1 = _resources()
     if not payload:
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=false "
+            f"state_sha={state_sha} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
         )
+        if state_sha != "absent":
+            _failure_diagnostics()
         return
     spec = payload.get("spec") or {}
     stat = payload.get("status") or {}
@@ -523,10 +545,10 @@ def status() -> None:
     available = int(stat.get("availableReplicas") or 0)
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true "
-        f"sha={sha} desired={desired} available={available} "
+        f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
     )
-    if _status_needs_diagnostics(desired, available, sha):
+    if _status_needs_diagnostics(desired, available, sha, state_sha):
         _failure_diagnostics()
 
 
@@ -574,10 +596,13 @@ def self_test(template_path: Path) -> None:
         pass
     else:
         raise AssertionError("mutable staging2 image ref must fail closed")
-    assert not _status_needs_diagnostics(1, 1, sample_sha)
-    assert _status_needs_diagnostics(1, 0, "0" * 40)
-    assert _status_needs_diagnostics(0, 0, "0" * 40)
-    assert _status_needs_diagnostics(1, 1, "unknown")
+    assert not _status_needs_diagnostics(1, 1, sample_sha, sample_sha)
+    assert _status_needs_diagnostics(1, 0, sample_sha, sample_sha)
+    assert _status_needs_diagnostics(0, 0, sample_sha, sample_sha)
+    assert _status_needs_diagnostics(1, 1, "unknown", sample_sha)
+    assert _status_needs_diagnostics(1, 1, sample_sha, "absent")
+    assert _status_needs_diagnostics(1, 1, sample_sha, "invalid")
+    assert _status_needs_diagnostics(1, 1, sample_sha, "1" * 40)
     source = Path(__file__).read_text(encoding="utf-8")
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
@@ -586,6 +611,8 @@ def self_test(template_path: Path) -> None:
     assert '"crictl", "pull"' in source
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
+    assert "state_sha=" in source
+    assert "staging2 deployed state must remain root-owned" in source
     restore_source = source.split("\ndef _restore(previous_sha: str) -> None:", 1)[1].split(
         "\ndef deploy(sha: str) -> None:", 1
     )[0]
