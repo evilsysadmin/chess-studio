@@ -81,10 +81,20 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   return hemisphere;
 }
 
-export function warRoomBudgetCoarsePointer(budget = {}) {
-  if (typeof budget?.coarsePointer === 'boolean') return budget.coarsePointer;
-  // Backward-compatible fallback for tests/legacy callers that predate the
-  // explicit input-modality bit.
+export function warRoomLightingCoarsePointer({ budget = {}, mediaQuery = null } = {}) {
+  const query = mediaQuery || (
+    typeof globalThis !== 'undefined' && typeof globalThis.matchMedia === 'function'
+      ? globalThis.matchMedia.bind(globalThis)
+      : null
+  );
+  if (query) {
+    try {
+      const result = query('(pointer: coarse)');
+      if (typeof result?.matches === 'boolean') return result.matches;
+    } catch {
+      // A hostile/partial browser shim falls back to the historical render tier.
+    }
+  }
   return Number(budget?.shadowMapSize) <= 512;
 }
 
@@ -478,12 +488,13 @@ function installWarRoomRenderDiscipline() {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
-    const coarsePointer = warRoomBudgetCoarsePointer(budget);
+    const renderLite = Number(budget.shadowMapSize) <= 512;
+    const lightingCoarsePointer = warRoomLightingCoarsePointer({ budget });
     const atmosphere = applyWarRoomAtmosphereGrade(scene);
     if (atmosphere && this.domElement?.dataset) {
       this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
     }
-    const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
+    const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer: lightingCoarsePointer });
     if (hemisphere && this.domElement?.dataset) {
       this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
     }
@@ -497,7 +508,7 @@ function installWarRoomRenderDiscipline() {
       this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
     }
     const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, this, {
-      coarsePointer,
+      coarsePointer: lightingCoarsePointer,
       hemisphere,
       key: boardKey,
       warmFill,
@@ -521,7 +532,7 @@ function installWarRoomRenderDiscipline() {
     state.lastRenderAt = now;
 
     if (shouldRunWarRoomMaterialGrade(scene)) {
-      const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
+      const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer: renderLite });
       if (materialGrade.profile && this.domElement?.dataset) {
         this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
         this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
@@ -538,7 +549,7 @@ function installWarRoomRenderDiscipline() {
       currentScale,
       frameMs,
       slowFrameCount: state.slowFrameCount,
-      coarsePointer,
+      coarsePointer: renderLite,
     });
     state.slowFrameCount = runtime.slowFrameCount;
     if (runtime.downgraded && typeof this.setPixelRatio === 'function') {
@@ -553,7 +564,7 @@ function installWarRoomRenderDiscipline() {
     if (shouldRefreshShadowMap({
       now,
       lastShadowAt: state.lastShadowAt,
-      coarsePointer,
+      coarsePointer: renderLite,
       activeMotion,
     })) {
       this.shadowMap.needsUpdate = true;
