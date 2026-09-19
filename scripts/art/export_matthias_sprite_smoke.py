@@ -149,7 +149,9 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     atlas = Image.open(source).convert("RGBA")
     if V9_NAME_RE.search(source.name):
         cell, cols, rows = V9_CELL, V9_COLS, V9_ROWS
-    elif STRICT_8X18_NAME_RE.search(source.name):
+    elif STRICT_8X18_NAME_RE.search(source.name) or atlas.size == STRICT_8X18_SIZE:
+        # R2 v13 objects are content-addressed (v13-<hash>.png), so the
+        # immutable 3328x7488 geometry is the authoritative strict contract.
         cell, cols, rows = 416, 8, 18
     expected = (cols * cell, rows * cell)
     source_size = atlas.size
