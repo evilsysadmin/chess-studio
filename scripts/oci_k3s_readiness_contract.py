@@ -134,6 +134,10 @@ assert "adduser -S -D -H -h /app -u 10001 -G chess chess" in backend_dockerfile
 assert "\nUSER 10001:10001\n" in backend_dockerfile
 assert "\nUSER chess\n" not in backend_dockerfile
 
+assert (
+    "python3 -S scripts/oci_k3s_staging2_root.py self-test "
+    "infra/oci/gitops/staging2/backend.yaml.tmpl"
+) in workflow
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision
 assert 'python3 -S "$staging2_controller" self-test "$staging2_template"' in provision
