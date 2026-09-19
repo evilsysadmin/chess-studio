@@ -235,10 +235,21 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   const iron = material(0x191a1c, { metalness: 0.48, roughness: 0.38, clearcoat: 0.18 });
   const crust = material(0x322421, { metalness: 0.2, roughness: 0.72 });
   const scarMetal = material(0x596166, { metalness: 0.72, roughness: 0.34, clearcoat: 0.08 });
-  const glow = material(0x3a0708, { metalness: 0.08, roughness: 0.42, emissive: 0xd0161b, emissiveIntensity: 1.7 });
+  const glow = material(0x3a0708, { metalness: 0.08, roughness: 0.42, emissive: 0xd0161b, emissiveIntensity: 1.55 });
   basePlinth(root, crust, iron, segments);
   lathe(root, [[0.35, 0.34], [0.29, 0.54], [0.27, 0.82], [0.35, 1.06], [0.29, 1.18]], iron, segments, 'corrupted-pawn-body');
-  add(root, new THREE.TorusGeometry(0.3, 0.035, 8, segments), glow, [0, 0.75, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-fissure-ring');
+  // Corruption should read as a fracture, not a perfect neon belt. Keep the
+  // established object name for tests/state probes, but render an incomplete,
+  // slightly rotated arc with a thinner tube.
+  add(
+    root,
+    new THREE.TorusGeometry(0.3, 0.028, 7, segments, Math.PI * 1.34),
+    glow,
+    [0, 0.75, 0],
+    [Math.PI / 2, 0.72, 0],
+    null,
+    'corrupted-pawn-fissure-ring',
+  );
   add(root, new THREE.SphereGeometry(0.31, segments, Math.max(12, segments / 2)), iron, [0, 1.44, 0], [0, 0, 0], [1, 0.92, 0.92], 'corrupted-pawn-head');
   add(root, new THREE.BoxGeometry(0.08, 0.035, 0.035), glow, [-0.095, 1.47, 0.29], [0, 0, -0.24], null, 'corrupted-pawn-eye-left');
   add(root, new THREE.BoxGeometry(0.08, 0.035, 0.035), glow, [0.095, 1.47, 0.29], [0, 0, 0.24], null, 'corrupted-pawn-eye-right');
