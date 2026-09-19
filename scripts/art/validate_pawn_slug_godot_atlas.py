@@ -46,7 +46,7 @@ def anchor(cell,box):
    r,g,b,a=px[x,y]
    if a>40 and max(r,g,b)<210: pts.append((x,y))
  if not pts: return (box[0]+box[2])*.5,float(box[3]-1)
- my=max(y for _,y in pts); band=[x for x,y in pts if y>=my-max(3,int((box[3]-box[1])*.08))]; band.sort()
+ my=max(y for _,y in pts); band=[x for x,y in pts if y>=my-max(3,int(round((box[3]-box[1])*.08)))]; band.sort()
  return float(band[len(band)//2]),float(my)
 
 def validate(image):
