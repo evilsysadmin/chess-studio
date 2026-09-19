@@ -2,7 +2,6 @@ import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeRoute.css';
 const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
-const MirrorModeModal = lazy(() => import('./MirrorModeModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
 import HomePvpRosterLink from './HomePvpRosterLink.jsx';
@@ -58,7 +57,6 @@ export default function Menu({
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
-  const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showPvpLobby, setShowPvpLobby] = useState(false);
   const pvpFlow = usePvpRuntime();
   const [matthiasVisit, setMatthiasVisit] = useState(null);
@@ -70,13 +68,11 @@ export default function Menu({
     || hasSavedGame
     || showQuickMatch
     || showPracticeMatch
-    || showMirrorMode
     || showPvpLobby
     || Boolean(error);
   const matthiasCornerBlocked = suppressHomeNudge
     || showQuickMatch
     || showPracticeMatch
-    || showMirrorMode
     || showPvpLobby
     || Boolean(error);
   const rivalry = useMemo(() => loadRivalry(), []);
@@ -182,7 +178,7 @@ export default function Menu({
       <HomeIllustrated
         hasSavedGame={hasSavedGame}
         loading={loading}
-        error={showQuickMatch || showPracticeMatch || showMirrorMode || showPvpLobby ? null : error}
+        error={showQuickMatch || showPracticeMatch || showPvpLobby ? null : error}
         onPlay={() => setShowQuickMatch(true)}
         onContinue={onContinue}
         onTournament={onTournament}
@@ -200,7 +196,6 @@ export default function Menu({
           ['Puzzles clásicos', onPuzzle],
           ['Aperturas', onOpenings],
           ['Partida de práctica', () => setShowPracticeMatch(true)],
-          ['Modo espejo', () => setShowMirrorMode(true)],
           ['Combat Chess libre', onCombat],
           ['Espectador', onSpectator],
           ['Mi progreso', onProgress],
@@ -208,7 +203,7 @@ export default function Menu({
         ]}
       />
 
-      {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
+      {!showQuickMatch && !showPracticeMatch && !showPvpLobby && (
         <HomePvpRosterLink
           onOpen={() => {
             if (pvpFlow?.activeMatch) {
@@ -262,7 +257,6 @@ export default function Menu({
                 suddenDeath,
                 threatCheck,
                 adaptiveDifficulty: autoDifficulty,
-                ghostStyle: autoDifficulty ? { balance: true } : null,
               },
             );
             if (!started && requestedRenderer) setBoardRenderer(previousRenderer);
@@ -312,20 +306,6 @@ export default function Menu({
         />
       )}
 
-      {showMirrorMode && (
-        <MirrorModeModal
-          loading={loading}
-          error={error}
-          onStart={async (profile) => {
-            const started = await onNewGame(profile.difficulty, 'random', {
-              ghost: true,
-              ghostStyle: profile.style,
-            });
-            if (started) setShowMirrorMode(false);
-          }}
-          onClose={() => setShowMirrorMode(false)}
-        />
-      )}
     </div>
   );
 }

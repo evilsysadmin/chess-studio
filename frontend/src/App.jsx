@@ -327,12 +327,12 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
-      const operationId = gameLaunch.operationId(launch, [difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null]);
-      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null, { signal: launch.controller.signal, operationId });
+      const operationId = gameLaunch.operationId(launch, [difficulty, color, handicap?.id ?? null, null]);
+      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
       gameLaunch.confirmCreated(launch);
       const isLearning = !!opts?.learning;
-      const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
+      const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck };
       setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
       setGameContext(nextContext);
@@ -465,7 +465,7 @@ function AppInner({ isAdminUser }) {
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
       initialFen: finishedGame.initialFen || null,
-      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.nemesis ? 'nemesis-training' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual',
+      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.nemesis ? 'nemesis-training' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : learningMode ? 'practice' : 'casual',
       opening,
       timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
       rematch: !!gameContext.rematch,
@@ -956,9 +956,9 @@ function AppInner({ isAdminUser }) {
             timeControl={activeTimeControl}
             seriesState={activeSeries}
             onNextSeriesGame={handleNextSeriesGame}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', activeSeries))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
-            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', meta?.outcome)}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : learningMode ? 'practice' : 'casual', meta?.outcome)}
             activeContract={activeContract}
             runState={specialRun && gameContext.runMode ? specialRun : null}
             onNextRunGame={() => handleContinueRun(specialRun)}
