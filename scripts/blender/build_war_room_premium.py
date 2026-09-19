@@ -453,7 +453,8 @@ def add_room(static, mats):
              (0.11, 4.55, 0.10), mats["trim_wood"], static, bevel=0.030)
         cube(f"WR_ARCH_side_base_rail_{side}", (side * 8.32, -1.62, 0.52),
              (0.11, 4.55, 0.14), mats["trim_wood"], static, bevel=0.032)
-        for index, y in enumerate((-3.02, -0.28)):
+        panel_y = (-3.02, -0.28) if side < 0 else (-3.02,)
+        for index, y in enumerate(panel_y):
             cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.43, y, 1.40),
                  (0.035, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
 
