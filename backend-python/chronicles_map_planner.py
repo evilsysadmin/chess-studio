@@ -101,6 +101,11 @@ def _normalize_proposal(proposal: Any) -> dict[str, Any]:
     return normalized
 
 
+def normalize_chronicles_planner_proposal(proposal: Any) -> dict[str, Any]:
+    """Return the canonical planner proposal or raise on contract violations."""
+    return _normalize_proposal(proposal)
+
+
 def _candidate_recipe(
     base: ChroniclesMapCode,
     normalized: dict[str, Any],
@@ -145,7 +150,7 @@ def resolve_chronicles_planner_recipe(
         )
 
     try:
-        normalized = _normalize_proposal(proposal)
+        normalized = normalize_chronicles_planner_proposal(proposal)
         candidate = _candidate_recipe(base, normalized)
     except (ChroniclesPlannerProposalError, ValueError, TypeError):
         return ChroniclesPlannerDecision(
