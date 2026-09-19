@@ -127,7 +127,6 @@ def effective_production_values(actual: dict[str, str]) -> dict[str, str]:
 
     email_enabled = str(values["ENABLE_EMAIL_RECOVERY"]).strip().lower() in TRUE_VALUES
     if email_enabled:
-        _clean_value("RESEND_API_KEY", values.get("RESEND_API_KEY", ""))
         reset_url = str(values.get("PASSWORD_RESET_URL") or "").strip()
         if not reset_url.startswith(PRODUCTION_ORIGIN) or "staging" in reset_url.lower():
             raise SystemExit("Production OCI runtime has unsafe PASSWORD_RESET_URL")
@@ -159,7 +158,17 @@ def collect_render_production() -> bytes:
     from render_production_deploy import resolve_and_validate
 
     service_id, _service_name = resolve_and_validate()
-    return validate_production_values(list_render_env_values(service_id))
+    actual = list_render_env_values(service_id)
+    effective = effective_production_values(actual)
+    if (
+        str(effective["ENABLE_EMAIL_RECOVERY"]).strip().lower() in TRUE_VALUES
+        and not str(effective.get("RESEND_API_KEY") or "").strip()
+    ):
+        print(
+            "OCI_PRODUCTION_RUNTIME_WARNING "
+            "email_recovery_enabled_without_resend_key=true parity=render"
+        )
+    return render_production_env(effective)
 
 
 def create_secret_details(
@@ -278,8 +287,6 @@ if ai_url and (ai_url!={PRODUCTION_AI_URL!r} or "staging" in ai_url.lower()):
 if ai_url and not values.get("CHESS_AI_SHARED_SECRET"):
     raise SystemExit("production runtime AI secret guard failed")
 email_enabled=values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r}
-if email_enabled and not values.get("RESEND_API_KEY"):
-    raise SystemExit("production runtime email recovery secret guard failed")
 reset_url=values.get("PASSWORD_RESET_URL","")
 if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
     raise SystemExit("production runtime password reset target guard failed")
@@ -375,12 +382,12 @@ def self_test() -> None:
 
     missing_resend = dict(email_enabled)
     missing_resend.pop("RESEND_API_KEY")
-    try:
-        effective_production_values(missing_resend)
-    except SystemExit as exc:
-        assert "RESEND_API_KEY" in str(exc)
-    else:
-        raise AssertionError("explicit email recovery must require RESEND_API_KEY")
+    degraded = effective_production_values(missing_resend)
+    assert degraded["ENABLE_EMAIL_RECOVERY"] == "true"
+    assert "RESEND_API_KEY" not in degraded
+    degraded_rendered = render_production_env(degraded).decode("utf-8")
+    assert "ENABLE_EMAIL_RECOVERY=true\n" in degraded_rendered
+    assert "RESEND_API_KEY=" not in degraded_rendered
 
     ai_enabled = {
         **actual,
