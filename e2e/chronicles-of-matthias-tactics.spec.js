@@ -42,6 +42,15 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await moveNorth.evaluate((button) => button.click());
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
 
+  // Return to the canonical engagement cell before exercising the existing
+  // class-skill contract. The move throttle is gameplay logic, so respect it
+  // instead of bypassing it in the browser canary.
+  await page.waitForTimeout(140);
+  const moveSouth = mode.getByRole('button', { name: 'Mover al sur', exact: true });
+  await expect(moveSouth).toBeEnabled();
+  await moveSouth.evaluate((button) => button.click());
+  await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
+
   // Exercise a real combat action immediately. Turn-based combat means the
   // enemy answers only after this action, never because the CI runner is slow.
   await page.keyboard.press('2');
