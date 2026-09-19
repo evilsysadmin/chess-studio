@@ -1012,7 +1012,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "piece_light": material("HOME_MAT_piece_light", (0.60, 0.51, 0.38, 1), roughness=0.58),
         "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
         "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
-        "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
+        "paper": material("HOME_MAT_paper", (0.56, 0.43, 0.28, 1), roughness=0.90),
         "globe": material("HOME_MAT_globe", (0.18, 0.105, 0.045, 1), roughness=0.66, variation=0.22, variation_scale=3.4),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
         "ceramic": material("HOME_MAT_ceramic", (0.48, 0.43, 0.33, 1), roughness=0.52),
@@ -1185,16 +1185,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # The generic fireplace gets scaled for the canonical right-hand mass.
     # Reintroduce a camera-facing flame layer after that transform so the
     # hearth remains visibly alive instead of disappearing behind the grate.
+    sphere(
+        "HOME_PROP_fireplace_right_front_ember_glow",
+        (4.45, 5.405, 0.60),
+        (0.76, 0.035, 0.085),
+        materials["fire_hot"],
+    )
     for idx, (dx, h, lean) in enumerate((
-        (-0.52, 0.42, -0.05),
-        (-0.26, 0.62, 0.05),
-        (0.02, 0.78, -0.03),
-        (0.29, 0.56, 0.06),
-        (0.52, 0.38, -0.04),
+        (-0.48, 0.30, -0.04),
+        (-0.24, 0.44, 0.04),
+        (0.01, 0.54, -0.02),
+        (0.27, 0.40, 0.05),
+        (0.49, 0.28, -0.03),
     )):
         cx = 4.45 + dx
-        base = 0.57
-        w = 0.17
+        base = 0.58
+        w = 0.125
         flat_panel(
             f"HOME_PROP_fireplace_right_front_flame_{idx}",
             [
@@ -1206,10 +1212,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 (cx + w * 0.76, base + h * 0.25),
                 (cx + w, base),
             ],
-            5.40,
-            0.030,
+            5.395,
+            0.028,
             materials["fire"],
-            bevel=0.020,
+            bevel=0.018,
         )
         inner_h = h * 0.54
         flat_panel(
@@ -1221,10 +1227,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 (cx + w * 0.26, base + inner_h * 0.36),
                 (cx + w * 0.46, base),
             ],
-            5.37,
-            0.026,
+            5.365,
+            0.024,
             materials["fire_hot"],
-            bevel=0.014,
+            bevel=0.012,
         )
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
