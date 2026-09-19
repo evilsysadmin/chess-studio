@@ -2,7 +2,7 @@
 """Render the next Chronicles of Matthias Tactics dungeon lookdev pass.
 
 This deliberately builds on the existing deterministic dungeon scene instead of
-forking its gameplay-readable layout. The v6 pass concentrates on the playable
+forking its gameplay-readable layout. The v7 pass concentrates on the playable
 plane: masonry silhouette, drainage, metalwork, damp clutter and practical-light
 fixtures. Camera and sleeping-unit gag remain recognizable for A/B review.
 """
@@ -322,8 +322,19 @@ def arch_masonry_detail(M):
     for i in range(4):
         base.cube("tactics_arch_step", (-1.0, 1.78+i*.27, .045+i*.035),
                   (.62-i*.035, .125, .045), M["stone_dark"], bevel=.022)
-    base.cube("tactics_arch_depth", (-1.0, 2.76, .90),
-              (.67, .05, .88), M["black"], bevel=.0)
+    # A real stone back wall with a smaller recess reads as a corridor; the
+    # v6 full black plane looked like a pasted rectangle in the review PNG.
+    base.cube("tactics_arch_corridor_floor", (-1.0, 2.34, .015),
+              (.62, .62, .026), M["stone_dark"], bevel=.018)
+    base.cube("tactics_arch_backwall", (-1.0, 2.86, .84),
+              (.62, .055, .78), M["stone_dark"], bevel=.028)
+    base.cube("tactics_arch_recess", (-1.0, 2.79, .76),
+              (.30, .030, .48), M["black"], bevel=.018)
+    for x in (-1.50, -.50):
+        base.cube("tactics_arch_corridor_side", (x, 2.35, .72),
+                  (.055, .48, .68), M["stone_dark"], bevel=.025)
+    base.point_light("tactics_arch_cool_bounce", (-1.0, 2.30, .68),
+                     22, (.07, .18, .28), .38)
 
 
 def wall_masonry_hardware(M):
@@ -370,10 +381,10 @@ def main():
     wall_masonry_hardware(M)
     tune_camera_and_light(scene)
 
-    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v6"
-    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v5"
+    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v7"
+    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v6"
     bpy.ops.render.render(write_still=True)
-    print("Chronicles Tactics dungeon v6:", out)
+    print("Chronicles Tactics dungeon v7:", out)
 
 
 if __name__ == "__main__":
