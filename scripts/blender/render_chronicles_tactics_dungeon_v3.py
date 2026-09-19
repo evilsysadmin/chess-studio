@@ -2,7 +2,7 @@
 """Render the next Chronicles of Matthias Tactics dungeon lookdev pass.
 
 This deliberately builds on the existing deterministic dungeon scene instead of
-forking its gameplay-readable layout. The v4 pass concentrates on the playable
+forking its gameplay-readable layout. The v5 pass concentrates on the playable
 plane: masonry silhouette, drainage, metalwork, damp clutter and practical-light
 fixtures. Camera and sleeping-unit gag remain recognizable for A/B review.
 """
@@ -50,6 +50,91 @@ def extra_materials(M):
         "TacticsColdGlow", (.025, .11, .18), .32, .10,
         (.035, .22, .34), 1.35
     )
+
+
+
+def tune_stone_materials(M):
+    """Add restrained mineral/roughness variation without changing geometry."""
+    profiles = {
+        "stone": ((.36, .72), (.84, .90, .94, 1), (1.02, .96, .88, 1), .18, .11),
+        "stone_dark": ((.42, .78), (.72, .78, .84, 1), (.94, .88, .80, 1), .16, .10),
+        "floor": ((.24, .62), (.76, .84, .90, 1), (1.04, .96, .84, 1), .24, .15),
+    }
+    for key, (rough_range, mineral_dark, mineral_light, mineral_mix, bump_strength) in profiles.items():
+        mat = M[key]
+        nt = mat.node_tree
+        bs = nt.nodes.get("Principled BSDF")
+        if bs is None:
+            continue
+
+        # Preserve the canonical base colour graph, then add very low-amplitude
+        # mineral mottling. This avoids replacing the existing authored stone.
+        base_input = bs.inputs.get("Base Color")
+        previous = base_input.links[0] if base_input and base_input.links else None
+        mineral = nt.nodes.new("ShaderNodeTexNoise")
+        mineral.name = f"TacticsMineral_{key}"
+        mineral.inputs["Scale"].default_value = 8.5 if key == "floor" else 6.5
+        mineral.inputs["Detail"].default_value = 4.5
+        mineral.inputs["Roughness"].default_value = .67
+        mineral.inputs["Distortion"].default_value = .08
+
+        mineral_ramp = nt.nodes.new("ShaderNodeValToRGB")
+        mineral_ramp.name = f"TacticsMineralRamp_{key}"
+        mineral_ramp.color_ramp.elements[0].color = mineral_dark
+        mineral_ramp.color_ramp.elements[1].color = mineral_light
+        nt.links.new(mineral.outputs["Fac"], mineral_ramp.inputs["Fac"])
+
+        mineral_mix_node = nt.nodes.new("ShaderNodeMixRGB")
+        mineral_mix_node.name = f"TacticsMineralMix_{key}"
+        mineral_mix_node.blend_type = "MULTIPLY"
+        mineral_mix_node.inputs[0].default_value = mineral_mix
+        if previous is not None:
+            from_socket = previous.from_socket
+            nt.links.remove(previous)
+            nt.links.new(from_socket, mineral_mix_node.inputs[1])
+        else:
+            mineral_mix_node.inputs[1].default_value = bs.inputs["Base Color"].default_value
+        nt.links.new(mineral_ramp.outputs["Color"], mineral_mix_node.inputs[2])
+        nt.links.new(mineral_mix_node.outputs["Color"], bs.inputs["Base Color"])
+
+        # Broad wet/dry response. Large slabs no longer share one plastic
+        # roughness value, but the range stays readable under gameplay lights.
+        rough = nt.nodes.new("ShaderNodeTexNoise")
+        rough.name = f"TacticsRoughness_{key}"
+        rough.inputs["Scale"].default_value = 10.0 if key == "floor" else 7.5
+        rough.inputs["Detail"].default_value = 3.2
+        rough.inputs["Roughness"].default_value = .72
+        rough.inputs["Distortion"].default_value = .10
+        rough_ramp = nt.nodes.new("ShaderNodeValToRGB")
+        rough_ramp.name = f"TacticsRoughnessRamp_{key}"
+        lo, hi = rough_range
+        rough_ramp.color_ramp.elements[0].color = (lo, lo, lo, 1)
+        rough_ramp.color_ramp.elements[1].color = (hi, hi, hi, 1)
+        nt.links.new(rough.outputs["Fac"], rough_ramp.inputs["Fac"])
+        nt.links.new(rough_ramp.outputs["Color"], bs.inputs["Roughness"])
+
+        # Fine pitting layered over the existing macro bump.
+        micro = nt.nodes.new("ShaderNodeTexNoise")
+        micro.name = f"TacticsMicroPitting_{key}"
+        micro.inputs["Scale"].default_value = 82.0 if key == "floor" else 68.0
+        micro.inputs["Detail"].default_value = 2.4
+        micro.inputs["Roughness"].default_value = .70
+        micro_bump = nt.nodes.new("ShaderNodeBump")
+        micro_bump.name = f"TacticsMicroBump_{key}"
+        micro_bump.inputs["Strength"].default_value = bump_strength
+        micro_bump.inputs["Distance"].default_value = .022
+        nt.links.new(micro.outputs["Fac"], micro_bump.inputs["Height"])
+
+        normal_input = bs.inputs.get("Normal")
+        prior_normal = normal_input.links[0] if normal_input and normal_input.links else None
+        if prior_normal is not None:
+            prior_socket = prior_normal.from_socket
+            nt.links.remove(prior_normal)
+            nt.links.new(prior_socket, micro_bump.inputs["Normal"])
+        nt.links.new(micro_bump.outputs["Normal"], bs.inputs["Normal"])
+
+        if key == "floor" and "Coat Weight" in bs.inputs:
+            bs.inputs["Coat Weight"].default_value = .22
 
 
 def stone_buttress(M, x, y, z=1.1, rot=0.0, height=2.15):
@@ -213,15 +298,16 @@ def main():
     base.clean()
     M = base.material_bank()
     extra_materials(M)
+    tune_stone_materials(M)
     scene = base.setup_scene(out)
     base.build(M)
     add_playable_plane_detail(M)
     tune_camera_and_light(scene)
 
-    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v4"
-    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v3"
+    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v5"
+    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v4"
     bpy.ops.render.render(write_still=True)
-    print("Chronicles Tactics dungeon v4:", out)
+    print("Chronicles Tactics dungeon v5:", out)
 
 
 if __name__ == "__main__":
