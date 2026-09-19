@@ -1342,35 +1342,30 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["stone_dark"],
             bevel=0.035,
         )
-    sphere(
-        "HOME_PROP_fireplace_left_front_ember_glow",
-        (-6.15, 5.39, 0.60),
-        (0.72, 0.032, 0.082),
-        materials["fire_hot"],
-    )
-    sphere(
-        "HOME_PROP_fireplace_left_inner_glow",
-        (-6.15, 5.93, 0.86),
-        (0.62, 0.045, 0.22),
-        materials["fire"],
-    )
+    for idx, dx in enumerate((-0.38, -0.13, 0.14, 0.39)):
+        sphere(
+            f"HOME_PROP_fireplace_left_ember_{idx}",
+            (-6.15 + dx, 5.39, 0.585 + 0.010 * (idx % 2)),
+            (0.115, 0.020, 0.036),
+            materials["fire_hot"] if idx % 2 else materials["fire"],
+        )
     add_point_light(
         "HOME_LIGHT_fireplace_left_inner",
-        (-6.15, 5.10, 1.02),
-        74,
+        (-6.15, 5.12, 0.94),
+        54,
         (1.0, 0.28, 0.065),
-        radius=0.62,
+        radius=0.50,
     )
     for idx, (dx, h, lean) in enumerate((
-        (-0.42, 0.23, -0.04),
-        (-0.20, 0.36, 0.04),
-        (0.02, 0.46, -0.02),
-        (0.23, 0.33, 0.05),
-        (0.43, 0.21, -0.03),
+        (-0.40, 0.20, -0.035),
+        (-0.19, 0.30, 0.035),
+        (0.02, 0.40, -0.020),
+        (0.22, 0.28, 0.040),
+        (0.41, 0.18, -0.030),
     )):
         cx = -6.15 + dx
         base = 0.58
-        w = 0.115
+        w = 0.090
         flat_panel(
             f"HOME_PROP_fireplace_left_front_flame_{idx}",
             [
