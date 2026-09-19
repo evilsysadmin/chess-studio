@@ -53,13 +53,14 @@ jobs:
             --python scripts/blender/build_home_v2_blockout.py -- \
             --reference scripts/blender/references/home_canon_20260918.webp.b64 \
             --out-dir /tmp/home-blender-v2 \
-            --samples '${{ (inputs.quality || 'beauty') == 'beauty' && '64' || '8' }}' \
-            --max-width '${{ (inputs.quality || 'beauty') == 'beauty' && '1600' || '800' }}' \
+            --samples '${{ github.event_name == 'pull_request' && '12' || ((inputs.quality || 'beauty') == 'beauty' && '64' || '8') }}' \
+            --max-width '${{ github.event_name == 'pull_request' && '1000' || ((inputs.quality || 'beauty') == 'beauty' && '1600' || '800') }}' \
             --engine '${{ (inputs.quality || 'beauty') == 'beauty' && 'eevee' || 'workbench' }}'
 
       - name: Validate render envelope and build comparison sheet
         env:
           QUALITY: ${{ inputs.quality || 'beauty' }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -80,7 +81,7 @@ jobs:
 
           quality = os.environ.get('QUALITY') or 'blockout'
           expected_engine = 'eevee' if quality == 'beauty' else 'workbench'
-          expected_max_width = 1600 if quality == 'beauty' else 800
+          expected_max_width = 1000 if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else (1600 if quality == 'beauty' else 800)
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
