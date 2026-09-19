@@ -194,7 +194,21 @@ function addCeilingRib(root, stoneMat, x, y, index, coarsePointer) {
 
 function addTransverseVaultRib(root, stoneMat, x, y, index, coarsePointer) {
   const [wx, wz] = cellWorld(x, y);
-  const segments = coarsePointer ? 5 : 9;
+
+  // A shallow continuous archivolt sits behind the individual voussoirs. It
+  // closes the negative gaps in first-person perspective so the carved blocks
+  // read as one structural rib instead of a row of floating stones.
+  const archivolt = add(
+    root,
+    new THREE.TorusGeometry(1.72, coarsePointer ? 0.065 : 0.082, 6, coarsePointer ? 16 : 28, Math.PI),
+    stoneMat,
+    [wx, 2.18, wz],
+    [0, Math.PI / 2, 0],
+    `chronicles-entry-vault-archivolt-${index}`,
+  );
+  archivolt.scale.y = 1.34 / 1.72;
+
+  const segments = coarsePointer ? 7 : 13;
   for (let segment = 0; segment < segments; segment += 1) {
     const t = segments === 1 ? 0.5 : segment / (segments - 1);
     const angle = Math.PI * (0.12 + 0.76 * t);
@@ -202,7 +216,7 @@ function addTransverseVaultRib(root, stoneMat, x, y, index, coarsePointer) {
     const archY = 2.18 + Math.sin(angle) * 1.34;
     add(
       root,
-      new THREE.BoxGeometry(coarsePointer ? 0.22 : 0.18, 0.29, 0.34),
+      new THREE.BoxGeometry(coarsePointer ? 0.2 : 0.17, 0.27, coarsePointer ? 0.4 : 0.44),
       stoneMat,
       [wx, archY, wz + archZ],
       [angle - Math.PI / 2, 0, 0],
