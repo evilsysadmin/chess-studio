@@ -2,7 +2,7 @@
 """Render the next Chronicles of Matthias Tactics dungeon lookdev pass.
 
 This deliberately builds on the existing deterministic dungeon scene instead of
-forking its gameplay-readable layout. The v3 pass concentrates on the playable
+forking its gameplay-readable layout. The v4 pass concentrates on the playable
 plane: masonry silhouette, drainage, metalwork, damp clutter and practical-light
 fixtures. Camera and sleeping-unit gag remain recognizable for A/B review.
 """
@@ -62,27 +62,41 @@ def stone_buttress(M, x, y, z=1.1, rot=0.0, height=2.15):
 
 
 def drain_channel(M, x, y, length, axis="x"):
-    # Recessed dark trough plus repeated iron bars; decorative only, never a
-    # fake traversal edge.
-    sx, sy = (length * .5, .11) if axis == "x" else (.11, length * .5)
-    base.cube("tactics_drain_recess", (x, y, .018),
-              (sx, sy, .018), M["black"], bevel=.012)
-    count = max(3, int(length / .26))
-    for i in range(count + 1):
-        t = -length * .5 + i * (length / count)
+    # Broken floor grates rather than a continuous twin-rail silhouette.
+    # They read as drainage at gameplay zoom and deliberately leave stone gaps.
+    section = .54
+    gap = .24
+    count = max(1, int((length + gap) / (section + gap)))
+    span = count * section + max(0, count - 1) * gap
+    start = -span * .5 + section * .5
+    for i in range(count):
+        t = start + i * (section + gap)
         px, py = (x + t, y) if axis == "x" else (x, y + t)
-        bar_scale = (.018, .125, .010) if axis == "x" else (.125, .018, .010)
-        base.cube("tactics_drain_bar", (px, py, .047),
-                  bar_scale, M["wet_metal"], bevel=.007)
-    # oxidised lip catches the warm torch pools.
-    if axis == "x":
-        for dy in (-.145, .145):
-            base.cube("tactics_drain_lip", (x, y + dy, .040),
-                      (length * .5, .018, .018), M["rust"], bevel=.006)
-    else:
-        for dx in (-.145, .145):
-            base.cube("tactics_drain_lip", (x + dx, y, .040),
-                      (.018, length * .5, .018), M["rust"], bevel=.006)
+        sx, sy = (section * .5, .105) if axis == "x" else (.105, section * .5)
+        base.cube("tactics_drain_recess", (px, py, .018),
+                  (sx, sy, .016), M["black"], bevel=.014)
+        for j in (-.16, 0.0, .16):
+            if axis == "x":
+                bx, by = px + j, py
+                bar_scale = (.016, .118, .009)
+            else:
+                bx, by = px, py + j
+                bar_scale = (.118, .016, .009)
+            base.cube("tactics_drain_bar", (bx, by, .043),
+                      bar_scale, M["wet_metal"], bevel=.006)
+        # One oxidised edge only: avoids the railway read from the v3 artifact.
+        if axis == "x":
+            base.cube("tactics_drain_oxidation", (px, py + .132, .036),
+                      (section * .46, .010, .010), M["rust"], bevel=.004)
+        else:
+            base.cube("tactics_drain_oxidation", (px + .132, py, .036),
+                      (.010, section * .46, .010), M["rust"], bevel=.004)
+
+
+def damp_seam(M, x, y, length, angle=0.0):
+    r = math.radians(angle)
+    base.cube("tactics_damp_seam", (x, y, .034),
+              (length * .5, .032, .008), M["wet_overlay"], (0, 0, r), .012)
 
 
 def pipe_run(M, x, y, z, length, axis="x"):
@@ -141,10 +155,13 @@ def edge_rubble(M, x, y, n=10, radius=.6):
 
 
 def add_playable_plane_detail(M):
-    # Continuous drainage tells a physical story across the room and breaks
-    # the pristine tiled-board look visible in the previous artifact.
-    drain_channel(M, -.15, -2.58, 6.25, "x")
-    drain_channel(M, 3.72, -.30, 2.45, "y")
+    # Short broken drains keep the physical story but no longer dominate the
+    # foreground like mine-cart rails.
+    drain_channel(M, -2.15, -2.58, 1.72, "x")
+    drain_channel(M, .35, -2.58, 1.22, "x")
+    drain_channel(M, 3.72, -.30, 1.65, "y")
+    damp_seam(M, -1.08, 2.62, 1.05, -5)
+    damp_seam(M, 2.42, .92, .82, 11)
 
     pipe_run(M, -4.10, 2.55, 1.05, 2.3, "y")
     pipe_run(M, 3.98, 2.55, .82, 2.0, "y")
@@ -179,9 +196,9 @@ def add_playable_plane_detail(M):
 
 def tune_camera_and_light(scene):
     cam = scene.camera
-    cam.location = (10.8, -15.6, 11.8)
-    cam.data.ortho_scale = 10.05
-    base.look_at(cam, (.02, .30, .58))
+    cam.location = (11.0, -15.25, 12.15)
+    cam.data.ortho_scale = 10.32
+    base.look_at(cam, (.02, .32, .58))
     try:
         scene.view_settings.exposure = .56
     except Exception:
@@ -201,10 +218,10 @@ def main():
     add_playable_plane_detail(M)
     tune_camera_and_light(scene)
 
-    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v3"
-    scene["chronicles_dungeon_parent"] = "canonical-lookdev-v2"
+    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v4"
+    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v3"
     bpy.ops.render.render(write_still=True)
-    print("Chronicles Tactics dungeon v3:", out)
+    print("Chronicles Tactics dungeon v4:", out)
 
 
 if __name__ == "__main__":
