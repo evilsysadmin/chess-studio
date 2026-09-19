@@ -388,7 +388,7 @@ def add_table_and_board(materials):
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
-        [(x * 0.88 + 0.05, (z - 0.58) * 0.88 + 0.57) for x, z in horse_points],
+        [(x * 0.76 + 0.03, (z - 0.58) * 0.76 + 0.62) for x, z in horse_points],
         emblem_y,
         0.040,
         heraldry,
@@ -397,7 +397,7 @@ def add_table_and_board(materials):
     cone("HOME_PROP_table_horse_ear", (-0.19, emblem_y - 0.035, 0.92), 0.055, 0.008, 0.18, heraldry, vertices=12)
     for idx, (mx, mz) in enumerate(((0.09, 0.80), (0.14, 0.68), (0.16, 0.56))):
         cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.046, 0.006, 0.125, heraldry, vertices=10)
-    sphere("HOME_PROP_table_horse_eye", (-0.19, emblem_y - 0.055, 0.75), (0.018, 0.009, 0.018), materials["dark"])
+    sphere("HOME_PROP_table_horse_eye", (-0.16, emblem_y - 0.055, 0.77), (0.016, 0.009, 0.016), materials["dark"])
     curve_tube(
         "HOME_PROP_table_horse_jaw_line",
         [(-0.50, emblem_y - 0.058, 0.61), (-0.33, emblem_y - 0.060, 0.49), (-0.10, emblem_y - 0.060, 0.46)],
@@ -509,33 +509,47 @@ def add_fireplace(name: str, x: float, materials):
     hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.65, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.54, -0.28, 0.00, 0.27, 0.52)
-    flame_heights = (0.40, 0.58, 0.72, 0.50, 0.36)
-    flame_lean_x = (-10, 7, -4, 11, -7)
-    flame_lean_y = (8, -12, 6, -8, 10)
-    for idx, (offset, height) in enumerate(zip(flame_offsets, flame_heights)):
-        flame = cone(
+    flame_heights = (0.38, 0.56, 0.70, 0.48, 0.34)
+    flame_leans = (-0.05, 0.06, -0.02, 0.07, -0.05)
+    for idx, (offset, height, lean) in enumerate(zip(flame_offsets, flame_heights, flame_leans)):
+        cx = x + offset
+        base = 0.58
+        width = 0.16 + 0.018 * (idx % 2)
+        outer_points = [
+            (cx - width, base),
+            (cx - width * 0.78, base + height * 0.24),
+            (cx - width * 0.44, base + height * 0.45),
+            (cx - width * 0.24, base + height * 0.70),
+            (cx + lean, base + height),
+            (cx + width * 0.34, base + height * 0.62),
+            (cx + width * 0.72, base + height * 0.30),
+            (cx + width, base),
+        ]
+        flat_panel(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.66, 0.59 + height * 0.50),
-            0.145 + 0.020 * (idx % 2),
-            0.016,
-            height,
+            outer_points,
+            5.585,
+            0.035,
             fire,
-            vertices=20,
+            bevel=0.022,
         )
-        flame.rotation_euler[0] = math.radians(flame_lean_x[idx])
-        flame.rotation_euler[1] = math.radians(flame_lean_y[idx])
-        inner_h = height * (0.46 if idx != 2 else 0.58)
-        inner = cone(
+        inner_h = height * (0.48 if idx != 2 else 0.60)
+        inner_w = width * 0.48
+        inner_points = [
+            (cx - inner_w, base),
+            (cx - inner_w * 0.55, base + inner_h * 0.34),
+            (cx + lean * 0.45, base + inner_h),
+            (cx + inner_w * 0.58, base + inner_h * 0.32),
+            (cx + inner_w, base),
+        ]
+        flat_panel(
             f"HOME_PROP_{name}_flame_hot_{idx}",
-            (x + offset * 0.985, 5.625, 0.59 + inner_h * 0.50),
-            0.068 + 0.008 * (idx % 2),
-            0.008,
-            inner_h,
+            inner_points,
+            5.545,
+            0.030,
             hot,
-            vertices=16,
+            bevel=0.016,
         )
-        inner.rotation_euler[0] = flame.rotation_euler[0] * 0.55
-        inner.rotation_euler[1] = flame.rotation_euler[1] * 0.55
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
 
 
@@ -960,11 +974,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.030
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.138, 0.122, 0.102, 1), roughness=0.92, bump_scale=5.6, bump_strength=0.23, variation=0.18, variation_scale=3.8),
-        "arch_stone": material("HOME_MAT_arch_stone", (0.175, 0.145, 0.112, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.20, variation=0.16, variation_scale=4.0),
-        "stair_stone": material("HOME_MAT_stair_stone", (0.170, 0.155, 0.132, 1), roughness=0.91, bump_scale=5.0, bump_strength=0.18, variation=0.12, variation_scale=4.2),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.024, 0.022, 1), roughness=0.97, bump_scale=7.0, bump_strength=0.18, variation=0.12, variation_scale=4.8),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.095, 0.078, 0.062, 1), roughness=0.94, bump_scale=8.0, bump_strength=0.16, variation=0.14, variation_scale=5.6),
+        "stone": material("HOME_MAT_stone", (0.095, 0.077, 0.061, 1), roughness=0.94, bump_scale=5.8, bump_strength=0.24, variation=0.22, variation_scale=3.8),
+        "arch_stone": material("HOME_MAT_arch_stone", (0.132, 0.102, 0.075, 1), roughness=0.92, bump_scale=5.4, bump_strength=0.21, variation=0.18, variation_scale=4.0),
+        "stair_stone": material("HOME_MAT_stair_stone", (0.120, 0.102, 0.084, 1), roughness=0.93, bump_scale=5.2, bump_strength=0.19, variation=0.15, variation_scale=4.2),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.018, 0.016, 0.015, 1), roughness=0.98, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.062, 0.048, 0.038, 1), roughness=0.96, bump_scale=8.2, bump_strength=0.17, variation=0.18, variation_scale=5.6),
         "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.62, bump_scale=5.0, bump_strength=0.085, variation=0.24, variation_scale=2.2, grain=True),
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
         "gold": material(
