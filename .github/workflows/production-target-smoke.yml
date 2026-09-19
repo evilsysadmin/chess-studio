@@ -7,6 +7,7 @@ on:
       - .github/workflows/production-target-smoke.yml
       - scripts/oci_production_tunnel.py
       - scripts/production_deploy_target.py
+      - scripts/synthetic_health_check.py
   push:
     branches: [main]
     paths:
@@ -14,6 +15,7 @@ on:
       - .github/workflows/production-target-smoke.yml
       - scripts/oci_production_tunnel.py
       - scripts/production_deploy_target.py
+      - scripts/synthetic_health_check.py
   workflow_dispatch:
 
 permissions:
@@ -26,12 +28,17 @@ concurrency:
 
 jobs:
   smoke:
-    name: Public route + readiness
+    name: Public route + authenticated gameplay
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CHESS_SYNTHETIC_BASE_URL: https://api.chess-studio.shadowops.dpdns.org/api
+      CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
+      CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
+      CHESS_SYNTHETIC_GAMEPLAY: '1'
+      CHESS_SYNTHETIC_AUTH_SLO_MS: ${{ vars.CHESS_SYNTHETIC_AUTH_SLO_MS || '10000' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -58,3 +65,11 @@ jobs:
         env:
           DEPLOY_TARGET: ${{ steps.target.outputs.deploy_target }}
         run: python3 scripts/oci_production_tunnel.py status --target "$DEPLOY_TARGET"
+
+      - name: Prove authenticated gameplay and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CHESS_SYNTHETIC_USERNAME" || { echo '::error::CHESS_SYNTHETIC_USERNAME is required'; exit 2; }
+          test -n "$CHESS_SYNTHETIC_PASSWORD" || { echo '::error::CHESS_SYNTHETIC_PASSWORD is required'; exit 2; }
+          python3 scripts/synthetic_health_check.py --timeout 75
