@@ -70,6 +70,12 @@ Así la operación explícita demuestra `Git -> Object Storage privado -> A1 -> 
 
 ## Secuencia
 
-`workflow_dispatch k3s-start -> OCI Object Storage privado reconcile -> A1 install verificado -> guarded K3s start -> status -> Docker fallback smoke -> [futuro] Flux reconcilia workloads -> Headlamp/Cloudflare Tunnel`.
+`workflow_dispatch k3s-start -> OCI Object Storage privado reconcile -> A1 install verificado -> guarded K3s start -> status -> Docker fallback smoke`.
 
-Hasta que esa ruta demuestre destroy/recreate + smoke, el runtime Docker actual continúa intacto como fallback.
+Con K3s ya activo, el backend shadow se itera exclusivamente mediante el mismo front-door manual:
+
+`k3s-staging2-deploy <SHA exacto> -> staging2 status/diagnóstico -> k3s-staging2-rollback`.
+
+Estas operaciones usan el namespace privado `chess-studio-staging2`, mantienen `ClusterIP` + port-forward loopback para la acreditación y no forman parte del release canónico. `deploy` y `rollback` comparten el mutex de mutaciones OCI; `status` es observación read-only. El workflow automático shadow retirado no se resucita.
+
+Tras demostrar deploy/rollback repetible y smoke estable, el siguiente escalón sigue siendo Flux reconciliando workloads y, después, Headlamp mediante Cloudflare Tunnel/Access. Hasta entonces, el runtime Docker actual continúa intacto como fallback.
