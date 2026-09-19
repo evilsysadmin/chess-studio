@@ -23,7 +23,7 @@ from pathlib import Path
 
 K3S = Path("/usr/local/bin/k3s")
 TEMPLATE = Path("/etc/chess-studio/staging2-backend.yaml.tmpl")
-TEMPLATE_SHA256 = "5863935be6f325efd35735c1b1f51ae7041f36fe7cdaf9f468d53ac9d6fb9927"
+TEMPLATE_SHA256 = "5a286332bcab79433ad46425f94125ce7f91f0c96e043aac2af5fbab412d9f21"
 RUNTIME_ENV = Path("/etc/chess-studio/backend.env")
 STATE = Path("/var/lib/chess-studio/staging2-deployed.sha")
 NAMESPACE = "chess-studio-staging2"
@@ -480,6 +480,8 @@ def self_test(template_path: Path) -> None:
         "strategy:\n    type: Recreate",
         "automountServiceAccountToken: false",
         "runAsNonRoot: true",
+        "runAsUser: 10001",
+        "runAsGroup: 10001",
         'drop: ["ALL"]',
         "path: /api/health",
         "path: /api/ready",
