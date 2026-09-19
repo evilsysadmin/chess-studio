@@ -299,7 +299,7 @@ def add_table_and_board(materials):
     dark = materials["board_dark"]
     light = materials["board_light"]
     metal = materials["brass"]
-    heraldry = materials["gold"]
+    heraldry = materials["heraldry_gold"]
     banner = materials["banner"]
 
     table_y = 1.05
@@ -989,8 +989,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission=(0.08, 0.028, 0.004, 1),
             emission_strength=0.22,
         ),
+        "heraldry_gold": material(
+            "HOME_MAT_heraldry_gold",
+            (0.92, 0.58, 0.16, 1),
+            roughness=0.20,
+            metallic=0.95,
+            emission=(0.12, 0.045, 0.006, 1),
+            emission_strength=0.32,
+        ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
-        "steel": material("HOME_MAT_steel", (0.245, 0.265, 0.285, 1), roughness=0.24, metallic=0.90),
+        "steel": material("HOME_MAT_steel", (0.195, 0.210, 0.228, 1), roughness=0.22, metallic=0.92),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.105, 0.006, 0.010, 1), roughness=0.95, bump_scale=26.0, bump_strength=0.08, variation=0.10, variation_scale=9.0),
@@ -1173,6 +1181,51 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for idx, cx in enumerate((3.72, 4.45, 5.18)):
         cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
         cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
+
+    # The generic fireplace gets scaled for the canonical right-hand mass.
+    # Reintroduce a camera-facing flame layer after that transform so the
+    # hearth remains visibly alive instead of disappearing behind the grate.
+    for idx, (dx, h, lean) in enumerate((
+        (-0.52, 0.42, -0.05),
+        (-0.26, 0.62, 0.05),
+        (0.02, 0.78, -0.03),
+        (0.29, 0.56, 0.06),
+        (0.52, 0.38, -0.04),
+    )):
+        cx = 4.45 + dx
+        base = 0.57
+        w = 0.17
+        flat_panel(
+            f"HOME_PROP_fireplace_right_front_flame_{idx}",
+            [
+                (cx - w, base),
+                (cx - w * 0.70, base + h * 0.26),
+                (cx - w * 0.38, base + h * 0.50),
+                (cx + lean, base + h),
+                (cx + w * 0.38, base + h * 0.55),
+                (cx + w * 0.76, base + h * 0.25),
+                (cx + w, base),
+            ],
+            5.40,
+            0.030,
+            materials["fire"],
+            bevel=0.020,
+        )
+        inner_h = h * 0.54
+        flat_panel(
+            f"HOME_PROP_fireplace_right_front_hot_{idx}",
+            [
+                (cx - w * 0.46, base),
+                (cx - w * 0.24, base + inner_h * 0.38),
+                (cx + lean * 0.40, base + inner_h),
+                (cx + w * 0.26, base + inner_h * 0.36),
+                (cx + w * 0.46, base),
+            ],
+            5.37,
+            0.026,
+            materials["fire_hot"],
+            bevel=0.014,
+        )
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["brass_dark"], bevel=0.11)
