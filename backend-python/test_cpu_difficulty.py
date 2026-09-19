@@ -109,6 +109,51 @@ def test_low_level_honors_explicit_game_api_engine_override(monkeypatch):
     assert policy.get_factual_difficulty_cpu_move(board, 20) is injected
 
 
+def test_low_level_forced_move_skips_factual_search(monkeypatch):
+    forced = chess.Move.from_uci("e2e4")
+
+    class ForcedBoard:
+        legal_moves = [forced]
+
+    monkeypatch.setattr(policy, "_explicit_game_engine_override", lambda *_args: policy._NO_ENGINE_OVERRIDE)
+    monkeypatch.setattr(
+        policy,
+        "analyze_root_iterative",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("forced move must not launch minimax")),
+    )
+    monkeypatch.setattr(
+        policy,
+        "move_to_dict",
+        lambda _board, move: {"from": chess.square_name(move.from_square), "to": chess.square_name(move.to_square), "san": "e4"},
+    )
+
+    assert policy.get_factual_difficulty_cpu_move(ForcedBoard(), 20)["san"] == "e4"
+
+
+def test_low_level_override_still_precedes_forced_fast_path(monkeypatch):
+    import game_api
+
+    forced = chess.Move.from_uci("e2e4")
+
+    class ForcedBoard:
+        legal_moves = [forced]
+
+    injected = {"from": "d2", "to": "d4", "san": "d4"}
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: injected)
+    monkeypatch.setattr(
+        policy,
+        "move_to_dict",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("override must run before forced shortcut")),
+    )
+    monkeypatch.setattr(
+        policy,
+        "analyze_root_iterative",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("override must avoid minimax")),
+    )
+
+    assert policy.get_factual_difficulty_cpu_move(ForcedBoard(), 20) is injected
+
+
 def test_level_45_and_styled_cpu_keep_established_engine_path(monkeypatch):
     board = chess.Board()
     seen = []
