@@ -855,14 +855,21 @@ def status() -> None:
     state_sha = _state_marker()
     mem, disk, load1 = _resources()
     if not payload:
+        if state_sha != "absent":
+            print(
+                "OCI_K3S_STAGING2_STATUS_DEGRADED present=false "
+                f"state_sha={state_sha} "
+                f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
+                f"capability_sha256={_capability_sha256()}"
+            )
+            _failure_diagnostics()
+            raise SystemExit("staging2 status degraded: stale state marker without Deployment")
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=false "
             f"state_sha={state_sha} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
             f"capability_sha256={_capability_sha256()}"
         )
-        if state_sha != "absent":
-            _failure_diagnostics()
         return
     spec = payload.get("spec") or {}
     stat = payload.get("status") or {}
@@ -891,7 +898,7 @@ def status() -> None:
         expected_runtime_digest,
     ):
         print(
-            "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
+            "OCI_K3S_STAGING2_STATUS_DEGRADED present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
             f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
             f"desired={desired} updated={updated} ready={ready} available={available} "
@@ -900,7 +907,7 @@ def status() -> None:
             f"capability_sha256={_capability_sha256()}"
         )
         _failure_diagnostics()
-        return
+        raise SystemExit("staging2 status degraded: workload contract mismatch")
 
     try:
         _attest(sha)
@@ -1202,6 +1209,10 @@ def self_test(template_path: Path) -> None:
     assert "staging2 deployed state must remain root-owned" in source
     assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
     assert "runtime=attested" in source
+    assert "OCI_K3S_STAGING2_STATUS_DEGRADED" in source
+    assert "staging2 status degraded: workload contract mismatch" in source
+    assert "staging2 status degraded: stale state marker without Deployment" in source
+    assert "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded" not in source
     assert "runtime_contract=" in source
     assert "deployment_contract=" in source
     assert "staging2 live Deployment contract drifted" in source
