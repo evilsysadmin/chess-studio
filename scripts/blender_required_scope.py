@@ -85,6 +85,17 @@ GATES = (
         }),
     ),
     Gate(
+        workflow="pawn-slug-godot-strict-enemies-v10.yml",
+        label="Pawn Slug strict enemy atlases",
+        exact_paths=frozenset({
+            "scripts/blender/render_pawn_slug_enemy_sheets_v1.py",
+            "scripts/art/pack_pawn_slug_godot_strict_enemy_v10.py",
+            "scripts/art/validate_pawn_slug_godot_enemy_atlas_v10.py",
+            "games/pawn-slug-godot/tests/enemy_strict_v10_atlas_smoke.gd",
+            ".github/workflows/pawn-slug-godot-strict-enemies-v10.yml",
+        }),
+    ),
+    Gate(
         workflow="pawn-slug-pow-blender-art.yml",
         label="Pawn Slug POW art",
         exact_paths=frozenset({
@@ -162,7 +173,11 @@ def self_test() -> None:
         "pawn-slug-godot-strict-atlas.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"])] == [
-        "pawn-slug-enemy-blender-art.yml"
+        "pawn-slug-enemy-blender-art.yml",
+        "pawn-slug-godot-strict-enemies-v10.yml",
+    ]
+    assert [gate.workflow for gate in classify(["scripts/art/pack_pawn_slug_godot_strict_enemy_v10.py"])] == [
+        "pawn-slug-godot-strict-enemies-v10.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/build_pawn_slug_pows_v2.py"])] == [
         "pawn-slug-pow-blender-art.yml"
@@ -180,7 +195,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS no despierta Blender; ocho lanes path-aware")
+    print("blender-required-scope self-test OK · CSS no despierta Blender; nueve lanes path-aware")
 
 
 def main() -> int:
