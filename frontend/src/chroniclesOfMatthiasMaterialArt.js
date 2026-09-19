@@ -3,14 +3,14 @@ import * as THREE from 'three';
 const ROOT_NAME = 'chronicles-tactics-premium-materials';
 
 export const CHRONICLES_TACTICS_MATERIAL_STYLE = Object.freeze({
-  desktopTextureSize: 128,
+  desktopTextureSize: 192,
   coarseTextureSize: 64,
-  floorRepeat: 3.1,
-  wallRepeat: 2.2,
-  floorNormalStrength: 0.22,
-  wallNormalStrength: 0.28,
-  minRoughness: 0.68,
-  maxRoughness: 0.96,
+  floorRepeat: 2.55,
+  wallRepeat: 1.8,
+  floorNormalStrength: 0.3,
+  wallNormalStrength: 0.36,
+  minRoughness: 0.7,
+  maxRoughness: 0.97,
 });
 
 function fract(value) {
@@ -54,7 +54,7 @@ function textureFromData(data, size, name, { colorSpace = THREE.NoColorSpace, re
   return texture;
 }
 
-function createStoneTextureSet({ size, seed, repeat, normalStrength }) {
+function createStoneTextureSet({ size, seed, repeat, normalStrength, role }) {
   const heights = heightField(size, seed);
   const colorData = new Uint8Array(size * size * 4);
   const roughnessData = new Uint8Array(size * size * 4);
@@ -72,14 +72,20 @@ function createStoneTextureSet({ size, seed, repeat, normalStrength }) {
       const height = at(x, y);
       const fine = noise(x, y, seed + 53);
       const mineral = noise(Math.floor(x / 7), Math.floor(y / 7), seed + 71);
-      const shade = 216 + height * 34 + (fine - 0.5) * 13;
+      const strata = Math.sin((y + seed * 3.7) * 0.11 + Math.sin(x * 0.045) * 1.8);
+      const fissure = Math.max(0, 0.21 - height) * 34;
+      const broadStain = noise(Math.floor(x / 18), Math.floor(y / 18), seed + 101);
+      const shade = 214 + height * 32 + (fine - 0.5) * 11 + strata * 4 - fissure;
 
-      colorData[index] = clampByte(shade + mineral * 7);
-      colorData[index + 1] = clampByte(shade + mineral * 4);
-      colorData[index + 2] = clampByte(shade - mineral * 3);
+      const warmBias = role === 'floor' ? 5 : 1;
+      const coolBias = role === 'wall' ? 5 : 2;
+      const stain = (broadStain - 0.5) * 10;
+      colorData[index] = clampByte(shade + mineral * 7 + warmBias + stain);
+      colorData[index + 1] = clampByte(shade + mineral * 3 + stain * 0.55);
+      colorData[index + 2] = clampByte(shade - mineral * 4 + coolBias - stain * 0.3);
       colorData[index + 3] = 255;
 
-      const roughness = 192 + (1 - Math.max(-0.2, Math.min(0.8, height))) * 36 + fine * 18;
+      const roughness = 196 + (1 - Math.max(-0.2, Math.min(0.8, height))) * 34 + fine * 15 + Math.abs(strata) * 5;
       const roughnessByte = clampByte(roughness);
       roughnessData[index] = roughnessByte;
       roughnessData[index + 1] = roughnessByte;
@@ -167,12 +173,14 @@ export function installChroniclesTacticsPremiumMaterials(scene, { coarsePointer 
     seed: 23,
     repeat: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat,
     normalStrength: CHRONICLES_TACTICS_MATERIAL_STYLE.floorNormalStrength,
+    role: 'floor',
   });
   const wallSet = createStoneTextureSet({
     size,
     seed: 47,
     repeat: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat,
     normalStrength: CHRONICLES_TACTICS_MATERIAL_STYLE.wallNormalStrength,
+    role: 'wall',
   });
 
   const root = new THREE.Group();
@@ -206,7 +214,7 @@ export function installChroniclesTacticsPremiumMaterials(scene, { coarsePointer 
       set.normal.dispose();
     });
   };
-  root.userData.chroniclesMaterialFinish = 'procedural-pbr-stone-v1';
+  root.userData.chroniclesMaterialFinish = 'procedural-pbr-stone-v2';
   root.userData.chroniclesMaterialCount = visited.size;
   scene.add(root);
   return root;
