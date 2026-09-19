@@ -399,26 +399,35 @@ def add_point_light(name: str, location, energy: float, color, radius=0.22):
 
 
 def configure_cinematic_compositor(scene) -> None:
-    """Add a restrained practical-light halo without softening the whole frame."""
-    try:
-        scene.use_nodes = True
-        tree = scene.node_tree
-        nodes = tree.nodes
-        links = tree.links
-        nodes.clear()
-        layers = nodes.new("CompositorNodeRLayers")
-        glare = nodes.new("CompositorNodeGlare")
-        glare.glare_type = "FOG_GLOW"
-        glare.quality = "HIGH"
-        glare.threshold = 0.46
-        glare.size = 7
-        glare.mix = -0.60
-        composite = nodes.new("CompositorNodeComposite")
-        links.new(layers.outputs["Image"], glare.inputs["Image"])
-        links.new(glare.outputs["Image"], composite.inputs["Image"])
-    except Exception:
-        # Preview generation must remain portable across Blender minor versions.
-        pass
+    """Add restrained practical-light halo using Blender 5.x compositor API."""
+    if bpy.app.version < (5, 0, 0):
+        raise RuntimeError("Canonical Home preview requires Blender 5.x compositor API")
+
+    tree = bpy.data.node_groups.new("HOME_COMPOSITOR_CINEMATIC", "CompositorNodeTree")
+    scene.compositing_node_group = tree
+    tree.interface.new_socket(
+        name="Image",
+        in_out="OUTPUT",
+        socket_type="NodeSocketColor",
+    )
+
+    nodes = tree.nodes
+    links = tree.links
+    layers = nodes.new("CompositorNodeRLayers")
+    glare = nodes.new("CompositorNodeGlare")
+    output = nodes.new("NodeGroupOutput")
+
+    glare.inputs["Type"].default_value = "Fog Glow"
+    glare.inputs["Quality"].default_value = "High"
+    glare.inputs["Threshold"].default_value = 0.62
+    glare.inputs["Size"].default_value = 0.58
+    glare.inputs["Strength"].default_value = 0.32
+
+    links.new(layers.outputs["Image"], glare.inputs["Image"])
+    links.new(glare.outputs["Image"], output.inputs["Image"])
+
+    if hasattr(scene.render, "use_compositing"):
+        scene.render.use_compositing = True
 
 
 def add_table_and_board(materials):
