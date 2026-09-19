@@ -955,10 +955,10 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 6.36
-    chandelier_x = 2.15
+    cz = 6.28
+    chandelier_x = 1.90
     chandelier_y = 3.38
-    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.84, 0.044, mats["brass"], static)
+    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.86, 0.044, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
     cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.49), 0.030, 0.52, mats["brass_dark"], static, vertices=16)
     for index in range(6):
