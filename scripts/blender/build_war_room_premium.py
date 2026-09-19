@@ -1023,7 +1023,7 @@ def add_gothic_canon_v2(static, mats):
                 cube(
                     f"WR_CANON_fireplace_block_{prefix}_jamb_{side}_{row}",
                     (cx + side * 1.07, 5.545, z), (0.13, 0.055, 0.145),
-                    mats["stone"] if (row + (1 if side > 0 else 0)) % 2 else mats["stone_light"],
+                    mats["stone"],
                     static, bevel=0.030,
                 )
             # The lintel/jamb rhythm carries the masonry scale by itself. Keep
@@ -1598,7 +1598,6 @@ def collapse_runtime_static_shell():
         for modifier in list(obj.modifiers):
             bpy.ops.object.modifier_apply(modifier=modifier.name)
         obj.select_set(False)
-
     groups = {}
     for obj in static_meshes:
         # Preserve authored crest node names as a runtime/QA contract. The
