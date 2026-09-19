@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -43,6 +44,15 @@ jobs:
 
       - name: Validate read-only production route helper
         run: python3 -S scripts/oci_production_tunnel.py --self-test
+
+      - name: Report recent production promotion runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/production-promote.yml/runs?per_page=5" \
+            --jq '.workflow_runs[] | [.id,.event,.status,(.conclusion // "-"),.head_sha,.created_at,.updated_at] | @tsv'
 
       - name: Prove configured target is live
         env:
