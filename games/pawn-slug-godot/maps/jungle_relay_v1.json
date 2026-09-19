@@ -136,7 +136,9 @@
       "w": 230,
       "h": 24,
       "kind": "canopy_walk",
-      "material": "wood"
+      "material": "wood",
+      "one_way": true,
+      "route": "canopy_assault"
     },
     {
       "x": 4230,
@@ -196,6 +198,46 @@
       "kind": "climb_bridge",
       "material": "wood",
       "route": "climb"
+    },
+    {
+      "x": 4040,
+      "y": 318,
+      "w": 145,
+      "h": 24,
+      "kind": "canopy_perch",
+      "material": "wood",
+      "route": "canopy_assault",
+      "one_way": true
+    },
+    {
+      "x": 4165,
+      "y": 236,
+      "w": 155,
+      "h": 24,
+      "kind": "canopy_perch",
+      "material": "wood",
+      "route": "canopy_assault",
+      "one_way": true
+    },
+    {
+      "x": 4300,
+      "y": 318,
+      "w": 155,
+      "h": 24,
+      "kind": "canopy_perch",
+      "material": "wood",
+      "route": "canopy_assault",
+      "one_way": true
+    },
+    {
+      "x": 4400,
+      "y": 404,
+      "w": 145,
+      "h": 24,
+      "kind": "canopy_perch",
+      "material": "wood",
+      "route": "canopy_assault",
+      "one_way": true
     }
   ],
   "obstacles": [
@@ -357,7 +399,9 @@
     },
     {
       "x": 4098,
-      "type": "rook"
+      "type": "rook",
+      "y": 318,
+      "route": "canopy_assault"
     },
     {
       "x": 4255,
@@ -422,6 +466,13 @@
       "y": 231,
       "type": "medkit",
       "route": "climb",
+      "optional": true
+    },
+    {
+      "x": 4235,
+      "y": 236,
+      "type": "grenade",
+      "route": "canopy_assault",
       "optional": true
     }
   ],
