@@ -1437,9 +1437,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.20
             obj.scale *= 1.20
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
-                obj.scale.x *= 0.72
-                obj.scale.z *= 0.62
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.90, 1.42), 155, (1.0, 0.24, 0.045), radius=1.10)
+                # Keep legacy tongues buried as warm depth only; the canonical
+                # foreground overlay owns the visible hearth silhouette.
+                obj.scale.x *= 0.28
+                obj.scale.z *= 0.15
+                obj.location.y += 0.32
+            if "_grate_" in obj.name:
+                if obj.data and hasattr(obj.data, "materials"):
+                    obj.data.materials.clear()
+                    obj.data.materials.append(materials["brass_dark"])
+                if "grate_cross" not in obj.name:
+                    obj.scale.z *= 0.52
+                    obj.location.z -= 0.15
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 112, (1.0, 0.26, 0.050), radius=0.82)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
     cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 6.08, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
@@ -1466,53 +1476,39 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # The generic fireplace gets scaled for the canonical right-hand mass.
     # Reintroduce a camera-facing flame layer after that transform so the
     # hearth remains visibly alive instead of disappearing behind the grate.
-    sphere(
-        "HOME_PROP_fireplace_right_front_ember_glow",
-        (4.45, 5.405, 0.60),
-        (0.76, 0.035, 0.085),
-        materials["fire_hot"],
-    )
-    for idx, (dx, h, lean) in enumerate((
-        (-0.48, 0.30, -0.04),
-        (-0.24, 0.44, 0.04),
-        (0.01, 0.54, -0.02),
-        (0.27, 0.40, 0.05),
-        (0.49, 0.28, -0.03),
+    for idx, dx in enumerate((-0.44, -0.15, 0.15, 0.44)):
+        sphere(
+            f"HOME_PROP_fireplace_right_front_ember_{idx}",
+            (4.45 + dx, 5.405, 0.585 + 0.010 * (idx % 2)),
+            (0.125, 0.020, 0.038),
+            materials["fire_hot"] if idx % 2 else materials["fire"],
+        )
+    for idx, (dx, h, tilt) in enumerate((
+        (-0.28, 0.18, -11.0),
+        (0.00, 0.25, 7.0),
+        (0.30, 0.17, -8.0),
     )):
-        cx = 4.45 + dx
-        base = 0.58
-        w = 0.125
-        flat_panel(
-            f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            [
-                (cx - w, base),
-                (cx - w * 0.70, base + h * 0.26),
-                (cx - w * 0.38, base + h * 0.50),
-                (cx + lean, base + h),
-                (cx + w * 0.38, base + h * 0.55),
-                (cx + w * 0.76, base + h * 0.25),
-                (cx + w, base),
-            ],
-            5.395,
-            0.028,
+        base = sphere(
+            f"HOME_PROP_fireplace_right_front_base_{idx}",
+            (4.45 + dx, 5.390, 0.635),
+            (0.145, 0.026, 0.070),
             materials["fire"],
-            bevel=0.018,
         )
-        inner_h = h * 0.54
-        flat_panel(
+        base.rotation_euler[1] = math.radians(tilt * 0.20)
+        lobe = sphere(
+            f"HOME_PROP_fireplace_right_front_flame_{idx}",
+            (4.45 + dx + math.sin(math.radians(tilt)) * 0.028, 5.375, 0.655 + h * 0.52),
+            (0.078, 0.026, h),
+            materials["fire"],
+        )
+        lobe.rotation_euler[1] = math.radians(tilt)
+        inner = sphere(
             f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            [
-                (cx - w * 0.46, base),
-                (cx - w * 0.24, base + inner_h * 0.38),
-                (cx + lean * 0.40, base + inner_h),
-                (cx + w * 0.26, base + inner_h * 0.36),
-                (cx + w * 0.46, base),
-            ],
-            5.365,
-            0.024,
+            (4.45 + dx, 5.340, 0.650 + h * 0.34),
+            (0.041, 0.019, h * 0.46),
             materials["fire_hot"],
-            bevel=0.012,
         )
+        inner.rotation_euler[1] = math.radians(tilt * 0.45)
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["brass_dark"], bevel=0.11)
