@@ -6,6 +6,7 @@ returns None so the deterministic generator remains authoritative.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -17,6 +18,7 @@ from narrative_cloudflare import generate_narrative
 
 planner_logger = logging.getLogger("uvicorn.error")
 CHRONICLES_PLANNER_EVENT_TYPE = "chronicles_planner"
+CHRONICLES_PLANNER_TIMEOUT_SECONDS = 2.5
 
 
 async def request_chronicles_planner_snapshot(
@@ -28,18 +30,28 @@ async def request_chronicles_planner_snapshot(
     if not areas:
         return None
 
-    result = await generate_narrative(
-        CHRONICLES_PLANNER_EVENT_TYPE,
-        {
-            "requested_areas": len(areas),
-            "areas": areas,
-        },
-        tone="technical",
-        locale="es-ES",
-        request_kind="chronicles_bootstrap",
-        request_id=request_id,
-        client=client,
-    )
+    try:
+        result = await asyncio.wait_for(
+            generate_narrative(
+                CHRONICLES_PLANNER_EVENT_TYPE,
+                {
+                    "requested_areas": len(areas),
+                    "areas": areas,
+                },
+                tone="technical",
+                locale="es-ES",
+                request_kind="chronicles_bootstrap",
+                request_id=request_id,
+                client=client,
+            ),
+            timeout=CHRONICLES_PLANNER_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        planner_logger.warning(
+            "chronicles_planner_rejected request_id=%s reason=timeout",
+            request_id or "-",
+        )
+        return None
     if result.get("provider") != "cloudflare":
         return None
 
