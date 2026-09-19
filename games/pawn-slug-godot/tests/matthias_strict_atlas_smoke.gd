@@ -44,8 +44,8 @@ func _initialize() -> void:
     if Vector2i(image.get_width(), image.get_height()) != Vector2i(expected_width, expected_height):
         _fail("Godot decoded atlas dimensions disagree with manifest")
         return
-    if columns != 6 or rows != 18 or cell_size != 416:
-        _fail("unexpected strict-v9 atlas grid contract")
+    if (columns != 6 and columns != 8) or rows != 18 or cell_size != 416:
+        _fail("unexpected strict Matthias atlas grid contract")
         return
 
     var texture := ImageTexture.create_from_image(image)
@@ -134,10 +134,12 @@ func _initialize() -> void:
             _fail("AtlasTexture region contract drift: " + name)
             return
 
-    print("OK Godot strict-v9 runtime smoke: animations=%d frames=%d atlas=%dx%d" % [
+    print("OK Godot strict runtime smoke: animations=%d frames=%d atlas=%dx%d grid=%dx%d" % [
         actions.size(),
         actions.size() * columns,
         expected_width,
-        expected_height
+        expected_height,
+        columns,
+        rows
     ])
     quit(0)

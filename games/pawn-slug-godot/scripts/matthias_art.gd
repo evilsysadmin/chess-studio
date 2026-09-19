@@ -2,12 +2,9 @@ extends Node2D
 
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
-# The strict-v7 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
-# directional shoot/reload/hurt/die/crouch), 256 x 256 per cell.
-# v7 is derived deterministically from the uploaded 1070 x 1470 R2 source sheets
-# with Lanczos, reproducing the packaged 2048 x 2816 strict atlases exactly.
-# Godot consumes those normalized cells directly; the old canonical assets remain
-# only as a graceful fallback if a remote strict atlas cannot be loaded.
+# v10 is the preferred strict contract: 8 frames x 18 actions, 416 px cells.
+# The validated v9 contract remains available as a remote fallback while v10 is
+# promoted through R2 and staging.
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
@@ -81,6 +78,45 @@ const V9_MUZZLE_PIVOT_Y := {
     "machinegun": -36.0,
     "shotgun": -35.0,
     "panzerfaust": -34.0,
+}
+const FULL_ATLAS_V10_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_8x18_416_v10-b2be3a727d944d33.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/machinegun/matthias_machinegun_godot_strict_8x18_416_v10-d6ed77836f0ab3a7e.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/shotgun/matthias_shotgun_godot_strict_8x18_416_v10-4e311d79d7c2db52.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/panzerfaust/matthias_panzerfaust_godot_strict_8x18_416_v10-88ba6a4a94f7f14f.png",
+}
+const V10_ATLAS_COLUMNS := 8
+const V10_ATLAS_ROWS := 18
+const V10_ATLAS_CELL_SIZE := 416
+const V10_ATLAS_SIZE := Vector2i(
+    V10_ATLAS_COLUMNS * V10_ATLAS_CELL_SIZE,
+    V10_ATLAS_ROWS * V10_ATLAS_CELL_SIZE,
+)
+const V10_PACKED_FOOT_Y := 382.0
+const V10_ACTION_ORDER := [
+    "idle", "walk", "run", "jump", "fall", "land", "crouch", "crouch_walk",
+    "shoot", "shoot_up", "shoot_down", "shoot_diag_up", "shoot_diag_up_alt",
+    "shoot_diag_down", "shoot_crouch", "reload", "hurt", "die",
+]
+const V10_ACTIONS := {
+    "idle": {"row": 0, "fps": 6.0, "loop": true},
+    "walk": {"row": 1, "fps": 10.0, "loop": true},
+    "run": {"row": 2, "fps": 12.0, "loop": true},
+    "jump": {"row": 3, "fps": 10.0, "loop": false},
+    "fall": {"row": 4, "fps": 8.0, "loop": true},
+    "land": {"row": 5, "fps": 12.0, "loop": false},
+    "crouch": {"row": 6, "fps": 6.0, "loop": true},
+    "crouch_walk": {"row": 7, "fps": 8.0, "loop": true},
+    "shoot": {"row": 8, "fps": 15.0, "loop": false},
+    "shoot_up": {"row": 9, "fps": 15.0, "loop": false},
+    "shoot_down": {"row": 10, "fps": 15.0, "loop": false},
+    "shoot_diag_up": {"row": 11, "fps": 15.0, "loop": false},
+    "shoot_diag_up_alt": {"row": 12, "fps": 15.0, "loop": false},
+    "shoot_diag_down": {"row": 13, "fps": 15.0, "loop": false},
+    "shoot_crouch": {"row": 14, "fps": 15.0, "loop": false},
+    "reload": {"row": 15, "fps": 10.0, "loop": false},
+    "hurt": {"row": 16, "fps": 12.0, "loop": false},
+    "die": {"row": 17, "fps": 9.0, "loop": false},
 }
 const V7_SOURCE_SIZE := Vector2i(1070, 1470)
 const DIRECTIONAL_ATLAS_URLS := {
@@ -591,6 +627,20 @@ func _install_or_request_weapon() -> void:
         _install_frames(_full_frames_by_weapon[_weapon], true)
         return
 
+    var full_v10_url := String(FULL_ATLAS_V10_URLS.get(_weapon, ""))
+    if not full_v10_url.is_empty():
+        if _atlas_request == null:
+            _request_atlas(_weapon, full_v10_url, "full-v10")
+        if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
+            return
+        if _weapon == "pistol" and _legacy_pistol_frames != null:
+            _install_frames(_legacy_pistol_frames, false)
+        elif _fallback_frames_by_weapon.has(_weapon):
+            _install_frames(_fallback_frames_by_weapon[_weapon], false)
+        else:
+            _ensure_master()
+        return
+
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
         if _atlas_request == null:
@@ -641,6 +691,8 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
+        if layout == "full-v10" and _request_v9_fallback(weapon_id):
+            return
         if layout in ["full-v9", "full-v7-source"] and _request_full_fallback(weapon_id):
             return
         _ensure_master()
@@ -655,19 +707,35 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        if requested_layout == "full-v10" and _request_v9_fallback(requested_weapon):
+            return
         if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
     var image := _decode_raster(bytes)
     if image == null:
+        if requested_layout == "full-v10" and _request_v9_fallback(requested_weapon):
+            return
         if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
 
     var frames: SpriteFrames
-    if requested_layout == "full-v9":
+    if requested_layout == "full-v10":
+        frames = _build_v10_frames(image)
+        if frames == null:
+            if _request_v9_fallback(requested_weapon):
+                return
+        else:
+            _full_frames_by_weapon[requested_weapon] = frames
+            _full_body_y_by_weapon[requested_weapon] = V9_BODY_Y
+            _full_muzzle_by_weapon[requested_weapon] = {}
+            _v9_ready_by_weapon[requested_weapon] = true
+            _directional_ready_by_weapon[requested_weapon] = true
+
+    elif requested_layout == "full-v9":
         frames = _build_v9_frames(image)
         if frames == null:
             if _request_full_fallback(requested_weapon):
@@ -737,6 +805,13 @@ func _request_full_fallback(weapon_id: String) -> bool:
     if fallback_url.is_empty():
         return false
     _request_atlas(weapon_id, fallback_url, "full")
+    return true
+
+func _request_v9_fallback(weapon_id: String) -> bool:
+    var fallback_url := String(FULL_ATLAS_URLS.get(weapon_id, ""))
+    if fallback_url.is_empty():
+        return false
+    _request_atlas(weapon_id, fallback_url, "full-v9")
     return true
 
 func _normalize_v7_source(image: Image) -> Image:
@@ -961,6 +1036,39 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
         )
     return repaired
 
+
+func _build_v10_frames(image: Image) -> SpriteFrames:
+    if image.get_size() != V10_ATLAS_SIZE:
+        push_error(
+            "Strict Matthias v10 atlas has invalid dimensions: %s, expected %s"
+            % [image.get_size(), V10_ATLAS_SIZE]
+        )
+        return null
+
+    var atlas_texture := ImageTexture.create_from_image(image)
+    var frames := SpriteFrames.new()
+    frames.remove_animation("default")
+    for action in V10_ACTION_ORDER:
+        var spec: Dictionary = V10_ACTIONS[action]
+        frames.add_animation(action)
+        frames.set_animation_loop(action, bool(spec["loop"]))
+        frames.set_animation_speed(action, float(spec["fps"]))
+        var row := int(spec["row"])
+        for frame_index in range(V10_ATLAS_COLUMNS):
+            var rect := Rect2i(
+                frame_index * V10_ATLAS_CELL_SIZE,
+                row * V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+            )
+            if image.get_region(rect).get_used_rect().size == Vector2i.ZERO:
+                push_error("Strict Matthias v10 contains empty cell %s/%d" % [action, frame_index])
+                return null
+            var texture := AtlasTexture.new()
+            texture.atlas = atlas_texture
+            texture.region = Rect2(rect)
+            frames.add_frame(action, texture)
+    return frames
 
 func _build_v9_frames(image: Image) -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:

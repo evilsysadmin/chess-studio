@@ -1,0 +1,184 @@
+name: Pawn Slug · Godot strict Matthias v10
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v9.py'
+      - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'games/pawn-slug-godot/art/matthias-v10/**'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
+      - 'games/pawn-slug-godot/tests/matthias_strict_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v10.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v9.py'
+      - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'games/pawn-slug-godot/art/matthias-v10/**'
+      - 'games/pawn-slug-godot/scripts/matthias_art.gd'
+      - 'games/pawn-slug-godot/tests/matthias_strict_atlas_smoke.gd'
+      - '.github/workflows/pawn-slug-godot-strict-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-godot-strict-v10-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+  GODOT_RELEASE: '4.7.2-stable'
+  GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+
+jobs:
+  build-strict-v10:
+    name: Build + gate strict-v10 · ${{ matrix.weapon }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pillow
+        run: python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Strict tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v9.py --self-test
+          python3 scripts/art/pack_pawn_slug_godot_strict_v10.py --self-test
+          python3 -m py_compile scripts/art/validate_pawn_slug_godot_atlas_v10.py
+
+      - name: Restore pinned Godot editor for runtime smoke
+        if: matrix.weapon == 'pistol'
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install pinned Godot editor for runtime smoke
+        if: matrix.weapon == 'pistol'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+
+      - name: Download canonical v9 baseline source
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          root='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2'
+          mkdir -p /tmp/pawn-slug-godot-strict-v10
+          curl --fail --silent --show-error --location --retry 3 \
+            "$root/matthias_${WEAPON}_strict_v9.png" \
+            --output "/tmp/pawn-slug-godot-strict-v10/matthias_${WEAPON}_strict_v9.png"
+
+      - name: Pack v9 comparison baseline
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          root=/tmp/pawn-slug-godot-strict-v10
+          python3 scripts/art/pack_pawn_slug_godot_strict_v9.py \
+            --source "$root/matthias_${WEAPON}_strict_v9.png" \
+            --output "$root/matthias_${WEAPON}_godot_strict_6x18_416_v9.png" \
+            --weapon "$WEAPON"
+
+      - name: Pack strict Godot v10
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=/tmp/pawn-slug-godot-strict-v10
+          extra=()
+          if [[ "$WEAPON" == pistol || "$WEAPON" == machinegun ]]; then
+            extra+=(--run-strip "games/pawn-slug-godot/art/matthias-v10/source/${WEAPON}_run_8f.png")
+          fi
+          python3 scripts/art/pack_pawn_slug_godot_strict_v10.py \
+            --source "$root/matthias_${WEAPON}_strict_v9.png" \
+            --output "$root/matthias_${WEAPON}_godot_strict_8x18_416_v10.png" \
+            --weapon "$WEAPON" "${extra[@]}"
+
+      - name: Godot strict-v10 contract gate + review artifacts
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          root=/tmp/pawn-slug-godot-strict-v10
+          generated=''
+          if [[ "$WEAPON" == pistol || "$WEAPON" == machinegun ]]; then generated='--generated-run'; fi
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v10.py \
+            --atlas "$root/matthias_${WEAPON}_godot_strict_8x18_416_v10.png" \
+            --baseline "$root/matthias_${WEAPON}_godot_strict_6x18_416_v9.png" \
+            --weapon "$WEAPON" \
+            --runtime games/pawn-slug-godot/scripts/matthias_art.gd \
+            --manifest "$root/matthias_${WEAPON}_strict_v10_manifest.json" \
+            --contact-sheet "$root/matthias_${WEAPON}_strict_v10_contact_sheet.png" \
+            --review-board "$root/matthias_${WEAPON}_strict_v10_review_board.png" \
+            --strips-dir "$root/matthias_${WEAPON}_strict_v10_strips" \
+            $generated
+
+      - name: Consume generated v10 atlas in Godot SpriteFrames
+        if: matrix.weapon == 'pistol'
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          root=/tmp/pawn-slug-godot-strict-v10
+          "$godot" --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_strict_atlas_smoke.gd -- \
+            "$root/matthias_${WEAPON}_godot_strict_8x18_416_v10.png" \
+            "$root/matthias_${WEAPON}_strict_v10_manifest.json"
+
+      - name: Publish immutable strict-v10 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          atlas="/tmp/pawn-slug-godot-strict-v10/matthias_${WEAPON}_godot_strict_8x18_416_v10.png"
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$atlas" \
+            --logical-id "pawnSlug.godot.matthias.${WEAPON}.strictV10" \
+            --prefix "pawn-slug-godot/matthias/strict-v10/${WEAPON}" \
+            | tee "/tmp/pawn-slug-godot-strict-v10-${WEAPON}-publish.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v10-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict-v10/matthias_${{ matrix.weapon }}_godot_strict_8x18_416_v10.png
+            /tmp/pawn-slug-godot-strict-v10/matthias_${{ matrix.weapon }}_strict_v10_manifest.json
+            /tmp/pawn-slug-godot-strict-v10/matthias_${{ matrix.weapon }}_strict_v10_contact_sheet.png
+            /tmp/pawn-slug-godot-strict-v10/matthias_${{ matrix.weapon }}_strict_v10_review_board.png
+            /tmp/pawn-slug-godot-strict-v10/matthias_${{ matrix.weapon }}_strict_v10_strips/*.png
+            /tmp/pawn-slug-godot-strict-v10-${{ matrix.weapon }}-publish.txt
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0

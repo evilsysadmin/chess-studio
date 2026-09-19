@@ -1,0 +1,39 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v10",
+  "status": "validated-local-awaiting-ci-staging",
+  "canonical": {
+    "baseline": "strict-v9",
+    "source_contract": "724x2172 RGBA PNG, 6x18 visual slots",
+    "output_contract": "3328x7488 RGBA PNG, 8x18 cells, 416px cell",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "face": "slightly angry Matthias: lowered inner brows, narrowed eyes, firm small frown"
+  },
+  "baseline_source_urls": {
+    "release": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/"
+  },
+  "generated_sources": {
+    "pistol_run": "source/pistol_run_8f.png",
+    "machinegun_run": "source/machinegun_run_8f.png"
+  },
+  "generated_source_prompts": {
+    "pistol_run": "Use case: intermediate 2D frame strip for a Godot sprite pipeline. Asset type: isolated animation frame strip, not a final atlas. Primary request: generate exactly 8 new transparent 2D frames of canonical Matthias running while holding a compact pistol in a stable horizontal ready pose. Use the attached local v9 atlas only as character identity and proportion reference. Composition: one simple horizontal strip of eight evenly spaced square frame slots, one full character per slot, no labels or decorative composition. Keep generous transparent space around every frame and keep the feet on the same baseline. The strip is an intermediate source that will be cut and normalized by a project script. Animation: a smooth eight-frame run cycle with clear contact, down, passing, up, opposite contact, down, passing and up poses. Make leg and arm phases visibly change between frames, preserve the same body size and pistol placement, and keep the face, cap, armor and limbs consistent. Character: canonical Matthias, compact tactical soldier with spherical chess-pawn-like face, black officer cap with gold insignia, black tactical armor and boots, pistol held forward in the default horizontal pose. Preserve the reference silhouette. Style: polished hand-painted 2D game sprite, crisp alpha edges, restrained black tactical palette, warm skin highlights, subtle cool rim light. Background: fully transparent alpha. Constraints: exactly eight isolated frames; no text, grid, borders, floor, scenery, muzzle flash, projectile, watermark, extra characters, duplicated limbs, malformed hands, weapon morphing, cropped feet, frame overlap or changing scale.",
+    "machinegun_run": "Use case: intermediate 2D frame strip for a Godot sprite pipeline. Asset type: isolated animation frame strip, not a final atlas. Primary request: generate exactly 8 new transparent 2D frames of canonical Matthias running while holding the canonical compact black machinegun/SMG from the attached local v9 atlas. Composition: one simple horizontal strip of eight evenly spaced square frame slots, one full character per slot, no labels or decorative composition. Keep generous transparent space around every frame and keep the feet on the same baseline. This is an intermediate source to be cut and normalized by a project script. Animation: smooth eight-frame run cycle with clear contact, down, passing, up, opposite contact, down, passing and up poses. Make legs and arms visibly change, preserve stable body size, cap, spherical pawn face, armor volume and exact SMG placement. The weapon remains held in the default horizontal ready pose without firing. Style: polished hand-painted 2D game sprite matching the attached Pawn Slug canonical reference, restrained black tactical palette, crisp alpha edges, warm skin highlights, subtle cool rim light. Background: fully transparent alpha. Constraints: exactly eight isolated frames; no text, grid, borders, floor, scenery, muzzle flash, projectile, watermark, extra characters, duplicated limbs, malformed hands, weapon morphing, cropped feet, frame overlap or changing scale."
+  },
+  "atlas_sha256": {
+    "pistol": "b2be3a727d944d33b6c7221dcb28aa217b8b71a35427940ebe9daf14bf242452",
+    "machinegun": "d6ed77836f0ab3a7e246b62488431adf38142a09c15604d46826a11e7455cdb3",
+    "shotgun": "4e311d79d7c2db52edb39af8bd4ff78f143c5e8d222ad26a3637db4068cd271c",
+    "panzerfaust": "88ba6a4a94f7f14fd14789e265034b9ae16cb05a582f8e8659bc8b3bdcb06a2c"
+  },
+  "validation": {
+    "packer": "scripts/art/pack_pawn_slug_godot_strict_v10.py",
+    "validator": "scripts/art/validate_pawn_slug_godot_atlas_v10.py",
+    "godot_smoke": "games/pawn-slug-godot/tests/matthias_strict_atlas_smoke.gd",
+    "last_local_result": "all four weapons passed; non-run rows byte-identical to v9 remap; 8 frames x 18 actions"
+  },
+  "resume": {
+    "next": "run strict-v10 CI, publish immutable R2 assets, run Godot web export and staging visual smoke",
+    "source_of_truth": "this worksheet plus the generated atlas manifests in review/"
+  }
+}
