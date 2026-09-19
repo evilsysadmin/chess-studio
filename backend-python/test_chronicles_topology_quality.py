@@ -36,6 +36,7 @@ def test_quality_gate_accepts_connected_room_with_reachable_exit():
 
     assert report.accepted is True
     assert report.reasons == ()
+    assert report.warnings == ()
     assert report.reachable_count == report.walkable_count
     assert report.min_exit_distance >= 4
     assert report.exit_count == 1
@@ -62,7 +63,7 @@ def test_quality_gate_rejects_disconnected_exit():
     assert "unreachable-exit" in report.reasons
 
 
-def test_quality_gate_rejects_corridor_dominated_by_articulation_points():
+def test_quality_gate_reports_corridor_dominance_as_advisory():
     report = evaluate_chronicles_topology(
         _manifest(
             [
@@ -73,8 +74,9 @@ def test_quality_gate_rejects_corridor_dominated_by_articulation_points():
         )
     )
 
-    assert report.accepted is False
-    assert "corridor-dominated" in report.reasons
+    assert report.accepted is True
+    assert report.reasons == ()
+    assert "corridor-dominated" in report.warnings
     assert report.cycle_rank == 0
     assert report.corridor_ratio > 0.75
 
@@ -128,7 +130,7 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
 
     reports = iter(
         (
-            FakeQuality(False, ("corridor-dominated",)),
+            FakeQuality(False, ("exit-too-close",)),
             FakeQuality(True, ()),
         )
     )
@@ -154,6 +156,6 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
     assert metadata["plannerReason"] == "quality-rejected"
     assert metadata["plannerQualityFallback"] is True
     assert metadata["plannerQualityRejectedReasons"] == [
-        "corridor-dominated"
+        "exit-too-close"
     ]
     assert metadata["topologyQuality"]["accepted"] is True

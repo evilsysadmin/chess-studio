@@ -20,6 +20,7 @@ _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 class ChroniclesTopologyQuality:
     accepted: bool
     reasons: tuple[str, ...]
+    warnings: tuple[str, ...]
     walkable_count: int
     reachable_count: int
     exit_count: int
@@ -41,6 +42,7 @@ class ChroniclesTopologyQuality:
             "version": CHRONICLES_TOPOLOGY_QUALITY_VERSION,
             "accepted": self.accepted,
             "reasons": list(self.reasons),
+            "warnings": list(self.warnings),
             "walkableCount": self.walkable_count,
             "reachableCount": self.reachable_count,
             "exitCount": self.exit_count,
@@ -218,7 +220,7 @@ def evaluate_chronicles_topology(
         or any(len(row) != len(raw_grid[0]) for row in raw_grid)
     ):
         return ChroniclesTopologyQuality(
-            False, ("invalid-grid",), 0, 0, 0, None, None,
+            False, ("invalid-grid",), (), 0, 0, 0, None, None,
             0.0, 0, 0.0, 0, 0.0, 0, 0.0, 0, 0, 0,
         )
 
@@ -228,6 +230,7 @@ def evaluate_chronicles_topology(
     walkable = _walkable(grid)
     start = _point(manifest.get("partyStart"))
     reasons: list[str] = []
+    warnings: list[str] = []
 
     if start is None or start not in walkable:
         reasons.append("invalid-party-start")
@@ -304,11 +307,12 @@ def evaluate_chronicles_topology(
         and articulation_ratio > _CORRIDOR_ARTICULATION_RATIO
         and corridor_ratio > _CORRIDOR_DEGREE_TWO_RATIO
     ):
-        reasons.append("corridor-dominated")
+        warnings.append("corridor-dominated")
 
     return ChroniclesTopologyQuality(
         accepted=not reasons,
         reasons=tuple(reasons),
+        warnings=tuple(warnings),
         walkable_count=len(walkable),
         reachable_count=len(distances),
         exit_count=len(exits),
