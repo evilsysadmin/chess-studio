@@ -1,6 +1,7 @@
 extends SceneTree
 
 const PlayerProbe := preload("res://tests/player_probe.gd")
+const MainRuntime := preload("res://scripts/main.gd")
 const EPSILON := 0.01
 
 var _failures: Array[String] = []
@@ -157,6 +158,24 @@ func _run() -> void:
     _expect(absf(safe_respawn.x - 200.0) <= EPSILON, "respawn conserva X cuando el soporte es válido")
     _expect(absf(safe_respawn.y - 75.0) <= 0.1, "respawn se apoya sobre la cara superior real de la plataforma")
     _expect(player.respawn_position_is_clear_probe(safe_respawn), "respawn final queda libre de geometría")
+
+    # Stage geometry probe: optional canopy/catwalk platforms may be crossed
+    # from below while still supporting Matthias/enemies from above.
+    var geometry_probe = MainRuntime.new()
+    geometry_probe._map_geometry_root = Node2D.new()
+    geometry_probe._add_stage_body(
+        Rect2(0.0, 0.0, 160.0, 24.0),
+        "OneWayProbe",
+        true,
+    )
+    var one_way_shape := geometry_probe._map_geometry_root.get_node(
+        "OneWayProbe/CollisionShape2D"
+    ) as CollisionShape2D
+    _expect(one_way_shape != null, "stage geometry crea collision shape para plataforma one-way")
+    if one_way_shape != null:
+        _expect(one_way_shape.one_way_collision, "plataforma one-way permite atravesarla desde abajo")
+        _expect(one_way_shape.one_way_collision_margin >= 4.0, "plataforma one-way conserva margen estable")
+    geometry_probe.free()
 
     world.queue_free()
     await process_frame
