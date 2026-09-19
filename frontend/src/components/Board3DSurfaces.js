@@ -57,6 +57,10 @@ export function getCameraFramingProfile(aspect) {
 export function warRoomRenderBudget({ coarsePointer = false, devicePixelRatio = 1 } = {}) {
   const dpr = Math.max(0.5, Number(devicePixelRatio) || 1);
   return Object.freeze({
+    // Input modality is a semantic contract, not a proxy for GPU tier. Keep it
+    // explicit so software-rendered desktop visual proofs can still exercise
+    // the desktop lighting/material profile while using cheaper shadows.
+    coarsePointer: Boolean(coarsePointer),
     // 1.2 keeps the premium edges crisp at gameplay distance while cutting
     // roughly 21% of fragment work versus the previous 1.35 desktop budget.
     pixelRatio: Math.min(dpr, coarsePointer ? 1 : 1.2),
