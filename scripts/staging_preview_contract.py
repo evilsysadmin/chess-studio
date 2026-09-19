@@ -318,6 +318,8 @@ def main() -> int:
             "production automatic staging source",
         ),
         ("Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`", "production fixed release snapshot"),
+        ("Resolve Cloudflare zone for Worker Terraform", "production Worker zone resolver"),
+        ("TF_VAR_cloudflare_zone_id=$zone_id", "production Worker Terraform zone input"),
     ):
         require(promote, needle, label, errors)
     forbid(promote, "Staging · preview", "production-promote escucha preview", errors)
