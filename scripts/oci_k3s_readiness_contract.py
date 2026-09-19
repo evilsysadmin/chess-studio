@@ -110,6 +110,8 @@ assert "port-forward" in staging2_root and "127.0.0.1" in staging2_root
 assert "OCI_K3S_STAGING2_DEPLOY_OK" in staging2_root
 assert "OCI_K3S_STAGING2_STATUS_OK" in staging2_root
 assert "OCI_K3S_STAGING2_ROLLBACK_OK" in staging2_root
+assert "_pinned_digest_from_image_ref" in staging2_root
+assert "staging2 rendered image must be a canonical sha256 digest reference" in staging2_root
 template_text = staging2_template.decode("utf-8")
 for required in (
     "type: ClusterIP",

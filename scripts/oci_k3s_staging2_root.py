@@ -37,7 +37,9 @@ SECRET = "backend-runtime"
 LOCAL_PORT = 4100
 ORIGIN = "https://staging2.chess-studio.shadowops.dpdns.org"
 IMAGE_PREFIX = "ghcr.io/evilsysadmin/chess-studio-backend:oci-"
+IMAGE_REPOSITORY = IMAGE_PREFIX.split(":oci-", 1)[0]
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+IMAGE_DIGEST_RE = re.compile(rf"^{re.escape(IMAGE_REPOSITORY)}@sha256:[0-9a-f]{{64}}$")
 MIN_PRE_MEM = 3500 * 1024**2
 MIN_POST_MEM = 3000 * 1024**2
 MIN_PRE_DISK = 30 * 1024**3
@@ -125,13 +127,22 @@ def _verify_host_contract() -> None:
         raise SystemExit("K3s must be active before staging2 deployment")
 
 
-def _render(sha: str) -> str:
+def _render(sha: str, pinned_image: str = "") -> str:
     if not SHA_RE.fullmatch(sha):
         raise SystemExit("staging2 deploy requires an immutable 40-char lowercase SHA")
     text = TEMPLATE.read_text(encoding="utf-8")
     if text.count("__SHA__") != 3:
         raise SystemExit("staging2 manifest template placeholder count drifted")
-    return text.replace("__SHA__", sha)
+    rendered = text.replace("__SHA__", sha)
+    if not pinned_image:
+        return rendered
+    if not IMAGE_DIGEST_RE.fullmatch(pinned_image):
+        raise SystemExit("staging2 rendered image must be a canonical sha256 digest reference")
+    tagged_image = _image_ref(sha)
+    needle = f"image: {tagged_image}"
+    if rendered.count(needle) != 1:
+        raise SystemExit("staging2 rendered manifest image reference drifted")
+    return rendered.replace(needle, f"image: {pinned_image}")
 
 
 def _image_ref(sha: str) -> str:
@@ -150,10 +161,8 @@ def _validate_image_payload(sha: str, payload: dict) -> str:
     if image not in tags:
         raise SystemExit(f"staging2 image inspect missing exact immutable tag: {image}")
 
-    repository = IMAGE_PREFIX.split(":oci-", 1)[0]
-    digest_re = re.compile(rf"^{re.escape(repository)}@sha256:[0-9a-f]{{64}}$")
     digests = [str(value) for value in (status_payload.get("repoDigests") or [])]
-    matching_digests = [value for value in digests if digest_re.fullmatch(value)]
+    matching_digests = [value for value in digests if IMAGE_DIGEST_RE.fullmatch(value)]
     if not matching_digests:
         raise SystemExit("staging2 image inspect missing canonical sha256 repo digest")
 
@@ -184,8 +193,8 @@ def _validate_image_payload(sha: str, payload: dict) -> str:
     return matching_digests[0].split("@", 1)[1]
 
 
-def _preflight_image(sha: str) -> None:
-    """Ensure the exact immutable backend image is available and valid before mutation."""
+def _preflight_image(sha: str) -> str:
+    """Ensure the exact immutable backend image is available, valid and digest-pinned."""
     image = _image_ref(sha)
     source = "cache"
     try:
@@ -240,11 +249,15 @@ def _preflight_image(sha: str) -> None:
     if not isinstance(payload, dict):
         raise SystemExit("staging2 image inspect returned non-object JSON")
     digest = _validate_image_payload(sha, payload)
+    pinned_image = f"{IMAGE_REPOSITORY}@{digest}"
+    if not IMAGE_DIGEST_RE.fullmatch(pinned_image):
+        raise SystemExit("staging2 image preflight produced invalid digest reference")
     print(
         "OCI_K3S_STAGING2_IMAGE_READY "
         f"sha={sha} source={source} digest={digest} arch=arm64 uid=10001",
         flush=True,
     )
+    return pinned_image
 
 
 def _apply_text(text: str) -> None:
@@ -360,6 +373,23 @@ def _release_from_payload(payload: dict) -> str:
     annotations = (((payload.get("spec") or {}).get("template") or {}).get("metadata") or {}).get("annotations") or {}
     value = str(annotations.get("chess-studio.shadowops/release") or "")
     return value if SHA_RE.fullmatch(value) else ""
+
+
+def _image_from_payload(payload: dict) -> str:
+    containers = (
+        ((((payload.get("spec") or {}).get("template") or {}).get("spec") or {}).get("containers"))
+        or []
+    )
+    for container in containers:
+        if isinstance(container, dict) and container.get("name") == "backend":
+            return str(container.get("image") or "")
+    return ""
+
+
+def _pinned_digest_from_image_ref(image_ref: str) -> str:
+    if not IMAGE_DIGEST_RE.fullmatch(str(image_ref or "")):
+        return ""
+    return str(image_ref).split("@", 1)[1]
 
 
 def _clean_diag(value: object, limit: int = 260) -> str:
@@ -587,8 +617,9 @@ def _write_state(sha: str) -> None:
 
 def _restore(previous_sha: str) -> None:
     if previous_sha:
+        previous_image = _preflight_image(previous_sha)
         _ensure_namespace_and_secret()
-        _apply_text(_render(previous_sha))
+        _apply_text(_render(previous_sha, previous_image))
         _rollout_wait()
         _attest(previous_sha)
         _write_state(previous_sha)
@@ -607,10 +638,10 @@ def deploy(sha: str) -> None:
     _verify_namespace_contract_if_present()
     pre_mem, pre_disk, pre_load = _resource_gate(MIN_PRE_MEM, MIN_PRE_DISK, "pre-deploy")
     previous_sha = _release_from_payload(_deployment_payload())
-    _preflight_image(sha)
+    pinned_image = _preflight_image(sha)
     try:
         _ensure_namespace_and_secret()
-        _apply_text(_render(sha))
+        _apply_text(_render(sha, pinned_image))
         _rollout_wait()
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
@@ -647,13 +678,14 @@ def deploy(sha: str) -> None:
 
 
 def _status_needs_diagnostics(
-    desired: int, available: int, sha: str, state_sha: str
+    desired: int, available: int, sha: str, state_sha: str, image_ref: str
 ) -> bool:
     return (
         desired < 1
         or available != desired
         or not SHA_RE.fullmatch(sha)
         or state_sha != sha
+        or not _pinned_digest_from_image_ref(image_ref)
     )
 
 
@@ -676,12 +708,15 @@ def status() -> None:
     spec = payload.get("spec") or {}
     stat = payload.get("status") or {}
     sha = _release_from_payload(payload) or "unknown"
+    image_ref = _image_from_payload(payload)
+    image_digest = _pinned_digest_from_image_ref(image_ref) or "unpinned"
     desired = int(spec.get("replicas") or 0)
     available = int(stat.get("availableReplicas") or 0)
-    if _status_needs_diagnostics(desired, available, sha, state_sha):
+    if _status_needs_diagnostics(desired, available, sha, state_sha, image_ref):
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
-            f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
+            f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
+            f"desired={desired} available={available} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
             f"capability_sha256={_capability_sha256()}"
         )
@@ -709,7 +744,8 @@ def status() -> None:
 
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
-        f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
+        f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
+        f"desired={desired} available={available} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
         f"capability_sha256={_capability_sha256()}"
     )
@@ -767,11 +803,12 @@ def self_test(template_path: Path) -> None:
     else:
         raise AssertionError("mutable staging2 image ref must fail closed")
 
-    repository = IMAGE_PREFIX.split(":oci-", 1)[0]
+    repository = IMAGE_REPOSITORY
+    sample_digest_ref = f"{repository}@sha256:{'a' * 64}"
     sample_payload = {
         "status": {
             "repoTags": [sample_image],
-            "repoDigests": [f"{repository}@sha256:{'a' * 64}"],
+            "repoDigests": [sample_digest_ref],
             "uid": {"value": 10001},
             "username": "",
         },
@@ -784,6 +821,17 @@ def self_test(template_path: Path) -> None:
         },
     }
     assert _validate_image_payload(sample_sha, sample_payload) == f"sha256:{'a' * 64}"
+    rendered = _render(sample_sha, sample_digest_ref)
+    assert f"image: {sample_digest_ref}" in rendered
+    assert f"image: {sample_image}" not in rendered
+    assert _pinned_digest_from_image_ref(sample_digest_ref) == f"sha256:{'a' * 64}"
+    assert not _pinned_digest_from_image_ref(sample_image)
+    try:
+        _render(sample_sha, sample_image)
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("tagged image must not satisfy digest-pinned render")
     owned_namespace = {"metadata": {"labels": dict(NAMESPACE_LABELS)}}
     foreign_namespace = {
         "metadata": {
@@ -813,13 +861,14 @@ def self_test(template_path: Path) -> None:
             pass
         else:
             raise AssertionError(f"invalid staging2 image contract accepted: {mutation}")
-    assert not _status_needs_diagnostics(1, 1, sample_sha, sample_sha)
-    assert _status_needs_diagnostics(1, 0, sample_sha, sample_sha)
-    assert _status_needs_diagnostics(0, 0, sample_sha, sample_sha)
-    assert _status_needs_diagnostics(1, 1, "unknown", sample_sha)
-    assert _status_needs_diagnostics(1, 1, sample_sha, "absent")
-    assert _status_needs_diagnostics(1, 1, sample_sha, "invalid")
-    assert _status_needs_diagnostics(1, 1, sample_sha, "1" * 40)
+    assert not _status_needs_diagnostics(1, 1, sample_sha, sample_sha, sample_digest_ref)
+    assert _status_needs_diagnostics(1, 0, sample_sha, sample_sha, sample_digest_ref)
+    assert _status_needs_diagnostics(0, 0, sample_sha, sample_sha, sample_digest_ref)
+    assert _status_needs_diagnostics(1, 1, "unknown", sample_sha, sample_digest_ref)
+    assert _status_needs_diagnostics(1, 1, sample_sha, "absent", sample_digest_ref)
+    assert _status_needs_diagnostics(1, 1, sample_sha, "invalid", sample_digest_ref)
+    assert _status_needs_diagnostics(1, 1, sample_sha, "1" * 40, sample_digest_ref)
+    assert _status_needs_diagnostics(1, 1, sample_sha, sample_sha, sample_image)
     source = Path(__file__).read_text(encoding="utf-8")
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
@@ -828,6 +877,8 @@ def self_test(template_path: Path) -> None:
     assert '"crictl", "pull"' in source
     assert "OCI_K3S_STAGING2_IMAGE_READY" in source
     assert "staging2 image inspect missing canonical sha256 repo digest" in source
+    assert "staging2 rendered image must be a canonical sha256 digest reference" in source
+    assert "image_digest=" in source
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
     assert "refusing to manage foreign staging2 namespace" in source
