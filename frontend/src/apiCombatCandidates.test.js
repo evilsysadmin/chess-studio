@@ -14,7 +14,7 @@ beforeEach(() => {
 describe('Combat analyze shortlist transport', () => {
   it('keeps normal analysis legacy-shaped and can request candidates without doctrine', async () => {
     await api.analyzePosition('fen-normal', 50);
-    await api.analyzePosition('fen-combat', 70, { candidateLimit: 5 });
+    await api.analyzePosition('fen-combat', 70, {}, null, 5);
     await api.analyzePosition('fen-ghost', 70, {}, { capture: 0.8, check: 0.5 });
 
     const normal = JSON.parse(global.fetch.mock.calls[0][1].body);
