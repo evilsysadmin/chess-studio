@@ -81,3 +81,8 @@ A staging deploy refreshes the stable wrapper from the accredited repository rev
 Temporary production uses a separate root-owned env file at `/etc/chess-studio/production/backend.env`. The one-time `production-runtime-bootstrap` operation reads the already-guarded Render production service and stores only the allow-listed backend runtime as the encrypted Vault secret `chess-studio-production-runtime-env`. The plaintext payload is never written to Git, Terraform state, GitHub output, or OCI Run Command.
 
 `production-runtime-sync` asks the A1 to fetch that CURRENT secret with its Instance Principal, validates `MONGO_DB_NAME=chess_study`, `ENVIRONMENT=production`, production CORS and the absence of staging targets, then installs it mode 0600 through the narrow root-owned installer. Staging remains at `/etc/chess-studio/backend.env` with `MONGO_DB_NAME=chess_study_staging`.
+
+
+## Shared Cloudflare Tunnel route
+
+The existing outbound-only Cloudflare Tunnel now owns two explicit ingress rules on the same A1 connector: staging API -> `127.0.0.1:4000` and temporary production API -> `127.0.0.1:4100`. Adding the production ingress does not switch traffic by itself. `scripts/oci_production_tunnel.py prepare` only reconciles tunnel configuration and proves a live connector; `activate --sha <SHA>` performs the production CNAME cutover only after the exact OCI backend is already healthy, while `render --sha <SHA>` restores the production CNAME to Render and re-attests the known-good SHA.

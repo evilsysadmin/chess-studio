@@ -350,9 +350,11 @@ assert "User=ocarun" in deploy_watcher_unit
 assert "PrivateTmp=true" in deploy_watcher_unit
 assert "ListenStream" not in deploy_watcher_unit
 
+from oci_production_tunnel import self_test as production_tunnel_self_test
 from oci_vault_cutover import self_test as vault_cutover_self_test
 from oci_vault_sync import self_test as vault_sync_self_test
 
 vault_sync_self_test()
 vault_cutover_self_test()
+production_tunnel_self_test()
 print("OCI staging CORS + runtime deployment contract: OK")
