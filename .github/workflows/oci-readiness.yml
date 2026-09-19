@@ -24,6 +24,7 @@ jobs:
       - run: |
           python3 -S scripts/oci_staging_cors_contract.py
           python3 -S scripts/oci_service_contracts.py --self-test
+          python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
           python3 -S scripts/oci_staging_deploy_watcher.py --self-test
           python3 -S scripts/oci_release_deploy.py --self-test
           python3 -S scripts/oci_runtime_manifest.py --self-test
