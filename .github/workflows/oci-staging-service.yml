@@ -6,7 +6,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, vault-preview-current, k3s-start, k3s-status, k3s-rollback]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, vault-preview-current, k3s-start, k3s-status, k3s-rollback, k3s-staging2-deploy, k3s-staging2-status, k3s-staging2-rollback]
         default: smoke
         required: true
       secret_key:
@@ -16,7 +16,7 @@ on:
         default: JWT_SECRET
         required: false
       repo_ref:
-        description: Immutable 40-character SHA for deploy/bringup/K3s accreditation; defaults to workflow SHA
+        description: Immutable 40-character SHA for deploy/bringup/K3s/staging2 accreditation; defaults to workflow SHA
         type: string
         required: false
 
@@ -28,7 +28,7 @@ permissions:
 # diagnostics get a per-run group so they never queue behind an unrelated mutation.
 concurrency:
   group: >-
-    ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","vault-bootstrap","k3s-start","k3s-rollback"]'), inputs.operation)
+    ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","vault-bootstrap","k3s-start","k3s-rollback","k3s-staging2-deploy","k3s-staging2-rollback"]'), inputs.operation)
         && 'oci-staging-mutations'
         || format('oci-staging-observe-{0}', github.run_id) }}
   cancel-in-progress: false
@@ -161,6 +161,20 @@ jobs:
       - name: Read K3s status and resource snapshot
         if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-status' || inputs.operation == 'k3s-rollback')
         run: python3 scripts/oci_k3s_status.py
+
+      - name: Deploy exact backend into isolated K3s staging2
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-staging2-deploy'
+        env:
+          SHADOW_REF: ${{ inputs.repo_ref || github.sha }}
+        run: python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_REF"
+
+      - name: Roll back isolated K3s staging2 backend
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-staging2-rollback'
+        run: python3 scripts/oci_k3s_staging2.py rollback
+
+      - name: Read isolated K3s staging2 status
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-staging2-deploy' || inputs.operation == 'k3s-staging2-status' || inputs.operation == 'k3s-staging2-rollback')
+        run: python3 scripts/oci_k3s_staging2.py status
 
       - name: Prove Docker staging survived K3s lifecycle change
         if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback')
