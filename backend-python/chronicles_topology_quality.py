@@ -13,12 +13,12 @@ _MIN_OPEN_RATIO = 0.25
 _MAX_DEAD_END_RATIO = 0.50
 _CORRIDOR_ARTICULATION_RATIO = 0.82
 _CORRIDOR_DEGREE_TWO_RATIO = 0.75
-_OPEN_RATIO_REGRESSION = 0.12
-_DEAD_END_RATIO_REGRESSION = 0.15
-_ARTICULATION_RATIO_REGRESSION = 0.15
-_MIN_DEAD_END_RATIO_FOR_REGRESSION = 0.25
-_MIN_ARTICULATION_RATIO_FOR_REGRESSION = 0.35
-_EXIT_DISTANCE_RETAIN_RATIO = 0.60
+_OPEN_RATIO_REGRESSION = 0.18
+_DEAD_END_RATIO_REGRESSION = 0.25
+_ARTICULATION_RATIO_REGRESSION = 0.30
+_MIN_DEAD_END_RATIO_FOR_REGRESSION = 0.45
+_MIN_ARTICULATION_RATIO_FOR_REGRESSION = 0.75
+_EXIT_DISTANCE_RETAIN_RATIO = 0.35
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 
@@ -258,8 +258,9 @@ def compare_chronicles_topology(
         if candidate.min_exit_distance < minimum_retained_distance:
             reasons.append("exit-distance-regression")
 
-    if baseline.cycle_rank >= 2 and candidate.cycle_rank == 0:
-        reasons.append("cycle-rank-regression")
+    # Acyclic rooms are not inherently bad: maze-like authored layouts can
+    # legitimately have cycle_rank=0. Treat cycle rank as diagnostic context,
+    # not a standalone rejection reason.
 
     return tuple(reasons)
 

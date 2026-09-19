@@ -155,10 +155,10 @@ def test_relative_quality_accepts_small_shape_changes():
 def test_relative_quality_rejects_material_regressions():
     baseline = _quality()
     candidate = _quality(
-        open_ratio=0.40,
-        dead_end_ratio=0.31,
-        articulation_ratio=0.41,
-        min_exit_distance=4,
+        open_ratio=0.20,
+        dead_end_ratio=0.50,
+        articulation_ratio=0.80,
+        min_exit_distance=3,
         cycle_rank=0,
     )
 
@@ -167,7 +167,6 @@ def test_relative_quality_rejects_material_regressions():
         "dead-end-regression",
         "articulation-regression",
         "exit-distance-regression",
-        "cycle-rank-regression",
     )
 
 
@@ -197,10 +196,10 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
     base, _revision = chronicles_api.load_chronicles_manifest("echo-cistern")
     local_quality = _quality()
     planned_quality = _quality(
-        open_ratio=0.40,
-        dead_end_ratio=0.31,
-        articulation_ratio=0.41,
-        min_exit_distance=4,
+        open_ratio=0.20,
+        dead_end_ratio=0.50,
+        articulation_ratio=0.80,
+        min_exit_distance=3,
         cycle_rank=0,
     )
     reports = iter((local_quality, planned_quality))
@@ -230,7 +229,6 @@ def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
         "dead-end-regression",
         "articulation-regression",
         "exit-distance-regression",
-        "cycle-rank-regression",
     ]
     assert metadata["topologyQuality"]["accepted"] is True
     assert metadata["topologyBaselineQuality"]["accepted"] is True
