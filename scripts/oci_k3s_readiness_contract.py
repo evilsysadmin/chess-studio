@@ -108,7 +108,15 @@ assert "OCI_K3S_STAGING2_DEPLOY_OK" in staging2_root
 assert "OCI_K3S_STAGING2_STATUS_OK" in staging2_root
 assert "OCI_K3S_STAGING2_ROLLBACK_OK" in staging2_root
 template_text = staging2_template.decode("utf-8")
-for required in ("type: ClusterIP", "strategy:\n    type: Recreate", "runAsNonRoot: true", "path: /api/health", "path: /api/ready"):
+for required in (
+    "type: ClusterIP",
+    "strategy:\n    type: Recreate",
+    "runAsNonRoot: true",
+    "runAsUser: 10001",
+    "runAsGroup: 10001",
+    "path: /api/health",
+    "path: /api/ready",
+):
     assert required in template_text, required
 for forbidden in ("type: NodePort", "type: LoadBalancer", "hostNetwork:", "hostPort:"):
     assert forbidden not in template_text, forbidden
