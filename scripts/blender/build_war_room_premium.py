@@ -943,6 +943,15 @@ def add_gothic_canon_v2(static, mats):
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 258.0,
           (1.0, 0.23, 0.05), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
+    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.74, 3.66), (1.84, 0.68, 0.055),
+         mats["stone"], static, bevel=0.040)
+    cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.08, 3.35), (1.80, 0.08, 0.060),
+         mats["stone_dark"], static, bevel=0.025)
+    cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.72, 0.82), (1.50, 0.12, 0.055),
+         mats["stone_dark"], static, bevel=0.025)
+    cube("WR_CANON_right_fireplace_inner_lintel", (rx, 5.68, 2.54), (1.00, 0.09, 0.12),
+         mats["stone_dark"], static, bevel=0.035)
+
 
     # Cold floor globe in the window/fireplace transition.
     gx, gy = 6.82, 4.86
