@@ -37,3 +37,12 @@ func quantize_aim_probe(raw: Vector2) -> Vector2:
 
 func constrain_vertical_aim_probe(direction: Vector2, grounded: bool) -> Vector2:
     return _constrain_vertical_aim(direction, grounded)
+
+func try_drop_through_probe() -> bool:
+    return _try_drop_through_one_way()
+
+func drop_through_body_probe() -> PhysicsBody2D:
+    return _drop_through_body
+
+func clear_drop_through_probe() -> void:
+    _clear_drop_through_exception()
