@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 
 V="v9"; COLS=6; ROWS=18; CELL=416; SIZE=(2496,7488); FOOT=382.0; PIVOT=200.0; TOL=6.0; GUARD=2
 RELOAD_FLASH_X_MIN=260; RELOAD_FLASH_SCORE_LIMIT=180
+AIM_FORWARD_X_MIN=220; AIM_FORWARD_BAND_PX=24; AIM_UP_DELTA=50.0; AIM_DOWN_DELTA=50.0; CROUCH_HEIGHT_REDUCTION=10.0
 ACTIONS=(
  ("idle",0,6.0,True),("walk",1,10.0,True),("run",2,12.0,True),("jump",3,10.0,False),
  ("fall",4,8.0,True),("land",5,12.0,False),("crouch",6,6.0,True),("crouch_walk",7,8.0,True),
@@ -68,6 +69,56 @@ def anchor(cell,box):
  band.sort()
  return float(band[len(band)//2]),float(my)
 
+def forward_tip_y(cell):
+ alpha=cell.getchannel("A"); box=alpha.getbbox()
+ if box is None: fail("cannot measure direction of empty cell")
+ px=alpha.load(); x0=max(AIM_FORWARD_X_MIN,int(round(box[0]+.72*(box[2]-box[0])))); pts=[]
+ for y in range(box[1],box[3]):
+  for x in range(x0,box[2]):
+   if px[x,y]>40: pts.append((x,y))
+ if not pts: return float((box[1]+box[3])*.5)
+ max_x=max(x for x,_ in pts); cutoff=max(x0,max_x-AIM_FORWARD_BAND_PX)
+ ys=[y for x,y in pts if x>=cutoff]
+ return float(sorted(ys)[len(ys)//2]) if len(ys)%2 else float((sorted(ys)[len(ys)//2-1]+sorted(ys)[len(ys)//2])*.5)
+
+def row_tip_y(image,row):
+ vals=[forward_tip_y(image.crop((c*CELL,row*CELL,(c+1)*CELL,(row+1)*CELL))) for c in range(COLS)]
+ vals.sort()
+ return float(vals[len(vals)//2]) if len(vals)%2 else float((vals[len(vals)//2-1]+vals[len(vals)//2])*.5)
+
+def row_height(image,row):
+ vals=[]
+ for c in range(COLS):
+  b=image.crop((c*CELL,row*CELL,(c+1)*CELL,(row+1)*CELL)).getchannel("A").getbbox()
+  if b is None: fail(f"empty row while measuring height row={row} frame={c}")
+  vals.append(b[3]-b[1])
+ vals.sort()
+ return float(vals[len(vals)//2]) if len(vals)%2 else float((vals[len(vals)//2-1]+vals[len(vals)//2])*.5)
+
+def semantic_report(image):
+ horizontal=row_tip_y(image,8)
+ tips={str(row):round(row_tip_y(image,row),2) for row in (9,10,11,12,13)}
+ return {
+  "horizontal_tip_y":round(horizontal,2),
+  "direction_tip_y":tips,
+  "idle_height":round(row_height(image,0),2),
+  "crouch_height":round(row_height(image,6),2),
+  "crouch_walk_height":round(row_height(image,7),2),
+ }
+
+def validate_semantics(image):
+ report=semantic_report(image); horizontal=float(report["horizontal_tip_y"])
+ for row in (9,11,12):
+  tip=float(report["direction_tip_y"][str(row)])
+  if tip>horizontal-AIM_UP_DELTA: fail(f"semantic aim mismatch row={row} expected=up horizontal={horizontal} tip_y={tip}")
+ for row in (10,13):
+  tip=float(report["direction_tip_y"][str(row)])
+  if tip<horizontal+AIM_DOWN_DELTA: fail(f"semantic aim mismatch row={row} expected=down horizontal={horizontal} tip_y={tip}")
+ for key in ("crouch_height","crouch_walk_height"):
+  if float(report[key])>float(report["idle_height"])-CROUCH_HEIGHT_REDUCTION:
+   fail(f"semantic crouch posture too tall: {key}={report[key]} idle={report['idle_height']}")
+ return report
+
 def reload_muzzle_flash_score(cell):
  px=cell.load(); score=0
  for y in range(CELL):
@@ -96,6 +147,7 @@ def validate(image):
  if max(idle)-min(idle)>8 or not 215<=sorted(idle)[len(idle)//2]<=245: fail(f"idle scale drift: {idle}")
  for n in ("walk","run","crouch_walk"):
   if len(unique[n])<2: fail(f"no frame variation in {n}")
+ validate_semantics(image)
  return frames
 
 def make_contact_sheet(image,path):
@@ -134,7 +186,7 @@ def artifacts(image,a,rt,frames):
   "atlas":{"filename":a.atlas.name,"sha256":hashlib.sha256(a.atlas.read_bytes()).hexdigest(),"format":"PNG","mode":"RGBA",
    "width":SIZE[0],"height":SIZE[1],"columns":COLS,"rows":ROWS,"cell_size":CELL,"cell_guard_min_px":GUARD,
    "target_pivot_x":PIVOT,"target_foot_y":FOOT,"anchor_tolerance_px":TOL},
-  "godot_runtime_contract":rt,"action_order":list(ORDER),
+  "godot_runtime_contract":rt,"action_order":list(ORDER),"semantics":semantic_report(image),
   "actions":[{"name":n,"row":r,"frames":COLS,"fps":f,"loop":l} for n,r,f,l in ACTIONS],"frames":frames}
  a.manifest.parent.mkdir(parents=True,exist_ok=True)
  a.manifest.write_text(json.dumps(data,indent=2,sort_keys=True)+"\n",encoding="utf-8")
