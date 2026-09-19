@@ -1570,18 +1570,18 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["velvet_dark"],
         bevel=0.025,
     )
-    flat_panel(
+    # A small lower plackart overlays the curved cuirass. Keeping the upper
+    # breastplate curved removes the flat triangular "robot bib" at Home scale.
+    armor_panel(
         "HOME_PROP_armor_chest_plate",
         [
-            (1.24, 2.78), (1.86, 2.78),
-            (1.82, 2.43), (1.70, 2.12),
-            (1.55, 1.96),
-            (1.40, 2.12), (1.28, 2.43),
+            (1.31, 2.43), (1.79, 2.43),
+            (1.72, 2.13), (1.55, 1.99), (1.38, 2.13),
         ],
         5.505,
-        0.045,
+        0.040,
         materials["armor_steel"],
-        bevel=0.040,
+        bevel=0.050,
     )
     # Two narrow fauld lames instead of the old bright three-bar robot belt.
     for idx, (z, half_w) in enumerate(((1.92, 0.30), (1.82, 0.325))):
@@ -1699,15 +1699,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     curve_tube(
-        "HOME_PROP_armor_chest_v_left",
-        [(1.28, 5.445, 2.78), (1.43, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.012,
-        materials["armor_steel"],
-    )
-    curve_tube(
-        "HOME_PROP_armor_chest_v_right",
-        [(1.82, 5.445, 2.78), (1.67, 5.435, 2.45), (1.55, 5.430, 2.24)],
-        0.012,
+        "HOME_PROP_armor_breastplate_center_ridge",
+        [(1.55, 5.430, 2.10), (1.55, 5.425, 2.36), (1.55, 5.420, 2.62)],
+        0.009,
         materials["armor_steel"],
     )
     add_trophy(materials)
