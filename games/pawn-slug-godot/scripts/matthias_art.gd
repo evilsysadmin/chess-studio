@@ -100,7 +100,7 @@ const V9_ACTIONS := {
     "die": {"row": 17, "fps": 9.0, "loop": false},
 }
 const V9_MUZZLE_LENGTH := {
-    "pistol": 54.0,
+    "pistol": 34.0,
     "machinegun": 64.0,
     "shotgun": 70.0,
     "panzerfaust": 72.0,
@@ -219,10 +219,9 @@ const MOVING_FIRE_RECOIL_BOOST := {
     "panzerfaust": 1.35,
 }
 const MOVING_FIRE_FLASH_BOOST := {
-    # Static pistol/SMG shoot frames carry baked muzzle flashes that are much
-    # larger than the raw procedural polygon used during locomotion. Match the
-    # apparent on-screen footprint, not the underlying polygon's nominal scale.
-    "pistol": 3.60,
+    # Horizontal pistol fire now keeps the clean locomotion pose and uses the
+    # procedural flash. Other authored weapon flashes remain larger on purpose.
+    "pistol": 1.35,
     "machinegun": 3.60,
     "shotgun": 1.55,
     "panzerfaust": 1.40,
@@ -517,8 +516,11 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
 func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bool) -> String:
     if not _using_full_atlas:
         return ""
-    if on_floor and crouching and _animation_available("shoot_crouch"):
-        return "shoot_crouch"
+    if on_floor and crouching:
+        if _rendered_weapon == "pistol":
+            return ""
+        if _animation_available("shoot_crouch"):
+            return "shoot_crouch"
 
     var has_horizontal := absf(_aim_direction.x) > 0.25
     var has_vertical := absf(_aim_direction.y) > 0.25
@@ -532,6 +534,12 @@ func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bo
             return "shoot_up"
         if _aim_direction.y > 0.0 and _animation_available("shoot_down"):
             return "shoot_down"
+
+    # Horizontal pistol fire stays on the clean locomotion/idle pose. The
+    # authored v9/v10 firing silhouettes read like an SMG at game scale; Godot
+    # already owns recoil and muzzle flash, so do not swap Matthias' body here.
+    if _rendered_weapon == "pistol" and not has_vertical:
+        return ""
 
     if locomoting_now:
         if (
@@ -1633,5 +1641,7 @@ func _sync_modulate() -> void:
     elif _hurt_remaining > 0.0 and not (_using_full_atlas and _animation_available("hurt")):
         color = Color(1.0, 0.62, 0.62, 1.0)
     elif _invuln_remaining > 0.0:
-        color.a = 1.0 if int(floor(_invuln_remaining * 18.0)) % 2 == 0 else 0.42
+        # Keep invulnerability readable without making locomotion look as if
+        # animation frames are disappearing. Damage feedback stays opaque.
+        color = Color(1.0, 0.90, 0.84, 1.0)
     _fx_root.modulate = color
