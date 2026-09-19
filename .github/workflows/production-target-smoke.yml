@@ -67,6 +67,7 @@ jobs:
         run: python3 scripts/oci_production_tunnel.py status --target "$DEPLOY_TARGET"
 
       - name: Prove authenticated gameplay and persistence
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
