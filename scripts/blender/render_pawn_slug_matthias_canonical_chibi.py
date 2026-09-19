@@ -276,19 +276,24 @@ def apply_frame_pose(rig, weapon, action, frame, count):
         return
 
     if action in {"walk", "run"}:
-        amp = 28 if action == "walk" else 50
-        shin = 24 if action == "walk" else 43
-        bob = .018 if action == "walk" else .032
-        rig.pose.bones["root"].rotation_euler[1] = d(-9 if action == "walk" else -13)
-        rig.pose.bones["spine"].rotation_euler[1] = d(-7 if action == "walk" else -11)
+        # Keep the canonical face/cap and tactical torso visually locked while
+        # the legs carry the motion. The previous run pose was a touch too
+        # elastic at 192 px, making the silhouette read as a costume swap when
+        # sampled quickly in Godot.
+        amp = 28 if action == "walk" else 46
+        shin = 24 if action == "walk" else 38
+        bob = .018 if action == "walk" else .026
+        rig.pose.bones["root"].rotation_euler[1] = d(-9 if action == "walk" else -11)
+        rig.pose.bones["spine"].rotation_euler[1] = d(-7 if action == "walk" else -9)
+        rig.pose.bones["head"].rotation_euler[1] = d(4 if action == "walk" else 6)
         rig.pose.bones["thigh.L"].rotation_euler[1] = d(amp * stride)
         rig.pose.bones["thigh.R"].rotation_euler[1] = d(-amp * stride)
         rig.pose.bones["shin.L"].rotation_euler[1] = d(-shin * max(0.0, stride) + 10 * max(0.0, -stride))
         rig.pose.bones["shin.R"].rotation_euler[1] = d(-shin * max(0.0, -stride) + 10 * max(0.0, stride))
-        rig.pose.bones["foot.L"].rotation_euler[1] = d(-16 * stride)
-        rig.pose.bones["foot.R"].rotation_euler[1] = d(16 * stride)
+        rig.pose.bones["foot.L"].rotation_euler[1] = d(-14 * stride)
+        rig.pose.bones["foot.R"].rotation_euler[1] = d(14 * stride)
         rig.pose.bones["root"].location.z = bob * abs(math.sin(phase * 2.0))
-        rig.pose.bones["weapon_socket"].rotation_euler[2] += d(1.5 * math.sin(phase * 2.0))
+        rig.pose.bones["weapon_socket"].rotation_euler[2] += d(1.0 * math.sin(phase * 2.0))
         return
 
     if action == "crouch":
