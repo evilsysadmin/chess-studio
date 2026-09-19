@@ -217,8 +217,8 @@ export default function HomeBlenderScene3D({
     if (onPointerMove) canvas.addEventListener('pointermove', onPointerMove, { passive: true });
     if (onPointerLeave) canvas.addEventListener('pointerleave', onPointerLeave, { passive: true });
 
-    const failToFallback = () => {
-      if (disposed || model) return;
+    const failToFallback = (force = false) => {
+      if (disposed || (!force && model)) return;
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
       onUnavailable?.();
@@ -251,7 +251,7 @@ export default function HomeBlenderScene3D({
 
     const onContextLost = (event) => {
       event.preventDefault();
-      failToFallback();
+      failToFallback(true);
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
 
