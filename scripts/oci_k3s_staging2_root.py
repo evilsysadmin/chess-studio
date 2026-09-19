@@ -375,6 +375,20 @@ def _release_from_payload(payload: dict) -> str:
     return value if SHA_RE.fullmatch(value) else ""
 
 
+def _deployment_rollout_state(payload: dict) -> tuple[int, int, int, int, int, int]:
+    metadata = payload.get("metadata") or {}
+    spec = payload.get("spec") or {}
+    status_payload = payload.get("status") or {}
+    return (
+        int(spec.get("replicas") or 0),
+        int(status_payload.get("updatedReplicas") or 0),
+        int(status_payload.get("readyReplicas") or 0),
+        int(status_payload.get("availableReplicas") or 0),
+        int(metadata.get("generation") or 0),
+        int(status_payload.get("observedGeneration") or 0),
+    )
+
+
 def _image_from_payload(payload: dict) -> str:
     containers = (
         ((((payload.get("spec") or {}).get("template") or {}).get("spec") or {}).get("containers"))
@@ -403,11 +417,14 @@ def _failure_diagnostics() -> None:
     deployment = _deployment_payload()
     if deployment:
         status_payload = deployment.get("status") or {}
+        desired, updated, ready, available, generation, observed_generation = (
+            _deployment_rollout_state(deployment)
+        )
         print(
             "OCI_K3S_STAGING2_DIAG_DEPLOYMENT "
             f"replicas={int(status_payload.get('replicas') or 0)} "
-            f"ready={int(status_payload.get('readyReplicas') or 0)} "
-            f"available={int(status_payload.get('availableReplicas') or 0)} "
+            f"desired={desired} updated={updated} ready={ready} available={available} "
+            f"generation={generation} observed_generation={observed_generation} "
             f"unavailable={int(status_payload.get('unavailableReplicas') or 0)}",
             file=sys.stderr,
             flush=True,
@@ -678,11 +695,23 @@ def deploy(sha: str) -> None:
 
 
 def _status_needs_diagnostics(
-    desired: int, available: int, sha: str, state_sha: str, image_ref: str
+    desired: int,
+    updated: int,
+    ready: int,
+    available: int,
+    generation: int,
+    observed_generation: int,
+    sha: str,
+    state_sha: str,
+    image_ref: str,
 ) -> bool:
     return (
         desired < 1
+        or updated != desired
+        or ready != desired
         or available != desired
+        or generation < 1
+        or observed_generation != generation
         or not SHA_RE.fullmatch(sha)
         or state_sha != sha
         or not _pinned_digest_from_image_ref(image_ref)
@@ -710,13 +739,25 @@ def status() -> None:
     sha = _release_from_payload(payload) or "unknown"
     image_ref = _image_from_payload(payload)
     image_digest = _pinned_digest_from_image_ref(image_ref) or "unpinned"
-    desired = int(spec.get("replicas") or 0)
-    available = int(stat.get("availableReplicas") or 0)
-    if _status_needs_diagnostics(desired, available, sha, state_sha, image_ref):
+    desired, updated, ready, available, generation, observed_generation = (
+        _deployment_rollout_state(payload)
+    )
+    if _status_needs_diagnostics(
+        desired,
+        updated,
+        ready,
+        available,
+        generation,
+        observed_generation,
+        sha,
+        state_sha,
+        image_ref,
+    ):
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
-            f"desired={desired} available={available} "
+            f"desired={desired} updated={updated} ready={ready} available={available} "
+            f"generation={generation} observed_generation={observed_generation} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
             f"capability_sha256={_capability_sha256()}"
         )
@@ -745,7 +786,8 @@ def status() -> None:
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
-        f"desired={desired} available={available} "
+        f"desired={desired} updated={updated} ready={ready} available={available} "
+        f"generation={generation} observed_generation={observed_generation} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
         f"capability_sha256={_capability_sha256()}"
     )
@@ -861,14 +903,46 @@ def self_test(template_path: Path) -> None:
             pass
         else:
             raise AssertionError(f"invalid staging2 image contract accepted: {mutation}")
-    assert not _status_needs_diagnostics(1, 1, sample_sha, sample_sha, sample_digest_ref)
-    assert _status_needs_diagnostics(1, 0, sample_sha, sample_sha, sample_digest_ref)
-    assert _status_needs_diagnostics(0, 0, sample_sha, sample_sha, sample_digest_ref)
-    assert _status_needs_diagnostics(1, 1, "unknown", sample_sha, sample_digest_ref)
-    assert _status_needs_diagnostics(1, 1, sample_sha, "absent", sample_digest_ref)
-    assert _status_needs_diagnostics(1, 1, sample_sha, "invalid", sample_digest_ref)
-    assert _status_needs_diagnostics(1, 1, sample_sha, "1" * 40, sample_digest_ref)
-    assert _status_needs_diagnostics(1, 1, sample_sha, sample_sha, sample_image)
+    rollout_payload = {
+        "metadata": {"generation": 7},
+        "spec": {"replicas": 1},
+        "status": {
+            "updatedReplicas": 1,
+            "readyReplicas": 1,
+            "availableReplicas": 1,
+            "observedGeneration": 7,
+        },
+    }
+    assert _deployment_rollout_state(rollout_payload) == (1, 1, 1, 1, 7, 7)
+    assert not _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref
+    )
+    for bad_rollout in (
+        (1, 0, 1, 1, 7, 7),
+        (1, 1, 0, 1, 7, 7),
+        (1, 1, 1, 0, 7, 7),
+        (1, 1, 1, 1, 7, 6),
+        (1, 1, 1, 1, 0, 0),
+        (0, 0, 0, 0, 7, 7),
+    ):
+        assert _status_needs_diagnostics(
+            *bad_rollout, sample_sha, sample_sha, sample_digest_ref
+        )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, "unknown", sample_sha, sample_digest_ref
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, "absent", sample_digest_ref
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, "invalid", sample_digest_ref
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, "1" * 40, sample_digest_ref
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_image
+    )
     source = Path(__file__).read_text(encoding="utf-8")
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
@@ -879,6 +953,8 @@ def self_test(template_path: Path) -> None:
     assert "staging2 image inspect missing canonical sha256 repo digest" in source
     assert "staging2 rendered image must be a canonical sha256 digest reference" in source
     assert "image_digest=" in source
+    assert "observed_generation=" in source
+    assert "_deployment_rollout_state" in source
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
     assert "refusing to manage foreign staging2 namespace" in source
