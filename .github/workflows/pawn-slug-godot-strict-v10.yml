@@ -186,7 +186,11 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$RUNNER_TEMP/matthias-v10"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/pistol/matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png" \
+            --output "$ROOT/matthias_v9_pistol.png"
           python3 - <<'PY'
+          import json
           from pathlib import Path
 
           path = Path('games/pawn-slug-godot/scripts/matthias_art.gd')
@@ -197,7 +201,20 @@ jobs:
           if len(matches) != 1:
               raise SystemExit(f'expected one V10_PISTOL_ATLAS_URL declaration, got {len(matches)}')
           lines[matches[0]] = 'const V10_PISTOL_ATLAS_URL := "http://127.0.0.1:4179/matthias_v10_candidate.png"'
-          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          text = '\n'.join(lines) + '\n'
+          v9_remote = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/pistol/matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png'
+          if text.count(v9_remote) != 1:
+              raise SystemExit('expected exactly one strict-v9 pistol runtime URL')
+          text = text.replace(v9_remote, 'http://127.0.0.1:4179/matthias_v9_pistol.png')
+          path.write_text(text, encoding='utf-8')
+
+          # The visual proof owns animation quality, not combat survivability.
+          # Strip hostiles only from this ephemeral export so run/fire frames
+          # cannot be polluted by hit-stun, invulnerability or death.
+          stage_path = Path('games/pawn-slug-godot/maps/industrial_front_v1.json')
+          stage = json.loads(stage_path.read_text(encoding='utf-8'))
+          stage['enemies'] = []
+          stage_path.write_text(json.dumps(stage, separators=(',', ':')) + '\n', encoding='utf-8')
           PY
 
           rm -rf games/pawn-slug-godot/build/web
@@ -207,6 +224,8 @@ jobs:
           popd >/dev/null
           cp "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
             games/pawn-slug-godot/build/web/matthias_v10_candidate.png
+          cp "$ROOT/matthias_v9_pistol.png" \
+            games/pawn-slug-godot/build/web/matthias_v9_pistol.png
           python3 -S scripts/pawn_slug_godot_bundle.py check
 
       - name: Restore browser runtime
