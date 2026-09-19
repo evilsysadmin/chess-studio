@@ -11,19 +11,19 @@ extends Node2D
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
-# Strict Godot runtime atlases: v12 is an exact 8 x 18 grid of 416 x 416 RGBA
+# Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v12"
+const STRICT_RUNTIME_GENERATION := "v13"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/pistol/matthias_pistol_godot_strict_8x18_416_v12-b4b6a0c44104e23b.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/machinegun/matthias_machinegun_godot_strict_8x18_416_v12-e312aa0ac785498d.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/shotgun/matthias_shotgun_godot_strict_8x18_416_v12-8cb4872c8abdb292.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/panzerfaust/matthias_panzerfaust_godot_strict_8x18_416_v12-9b9c76162d63d35a.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/pistol/v13-5c28bf8632a67c82.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/machinegun/v13-66f55797e9447a8d.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/shotgun/v13-52731c02ef5fe0f1.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v13/panzerfaust/v13-0d4d195a1f0b8ad2.png",
 }
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
-# strict-v12 tactical bank; v10 stays disabled because its mixed silhouettes
+# strict-v13 tactical bank; v10 stays disabled because its mixed silhouettes
 # would regress identity continuity.
 const V10_RUNTIME_PROMOTION_ENABLED := false
 const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
@@ -53,7 +53,7 @@ const V10_ACTIONS := {
 }
 
 # Historical V9_* names are retained as the stable 18-row runtime contract.
-# strict-v12 preserves that eight-column contract without changing
+# strict-v13 preserves that eight-column contract without changing
 # cell size, pivot, foot line, row semantics or world scale.
 const V9_ATLAS_COLUMNS := 8
 const V9_ATLAS_ROWS := 18
@@ -87,7 +87,7 @@ const V9_ACTION_ORDER := [
 ]
 const V9_ACTIONS := {
     # 8/6 speed-up preserves the authored v9 action duration after expanding
-    # each bank from six to eight frames; strict-v12 keeps that timing contract.
+    # each bank from six to eight frames; strict-v13 keeps that timing contract.
     "idle": {"row": 0, "fps": 8.0, "loop": true},
     "walk": {"row": 1, "fps": 13.333333, "loop": true},
     "run": {"row": 2, "fps": 16.0, "loop": true},
