@@ -1299,6 +1299,18 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 obj.scale.x *= 0.28
                 obj.scale.z *= 0.15
                 obj.location.y += 0.32
+    # The generic helper still contributes a domestic horizontal mantel that
+    # cuts through the pointed canonical opening. Remove only those legacy
+    # cross-pieces; the custom Gothic surround below owns the visible facade.
+    for legacy_name in (
+        "HOME_PROP_fireplace_left_mantel",
+        "HOME_PROP_fireplace_left_corbel_-1",
+        "HOME_PROP_fireplace_left_corbel_1",
+    ):
+        legacy = bpy.data.objects.get(legacy_name)
+        if legacy is not None:
+            bpy.data.objects.remove(legacy, do_unlink=True)
+
     left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.72, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_a.rotation_euler[2] = math.radians(9)
     left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.73, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
@@ -1314,6 +1326,29 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.86, 0.065, 0.96),
         materials["soot_stone"],
         bevel=0.045,
+    )
+    flat_panel(
+        "HOME_PROP_fireplace_left_lancet_shadow",
+        [
+            (-6.99, 0.42), (-6.99, 2.22),
+            (-6.15, 3.73),
+            (-5.31, 2.22), (-5.31, 0.42),
+        ],
+        5.88,
+        0.030,
+        materials["soot_stone"],
+        bevel=0.025,
+    )
+    gothic_arch(
+        "HOME_ARCH_fireplace_left_lancet_trim",
+        -6.15,
+        5.47,
+        1.86,
+        2.10,
+        3.78,
+        0.40,
+        materials["stone_dark"],
+        bevel=0.055,
     )
     gothic_arch(
         "HOME_ARCH_fireplace_left_inner",
@@ -1370,11 +1405,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (-6.72, 0.58),
             (-6.66, 0.68),
             (-6.52, 0.64),
-            (-6.42, 0.84),
-            (-6.29, 0.70),
-            (-6.17, 0.97),
-            (-6.03, 0.72),
-            (-5.91, 0.88),
+            (-6.42, 1.02),
+            (-6.29, 0.76),
+            (-6.17, 1.28),
+            (-6.03, 0.80),
+            (-5.91, 1.08),
             (-5.79, 0.67),
             (-5.60, 0.62),
             (-5.58, 0.58),
@@ -1390,11 +1425,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (-6.55, 0.59),
             (-6.48, 0.66),
             (-6.37, 0.64),
-            (-6.28, 0.78),
-            (-6.19, 0.66),
-            (-6.12, 0.86),
-            (-6.02, 0.66),
-            (-5.92, 0.74),
+            (-6.28, 0.92),
+            (-6.19, 0.72),
+            (-6.12, 1.10),
+            (-6.02, 0.72),
+            (-5.92, 0.88),
             (-5.82, 0.61),
         ],
         5.342,
@@ -1418,6 +1453,30 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
 
     add_bookshelf(materials)
+    # The canon's library is a deep architectural bay, not a flat shelf wall.
+    # Add a restrained carved surround without moving the shelf contents.
+    for side in (-1, 1):
+        cube(
+            f"HOME_PROP_library_pilaster_{side}",
+            (-2.65 + side * 1.63, 5.72, 2.58),
+            (0.105, 0.18, 2.24),
+            materials["wood"],
+            bevel=0.045,
+        )
+        cube(
+            f"HOME_PROP_library_pilaster_cap_{side}",
+            (-2.65 + side * 1.63, 5.64, 4.78),
+            (0.18, 0.22, 0.12),
+            materials["brass_dark"],
+            bevel=0.035,
+        )
+    cube(
+        "HOME_PROP_library_crown",
+        (-2.65, 5.68, 4.92),
+        (1.78, 0.20, 0.12),
+        materials["wood"],
+        bevel=0.045,
+    )
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["arch_stone"])
     gothic_arch(
