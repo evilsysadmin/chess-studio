@@ -11,20 +11,20 @@ extends Node2D
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
-# Strict Godot atlases: exact 8 x 11 grid, 256 x 256 cells, transparent PNG.
-# Do not normalize or rescale these at runtime: each authored cell is consumed
-# directly as an AtlasTexture region.
+# Strict Godot runtime atlases: v11 is an exact 8 x 18 grid of 416 x 416 RGBA
+# cells. Each cell is consumed directly as an AtlasTexture region: no runtime
+# rescale, repack or Blender step is allowed.
+const STRICT_RUNTIME_GENERATION := "v11"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/pistol/matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/machinegun/matthias_machinegun_godot_strict_6x18_416_v9-1b56615d3306470a.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/shotgun/matthias_shotgun_godot_strict_6x18_416_v9-395c486f4d42fb84.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/panzerfaust/matthias_panzerfaust_godot_strict_6x18_416_v9-ae9884d16a05ae6a.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v11/pistol/matthias_pistol_godot_strict_8x18_416_v11-b4219e6c40d76230.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v11/machinegun/matthias_machinegun_godot_strict_8x18_416_v11-c454e89e661e746d.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v11/shotgun/matthias_shotgun_godot_strict_8x18_416_v11-7511dabc1c50558f.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v11/panzerfaust/matthias_panzerfaust_godot_strict_8x18_416_v11-a09a49129703bb1d.png",
 }
 
-# v10 remains an experimental candidate until its live runtime evidence is
-# visually coherent. The current source mixes tactical/no-cape and long-coat
-# silhouettes inside the same run cycle, so production deliberately stays on
-# the coherent strict-v9 tactical set while CI keeps exercising v10 end-to-end.
+# v10 remains an experimental candidate only. Runtime now uses the coherent
+# strict-v11 tactical bank; v10 stays disabled because its mixed silhouettes
+# would regress identity continuity.
 const V10_RUNTIME_PROMOTION_ENABLED := false
 const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
 const V10_ATLAS_COLUMNS := 12
@@ -52,7 +52,10 @@ const V10_ACTIONS := {
     "move_fire": {"row": 8, "count": 6, "fps": 15.0, "loop": false},
 }
 
-const V9_ATLAS_COLUMNS := 6
+# Historical V9_* names are retained as the stable 18-row runtime contract.
+# strict-v11 extends that contract from six to eight columns without changing
+# cell size, pivot, foot line, row semantics or world scale.
+const V9_ATLAS_COLUMNS := 8
 const V9_ATLAS_ROWS := 18
 const V9_ATLAS_CELL_SIZE := 416
 const V9_ATLAS_SIZE := Vector2i(
@@ -83,24 +86,26 @@ const V9_ACTION_ORDER := [
     "die",
 ]
 const V9_ACTIONS := {
-    "idle": {"row": 0, "fps": 6.0, "loop": true},
-    "walk": {"row": 1, "fps": 10.0, "loop": true},
-    "run": {"row": 2, "fps": 12.0, "loop": true},
-    "jump": {"row": 3, "fps": 10.0, "loop": false},
-    "fall": {"row": 4, "fps": 8.0, "loop": true},
-    "land": {"row": 5, "fps": 12.0, "loop": false},
-    "crouch": {"row": 6, "fps": 6.0, "loop": true},
-    "crouch_walk": {"row": 7, "fps": 8.0, "loop": true},
-    "shoot": {"row": 8, "fps": 15.0, "loop": false},
-    "shoot_up": {"row": 9, "fps": 15.0, "loop": false},
-    "shoot_down": {"row": 10, "fps": 15.0, "loop": false},
-    "shoot_diag_up": {"row": 11, "fps": 15.0, "loop": false},
-    "shoot_diag_up_alt": {"row": 12, "fps": 15.0, "loop": false},
-    "shoot_diag_down": {"row": 13, "fps": 15.0, "loop": false},
-    "shoot_crouch": {"row": 14, "fps": 15.0, "loop": false},
-    "reload": {"row": 15, "fps": 10.0, "loop": false},
-    "hurt": {"row": 16, "fps": 12.0, "loop": false},
-    "die": {"row": 17, "fps": 9.0, "loop": false},
+    # 8/6 speed-up preserves the authored v9 action duration after expanding
+    # each bank from six to eight frames in strict-v11.
+    "idle": {"row": 0, "fps": 8.0, "loop": true},
+    "walk": {"row": 1, "fps": 13.333333, "loop": true},
+    "run": {"row": 2, "fps": 16.0, "loop": true},
+    "jump": {"row": 3, "fps": 13.333333, "loop": false},
+    "fall": {"row": 4, "fps": 10.666667, "loop": true},
+    "land": {"row": 5, "fps": 16.0, "loop": false},
+    "crouch": {"row": 6, "fps": 8.0, "loop": true},
+    "crouch_walk": {"row": 7, "fps": 10.666667, "loop": true},
+    "shoot": {"row": 8, "fps": 20.0, "loop": false},
+    "shoot_up": {"row": 9, "fps": 20.0, "loop": false},
+    "shoot_down": {"row": 10, "fps": 20.0, "loop": false},
+    "shoot_diag_up": {"row": 11, "fps": 20.0, "loop": false},
+    "shoot_diag_up_alt": {"row": 12, "fps": 20.0, "loop": false},
+    "shoot_diag_down": {"row": 13, "fps": 20.0, "loop": false},
+    "shoot_crouch": {"row": 14, "fps": 20.0, "loop": false},
+    "reload": {"row": 15, "fps": 13.333333, "loop": false},
+    "hurt": {"row": 16, "fps": 16.0, "loop": false},
+    "die": {"row": 17, "fps": 12.0, "loop": false},
 }
 const V9_MUZZLE_LENGTH := {
     "pistol": 34.0,
@@ -1086,7 +1091,7 @@ func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
 func _build_v9_frames(image: Image) -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:
         push_error(
-            "Strict Matthias v9 atlas has invalid dimensions: %s, expected %s"
+            "Strict Matthias runtime atlas has invalid dimensions: %s, expected %s"
             % [image.get_size(), V9_ATLAS_SIZE]
         )
         return null
