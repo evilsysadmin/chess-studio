@@ -389,7 +389,7 @@ def add_table_and_board(materials):
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
-        [(x * 0.72 + 0.03, (z - 0.58) * 0.72 + 0.69) for x, z in horse_points],
+        [(x * 0.84 + 0.02, (z - 0.58) * 0.84 + 0.67) for x, z in horse_points],
         emblem_y,
         0.040,
         heraldry,
@@ -975,9 +975,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.030
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.095, 0.077, 0.061, 1), roughness=0.94, bump_scale=5.8, bump_strength=0.24, variation=0.22, variation_scale=3.8),
-        "arch_stone": material("HOME_MAT_arch_stone", (0.132, 0.102, 0.075, 1), roughness=0.92, bump_scale=5.4, bump_strength=0.21, variation=0.18, variation_scale=4.0),
-        "stair_stone": material("HOME_MAT_stair_stone", (0.120, 0.102, 0.084, 1), roughness=0.93, bump_scale=5.2, bump_strength=0.19, variation=0.15, variation_scale=4.2),
+        "stone": material("HOME_MAT_stone", (0.074, 0.067, 0.060, 1), roughness=0.95, bump_scale=5.8, bump_strength=0.24, variation=0.20, variation_scale=3.8),
+        "arch_stone": material("HOME_MAT_arch_stone", (0.104, 0.090, 0.076, 1), roughness=0.93, bump_scale=5.4, bump_strength=0.21, variation=0.17, variation_scale=4.0),
+        "stair_stone": material("HOME_MAT_stair_stone", (0.096, 0.088, 0.078, 1), roughness=0.94, bump_scale=5.2, bump_strength=0.19, variation=0.14, variation_scale=4.2),
         "stone_dark": material("HOME_MAT_stone_dark", (0.018, 0.016, 0.015, 1), roughness=0.98, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
         "floor_stone": material("HOME_MAT_floor_stone", (0.062, 0.048, 0.038, 1), roughness=0.96, bump_scale=8.2, bump_strength=0.17, variation=0.18, variation_scale=5.6),
         "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.62, bump_scale=5.0, bump_strength=0.085, variation=0.24, variation_scale=2.2, grain=True),
@@ -992,11 +992,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "heraldry_gold": material(
             "HOME_MAT_heraldry_gold",
-            (0.92, 0.58, 0.16, 1),
-            roughness=0.20,
+            (1.0, 0.66, 0.20, 1),
+            roughness=0.18,
             metallic=0.95,
-            emission=(0.12, 0.045, 0.006, 1),
-            emission_strength=0.32,
+            emission=(0.20, 0.075, 0.010, 1),
+            emission_strength=0.46,
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
         "steel": material("HOME_MAT_steel", (0.195, 0.210, 0.228, 1), roughness=0.22, metallic=0.92),
@@ -1401,10 +1401,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 58, (0.66, 0.50, 0.38), 4.0, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 46, (0.61, 0.50, 0.42), 4.0, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 30, (0.10, 0.22, 0.40), 3.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 60, (0.66, 0.36, 0.21), 2.8, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 82, (0.34, 0.24, 0.18), 5.8, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 66, (0.30, 0.24, 0.20), 5.8, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 250, (0.14, 0.34, 0.68), 3.5, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 188, (0.90, 0.66, 0.44), 2.45, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 172, (0.82, 0.48, 0.24), 1.9, target=(0, -0.72, 0.30))
