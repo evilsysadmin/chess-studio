@@ -64,9 +64,15 @@ def mat_stone(name, dark=False, wet=False):
     macro.inputs["Distortion"].default_value = .12
 
     micro = nt.nodes.new("ShaderNodeTexNoise")
-    micro.inputs["Scale"].default_value = 18.0
-    micro.inputs["Detail"].default_value = 2.5
-    micro.inputs["Roughness"].default_value = .58
+    micro.inputs["Scale"].default_value = 34.0
+    micro.inputs["Detail"].default_value = 4.0
+    micro.inputs["Roughness"].default_value = .62
+
+    stain = nt.nodes.new("ShaderNodeTexNoise")
+    stain.inputs["Scale"].default_value = 1.55
+    stain.inputs["Detail"].default_value = 5.0
+    stain.inputs["Roughness"].default_value = .72
+    stain.inputs["Distortion"].default_value = .18
 
     mix_noise = nt.nodes.new("ShaderNodeMixRGB")
     mix_noise.blend_type = "MULTIPLY"
@@ -91,19 +97,32 @@ def mat_stone(name, dark=False, wet=False):
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
 
+    patina = nt.nodes.new("ShaderNodeMixRGB")
+    patina.blend_type = "MULTIPLY"
+    patina.inputs[0].default_value = .20
+    patina.inputs[2].default_value = (.34, .39, .34, 1)
+
+    bump_mix = nt.nodes.new("ShaderNodeMixRGB")
+    bump_mix.blend_type = "MULTIPLY"
+    bump_mix.inputs[0].default_value = .58
+
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = .24
-    bump.inputs["Distance"].default_value = .075
+    bump.inputs["Strength"].default_value = .34
+    bump.inputs["Distance"].default_value = .055
 
     nt.links.new(mix_noise.outputs["Color"], ramp.inputs["Fac"])
     nt.links.new(obj.outputs["Random"], obj_ramp.inputs["Fac"])
     nt.links.new(ramp.outputs["Color"], tint.inputs[1])
     nt.links.new(obj_ramp.outputs["Color"], tint.inputs[2])
-    nt.links.new(tint.outputs["Color"], bs.inputs["Base Color"])
-    nt.links.new(micro.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(tint.outputs["Color"], patina.inputs[1])
+    nt.links.new(stain.outputs["Fac"], patina.inputs["Fac"])
+    nt.links.new(patina.outputs["Color"], bs.inputs["Base Color"])
+    nt.links.new(micro.outputs["Fac"], bump_mix.inputs[1])
+    nt.links.new(macro.outputs["Fac"], bump_mix.inputs[2])
+    nt.links.new(bump_mix.outputs["Color"], bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"], bs.inputs["Normal"])
 
-    bs.inputs["Roughness"].default_value = .36 if wet else .67
+    bs.inputs["Roughness"].default_value = .30 if wet else .62
     if "Coat Weight" in bs.inputs:
         bs.inputs["Coat Weight"].default_value = .18 if wet else .015
     return m
@@ -224,6 +243,8 @@ def material_bank():
         "highlight_warm": mat_principled("DungeonHighlightWarm", (.50, .34, .12), .42, .02, (.68, .38, .08), 1.5),
         "flame": mat_principled("DungeonFlame", (1.0, .075, .003), .42, 0, (1.0, .018, .001), 1.15),
         "wax": mat_principled("DungeonWax", (.78, .62, .34), .66, 0),
+        "wet_overlay": mat_principled("DungeonWetOverlay", (.018, .026, .032), .11, .08),
+        "moss": mat_principled("DungeonMoss", (.030, .075, .045), .92, 0),
     }
 
 
@@ -292,7 +313,7 @@ def torch(M, x, y, z=1.55, wall_axis="x"):
     flame = bpy.context.object
     flame.name = "torch_flame"
     finish(flame, M["flame"], .009, True)
-    point_light("torch_light", (x, y, z+.28), 250, (1.0, .10, .018), .48)
+    point_light("torch_light", (x, y, z+.28), 220, (1.0, .20, .045), .52)
 
 
 def banner(M, x, y, z, blue=False):
@@ -332,6 +353,43 @@ def rubble(M, cx, cy, n=20, r=.85):
         cube(f"rubble_{i}", (cx+math.cos(a)*rr, cy+math.sin(a)*rr, s*.48),
              (s, s*random.uniform(.5, 1.3), s*random.uniform(.4, .9)),
              M["stone_dark"], rot=(random.random(), random.random(), random.random()), bevel=.025)
+
+
+def floor_grate(M, x, y, z=.045, size=.70):
+    frame = size * .5
+    t = .035
+    cube("grate_top", (x, y-frame, z), (frame, t, .025), M["iron"], bevel=.008)
+    cube("grate_bottom", (x, y+frame, z), (frame, t, .025), M["iron"], bevel=.008)
+    cube("grate_left", (x-frame, y, z), (t, frame, .025), M["iron"], bevel=.008)
+    cube("grate_right", (x+frame, y, z), (t, frame, .025), M["iron"], bevel=.008)
+    for i in range(-3, 4):
+        off = i * size / 8
+        cube("grate_bar_x", (x+off, y, z+.008), (.018, frame-.05, .018), M["iron"], bevel=.005)
+        cube("grate_bar_y", (x, y+off, z+.010), (frame-.05, .014, .014), M["iron"], bevel=.004)
+
+
+def puddle(M, x, y, sx=.55, sy=.32, z=.024):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=1, depth=.012, location=(x, y, z))
+    o = bpy.context.object
+    o.name = "dungeon_puddle"
+    o.scale = (sx, sy, 1)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return finish(o, M["wet_overlay"], .006, True)
+
+
+def hanging_chain(M, x, y, z=2.25, links=7):
+    for i in range(links):
+        bpy.ops.mesh.primitive_torus_add(
+            major_radius=.075, minor_radius=.014,
+            major_segments=16, minor_segments=8,
+            location=(x, y, z-i*.135),
+            rotation=(math.radians(90 if i % 2 == 0 else 0), 0, 0),
+        )
+        finish(bpy.context.object, M["iron"], .004, True)
+
+
+def moss_patch(M, x, y, z=.028, sx=.26, sy=.10, angle=0):
+    return cube("moss_patch", (x, y, z), (sx, sy, .006), M["moss"], (0, 0, math.radians(angle)), .004)
 
 
 def tile_outline(M, x, y, warm=False):
@@ -537,10 +595,10 @@ def setup_scene(out):
     scene.render.film_transparent = False
     if scene.world is None:
         scene.world = bpy.data.worlds.new("DungeonWorld")
-    scene.world.color = (.006, .007, .010)
+    scene.world.color = (.004, .007, .012)
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
-        scene.view_settings.exposure = 0.56
+        scene.view_settings.exposure = 0.42
     except Exception:
         pass
 
@@ -601,6 +659,15 @@ def build(M):
     rubble(M, -2.0, -1.85, 15, .70)
     rubble(M, -3.65, .55, 10, .45)
 
+    # Diegetic dungeon wear: subtle drainage, dampness and growth break the
+    # tiled-board read without changing tactical geometry or silhouettes.
+    floor_grate(M, 2.15, .55, size=.62)
+    puddle(M, -.45, 2.18, .62, .24)
+    puddle(M, 2.72, -.55, .42, .20)
+    moss_patch(M, -2.55, 2.82, sx=.34, sy=.08, angle=-8)
+    moss_patch(M, 3.18, .18, sx=.25, sy=.07, angle=12)
+    hanging_chain(M, 3.78, 2.92, 2.36, 8)
+
     # Layered background architecture below the playable slab for cinematic depth.
     for dx, dy, h in ((-6.0, 2.8, 2.8), (-5.8, -1.5, 2.2), (5.9, 3.0, 2.5), (5.7, -1.8, 2.0)):
         pillar(M, dx, dy, h)
@@ -629,10 +696,10 @@ def build(M):
     sword_prop(M, -.70, -1.72, .10, angle=16)
 
     # Cool ambient fill + warm practicals: torches should own the image.
-    area_light("DungeonKey", (-5.8, -6.5, 10.5), 470, 7.2, (.42, .48, .60), (0, 0, .6))
-    area_light("DungeonFill", (5.5, -3.0, 7.5), 590, 6.4, (.20, .27, .42), (0, 0, .8))
-    area_light("DungeonTopFill", (.5, 2.0, 11.0), 210, 5.0, (.38, .40, .43), (0, .7, .6))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 150, 5.2, (1.0, .10, .016), (0, 1.0, 1.1))
+    area_light("DungeonKey", (-5.8, -6.5, 10.5), 420, 7.2, (.34, .43, .58), (0, 0, .6))
+    area_light("DungeonFill", (5.5, -3.0, 7.5), 650, 6.4, (.14, .24, .42), (0, 0, .8))
+    area_light("DungeonTopFill", (.5, 2.0, 11.0), 245, 5.0, (.30, .38, .48), (0, .7, .6))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 125, 5.2, (1.0, .22, .050), (0, 1.0, 1.1))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
@@ -644,7 +711,7 @@ def main():
     M = material_bank()
     scene = setup_scene(out)
     build(M)
-    scene["chronicles_dungeon_mock"] = "canonical-lookdev-v1"
+    scene["chronicles_dungeon_mock"] = "canonical-lookdev-v2"
     scene["chronicles_dungeon_mock_seed"] = SEED
     bpy.ops.render.render(write_still=True)
     print("Chronicles dungeon mock:", out)
