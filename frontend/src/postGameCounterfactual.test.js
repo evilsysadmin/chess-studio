@@ -20,6 +20,23 @@ describe('post-game short counterfactual', () => {
     expect(analyzeMove.mock.calls[0][0]).toContain(' b ');
   });
 
+  it('uses the proven minimax PV without another backend call', async () => {
+    const analyzeMove = vi.fn();
+    const result = await buildShortCounterfactual({
+      fen: START_FEN,
+      suggested: { from: 'e2', to: 'e4', san: 'e4' },
+      suggestedLine: [
+        { from: 'e2', to: 'e4', san: 'e4' },
+        { from: 'e7', to: 'e5', san: 'e5' },
+        { from: 'g1', to: 'f3', san: 'Nf3' },
+      ],
+      analyzeMove,
+    });
+
+    expect(result.line.map((move) => move.san)).toEqual(['e4', 'e5', 'Nf3']);
+    expect(analyzeMove).not.toHaveBeenCalled();
+  });
+
   it('reuses the factual root reply before extending the third ply', async () => {
     const analyzeMove = vi.fn()
       .mockResolvedValueOnce({ suggested: { from: 'g1', to: 'f3', san: 'Nf3' } });
@@ -99,11 +116,19 @@ describe('post-game short counterfactual', () => {
       suggestedTo: 'f3',
       suggestedPromotion: null,
       suggestedReply: { from: 'g8', to: 'f6', san: 'Nf6', promotion: null },
+      suggestedLine: [
+        { from: 'g1', to: 'f3', san: 'Nf3', promotion: null },
+        { from: 'g8', to: 'f6', san: 'Nf6', promotion: null },
+      ],
       context: { fenBefore: START_FEN },
     })).toEqual({
       fen: START_FEN,
       suggested: { from: 'g1', to: 'f3', promotion: null, san: 'Nf3' },
       suggestedReply: { from: 'g8', to: 'f6', promotion: null, san: 'Nf6' },
+      suggestedLine: [
+        { from: 'g1', to: 'f3', promotion: null, san: 'Nf3' },
+        { from: 'g8', to: 'f6', promotion: null, san: 'Nf6' },
+      ],
     });
   });
 
@@ -111,7 +136,7 @@ describe('post-game short counterfactual', () => {
     expect(counterfactualInputFromReportMove({
       suggested: 'e4',
       context: { fenBefore: START_FEN },
-    })).toEqual({ fen: START_FEN, suggested: { san: 'e4' }, suggestedReply: null });
+    })).toEqual({ fen: START_FEN, suggested: { san: 'e4' }, suggestedReply: null, suggestedLine: [] });
     expect(counterfactualInputFromReportMove({ suggested: 'e4' })).toBeNull();
     expect(counterfactualInputFromReportMove({ context: { fenBefore: START_FEN } })).toBeNull();
   });
