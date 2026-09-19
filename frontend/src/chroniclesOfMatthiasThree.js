@@ -209,9 +209,9 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     const flame = new THREE.Mesh(createTorchFlameGeometry(coarsePointer), flameMaterial);
     flame.scale.set(0.96 * flameScale, 1.0 * flameScale, 0.96 * flameScale);
     flame.position.set(0.51, 0.08, 0);
-    const flameCore = new THREE.Mesh(new THREE.SphereGeometry(0.068, coarsePointer ? 7 : 10, 6), flameCoreMaterial);
-    flameCore.scale.set(0.9 * flameScale, 1.28 * flameScale, 0.9 * flameScale);
-    flameCore.position.set(0.51, 0.18, 0);
+    const flameCore = new THREE.Mesh(createTorchFlameGeometry(coarsePointer), flameCoreMaterial);
+    flameCore.scale.set(0.52 * flameScale, 0.46 * flameScale, 0.52 * flameScale);
+    flameCore.position.set(0.51, 0.09, 0);
     flameCore.renderOrder = 2;
     const baseIntensity = (coarsePointer ? 1.5 : 1.95) * intensity;
     const light = new THREE.PointLight(0xff7a32, baseIntensity, 9.5, 2);
