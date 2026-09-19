@@ -414,10 +414,13 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     surface: { pattern: 'flagstone', seed: 23, repeat: [1.3, 1.3] },
     bumpScale: 0.07,
   });
-  const floorInset = material(0x302d29, {
-    roughness: 0.95,
-    surface: { pattern: 'worn', seed: 31, repeat: [1.2, 1.2] },
-    bumpScale: 0.045,
+  const floorInset = material(0x423c35, {
+    roughness: 0.92,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+    surface: { pattern: 'worn', seed: 31, repeat: [1.35, 1.2] },
+    bumpScale: 0.032,
   });
   const wallStone = material(0x776b5b, {
     roughness: 0.89,
@@ -464,14 +467,18 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     slab.position.y -= ((x * 13 + y * 5) % 4) * 0.012;
 
     if (!coarsePointer) {
-      add(
+      const insetWidth = CELL * (0.42 + (index % 3) * 0.025);
+      const insetDepth = CELL * (0.39 + ((index + 1) % 3) * 0.03);
+      const inset = add(
         root,
-        new THREE.BoxGeometry(CELL * 0.62, 0.016, CELL * 0.62),
+        new THREE.BoxGeometry(insetWidth, 0.012, insetDepth),
         floorInset,
-        [wx, -0.006 + FLOOR_SHELL_LIFT, wz],
-        [0, ((index % 3) - 1) * 0.012, 0],
+        [wx + ((index % 2) - 0.5) * 0.08, -0.006 + FLOOR_SHELL_LIFT, wz],
+        [0, ((index % 3) - 1) * 0.018, 0],
         `chronicles-floor-inset-${index}`,
       );
+      inset.castShadow = false;
+      inset.renderOrder = 1;
     }
     if (!coarsePointer && index % 3 === 0) {
       add(root, new THREE.BoxGeometry(CELL * 0.52, 0.018, 0.025), edgeMat, [wx + 0.28, 0.004, wz - 0.35], [0, 0.35, 0], `chronicles-floor-crack-${index}`);
