@@ -142,6 +142,13 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     opacity: 0.94,
     depthWrite: false,
   });
+  const sootMaterial = new THREE.MeshBasicMaterial({
+    color: 0x171411,
+    transparent: true,
+    opacity: 0.2,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
   const torches = [];
   CHRONICLES_TORCH_PLACEMENTS.forEach(({ x, y, side, intensity = 1, flameScale = 1 }, index) => {
     const transform = chroniclesTorchTransform(x, y, side);
@@ -151,6 +158,17 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     const wallPlate = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.3), torchMaterial);
     wallPlate.position.x = -0.035;
     wallPlate.castShadow = true;
+    let soot = null;
+    if (!coarsePointer) {
+      soot = new THREE.Mesh(new THREE.CircleGeometry(0.28, 24), sootMaterial);
+      soot.name = `chronicles-wall-torch-soot-${index}`;
+      soot.position.set(-0.092, 0.18, 0);
+      soot.rotation.y = Math.PI / 2;
+      soot.scale.set(1.38, 1.82, 1);
+      soot.castShadow = false;
+      soot.receiveShadow = false;
+      soot.renderOrder = 1;
+    }
     const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.72, 8), torchMaterial);
     bracket.position.x = 0.2;
     bracket.rotation.z = Math.PI / 2;
@@ -173,6 +191,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
       light.shadow.bias = -0.001;
       light.shadow.normalBias = 0.04;
     }
+    if (soot) root.add(soot);
     root.add(wallPlate, bracket, flame, flameCore, light);
     root.position.copy(transform.position);
     root.rotation.y = transform.yaw;
