@@ -1294,9 +1294,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_left_origin + (obj.location - fireplace_left_origin) * 0.90
             obj.scale *= 0.90
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
-                obj.scale.x *= 0.46
-                obj.scale.z *= 0.32
-                obj.location.y += 0.24
+                # Match the right hearth contract: legacy tongues are depth glow
+                # only. The foreground organic lobe cluster owns the silhouette.
+                obj.scale.x *= 0.28
+                obj.scale.z *= 0.15
+                obj.location.y += 0.32
     left_log_a = cube("HOME_PROP_fireplace_left_log_a", (-6.38, 5.72, 0.55), (0.40, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_a.rotation_euler[2] = math.radians(9)
     left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.73, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
