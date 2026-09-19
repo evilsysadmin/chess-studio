@@ -22,6 +22,7 @@ V9_COLS = 6
 V9_ROWS = 18
 V9_ATLAS_SIZE = (V9_CELL * V9_COLS, V9_CELL * V9_ROWS)
 V9_NAME_RE = re.compile(r"_godot_strict_6x18_416_v9(?:-[0-9a-f]{16})?\.png$", re.I)
+STRICT_8X18_NAME_RE = re.compile(r"_godot_strict_8x18_416_v(?:11|12)(?:-[0-9a-f]{16})?\\.png$", re.I)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
@@ -144,6 +145,8 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     atlas = Image.open(source).convert("RGBA")
     if V9_NAME_RE.search(source.name):
         cell, cols, rows = V9_CELL, V9_COLS, V9_ROWS
+    elif STRICT_8X18_NAME_RE.search(source.name):
+        cell, cols, rows = 416, 8, 18
     expected = (cols * cell, rows * cell)
     source_size = atlas.size
     normalized_from_source = False
