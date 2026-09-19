@@ -1147,9 +1147,127 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     left_log_b = cube("HOME_PROP_fireplace_left_log_b", (-5.94, 5.73, 0.58), (0.38, 0.09, 0.065), materials["wood"], bevel=0.032)
     left_log_b.rotation_euler[2] = math.radians(-11)
     cube("HOME_PROP_fireplace_left_ember_bed", (-6.15, 5.72, 0.47), (0.66, 0.10, 0.050), materials["fire"], bevel=0.04)
+
+    # Canonical left hearth: the approved reference reads as a deep Gothic
+    # fireplace, not a black void with a flame strip. Build a nested stone
+    # opening and keep the fire/grate close to camera for a readable silhouette.
+    cube(
+        "HOME_PROP_fireplace_left_canon_firebox",
+        (-6.15, 6.03, 1.25),
+        (0.86, 0.065, 0.96),
+        materials["soot_stone"],
+        bevel=0.045,
+    )
+    gothic_arch(
+        "HOME_ARCH_fireplace_left_inner",
+        -6.15,
+        5.56,
+        2.28,
+        2.34,
+        4.18,
+        0.30,
+        materials["arch_stone"],
+        bevel=0.105,
+    )
+    for side in (-1, 1):
+        px = -6.15 + side * 1.02
+        cube(
+            f"HOME_PROP_fireplace_left_jamb_{side}",
+            (px, 5.60, 1.33),
+            (0.15, 0.18, 1.08),
+            materials["arch_stone"],
+            bevel=0.045,
+        )
+        cube(
+            f"HOME_PROP_fireplace_left_jamb_cap_{side}",
+            (px, 5.52, 2.40),
+            (0.23, 0.22, 0.11),
+            materials["stone_dark"],
+            bevel=0.035,
+        )
+    sphere(
+        "HOME_PROP_fireplace_left_front_ember_glow",
+        (-6.15, 5.39, 0.60),
+        (0.67, 0.032, 0.078),
+        materials["fire_hot"],
+    )
+    for idx, (dx, h, lean) in enumerate((
+        (-0.43, 0.29, -0.04),
+        (-0.20, 0.46, 0.04),
+        (0.02, 0.58, -0.02),
+        (0.24, 0.40, 0.05),
+        (0.44, 0.27, -0.03),
+    )):
+        cx = -6.15 + dx
+        base = 0.58
+        w = 0.115
+        flat_panel(
+            f"HOME_PROP_fireplace_left_front_flame_{idx}",
+            [
+                (cx - w, base),
+                (cx - w * 0.68, base + h * 0.28),
+                (cx - w * 0.34, base + h * 0.52),
+                (cx + lean, base + h),
+                (cx + w * 0.38, base + h * 0.54),
+                (cx + w * 0.76, base + h * 0.24),
+                (cx + w, base),
+            ],
+            5.385,
+            0.026,
+            materials["fire"],
+            bevel=0.016,
+        )
+        inner_h = h * 0.52
+        flat_panel(
+            f"HOME_PROP_fireplace_left_front_hot_{idx}",
+            [
+                (cx - w * 0.44, base),
+                (cx - w * 0.20, base + inner_h * 0.36),
+                (cx + lean * 0.42, base + inner_h),
+                (cx + w * 0.24, base + inner_h * 0.34),
+                (cx + w * 0.44, base),
+            ],
+            5.355,
+            0.022,
+            materials["fire_hot"],
+            bevel=0.010,
+        )
+    for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
+        curve_tube(
+            f"HOME_PROP_fireplace_left_grate_bar_{idx}",
+            [(gx, 5.30, 0.47), (gx, 5.30, 1.04)],
+            0.018,
+            materials["brass_dark"],
+        )
+    curve_tube(
+        "HOME_PROP_fireplace_left_grate_top",
+        [(-6.73, 5.30, 0.96), (-6.15, 5.28, 1.07), (-5.57, 5.30, 0.96)],
+        0.024,
+        materials["brass_dark"],
+    )
+
     add_bookshelf(materials)
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["arch_stone"])
+    gothic_arch(
+        "HOME_ARCH_armor_inner_trim",
+        1.35,
+        6.03,
+        2.04,
+        2.62,
+        4.43,
+        0.36,
+        materials["brass_dark"],
+        bevel=0.045,
+    )
+    for side in (-1, 1):
+        cube(
+            f"HOME_PROP_armor_niche_jamb_{side}",
+            (1.35 + side * 0.93, 6.08, 1.56),
+            (0.075, 0.075, 1.18),
+            materials["stone_dark"],
+            bevel=0.025,
+        )
     add_fireplace("fireplace_right", 4.45, materials)
     fireplace_origin = Vector((4.45, 6.10, 0.35))
     for obj in list(bpy.data.objects):
