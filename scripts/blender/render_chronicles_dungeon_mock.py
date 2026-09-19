@@ -82,11 +82,11 @@ def mat_stone(name, dark=False, wet=False):
 
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     if dark:
-        ramp.color_ramp.elements[0].color = (.018, .020, .024, 1)
-        ramp.color_ramp.elements[1].color = (.100, .078, .058, 1)
+        ramp.color_ramp.elements[0].color = (.016, .020, .026, 1)
+        ramp.color_ramp.elements[1].color = (.082, .074, .068, 1)
     else:
-        ramp.color_ramp.elements[0].color = (.050, .050, .052, 1)
-        ramp.color_ramp.elements[1].color = (.245, .195, .145, 1)
+        ramp.color_ramp.elements[0].color = (.040, .045, .052, 1)
+        ramp.color_ramp.elements[1].color = (.205, .178, .150, 1)
 
     obj = nt.nodes.new("ShaderNodeObjectInfo")
     obj_ramp = nt.nodes.new("ShaderNodeValToRGB")
@@ -102,8 +102,8 @@ def mat_stone(name, dark=False, wet=False):
     bump_mix.inputs[0].default_value = .58
 
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = .34
-    bump.inputs["Distance"].default_value = .055
+    bump.inputs["Strength"].default_value = .41
+    bump.inputs["Distance"].default_value = .048
 
     nt.links.new(mix_noise.outputs["Color"], ramp.inputs["Fac"])
     nt.links.new(obj.outputs["Random"], obj_ramp.inputs["Fac"])
@@ -306,7 +306,7 @@ def torch(M, x, y, z=1.55, wall_axis="x"):
     flame = bpy.context.object
     flame.name = "torch_flame"
     finish(flame, M["flame"], .009, True)
-    point_light("torch_light", (x, y, z+.28), 232, (1.0, .24, .065), .54)
+    point_light("torch_light", (x, y, z+.28), 224, (1.0, .22, .055), .52)
 
 
 def banner(M, x, y, z, blue=False):
@@ -591,7 +591,7 @@ def setup_scene(out):
     scene.world.color = (.004, .007, .012)
     try:
         scene.view_settings.look = "AgX - Medium High Contrast"
-        scene.view_settings.exposure = 0.53
+        scene.view_settings.exposure = 0.49
     except Exception:
         pass
 
@@ -664,7 +664,7 @@ def build(M):
     # Layered background architecture below the playable slab for cinematic depth.
     for dx, dy, h in ((-6.0, 2.8, 2.8), (-5.8, -1.5, 2.2), (5.9, 3.0, 2.5), (5.7, -1.8, 2.0)):
         pillar(M, dx, dy, h)
-        point_light("distant_ember", (dx, dy, h*.72), 95, (1.0,.10,.025), .35)
+        point_light("distant_ember", (dx, dy, h*.72), 52, (1.0,.14,.035), .42)
 
     tile_outline(M, -1.0, .52, warm=True)
     tile_outline(M, .15, -.55, False)
@@ -692,7 +692,8 @@ def build(M):
     area_light("DungeonKey", (-5.8, -6.5, 10.5), 470, 7.2, (.36, .45, .60), (0, 0, .6))
     area_light("DungeonFill", (5.5, -3.0, 7.5), 625, 6.4, (.16, .27, .46), (0, 0, .8))
     area_light("DungeonTopFill", (.5, 2.0, 11.0), 250, 5.0, (.34, .42, .52), (0, .7, .6))
-    area_light("DungeonRim", (1.0, 6.0, 9.5), 132, 5.2, (1.0, .24, .060), (0, 1.0, 1.1))
+    area_light("DungeonRim", (1.0, 6.0, 9.5), 118, 5.2, (1.0, .23, .055), (0, 1.0, 1.1))
+    area_light("DungeonStoneGraze", (5.8, 4.2, 5.2), 145, 4.0, (.18, .32, .52), (1.2, 1.2, .8))
     cube("void_floor", (0, 0, -1.35), (12, 12, .5), M["black"], bevel=0)
 
 
