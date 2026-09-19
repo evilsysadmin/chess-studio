@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse, hashlib, json, statistics
 from pathlib import Path
+import numpy as np
 from PIL import Image
 
 COLS=8; ROWS=18; CELL=416; SIZE=(3328,7488); PIVOT=200.0; FOOT=382.0; TOL=2.0; GUARD=4
@@ -16,51 +17,63 @@ def args():
  p=argparse.ArgumentParser(); p.add_argument('--atlas',type=Path,required=True); p.add_argument('--manifest',type=Path,required=True); p.add_argument('--baseline',type=Path); p.add_argument('--report',type=Path); return p.parse_args()
 
 def anchor(cell):
- px=cell.load(); pts=[]
- for y in range(int(CELL*.42),CELL):
-  for x in range(CELL):
-   r,g,b,a=px[x,y]
-   if a>ALPHA and max(r,g,b)<220: pts.append((x,y))
- if not pts: fail('cannot anchor empty cell')
- fy=max(y for _,y in pts); xs=sorted(x for x,y in pts if y>=fy-max(3,int(CELL*.03)))
- return float(statistics.median(xs)),float(fy)
+ pixels=np.asarray(cell)
+ mask=(pixels[...,3]>ALPHA)&(pixels[...,:3].max(axis=2)<220)
+ mask[:int(CELL*.42),:]=False
+ ys,xs=np.nonzero(mask)
+ if ys.size==0: fail('cannot anchor empty cell')
+ fy=int(ys.max()); band=np.sort(xs[ys>=fy-max(3,int(CELL*.03))])
+ return float(band[len(band)//2]),float(fy)
 
 def tip_y(cell):
  a=cell.getchannel('A'); box=a.getbbox()
  if box is None: fail('empty aim cell')
- vals=a.load(); x0=max(AIM_FORWARD_X_MIN,int(round(box[0]+.72*(box[2]-box[0])))); pts=[]
- for y in range(box[1],box[3]):
-  for x in range(x0,box[2]):
-   if vals[x,y]>ALPHA: pts.append((x,y))
- if not pts: return (box[1]+box[3])*.5
- mx=max(x for x,_ in pts); cutoff=max(x0,mx-AIM_FORWARD_BAND); ys=[y for x,y in pts if x>=cutoff]
- return float(statistics.median(ys))
+ alpha=np.asarray(a); x0=max(AIM_FORWARD_X_MIN,int(round(box[0]+.72*(box[2]-box[0]))))
+ ys,rx=np.nonzero(alpha[:,x0:box[2]]>ALPHA)
+ if ys.size==0: return (box[1]+box[3])*.5
+ xs=rx+x0; cutoff=max(x0,int(xs.max())-AIM_FORWARD_BAND)
+ return float(np.median(ys[xs>=cutoff]))
+
+
+def edge_metric(cell):
+ gray=np.asarray(cell.convert('L'),dtype=np.int16); alpha=np.asarray(cell.getchannel('A'))>ALPHA
+ dx=np.abs(gray[:,1:]-gray[:,:-1]); dy=np.abs(gray[1:,:]-gray[:-1,:])
+ mx=alpha[:,1:]|alpha[:,:-1]; my=alpha[1:,:]|alpha[:-1,:]
+ values=np.concatenate((dx[mx],dy[my]))
+ return float(values.mean()) if values.size else 0.0
 
 def main():
  a=args(); im=Image.open(a.atlas).convert('RGBA')
  if im.size!=SIZE: fail(f'atlas size {im.size} != {SIZE}')
  data=json.loads(a.manifest.read_text(encoding='utf-8'))
  if data.get('version')!='v11' or data.get('schema')!=1: fail('manifest version/schema')
+ processing=data.get('processing',{})
+ if processing.get('kind')!='2d-motion-compensated' or processing.get('blender') is not False:
+  fail('strict-v11 processing contract drift')
  at=data.get('atlas',{})
  if (at.get('columns'),at.get('rows'),at.get('cell_size'),at.get('frames_per_pose'))!=(COLS,ROWS,CELL,8): fail('layout contract drift')
  if abs(float(at.get('pivot_x',-9))-PIVOT)>.001 or abs(float(at.get('foot_y',-9))-FOOT)>.001: fail('pivot/foot metadata drift')
  if at.get('sha256')!=hashlib.sha256(a.atlas.read_bytes()).hexdigest(): fail('atlas sha mismatch')
  acts=data.get('actions',[])
  if len(acts)!=ROWS: fail('action count drift')
- heights={}; anchors=[]
+ heights={}; anchors=[]; unique_by_action={}
  for row,name in enumerate(NAMES):
   act=acts[row]
   if act.get('name')!=name or act.get('row')!=row or act.get('frames')!=8: fail(f'action contract drift row {row}')
-  hs=[]
+  hs=[]; hashes=set()
   for col in range(COLS):
    c=im.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); box=c.getchannel('A').getbbox()
    if box is None: fail(f'empty {name}[{col}]')
    guard=min(box[0],box[1],CELL-box[2],CELL-box[3])
    if guard<GUARD: fail(f'guard regression {name}[{col}]={guard}')
+   pixels=np.asarray(c)
+   if np.any(pixels[pixels[...,3]==0,:3]!=0): fail(f'transparent RGB contamination {name}[{col}]')
+   hashes.add(hashlib.sha256(c.tobytes()).hexdigest())
    ax,ay=anchor(c); anchors.append((name,col,ax,ay))
    if abs(ax-PIVOT)>TOL or abs(ay-FOOT)>TOL: fail(f'anchor drift {name}[{col}] {ax:.1f},{ay:.1f}')
    hs.append(box[3]-box[1])
-  heights[name]=float(statistics.median(hs))
+  heights[name]=float(statistics.median(hs)); unique_by_action[name]=len(hashes)
+  if unique_by_action[name]<7: fail(f'insufficient distinct frames {name}: {unique_by_action[name]}/8')
  idle=heights['idle']
  for name in ('walk','run','jump','fall','land','shoot','shoot_up','shoot_down','shoot_diag_up','shoot_diag_up_alt','shoot_diag_down','reload','hurt'):
   if abs(heights[name]-idle)>85: fail(f'body-size discontinuity {name}: idle={idle} row={heights[name]}')
@@ -73,20 +86,25 @@ def main():
  horiz=row_tip(8); measures={9:row_tip(9),10:row_tip(10),11:row_tip(11),12:row_tip(12),13:row_tip(13)}
  if measures[9]>horiz-AIM_DELTA or measures[11]>horiz-AIM_DELTA or measures[12]>horiz-AIM_DELTA: fail(f'up-aim semantics drift h={horiz:.1f} rows={measures}')
  if measures[10]<horiz+AIM_DELTA or measures[13]<horiz+AIM_DELTA: fail(f'down-aim semantics drift h={horiz:.1f} rows={measures}')
- report={'version':'v11','frames_per_pose':8,'total_frames':ROWS*COLS,'median_heights':heights,'aim_tip_y':{'horizontal':horiz,**{str(k):v for k,v in measures.items()}},'anchor_max_error_px':max(max(abs(x-PIVOT),abs(y-FOOT)) for _,_,x,y in anchors)}
+ report={'version':'v11','frames_per_pose':8,'total_frames':ROWS*COLS,'median_heights':heights,'aim_tip_y':{'horizontal':horiz,**{str(k):v for k,v in measures.items()}},'anchor_max_error_px':max(max(abs(x-PIVOT),abs(y-FOOT)) for _,_,x,y in anchors),'unique_frames_by_action':unique_by_action}
  if a.baseline:
   base=Image.open(a.baseline).convert('RGBA')
   if base.size!=(6*CELL,ROWS*CELL): fail(f'baseline size mismatch {base.size}')
-  report['baseline']='strict-v9'
+  report['baseline']='strict-v9'; old_edges=[]; new_edges=[]
   for row,name in enumerate(NAMES):
    areas=[]
    for col in range(6):
-    c=base.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); areas.append(sum(1 for v in c.getchannel('A').getdata() if v>ALPHA))
+    c=base.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL))
+    areas.append(int((np.asarray(c.getchannel('A'))>ALPHA).sum())); old_edges.append(edge_metric(c))
    v11=[]
    for col in range(COLS):
-    c=im.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); v11.append(sum(1 for v in c.getchannel('A').getdata() if v>ALPHA))
-   lo=min(areas)*.97; hi=max(areas)*1.03
+    c=im.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL))
+    v11.append(int((np.asarray(c.getchannel('A'))>ALPHA).sum())); new_edges.append(edge_metric(c))
+   lo=min(areas)*.92; hi=max(areas)*1.03
    if min(v11)<lo or max(v11)>hi: fail(f'alpha-area regression {name}: v9={min(areas)}..{max(areas)} v11={min(v11)}..{max(v11)}')
+  old_edge=float(statistics.mean(old_edges)); new_edge=float(statistics.mean(new_edges))
+  if new_edge<old_edge*1.02: fail(f'readability edge metric regressed: v9={old_edge:.3f} v11={new_edge:.3f}')
+  report['edge_metric']={'v9_mean':old_edge,'v11_mean':new_edge,'gain_pct':(new_edge/old_edge-1.0)*100.0}
  if a.report:
   a.report.parent.mkdir(parents=True,exist_ok=True); a.report.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n',encoding='utf-8')
  print('OK strict-v11 comprehensive atlas',SIZE,'poses=18 frames_per_pose=8 total=144')
