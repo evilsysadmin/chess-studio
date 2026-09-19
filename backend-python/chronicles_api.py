@@ -529,7 +529,7 @@ def _chronicles_planner_descriptors(
 def _normalize_remote_planner_snapshot(
     raw_snapshot: dict[str, Any] | None,
     *,
-    allowed_map_ids: tuple[str, ...] | list[str],
+    planner_descriptors: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     if raw_snapshot is None:
         return None
@@ -540,14 +540,25 @@ def _normalize_remote_planner_snapshot(
     if snapshot is None:
         return None
 
-    allowed = set(allowed_map_ids)
-    if not set(snapshot["areas"]).issubset(allowed):
+    allowed_verbs_by_map = {
+        descriptor["map_id"]: {
+            verb.strip()
+            for verb in str(descriptor.get("allowed_verbs") or "").split(",")
+            if verb.strip()
+        }
+        for descriptor in planner_descriptors
+    }
+    if not set(snapshot["areas"]).issubset(allowed_verbs_by_map):
         return None
-    if any(
-        proposal.get("source") != "workers-ai"
-        for proposal in snapshot["areas"].values()
-    ):
-        return None
+
+    for map_id, proposal in snapshot["areas"].items():
+        if proposal.get("source") != "workers-ai":
+            return None
+        proposed_verbs = proposal.get("verbs")
+        if proposed_verbs is not None and not set(proposed_verbs).issubset(
+            allowed_verbs_by_map[map_id]
+        ):
+            return None
     return snapshot
 
 
@@ -670,7 +681,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             )
             planner_snapshot = _normalize_remote_planner_snapshot(
                 raw_planner_snapshot,
-                allowed_map_ids=planner_map_ids,
+                planner_descriptors=planner_descriptors,
             )
 
             area = chronicles_area_envelope(

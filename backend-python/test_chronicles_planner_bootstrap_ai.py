@@ -133,3 +133,37 @@ def test_ai_planner_source_spoof_is_discarded(monkeypatch):
     )
     assert response.status_code == 201
     assert "plannerSnapshot" not in response.json()
+
+
+def test_ai_planner_unapproved_global_verb_is_discarded(monkeypatch):
+    _memory_store(monkeypatch)
+
+    async def fake_planner(areas, **_kwargs):
+        assert areas[0]["map_id"] == "echo-cistern"
+        assert "keys" not in areas[0]["allowed_verbs"].split(",")
+        return {
+            "version": 1,
+            "areas": {
+                "echo-cistern": {
+                    "version": 1,
+                    "source": "workers-ai",
+                    # "keys" is a valid MapCode verb globally, but this authored
+                    # map did not authorize it for planner contract v1.
+                    "verbs": ["sluice", "keys"],
+                    "difficulty": 4,
+                }
+            },
+        }
+
+    monkeypatch.setattr(chronicles_api, "request_chronicles_planner_snapshot", fake_planner)
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={"Authorization": "Bearer test-token"},
+        json={"mapId": "echo-cistern"},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert "plannerSnapshot" not in payload
+    assert payload["area"]["manifest"]["generation"]["plannerAccepted"] is False
+    assert payload["area"]["manifest"]["generation"]["plannerReason"] == "no-proposal"
