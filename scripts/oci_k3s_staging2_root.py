@@ -132,9 +132,54 @@ def _image_ref(sha: str) -> str:
     return f"{IMAGE_PREFIX}{sha}"
 
 
-def _preflight_image(sha: str) -> None:
-    """Ensure the exact immutable backend image is available before mutating the workload."""
+def _validate_image_payload(sha: str, payload: dict) -> str:
     image = _image_ref(sha)
+    status_payload = payload.get("status") or {}
+    if not isinstance(status_payload, dict):
+        raise SystemExit("staging2 image inspect returned invalid status payload")
+
+    tags = status_payload.get("repoTags") or []
+    if image not in tags:
+        raise SystemExit(f"staging2 image inspect missing exact immutable tag: {image}")
+
+    repository = IMAGE_PREFIX.split(":oci-", 1)[0]
+    digest_re = re.compile(rf"^{re.escape(repository)}@sha256:[0-9a-f]{{64}}$")
+    digests = [str(value) for value in (status_payload.get("repoDigests") or [])]
+    matching_digests = [value for value in digests if digest_re.fullmatch(value)]
+    if not matching_digests:
+        raise SystemExit("staging2 image inspect missing canonical sha256 repo digest")
+
+    info = payload.get("info") or {}
+    image_spec = info.get("imageSpec") if isinstance(info, dict) else {}
+    if not isinstance(image_spec, dict):
+        image_spec = {}
+    architecture = str(image_spec.get("architecture") or "").lower()
+    os_name = str(image_spec.get("os") or "").lower()
+    if architecture not in {"arm64", "aarch64"}:
+        raise SystemExit(f"staging2 image architecture mismatch: {architecture or 'missing'}")
+    if os_name != "linux":
+        raise SystemExit(f"staging2 image OS mismatch: {os_name or 'missing'}")
+
+    config = image_spec.get("config") or {}
+    config_user = str(
+        (config.get("User") if isinstance(config, dict) else "")
+        or (config.get("user") if isinstance(config, dict) else "")
+        or ""
+    )
+    uid_payload = status_payload.get("uid")
+    uid_value = uid_payload.get("value") if isinstance(uid_payload, dict) else uid_payload
+    if str(uid_value or "") != "10001" and config_user not in {"10001", "10001:10001"}:
+        raise SystemExit(
+            "staging2 image runtime user mismatch: expected numeric uid 10001"
+        )
+
+    return matching_digests[0].split("@", 1)[1]
+
+
+def _preflight_image(sha: str) -> None:
+    """Ensure the exact immutable backend image is available and valid before mutation."""
+    image = _image_ref(sha)
+    source = "cache"
     try:
         cached = subprocess.run(
             [str(K3S), "crictl", "inspecti", image],
@@ -145,27 +190,53 @@ def _preflight_image(sha: str) -> None:
         )
     except subprocess.TimeoutExpired:
         cached = None
-    if cached is not None and cached.returncode == 0:
-        print(f"OCI_K3S_STAGING2_IMAGE_READY sha={sha} source=cache", flush=True)
-        return
+    if cached is None or cached.returncode != 0:
+        source = "registry"
+        try:
+            pulled = subprocess.run(
+                [str(K3S), "crictl", "pull", image],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=120,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise SystemExit(f"staging2 image pull timed out: sha={sha}") from exc
+        if pulled.returncode != 0:
+            detail = _clean_diag(pulled.stderr or pulled.stdout or "image pull failed", 400)
+            raise SystemExit(
+                f"staging2 image pull failed rc={pulled.returncode} sha={sha} detail={detail}"
+            )
 
     try:
-        pulled = subprocess.run(
-            [str(K3S), "crictl", "pull", image],
+        inspected = subprocess.run(
+            [str(K3S), "crictl", "inspecti", image],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=120,
+            timeout=20,
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raise SystemExit(f"staging2 image pull timed out: sha={sha}") from exc
-    if pulled.returncode != 0:
-        detail = _clean_diag(pulled.stderr or pulled.stdout or "image pull failed", 400)
+        raise SystemExit(f"staging2 image inspect timed out: sha={sha}") from exc
+    if inspected.returncode != 0:
+        detail = _clean_diag(inspected.stderr or inspected.stdout or "image inspect failed", 400)
         raise SystemExit(
-            f"staging2 image pull failed rc={pulled.returncode} sha={sha} detail={detail}"
+            f"staging2 image inspect failed rc={inspected.returncode} sha={sha} detail={detail}"
         )
-    print(f"OCI_K3S_STAGING2_IMAGE_READY sha={sha} source=registry", flush=True)
+    try:
+        payload = json.loads(inspected.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("staging2 image inspect returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("staging2 image inspect returned non-object JSON")
+    digest = _validate_image_payload(sha, payload)
+    print(
+        "OCI_K3S_STAGING2_IMAGE_READY "
+        f"sha={sha} source={source} digest={digest} arch=arm64 uid=10001",
+        flush=True,
+    )
 
 
 def _apply_text(text: str) -> None:
@@ -615,13 +686,49 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
     sample_sha = "0" * 40
-    assert _image_ref(sample_sha) == f"{IMAGE_PREFIX}{sample_sha}"
+    sample_image = _image_ref(sample_sha)
+    assert sample_image == f"{IMAGE_PREFIX}{sample_sha}"
     try:
         _image_ref("main")
     except SystemExit:
         pass
     else:
         raise AssertionError("mutable staging2 image ref must fail closed")
+
+    repository = IMAGE_PREFIX.split(":oci-", 1)[0]
+    sample_payload = {
+        "status": {
+            "repoTags": [sample_image],
+            "repoDigests": [f"{repository}@sha256:{'a' * 64}"],
+            "uid": {"value": 10001},
+            "username": "",
+        },
+        "info": {
+            "imageSpec": {
+                "architecture": "arm64",
+                "os": "linux",
+                "config": {"User": "10001:10001"},
+            }
+        },
+    }
+    assert _validate_image_payload(sample_sha, sample_payload) == f"sha256:{'a' * 64}"
+    for mutation in ("tag", "digest", "arch", "user"):
+        bad = json.loads(json.dumps(sample_payload))
+        if mutation == "tag":
+            bad["status"]["repoTags"] = ["ghcr.io/example/wrong:tag"]
+        elif mutation == "digest":
+            bad["status"]["repoDigests"] = []
+        elif mutation == "arch":
+            bad["info"]["imageSpec"]["architecture"] = "amd64"
+        else:
+            bad["status"]["uid"] = {"value": 0}
+            bad["info"]["imageSpec"]["config"]["User"] = "0"
+        try:
+            _validate_image_payload(sample_sha, bad)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError(f"invalid staging2 image contract accepted: {mutation}")
     assert not _status_needs_diagnostics(1, 1, sample_sha, sample_sha)
     assert _status_needs_diagnostics(1, 0, sample_sha, sample_sha)
     assert _status_needs_diagnostics(0, 0, sample_sha, sample_sha)
@@ -635,6 +742,8 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_DIAG_EVENT" in source
     assert '"crictl", "inspecti"' in source
     assert '"crictl", "pull"' in source
+    assert "OCI_K3S_STAGING2_IMAGE_READY" in source
+    assert "staging2 image inspect missing canonical sha256 repo digest" in source
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
     assert "state_sha=" in source
