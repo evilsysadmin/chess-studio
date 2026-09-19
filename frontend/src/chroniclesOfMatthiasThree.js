@@ -25,6 +25,8 @@ const ATTACK_FX = Object.freeze({
 
 export const CHRONICLES_TORCH_PLACEMENTS = Object.freeze([
   Object.freeze({ x: 1, y: 5, side: 'west' }),
+  Object.freeze({ x: 2, y: 5, side: 'north' }),
+  Object.freeze({ x: 4, y: 5, side: 'south' }),
   Object.freeze({ x: 5, y: 5, side: 'east' }),
   Object.freeze({ x: 1, y: 3, side: 'west' }),
   Object.freeze({ x: 5, y: 3, side: 'east' }),
