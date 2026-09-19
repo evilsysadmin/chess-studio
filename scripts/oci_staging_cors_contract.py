@@ -50,8 +50,15 @@ def assigned_literal_strings(source: str, variable: str) -> set[str]:
 
 
 required_deploy_fragments = (
-    'staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"',
-    'CHESS_STUDIO_CORS_ORIGINS="$staging_origin"',
+    'target=staging',
+    'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"',
+    'CHESS_STUDIO_CORS_ORIGINS="$cors_origin"',
+    'env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/production/backend.env}"',
+    'state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio-production}"',
+    'project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-production}"',
+    'port="${CHESS_STUDIO_BACKEND_PORT:-4100}"',
+    'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://chess-studio.shadowops.dpdns.org}"',
+    'deploy_lock_file="/var/lib/chess-studio/deploy.lock"',
     'Access-Control-Request-Method: GET',
     'Access-Control-Request-Headers: authorization,x-client-release',
     "access-control-allow-origin",
@@ -271,7 +278,11 @@ assert 'tunnel_action="restarted"' in deploy
 # without weakening or bypassing any readiness/integrity gate.
 for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
     assert f"phase_done {phase}" in deploy
-assert "OCI_DEPLOY_TIMINGS phases=%s k3s=%s,contract=%s tunnel=%s" in deploy
+assert "OCI_DEPLOY_TIMINGS target=%s phases=%s k3s=%s,contract=%s tunnel=%s" in deploy
+assert 'if [[ "$target" == staging ]]; then' in deploy
+assert 'tunnel_action="local-only"' in deploy
+assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha' in deploy
+assert 'install -o root -g root -m 0755 "$source_launcher" "$target_launcher"' in deploy
 assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1' in deploy
