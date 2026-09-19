@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'scripts/art/analyze_pawn_slug_godot_atlas_v10.py'
       - 'scripts/pawn_slug_godot_pr_capture.mjs'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'scripts/art/analyze_pawn_slug_godot_atlas_v10.py'
       - 'scripts/pawn_slug_godot_pr_capture.mjs'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
@@ -53,9 +55,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/art/pack_pawn_slug_godot_strict_v10.py --self-test
+          python3 scripts/art/analyze_pawn_slug_godot_atlas_v10.py --self-test
           python3 -m py_compile \
             scripts/art/pack_pawn_slug_godot_strict_v10.py \
-            scripts/art/validate_pawn_slug_godot_atlas_v10.py
+            scripts/art/validate_pawn_slug_godot_atlas_v10.py \
+            scripts/art/analyze_pawn_slug_godot_atlas_v10.py
           node --check scripts/pawn_slug_godot_pr_capture.mjs
 
       - name: Download immutable v10 source from R2
@@ -87,6 +91,38 @@ jobs:
           python3 scripts/art/validate_pawn_slug_godot_atlas_v10.py \
             --atlas "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
             --manifest "$ROOT/matthias_pistol_strict_v10_manifest.json"
+
+      - name: Measure v10 silhouette continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v10"
+          python3 scripts/art/analyze_pawn_slug_godot_atlas_v10.py \
+            --atlas "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
+            --manifest "$ROOT/matthias_pistol_strict_v10_manifest.json" \
+            --report "$ROOT/matthias_pistol_strict_v10_silhouette_health.json" \
+            > "$ROOT/silhouette-analysis.txt"
+          cat "$ROOT/silhouette-analysis.txt"
+          python3 - "$ROOT/matthias_pistol_strict_v10_silhouette_health.json" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding='utf-8'))
+          state = 'PROMOTABLE' if data['promotable'] else 'QUARANTINED'
+          print(f"### Matthias strict-v10 silhouette: {state}")
+          for issue in data['issues']:
+              print(f"- {issue['message']}")
+          PY
+
+      - name: Refuse production promotion of visually discontinuous v10
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fq 'const V10_RUNTIME_PROMOTION_ENABLED := true' games/pawn-slug-godot/scripts/matthias_art.gd; then
+            ROOT="$RUNNER_TEMP/matthias-v10"
+            python3 scripts/art/analyze_pawn_slug_godot_atlas_v10.py \
+              --atlas "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
+              --manifest "$ROOT/matthias_pistol_strict_v10_manifest.json" \
+              --require-promotable
+          fi
 
       - name: Build v10 visual review artifacts
         shell: bash
@@ -279,6 +315,8 @@ jobs:
             ${{ runner.temp }}/matthias-v10/matthias_pistol_godot_strict_12x9_256_v10.png
             ${{ runner.temp }}/matthias-v10/matthias_pistol_strict_v10_manifest.json
             ${{ runner.temp }}/matthias-v10/matthias_pistol_strict_v10_review_board.png
+            ${{ runner.temp }}/matthias-v10/matthias_pistol_strict_v10_silhouette_health.json
+            ${{ runner.temp }}/matthias-v10/silhouette-analysis.txt
             ${{ runner.temp }}/matthias-v10/strips/*.png
             ${{ runner.temp }}/matthias-v10/runtime/*.png
             ${{ runner.temp }}/matthias-v10/runtime/*.json
