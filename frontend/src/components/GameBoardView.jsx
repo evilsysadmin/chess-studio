@@ -347,7 +347,7 @@ export default function GameBoardView({
           )}
         </div>
 
-        {!zenMode && !focusActive && board.hint && <p className="hint-caption">Pista: {formatLongMove(board.hint)}</p>}
+        {!zenMode && !focusActive && board.hint && <p className="hint-caption">Pista: {formatLongMove(board.hint)}{board.hint.reply ? <> · respuesta prevista: {formatLongMove(board.hint.reply)}</> : null}</p>}
         {!zenMode && !focusActive && controls.captureFeedback && <p className="capture-feedback">{controls.captureFeedback}</p>}
         {!zenMode && !focusActive && controls.hintMode === 'paid' && (
           <p className="hint-caption hint-balance">Puntos disponibles: {controls.points}</p>
