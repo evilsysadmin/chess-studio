@@ -1007,15 +1007,6 @@ def add_gothic_canon_v2(static, mats):
     )):
         flame(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.10),
               w, h, lean, mats["fire"], static)
-    for idx, (dx, w, h, lean) in enumerate((
-        (-0.18, 0.12, 0.30, -0.16), (0.05, 0.16, 0.50, 0.06), (0.30, 0.12, 0.34, 0.18),
-    )):
-        flame(f"WR_CANON_right_fire_core_{idx}", (rx + dx, 5.48, 1.10),
-              w, h, lean, mats["fire_core"], static)
-    for idx, dx in enumerate((-0.38, 0.0, 0.38)):
-        ember = sphere(f"WR_CANON_right_ember_{idx}", (rx + dx, 5.47, 1.08 + (idx % 2) * 0.04),
-                       0.11, mats["ember"], static, scale=(1.25, 0.72, 0.45))
-        ember.rotation_euler.z = idx * 0.21
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 340.0,
           (1.0, 0.40, 0.12), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
@@ -1639,9 +1630,7 @@ def collapse_runtime_static_shell():
         1 for obj in bpy.context.scene.objects
         if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
     )
-    # 150 batches plus the right hearth's own ember/core flame groups: those two
-    # materials have no other mesh in that spatial cell, so they cannot merge.
-    if remaining > 152:
+    if remaining > 150:
         raise RuntimeError(f"runtime static batching ineffective: {source_count} -> {remaining}")
     if merged_away < 120:
         raise RuntimeError(f"runtime static batching merged too little: {merged_away}")
