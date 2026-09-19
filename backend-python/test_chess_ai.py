@@ -51,6 +51,26 @@ def test_settings_for_level_clamps_out_of_range():
     assert settings_for_level(500).level == 100
 
 
+def test_get_cpu_move_skips_randomness_and_search_when_move_is_forced(monkeypatch):
+    forced = chess.Move.from_uci("e2e4")
+
+    class ForcedBoard:
+        legal_moves = [forced]
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("forced move must not use randomness or minimax")
+
+    monkeypatch.setattr(ai_module.random, "random", unexpected)
+    monkeypatch.setattr(ai_module, "_search", unexpected)
+    monkeypatch.setattr(
+        ai_module,
+        "move_to_dict",
+        lambda _board, move: {"from": chess.square_name(move.from_square), "to": chess.square_name(move.to_square), "san": "e4"},
+    )
+
+    assert get_cpu_move(ForcedBoard(), 0, {"capture": 1}) == {"from": "e2", "to": "e4", "san": "e4"}
+
+
 def test_get_cpu_move_finds_mate_in_one():
     board = chess.Board("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1")
     move = get_cpu_move(board, 100)
