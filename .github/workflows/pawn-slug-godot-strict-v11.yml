@@ -6,7 +6,6 @@ on:
       - 'scripts/art/pack_pawn_slug_godot_strict_v11.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v11.py'
       - 'scripts/art/build_pawn_slug_v11_review.py'
-      - 'scripts/art/build_pawn_slug_v11_review.py'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - 'games/pawn-slug-godot/tests/matthias_strict_v11_atlas_smoke.gd'
       - '.github/workflows/pawn-slug-godot-strict-v11.yml'
@@ -15,6 +14,7 @@ on:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v11.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v11.py'
+      - 'scripts/art/build_pawn_slug_v11_review.py'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - 'games/pawn-slug-godot/tests/matthias_strict_v11_atlas_smoke.gd'
       - '.github/workflows/pawn-slug-godot-strict-v11.yml'
