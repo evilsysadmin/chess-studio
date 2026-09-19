@@ -40,6 +40,7 @@ IMAGE_PREFIX = "ghcr.io/evilsysadmin/chess-studio-backend:oci-"
 IMAGE_REPOSITORY = IMAGE_PREFIX.split(":oci-", 1)[0]
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 IMAGE_DIGEST_RE = re.compile(rf"^{re.escape(IMAGE_REPOSITORY)}@sha256:[0-9a-f]{{64}}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 MIN_PRE_MEM = 3500 * 1024**2
 MIN_POST_MEM = 3000 * 1024**2
 MIN_PRE_DISK = 30 * 1024**3
@@ -56,6 +57,10 @@ def _sha256(path: Path) -> str:
 
 def _capability_sha256() -> str:
     return _sha256(Path(__file__))
+
+
+def _runtime_env_sha256() -> str:
+    return _sha256(RUNTIME_ENV)
 
 
 def _regular(path: Path, label: str) -> None:
@@ -127,17 +132,27 @@ def _verify_host_contract() -> None:
         raise SystemExit("K3s must be active before staging2 deployment")
 
 
-def _render(sha: str, pinned_image: str = "") -> str:
+def _render(sha: str, pinned_image: str = "", runtime_digest: str = "") -> str:
     if not SHA_RE.fullmatch(sha):
         raise SystemExit("staging2 deploy requires an immutable 40-char lowercase SHA")
     text = TEMPLATE.read_text(encoding="utf-8")
     if text.count("__SHA__") != 3:
         raise SystemExit("staging2 manifest template placeholder count drifted")
     rendered = text.replace("__SHA__", sha)
-    if not pinned_image:
+    if not pinned_image and not runtime_digest:
         return rendered
     if not IMAGE_DIGEST_RE.fullmatch(pinned_image):
         raise SystemExit("staging2 rendered image must be a canonical sha256 digest reference")
+    if not SHA256_RE.fullmatch(runtime_digest):
+        raise SystemExit("staging2 rendered runtime contract must be a sha256 digest")
+    release_needle = f'chess-studio.shadowops/release: "{sha}"'
+    if rendered.count(release_needle) != 1:
+        raise SystemExit("staging2 rendered release annotation drifted")
+    rendered = rendered.replace(
+        release_needle,
+        release_needle
+        + f'\n        chess-studio.shadowops/runtime-sha256: "{runtime_digest}"',
+    )
     tagged_image = _image_ref(sha)
     needle = f"image: {tagged_image}"
     if rendered.count(needle) != 1:
@@ -308,7 +323,11 @@ def _verify_namespace_contract_if_present() -> None:
         _require_namespace_owned(payload)
 
 
-def _ensure_namespace_and_secret() -> None:
+def _ensure_namespace_and_secret(expected_runtime_digest: str) -> None:
+    if not SHA256_RE.fullmatch(expected_runtime_digest):
+        raise SystemExit("staging2 secret materialization requires runtime sha256")
+    if _runtime_env_sha256() != expected_runtime_digest:
+        raise SystemExit("staging2 runtime env changed before Secret materialization")
     existing = _namespace_payload()
     if existing:
         _require_namespace_owned(existing)
@@ -335,6 +354,8 @@ def _ensure_namespace_and_secret() -> None:
         f"--from-env-file={RUNTIME_ENV}", "--dry-run=client", "-o", "yaml",
     ).stdout
     _apply_text(secret_yaml)
+    if _runtime_env_sha256() != expected_runtime_digest:
+        raise SystemExit("staging2 runtime env changed during Secret materialization")
 
 
 def _namespace_present() -> bool:
@@ -385,6 +406,12 @@ def _release_from_payload(payload: dict) -> str:
     annotations = (((payload.get("spec") or {}).get("template") or {}).get("metadata") or {}).get("annotations") or {}
     value = str(annotations.get("chess-studio.shadowops/release") or "")
     return value if SHA_RE.fullmatch(value) else ""
+
+
+def _runtime_digest_from_payload(payload: dict) -> str:
+    annotations = (((payload.get("spec") or {}).get("template") or {}).get("metadata") or {}).get("annotations") or {}
+    value = str(annotations.get("chess-studio.shadowops/runtime-sha256") or "")
+    return value if SHA256_RE.fullmatch(value) else ""
 
 
 def _deployment_rollout_state(payload: dict) -> tuple[int, int, int, int, int, int]:
@@ -646,14 +673,15 @@ def _write_state(sha: str) -> None:
 
 def _restore(previous_sha: str, previous_image_ref: str = "") -> None:
     if previous_sha:
+        runtime_digest = _runtime_env_sha256()
         if _pinned_digest_from_image_ref(previous_image_ref):
             previous_image = previous_image_ref
             image_source = "deployment"
         else:
             previous_image = _preflight_image(previous_sha)
             image_source = "registry"
-        _ensure_namespace_and_secret()
-        _apply_text(_render(previous_sha, previous_image))
+        _ensure_namespace_and_secret(runtime_digest)
+        _apply_text(_render(previous_sha, previous_image, runtime_digest))
         _rollout_wait()
         _attest(previous_sha)
         _write_state(previous_sha)
@@ -679,9 +707,10 @@ def deploy(sha: str) -> None:
     previous_sha = _release_from_payload(previous_payload)
     previous_image_ref = _image_from_payload(previous_payload) if previous_sha else ""
     pinned_image = _preflight_image(sha)
+    runtime_digest = _runtime_env_sha256()
     try:
-        _ensure_namespace_and_secret()
-        _apply_text(_render(sha, pinned_image))
+        _ensure_namespace_and_secret(runtime_digest)
+        _apply_text(_render(sha, pinned_image, runtime_digest))
         _rollout_wait()
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
@@ -727,6 +756,8 @@ def _status_needs_diagnostics(
     sha: str,
     state_sha: str,
     image_ref: str,
+    runtime_digest: str,
+    expected_runtime_digest: str,
 ) -> bool:
     return (
         desired < 1
@@ -738,6 +769,8 @@ def _status_needs_diagnostics(
         or not SHA_RE.fullmatch(sha)
         or state_sha != sha
         or not _pinned_digest_from_image_ref(image_ref)
+        or not SHA256_RE.fullmatch(runtime_digest)
+        or runtime_digest != expected_runtime_digest
     )
 
 
@@ -762,6 +795,9 @@ def status() -> None:
     sha = _release_from_payload(payload) or "unknown"
     image_ref = _image_from_payload(payload)
     image_digest = _pinned_digest_from_image_ref(image_ref) or "unpinned"
+    runtime_digest = _runtime_digest_from_payload(payload)
+    expected_runtime_digest = _runtime_env_sha256()
+    runtime_contract = "match" if runtime_digest == expected_runtime_digest else "drift"
     desired, updated, ready, available, generation, observed_generation = (
         _deployment_rollout_state(payload)
     )
@@ -775,10 +811,13 @@ def status() -> None:
         sha,
         state_sha,
         image_ref,
+        runtime_digest,
+        expected_runtime_digest,
     ):
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
+            f"runtime_contract={runtime_contract} "
             f"desired={desired} updated={updated} ready={ready} available={available} "
             f"generation={generation} observed_generation={observed_generation} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -809,6 +848,7 @@ def status() -> None:
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
+        f"runtime_contract={runtime_contract} "
         f"desired={desired} updated={updated} ready={ready} available={available} "
         f"generation={generation} observed_generation={observed_generation} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -886,17 +926,38 @@ def self_test(template_path: Path) -> None:
         },
     }
     assert _validate_image_payload(sample_sha, sample_payload) == f"sha256:{'a' * 64}"
-    rendered = _render(sample_sha, sample_digest_ref)
+    sample_runtime_digest = "b" * 64
+    rendered = _render(sample_sha, sample_digest_ref, sample_runtime_digest)
     assert f"image: {sample_digest_ref}" in rendered
+    assert f'chess-studio.shadowops/runtime-sha256: "{sample_runtime_digest}"' in rendered
     assert f"image: {sample_image}" not in rendered
     assert _pinned_digest_from_image_ref(sample_digest_ref) == f"sha256:{'a' * 64}"
     assert not _pinned_digest_from_image_ref(sample_image)
     try:
-        _render(sample_sha, sample_image)
+        _render(sample_sha, sample_image, sample_runtime_digest)
     except SystemExit:
         pass
     else:
         raise AssertionError("tagged image must not satisfy digest-pinned render")
+    try:
+        _render(sample_sha, sample_digest_ref, "short")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("invalid runtime digest must fail closed")
+    runtime_payload = {
+        "spec": {
+            "template": {
+                "metadata": {
+                    "annotations": {
+                        "chess-studio.shadowops/runtime-sha256": sample_runtime_digest
+                    }
+                }
+            }
+        }
+    }
+    assert _runtime_digest_from_payload(runtime_payload) == sample_runtime_digest
+    assert not _runtime_digest_from_payload({})
     owned_namespace = {"metadata": {"labels": dict(NAMESPACE_LABELS)}}
     foreign_namespace = {
         "metadata": {
@@ -941,7 +1002,8 @@ def self_test(template_path: Path) -> None:
     }
     assert _deployment_rollout_state(rollout_payload) == (1, 1, 1, 1, 7, 7)
     assert not _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
+        sample_runtime_digest, sample_runtime_digest
     )
     for bad_rollout in (
         (1, 0, 1, 1, 7, 7),
@@ -952,22 +1014,31 @@ def self_test(template_path: Path) -> None:
         (0, 0, 0, 0, 7, 7),
     ):
         assert _status_needs_diagnostics(
-            *bad_rollout, sample_sha, sample_sha, sample_digest_ref
+            *bad_rollout, sample_sha, sample_sha, sample_digest_ref,
+            sample_runtime_digest, sample_runtime_digest
         )
     assert _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, "unknown", sample_sha, sample_digest_ref
+        1, 1, 1, 1, 7, 7, "unknown", sample_sha, sample_digest_ref, sample_runtime_digest, sample_runtime_digest
     )
     assert _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, sample_sha, "absent", sample_digest_ref
+        1, 1, 1, 1, 7, 7, sample_sha, "absent", sample_digest_ref, sample_runtime_digest, sample_runtime_digest
     )
     assert _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, sample_sha, "invalid", sample_digest_ref
+        1, 1, 1, 1, 7, 7, sample_sha, "invalid", sample_digest_ref, sample_runtime_digest, sample_runtime_digest
     )
     assert _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, sample_sha, "1" * 40, sample_digest_ref
+        1, 1, 1, 1, 7, 7, sample_sha, "1" * 40, sample_digest_ref, sample_runtime_digest, sample_runtime_digest
     )
     assert _status_needs_diagnostics(
-        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_image
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_image, sample_runtime_digest, sample_runtime_digest
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
+        "c" * 64, sample_runtime_digest
+    )
+    assert _status_needs_diagnostics(
+        1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
+        "", sample_runtime_digest
     )
     source = Path(__file__).read_text(encoding="utf-8")
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
@@ -991,6 +1062,9 @@ def self_test(template_path: Path) -> None:
     assert "staging2 deployed state must remain root-owned" in source
     assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
     assert "runtime=attested" in source
+    assert "runtime_contract=" in source
+    assert "chess-studio.shadowops/runtime-sha256" in source
+    assert "staging2 runtime env changed during Secret materialization" in source
     assert "capability_sha256=" in source
     status_source = source.split("\ndef status() -> None:", 1)[1].split(
         "\ndef rollback() -> None:", 1
@@ -1006,6 +1080,8 @@ def self_test(template_path: Path) -> None:
     assert "_delete_namespace_and_verify_absent()" in restore_source
     assert 'image_source = "deployment"' in restore_source
     assert 'image_source = "registry"' in restore_source
+    assert "runtime_digest = _runtime_env_sha256()" in restore_source
+    assert "_ensure_namespace_and_secret(runtime_digest)" in restore_source
     assert restore_source.index("_pinned_digest_from_image_ref(previous_image_ref)") < restore_source.index(
         "_preflight_image(previous_sha)"
     )
@@ -1018,6 +1094,9 @@ def self_test(template_path: Path) -> None:
         "_preflight_image(sha)"
     )
     assert "previous_image_ref = _image_from_payload(previous_payload)" in deploy_source
+    assert "runtime_digest = _runtime_env_sha256()" in deploy_source
+    assert "_ensure_namespace_and_secret(runtime_digest)" in deploy_source
+    assert "_render(sha, pinned_image, runtime_digest)" in deploy_source
     assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
         "_ensure_namespace_and_secret()"
