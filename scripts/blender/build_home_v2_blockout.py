@@ -1437,9 +1437,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             obj.location = fireplace_origin + (obj.location - fireplace_origin) * 1.20
             obj.scale *= 1.20
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
-                obj.scale.x *= 0.72
-                obj.scale.z *= 0.62
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.90, 1.42), 155, (1.0, 0.24, 0.045), radius=1.10)
+                # Keep legacy tongues buried as warm depth only; the canonical
+                # foreground overlay owns the visible hearth silhouette.
+                obj.scale.x *= 0.42
+                obj.scale.z *= 0.30
+                obj.location.y += 0.22
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 112, (1.0, 0.26, 0.050), radius=0.82)
     # Canon mantle overlay: broad shelf, carved pilasters and a dark rectangular
     # firebox push the right fireplace toward the approved mock.
     cube("HOME_PROP_fireplace_right_canon_firebox", (4.45, 6.08, 1.13), (0.82, 0.07, 0.82), materials["dark"], bevel=0.05)
@@ -1466,22 +1469,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # The generic fireplace gets scaled for the canonical right-hand mass.
     # Reintroduce a camera-facing flame layer after that transform so the
     # hearth remains visibly alive instead of disappearing behind the grate.
-    sphere(
-        "HOME_PROP_fireplace_right_front_ember_glow",
-        (4.45, 5.405, 0.60),
-        (0.76, 0.035, 0.085),
-        materials["fire_hot"],
-    )
+    for idx, dx in enumerate((-0.44, -0.15, 0.15, 0.44)):
+        sphere(
+            f"HOME_PROP_fireplace_right_front_ember_{idx}",
+            (4.45 + dx, 5.405, 0.585 + 0.010 * (idx % 2)),
+            (0.125, 0.020, 0.038),
+            materials["fire_hot"] if idx % 2 else materials["fire"],
+        )
     for idx, (dx, h, lean) in enumerate((
-        (-0.48, 0.30, -0.04),
-        (-0.24, 0.44, 0.04),
-        (0.01, 0.54, -0.02),
-        (0.27, 0.40, 0.05),
-        (0.49, 0.28, -0.03),
+        (-0.44, 0.22, -0.035),
+        (-0.22, 0.34, 0.035),
+        (0.01, 0.46, -0.020),
+        (0.24, 0.32, 0.040),
+        (0.45, 0.20, -0.030),
     )):
         cx = 4.45 + dx
         base = 0.58
-        w = 0.125
+        w = 0.095
         flat_panel(
             f"HOME_PROP_fireplace_right_front_flame_{idx}",
             [
