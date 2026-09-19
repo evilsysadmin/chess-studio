@@ -52,6 +52,10 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _capability_sha256() -> str:
+    return _sha256(Path(__file__))
+
+
 def _regular(path: Path, label: str) -> None:
     if not path.is_file() or path.is_symlink():
         raise SystemExit(f"{label} must be a regular non-symlink file: {path}")
@@ -637,7 +641,8 @@ def deploy(sha: str) -> None:
         f"loopback_port={LOCAL_PORT} service=ClusterIP "
         f"pre_mem_mib={pre_mem // 1024**2} post_mem_mib={post_mem // 1024**2} "
         f"pre_disk_mib={pre_disk // 1024**2} post_disk_mib={post_disk // 1024**2} "
-        f"pre_load1={pre_load:.2f} post_load1={post_load:.2f}"
+        f"pre_load1={pre_load:.2f} post_load1={post_load:.2f} "
+        f"capability_sha256={_capability_sha256()}"
     )
 
 
@@ -662,7 +667,8 @@ def status() -> None:
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=false "
             f"state_sha={state_sha} "
-            f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
+            f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
+            f"capability_sha256={_capability_sha256()}"
         )
         if state_sha != "absent":
             _failure_diagnostics()
@@ -676,7 +682,8 @@ def status() -> None:
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
-            f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
+            f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
+            f"capability_sha256={_capability_sha256()}"
         )
         _failure_diagnostics()
         return
@@ -703,7 +710,8 @@ def status() -> None:
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} desired={desired} available={available} "
-        f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
+        f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
+        f"capability_sha256={_capability_sha256()}"
     )
 
 
@@ -714,7 +722,10 @@ def rollback() -> None:
         STATE.unlink()
     except FileNotFoundError:
         pass
-    print("OCI_K3S_STAGING2_ROLLBACK_OK present=false compose_untouched=true")
+    print(
+        "OCI_K3S_STAGING2_ROLLBACK_OK present=false compose_untouched=true "
+        f"capability_sha256={_capability_sha256()}"
+    )
 
 
 def self_test(template_path: Path) -> None:
@@ -745,6 +756,7 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_MEM > MIN_POST_MEM
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
+    assert re.fullmatch(r"[0-9a-f]{64}", _capability_sha256())
     sample_sha = "0" * 40
     sample_image = _image_ref(sample_sha)
     assert sample_image == f"{IMAGE_PREFIX}{sample_sha}"
@@ -824,6 +836,7 @@ def self_test(template_path: Path) -> None:
     assert "staging2 deployed state must remain root-owned" in source
     assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
     assert "runtime=attested" in source
+    assert "capability_sha256=" in source
     status_source = source.split("\ndef status() -> None:", 1)[1].split(
         "\ndef rollback() -> None:", 1
     )[0]
