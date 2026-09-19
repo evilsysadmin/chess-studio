@@ -468,6 +468,85 @@ def _require_service_contract(payload: dict) -> None:
         raise SystemExit("staging2 live Service contract drifted")
 
 
+def _selected_pods_payload() -> list[dict]:
+    completed = _kubectl(
+        "-n", NAMESPACE, "get", "pods",
+        "-l", "app.kubernetes.io/name=chess-studio-backend,chess-studio.shadowops/track=staging2",
+        "-o", "json", check=False,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        if _kubectl_reports_not_found(detail):
+            return []
+        raise SystemExit(
+            "staging2 pod probe failed "
+            f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
+        )
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("staging2 pod probe returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("staging2 pod probe returned non-object JSON")
+    items = payload.get("items")
+    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+        raise SystemExit("staging2 pod probe returned invalid items")
+    return items
+
+
+def _pod_contract_ok(pods: list[dict]) -> bool:
+    if len(pods) != 1 or not isinstance(pods[0], dict):
+        return False
+    pod = pods[0]
+    metadata = pod.get("metadata") or {}
+    if metadata.get("deletionTimestamp"):
+        return False
+
+    labels = metadata.get("labels") or {}
+    required = {
+        "app.kubernetes.io/name": "chess-studio-backend",
+        "chess-studio.shadowops/track": "staging2",
+    }
+    if not all(str(labels.get(key) or "") == value for key, value in required.items()):
+        return False
+
+    owners = metadata.get("ownerReferences") or []
+    controllers = [
+        owner for owner in owners
+        if isinstance(owner, dict) and owner.get("controller") is True
+    ]
+    if len(controllers) != 1 or str(controllers[0].get("kind") or "") != "ReplicaSet":
+        return False
+
+    status_payload = pod.get("status") or {}
+    if str(status_payload.get("phase") or "") != "Running":
+        return False
+    ready_conditions = [
+        condition for condition in (status_payload.get("conditions") or [])
+        if isinstance(condition, dict)
+        and condition.get("type") == "Ready"
+        and condition.get("status") == "True"
+    ]
+    if len(ready_conditions) != 1:
+        return False
+
+    containers = status_payload.get("containerStatuses") or []
+    if len(containers) != 1 or not isinstance(containers[0], dict):
+        return False
+    container = containers[0]
+    state = container.get("state") or {}
+    return (
+        str(container.get("name") or "") == "backend"
+        and container.get("ready") is True
+        and isinstance(state.get("running"), dict)
+    )
+
+
+def _require_pod_contract(pods: list[dict]) -> None:
+    if not _pod_contract_ok(pods):
+        raise SystemExit("staging2 live Pod contract drifted")
+
+
 def _release_from_payload(payload: dict) -> str:
     annotations = (((payload.get("spec") or {}).get("template") or {}).get("metadata") or {}).get("annotations") or {}
     value = str(annotations.get("chess-studio.shadowops/release") or "")
@@ -839,6 +918,7 @@ def _restore(previous_sha: str, previous_image_ref: str = "") -> None:
         _rollout_wait()
         _require_deployment_contract(_deployment_payload())
         _require_service_contract(_service_payload())
+        _require_pod_contract(_selected_pods_payload())
         _attest(previous_sha)
         _write_state(previous_sha)
         print(
@@ -870,6 +950,7 @@ def deploy(sha: str) -> None:
         _rollout_wait()
         _require_deployment_contract(_deployment_payload())
         _require_service_contract(_service_payload())
+        _require_pod_contract(_selected_pods_payload())
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
         _write_state(sha)
@@ -968,27 +1049,35 @@ def status() -> None:
     service_payload = _service_payload()
     service_contract_ok = _service_contract_ok(service_payload)
     service_contract = "match" if service_contract_ok else "drift"
+    selected_pods = _selected_pods_payload()
+    pod_contract_ok = _pod_contract_ok(selected_pods)
+    pod_contract = "match" if pod_contract_ok else "drift"
     desired, updated, ready, available, generation, observed_generation = (
         _deployment_rollout_state(payload)
     )
-    if (not deployment_contract_ok) or (not service_contract_ok) or _status_needs_diagnostics(
-        desired,
-        updated,
-        ready,
-        available,
-        generation,
-        observed_generation,
-        sha,
-        state_sha,
-        image_ref,
-        runtime_digest,
-        expected_runtime_digest,
+    if (
+        (not deployment_contract_ok)
+        or (not service_contract_ok)
+        or (not pod_contract_ok)
+        or _status_needs_diagnostics(
+            desired,
+            updated,
+            ready,
+            available,
+            generation,
+            observed_generation,
+            sha,
+            state_sha,
+            image_ref,
+            runtime_digest,
+            expected_runtime_digest,
+        )
     ):
         print(
             "OCI_K3S_STAGING2_STATUS_DEGRADED present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
             f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
-            f"service_contract={service_contract} "
+            f"service_contract={service_contract} pod_contract={pod_contract} "
             f"desired={desired} updated={updated} ready={ready} available={available} "
             f"generation={generation} observed_generation={observed_generation} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -1020,7 +1109,7 @@ def status() -> None:
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
         f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
-        f"service_contract={service_contract} "
+        f"service_contract={service_contract} pod_contract={pod_contract} "
         f"desired={desired} updated={updated} ready={ready} available={available} "
         f"generation={generation} observed_generation={observed_generation} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -1280,6 +1369,46 @@ def self_test(template_path: Path) -> None:
         else:
             bad_service["metadata"]["labels"]["app.kubernetes.io/name"] = "other"
         assert not _service_contract_ok(bad_service), mutate
+
+    pod_contract_payload = {
+        "metadata": {
+            "labels": {
+                "app.kubernetes.io/name": "chess-studio-backend",
+                "chess-studio.shadowops/track": "staging2",
+            },
+            "ownerReferences": [
+                {"kind": "ReplicaSet", "name": "backend-abc", "controller": True}
+            ],
+        },
+        "status": {
+            "phase": "Running",
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "containerStatuses": [
+                {
+                    "name": "backend",
+                    "ready": True,
+                    "restartCount": 0,
+                    "state": {"running": {"startedAt": "2026-09-19T00:00:00Z"}},
+                }
+            ],
+        },
+    }
+    assert _pod_contract_ok([pod_contract_payload])
+    assert not _pod_contract_ok([])
+    assert not _pod_contract_ok([pod_contract_payload, pod_contract_payload])
+    for mutate in ("terminating", "owner", "phase", "ready", "container"):
+        bad_pod = json.loads(json.dumps(pod_contract_payload))
+        if mutate == "terminating":
+            bad_pod["metadata"]["deletionTimestamp"] = "2026-09-19T00:01:00Z"
+        elif mutate == "owner":
+            bad_pod["metadata"]["ownerReferences"][0]["kind"] = "Job"
+        elif mutate == "phase":
+            bad_pod["status"]["phase"] = "Pending"
+        elif mutate == "ready":
+            bad_pod["status"]["conditions"][0]["status"] = "False"
+        else:
+            bad_pod["status"]["containerStatuses"][0]["ready"] = False
+        assert not _pod_contract_ok([bad_pod]), mutate
     assert not _status_needs_diagnostics(
         1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
         sample_runtime_digest, sample_runtime_digest
@@ -1351,6 +1480,9 @@ def self_test(template_path: Path) -> None:
     assert "runtime_contract=" in source
     assert "deployment_contract=" in source
     assert "service_contract=" in source
+    assert "pod_contract=" in source
+    assert "staging2 pod probe failed" in source
+    assert "staging2 live Pod contract drifted" in source
     assert "OCI_K3S_STAGING2_DIAG_SERVICE" in source
     assert "staging2 service probe failed" in source
     assert "staging2 live Service contract drifted" in source
@@ -1376,6 +1508,7 @@ def self_test(template_path: Path) -> None:
     assert "_ensure_namespace_and_secret(runtime_digest)" in restore_source
     assert "_require_deployment_contract(_deployment_payload())" in restore_source
     assert "_require_service_contract(_service_payload())" in restore_source
+    assert "_require_pod_contract(_selected_pods_payload())" in restore_source
     assert restore_source.index("_pinned_digest_from_image_ref(previous_image_ref)") < restore_source.index(
         "_preflight_image(previous_sha)"
     )
@@ -1393,6 +1526,7 @@ def self_test(template_path: Path) -> None:
     assert "_render(sha, pinned_image, runtime_digest)" in deploy_source
     assert "_require_deployment_contract(_deployment_payload())" in deploy_source
     assert "_require_service_contract(_service_payload())" in deploy_source
+    assert "_require_pod_contract(_selected_pods_payload())" in deploy_source
     assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
         "_ensure_namespace_and_secret(runtime_digest)"
