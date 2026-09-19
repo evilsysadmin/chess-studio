@@ -210,6 +210,30 @@ def sphere(name, loc, radius, mat, owner, *, role=ROLE_STATIC, scale=(1, 1, 1)):
     return obj
 
 
+def flame(name, loc, width, height, lean, mat, owner, *, role=ROLE_STATIC):
+    """Teardrop flame tongue: rounded belly, tapered tip that leans sideways.
+
+    Stretched spheres read as flat orange ovals; a tapered, leaning tip is
+    what makes a hearth fire read as a real fire from the wide camera.
+    """
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=14, radius=1.0, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    for vert in obj.data.vertices:
+        t = (vert.co.z + 1.0) * 0.5
+        taper = (1.0 - 0.86 * t ** 1.35)
+        vert.co.x = vert.co.x * width * taper + lean * height * t ** 2.2
+        vert.co.y = vert.co.y * width * 0.62 * taper
+        vert.co.z = (vert.co.z + 1.0) * 0.5 * height
+    obj.data.update()
+    obj.data.materials.append(mat)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    tag(obj, role)
+    relink(obj, owner)
+    return obj
+
+
 def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_STATIC):
     bpy.ops.mesh.primitive_torus_add(
         major_radius=major, minor_radius=minor, major_segments=48, minor_segments=12,
@@ -553,23 +577,20 @@ def add_room(static, mats):
         cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
              mats["iron"], static, bevel=0.012)
 
-    for idx, (dx, dz, sx, sy, sz) in enumerate((
-        (-0.34, 0.22, 0.58, 0.42, 1.20),
-        (-0.08, 0.36, 0.50, 0.38, 1.48),
-        (0.18, 0.18, 0.62, 0.44, 1.08),
-        (0.39, 0.30, 0.46, 0.36, 1.34),
+    for idx, (dx, w, h, lean) in enumerate((
+        (-0.38, 0.19, 0.42, -0.30), (-0.14, 0.25, 0.74, 0.10),
+        (0.10, 0.27, 0.90, -0.08), (0.34, 0.22, 0.60, 0.24),
+        (0.52, 0.15, 0.34, 0.34),
     )):
-        sphere(f"WR_FIREPLACE_flame_outer_{idx}", (-4.55 + dx, 5.55, 1.28 + dz),
-               0.22, mats["fire"], static, scale=(sx, sy, sz))
-    for idx, (dx, dz, sx, sy, sz) in enumerate((
-        (-0.18, 0.12, 0.44, 0.34, 0.88),
-        (0.05, 0.24, 0.38, 0.30, 1.05),
-        (0.26, 0.10, 0.36, 0.30, 0.82),
+        flame(f"WR_FIREPLACE_flame_outer_{idx}", (-4.55 + dx, 5.55, 1.10),
+              w, h, lean, mats["fire"], static)
+    for idx, (dx, w, h, lean) in enumerate((
+        (-0.20, 0.13, 0.32, -0.18), (0.04, 0.17, 0.54, 0.06), (0.28, 0.13, 0.36, 0.20),
     )):
-        sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.25 + dz),
-               0.16, mats["fire_core"], static, scale=(sx, sy, sz))
+        flame(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.10),
+              w, h, lean, mats["fire_core"], static)
 
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 400.0, (1.0, 0.40, 0.12), static, radius=1.35)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk.
@@ -721,7 +742,7 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 485.0, (0.12, 0.28, 0.95), static, size=3.6)
+    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 150.0, (0.58, 0.66, 0.88), static, size=3.6)
     anchor("WR_ANCHOR_window_moonlight", (8.05, 2.85, 4.10), static)
 
     # Leather benches.
@@ -979,14 +1000,24 @@ def add_gothic_canon_v2(static, mats):
     for side in (-1, 1):
         cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
              (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
-    for idx, (dx, dz, sx, sz) in enumerate((
-        (-0.34, 0.18, 0.52, 1.18), (-0.06, 0.34, 0.45, 1.42),
-        (0.22, 0.16, 0.56, 1.04), (0.43, 0.28, 0.42, 1.28),
+    for idx, (dx, w, h, lean) in enumerate((
+        (-0.38, 0.18, 0.40, -0.28), (-0.13, 0.25, 0.70, 0.12),
+        (0.12, 0.26, 0.86, -0.10), (0.36, 0.21, 0.58, 0.24),
+        (0.54, 0.14, 0.32, 0.32),
     )):
-        sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
-               mats["fire"], static, scale=(sx, 0.40, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 258.0,
-          (1.0, 0.23, 0.05), static, radius=1.30)
+        flame(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.10),
+              w, h, lean, mats["fire"], static)
+    for idx, (dx, w, h, lean) in enumerate((
+        (-0.18, 0.12, 0.30, -0.16), (0.05, 0.16, 0.50, 0.06), (0.30, 0.12, 0.34, 0.18),
+    )):
+        flame(f"WR_CANON_right_fire_core_{idx}", (rx + dx, 5.48, 1.10),
+              w, h, lean, mats["fire_core"], static)
+    for idx, dx in enumerate((-0.38, 0.0, 0.38)):
+        ember = sphere(f"WR_CANON_right_ember_{idx}", (rx + dx, 5.47, 1.08 + (idx % 2) * 0.04),
+                       0.11, mats["ember"], static, scale=(1.25, 0.72, 0.45))
+        ember.rotation_euler.z = idx * 0.21
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 340.0,
+          (1.0, 0.40, 0.12), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.74, 3.66), (1.84, 0.68, 0.055),
          mats["stone"], static, bevel=0.040)
@@ -1082,7 +1113,7 @@ def add_gothic_canon_v2(static, mats):
                     0.030, 0.30, mats["brass"], static, vertices=14)
     tail.rotation_euler.y = 0.88
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
-                       (1.0, 0.36, 0.18), static, size=3.4)
+                       (1.0, 0.56, 0.30), static, size=3.4)
     look_at(drape_fill, (0, -5.50, 0.44))
 
 
@@ -1105,14 +1136,14 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.32
+    scene.view_settings.exposure = -0.16
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = (0.004, 0.006, 0.012, 1.0)
-    bg.inputs["Strength"].default_value = 0.082
+    bg.inputs["Color"].default_value = (0.030, 0.017, 0.008, 1.0)
+    bg.inputs["Strength"].default_value = 0.10
 
     static = collection("WR_STATIC_SHELL")
     dynamic = collection("WR_PREVIEW_DYNAMIC")
@@ -1121,9 +1152,9 @@ def build():
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
         "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
         "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
-        "wall_plaster": material("WR_MAT_wall_plaster", (0.172, 0.151, 0.132, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.058),
+        "wall_plaster": material("WR_MAT_wall_plaster", (0.300, 0.232, 0.166, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.058),
         "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
-        "floor_dark": material("WR_MAT_floor_underlay", (0.052, 0.051, 0.050, 1), rough=0.76, coat=0.018, texture="stone", scale=4.8, bump=0.055),
+        "floor_dark": material("WR_MAT_floor_underlay", (0.082, 0.050, 0.030, 1), rough=0.66, coat=0.05, texture="wood", scale=4.8, bump=0.06),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.030, 0.018, 0.012, 1), rough=0.37, coat=0.28, texture="wood", scale=3.2, bump=0.04),
         "brass": material("WR_MAT_brass", (0.36, 0.155, 0.042, 1), metal=0.92, rough=0.29, coat=0.16, texture="metal", scale=22, bump=0.032),
@@ -1137,12 +1168,12 @@ def build():
         "leather_dark": material("WR_MAT_leather_dark", (0.040, 0.016, 0.014, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.126, 0.108, 0.091, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
-        "stone_light": material("WR_MAT_stone_light", (0.188, 0.163, 0.138, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
-        "stone_dark": material("WR_MAT_stone_shadow", (0.050, 0.041, 0.034, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
-        "rug": material("WR_MAT_rug", (0.074, 0.010, 0.016, 1), rough=0.94, sheen=0.22, texture="fabric", scale=54, bump=0.12),
-        "armor": material("WR_MAT_armor", (0.165, 0.185, 0.225, 1), metal=0.93, rough=0.35, coat=0.14, texture="metal", scale=28, bump=0.035),
-        "armor_dark": material("WR_MAT_armor_dark", (0.060, 0.072, 0.095, 1), metal=0.90, rough=0.43, coat=0.09, texture="metal", scale=22, bump=0.025),
+        "stone": material("WR_MAT_stone", (0.175, 0.135, 0.098, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
+        "stone_light": material("WR_MAT_stone_light", (0.262, 0.205, 0.150, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.070, 0.052, 0.037, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
+        "rug": material("WR_MAT_rug", (0.088, 0.011, 0.009, 1), rough=0.94, sheen=0.08, texture="fabric", scale=54, bump=0.12),
+        "armor": material("WR_MAT_armor", (0.235, 0.222, 0.205, 1), metal=0.93, rough=0.35, coat=0.14, texture="metal", scale=28, bump=0.035),
+        "armor_dark": material("WR_MAT_armor_dark", (0.090, 0.082, 0.074, 1), metal=0.90, rough=0.43, coat=0.09, texture="metal", scale=22, bump=0.025),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
         "green": material("WR_MAT_green_glaze", (0.012, 0.12, 0.055, 1), rough=0.24, coat=0.62),
         "book_a": material("WR_MAT_book_burgundy", (0.14, 0.020, 0.016, 1), rough=0.74, sheen=0.10),
@@ -1164,25 +1195,25 @@ def build():
     add_gothic_canon_v2(static, mats)
     add_preview_board(dynamic, mats)
 
-    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 500.0, (1.0, 0.62, 0.36), static, size=5.8)
+    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 540.0, (1.0, 0.70, 0.44), static, size=5.8)
     look_at(key, (0, 0.5, 1.1))
-    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 390.0, (0.20, 0.34, 0.92), static, size=5.4)
+    fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 250.0, (1.0, 0.66, 0.42), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
-    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 195.0, (1.0, 0.48, 0.24), static, size=5.0)
+    top = light("WR_LIGHT_top", "AREA", (0, 2.0, 8.3), 210.0, (1.0, 0.62, 0.34), static, size=5.0)
     look_at(top, (0, 1.0, 1.0))
     for side in (-1, 1):
         sconce_energy = 142.0 if side < 0 else 96.0
         light(f"WR_LIGHT_sconce_{side}", "POINT", (side * 8.0, 2.6, 4.2),
-              sconce_energy, (1.0, 0.31, 0.09), static, radius=1.55)
+              sconce_energy, (1.0, 0.50, 0.18), static, radius=1.55)
 
     # Canon lighting pass: reveal the gothic shell without competing with the
     # board. These broad washes target the rear architecture rather than the
     # tactical surface.
     rear_left = light("WR_LIGHT_rear_wash_left", "AREA", (-5.7, 0.6, 5.7), 390.0,
-                      (1.0, 0.54, 0.30), static, size=4.2)
+                      (1.0, 0.64, 0.38), static, size=4.2)
     look_at(rear_left, (-4.5, 6.2, 3.35))
     rear_right = light("WR_LIGHT_rear_wash_right", "AREA", (5.8, 0.7, 5.4), 330.0,
-                       (0.64, 0.58, 0.48), static, size=4.0)
+                       (1.0, 0.68, 0.42), static, size=4.0)
     look_at(rear_right, (4.8, 6.2, 3.35))
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
