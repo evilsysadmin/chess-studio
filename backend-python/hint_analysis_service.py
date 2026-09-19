@@ -8,7 +8,7 @@ from __future__ import annotations
 import chess
 
 from chess_ai import get_cpu_move, move_to_dict, settings_for_level
-from engine_analysis import principal_variation
+from engine_analysis import only_legal_move, principal_variation
 
 
 def _serialize_line(board: chess.Board, moves: tuple[chess.Move, ...]) -> list[dict]:
@@ -29,6 +29,18 @@ def build_hint_payload(board: chess.Board, level: float) -> dict | None:
     continuations. If even depth 1 cannot complete inside the normal level
     budget, the established CPU hint path remains the fail-open fallback.
     """
+    forced = only_legal_move(board)
+    if forced is not None:
+        move = move_to_dict(board, forced)
+        return {
+            **move,
+            "forced": True,
+            "reply": None,
+            "line": [move],
+            "analysisDepth": 0,
+            "candidateCount": 1,
+        }
+
     settings = settings_for_level(level)
     try:
         analysis = principal_variation(
