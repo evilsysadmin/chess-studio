@@ -192,6 +192,34 @@ function addCeilingRib(root, stoneMat, x, y, index, coarsePointer) {
   }
 }
 
+function addTransverseVaultRib(root, stoneMat, x, y, index, coarsePointer) {
+  const [wx, wz] = cellWorld(x, y);
+  const segments = coarsePointer ? 5 : 9;
+  for (let segment = 0; segment < segments; segment += 1) {
+    const t = segments === 1 ? 0.5 : segment / (segments - 1);
+    const angle = Math.PI * (0.12 + 0.76 * t);
+    const archZ = Math.cos(angle) * 1.72;
+    const archY = 2.18 + Math.sin(angle) * 1.34;
+    add(
+      root,
+      new THREE.BoxGeometry(coarsePointer ? 0.22 : 0.18, 0.29, 0.34),
+      stoneMat,
+      [wx, archY, wz + archZ],
+      [angle - Math.PI / 2, 0, 0],
+      `chronicles-entry-vault-rib-${index}-${segment}`,
+    );
+  }
+
+  add(
+    root,
+    new THREE.BoxGeometry(coarsePointer ? 0.28 : 0.34, 0.24, 0.46),
+    stoneMat,
+    [wx, 3.51, wz],
+    [0, 0, 0],
+    `chronicles-entry-vault-keystone-${index}`,
+  );
+}
+
 function addCryptCrest(root, iron, rune, x, y, index) {
   const [wx, wz] = cellWorld(x, y);
   const crest = new THREE.Group();
@@ -503,7 +531,18 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   });
 
   [[1, 2], [5, 2], [1, 5], [5, 5]].forEach(([x, y], index) => addRubble(root, edgeMat, x, y, index, coarsePointer));
-  [[3, 2], [3, 4], [3, 5]].forEach(([x, y], index) => addCeilingRib(root, edgeMat, x, y, index, coarsePointer));
+  [[3, 2], [3, 4]].forEach(([x, y], index) => addCeilingRib(root, edgeMat, x, y, index, coarsePointer));
+
+  // The opening east-west corridor now uses true transverse ribs: the arch
+  // crosses the passage instead of stretching along the player's sightline.
+  // Three shallow bays give Book I a crypt silhouette without narrowing the
+  // walkable volume or changing collision/gameplay.
+  if (coarsePointer) {
+    addTransverseVaultRib(root, edgeMat, 3, 5, 0, true);
+  } else {
+    [2, 3, 4].forEach((x, index) => addTransverseVaultRib(root, index === 1 ? wallAccent : edgeMat, x, 5, index, false));
+  }
+
   if (!coarsePointer) {
     addCeilingRib(root, wallAccent, 1, 3, 3, false);
     addCeilingRib(root, wallAccent, 5, 3, 4, false);
