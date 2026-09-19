@@ -410,9 +410,9 @@ def configure_cinematic_compositor(scene) -> None:
         glare = nodes.new("CompositorNodeGlare")
         glare.glare_type = "FOG_GLOW"
         glare.quality = "HIGH"
-        glare.threshold = 0.90
-        glare.size = 6
-        glare.mix = -0.86
+        glare.threshold = 0.46
+        glare.size = 7
+        glare.mix = -0.60
         composite = nodes.new("CompositorNodeComposite")
         links.new(layers.outputs["Image"], glare.inputs["Image"])
         links.new(glare.outputs["Image"], composite.inputs["Image"])
