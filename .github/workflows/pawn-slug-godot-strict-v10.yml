@@ -202,6 +202,10 @@ jobs:
               raise SystemExit(f'expected one V10_PISTOL_ATLAS_URL declaration, got {len(matches)}')
           lines[matches[0]] = 'const V10_PISTOL_ATLAS_URL := "http://127.0.0.1:4179/matthias_v10_candidate.png"'
           text = '\n'.join(lines) + '\n'
+          promotion = 'const V10_RUNTIME_PROMOTION_ENABLED := false'
+          if text.count(promotion) != 1:
+              raise SystemExit('expected exactly one v10 runtime promotion guard')
+          text = text.replace(promotion, 'const V10_RUNTIME_PROMOTION_ENABLED := true')
           v9_remote = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/pistol/matthias_pistol_godot_strict_6x18_416_v9-73da3b359ce6c33e.png'
           if text.count(v9_remote) != 1:
               raise SystemExit('expected exactly one strict-v9 pistol runtime URL')
