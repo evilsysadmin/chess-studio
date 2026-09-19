@@ -33,7 +33,7 @@ describe('combat controller support', () => {
   });
 
   it('usa los hechos reales de Combat para corregir una captura arriesgada sin sustituir el orden profundo por el shortlist', () => {
-    const fen = 'r6k/8/8/8/8/8/8/Q6K b - - 0 1';
+    const fen = 'r7/7k/8/8/8/8/8/Q6K b - - 0 1';
     const registry = {
       a8: { id: 'b-r-a8', type: 'r', color: 'b', square: 'a8', strengthPoints: 0, speedPoints: 0 },
       h8: { id: 'b-k-h8', type: 'k', color: 'b', square: 'h8', strengthPoints: 0, speedPoints: 0 },
