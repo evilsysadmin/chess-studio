@@ -381,10 +381,11 @@ def add_table_and_board(materials):
     # Large canonical horse-head relief on the table drape.
     emblem_y = -0.790
     horse_points = [
-        (-0.52, 0.84), (-0.37, 1.02), (-0.18, 1.08), (0.00, 1.00),
-        (0.14, 0.86), (0.20, 0.70), (0.10, 0.58), (0.18, 0.44),
-        (0.04, 0.32), (-0.12, 0.28), (-0.28, 0.36), (-0.45, 0.30),
-        (-0.62, 0.16), (-0.80, 0.18), (-0.72, 0.36), (-0.60, 0.54),
+        (-0.22, 1.08), (-0.08, 1.02), (0.02, 0.92), (0.16, 0.86),
+        (0.22, 0.72), (0.16, 0.58), (0.25, 0.46), (0.18, 0.30),
+        (0.28, 0.16), (0.04, 0.16), (-0.10, 0.28), (-0.20, 0.42),
+        (-0.34, 0.52), (-0.52, 0.56), (-0.68, 0.68), (-0.62, 0.78),
+        (-0.44, 0.80), (-0.30, 0.90),
     ]
     flat_panel(
         "HOME_PROP_table_horse_silhouette",
@@ -394,10 +395,10 @@ def add_table_and_board(materials):
         heraldry,
         bevel=0.018,
     )
-    cone("HOME_PROP_table_horse_ear", (-0.16, emblem_y - 0.035, 0.98), 0.050, 0.008, 0.16, heraldry, vertices=12)
-    for idx, (mx, mz) in enumerate(((0.09, 0.80), (0.14, 0.68), (0.16, 0.56))):
+    cone("HOME_PROP_table_horse_ear", (-0.13, emblem_y - 0.035, 1.03), 0.045, 0.006, 0.14, heraldry, vertices=12)
+    for idx, (mx, mz) in enumerate(((0.10, 0.82), (0.16, 0.68), (0.18, 0.54))):
         cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.046, 0.006, 0.125, heraldry, vertices=10)
-    sphere("HOME_PROP_table_horse_eye", (-0.14, emblem_y - 0.055, 0.82), (0.014, 0.009, 0.014), materials["dark"])
+    sphere("HOME_PROP_table_horse_eye", (-0.23, emblem_y - 0.055, 0.79), (0.013, 0.009, 0.013), materials["dark"])
     curve_tube(
         "HOME_PROP_table_horse_jaw_line",
         [(-0.44, emblem_y - 0.058, 0.67), (-0.29, emblem_y - 0.060, 0.56), (-0.08, emblem_y - 0.060, 0.53)],
@@ -660,8 +661,8 @@ def add_armor(materials):
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y, 2.34), (0.32, 0.16, 0.14), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y, 2.34), (0.32, 0.16, 0.14), steel)
+    cube("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.27, 0.15, 0.105), steel, bevel=0.075)
+    cube("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.27, 0.15, 0.105), steel, bevel=0.075)
     curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.69, y, 1.96), (x - 0.61, y - 0.02, 1.65)], 0.125, steel)
     curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.69, y, 1.96), (x + 0.61, y - 0.02, 1.65)], 0.125, steel)
     sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
@@ -670,7 +671,7 @@ def add_armor(materials):
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.83), (0.30, 0.27, 0.32), steel)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
     cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.205, 0.040, 0.042), dark, bevel=0.012)
     for slot, sx in enumerate((-0.11, -0.055, 0.0, 0.055, 0.11)):
         cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.308, 2.82), (0.012, 0.008, 0.018), dark, bevel=0.004)
@@ -1040,10 +1041,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.42, 0.035, 1),
+            (1.0, 0.68, 0.11, 1),
             roughness=0.22,
-            emission=(1.0, 0.34, 0.020, 1),
-            emission_strength=0.30,
+            emission=(1.0, 0.42, 0.045, 1),
+            emission_strength=0.24,
         ),
     }
 
