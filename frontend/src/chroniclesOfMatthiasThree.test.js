@@ -11,7 +11,7 @@ const NEIGHBOR = Object.freeze({
 
 describe('Chronicles of Matthias dungeon photography', () => {
   it('anchors every authored torch to an actual wall beside a walkable cell', () => {
-    expect(CHRONICLES_TORCH_PLACEMENTS).toHaveLength(6);
+    expect(CHRONICLES_TORCH_PLACEMENTS).toHaveLength(8);
     CHRONICLES_TORCH_PLACEMENTS.forEach(({ x, y, side }) => {
       const [dx, dy] = NEIGHBOR[side];
       expect(CHRONICLES_MAP[y]?.[x]).not.toBe('#');
