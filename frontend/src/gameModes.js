@@ -4,7 +4,6 @@ export const GAME_MODE_LABELS = Object.freeze({
   tournament: 'Torneo',
   practice: 'Partida de práctica',
   casual: 'Partida rápida',
-  ghost: 'Rival Fantasma',
   lab: 'Laboratorio',
   rescue: 'Rescate legacy', // compatibilidad con partidas creadas antes de retirar la resurrección del Cementerio
   sudden: 'Muerte súbita',
@@ -29,6 +28,5 @@ export function gameModeFromContext({ learningMode = false, gameContext = {} } =
   if (gameContext?.runMode === 'cup') return 'cup';
   if (gameContext?.runMode === 'boss') return 'boss';
   if (gameContext?.runMode === 'streak') return 'streak';
-  if (gameContext?.ghost) return 'ghost';
   return learningMode ? 'practice' : 'casual';
 }

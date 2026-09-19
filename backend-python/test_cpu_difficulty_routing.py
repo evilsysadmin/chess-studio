@@ -25,7 +25,7 @@ def test_normal_game_routes_through_factual_difficulty_policy(monkeypatch):
     monkeypatch.setattr(
         game_api,
         "get_cpu_move",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy CPU should not serve a normal low-level game")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy CPU should not serve a normal game")),
     )
 
     resolved = game_api.compute_engine_move_or_fallback(board, 20, None)
@@ -35,30 +35,20 @@ def test_normal_game_routes_through_factual_difficulty_policy(monkeypatch):
     assert calls == [("factual", 20)]
 
 
-def test_ghost_and_balanced_profiles_keep_their_existing_paths(monkeypatch):
+def test_legacy_ghost_profiles_are_ignored_and_use_factual_matthias(monkeypatch):
     board = chess.Board()
     calls = []
     monkeypatch.setattr(
         game_api,
         "get_factual_difficulty_cpu_move",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("factual normal policy leaked into a profile mode")),
+        lambda _board, level: calls.append(("factual", level)) or _move_payload(),
     )
     monkeypatch.setattr(
         game_api,
         "get_cpu_move",
-        lambda _board, level, style=None: calls.append(("ghost", level, style)) or _move_payload(),
-    )
-    monkeypatch.setattr(
-        game_api,
-        "get_balanced_cpu_move",
-        lambda _board, level, style=None: calls.append(("balanced", level, style)) or _move_payload(),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("retired ghost policy must not run")),
     )
 
-    ghost = {"capture": 1.0}
-    balanced = {"balance": True}
-    assert game_api.compute_engine_move_or_fallback(board, 20, ghost) is not None
-    assert game_api.compute_engine_move_or_fallback(board, 20, balanced) is not None
-    assert calls == [
-        ("ghost", 20, ghost),
-        ("balanced", 20, balanced),
-    ]
+    assert game_api.compute_engine_move_or_fallback(board, 20, {"capture": 1.0}) is not None
+    assert game_api.compute_engine_move_or_fallback(board, 20, {"balance": True}) is not None
+    assert calls == [("factual", 20), ("factual", 20)]

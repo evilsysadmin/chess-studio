@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
-from balanced_cpu import get_balanced_cpu_move
 from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
 from engine_runtime import run_engine_work
@@ -105,15 +104,14 @@ def resolve_engine_move_or_fallback(board: chess.Board, suggestion: Optional[dic
 
 
 def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost_style: Optional[dict] = None) -> tuple[chess.Move, dict] | None:
+    """Resolve Matthias through the single factual difficulty policy.
+
+    ghost_style remains as a temporary transport-compatibility argument for
+    persisted legacy games, but it has no behavioral effect. New canonical
+    games no longer create or expose a Rival Fantasma mode.
+    """
     try:
-        balanced = isinstance(ghost_style, dict) and ghost_style.get("balance") is True
-        if balanced:
-            suggestion = get_balanced_cpu_move(board, difficulty, ghost_style)
-        elif ghost_style is not None:
-            # Rival Fantasma conserva exactamente su ruta/estilo actual.
-            suggestion = get_cpu_move(board, difficulty, ghost_style)
-        else:
-            suggestion = get_factual_difficulty_cpu_move(board, difficulty)
+        suggestion = get_factual_difficulty_cpu_move(board, difficulty)
     except Exception as exc:
         # No incluimos FEN ni contenido de la partida en logs operativos.
         logger.warning("cpu_move_failed_using_legal_fallback error_type=%s", type(exc).__name__)
@@ -292,8 +290,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else HINT_STRENGTH
-        ghost_style = body.ghost_style.model_dump() if body.ghost_style is not None else None
-        suggestion = await run_engine_work(get_cpu_move, board, level, ghost_style)
+        suggestion = await run_engine_work(get_cpu_move, board, level)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         if body.candidate_limit and board.legal_moves.count() > 1:
