@@ -39,7 +39,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend. |
 | `staging-ai-worker.yml` | Revalida/acredita la generación de staging ya desplegada y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
-| `production-promote.yml` | Promueve sólo un SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render producción y Pages continúan después sobre el mismo SHA. |
+| `production-promote.yml` | Promueve sólo un SHA acreditado. Worker Terraform `plan/apply` permanece aquí; el backend se selecciona mediante el interruptor versionado `.github/production-deploy.env` (`render|oci`) y el helper de ruta posee el CNAME del API. Pages continúa después sobre el mismo SHA. |
 | `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
 | `staging-preview.yml` | Preview/restauración manual frontend-only sobre staging; no acredita ni entra en producción. Usa deps exactas + Wrangler cacheado. |
 | `staging-bootstrap.yml` | Escape hatch manual del staging legado en Render durante su periodo de retirada. No participa en el camino canónico OCI → staging. |
@@ -112,7 +112,7 @@ Staging · AI Worker / accreditation
  ▼
 Production · promote
  ├─ Cloudflare Worker + DNS
- ├─ Render production backend
+ ├─ Backend target: Render ↔ OCI
  └─ Cloudflare Pages
 ```
 
@@ -145,3 +145,8 @@ Diagnostics ───────── manual/read-only, sin bloquear deploys
 - Matriz Browser E2E duplicada en PR (`e2e-full.yml`) → integrada en el required check de Quality; `e2e-full.yml` queda como sweep multi-browser.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.
+
+
+## Interruptor temporal de producción
+
+`.github/production-deploy.env` contiene un único `DEPLOY_TARGET=render|oci`. Es deliberadamente distinto de `DEPLOY_ENV`: ambos targets ejecutan producción y usan la configuración/BD de producción. El workflow valida el archivo antes de cualquier mutación. El CNAME público del API ya no pertenece a Terraform; `scripts/oci_production_tunnel.py` lo conmuta sólo después de acreditar el SHA exacto en el target elegido. El rollback de producción siempre restaura primero la ruta del API a Render.

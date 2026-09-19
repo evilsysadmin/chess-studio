@@ -4,6 +4,10 @@ on:
   schedule:
     # GitHub cron is UTC. One of these is 08:00 Europe/Madrid across CET/CEST.
     - cron: '0 6,7 * * *'
+  push:
+    branches: [main]
+    paths:
+      - .github/production-deploy.env
   workflow_dispatch:
     inputs:
       force:
@@ -55,6 +59,12 @@ jobs:
             echo 'should_run=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            [[ "$GITHUB_REF" == refs/heads/main ]] || { echo '::error::El cambio de DEPLOY_TARGET sólo puede promocionarse desde main.'; exit 1; }
+            echo 'should_run=true' >> "$GITHUB_OUTPUT"
+            echo '::notice title=Production target switch::DEPLOY_TARGET cambió en main; ejecutando el mismo release train sobre el último SHA acreditado.'
+            exit 0
+          fi
           if [[ "$(TZ=Europe/Madrid date +%H)" == 08 ]]; then
             echo 'should_run=true' >> "$GITHUB_OUTPUT"
           else
@@ -73,9 +83,17 @@ jobs:
       staging_ai_run_id: ${{ steps.source.outputs.staging_ai_run_id }}
       staging_ai_run_number: ${{ steps.source.outputs.staging_ai_run_number }}
       should_deploy: ${{ steps.production_state.outputs.should_deploy }}
+      deploy_target: ${{ steps.deploy_target.outputs.deploy_target }}
     steps:
       - name: Checkout release-train orchestrator
         uses: actions/checkout@v7
+
+      - name: Resolve production backend target
+        id: deploy_target
+        run: >-
+          python3 -S scripts/production_deploy_target.py resolve
+          --config .github/production-deploy.env
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Resolve latest immutable staging accreditation
         id: source
@@ -151,15 +169,14 @@ jobs:
             echo 'should_deploy=true' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout staging-accredited commit
+      - name: Production backend target contract
         if: steps.source.outputs.found == 'true'
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ steps.accreditation.outputs.deploy_sha }}
-
-      - name: Production Render helper contract
-        if: steps.source.outputs.found == 'true'
-        run: python3 -S scripts/render_production_deploy.py --self-test
+        run: |
+          python3 -S scripts/production_deploy_target.py --self-test
+          python3 -S scripts/render_production_deploy.py --self-test
+          python3 -S scripts/oci_production_runtime.py --self-test
+          python3 -S scripts/oci_release_deploy.py --self-test
+          python3 -S scripts/oci_production_tunnel.py --self-test
 
       - name: Promotion summary
         shell: bash
@@ -175,6 +192,7 @@ jobs:
             echo '- Schedule: `08:00 Europe/Madrid; workflow_dispatch para hotfix`'
             echo '- Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`'
             echo "- Deploy needed: \`${{ steps.production_state.outputs.should_deploy || 'false' }}\`"
+            echo "- Backend target: \`${{ steps.deploy_target.outputs.deploy_target }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   cloudflare:
@@ -199,11 +217,7 @@ jobs:
       TF_VAR_worker_name: chess-studio-narrative-ai
       TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
       TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
-      TF_VAR_render_api_hostname: api.chess-studio.shadowops.dpdns.org
-      TF_VAR_render_api_cname_target: chess-study-backend.onrender.com
       CF_DNS_ZONE_NAME: shadowops.dpdns.org
-      RENDER_API_HOSTNAME: api.chess-studio.shadowops.dpdns.org
-      RENDER_API_CNAME_TARGET: chess-study-backend.onrender.com
       WORKER_NAME: chess-studio-narrative-ai
       CUSTOM_DOMAIN: ai.shadowops.dpdns.org
     steps:
@@ -216,11 +230,6 @@ jobs:
         id: provenance
         shell: bash
         run: echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
-
-      - name: Preflight Render production safety before Cloudflare
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: python3 ../../scripts/render_production_deploy.py --check-only
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -243,26 +252,6 @@ jobs:
 
       - name: Terraform init
         run: terraform init
-
-      - name: Resolve managed DNS zone
-        id: dns_zone
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          zone_body="$RUNNER_TEMP/cf-zone.json"
-          zone_status="$(curl --silent --show-error --output "$zone_body" --write-out '%{http_code}' --get \
-            --data-urlencode "name=$CF_DNS_ZONE_NAME" \
-            --data-urlencode "account.id=$CLOUDFLARE_ACCOUNT_ID" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H 'Accept: application/json' \
-            'https://api.cloudflare.com/client/v4/zones')"
-          [[ "$zone_status" == 200 ]] || { cat "$zone_body" >&2; exit 1; }
-          zone_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("result") or []; len(rows)==1 or sys.exit(f"Se esperaba una única zona activa: {rows}"); print(rows[0]["id"])' "$zone_body")"
-          echo "TF_VAR_cloudflare_zone_id=$zone_id" >> "$GITHUB_ENV"
-          echo "zone_id=$zone_id" >> "$GITHUB_OUTPUT"
 
       - name: Terraform validate
         run: terraform validate
@@ -333,31 +322,6 @@ jobs:
         if: steps.cf_state.outputs.custom_domain_exists == 'true'
         run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
 
-      - name: Probe managed Render API CNAME
-        id: dns_state
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          body="$RUNNER_TEMP/cf-dns-api.json"
-          status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' --get \
-            --data-urlencode "name=$RENDER_API_HOSTNAME" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' \
-            "https://api.cloudflare.com/client/v4/zones/$TF_VAR_cloudflare_zone_id/dns_records")"
-          [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
-          api_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text()).get("result") or []; host=sys.argv[2]; len(rows)<=1 or sys.exit(f"Más de un DNS record para {host}: {rows}"); row=rows[0] if rows else None; row is None or row.get("type")=="CNAME" or sys.exit(f"{host} no es CNAME: {row}"); print(row.get("id") if row else "")' "$body" "$RENDER_API_HOSTNAME")"
-          if [[ -n "$api_id" ]]; then
-            echo 'api_exists=true' >> "$GITHUB_OUTPUT"
-            echo "api_id=$api_id" >> "$GITHUB_OUTPUT"
-          else
-            echo 'api_exists=false' >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Import existing Render API CNAME
-        if: steps.dns_state.outputs.api_exists == 'true'
-        run: terraform import cloudflare_dns_record.render_api "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.api_id }}"
-
       - name: Terraform plan
         run: terraform plan -out=tfplan
 
@@ -423,29 +387,70 @@ jobs:
           python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
 
   backend:
-    name: Production · Render backend
-    needs: cloudflare
+    name: Production · backend target
+    needs: [gate, cloudflare]
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     outputs:
       deploy_sha: ${{ steps.provenance.outputs.deploy_sha }}
+      deploy_target: ${{ steps.provenance.outputs.deploy_target }}
     env:
       DEPLOY_SHA: ${{ needs.cloudflare.outputs.deploy_sha }}
+      DEPLOY_TARGET: ${{ needs.gate.outputs.deploy_target }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
     steps:
-      - name: Checkout staging-accredited commit
+      - name: Checkout production orchestrator
         uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Preserve accredited SHA
+      - name: Preserve accredited SHA and deployment target
         id: provenance
         shell: bash
-        run: echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          case "$DEPLOY_TARGET" in render|oci) ;; *) echo "::error::Unsupported DEPLOY_TARGET=$DEPLOY_TARGET"; exit 64 ;; esac
+          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=$DEPLOY_TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Validate backend deployment helpers
+        run: |
+          python3 -S scripts/production_deploy_target.py --self-test
+          python3 -S scripts/render_production_deploy.py --self-test
+          python3 -S scripts/oci_production_runtime.py --self-test
+          python3 -S scripts/oci_release_deploy.py --self-test
+          python3 -S scripts/oci_production_tunnel.py --self-test
 
       - name: Deploy exact backend commit to Render production
-        id: render_deploy
+        if: env.DEPLOY_TARGET == 'render'
         run: python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"
+
+      - name: Route production API to Render
+        if: env.DEPLOY_TARGET == 'render'
+        run: python3 scripts/oci_production_tunnel.py render --sha "$DEPLOY_SHA"
+
+      - name: Restore OCI SDK for production target
+        if: env.DEPLOY_TARGET == 'oci'
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Ensure isolated OCI production runtime snapshot
+        if: env.DEPLOY_TARGET == 'oci'
+        run: |
+          python3 scripts/oci_production_runtime.py bootstrap
+          python3 scripts/oci_production_runtime.py sync-current
+
+      - name: Deploy exact backend commit to OCI production
+        if: env.DEPLOY_TARGET == 'oci'
+        run: python3 scripts/oci_release_deploy.py deploy --target production --repo-ref "$DEPLOY_SHA"
+
+      - name: Route production API to OCI
+        if: env.DEPLOY_TARGET == 'oci'
+        run: python3 scripts/oci_production_tunnel.py activate --sha "$DEPLOY_SHA"
 
       - name: Verify production backend readiness and build identity
         shell: bash
@@ -473,10 +478,10 @@ jobs:
           raise SystemExit(0 if ok else 1)
           PY
             then gate_ok=true; break; fi
-            echo "Production backend aún no acredita Mongo ready + $DEPLOY_SHA (intento $attempt/60)"
+            echo "Production backend target=$DEPLOY_TARGET aún no acredita Mongo ready + $DEPLOY_SHA (intento $attempt/60)"
             sleep 5
           done
-          [[ "$gate_ok" == true ]] || { echo '::error::Production backend no acreditó SHA exacto'; exit 1; }
+          [[ "$gate_ok" == true ]] || { echo "::error::Production backend target=$DEPLOY_TARGET no acreditó SHA exacto"; exit 1; }
 
   pages:
     name: Production · Cloudflare Pages
@@ -485,6 +490,7 @@ jobs:
     timeout-minutes: 25
     env:
       DEPLOY_SHA: ${{ needs.backend.outputs.deploy_sha }}
+      DEPLOY_TARGET: ${{ needs.backend.outputs.deploy_target }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PAGES_ORIGIN: https://chess-studio-production.pages.dev
@@ -607,8 +613,8 @@ jobs:
       - name: Write immutable production promotion record
         shell: bash
         run: |
-          printf '{"event":"%s","promotion_run_id":%s,"schema":1,"sha":"%s"}\n' \
-            "$GITHUB_EVENT_NAME" "$GITHUB_RUN_ID" "$DEPLOY_SHA" \
+          printf '{"event":"%s","promotion_run_id":%s,"schema":1,"sha":"%s","target":"%s"}\n' \
+            "$GITHUB_EVENT_NAME" "$GITHUB_RUN_ID" "$DEPLOY_SHA" "$DEPLOY_TARGET" \
             > "$RUNNER_TEMP/production-promotion-record.json"
 
       - name: Upload immutable production promotion record
@@ -626,7 +632,7 @@ jobs:
             echo '### Producción promocionada desde staging'
             echo "- SHA: \`$DEPLOY_SHA\`"
             echo '- Workers AI: `OK`'
-            echo '- Render backend: `Mongo ready + SHA exacto`'
+            echo "- Backend: \`$DEPLOY_TARGET · Mongo ready + SHA exacto\`"
             echo '- Cloudflare Pages: `origin verificado + custom domain + SHA exacto`'
             echo '- Rollback provenance: `production-promotion-record`'
           } >> "$GITHUB_STEP_SUMMARY"

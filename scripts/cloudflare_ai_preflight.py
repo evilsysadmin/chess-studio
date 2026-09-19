@@ -228,10 +228,19 @@ def static_check() -> list[str]:
         ("newer_accredited_run", "promotion supersede decision is accreditation-based"),
         ("Production · Cloudflare Worker", "promotion Worker stage"),
         ("Supersede stale production promotion before first mutation", "promotion final accreditation queue guard"),
-        ("Production · Render backend", "promotion Render stage"),
-        ("needs: cloudflare", "Render waits for Worker"),
+        ("Production · backend target", "promotion backend target stage"),
+        ("needs: [gate, cloudflare]", "backend waits for gate + Worker"),
+        ("production_deploy_target.py resolve", "versioned production target resolver"),
+        ("DEPLOY_TARGET: ${{ needs.gate.outputs.deploy_target }}", "backend receives resolved target"),
+        ("if: env.DEPLOY_TARGET == 'render'", "Render target branch"),
         ('python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"', "Render exact commit deploy"),
-        ("Verify production backend readiness and build identity", "Render live identity gate"),
+        ('python3 scripts/oci_production_tunnel.py render --sha "$DEPLOY_SHA"', "Render route activation"),
+        ("if: env.DEPLOY_TARGET == 'oci'", "OCI target branch"),
+        ("python3 scripts/oci_production_runtime.py bootstrap", "OCI production runtime bootstrap"),
+        ("python3 scripts/oci_production_runtime.py sync-current", "OCI production runtime sync"),
+        ('oci_release_deploy.py deploy --target production --repo-ref "$DEPLOY_SHA"', "OCI exact commit deploy"),
+        ('oci_production_tunnel.py activate --sha "$DEPLOY_SHA"', "OCI route activation"),
+        ("Verify production backend readiness and build identity", "target-aware backend live identity gate"),
         ("Production · Cloudflare Pages", "promotion frontend stage"),
         ("needs: backend", "Pages waits for backend"),
         ('ref: ${{ env.DEPLOY_SHA }}', "promotion checkouts exact SHA"),
@@ -311,6 +320,8 @@ def static_check() -> list[str]:
         require(pages_helper, needle, label, errors)
     if 'resource "cloudflare_dns_record" "github_pages"' in tf_main:
         errors.append("terraform: frontend DNS no debe seguir ligado a GitHub Pages")
+    if 'resource "cloudflare_dns_record" "render_api"' in tf_main:
+        errors.append("terraform: production API DNS must be owned by the target-aware cutover helper")
     if 'evilsysadmin.github.io' in promotion:
         errors.append("promotion: referencia obsoleta a GitHub Pages")
 
@@ -352,6 +363,7 @@ def static_check() -> list[str]:
         ("El rollback no acepta un wrangler.toml que administre rutas/domains", "rollback refuses Worker route ownership"),
         ("Rollback · Render backend", "rollback Render stage"),
         ('render_production_deploy.py --sha "$DEPLOY_SHA"', "rollback exact Render SHA"),
+        ('oci_production_tunnel.py render --sha "$DEPLOY_SHA"', "rollback restores Render API route"),
         ("Rollback · Cloudflare Pages", "rollback frontend stage"),
         ('path: rollback-source', "rollback builds exact historical source"),
         ('VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}', "rollback frontend exact SHA"),
