@@ -428,6 +428,78 @@ def _deployment_rollout_state(payload: dict) -> tuple[int, int, int, int, int, i
     )
 
 
+def _deployment_contract_ok(payload: dict) -> bool:
+    spec = payload.get("spec") or {}
+    if int(spec.get("replicas") or 0) != 1:
+        return False
+    if str((spec.get("strategy") or {}).get("type") or "") != "Recreate":
+        return False
+
+    selector = (spec.get("selector") or {}).get("matchLabels") or {}
+    required_selector = {
+        "app.kubernetes.io/name": "chess-studio-backend",
+        "chess-studio.shadowops/track": "staging2",
+    }
+    if not all(str(selector.get(key) or "") == value for key, value in required_selector.items()):
+        return False
+
+    template = spec.get("template") or {}
+    template_meta = template.get("metadata") or {}
+    labels = template_meta.get("labels") or {}
+    if not all(str(labels.get(key) or "") == value for key, value in required_selector.items()):
+        return False
+
+    pod_spec = template.get("spec") or {}
+    if pod_spec.get("automountServiceAccountToken") is not False:
+        return False
+    seccomp = (pod_spec.get("securityContext") or {}).get("seccompProfile") or {}
+    if str(seccomp.get("type") or "") != "RuntimeDefault":
+        return False
+
+    containers = pod_spec.get("containers") or []
+    if len(containers) != 1 or not isinstance(containers[0], dict):
+        return False
+    container = containers[0]
+    if str(container.get("name") or "") != "backend":
+        return False
+
+    security = container.get("securityContext") or {}
+    if security.get("allowPrivilegeEscalation") is not False:
+        return False
+    if security.get("runAsNonRoot") is not True:
+        return False
+    if int(security.get("runAsUser") or 0) != 10001:
+        return False
+    if int(security.get("runAsGroup") or 0) != 10001:
+        return False
+    dropped = ((security.get("capabilities") or {}).get("drop") or [])
+    if "ALL" not in dropped:
+        return False
+
+    resources = container.get("resources") or {}
+    requests = resources.get("requests") or {}
+    limits = resources.get("limits") or {}
+    if str(requests.get("cpu") or "") != "100m" or str(requests.get("memory") or "") != "256Mi":
+        return False
+    if str(limits.get("cpu") or "") != "600m" or str(limits.get("memory") or "") != "768Mi":
+        return False
+
+    ports = container.get("ports") or []
+    http_ports = [
+        port for port in ports
+        if isinstance(port, dict)
+        and port.get("name") == "http"
+        and int(port.get("containerPort") or 0) == 4000
+        and str(port.get("protocol") or "TCP") == "TCP"
+    ]
+    return len(http_ports) == 1
+
+
+def _require_deployment_contract(payload: dict) -> None:
+    if not _deployment_contract_ok(payload):
+        raise SystemExit("staging2 live Deployment contract drifted")
+
+
 def _image_from_payload(payload: dict) -> str:
     containers = (
         ((((payload.get("spec") or {}).get("template") or {}).get("spec") or {}).get("containers"))
@@ -683,6 +755,7 @@ def _restore(previous_sha: str, previous_image_ref: str = "") -> None:
         _ensure_namespace_and_secret(runtime_digest)
         _apply_text(_render(previous_sha, previous_image, runtime_digest))
         _rollout_wait()
+        _require_deployment_contract(_deployment_payload())
         _attest(previous_sha)
         _write_state(previous_sha)
         print(
@@ -712,6 +785,7 @@ def deploy(sha: str) -> None:
         _ensure_namespace_and_secret(runtime_digest)
         _apply_text(_render(sha, pinned_image, runtime_digest))
         _rollout_wait()
+        _require_deployment_contract(_deployment_payload())
         _attest(sha)
         post_mem, post_disk, post_load = _resource_gate(MIN_POST_MEM, MIN_POST_DISK, "ready")
         _write_state(sha)
@@ -798,10 +872,12 @@ def status() -> None:
     runtime_digest = _runtime_digest_from_payload(payload)
     expected_runtime_digest = _runtime_env_sha256()
     runtime_contract = "match" if runtime_digest == expected_runtime_digest else "drift"
+    deployment_contract_ok = _deployment_contract_ok(payload)
+    deployment_contract = "match" if deployment_contract_ok else "drift"
     desired, updated, ready, available, generation, observed_generation = (
         _deployment_rollout_state(payload)
     )
-    if _status_needs_diagnostics(
+    if (not deployment_contract_ok) or _status_needs_diagnostics(
         desired,
         updated,
         ready,
@@ -817,7 +893,7 @@ def status() -> None:
         print(
             "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded "
             f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
-            f"runtime_contract={runtime_contract} "
+            f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
             f"desired={desired} updated={updated} ready={ready} available={available} "
             f"generation={generation} observed_generation={observed_generation} "
             f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -848,7 +924,7 @@ def status() -> None:
     print(
         "OCI_K3S_STAGING2_STATUS_OK present=true runtime=attested "
         f"sha={sha} state_sha={state_sha} image_digest={image_digest} "
-        f"runtime_contract={runtime_contract} "
+        f"runtime_contract={runtime_contract} deployment_contract={deployment_contract} "
         f"desired={desired} updated={updated} ready={ready} available={available} "
         f"generation={generation} observed_generation={observed_generation} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f} "
@@ -1001,6 +1077,70 @@ def self_test(template_path: Path) -> None:
         },
     }
     assert _deployment_rollout_state(rollout_payload) == (1, 1, 1, 1, 7, 7)
+
+    deployment_contract_payload = {
+        "spec": {
+            "replicas": 1,
+            "strategy": {"type": "Recreate"},
+            "selector": {
+                "matchLabels": {
+                    "app.kubernetes.io/name": "chess-studio-backend",
+                    "chess-studio.shadowops/track": "staging2",
+                }
+            },
+            "template": {
+                "metadata": {
+                    "labels": {
+                        "app.kubernetes.io/name": "chess-studio-backend",
+                        "chess-studio.shadowops/track": "staging2",
+                    }
+                },
+                "spec": {
+                    "automountServiceAccountToken": False,
+                    "securityContext": {"seccompProfile": {"type": "RuntimeDefault"}},
+                    "containers": [
+                        {
+                            "name": "backend",
+                            "securityContext": {
+                                "allowPrivilegeEscalation": False,
+                                "runAsNonRoot": True,
+                                "runAsUser": 10001,
+                                "runAsGroup": 10001,
+                                "capabilities": {"drop": ["ALL"]},
+                            },
+                            "resources": {
+                                "requests": {"cpu": "100m", "memory": "256Mi"},
+                                "limits": {"cpu": "600m", "memory": "768Mi"},
+                            },
+                            "ports": [
+                                {
+                                    "name": "http",
+                                    "containerPort": 4000,
+                                    "protocol": "TCP",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            },
+        }
+    }
+    assert _deployment_contract_ok(deployment_contract_payload)
+    for mutate in ("replicas", "strategy", "uid", "privilege", "memory", "token"):
+        bad_contract = json.loads(json.dumps(deployment_contract_payload))
+        if mutate == "replicas":
+            bad_contract["spec"]["replicas"] = 2
+        elif mutate == "strategy":
+            bad_contract["spec"]["strategy"]["type"] = "RollingUpdate"
+        elif mutate == "uid":
+            bad_contract["spec"]["template"]["spec"]["containers"][0]["securityContext"]["runAsUser"] = 0
+        elif mutate == "privilege":
+            bad_contract["spec"]["template"]["spec"]["containers"][0]["securityContext"]["allowPrivilegeEscalation"] = True
+        elif mutate == "memory":
+            bad_contract["spec"]["template"]["spec"]["containers"][0]["resources"]["limits"]["memory"] = "2Gi"
+        else:
+            bad_contract["spec"]["template"]["spec"]["automountServiceAccountToken"] = True
+        assert not _deployment_contract_ok(bad_contract), mutate
     assert not _status_needs_diagnostics(
         1, 1, 1, 1, 7, 7, sample_sha, sample_sha, sample_digest_ref,
         sample_runtime_digest, sample_runtime_digest
@@ -1063,6 +1203,8 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_STATUS_RUNTIME_FAILED" in source
     assert "runtime=attested" in source
     assert "runtime_contract=" in source
+    assert "deployment_contract=" in source
+    assert "staging2 live Deployment contract drifted" in source
     assert "chess-studio.shadowops/runtime-sha256" in source
     assert "staging2 runtime env changed during Secret materialization" in source
     assert "capability_sha256=" in source
@@ -1082,6 +1224,7 @@ def self_test(template_path: Path) -> None:
     assert 'image_source = "registry"' in restore_source
     assert "runtime_digest = _runtime_env_sha256()" in restore_source
     assert "_ensure_namespace_and_secret(runtime_digest)" in restore_source
+    assert "_require_deployment_contract(_deployment_payload())" in restore_source
     assert restore_source.index("_pinned_digest_from_image_ref(previous_image_ref)") < restore_source.index(
         "_preflight_image(previous_sha)"
     )
@@ -1097,6 +1240,7 @@ def self_test(template_path: Path) -> None:
     assert "runtime_digest = _runtime_env_sha256()" in deploy_source
     assert "_ensure_namespace_and_secret(runtime_digest)" in deploy_source
     assert "_render(sha, pinned_image, runtime_digest)" in deploy_source
+    assert "_require_deployment_contract(_deployment_payload())" in deploy_source
     assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
         "_ensure_namespace_and_secret()"
