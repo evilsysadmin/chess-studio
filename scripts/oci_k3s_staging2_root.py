@@ -132,10 +132,15 @@ def _verify_host_contract() -> None:
         raise SystemExit("K3s must be active before staging2 deployment")
 
 
-def _render(sha: str, pinned_image: str = "", runtime_digest: str = "") -> str:
+def _render(
+    sha: str,
+    pinned_image: str = "",
+    runtime_digest: str = "",
+    template_path: Path = TEMPLATE,
+) -> str:
     if not SHA_RE.fullmatch(sha):
         raise SystemExit("staging2 deploy requires an immutable 40-char lowercase SHA")
-    text = TEMPLATE.read_text(encoding="utf-8")
+    text = template_path.read_text(encoding="utf-8")
     if text.count("__SHA__") != 3:
         raise SystemExit("staging2 manifest template placeholder count drifted")
     rendered = text.replace("__SHA__", sha)
@@ -1094,20 +1099,22 @@ def self_test(template_path: Path) -> None:
     }
     assert _validate_image_payload(sample_sha, sample_payload) == f"sha256:{'a' * 64}"
     sample_runtime_digest = "b" * 64
-    rendered = _render(sample_sha, sample_digest_ref, sample_runtime_digest)
+    rendered = _render(
+        sample_sha, sample_digest_ref, sample_runtime_digest, template_path
+    )
     assert f"image: {sample_digest_ref}" in rendered
     assert f'chess-studio.shadowops/runtime-sha256: "{sample_runtime_digest}"' in rendered
     assert f"image: {sample_image}" not in rendered
     assert _pinned_digest_from_image_ref(sample_digest_ref) == f"sha256:{'a' * 64}"
     assert not _pinned_digest_from_image_ref(sample_image)
     try:
-        _render(sample_sha, sample_image, sample_runtime_digest)
+        _render(sample_sha, sample_image, sample_runtime_digest, template_path)
     except SystemExit:
         pass
     else:
         raise AssertionError("tagged image must not satisfy digest-pinned render")
     try:
-        _render(sample_sha, sample_digest_ref, "short")
+        _render(sample_sha, sample_digest_ref, "short", template_path)
     except SystemExit:
         pass
     else:
@@ -1337,7 +1344,10 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_STATUS_DEGRADED" in source
     assert "staging2 status degraded: workload contract mismatch" in source
     assert "staging2 status degraded: stale state marker without Deployment" in source
-    assert "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded" not in source
+    forbidden_degraded_ok = (
+        "OCI_K3S_STAGING2_STATUS_OK present=true " + "runtime=degraded"
+    )
+    assert forbidden_degraded_ok not in source
     assert "runtime_contract=" in source
     assert "deployment_contract=" in source
     assert "service_contract=" in source
