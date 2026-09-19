@@ -644,15 +644,24 @@ def _write_state(sha: str) -> None:
             pass
 
 
-def _restore(previous_sha: str) -> None:
+def _restore(previous_sha: str, previous_image_ref: str = "") -> None:
     if previous_sha:
-        previous_image = _preflight_image(previous_sha)
+        if _pinned_digest_from_image_ref(previous_image_ref):
+            previous_image = previous_image_ref
+            image_source = "deployment"
+        else:
+            previous_image = _preflight_image(previous_sha)
+            image_source = "registry"
         _ensure_namespace_and_secret()
         _apply_text(_render(previous_sha, previous_image))
         _rollout_wait()
         _attest(previous_sha)
         _write_state(previous_sha)
-        print(f"OCI_K3S_STAGING2_RESTORED sha={previous_sha}", flush=True)
+        print(
+            "OCI_K3S_STAGING2_RESTORED "
+            f"sha={previous_sha} image_source={image_source}",
+            flush=True,
+        )
         return
     _delete_namespace_and_verify_absent()
     try:
@@ -666,7 +675,9 @@ def deploy(sha: str) -> None:
     _verify_host_contract()
     _verify_namespace_contract_if_present()
     pre_mem, pre_disk, pre_load = _resource_gate(MIN_PRE_MEM, MIN_PRE_DISK, "pre-deploy")
-    previous_sha = _release_from_payload(_deployment_payload())
+    previous_payload = _deployment_payload()
+    previous_sha = _release_from_payload(previous_payload)
+    previous_image_ref = _image_from_payload(previous_payload) if previous_sha else ""
     pinned_image = _preflight_image(sha)
     try:
         _ensure_namespace_and_secret()
@@ -691,7 +702,7 @@ def deploy(sha: str) -> None:
                 flush=True,
             )
         try:
-            _restore(previous_sha)
+            _restore(previous_sha, previous_image_ref)
         except BaseException as rollback_exc:
             print(f"OCI_K3S_STAGING2_ROLLBACK_FAILED detail={rollback_exc}", file=sys.stderr)
         raise
@@ -986,18 +997,28 @@ def self_test(template_path: Path) -> None:
     )[0]
     assert "_attest(sha)" in status_source
     assert status_source.index("_status_needs_diagnostics") < status_source.index("_attest(sha)")
-    restore_source = source.split("\ndef _restore(previous_sha: str) -> None:", 1)[1].split(
+    restore_source = source.split("\ndef _restore(previous_sha: str, previous_image_ref: str = \"\") -> None:", 1)[1].split(
         "\ndef deploy(sha: str) -> None:", 1
     )[0]
     rollback_source = source.split("\ndef rollback() -> None:", 1)[1].split(
         "\ndef self_test", 1
     )[0]
     assert "_delete_namespace_and_verify_absent()" in restore_source
+    assert 'image_source = "deployment"' in restore_source
+    assert 'image_source = "registry"' in restore_source
+    assert restore_source.index("_pinned_digest_from_image_ref(previous_image_ref)") < restore_source.index(
+        "_preflight_image(previous_sha)"
+    )
     assert "_delete_namespace_and_verify_absent()" in rollback_source
     assert "check=False" not in rollback_source
     deploy_source = source.split("\ndef deploy(sha: str) -> None:", 1)[1].split(
         "\ndef _status_needs_diagnostics", 1
     )[0]
+    assert deploy_source.index("previous_payload = _deployment_payload()") < deploy_source.index(
+        "_preflight_image(sha)"
+    )
+    assert "previous_image_ref = _image_from_payload(previous_payload)" in deploy_source
+    assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
         "_ensure_namespace_and_secret()"
     ), "image preflight must fail before workload mutation"
