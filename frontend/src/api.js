@@ -43,11 +43,20 @@ export const api = {
     return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
-  analyzePosition(fen, level, { signal } = {}, ghostStyle = null) {
+  analyzePosition(fen, level, { signal } = {}, ghostStyle = null, candidateLimit = null) {
+    const rawCandidateLimit = candidateLimit == null ? null : Number(candidateLimit);
+    const requestedCandidateLimit = rawCandidateLimit != null && Number.isFinite(rawCandidateLimit)
+      ? Math.max(2, Math.min(5, Math.round(rawCandidateLimit)))
+      : (ghostStyle ? 5 : null);
     return requestJson(`${BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ fen, level, ...(ghostStyle ? { ghostStyle, candidateLimit: 5 } : {}) }),
+      body: JSON.stringify({
+        fen,
+        level,
+        ...(ghostStyle ? { ghostStyle } : {}),
+        ...(requestedCandidateLimit ? { candidateLimit: requestedCandidateLimit } : {}),
+      }),
       timeoutMs: 8000,
       signal,
     });

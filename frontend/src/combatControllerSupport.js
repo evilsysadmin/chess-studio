@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
-import { BASE_STATS, derivedLevel } from './combat.js';
-import { chooseCombatCandidate } from './combatExpectedUtility.js';
+import { BASE_STATS, capturedSquareFor, derivedLevel, hitChance, isForcedCombatCapture } from './combat.js';
+import { chooseCombatCandidate, combatCandidateUtility } from './combatExpectedUtility.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
 export const STATUS_LABELS = Object.freeze({
@@ -82,24 +82,113 @@ export function emergencyCombatCpuSuggestion(fen) {
   }
 }
 
-// Transporting a shortlist is deliberately behavior-neutral. Combat only
-// re-ranks it after a later policy stage has attached real Combat facts and
-// marked candidates as ready. Until then the established primary engine move
-// remains authoritative.
-export function selectCombatAwareRemoteSuggestion(remote) {
+function sameCombatMove(left, right) {
+  if (!left || !right) return false;
+  return left.from === right.from
+    && left.to === right.to
+    && String(left.promotion || 'q') === String(right.promotion || 'q');
+}
+
+function focusStreakFor(focus, attackerColor, defenderId) {
+  const current = focus?.[attackerColor];
+  if (!current || current.targetId !== defenderId) return 0;
+  return Math.max(0, Number(current.streak) || 0);
+}
+
+// Adjunta sólo hechos que Combat conoce de verdad en el momento de elegir:
+// probabilidad de que una captura conecte y veteranía persistente del objetivo.
+// Si FEN/registro no permiten demostrar esos datos, la candidata permanece
+// sin marcar y jamás puede desplazar la jugada principal del motor.
+export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
-  if (!candidates?.length || !candidates.some((candidate) => candidate?.combatReady === true)) return remote;
-  return chooseCombatCandidate(candidates);
+  if (!candidates?.length || !registry || typeof registry !== 'object' || Array.isArray(registry)) return remote;
+
+  let chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return remote;
+  }
+
+  const enriched = candidates.map((candidate) => {
+    if (!candidate?.from || !candidate?.to || candidate.isLegal === false) return candidate;
+    const promotion = candidate.promotion == null ? null : String(candidate.promotion).toLowerCase();
+    const move = chess.moves({ square: candidate.from, verbose: true }).find((legalMove) => {
+      if (legalMove.to !== candidate.to) return false;
+      if (!legalMove.promotion) return promotion == null;
+      return (promotion || 'q') === legalMove.promotion;
+    });
+    if (!move) return candidate;
+
+    const attacker = registry[move.from];
+    if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return candidate;
+
+    if (!move.captured) {
+      return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
+    }
+
+    const defender = registry[capturedSquareFor(move)];
+    if (!defender || defender.color === attacker.color || defender.type !== move.captured) return candidate;
+
+    const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
+    const chance = forcedHit
+      ? 1
+      : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id));
+
+    return {
+      ...candidate,
+      combatReady: true,
+      hitChance: chance,
+      enemyValue: BASE_STATS[defender.type]?.strength || 0,
+      enemyPersistentValue: defender.identityId ? Math.max(0, derivedLevel(defender) - 1) : 0,
+    };
+  });
+
+  return { ...remote, candidates: enriched };
+}
+
+// La shortlist de candidatos es deliberadamente más barata que la búsqueda
+// principal. Por eso no permitimos que su orden ajedrecístico superficial
+// sustituya por sí solo a la jugada profunda. Sólo hay override cuando la
+// corrección específica de Combat mejora de verdad la utilidad esperada.
+export function selectCombatAwareRemoteSuggestion(remote) {
+  const candidates = Array.isArray(remote?.candidates)
+    ? remote.candidates.filter((candidate) => candidate?.combatReady === true)
+    : null;
+  if (!candidates?.length) return remote;
+
+  const primary = candidates.find((candidate) => sameCombatMove(candidate, remote));
+  if (!primary) return remote;
+
+  const chosen = chooseCombatCandidate(candidates);
+  if (!chosen) return remote;
+  if (sameCombatMove(chosen, primary)) return chosen;
+  if (primary.isMate === true) return remote;
+  if (chosen.isMate === true) return chosen;
+
+  const primaryUtility = combatCandidateUtility(primary);
+  const chosenUtility = combatCandidateUtility(chosen);
+  if (!Number.isFinite(primaryUtility) || !Number.isFinite(chosenUtility)) return remote;
+
+  const primaryChess = Number(primary.chessScoreCp);
+  const chosenChess = Number(chosen.chessScoreCp);
+  if (!Number.isFinite(primaryChess) || !Number.isFinite(chosenChess)) return remote;
+
+  const primaryCombatAdjustment = primaryUtility - primaryChess;
+  const chosenCombatAdjustment = chosenUtility - chosenChess;
+  if (chosenCombatAdjustment <= primaryCombatAdjustment + 1e-9) return remote;
+  return chosenUtility > primaryUtility + 1e-9 ? chosen : remote;
 }
 
 // Política de disponibilidad del turno CPU: el análisis remoto mejora la
 // calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
 // Este helper hace el fail-open comprobable con tests sin montar React.
-export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition }) {
+export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = {} }) {
   let remoteError = null;
   try {
     const response = await analyzePosition(fen, difficulty);
-    const remote = selectCombatAwareRemoteSuggestion(response);
+    const measured = annotateCombatCandidates(fen, registry, response, focus);
+    const remote = selectCombatAwareRemoteSuggestion(measured);
     if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
     return { suggestion: remote, source: 'remote', remoteError: null };
   } catch (error) {
