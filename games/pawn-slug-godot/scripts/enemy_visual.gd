@@ -1,6 +1,7 @@
 extends Node2D
 
 const BODY_FALLBACK_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
+const BODY_V2_ATLAS_PATH := "res://art/enemies-v2/pawn_slug_enemy_godot_strict_8x117_128_v2.png"
 const BODY_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
@@ -14,6 +15,19 @@ const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen
 const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.27, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
 const ENEMY_VISUAL_SCALE := 1.18
+const V2_CELL := 128
+const V2_FOOT_Y := 116.0
+const V2_PIVOT_X := 64.0
+const V2_HEIGHT_SCALE := 1.08
+const V2_ACTION_FPS := {
+    "idle": 6.0, "run": 12.0, "jump": 10.0, "crouch": 6.0, "hurt": 20.0, "climb": 10.0, "death": 12.0,
+    "shoot": 24.0, "shoot_up": 24.0, "shoot_down": 24.0, "shoot_diag_up": 24.0, "shoot_diag_down": 24.0, "shoot_crouch": 24.0,
+}
+const V2_LOOPING := ["idle", "run", "crouch", "climb"]
+const V2_FIRE_SECONDS := 0.34
+const V2_HURT_SECONDS := 0.40
+const V2_DEATH_HOLD_SECONDS := 1.4
+const V2_DEATH_FADE_SECONDS := 0.5
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5, "scout": 8.5, "commando": 7.5, "shield": 3.6}
 const TYPE_TINT := {
     "queen": Color(1.0, 0.76, 0.78, 1.0),
@@ -31,6 +45,7 @@ const WEAPON_POSE := {
 }
 
 static var _cached_body_texture: Texture2D
+static var _cached_v2_texture: Texture2D
 static var _body_texture_loading := false
 static var _body_texture_waiters: Array = []
 
@@ -50,6 +65,13 @@ var _visual_time := 0.0
 var _bishop_shell_telegraph := 0.0
 var _bishop_suppression_telegraph := 0.0
 var _using_remote_body := false
+var _using_v2 := false
+var _v2_type_index := 0
+var _v2_scale := 1.0
+var _v2_action := ""
+var _v2_action_time := 0.0
+var _v2_override := ""
+var _v2_override_remaining := 0.0
 var _idle_pose := ""
 var _surprise_remaining := 0.0
 
@@ -107,6 +129,10 @@ func _apply_idle_pose() -> void:
         return
     _facing_root.position = Vector2.ZERO
     _facing_root.rotation = 0.0
+    if _using_v2:
+        if _idle_pose == "lean":
+            _facing_root.rotation = -0.07
+        return
     if _weapon_root != null:
         var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
         _weapon_root.position = pose["position"]
@@ -141,15 +167,43 @@ func play_fire() -> void:
     if dead or _weapon_root == null:
         return
     _fire_flash = 0.06
+    if _using_v2:
+        return  # recoil is baked into the shoot frames
     var base_position := _weapon_root.position
     var tween := create_tween()
     tween.tween_property(_weapon_root, "position", base_position + Vector2(-4.0, 0.0), 0.035)
     tween.tween_property(_weapon_root, "position", base_position, 0.075)
 
+func play_fire_direction(direction: Vector2) -> void:
+    if dead:
+        return
+    if not _using_v2:
+        play_fire()
+        return
+    var facing_sign := -1.0 if _facing_root != null and _facing_root.scale.x < 0.0 else 1.0
+    var local := Vector2(direction.x * facing_sign, direction.y)
+    if local.length_squared() <= 0.001:
+        local = Vector2.RIGHT
+    var angle := absf(rad_to_deg(atan2(local.y, absf(local.x))))
+    var action := "shoot"
+    if _idle_pose == "sit" or _idle_pose == "rest":
+        action = "shoot_crouch"
+    elif angle >= 67.5:
+        action = "shoot_up" if local.y < 0.0 else "shoot_down"
+    elif angle >= 22.5:
+        action = "shoot_diag_up" if local.y < 0.0 else "shoot_diag_down"
+    _v2_override = action
+    _v2_override_remaining = V2_FIRE_SECONDS
+    _v2_action = ""
+    play_fire()
+
 func muzzle_global_position() -> Vector2:
     return _muzzle.global_position if _muzzle != null else global_position + Vector2(36.0, -42.0)
 
 func _process(delta: float) -> void:
+    if _using_v2:
+        _process_v2(delta)
+        return
     if dead:
         return
     _visual_time += delta
@@ -168,6 +222,59 @@ func _process(delta: float) -> void:
         _frame = 0
         _frame_time = 0.0
     _apply_body_frame()
+
+func _v2_desired_action() -> String:
+    if dead:
+        return "death"
+    if _v2_override_remaining > 0.0 and not _v2_override.is_empty():
+        return _v2_override
+    if _idle_pose == "sit" or _idle_pose == "rest":
+        return "crouch"
+    return "run" if moving else "idle"
+
+func _process_v2(delta: float) -> void:
+    _visual_time += delta
+    _fire_flash = maxf(0.0, _fire_flash - delta)
+    _surprise_remaining = maxf(0.0, _surprise_remaining - delta)
+    _v2_override_remaining = maxf(0.0, _v2_override_remaining - delta)
+    if _muzzle_flash != null:
+        _muzzle_flash.visible = _fire_flash > 0.0 and not dead
+    var action := _v2_desired_action()
+    if action != _v2_action:
+        _v2_action = action
+        _v2_action_time = 0.0
+    _v2_action_time += delta
+    var fps := float(V2_ACTION_FPS.get(action, 8.0))
+    if action == "run":
+        fps *= movement_speed_scale
+    var index := int(floor(_v2_action_time * fps))
+    if V2_LOOPING.has(action):
+        _frame = index % EnemyGripsV2.FRAMES
+    else:
+        _frame = mini(index, EnemyGripsV2.FRAMES - 1)
+    _apply_v2_frame()
+
+func _apply_v2_frame() -> void:
+    if _body == null or not _using_v2:
+        return
+    var action := _v2_action if not _v2_action.is_empty() else "idle"
+    var action_index := EnemyGripsV2.ACTIONS.find(action)
+    if action_index < 0:
+        action_index = 0
+    var row := _v2_type_index * EnemyGripsV2.ACTIONS.size() + action_index
+    _body.region_rect = Rect2(
+        Vector2(float(_frame * V2_CELL), float(row * V2_CELL)),
+        Vector2(float(V2_CELL), float(V2_CELL)),
+    )
+    if _weapon_root == null:
+        return
+    var grip := EnemyGripsV2.lookup(_v2_type_index, action_index, _frame)
+    _weapon_root.position = Vector2(
+        (float(grip["x"]) - V2_PIVOT_X) * _v2_scale,
+        (float(grip["y"]) - V2_FOOT_Y) * _v2_scale,
+    )
+    _weapon_root.rotation = float(grip["angle"])
+    _weapon_root.visible = bool(grip["visible"])
 
 func _build_nodes() -> void:
     _facing_root = Node2D.new()
@@ -215,6 +322,8 @@ func _build_nodes() -> void:
 func _apply_type() -> void:
     if _body == null:
         return
+    if _install_v2_body():
+        return
     if enemy_type == "bishop":
         _body.visible = false
         queue_redraw()
@@ -237,8 +346,32 @@ func _apply_type() -> void:
     _body.position = Vector2(0.0, -98.0 * body_scale)
     _apply_body_frame()
 
+func _install_v2_body() -> bool:
+    var type_index := EnemyGripsV2.TYPES.find(enemy_type)
+    if type_index < 0:
+        return false
+    if _cached_v2_texture == null:
+        _cached_v2_texture = load(BODY_V2_ATLAS_PATH) as Texture2D
+    if _cached_v2_texture == null:
+        return false
+    _using_v2 = true
+    _using_remote_body = false
+    _v2_type_index = type_index
+    _v2_scale = visual_height * V2_HEIGHT_SCALE / float(EnemyGripsV2.BODY_HEIGHT[type_index])
+    _body.texture = _cached_v2_texture
+    _body.visible = true
+    _body.modulate = Color.WHITE
+    _body.scale = Vector2(_v2_scale, _v2_scale)
+    _body.position = Vector2(0.0, (V2_CELL * 0.5 - V2_FOOT_Y) * _v2_scale)
+    _v2_action = ""
+    _apply_v2_frame()
+    return true
+
 func _apply_body_frame() -> void:
     if _body == null or not _body.visible:
+        return
+    if _using_v2:
+        _apply_v2_frame()
         return
 
     if _using_remote_body:
@@ -256,7 +389,7 @@ func _apply_body_frame() -> void:
     )
 
 func _request_body_atlas() -> void:
-    if enemy_type == "bishop":
+    if _using_v2 or enemy_type == "bishop":
         return
     if _cached_body_texture != null:
         _install_remote_body_texture(_cached_body_texture)
@@ -353,6 +486,11 @@ func _apply_weapon() -> void:
             type_y_adjust = -1.0
         "shield":
             type_y_adjust = 4.0
+    if _using_v2:
+        _weapon_sprite.scale = pose["scale"] * _v2_scale
+        _muzzle.position = pose["muzzle"] * _v2_scale
+        _apply_v2_frame()
+        return
     _weapon_root.position = pose["position"] + Vector2(0.0, type_y_adjust)
     _weapon_root.rotation = float(pose["rotation"])
     _weapon_sprite.scale = pose["scale"]
@@ -361,6 +499,10 @@ func _apply_weapon() -> void:
 func _play_hurt() -> void:
     if _facing_root == null:
         return
+    if _using_v2:
+        _v2_override = "hurt"
+        _v2_override_remaining = V2_HURT_SECONDS
+        _v2_action = ""
     _facing_root.modulate = Color(1.0, 0.48, 0.42, 1.0)
     var tween := create_tween()
     tween.tween_property(_facing_root, "modulate", Color.WHITE, 0.16)
@@ -370,6 +512,13 @@ func _play_death() -> void:
     if _facing_root == null:
         return
     _muzzle_flash.visible = false
+    if _using_v2:
+        _v2_action = ""
+        _v2_action_time = 0.0
+        var v2_tween := create_tween()
+        v2_tween.tween_interval(V2_DEATH_HOLD_SECONDS)
+        v2_tween.tween_property(_facing_root, "modulate:a", 0.0, V2_DEATH_FADE_SECONDS)
+        return
     var tween := create_tween()
     tween.set_parallel(true)
     tween.tween_property(_facing_root, "rotation", deg_to_rad(76.0), 0.28)
@@ -393,7 +542,9 @@ func _draw() -> void:
             22,
             Color(1.0, 0.86, 0.28, pulse),
         )
-    if enemy_type == "bishop":
+    if _using_v2:
+        pass
+    elif enemy_type == "bishop":
         _draw_bishop()
     elif enemy_type in ["queen", "grenadier", "scout", "commando", "shield"]:
         _draw_variant_backdrop()

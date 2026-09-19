@@ -13,6 +13,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
+ENEMY_GRIPS = GODOT_ROOT / "scripts/enemy_grips_v2.gd"
+ENEMY_SMOKE = GODOT_ROOT / "tests/enemy_strict_atlas_smoke.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
 SETPIECES = GODOT_ROOT / "scripts/setpiece_visual.gd"
@@ -426,6 +428,28 @@ REQUIRED_ENEMIES = (
     '"scout"',
     '"commando"',
     '"shield"',
+    "BODY_V2_ATLAS_PATH",
+    "V2_CELL := 128",
+    "V2_FOOT_Y := 116.0",
+    "func play_fire_direction",
+    "func _process_v2",
+    "func _apply_v2_frame",
+    "func _install_v2_body",
+    "EnemyGripsV2.lookup",
+)
+REQUIRED_ENEMY_GRIPS = (
+    "class_name EnemyGripsV2",
+    "static var DATA := PackedFloat32Array",
+    "const BODY_HEIGHT",
+    "static func lookup",
+)
+REQUIRED_ENEMY_SMOKE = (
+    "SpriteFrames",
+    "AtlasTexture",
+    "AnimatedSprite2D",
+    "play_fire_direction",
+    "shoot_diag_up",
+    "FRAMES := 8",
 )
 
 
@@ -472,6 +496,8 @@ def validate() -> None:
 
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
+    validate_contract(ENEMY_GRIPS, "enemy_grips_v2.gd", REQUIRED_ENEMY_GRIPS, violations)
+    validate_contract(ENEMY_SMOKE, "enemy_strict_atlas_smoke.gd", REQUIRED_ENEMY_SMOKE, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
     validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)
     validate_contract(SETPIECES, "setpiece_visual.gd", REQUIRED_SETPIECE_VISUAL, violations)

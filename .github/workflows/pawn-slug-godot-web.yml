@@ -118,6 +118,13 @@ jobs:
             --atlas games/pawn-slug-godot/art/enemies-v2/pawn_slug_enemy_godot_strict_8x117_128_v2.png \
             --worksheet games/pawn-slug-godot/art/enemies-v2/worksheet.json \
             --grips-gd games/pawn-slug-godot/scripts/enemy_grips_v2.gd
+      - name: Godot enemy atlas + runtime smoke
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_strict_atlas_smoke.gd
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded

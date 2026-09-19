@@ -1942,7 +1942,7 @@ func _fire_bishop_shell(enemy: Dictionary) -> void:
     })
     _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     if visual != null:
-        visual.play_fire()
+        visual.play_fire_direction(direction)
 
 func _fire_bishop_suppression(enemy: Dictionary, shot_index: int) -> void:
     var lane: Dictionary = BISHOP_SUPPRESSION_LANES[shot_index % BISHOP_SUPPRESSION_LANES.size()]
@@ -1959,7 +1959,7 @@ func _fire_bishop_suppression(enemy: Dictionary, shot_index: int) -> void:
     _hostile_fire_gap_remaining = HOSTILE_FIRE_GAP
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
-        visual.play_fire()
+        visual.play_fire_direction(Vector2(direction, 0.0))
 
 func _update_boss(delta: float) -> void:
     if not boss_spawned or boss_defeated or boss.is_empty():
@@ -2042,7 +2042,7 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
         _enemy_suppression_remaining = SUPPRESSION_PUSH_SECONDS
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
-        visual.play_fire()
+        visual.play_fire_direction(base_direction)
 
 func _fire_boss(explosive: bool) -> bool:
     if boss_visual == null or player.dead or player.is_game_over:
