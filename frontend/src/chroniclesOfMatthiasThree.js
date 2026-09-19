@@ -54,6 +54,21 @@ export function chroniclesTorchTransform(x, y, side) {
   };
 }
 
+function createTorchFlameGeometry(coarsePointer) {
+  // Revolve a small hand-authored profile into a teardrop. It keeps the flame
+  // lightweight while avoiding the unmistakable triangular silhouette of a cone.
+  const profile = [
+    new THREE.Vector2(0.018, 0.00),
+    new THREE.Vector2(0.078, 0.035),
+    new THREE.Vector2(0.112, 0.12),
+    new THREE.Vector2(0.098, 0.21),
+    new THREE.Vector2(0.062, 0.31),
+    new THREE.Vector2(0.025, 0.39),
+    new THREE.Vector2(0.006, 0.44),
+  ];
+  return new THREE.LatheGeometry(profile, coarsePointer ? 8 : 12);
+}
+
 function createDungeonScene(scene, { coarsePointer = false } = {}) {
   const stone = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
@@ -175,9 +190,9 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     bracket.castShadow = true;
     // A tapered outer flame plus a small hot core reads as fire instead of a
     // glowing sphere, while keeping the same single practical light per torch.
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, coarsePointer ? 8 : 12), flameMaterial);
-    flame.scale.set(0.94 * flameScale, 1.08 * flameScale, 0.94 * flameScale);
-    flame.position.set(0.51, 0.28, 0);
+    const flame = new THREE.Mesh(createTorchFlameGeometry(coarsePointer), flameMaterial);
+    flame.scale.set(0.96 * flameScale, 1.0 * flameScale, 0.96 * flameScale);
+    flame.position.set(0.51, 0.08, 0);
     const flameCore = new THREE.Mesh(new THREE.SphereGeometry(0.068, coarsePointer ? 7 : 10, 6), flameCoreMaterial);
     flameCore.scale.set(0.9 * flameScale, 1.28 * flameScale, 0.9 * flameScale);
     flameCore.position.set(0.51, 0.18, 0);
