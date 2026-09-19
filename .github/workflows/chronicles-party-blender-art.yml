@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_chronicles_humanoid_party.py'
+      - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/refine_chronicles_party_tailoring.py'
       - 'scripts/blender/refine_chronicles_party_anatomy.py'
       - 'scripts/blender/render_chronicles_party_preview.py'
@@ -23,7 +24,7 @@ jobs:
   canonical-party:
     name: Build · Chronicles humanoid party
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
@@ -39,17 +40,26 @@ jobs:
       - name: Render deterministic review previews
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
-        run: |
-          set -euo pipefail
-          blender --background -noaudio --python scripts/blender/render_chronicles_party_preview.py -- --blend /tmp/chronicles-party/chronicles-tactics-party.blend --output-dir /tmp/chronicles-party/previews
-      - name: Render canonical Tactics dungeon look-development mock
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
           BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
         run: |
           set -euo pipefail
-          blender --background -noaudio --python scripts/blender/render_chronicles_tactics_dungeon_v3.py -- --output /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
+          blender --background -noaudio \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/render_chronicles_party_preview.py -- \
+            --blend /tmp/chronicles-party/chronicles-tactics-party.blend \
+            --output-dir /tmp/chronicles-party/previews
+      - name: Render canonical Tactics dungeon look-development mock
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '96' || '48' }}
+        run: |
+          set -euo pipefail
+          blender --background -noaudio \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/render_chronicles_tactics_dungeon_v3.py -- \
+            --output /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
       - name: Validate Chronicles humanoid visual contract
         run: |
           set -euo pipefail
