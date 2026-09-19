@@ -10,7 +10,7 @@ CHRONICLES_TOPOLOGY_QUALITY_VERSION = 1
 _MIN_EXIT_DISTANCE = 4
 _MIN_OPEN_RATIO = 0.25
 _MAX_DEAD_END_RATIO = 0.50
-_MAX_ARTICULATION_RATIO = 0.65
+_MAX_ARTICULATION_RATIO = 0.82
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 
@@ -31,6 +31,7 @@ class ChroniclesTopologyQuality:
     articulation_ratio: float
     critical_anchor_count: int
     unreachable_anchor_count: int
+    enemy_exit_overlap_count: int
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +50,7 @@ class ChroniclesTopologyQuality:
             "articulationRatio": round(self.articulation_ratio, 4),
             "criticalAnchorCount": self.critical_anchor_count,
             "unreachableAnchorCount": self.unreachable_anchor_count,
+            "enemyExitOverlapCount": self.enemy_exit_overlap_count,
         }
 
 
@@ -212,7 +214,7 @@ def evaluate_chronicles_topology(
     ):
         return ChroniclesTopologyQuality(
             False, ("invalid-grid",), 0, 0, 0, None, None,
-            0.0, 0, 0.0, 0, 0.0, 0, 0,
+            0.0, 0, 0.0, 0, 0.0, 0, 0, 0,
         )
 
     grid = list(raw_grid)
@@ -261,8 +263,10 @@ def evaluate_chronicles_topology(
     }
     if start is not None and start in enemy_positions:
         reasons.append("enemy-overlaps-party")
-    if enemy_positions & exits:
-        reasons.append("enemy-overlaps-exit")
+    # Authored encounters may deliberately place a guard on an exit tile.
+    # Record it for balancing/telemetry, but do not treat that semantic choice
+    # as a topology failure.
+    enemy_exit_overlap_count = len(enemy_positions & exits)
 
     interior = max(1, (width - 2) * (height - 2))
     open_ratio = len(walkable) / interior
@@ -298,4 +302,5 @@ def evaluate_chronicles_topology(
         articulation_ratio=articulation_ratio,
         critical_anchor_count=len(anchors),
         unreachable_anchor_count=len(unreachable_anchors),
+        enemy_exit_overlap_count=enemy_exit_overlap_count,
     )

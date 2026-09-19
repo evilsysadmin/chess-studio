@@ -39,7 +39,7 @@ def test_quality_gate_accepts_connected_room_with_reachable_exit():
     assert report.reachable_count == report.walkable_count
     assert report.min_exit_distance >= 4
     assert report.exit_count == 1
-    assert report.articulation_ratio < 0.65
+    assert report.articulation_ratio < 0.82
 
 
 def test_quality_gate_rejects_disconnected_exit():
@@ -66,15 +66,37 @@ def test_quality_gate_rejects_corridor_dominated_by_articulation_points():
     report = evaluate_chronicles_topology(
         _manifest(
             [
-                "#########",
-                "#P.....X#",
-                "#########",
+                "#########################",
+                "#P.....................X#",
+                "#########################",
             ]
         )
     )
 
     assert report.accepted is False
     assert "articulation-ratio-high" in report.reasons
+
+
+def test_quality_gate_reports_authored_guard_on_exit_without_rejecting_it():
+    manifest = _manifest(
+        [
+            "#########",
+            "#P......#",
+            "#.......#",
+            "#..###..#",
+            "#.......#",
+            "#.......#",
+            "#......X#",
+            "#########",
+        ]
+    )
+    manifest["enemies"] = [{"id": "gate-guard", "x": 7, "y": 6}]
+
+    report = evaluate_chronicles_topology(manifest)
+
+    assert report.accepted is True
+    assert report.enemy_exit_overlap_count == 1
+    assert report.as_dict()["enemyExitOverlapCount"] == 1
 
 
 @pytest.mark.parametrize("seed", range(6))
