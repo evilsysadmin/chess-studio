@@ -344,57 +344,49 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
 
 
 def add_fire_cluster(name: str, x: float, y: float, base_z: float, materials, *, scale=1.0):
-    """Build one connected, low organic fire mass instead of separate spike cones."""
+    """Build a low organic hearth from overlapping rounded flame lobes."""
     fire = materials["fire"]
     hot = materials["fire_hot"]
 
-    outline = [
-        (-0.72, 0.00), (-0.67, 0.11), (-0.55, 0.18), (-0.44, 0.33),
-        (-0.34, 0.22), (-0.22, 0.42), (-0.10, 0.27), (0.00, 0.50),
-        (0.12, 0.29), (0.25, 0.40), (0.36, 0.23), (0.49, 0.34),
-        (0.59, 0.19), (0.68, 0.10), (0.72, 0.00),
-    ]
-    flat_panel(
-        f"HOME_PROP_{name}_fire_mass",
-        [(x + px * scale, base_z + pz * scale) for px, pz in outline],
-        y,
-        0.034,
-        fire,
-        bevel=0.030,
-    )
-
-    tongues = (
-        (-0.30, 0.24, 0.15, -0.025),
-        (0.00, 0.33, 0.17, 0.018),
-        (0.30, 0.25, 0.145, 0.030),
-    )
-    for idx, (dx, height, width, lean) in enumerate(tongues):
-        cx = x + dx * scale
-        h = height * scale
-        w = width * scale
-        flat_panel(
-            f"HOME_PROP_{name}_hot_tongue_{idx}",
-            [
-                (cx - w, base_z),
-                (cx - w * 0.76, base_z + h * 0.20),
-                (cx - w * 0.44, base_z + h * 0.52),
-                (cx + lean * scale, base_z + h),
-                (cx + w * 0.42, base_z + h * 0.54),
-                (cx + w * 0.78, base_z + h * 0.20),
-                (cx + w, base_z),
-            ],
-            y - 0.032,
-            0.024,
-            hot,
-            bevel=0.020,
-        )
-
+    # Continuous ember bed visually anchors the cluster and hides lobe seams.
     sphere(
         f"HOME_PROP_{name}_ember_glow",
-        (x, y + 0.020, base_z + 0.025),
-        (0.67 * scale, 0.035, 0.075 * scale),
+        (x, y + 0.018, base_z + 0.030),
+        (0.70 * scale, 0.038, 0.080 * scale),
         hot,
     )
+
+    outer_lobes = (
+        (-0.53, 0.18, 0.23),
+        (-0.36, 0.26, 0.24),
+        (-0.18, 0.32, 0.23),
+        (0.00, 0.39, 0.25),
+        (0.19, 0.29, 0.24),
+        (0.37, 0.24, 0.23),
+        (0.54, 0.17, 0.22),
+    )
+    for idx, (dx, height, width) in enumerate(outer_lobes):
+        flame = sphere(
+            f"HOME_PROP_{name}_outer_lobe_{idx}",
+            (x + dx * scale, y, base_z + height * scale * 0.46),
+            (width * scale, 0.030, height * scale * 0.52),
+            fire,
+        )
+        flame.rotation_euler[1] = math.radians((-10, 7, -6, 3, 8, -7, 9)[idx])
+
+    hot_lobes = (
+        (-0.25, 0.18, 0.125),
+        (0.00, 0.26, 0.145),
+        (0.27, 0.17, 0.120),
+    )
+    for idx, (dx, height, width) in enumerate(hot_lobes):
+        flame = sphere(
+            f"HOME_PROP_{name}_hot_lobe_{idx}",
+            (x + dx * scale, y - 0.035, base_z + height * scale * 0.42),
+            (width * scale, 0.026, height * scale * 0.50),
+            hot,
+        )
+        flame.rotation_euler[1] = math.radians((7, -4, -8)[idx])
 
 
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
@@ -1238,17 +1230,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.66, 0.055, 0.004, 1),
-            roughness=0.30,
-            emission=(1.0, 0.09, 0.006, 1),
-            emission_strength=0.10,
+            (0.90, 0.16, 0.012, 1),
+            roughness=0.34,
+            emission=(1.0, 0.12, 0.008, 1),
+            emission_strength=0.045,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.56, 0.09, 1),
-            roughness=0.24,
-            emission=(1.0, 0.30, 0.020, 1),
-            emission_strength=0.18,
+            (1.0, 0.70, 0.18, 1),
+            roughness=0.28,
+            emission=(1.0, 0.38, 0.030, 1),
+            emission_strength=0.080,
         ),
     }
 
