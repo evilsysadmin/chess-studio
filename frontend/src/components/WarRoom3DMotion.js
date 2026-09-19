@@ -25,7 +25,6 @@ export {
   smoothstep,
 };
 
-const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
 const warRoomKeyLightState = new WeakMap();
@@ -81,15 +80,35 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   return hemisphere;
 }
 
+export function warRoomLightingCoarsePointer({ budget = {}, mediaQuery = null } = {}) {
+  const query = mediaQuery || (
+    typeof globalThis !== 'undefined' && typeof globalThis.matchMedia === 'function'
+      ? globalThis.matchMedia.bind(globalThis)
+      : null
+  );
+  if (query) {
+    try {
+      const result = query('(pointer: coarse)');
+      if (typeof result?.matches === 'boolean') return result.matches;
+    } catch {
+      // A hostile/partial browser shim falls back to the historical render tier.
+    }
+  }
+  return Number(budget?.shadowMapSize) <= 512;
+}
+
 export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) {
   return {
-    exposure: coarsePointer ? 1.0 : 1.03,
-    hemisphere: coarsePointer ? 0.72 : 0.60,
-    keyMax: coarsePointer ? 1.58 : 1.48,
-    warmMax: coarsePointer ? 2.22 : 2.02,
-    background: 0x070504,
-    fog: 0x0d0907,
-    grade: 'nocturnal-walnut-v3',
+    // The Blender review render already has the desired architectural depth.
+    // Keep touch conservative, but let desktop preserve more of that authored
+    // separation instead of crushing the shell back toward near-black.
+    exposure: coarsePointer ? 1.0 : 1.12,
+    hemisphere: coarsePointer ? 0.72 : 0.76,
+    keyMax: coarsePointer ? 1.58 : 1.60,
+    warmMax: coarsePointer ? 2.22 : 2.18,
+    background: 0x0b0705,
+    fog: 0x120b08,
+    grade: 'nocturnal-walnut-v4',
   };
 }
 
@@ -452,109 +471,99 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   return { adjusted, ivory, canonicalIvory, lightTile, canonicalLightTile, profile };
 }
 
-function installWarRoomRenderDiscipline() {
-  const prototype = THREE.WebGLRenderer?.prototype;
-  if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
+export function applyWarRoomRenderDiscipline(renderer, scene) {
+  const budget = scene?.userData?.warRoomRenderBudget;
+  if (!budget || !renderer?.shadowMap) return null;
 
-  const originalRender = prototype.render;
-  Object.defineProperty(prototype, WAR_ROOM_RENDER_DISCIPLINE, {
-    value: true,
-    configurable: false,
-    enumerable: false,
-    writable: false,
+  const renderLite = Number(budget.shadowMapSize) <= 512;
+  const lightingCoarsePointer = warRoomLightingCoarsePointer({ budget });
+  const atmosphere = applyWarRoomAtmosphereGrade(scene);
+  if (atmosphere && renderer.domElement?.dataset) {
+    renderer.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
+  }
+  const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer: lightingCoarsePointer });
+  if (hemisphere && renderer.domElement?.dataset) {
+    renderer.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+  }
+  const boardKey = applyWarRoomKeyLightGrade(scene);
+  if (boardKey && renderer.domElement?.dataset) {
+    renderer.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
+    renderer.domElement.dataset.warRoomLightingGrade = 'warm-club-v2';
+  }
+  const warmFill = applyWarRoomWarmFillGrade(scene);
+  if (warmFill && renderer.domElement?.dataset) {
+    renderer.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
+  }
+  const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, renderer, {
+    coarsePointer: lightingCoarsePointer,
+    hemisphere,
+    key: boardKey,
+    warmFill,
   });
+  if (v2Lighting && renderer.domElement?.dataset) {
+    renderer.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
+    renderer.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
+  }
 
-  prototype.render = function renderWithWarRoomShadowBudget(scene, camera) {
-    const budget = scene?.userData?.warRoomRenderBudget;
-    if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  const state = shadowRefreshState.get(renderer) || {
+    lastShadowAt: Number.NEGATIVE_INFINITY,
+    lastRenderAt: Number.NaN,
+    slowFrameCount: 0,
+  };
+  shadowRefreshState.set(renderer, state);
 
-    const coarsePointer = Number(budget.shadowMapSize) <= 512;
-    const atmosphere = applyWarRoomAtmosphereGrade(scene);
-    if (atmosphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
-    }
-    const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
-    if (hemisphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
-    }
-    const boardKey = applyWarRoomKeyLightGrade(scene);
-    if (boardKey && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
-      this.domElement.dataset.warRoomLightingGrade = 'warm-club-v2';
-    }
-    const warmFill = applyWarRoomWarmFillGrade(scene);
-    if (warmFill && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
-    }
-    const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, this, {
-      coarsePointer,
-      hemisphere,
-      key: boardKey,
-      warmFill,
-    });
-    if (v2Lighting && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
-      this.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
-    }
-    const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
-      ? performance.now()
-      : Date.now();
-    const state = shadowRefreshState.get(this) || {
-      lastShadowAt: Number.NEGATIVE_INFINITY,
-      lastRenderAt: Number.NaN,
-      slowFrameCount: 0,
-    };
-    shadowRefreshState.set(this, state);
+  const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
+  const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
+  state.lastRenderAt = now;
 
-    const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
-    const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
-    state.lastRenderAt = now;
-
-    if (shouldRunWarRoomMaterialGrade(scene)) {
-      const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
-      if (materialGrade.profile && this.domElement?.dataset) {
-        this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomSurfaceGrade = scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2';
-        this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
-        this.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
-      }
+  if (shouldRunWarRoomMaterialGrade(scene)) {
+    const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer: renderLite });
+    if (materialGrade.profile && renderer.domElement?.dataset) {
+      renderer.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
+      renderer.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
+      renderer.domElement.dataset.warRoomSurfaceGrade = scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2';
+      renderer.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
+      renderer.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
     }
+  }
 
-    const currentScale = typeof this.getPixelRatio === 'function'
-      ? this.getPixelRatio()
-      : Number(budget.pixelRatio) || 1;
-    const runtime = nextRuntimeRenderScale({
-      currentScale,
-      frameMs,
-      slowFrameCount: state.slowFrameCount,
-      coarsePointer,
-    });
-    state.slowFrameCount = runtime.slowFrameCount;
-    if (runtime.downgraded && typeof this.setPixelRatio === 'function') {
-      this.setPixelRatio(runtime.scale);
-      scene.userData.warRoomRuntimeScale = runtime.scale;
-    }
+  const currentScale = typeof renderer.getPixelRatio === 'function'
+    ? renderer.getPixelRatio()
+    : Number(budget.pixelRatio) || 1;
+  const runtime = nextRuntimeRenderScale({
+    currentScale,
+    frameMs,
+    slowFrameCount: state.slowFrameCount,
+    coarsePointer: renderLite,
+  });
+  state.slowFrameCount = runtime.slowFrameCount;
+  if (runtime.downgraded && typeof renderer.setPixelRatio === 'function') {
+    renderer.setPixelRatio(runtime.scale);
+    scene.userData.warRoomRuntimeScale = runtime.scale;
+  }
 
-    // The scene can keep its premium ambient heartbeat without paying the full
-    // directional-shadow pass on every idle paint. Contiguous motion restores the
-    // tighter cadence so piece movement still gets responsive real shadows.
-    this.shadowMap.autoUpdate = false;
-    if (shouldRefreshShadowMap({
-      now,
-      lastShadowAt: state.lastShadowAt,
-      coarsePointer,
-      activeMotion,
-    })) {
-      this.shadowMap.needsUpdate = true;
-      state.lastShadowAt = now;
-    }
+  renderer.shadowMap.autoUpdate = false;
+  if (shouldRefreshShadowMap({
+    now,
+    lastShadowAt: state.lastShadowAt,
+    coarsePointer: renderLite,
+    activeMotion,
+  })) {
+    renderer.shadowMap.needsUpdate = true;
+    state.lastShadowAt = now;
+  }
 
-    return originalRender.call(this, scene, camera);
+  return {
+    renderLite,
+    lightingCoarsePointer,
+    v2Lighting,
+    frameMs,
+    activeMotion,
   };
 }
-
-installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // The room now carries more of the warm luminous grade globally. Keep the

@@ -4,6 +4,7 @@ import {
   applyWarRoomHemisphereGrade,
   applyWarRoomKeyLightGrade,
   applyWarRoomV2RuntimeLightingGrade,
+  warRoomLightingCoarsePointer,
   warRoomV2RuntimeLightingProfile,
 } from './WarRoom3DMotion.js';
 
@@ -32,6 +33,19 @@ function position(x, y, z) {
 }
 
 describe('War Room canonical warm lighting', () => {
+  it('keeps lighting modality independent from the shadow quality tier', () => {
+    expect(warRoomLightingCoarsePointer({
+      budget: { shadowMapSize: 512 },
+      mediaQuery: () => ({ matches: false }),
+    })).toBe(false);
+    expect(warRoomLightingCoarsePointer({
+      budget: { shadowMapSize: 1024 },
+      mediaQuery: () => ({ matches: true }),
+    })).toBe(true);
+    expect(warRoomLightingCoarsePointer({ budget: { shadowMapSize: 512 } })).toBe(true);
+    expect(warRoomLightingCoarsePointer({ budget: { shadowMapSize: 1024 } })).toBe(false);
+  });
+
   it('grades the room and vertical board wash to a luminous warm club look', () => {
     const hemisphere = {
       isHemisphereLight: true,
@@ -86,13 +100,13 @@ describe('War Room canonical warm lighting', () => {
     });
 
     expect(profile).toEqual(warRoomV2RuntimeLightingProfile());
-    expect(renderer.toneMappingExposure).toBe(1.03);
-    expect(hemisphere.intensity).toBe(0.60);
-    expect(key.intensity).toBe(1.48);
-    expect(warmFill.intensity).toBe(2.02);
-    expect(scene.background.getHex()).toBe(0x070504);
-    expect(scene.fog.color.getHex()).toBe(0x0d0907);
-    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v3');
+    expect(renderer.toneMappingExposure).toBe(1.12);
+    expect(hemisphere.intensity).toBe(0.76);
+    expect(key.intensity).toBe(1.60);
+    expect(warmFill.intensity).toBe(2.18);
+    expect(scene.background.getHex()).toBe(0x0b0705);
+    expect(scene.fog.color.getHex()).toBe(0x120b08);
+    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v4');
   });
 
   it('recognizes an already graded key instead of depending on the old source color', () => {

@@ -262,6 +262,7 @@ async function captureWarRoomHealth(page, label) {
       .slice(0, 18);
 
     const root = document.documentElement;
+    const canvas = document.querySelector('canvas.board3d-main-canvas');
     const board = box('[data-board3d-war-room="true"]');
     const hud = box('.game-3d-matthias-card');
     const human = box('.game-board-stack-3d .game-player-rail.is-human');
@@ -307,6 +308,13 @@ async function captureWarRoomHealth(page, label) {
       notation,
       legacyCommandDeck,
       quickActions: { focus, abandon, overflow },
+      renderSignals: {
+        variant: canvas?.dataset?.warRoomVariant || null,
+        v2Status: canvas?.dataset?.warRoomV2Status || null,
+        v2LightingGrade: canvas?.dataset?.warRoomV2LightingGrade || null,
+        v2Exposure: canvas?.dataset?.warRoomV2Exposure || null,
+        hemisphere: canvas?.dataset?.warRoomLightHemisphere || null,
+      },
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
       boardVisibleWidthFill: Number((boardVisibleWidth / viewport.width).toFixed(3)),
@@ -419,10 +427,16 @@ for (const profile of CAPTURE_PROFILES) {
     try {
       await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
       if (profile.variant === 'v2') {
-        await expect(page.locator('.board3d-main-canvas'))
+        const v2Canvas = page.locator('.board3d-main-canvas');
+        await expect(v2Canvas)
           .toHaveAttribute('data-war-room-variant', 'v2', { timeout: 30_000 });
-        await expect(page.locator('.board3d-main-canvas'))
+        await expect(v2Canvas)
           .toHaveAttribute('data-war-room-v2-status', 'ready', { timeout: 30_000 });
+        if (!profile.hasTouch) {
+          await expect(v2Canvas).toHaveAttribute('data-war-room-v2-lighting-grade', 'nocturnal-walnut-v4');
+          await expect(v2Canvas).toHaveAttribute('data-war-room-v2-exposure', '1.12');
+          await expect(v2Canvas).toHaveAttribute('data-war-room-light-hemisphere', '0.76');
+        }
       }
 
       if (profile.portraitContract) {
