@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'scripts/pawn_slug_godot_pr_capture.mjs'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v10.yml'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - 'scripts/pawn_slug_godot_pr_capture.mjs'
       - 'games/pawn-slug-godot/tests/matthias_strict_v10_atlas_smoke.gd'
       - 'games/pawn-slug-godot/scripts/matthias_art.gd'
       - '.github/workflows/pawn-slug-godot-strict-v10.yml'
@@ -28,7 +30,9 @@ concurrency:
 env:
   GODOT_VERSION: '4.7.2'
   GODOT_RELEASE: '4.7.2-stable'
+  GODOT_TEMPLATE_VERSION: '4.7.2.stable'
   GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+  GODOT_TEMPLATES_SHA256: 'f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011'
   V10_SOURCE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/source/pistol/matthias_v10_source_q25-2fae2e70dc090e5b.avif'
   V10_SOURCE_SHA256: '2fae2e70dc090e5bbc8ab110a7ba6ab60f3b4cba58ef36015f975bb9006ee8f3'
 
@@ -36,7 +40,7 @@ jobs:
   build-strict-v10:
     name: Build + gate strict-v10 · pistol
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v7
 
@@ -52,6 +56,7 @@ jobs:
           python3 -m py_compile \
             scripts/art/pack_pawn_slug_godot_strict_v10.py \
             scripts/art/validate_pawn_slug_godot_atlas_v10.py
+          node --check scripts/pawn_slug_godot_pr_capture.mjs
 
       - name: Download immutable v10 source from R2
         shell: bash
@@ -115,13 +120,16 @@ jobs:
           board.save(root / 'matthias_pistol_strict_v10_review_board.png', 'PNG', optimize=True)
           PY
 
-      - name: Restore pinned Godot editor
+      - name: Restore pinned Godot editor + Web templates
         uses: actions/cache@v6
         with:
-          path: .godot-ci/${{ env.GODOT_VERSION }}
-          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+          path: |
+            .godot-ci/${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_debug.zip
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_release.zip
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-web-v1
 
-      - name: Install pinned Godot editor
+      - name: Install pinned Godot editor + Web templates
         shell: bash
         run: |
           set -euo pipefail
@@ -138,7 +146,29 @@ jobs:
             mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
             chmod +x "$godot"
           fi
+
+          template_dir="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_VERSION"
+          debug_template="$template_dir/web_nothreads_debug.zip"
+          release_template="$template_dir/web_nothreads_release.zip"
+          if [[ ! -f "$debug_template" || ! -f "$release_template" ]]; then
+            template_archive="$RUNNER_TEMP/godot-templates.tpz"
+            unpack="$RUNNER_TEMP/godot-templates"
+            rm -rf "$unpack"
+            curl -fL --retry 3 \
+              "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_export_templates.tpz" \
+              -o "$template_archive"
+            echo "$GODOT_TEMPLATES_SHA256  $template_archive" | sha256sum -c -
+            mkdir -p "$template_dir" "$unpack"
+            unzip -q "$template_archive" \
+              templates/web_nothreads_debug.zip \
+              templates/web_nothreads_release.zip \
+              -d "$unpack"
+            install -m 0644 "$unpack/templates/web_nothreads_debug.zip" "$debug_template"
+            install -m 0644 "$unpack/templates/web_nothreads_release.zip" "$release_template"
+          fi
           "$godot" --version
+          test -s "$debug_template"
+          test -s "$release_template"
 
       - name: Consume variable-frame atlas in real Godot SpriteFrames
         shell: bash
@@ -150,6 +180,58 @@ jobs:
             --script res://tests/matthias_strict_v10_atlas_smoke.gd -- \
             "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
             "$ROOT/matthias_pistol_strict_v10_manifest.json"
+
+      - name: Export Pawn Slug with candidate v10 atlas wired locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/matthias-v10"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('games/pawn-slug-godot/scripts/matthias_art.gd')
+          text = path.read_text(encoding='utf-8')
+          prefix = 'const V10_PISTOL_ATLAS_URL := "'
+          lines = text.splitlines()
+          matches = [i for i, line in enumerate(lines) if line.startswith(prefix)]
+          if len(matches) != 1:
+              raise SystemExit(f'expected one V10_PISTOL_ATLAS_URL declaration, got {len(matches)}')
+          lines[matches[0]] = 'const V10_PISTOL_ATLAS_URL := "http://127.0.0.1:4179/matthias_v10_candidate.png"'
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+          rm -rf games/pawn-slug-godot/build/web
+          mkdir -p games/pawn-slug-godot/build/web
+          pushd games/pawn-slug-godot >/dev/null
+          "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless --export-release Web build/web/index.html
+          popd >/dev/null
+          cp "$ROOT/matthias_pistol_godot_strict_12x9_256_v10.png" \
+            games/pawn-slug-godot/build/web/matthias_v10_candidate.png
+          python3 -S scripts/pawn_slug_godot_bundle.py check
+
+      - name: Restore browser runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
+
+      - name: Exercise candidate inside live Pawn Slug and capture action bursts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4179 --directory games/pawn-slug-godot/build/web >"$RUNNER_TEMP/pawn-slug-v10-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" >/dev/null 2>&1 || true' EXIT
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS "http://127.0.0.1:4179/index.html?stage=industrial_front_v1" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          PAWN_SLUG_GODOT_INDEX_URL="http://127.0.0.1:4179/index.html?stage=industrial_front_v1" \
+            PAWN_SLUG_CAPTURE_DIR="$RUNNER_TEMP/matthias-v10/runtime" \
+            node scripts/pawn_slug_godot_pr_capture.mjs
 
       - name: Publish immutable strict-v10 atlas to R2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -175,6 +257,8 @@ jobs:
             ${{ runner.temp }}/matthias-v10/matthias_pistol_strict_v10_manifest.json
             ${{ runner.temp }}/matthias-v10/matthias_pistol_strict_v10_review_board.png
             ${{ runner.temp }}/matthias-v10/strips/*.png
+            ${{ runner.temp }}/matthias-v10/runtime/*.png
+            ${{ runner.temp }}/matthias-v10/runtime/*.json
             ${{ runner.temp }}/matthias-v10/publish.txt
           if-no-files-found: warn
           retention-days: 14
