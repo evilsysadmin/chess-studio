@@ -344,49 +344,77 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
 
 
 def add_fire_cluster(name: str, x: float, y: float, base_z: float, materials, *, scale=1.0):
-    """Build a low organic hearth from overlapping rounded flame lobes."""
+    """Build overlapping smooth teardrop flames with a continuous ember bed."""
     fire = materials["fire"]
     hot = materials["fire_hot"]
 
-    # Continuous ember bed visually anchors the cluster and hides lobe seams.
     sphere(
         f"HOME_PROP_{name}_ember_glow",
-        (x, y + 0.018, base_z + 0.030),
-        (0.70 * scale, 0.038, 0.080 * scale),
+        (x, y + 0.018, base_z + 0.026),
+        (0.69 * scale, 0.036, 0.070 * scale),
         hot,
     )
 
-    outer_lobes = (
-        (-0.53, 0.18, 0.23),
-        (-0.36, 0.26, 0.24),
-        (-0.18, 0.32, 0.23),
-        (0.00, 0.39, 0.25),
-        (0.19, 0.29, 0.24),
-        (0.37, 0.24, 0.23),
-        (0.54, 0.17, 0.22),
-    )
-    for idx, (dx, height, width) in enumerate(outer_lobes):
-        flame = sphere(
-            f"HOME_PROP_{name}_outer_lobe_{idx}",
-            (x + dx * scale, y, base_z + height * scale * 0.46),
-            (width * scale, 0.030, height * scale * 0.52),
-            fire,
+    def flame_panel(suffix, cx, height, width, lean, mat, depth, bevel):
+        points = []
+        steps = 9
+        for i in range(steps + 1):
+            u = i / steps
+            center = cx + lean * scale * (u ** 1.35)
+            half = width * scale * ((1.0 - u) ** 0.62) * (0.88 + 0.12 * math.sin(math.pi * u))
+            points.append((center - half, base_z + height * scale * u))
+        for i in range(steps, -1, -1):
+            u = i / steps
+            center = cx + lean * scale * (u ** 1.35)
+            half = width * scale * ((1.0 - u) ** 0.62) * (0.88 + 0.12 * math.sin(math.pi * u))
+            points.append((center + half, base_z + height * scale * u))
+        flat_panel(
+            f"HOME_PROP_{name}_{suffix}",
+            points,
+            y,
+            depth,
+            mat,
+            bevel=bevel,
         )
-        flame.rotation_euler[1] = math.radians((-10, 7, -6, 3, 8, -7, 9)[idx])
 
-    hot_lobes = (
-        (-0.25, 0.18, 0.125),
-        (0.00, 0.26, 0.145),
-        (0.27, 0.17, 0.120),
+    outer = (
+        (-0.46, 0.28, 0.20, -0.035),
+        (-0.24, 0.38, 0.22, 0.030),
+        (0.00, 0.50, 0.23, -0.018),
+        (0.25, 0.36, 0.215, 0.040),
+        (0.47, 0.26, 0.19, -0.028),
     )
-    for idx, (dx, height, width) in enumerate(hot_lobes):
-        flame = sphere(
-            f"HOME_PROP_{name}_hot_lobe_{idx}",
-            (x + dx * scale, y - 0.035, base_z + height * scale * 0.42),
-            (width * scale, 0.026, height * scale * 0.50),
-            hot,
+    for idx, (dx, height, width, lean) in enumerate(outer):
+        flame_panel(
+            f"outer_{idx}",
+            x + dx * scale,
+            height,
+            width,
+            lean,
+            fire,
+            0.030,
+            0.022,
         )
-        flame.rotation_euler[1] = math.radians((7, -4, -8)[idx])
+
+    inner = (
+        (-0.24, 0.20, 0.105, 0.018),
+        (0.00, 0.30, 0.125, -0.012),
+        (0.25, 0.19, 0.100, 0.020),
+    )
+    for idx, (dx, height, width, lean) in enumerate(inner):
+        old_y = y
+        y -= 0.034
+        flame_panel(
+            f"hot_{idx}",
+            x + dx * scale,
+            height,
+            width,
+            lean,
+            hot,
+            0.022,
+            0.014,
+        )
+        y = old_y
 
 
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
@@ -1230,17 +1258,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.90, 0.16, 0.012, 1),
-            roughness=0.34,
-            emission=(1.0, 0.12, 0.008, 1),
-            emission_strength=0.045,
+            (0.62, 0.075, 0.004, 1),
+            roughness=0.38,
+            emission=(0.90, 0.075, 0.004, 1),
+            emission_strength=0.024,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.70, 0.18, 1),
-            roughness=0.28,
-            emission=(1.0, 0.38, 0.030, 1),
-            emission_strength=0.080,
+            (1.0, 0.48, 0.055, 1),
+            roughness=0.30,
+            emission=(1.0, 0.24, 0.012, 1),
+            emission_strength=0.052,
         ),
     }
 
