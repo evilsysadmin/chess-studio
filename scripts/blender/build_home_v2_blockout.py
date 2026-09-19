@@ -975,12 +975,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bx = col * 1.48 + offset
             if abs(bx) > 8.65:
                 continue
-            width = 0.66 + 0.045 * ((row + col) % 3)
-            height = 0.31 + 0.018 * ((row * 2 + col) % 2)
+            block_width = 0.66 + 0.045 * ((row + col) % 3)
+            block_height = 0.31 + 0.018 * ((row * 2 + col) % 2)
             cube(
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
                 (bx, 6.685, z),
-                (width, 0.025, height),
+                (block_width, 0.025, block_height),
                 materials["arch_stone"] if (row + col) % 5 == 0 else materials["stone"],
                 bevel=0.026,
             )
@@ -1109,23 +1109,32 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     add_table_and_board(materials)
     add_armor(materials)
+    # Match the canonical suit: tall, narrow and ceremonial rather than a
+    # broad toy-robot silhouette. Scale about the pedestal so its footprint
+    # stays fixed while the upper body gains Gothic verticality.
+    armor_origin = Vector((1.55, 5.28, 0.24))
     for obj in list(bpy.data.objects):
         if obj.name.startswith("HOME_PROP_armor_"):
-            origin = Vector((1.55, 5.28, 0.24))
-            obj.location = origin + (obj.location - origin) * 0.95
-            obj.location.y += 0.55
-            obj.scale *= 0.95
+            delta = obj.location - armor_origin
+            obj.location = Vector((
+                armor_origin.x + delta.x * 0.78,
+                armor_origin.y + delta.y * 0.92 + 0.55,
+                armor_origin.z + delta.z * 1.14,
+            ))
+            obj.scale.x *= 0.78
+            obj.scale.y *= 0.92
+            obj.scale.z *= 1.14
     flat_panel(
         "HOME_PROP_armor_cape",
-        [(1.02, 3.45), (2.08, 3.45), (1.95, 0.75), (1.55, 0.52), (1.15, 0.75)],
+        [(1.12, 3.72), (1.98, 3.72), (1.90, 0.78), (1.55, 0.52), (1.20, 0.78)],
         5.78,
-        0.05,
+        0.045,
         materials["banner"],
         bevel=0.025,
     )
-    cube("HOME_PROP_armor_chest_plate", (1.55, 5.58, 2.42), (0.31, 0.052, 0.25), materials["steel"], bevel=0.065)
-    cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.52, 2.42), (0.030, 0.027, 0.12), materials["brass_dark"], bevel=0.01)
-    cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.52, 2.45), (0.105, 0.027, 0.030), materials["brass_dark"], bevel=0.01)
+    cube("HOME_PROP_armor_chest_plate", (1.55, 5.58, 2.60), (0.245, 0.048, 0.30), materials["steel"], bevel=0.055)
+    cube("HOME_PROP_armor_chest_cross_v", (1.55, 5.525, 2.60), (0.026, 0.025, 0.15), materials["brass_dark"], bevel=0.01)
+    cube("HOME_PROP_armor_chest_cross_h", (1.55, 5.525, 2.64), (0.090, 0.025, 0.026), materials["brass_dark"], bevel=0.01)
     add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
