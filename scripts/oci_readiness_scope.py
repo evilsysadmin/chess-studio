@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify whether OCI readiness needs the expensive ARM64 backend lane."""
+"""Classify path-aware OCI readiness lanes for ARM64 and Terraform."""
 from __future__ import annotations
 
 import os
@@ -11,6 +11,7 @@ ARM64_RE = re.compile(
     r"^(backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|"
     r"scripts/oci_arm64_smoke\.sh|scripts/oci_readiness_scope\.py)$"
 )
+TERRAFORM_RE = re.compile(r"^infra/oci/staging/")
 JOB_RE = re.compile(r"(?m)^  ([A-Za-z0-9_-]+):\s*$")
 
 
@@ -28,6 +29,15 @@ def needs_arm64(paths: list[str], *, arm64_job_changed: bool = False) -> bool:
     direct = any(ARM64_RE.fullmatch(path.strip()) for path in paths if path.strip())
     workflow_changed = any(path.strip() == WORKFLOW_PATH for path in paths)
     return direct or (workflow_changed and arm64_job_changed)
+
+
+def needs_terraform(paths: list[str]) -> bool:
+    normalized = [path.strip() for path in paths if path.strip()]
+    return (
+        any(TERRAFORM_RE.match(path) for path in normalized)
+        or WORKFLOW_PATH in normalized
+        or "scripts/oci_readiness_scope.py" in normalized
+    )
 
 
 def _git(*args: str) -> str:
@@ -58,7 +68,7 @@ def workflow_arm64_job_changed(merge_sha: str) -> bool:
 def changed_paths() -> list[str]:
     event = os.environ.get("GITHUB_EVENT_NAME", "")
     if event == "workflow_dispatch":
-        return ["backend-python/Dockerfile"]
+        return ["backend-python/Dockerfile", "infra/oci/staging/main.tf"]
     base = os.environ.get("BASE_SHA", "").strip()
     merge = os.environ.get("GITHUB_SHA", "").strip()
     if not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(r"[0-9a-f]{40}", merge):
@@ -82,6 +92,12 @@ def self_test() -> None:
     assert not needs_arm64(["infra/oci/runtime/README.md"])
     assert not needs_arm64([WORKFLOW_PATH], arm64_job_changed=False)
     assert needs_arm64([WORKFLOW_PATH], arm64_job_changed=True)
+    assert needs_terraform(["infra/oci/staging/runtime-config.tf"])
+    assert needs_terraform(["infra/oci/staging/tests/vault_contract.tftest.hcl"])
+    assert needs_terraform(["scripts/oci_readiness_scope.py"])
+    assert needs_terraform([WORKFLOW_PATH])
+    assert not needs_terraform(["infra/oci/k3s/config.yaml"])
+    assert not needs_terraform(["backend-python/Dockerfile"])
 
     base = """name: OCI readiness\njobs:\n  classify:\n    runs-on: ubuntu\n  backend-arm64:\n    needs: classify\n    runs-on: ubuntu\n  terraform:\n    runs-on: ubuntu\n"""
     unrelated = base.replace("name: OCI readiness", "name: OCI readiness · validation")
@@ -100,6 +116,7 @@ def main() -> None:
     merge = os.environ.get("GITHUB_SHA", "").strip()
     arm64_job_changed = WORKFLOW_PATH in paths and workflow_arm64_job_changed(merge)
     print(f"arm64={'true' if needs_arm64(paths, arm64_job_changed=arm64_job_changed) else 'false'}")
+    print(f"terraform={'true' if needs_terraform(paths) else 'false'}")
 
 
 if __name__ == "__main__":

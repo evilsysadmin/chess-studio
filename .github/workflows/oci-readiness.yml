@@ -2,7 +2,7 @@ name: OCI readiness
 on:
   workflow_dispatch:
   pull_request:
-    paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_release_deploy.py, scripts/oci_runtime_bundle.py, scripts/oci_runtime_manifest.py, scripts/oci_vault_compare.py, scripts/oci_vault_preview.py, scripts/oci_staging_cors_contract.py, scripts/oci_staging_deploy_watcher.py, scripts/oci_readiness_scope.py, scripts/oci_service_contracts.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml, .github/workflows/oci-staging-service.yml]
+    paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', 'infra/oci/staging/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_release_deploy.py, scripts/oci_runtime_bundle.py, scripts/oci_runtime_manifest.py, scripts/oci_vault_compare.py, scripts/oci_vault_preview.py, scripts/oci_staging_cors_contract.py, scripts/oci_staging_deploy_watcher.py, scripts/oci_readiness_scope.py, scripts/oci_service_contracts.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml, .github/workflows/oci-staging-service.yml]
 permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
@@ -10,7 +10,9 @@ concurrency:
 jobs:
   classify:
     runs-on: ubuntu-24.04
-    outputs: {arm64: '${{ steps.scope.outputs.arm64 }}'}
+    outputs:
+      arm64: '${{ steps.scope.outputs.arm64 }}'
+      terraform: '${{ steps.scope.outputs.terraform }}'
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
@@ -44,7 +46,8 @@ jobs:
       - uses: docker/setup-buildx-action@v4
       - run: bash scripts/oci_arm64_smoke.sh
   terraform:
-    if: github.event_name == 'workflow_dispatch'
+    needs: classify
+    if: github.event_name == 'workflow_dispatch' || needs.classify.outputs.terraform == 'true'
     runs-on: ubuntu-24.04
     env: {TF_IN_AUTOMATION: 'true', TF_INPUT: 'false'}
     steps:

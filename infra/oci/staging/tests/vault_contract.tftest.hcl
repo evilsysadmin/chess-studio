@@ -92,8 +92,8 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 2
-    error_message = "A1 runtime IAM must remain limited to runtime-object read and self Run Command."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
+    error_message = "A1 runtime IAM must remain limited to runtime-object read, Vault secret-bundle read, and self Run Command."
   }
 
   assert {
@@ -102,15 +102,17 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to use instance-agent-command-execution-family")
-    error_message = "The A1 must retain self-scoped Run Command execution access."
+    condition = (
+      strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to read secret-bundles") &&
+      strcontains(oci_identity_policy.staging_runtime_config.statements[1], "in compartment id ${var.compartment_ocid}") &&
+      !strcontains(oci_identity_policy.staging_runtime_config.statements[1], "manage secret") &&
+      !strcontains(oci_identity_policy.staging_runtime_config.statements[1], "secret-family")
+    )
+    error_message = "The A1 must have compartment-scoped read-only access to secret bundles, without broader secret management."
   }
 
   assert {
-    condition = alltrue([
-      for statement in oci_identity_policy.staging_runtime_config.statements :
-      !strcontains(statement, "secret-bundles")
-    ])
-    error_message = "A1 runtime IAM must not grant secret-bundle access until OCI Secrets is actually consumed."
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "to use instance-agent-command-execution-family")
+    error_message = "The A1 must retain self-scoped Run Command execution access."
   }
 }
