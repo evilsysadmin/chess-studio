@@ -574,12 +574,12 @@ def test_analyze_endpoint():
     assert "from" in body and "to" in body and "san" in body
 
 
-def test_analyze_endpoint_passes_validated_doctrine_style_to_engine(monkeypatch):
+def test_analyze_endpoint_ignores_retired_ghost_style(monkeypatch):
     import game_api
 
-    seen = {}
+    seen = []
     def fake_cpu(board, level, style=None):
-        seen.update(style or {})
+        seen.append(style)
         return game_api.move_to_dict(board, next(iter(board.legal_moves)))
 
     monkeypatch.setattr(game_api, "get_cpu_move", fake_cpu)
@@ -592,8 +592,7 @@ def test_analyze_endpoint_passes_validated_doctrine_style_to_engine(monkeypatch)
         },
     )
     assert r.status_code == 200
-    assert seen["capture"] == 0.9
-    assert seen["check"] == 0.8
+    assert seen == [None]
 
 
 
