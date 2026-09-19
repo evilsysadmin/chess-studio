@@ -490,10 +490,6 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
 
   if (!coarsePointer) {
     addFloorPuddle(root, wetStone, 1, 5, 1.18, 0.58, -0.18, 0);
-    // A single off-axis damp patch sits in the opening sightline so the repeated
-    // flagstones stop reading like a pristine grid. It is visual only and keeps
-    // the center path, encounter silhouettes and all collision/gameplay intact.
-    addFloorPuddle(root, wetStone, 2, 5, 0.72, 0.28, 0.22, 3);
     addFloorPuddle(root, wetStone, 5, 3, 0.78, 0.42, 0.48, 1);
     addFloorPuddle(root, wetStone, 3, 2, 0.62, 0.34, -0.64, 2);
     addDrainGrate(root, iron, 3, 5, 0);
