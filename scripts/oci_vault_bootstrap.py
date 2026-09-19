@@ -10,7 +10,8 @@ The staging service historically did not carry the Grafana OTLP transport pair.
 Bootstrap may therefore inherit OTEL_EXPORTER_OTLP_ENDPOINT and
 OTEL_EXPORTER_OTLP_HEADERS from production exactly once so staging can join the
 same Grafana Cloud gateway. No application/runtime secret outside that telemetry
-pair is ever allowed to fall back to production.
+pair is ever allowed to fall back to production. Missing optional telemetry
+values are omitted rather than blocking application runtime bootstrap.
 """
 from __future__ import annotations
 
@@ -23,11 +24,18 @@ INITIAL_VERSION_NAME = "initial-render-migration"
 PRODUCTION_FALLBACK_KEYS = ("OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS")
 
 
-def required_vault_values(values: dict[str, str], secret_rows: tuple[tuple[str, str], ...]) -> dict[str, str]:
+def required_vault_values(
+    values: dict[str, str],
+    secret_rows: tuple[tuple[str, str], ...],
+    optional_keys: tuple[str, ...] = (),
+) -> dict[str, str]:
     selected: dict[str, str] = {}
+    optional = set(optional_keys)
     for key, secret_name in secret_rows:
         value = str(values.get(key) or "")
         if not value:
+            if key in optional:
+                continue
             raise SystemExit(f"Render staging runtime is missing required Vault bootstrap key: {key}")
         if any(ch in value for ch in ("\x00", "\r", "\n")):
             raise SystemExit(f"Render staging runtime contains invalid control characters for: {key}")
@@ -150,6 +158,7 @@ def create_secret_details(
 
 def bootstrap(oci: Any) -> None:
     from oci_run_command import config_from_env, resolve_staging
+    from oci_runtime_config import OPTIONAL_KEYS
     from oci_vault_runtime import SECRET_NAMES, resolve_vault_id
 
     config = config_from_env(oci)
@@ -157,17 +166,20 @@ def bootstrap(oci: Any) -> None:
     vault_id = resolve_vault_id(oci, config, compartment_id)
     key_id = resolve_key_id(oci, config, compartment_id, vault_id)
     source = collect_bootstrap_source()
-    desired = required_vault_values(source, SECRET_NAMES)
+    desired = required_vault_values(source, SECRET_NAMES, OPTIONAL_KEYS)
 
     client = oci.vault.VaultsClient(config)
     existing = existing_secret_names(oci, client, compartment_id, vault_id)
     composite = oci.vault.VaultsClientCompositeOperations(client)
     created = 0
     retained = 0
-    for _key, secret_name in SECRET_NAMES:
+    for key, secret_name in SECRET_NAMES:
         if secret_name in existing:
             print(f"OCI_VAULT_BOOTSTRAP_EXISTS name={secret_name}")
             retained += 1
+            continue
+        if secret_name not in desired:
+            print(f"OCI_VAULT_BOOTSTRAP_OPTIONAL_MISSING key={key} name={secret_name}")
             continue
         composite.create_secret_and_wait_for_state(
             create_secret_details(
@@ -185,7 +197,7 @@ def bootstrap(oci: Any) -> None:
         created += 1
 
     final_names = existing_secret_names(oci, client, compartment_id, vault_id)
-    missing = [name for _key, name in SECRET_NAMES if name not in final_names]
+    missing = [name for name in desired if name not in final_names]
     if missing:
         raise SystemExit("OCI Vault bootstrap incomplete; missing names: " + ", ".join(missing))
     print(
@@ -201,6 +213,8 @@ def self_test() -> None:
     )
     selected = required_vault_values({"A": "alpha", "B": "bravo"}, rows)
     assert selected == {"secret-a": "alpha", "secret-b": "bravo"}
+    optional = required_vault_values({"A": "alpha", "B": ""}, rows, ("B",))
+    assert optional == {"secret-a": "alpha"}
     try:
         required_vault_values({"A": "alpha", "B": ""}, rows)
     except SystemExit as exc:
