@@ -30,6 +30,7 @@ K3S_STATUS = (
     ("scripts/oci_k3s_status.py", "--self-test"),
     ("scripts/oci_k3s_status_root.py", "self-test"),
 )
+K3S_STAGING2 = (("scripts/oci_k3s_staging2.py", "--self-test"),)
 BACKEND_VERIFY = (("scripts/verify_backend_staging.py", "--self-test"),)
 
 OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
@@ -51,6 +52,9 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "k3s-start": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
     "k3s-status": TRANSPORT + K3S_STATUS,
     "k3s-rollback": TRANSPORT + K3S_CONTROL + K3S_STATUS + BACKEND_VERIFY,
+    "k3s-staging2-deploy": TRANSPORT + K3S_STAGING2,
+    "k3s-staging2-status": TRANSPORT + K3S_STAGING2,
+    "k3s-staging2-rollback": TRANSPORT + K3S_STAGING2,
 }
 
 
@@ -75,6 +79,7 @@ def self_test() -> None:
         "reserved-egress", "smoke", "reboot-agent", "deploy", "bringup", "runtime-sync",
         "vault-bootstrap", "vault-validate", "vault-validate-pending", "vault-compare-current",
         "vault-preview-current", "k3s-start", "k3s-status", "k3s-rollback",
+        "k3s-staging2-deploy", "k3s-staging2-status", "k3s-staging2-rollback",
     }
     assert set(OPERATIONS) == expected
     assert commands_for("diagnose") == TRANSPORT
@@ -111,6 +116,11 @@ def self_test() -> None:
     k3s_start = commands_for("k3s-start")
     assert K3S_CONTROL[0] in k3s_start and K3S_STATUS[0] in k3s_start
     assert BACKEND_VERIFY[0] in k3s_start and VAULT_BOOTSTRAP[0] not in k3s_start
+
+    for operation in ("k3s-staging2-deploy", "k3s-staging2-status", "k3s-staging2-rollback"):
+        staging2 = commands_for(operation)
+        assert staging2 == TRANSPORT + K3S_STAGING2
+        assert K3S_CONTROL[0] not in staging2 and K3S_STATUS[0] not in staging2
 
     for operation, commands in OPERATIONS.items():
         assert commands, operation
