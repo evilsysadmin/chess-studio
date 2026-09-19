@@ -2,13 +2,14 @@ export const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 export const COMMENT_MODEL = QWEN_MODEL;
 export const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
 export const ANALYSIS_MODEL = QWEN_MODEL;
-export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily", "matthias_position"]));
+export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "chronicles_planner", "matthias_daily", "matthias_position"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
 const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 const RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900;
 const PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200;
+const CHRONICLES_PLANNER_MAX_OUTPUT_CHARS = 3200;
 const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
   "password", "passwd", "secret", "token", "jwt", "authorization",
   "cookie", "session", "email", "api_key", "apikey", "bearer",
@@ -61,12 +62,14 @@ export function modelFor(eventType) {
 export function generationFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
   if (eventType === "personal_puzzle_batch") return { ...ANALYSIS_GENERATION, temperature: 0.55, max_tokens: 900 };
+  if (eventType === "chronicles_planner") return { ...ANALYSIS_GENERATION, temperature: 0.35, top_p: 0.70, max_tokens: 700 };
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_GENERATION;
   return { ...COMMENT_GENERATION, max_tokens: 120 };
 }
 
 function maxOutputCharsFor(eventType) {
   if (eventType === "personal_puzzle_batch") return PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS;
+  if (eventType === "chronicles_planner") return CHRONICLES_PLANNER_MAX_OUTPUT_CHARS;
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS;
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return RICH_ANALYSIS_MAX_OUTPUT_CHARS;
   return DEFAULT_MAX_OUTPUT_CHARS;
@@ -180,7 +183,7 @@ REGLAS INVIOLABLES:
   entrenamiento. Escribe 2 o 3 frases compactas, ancla al menos una afirmación en una
   cifra o apertura literal presente en HECHOS y termina con una acción concreta cuando
   question_kind sea improve, tactics, action u openings. Una sola pulla breve.
-- personal_puzzle_batch es la ÚNICA excepción donde puedes proponer posiciones
+- Para chronicles_planner actúas como planner de TOPOLOGÍA, no como autor del juego.\n  HECHOS contiene exclusivamente áreas ya autorizadas por Chess Studio, con map_id,\n  theme, current_verbs, difficulty y allowed_verbs. No inventes mapas, IDs, themes,\n  enemigos, tesoros, secretos, quests, coordenadas, seed ni contenido narrativo.\n  Devuelve SOLO JSON válido, sin Markdown ni explicación, con esta forma exacta:\n  {"version":1,"areas":{"map-id":{"version":1,"source":"workers-ai","verbs":["guardian"],"difficulty":3}}}.\n  Incluye como máximo requested_areas áreas y únicamente map_id presentes en HECHOS.areas.\n  Para cada área, verbs debe contener entre 1 y 4 valores tomados exclusivamente de\n  allowed_verbs y difficulty debe ser un entero 1..5. Mantén variedad entre áreas cuando\n  los datos lo permitan, pero no cambies por cambiar: puedes conservar current_verbs y\n  difficulty. Nunca escribas campos adicionales. El backend volverá a validar todo y\n  descartará la propuesta completa si incumples el contrato.\n- personal_puzzle_batch es la ÚNICA excepción donde puedes proponer posiciones
   hipotéticas nuevas. HECHOS contiene semillas reales del jugador, no soluciones
   que debas copiar. Devuelve SOLO JSON válido, sin Markdown ni explicación, con
   esta forma exacta: {"candidates":[{"fen":"...","best_uci":"e2e4",
@@ -466,6 +469,7 @@ async function handleNarrative(request, env) {
     game_opening_banter: "Abre esta partida con una pulla de Matthias en una o dos frases muy cortas y sólo en español de España. Si citas nivel o dificultad, copia literalmente HECHOS.game.difficulty; no introduzcas ningún número ausente de HECHOS y no mezcles alfabetos. Prioriza un único hecho relevante del historial si HECHOS lo demuestra; si la muestra es pobre, usa sólo dificultad, color o modo actuales. Nada de consejo, informe, resumen ni historial inventado.",
     training_plan: "Convierte las prioridades ya calculadas por Chess Studio en un plan corto y accionable. No añadas diagnósticos nuevos.",
     personal_puzzle_batch: "Crea un lote compacto de nuevos escenarios tácticos inspirados en las semillas. Devuelve exclusivamente el JSON exigido; nada más.",
+    chronicles_planner: "Propón únicamente intención topológica para las áreas autorizadas. Devuelve exclusivamente el JSON del contrato chronicles_planner; nada más.",
     matthias_daily: "Responde a la audiencia diaria de Matthias. Sigue question_kind, usa sólo hechos reales y termina con una acción concreta cuando proceda.",
     matthias_position: "Explica esta posición concreta como Matthias usando sólo la FEN y el análisis de motor ya calculado. No inventes variantes ni tácticas no presentes.",
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
