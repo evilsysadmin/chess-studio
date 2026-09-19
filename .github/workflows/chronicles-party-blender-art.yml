@@ -8,6 +8,7 @@ on:
       - 'scripts/blender/refine_chronicles_party_anatomy.py'
       - 'scripts/blender/render_chronicles_party_preview.py'
       - 'scripts/blender/render_chronicles_dungeon_mock.py'
+      - 'scripts/blender/render_chronicles_tactics_dungeon_v3.py'
       - '.github/workflows/chronicles-party-blender-art.yml'
   workflow_dispatch:
 
@@ -42,13 +43,13 @@ jobs:
         run: |
           set -euo pipefail
           blender --background -noaudio --python scripts/blender/render_chronicles_party_preview.py -- --blend /tmp/chronicles-party/chronicles-tactics-party.blend --output-dir /tmp/chronicles-party/previews
-      - name: Render canonical dungeon look-development mock
+      - name: Render canonical Tactics dungeon look-development mock
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
         run: |
           set -euo pipefail
-          blender --background -noaudio --python scripts/blender/render_chronicles_dungeon_mock.py -- --output /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
+          blender --background -noaudio --python scripts/blender/render_chronicles_tactics_dungeon_v3.py -- --output /tmp/chronicles-party/previews/chronicles-dungeon-canonical.png
       - name: Validate Chronicles humanoid visual contract
         run: |
           set -euo pipefail
