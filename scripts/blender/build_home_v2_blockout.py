@@ -63,6 +63,7 @@ def material(
     bump_strength=0.14,
     variation=0.0,
     variation_scale=3.0,
+    grain=False,
 ):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = color
@@ -90,6 +91,26 @@ def material(
         ramp.color_ramp.elements[1].color = lighter
         links.new(color_noise.outputs["Fac"], ramp.inputs["Fac"])
         links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    if grain:
+        texcoord = nodes.new("ShaderNodeTexCoord")
+        mapping = nodes.new("ShaderNodeMapping")
+        mapping.vector_type = "POINT"
+        mapping.inputs["Scale"].default_value = (1.0, 7.0, 7.0)
+        grain_noise = nodes.new("ShaderNodeTexNoise")
+        grain_noise.inputs["Scale"].default_value = 3.8
+        grain_noise.inputs["Detail"].default_value = 5.0
+        grain_noise.inputs["Roughness"].default_value = 0.70
+        if "Distortion" in grain_noise.inputs:
+            grain_noise.inputs["Distortion"].default_value = 0.28
+        grain_ramp = nodes.new("ShaderNodeValToRGB")
+        grain_ramp.color_ramp.elements[0].position = 0.22
+        grain_ramp.color_ramp.elements[1].position = 0.80
+        grain_ramp.color_ramp.elements[0].color = tuple(max(0.0, c * 0.48) for c in color[:3]) + (1.0,)
+        grain_ramp.color_ramp.elements[1].color = tuple(min(1.0, c * 1.72) for c in color[:3]) + (1.0,)
+        links.new(texcoord.outputs["Generated"], mapping.inputs["Vector"])
+        links.new(mapping.outputs["Vector"], grain_noise.inputs["Vector"])
+        links.new(grain_noise.outputs["Fac"], grain_ramp.inputs["Fac"])
+        links.new(grain_ramp.outputs["Color"], bsdf.inputs["Base Color"])
     if bump_scale is not None:
         noise = nodes.new("ShaderNodeTexNoise")
         noise.inputs["Scale"].default_value = bump_scale
@@ -462,18 +483,25 @@ def add_fireplace(name: str, x: float, materials):
     flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
     for idx, offset in enumerate(flame_offsets):
         height = 0.34 + 0.13 * ((idx * 5) % 4)
-        sphere(
+        cone(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.66, 0.67 + height * 0.42),
-            (0.12 + 0.02 * (idx % 2), 0.055, height * 0.42),
+            (x + offset, 5.66, 0.61 + height * 0.50),
+            0.115 + 0.018 * (idx % 2),
+            0.012,
+            height,
             fire,
+            vertices=18,
         )
         if idx % 2 == 0:
-            sphere(
+            inner_h = height * 0.58
+            cone(
                 f"HOME_PROP_{name}_flame_hot_{idx}",
-                (x + offset * 0.98, 5.63, 0.66 + height * 0.22),
-                (0.055, 0.040, height * 0.22),
+                (x + offset * 0.98, 5.625, 0.61 + inner_h * 0.50),
+                0.060,
+                0.008,
+                inner_h,
                 hot,
+                vertices=14,
             )
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
 
@@ -889,7 +917,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "stair_stone": material("HOME_MAT_stair_stone", (0.170, 0.155, 0.132, 1), roughness=0.91, bump_scale=5.0, bump_strength=0.18, variation=0.12, variation_scale=4.2),
         "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.024, 0.022, 1), roughness=0.97, bump_scale=7.0, bump_strength=0.18, variation=0.12, variation_scale=4.8),
         "floor_stone": material("HOME_MAT_floor_stone", (0.095, 0.078, 0.062, 1), roughness=0.94, bump_scale=8.0, bump_strength=0.16, variation=0.14, variation_scale=5.6),
-        "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.66, bump_scale=4.5, bump_strength=0.10, variation=0.24, variation_scale=2.2),
+        "wood": material("HOME_MAT_wood", (0.062, 0.020, 0.008, 1), roughness=0.62, bump_scale=5.0, bump_strength=0.085, variation=0.24, variation_scale=2.2, grain=True),
         "brass": material("HOME_MAT_brass", (0.30, 0.15, 0.035, 1), roughness=0.31, metallic=0.90),
         "gold": material(
             "HOME_MAT_gold",
@@ -978,12 +1006,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 continue
             block_width = 0.66 + 0.045 * ((row + col) % 3)
             block_height = 0.31 + 0.018 * ((row * 2 + col) % 2)
+            block_y = 6.710 - 0.006 * ((row * 3 + col) % 3)
             cube(
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
-                (bx, 6.685, z),
-                (block_width, 0.025, block_height),
+                (bx, block_y, z),
+                (block_width, 0.016, block_height),
                 materials["arch_stone"] if (row + col) % 5 == 0 else materials["stone"],
-                bevel=0.026,
+                bevel=0.018,
             )
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
