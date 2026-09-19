@@ -46,6 +46,7 @@ REQUIRED_MATTHIAS = (
     "LEGACY_PISTOL_ATLAS_URL",
     "/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-",
     "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
+    "V10_RUNTIME_PROMOTION_ENABLED := false",
     "V10_PISTOL_ATLAS_URL",
     "/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-",
     "V10_ATLAS_COLUMNS := 12",
