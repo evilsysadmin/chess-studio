@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Export the canonical Blender Home scene as a browser-runtime GLB.
+
+This deliberately reuses build_home_v2_blockout.py as the single scene source
+of truth. Review renders stay owned by the Blender preview workflow; this
+export only prepares a compact Three.js-consumable scene for R2.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import bpy
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import build_home_v2_blockout as home
+
+
+LOGICAL_ID = "home.scene.runtime"
+RUNTIME_CONTRACT = "home-blender-runtime-v1"
+
+
+def argv_after_double_dash() -> list[str]:
+    if "--" not in sys.argv:
+        return []
+    return sys.argv[sys.argv.index("--") + 1 :]
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reference", default=home.DEFAULT_REFERENCE)
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--samples", type=int, default=16)
+    parser.add_argument("--max-width", type=int, default=1000)
+    return parser.parse_args(argv_after_double_dash())
+
+
+def flatten_runtime_materials() -> None:
+    """Keep PBR intent while removing Blender-only procedural inputs.
+
+    The review scene uses procedural noise/bump nodes that glTF cannot carry
+    directly. Runtime v1 intentionally exports the authored base colour,
+    roughness, metallic and emission values instead of silently producing
+    broken shader graphs.
+    """
+    for mat in bpy.data.materials:
+        if not mat.use_nodes or not mat.node_tree:
+            continue
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf is None:
+            continue
+        for input_name in ("Base Color", "Normal"):
+            socket = bsdf.inputs.get(input_name)
+            if socket is None:
+                continue
+            for link in list(socket.links):
+                mat.node_tree.links.remove(link)
+        base = bsdf.inputs.get("Base Color")
+        if base is not None:
+            base.default_value = tuple(mat.diffuse_color)
+
+
+def convert_curves_to_meshes() -> int:
+    converted = 0
+    for obj in list(bpy.data.objects):
+        if obj.type != "CURVE":
+            continue
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.convert(target="MESH")
+        obj.select_set(False)
+        converted += 1
+    return converted
+
+
+def select_runtime_geometry() -> int:
+    bpy.ops.object.select_all(action="DESELECT")
+    count = 0
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH":
+            continue
+        obj.select_set(True)
+        count += 1
+    return count
+
+
+def main() -> None:
+    args = parse_args()
+    root = Path.cwd()
+    out_dir = Path(args.out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    reference_source = (root / args.reference).resolve()
+    if not reference_source.is_file():
+        raise SystemExit(f"Canonical Home reference not found: {reference_source}")
+    reference = home.materialize_reference(reference_source, out_dir)
+
+    home.reset_scene()
+    scene, camera, target, width, height, render_width, render_height = home.build_scene(
+        reference,
+        args.samples,
+        args.max_width,
+        "eevee",
+    )
+
+    flatten_runtime_materials()
+    converted_curves = convert_curves_to_meshes()
+    mesh_count = select_runtime_geometry()
+    if mesh_count < 80:
+        raise SystemExit(f"Refusing suspicious Home runtime export with only {mesh_count} meshes")
+
+    glb_path = out_dir / "home-v2-runtime.glb"
+    bpy.ops.export_scene.gltf(
+        filepath=str(glb_path),
+        export_format="GLB",
+        use_selection=True,
+        export_cameras=False,
+        export_lights=False,
+        export_animations=False,
+        export_materials="EXPORT",
+    )
+    if not glb_path.is_file() or glb_path.stat().st_size < 100_000:
+        raise SystemExit(f"Home runtime GLB missing or unexpectedly small: {glb_path}")
+
+    metadata = {
+        "contract": RUNTIME_CONTRACT,
+        "source_contract": home.CONTRACT,
+        "logical_id": LOGICAL_ID,
+        "reference_contract": "user-approved-home-canon-2026-09-18",
+        "reference_size": [width, height],
+        "review_render_size": [render_width, render_height],
+        "camera": {
+            "position": [round(v, 6) for v in camera.location],
+            "rotation_euler": [round(v, 6) for v in camera.rotation_euler],
+            "target": list(target),
+        },
+        "mesh_count": mesh_count,
+        "converted_curves": converted_curves,
+        "materials": len(bpy.data.materials),
+        "bytes": glb_path.stat().st_size,
+    }
+    (out_dir / "home-v2-runtime.json").write_text(
+        json.dumps(metadata, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(metadata, indent=2))
+
+
+if __name__ == "__main__":
+    main()
