@@ -190,6 +190,22 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     bracket.castShadow = true;
     // A tapered outer flame plus a small hot core reads as fire instead of a
     // glowing sphere, while keeping the same single practical light per torch.
+    const emberCup = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.115, 0.072, 0.09, coarsePointer ? 8 : 12),
+      torchMaterial,
+    );
+    emberCup.name = `chronicles-wall-torch-cup-${index}`;
+    emberCup.position.set(0.51, 0.045, 0);
+    emberCup.castShadow = true;
+    const emberLip = new THREE.Mesh(
+      new THREE.TorusGeometry(0.112, 0.014, 5, coarsePointer ? 10 : 16),
+      torchMaterial,
+    );
+    emberLip.name = `chronicles-wall-torch-lip-${index}`;
+    emberLip.position.set(0.51, 0.088, 0);
+    emberLip.rotation.x = Math.PI / 2;
+    emberLip.castShadow = true;
+
     const flame = new THREE.Mesh(createTorchFlameGeometry(coarsePointer), flameMaterial);
     flame.scale.set(0.96 * flameScale, 1.0 * flameScale, 0.96 * flameScale);
     flame.position.set(0.51, 0.08, 0);
@@ -207,7 +223,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
       light.shadow.normalBias = 0.04;
     }
     if (soot) root.add(soot);
-    root.add(wallPlate, bracket, flame, flameCore, light);
+    root.add(wallPlate, bracket, emberCup, emberLip, flame, flameCore, light);
     root.position.copy(transform.position);
     root.rotation.y = transform.yaw;
     scene.add(root);
