@@ -9,7 +9,7 @@ export TF_VAR_tenancy_ocid := $(OCI_TENANCY_OCID)
 export TF_VAR_region := $(if $(OCI_REGION),$(OCI_REGION),eu-frankfurt-1)
 export TF_VAR_state_bucket_name := $(if $(OCI_TFSTATE_BUCKET),$(OCI_TFSTATE_BUCKET),chess-studio-tfstate)
 
-.PHONY: help auth probe bootstrap plan apply destroy fmt fmt-check validate static secret-guard floci test
+.PHONY: help auth probe bootstrap plan apply vault-iam destroy fmt fmt-check validate static secret-guard floci test
 
 help:
 	@printf '%s\n' \
@@ -18,6 +18,7 @@ help:
 		'  make bootstrap   create/recover persistent foundation + remote state' \
 		'  make plan        plan replaceable OCI staging' \
 		'  make apply       apply replaceable OCI staging' \
+		'  make vault-iam   apply only the staging runtime Vault read policy' \
 		'  make destroy     destroy staging only (OCI_CONFIRM_DESTROY=true required)' \
 		'  make test        static Terraform contracts + secret guard + Floci' \
 		'  make fmt-check   check Terraform formatting' \
@@ -26,7 +27,7 @@ help:
 auth:
 	@cd "$(ROOT)" && $(PYTHON) -S scripts/oci_auth_contract.py
 
-probe bootstrap plan apply: auth
+probe bootstrap plan apply vault-iam: auth
 	@cd "$(ROOT)" && bash scripts/oci_staging_lifecycle.sh "$@"
 
 destroy: auth
