@@ -1,10 +1,15 @@
 {
   "worksheet": "matthias-pawn-slug-godot-v14",
-  "status": "candidate-awaiting-ci-visual-review",
+  "status": "validated-promoted-runtime",
   "validated_contract": {
     "generation": "strict-v14",
     "source_generation": "strict-v13",
-    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "weapons": [
+      "pistol",
+      "machinegun",
+      "shotgun",
+      "panzerfaust"
+    ],
     "actions": 18,
     "frames_per_action": 8,
     "cell_size": 416,
@@ -34,7 +39,60 @@
     "image_generation_trials": "rejected before repo write because free generation drifted from canonical Matthias identity; no generated non-canonical frames are used"
   },
   "resume": {
-    "next": "run strict-v14 CI across all four weapons, inspect every PNG review artifact, fix any regression, then merge to publish immutable R2 assets and promote runtime in a separate PR",
-    "source_of_truth": "promoted strict-v13 runtime plus strict-v14 workflow artifacts"
+    "next": "use strict-v14 as the next canonical Pawn Slug Matthias baseline; verify normal staging visual smoke after runtime promotion and iterate from these content-addressed assets",
+    "source_of_truth": "runtime FULL_ATLAS_URLS plus strict-v14 worksheet and R2 content-addressed assets"
+  },
+  "runtime_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/pistol/v14-9ded4a9961a96cf6.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/machinegun/v14-93d9f9d9f1895711.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/shotgun/v14-9bc62beb46a5be92.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/panzerfaust/v14-2177056edc0cb845.png"
+  },
+  "ci_evidence": {
+    "candidate_pr": 3056,
+    "candidate_commit": "71c1502ef69d29b292c284380f6a54042dcd9130",
+    "candidate_run": 35473077548,
+    "publish_main_commit": "1cfc1b5807cf7e0cf1250456d164655535692c8f",
+    "publish_run": 35473160791,
+    "godot": "4.7.2",
+    "health": {
+      "pistol": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "changed_rgb_pixels": 3560742,
+        "face_cue_frames": 114,
+        "max_luma_spread_delta": 0.446
+      },
+      "machinegun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "changed_rgb_pixels": 3652203,
+        "face_cue_frames": 111,
+        "max_luma_spread_delta": 0.325
+      },
+      "shotgun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "changed_rgb_pixels": 3443795,
+        "face_cue_frames": 92,
+        "max_luma_spread_delta": 0.334
+      },
+      "panzerfaust": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "changed_rgb_pixels": 3999579,
+        "face_cue_frames": 85,
+        "max_luma_spread_delta": 0.495
+      }
+    },
+    "visual_review": "Reviewed all four CI review PNGs plus enlarged representative v13/v14 pairs. No silhouette, pivot, muzzle-flash, death/downed or frame-continuity regression observed; clothing/weapon separation improves and stern facial cues remain readable."
   }
 }
