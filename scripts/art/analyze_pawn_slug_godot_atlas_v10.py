@@ -196,7 +196,7 @@ def write_report(report: dict, path: Path | None) -> None:
 
 
 def self_test() -> None:
-    cell = 64
+    cell = 128
     actions = [{"name": "run", "row": 0, "frames": 4}]
     manifest = {
         "atlas": {"cell_size": cell, "width": cell * 4, "height": cell},
@@ -206,14 +206,14 @@ def self_test() -> None:
     good = Image.new("RGBA", (cell * 4, cell), (0, 0, 0, 0))
     draw = ImageDraw.Draw(good)
     for col in range(4):
-        x = col * cell + 20 + (col % 2)
-        draw.rectangle((x, 18, x + 22, 54), fill=(40, 40, 40, 255))
+        x = col * cell + 70 + (col % 2)
+        draw.rectangle((x, 30, x + 22, 104), fill=(40, 40, 40, 255))
     assert analyze(good, manifest)["promotable"] is True
 
     bad = good.copy()
     draw = ImageDraw.Draw(bad)
     draw.rectangle((3 * cell, 0, 4 * cell - 1, cell - 1), fill=(0, 0, 0, 0))
-    draw.rectangle((3 * cell + 2, 18, 3 * cell + 24, 54), fill=(40, 40, 40, 255))
+    draw.rectangle((3 * cell + 2, 30, 3 * cell + 24, 104), fill=(40, 40, 40, 255))
     result = analyze(bad, manifest)
     assert result["promotable"] is False
     assert any(issue["kind"] in {"centroid_jump", "left_edge_jump"} for issue in result["issues"])
