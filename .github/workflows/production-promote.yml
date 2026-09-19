@@ -221,10 +221,22 @@ jobs:
       WORKER_NAME: chess-studio-narrative-ai
       CUSTOM_DOMAIN: ai.shadowops.dpdns.org
     steps:
-      - name: Checkout staging-accredited commit
+      - name: Checkout production orchestrator
+        uses: actions/checkout@v7
+
+      - name: Checkout staging-accredited Worker source
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
+          path: release-source
+
+      - name: Stage accredited Worker runtime into current Terraform
+        shell: bash
+        working-directory: .
+        run: |
+          set -euo pipefail
+          test -f release-source/infra/cloudflare/worker/index.js
+          cp release-source/infra/cloudflare/worker/index.js infra/cloudflare/worker/index.js
 
       - name: Preserve accredited SHA
         id: provenance
@@ -513,23 +525,27 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PAGES_ORIGIN: https://chess-studio-production.pages.dev
     steps:
-      - name: Checkout staging-accredited commit
+      - name: Checkout production orchestrator
+        uses: actions/checkout@v7
+
+      - name: Checkout staging-accredited frontend source
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
+          path: release-source
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: release-source/frontend/package-lock.json
 
       - name: Restore exact production frontend dependencies
         uses: ./.github/actions/cache-node-modules
         with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
+          working-directory: release-source/frontend
+          lockfile: release-source/frontend/package-lock.json
           node-version: '22'
 
       - name: Restore cached Wrangler toolchain
@@ -546,7 +562,7 @@ jobs:
           python3 scripts/cloudflare_production_pages.py prepare
 
       - name: Build production frontend
-        working-directory: frontend
+        working-directory: release-source/frontend
         env:
           VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
           VITE_PUBLIC_BASE: /
@@ -563,14 +579,14 @@ jobs:
           set -euo pipefail
           python3 - "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
-          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          payload = json.loads(pathlib.Path('release-source/frontend/dist/release.json').read_text(encoding='utf-8'))
           actual = str(payload.get('build') or '').lower()
           expected = sys.argv[1].lower()
           raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
           PY
 
       - name: Deploy tested frontend to Cloudflare Pages
-        working-directory: frontend
+        working-directory: release-source/frontend
         shell: bash
         run: |
           set -euo pipefail
