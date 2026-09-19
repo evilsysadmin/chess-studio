@@ -726,6 +726,24 @@ def add_side_furnishings(materials):
         0.025,
         brass,
     )
+    curve_tube(
+        "HOME_PROP_globe_equator",
+        [
+            (gx + 0.60 * math.cos(i * math.tau / 24), gy + 0.60 * math.sin(i * math.tau / 24), 1.86)
+            for i in range(25)
+        ],
+        0.018,
+        materials["brass_dark"],
+    )
+    curve_tube(
+        "HOME_PROP_globe_meridian_cross",
+        [
+            (gx, gy + 0.60 * math.cos(i * math.tau / 24), 1.86 + 0.60 * math.sin(i * math.tau / 24))
+            for i in range(25)
+        ],
+        0.018,
+        materials["brass_dark"],
+    )
 
     # Plant and ceramic pot mark the stair edge in the master.
     cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
@@ -882,7 +900,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.22,
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.12, 0.065, 0.020, 1), roughness=0.42, metallic=0.78),
-        "steel": material("HOME_MAT_steel", (0.155, 0.170, 0.185, 1), roughness=0.26, metallic=0.90),
+        "steel": material("HOME_MAT_steel", (0.245, 0.265, 0.285, 1), roughness=0.24, metallic=0.90),
         "board_light": material("HOME_MAT_board_light", (0.42, 0.29, 0.18, 1), roughness=0.68),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.022, 0.014, 1), roughness=0.78),
         "rug": material("HOME_MAT_rug", (0.165, 0.010, 0.016, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.08, variation_scale=9.0),
@@ -895,7 +913,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "piece_dark": material("HOME_MAT_piece_dark", (0.020, 0.016, 0.014, 1), roughness=0.48),
         "leather": material("HOME_MAT_leather", (0.16, 0.012, 0.014, 1), roughness=0.74, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
         "paper": material("HOME_MAT_paper", (0.72, 0.58, 0.38, 1), roughness=0.88),
-        "globe": material("HOME_MAT_globe", (0.52, 0.34, 0.15, 1), roughness=0.58, variation=0.10, variation_scale=3.0),
+        "globe": material("HOME_MAT_globe", (0.18, 0.105, 0.045, 1), roughness=0.66, variation=0.22, variation_scale=3.4),
         "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
         "ceramic": material("HOME_MAT_ceramic", (0.48, 0.43, 0.33, 1), roughness=0.52),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
@@ -947,6 +965,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 (x + offset, 6.715, z + 0.36),
                 (0.012, 0.018, 0.31),
                 materials["stone_dark"],
+            )
+
+    # Shallow individual ashlar faces add parallax and catch grazing light.
+    # They remain low-relief so the approved focal architecture stays dominant.
+    for row, z in enumerate((0.42, 1.20, 1.98, 2.76, 3.54, 4.32, 5.10, 5.88)):
+        offset = 0.76 if row % 2 else 0.0
+        for col in range(-6, 7):
+            bx = col * 1.48 + offset
+            if abs(bx) > 8.65:
+                continue
+            width = 0.66 + 0.045 * ((row + col) % 3)
+            height = 0.31 + 0.018 * ((row * 2 + col) % 2)
+            cube(
+                f"HOME_ARCH_back_ashlar_{row}_{col}",
+                (bx, 6.685, z),
+                (width, 0.025, height),
+                materials["arch_stone"] if (row + col) % 5 == 0 else materials["stone"],
+                bevel=0.026,
             )
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
@@ -1196,7 +1232,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 150, (0.82, 0.48, 0.24), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 235, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 120, (0.82, 0.52, 0.28), 2.2, target=(1.55, 5.28, 2.35))
-    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 110, (0.66, 0.72, 0.78), 1.6, target=(1.55, 5.28, 2.40))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 142, (0.66, 0.72, 0.78), 1.55, target=(1.55, 5.28, 2.40))
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
