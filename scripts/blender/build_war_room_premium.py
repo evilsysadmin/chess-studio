@@ -96,7 +96,7 @@ def set_socket(bsdf, value, *names):
 
 
 def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
-             texture=None, scale=6.0, bump=0.0, emission=None, emission_strength=2.5):
+             texture=None, scale=6.0, bump=0.0, emission=None, emission_strength=2.5, matte=False):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
@@ -106,6 +106,10 @@ def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
     set_socket(bsdf, metal, "Metallic")
     set_socket(bsdf, rough, "Roughness")
     set_socket(bsdf, 1.47, "IOR")
+    if matte:
+        # Flames sit inches from the hearth point lights: without this the
+        # specular/diffuse term clips to pink under AgX.
+        set_socket(bsdf, 0.0, "Specular IOR Level", "Specular")
     set_socket(bsdf, coat, "Coat Weight", "Clearcoat")
     set_socket(bsdf, 0.20, "Coat Roughness", "Clearcoat Roughness")
     set_socket(bsdf, sheen, "Sheen Weight", "Sheen")
@@ -590,7 +594,7 @@ def add_room(static, mats):
         flame(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.10),
               w, h, lean, mats["fire_core"], static)
 
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 400.0, (1.0, 0.40, 0.12), static, radius=1.35)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 260.0, (1.0, 0.33, 0.085), static, radius=1.35)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk.
@@ -1007,8 +1011,8 @@ def add_gothic_canon_v2(static, mats):
     )):
         flame(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.10),
               w, h, lean, mats["fire"], static)
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 340.0,
-          (1.0, 0.40, 0.12), static, radius=1.30)
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 230.0,
+          (1.0, 0.33, 0.085), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.74, 3.66), (1.84, 0.68, 0.055),
          mats["stone"], static, bevel=0.040)
@@ -1175,8 +1179,8 @@ def build():
         "window": material("WR_MAT_window_night", (0.003, 0.010, 0.055, 1), rough=0.20, coat=0.44),
         "moon": material("WR_MAT_window_moon", (0.56, 0.68, 0.90, 1), rough=0.26, emission=(0.16, 0.28, 0.62, 1)),
         "horizon": material("WR_MAT_window_horizon", (0.004, 0.007, 0.014, 1), rough=0.96),
-        "fire": material("WR_MAT_fire", (0.60, 0.050, 0.004, 1), rough=0.18, emission=(1.0, 0.085, 0.003, 1), emission_strength=1.15),
-        "fire_core": material("WR_MAT_fire_core", (1.0, 0.32, 0.015, 1), rough=0.16, emission=(1.0, 0.20, 0.008, 1), emission_strength=1.6),
+        "fire": material("WR_MAT_fire", (0.60, 0.050, 0.004, 1), rough=0.18, emission=(1.0, 0.085, 0.003, 1), emission_strength=1.15, matte=True),
+        "fire_core": material("WR_MAT_fire_core", (1.0, 0.32, 0.015, 1), rough=0.16, emission=(1.0, 0.20, 0.008, 1), emission_strength=1.6, matte=True),
         "ember": material("WR_MAT_ember", (0.24, 0.010, 0.003, 1), rough=0.38, emission=(0.44, 0.012, 0.002, 1)),
         "charred_wood": material("WR_MAT_charred_log", (0.018, 0.008, 0.004, 1), rough=0.90, texture="wood", scale=3.2, bump=0.08),
         "iron": material("WR_MAT_hearth_iron", (0.025, 0.028, 0.032, 1), metal=0.86, rough=0.52, texture="metal", scale=30, bump=0.018),
