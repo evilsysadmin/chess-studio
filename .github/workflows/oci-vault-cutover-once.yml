@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/oci-vault-cutover-once.yml
       - scripts/oci_vault_bootstrap.py
+      - scripts/oci_vault_runtime.py
+      - scripts/oci_vault_sync.py
+      - scripts/oci_vault_cutover.py
 
 permissions:
   contents: read
