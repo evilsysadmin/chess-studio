@@ -661,8 +661,8 @@ def add_armor(materials):
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    cube("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.27, 0.15, 0.105), steel, bevel=0.075)
-    cube("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.27, 0.15, 0.105), steel, bevel=0.075)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.285, 0.145, 0.115), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.285, 0.145, 0.115), steel)
     curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.69, y, 1.96), (x - 0.61, y - 0.02, 1.65)], 0.125, steel)
     curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.69, y, 1.96), (x + 0.61, y - 0.02, 1.65)], 0.125, steel)
     sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.02, 1.61), (0.13, 0.11, 0.13), steel)
@@ -684,7 +684,7 @@ def add_armor(materials):
         cube(
             f"HOME_PROP_armor_pauldron_ridge_{side}",
             (x + side * 0.50, y - 0.055, 2.39),
-            (0.235, 0.055, 0.055),
+            (0.215, 0.045, 0.042),
             brass,
             bevel=0.020,
         )
