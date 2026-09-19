@@ -894,9 +894,9 @@ def add_gothic_canon_v2(static, mats):
     # Canon parity: shallow gothic tracery inside the rear lancets.
     for prefix, cx in (("left", -4.55), ("right", 4.85)):
         cube(f"WR_CANON_arch_{prefix}_keystone", (cx, 6.34, 6.18),
-             (0.18, 0.055, 0.20), mats["stone_light"], static, bevel=0.055)
+             (0.18, 0.055, 0.20), mats["stone"], static, bevel=0.055)
         cube(f"WR_CANON_arch_{prefix}_sill", (cx, 6.36, 3.26),
-             (1.33, 0.055, 0.075), mats["stone_dark"], static, bevel=0.030)
+             (1.33, 0.055, 0.075), mats["stone"], static, bevel=0.030)
         for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
             torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
                   (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
