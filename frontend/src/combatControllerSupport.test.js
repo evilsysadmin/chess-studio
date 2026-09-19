@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCombatSessionSnapshot, emergencyCombatCpuSuggestion, emptyUnitBattleStats, incrementIdentityCounter, isLegalCombatCpuSuggestion, resolveCombatCpuTurnSuggestion, resolveHumanColor } from './combatControllerSupport.js';
+import { annotateCombatCandidates, buildCombatSessionSnapshot, emergencyCombatCpuSuggestion, emptyUnitBattleStats, incrementIdentityCounter, isLegalCombatCpuSuggestion, resolveCombatCpuTurnSuggestion, resolveHumanColor, selectCombatAwareRemoteSuggestion } from './combatControllerSupport.js';
 
 describe('combat controller support', () => {
   it('resuelve color explícito o aleatorio sin esconder Math.random en el controlador', () => {
@@ -30,6 +30,38 @@ describe('combat controller support', () => {
     expect(isLegalCombatCpuSuggestion(promotion, { from: 'a7', to: 'a8', promotion: 'n' })).toBe(true);
     expect(isLegalCombatCpuSuggestion(promotion, { from: 'a7', to: 'a8', promotion: 'k' })).toBe(false);
     expect(isLegalCombatCpuSuggestion(start, { from: 'e2', to: 'e4', promotion: 'q' })).toBe(false);
+  });
+
+  it('usa los hechos reales de Combat para corregir una captura arriesgada sin sustituir el orden profundo por el shortlist', () => {
+    const fen = 'r6k/8/8/8/8/8/8/Q6K b - - 0 1';
+    const registry = {
+      a8: { id: 'b-r-a8', type: 'r', color: 'b', square: 'a8', strengthPoints: 0, speedPoints: 0 },
+      h8: { id: 'b-k-h8', type: 'k', color: 'b', square: 'h8', strengthPoints: 0, speedPoints: 0 },
+      a1: { id: 'w-q-a1', identityId: 'veteran-queen', type: 'q', color: 'w', square: 'a1', strengthPoints: 2, speedPoints: 1 },
+      h1: { id: 'w-k-h1', type: 'k', color: 'w', square: 'h1', strengthPoints: 0, speedPoints: 0 },
+    };
+    const remote = {
+      from: 'a8',
+      to: 'a1',
+      candidates: [
+        { from: 'a8', to: 'a1', moveKey: 'a8a1', chessScoreCp: 40, isLegal: true },
+        { from: 'a8', to: 'b8', moveKey: 'a8b8', chessScoreCp: 0, isLegal: true },
+      ],
+    };
+
+    const measured = annotateCombatCandidates(fen, registry, remote);
+    const capture = measured.candidates[0];
+    expect(capture.combatReady).toBe(true);
+    expect(capture.hitChance).toBeGreaterThanOrEqual(0.5);
+    expect(capture.hitChance).toBeLessThan(1);
+    expect(capture.enemyValue).toBe(9);
+    expect(capture.enemyPersistentValue).toBe(3);
+
+    const chosen = selectCombatAwareRemoteSuggestion(measured);
+    expect(chosen.moveKey).toBe('a8b8');
+
+    const noFacts = annotateCombatCandidates(fen, {}, remote);
+    expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
   });
 
   it('si cae el análisis remoto puede elegir una jugada legal local y no secuestra la batalla', async () => {
