@@ -676,6 +676,8 @@ def get_cpu_move(board: chess.Board, level: float = 50, ghost_style: Optional[di
     legal_moves = list(board.legal_moves)
     if not legal_moves:
         return None
+    if len(legal_moves) == 1:
+        return move_to_dict(board, legal_moves[0])
 
     # El azar puro queda reservado para niveles bajos. A partir de ahí el
     # motor siempre piensa, pero los niveles bajos pueden preferir una jugada
