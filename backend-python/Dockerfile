@@ -15,14 +15,16 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates libstdc++ \
     && update-ca-certificates \
-    && addgroup -S chess \
-    && adduser -S -D -H -h /app -G chess chess
+    && addgroup -S -g 10001 chess \
+    && adduser -S -D -H -h /app -u 10001 -G chess chess
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY --chown=chess:chess . .
 
-USER chess
+# Keep the OCI image config numeric so Kubernetes can prove runAsNonRoot
+# without consulting /etc/passwd inside the image.
+USER 10001:10001
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
