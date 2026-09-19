@@ -34,6 +34,12 @@ TARGET_PIVOT_X = 200.0
 RELOAD_ROW = 15
 RELOAD_FLASH_X_MIN = 260
 RELOAD_FLASH_SCORE_LIMIT = 180
+AIM_FORWARD_X_MIN = 220
+AIM_FORWARD_BAND_PX = 24
+AIM_UP_DELTA = 50.0
+AIM_DOWN_DELTA = 50.0
+DIAGONAL_ROWS = (11, 12, 13)
+CROUCH_HEIGHT_REDUCTION = 10.0
 MAX_CONTENT = CELL - 18
 PIVOT_X_BY_WEAPON = {
     "pistol": 200.0,
@@ -178,6 +184,131 @@ def weapon_scale(grid: list[list[Image.Image]]) -> float:
 
 
 
+def forward_tip_y(cell: Image.Image) -> float:
+    """Median Y of the forward-most opaque pixels: a stable barrel/flash direction proxy."""
+    alpha = cell.getchannel("A")
+    box = alpha.getbbox()
+    if box is None:
+        raise SystemExit("cannot measure direction of an empty cell")
+    values = alpha.load()
+    x0 = max(AIM_FORWARD_X_MIN, int(round(box[0] + 0.72 * (box[2] - box[0]))))
+    points: list[tuple[int, int]] = []
+    for y in range(box[1], box[3]):
+        for x in range(x0, box[2]):
+            if values[x, y] > 40:
+                points.append((x, y))
+    if not points:
+        return float((box[1] + box[3]) * 0.5)
+    max_x = max(x for x, _ in points)
+    cutoff = max(x0, max_x - AIM_FORWARD_BAND_PX)
+    ys = [y for x, y in points if x >= cutoff]
+    return float(statistics.median(ys))
+
+
+def row_forward_tip_y(atlas: Image.Image, row: int) -> float:
+    return float(statistics.median(
+        forward_tip_y(atlas.crop((
+            col * CELL,
+            row * CELL,
+            (col + 1) * CELL,
+            (row + 1) * CELL,
+        )))
+        for col in range(COLS)
+    ))
+
+
+def row_median_height(atlas: Image.Image, row: int) -> float:
+    heights = []
+    for col in range(COLS):
+        cell = atlas.crop((col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL))
+        box = cell.getchannel("A").getbbox()
+        if box is None:
+            raise SystemExit(f"empty row while measuring height: row={row} col={col}")
+        heights.append(box[3] - box[1])
+    return float(statistics.median(heights))
+
+
+def normalize_directional_rows(atlas: Image.Image, weapon: str) -> None:
+    """Repair AI-authored row-label drift without inventing new pixels.
+
+    Rows 11/12 must be diagonal-up variants and row 13 diagonal-down. If the
+    source provides only one valid up row, duplicate it as the safe alt. The
+    strongest valid down row is moved to row 13. This keeps runtime semantics
+    deterministic even when an authored source silently swaps the row labels.
+    """
+    horizontal = row_forward_tip_y(atlas, 8)
+    measured = {row: row_forward_tip_y(atlas, row) for row in DIAGONAL_ROWS}
+    up_rows = [row for row in DIAGONAL_ROWS if measured[row] <= horizontal - AIM_UP_DELTA]
+    down_rows = [row for row in DIAGONAL_ROWS if measured[row] >= horizontal + AIM_DOWN_DELTA]
+    if not up_rows or not down_rows:
+        raise SystemExit(
+            f"{weapon}: cannot normalize directional rows: horizontal={horizontal:.1f} "
+            f"rows={measured}"
+        )
+
+    ordered_up = sorted(up_rows)
+    up_a = ordered_up[0]
+    up_b = ordered_up[1] if len(ordered_up) > 1 else up_a
+    down = max(down_rows, key=lambda row: measured[row])
+    mapping = {11: up_a, 12: up_b, 13: down}
+    snapshots = {
+        row: atlas.crop((0, row * CELL, COLS * CELL, (row + 1) * CELL))
+        for row in DIAGONAL_ROWS
+    }
+    blank = Image.new("RGBA", (COLS * CELL, CELL), (0, 0, 0, 0))
+    for dst, src in mapping.items():
+        atlas.paste(blank, (0, dst * CELL))
+        atlas.alpha_composite(snapshots[src], (0, dst * CELL))
+
+    repaired = {row: row_forward_tip_y(atlas, row) for row in DIAGONAL_ROWS}
+    if (
+        repaired[11] > horizontal - AIM_UP_DELTA
+        or repaired[12] > horizontal - AIM_UP_DELTA
+        or repaired[13] < horizontal + AIM_DOWN_DELTA
+    ):
+        raise SystemExit(
+            f"{weapon}: directional normalization failed: horizontal={horizontal:.1f} "
+            f"rows={repaired}"
+        )
+    if any(dst != src for dst, src in mapping.items()):
+        print(
+            f"Normalized {weapon} directional rows: horizontal={horizontal:.1f} "
+            f"before={measured} mapping={mapping} after={repaired}"
+        )
+
+
+def validate_semantic_rows(atlas: Image.Image) -> None:
+    horizontal = row_forward_tip_y(atlas, 8)
+    expected = {
+        9: ("up", AIM_UP_DELTA),
+        10: ("down", AIM_DOWN_DELTA),
+        11: ("up", AIM_UP_DELTA),
+        12: ("up", AIM_UP_DELTA),
+        13: ("down", AIM_DOWN_DELTA),
+    }
+    for row, (direction, delta) in expected.items():
+        tip_y = row_forward_tip_y(atlas, row)
+        if direction == "up" and tip_y > horizontal - delta:
+            raise SystemExit(
+                f"strict v9 semantic aim mismatch: row={row} expected=up "
+                f"horizontal={horizontal:.1f} tip_y={tip_y:.1f}"
+            )
+        if direction == "down" and tip_y < horizontal + delta:
+            raise SystemExit(
+                f"strict v9 semantic aim mismatch: row={row} expected=down "
+                f"horizontal={horizontal:.1f} tip_y={tip_y:.1f}"
+            )
+
+    idle_height = row_median_height(atlas, 0)
+    for row in (6, 7):
+        crouch_height = row_median_height(atlas, row)
+        if crouch_height > idle_height - CROUCH_HEIGHT_REDUCTION:
+            raise SystemExit(
+                f"strict v9 crouch posture too tall: row={row} idle={idle_height:.1f} "
+                f"crouch={crouch_height:.1f}"
+            )
+
+
 def reload_muzzle_flash_score(cell: Image.Image) -> int:
     """Count unmistakable hot muzzle-flash pixels in the forward reload zone."""
     px = cell.load()
@@ -277,6 +408,7 @@ def pack(source: Image.Image, weapon: str) -> Image.Image:
                 )
             atlas.alpha_composite(resized, (dst_x, dst_y))
     repair_reload_muzzle_flashes(atlas, weapon)
+    normalize_directional_rows(atlas, weapon)
     return atlas
 
 
@@ -307,11 +439,14 @@ def validate(atlas: Image.Image) -> None:
         if score > RELOAD_FLASH_SCORE_LIMIT:
             raise SystemExit(f"strict v9 reload muzzle flash leaked through: col={col} score={score}")
 
+    validate_semantic_rows(atlas)
+
 
 def self_test() -> None:
     assert STRICT_VERSION == "v9"
     assert len(ROW_NAMES) == ROWS
     assert OUT_SIZE == (2496, 7488)
+    assert AIM_UP_DELTA == 50.0 and AIM_DOWN_DELTA == 50.0
     sample = Image.new("RGBA", SRC_SIZE, (0, 0, 0, 0))
     for row in range(ROWS):
         for col in range(COLS):
