@@ -86,13 +86,13 @@ describe('War Room canonical warm lighting', () => {
     });
 
     expect(profile).toEqual(warRoomV2RuntimeLightingProfile());
-    expect(renderer.toneMappingExposure).toBe(1);
-    expect(hemisphere.intensity).toBe(0.52);
-    expect(key.intensity).toBe(1.40);
-    expect(warmFill.intensity).toBe(1.82);
+    expect(renderer.toneMappingExposure).toBe(1.03);
+    expect(hemisphere.intensity).toBe(0.60);
+    expect(key.intensity).toBe(1.48);
+    expect(warmFill.intensity).toBe(2.02);
     expect(scene.background.getHex()).toBe(0x070504);
     expect(scene.fog.color.getHex()).toBe(0x0d0907);
-    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v2');
+    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v3');
   });
 
   it('recognizes an already graded key instead of depending on the old source color', () => {
