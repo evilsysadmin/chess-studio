@@ -18,7 +18,6 @@ def persisted_game():
         "humanColor": "w",
         "handicap": None,
         "initialFen": None,
-        "ghostStyle": None,
         "lastMove": {
             "from": "g1",
             "to": "f3",

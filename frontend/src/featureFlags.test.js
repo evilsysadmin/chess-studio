@@ -7,7 +7,7 @@ describe('public feature flags', () => {
   });
 
   it('sólo acepta booleanos de flags conocidos', () => {
-    expect(normalizeFeatureFlags({ features: { spectator: false, rivalGhost: 'no', unknown: false } })).toEqual({
+    expect(normalizeFeatureFlags({ features: { spectator: false, unknown: false } })).toEqual({
       ...DEFAULT_FEATURE_FLAGS,
       spectator: false,
     });

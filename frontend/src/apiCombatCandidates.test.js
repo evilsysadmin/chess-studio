@@ -12,18 +12,13 @@ beforeEach(() => {
 });
 
 describe('Combat analyze shortlist transport', () => {
-  it('keeps normal analysis legacy-shaped and can request candidates without doctrine', async () => {
+  it('keeps normal analysis compact and can request factual candidates', async () => {
     await api.analyzePosition('fen-normal', 50);
-    await api.analyzePosition('fen-combat', 70, {}, null, 5);
-    await api.analyzePosition('fen-ghost', 70, {}, { capture: 0.8, check: 0.5 });
+    await api.analyzePosition('fen-combat', 70, {}, 5);
 
     const normal = JSON.parse(global.fetch.mock.calls[0][1].body);
     const combat = JSON.parse(global.fetch.mock.calls[1][1].body);
-    const ghost = JSON.parse(global.fetch.mock.calls[2][1].body);
     expect(normal.candidateLimit).toBeUndefined();
     expect(combat.candidateLimit).toBe(5);
-    expect(combat.ghostStyle).toBeUndefined();
-    expect(ghost.candidateLimit).toBe(5);
-    expect(ghost.ghostStyle).toEqual({ capture: 0.8, check: 0.5 });
   });
 });

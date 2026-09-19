@@ -35,15 +35,6 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     );
   });
 
-  it('serializa el estilo del Rival Fantasma sólo al crear la partida', async () => {
-    const ghostStyle = { capture: 0.4, pawn: -0.2, queen: 0.1, check: 0.5, castle: -0.3 };
-    await api.createGame(62, 'b', null, null, ghostStyle);
-    const [, options] = global.fetch.mock.calls[0];
-    const body = JSON.parse(options.body);
-    expect(body.ghostStyle).toEqual(ghostStyle);
-    expect(body.difficulty).toBe(62);
-    expect(body.color).toBe('b');
-  });
 
   it('manda Authorization al analizar y mover', async () => {
     await api.analyzePosition('fen', 50);
@@ -88,7 +79,7 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     await expect(api.getGame('g1')).rejects.toMatchObject({ name: 'GamePayloadError' });
   });
   it('envía Idempotency-Key en create/move/undo cuando la operación lo declara', async () => {
-    await api.createGame(50, 'w', null, null, null, { operationId: 'create-op-000001' });
+    await api.createGame(50, 'w', null, null, { operationId: 'create-op-000001' });
     await api.playMove('g1', 'e2', 'e4', null, { operationId: 'move-op-0000001' });
     await api.undoMove('g1', { operationId: 'undo-op-0000001' });
 

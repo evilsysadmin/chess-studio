@@ -9,5 +9,4 @@ def test_public_feature_flags_disable_only_known_public_capabilities():
     flags = public_feature_flags(" spectator, postgamefeedback, made-up ")
     assert flags["spectator"] is False
     assert flags["postGameFeedback"] is False
-    assert flags["rivalGhost"] is True
     assert "made-up" not in flags
