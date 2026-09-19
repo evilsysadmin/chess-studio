@@ -1344,7 +1344,10 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_STATUS_DEGRADED" in source
     assert "staging2 status degraded: workload contract mismatch" in source
     assert "staging2 status degraded: stale state marker without Deployment" in source
-    assert "OCI_K3S_STAGING2_STATUS_OK present=true runtime=degraded" not in source
+    forbidden_degraded_ok = (
+        "OCI_K3S_STAGING2_STATUS_OK present=true " + "runtime=degraded"
+    )
+    assert forbidden_degraded_ok not in source
     assert "runtime_contract=" in source
     assert "deployment_contract=" in source
     assert "service_contract=" in source
