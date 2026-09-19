@@ -81,6 +81,13 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   return hemisphere;
 }
 
+export function warRoomBudgetCoarsePointer(budget = {}) {
+  if (typeof budget?.coarsePointer === 'boolean') return budget.coarsePointer;
+  // Backward-compatible fallback for tests/legacy callers that predate the
+  // explicit input-modality bit.
+  return Number(budget?.shadowMapSize) <= 512;
+}
+
 export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) {
   return {
     // The Blender review render already has the desired architectural depth.
@@ -471,7 +478,7 @@ function installWarRoomRenderDiscipline() {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
-    const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const coarsePointer = warRoomBudgetCoarsePointer(budget);
     const atmosphere = applyWarRoomAtmosphereGrade(scene);
     if (atmosphere && this.domElement?.dataset) {
       this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
