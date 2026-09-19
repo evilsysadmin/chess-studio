@@ -36,6 +36,7 @@ GATES = (
         label="Home Matthias art",
         exact_paths=frozenset({
             "scripts/blender/build_home_matthias.py",
+            "scripts/blender/configure_eevee_premium.py",
             "scripts/blender/home_matthias_parts.py",
             "scripts/blender/home_matthias_animations.py",
             "scripts/blender/home_matthias_contract.py",
@@ -51,6 +52,7 @@ GATES = (
         label="Chronicles party art",
         exact_paths=frozenset({
             "scripts/blender/build_chronicles_humanoid_party.py",
+            "scripts/blender/configure_eevee_premium.py",
             "scripts/blender/refine_chronicles_party_tailoring.py",
             "scripts/blender/refine_chronicles_party_anatomy.py",
             "scripts/blender/render_chronicles_party_preview.py",
@@ -86,6 +88,7 @@ GATES = (
         label="War Room premium art",
         exact_paths=frozenset({
             "scripts/blender/build_war_room_premium.py",
+            "scripts/blender/configure_eevee_premium.py",
             "scripts/blender/publish_war_room_v2_staging.py",
             ".github/workflows/war-room-blender-art.yml",
         }),
@@ -158,6 +161,11 @@ def self_test() -> None:
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
         "war-room-blender-art.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/configure_eevee_premium.py"])] == [
+        "home-matthias-blender-art.yml",
+        "chronicles-party-blender-art.yml",
+        "war-room-blender-art.yml",
     ]
     assert [gate.workflow for gate in classify([
         "scripts/blender/build_home_matthias.py",
