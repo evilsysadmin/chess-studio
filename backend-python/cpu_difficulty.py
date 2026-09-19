@@ -126,6 +126,12 @@ def get_factual_difficulty_cpu_move(
     if explicit_override is not _NO_ENGINE_OVERRIDE:
         return explicit_override
 
+    legal_moves = list(board.legal_moves)
+    if not legal_moves:
+        return None
+    if len(legal_moves) == 1:
+        return move_to_dict(board, legal_moves[0])
+
     try:
         snapshot = analyze_root_iterative(
             board,
