@@ -1354,47 +1354,41 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (1.0, 0.28, 0.065),
         radius=0.50,
     )
-    for idx, (dx, h, lean) in enumerate((
-        (-0.40, 0.20, -0.035),
-        (-0.19, 0.30, 0.035),
-        (0.02, 0.40, -0.020),
-        (0.22, 0.28, 0.040),
-        (0.41, 0.18, -0.030),
+    # Organic camera-facing flame mass: overlapping lobes instead of five
+    # identical flat tongues. Keep it low inside the firebox like the canon.
+    sphere(
+        "HOME_PROP_fireplace_left_front_ember_glow",
+        (-6.15, 5.400, 0.595),
+        (0.60, 0.026, 0.070),
+        materials["fire"],
+    )
+    for idx, (dx, h, tilt, w) in enumerate((
+        (-0.34, 0.18, -10.0, 0.130),
+        (-0.12, 0.27,   7.0, 0.145),
+        ( 0.11, 0.30,  -6.0, 0.145),
+        ( 0.34, 0.17,   9.0, 0.120),
     )):
-        cx = -6.15 + dx
-        base = 0.58
-        w = 0.090
-        flat_panel(
-            f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            [
-                (cx - w, base),
-                (cx - w * 0.68, base + h * 0.28),
-                (cx - w * 0.34, base + h * 0.52),
-                (cx + lean, base + h),
-                (cx + w * 0.38, base + h * 0.54),
-                (cx + w * 0.76, base + h * 0.24),
-                (cx + w, base),
-            ],
-            5.385,
-            0.026,
+        base = sphere(
+            f"HOME_PROP_fireplace_left_front_base_{idx}",
+            (-6.15 + dx, 5.392, 0.635),
+            (w * 1.10, 0.026, 0.060),
             materials["fire"],
-            bevel=0.016,
         )
-        inner_h = h * 0.52
-        flat_panel(
+        base.rotation_euler[1] = math.radians(tilt * 0.18)
+        lobe = sphere(
+            f"HOME_PROP_fireplace_left_front_flame_{idx}",
+            (-6.15 + dx + math.sin(math.radians(tilt)) * 0.024, 5.378, 0.650 + h * 0.50),
+            (w * 0.58, 0.024, h),
+            materials["fire"],
+        )
+        lobe.rotation_euler[1] = math.radians(tilt)
+        inner = sphere(
             f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            [
-                (cx - w * 0.44, base),
-                (cx - w * 0.20, base + inner_h * 0.36),
-                (cx + lean * 0.42, base + inner_h),
-                (cx + w * 0.24, base + inner_h * 0.34),
-                (cx + w * 0.44, base),
-            ],
-            5.355,
-            0.022,
+            (-6.15 + dx, 5.348, 0.646 + h * 0.31),
+            (w * 0.30, 0.017, h * 0.40),
             materials["fire_hot"],
-            bevel=0.010,
         )
+        inner.rotation_euler[1] = math.radians(tilt * 0.42)
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
