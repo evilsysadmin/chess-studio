@@ -917,7 +917,7 @@ def add_gothic_canon_v2(static, mats):
         )
 
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
-    for index, x in enumerate((-7.72, -1.72, 1.72, 7.72)):
+    for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
         cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
              (0.16, 0.090, 1.62), mats["stone"], static, bevel=0.050)
         cube(f"WR_CANON_rear_pilaster_cap_{index}", (x, 6.47, 6.16),
