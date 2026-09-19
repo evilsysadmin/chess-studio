@@ -431,6 +431,10 @@ def deploy(sha: str) -> None:
     )
 
 
+def _status_needs_diagnostics(desired: int, available: int, sha: str) -> bool:
+    return desired < 1 or available != desired or not SHA_RE.fullmatch(sha)
+
+
 def status() -> None:
     _verify_host_contract()
     payload = _deployment_payload()
@@ -451,6 +455,8 @@ def status() -> None:
         f"sha={sha} desired={desired} available={available} "
         f"mem_available_mib={mem // 1024**2} disk_free_mib={disk // 1024**2} load1={load1:.2f}"
     )
+    if _status_needs_diagnostics(desired, available, sha):
+        _failure_diagnostics()
 
 
 def rollback() -> None:
@@ -487,6 +493,10 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_MEM > MIN_POST_MEM
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
+    assert not _status_needs_diagnostics(1, 1, "0" * 40)
+    assert _status_needs_diagnostics(1, 0, "0" * 40)
+    assert _status_needs_diagnostics(0, 0, "0" * 40)
+    assert _status_needs_diagnostics(1, 1, "unknown")
     source = Path(__file__).read_text(encoding="utf-8")
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
