@@ -32,6 +32,16 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
 
+  // Prove a real world-state transition before exercising combat UI. North is
+  // deliberately safe on the canonical crypt spawn, so this canary verifies
+  // movement without coupling the assertion to enemy AI timing.
+  const narrator = mode.locator('.chronicles-tactics__narrator p');
+  const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+  await expect(narrator).toBeVisible();
+  await expect(moveNorth).toBeEnabled();
+  await moveNorth.evaluate((button) => button.click());
+  await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
+
   // Exercise a real combat action immediately. Turn-based combat means the
   // enemy answers only after this action, never because the CI runner is slow.
   await page.keyboard.press('2');
