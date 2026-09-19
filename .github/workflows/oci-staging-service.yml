@@ -6,7 +6,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, vault-preview-current, k3s-start, k3s-status, k3s-rollback, k3s-staging2-deploy, k3s-staging2-status, k3s-staging2-rollback]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, bringup, runtime-sync, production-runtime-bootstrap, production-runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending, vault-compare-current, vault-preview-current, k3s-start, k3s-status, k3s-rollback, k3s-staging2-deploy, k3s-staging2-status, k3s-staging2-rollback]
         default: smoke
         required: true
       secret_key:
@@ -28,7 +28,7 @@ permissions:
 # diagnostics get a per-run group so they never queue behind an unrelated mutation.
 concurrency:
   group: >-
-    ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","vault-bootstrap","k3s-start","k3s-rollback","k3s-staging2-deploy","k3s-staging2-rollback"]'), inputs.operation)
+    ${{ contains(fromJSON('["reserved-egress","reboot-agent","deploy","bringup","runtime-sync","production-runtime-bootstrap","production-runtime-sync","vault-bootstrap","k3s-start","k3s-rollback","k3s-staging2-deploy","k3s-staging2-rollback"]'), inputs.operation)
         && 'oci-staging-mutations'
         || format('oci-staging-observe-{0}', github.run_id) }}
   cancel-in-progress: false
@@ -87,6 +87,16 @@ jobs:
         env:
           DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
         run: python3 scripts/oci_release_deploy.py deploy --repo-ref "$DEPLOY_REF"
+
+      - name: Bootstrap isolated production runtime snapshot into OCI Vault
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'production-runtime-bootstrap'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python3 scripts/oci_production_runtime.py bootstrap
+
+      - name: Sync isolated production runtime snapshot to host
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'production-runtime-sync'
+        run: python3 scripts/oci_production_runtime.py sync-current
 
       - name: Verify backend after runtime sync
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'

@@ -145,6 +145,8 @@ mutating_operations = (
     "deploy",
     "bringup",
     "runtime-sync",
+    "production-runtime-bootstrap",
+    "production-runtime-sync",
     "vault-bootstrap",
     "k3s-start",
     "k3s-rollback",
@@ -283,6 +285,8 @@ assert 'if [[ "$target" == staging ]]; then' in deploy
 assert 'tunnel_action="local-only"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha' in deploy
 assert 'install -o root -g root -m 0755 "$source_launcher" "$target_launcher"' in deploy
+assert 'install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"' in deploy
+assert 'source_runtime_installer="$repo/scripts/oci_runtime_install.sh"' in deploy
 assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1' in deploy
