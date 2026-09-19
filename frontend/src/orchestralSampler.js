@@ -140,22 +140,27 @@ export function readyOrchestralSample(ctx, kind, midiNote) {
   return { ...sample, buffer: record.buffer };
 }
 
-export function primeOrchestralTheme(ctx, theme) {
-  if (!ctx || !theme) return Promise.resolve([]);
-  const kinds = new Set([
+export function orchestralKindsForTheme(theme) {
+  if (!theme) return [];
+  return [...new Set([
     theme.leadInstrument,
     theme.counterInstrument,
     theme.chordInstrument,
     theme.bassInstrument,
+    theme.signatureInstrument,
+    theme.signature?.instrument,
     ...(theme.sections || []).flatMap((section) => [
       section.leadInstrument,
       section.counterInstrument,
       section.chordInstrument,
       section.bassInstrument,
     ]),
-  ]);
-  const requests = [...kinds]
-    .filter((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind])
+  ])].filter((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind]);
+}
+
+export function primeOrchestralTheme(ctx, theme) {
+  if (!ctx || !theme) return Promise.resolve([]);
+  const requests = orchestralKindsForTheme(theme)
     .flatMap((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind].flatMap(({ root, files }) => (
       (files || [null]).map((_, variation) => requestOrchestralSample(ctx, kind, root, variation))
     )));

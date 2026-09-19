@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ORCHESTRAL_SAMPLE_LIBRARY,
+  orchestralKindsForTheme,
   selectOrchestralSample,
 } from './orchestralSampler.js';
 import { CHESS_STUDIO_TUNING_RATIO } from './musicTuning.js';
@@ -38,5 +39,17 @@ describe('orchestral sampler', () => {
   it('declines unsupported synthetic instruments cleanly', () => {
     expect(selectOrchestralSample('synth', 60)).toBeNull();
     expect(selectOrchestralSample('strings', Number.NaN)).toBeNull();
+  });
+
+  it('primes production overrides, section hand-offs and signature players', () => {
+    expect(orchestralKindsForTheme({
+      leadInstrument: 'strings',
+      bassInstrument: 'synthbass',
+      signature: { instrument: 'spiccatoStrings' },
+      sections: [
+        { counterInstrument: 'cello' },
+        { bassInstrument: 'spiccatoCello' },
+      ],
+    })).toEqual(['strings', 'spiccatoStrings', 'cello', 'spiccatoCello']);
   });
 });
