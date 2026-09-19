@@ -1,12 +1,29 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi, openMoreGameModes } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
+
+async function openVisualMoreModes(page) {
+  const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await expect(trigger).toBeVisible();
+
+  // Keep the first attempt bounded but long enough for the illustrated Home
+  // entrance motion to settle; known blockers still avoid the full 30 s burn.
+  try {
+    await trigger.click({ timeout: 5_000 });
+  } catch (error) {
+    const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+    if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+    await expect(pvpLobby).toBeHidden();
+    await trigger.click();
+  }
+}
 
 async function openChronicles(page) {
   await mockApi(page, {
@@ -31,7 +48,7 @@ async function openChronicles(page) {
     await expect(pvpLobby).toBeHidden();
   }
 
-  await openMoreGameModes(page);
+  await openVisualMoreModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
