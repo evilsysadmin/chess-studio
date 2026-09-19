@@ -30,10 +30,17 @@ K3S_STATUS = (
     ("scripts/oci_k3s_status.py", "--self-test"),
     ("scripts/oci_k3s_status_root.py", "self-test"),
 )
-K3S_STAGING2 = (("scripts/oci_k3s_staging2.py", "--self-test"),)
+K3S_STAGING2 = (
+    ("scripts/oci_k3s_staging2.py", "--self-test"),
+    (
+        "scripts/oci_k3s_staging2_root.py",
+        "self-test",
+        "infra/oci/gitops/staging2/backend.yaml.tmpl",
+    ),
+)
 BACKEND_VERIFY = (("scripts/verify_backend_staging.py", "--self-test"),)
 
-OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
+OPERATIONS: dict[str, tuple[tuple[str, ...], ...]] = {
     "diagnose": TRANSPORT,
     "backend-diagnose": TRANSPORT + BACKEND_DIAG,
     "mongo-target-diagnose": RENDER_MONGO_DIAG,
@@ -58,7 +65,7 @@ OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 
-def commands_for(operation: str) -> tuple[tuple[str, str], ...]:
+def commands_for(operation: str) -> tuple[tuple[str, ...], ...]:
     try:
         return OPERATIONS[operation]
     except KeyError as exc:
@@ -68,8 +75,9 @@ def commands_for(operation: str) -> tuple[tuple[str, str], ...]:
 def run(operation: str) -> None:
     commands = commands_for(operation)
     print(f"OCI service contracts: operation={operation} checks={len(commands)}")
-    for script, argument in commands:
-        subprocess.run([sys.executable, "-S", script, argument], cwd=ROOT, check=True)
+    for command in commands:
+        script, *arguments = command
+        subprocess.run([sys.executable, "-S", script, *arguments], cwd=ROOT, check=True)
     print(f"OCI service contracts OK: operation={operation}")
 
 
@@ -117,6 +125,11 @@ def self_test() -> None:
     assert K3S_CONTROL[0] in k3s_start and K3S_STATUS[0] in k3s_start
     assert BACKEND_VERIFY[0] in k3s_start and VAULT_BOOTSTRAP[0] not in k3s_start
 
+    assert K3S_STAGING2[1] == (
+        "scripts/oci_k3s_staging2_root.py",
+        "self-test",
+        "infra/oci/gitops/staging2/backend.yaml.tmpl",
+    )
     for operation in ("k3s-staging2-deploy", "k3s-staging2-status", "k3s-staging2-rollback"):
         staging2 = commands_for(operation)
         assert staging2 == TRANSPORT + K3S_STAGING2
@@ -125,9 +138,14 @@ def self_test() -> None:
     for operation, commands in OPERATIONS.items():
         assert commands, operation
         assert len(commands) == len(set(commands)), f"duplicate service contract for {operation}"
-        for script, argument in commands:
+        for command in commands:
+            script, *arguments = command
             assert script.startswith("scripts/") and script.endswith(".py")
-            assert argument in {"--self-test", "self-test"}
+            assert tuple(arguments) in {
+                ("--self-test",),
+                ("self-test",),
+                ("self-test", "infra/oci/gitops/staging2/backend.yaml.tmpl"),
+            }
 
     workflow = SERVICE_WORKFLOW.read_text(encoding="utf-8")
     assert "python3 scripts/oci_vault_sync.py sync-current" in workflow
