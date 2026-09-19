@@ -184,6 +184,33 @@ def _ensure_namespace_and_secret() -> None:
     _apply_text(secret_yaml)
 
 
+def _namespace_present() -> bool:
+    completed = _kubectl("get", "namespace", NAMESPACE, "-o", "name", check=False, timeout=15)
+    if completed.returncode == 0:
+        return True
+    detail = (completed.stderr or completed.stdout or "").strip().lower()
+    if "notfound" in detail or "not found" in detail:
+        return False
+    raise SystemExit(
+        "staging2 namespace probe failed "
+        f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
+    )
+
+
+def _delete_namespace_and_verify_absent() -> None:
+    _kubectl(
+        "delete", "namespace", NAMESPACE,
+        "--ignore-not-found=true", "--wait=true", "--timeout=60s",
+        timeout=75,
+    )
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        if not _namespace_present():
+            return
+        time.sleep(1)
+    raise SystemExit("staging2 namespace still exists after bounded rollback")
+
+
 def _deployment_payload() -> dict:
     completed = _kubectl(
         "-n", NAMESPACE, "get", "deployment", DEPLOYMENT, "-o", "json",
@@ -425,7 +452,7 @@ def _restore(previous_sha: str) -> None:
         _write_state(previous_sha)
         print(f"OCI_K3S_STAGING2_RESTORED sha={previous_sha}", flush=True)
         return
-    _kubectl("delete", "namespace", NAMESPACE, "--wait=true", "--timeout=60s", timeout=75, check=False)
+    _delete_namespace_and_verify_absent()
     try:
         STATE.unlink()
     except FileNotFoundError:
@@ -505,7 +532,7 @@ def status() -> None:
 
 def rollback() -> None:
     _verify_host_contract()
-    _kubectl("delete", "namespace", NAMESPACE, "--wait=true", "--timeout=60s", timeout=75, check=False)
+    _delete_namespace_and_verify_absent()
     try:
         STATE.unlink()
     except FileNotFoundError:
@@ -557,6 +584,17 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_DIAG_EVENT" in source
     assert '"crictl", "inspecti"' in source
     assert '"crictl", "pull"' in source
+    assert '"--ignore-not-found=true"' in source
+    assert "staging2 namespace still exists after bounded rollback" in source
+    restore_source = source.split("\ndef _restore(previous_sha: str) -> None:", 1)[1].split(
+        "\ndef deploy(sha: str) -> None:", 1
+    )[0]
+    rollback_source = source.split("\ndef rollback() -> None:", 1)[1].split(
+        "\ndef self_test", 1
+    )[0]
+    assert "_delete_namespace_and_verify_absent()" in restore_source
+    assert "_delete_namespace_and_verify_absent()" in rollback_source
+    assert "check=False" not in rollback_source
     deploy_source = source.split("\ndef deploy(sha: str) -> None:", 1)[1].split(
         "\ndef _status_needs_diagnostics", 1
     )[0]
