@@ -32,6 +32,7 @@ SERVICE = "backend"
 SECRET = "backend-runtime"
 LOCAL_PORT = 4100
 ORIGIN = "https://staging2.chess-studio.shadowops.dpdns.org"
+IMAGE_PREFIX = "ghcr.io/evilsysadmin/chess-studio-backend:oci-"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 MIN_PRE_MEM = 3500 * 1024**2
 MIN_POST_MEM = 3000 * 1024**2
@@ -123,6 +124,48 @@ def _render(sha: str) -> str:
     if text.count("__SHA__") != 3:
         raise SystemExit("staging2 manifest template placeholder count drifted")
     return text.replace("__SHA__", sha)
+
+
+def _image_ref(sha: str) -> str:
+    if not SHA_RE.fullmatch(sha):
+        raise SystemExit("staging2 image preflight requires an immutable 40-char lowercase SHA")
+    return f"{IMAGE_PREFIX}{sha}"
+
+
+def _preflight_image(sha: str) -> None:
+    """Ensure the exact immutable backend image is available before mutating the workload."""
+    image = _image_ref(sha)
+    try:
+        cached = subprocess.run(
+            [str(K3S), "crictl", "inspecti", image],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=15,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        cached = None
+    if cached is not None and cached.returncode == 0:
+        print(f"OCI_K3S_STAGING2_IMAGE_READY sha={sha} source=cache", flush=True)
+        return
+
+    try:
+        pulled = subprocess.run(
+            [str(K3S), "crictl", "pull", image],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=120,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SystemExit(f"staging2 image pull timed out: sha={sha}") from exc
+    if pulled.returncode != 0:
+        detail = _clean_diag(pulled.stderr or pulled.stdout or "image pull failed", 400)
+        raise SystemExit(
+            f"staging2 image pull failed rc={pulled.returncode} sha={sha} detail={detail}"
+        )
+    print(f"OCI_K3S_STAGING2_IMAGE_READY sha={sha} source=registry", flush=True)
 
 
 def _apply_text(text: str) -> None:
@@ -394,6 +437,7 @@ def deploy(sha: str) -> None:
     _verify_host_contract()
     pre_mem, pre_disk, pre_load = _resource_gate(MIN_PRE_MEM, MIN_PRE_DISK, "pre-deploy")
     previous_sha = _release_from_payload(_deployment_payload())
+    _preflight_image(sha)
     try:
         _ensure_namespace_and_secret()
         _apply_text(_render(sha))
@@ -495,7 +539,15 @@ def self_test(template_path: Path) -> None:
     assert MIN_PRE_MEM > MIN_POST_MEM
     assert MIN_PRE_DISK > MIN_POST_DISK
     assert LOCAL_PORT == 4100
-    assert not _status_needs_diagnostics(1, 1, "0" * 40)
+    sample_sha = "0" * 40
+    assert _image_ref(sample_sha) == f"{IMAGE_PREFIX}{sample_sha}"
+    try:
+        _image_ref("main")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("mutable staging2 image ref must fail closed")
+    assert not _status_needs_diagnostics(1, 1, sample_sha)
     assert _status_needs_diagnostics(1, 0, "0" * 40)
     assert _status_needs_diagnostics(0, 0, "0" * 40)
     assert _status_needs_diagnostics(1, 1, "unknown")
@@ -503,6 +555,14 @@ def self_test(template_path: Path) -> None:
     assert "OCI_K3S_STAGING2_DIAG_BEGIN" in source
     assert "OCI_K3S_STAGING2_DIAG_CONTAINER" in source
     assert "OCI_K3S_STAGING2_DIAG_EVENT" in source
+    assert '"crictl", "inspecti"' in source
+    assert '"crictl", "pull"' in source
+    deploy_source = source.split("\ndef deploy(sha: str) -> None:", 1)[1].split(
+        "\ndef _status_needs_diagnostics", 1
+    )[0]
+    assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
+        "_ensure_namespace_and_secret()"
+    ), "image preflight must fail before workload mutation"
     for forbidden_runtime_token in ("kubectl" + " logs", "get" + " secret"):
         assert forbidden_runtime_token not in source
     print("OCI K3s staging2 root capability self-test: OK")
