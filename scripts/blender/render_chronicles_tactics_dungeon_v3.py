@@ -2,7 +2,7 @@
 """Render the next Chronicles of Matthias Tactics dungeon lookdev pass.
 
 This deliberately builds on the existing deterministic dungeon scene instead of
-forking its gameplay-readable layout. The v5 pass concentrates on the playable
+forking its gameplay-readable layout. The v6 pass concentrates on the playable
 plane: masonry silhouette, drainage, metalwork, damp clutter and practical-light
 fixtures. Camera and sleeping-unit gag remain recognizable for A/B review.
 """
@@ -147,35 +147,58 @@ def stone_buttress(M, x, y, z=1.1, rot=0.0, height=2.15):
 
 
 def drain_channel(M, x, y, length, axis="x"):
-    # Broken floor grates rather than a continuous twin-rail silhouette.
-    # They read as drainage at gameplay zoom and deliberately leave stone gaps.
-    section = .54
-    gap = .24
-    count = max(1, int((length + gap) / (section + gap)))
-    span = count * section + max(0, count - 1) * gap
-    start = -span * .5 + section * .5
+    # Compact framed grates. The two-axis lattice reads as drainage instead of
+    # a miniature ladder/rail at the canonical camera angle.
+    panel_len = .42
+    panel_w = .30
+    gap = .28
+    count = max(1, int((length + gap) / (panel_len + gap)))
+    span = count * panel_len + max(0, count - 1) * gap
+    start = -span * .5 + panel_len * .5
     for i in range(count):
-        t = start + i * (section + gap)
+        t = start + i * (panel_len + gap)
         px, py = (x + t, y) if axis == "x" else (x, y + t)
-        sx, sy = (section * .5, .105) if axis == "x" else (.105, section * .5)
-        base.cube("tactics_drain_recess", (px, py, .018),
-                  (sx, sy, .016), M["black"], bevel=.014)
-        for j in (-.16, 0.0, .16):
-            if axis == "x":
-                bx, by = px + j, py
-                bar_scale = (.016, .118, .009)
-            else:
-                bx, by = px, py + j
-                bar_scale = (.118, .016, .009)
-            base.cube("tactics_drain_bar", (bx, by, .043),
-                      bar_scale, M["wet_metal"], bevel=.006)
-        # One oxidised edge only: avoids the railway read from the v3 artifact.
+        sx, sy = (panel_len * .5, panel_w * .5) if axis == "x" else (panel_w * .5, panel_len * .5)
+        base.cube("tactics_grate_recess", (px, py, .017),
+                  (sx, sy, .015), M["black"], bevel=.014)
+
+        # perimeter frame
         if axis == "x":
-            base.cube("tactics_drain_oxidation", (px, py + .132, .036),
-                      (section * .46, .010, .010), M["rust"], bevel=.004)
+            for dy in (-panel_w*.43, panel_w*.43):
+                base.cube("tactics_grate_frame", (px, py+dy, .043),
+                          (panel_len*.46, .014, .011), M["wet_metal"], bevel=.005)
+            for dx in (-panel_len*.43, panel_len*.43):
+                base.cube("tactics_grate_frame", (px+dx, py, .043),
+                          (.014, panel_w*.46, .011), M["wet_metal"], bevel=.005)
+            for dx in (-.10, 0.0, .10):
+                base.cube("tactics_grate_bar", (px+dx, py, .046),
+                          (.011, panel_w*.42, .009), M["aged_iron"], bevel=.004)
+            for dy in (-.075, .075):
+                base.cube("tactics_grate_bar", (px, py+dy, .047),
+                          (panel_len*.40, .010, .009), M["aged_iron"], bevel=.004)
         else:
-            base.cube("tactics_drain_oxidation", (px + .132, py, .036),
-                      (.010, section * .46, .010), M["rust"], bevel=.004)
+            for dx in (-panel_w*.43, panel_w*.43):
+                base.cube("tactics_grate_frame", (px+dx, py, .043),
+                          (.014, panel_len*.46, .011), M["wet_metal"], bevel=.005)
+            for dy in (-panel_len*.43, panel_len*.43):
+                base.cube("tactics_grate_frame", (px, py+dy, .043),
+                          (panel_w*.46, .014, .011), M["wet_metal"], bevel=.005)
+            for dy in (-.10, 0.0, .10):
+                base.cube("tactics_grate_bar", (px, py+dy, .046),
+                          (panel_w*.42, .011, .009), M["aged_iron"], bevel=.004)
+            for dx in (-.075, .075):
+                base.cube("tactics_grate_bar", (px+dx, py, .047),
+                          (.010, panel_len*.40, .009), M["aged_iron"], bevel=.004)
+
+        # one irregular rust streak, not a continuous outline
+        if i % 2 == 0:
+            off = .12 if axis == "x" else -.12
+            if axis == "x":
+                base.cube("tactics_grate_rust", (px, py+off, .038),
+                          (panel_len*.28, .008, .008), M["rust"], bevel=.003)
+            else:
+                base.cube("tactics_grate_rust", (px+off, py, .038),
+                          (.008, panel_len*.28, .008), M["rust"], bevel=.003)
 
 
 def damp_seam(M, x, y, length, angle=0.0):
@@ -279,6 +302,47 @@ def add_playable_plane_detail(M):
                          34, (.08, .32, .55), .32)
 
 
+
+def arch_masonry_detail(M):
+    """Give the central arch a readable inner ring and real depth."""
+    # front-face trim sits slightly toward camera from the canonical arch.
+    front_y = 1.045
+    for x in (-1.78, -.22):
+        base.cube("tactics_arch_inner_jamb", (x, front_y, .91),
+                  (.105, .040, .64), M["stone_dark"], bevel=.030)
+    base.cube("tactics_arch_keystone", (-1.0, front_y, 2.08),
+              (.205, .048, .18), M["stone_dark"], bevel=.040)
+    for x in (-1.48, -1.24, -.76, -.52):
+        z = 1.92 + (.14 if abs(x+1.0) < .35 else .04)
+        base.cube("tactics_arch_voissior", (x, front_y+.006, z),
+                  (.105, .040, .12), M["stone"], (0, math.radians((x+1.0)*20), 0), .028)
+
+    # short corridor/steps beyond the opening: depth cue only, outside the
+    # primary tactical plane.
+    for i in range(4):
+        base.cube("tactics_arch_step", (-1.0, 1.78+i*.27, .045+i*.035),
+                  (.62-i*.035, .125, .045), M["stone_dark"], bevel=.022)
+    base.cube("tactics_arch_depth", (-1.0, 2.76, .90),
+              (.67, .05, .88), M["black"], bevel=.0)
+
+
+def wall_masonry_hardware(M):
+    """Sparse iron cramps make the chunky wall construction feel assembled."""
+    for x, y, z, rot in (
+        (1.20, 3.98, 1.10, 0), (2.38, 3.98, .74, 0),
+        (3.86, 2.05, 1.08, math.radians(90)),
+        (-4.02, 2.10, .86, math.radians(90)),
+    ):
+        base.cube("tactics_wall_cramp", (x, y, z),
+                  (.16, .022, .026), M["aged_iron"], (0, 0, rot), .008)
+        for side in (-1, 1):
+            dx = math.cos(rot) * .12 * side
+            dy = math.sin(rot) * .12 * side
+            base.cyl("tactics_wall_rivet", (x+dx, y+dy, z+.003),
+                     .025, .022, M["rust"], rot=(math.radians(90), 0, 0),
+                     vertices=14, bevel=.005)
+
+
 def tune_camera_and_light(scene):
     cam = scene.camera
     cam.location = (11.0, -15.25, 12.15)
@@ -302,12 +366,14 @@ def main():
     scene = base.setup_scene(out)
     base.build(M)
     add_playable_plane_detail(M)
+    arch_masonry_detail(M)
+    wall_masonry_hardware(M)
     tune_camera_and_light(scene)
 
-    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v5"
-    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v4"
+    scene["chronicles_dungeon_mock"] = "tactics-lookdev-v6"
+    scene["chronicles_dungeon_parent"] = "tactics-lookdev-v5"
     bpy.ops.render.render(write_still=True)
-    print("Chronicles Tactics dungeon v5:", out)
+    print("Chronicles Tactics dungeon v6:", out)
 
 
 if __name__ == "__main__":
