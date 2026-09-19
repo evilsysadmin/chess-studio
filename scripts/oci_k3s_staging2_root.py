@@ -1385,7 +1385,7 @@ def self_test(template_path: Path) -> None:
     assert "_require_service_contract(_service_payload())" in deploy_source
     assert "_restore(previous_sha, previous_image_ref)" in deploy_source
     assert deploy_source.index("_preflight_image(sha)") < deploy_source.index(
-        "_ensure_namespace_and_secret()"
+        "_ensure_namespace_and_secret(runtime_digest)"
     ), "image preflight must fail before workload mutation"
     for forbidden_runtime_token in ("kubectl" + " logs", "get" + " secret"):
         assert forbidden_runtime_token not in source
