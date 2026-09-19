@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/oci-readiness.yml").read_text(encoding="utf-8")
 service = (ROOT / ".github/workflows/oci-staging-service.yml").read_text(encoding="utf-8")
+quality = (ROOT / ".github/workflows/cicd.yml").read_text(encoding="utf-8")
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
 client = (ROOT / "scripts/oci_k3s_control.py").read_text(encoding="utf-8")
 root_control = (ROOT / "scripts/oci_k3s_control_root.py").read_text(encoding="utf-8")
@@ -134,10 +135,12 @@ assert "adduser -S -D -H -h /app -u 10001 -G chess chess" in backend_dockerfile
 assert "\nUSER 10001:10001\n" in backend_dockerfile
 assert "\nUSER chess\n" not in backend_dockerfile
 
-assert (
+root_self_test_command = (
     "python3 -S scripts/oci_k3s_staging2_root.py self-test "
     "infra/oci/gitops/staging2/backend.yaml.tmpl"
-) in workflow
+)
+assert root_self_test_command in workflow
+assert root_self_test_command in quality
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision
 assert 'python3 -S "$staging2_controller" self-test "$staging2_template"' in provision
