@@ -4,6 +4,11 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
+  'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+    'war-room-basics': { seen: true },
+  }),
+});
 const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
@@ -321,6 +326,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: variant });
   await mockApi(page, {
     profileSeed: {
+      ...SEEN_WAR_ROOM_TUTORIAL_PROFILE,
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
