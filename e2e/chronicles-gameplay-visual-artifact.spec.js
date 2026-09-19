@@ -12,6 +12,8 @@ async function openVisualMoreModes(page) {
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
   await expect(trigger).toBeVisible();
 
+  // Keep the first attempt short so a known transient blocker can be
+  // diagnosed and removed without burning Playwright's full action timeout.
   try {
     await trigger.click({ timeout: 1_500 });
   } catch (error) {
