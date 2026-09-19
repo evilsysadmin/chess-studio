@@ -3,6 +3,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
+  'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+    'war-room-basics': { seen: true },
+  }),
+});
 const PROFILES = Object.freeze([
   Object.freeze({
     label: 'desktop-inspection-1600x1000',
@@ -38,6 +43,7 @@ async function openCanonicalWarRoom(page) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page, {
     profileSeed: {
+      ...SEEN_WAR_ROOM_TUTORIAL_PROFILE,
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
@@ -55,6 +61,7 @@ async function openCanonicalWarRoom(page) {
   await expect(page.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(500);
+  await expect(page.locator('[data-war-room-first-run-tutorial="true"]')).toHaveCount(0);
   return canvas;
 }
 
