@@ -163,7 +163,7 @@ def write_record(path: str, sha: str, run_id: int, event: str) -> None:
     sha = sha.lower()
     if _SHA_RE.fullmatch(sha) is None:
         raise ValueError(f"SHA de promoción inválido: {sha!r}")
-    if event not in {"schedule", "workflow_dispatch"}:
+    if event not in {"schedule", "workflow_dispatch", "push"}:
         raise ValueError(f"Evento de promoción inesperado: {event!r}")
     payload = {"schema": 1, "sha": sha, "promotion_run_id": run_id, "event": event}
     pathlib.Path(path).write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
@@ -199,6 +199,8 @@ def self_test() -> None:
             "promotion_run_id": 77,
             "event": "schedule",
         }
+        write_record(str(record), "c" * 40, 78, "push")
+        assert json.loads(record.read_text(encoding="utf-8"))["event"] == "push"
     print("production-release-train self-test OK")
 
 
