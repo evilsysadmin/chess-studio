@@ -6,7 +6,7 @@ import argparse
 import shlex
 from typing import Any
 
-from oci_runtime_config import ALLOWED_KEYS, OPTIONAL_KEYS, REQUIRED_KEYS, RUNTIME_INSTALLER
+from oci_runtime_config import ALLOWED_KEYS, OPTIONAL_KEYS, RUNTIME_INSTALLER
 from oci_runtime_manifest import DECLARATIVE_KEYS, load_declarative
 from oci_vault_runtime import OCI_SDK_VERSION, SECRET_NAMES, resolve_vault_id, validate_vault_id
 
@@ -20,7 +20,7 @@ def host_sync_command(vault_id: str, declarative: dict[str, str]) -> str:
     if set(declarative) != set(DECLARATIVE_KEYS):
         raise SystemExit("declarative runtime keys do not match sync contract")
     declarative_rows = tuple((key, declarative[key]) for key in DECLARATIVE_KEYS)
-    optional_secret_keys = tuple(key for key, _name in SECRET_NAMES if key in OPTIONAL_KEYS)
+    optional = tuple(key for key, _name in SECRET_NAMES if key in OPTIONAL_KEYS)
     command = f"""set -euo pipefail
 tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
@@ -35,9 +35,8 @@ import base64, os
 from pathlib import Path
 import oci
 secret_rows={SECRET_NAMES!r}
-optional_secret_keys=set({optional_secret_keys!r})
+optional=set({optional!r})
 ordered={tuple(ALLOWED_KEYS)!r}
-required=set({tuple(REQUIRED_KEYS)!r})
 values=dict({declarative_rows!r})
 client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
 missing=[]
@@ -46,8 +45,7 @@ for key,name in secret_rows:
         response=client.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
     except oci.exceptions.ServiceError as exc:
         if exc.status==404:
-            if key in optional_secret_keys:
-                print("OCI_VAULT_SECRET_OPTIONAL_MISSING key="+key+" name="+name+" stage=CURRENT")
+            if key in optional:
                 continue
             missing.append(name)
             continue
@@ -66,10 +64,7 @@ if missing:
     for name in missing:
         print("OCI_VAULT_SECRET_MISSING name="+name+" stage=CURRENT")
     raise SystemExit(42)
-present=set(values)
-if required-present:
-    raise SystemExit("runtime is missing required backend.env keys")
-if present-set(ordered):
+if set(values)-set(ordered):
     raise SystemExit("runtime contains unexpected backend.env keys")
 path=Path(os.environ["RUNTIME_TMP"])
 path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in ordered if key in values),encoding="utf-8")
@@ -142,7 +137,6 @@ def self_test() -> None:
     assert "ObjectStorageClient" not in command
     assert "put_object" not in command
     assert "OCI_VAULT_SECRET_MISSING" in command
-    assert "OCI_VAULT_SECRET_OPTIONAL_MISSING" in command
     assert "OCI_VAULT_SECRET_ERROR" in command
     assert "MONGO_URL=" not in command
     assert "JWT_SECRET=" not in command
