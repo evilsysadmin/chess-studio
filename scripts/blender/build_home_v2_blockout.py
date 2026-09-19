@@ -398,6 +398,18 @@ def add_table_and_board(materials):
     for idx, (mx, mz) in enumerate(((0.09, 0.80), (0.14, 0.68), (0.16, 0.56))):
         cone(f"HOME_PROP_table_horse_mane_{idx}", (mx, emblem_y - 0.035, mz), 0.046, 0.006, 0.125, heraldry, vertices=10)
     sphere("HOME_PROP_table_horse_eye", (-0.19, emblem_y - 0.055, 0.75), (0.018, 0.009, 0.018), materials["dark"])
+    curve_tube(
+        "HOME_PROP_table_horse_jaw_line",
+        [(-0.50, emblem_y - 0.058, 0.61), (-0.33, emblem_y - 0.060, 0.49), (-0.10, emblem_y - 0.060, 0.46)],
+        0.018,
+        materials["dark"],
+    )
+    curve_tube(
+        "HOME_PROP_table_horse_mane_line",
+        [(0.02, emblem_y - 0.058, 0.88), (0.13, emblem_y - 0.060, 0.72), (0.10, emblem_y - 0.060, 0.56)],
+        0.016,
+        materials["dark"],
+    )
     cube("HOME_PROP_table_mark_v", (0.0, emblem_y, -0.20), (0.035, 0.024, 0.12), heraldry, bevel=0.01)
     cube("HOME_PROP_table_mark_h", (0.0, emblem_y, -0.17), (0.10, 0.024, 0.035), heraldry, bevel=0.01)
 
@@ -496,33 +508,34 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_grate_cross", (x, 5.55, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
     hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.65, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
-    flame_offsets = (-0.62, -0.38, -0.16, 0.08, 0.30, 0.52)
-    for idx, offset in enumerate(flame_offsets):
-        height = 0.34 + 0.13 * ((idx * 5) % 4)
+    flame_offsets = (-0.54, -0.28, 0.00, 0.27, 0.52)
+    flame_heights = (0.40, 0.58, 0.72, 0.50, 0.36)
+    flame_lean_x = (-10, 7, -4, 11, -7)
+    flame_lean_y = (8, -12, 6, -8, 10)
+    for idx, (offset, height) in enumerate(zip(flame_offsets, flame_heights)):
         flame = cone(
             f"HOME_PROP_{name}_flame_{idx}",
-            (x + offset, 5.66, 0.61 + height * 0.50),
-            0.100 + 0.016 * (idx % 2),
-            0.010,
+            (x + offset, 5.66, 0.59 + height * 0.50),
+            0.145 + 0.020 * (idx % 2),
+            0.016,
             height,
             fire,
-            vertices=18,
+            vertices=20,
         )
-        flame.rotation_euler[0] = math.radians((-4, 3, -2, 5, -5, 2)[idx])
-        flame.rotation_euler[1] = math.radians((-8, 5, 9, -6, 7, -4)[idx])
-        if idx % 2 == 0:
-            inner_h = height * 0.56
-            inner = cone(
-                f"HOME_PROP_{name}_flame_hot_{idx}",
-                (x + offset * 0.98, 5.625, 0.61 + inner_h * 0.50),
-                0.050,
-                0.006,
-                inner_h,
-                hot,
-                vertices=14,
-            )
-            inner.rotation_euler[0] = flame.rotation_euler[0] * 0.65
-            inner.rotation_euler[1] = flame.rotation_euler[1] * 0.65
+        flame.rotation_euler[0] = math.radians(flame_lean_x[idx])
+        flame.rotation_euler[1] = math.radians(flame_lean_y[idx])
+        inner_h = height * (0.46 if idx != 2 else 0.58)
+        inner = cone(
+            f"HOME_PROP_{name}_flame_hot_{idx}",
+            (x + offset * 0.985, 5.625, 0.59 + inner_h * 0.50),
+            0.068 + 0.008 * (idx % 2),
+            0.008,
+            inner_h,
+            hot,
+            vertices=16,
+        )
+        inner.rotation_euler[0] = flame.rotation_euler[0] * 0.55
+        inner.rotation_euler[1] = flame.rotation_euler[1] * 0.55
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
 
 
@@ -548,7 +561,22 @@ def add_bookshelf(materials):
             bx = x - 1.15 + col * 0.285
             h = 0.18 + 0.030 * ((row * 2 + col) % 4)
             w = 0.070 + 0.012 * ((row + col) % 3)
-            cube(f"HOME_PROP_book_{row}_{col}", (bx, y - 0.47, z), (w, 0.075, h), book_colors[(row + col * 2) % len(book_colors)], bevel=0.008)
+            book = cube(
+                f"HOME_PROP_book_{row}_{col}",
+                (bx, y - 0.47, z),
+                (w, 0.075, h),
+                book_colors[(row + col * 2) % len(book_colors)],
+                bevel=0.008,
+            )
+            book.rotation_euler[1] = math.radians((-3, 1, 0, 2, -1)[(row + col) % 5])
+            if (row * 9 + col) % 7 == 0:
+                cube(
+                    f"HOME_PROP_book_band_{row}_{col}",
+                    (bx, y - 0.552, z + h * 0.42),
+                    (w * 0.94, 0.010, 0.012),
+                    brass,
+                    bevel=0.004,
+                )
     armillary_center = (x + 0.72, y - 0.58, 3.38)
     sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
     curve_tube(
@@ -1209,12 +1237,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Chandelier: keep the same authored identity but lift and tighten it so it
     # frames the focal wall instead of masking the armour and central banner.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.62), 0.044, 0.94, materials["brass_dark"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.48), 0.042, 0.88, materials["brass_dark"])
     ring_points = [
         (
             1.52 * math.cos(i * math.tau / 24),
             2.20 + 0.90 * math.sin(i * math.tau / 24),
-            4.76 + 0.20 * math.sin(i * math.tau / 24),
+            4.62 + 0.18 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1223,7 +1251,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (
             1.02 * math.cos(i * math.tau / 24),
             2.20 + 0.60 * math.sin(i * math.tau / 24),
-            4.73 + 0.15 * math.sin(i * math.tau / 24),
+            4.59 + 0.14 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1232,7 +1260,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (
             1.52 * math.cos(i * math.tau / 24),
             2.20 + 0.90 * math.sin(i * math.tau / 24),
-            4.64 + 0.20 * math.sin(i * math.tau / 24),
+            4.50 + 0.18 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
@@ -1241,7 +1269,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         angle = idx * math.tau / 8.0
         x = 1.52 * math.cos(angle)
         y = 2.20 + 0.90 * math.sin(angle)
-        z_mid = 4.71 + 0.20 * math.sin(angle)
+        z_mid = 4.57 + 0.18 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_dropbar_{idx}",
             [(x, y, z_mid - 0.07), (x, y, z_mid + 0.07)],
@@ -1252,8 +1280,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_chandelier_spoke_{idx}",
             [
-                (0.0, 2.20, 4.72),
-                (1.34 * math.cos(angle), 2.20 + 0.79 * math.sin(angle), 4.72),
+                (0.0, 2.20, 4.58),
+                (1.34 * math.cos(angle), 2.20 + 0.79 * math.sin(angle), 4.58),
             ],
             0.022,
             materials["brass_dark"],
@@ -1263,16 +1291,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ry = 2.34 + 0.74 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 6.02), (rx, ry, 4.94)],
+            [(0.0, 2.20, 5.88), (rx, ry, 4.80)],
             0.026,
             materials["brass_dark"],
         )
-    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.73), (0.11, 0.11, 0.10), materials["brass_dark"])
+    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.59), (0.11, 0.11, 0.10), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
         cx = 1.42 * math.cos(angle)
         cy = 2.20 + 0.84 * math.sin(angle)
-        cz = 4.80 + 0.17 * math.sin(angle)
+        cz = 4.66 + 0.16 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.23), (0.045, 0.045, 0.20), materials["paper"], bevel=0.016)
         cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.48), 0.045, 0.008, 0.15, materials["fire_hot"], vertices=12)
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.080, 0.060, materials["brass_dark"], vertices=16)
