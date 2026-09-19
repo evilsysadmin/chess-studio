@@ -21,6 +21,16 @@ async function openChronicles(page) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
+
+  // This producer owns Chronicles evidence, not PvP. A restored/mock lobby can
+  // legitimately cover Home on touch viewports, so dismiss it explicitly
+  // instead of forcing clicks through an unrelated modal.
+  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+  if (await pvpLobby.isVisible().catch(() => false)) {
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+    await expect(pvpLobby).toBeHidden();
+  }
+
   await openMoreGameModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
