@@ -1,0 +1,98 @@
+name: Bootstrap · Matthias v10 strict source
+
+on:
+  push:
+    branches:
+      - bootstrap/matthias-v10-source-0919
+    paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v10.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v10.py'
+      - '.github/workflows/bootstrap-matthias-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bootstrap-matthias-v10
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SOURCE_BLOB_SHA: cc73aa37f8fb62ee5ad38e777f218685ea1a2d3b
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Restore canonical v10 source from bootstrap blob
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/matthias-v10
+          gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${SOURCE_BLOB_SHA}" \
+            --jq '.content' \
+            | tr -d '\n' \
+            | base64 -d \
+            > /tmp/matthias-v10/matthias_pistol_v10_source.avif
+          python3 - <<'PY'
+          from PIL import Image
+          p='/tmp/matthias-v10/matthias_pistol_v10_source.avif'
+          im=Image.open(p).convert('RGBA')
+          assert im.size == (1536,1024), im.size
+          assert im.getchannel('A').getextrema()[0] < 255
+          print('OK v10 AVIF source', im.size, im.mode)
+          PY
+
+      - name: Pack + validate strict v10
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v10.py --self-test
+          python3 scripts/art/pack_pawn_slug_godot_strict_v10.py \
+            --source /tmp/matthias-v10/matthias_pistol_v10_source.avif \
+            --output /tmp/matthias-v10/matthias_pistol_godot_strict_12x9_256_v10.png \
+            --manifest /tmp/matthias-v10/matthias_pistol_strict_v10_manifest.json \
+            --weapon pistol
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v10.py \
+            --atlas /tmp/matthias-v10/matthias_pistol_godot_strict_12x9_256_v10.png \
+            --manifest /tmp/matthias-v10/matthias_pistol_strict_v10_manifest.json
+
+      - name: Publish immutable v10 source + atlas + manifest to R2
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/matthias-v10/matthias_pistol_v10_source.avif \
+            --logical-id pawnSlug.godot.matthias.pistol.strictV10Source \
+            --prefix pawn-slug-godot/matthias/strict-v10/pistol/source \
+            | tee /tmp/matthias-v10/source-publish.txt
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/matthias-v10/matthias_pistol_godot_strict_12x9_256_v10.png \
+            --logical-id pawnSlug.godot.matthias.pistol.strictV10 \
+            --prefix pawn-slug-godot/matthias/strict-v10/pistol \
+            | tee /tmp/matthias-v10/atlas-publish.txt
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/matthias-v10/matthias_pistol_strict_v10_manifest.json \
+            --logical-id pawnSlug.godot.matthias.pistol.strictV10Manifest \
+            --prefix pawn-slug-godot/matthias/strict-v10/pistol \
+            | tee /tmp/matthias-v10/manifest-publish.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: matthias-strict-v10-bootstrap-${{ github.run_number }}
+          path: |
+            /tmp/matthias-v10/matthias_pistol_godot_strict_12x9_256_v10.png
+            /tmp/matthias-v10/matthias_pistol_strict_v10_manifest.json
+            /tmp/matthias-v10/*-publish.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
