@@ -81,6 +81,7 @@ const BISHOP_SUPPRESSION_LANES := [
 ]
 const PLAYER_STANDING_HEIGHT := 84.0
 const PLAYER_CROUCH_HEIGHT := 48.0
+const PLATFORM_ONE_WAY_MARGIN := 7.0
 const MOVEMENT_HINT_LOOKAHEAD := 180.0
 const MOVEMENT_HINT_TRAIL := 36.0
 const ENEMY_TYPES := {
@@ -302,11 +303,14 @@ func _build_stage_geometry() -> void:
         "RightBoundary",
     )
     for index in range(_platforms.size()):
-        _add_stage_body(_platforms[index], "Platform_%02d" % index)
+        var one_way := false
+        if index < _platform_specs.size():
+            one_way = bool(_platform_specs[index].get("one_way", false))
+        _add_stage_body(_platforms[index], "Platform_%02d" % index, one_way)
     for index in range(_obstacles.size()):
         _add_stage_body(_obstacles[index], "Obstacle_%02d" % index)
 
-func _add_stage_body(rect: Rect2, body_name: String) -> void:
+func _add_stage_body(rect: Rect2, body_name: String, one_way := false) -> void:
     if rect.size.x <= 0.0 or rect.size.y <= 0.0:
         return
     var body := StaticBody2D.new()
@@ -317,6 +321,9 @@ func _add_stage_body(rect: Rect2, body_name: String) -> void:
     var shape := RectangleShape2D.new()
     shape.size = rect.size
     collision.shape = shape
+    collision.one_way_collision = one_way
+    if one_way:
+        collision.one_way_collision_margin = PLATFORM_ONE_WAY_MARGIN
     body.add_child(collision)
     _map_geometry_root.add_child(body)
 
