@@ -817,6 +817,13 @@ def add_gothic_canon_v2(static, mats):
         "WR_MAT_canon_burgundy_dark", (0.092, 0.007, 0.013, 1),
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
+    heraldic_brass = material(
+        "WR_MAT_canon_heraldic_brass", (0.46, 0.19, 0.045, 1),
+        metal=0.94, rough=0.25, coat=0.18, texture="metal", scale=22, bump=0.028,
+    )
+    horse_relief = static.objects.get("WR_CREST_horse_relief")
+    if horse_relief is not None and horse_relief.data.materials:
+        horse_relief.data.materials[0] = heraldic_brass
 
     def add_pointed_arch_frame(prefix, cx):
         """Stone lancet frame: curved in segments so it reads as gothic, not as a roof truss."""
@@ -948,16 +955,16 @@ def add_gothic_canon_v2(static, mats):
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
-    cz = 6.28
-    chandelier_x = 0.86
+    cz = 6.36
+    chandelier_x = 2.15
     chandelier_y = 3.38
-    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.98, 0.048, mats["brass"], static)
+    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.84, 0.044, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
     cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.49), 0.030, 0.52, mats["brass_dark"], static, vertices=16)
     for index in range(6):
         angle = index * math.tau / 6.0
-        x = chandelier_x + math.cos(angle) * 0.82
-        y = chandelier_y + math.sin(angle) * 0.66
+        x = chandelier_x + math.cos(angle) * 0.70
+        y = chandelier_y + math.sin(angle) * 0.54
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.20),
                  0.054, 0.31, mats["ivory"], static, vertices=18)
         sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.39), 0.076,
