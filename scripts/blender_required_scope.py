@@ -58,17 +58,6 @@ GATES = (
         }),
     ),
     Gate(
-        workflow="pawn-slug-blender-art.yml",
-        label="Pawn Slug Matthias art",
-        exact_paths=frozenset({
-            "scripts/blender/render_pawn_slug_matthias_premium.py",
-            "scripts/blender/pawn_slug_matthias_premium_common.py",
-            "scripts/blender/pawn_slug_matthias_premium_weapons.py",
-            "scripts/blender/pawn_slug_matthias_premium_character.py",
-            ".github/workflows/pawn-slug-blender-art.yml",
-        }),
-    ),
-    Gate(
         workflow="pawn-slug-godot-strict-atlas.yml",
         label="Pawn Slug Godot strict Matthias atlas",
         exact_paths=frozenset({
@@ -155,9 +144,9 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify(["scripts/blender/refine_chronicles_party_anatomy.py"])] == [
         "chronicles-party-blender-art.yml"
     ]
-    assert [gate.workflow for gate in classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"])] == [
-        "pawn-slug-blender-art.yml"
-    ]
+    # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender
+    # helper files must not summon an art-generation gate.
+    assert classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"]) == []
     assert [gate.workflow for gate in classify(["scripts/art/pack_pawn_slug_godot_strict_v6.py"])] == [
         "pawn-slug-godot-strict-atlas.yml"
     ]
