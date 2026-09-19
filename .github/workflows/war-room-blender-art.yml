@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
+      - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v2_staging.py'
       - '.github/workflows/war-room-blender-art.yml'
   workflow_dispatch:
@@ -19,7 +20,7 @@ jobs:
   render:
     name: Render premium War Room
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,11 +31,14 @@ jobs:
       - name: Build editable scene + runtime shell + hero preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-          BLENDER_PREVIEW_SAMPLES: '32'
+          BLENDER_EEVEE_PREMIUM: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/war-room-premium
-          blender --background --python-exit-code 1 --python scripts/blender/build_war_room_premium.py -- \
+          blender --background --python-exit-code 1 \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/build_war_room_premium.py -- \
             --blend /tmp/war-room-premium/war-room-premium.blend \
             --glb /tmp/war-room-premium/war-room-premium-shell.glb \
             --preview /tmp/war-room-premium/war-room-premium-preview.png \
