@@ -1356,41 +1356,53 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (1.0, 0.28, 0.065),
         radius=0.50,
     )
-    # Organic camera-facing flame mass: overlapping lobes instead of five
-    # identical flat tongues. Keep it low inside the firebox like the canon.
+    # One continuous irregular flame silhouette reads as a hearth fire at
+    # Home distance; separate lobes collapse into a row of candle-like spikes.
     sphere(
         "HOME_PROP_fireplace_left_front_ember_glow",
         (-6.15, 5.400, 0.595),
-        (0.60, 0.026, 0.070),
+        (0.62, 0.026, 0.070),
         materials["fire"],
     )
-    for idx, (dx, h, tilt, w) in enumerate((
-        (-0.34, 0.18, -10.0, 0.130),
-        (-0.12, 0.27,   7.0, 0.145),
-        ( 0.11, 0.30,  -6.0, 0.145),
-        ( 0.34, 0.17,   9.0, 0.120),
-    )):
-        base = sphere(
-            f"HOME_PROP_fireplace_left_front_base_{idx}",
-            (-6.15 + dx, 5.392, 0.635),
-            (w * 1.10, 0.026, 0.060),
-            materials["fire"],
-        )
-        base.rotation_euler[1] = math.radians(tilt * 0.18)
-        lobe = sphere(
-            f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            (-6.15 + dx + math.sin(math.radians(tilt)) * 0.024, 5.378, 0.650 + h * 0.50),
-            (w * 0.58, 0.024, h),
-            materials["fire"],
-        )
-        lobe.rotation_euler[1] = math.radians(tilt)
-        inner = sphere(
-            f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            (-6.15 + dx, 5.348, 0.646 + h * 0.31),
-            (w * 0.30, 0.017, h * 0.40),
-            materials["fire_hot"],
-        )
-        inner.rotation_euler[1] = math.radians(tilt * 0.42)
+    flat_panel(
+        "HOME_PROP_fireplace_left_front_flame_mass",
+        [
+            (-6.72, 0.58),
+            (-6.66, 0.68),
+            (-6.52, 0.64),
+            (-6.42, 0.84),
+            (-6.29, 0.70),
+            (-6.17, 0.97),
+            (-6.03, 0.72),
+            (-5.91, 0.88),
+            (-5.79, 0.67),
+            (-5.60, 0.62),
+            (-5.58, 0.58),
+        ],
+        5.380,
+        0.034,
+        materials["fire"],
+        bevel=0.032,
+    )
+    flat_panel(
+        "HOME_PROP_fireplace_left_front_hot_mass",
+        [
+            (-6.55, 0.59),
+            (-6.48, 0.66),
+            (-6.37, 0.64),
+            (-6.28, 0.78),
+            (-6.19, 0.66),
+            (-6.12, 0.86),
+            (-6.02, 0.66),
+            (-5.92, 0.74),
+            (-5.82, 0.61),
+        ],
+        5.342,
+        0.024,
+        materials["fire_hot"],
+        bevel=0.022,
+    )
+
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
