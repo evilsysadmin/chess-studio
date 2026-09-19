@@ -532,13 +532,22 @@ export async function startPracticeGame(page) {
 
 export async function openMoreGameModes(page) {
   const illustrated = page.locator('.illustrated-home__utilities');
-  if (await illustrated.isVisible()) {
-    const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+  const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+  const details = page.locator('details.home-more-modes');
+
+  await expect.poll(async () => {
+    if (await trigger.isVisible().catch(() => false)) return 'illustrated';
+    if (await details.isVisible().catch(() => false)) return 'legacy';
+    return 'pending';
+  }, {
+    timeout: 20_000,
+    message: 'Home should expose canonical or legacy more-modes navigation',
+  }).not.toBe('pending');
+
+  if (await trigger.isVisible().catch(() => false)) {
     if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
     return illustrated;
   }
-  const details = page.locator('details.home-more-modes');
-  await expect(details).toBeVisible();
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
   return details;
 }
