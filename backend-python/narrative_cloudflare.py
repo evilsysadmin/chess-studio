@@ -27,11 +27,13 @@ ai_logger = logging.getLogger("uvicorn.error")
 
 DEFAULT_TIMEOUT_SECONDS = 5.0
 DEFAULT_COMMENT_TIMEOUT_SECONDS = 2.0
+DEFAULT_CHRONICLES_PLANNER_TIMEOUT_SECONDS = 2.5
 DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
 PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200
-RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily", "matthias_position", "game_opening_banter"})
+CHRONICLES_PLANNER_MAX_OUTPUT_CHARS = 3200
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "chronicles_planner", "matthias_daily", "matthias_position", "game_opening_banter"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -180,6 +182,14 @@ def _timeout_seconds(channel: str | None = None) -> float:
         return DEFAULT_TIMEOUT_SECONDS
 
 
+def _chronicles_planner_timeout_seconds() -> float:
+    raw = _env("CF_AI_CHRONICLES_PLANNER_TIMEOUT_SECONDS")
+    try:
+        return max(0.5, min(float(raw), 5.0)) if raw else DEFAULT_CHRONICLES_PLANNER_TIMEOUT_SECONDS
+    except ValueError:
+        return DEFAULT_CHRONICLES_PLANNER_TIMEOUT_SECONDS
+
+
 def _circuit_failure_threshold_for(channel: str) -> int:
     if channel == "comments":
         raw = _env("AI_NARRATIVE_COMMENT_CIRCUIT_FAILURES")
@@ -209,6 +219,8 @@ def _circuit_reset_seconds_for(channel: str) -> float:
 def _max_output_chars(event_type: str) -> int:
     if event_type == "personal_puzzle_batch":
         return PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS
+    if event_type == "chronicles_planner":
+        return CHRONICLES_PLANNER_MAX_OUTPUT_CHARS
     if event_type == "player_portrait":
         return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
     if event_type in RICH_ANALYSIS_EVENT_TYPES:
@@ -887,7 +899,11 @@ async def request_cloud_narrative(
         # Saturation of one AI class must not consume capacity from the others.
         return ProviderOutcome(None, "bulkhead_full", 0.0)
 
-    timeout_s = _timeout_seconds(channel)
+    timeout_s = (
+        _chronicles_planner_timeout_seconds()
+        if event_type == "chronicles_planner"
+        else _timeout_seconds(channel)
+    )
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(timeout=httpx.Timeout(timeout_s, connect=min(2.0, timeout_s)))
