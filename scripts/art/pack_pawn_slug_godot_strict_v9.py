@@ -31,6 +31,9 @@ MIN_COMPONENT_PIXELS = 500
 TARGET_IDLE_HEIGHT = 230.0
 TARGET_FOOT_Y = 382.0
 TARGET_PIVOT_X = 200.0
+RELOAD_ROW = 15
+RELOAD_FLASH_X_MIN = 260
+RELOAD_FLASH_SCORE_LIMIT = 180
 MAX_CONTENT = CELL - 18
 PIVOT_X_BY_WEAPON = {
     "pistol": 200.0,
@@ -174,6 +177,66 @@ def weapon_scale(grid: list[list[Image.Image]]) -> float:
     return scale
 
 
+
+def reload_muzzle_flash_score(cell: Image.Image) -> int:
+    """Count unmistakable hot muzzle-flash pixels in the forward reload zone."""
+    px = cell.load()
+    score = 0
+    for y in range(CELL):
+        for x in range(RELOAD_FLASH_X_MIN, CELL):
+            r, g, b, a = px[x, y]
+            if (
+                a > 50
+                and r > 180
+                and g > 75
+                and b < 90
+                and r > g * 1.15
+                and g > b * 1.20
+            ):
+                score += 1
+    return score
+
+
+def repair_reload_muzzle_flashes(atlas: Image.Image, weapon: str) -> None:
+    """Replace an AI-hallucinated reload gunshot with the nearest clean reload pose."""
+    scores = []
+    for col in range(COLS):
+        cell = atlas.crop((
+            col * CELL,
+            RELOAD_ROW * CELL,
+            (col + 1) * CELL,
+            (RELOAD_ROW + 1) * CELL,
+        ))
+        scores.append(reload_muzzle_flash_score(cell))
+
+    clean = [index for index, score in enumerate(scores) if score <= RELOAD_FLASH_SCORE_LIMIT]
+    if not clean:
+        raise SystemExit(f"{weapon}: reload row contains no clean frame: scores={scores}")
+
+    for col, score in enumerate(scores):
+        if score <= RELOAD_FLASH_SCORE_LIMIT:
+            continue
+        source_col = min(
+            clean,
+            key=lambda index: (abs(index - col), 0 if index > col else 1, index),
+        )
+        source = atlas.crop((
+            source_col * CELL,
+            RELOAD_ROW * CELL,
+            (source_col + 1) * CELL,
+            (RELOAD_ROW + 1) * CELL,
+        ))
+        atlas.paste(
+            Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)),
+            (col * CELL, RELOAD_ROW * CELL),
+        )
+        atlas.alpha_composite(source, (col * CELL, RELOAD_ROW * CELL))
+        print(
+            f"Repaired {weapon} reload frame {col}: forbidden muzzle flash "
+            f"score={score}, copied clean frame {source_col}"
+        )
+
+
 def pack(source: Image.Image, weapon: str) -> Image.Image:
     grid = assign_slots(source)
     scale = weapon_scale(grid)
@@ -213,6 +276,7 @@ def pack(source: Image.Image, weapon: str) -> Image.Image:
                     f"pos=({local_x},{local_y}) size={resized.size}"
                 )
             atlas.alpha_composite(resized, (dst_x, dst_y))
+    repair_reload_muzzle_flashes(atlas, weapon)
     return atlas
 
 
@@ -236,6 +300,12 @@ def validate(atlas: Image.Image) -> None:
     median_height = statistics.median(heights)
     if not (215 <= median_height <= 245):
         raise SystemExit(f"strict v9 idle body height out of contract: {median_height}")
+
+    for col in range(COLS):
+        cell = atlas.crop((col * CELL, RELOAD_ROW * CELL, (col + 1) * CELL, (RELOAD_ROW + 1) * CELL))
+        score = reload_muzzle_flash_score(cell)
+        if score > RELOAD_FLASH_SCORE_LIMIT:
+            raise SystemExit(f"strict v9 reload muzzle flash leaked through: col={col} score={score}")
 
 
 def self_test() -> None:

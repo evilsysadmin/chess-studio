@@ -5,7 +5,7 @@ import argparse, hashlib, json, re
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-V="v9"; COLS=6; ROWS=18; CELL=416; SIZE=(2496,7488); FOOT=382.0; PIVOT=200.0; TOL=6.0; GUARD=2
+V="v9"; COLS=6; ROWS=18; CELL=416; SIZE=(2496,7488); FOOT=382.0; PIVOT=200.0; TOL=6.0; GUARD=2; RELOAD_FLASH_X_MIN=260; RELOAD_FLASH_SCORE_LIMIT=180
 ACTIONS=(
  ("idle",0,6.0,True),("walk",1,10.0,True),("run",2,12.0,True),("jump",3,10.0,False),
  ("fall",4,8.0,True),("land",5,12.0,False),("crouch",6,6.0,True),("crouch_walk",7,8.0,True),
@@ -46,8 +46,17 @@ def anchor(cell,box):
    r,g,b,a=px[x,y]
    if a>40 and max(r,g,b)<210: pts.append((x,y))
  if not pts: return (box[0]+box[2])*.5,float(box[3]-1)
- my=max(y for _,y in pts); band=[x for x,y in pts if y>=my-max(3,int((box[3]-box[1])*.08))]; band.sort()
+ my=max(y for _,y in pts); band=[x for x,y in pts if y>=my-max(3,int(round((box[3]-box[1])*.08)))]; band.sort()
  return float(band[len(band)//2]),float(my)
+
+
+def reload_muzzle_flash_score(cell):
+ px=cell.load(); score=0
+ for y in range(CELL):
+  for x in range(RELOAD_FLASH_X_MIN,CELL):
+   r,g,b,a=px[x,y]
+   if a>50 and r>180 and g>75 and b<90 and r>g*1.15 and g>b*1.20: score+=1
+ return score
 
 def validate(image):
  frames=[]; idle=[]; unique={n:set() for n,_,_,_ in ACTIONS}
@@ -59,10 +68,12 @@ def validate(image):
    g=min(b[0],b[1],CELL-b[2],CELL-b[3]); pixels=sum(c.getchannel("A").histogram()[31:])
    if g<GUARD: fail(f"cell bleed {name}[{col}] bbox={b} guard={g}px")
    if pixels<2000: fail(f"sparse frame {name}[{col}] alpha_pixels={pixels}")
+   flash_score=reload_muzzle_flash_score(c) if row==15 else 0
+   if row==15 and flash_score>RELOAD_FLASH_SCORE_LIMIT: fail(f"forbidden reload muzzle flash {name}[{col}] score={flash_score}")
    ax,ay=anchor(c,b); h=hashlib.sha256(c.tobytes()).hexdigest(); unique[name].add(h)
    if row<=15 and (abs(ax-PIVOT)>TOL or abs(ay-FOOT)>TOL): fail(f"anchor drift {name}[{col}] x={ax:.1f} y={ay:.1f}")
    if row==0: idle.append(b[3]-b[1])
-   frames.append({"action":name,"frame":col,"bbox":list(b),"guard_px":g,"alpha_pixels":pixels,"anchor_x":round(ax,2),"anchor_y":round(ay,2),"sha256_rgba":h})
+   frames.append({"action":name,"frame":col,"bbox":list(b),"guard_px":g,"alpha_pixels":pixels,"anchor_x":round(ax,2),"anchor_y":round(ay,2),"reload_flash_score":flash_score,"sha256_rgba":h})
  if max(idle)-min(idle)>8 or not 215<=sorted(idle)[len(idle)//2]<=245: fail(f"idle scale drift: {idle}")
  for n in ("walk","run","crouch_walk"):
   if len(unique[n])<2: fail(f"no frame variation in {n}")
