@@ -58,15 +58,15 @@ function createTorchFlameGeometry(coarsePointer) {
   // Revolve a small hand-authored profile into a teardrop. It keeps the flame
   // lightweight while avoiding the unmistakable triangular silhouette of a cone.
   const profile = [
-    new THREE.Vector2(0.018, 0.00),
-    new THREE.Vector2(0.078, 0.035),
-    new THREE.Vector2(0.112, 0.12),
-    new THREE.Vector2(0.098, 0.21),
-    new THREE.Vector2(0.062, 0.31),
-    new THREE.Vector2(0.025, 0.39),
-    new THREE.Vector2(0.006, 0.44),
+    new THREE.Vector2(0.012, 0.00),
+    new THREE.Vector2(0.066, 0.032),
+    new THREE.Vector2(0.094, 0.105),
+    new THREE.Vector2(0.082, 0.195),
+    new THREE.Vector2(0.052, 0.29),
+    new THREE.Vector2(0.021, 0.372),
+    new THREE.Vector2(0.004, 0.432),
   ];
-  return new THREE.LatheGeometry(profile, coarsePointer ? 8 : 12);
+  return new THREE.LatheGeometry(profile, coarsePointer ? 10 : 18);
 }
 
 function createDungeonScene(scene, { coarsePointer = false } = {}) {
