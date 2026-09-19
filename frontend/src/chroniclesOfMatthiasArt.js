@@ -256,8 +256,8 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   // restrained: corruption remains red, this light only reveals volume.
   const silhouetteRim = new THREE.PointLight(
     0x7899b2,
-    coarsePointer ? 0.34 : 0.52,
-    2.7,
+    coarsePointer ? 0.5 : 0.78,
+    3.2,
     2,
   );
   silhouetteRim.name = 'corrupted-pawn-silhouette-rim';
