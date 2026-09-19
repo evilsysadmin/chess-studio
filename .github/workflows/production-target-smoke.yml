@@ -1,0 +1,50 @@
+name: Production · target smoke
+
+on:
+  pull_request:
+    paths:
+      - .github/production-deploy.env
+      - .github/workflows/production-target-smoke.yml
+      - scripts/oci_production_tunnel.py
+      - scripts/production_deploy_target.py
+  push:
+    branches: [main]
+    paths:
+      - .github/production-deploy.env
+      - .github/workflows/production-target-smoke.yml
+      - scripts/oci_production_tunnel.py
+      - scripts/production_deploy_target.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-target-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Public route + readiness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve configured production target
+        id: target
+        run: >-
+          python3 -S scripts/production_deploy_target.py resolve
+          --config .github/production-deploy.env
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Validate read-only production route helper
+        run: python3 -S scripts/oci_production_tunnel.py --self-test
+
+      - name: Prove configured target is live
+        env:
+          DEPLOY_TARGET: ${{ steps.target.outputs.deploy_target }}
+        run: python3 scripts/oci_production_tunnel.py status --target "$DEPLOY_TARGET"

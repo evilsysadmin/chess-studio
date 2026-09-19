@@ -70,6 +70,63 @@ def ensure_dns_target(target: str, *, comment: str) -> None:
     print(f"Cloudflare production DNS {action}: {PRODUCTION_API_HOSTNAME} -> {target}")
 
 
+def current_dns_target() -> str:
+    zid = tunnel.zone_id()
+    query = urllib.parse.urlencode({"name": PRODUCTION_API_HOSTNAME, "per_page": "100"})
+    result = tunnel.cf_request("GET", f"/zones/{zid}/dns_records?{query}")
+    rows = [row for row in (result if isinstance(result, list) else []) if isinstance(row, dict)]
+    if len(rows) != 1:
+        raise SystemExit(
+            f"Expected exactly one DNS record for {PRODUCTION_API_HOSTNAME}; found {len(rows)}"
+        )
+    row = rows[0]
+    if row.get("type") != "CNAME" or not bool(row.get("proxied")):
+        raise SystemExit("Production API route must be one proxied CNAME")
+    target = str(row.get("content") or "").rstrip(".")
+    if not target:
+        raise SystemExit("Production API CNAME target is empty")
+    return target
+
+
+def assert_configured_route(target: str) -> str:
+    if target not in {"render", "oci"}:
+        raise SystemExit("production route target must be render or oci")
+    actual = current_dns_target()
+    if target == "render":
+        expected = RENDER_API_CNAME_TARGET
+    else:
+        rows = tunnel.list_tunnels()
+        if len(rows) != 1:
+            raise SystemExit(
+                f"Expected exactly one active OCI tunnel named {tunnel.TUNNEL_NAME}; found {len(rows)}"
+            )
+        expected = tunnel_cname(str(rows[0].get("id") or ""))
+    if actual.rstrip(".") != expected.rstrip("."):
+        raise SystemExit(
+            f"Production API route mismatch: configured={target} actual={actual} expected={expected}"
+        )
+    print(f"Production API route OK: target={target} cname={actual}")
+    return actual
+
+
+def attest_public_current() -> str:
+    ready = read_json(f"https://{PRODUCTION_API_HOSTNAME}/api/ready")
+    release = read_json(f"https://{PRODUCTION_API_HOSTNAME}/api/release")
+    build = str(release.get("build") or "").strip().lower()
+    if ready.get("ok") is not True or ready.get("storage") != "mongo":
+        raise SystemExit(f"Production API readiness failed: {ready!r}")
+    if not SHA_RE.fullmatch(build):
+        raise SystemExit(f"Production API release identity is not an immutable SHA: {build!r}")
+    print(f"Production API public health OK: sha={build}")
+    return build
+
+
+def status(target: str) -> None:
+    assert_configured_route(target)
+    build = attest_public_current()
+    print(f"CHESS_STUDIO_PRODUCTION_TARGET_SMOKE_OK target={target} sha={build}")
+
+
 def prepare() -> str:
     tunnel_id = tunnel.ensure_tunnel()
     tunnel.configure_tunnel(tunnel_id)
@@ -160,13 +217,15 @@ def self_test() -> None:
     assert rules[1]["service"] == "http://127.0.0.1:4100"
     assert rules[-1]["service"] == "http_status:404"
     assert RENDER_API_CNAME_TARGET.endswith(".onrender.com")
+    assert "status" in ("prepare", "activate", "render", "status")
     print("OCI production tunnel self-test: OK")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", nargs="?", choices=("prepare", "activate", "render"))
+    parser.add_argument("operation", nargs="?", choices=("prepare", "activate", "render", "status"))
     parser.add_argument("--sha", default="")
+    parser.add_argument("--target", choices=("render", "oci"), default="")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -177,12 +236,16 @@ def main() -> int:
         parser.error("operation is required unless --self-test is used")
     if args.operation in {"activate", "render"} and not args.sha:
         parser.error("--sha is required for activate/render")
+    if args.operation == "status" and not args.target:
+        parser.error("--target is required for status")
     if args.operation == "prepare":
         prepare()
     elif args.operation == "activate":
         activate(args.sha)
-    else:
+    elif args.operation == "render":
         activate_render(args.sha)
+    else:
+        status(args.target)
     return 0
 
 
