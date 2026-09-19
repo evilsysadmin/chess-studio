@@ -343,6 +343,60 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
     return obj
 
 
+def add_fire_cluster(name: str, x: float, y: float, base_z: float, materials, *, scale=1.0):
+    """Build one connected, low organic fire mass instead of separate spike cones."""
+    fire = materials["fire"]
+    hot = materials["fire_hot"]
+
+    outline = [
+        (-0.72, 0.00), (-0.67, 0.11), (-0.55, 0.18), (-0.44, 0.33),
+        (-0.34, 0.22), (-0.22, 0.42), (-0.10, 0.27), (0.00, 0.50),
+        (0.12, 0.29), (0.25, 0.40), (0.36, 0.23), (0.49, 0.34),
+        (0.59, 0.19), (0.68, 0.10), (0.72, 0.00),
+    ]
+    flat_panel(
+        f"HOME_PROP_{name}_fire_mass",
+        [(x + px * scale, base_z + pz * scale) for px, pz in outline],
+        y,
+        0.034,
+        fire,
+        bevel=0.030,
+    )
+
+    tongues = (
+        (-0.30, 0.24, 0.15, -0.025),
+        (0.00, 0.33, 0.17, 0.018),
+        (0.30, 0.25, 0.145, 0.030),
+    )
+    for idx, (dx, height, width, lean) in enumerate(tongues):
+        cx = x + dx * scale
+        h = height * scale
+        w = width * scale
+        flat_panel(
+            f"HOME_PROP_{name}_hot_tongue_{idx}",
+            [
+                (cx - w, base_z),
+                (cx - w * 0.76, base_z + h * 0.20),
+                (cx - w * 0.44, base_z + h * 0.52),
+                (cx + lean * scale, base_z + h),
+                (cx + w * 0.42, base_z + h * 0.54),
+                (cx + w * 0.78, base_z + h * 0.20),
+                (cx + w, base_z),
+            ],
+            y - 0.032,
+            0.024,
+            hot,
+            bevel=0.020,
+        )
+
+    sphere(
+        f"HOME_PROP_{name}_ember_glow",
+        (x, y + 0.020, base_z + 0.025),
+        (0.67 * scale, 0.035, 0.075 * scale),
+        hot,
+    )
+
+
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
     radius = width / 2.0
     center_z = top_z - radius
@@ -1335,53 +1389,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["stone_dark"],
             bevel=0.035,
         )
-    sphere(
-        "HOME_PROP_fireplace_left_front_ember_glow",
-        (-6.15, 5.39, 0.60),
-        (0.67, 0.032, 0.078),
-        materials["fire_hot"],
+    add_fire_cluster(
+        "fireplace_left_front",
+        -6.15,
+        5.385,
+        0.56,
+        materials,
+        scale=0.92,
     )
-    for idx, (dx, h, lean) in enumerate((
-        (-0.43, 0.29, -0.04),
-        (-0.20, 0.46, 0.04),
-        (0.02, 0.58, -0.02),
-        (0.24, 0.40, 0.05),
-        (0.44, 0.27, -0.03),
-    )):
-        cx = -6.15 + dx
-        base = 0.58
-        w = 0.115
-        flat_panel(
-            f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            [
-                (cx - w, base),
-                (cx - w * 0.68, base + h * 0.28),
-                (cx - w * 0.34, base + h * 0.52),
-                (cx + lean, base + h),
-                (cx + w * 0.38, base + h * 0.54),
-                (cx + w * 0.76, base + h * 0.24),
-                (cx + w, base),
-            ],
-            5.385,
-            0.026,
-            materials["fire"],
-            bevel=0.016,
-        )
-        inner_h = h * 0.52
-        flat_panel(
-            f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            [
-                (cx - w * 0.44, base),
-                (cx - w * 0.20, base + inner_h * 0.36),
-                (cx + lean * 0.42, base + inner_h),
-                (cx + w * 0.24, base + inner_h * 0.34),
-                (cx + w * 0.44, base),
-            ],
-            5.355,
-            0.022,
-            materials["fire_hot"],
-            bevel=0.010,
-        )
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
@@ -1454,53 +1469,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # The generic fireplace gets scaled for the canonical right-hand mass.
     # Reintroduce a camera-facing flame layer after that transform so the
     # hearth remains visibly alive instead of disappearing behind the grate.
-    sphere(
-        "HOME_PROP_fireplace_right_front_ember_glow",
-        (4.45, 5.405, 0.60),
-        (0.76, 0.035, 0.085),
-        materials["fire_hot"],
+    add_fire_cluster(
+        "fireplace_right_front",
+        4.45,
+        5.395,
+        0.56,
+        materials,
+        scale=1.06,
     )
-    for idx, (dx, h, lean) in enumerate((
-        (-0.48, 0.30, -0.04),
-        (-0.24, 0.44, 0.04),
-        (0.01, 0.54, -0.02),
-        (0.27, 0.40, 0.05),
-        (0.49, 0.28, -0.03),
-    )):
-        cx = 4.45 + dx
-        base = 0.58
-        w = 0.125
-        flat_panel(
-            f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            [
-                (cx - w, base),
-                (cx - w * 0.70, base + h * 0.26),
-                (cx - w * 0.38, base + h * 0.50),
-                (cx + lean, base + h),
-                (cx + w * 0.38, base + h * 0.55),
-                (cx + w * 0.76, base + h * 0.25),
-                (cx + w, base),
-            ],
-            5.395,
-            0.028,
-            materials["fire"],
-            bevel=0.018,
-        )
-        inner_h = h * 0.54
-        flat_panel(
-            f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            [
-                (cx - w * 0.46, base),
-                (cx - w * 0.24, base + inner_h * 0.38),
-                (cx + lean * 0.40, base + inner_h),
-                (cx + w * 0.26, base + inner_h * 0.36),
-                (cx + w * 0.46, base),
-            ],
-            5.365,
-            0.024,
-            materials["fire_hot"],
-            bevel=0.012,
-        )
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["brass_dark"], bevel=0.11)
