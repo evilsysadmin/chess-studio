@@ -136,7 +136,9 @@
       "w": 160,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "stone",
+      "one_way": true,
+      "route": "fortress_ridge"
     },
     {
       "x": 4050,
@@ -152,7 +154,9 @@
       "w": 210,
       "h": 24,
       "kind": "cliff",
-      "material": "stone"
+      "material": "stone",
+      "one_way": true,
+      "route": "fortress_ridge"
     },
     {
       "x": 4610,
@@ -212,6 +216,16 @@
       "kind": "climb_ledge",
       "material": "concrete",
       "route": "climb"
+    },
+    {
+      "x": 4100,
+      "y": 246,
+      "w": 190,
+      "h": 24,
+      "kind": "fortress_perch",
+      "material": "metal",
+      "route": "fortress_ridge",
+      "one_way": true
     }
   ],
   "obstacles": [
@@ -369,7 +383,9 @@
     },
     {
       "x": 4277,
-      "type": "rook"
+      "type": "rook",
+      "y": 246,
+      "route": "fortress_ridge"
     },
     {
       "x": 4449,
@@ -420,9 +436,11 @@
       "type": "shotgun"
     },
     {
-      "x": 3740,
-      "y": 566,
-      "type": "medkit"
+      "x": 4180,
+      "y": 202,
+      "type": "medkit",
+      "route": "fortress_ridge",
+      "optional": true
     },
     {
       "x": 4280,
