@@ -354,7 +354,7 @@ def test_hint_returns_engine_suggestion_on_human_turn(monkeypatch):
         "piece": "p",
         "captured": False,
     }
-    monkeypatch.setattr(game_api, "get_cpu_move", lambda _board, _level: suggestion)
+    monkeypatch.setattr(game_api, "build_hint_payload", lambda _board, _level: suggestion)
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
 
     r = client.get(f"/api/games/{created['id']}/hint")
@@ -386,7 +386,7 @@ def test_hint_rejects_finished_game():
 def test_hint_handles_engine_without_available_suggestion(monkeypatch):
     import game_api
 
-    monkeypatch.setattr(game_api, "get_cpu_move", lambda _board, _level: None)
+    monkeypatch.setattr(game_api, "build_hint_payload", lambda _board, _level: None)
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
 
     r = client.get(f"/api/games/{created['id']}/hint")

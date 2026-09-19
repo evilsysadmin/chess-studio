@@ -19,6 +19,7 @@ from balanced_cpu import get_balanced_cpu_move
 from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
 from engine_runtime import run_engine_work
+from hint_analysis_service import build_hint_payload
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from root_candidate_service import factual_candidate_payloads_for_level
 from shadow_evaluation import maybe_schedule_move_shadow
@@ -217,7 +218,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         if turn != entry["humanColor"]:
             raise HTTPException(400, "No es tu turno.")
 
-        suggestion = await run_engine_work(get_cpu_move, board, HINT_STRENGTH)
+        suggestion = await run_engine_work(build_hint_payload, board, HINT_STRENGTH)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         return suggestion
