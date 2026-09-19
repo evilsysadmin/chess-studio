@@ -20,6 +20,35 @@ const FULL_ATLAS_URLS := {
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/shotgun/matthias_shotgun_godot_strict_6x18_416_v9-395c486f4d42fb84.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v9/panzerfaust/matthias_panzerfaust_godot_strict_6x18_416_v9-ae9884d16a05ae6a.png",
 }
+
+# v10 overlays fluid variable-frame pistol locomotion onto the proven v9 combat
+# atlas. v9 remains resident for directional fire, reload, hurt, die and rollback.
+const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
+const V10_ATLAS_COLUMNS := 12
+const V10_ATLAS_ROWS := 9
+const V10_ATLAS_CELL_SIZE := 256
+const V10_ATLAS_SIZE := Vector2i(
+    V10_ATLAS_COLUMNS * V10_ATLAS_CELL_SIZE,
+    V10_ATLAS_ROWS * V10_ATLAS_CELL_SIZE,
+)
+const V10_BODY_SCALE := 0.74
+const V10_PACKED_FOOT_Y := 232.0
+const V10_BODY_Y := -(V10_PACKED_FOOT_Y - float(V10_ATLAS_CELL_SIZE) * 0.5) * V10_BODY_SCALE
+const V10_ACTION_ORDER := [
+    "idle", "walk", "run", "jump", "fall", "land", "crouch", "crouch_walk", "move_fire",
+]
+const V10_ACTIONS := {
+    "idle": {"row": 0, "count": 8, "fps": 6.0, "loop": true},
+    "walk": {"row": 1, "count": 10, "fps": 12.0, "loop": true},
+    "run": {"row": 2, "count": 12, "fps": 16.0, "loop": true},
+    "jump": {"row": 3, "count": 6, "fps": 12.0, "loop": false},
+    "fall": {"row": 4, "count": 4, "fps": 10.0, "loop": true},
+    "land": {"row": 5, "count": 4, "fps": 14.0, "loop": false},
+    "crouch": {"row": 6, "count": 4, "fps": 8.0, "loop": true},
+    "crouch_walk": {"row": 7, "count": 8, "fps": 10.0, "loop": true},
+    "move_fire": {"row": 8, "count": 6, "fps": 15.0, "loop": false},
+}
+
 const V9_ATLAS_COLUMNS := 6
 const V9_ATLAS_ROWS := 18
 const V9_ATLAS_CELL_SIZE := 416
@@ -271,6 +300,7 @@ static var _full_muzzle_by_weapon: Dictionary = {}
 static var _directional_ready_by_weapon: Dictionary = {}
 static var _directional_body_y_by_weapon: Dictionary = {}
 static var _v9_ready_by_weapon: Dictionary = {}
+static var _v10_ready_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -393,7 +423,7 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
         and not crouching
         and horizontal_speed_ratio > 0.08
     )
-    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down", "shoot_diag_up", "shoot_diag_down"]:
+    if on_floor and crouching and _one_shot_action in ["shoot", "shoot_up", "shoot_down", "shoot_diag_up", "shoot_diag_down", "move_fire"]:
         _one_shot_action = ""
         _hold_one_shot = false
         _action = ""
@@ -504,6 +534,13 @@ func _shoot_action_for_state(on_floor: bool, crouching: bool, locomoting_now: bo
             return "shoot_down"
 
     if locomoting_now:
+        if (
+            _rendered_weapon == "pistol"
+            and _v10_ready_by_weapon.has(_rendered_weapon)
+            and not has_vertical
+            and _animation_available("move_fire")
+        ):
+            return "move_fire"
         return ""
     return "shoot" if _animation_available("shoot") else ""
 
@@ -618,6 +655,15 @@ func _install_or_request_weapon() -> void:
         return
     _ensure_master()
 
+func _ensure_v10_locomotion(weapon_id: String) -> void:
+    if weapon_id != "pistol" or _v10_ready_by_weapon.has(weapon_id):
+        return
+    if _atlas_request != null or not _v9_ready_by_weapon.has(weapon_id):
+        return
+    if not _full_frames_by_weapon.has(weapon_id):
+        return
+    _request_atlas(weapon_id, V10_PISTOL_ATLAS_URL, "locomotion-v10")
+
 func _ensure_directional_source(weapon_id: String) -> void:
     if _v9_ready_by_weapon.has(weapon_id) or _directional_ready_by_weapon.has(weapon_id):
         return
@@ -641,6 +687,9 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
+        if layout == "locomotion-v10":
+            push_warning("Matthias v10 locomotion request could not start; keeping strict-v9")
+            return
         if layout in ["full-v9", "full-v7-source"] and _request_full_fallback(weapon_id):
             return
         _ensure_master()
@@ -655,12 +704,18 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        if requested_layout == "locomotion-v10":
+            push_warning("Matthias v10 locomotion download failed; keeping strict-v9")
+            return
         if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
         return
     var image := _decode_raster(bytes)
     if image == null:
+        if requested_layout == "locomotion-v10":
+            push_warning("Matthias v10 locomotion PNG decode failed; keeping strict-v9")
+            return
         if requested_layout in ["full-v9", "full-v7-source"] and _request_full_fallback(requested_weapon):
             return
         _ensure_master()
@@ -678,6 +733,15 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             _full_muzzle_by_weapon[requested_weapon] = {}
             _v9_ready_by_weapon[requested_weapon] = true
             _directional_ready_by_weapon[requested_weapon] = true
+
+    elif requested_layout == "locomotion-v10":
+        if _append_v10_locomotion_frames(requested_weapon, image):
+            _v10_ready_by_weapon[requested_weapon] = true
+            if requested_weapon == _weapon:
+                _install_frames(_full_frames_by_weapon[requested_weapon], true)
+        else:
+            push_warning("Matthias strict-v10 locomotion atlas rejected; keeping strict-v9")
+        return
 
     elif requested_layout == "directional-v8":
         if image.get_size() == DIRECTIONAL_ATLAS_SIZE and _append_directional_atlas_frames(requested_weapon, image):
@@ -961,6 +1025,50 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
         )
     return repaired
 
+
+func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
+    if weapon_id != "pistol" or image.get_size() != V10_ATLAS_SIZE:
+        return false
+    if not _full_frames_by_weapon.has(weapon_id):
+        return false
+
+    # Validate every used cell before mutating the live v9 SpriteFrames object.
+    for action in V10_ACTION_ORDER:
+        var spec: Dictionary = V10_ACTIONS[action]
+        var row := int(spec["row"])
+        var count := int(spec["count"])
+        for frame_index in range(count):
+            var rect := Rect2i(
+                frame_index * V10_ATLAS_CELL_SIZE,
+                row * V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+            )
+            if image.get_region(rect).get_used_rect().size == Vector2i.ZERO:
+                push_warning("Strict Matthias v10 contains empty cell %s/%d" % [action, frame_index])
+                return false
+
+    var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
+    var atlas_texture := ImageTexture.create_from_image(image)
+    for action in V10_ACTION_ORDER:
+        var spec: Dictionary = V10_ACTIONS[action]
+        if frames.has_animation(action):
+            frames.remove_animation(action)
+        frames.add_animation(action)
+        frames.set_animation_loop(action, bool(spec["loop"]))
+        frames.set_animation_speed(action, float(spec["fps"]))
+        var row := int(spec["row"])
+        for frame_index in range(int(spec["count"])):
+            var texture := AtlasTexture.new()
+            texture.atlas = atlas_texture
+            texture.region = Rect2(
+                frame_index * V10_ATLAS_CELL_SIZE,
+                row * V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+                V10_ATLAS_CELL_SIZE,
+            )
+            frames.add_frame(action, texture)
+    return true
 
 func _build_v9_frames(image: Image) -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:
@@ -1336,9 +1444,11 @@ func _build_fallback_frames() -> void:
 func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.sprite_frames = frames
     var v9_ready := _v9_ready_by_weapon.has(_weapon)
-    var body_scale := V9_BODY_SCALE if v9_ready else BODY_SCALE
+    var v10_ready := _v10_ready_by_weapon.has(_weapon)
+    var using_v10_action := v10_ready and V10_ACTIONS.has(_action)
+    var body_scale := V10_BODY_SCALE if using_v10_action else (V9_BODY_SCALE if v9_ready else BODY_SCALE)
     _body.scale = Vector2(body_scale, body_scale)
-    var body_y := V9_BODY_Y if v9_ready else -BODY_CENTER_TO_FOOT * BODY_SCALE
+    var body_y := V10_BODY_Y if using_v10_action else (V9_BODY_Y if v9_ready else -BODY_CENTER_TO_FOOT * BODY_SCALE)
     if authored_full and not v9_ready:
         body_y = float(_full_body_y_by_weapon.get(_weapon, body_y))
     _body.position = Vector2(0.0, body_y)
@@ -1356,7 +1466,9 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
-    if authored_full and not v9_ready:
+    if authored_full and v9_ready and _rendered_weapon == "pistol" and not v10_ready:
+        call_deferred("_ensure_v10_locomotion", _rendered_weapon)
+    elif authored_full and not v9_ready:
         call_deferred("_ensure_directional_source", _rendered_weapon)
 
 func _prefetch_machinegun() -> void:
@@ -1440,6 +1552,10 @@ func _on_body_frame_changed() -> void:
     _apply_body_transform(String(_body.animation), _body.frame)
 
 func _apply_body_transform(action: String, frame_index: int) -> void:
+    if _v10_ready_by_weapon.has(_rendered_weapon) and V10_ACTIONS.has(action):
+        _body.scale = Vector2(V10_BODY_SCALE, V10_BODY_SCALE)
+        _body.position.y = V10_BODY_Y
+        return
     if _v9_ready_by_weapon.has(_rendered_weapon):
         _body.scale = Vector2(V9_BODY_SCALE, V9_BODY_SCALE)
         _body.position.y = V9_BODY_Y
