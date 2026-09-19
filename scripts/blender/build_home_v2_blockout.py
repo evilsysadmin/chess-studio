@@ -398,6 +398,38 @@ def add_point_light(name: str, location, energy: float, color, radius=0.22):
     return obj
 
 
+def configure_cinematic_compositor(scene) -> None:
+    """Add restrained practical-light halo using Blender 5.x compositor API."""
+    if bpy.app.version < (5, 0, 0):
+        raise RuntimeError("Canonical Home preview requires Blender 5.x compositor API")
+
+    tree = bpy.data.node_groups.new("HOME_COMPOSITOR_CINEMATIC", "CompositorNodeTree")
+    scene.compositing_node_group = tree
+    tree.interface.new_socket(
+        name="Image",
+        in_out="OUTPUT",
+        socket_type="NodeSocketColor",
+    )
+
+    nodes = tree.nodes
+    links = tree.links
+    layers = nodes.new("CompositorNodeRLayers")
+    glare = nodes.new("CompositorNodeGlare")
+    output = nodes.new("NodeGroupOutput")
+
+    glare.inputs["Type"].default_value = "Fog Glow"
+    glare.inputs["Quality"].default_value = "High"
+    glare.inputs["Threshold"].default_value = 1.00
+    glare.inputs["Size"].default_value = 0.72
+    glare.inputs["Strength"].default_value = 0.56
+
+    links.new(layers.outputs["Image"], glare.inputs["Image"])
+    links.new(glare.outputs["Image"], output.inputs["Image"])
+
+    if hasattr(scene.render, "use_compositing"):
+        scene.render.use_compositing = True
+
+
 def add_table_and_board(materials):
     wood = materials["wood"]
     dark = materials["board_dark"]
@@ -1152,17 +1184,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.72, 0.070, 0.006, 1),
-            roughness=0.28,
-            emission=(1.0, 0.12, 0.008, 1),
-            emission_strength=0.14,
+            (0.66, 0.055, 0.004, 1),
+            roughness=0.30,
+            emission=(1.0, 0.09, 0.006, 1),
+            emission_strength=0.10,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.68, 0.11, 1),
-            roughness=0.22,
-            emission=(1.0, 0.42, 0.045, 1),
-            emission_strength=0.24,
+            (1.0, 0.56, 0.09, 1),
+            roughness=0.24,
+            emission=(1.0, 0.30, 0.020, 1),
+            emission_strength=0.18,
         ),
     }
 
@@ -1650,6 +1682,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 205, (0.42, 0.52, 0.66), 2.1, target=(1.55, 5.28, 2.4))
     add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 142, (0.82, 0.52, 0.28), 1.9, target=(1.55, 5.28, 2.35))
     add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 112, (0.66, 0.72, 0.78), 1.45, target=(1.55, 5.28, 2.40))
+
+    if engine == "eevee":
+        configure_cinematic_compositor(scene)
 
     camera_data = bpy.data.cameras.new("HOME_CAMERA_CANONICAL")
     camera_data.lens = 50.0
