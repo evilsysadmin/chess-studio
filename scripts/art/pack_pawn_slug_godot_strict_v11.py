@@ -4,13 +4,13 @@
 Input:  6 x 18 @ 416px (strict-v9, one weapon).
 Output: 8 x 18 @ 416px (strict-v11, one weapon).
 
-v11 deliberately does not invent raster pixels by cross-fading neighbouring
-poses. Cross-fades look smooth in a contact sheet but ghost legs/weapons at
-runtime. Instead it phase-resamples the authored six-frame banks to eight
-frames while preserving the exact body rendering, then re-anchors every frame
-to the same lower-body pivot and foot line. This keeps visual body size,
-proportions and weapon identity unchanged while giving every runtime pose a
-minimum eight-frame contract.
+v11 keeps the coherent strict-v9 AI-authored keyframes, but no longer pads
+animations by duplicating holds. Every six-frame bank retains all six authored
+frames and gains two deterministic motion-compensated half-steps. The half-step
+warps one silhouette toward the next keyframe instead of cross-fading two
+sprites, avoiding doubled legs, weapons and muzzle flashes. A restrained 2D
+readability pass follows, then every active pose is re-anchored to the same
+pivot and foot line. No Blender or 3D asset participates in this pipeline.
 """
 from __future__ import annotations
 
@@ -19,7 +19,10 @@ import hashlib
 import json
 from pathlib import Path
 import statistics
-from PIL import Image
+
+import cv2
+import numpy as np
+from PIL import Image, ImageEnhance, ImageFilter
 
 VERSION = "v11"
 SRC_COLS = 6
@@ -54,25 +57,7 @@ ACTIONS = (
     ("die", 9.0, False),
 )
 
-# Temporal phase expansion. Looping banks distribute duplicate holds through the
-# cycle; one-shots preserve start/end readability. No frame is alpha-blended.
-LOOP_MAP = (0, 1, 1, 2, 3, 4, 4, 5)
-ONE_SHOT_MAP = (0, 0, 1, 2, 3, 4, 5, 5)
-FIRE_MAP = (0, 1, 2, 3, 4, 5, 5, 5)
-MAP_BY_ACTION = {
-    "jump": ONE_SHOT_MAP,
-    "land": ONE_SHOT_MAP,
-    "shoot": FIRE_MAP,
-    "shoot_up": FIRE_MAP,
-    "shoot_down": FIRE_MAP,
-    "shoot_diag_up": FIRE_MAP,
-    "shoot_diag_up_alt": FIRE_MAP,
-    "shoot_diag_down": FIRE_MAP,
-    "shoot_crouch": FIRE_MAP,
-    "reload": ONE_SHOT_MAP,
-    "hurt": ONE_SHOT_MAP,
-    "die": ONE_SHOT_MAP,
-}
+SOURCE_PHASES = (0.0, 1.0, 1.5, 2.0, 3.0, 4.0, 4.5, 5.0)
 
 
 def parse_args():
@@ -94,22 +79,19 @@ def cell(atlas: Image.Image, row: int, col: int) -> Image.Image:
 
 
 def lower_body_anchor(im: Image.Image) -> tuple[float, float]:
-    px = im.load(); pts = []
-    for y in range(int(CELL * 0.42), CELL):
-        for x in range(CELL):
-            r, g, b, a = px[x, y]
-            if a <= ALPHA or max(r, g, b) >= 220:
-                continue
-            pts.append((x, y))
-    if not pts:
+    pixels = np.asarray(im)
+    mask = (pixels[..., 3] > ALPHA) & (pixels[..., :3].max(axis=2) < 220)
+    mask[: int(CELL * 0.42), :] = False
+    ys, xs = np.nonzero(mask)
+    if ys.size == 0:
         box = im.getchannel("A").getbbox()
         if box is None:
             raise SystemExit("cannot anchor empty frame")
         return (box[0] + box[2]) * 0.5, float(box[3] - 1)
-    foot = max(y for _, y in pts)
+    foot = int(ys.max())
     band = max(3, int(CELL * 0.03))
-    xs = sorted(x for x, y in pts if y >= foot - band)
-    return float(statistics.median(xs)), float(foot)
+    floor_x = np.sort(xs[ys >= foot - band])
+    return float(floor_x[len(floor_x) // 2]), float(foot)
 
 
 def reanchor(im: Image.Image) -> Image.Image:
@@ -123,6 +105,71 @@ def reanchor(im: Image.Image) -> Image.Image:
     return out
 
 
+def _premultiplied(array: np.ndarray) -> np.ndarray:
+    alpha = array[..., 3:4].astype(np.float32) / 255.0
+    return np.concatenate((array[..., :3].astype(np.float32) * alpha, array[..., 3:4].astype(np.float32)), axis=2)
+
+
+def _unpremultiplied(array: np.ndarray) -> np.ndarray:
+    alpha = array[..., 3:4]
+    rgb = np.where(alpha > 1.0, array[..., :3] * 255.0 / np.maximum(alpha, 1.0), 0.0)
+    return np.clip(np.concatenate((rgb, alpha), axis=2), 0, 255).astype(np.uint8)
+
+
+def _warp(array: np.ndarray, flow: np.ndarray, fraction: float) -> np.ndarray:
+    height, width = flow.shape[:2]
+    gx, gy = np.meshgrid(np.arange(width, dtype=np.float32), np.arange(height, dtype=np.float32))
+    mx = gx - fraction * flow[..., 0]
+    my = gy - fraction * flow[..., 1]
+    return np.stack([
+        cv2.remap(array[..., channel], mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+        for channel in range(array.shape[2])
+    ], axis=2)
+
+
+def inbetween(first: Image.Image, second: Image.Image) -> Image.Image:
+    a = np.array(first.convert("RGBA"))
+    b = np.array(second.convert("RGBA"))
+    alpha_a = a[..., 3].astype(np.float32) / 255.0
+    alpha_b = b[..., 3].astype(np.float32) / 255.0
+    gray_a = (cv2.cvtColor(a[..., :3], cv2.COLOR_RGB2GRAY).astype(np.float32) * alpha_a).astype(np.uint8)
+    gray_b = (cv2.cvtColor(b[..., :3], cv2.COLOR_RGB2GRAY).astype(np.float32) * alpha_b).astype(np.uint8)
+    half = (CELL // 2, CELL // 2)
+    small_a = cv2.resize(gray_a, half, interpolation=cv2.INTER_AREA)
+    small_b = cv2.resize(gray_b, half, interpolation=cv2.INTER_AREA)
+    flow_small = cv2.calcOpticalFlowFarneback(small_a, small_b, None, 0.5, 2, 17, 2, 5, 1.2, 0)
+    flow = cv2.resize(flow_small, (CELL, CELL), interpolation=cv2.INTER_LINEAR) * 2.0
+    warped = _warp(_premultiplied(a), flow, 0.5)
+    # One warped silhouette only: never cross-fade two bodies/weapons.
+    return Image.fromarray(_unpremultiplied(warped), "RGBA")
+
+
+def enhance_readability(im: Image.Image) -> Image.Image:
+    alpha = im.getchannel("A")
+    rgb = im.convert("RGB")
+    rgb = ImageEnhance.Brightness(rgb).enhance(1.04)
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.06)
+    rgb = ImageEnhance.Color(rgb).enhance(1.03)
+    rgb = rgb.filter(ImageFilter.UnsharpMask(radius=0.85, percent=120, threshold=2))
+    out = Image.merge("RGBA", (*rgb.split(), alpha))
+    pixels = np.array(out)
+    pixels[pixels[..., 3] == 0, :3] = 0
+    return Image.fromarray(pixels, "RGBA")
+
+
+def expand_frames(source_frames: list[Image.Image]) -> list[Image.Image]:
+    return [
+        source_frames[0],
+        source_frames[1],
+        inbetween(source_frames[1], source_frames[2]),
+        source_frames[2],
+        source_frames[3],
+        source_frames[4],
+        inbetween(source_frames[4], source_frames[5]),
+        source_frames[5],
+    ]
+
+
 def validate_frame(im: Image.Image, action: str, frame: int) -> dict:
     box = im.getchannel("A").getbbox()
     if box is None:
@@ -130,10 +177,17 @@ def validate_frame(im: Image.Image, action: str, frame: int) -> dict:
     guard = min(box[0], box[1], CELL - box[2], CELL - box[3])
     if guard < CELL_GUARD:
         raise SystemExit(f"cell guard regression {action}[{frame}] guard={guard}")
+    pixels = np.asarray(im)
+    if np.any(pixels[pixels[..., 3] == 0, :3] != 0):
+        raise SystemExit(f"transparent RGB contamination {action}[{frame}]")
     ax, ay = lower_body_anchor(im)
     if abs(ax - TARGET_PIVOT_X) > 2.0 or abs(ay - TARGET_FOOT_Y) > 2.0:
         raise SystemExit(f"anchor drift {action}[{frame}] x={ax:.1f} y={ay:.1f}")
-    return {"bbox": list(box), "anchor": [round(ax, 2), round(ay, 2)]}
+    return {
+        "bbox": list(box),
+        "anchor": [round(ax, 2), round(ay, 2)],
+        "sha256_rgba": hashlib.sha256(im.tobytes()).hexdigest(),
+    }
 
 
 def build(source: Image.Image, source_path: Path, weapon: str) -> tuple[Image.Image, dict]:
@@ -142,17 +196,20 @@ def build(source: Image.Image, source_path: Path, weapon: str) -> tuple[Image.Im
     out = Image.new("RGBA", OUT_SIZE, (0, 0, 0, 0))
     actions = []
     for row, (name, fps, loop) in enumerate(ACTIONS):
-        mapping = MAP_BY_ACTION.get(name, LOOP_MAP if loop else ONE_SHOT_MAP)
+        authored = [cell(source, row, col) for col in range(SRC_COLS)]
+        expanded = expand_frames(authored)
         metas = []
-        for dst_col, src_col in enumerate(mapping):
-            frame = reanchor(cell(source, row, src_col))
+        for dst_col, frame in enumerate(expanded):
+            frame = reanchor(frame)
+            frame = enhance_readability(frame)
+            frame = reanchor(frame)
             meta = validate_frame(frame, name, dst_col)
             out.alpha_composite(frame, (dst_col * CELL, row * CELL))
-            meta.update({"frame": dst_col, "source_frame": src_col})
+            meta.update({"frame": dst_col, "source_phase": SOURCE_PHASES[dst_col]})
             metas.append(meta)
         actions.append({
             "name": name, "row": row, "frames": 8, "fps": fps, "loop": loop,
-            "source_frames": list(mapping), "frames_meta": metas,
+            "source_phases": list(SOURCE_PHASES), "frames_meta": metas,
         })
     manifest = {
         "schema": 1,
@@ -165,6 +222,12 @@ def build(source: Image.Image, source_path: Path, weapon: str) -> tuple[Image.Im
             "width": OUT_SIZE[0], "height": OUT_SIZE[1],
             "pivot_x": TARGET_PIVOT_X, "foot_y": TARGET_FOOT_Y,
             "frames_per_pose": 8,
+        },
+        "processing": {
+            "kind": "2d-motion-compensated",
+            "inbetweens_per_action": 2,
+            "readability": {"brightness": 1.04, "contrast": 1.06, "color": 1.03, "unsharp_percent": 120},
+            "blender": False,
         },
         "actions": actions,
     }
