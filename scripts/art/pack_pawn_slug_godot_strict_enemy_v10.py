@@ -71,7 +71,7 @@ def load_contract(root: Path, enemy_type: str) -> dict:
         fail(f"strict enemy packer requires full render, got mode={data.get('mode')!r}")
     if data.get("sourceFacing") != "left":
         fail(f"unexpected source facing: {data.get('sourceFacing')!r}")
-    if data.get("frameSize") != [192, 192]:
+    if data.get("frameSize") not in ([96, 96], [192, 192]):
         fail(f"unexpected source frame size: {data.get('frameSize')!r}")
     if data.get("runtimeCell") != [96, 96]:
         fail(f"unexpected runtime cell: {data.get('runtimeCell')!r}")
@@ -97,9 +97,9 @@ def fit_runtime_frame(path: Path) -> tuple[Image.Image, tuple[int, int, int, int
     if not path.is_file():
         fail(f"missing authored frame: {path}")
     image = Image.open(path).convert("RGBA")
-    if image.size != (192, 192):
+    if image.size not in ((96, 96), (192, 192)):
         fail(f"wrong authored frame size: {path} -> {image.size}")
-    runtime = image.resize((CELL, CELL), Image.Resampling.LANCZOS)
+    runtime = image if image.size == (CELL, CELL) else image.resize((CELL, CELL), Image.Resampling.LANCZOS)
     bbox = runtime.getchannel("A").point(lambda v: 255 if v >= 24 else 0).getbbox()
     if bbox is None:
         fail(f"empty authored frame: {path}")
@@ -202,7 +202,7 @@ def main() -> int:
             "version": source_manifest["version"],
             "blender": source_manifest.get("blender"),
             "source_facing": "left",
-            "frame_size": [192, 192],
+            "frame_size": source_manifest["frameSize"],
         },
         "atlas": {
             "filename": args.output.name,
