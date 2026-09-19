@@ -264,6 +264,11 @@ def _apply_text(text: str) -> None:
     _kubectl("apply", "-f", "-", stdin=text, timeout=60)
 
 
+def _kubectl_reports_not_found(detail: str) -> bool:
+    lowered = str(detail or "").lower()
+    return "notfound" in lowered or "not found" in lowered
+
+
 def _namespace_payload() -> dict:
     completed = _kubectl("get", "namespace", NAMESPACE, "-o", "json", check=False, timeout=15)
     if completed.returncode == 0:
@@ -275,8 +280,7 @@ def _namespace_payload() -> dict:
             raise SystemExit("staging2 namespace probe returned non-object JSON")
         return payload
     detail = (completed.stderr or completed.stdout or "").strip()
-    lowered = detail.lower()
-    if "notfound" in lowered or "not found" in lowered:
+    if _kubectl_reports_not_found(detail):
         return {}
     raise SystemExit(
         "staging2 namespace probe failed "
@@ -361,12 +365,20 @@ def _deployment_payload() -> dict:
         check=False,
     )
     if completed.returncode != 0:
-        return {}
+        detail = (completed.stderr or completed.stdout or "").strip()
+        if _kubectl_reports_not_found(detail):
+            return {}
+        raise SystemExit(
+            "staging2 deployment probe failed "
+            f"rc={completed.returncode} detail={_clean_diag(detail, 300)}"
+        )
     try:
         payload = json.loads(completed.stdout)
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
+    except json.JSONDecodeError as exc:
+        raise SystemExit("staging2 deployment probe returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("staging2 deployment probe returned non-object JSON")
+    return payload
 
 
 def _release_from_payload(payload: dict) -> str:
@@ -886,6 +898,9 @@ def self_test(template_path: Path) -> None:
     assert _namespace_owned(owned_namespace)
     assert not _namespace_owned(foreign_namespace)
     assert not _namespace_owned({})
+    assert _kubectl_reports_not_found('Error from server (NotFound): deployments.apps "backend" not found')
+    assert _kubectl_reports_not_found('resource not found')
+    assert not _kubectl_reports_not_found('connection refused')
     for mutation in ("tag", "digest", "arch", "user"):
         bad = json.loads(json.dumps(sample_payload))
         if mutation == "tag":
@@ -958,6 +973,8 @@ def self_test(template_path: Path) -> None:
     assert '"--ignore-not-found=true"' in source
     assert "staging2 namespace still exists after bounded rollback" in source
     assert "refusing to manage foreign staging2 namespace" in source
+    assert "staging2 deployment probe failed" in source
+    assert "staging2 deployment probe returned invalid JSON" in source
     assert "_verify_namespace_contract_if_present()" in source
     assert "state_sha=" in source
     assert "staging2 deployed state must remain root-owned" in source
