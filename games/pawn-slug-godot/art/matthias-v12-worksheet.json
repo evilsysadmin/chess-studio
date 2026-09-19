@@ -1,0 +1,32 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v12",
+  "status": "promoted-baseline-staging-hardening",
+  "validated_contract": {
+    "generation": "strict-v12",
+    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "face": "canonical Matthias with slightly angry brows, narrowed eyes and firm frown"
+  },
+  "runtime_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/pistol/matthias_pistol_godot_strict_8x18_416_v12-b4b6a0c44104e23b.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/machinegun/matthias_machinegun_godot_strict_8x18_416_v12-e312aa0ac785498d.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/shotgun/matthias_shotgun_godot_strict_8x18_416_v12-8cb4872c8abdb292.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v12/panzerfaust/matthias_panzerfaust_godot_strict_8x18_416_v12-9b9c76162d63d35a.png"
+  },
+  "evidence": {
+    "strict_v12_workflow_run": 35450801245,
+    "strict_v12_result": "success",
+    "candidate_v10_decision": "rejected: generated pistol/SMG run frames preserved the foot line but reduced body volume and alpha coverage against v12",
+    "staging_visual_previous_failure": "Playwright pointer interception by the illustrated home utility trigger; no atlas/runtime failure",
+    "staging_smoke_fix": "e2e/staging-pawn-slug-godot.spec.js uses a forced accessible handoff click"
+  },
+  "resume": {
+    "next": "run staging deploy and visual smoke for this commit; retain strict-v12 unless a future frame set passes volume and continuity gates",
+    "source_of_truth": "games/pawn-slug-godot/scripts/matthias_art.gd plus strict-v12 workflow artifacts"
+  }
+}

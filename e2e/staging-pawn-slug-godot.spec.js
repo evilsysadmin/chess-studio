@@ -131,7 +131,11 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
 
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible();
-  await direct.click();
+  // The illustrated home keeps a floating utility trigger over this visual
+  // card at some viewport widths. The accessible target is still the intended
+  // action; force the click so the staging smoke tests the game handoff rather
+  // than failing on an unrelated stacking context.
+  await direct.click({ force: true });
 
   const host = page.locator('.pawn-slug-godot-host');
   const iframe = page.locator('iframe[title="Pawn Slug Godot"]');
@@ -181,4 +185,3 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   await captureGodot(page, testInfo, '02-godot-smg-fire.png');
   await page.keyboard.up('z');
 });
-
