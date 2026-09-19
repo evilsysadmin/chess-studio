@@ -154,17 +154,20 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
 
   const keyboard = parent.keyboard;
   let counts = {};
+
+  // Phase 1 is deliberately traversal-only. Mixing rapid fire and grenade
+  // throws into the pickup probe made the bot's progress timing-sensitive and
+  // allowed combat recoil/damage to sabotage the collision contract it was
+  // supposed to measure.
   await keyboard.down('ArrowRight');
   try {
-    for (let step = 0; step < 120; step += 1) {
-      await keyboard.press('z');
-      if (step % 8 === 2) await keyboard.press('Space');
-      if (step % 18 === 2) await keyboard.press('x');
+    for (let step = 0; step < 180; step += 1) {
+      if (step % 12 === 3) await keyboard.press('Space');
       await parent.waitForTimeout(105);
 
       if (step % 4 !== 0) continue;
       counts = await bridgeCounts(parent);
-      if (counts['weapon-pickup'] && counts['grenade-thrown']) break;
+      if (counts['weapon-pickup']) break;
       if (counts.gameover) break;
     }
   } finally {
@@ -172,15 +175,24 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   }
 
   counts = await bridgeCounts(parent);
-  diagnostics.iframe.gameplaySmoke = counts;
+  diagnostics.iframe.gameplayTraversal = counts;
 
   // Crossing the first weapon pickup proves world traversal/collision. The
   // player starts exactly on checkpoint 110, so requiring a checkpoint event
   // here would incorrectly force the bot to survive until checkpoint 1480.
+  if (counts.gameover) fail('gameplay-gameover-before-pickup-contract', diagnostics);
   if (!counts['weapon-pickup']) fail('gameplay-weapon-pickup', diagnostics);
   if (!counts['weapon-changed']) fail('gameplay-weapon-change', diagnostics);
-  if (!counts['grenade-thrown']) fail('gameplay-grenade-input', diagnostics);
-  if (counts.gameover) fail('gameplay-gameover-before-pickup-contract', diagnostics);
+
+  // Phase 2 exercises combat inputs only after traversal has been proven.
+  const grenadesBefore = Number(counts['grenade-thrown'] || 0);
+  await keyboard.press('x');
+  await waitForBridgeCount(parent, 'grenade-thrown', grenadesBefore + 1, 5_000);
+  counts = await bridgeCounts(parent);
+  diagnostics.iframe.gameplaySmoke = counts;
+  if (Number(counts['grenade-thrown'] || 0) <= grenadesBefore) {
+    fail('gameplay-grenade-input', diagnostics);
+  }
 
   // Exercise the exact visual regression path: after the SMG pickup, keep
   // locomotion active while holding fire. Runtime health here protects the
