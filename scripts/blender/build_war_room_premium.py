@@ -1116,7 +1116,7 @@ def build():
         "stone": material("WR_MAT_stone", (0.085, 0.086, 0.092, 1), rough=0.82, coat=0.012, texture="stone", scale=4.3, bump=0.095),
         "stone_light": material("WR_MAT_stone_light", (0.145, 0.142, 0.145, 1), rough=0.79, coat=0.012, texture="stone", scale=4.3, bump=0.075),
         "stone_dark": material("WR_MAT_stone_shadow", (0.032, 0.033, 0.036, 1), rough=0.80, coat=0.012, texture="stone", scale=4.4, bump=0.075),
-        "rug": material("WR_MAT_rug", (0.012, 0.026, 0.022, 1), rough=0.96, sheen=0.18, texture="fabric", scale=54, bump=0.12),
+        "rug": material("WR_MAT_rug", (0.074, 0.010, 0.016, 1), rough=0.94, sheen=0.22, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.165, 0.185, 0.225, 1), metal=0.93, rough=0.35, coat=0.14, texture="metal", scale=28, bump=0.035),
         "armor_dark": material("WR_MAT_armor_dark", (0.060, 0.072, 0.095, 1), metal=0.90, rough=0.43, coat=0.09, texture="metal", scale=22, bump=0.025),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
