@@ -1476,26 +1476,32 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (0.125, 0.020, 0.038),
             materials["fire_hot"] if idx % 2 else materials["fire"],
         )
-    for idx, (dx, sx, sz, tilt) in enumerate((
-        (-0.36, 0.13, 0.16, -12.0),
-        (-0.12, 0.15, 0.21, 9.0),
-        (0.14, 0.16, 0.24, -6.0),
-        (0.38, 0.12, 0.15, 11.0),
+    for idx, (dx, h, tilt) in enumerate((
+        (-0.28, 0.18, -11.0),
+        (0.00, 0.25, 7.0),
+        (0.30, 0.17, -8.0),
     )):
-        outer = sphere(
-            f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            (4.45 + dx, 5.385, 0.60 + sz),
-            (sx, 0.028, sz),
+        base = sphere(
+            f"HOME_PROP_fireplace_right_front_base_{idx}",
+            (4.45 + dx, 5.390, 0.635),
+            (0.145, 0.026, 0.070),
             materials["fire"],
         )
-        outer.rotation_euler[1] = math.radians(tilt)
+        base.rotation_euler[1] = math.radians(tilt * 0.20)
+        lobe = sphere(
+            f"HOME_PROP_fireplace_right_front_flame_{idx}",
+            (4.45 + dx + math.sin(math.radians(tilt)) * 0.028, 5.375, 0.655 + h * 0.52),
+            (0.078, 0.026, h),
+            materials["fire"],
+        )
+        lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            (4.45 + dx * 0.985, 5.345, 0.595 + sz * 0.74),
-            (sx * 0.48, 0.022, sz * 0.54),
+            (4.45 + dx, 5.340, 0.650 + h * 0.34),
+            (0.041, 0.019, h * 0.46),
             materials["fire_hot"],
         )
-        inner.rotation_euler[1] = math.radians(tilt * 0.55)
+        inner.rotation_euler[1] = math.radians(tilt * 0.45)
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
     gothic_arch("HOME_ARCH_window_right_frame", 7.82, 6.48, 2.12, 3.15, 5.20, 1.80, materials["brass_dark"], bevel=0.11)
