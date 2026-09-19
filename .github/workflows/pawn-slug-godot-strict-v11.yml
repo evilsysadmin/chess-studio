@@ -39,7 +39,7 @@ jobs:
     # is intentionally not part of this pipeline.
     name: Build + gate strict-v11 · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -49,10 +49,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Pillow
+      - name: Install deterministic 2D sprite toolchain
         run: |
-          python3 -m pip install --disable-pip-version-check --no-deps \
-            --only-binary=:all: 'Pillow==12.3.0'
+          python3 -m pip install --disable-pip-version-check \
+            --only-binary=:all: \
+            'numpy==2.2.6' \
+            'opencv-python-headless==4.12.0.88' \
+            'Pillow==12.3.0'
 
       - name: Strict v11 tool sanity
         run: |
