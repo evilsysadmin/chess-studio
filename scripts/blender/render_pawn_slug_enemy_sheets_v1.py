@@ -68,6 +68,7 @@ def parse_args():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--enemy-type", choices=TYPES)
     parser.add_argument("--smoke", action="store_true", help="Render representative runtime-resolution evidence only")
+    parser.add_argument("--strict-runtime", action="store_true", help="Render every authored frame directly at the 96px runtime cell")
     tail = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     return parser.parse_args(tail)
 
@@ -517,7 +518,7 @@ def main():
     types = (args.enemy_type,) if args.enemy_type else TYPES
     clear_scene()
     mats = build_materials()
-    setup_scene(args.smoke)
+    setup_scene(args.smoke or args.strict_runtime)
     save_preview_blend(out, mats, types)
     render_frames(out, mats, types, smoke=args.smoke)
     print("Pawn Slug enemy Blender sheets source complete:", out)
