@@ -135,6 +135,33 @@ async def create_or_replay_run(
         raise PersistentStorageUnavailable("No se pudo crear la run de Chronicles.") from exc
 
 
+async def replay_run_creation(
+    *,
+    run_id: str,
+    owner: str,
+    create_fingerprint: str,
+) -> dict[str, Any] | None:
+    """Return an idempotent create replay without allocating a new seed/planner call."""
+    collection = await _collection()
+    if collection is None:
+        async with _memory_guard():
+            row = _memory_runs.get(run_id)
+            if row is None or row.get("owner") != owner:
+                return None
+            if row.get("createFingerprint") != create_fingerprint:
+                raise ValueError("idempotency-conflict")
+            return _public(row)
+    try:
+        row = await collection.find_one({"_id": run_id, "owner": owner})
+        if row is None:
+            return None
+        if row.get("createFingerprint") != create_fingerprint:
+            raise ValueError("idempotency-conflict")
+        return _public(row)
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo recuperar la creación de Chronicles.") from exc
+
+
 async def get_run(run_id: str, owner: str) -> dict[str, Any] | None:
     collection = await _collection()
     if collection is None:

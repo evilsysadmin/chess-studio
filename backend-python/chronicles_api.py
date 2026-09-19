@@ -25,6 +25,7 @@ from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
     ChroniclesMapCodeError,
+    parse_chronicles_map_code,
 )
 from chronicles_map_generator import (
     ChroniclesMapGenerationError,
@@ -32,6 +33,7 @@ from chronicles_map_generator import (
 )
 from chronicles_manifest_procedural import proceduralize_chronicles_manifest
 from chronicles_map_planner import normalize_chronicles_planner_proposal
+from chronicles_planner_cloudflare import request_chronicles_planner_snapshot
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -495,6 +497,60 @@ def chronicles_area_envelope(
     }
 
 
+def _chronicles_planner_descriptors(
+    map_ids: tuple[str, ...] | list[str],
+    seed: int,
+    *,
+    route_snapshot: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    descriptors: list[dict[str, Any]] = []
+    for map_id in map_ids:
+        local_area = chronicles_area_envelope(
+            map_id,
+            seed,
+            route_snapshot=route_snapshot,
+        )
+        recipe = parse_chronicles_map_code(local_area["mapCode"])
+        verbs = ",".join(recipe.verbs)
+        descriptors.append(
+            {
+                "map_id": map_id,
+                "theme": recipe.theme,
+                "current_verbs": verbs,
+                "difficulty": recipe.difficulty,
+                # Contract v1 may only select/reorder/subset authored verbs.
+                # Workers AI cannot invent a semantic mechanic here.
+                "allowed_verbs": verbs,
+            }
+        )
+    return descriptors
+
+
+def _normalize_remote_planner_snapshot(
+    raw_snapshot: dict[str, Any] | None,
+    *,
+    allowed_map_ids: tuple[str, ...] | list[str],
+) -> dict[str, Any] | None:
+    if raw_snapshot is None:
+        return None
+    try:
+        snapshot = _normalize_planner_snapshot(raw_snapshot)
+    except ChroniclesManifestError:
+        return None
+    if snapshot is None:
+        return None
+
+    allowed = set(allowed_map_ids)
+    if not set(snapshot["areas"]).issubset(allowed):
+        return None
+    if any(
+        proposal.get("source") != "workers-ai"
+        for proposal in snapshot["areas"].values()
+    ):
+        return None
+    return snapshot
+
+
 def _run_id(username: str, idempotency_key: str | None) -> str:
     if idempotency_key:
         return str(uuid.uuid5(CHRONICLES_RUN_NAMESPACE, f"{username}:{idempotency_key}"))
@@ -575,18 +631,56 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         except InvalidIdempotencyKey as exc:
             raise HTTPException(400, str(exc)) from exc
 
-        seed = secrets.randbelow(_MAX_SEED + 1)
-        if body.map_id is None:
-            route_snapshot = chronicles_route_snapshot_for_seed(seed)
-            selected_map_id = route_snapshot["mapIds"][0]
-        else:
-            route_snapshot = None
-            selected_map_id = body.map_id
-        area = chronicles_area_envelope(selected_map_id, seed, route_snapshot=route_snapshot)
         fingerprint = operation_fingerprint({"mapId": body.map_id})
+        run_id = _run_id(username, idempotency_key)
         try:
+            if idempotency_key:
+                existing = await chronicles_run_store.replay_run_creation(
+                    run_id=run_id,
+                    owner=username,
+                    create_fingerprint=fingerprint,
+                )
+                if existing is not None:
+                    stable_route_snapshot = _normalize_route_snapshot(existing.get("route"))
+                    if body.map_id is None and stable_route_snapshot is None:
+                        stable_route_snapshot = chronicles_route_snapshot_for_seed(existing["seed"])
+                    return _run_bootstrap_payload(
+                        existing,
+                        route_snapshot=stable_route_snapshot,
+                    )
+
+            seed = secrets.randbelow(_MAX_SEED + 1)
+            if body.map_id is None:
+                route_snapshot = chronicles_route_snapshot_for_seed(seed)
+                selected_map_id = route_snapshot["mapIds"][0]
+                planner_map_ids = tuple(route_snapshot["mapIds"])
+            else:
+                route_snapshot = None
+                selected_map_id = body.map_id
+                planner_map_ids = (selected_map_id,)
+
+            planner_descriptors = _chronicles_planner_descriptors(
+                planner_map_ids,
+                seed,
+                route_snapshot=route_snapshot,
+            )
+            raw_planner_snapshot = await request_chronicles_planner_snapshot(
+                planner_descriptors,
+                request_id=f"chronicles:{run_id}",
+            )
+            planner_snapshot = _normalize_remote_planner_snapshot(
+                raw_planner_snapshot,
+                allowed_map_ids=planner_map_ids,
+            )
+
+            area = chronicles_area_envelope(
+                selected_map_id,
+                seed,
+                route_snapshot=route_snapshot,
+                planner_snapshot=planner_snapshot,
+            )
             run = await chronicles_run_store.create_or_replay_run(
-                run_id=_run_id(username, idempotency_key),
+                run_id=run_id,
                 owner=username,
                 seed=seed,
                 map_id=selected_map_id,
@@ -594,11 +688,15 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 manifest_revision=area["manifestRevision"],
                 create_fingerprint=fingerprint,
                 route_snapshot=route_snapshot,
+                planner_snapshot=planner_snapshot,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
                 stable_route_snapshot = chronicles_route_snapshot_for_seed(run["seed"])
-            return _run_bootstrap_payload(run, route_snapshot=stable_route_snapshot)
+            return _run_bootstrap_payload(
+                run,
+                route_snapshot=stable_route_snapshot,
+            )
         except ValueError as exc:
             if str(exc) == "idempotency-conflict":
                 raise HTTPException(409, "La misma Idempotency-Key se reutilizó con otra configuración de run.") from exc
