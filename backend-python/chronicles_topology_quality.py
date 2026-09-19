@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+import math
 from typing import Any
 
 
@@ -12,6 +13,12 @@ _MIN_OPEN_RATIO = 0.25
 _MAX_DEAD_END_RATIO = 0.50
 _CORRIDOR_ARTICULATION_RATIO = 0.82
 _CORRIDOR_DEGREE_TWO_RATIO = 0.75
+_OPEN_RATIO_REGRESSION = 0.18
+_DEAD_END_RATIO_REGRESSION = 0.25
+_ARTICULATION_RATIO_REGRESSION = 0.30
+_MIN_DEAD_END_RATIO_FOR_REGRESSION = 0.45
+_MIN_ARTICULATION_RATIO_FOR_REGRESSION = 0.75
+_EXIT_DISTANCE_RETAIN_RATIO = 0.35
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 
@@ -207,6 +214,55 @@ def _critical_anchors(
         for entry in manifest.get(group, []):
             anchors.update(_entry_positions(grid, entry))
     return anchors
+
+
+def compare_chronicles_topology(
+    candidate: ChroniclesTopologyQuality,
+    baseline: ChroniclesTopologyQuality,
+) -> tuple[str, ...]:
+    """Return material regressions versus the deterministic local baseline.
+
+    Hard candidate failures always reject. Soft shape metrics are relative so
+    authored narrow dungeons remain valid while a planner cannot make the same
+    seed materially worse than the local recipe.
+    """
+    reasons: list[str] = list(candidate.reasons)
+    if reasons or not baseline.accepted:
+        return tuple(reasons)
+
+    if candidate.open_ratio < baseline.open_ratio - _OPEN_RATIO_REGRESSION:
+        reasons.append("open-ratio-regression")
+
+    if (
+        candidate.dead_end_ratio
+        > baseline.dead_end_ratio + _DEAD_END_RATIO_REGRESSION
+        and candidate.dead_end_ratio > _MIN_DEAD_END_RATIO_FOR_REGRESSION
+    ):
+        reasons.append("dead-end-regression")
+
+    if (
+        candidate.articulation_ratio
+        > baseline.articulation_ratio + _ARTICULATION_RATIO_REGRESSION
+        and candidate.articulation_ratio > _MIN_ARTICULATION_RATIO_FOR_REGRESSION
+    ):
+        reasons.append("articulation-regression")
+
+    if (
+        baseline.min_exit_distance is not None
+        and candidate.min_exit_distance is not None
+    ):
+        minimum_retained_distance = max(
+            _MIN_EXIT_DISTANCE,
+            math.ceil(baseline.min_exit_distance * _EXIT_DISTANCE_RETAIN_RATIO),
+        )
+        if candidate.min_exit_distance < minimum_retained_distance:
+            reasons.append("exit-distance-regression")
+
+    # Acyclic rooms are not inherently bad: maze-like authored layouts can
+    # legitimately have cycle_rank=0. Treat cycle rank as diagnostic context,
+    # not a standalone rejection reason.
+
+    return tuple(reasons)
 
 
 def evaluate_chronicles_topology(

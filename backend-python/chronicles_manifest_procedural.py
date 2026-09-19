@@ -33,6 +33,7 @@ from chronicles_map_generator import (
 )
 from chronicles_topology_quality import (
     CHRONICLES_TOPOLOGY_QUALITY_VERSION,
+    compare_chronicles_topology,
     evaluate_chronicles_topology,
 )
 
@@ -278,32 +279,44 @@ def proceduralize_chronicles_manifest(
     composed_manifest = treasure_variation.manifest
     base_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
     planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
-    generated, map_code, layout_revision = _materialize_recipe(
+
+    local_generated, local_map_code, local_layout_revision = _materialize_recipe(
         composed_manifest,
-        planner.recipe,
+        base_recipe,
     )
-    quality = evaluate_chronicles_topology(generated)
+    local_quality = evaluate_chronicles_topology(local_generated)
+    if not local_quality.accepted:
+        detail = ",".join(local_quality.reasons) or "unknown"
+        raise ChroniclesMapGenerationError(
+            f"local Chronicles topology failed quality gate: {detail}"
+        )
+
+    generated = local_generated
+    map_code = local_map_code
+    layout_revision = local_layout_revision
+    quality = local_quality
     planner_quality_fallback = False
     planner_quality_reasons: tuple[str, ...] = ()
-    planner_applied = planner.accepted
+    planner_applied = False
     planner_reason = planner.reason
 
-    if planner.accepted and not quality.accepted:
-        planner_quality_fallback = True
-        planner_quality_reasons = quality.reasons
-        generated, map_code, layout_revision = _materialize_recipe(
+    if planner.accepted:
+        planned_generated, planned_map_code, planned_layout_revision = _materialize_recipe(
             composed_manifest,
-            base_recipe,
+            planner.recipe,
         )
-        quality = evaluate_chronicles_topology(generated)
-        planner_applied = False
-        planner_reason = "quality-rejected"
-
-    if not quality.accepted:
-        detail = ",".join(quality.reasons) or "unknown"
-        raise ChroniclesMapGenerationError(
-            f"generated Chronicles topology failed quality gate: {detail}"
-        )
+        planned_quality = evaluate_chronicles_topology(planned_generated)
+        regressions = compare_chronicles_topology(planned_quality, local_quality)
+        if regressions:
+            planner_quality_fallback = True
+            planner_quality_reasons = regressions
+            planner_reason = "quality-rejected"
+        else:
+            generated = planned_generated
+            map_code = planned_map_code
+            layout_revision = planned_layout_revision
+            quality = planned_quality
+            planner_applied = True
 
     generated["generation"] = {
         "kind": "seeded-layout",
@@ -312,6 +325,7 @@ def proceduralize_chronicles_manifest(
         "layoutRevision": layout_revision,
         "topologyQualityVersion": CHRONICLES_TOPOLOGY_QUALITY_VERSION,
         "topologyQuality": quality.as_dict(),
+        "topologyBaselineQuality": local_quality.as_dict(),
         "plannerContractVersion": CHRONICLES_PLANNER_CONTRACT_VERSION,
         "plannerAccepted": planner_applied,
         "plannerSource": planner.source,
