@@ -154,19 +154,18 @@ def test_low_level_override_still_precedes_forced_fast_path(monkeypatch):
     assert policy.get_factual_difficulty_cpu_move(ForcedBoard(), 20) is injected
 
 
-def test_level_45_and_styled_cpu_keep_established_engine_path(monkeypatch):
+def test_level_45_keeps_established_engine_path(monkeypatch):
     board = chess.Board()
     seen = []
 
-    def legacy(_board, level, ghost_style=None):
-        seen.append((level, ghost_style))
+    def strong(_board, level):
+        seen.append(level)
         return {"from": "e2", "to": "e4", "san": "e4"}
 
-    monkeypatch.setattr(policy, "get_cpu_move", legacy)
+    monkeypatch.setattr(policy, "get_cpu_move", strong)
 
     assert policy.get_factual_difficulty_cpu_move(board, 45)["san"] == "e4"
-    assert policy.get_factual_difficulty_cpu_move(board, 20, {"capture": 1})["san"] == "e4"
-    assert seen == [(45, None), (20, {"capture": 1})]
+    assert seen == [45]
 
 
 def test_seeded_band_choice_is_reproducible(monkeypatch):

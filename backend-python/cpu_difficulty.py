@@ -106,17 +106,13 @@ def _eligible_alternatives(
 def get_factual_difficulty_cpu_move(
     board: chess.Board,
     level: float = 50,
-    ghost_style: Optional[dict] = None,
 ) -> Optional[dict]:
     """Return a CPU move whose intentional weakness is bounded by minimax facts.
 
-    Rival Fantasma / styled CPU keeps the legacy path unchanged. Normal CPU at
-    level >=45 also keeps the established strong engine path, which is already
-    free of intentional randomness/noise. Only lower normal levels replace the
-    old arbitrary-legal roulette with a bounded factual candidate policy.
+    Level >=45 keeps the established strong engine path, already free of
+    intentional randomness/noise. Lower levels replace arbitrary-legal roulette
+    with a bounded factual candidate policy.
     """
-    if ghost_style is not None:
-        return get_cpu_move(board, level, ghost_style)
 
     band = difficulty_band(level)
     if band is STRONG_PLAY:
