@@ -11,7 +11,6 @@ export const QUICK_MATCH_TARGET_LEAD_ELO = 50;
 export const QUICK_MATCH_HYSTERESIS_ELO = 25;
 export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 const QUICK_MATCH_RECENT_GAMES = 8;
-const QUICK_MATCH_ABANDON_SCORE = 0.15;
 const QUICK_MATCH_MAX_FORM_BOOST_ELO = 25;
 const QUICK_MATCH_MAX_FORM_RELIEF_ELO = -50;
 const QUICK_MATCH_MIN_QUALITY_GAMES = 2;
@@ -48,14 +47,6 @@ function recentAdaptiveResults(activity = []) {
       if (event?.state === 'finished' && ['win', 'draw', 'loss'].includes(event?.outcome)) {
         return { ...event, difficulty: Number(event?.difficulty ?? started?.difficulty) };
       }
-      if (event?.state === 'cancelled') {
-        return {
-          ...event,
-          outcome: 'loss',
-          adaptiveAbandon: true,
-          difficulty: Number(event?.difficulty ?? started?.difficulty),
-        };
-      }
       return null;
     })
     .filter(Boolean)
@@ -63,7 +54,6 @@ function recentAdaptiveResults(activity = []) {
 }
 
 function resultScore(event) {
-  if (event?.adaptiveAbandon) return QUICK_MATCH_ABANDON_SCORE;
   if (event?.outcome === 'win') return 1;
   if (event?.outcome === 'draw') return 0.5;
   return 0;
@@ -129,7 +119,6 @@ export function quickMatchQualityAdjustment(activity = [], games = PROVISIONAL_G
   if (Number(games) < PROVISIONAL_GAMES) return 0;
   const records = qualityRecords && typeof qualityRecords === 'object' ? qualityRecords : {};
   const recent = recentAdaptiveResults(activity)
-    .filter((event) => !event.adaptiveAbandon)
     .map((event) => {
       const score = qualityScore(records[String(event.gameId)]);
       return score == null ? null : { score };

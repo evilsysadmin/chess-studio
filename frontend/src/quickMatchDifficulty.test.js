@@ -74,6 +74,20 @@ describe('quick-match Elo chaser', () => {
     expect(difficultyForQuickMatchRating(1000, activity, 20)).not.toBe(45);
   });
 
+  it('does not treat a clean early cancellation as evidence of playing strength', () => {
+    const baseline = difficultyForQuickMatchRating(1000, [], 20);
+    const activity = [
+      { gameId: 'cancelled', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-2', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-2', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-3', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-3', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+    ];
+
+    expect(difficultyForQuickMatchRating(1000, activity, 20, {})).toBe(baseline);
+  });
+
   it('reacts to a real adaptive losing streak only between games', () => {
     const baseline = difficultyForQuickMatchRating(1000, [], 20);
     const losses = [
