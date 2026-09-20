@@ -39,7 +39,7 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["manifestRevision"] == payload["manifestRevision"]
     assert area["manifest"]["id"] == payload["currentMapId"]
     assert area["mapCode"].endswith(f"|seed={payload['seed']}")
-    assert area["generatorVersion"] == 1
+    assert area["generatorVersion"] == 2
     assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
 
     areas = payload["areas"]
@@ -47,7 +47,7 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert [entry["mapId"] for entry in areas] == expected_ids
     assert len({entry["mapId"] for entry in areas}) == len(expected_ids)
     assert all(entry["seed"] == payload["seed"] for entry in areas)
-    assert all(entry["generatorVersion"] == 1 for entry in areas)
+    assert all(entry["generatorVersion"] == 2 for entry in areas)
     assert next(entry for entry in areas if entry["mapId"] == payload["currentMapId"]) == area
     assert len(response.content) < 256_000
 
