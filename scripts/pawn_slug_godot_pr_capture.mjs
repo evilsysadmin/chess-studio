@@ -9,7 +9,17 @@ const indexUrl = String(
   'http://127.0.0.1:4179/index.html?stage=industrial_front_v1'
 ).trim();
 const outputDir = String(process.env.PAWN_SLUG_CAPTURE_DIR || '/tmp/pawn-slug-visual').trim();
-const outputPath = `${outputDir}/pawn-slug-industrial-runtime.png`;
+const stageIds = String(
+  process.env.PAWN_SLUG_CAPTURE_STAGES ||
+  'industrial_front_v1,harbor_raid_v1,alpine_fortress_v1,jungle_relay_v1'
+)
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+if (stageIds.length === 0) {
+  throw new Error('Pawn Slug visual capture needs at least one stage id');
+}
 
 await mkdir(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
@@ -25,17 +35,28 @@ await page.addInitScript(() => {
   });
 });
 
-await page.goto(indexUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 });
-await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
-await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
-await page.waitForTimeout(2200);
-
-const canvasLocator = page.locator('canvas');
-const canvas = await canvasLocator.boundingBox();
-if (!canvas || canvas.width < 640 || canvas.height < 360) {
-  throw new Error(`Pawn Slug canvas is unexpectedly small: ${JSON.stringify(canvas)}`);
+function urlForStage(stageId) {
+  const url = new URL(indexUrl);
+  url.searchParams.set('stage', stageId);
+  return url.toString();
 }
 
+async function loadStage(stageId) {
+  const url = urlForStage(stageId);
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+  await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
+  await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
+  await page.waitForTimeout(1600);
+
+  const canvasLocator = page.locator('canvas');
+  const canvas = await canvasLocator.boundingBox();
+  if (!canvas || canvas.width < 640 || canvas.height < 360) {
+    throw new Error(`Pawn Slug canvas is unexpectedly small for ${stageId}: ${JSON.stringify(canvas)}`);
+  }
+  return { stageId, url, canvas, canvasLocator };
+}
+
+const stageOverviews = [];
 const captures = [];
 async function capture(label) {
   const path = `${outputDir}/${label}.png`;
@@ -43,14 +64,21 @@ async function capture(label) {
   captures.push({ label, path });
 }
 
+const detailedStage = stageIds[0];
+const detailed = await loadStage(detailedStage);
+const overviewPath = `${outputDir}/stage-${detailedStage}.png`;
+await page.screenshot({ path: overviewPath, fullPage: false });
+stageOverviews.push({ stageId: detailedStage, url: detailed.url, canvas: detailed.canvas, path: overviewPath });
+
 // Keep the historical filename for consumers that only need one proof image.
-await page.screenshot({ path: outputPath, fullPage: false });
+const legacyOutputPath = `${outputDir}/pawn-slug-industrial-runtime.png`;
+await page.screenshot({ path: legacyOutputPath, fullPage: false });
 await capture('00-idle');
 
 // Exercise the actual Godot runtime, not only the packed sheet. The short burst
 // samples almost every 16 fps run frame and makes blank/sunk/jumping frames or
 // silhouette flicker obvious in the uploaded PR artifact.
-await canvasLocator.click({ position: { x: canvas.width / 2, y: canvas.height / 2 } });
+await detailed.canvasLocator.click({ position: { x: detailed.canvas.width / 2, y: detailed.canvas.height / 2 } });
 await page.keyboard.down('ArrowRight');
 await page.waitForTimeout(320);
 for (let frame = 0; frame < 10; frame += 1) {
@@ -80,11 +108,31 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
+// Every shipped stage gets a first-screen visual proof. This keeps scenery,
+// parallax and map-authored props reviewable without multiplying the expensive
+// movement-frame sequence four times.
+for (const stageId of stageIds.slice(1)) {
+  const stage = await loadStage(stageId);
+  const path = `${outputDir}/stage-${stageId}.png`;
+  await page.screenshot({ path, fullPage: false });
+  stageOverviews.push({ stageId, url: stage.url, canvas: stage.canvas, path });
+}
+
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
-  `${JSON.stringify({ schema: 2, indexUrl, canvas, captures }, null, 2)}\n`,
+  `${JSON.stringify({
+    schema: 3,
+    detailedStage,
+    stageOverviews,
+    captures,
+  }, null, 2)}\n`,
   'utf8',
 );
 
-console.log(JSON.stringify({ indexUrl, outputPath, canvas, captures: captures.length }));
+console.log(JSON.stringify({
+  detailedStage,
+  stageOverviews: stageOverviews.length,
+  captures: captures.length,
+  legacyOutputPath,
+}));
 await browser.close();

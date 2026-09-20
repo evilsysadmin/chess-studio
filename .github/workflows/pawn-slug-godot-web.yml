@@ -8,6 +8,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
+      - scripts/pawn_slug_godot_pr_capture.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -20,6 +21,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
+      - scripts/pawn_slug_godot_pr_capture.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -345,7 +347,7 @@ jobs:
           browser-scope: chromium
           restore-frontend-deps: 'false'
           build-frontend: 'false'
-      - name: Capture industrial runtime PNG
+      - name: Capture all stage runtime PNGs
         shell: bash
         run: |
           set -euo pipefail
