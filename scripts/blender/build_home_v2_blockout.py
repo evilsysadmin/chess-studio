@@ -1673,6 +1673,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
     cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
+    for idx, tx in enumerate((-3.20, -2.70, -2.20, -1.70, -1.20, -0.70, -0.20, 0.30, 0.80, 1.30, 1.80, 2.30, 2.80, 3.20)):
+        drift = 0.035 if idx % 2 == 0 else -0.035
+        curve_tube(
+            f"HOME_PROP_rug_front_tassel_{idx}",
+            [(tx, -2.36, 0.056), (tx + drift, -2.52, 0.046)],
+            0.010,
+            materials["brass_dark"],
+        )
     for idx, x in enumerate((-2.95, -2.25, -1.55, -0.85, 0.0, 0.85, 1.55, 2.25, 2.95)):
         motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.12, 0.066), (0.085, 0.085, 0.010), rug_border)
         motif.rotation_euler[2] = math.radians(45)
