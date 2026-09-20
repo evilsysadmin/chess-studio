@@ -1152,7 +1152,6 @@ def add_table_and_board(materials):
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
     table_folio = cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
-    table_folio.rotation_euler[2] = math.radians(3.2)
     table_folio_pages = cube(
         "HOME_PROP_table_folio_pages",
         (2.72, 0.315, 1.405),
@@ -1160,7 +1159,6 @@ def add_table_and_board(materials):
         materials["paper"],
         bevel=0.018,
     )
-    table_folio_pages.rotation_euler[2] = table_folio.rotation_euler[2]
     table_folio_spine = cube(
         "HOME_PROP_table_folio_spine",
         (2.37, 0.35, 1.39),
@@ -1168,13 +1166,17 @@ def add_table_and_board(materials):
         materials["brass_dark"],
         bevel=0.012,
     )
-    table_folio_spine.rotation_euler[2] = table_folio.rotation_euler[2]
     cube(
         "HOME_PROP_table_folio_clasp",
         (2.95, 0.055, 1.415),
         (0.055, 0.020, 0.022),
         materials["brass"],
         bevel=0.008,
+    )
+    rotate_group_about_z(
+        "HOME_PROP_table_folio",
+        (2.72, 0.35),
+        3.2,
     )
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
