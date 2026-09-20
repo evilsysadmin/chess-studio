@@ -103,7 +103,7 @@ describe('Chronicles character builds', () => {
     ]);
     expect(chroniclesCreatorMechanicalSummary(build.characters[3]).map((row) => row.label)).toEqual([
       '+1 alcance',
-      '+1 cargas de habilidad',
+      '+1 carga de habilidad',
     ]);
     expect(chroniclesCreatorMechanicalSummary(build.characters[1])).toEqual([
       { key: 'base', value: 0, label: 'Sin bonificaciones iniciales' },
