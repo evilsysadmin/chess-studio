@@ -2321,8 +2321,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
     sphere(
         "HOME_PROP_window_moon",
-        (7.28, 6.50, 4.58),
-        (0.31, 0.026, 0.31),
+        (7.02, 6.50, 4.56),
+        (0.27, 0.026, 0.27),
         materials["moon"],
     )
 
