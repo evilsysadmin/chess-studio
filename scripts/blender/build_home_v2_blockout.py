@@ -2313,6 +2313,37 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 )
                 face.rotation_euler[0] = math.radians((_hash01(col, row, 839 + side) - 0.5) * 0.8)
 
+    # Low-relief paving faces turn the large floor plane into laid stone.
+    # Keep the relief to millimetres at room scale: enough for grazing light and
+    # contact shadow, never enough to interfere with navigation or the rug.
+    slab_rows = (
+        (-2.42, 0.60),
+        (-1.18, 0.62),
+        (0.08, 0.64),
+        (4.72, 0.62),
+        (5.98, 0.60),
+    )
+    slab_centers = (-7.75, -6.25, -4.75, 4.75, 6.25, 7.75)
+    for row, (sy, half_depth) in enumerate(slab_rows):
+        for col, sx in enumerate(slab_centers):
+            # Front-right floor is intentionally absent where the Dungeon drops.
+            if sy < 1.2 and sx > 5.15:
+                continue
+            jitter_x = (_hash01(col, row, 1409) - 0.5) * 0.060
+            jitter_y = (_hash01(col, row, 1423) - 0.5) * 0.038
+            half_width = 0.69 + (_hash01(col, row, 1427) - 0.5) * 0.045
+            height = 0.010 + _hash01(col, row, 1433) * 0.008
+            slab = cube(
+                f"HOME_ARCH_floor_slab_{row}_{col}",
+                (sx + jitter_x, sy + jitter_y, height * 0.55),
+                (half_width, half_depth, height),
+                materials["floor_stone"],
+                bevel=0.018,
+            )
+            slab.rotation_euler[2] = math.radians(
+                (_hash01(col, row, 1447) - 0.5) * 0.55
+            )
+
     cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"], bevel=0.022)
     for idx, (wx, wy, sx, sy, rot) in enumerate((
         (-0.42, -0.95, 1.10, 0.22, -6.0),
