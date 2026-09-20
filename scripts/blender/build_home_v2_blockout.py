@@ -2435,6 +2435,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (4.18, 0.96, 0.58, 0.20),
         (-3.25, 3.95, 0.54, 0.16),
         (7.48, 4.96, 0.52, 0.18),
+        (-3.12, -0.42, 0.30, 0.17),
+        (3.12, -0.42, 0.30, 0.17),
+        (-4.66, 3.22, 0.34, 0.20),
     )):
         sphere(
             f"HOME_PROP_floor_contact_grime_{idx}",
