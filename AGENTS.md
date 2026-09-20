@@ -1,3 +1,13 @@
+** FLUJO GLOBAL DE PULL REQUESTS
+
+- Toda PR nueva debe abrirse inicialmente en **Draft**.
+- No marcar una PR como **Ready for review** mientras haya checks requeridos pendientes, cancelados o en rojo.
+- Iterar y corregir la misma PR mientras CI esté fallando; no abrir una PR nueva para esquivar un fallo.
+- Cuando todos los required checks de la PR estén verdes, cambiarla a **Ready for review**.
+- Sólo después de estar en Ready for review debe permitirse que GitHub complete el **automerge**; comprobar que automerge está habilitado y dejar que fusione cuando cumpla las protecciones de rama.
+- El objetivo de este orden es impedir merges prematuros mientras aún se están empujando fixes o mientras CI sigue ejecutándose.
+- Tras el merge, revisar los workflows posteriores relevantes (main admission, deploy, staging/live checks, etc.) y corregir cualquier fallo derivado antes de dar la iteración por cerrada.
+
 ** ITERACON DE SPRITES DE PAWN SLUG 
  
 Itera los sprites en Pawn Slug Godot hasta tener la siguiente generación de spritesheet deployada en staging, validada sin regresiones y con mejora visual y funcional clara.
