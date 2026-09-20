@@ -61,6 +61,15 @@ def test_different_seed_changes_the_topology():
     assert (first.grid, first.exit_position) != (second.grid, second.exit_position)
 
 
+def test_compact_maps_open_one_loop_beyond_the_perfect_maze_floor():
+    layout = generate_chronicles_layout(_recipe(seed=417, width=7, height=7, difficulty=5))
+
+    # 7x7 has a 5x5 interior: the odd-cell perfect maze carves 17 cells.
+    # Generator v2 deliberately opens at least one additional loop so authored
+    # anchor repair cannot collapse most seeds onto the same tree.
+    assert layout.walkable_count >= 18
+
+
 @pytest.mark.parametrize(
     ("width", "height"),
     [
