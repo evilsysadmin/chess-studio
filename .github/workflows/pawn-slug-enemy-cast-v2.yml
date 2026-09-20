@@ -22,6 +22,7 @@ on:
       - scripts/art/derive_pawn_slug_enemy_commando_v2.py
       - scripts/art/derive_pawn_slug_enemy_grenadier_v2.py
       - scripts/art/derive_pawn_slug_enemy_queen_v2.py
+      - scripts/art/derive_pawn_slug_enemy_rook_v2.py
       - scripts/art/derive_pawn_slug_enemy_scout_v2.py
       - scripts/art/derive_pawn_slug_enemy_shield_v2.py
       - .github/workflows/pawn-slug-enemy-cast-v2.yml
@@ -47,6 +48,7 @@ jobs:
             --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
             --output-dir /tmp/pawn-slug-enemy-cast-v2
       - name: Upload visual evidence
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: pawn-slug-enemy-cast-v2-${{ github.sha }}
@@ -67,15 +69,15 @@ jobs:
             --logical-id pawnSlug.enemy.castV2 \
             --prefix pawn-slug/enemies/cast-v2 \
             --manifest /tmp/pawn-slug-enemy-cast-v2/r2-manifest.json
-          test "$(python3 -c 'import json; print(json.load(open("/tmp/pawn-slug-enemy-cast-v2/r2-manifest.json"))["assets"]["pawnSlug.enemy.castV2"]["sha256"])')" = "0433d3f4640f2c13edd5b270fd17db10f3b22139b28dd496c4f885555a7c8f11"
+          test "$(python3 -c 'import json; print(json.load(open("/tmp/pawn-slug-enemy-cast-v2/r2-manifest.json"))["assets"]["pawnSlug.enemy.castV2"]["sha256"])')" = "3ebbf4a9c5180051bc17a84cd38b02c716df906e363b0c1960bdae05a58acae9"
       - name: Verify public asset
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-0433d3f4640f2c13.webp'
+          url='https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-3ebbf4a9c5180051.webp'
           for attempt in 1 2 3 4 5; do
             if curl --fail --silent --show-error --location --max-time 15 "$url" -o /tmp/published.webp; then
-              test "$(sha256sum /tmp/published.webp | awk '{print $1}')" = "0433d3f4640f2c13edd5b270fd17db10f3b22139b28dd496c4f885555a7c8f11"
+              test "$(sha256sum /tmp/published.webp | awk '{print $1}')" = "3ebbf4a9c5180051bc17a84cd38b02c716df906e363b0c1960bdae05a58acae9"
               exit 0
             fi
             sleep 3
