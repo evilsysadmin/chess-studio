@@ -1,0 +1,240 @@
+name: Guitar V5 NAM Shootout
+
+on:
+  push:
+    branches:
+      - audio/guitar-v5-tone-shootout-20260920
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Install neural audio runtime
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg unzip python3-pip python3-tk
+          python3 -m pip install --break-system-packages -q \
+            --index-url https://download.pytorch.org/whl/cpu torch
+          python3 -m pip install --break-system-packages -q \
+            neural-amp-modeler==0.12.0 soundfile scipy numpy
+
+      - name: Download approved V4 source artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir -p v5/source
+          curl -fL --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/evilsysadmin/chess-studio/actions/artifacts/10613827903/zip" \
+            -o /tmp/v4.zip
+          unzip -q /tmp/v4.zip -d v5/source
+          test -s v5/source/metal-gtx-nam-ir-balanced.wav
+          # Recover the approved stereo DI indirectly from V3 artifact instead,
+          # because V4 contains processed outputs only.
+          curl -fL --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/evilsysadmin/chess-studio/actions/artifacts/10614075946/zip" \
+            -o /tmp/v3.zip
+          mkdir -p v5/v3
+          unzip -q /tmp/v3.zip -d v5/v3
+          test -s v5/v3/metal-gtx-di-stereo.wav
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v5/v3/metal-gtx-di-stereo.wav \
+            -filter_complex "[0:a]channelsplit=channel_layout=stereo[L][R]" \
+            -map "[L]" -ar 48000 -ac 1 -c:a pcm_f32le v5/left-di.wav \
+            -map "[R]" -ar 48000 -ac 1 -c:a pcm_f32le v5/right-di.wav
+
+      - name: Download NAM heads and cabinet IR
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 4 \
+            'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Tim%20R%20JCM2000%20L2%20G6.nam' \
+            -o v5/jcm2000.nam
+          curl -fL --retry 4 \
+            'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Helga%20B%205150%20BlockLetter%20-%20Boosted.nam' \
+            -o v5/5150-boosted.nam
+          curl -fL --retry 4 \
+            'https://www.jester-dyne-productions.com/content/files/2023/04/JestersBrutalPack_1.0.zip' \
+            -o /tmp/jester.zip
+          unzip -q /tmp/jester.zip -d /tmp/jester
+          IR="$(find /tmp/jester -type f -path '*/48kHz/6_Vertical_Lip_Stabber.wav' -print -quit)"
+          test -s "$IR"
+          cp "$IR" v5/cab-ir.wav
+          test -s v5/jcm2000.nam
+          test -s v5/5150-boosted.nam
+          test -s v5/cab-ir.wav
+
+      - name: Render NAM head shootout
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+          import torch
+          from scipy.signal import butter, sosfilt, resample_poly, fftconvolve
+          from nam.models import init_from_nam
+
+          SR=48000
+
+          def read_mono(path):
+              x,sr=sf.read(path,dtype='float32',always_2d=False)
+              if x.ndim>1: x=x.mean(axis=1)
+              if sr!=SR:
+                  g=math.gcd(int(sr),SR)
+                  x=resample_poly(x,SR//g,int(sr)//g).astype(np.float32)
+              hp=butter(2,28/(SR/2),btype='highpass',output='sos')
+              return sosfilt(hp,x).astype(np.float32)
+
+          L=read_mono('v5/left-di.wav')
+          R=read_mono('v5/right-di.wav')
+
+          ir,irsr=sf.read('v5/cab-ir.wav',dtype='float32',always_2d=False)
+          if ir.ndim>1: ir=ir.mean(axis=1)
+          if irsr!=SR:
+              g=math.gcd(int(irsr),SR)
+              ir=resample_poly(ir,SR//g,int(irsr)//g).astype(np.float32)
+          nz=np.where(np.abs(ir)>max(1e-7,float(np.max(np.abs(ir)))*1e-4))[0]
+          if len(nz): ir=ir[max(0,int(nz[0])-8):]
+          ir=ir[:min(len(ir),int(.25*SR))]
+          ir=ir/(np.max(np.abs(ir))+1e-12)
+
+          hp=butter(2,72/(SR/2),btype='highpass',output='sos')
+          lp=butter(2,11200/(SR/2),btype='lowpass',output='sos')
+
+          def load_model(path):
+              cfg=json.loads(Path(path).read_text())
+              model=init_from_nam(cfg)
+              model.eval()
+              if model.sample_rate is None:
+                  model.sample_rate=SR
+              if int(round(model.sample_rate))!=SR:
+                  raise RuntimeError(f'{path}: expected 48k NAM, got {model.sample_rate}')
+              return model,cfg
+
+          def level(x,target_db):
+              rms=float(np.sqrt(np.mean(x*x)+1e-12))
+              target=10**(target_db/20)
+              gain=min(8.0,target/max(rms,1e-8))
+              return (x*gain).astype(np.float32),gain
+
+          def infer(model,x):
+              rf=int(model.receptive_field)
+              chunk=131072
+              out=[]; pos=0
+              with torch.inference_mode():
+                  while pos<len(x):
+                      end=min(len(x),pos+chunk)
+                      cur=x[pos:end]
+                      if pos==0:
+                          y=model(torch.from_numpy(cur.copy()),pad_start=True)
+                      else:
+                          hist=x[max(0,pos-(rf-1)):pos]
+                          if len(hist)<rf-1:
+                              hist=np.pad(hist,(rf-1-len(hist),0))
+                          xx=np.concatenate([hist,cur]).astype(np.float32)
+                          y=model(torch.from_numpy(xx),pad_start=False)
+                      yn=y.detach().cpu().numpy().astype(np.float32)
+                      if len(yn)!=len(cur):
+                          raise RuntimeError(f'NAM output mismatch {len(yn)} != {len(cur)}')
+                      out.append(yn); pos=end
+              return np.concatenate(out)
+
+          def cab(x):
+              y=fftconvolve(x,ir,mode='full')[:len(x)].astype(np.float32)
+              y=sosfilt(hp,y)
+              y=sosfilt(lp,y).astype(np.float32)
+              return y
+
+          jcm,jcfg=load_model('v5/jcm2000.nam')
+          amp5150,cfg5150=load_model('v5/5150-boosted.nam')
+
+          print('JCM arch',jcfg.get('architecture'),'rf',jcm.receptive_field)
+          print('5150 arch',cfg5150.get('architecture'),'rf',amp5150.receptive_field)
+
+          variants={
+            'A_jcm2000': (jcm,jcm,-22.0,-22.0),
+            'B_5150_boosted': (amp5150,amp5150,-24.0,-24.0),
+            'C_dual_jcm_5150': (jcm,amp5150,-22.0,-24.0),
+          }
+
+          for name,(ml,mr,dbl,dbr) in variants.items():
+              l,gl=level(L,dbl); r,gr=level(R,dbr)
+              yl=cab(infer(ml,l))
+              yr=cab(infer(mr,r))
+              n=min(len(yl),len(yr))
+              stereo=np.column_stack([yl[:n]*.97,yr[:n]*.91])
+              peak=float(np.max(np.abs(stereo)))+1e-12
+              if peak>.82: stereo*=.82/peak
+              sf.write(f'v5/{name}-raw.wav',stereo,SR,subtype='PCM_24')
+              print(name,'gains',gl,gr,'peak',float(np.max(np.abs(stereo))))
+          PY
+
+          for f in v5/*-raw.wav; do
+            base="${f%-raw.wav}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "$f" \
+              -af "acompressor=threshold=-19dB:ratio=1.35:attack=28:release=130,loudnorm=I=-16:TP=-1.0:LRA=10" \
+              -ar 48000 -c:a pcm_s24le "${base}.wav"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "${base}.wav" -t 24 \
+              -ar 48000 -c:a pcm_s24le "${base}-preview-24s.wav"
+          done
+
+      - name: Validate outputs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for f in v5/A_jcm2000.wav v5/B_5150_boosted.wav v5/C_dual_jcm_5150.wav; do
+            test -s "$f"
+            ffprobe -v error \
+              -show_entries stream=sample_rate,channels \
+              -show_entries format=duration \
+              -of default=noprint_wrappers=1 "$f"
+          done
+
+      - name: Write manifest
+        shell: bash
+        run: |
+          {
+            echo 'Pawn Slug guitar V5 tone shootout'
+            echo 'Source DI: approved Metal GTX V3 artifact 10614075946'
+            echo 'A: Tim R JCM2000 L2 G6 NAM, -22 dBFS RMS'
+            echo 'B: Helga B 5150 BlockLetter Boosted NAM, -24 dBFS RMS'
+            echo 'C: dual amp stereo — JCM2000 left / 5150 boosted right'
+            echo 'Cabinet: same Jester Dyne 48kHz Vertical Lip Stabber IR for all variants'
+            echo 'Output: 48 kHz / 24-bit PCM'
+            echo 'Master bus intentionally light to preserve amp differences'
+            echo
+            sha256sum v5/A_jcm2000.wav v5/B_5150_boosted.wav v5/C_dual_jcm_5150.wav
+          } > v5/MANIFEST.txt
+
+      - name: Upload V5 shootout
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-guitar-v5-tone-shootout
+          path: |
+            v5/A_jcm2000.wav
+            v5/A_jcm2000-preview-24s.wav
+            v5/B_5150_boosted.wav
+            v5/B_5150_boosted-preview-24s.wav
+            v5/C_dual_jcm_5150.wav
+            v5/C_dual_jcm_5150-preview-24s.wav
+            v5/MANIFEST.txt
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
