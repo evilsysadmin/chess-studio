@@ -15,11 +15,15 @@ describe('labLaunchIntent', () => {
     expect(consumeLabLaunch()).toBeNull();
   });
 
-  it('can remember Chronicles modes only while a child explicitly requests refresh recovery', () => {
+  it('can remember Chronicles modes for refresh without widening one-shot launch requests', () => {
     expect(rememberLabMode('chronicles')).toBe('chronicles');
     expect(loadRememberedLabMode()).toBe('chronicles');
     expect(rememberLabMode('chronicles-tactics')).toBe('chronicles-tactics');
     expect(loadRememberedLabMode()).toBe('chronicles-tactics');
+
+    requestLabLaunch('chronicles');
+    expect(consumeLabLaunch()).toBeNull();
+
     clearRememberedLabMode();
     expect(loadRememberedLabMode()).toBeNull();
   });
