@@ -68,6 +68,24 @@ async function openChronicles(page, captureLabel) {
     setup,
     `${ARTIFACT_DIR}/chronicles-character-setup-${captureLabel}.png`,
   );
+
+  await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
+  const editor = page.locator('[data-chronicles-character-setup="editor"]');
+  await expect(editor).toBeVisible();
+  const seed = editor.getByRole('textbox', { name: 'Seed de build', exact: true });
+  await seed.fill(`VISUAL-${captureLabel}`);
+  await editor.getByRole('button', { name: 'Generar con seed', exact: true }).click();
+  const mechanics = editor.locator('.chronicles-character-setup__mechanics');
+  await expect(mechanics).toBeVisible();
+  await expect(mechanics).toContainText(/\+\d/);
+  await page.screenshot({
+    path: `${ARTIFACT_DIR}/chronicles-character-editor-${captureLabel}.png`,
+    animations: 'disabled',
+    fullPage: true,
+    timeout: 30_000,
+  });
+  await editor.getByRole('button', { name: '← Volver', exact: true }).click();
+
   await confirmChroniclesCharacterSetup(page);
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }

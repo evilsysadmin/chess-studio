@@ -177,6 +177,23 @@ export function chroniclesCreatorRuntimeModifiers(character) {
   };
 }
 
+export function chroniclesCreatorMechanicalSummary(character) {
+  const modifiers = chroniclesCreatorRuntimeModifiers(character);
+  const rows = [
+    ['bonusMaxHp', modifiers.bonusMaxHp, (value) => `+${value} HP`],
+    ['attackDamageBonus', modifiers.attackDamageBonus, (value) => `+${value} daño básico`],
+    ['reachBonus', modifiers.reachBonus, (value) => `+${value} alcance`],
+    ['abilityPotencyBonus', modifiers.abilityPotencyBonus, (value) => `+${value} potencia de habilidad`],
+    ['abilityChargesBonus', modifiers.abilityChargesBonus, (value) => `+${value} ${value === 1 ? 'carga' : 'cargas'} de habilidad`],
+  ]
+    .filter(([, value]) => Number(value) > 0)
+    .map(([key, value, label]) => ({ key, value: Number(value), label: label(Number(value)) }));
+
+  return rows.length
+    ? rows
+    : [{ key: 'base', value: 0, label: 'Sin bonificaciones iniciales' }];
+}
+
 function canonicalCharacter(slotId, partyTemplates) {
   const template = templateById(partyTemplates, slotId);
   return {
