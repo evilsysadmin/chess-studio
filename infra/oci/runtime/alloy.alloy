@@ -107,14 +107,14 @@ otelcol.receiver.prometheus "oci_host" {
   }
 }
 
-// Docker stdout is deliberately scoped to the Chess Studio backend only.
-// The deploy wrapper publishes a root-owned symlink to that container's
-// json-file LogPath. Alloy never receives the Docker socket and therefore
+// Docker stdout stays inside a root-controlled Chess Studio scope.
+// The deploy wrapper publishes exactly one backend symlink plus one short-lived
+// Docker-json probe file. Alloy never receives the Docker socket and therefore
 // gains no Docker control-plane privileges.
 otelcol.storage.file "oci_backend_stdout" {}
 
 otelcol.receiver.filelog "oci_backend_stdout" {
-  include       = ["/var/lib/chess-studio/observability/backend-json.log"]
+  include       = ["/var/lib/chess-studio/observability/*-json.log"]
   start_at      = "end"
   poll_interval = "500ms"
   storage       = otelcol.storage.file.oci_backend_stdout.handler

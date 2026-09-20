@@ -414,35 +414,105 @@ prepare_backend_log_link() {
   echo "CHESS_STUDIO_OCI_LOG_LINK_OK target=$target"
 }
 
+prepare_alloy_filelog_probe() {
+  local target_sha="$1"
+  local stale_probe probe_file
+
+  for stale_probe in "$observability_dir"/alloy-probe-*-json.log; do
+    [[ -e "$stale_probe" || -L "$stale_probe" ]] || continue
+    if [[ -L "$stale_probe" ]]; then
+      echo "OCI_LOGS state=degraded target=$target reason=probe-symlink" >&2
+      return 1
+    fi
+    rm -f -- "$stale_probe"
+  done
+
+  probe_file="$observability_dir/alloy-probe-${target_sha}-json.log"
+  : >"$probe_file"
+  chmod 0644 "$probe_file"
+  echo "CHESS_STUDIO_ALLOY_PROBE_READY target=$target repo_ref=$target_sha"
+}
+
+emit_alloy_filelog_probe() {
+  local target_sha="$1"
+  local probe_file="$observability_dir/alloy-probe-${target_sha}-json.log"
+
+  [[ -f "$probe_file" && ! -L "$probe_file" ]] || {
+    echo "OCI_LOGS state=degraded target=$target reason=probe-file-missing" >&2
+    return 1
+  }
+
+  python3 - "$probe_file" "$target_sha" "$target" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+repo_ref = sys.argv[2]
+target = sys.argv[3]
+body = json.dumps(
+    {"event": "oci_alloy_probe", "repo_ref": repo_ref, "target": target},
+    separators=(",", ":"),
+    sort_keys=True,
+)
+entry = {
+    "log": body + "\n",
+    "stream": "stdout",
+    "time": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z"),
+}
+with path.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps(entry, separators=(",", ":"), sort_keys=True) + "\n")
+    handle.flush()
+PY
+  echo "CHESS_STUDIO_ALLOY_PROBE_EMITTED target=$target repo_ref=$target_sha"
+}
+
 start_observability_best_effort() {
   local target_sha="$1"
   local alloy_image="grafana/alloy:v1.19.2"
+  local backend_log_ready=0
+  local probe_ready=0
+
+  observability_summary="starting"
 
   if ! grep -Eq '^OTEL_EXPORTER_OTLP_ENDPOINT=.+' "$env_file" || \
      ! grep -Eq '^OTEL_EXPORTER_OTLP_HEADERS=.+' "$env_file"; then
+    observability_summary="skipped-otel-runtime"
     echo "OCI_ALLOY state=skipped target=$target reason=otel-runtime-missing"
     return 0
   fi
   if [[ ! -f "$repo/infra/oci/runtime/alloy.alloy" ]]; then
+    observability_summary="config-missing"
     echo "OCI_ALLOY state=degraded target=$target reason=config-missing" >&2
     return 0
   fi
 
-  if ! prepare_backend_log_link "$target_sha"; then
+  if prepare_backend_log_link "$target_sha"; then
+    backend_log_ready=1
+  else
     echo "OCI_LOGS state=degraded target=$target reason=backend-log-link-unavailable" >&2
+  fi
+  if prepare_alloy_filelog_probe "$target_sha"; then
+    probe_ready=1
+  else
+    echo "OCI_LOGS state=degraded target=$target reason=probe-prepare-failed" >&2
   fi
 
   if ! docker image inspect "$alloy_image" >/dev/null 2>&1; then
     if ! compose "$target_sha" pull alloy >/dev/null; then
+      observability_summary="image-pull-failed"
       echo "OCI_ALLOY state=degraded target=$target reason=image-pull-failed" >&2
       return 0
     fi
   fi
   if ! compose "$target_sha" run --rm --no-deps alloy validate --stability.level=public-preview /etc/alloy/config.alloy >/dev/null 2>&1; then
+    observability_summary="config-invalid"
     echo "OCI_ALLOY state=degraded target=$target reason=config-invalid" >&2
     return 0
   fi
   if ! compose "$target_sha" up -d --no-build --force-recreate alloy >/dev/null 2>&1; then
+    observability_summary="start-failed"
     echo "OCI_ALLOY state=degraded target=$target reason=start-failed" >&2
     return 0
   fi
@@ -450,11 +520,21 @@ start_observability_best_effort() {
   for _alloy_attempt in $(seq 1 12); do
     if compose "$target_sha" ps --status running --services 2>/dev/null | grep -Fxq alloy; then
       echo "CHESS_STUDIO_ALLOY_OK target=$target repo_ref=$target_sha"
+      if [[ "$probe_ready" -eq 1 ]] && emit_alloy_filelog_probe "$target_sha"; then
+        if [[ "$backend_log_ready" -eq 1 ]]; then
+          observability_summary="ok"
+        else
+          observability_summary="probe-ok-backend-log-degraded"
+        fi
+      else
+        observability_summary="alloy-running-probe-degraded"
+      fi
       return 0
     fi
     sleep 1
   done
 
+  observability_summary="not-running"
   echo "OCI_ALLOY state=degraded target=$target reason=not-running" >&2
   compose "$target_sha" logs --no-color --tail=40 alloy >&2 || true
   return 0
@@ -639,7 +719,7 @@ for _ in $(seq 1 60); do
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
     printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s k3s=%s,contract=%s tunnel=%s\n' "$target" "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
-    echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled"
+    echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
     exit 0
   fi
   sleep 2
