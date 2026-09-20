@@ -397,7 +397,7 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
 
     backdrop = stage.get("backdrop") or {}
     layers = backdrop.get("layers") or []
-    required_layer_kinds = {"sky", "far_ridge", "ruined_city", "mid_defence"}
+    required_layer_kinds = {"sky", "far_ridge", "ruined_city", "mid_defence", "near_weather", "near_foreground"}
     layer_kinds = {str(layer.get("kind", "")) for layer in layers if isinstance(layer, dict)}
     missing_layers = sorted(required_layer_kinds - layer_kinds)
     if missing_layers:
