@@ -193,10 +193,10 @@ jobs:
           test -f "$CAPS_SO"
           applyplugin v3/left.wav v3/left-amp.wav \
             "$CAPS_SO" AmpVTS 1.35 0.73 0.78 0.82 5 0.39 0.84 0.76 0.71 0.24 0.35 \
-            "$CAPS_SO" CabinetI 5 -2.0
+            "$CAPS_SO" CabinetIV 5 -2.0
           applyplugin v3/right.wav v3/right-amp.wav \
             "$CAPS_SO" AmpVTS 1.28 0.70 0.80 0.84 5 0.37 0.86 0.78 0.69 0.22 0.34 \
-            "$CAPS_SO" CabinetI 5 -2.5
+            "$CAPS_SO" CabinetIV 5 -2.5
           test -s v3/left-amp.wav
           test -s v3/right-amp.wav
 
@@ -221,7 +221,7 @@ jobs:
             echo 'Sampler: sfizz offline'
             echo 'Articulations used: sustain alt, mute alt, hammer-on, pull-off, slide-in/up, full bend'
             echo 'Amp: CAPS AmpVTS'
-            echo 'Cab: CAPS CabinetI model 5'
+            echo 'Cab: CAPS CabinetIV model 5'
             echo 'Double tracking: Full left + dedicated XTracking right, independent timing/velocity'
             echo
             sha256sum v3/metal-gtx-amp-stereo.wav v3/metal-gtx-di-stereo.wav
