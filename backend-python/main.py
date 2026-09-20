@@ -58,6 +58,16 @@ INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
 
+
+def _trust_cloudflare_client_ip() -> bool:
+    """Trust Cloudflare client-IP headers only inside a closed/explicit edge boundary."""
+    configured = os.environ.get("TRUST_CLOUDFLARE_CLIENT_IP")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    # Backwards-compatible staging default: canonical staging is tunnel-only.
+    # Production must opt in explicitly because Render remains a rollback target.
+    return ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS
+
 # Staging is Internet-facing through Cloudflare Tunnel. A missing invite secret
 # must not silently turn a misconfigured deployment into open registration.
 if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS and ALLOW_REGISTRATION and not INVITE_CODE:
@@ -151,11 +161,11 @@ def rate_limit_key(request: Request) -> str:
     if username != "-":
         return f"user:{username}"
 
-    # OCI staging is loopback-only behind Cloudflare Tunnel. There the ASGI peer
+    # OCI ingress is loopback-only behind Cloudflare Tunnel. There the ASGI peer
     # is the local proxy/Docker gateway, so using it directly would put every
-    # anonymous visitor in one login/register bucket. CF-Connecting-IP is safe
-    # to consume only inside this network-closed staging trust boundary.
-    if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS:
+    # anonymous visitor in one login/register bucket. Production opts in only
+    # on the OCI runtime; Render rollback remains fail-closed by default.
+    if _trust_cloudflare_client_ip():
         client_ip, _ = _client_network(request)
         if client_ip:
             return f"ip:{client_ip}"
