@@ -62,16 +62,16 @@ function addRuntimeLights(scene) {
   const key = new THREE.DirectionalLight(0xffc18a, 2.15);
   key.position.set(-5.2, 7.4, 8.2);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.left = -9;
   key.shadow.camera.right = 9;
   key.shadow.camera.top = 8;
   key.shadow.camera.bottom = -3;
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 28;
-  key.shadow.bias = -0.00035;
-  key.shadow.normalBias = 0.035;
-  key.shadow.intensity = 0.45;
+  key.shadow.bias = -0.00022;
+  key.shadow.normalBias = 0.028;
+  key.shadow.intensity = 0.58;
 
   const fill = new THREE.DirectionalLight(0x5678a6, 0.38);
   fill.position.set(7.2, 4.8, 5.6);
@@ -114,9 +114,12 @@ function prepareRuntimeScene(root) {
     object.receiveShadow = true;
     if (Array.isArray(object.material)) {
       object.material.forEach((material) => {
-        if (material) material.needsUpdate = true;
+        if (!material) return;
+        material.dithering = true;
+        material.needsUpdate = true;
       });
     } else if (object.material) {
+      object.material.dithering = true;
       object.material.needsUpdate = true;
     }
   });
@@ -174,6 +177,9 @@ export default function HomeBlenderScene3D({
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
+    // Keep haze behind the playing surface: foreground remains crisp while the
+    // rear architecture picks up a restrained warm atmospheric falloff.
+    scene.fog = new THREE.Fog(0x170d09, 20, 34);
     addRuntimeLights(scene);
 
     const camera = new THREE.PerspectiveCamera(
