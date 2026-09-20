@@ -624,7 +624,24 @@ export async function openMoreGameModes(page) {
   }).not.toBe('pending');
 
   if (await trigger.isVisible().catch(() => false)) {
-    if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+    if (await trigger.getAttribute('aria-expanded') !== 'true') {
+      const closeBlockingPvpLobby = async () => {
+        const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+        if (!(await lobby.isVisible().catch(() => false))) return false;
+        const close = lobby.getByRole('button', { name: /Cerrar ventana/ });
+        if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+        await expect(lobby).toBeHidden();
+        return true;
+      };
+
+      await closeBlockingPvpLobby();
+      try {
+        await trigger.click({ timeout: 5_000 });
+      } catch (error) {
+        if (!(await closeBlockingPvpLobby())) throw error;
+        await trigger.click();
+      }
+    }
     return illustrated;
   }
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
