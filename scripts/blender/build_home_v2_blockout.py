@@ -1551,6 +1551,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     materials = {
         "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8),
         "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.046, 0.044, 0.042, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8),
+        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.058, 0.055, 0.051, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9),
         "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0),
         "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2),
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
@@ -1709,7 +1710,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
                 (bx, block_y, z),
                 (block_width, 0.016, block_height),
-                materials["arch_stone"] if (row + col) % 5 == 0 else materials["stone"],
+                materials["back_wall_stone_accent"] if (row + col) % 5 == 0 else materials["back_wall_stone"],
                 bevel=0.018,
             )
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
