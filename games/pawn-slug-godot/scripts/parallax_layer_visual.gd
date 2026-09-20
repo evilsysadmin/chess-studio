@@ -690,12 +690,28 @@ func _draw_ruined_city() -> void:
 func _draw_harbor_horizon() -> void:
     draw_rect(Rect2(Vector2(0.0, 390.0), Vector2(_world_size.x, _floor_y - 390.0)), Color("102a33"), true)
     draw_line(Vector2(0.0, 390.0), Vector2(_world_size.x, 390.0), Color(0.52, 0.66, 0.69, 0.18), 2.0)
+    for band in range(9):
+        var y := 404.0 + float(band) * 18.0
+        var phase := sin(_atmosphere_time * 0.22 + float(band) * 0.8) * 22.0
+        for glint in range(8):
+            var x := float(glint) * 720.0 + float(band % 3) * 110.0 + phase
+            var length := 42.0 + _noise(band * 11 + glint, 90.4) * 120.0
+            draw_line(
+                Vector2(x, y),
+                Vector2(minf(_world_size.x, x + length), y),
+                Color(0.48, 0.70, 0.76, (0.025 + float(band) * 0.003) * _intensity),
+                1.5,
+            )
     for index in range(12):
         var x := 120.0 + float(index) * 470.0
         var hull_w := 90.0 + _noise(index, 11.2) * 100.0
         var y := 420.0 + _noise(index, 11.8) * 36.0
         draw_rect(Rect2(Vector2(x, y), Vector2(hull_w, 10.0)), Color(0.06, 0.11, 0.13, 0.78), true)
         draw_line(Vector2(x + hull_w * 0.55, y), Vector2(x + hull_w * 0.55, y - 38.0), Color(0.12, 0.18, 0.20, 0.72), 3.0)
+        if index % 3 == 0:
+            var lamp := Vector2(x + hull_w * 0.22, y - 6.0)
+            draw_circle(lamp, 7.0, Color(1.0, 0.56, 0.22, 0.05 * _intensity))
+            draw_circle(lamp, 2.2, Color(1.0, 0.72, 0.36, 0.55 * _intensity))
 
 func _draw_alpine_peaks() -> void:
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
@@ -707,6 +723,17 @@ func _draw_alpine_peaks() -> void:
         rear.append(Vector2(x + 360.0, 430.0))
     rear.append(Vector2(_world_size.x, _floor_y))
     draw_colored_polygon(rear, Color(0.08, 0.12, 0.16, 0.98))
+
+    var middle := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for index in range(20):
+        var x := float(index) * 300.0
+        var peak_y := 300.0 + _noise(index, 91.2) * 92.0
+        middle.append(Vector2(x, 472.0))
+        middle.append(Vector2(x + 150.0, peak_y))
+        middle.append(Vector2(x + 300.0, 472.0))
+    middle.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(middle, Color(0.10, 0.15, 0.18, 0.72))
+
     for index in range(16):
         var x := float(index) * 380.0 + 90.0
         var peak_y := 245.0 + _noise(index, 13.1) * 110.0
@@ -717,6 +744,18 @@ func _draw_alpine_peaks() -> void:
             Vector2(x + 42.0, peak_y + 58.0),
         ])
         draw_colored_polygon(snow, Color(0.48, 0.56, 0.62, 0.20))
+        draw_line(
+            Vector2(x, peak_y + 2.0),
+            Vector2(x + 28.0, peak_y + 48.0),
+            Color(0.76, 0.84, 0.88, 0.12 * _intensity),
+            1.5,
+        )
+
+    draw_rect(
+        Rect2(Vector2(0.0, 360.0), Vector2(_world_size.x, 92.0)),
+        Color(0.66, 0.75, 0.80, 0.028 * _intensity),
+        true,
+    )
 
 func _draw_harbor_skyline() -> void:
     for index in range(12):
@@ -781,6 +820,16 @@ func _draw_jungle_canopy() -> void:
     rear.append(Vector2(_world_size.x, _floor_y))
     draw_colored_polygon(rear, Color(0.045, 0.11, 0.07, 0.98))
 
+    for index in range(22):
+        var x := 40.0 + float(index) * 250.0
+        var crown_y := 292.0 + _noise(index, 92.1) * 112.0
+        var radius := 22.0 + _noise(index, 92.7) * 34.0
+        draw_circle(
+            Vector2(x, crown_y),
+            radius,
+            Color(0.08, 0.19, 0.105, (0.14 + _noise(index, 93.3) * 0.10) * _intensity),
+        )
+
     var front := PackedVector2Array([Vector2(0.0, _floor_y)])
     for x in range(0, int(_world_size.x) + 101, 100):
         var xf := float(x)
@@ -788,6 +837,21 @@ func _draw_jungle_canopy() -> void:
         front.append(Vector2(xf, y))
     front.append(Vector2(_world_size.x, _floor_y))
     draw_colored_polygon(front, Color(0.07, 0.16, 0.09, 0.98))
+
+    draw_rect(
+        Rect2(Vector2(0.0, 365.0), Vector2(_world_size.x, 110.0)),
+        Color(0.30, 0.44, 0.31, 0.032 * _intensity),
+        true,
+    )
+    for index in range(14):
+        var vine_x := 180.0 + float(index) * 410.0
+        var length := 34.0 + _noise(index, 94.0) * 82.0
+        draw_line(
+            Vector2(vine_x, 322.0 + _noise(index, 94.7) * 60.0),
+            Vector2(vine_x + sin(float(index)) * 12.0, 322.0 + length),
+            Color(0.16, 0.28, 0.15, 0.24 * _intensity),
+            2.0,
+        )
 
 func _draw_jungle_ruins() -> void:
     for index in range(13):
