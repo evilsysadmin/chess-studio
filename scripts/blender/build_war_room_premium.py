@@ -552,21 +552,25 @@ def add_room(static, mats):
         cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
              mats["iron"], static, bevel=0.012)
 
-    for idx, (dx, dz, sx, sy, sz) in enumerate((
-        (-0.34, 0.22, 0.58, 0.42, 1.20),
-        (-0.08, 0.36, 0.50, 0.38, 1.48),
-        (0.18, 0.18, 0.62, 0.44, 1.08),
-        (0.39, 0.30, 0.46, 0.36, 1.34),
+    # Flame tongues overlap into one fire mass instead of reading as a row of
+    # bright oval beads. Narrower X/Y profiles, taller Z scales and small tilts
+    # keep the hero hearth lively without adding geometry or changing its light.
+    for idx, (dx, dz, sx, sy, sz, tilt) in enumerate((
+        (-0.28, 0.18, 0.38, 0.30, 1.55, -0.18),
+        (-0.04, 0.32, 0.34, 0.27, 1.95, 0.10),
+        (0.18, 0.14, 0.42, 0.31, 1.42, -0.08),
+        (0.34, 0.24, 0.30, 0.25, 1.68, 0.14),
     )):
-        sphere(f"WR_FIREPLACE_flame_outer_{idx}", (-4.55 + dx, 5.55, 1.28 + dz),
-               0.22, mats["fire"], static, scale=(sx, sy, sz))
-    for idx, (dx, dz, sx, sy, sz) in enumerate((
-        (-0.18, 0.12, 0.44, 0.34, 0.88),
-        (0.05, 0.24, 0.38, 0.30, 1.05),
-        (0.26, 0.10, 0.36, 0.30, 0.82),
+        flame = sphere(f"WR_FIREPLACE_flame_outer_{idx}", (-4.55 + dx, 5.55, 1.25 + dz),
+                       0.20, mats["fire"], static, scale=(sx, sy, sz))
+        flame.rotation_euler.y = tilt
+    for idx, (dx, dz, sx, sy, sz, tilt) in enumerate((
+        (-0.08, 0.10, 0.28, 0.24, 1.10, -0.10),
+        (0.15, 0.08, 0.26, 0.22, 0.92, 0.08),
     )):
-        sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.25 + dz),
-               0.16, mats["fire_core"], static, scale=(sx, sy, sz))
+        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.50, 1.23 + dz),
+                      0.14, mats["fire_core"], static, scale=(sx, sy, sz))
+        core.rotation_euler.y = tilt
 
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
