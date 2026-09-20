@@ -1551,9 +1551,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "brass": material("HOME_MAT_brass", (0.36, 0.19, 0.050, 1), roughness=0.27, metallic=0.84),
         "gold": material(
             "HOME_MAT_gold",
-            (0.82, 0.50, 0.14, 1),
-            roughness=0.20,
-            metallic=0.92,
+            (0.48, 0.27, 0.065, 1),
+            roughness=0.34,
+            metallic=0.84,
             emission=(0.08, 0.028, 0.004, 1),
             emission_strength=0.22,
         ),
