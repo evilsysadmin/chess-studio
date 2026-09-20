@@ -952,6 +952,62 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_library_lamp_base", (-3.10, 3.92, 1.00), (0.09, 0.09, 0.12), brass, bevel=0.02)
     cube("HOME_PROP_library_lamp_shade", (-3.10, 3.92, 1.24), (0.24, 0.18, 0.14), paper, bevel=0.04)
 
+    # Turn the library desk from set dressing into a visibly used work surface.
+    # These props sit behind the main board and do not alter Home hotspots.
+    add_point_light("HOME_LIGHT_library_desk", (-3.10, 3.76, 1.42), 48, (1.0, 0.46, 0.18), radius=0.34)
+
+    page_left = cube(
+        "HOME_PROP_library_open_book_left",
+        (-3.72, 3.72, 0.99),
+        (0.30, 0.22, 0.018),
+        materials["paper"],
+        bevel=0.018,
+    )
+    page_left.rotation_euler[2] = math.radians(-7.0)
+    page_right = cube(
+        "HOME_PROP_library_open_book_right",
+        (-3.16, 3.74, 1.00),
+        (0.30, 0.22, 0.018),
+        materials["paper"],
+        bevel=0.018,
+    )
+    page_right.rotation_euler[2] = math.radians(6.0)
+    cube(
+        "HOME_PROP_library_open_book_spine",
+        (-3.44, 3.76, 0.985),
+        (0.035, 0.24, 0.028),
+        materials["book_brown"],
+        bevel=0.012,
+    )
+
+    cylinder(
+        "HOME_PROP_library_inkwell",
+        (-2.55, 3.70, 1.03),
+        0.075,
+        0.10,
+        materials["dark"],
+        vertices=18,
+    )
+    curve_tube(
+        "HOME_PROP_library_quill",
+        [(-2.57, 3.66, 1.10), (-2.43, 3.62, 1.30), (-2.27, 3.58, 1.48)],
+        0.012,
+        materials["brass_dark"],
+    )
+    for idx, (px, py, angle) in enumerate((
+        (-4.05, 4.15, -8.0),
+        (-3.66, 4.19, 5.0),
+        (-2.70, 4.20, -4.0),
+    )):
+        note = cube(
+            f"HOME_PROP_library_note_{idx}",
+            (px, py, 0.985 + idx * 0.003),
+            (0.20, 0.15, 0.010),
+            materials["paper"],
+            bevel=0.010,
+        )
+        note.rotation_euler[2] = math.radians(angle)
+
     # Right cabinet + globe, pulled slightly forward so the globe actually reads
     # beside the right fireplace at canonical camera distance.
     gx, gy = 5.58, 4.08
