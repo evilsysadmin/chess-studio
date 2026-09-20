@@ -30,8 +30,8 @@
       "y": 458,
       "w": 150,
       "h": 24,
-      "kind": "wood_bridge",
-      "material": "wood"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 860,
@@ -46,8 +46,8 @@
       "y": 520,
       "w": 200,
       "h": 24,
-      "kind": "low_bridge",
-      "material": "wood"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 1390,
@@ -79,8 +79,8 @@
       "y": 426,
       "w": 140,
       "h": 24,
-      "kind": "wood_bridge",
-      "material": "wood"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 2370,
@@ -111,8 +111,8 @@
       "y": 500,
       "w": 170,
       "h": 24,
-      "kind": "wood_bridge",
-      "material": "wood"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 3410,
@@ -145,8 +145,8 @@
       "y": 472,
       "w": 170,
       "h": 24,
-      "kind": "wood_bridge",
-      "material": "wood"
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 4460,
@@ -238,6 +238,54 @@
       "material": "wood",
       "route": "canopy_assault",
       "one_way": true
+    },
+    {
+      "x": 520,
+      "y": 330,
+      "w": 132,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "wood",
+      "one_way": true,
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
+      "x": 1210,
+      "y": 306,
+      "w": 138,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "stone",
+      "one_way": true,
+      "visual": {
+        "sandbags": 5
+      }
+    },
+    {
+      "x": 3330,
+      "y": 308,
+      "w": 140,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "stone",
+      "one_way": true,
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
+      "x": 4860,
+      "y": 304,
+      "w": 142,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "wood",
+      "one_way": true,
+      "visual": {
+        "sandbags": 5
+      }
     }
   ],
   "obstacles": [
@@ -902,5 +950,6 @@
       "y": 609,
       "scale": 1.2
     }
-  ]
+  ],
+  "visual_revision": 2
 }
