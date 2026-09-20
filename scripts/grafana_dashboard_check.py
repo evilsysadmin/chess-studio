@@ -438,6 +438,15 @@ def main() -> int:
     ):
         if token not in oci_alloy:
             fail(f"OCI Alloy no etiqueta/exporta correctamente: {token}")
+    if 'chmod 0644 "$tmp"  mv -f "$tmp" "$state_file"' in oci_deploy:
+        fail("deploy OCI no debe concatenar chmod y mv al registrar deployed.sha")
+    for token in (
+        'chmod 0644 "$tmp"',
+        'mv -f "$tmp" "$state_file"',
+    ):
+        if token not in oci_deploy:
+            fail(f"deploy OCI no registra deployed.sha de forma atómica: {token}")
+
     for token in (
         'start_observability_best_effort',
         'prepare_backend_log_link',
