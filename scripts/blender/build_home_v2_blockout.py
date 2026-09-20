@@ -944,6 +944,23 @@ def add_armor(materials):
         0.026,
         brass,
     )
+    for side in (-1, 1):
+        curve_tube(
+            f"HOME_PROP_armor_breastplate_flute_{side}",
+            [
+                (x + side * 0.24, y - 0.245, 1.98),
+                (x + side * 0.17, y - 0.300, 2.20),
+                (x + side * 0.21, y - 0.235, 2.42),
+            ],
+            0.014,
+            materials["brass_dark"],
+        )
+    sphere(
+        "HOME_PROP_armor_breastplate_boss",
+        (x, y - 0.340, 2.20),
+        (0.070, 0.020, 0.070),
+        brass,
+    )
 
     # Weapon rack frames the armour without becoming part of its body.
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
