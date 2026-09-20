@@ -200,7 +200,7 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
         "king": (0.11, 0.06, 0.42, 0.11, 0.47),
     }
     r1, r2, depth, head, height = profiles[kind]
-    piece_scale = 1.12
+    piece_scale = 1.06
     r1 *= piece_scale
     r2 *= piece_scale
     depth *= piece_scale
