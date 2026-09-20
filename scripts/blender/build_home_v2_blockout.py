@@ -601,7 +601,7 @@ def add_table_and_board(materials):
             f"HOME_PROP_bench_cushion_{side}",
             (x, 0.98, 0.74),
             (0.69, 1.55, 0.20),
-            materials["velvet_dark"],
+            materials["bench_velvet"],
             bevel=0.12,
         )
         for by in (0.08, 2.32):
@@ -1232,6 +1232,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_strength=0.055,
             variation=0.075,
             variation_scale=8.8,
+        ),
+        "bench_velvet": material(
+            "HOME_MAT_bench_velvet",
+            (0.125, 0.007, 0.010, 1),
+            roughness=0.82,
+            bump_scale=21.0,
+            bump_strength=0.045,
+            variation=0.075,
+            variation_scale=8.5,
         ),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
