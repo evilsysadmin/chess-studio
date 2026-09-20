@@ -24,9 +24,9 @@ jobs:
     env:
       GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
       GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
-      GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
-      GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
-      GRAFANA_TRACES_DATASOURCE_UID: ${{ vars.GRAFANA_TRACES_DATASOURCE_UID || 'grafanacloud-humbletoucan355-traces' }}
+      GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-prom' }}
+      GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-logs' }}
+      GRAFANA_TRACES_DATASOURCE_UID: ${{ vars.GRAFANA_TRACES_DATASOURCE_UID || 'grafanacloud-traces' }}
 
     steps:
       - uses: actions/checkout@v7
