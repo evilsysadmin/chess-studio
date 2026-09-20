@@ -14,6 +14,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 URL_RE = re.compile(r'^\s*const BODY_ATLAS_URL\s*:=\s*"(?P<url>https?://[^"]+)"\s*$', re.M)
+V2_URL_RE = re.compile(r'^\\s*const BODY_ATLAS_V2_URL\\s*:=\\s*"(?P<url>https?://[^"]+)"\\s*$', re.M)
 FRAME_RE = re.compile(r'^\s*const REMOTE_FRAME_SIZE\s*:=\s*Vector2\((?P<w>[0-9.]+),\s*(?P<h>[0-9.]+)\)\s*$', re.M)
 ROWS_RE = re.compile(r'^\s*const REMOTE_ATLAS_ROWS\s*:=\s*(?P<rows>\d+)\s*$', re.M)
 COLS_RE = re.compile(r'^\s*const FRAMES_PER_TYPE\s*:=\s*(?P<cols>\d+)\s*$', re.M)
