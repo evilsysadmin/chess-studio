@@ -1730,7 +1730,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
     # Rounded overlapping lobes keep the fire organic at Home distance.
     # The old single polygon mass read as a row of pink triangular teeth.
-    for idx, (dx, width, height, tilt) in enumerate((
+    for idx, (dx, flame_w, flame_h, tilt) in enumerate((
         (-0.38, 0.15, 0.13, -8.0),
         (-0.18, 0.18, 0.19, 7.0),
         (0.03, 0.19, 0.23, -4.0),
@@ -1739,15 +1739,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )):
         lobe = sphere(
             f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            (-6.15 + dx, 5.378, 0.60 + height * 0.56),
-            (width, 0.028, height),
+            (-6.15 + dx, 5.378, 0.60 + flame_h * 0.56),
+            (flame_w, 0.028, flame_h),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            (-6.15 + dx * 0.94, 5.342, 0.60 + height * 0.34),
-            (width * 0.44, 0.019, height * 0.46),
+            (-6.15 + dx * 0.94, 5.342, 0.60 + flame_h * 0.34),
+            (flame_w * 0.44, 0.019, flame_h * 0.46),
             materials["fire_hot"],
         )
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
@@ -2022,7 +2022,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (0.125, 0.020, 0.038),
             materials["fire_hot"] if idx % 2 else materials["fire"],
         )
-    for idx, (dx, width, height, tilt) in enumerate((
+    for idx, (dx, flame_w, flame_h, tilt) in enumerate((
         (-0.34, 0.14, 0.12, -8.0),
         (-0.12, 0.16, 0.17, 6.0),
         (0.12, 0.16, 0.15, -4.0),
@@ -2031,21 +2031,21 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         base = sphere(
             f"HOME_PROP_fireplace_right_front_base_{idx}",
             (4.45 + dx, 5.390, 0.625),
-            (width * 1.10, 0.026, 0.060),
+            (flame_w * 1.10, 0.026, 0.060),
             materials["fire"],
         )
         base.rotation_euler[1] = math.radians(tilt * 0.18)
         lobe = sphere(
             f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            (4.45 + dx, 5.375, 0.60 + height * 0.56),
-            (width, 0.026, height),
+            (4.45 + dx, 5.375, 0.60 + flame_h * 0.56),
+            (flame_w, 0.026, flame_h),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            (4.45 + dx * 0.96, 5.340, 0.60 + height * 0.34),
-            (width * 0.43, 0.019, height * 0.45),
+            (4.45 + dx * 0.96, 5.340, 0.60 + flame_h * 0.34),
+            (flame_w * 0.43, 0.019, flame_h * 0.45),
             materials["fire_hot"],
         )
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
