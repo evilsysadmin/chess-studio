@@ -54,6 +54,7 @@ INVENTORY = {
     'pawn-slug-godot-strict-v14.yml': 'art-generation',
     'pawn-slug-godot-strict-v15.yml': 'art-generation',
     'pawn-slug-godot-strict-v16.yml': 'art-generation',
+    'pawn-slug-godot-strict-v17.yml': 'art-generation',
     'pawn-slug-matthias-sprite-smoke.yml': 'visual-staging-evidence',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
