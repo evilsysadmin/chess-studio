@@ -237,7 +237,7 @@ def run_checks(
     }
     for name, query in metric_checks.items():
         payload = api.get_json(
-            f"/api/prometheus/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
             {"query": query, "time": str(now)},
         )
         ok = _vector_positive(payload)
