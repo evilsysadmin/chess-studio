@@ -1120,9 +1120,24 @@ def add_side_furnishings(materials):
         curve_tube(
             f"HOME_PROP_plant_leaf_{idx}",
             [(5.10, 1.70, 0.76), (5.10 + dx * 0.55, 1.70 + dy, 1.13), (5.10 + dx, 1.70 + dy * 1.7, 1.46)],
-            0.055,
+            0.040,
             plant,
         )
+        blade = sphere(
+            f"HOME_PROP_plant_leaf_blade_{idx}",
+            (5.10 + dx * 0.78, 1.70 + dy * 1.30, 1.31),
+            (0.105, 0.038, 0.265),
+            plant,
+        )
+        blade.rotation_euler[0] = math.radians(dy * 55.0)
+        blade.rotation_euler[1] = math.radians(-dx * 85.0)
+    center_leaf = sphere(
+        "HOME_PROP_plant_leaf_blade_center",
+        (5.10, 1.70, 1.28),
+        (0.095, 0.035, 0.30),
+        plant,
+    )
+    center_leaf.rotation_euler[1] = math.radians(4.0)
 
 
 def add_stairs(materials):
