@@ -1,16 +1,11 @@
 import * as THREE from 'three';
 import {
-  CHRONICLES_ENEMIES,
-  chroniclesEnemyIsActive,
-  chroniclesEnemyPosition,
-} from './chroniclesOfMatthias.js';
-import { chroniclesPartyGridFootprint } from './chroniclesPartyFootprint.js';
+  chroniclesProjectSceneModel,
+  chroniclesSceneWorldObjectState,
+} from './chronicles/chroniclesSceneModel.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
-import {
-  chroniclesEnemyEffectiveVisualScale,
-  chroniclesEnemyRenderRoster,
-} from './chroniclesEnemyRenderRoster.js';
+import { chroniclesEnemyEffectiveVisualScale } from './chroniclesEnemyRenderRoster.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import {
@@ -19,7 +14,6 @@ import {
   chroniclesIsometricContentsByKind,
   chroniclesIsometricDungeonPlan,
 } from './chronicles/chroniclesIsometricDungeonPlan.js';
-import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
 import {
   chroniclesIsometricCellToWorld,
   chroniclesIsometricScenePlan,
@@ -141,19 +135,7 @@ export function chroniclesIsoPointerAction(interaction, hit) {
 }
 
 export function chroniclesIsoWorldObjectState(state) {
-  const content = chroniclesContentVisualStates(state);
-  const firstByKind = (kind) => content.find((entry) => entry.kind === kind) || null;
-  return {
-    triggerActivated: Boolean(firstByKind('trigger')?.activated),
-    leverActivated: Boolean(firstByKind('lever')?.activated),
-    pickupVisible: Boolean(firstByKind('pickup')?.visible),
-  };
-}
-
-function runtimeEnemyPosition(state, enemy) {
-  const runtime = state?.enemyPositions?.[enemy.id];
-  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
-  return chroniclesEnemyPosition(state, enemy);
+  return chroniclesSceneWorldObjectState(state);
 }
 
 function deterministicNoise(x, y, salt = 0) {
@@ -617,7 +599,7 @@ function reconcileEnemyModels(scene, models, roster, { coarsePointer }) {
   });
 }
 
-function buildInteractionMarkers(scene, { coarsePointer }) {
+function buildInteractionMarkers(scene, { coarsePointer, enemyCapacity = 1 }) {
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-interaction';
   scene.add(root);
@@ -657,7 +639,7 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
   return {
     root,
     moveMarkers: makePool(4, moveGeometry, moveMaterial, 'chronicles-iso-move-marker'),
-    attackMarkers: makePool(CHRONICLES_ENEMIES.length, attackGeometry, attackMaterial, 'chronicles-iso-attack-marker'),
+    attackMarkers: makePool(Math.max(1, enemyCapacity), attackGeometry, attackMaterial, 'chronicles-iso-attack-marker'),
   };
 }
 
@@ -710,7 +692,8 @@ export function createChroniclesIsometricGame(host, {
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
-  const initialScenePlan = chroniclesIsometricScenePlan(initialState);
+  const initialSceneModel = initialState ? chroniclesProjectSceneModel(initialState) : null;
+  const initialScenePlan = initialSceneModel?.scenePlan || chroniclesIsometricScenePlan(initialState);
   const scenePalette = chroniclesIsoScenePalette(initialScenePlan);
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -779,9 +762,12 @@ export function createChroniclesIsometricGame(host, {
     scenePlan: initialScenePlan,
   });
   const enemies = new Map();
-  const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
+  const interactionMarkers = buildInteractionMarkers(scene, {
+    coarsePointer: coarse,
+    enemyCapacity: Math.max(4, initialSceneModel?.enemies.length || 0),
+  });
 
-  let latestState = null;
+  let latestSceneModel = null;
   let latestInteraction = null;
   let selectedMemberId = 'matthias';
   let destroyed = false;
@@ -848,24 +834,30 @@ export function createChroniclesIsometricGame(host, {
     renderer.domElement.style.cursor = nextInteraction?.mode ? 'crosshair' : 'default';
   }
 
-  function syncState(state, nextSelectedMemberId = selectedMemberId, nextInteraction = latestInteraction) {
-    latestState = state;
-    selectedMemberId = nextSelectedMemberId || selectedMemberId;
-    const partyCell = chroniclesIsoWorldForCell(state.x, state.y, initialScenePlan);
+  function syncSceneModel(sceneModel) {
+    if (!sceneModel) return;
+    latestSceneModel = sceneModel;
+    selectedMemberId = sceneModel.selectedMemberId || selectedMemberId;
+
+    const partyCell = chroniclesIsoWorldForCell(
+      sceneModel.focusCell.x,
+      sceneModel.focusCell.y,
+      initialScenePlan,
+    );
     desiredParty.copy(partyCell);
     desiredFocus.copy(partyCell);
-    const partyFootprint = chroniclesPartyGridFootprint(state);
 
-    const enemyRoster = chroniclesEnemyRenderRoster(state);
-    reconcileEnemyModels(scene, enemies, enemyRoster, { coarsePointer: coarse });
-    enemyRoster.forEach(({ definition }) => {
-      const model = enemies.get(definition.id);
+    reconcileEnemyModels(scene, enemies, sceneModel.enemies, { coarsePointer: coarse });
+    sceneModel.enemies.forEach((entry) => {
+      const model = enemies.get(entry.id);
       if (!model) return;
-      const active = chroniclesEnemyIsActive(state, definition) && Number(state[definition.hpKey] || 0) > 0;
-      model.visible = active;
-      if (!active) return;
-      const position = runtimeEnemyPosition(state, definition);
-      const world = chroniclesIsoWorldForCell(position.x, position.y, initialScenePlan);
+      model.visible = Boolean(entry.visible && entry.cell);
+      if (!model.visible) {
+        model.userData.chroniclesIsoTarget = null;
+        model.userData.chroniclesIsoPlaced = false;
+        return;
+      }
+      const world = chroniclesIsoWorldForCell(entry.cell.x, entry.cell.y, initialScenePlan);
       model.userData.chroniclesIsoTarget = world;
       model.userData.chroniclesIsoTargetYaw = facingAngle(world, partyCell);
       if (!model.userData.chroniclesIsoPlaced) {
@@ -876,32 +868,31 @@ export function createChroniclesIsometricGame(host, {
       }
     });
 
-    state.party.forEach((member) => {
+    sceneModel.party.forEach((member) => {
       const model = party.models.get(member.id);
       if (!model) return;
-      const slot = partyFootprint[member.id];
-      model.visible = member.hp > 0 && Boolean(slot);
-      model.userData.chroniclesIsoHpRatio = Math.max(0, member.hp / member.maxHp);
-      if (!slot) {
+      model.visible = Boolean(member.visible && member.cell);
+      model.userData.chroniclesIsoHpRatio = member.hpRatio;
+      if (!member.cell) {
         model.userData.chroniclesIsoTarget = null;
         model.userData.chroniclesIsoPlaced = false;
         return;
       }
 
-      const localTarget = chroniclesIsoWorldForCell(slot.x, slot.y, initialScenePlan).sub(partyCell);
+      const localTarget = chroniclesIsoWorldForCell(member.cell.x, member.cell.y, initialScenePlan).sub(partyCell);
       model.userData.chroniclesIsoTarget = localTarget;
-      model.userData.chroniclesIsoCell = slot;
+      model.userData.chroniclesIsoCell = member.cell;
       if (!model.userData.chroniclesIsoPlaced) {
         model.position.copy(localTarget);
         model.userData.chroniclesIsoPlaced = true;
       }
     });
 
-    const worldObjects = chroniclesIsoWorldObjectState(state);
+    const worldObjects = sceneModel.worldObjects;
     dungeon.sigilMaterial.emissive.setHex(worldObjects.triggerActivated ? 0x8c3f0d : 0x160a02);
     dungeon.sigilMaterial.emissiveIntensity = worldObjects.triggerActivated ? 1.25 : 0.24;
 
-    const contentVisualById = new Map(chroniclesContentVisualStates(state).map((entry) => [entry.id, entry]));
+    const contentVisualById = new Map(sceneModel.content.map((entry) => [entry.id, entry]));
     syncChroniclesTacticsPressurePlateArt(scene, contentVisualById, { now: clock.getElapsedTime() });
     dungeon.leverProps.forEach((lever) => {
       const visual = contentVisualById.get(lever.id);
@@ -915,7 +906,7 @@ export function createChroniclesIsometricGame(host, {
     dungeon.runeMaterial.emissiveIntensity = dungeon.pickupProps.some((pickup) => pickup.root.visible) ? 1.7 : 0.25;
 
     syncSelection({ immediate: reducedMotion });
-    syncInteraction(nextInteraction);
+    syncInteraction(sceneModel.interaction);
 
     if (reducedMotion) {
       party.root.position.copy(desiredParty);
@@ -939,8 +930,15 @@ export function createChroniclesIsometricGame(host, {
     }
   }
 
+  function syncState(state, nextSelectedMemberId = selectedMemberId, nextInteraction = latestInteraction) {
+    return syncSceneModel(chroniclesProjectSceneModel(state, {
+      selectedMemberId: nextSelectedMemberId,
+      interaction: nextInteraction,
+    }));
+  }
+
   function pickPointerAction(event) {
-    if (!latestState) return null;
+    if (!latestSceneModel) return null;
     const bounds = renderer.domElement.getBoundingClientRect();
     if (bounds.width <= 0 || bounds.height <= 0) return null;
     pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
@@ -1047,6 +1045,7 @@ export function createChroniclesIsometricGame(host, {
   onReady?.('THREE.JS · ISOMETRIC');
 
   return {
+    renderSceneModel: syncSceneModel,
     renderState: syncState,
     renderMember(memberId) {
       selectedMemberId = memberId || 'matthias';
