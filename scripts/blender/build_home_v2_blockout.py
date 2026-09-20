@@ -1039,6 +1039,29 @@ def add_side_furnishings(materials):
     # beside the right fireplace at canonical camera distance.
     gx, gy = 5.58, 4.08
     cube("HOME_PROP_right_cabinet", (7.55, 5.02, 1.05), (1.15, 0.46, 1.05), wood, bevel=0.04)
+    cube("HOME_PROP_right_cabinet_top", (7.55, 4.99, 2.14), (1.24, 0.49, 0.08), wood, bevel=0.035)
+    for side in (-1, 1):
+        door_x = 7.55 + side * 0.54
+        cube(
+            f"HOME_PROP_right_cabinet_door_{side}",
+            (door_x, 4.545, 1.05),
+            (0.47, 0.020, 0.76),
+            materials["dark"],
+            bevel=0.045,
+        )
+        cube(
+            f"HOME_PROP_right_cabinet_door_trim_{side}",
+            (door_x, 4.520, 1.05),
+            (0.39, 0.010, 0.66),
+            wood,
+            bevel=0.032,
+        )
+        sphere(
+            f"HOME_PROP_right_cabinet_handle_{side}",
+            (7.55 + side * 0.13, 4.485, 1.08),
+            (0.045, 0.022, 0.045),
+            brass,
+        )
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
     sphere("HOME_PROP_globe", (gx, gy, 1.86), (0.56, 0.56, 0.56), globe)
     curve_tube(
