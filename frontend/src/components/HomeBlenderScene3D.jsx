@@ -22,10 +22,10 @@ const ROOM_FOCUS = Object.freeze({
 });
 
 const EXPOSURE = Object.freeze({
-  dawn: 1.46,
-  day: 1.34,
-  dusk: 1.50,
-  night: 1.56,
+  dawn: 1.08,
+  day: 0.98,
+  dusk: 1.04,
+  night: 1.10,
 });
 
 function browserPolicy() {
@@ -53,22 +53,25 @@ export function homeBlenderRuntimeEligible() {
 }
 
 function addRuntimeLights(scene) {
-  const ambient = new THREE.AmbientLight(0xd7dbe2, 1.05);
-  const hemi = new THREE.HemisphereLight(0xf3e5d0, 0x140a07, 1.65);
+  // Keep the browser rendition close to the authored Blender beauty pass:
+  // dark stone stays dark and the warm practicals shape the room instead of
+  // a large ambient wash flattening every material.
+  const ambient = new THREE.AmbientLight(0x8f9298, 0.22);
+  const hemi = new THREE.HemisphereLight(0x8fa6c4, 0x120806, 0.48);
 
-  const key = new THREE.DirectionalLight(0xffd5b0, 3.0);
+  const key = new THREE.DirectionalLight(0xffc996, 1.85);
   key.position.set(-5.2, 7.4, 8.2);
 
-  const fill = new THREE.DirectionalLight(0x789bd4, 1.55);
+  const fill = new THREE.DirectionalLight(0x587aa8, 0.52);
   fill.position.set(7.2, 4.8, 5.6);
 
-  const leftHearth = new THREE.PointLight(0xff6c22, 15, 6, 2);
+  const leftHearth = new THREE.PointLight(0xff6720, 13, 6.5, 2);
   leftHearth.position.set(-6.15, 0.95, -5.12);
 
-  const rightHearth = new THREE.PointLight(0xff6a1f, 17, 6, 2);
+  const rightHearth = new THREE.PointLight(0xff641d, 14, 6.5, 2);
   rightHearth.position.set(4.50, 1.10, -5.00);
 
-  const table = new THREE.PointLight(0xffc98e, 5.5, 9, 2);
+  const table = new THREE.PointLight(0xffbf7d, 3.1, 8, 2);
   table.position.set(0, 4.9, 3.8);
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table);
