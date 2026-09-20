@@ -86,7 +86,9 @@ jobs:
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
   # OCI owns the canonical staging backend generation. The normal fast-path
-  # consumes installed runtime; fallback reconciles CURRENT Vault + Git first.
+  # consumes installed runtime. The fallback deliberately reuses that same runtime;
+  # explicit runtime-sync remains a separate operational action so a degraded
+  # Run Command channel cannot double the delivery penalty on every release.
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -120,7 +122,11 @@ jobs:
         run: |
           set -euo pipefail
           converged=false
-          for attempt in {1..46}; do
+          # The host watcher polls every 15s. Worker publication typically lands
+          # after this job starts and the local deploy itself is fast; keep the
+          # zero-cost path alive for ~90s so we do not abandon it just before
+          # convergence and fall into multi-minute OCI Run Command delivery.
+          for attempt in {1..76}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
               --output "$body" --write-out '%{http_code}' \
@@ -135,13 +141,13 @@ jobs:
               converged=true
               break
             fi
-            [[ "$attempt" -eq 46 ]] || sleep 1
+            [[ "$attempt" -eq 76 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
             echo "::notice title=OCI zero-cost fast-path::La A1 aplicó $DEPLOY_SHA mediante el watcher saliente."
           else
-            echo "::warning title=OCI fallback::El watcher no convergió; se usa Run Command."
+            echo "::warning title=OCI fallback::El watcher no convergió; se usa un único Run Command de deploy."
           fi
 
       - name: Restore cached OCI SDK toolchain
@@ -159,19 +165,6 @@ jobs:
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
-      - name: Ensure CURRENT Vault + Git runtime
-        if: steps.watcher.outputs.converged != 'true'
-        shell: bash
-        env:
-          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
-          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
-          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-          OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-        run: |
-          set -euo pipefail
-          python3 scripts/oci_vault_sync.py sync-current
-
       - name: Deploy exact backend commit to OCI staging
         if: steps.watcher.outputs.converged != 'true'
         shell: bash
@@ -183,6 +176,24 @@ jobs:
           OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
+
+          # The watcher can finish while the OCI SDK cache is being restored.
+          # Re-check the public build identity before paying for Run Command.
+          body="$RUNNER_TEMP/backend-pre-fallback.json"
+          status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
+            --output "$body" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+          then
+            echo "::notice title=OCI fallback avoided::La A1 terminó $DEPLOY_SHA durante el setup; no se envía Run Command."
+            exit 0
+          fi
+
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
 
       - name: Verify backend public path reaches exact OCI generation

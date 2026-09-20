@@ -128,7 +128,9 @@ def main() -> int:
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
+        ("for attempt in {1..76}; do", "generation watcher patience budget"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
+        ("OCI fallback avoided", "late watcher completion re-check"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
@@ -244,6 +246,12 @@ def main() -> int:
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
         require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
+        forbid(
+            blocks["backend"],
+            "python3 scripts/oci_vault_sync.py sync-current",
+            "backend fallback no duplica Run Command con runtime-sync implícito",
+            errors,
+        )
         for needle in ("RENDER_API_KEY", "render_staging_bootstrap", "render_service_id"):
             forbid(blocks["backend"], needle, "backend no depende de Render", errors)
 

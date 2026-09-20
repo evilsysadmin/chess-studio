@@ -94,21 +94,23 @@ required_public_verifier_fragments = (
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 
-# Runtime configuration is operational state. The normal watcher fast-path
-# consumes the already-installed runtime. If that path cannot converge, the
-# canonical fallback ensures CURRENT Vault + Git runtime without any Render
-# availability or credentials. Initial Vault population lives in a separate one-shot workflow.
+# Runtime configuration is operational state. Normal releases consume the
+# already-installed runtime on both the host-watcher path and the Run Command
+# fallback. Runtime refresh remains an explicit operational action: making it an
+# implicit pre-deploy step doubles the delivery penalty whenever Oracle's command
+# channel is degraded. The deploy helper can still recover a missing installed
+# runtime from the private runtime object.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
 )
-assert "python3 scripts/oci_vault_sync.py sync-current" in staging_deploy, (
-    "OCI fallback deploy must ensure CURRENT Vault + Git runtime before app deploy"
+assert "python3 scripts/oci_vault_sync.py sync-current" not in staging_deploy, (
+    "canonical staging deploy must not pay a second Run Command for implicit runtime sync"
 )
-cutover_block = staging_deploy.split(
-    "- name: Ensure CURRENT Vault + Git runtime", 1
-)[1].split("\n      - name:", 1)[0]
-assert "RENDER_API_KEY" not in cutover_block, (
-    "canonical Vault sync must remain independent from Render"
+assert 'python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"' in staging_deploy, (
+    "canonical fallback must retain the resilient single-command deploy path"
+)
+assert "OCI fallback avoided" in staging_deploy, (
+    "canonical fallback must re-check late host-watcher convergence before Run Command"
 )
 assert "inputs.operation == 'runtime-sync'" in service_control, (
     "OCI service control must keep an explicit runtime-sync operation"
