@@ -42,6 +42,13 @@ export function warRoomV2MaterialFinishProfile(materialName = '') {
       clearcoatMax: 0.02,
     });
   }
+  if (name.includes('heraldic_brass')) {
+    return Object.freeze({
+      colorScale: [1.00, 0.96, 0.78],
+      roughness: [0.22, 0.34],
+      clearcoatMax: 0.26,
+    });
+  }
   if (name.includes('brass')) {
     return Object.freeze({
       colorScale: [0.92, 0.78, 0.58],

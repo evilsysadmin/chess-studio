@@ -169,6 +169,11 @@ describe('War Room v2 staging asset URL', () => {
       roughness: [0.84, 1],
       clearcoatMax: 0.02,
     });
+    expect(warRoomV2MaterialFinishProfile('WR_MAT_canon_heraldic_brass')).toEqual({
+      colorScale: [1.00, 0.96, 0.78],
+      roughness: [0.22, 0.34],
+      clearcoatMax: 0.26,
+    });
     expect(warRoomV2MaterialFinishProfile('WR_MAT_brass')).toEqual({
       colorScale: [0.92, 0.78, 0.58],
       roughness: [0.30, 0.46],
