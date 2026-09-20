@@ -8,6 +8,7 @@ live Three.js chess state can remain authoritative when the shell is integrated.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import sys
 from pathlib import Path
 
 import bpy
+import bmesh
 from mathutils import Vector
 
 CONTRACT = "war-room-premium-v1"
@@ -25,6 +27,15 @@ ROLE_ANCHOR = "dynamic-anchor"
 PREVIEW_SIZE = (1600, 900)
 BOARD_Z = 1.12
 MESH_COMPRESSION_EXTENSION = "EXT_meshopt_compression"
+WEATHER_LAYER = "WR_weather"
+WEATHER_ALBEDO_COMP = 1.22
+# Architectural materials that receive baked macro variation and contact dirt.
+# The board, pieces, metals, fabric and emissives are deliberately excluded.
+WEATHER_MATERIALS = frozenset({
+    "WR_MAT_wall_walnut", "WR_MAT_wall_recess", "WR_MAT_wall_plaster",
+    "WR_MAT_trim_walnut", "WR_MAT_floor_underlay",
+    "WR_MAT_stone", "WR_MAT_stone_light", "WR_MAT_stone_shadow",
+})
 
 # Desktop War Room camera parity. These numbers mirror the canonical wide
 # Three.js framing profile (22° vertical FOV, targetY=2.2, targetZ=-0.16,
@@ -96,7 +107,11 @@ def set_socket(bsdf, value, *names):
 
 
 def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
-             texture=None, scale=6.0, bump=0.0, emission=None):
+             texture=None, scale=6.0, bump=0.0, emission=None, weather=False):
+    if weather:
+        # The weathering vertex colour averages a little below 1.0, so the
+        # authored albedo is lifted by the same amount to keep overall exposure.
+        rgba = tuple(min(1.0, ch * WEATHER_ALBEDO_COMP) for ch in rgba[:3]) + (rgba[3],)
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
@@ -161,7 +176,21 @@ def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
         ramp.color_ramp.elements[0].color = tuple(max(0.0, ch * dark_mul) for ch in rgba[:3]) + (1.0,)
         ramp.color_ramp.elements[1].color = tuple(min(1.0, ch * light_mul + 0.008) for ch in rgba[:3]) + (1.0,)
         links.new(fac, ramp.inputs["Fac"])
-        links.new(ramp.outputs["Color"], socket(bsdf, "Base Color"))
+        if weather:
+            # Macro variation and contact dirt live in a baked vertex colour so the
+            # hero render and the glTF runtime read the same weathering.
+            layer = nodes.new("ShaderNodeVertexColor")
+            layer.layer_name = WEATHER_LAYER
+            mix = nodes.new("ShaderNodeMix")
+            mix.data_type = "RGBA"
+            mix.blend_type = "MULTIPLY"
+            mix.inputs["Factor"].default_value = 1.0
+            color_inputs = [s for s in mix.inputs if s.type == "RGBA"]
+            links.new(ramp.outputs["Color"], color_inputs[0])
+            links.new(layer.outputs["Color"], color_inputs[1])
+            links.new(mix.outputs["Result"], socket(bsdf, "Base Color"))
+        else:
+            links.new(ramp.outputs["Color"], socket(bsdf, "Base Color"))
         if bump_strength:
             node = nodes.new("ShaderNodeBump")
             node.inputs["Strength"].default_value = bump_strength
@@ -1397,6 +1426,211 @@ def add_gothic_canon_v2(static, mats):
     look_at(drape_fill, (0, -5.50, 0.44))
 
 
+def _unit(*parts):
+    """Stable float in [0, 1) from a key. Never Python's salted hash(), so builds stay byte-reproducible."""
+    digest = hashlib.blake2b("|".join(str(p) for p in parts).encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, "little") / float(1 << 64)
+
+
+def _lattice(ix, iy, iz, salt):
+    h = (ix * 374761393 + iy * 668265263 + iz * 2147483647 + salt * 1274126177) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((h ^ (h >> 16)) & 0xFFFFFF) / float(0x1000000)
+
+
+def _smoothstep(edge0, edge1, x):
+    t = max(0.0, min(1.0, (x - edge0) / (edge1 - edge0)))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def value_noise(x, y, z, salt):
+    ix, iy, iz = math.floor(x), math.floor(y), math.floor(z)
+    fx, fy, fz = (_smoothstep(0.0, 1.0, c - i) for c, i in ((x, ix), (y, iy), (z, iz)))
+    plane = []
+    for dz in (0, 1):
+        row = []
+        for dy in (0, 1):
+            a = _lattice(ix, iy + dy, iz + dz, salt)
+            b = _lattice(ix + 1, iy + dy, iz + dz, salt)
+            row.append(a + (b - a) * fx)
+        plane.append(row[0] + (row[1] - row[0]) * fy)
+    return plane[0] + (plane[1] - plane[0]) * fz
+
+
+def weather_tint(p, is_floor, tone=1.0):
+    """Macro tonal drift plus contact dirt, multiplied into the architectural albedo.
+
+    Large low-frequency patches stop stone, plaster and wood from reading as one
+    perfectly uniform slab; the darkening at the floor line and where the floor
+    meets the walls anchors the room without adding a single prop.
+    """
+    x, y, z = p
+    macro = (0.5 * value_noise(x * 0.30, y * 0.30, z * 0.42, 11)
+             + 0.3 * value_noise(x * 0.90, y * 0.90, z * 1.10, 29)
+             + 0.2 * value_noise(x * 1.60, y * 1.60, z * 1.90, 53))
+    tint = 0.60 + 0.40 * _smoothstep(0.25, 0.75, macro)
+    if is_floor:
+        wall_gap = min(8.5 - abs(x), 6.85 - y)
+        dirt = 1.0 - _smoothstep(0.0, 1.8, wall_gap)
+        tint *= 1.0 - 0.45 * dirt
+    else:
+        dirt = 1.0 - _smoothstep(0.0, 1.3, z)
+        tint *= 1.0 - 0.42 * dirt
+        # Long vertical runs where damp and soot settle on the upper masonry.
+        streak = _smoothstep(0.58, 0.88, value_noise(x * 4.0, y * 4.0, z * 0.35, 71))
+        tint *= 1.0 - 0.30 * streak * _smoothstep(0.8, 5.5, z)
+    tint = max(0.0, min(1.0, tint * tone))
+    return (tint, tint * 0.985, tint * 0.95, 1.0)
+
+
+WEATHER_MASONRY_KEYS = ("block", "jamb", "lintel", "pier", "pilaster", "course", "_cap", "curve", "tracery", "mantel")
+WEATHER_ASYMMETRY_SKIP = ("plaster", "floor", "wall", "wainscot", "joint", "soot", "ember", "flame", "crest",
+                          "campaign", "banner", "window", "horizon")
+
+
+def _mesh_material_names(obj):
+    return [mat.name if mat else "" for mat in obj.data.materials]
+
+
+ROOM_CENTER = Vector((0.0, 0.5, 2.0))
+
+
+def _subdivide_large_faces(obj, max_edge=0.6):
+    """Cut large visible faces so the weathering colour has resolution.
+
+    Faces that point away from the room (outer walls, slab undersides) are never
+    seen by the wide camera, so they stay uncut to keep the runtime GLB lean.
+    """
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    rotation = obj.matrix_world.to_3x3()
+    long_edges = {}
+    for face in bm.faces:
+        centre = obj.matrix_world @ face.calc_center_median()
+        normal = rotation @ face.normal
+        if normal.z < -0.5 or normal.dot(ROOM_CENTER - centre) <= 0.0:
+            continue
+        for edge in face.edges:
+            if edge.calc_length() > max_edge:
+                long_edges[edge.index] = edge
+    if long_edges:
+        longest = max(edge.calc_length() for edge in long_edges.values())
+        cuts = min(24, int(math.ceil(longest / max_edge)) - 1)
+        bmesh.ops.subdivide_edges(bm, edges=list(long_edges.values()), cuts=max(1, cuts), use_grid_fill=True)
+        bm.to_mesh(obj.data)
+    bm.free()
+
+
+def _bake_weathered_mesh(obj):
+    """Replace the object's mesh with its evaluated (bevelled) mesh so wear can shape real geometry."""
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    baked = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
+    old = obj.data
+    obj.data = baked
+    obj.modifiers.clear()
+    bpy.data.meshes.remove(old)
+
+
+def _chip_convex_edges(obj, amplitude, salt):
+    """Pull convex edge vertices inward with sparse, uneven chips instead of a uniform chamfer."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.normal_update()
+    world = obj.matrix_world
+    for vert in bm.verts:
+        angle = max((edge.calc_face_angle(0.0) for edge in vert.link_edges), default=0.0)
+        if angle < 0.25:
+            continue
+        p = world @ vert.co
+        chip = max(0.0, value_noise(p.x * 9.0, p.y * 9.0, p.z * 9.0, salt) - 0.45) / 0.55
+        vert.co -= vert.normal * amplitude * (0.2 + 0.8 * chip ** 1.5)
+    bm.to_mesh(obj.data)
+    bm.free()
+
+
+def _bake_weather_colors(obj):
+    mesh = obj.data
+    if WEATHER_LAYER in mesh.color_attributes:
+        mesh.color_attributes.remove(mesh.color_attributes[WEATHER_LAYER])
+    attribute = mesh.color_attributes.new(WEATHER_LAYER, "FLOAT_COLOR", "CORNER")
+    slots = _mesh_material_names(obj)
+    is_floor = obj.name.startswith("WR_ARCH_floor") and "joint" not in obj.name
+    # Each hand-laid block sits at its own tone, so masonry stops reading as one repeated brick.
+    lowered = obj.name.lower()
+    masonry = any(key in lowered for key in WEATHER_MASONRY_KEYS) and not any(skip in lowered for skip in ("plaster", "wall", "floor"))
+    tone = 0.90 + 0.20 * _unit(obj.name, "tone") if masonry else 1.0
+    world = obj.matrix_world
+    per_vertex = {}
+    values = [1.0] * (len(mesh.loops) * 4)
+    for poly in mesh.polygons:
+        index = poly.material_index
+        if index >= len(slots) or slots[index] not in WEATHER_MATERIALS:
+            continue
+        for loop_index in poly.loop_indices:
+            vertex = mesh.loops[loop_index].vertex_index
+            color = per_vertex.get(vertex)
+            if color is None:
+                color = weather_tint(world @ mesh.vertices[vertex].co, is_floor, tone)
+                per_vertex[vertex] = color
+            values[loop_index * 4:loop_index * 4 + 4] = color
+    attribute.data.foreach_set("color", values)
+    mesh.attributes.active_color_name = WEATHER_LAYER
+
+
+def weather_architecture():
+    """Break up the too-perfect architecture with restrained, deterministic wear.
+
+    No props are added. The pass varies chamfers, chips the stone edges, nudges the
+    masonry a few millimetres off perfect alignment, and bakes macro tonal drift and
+    contact dirt into a vertex colour shared by the hero render and the glTF runtime.
+    """
+    meshes = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
+    ]
+    chipped = 0
+    jittered = 0
+    for obj in sorted(meshes, key=lambda item: item.name):
+        names = set(_mesh_material_names(obj))
+        weathered = bool(names & WEATHER_MATERIALS)
+        if weathered:
+            _subdivide_large_faces(obj)
+        bevel = obj.modifiers.get("premium-bevel")
+        stone = bool(names & {"WR_MAT_stone", "WR_MAT_stone_light", "WR_MAT_stone_shadow"})
+        lowered = obj.name.lower()
+        if bevel is not None and weathered and "joint" not in lowered and "plaster" not in lowered:
+            span = 0.7 + 1.2 * _unit(obj.name, "bevel") if stone else 0.85 + 0.45 * _unit(obj.name, "bevel")
+            bevel.width = min(0.22, bevel.width * span)
+        masonry = stone and any(key in lowered for key in WEATHER_MASONRY_KEYS)
+        if masonry and not any(skip in lowered for skip in WEATHER_ASYMMETRY_SKIP) and max(obj.dimensions) >= 0.25:
+            def signed(tag):
+                return _unit(obj.name, tag) * 2.0 - 1.0
+            obj.location.x += 0.006 * signed("dx")
+            obj.location.y += 0.006 * signed("dy")
+            obj.rotation_euler.z += 0.006 * signed("yaw")
+            obj.rotation_euler.x += 0.0035 * signed("lx")
+            obj.rotation_euler.y += 0.0035 * signed("ly")
+            obj.scale.x *= 1.0 + 0.007 * signed("sx")
+            obj.scale.y *= 1.0 + 0.007 * signed("sy")
+            jittered += 1
+
+    bpy.context.view_layer.update()
+    for obj in sorted(meshes, key=lambda item: item.name):
+        names = set(_mesh_material_names(obj))
+        stone = bool(names & {"WR_MAT_stone", "WR_MAT_stone_light", "WR_MAT_stone_shadow"})
+        bevel = obj.modifiers.get("premium-bevel")
+        if stone and bevel is not None and bevel.width >= 0.03:
+            width = bevel.width
+            _bake_weathered_mesh(obj)
+            _chip_convex_edges(obj, min(0.03, width * 0.45), 41)
+            chipped += 1
+    bpy.context.view_layer.update()
+    for obj in meshes:
+        _bake_weather_colors(obj)
+    bpy.context.scene["war_room_weathering"] = f"chipped={chipped} jittered={jittered}"
+    print(f"War Room weathering: chipped={chipped} jittered={jittered}")
+
+
 def build():
     scene = bpy.context.scene
     scene["war_room_contract"] = CONTRACT
@@ -1430,11 +1664,11 @@ def build():
     mats = {
         "walnut": material("WR_MAT_board_walnut", (0.17, 0.070, 0.032, 1), rough=0.42, coat=0.20, texture="wood", scale=4.4, bump=0.09),
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
-        "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
-        "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
-        "wall_plaster": material("WR_MAT_wall_plaster", (0.205, 0.176, 0.137, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.070),
-        "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
-        "floor_dark": material("WR_MAT_floor_underlay", (0.050, 0.043, 0.035, 1), rough=0.78, coat=0.018, texture="stone", scale=4.8, bump=0.062),
+        "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042, weather=True),
+        "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032, weather=True),
+        "wall_plaster": material("WR_MAT_wall_plaster", (0.205, 0.176, 0.137, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.070, weather=True),
+        "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042, weather=True),
+        "floor_dark": material("WR_MAT_floor_underlay", (0.050, 0.043, 0.035, 1), rough=0.78, coat=0.018, texture="stone", scale=4.8, bump=0.062, weather=True),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.030, 0.018, 0.012, 1), rough=0.37, coat=0.28, texture="wood", scale=3.2, bump=0.04),
         "brass": material("WR_MAT_brass", (0.36, 0.155, 0.042, 1), metal=0.92, rough=0.29, coat=0.16, texture="metal", scale=22, bump=0.032),
@@ -1448,9 +1682,9 @@ def build():
         "leather_dark": material("WR_MAT_leather_dark", (0.040, 0.016, 0.014, 1), rough=0.59, coat=0.11, texture="leather", scale=50, bump=0.082),
         "desk_leather": material("WR_MAT_desk_leather", (0.010, 0.045, 0.030, 1), rough=0.52, coat=0.12, texture="leather", scale=52, bump=0.07),
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
-        "stone": material("WR_MAT_stone", (0.155, 0.123, 0.088, 1), rough=0.84, coat=0.010, texture="stone", scale=4.3, bump=0.115),
-        "stone_light": material("WR_MAT_stone_light", (0.235, 0.195, 0.145, 1), rough=0.81, coat=0.010, texture="stone", scale=4.3, bump=0.095),
-        "stone_dark": material("WR_MAT_stone_shadow", (0.061, 0.047, 0.035, 1), rough=0.83, coat=0.010, texture="stone", scale=4.4, bump=0.090),
+        "stone": material("WR_MAT_stone", (0.155, 0.123, 0.088, 1), rough=0.84, coat=0.010, texture="stone", scale=4.3, bump=0.115, weather=True),
+        "stone_light": material("WR_MAT_stone_light", (0.235, 0.195, 0.145, 1), rough=0.81, coat=0.010, texture="stone", scale=4.3, bump=0.095, weather=True),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.061, 0.047, 0.035, 1), rough=0.83, coat=0.010, texture="stone", scale=4.4, bump=0.090, weather=True),
         "rug": material("WR_MAT_rug", (0.074, 0.010, 0.016, 1), rough=0.94, sheen=0.22, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.175, 0.170, 0.158, 1), metal=0.93, rough=0.37, coat=0.12, texture="metal", scale=28, bump=0.040),
         "armor_dark": material("WR_MAT_armor_dark", (0.070, 0.064, 0.056, 1), metal=0.90, rough=0.45, coat=0.08, texture="metal", scale=22, bump=0.030),
@@ -1473,6 +1707,7 @@ def build():
 
     add_room(static, mats)
     add_gothic_canon_v2(static, mats)
+    weather_architecture()
     add_preview_board(dynamic, mats)
 
     key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 430.0, (1.0, 0.72, 0.44), static, size=5.8)
@@ -1942,16 +2177,34 @@ def meshopt_export_kwargs():
     missing = sorted(required - properties)
     if missing:
         raise RuntimeError(f"canonical Blender lacks Meshopt glTF export support: {missing}")
-    return {
+    kwargs = {
         "export_meshopt_compression_enable": True,
         "export_meshopt_extension": MESH_COMPRESSION_EXTENSION,
     }
+    # The weathering colour is exported by name because sanitize_runtime_materials
+    # disconnects the Colour Attribute node the default MATERIAL mode looks for.
+    if {"export_vertex_color", "export_vertex_color_name"} <= properties:
+        kwargs["export_vertex_color"] = "NAME"
+        kwargs["export_vertex_color_name"] = WEATHER_LAYER
+    return kwargs
+
+def strip_unused_weather_layers():
+    """Drop the weathering colour from batches that hold no weathered material, to keep the GLB lean."""
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH" or obj.get("war_room_role") != ROLE_STATIC:
+            continue
+        if set(_mesh_material_names(obj)) & WEATHER_MATERIALS:
+            continue
+        if WEATHER_LAYER in obj.data.color_attributes:
+            obj.data.color_attributes.remove(obj.data.color_attributes[WEATHER_LAYER])
+
 
 def export_shell(path):
     sanitized_links, runtime_textures, base_color_factors = sanitize_runtime_materials()
     bpy.context.scene["war_room_runtime_material_links_removed"] = sanitized_links
     bpy.context.scene["war_room_runtime_texture_count"] = runtime_textures
     source_meshes, batched_meshes, merged_away = collapse_runtime_static_shell()
+    strip_unused_weather_layers()
     print(
         f"War Room runtime batching: {source_meshes} -> {batched_meshes} meshes "
         f"({merged_away} merged)"
