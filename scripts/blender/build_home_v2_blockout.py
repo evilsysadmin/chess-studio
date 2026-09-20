@@ -1035,18 +1035,21 @@ def add_fireplace(name: str, x: float, materials):
     for course, z in enumerate((0.66, 0.94, 1.22, 1.50, 1.78)):
         cube(
             f"HOME_PROP_{name}_firebox_course_{course}",
-            (x, 6.552, z),
-            (0.86, 0.012, 0.010),
+            (x, 6.548, z),
+            (0.86, 0.020, 0.014),
             materials["stone_dark"],
         )
         offset = 0.24 if course % 2 else -0.24
         for joint, jx in enumerate((-0.52, 0.0, 0.52)):
             cube(
                 f"HOME_PROP_{name}_firebox_joint_{course}_{joint}",
-                (x + jx + offset, 6.548, z + 0.13),
-                (0.010, 0.012, 0.11),
+                (x + jx + offset, 6.545, z + 0.13),
+                (0.014, 0.020, 0.11),
                 materials["stone_dark"],
             )
+    # Years of smoke darken the top of the firebox first; a soft-edged band under
+    # the mantel reads as staining without adding a decal-looking shape.
+    cube(f"HOME_PROP_{name}_firebox_soot", (x, 6.535, 1.80), (0.90, 0.016, 0.15), materials["charcoal"], bevel=0.05)
     cube(f"HOME_PROP_{name}_hearth", (x, 6.52, 0.88), (1.15, 0.10, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_hearth_slab", (x, 5.62, 0.28), (1.42, 0.46, 0.12), stone, bevel=0.05)
     # Ash and charcoal sit in front of the fire instead of leaving a perfectly
@@ -1130,7 +1133,9 @@ def add_fireplace(name: str, x: float, materials):
             hot,
             bevel=0.016,
         )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 240, (1.0, 0.24, 0.045), radius=1.10)
+    # The fire lights the room from flame height: falloff up the firebox wall keeps
+    # the brick courses readable instead of flooding them with flat orange.
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.40, 0.90), 340, (1.0, 0.24, 0.045), radius=0.90)
 
 
 def add_bookshelf(materials):
