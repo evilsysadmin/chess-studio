@@ -106,11 +106,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-4cac697ab3a8e89b.glb"
     },
     "pawnSlug.enemy.castV2": {
-      "bytes": 22986,
+      "bytes": 25386,
       "contentType": "image/webp",
-      "key": "pawn-slug/enemies/cast-v2/enemy-cast-v2-c5916980d21f2fa6.webp",
-      "sha256": "c5916980d21f2fa6c991b43c47dadc82c274606e52d85bb3b7784308115f6912",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-c5916980d21f2fa6.webp"
+      "key": "pawn-slug/enemies/cast-v2/enemy-cast-v2-0433d3f4640f2c13.webp",
+      "sha256": "0433d3f4640f2c13edd5b270fd17db10f3b22139b28dd496c4f885555a7c8f11",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-0433d3f4640f2c13.webp"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",

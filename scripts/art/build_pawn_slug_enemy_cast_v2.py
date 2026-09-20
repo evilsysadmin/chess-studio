@@ -22,7 +22,9 @@ if str(HERE) not in sys.path:
 
 from derive_pawn_slug_enemy_commando_v2 import acquire, decorate_commando, source_from_gdscript
 from derive_pawn_slug_enemy_grenadier_v2 import decorate_grenadier
+from derive_pawn_slug_enemy_knight_v2 import decorate_knight
 from derive_pawn_slug_enemy_queen_v2 import decorate_queen
+from derive_pawn_slug_enemy_rook_v2 import decorate_rook
 from derive_pawn_slug_enemy_scout_v2 import decorate_scout
 from derive_pawn_slug_enemy_shield_v2 import decorate_shield
 
@@ -32,11 +34,11 @@ BASE_ROWS = 3
 OUT_ROWS = 8
 ALPHA_FLOOR = 4
 EXPECTED_SOURCE = (COLS * CELL, BASE_ROWS * CELL)
-EXPECTED_WEBP_SHA256 = "c5916980d21f2fa6c991b43c47dadc82c274606e52d85bb3b7784308115f6912"
+EXPECTED_WEBP_SHA256 = "0433d3f4640f2c13edd5b270fd17db10f3b22139b28dd496c4f885555a7c8f11"
 ROW_SPECS = (
     ("pawn", 0, None),
-    ("knight", 1, None),
-    ("rook", 2, None),
+    ("knight", 1, decorate_knight),
+    ("rook", 2, decorate_rook),
     ("queen", 1, decorate_queen),
     ("grenadier", 0, decorate_grenadier),
     ("scout", 0, decorate_scout),
