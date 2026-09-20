@@ -1,0 +1,146 @@
+name: Fender sampler spike
+
+on:
+  push:
+    branches:
+      - audio/fender-sampler-spike-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Install renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fluidsynth p7zip-full ffmpeg
+
+      - name: Download sampled Fender bank
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p audio-spike/bank
+          curl -fL --retry 4 --retry-delay 2 \
+            'https://github.com/freepats/electric-guitar-FSBS-clean/releases/download/2026-08-07/EGuitarFSBS-clean-bridge-small-SF2-20260807.7z' \
+            -o /tmp/fender.7z
+          7z x -y /tmp/fender.7z -oaudio-spike/bank
+          find audio-spike/bank -type f -maxdepth 3 -print
+          SF2="$(find audio-spike/bank -type f -iname '*.sf2' | head -n1)"
+          test -n "$SF2"
+          printf '%s\n' "$SF2" > audio-spike/sf2-path.txt
+          sha256sum "$SF2" > audio-spike/sf2-sha256.txt
+
+      - name: Build original rising-riff MIDI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          PPQ = 480
+          BPM = 158
+          beat = PPQ
+          bar = 4 * beat
+
+          def vlq(n):
+              out=[n & 0x7f]
+              n >>= 7
+              while n:
+                  out.append((n & 0x7f) | 0x80)
+                  n >>= 7
+              return bytes(reversed(out))
+
+          events=[]
+          def add(tick, order, data):
+              events.append((int(tick), order, bytes(data)))
+
+          tempo = round(60_000_000 / BPM)
+          add(0, 0, b'\xff\x51\x03' + tempo.to_bytes(3,'big'))
+          add(0, 1, bytes([0xC0, 0]))       # only preset in the dedicated guitar bank
+          add(0, 1, bytes([0xB0, 7, 112]))  # volume
+          add(0, 1, bytes([0xB0, 10, 64]))  # center pan
+
+          # Original 8-bar phrase: sparse -> answer -> scale -> harmony-like peak.
+          # E natural minor palette; timings intentionally breathe.
+          bars = [
+              [(0.00,64,.82,96),(1.75,67,.48,88),(3.00,71,.66,100)],
+              [(0.00,71,.46,96),(.75,74,.34,90),(1.50,76,.68,105),(2.75,74,.28,88),(3.25,71,.44,94)],
+              [(0.00,64,.18,88),(.50,66,.18,88),(1.00,67,.18,91),(1.50,69,.18,94),
+               (2.00,71,.18,98),(2.50,72,.18,96),(3.00,74,.18,100),(3.50,76,.31,108)],
+              [(0.00,71,.18,92),(.375,72,.17,90),(.75,74,.17,94),(1.125,76,.19,98),
+               (1.50,79,.30,110),(2.125,76,.17,96),(2.50,74,.17,94),(2.875,72,.17,91),(3.25,71,.43,102)],
+              [(0.00,67,.72,96),(1.50,71,.42,92),(2.50,74,.55,101),(3.35,76,.35,106)],
+              [(0.00,69,.30,92),(.50,71,.30,94),(1.00,72,.30,96),(1.50,74,.42,102),
+               (2.50,76,.25,104),(3.00,74,.25,98),(3.50,71,.35,94)],
+              [(0.00,64,.16,88),(.375,66,.16,89),(.75,67,.16,91),(1.125,69,.16,94),
+               (1.50,71,.16,98),(1.875,72,.16,99),(2.25,74,.16,103),(2.625,76,.16,106),
+               (3.00,79,.18,112),(3.40,76,.36,105)],
+              [(0.00,76,.18,102),(.375,74,.17,98),(.75,72,.17,96),(1.125,71,.17,94),
+               (1.50,69,.17,92),(1.875,67,.17,90),(2.25,69,.17,94),(2.625,71,.17,98),
+               (3.00,74,.18,104),(3.40,76,.42,112)],
+          ]
+
+          # repeat with a slight octave-lift climax in the second pass
+          seq = bars + bars
+          for bi, phrase in enumerate(seq):
+              base = bi * bar
+              lift = 12 if bi >= 12 and bi % 4 == 3 else 0
+              for pos, note, dur_b, vel in phrase:
+                  st = base + round(pos * beat)
+                  dur = max(30, round(dur_b * beat))
+                  n = min(84, note + lift)
+                  add(st, 2, bytes([0x90, n, vel]))
+                  add(st + dur, 1, bytes([0x80, n, 0]))
+
+          events.sort(key=lambda x:(x[0],x[1]))
+          track=bytearray()
+          last=0
+          for tick, _, data in events:
+              track += vlq(tick-last) + data
+              last=tick
+          track += b'\x00\xff\x2f\x00'
+
+          midi = b'MThd' + struct.pack('>IHHH',6,0,1,PPQ)
+          midi += b'MTrk' + struct.pack('>I',len(track)) + track
+          Path('audio-spike/rising-riff.mid').write_bytes(midi)
+          print('midi bytes', len(midi))
+          PY
+
+      - name: Render sampled guitar
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SF2="$(cat audio-spike/sf2-path.txt)"
+          fluidsynth -ni -g 0.75 -r 44100 -F audio-spike/fender-rising-riff-raw.wav "$SF2" audio-spike/rising-riff.mid
+          ffmpeg -hide_banner -loglevel error -y \
+            -i audio-spike/fender-rising-riff-raw.wav \
+            -af "highpass=f=90,lowpass=f=10500,acompressor=threshold=-18dB:ratio=2.2:attack=18:release=100,loudnorm=I=-16:TP=-1.2:LRA=10" \
+            audio-spike/fender-rising-riff-master.wav
+          ffmpeg -hide_banner -loglevel error -y \
+            -i audio-spike/fender-rising-riff-master.wav -t 24 \
+            audio-spike/fender-rising-riff-preview-24s.wav
+
+      - name: Write manifest
+        shell: bash
+        run: |
+          {
+            echo 'Source: FreePats FSBS Electric Guitar Clean #1, small SF2, bridge pickup'
+            echo 'License: CC0 1.0'
+            echo 'Version: 2026-08-07'
+            echo 'Renderer:'
+            fluidsynth --version || true
+            echo 'Files:'
+            find audio-spike -maxdepth 3 -type f -printf '%p %s bytes\n'
+          } > audio-spike/MANIFEST.txt
+
+      - name: Upload audio toolchain artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-fender-sampler-spike
+          path: audio-spike/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
