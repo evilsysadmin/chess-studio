@@ -11,7 +11,6 @@ on:
 permissions:
   contents: read
   actions: read
-# running generation finishes while newer pending.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
@@ -252,12 +251,8 @@ jobs:
             echo "::notice title=Frontend fallback::Artifact exacto ausente o inválido; se recompilará en staging."
           fi
           echo "hit=$hit" >> "$GITHUB_OUTPUT"
-      - name: Cloudflare bootstrap contract smoke
-        run: python3 -S scripts/cloudflare_staging_pages_smoke.py
-      - name: Validate Cloudflare auth rate-limit contract
-        run: python3 -S scripts/cloudflare_auth_rate_limit.py --self-test
-      - name: Reconcile Cloudflare auth rate-limit
-        run: python3 scripts/cloudflare_auth_rate_limit.py
+      - name: CF auth guard
+        run: python3 -S scripts/cloudflare_staging_pages_smoke.py && python3 -S scripts/cloudflare_auth_rate_limit.py --self-test && python3 scripts/cloudflare_auth_rate_limit.py
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
