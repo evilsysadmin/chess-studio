@@ -627,5 +627,117 @@
       "damage": 90,
       "lead": 78
     }
+  ],
+  "dressing": [
+    {
+      "kind": "crate",
+      "x": 460,
+      "y": 607,
+      "size": 34
+    },
+    {
+      "kind": "barrel",
+      "x": 524,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 1020,
+      "y": 607,
+      "size": 40
+    },
+    {
+      "kind": "barrel",
+      "x": 1084,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 1580,
+      "y": 607,
+      "size": 34
+    },
+    {
+      "kind": "barrel",
+      "x": 1644,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 2140,
+      "y": 607,
+      "size": 40
+    },
+    {
+      "kind": "barrel",
+      "x": 2204,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 2700,
+      "y": 607,
+      "size": 34
+    },
+    {
+      "kind": "barrel",
+      "x": 2764,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 3260,
+      "y": 607,
+      "size": 40
+    },
+    {
+      "kind": "barrel",
+      "x": 3324,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 3820,
+      "y": 607,
+      "size": 34
+    },
+    {
+      "kind": "barrel",
+      "x": 3884,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 4380,
+      "y": 607,
+      "size": 40
+    },
+    {
+      "kind": "barrel",
+      "x": 4444,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 4940,
+      "y": 607,
+      "size": 34
+    },
+    {
+      "kind": "barrel",
+      "x": 5004,
+      "y": 608
+    },
+    {
+      "kind": "crate",
+      "x": 5500,
+      "y": 607,
+      "size": 40
+    },
+    {
+      "kind": "barrel",
+      "x": 5564,
+      "y": 608
+    }
   ]
 }
