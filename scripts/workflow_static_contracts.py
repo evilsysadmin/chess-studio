@@ -65,9 +65,8 @@ def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     )
     workflow = (root / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
     required = (
-        "name: Validate Cloudflare auth rate-limit contract",
+        "name: CF auth guard",
         "python3 -S scripts/cloudflare_auth_rate_limit.py --self-test",
-        "name: Reconcile Cloudflare auth rate-limit",
         "python3 scripts/cloudflare_auth_rate_limit.py",
         "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}",
         "CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
