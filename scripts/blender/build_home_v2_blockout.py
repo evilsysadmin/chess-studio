@@ -1538,7 +1538,8 @@ def add_armor(materials):
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
+    helmet = sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
+    helmet.rotation_euler[2] = math.radians(-1.4)
     cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.205, 0.040, 0.042), dark, bevel=0.012)
     for slot, sx in enumerate((-0.11, -0.055, 0.0, 0.055, 0.11)):
         cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.308, 2.82), (0.012, 0.008, 0.018), dark, bevel=0.004)
@@ -1594,15 +1595,18 @@ def add_armor(materials):
 
     # Weapon rack frames the armour without becoming part of its body.
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
+        lean = (-0.045, 0.028, -0.020, 0.052)[idx]
+        tip_z = (3.60, 3.66, 3.62, 3.69)[idx]
+        shaft_top_x = wx + lean
         curve_tube(
             f"HOME_PROP_armor_weapon_{idx}",
-            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.48)],
+            [(wx, y + 0.10, 0.45), (shaft_top_x, y + 0.08, tip_z - 0.15)],
             0.030,
             dark,
         )
         cone(
             f"HOME_PROP_armor_weapon_tip_{idx}",
-            (wx, y + 0.08, 3.63),
+            (shaft_top_x, y + 0.08, tip_z),
             0.075 if idx % 2 == 0 else 0.060,
             0.008,
             0.30 if idx % 2 == 0 else 0.24,
@@ -1611,7 +1615,7 @@ def add_armor(materials):
         )
         cube(
             f"HOME_PROP_armor_weapon_guard_{idx}",
-            (wx, y + 0.075, 3.39),
+            (wx + lean * 0.86, y + 0.075, tip_z - 0.24),
             (0.12 if idx % 2 == 0 else 0.09, 0.020, 0.020),
             brass if idx % 2 == 0 else steel,
             bevel=0.008,
