@@ -9,7 +9,8 @@ import hollowBellTower from './maps/hollow-bell-tower.json';
 import blackGlassChapel from './maps/black-glass-chapel.json';
 import echoCistern from './maps/echo-cistern.json';
 
-export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
+const CANONICAL_CHRONICLES_MAP_ID = 'crypt-eight-squares';
+export let DEFAULT_CHRONICLES_MAP_ID = CANONICAL_CHRONICLES_MAP_ID;
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
 const SUPPORTED_ACTIVATIONS = new Set(['always']);
@@ -272,6 +273,15 @@ export function chroniclesInstallRuntimeMapDefinition(source) {
 
 export function chroniclesClearRuntimeMapDefinitions() {
   RUNTIME_MAPS.clear();
+  DEFAULT_CHRONICLES_MAP_ID = CANONICAL_CHRONICLES_MAP_ID;
+}
+
+export function chroniclesSetRuntimeEntryMapId(mapId) {
+  if (!MAP_IDS.has(mapId)) {
+    throw new Error(`Chronicles runtime entry map ${mapId || '<missing>'} has no bundled fallback`);
+  }
+  DEFAULT_CHRONICLES_MAP_ID = mapId;
+  return DEFAULT_CHRONICLES_MAP_ID;
 }
 
 export function chroniclesMapById(mapId = DEFAULT_CHRONICLES_MAP_ID) {
