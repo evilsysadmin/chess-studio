@@ -524,6 +524,24 @@ def run_checks(
         ),
     ) and passed
 
+    production_oci_stdout_log_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-backend-production-stdout"}'
+        ' | json | __error__="" | event="http_request"'
+        f' [{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": production_oci_stdout_log_query, "time": str(now)},
+    )
+    production_oci_stdout_ok = _vector_positive(payload)
+    passed = _report(
+        "oci_backend_production_stdout_logs",
+        production_oci_stdout_ok,
+        "production OCI backend stdout reached Loki"
+        if production_oci_stdout_ok
+        else "no structured production OCI backend stdout in Loki",
+    ) and passed
+
     log_explorer_default_query = (
         'sum(count_over_time({service_name="chess-studio-backend"}'
         ' | json | __error__=""'

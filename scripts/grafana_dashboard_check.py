@@ -74,6 +74,16 @@ def main() -> int:
         for panel in (explorer_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
+    explorer_raw = (INFRA / "dashboards" / "chess-studio-log-explorer.json").read_text(encoding="utf-8")
+    for token in (
+        'production OCI stdout : {service_name=',
+        'staging OCI stdout : {service_name=',
+        'chess-studio-oci-backend-production-stdout',
+        'chess-studio-oci-backend-staging-stdout',
+        'Raw logs · texto/regex',
+    ):
+        if token not in explorer_raw:
+            fail(f"log explorer no expone OCI stdout: {token}")
     for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
         if token not in explorer_exprs:
             fail(f"log explorer no aplica {token}")
@@ -163,7 +173,9 @@ def main() -> int:
         'chess-studio-oci-log-probe-staging',
         'oci_filelog_probe',
         'oci_backend_stdout_logs',
+        'oci_backend_production_stdout_logs',
         'chess-studio-oci-backend-staging-stdout',
+        'chess-studio-oci-backend-production-stdout',
         'EXPECTED_STAGING_SHA',
         'log_explorer_default_query',
         '| json | __error__=""',
@@ -392,7 +404,7 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'staging stdout : {service_name=', 'multi-environment'):
+    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
         if token not in infra_logs:
             fail(f"Loki debe permitir separar producción/staging: {token}")
 
@@ -419,7 +431,11 @@ def main() -> int:
         'chess-studio-alloy-self',
         'otelcol.storage.file "oci_backend_stdout"',
         'otelcol.receiver.filelog "oci_backend_stdout"',
-        '/var/lib/chess-studio/observability/*-json.log',
+        '/var/lib/chess-studio/observability/backend-json.log',
+        'otelcol.storage.file "oci_filelog_probe"',
+        'otelcol.receiver.filelog "oci_filelog_probe"',
+        '/var/lib/chess-studio/observability/alloy-probe-*-json.log',
+        'start_at      = "beginning"',
         'sys.env("OCI_LOG_SERVICE_NAME")',
         '"deployment.environment.name"',
         'type = "container"',
@@ -432,6 +448,15 @@ def main() -> int:
     ):
         if token not in oci_alloy:
             fail(f"OCI Alloy no etiqueta/exporta correctamente: {token}")
+    if 'chmod 0644 "$tmp"  mv -f "$tmp" "$state_file"' in oci_deploy:
+        fail("deploy OCI no debe concatenar chmod y mv al registrar deployed.sha")
+    for token in (
+        'chmod 0644 "$tmp"',
+        'mv -f "$tmp" "$state_file"',
+    ):
+        if token not in oci_deploy:
+            fail(f"deploy OCI no registra deployed.sha de forma atómica: {token}")
+
     for token in (
         'start_observability_best_effort',
         'prepare_backend_log_link',

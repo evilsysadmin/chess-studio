@@ -112,12 +112,45 @@ otelcol.receiver.prometheus "oci_host" {
 // Docker-json probe file. Alloy never receives the Docker socket and therefore
 // gains no Docker control-plane privileges.
 otelcol.storage.file "oci_backend_stdout" {}
+otelcol.storage.file "oci_filelog_probe" {}
 
 otelcol.receiver.filelog "oci_backend_stdout" {
-  include       = ["/var/lib/chess-studio/observability/*-json.log"]
+  include       = ["/var/lib/chess-studio/observability/backend-json.log"]
   start_at      = "end"
   poll_interval = "500ms"
   storage       = otelcol.storage.file.oci_backend_stdout.handler
+
+  operators = [{
+    type = "container"
+  }]
+
+  resource = {
+    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME")
+    "deployment.environment.name" = sys.env("ENVIRONMENT")
+    "cloud.provider"               = "oci"
+    "cloud.region"                 = "eu-frankfurt-1"
+    "service.version"              = sys.env("GIT_COMMIT_SHA")
+  }
+
+  retry_on_failure {
+    enabled          = true
+    max_elapsed_time = "5m"
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+// The deterministic probe has its own receiver and starts at the beginning.
+// This removes the startup race where a probe written just after the container
+// entered "running" could still be skipped by a receiver that had not opened
+// the file yet. Probe files are tiny and short-lived, so replay is harmless.
+otelcol.receiver.filelog "oci_filelog_probe" {
+  include       = ["/var/lib/chess-studio/observability/alloy-probe-*-json.log"]
+  start_at      = "beginning"
+  poll_interval = "500ms"
+  storage       = otelcol.storage.file.oci_filelog_probe.handler
 
   operators = [{
     type = "container"

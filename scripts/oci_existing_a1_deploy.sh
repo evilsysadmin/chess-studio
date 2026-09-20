@@ -378,7 +378,8 @@ record_successful_backend() {
   local tmp
   tmp="$(mktemp "$state_dir/deployed.sha.XXXXXX")"
   printf '%s\n' "$successful_sha" >"$tmp"
-  chmod 0644 "$tmp"  mv -f "$tmp" "$state_file"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$state_file"
 }
 
 prepare_backend_log_link() {
