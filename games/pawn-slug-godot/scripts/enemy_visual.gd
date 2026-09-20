@@ -2,7 +2,7 @@ extends Node2D
 
 const BODY_FALLBACK_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
 const BODY_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
-const BODY_ATLAS_V2_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-0433d3f4640f2c13.webp"
+const BODY_ATLAS_V2_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-3ebbf4a9c5180051.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
