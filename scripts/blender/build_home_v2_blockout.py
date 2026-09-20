@@ -991,6 +991,21 @@ def add_side_furnishings(materials):
         bevel=0.06,
     )
     cube("HOME_PROP_left_sideboard", (-7.55, 2.62, 0.62), (1.30, 0.48, 0.62), wood, bevel=0.06)
+    cube("HOME_PROP_left_sideboard_top", (-7.55, 2.60, 1.27), (1.38, 0.50, 0.075), wood, bevel=0.035)
+    for idx, sy in enumerate((2.18, 2.56, 2.94)):
+        cube(
+            f"HOME_PROP_left_sideboard_drawer_{idx}",
+            (-7.55, sy, 0.72),
+            (1.06, 0.018, 0.14),
+            materials["dark"],
+            bevel=0.025,
+        )
+        sphere(
+            f"HOME_PROP_left_sideboard_handle_{idx}",
+            (-7.55, sy - 0.030, 0.72),
+            (0.050, 0.020, 0.050),
+            brass,
+        )
     cylinder("HOME_PROP_left_side_table", (-6.35, 2.35, 0.58), 0.54, 1.16, wood, vertices=24)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
     cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
