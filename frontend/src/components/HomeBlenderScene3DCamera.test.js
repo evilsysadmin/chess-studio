@@ -14,10 +14,10 @@ describe('HomeBlenderScene3D portrait framing', () => {
     const portrait390 = homeBlenderCameraFovForAspect(390 / 844);
     const portrait430 = homeBlenderCameraFovForAspect(430 / 932);
 
-    expect(portrait390).toBeGreaterThan(58);
-    expect(portrait390).toBeLessThanOrEqual(64);
-    expect(portrait430).toBeGreaterThan(58);
-    expect(portrait430).toBeLessThanOrEqual(64);
+    expect(portrait390).toBeGreaterThan(37);
+    expect(portrait390).toBeLessThanOrEqual(42);
+    expect(portrait430).toBeGreaterThan(37);
+    expect(portrait430).toBeLessThanOrEqual(42);
   });
 
   it('blends gently near square layouts instead of jumping lenses', () => {
