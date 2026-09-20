@@ -383,6 +383,10 @@ def main() -> int:
     for token in ('start_observability_best_effort', 'OCI_ALLOY state=degraded', 'CHESS_STUDIO_ALLOY_OK', 'record_successful_backend "$sha"'):
         if token not in oci_deploy:
             fail(f"deploy OCI perdió observabilidad fail-open: {token}")
+    run_command = (ROOT / "scripts" / "oci_run_command.py").read_text(encoding="utf-8")
+    for token in ("^OCI_ALLOY ", "^CHESS_STUDIO_ALLOY_OK "):
+        if token not in run_command:
+            fail(f"Run Command debe devolver diagnóstico Alloy seguro: {token}")
 
     print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · API publisher 4 dashboards · OTLP + Cloudflare edge")
     return 0
