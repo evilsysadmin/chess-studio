@@ -1197,7 +1197,7 @@ def add_gothic_canon_v2(static, mats):
     # instead of disappearing behind the upholstery.
     chair_x = 0.48
     cube("WR_CANON_command_chair_back", (chair_x, 6.44, 2.88), (0.45, 0.12, 0.53),
-         burgundy_dark, static, bevel=0.15)
+         mats["leather_dark"], static, bevel=0.15)
     for side in (-1, 1):
         side_x = chair_x + side * 0.56
         cube(f"WR_CANON_command_chair_side_{side}",
