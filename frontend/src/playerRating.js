@@ -132,7 +132,12 @@ export function ratingPeriodCheckpoints(history = [], now = new Date()) {
 }
 
 const CPU_RATING_ANCHORS = [
-  [0, 450],
+  // Nivel 0 debe poder cumplir de verdad el alivio provisional de -50 Elo
+  // para un perfil nuevo en el suelo de rating (400). Con 450 como mínimo,
+  // "Calibrando" prometía un rival más amable pero matemáticamente arrancaba
+  // ya +50 por encima. Esta escala sigue siendo una estimación interna hasta
+  // disponer de calibración empírica externa.
+  [0, 350],
   [20, 650],
   [45, 900],
   [60, 1100],

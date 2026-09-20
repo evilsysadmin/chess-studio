@@ -38,6 +38,13 @@ describe('quick-match Elo chaser', () => {
     expect(Math.abs(lead - QUICK_MATCH_TARGET_LEAD_ELO)).toBeLessThanOrEqual(15);
   });
 
+  it('honra el alivio provisional incluso en el suelo de rating', () => {
+    const difficulty = difficultyForQuickMatchRating(400, [], 0);
+    expect(difficulty).toBe(0);
+    expect(cpuRatingForDifficulty(difficulty)).toBe(350);
+    expect(cpuRatingForDifficulty(difficulty) - 400).toBe(-50);
+  });
+
   it('ramps provisional players from a gentle calibration toward the +50 target', () => {
     expect(provisionalQuickMatchLeadElo(0)).toBe(-50);
     expect(provisionalQuickMatchLeadElo(6)).toBe(0);
