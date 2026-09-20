@@ -121,6 +121,33 @@ def test_trace_export_diagnostics_exposes_counts_not_secrets(monkeypatch):
     assert "secret.example" not in str(diagnostics)
 
 
+def test_log_export_error_reports_safe_http_status():
+    import tracing
+    assert tracing._log_export_error(401, "FAILURE") == "http_401"
+    assert tracing._log_export_error(403, "FAILURE") == "http_403"
+    assert tracing._log_export_error(None, "FAILURE") == "export_failed"
+    assert tracing._log_export_error(200, "SUCCESS") is None
+
+
+def test_log_export_diagnostics_exposes_counts_not_secrets(monkeypatch):
+    import tracing
+    monkeypatch.setattr(tracing, "_LOG_EXPORT_STATE", {
+        "attemptCount": 4, "successCount": 1, "failureCount": 3,
+        "exportedLogCount": 7, "lastResult": "FAILURE",
+        "lastError": "http_403", "lastHttpStatus": 403,
+    })
+    diagnostics = tracing.tracing_diagnostics({
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://secret.example/otlp",
+        "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic super-secret",
+    })
+    assert diagnostics["logExporter"]["successCount"] == 1
+    assert diagnostics["logExporter"]["exportedLogCount"] == 7
+    assert diagnostics["logExporter"]["lastHttpStatus"] == 403
+    assert diagnostics["logExporter"]["lastError"] == "http_403"
+    assert "secret.example" not in str(diagnostics)
+    assert "super-secret" not in str(diagnostics)
+
+
 def test_generic_signal_url_is_normalized_back_to_shared_otlp_base():
     cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example/otlp/v1/traces"})
     assert cfg["trace_endpoint"] == "https://otlp.example/otlp/v1/traces"
