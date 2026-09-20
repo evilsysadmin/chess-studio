@@ -1550,6 +1550,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     materials = {
         "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8),
+        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.046, 0.044, 0.042, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8),
         "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0),
         "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2),
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
@@ -1677,7 +1678,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # rather than sitting on top of a solid slab.
     cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
-    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["stone"])
+    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"])
     # Shallow mortar courses turn the rear wall from one smooth slab into
     # readable castle masonry without adding heavy displacement geometry.
     for row, z in enumerate((0.70, 1.52, 2.34, 3.16, 3.98, 4.80, 5.62)):
