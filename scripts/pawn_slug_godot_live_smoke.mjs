@@ -163,17 +163,18 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   // with a crouch-only low catwalk (roughly x=420..610), followed by a crate.
   // The old "run + periodic jump" bot could never pass that tunnel and would
   // sit there getting shot until the pickup assertion failed.
+  // Neutralize the first pawn before crossing OPENING_SAFE_UNTIL_X. While
+  // Matthias is still at the spawn, enemies are not engaged and therefore do
+  // not perform grenade evasion; the opening grenade lands in the pawn's lane
+  // while the bot remains safely behind the activation boundary.
+  await keyboard.press('x');
+  await parent.waitForTimeout(1500);
+
   await keyboard.down('ArrowRight');
   try {
     // Run up to the tunnel without wasting several seconds crouch-walking from
     // the spawn, then hold crouch long enough to clear the low ceiling.
-    await parent.waitForTimeout(600);
-    // Throw while Matthias is still inside OPENING_SAFE_UNTIL_X. The grenade
-    // travels into the first pawn's lane while the bot crawls under the low
-    // catwalk, preventing the smoke runner from being shot to death during the
-    // deliberately slow crouch traversal.
-    await keyboard.press('x');
-    await parent.waitForTimeout(200);
+    await parent.waitForTimeout(800);
     await keyboard.down('ArrowDown');
     await parent.waitForTimeout(3300);
     await keyboard.up('ArrowDown');
