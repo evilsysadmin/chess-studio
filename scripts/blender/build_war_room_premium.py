@@ -1138,6 +1138,15 @@ def add_gothic_canon_v2(static, mats):
     sphere("WR_CANON_command_chair_crest", (chair_x, 6.30, 3.43), 0.30,
            mats["frame_wood"], static, scale=(1.72, 0.52, 0.48))
 
+    # V2 banker-lamp finish. The baseline green shade is deliberately simple;
+    # a thin brass lip and cap make it read as a physical desk lamp rather than
+    # a floating green ellipsoid at the gameplay camera distance.
+    lamp_rim = torus("WR_CANON_desk_lamp_rim", (-0.72, 5.56, 2.84), 0.34, 0.022,
+                     mats["brass_dark"], static)
+    lamp_rim.scale = (1.38, 0.66, 1.0)
+    sphere("WR_CANON_desk_lamp_cap", (-0.72, 5.56, 3.13), 0.055,
+           mats["brass_dark"], static, scale=(1.0, 0.82, 0.72))
+
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
     # structurally sound but their broad uninterrupted slabs read like toy
