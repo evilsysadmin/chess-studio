@@ -911,8 +911,17 @@ def add_gothic_canon_v2(static, mats):
     # lancet. Large, quiet rectangular masses give the eye somewhere to rest
     # and bring back the hierarchy that made the classic room feel inhabited.
     px = 4.86
-    cube("WR_CANON_campaign_frame_back", (px, 6.49, 4.95),
-         (1.46, 0.085, 0.94), mats["frame_wood"], static, bevel=0.075)
+    # Recess the campaign display into a darker wall bay so the right side reads
+    # as layered architecture rather than another bright ceremonial focal point.
+    cube("WR_CANON_campaign_recess", (px, 6.535, 4.95),
+         (1.78, 0.070, 1.20), mats["wall_recess"], static, bevel=0.045)
+    cube("WR_CANON_campaign_reveal_top", (px, 6.44, 6.06),
+         (1.72, 0.075, 0.065), mats["stone_dark"], static, bevel=0.025)
+    for side in (-1, 1):
+        cube(f"WR_CANON_campaign_reveal_side_{side}", (px + side * 1.66, 6.44, 4.95),
+             (0.065, 0.075, 1.06), mats["stone_dark"], static, bevel=0.022)
+    cube("WR_CANON_campaign_frame_back", (px, 6.38, 4.95),
+         (1.46, 0.075, 0.94), mats["frame_wood"], static, bevel=0.075)
     cube("WR_CANON_campaign_frame_outer", (px, 6.38, 4.95),
          (1.36, 0.045, 0.84), mats["brass_dark"], static, bevel=0.055)
     cube("WR_CANON_campaign_canvas", (px, 6.31, 4.95),
@@ -1007,8 +1016,8 @@ def add_gothic_canon_v2(static, mats):
     )):
         sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
                mats["fire"], static, scale=(sx, 0.40, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 258.0,
-          (1.0, 0.23, 0.05), static, radius=1.30)
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 205.0,
+          (1.0, 0.21, 0.045), static, radius=1.16)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
          mats["stone_light"], static, bevel=0.038)
@@ -1266,8 +1275,8 @@ def build():
     rear_left = light("WR_LIGHT_rear_wash_left", "AREA", (-5.7, 0.6, 5.7), 300.0,
                       (1.0, 0.58, 0.32), static, size=4.2)
     look_at(rear_left, (-4.5, 6.2, 3.35))
-    rear_right = light("WR_LIGHT_rear_wash_right", "AREA", (5.8, 0.7, 5.4), 255.0,
-                       (0.78, 0.68, 0.56), static, size=4.0)
+    rear_right = light("WR_LIGHT_rear_wash_right", "AREA", (5.8, 0.7, 5.4), 208.0,
+                       (0.72, 0.63, 0.54), static, size=4.0)
     look_at(rear_right, (4.8, 6.2, 3.35))
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
