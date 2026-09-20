@@ -1254,7 +1254,7 @@ def add_gothic_canon_v2(static, mats):
         (0.02, -0.24, 0.72, 0.62, -0.12),
     )):
         land = sphere(f"WR_CANON_globe_land_{index}", (gx + dx, gy - 0.505, 1.53 + dz),
-                      0.115, mats["brass"], static, scale=(sx, 0.10, sz))
+                      0.115, heraldic_brass, static, scale=(sx, 0.10, sz))
         land.rotation_euler.y = angle
     cylinder("WR_CANON_globe_stem", (gx, gy, 0.82), 0.105, 0.78, mats["brass_dark"], static, vertices=24)
     cylinder("WR_CANON_globe_foot", (gx, gy, 0.38), 0.32, 0.10, mats["brass_dark"], static, vertices=28)
