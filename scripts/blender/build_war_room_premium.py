@@ -1358,7 +1358,7 @@ def validate():
         "WR_ANCHOR_board_origin", "WR_FIREPLACE_body", "WR_DESK_top", "WR_DESK_apron", "WR_CREST_plaque",
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
-        "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
+        "WR_ARMOR_belt_-1",
         "WR_CANON_banner_1",
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
