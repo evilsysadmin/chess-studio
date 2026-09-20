@@ -1576,17 +1576,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.66, 0.055, 0.004, 1),
-            roughness=0.30,
-            emission=(1.0, 0.09, 0.006, 1),
-            emission_strength=0.10,
+            (0.50, 0.13, 0.008, 1),
+            roughness=0.34,
+            emission=(1.0, 0.22, 0.020, 1),
+            emission_strength=0.08,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (1.0, 0.56, 0.09, 1),
-            roughness=0.24,
-            emission=(1.0, 0.30, 0.020, 1),
-            emission_strength=0.18,
+            (1.0, 0.52, 0.08, 1),
+            roughness=0.26,
+            emission=(1.0, 0.42, 0.050, 1),
+            emission_strength=0.12,
         ),
     }
 
@@ -1807,29 +1807,29 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Home distance; separate lobes collapse into a row of candle-like spikes.
     sphere(
         "HOME_PROP_fireplace_left_front_ember_glow",
-        (-6.15, 5.400, 0.595),
+        (-6.15, 5.400, 0.700),
         (0.62, 0.026, 0.070),
         materials["fire"],
     )
     # Rounded overlapping lobes keep the fire organic at Home distance.
     # The old single polygon mass read as a row of pink triangular teeth.
     for idx, (dx, flame_w, flame_h, tilt) in enumerate((
-        (-0.38, 0.15, 0.13, -8.0),
-        (-0.18, 0.18, 0.19, 7.0),
-        (0.03, 0.19, 0.23, -4.0),
-        (0.23, 0.17, 0.17, 8.0),
-        (0.40, 0.13, 0.12, -6.0),
+        (-0.36, 0.11, 0.14, -8.0),
+        (-0.17, 0.12, 0.20, 7.0),
+        (0.03, 0.13, 0.25, -4.0),
+        (0.22, 0.11, 0.18, 8.0),
+        (0.38, 0.10, 0.13, -6.0),
     )):
         lobe = sphere(
             f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            (-6.15 + dx, 5.378, 0.60 + flame_h * 0.56),
+            (-6.15 + dx, 5.378, 0.72 + flame_h * 0.56),
             (flame_w, 0.028, flame_h),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            (-6.15 + dx * 0.94, 5.342, 0.60 + flame_h * 0.34),
+            (-6.15 + dx * 0.94, 5.342, 0.70 + flame_h * 0.34),
             (flame_w * 0.44, 0.019, flame_h * 0.46),
             materials["fire_hot"],
         )
@@ -2101,33 +2101,33 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for idx, dx in enumerate((-0.44, -0.15, 0.15, 0.44)):
         sphere(
             f"HOME_PROP_fireplace_right_front_ember_{idx}",
-            (4.45 + dx, 5.405, 0.585 + 0.010 * (idx % 2)),
+            (4.45 + dx, 5.405, 0.690 + 0.010 * (idx % 2)),
             (0.125, 0.020, 0.038),
             materials["fire_hot"] if idx % 2 else materials["fire"],
         )
     for idx, (dx, flame_w, flame_h, tilt) in enumerate((
-        (-0.34, 0.14, 0.12, -8.0),
-        (-0.12, 0.16, 0.17, 6.0),
-        (0.12, 0.16, 0.15, -4.0),
-        (0.34, 0.13, 0.11, 8.0),
+        (-0.32, 0.105, 0.13, -8.0),
+        (-0.10, 0.115, 0.18, 6.0),
+        (0.11, 0.110, 0.16, -4.0),
+        (0.32, 0.100, 0.12, 8.0),
     )):
         base = sphere(
             f"HOME_PROP_fireplace_right_front_base_{idx}",
-            (4.45 + dx, 5.390, 0.625),
+            (4.45 + dx, 5.390, 0.735),
             (flame_w * 1.10, 0.026, 0.060),
             materials["fire"],
         )
         base.rotation_euler[1] = math.radians(tilt * 0.18)
         lobe = sphere(
             f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            (4.45 + dx, 5.375, 0.60 + flame_h * 0.56),
+            (4.45 + dx, 5.375, 0.72 + flame_h * 0.56),
             (flame_w, 0.026, flame_h),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            (4.45 + dx * 0.96, 5.340, 0.60 + flame_h * 0.34),
+            (4.45 + dx * 0.96, 5.340, 0.70 + flame_h * 0.34),
             (flame_w * 0.43, 0.019, flame_h * 0.45),
             materials["fire_hot"],
         )
