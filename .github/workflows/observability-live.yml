@@ -32,8 +32,11 @@ jobs:
       GRAFANA_SLO_MAX_P95_MS: ${{ vars.GRAFANA_SLO_MAX_P95_MS || '3000' }}
       GRAFANA_SLO_MAX_HOST_RAM_PERCENT: ${{ vars.GRAFANA_SLO_MAX_HOST_RAM_PERCENT || '90' }}
       GRAFANA_SLO_MIN_REQUESTS_15M: ${{ vars.GRAFANA_SLO_MIN_REQUESTS_15M || '20' }}
+      EXPECTED_STAGING_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - name: Static self-test
         run: python3 -S scripts/grafana_live_check.py --self-test
       - name: Warm production + staging telemetry
@@ -42,7 +45,8 @@ jobs:
           set -euo pipefail
           for url in \
             "https://api.chess-studio.shadowops.dpdns.org/api/ready" \
-            "https://api-staging.chess-studio.shadowops.dpdns.org/api/ready"
+            "https://api-staging.chess-studio.shadowops.dpdns.org/api/ready" \
+            "https://api-staging.chess-studio.shadowops.dpdns.org/api/release"
           do
             curl --fail --silent --show-error --max-time 10 "$url" >/dev/null
           done
@@ -57,7 +61,8 @@ jobs:
             echo '### Observability live'
             echo
             echo '- OCI staging host metrics + scoped backend stdout logs: queried from Grafana'
-            echo '- Alloy self-telemetry: same OTLP path distinguishes transport from host scrape failures'
+            echo '- Alloy self-telemetry + deterministic filelog probe distinguish transport from backend capture failures'
+            echo "- Deploy-triggered checks pin telemetry to: `${EXPECTED_STAGING_SHA:-scheduled/current}`"
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"

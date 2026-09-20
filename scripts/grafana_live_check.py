@@ -271,15 +271,21 @@ def run_checks(
     max_p95_ms: float,
     max_host_ram_percent: float,
     min_requests_15m: int,
+    expected_staging_sha: str | None,
 ) -> bool:
     now = int(time.time())
+    version_selector = (
+        f'service_version="{expected_staging_sha}"'
+        if expected_staging_sha
+        else 'service_version=~".+"'
+    )
     start = now - lookback_seconds
     passed = True
 
     host_inventory_payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
         {
-            "query": 'count by (job, service_name, deployment_environment, cloud_provider, cloud_region) ({__name__=~"node_.*"})',
+            "query": 'count by (job, service_name, deployment_environment, cloud_provider, cloud_region, service_version) ({__name__=~"node_.*"})',
             "time": str(now),
         },
     )
@@ -290,6 +296,7 @@ def run_checks(
             "deployment_environment": str(row["metric"].get("deployment_environment") or ""),
             "cloud_provider": str(row["metric"].get("cloud_provider") or ""),
             "cloud_region": str(row["metric"].get("cloud_region") or ""),
+            "service_version": str(row["metric"].get("service_version") or ""),
             "series": int(row["value"]),
         }
         for row in _vector_metric_rows(host_inventory_payload)
@@ -300,8 +307,8 @@ def run_checks(
     }, separators=(",", ":"), sort_keys=True))
 
     metric_checks = {
-        "alloy_self_staging": 'count({service_name="chess-studio-alloy-self",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
-        "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
+        "alloy_self_staging": f'count({{service_name="chess-studio-alloy-self",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",{version_selector}}})',
+        "oci_host_staging": f'count({{service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",{version_selector}}})',
         "backend_production_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend"}}[{lookback_seconds}s]))',
         "backend_staging_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))',
     }
@@ -433,7 +440,48 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
-    oci_stdout_log_query = f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}[{lookback_seconds}s]))'
+    loki_inventory_query = (
+        f'sum by (service_name) (count_over_time({{service_name=~"chess-studio.*"}}[{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": loki_inventory_query, "time": str(now)},
+    )
+    loki_service_inventory = [
+        {
+            "service_name": str(row["metric"].get("service_name") or ""),
+            "lines": int(row["value"]),
+        }
+        for row in _vector_metric_rows(payload)
+    ]
+    print(json.dumps({
+        "check": "loki_service_inventory",
+        "rows": loki_service_inventory,
+    }, separators=(",", ":"), sort_keys=True))
+
+    probe_filters = ' |= "oci_alloy_probe"'
+    if expected_staging_sha:
+        probe_filters += f' |= "{expected_staging_sha}"'
+    oci_probe_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
+        f'{probe_filters} [{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": oci_probe_query, "time": str(now)},
+    )
+    ok = _vector_positive(payload)
+    passed = _report(
+        "oci_filelog_probe",
+        ok,
+        "Alloy filelog probe reached Loki" if ok else "Alloy filelog probe missing from Loki",
+    ) and passed
+
+    oci_stdout_log_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
+        ' | json | __error__="" | event="http_request"'
+        f' [{lookback_seconds}s]))'
+    )
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
         {"query": oci_stdout_log_query, "time": str(now)},
@@ -442,7 +490,7 @@ def run_checks(
     passed = _report(
         "oci_backend_stdout_logs",
         ok,
-        "queryable OCI backend stdout in Loki" if ok else "no matching OCI backend stdout in Loki",
+        "structured backend stdout reached Loki" if ok else "no structured backend stdout in Loki",
     ) and passed
 
     log_explorer_default_query = (
@@ -537,6 +585,12 @@ def main() -> int:
     metrics_uid = os.getenv("GRAFANA_METRICS_DATASOURCE_UID", "").strip()
     logs_uid = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "").strip()
     traces_uid = os.getenv("GRAFANA_TRACES_DATASOURCE_UID", "").strip()
+    expected_staging_sha = os.getenv("EXPECTED_STAGING_SHA", "").strip().lower()
+    if expected_staging_sha and (
+        len(expected_staging_sha) != 40
+        or any(ch not in "0123456789abcdef" for ch in expected_staging_sha)
+    ):
+        fail("EXPECTED_STAGING_SHA must be an empty value or a 40-character git SHA")
     api = GrafanaReadApi(os.getenv("GRAFANA_URL", ""), os.getenv("GRAFANA_AUTH", ""))
     datasources = api.get_list("/api/datasources")
     if datasources is not None:
@@ -564,6 +618,7 @@ def main() -> int:
         max_p95_ms=args.max_p95_ms,
         max_host_ram_percent=args.max_host_ram_percent,
         min_requests_15m=args.min_requests_15m,
+        expected_staging_sha=expected_staging_sha or None,
     ) else 1
 
 
