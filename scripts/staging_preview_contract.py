@@ -132,6 +132,9 @@ def main() -> int:
         ("for attempt in {1..76}; do", "generation watcher patience budget"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
         ("OCI fallback avoided", "late watcher completion re-check"),
+        ("Re-check main before OCI fallback", "late stale-generation guard"),
+        ("OCI fallback superseded", "stale fallback short-circuit"),
+        ("Resolve backend generation state", "backend supersession output"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
@@ -265,6 +268,12 @@ def main() -> int:
             blocks["smoke"],
             "needs: [prepare, backend, frontend, worker]",
             "smoke espera las tres ramas de deploy",
+            errors,
+        )
+        require(
+            blocks["smoke"],
+            "needs.backend.outputs.superseded != 'true'",
+            "smoke omite generaciones backend superseded",
             errors,
         )
         for needle, label in (
