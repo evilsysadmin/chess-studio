@@ -1,11 +1,16 @@
 {
   "worksheet": "matthias-pawn-slug-godot-v16",
-  "status": "candidate-awaiting-ci-visual-review",
+  "status": "validated-promoted-runtime",
   "validated_contract": {
     "generation": "strict-v16",
     "source_generation": "strict-v15",
     "reference_generation": "strict-v15 machinegun",
-    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "weapons": [
+      "pistol",
+      "machinegun",
+      "shotgun",
+      "panzerfaust"
+    ],
     "actions": 18,
     "frames_per_action": 8,
     "cell_size": 416,
@@ -36,7 +41,7 @@
     "machinegun": {
       "changed_rgb_pixels": 0,
       "reference_passthrough": true,
-      "max_luma_spread_delta": 0.0
+      "max_luma_spread_delta": 0
     },
     "shotgun": {
       "changed_rgb_pixels": 2984771,
@@ -57,7 +62,67 @@
     "known_limit": "machinegun still has an older structural/proportion divergence from the other three banks; v16 intentionally does not claim to solve geometry"
   },
   "resume": {
-    "next": "run strict-v16 CI for all four weapons, inspect every v15→v16 review PNG, then decide whether the material harmonisation is strong enough to promote",
-    "source_of_truth": "promoted strict-v15 runtime plus strict-v16 workflow artifacts"
+    "next": "use strict-v16 as runtime baseline; fix the historical machinegun structural/proportion divergence in a separate candidate without regressing weapon semantics",
+    "source_of_truth": "runtime FULL_ATLAS_URLS plus strict-v16 worksheet and immutable R2 assets"
+  },
+  "runtime_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/pistol/v16-670506b5307a1756.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/machinegun/v16-32227acfdc2e0cff.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png"
+  },
+  "ci_evidence": {
+    "candidate_pr": 3270,
+    "candidate_commit": "1e55989fb99c84e8575e4ac26d6290b7db02aad4",
+    "candidate_run": 35511999672,
+    "publish_main_commit": "2c5a68748fba73b149773123194a25e427899953",
+    "publish_run": 35512110463,
+    "godot": "4.7.2",
+    "health": {
+      "pistol": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 2787909,
+        "max_luma_spread_delta": 0.357,
+        "skin_reduction_pct": 74.37,
+        "body_reduction_pct": 81.73
+      },
+      "machinegun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 0,
+        "max_luma_spread_delta": 0,
+        "reference_passthrough": true
+      },
+      "shotgun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 2984771,
+        "max_luma_spread_delta": 0.507,
+        "skin_reduction_pct": 72.73,
+        "body_reduction_pct": 83.19
+      },
+      "panzerfaust": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 2645253,
+        "max_luma_spread_delta": 0.597,
+        "skin_reduction_pct": 75.51,
+        "body_reduction_pct": 82.76
+      }
+    },
+    "visual_review": "All four CI review PNGs inspected. Material harmonisation improves cross-weapon palette continuity without silhouette, pivot, foot-line, weapon, muzzle-flash or death/downed regressions. Machinegun structural/proportion divergence remains intentionally unresolved."
   }
 }
