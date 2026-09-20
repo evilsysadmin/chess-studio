@@ -54,7 +54,7 @@ runs:
         set -euo pipefail
         revision_url="https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions/${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION}.glb"
         probe_file="${RUNNER_TEMP}/war-room-v2-revision.glb"
-        deadline=$((SECONDS + 240))
+        deadline=$((SECONDS + 420))
         while (( SECONDS < deadline )); do
           rm -f "$probe_file"
           if curl -fsSL --max-time 15 -H 'Cache-Control: no-cache' \
