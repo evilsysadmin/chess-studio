@@ -1006,7 +1006,7 @@ def add_gothic_canon_v2(static, mats):
     cube("WR_CANON_campaign_frame_outer", (px, 6.38, 4.95),
          (1.36, 0.045, 0.84), mats["brass_dark"], static, bevel=0.055)
     cube("WR_CANON_campaign_canvas", (px, 6.31, 4.95),
-         (1.20, 0.028, 0.68), mats["wall_recess"], static, bevel=0.018)
+         (1.20, 0.028, 0.68), mats["leather_dark"], static, bevel=0.018)
     # Restrained campaign-map relief: a long front line, two route legs,
     # three field pins and one objective ring. The elements stay broad enough
     # to survive the gameplay camera while remaining subordinate to the board.
