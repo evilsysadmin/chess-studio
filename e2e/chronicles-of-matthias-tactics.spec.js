@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi, openMoreGameModes } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
 // Direct edits to this spec must schedule the specialized Chronicles browser lane.
 async function dismissGuide(page) {
@@ -29,6 +29,7 @@ async function openTactics(page, {
   const tacticalTable = page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' });
   await expect(tacticalTable).toBeVisible();
   await tacticalTable.click();
+  await confirmChroniclesCharacterSetup(page);
   if (expectReady) {
     await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
   }
