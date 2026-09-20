@@ -2171,6 +2171,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
         "rug": material("HOME_MAT_rug", (0.112, 0.015, 0.013, 1), roughness=0.94, bump_scale=24.0, bump_strength=0.065, variation=0.10, variation_scale=8.2, texture_profile="textile"),
         "rug_worn": material("HOME_MAT_rug_worn", (0.064, 0.012, 0.011, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug_thread": material("HOME_MAT_rug_thread", (0.26, 0.145, 0.040, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
         "banner": material("HOME_MAT_banner", (0.108, 0.010, 0.012, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0, texture_profile="textile"),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
@@ -2379,8 +2380,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["stone_grime"],
         )
 
-    # Narrow brass/brown rug border approximates the ornate woven edge from the master.
-    rug_border = materials["brass"]
+    # Woven ochre/gold thread reads as textile at grazing angles instead of
+    # reflecting like a strip of polished brass laid on top of the rug.
+    rug_border = materials["rug_thread"]
     cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
@@ -2405,15 +2407,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 f"HOME_PROP_rug_medallion_{row}_{col}",
                 (x, y, 0.060),
                 (0.055 + 0.010 * ((row + col) % 2), 0.055 + 0.010 * ((row + col) % 2), 0.010),
-                materials["gold"] if (row + col) % 3 == 0 else materials["stone_dark"],
+                materials["rug_thread"] if (row + col) % 3 == 0 else materials["stone_dark"],
             )
             motif.rotation_euler[2] = math.radians(45)
-    cube("HOME_PROP_rug_inner_front", (0, -1.42, 0.064), (2.86, 0.022, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
+    cube("HOME_PROP_rug_inner_front", (0, -1.42, 0.064), (2.86, 0.022, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
     rug_medallion_outer = cube(
         "HOME_PROP_rug_medallion_outer",
         (0.0, -0.72, 0.067),
@@ -2432,7 +2434,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "HOME_PROP_rug_medallion_core",
         (0.0, -0.72, 0.073),
         (0.11, 0.11, 0.007),
-        materials["gold"],
+        materials["rug_thread"],
     )
     rug_medallion_core.rotation_euler[2] = math.radians(45.0)
 
@@ -3276,14 +3278,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.89), (0.080, 0.080, 0.074), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.04 * math.cos(angle)
-        cy = 2.20 + 0.60 * math.sin(angle)
-        cz = 4.96 + 0.12 * math.sin(angle)
+        radial_jitter = (_hash01(idx, 0, 1501) - 0.5) * 0.045
+        tangential_jitter = (_hash01(idx, 1, 1511) - 0.5) * 0.030
+        cx = (1.04 + radial_jitter) * math.cos(angle) - tangential_jitter * math.sin(angle)
+        cy = 2.20 + (0.60 + radial_jitter * 0.45) * math.sin(angle) + tangential_jitter * math.cos(angle)
+        cz = 4.96 + 0.12 * math.sin(angle) + (_hash01(idx, 2, 1523) - 0.5) * 0.035
+        candle_height = 0.215 + _hash01(idx, 3, 1531) * 0.055
         cylinder(
             f"HOME_PROP_chandelier_candle_{idx}",
-            (cx, cy, cz + 0.15),
-            0.035,
-            0.24,
+            (cx, cy, cz + candle_height * 0.5 + 0.025),
+            0.033 + _hash01(idx, 4, 1543) * 0.004,
+            candle_height,
             materials["wax"],
             vertices=16,
         )
