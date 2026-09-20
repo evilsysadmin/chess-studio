@@ -122,6 +122,13 @@ export function chroniclesTacticsProfile(memberId) {
   return CLASS_PROFILES[memberId] || FALLBACK_PROFILE;
 }
 
+export function chroniclesTacticsEffectiveProfile(state, memberId) {
+  const base = chroniclesTacticsProfile(memberId);
+  const overrides = state?.rpgModifiers?.[memberId]?.profileOverrides;
+  if (!overrides || typeof overrides !== 'object') return base;
+  return { ...base, ...overrides };
+}
+
 function sameCell(left, right) {
   return left.x === right.x && left.y === right.y;
 }
@@ -346,7 +353,7 @@ export function chroniclesTacticsTargets(state, memberId) {
 }
 
 export function chroniclesTacticsAbilityStatus(state, memberId) {
-  const profile = chroniclesTacticsProfile(memberId);
+  const profile = chroniclesTacticsEffectiveProfile(state, memberId);
   const member = memberFor(state, memberId);
   const charges = abilityCharges(state, memberId);
   if (!actionAllowed(state) || !member || member.hp <= 0) {
@@ -376,7 +383,7 @@ export function chroniclesTacticsAbilityStatus(state, memberId) {
 export function chroniclesTacticsAbility(state, memberId) {
   const status = chroniclesTacticsAbilityStatus(state, memberId);
   if (!status.ready) return state;
-  const profile = chroniclesTacticsProfile(memberId);
+  const profile = chroniclesTacticsEffectiveProfile(state, memberId);
   const attacker = memberFor(state, memberId);
   if (!attacker) return state;
   const turns = Number(state.turns || 0) + 1;
