@@ -162,7 +162,9 @@ func _process(delta: float) -> void:
     _fire_flash = maxf(0.0, _fire_flash - delta)
     _surprise_remaining = maxf(0.0, _surprise_remaining - delta)
     if _muzzle_flash != null:
-        _muzzle_flash.visible = _fire_flash > 0.0
+        # Cast-v2 already contains the authored weapon and its silhouette.
+        # Do not flash at the legacy overlay socket underneath that weapon.
+        _muzzle_flash.visible = _fire_flash > 0.0 and not _uses_integrated_body_weapon()
 
     if enemy_type == "bishop":
         queue_redraw()
@@ -347,19 +349,34 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
     # remain authored facing right, so flip only the body inside FacingRoot.
     _body.scale = Vector2(-body_scale, body_scale)
     _body.position = Vector2(0.0, -REMOTE_BODY_CENTER_Y * body_scale)
+    _apply_weapon()
     _apply_body_frame()
+
+func _uses_integrated_body_weapon() -> bool:
+    return _using_remote_body and not _using_legacy_remote_body and enemy_type != "bishop"
 
 func _apply_weapon() -> void:
     if _weapon_sprite == null:
         return
-    var texture := load(WEAPON_ATLAS_PATH) as Texture2D
-    if texture == null:
+
+    var integrated_weapon := _uses_integrated_body_weapon()
+    if integrated_weapon:
+        # The current cast-v2 rows already carry their authored weapon. Keeping
+        # weapon_atlas.svg visible here draws a second gun over the hands/body.
         _weapon_sprite.visible = false
-        return
-    _weapon_sprite.texture = texture
-    _weapon_sprite.visible = true
-    var index := int(WEAPON_FRAME.get(weapon, 0))
-    _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+    else:
+        var texture := load(WEAPON_ATLAS_PATH) as Texture2D
+        if texture == null:
+            _weapon_sprite.visible = false
+            return
+        _weapon_sprite.texture = texture
+        _weapon_sprite.visible = true
+        var index := int(WEAPON_FRAME.get(weapon, 0))
+        _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+
+    # Keep the socket alive even for integrated cast-v2 art because gameplay
+    # still asks this visual node for the projectile origin. Only the duplicate
+    # drawn weapon and its detached muzzle flash are suppressed.
     var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
     var type_y_adjust := 0.0
     match enemy_type:
