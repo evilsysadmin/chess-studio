@@ -1137,7 +1137,7 @@ def add_gothic_canon_v2(static, mats):
           (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
-         mats["stone_light"], static, bevel=0.038)
+         mats["stone"], static, bevel=0.038)
     cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
          mats["charcoal"], static, bevel=0.022)
     cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
