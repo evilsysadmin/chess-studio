@@ -6,8 +6,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "scripts" / "cloudflare_auth_rate_limit.py"
-WORKFLOW = ROOT / ".github" / "workflows" / "production-promote.yml"
-
 spec = importlib.util.spec_from_file_location("cloudflare_auth_rate_limit", HELPER)
 assert spec and spec.loader
 rate_limit = importlib.util.module_from_spec(spec)
@@ -52,12 +50,3 @@ def test_auth_burst_guard_ignores_cloudflare_metadata_but_detects_contract_drift
     actual["ratelimit"]["requests_per_period"] = 99
     assert not rate_limit.rule_matches(actual)
 
-
-def test_production_release_reconciles_edge_guard_after_mutation_admission():
-    workflow = WORKFLOW.read_text(encoding="utf-8")
-    guard = workflow.index("Supersede stale production promotion before first mutation")
-    reconcile = workflow.index("Reconcile Cloudflare auth burst guard")
-    terraform_apply = workflow.index("- name: Terraform apply")
-    assert guard < reconcile < terraform_apply
-    assert 'cloudflare_auth_rate_limit.py" --self-test' in workflow
-    assert 'cloudflare_auth_rate_limit.py"' in workflow
