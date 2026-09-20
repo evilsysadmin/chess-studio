@@ -229,6 +229,18 @@ func _draw_waterfall() -> void:
             Color(0.58, 0.82, 0.84, 0.20 + float(lane % 3) * 0.035),
             3.0 + float(lane % 2),
         )
+        if lane % 2 == 0:
+            draw_line(
+                Vector2(base_x + 4.0, 0.0),
+                Vector2(base_x + sway + 7.0, h),
+                Color(0.78, 0.92, 0.92, 0.10),
+                1.5,
+            )
+    draw_rect(
+        Rect2(Vector2(-w * 0.5, h * 0.76), Vector2(w, h * 0.24)),
+        Color(0.42, 0.68, 0.70, 0.055),
+        true,
+    )
     for puff in range(7):
         var px := -w * 0.42 + float(puff) * w / 6.2
         var radius := 13.0 + float((puff * 7) % 9)
@@ -292,6 +304,26 @@ func _draw_destructible_barricade() -> void:
         draw_line(Vector2(-w * 0.44, y), Vector2(w * 0.44, y + float((plank % 2) * 6)), Color(0.10, 0.10, 0.09, 0.42), 4.0)
     draw_line(Vector2(-w * 0.40, -h * 0.88), Vector2(w * 0.36, -h * 0.12), Color(0.12, 0.11, 0.09, 0.55), 6.0)
     draw_line(Vector2(w * 0.34, -h * 0.88), Vector2(-w * 0.34, -h * 0.12), Color(0.12, 0.11, 0.09, 0.55), 6.0)
+    var crack_alpha := 0.14 + damage * 0.62
+    draw_line(
+        Vector2(-w * 0.18, -h * 0.82),
+        Vector2(-w * 0.05, -h * 0.48),
+        Color(0.04, 0.04, 0.035, crack_alpha),
+        2.0 + damage * 2.0,
+    )
+    draw_line(
+        Vector2(-w * 0.05, -h * 0.48),
+        Vector2(w * 0.12, -h * 0.28),
+        Color(0.04, 0.04, 0.035, crack_alpha),
+        2.0 + damage * 1.5,
+    )
+    if damage > 0.28:
+        draw_line(
+            Vector2(w * 0.17, -h * 0.72),
+            Vector2(w * 0.32, -h * 0.38),
+            Color(0.05, 0.045, 0.04, 0.28 + damage * 0.46),
+            2.5,
+        )
 
 func _draw_artillery_barrage() -> void:
     if not _warning:
@@ -331,3 +363,23 @@ func _draw_destructible_platform() -> void:
     draw_line(Vector2(-w * 0.5, -h * 0.34), Vector2(w * 0.5, -h * 0.34), Color(0.10, 0.10, 0.09, 0.44), 2.0)
     for x in range(int(-w * 0.5) + 18, int(w * 0.5) - 8, 34):
         draw_circle(Vector2(float(x), 0.0), 2.0, Color(0.70, 0.66, 0.54, 0.72))
+    var fracture := Color(0.05, 0.055, 0.052, 0.16 + damage * 0.64)
+    draw_line(
+        Vector2(-w * 0.20, -h * 0.28),
+        Vector2(-w * 0.06, h * 0.12),
+        fracture,
+        1.5 + damage * 2.0,
+    )
+    draw_line(
+        Vector2(-w * 0.06, h * 0.12),
+        Vector2(w * 0.11, -h * 0.05),
+        fracture,
+        1.5 + damage * 1.6,
+    )
+    if damage > 0.35:
+        draw_line(
+            Vector2(w * 0.22, -h * 0.26),
+            Vector2(w * 0.34, h * 0.18),
+            Color(fracture.r, fracture.g, fracture.b, minf(0.88, fracture.a + 0.12)),
+            2.0,
+        )
