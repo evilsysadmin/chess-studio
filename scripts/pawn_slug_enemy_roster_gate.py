@@ -24,6 +24,8 @@ REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
 ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "collapse_bridge", "waterfall", "tunnel_portal", "destructible_barricade", "destructible_platform", "artillery_barrage"}
 REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "destructible_platform", "artillery_barrage"}
+ALLOWED_DRESSING_KINDS = {"crate", "barrel", "sandbags"}
+MIN_DRESSING = 10
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
@@ -96,12 +98,35 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
 
     platforms = stage.get("platforms") or []
     obstacles = stage.get("obstacles") or []
+    dressing = stage.get("dressing") or []
     if len(platforms) < MIN_PLATFORMS:
         errors.append(f"{stage_name}: platform count {len(platforms)} < {MIN_PLATFORMS}")
     if len(obstacles) < MIN_OBSTACLES:
         errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
     errors += _rect_errors(stage_name, "platforms", platforms, width, height)
     errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+
+    if len(dressing) < MIN_DRESSING:
+        errors.append(f"{stage_name}: dressing count {len(dressing)} < {MIN_DRESSING}")
+    for index, prop in enumerate(dressing):
+        if not isinstance(prop, dict):
+            errors.append(f"{stage_name}: dressing[{index}] must be an object")
+            continue
+        kind = str(prop.get("kind", ""))
+        x = float(prop.get("x", -1))
+        y = float(prop.get("y", floor_y - 3.0))
+        if kind not in ALLOWED_DRESSING_KINDS:
+            errors.append(f"{stage_name}: dressing[{index}] has unsupported kind {kind!r}")
+        if not 0 <= x < width or not 0 <= y <= height:
+            errors.append(f"{stage_name}: dressing[{index}] leaves world bounds")
+        if kind == "crate":
+            size = float(prop.get("size", 32.0))
+            if not 22 <= size <= 64:
+                errors.append(f"{stage_name}: dressing crate size {size:g} outside 22..64")
+        elif kind == "sandbags":
+            count = int(prop.get("count", 5))
+            if not 3 <= count <= 9:
+                errors.append(f"{stage_name}: dressing sandbag count {count} outside 3..9")
 
     low_passages = 0
     platform_heights: set[int] = set()
@@ -415,6 +440,7 @@ def self_test() -> None:
             {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
+        "dressing": [{"kind": "crate", "x": 220 + i * 420, "y": 607, "size": 30} for i in range(10)],
         "setpieces": [
             {"id": "lift", "type": "moving_platform", "x": 900, "y": 360, "w": 140, "h": 24, "travel_y": 100, "period": 4.0},
             {"id": "bunker", "type": "bunker_turret", "x": 2500, "y": 610, "w": 126, "h": 82, "hp": 180, "trigger_x": 2000},
