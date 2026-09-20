@@ -45,7 +45,8 @@ export default function LabScreen({ onExit, onStart }){
   const [error,setError]=useState('');
 
   useEffect(() => {
-    if (labMode === 'pawnslug-godot') rememberLabMode(labMode);
+    const remembered = loadRememberedLabMode();
+    if (labMode === 'pawnslug-godot' || remembered === labMode) rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
 
