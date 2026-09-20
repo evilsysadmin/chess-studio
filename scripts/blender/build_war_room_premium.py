@@ -904,8 +904,8 @@ def add_gothic_canon_v2(static, mats):
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
     heraldic_brass = material(
-        "WR_MAT_canon_heraldic_brass", (0.58, 0.27, 0.060, 1),
-        metal=0.94, rough=0.22, coat=0.20, texture="metal", scale=22, bump=0.028,
+        "WR_MAT_canon_heraldic_brass", (0.72, 0.38, 0.085, 1),
+        metal=0.94, rough=0.20, coat=0.22, texture="metal", scale=22, bump=0.028,
     )
     horse_relief = static.objects.get("WR_CREST_horse_relief")
     if horse_relief is not None and horse_relief.data.materials:
@@ -1006,7 +1006,7 @@ def add_gothic_canon_v2(static, mats):
     cube("WR_CANON_campaign_frame_outer", (px, 6.38, 4.95),
          (1.36, 0.045, 0.84), mats["brass_dark"], static, bevel=0.055)
     cube("WR_CANON_campaign_canvas", (px, 6.31, 4.95),
-         (1.20, 0.028, 0.68), mats["wall_recess"], static, bevel=0.018)
+         (1.20, 0.028, 0.68), mats["leather_dark"], static, bevel=0.018)
     # Restrained campaign-map relief: a long front line, two route legs,
     # three field pins and one objective ring. The elements stay broad enough
     # to survive the gameplay camera while remaining subordinate to the board.
@@ -1137,7 +1137,7 @@ def add_gothic_canon_v2(static, mats):
           (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
-         mats["stone_light"], static, bevel=0.038)
+         mats["stone"], static, bevel=0.038)
     cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
          mats["charcoal"], static, bevel=0.022)
     cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
@@ -1202,12 +1202,12 @@ def add_gothic_canon_v2(static, mats):
         side_x = chair_x + side * 0.56
         cube(f"WR_CANON_command_chair_side_{side}",
              (side_x, 6.30, 2.90), (0.055, 0.11, 0.62),
-             mats["frame_wood"], static, bevel=0.032)
+             mats["trim_wood"], static, bevel=0.032)
         sphere(f"WR_CANON_command_chair_finial_{side}",
                (side_x, 6.30, 3.53), 0.080,
                mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
     cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
-         mats["frame_wood"], static, bevel=0.040)
+         mats["trim_wood"], static, bevel=0.040)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
