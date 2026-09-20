@@ -19,6 +19,7 @@ DENSITY_WINDOW = 600.0
 MAX_IN_WINDOW = 6
 MIN_PLATFORMS = 15
 MIN_OBSTACLES = 6
+ALLOWED_OBSTACLE_KINDS = {"barrels", "barricade", "bollards", "bunker_block", "cargo_crates", "container_stack", "crate", "crate_stack", "fallen_log", "rockfall", "root_mass", "sandbags", "stone_ruin"}
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
 MAX_GRENADIERS = 3
@@ -108,6 +109,12 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
     errors += _rect_errors(stage_name, "platforms", platforms, width, height)
     errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+    for index, obstacle in enumerate(obstacles):
+        if not isinstance(obstacle, dict):
+            continue
+        kind = str(obstacle.get("kind", ""))
+        if kind not in ALLOWED_OBSTACLE_KINDS:
+            errors.append(f"{stage_name}: obstacles[{index}] has unsupported kind {kind!r}")
 
     if len(dressing) < MIN_DRESSING:
         errors.append(f"{stage_name}: dressing count {len(dressing)} < {MIN_DRESSING}")
@@ -496,7 +503,7 @@ def self_test() -> None:
             {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
             {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
         ],
-        "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
+        "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60, "kind": "crate"} for i in range(7)],
         "dressing": [{"kind": "crate", "x": 220 + i * 420, "y": 607, "size": 30} for i in range(10)],
         "story_props": [{"kind": "front_wreck", "x": 260 + i * 760, "y": 608} for i in range(5)],
         "setpieces": [
