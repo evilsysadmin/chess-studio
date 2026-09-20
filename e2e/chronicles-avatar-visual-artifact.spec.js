@@ -34,7 +34,7 @@ async function openChronicles(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
-  await expect(page.locator('[data-chronicles-party-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
 }
 
 async function captureElement(page, locator, path) {
@@ -60,10 +60,8 @@ async function captureElement(page, locator, path) {
 
 for (const capture of CAPTURES) {
   test(`Chronicles · los cuatro retratos authored · ${capture.label}`, async ({ browser }) => {
-    // Hosted SwiftShader needs materially more wall-clock budget for four
-    // sequential desktop WebGL portraits than Android. Keep Android tight while
-    // giving desktop enough headroom to finish real captures instead of timing
-    // out during context cleanup after the screenshots already succeeded.
+    // The dungeon remains WebGL, but party identity is now file-backed authored
+    // art. Keep enough budget for the dungeon render plus sequential screenshots.
     test.setTimeout(capture.hasTouch ? 150_000 : 210_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
