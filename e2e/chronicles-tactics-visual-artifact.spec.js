@@ -15,8 +15,12 @@ async function dismissGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function openTactics(page) {
+async function openTactics(page, {
+  chroniclesRunFailureStatus = 0,
+  expectReady = true,
+} = {}) {
   await mockApi(page, {
+    chroniclesRunFailureStatus,
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
@@ -35,7 +39,9 @@ async function openTactics(page) {
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' }).click();
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+  if (expectReady) {
+    await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+  }
 }
 
 async function captureTacticsHealth(page) {
@@ -196,6 +202,64 @@ for (const capture of CAPTURES) {
           scope: 'chronicles-tactics',
           capture: { label: capture.label, ...health },
           gameplay: { movedNorth: true, message: movementMessage },
+        }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+for (const capture of CAPTURES) {
+  test(`Chronicles Tactics · bootstrap failure visual proof · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(150_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const context = await browser.newContext({
+      viewport: {
+        width: capture.hasTouch ? 1180 : capture.width,
+        height: capture.hasTouch ? 900 : capture.height,
+      },
+      hasTouch: capture.hasTouch,
+    });
+    const page = await context.newPage();
+    try {
+      await openTactics(page, {
+        chroniclesRunFailureStatus: 503,
+        expectReady: false,
+      });
+      if (capture.hasTouch) {
+        await page.setViewportSize({ width: capture.width, height: capture.height });
+        await page.waitForTimeout(120);
+      }
+
+      const error = page.locator('.chronicles-tactics__bootstrap-error');
+      await expect(error).toBeVisible();
+      await expect(error.getByText('Código CHR-BOOT-002', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(0);
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${capture.label}: bootstrap error overflow`).toBeLessThanOrEqual(1);
+
+      await captureElement(
+        page,
+        error,
+        `${ARTIFACT_DIR}/chronicles-tactics-bootstrap-error-${capture.label}.png`,
+      );
+
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-tactics-bootstrap-error-health-${capture.label}.json`,
+        `${JSON.stringify({
+          schema: 1,
+          scope: 'chronicles-tactics-bootstrap-error',
+          capture,
+          errorCode: 'CHR-BOOT-002',
+          canvasCount: 0,
+          horizontalOverflow: overflow > 1,
         }, null, 2)}\n`,
         'utf8',
       );
