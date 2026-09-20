@@ -1045,6 +1045,19 @@ def add_side_furnishings(materials):
     cube("HOME_PROP_left_sofa_back", (-7.39, 0.58, 1.32), (0.22, 1.02, 0.92), leather, bevel=0.12)
     cube("HOME_PROP_left_sofa_arm", (-5.45, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
     cube("HOME_PROP_left_sofa_arm_outer", (-7.39, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
+    for idx, sx in enumerate((-7.78, -5.70)):
+        sphere(
+            f"HOME_PROP_left_sofa_front_foot_{idx}",
+            (sx, -1.115, 0.20),
+            (0.105, 0.075, 0.155),
+            wood,
+        )
+        sphere(
+            f"HOME_PROP_left_sofa_front_foot_cap_{idx}",
+            (sx, -1.125, 0.33),
+            (0.075, 0.060, 0.050),
+            materials["brass_dark"],
+        )
     for idx, sx in enumerate((-7.82, -7.48, -7.14, -6.80, -6.46, -6.12, -5.78)):
         sphere(
             f"HOME_PROP_left_sofa_front_stud_{idx}",
