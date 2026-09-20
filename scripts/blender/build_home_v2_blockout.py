@@ -638,6 +638,59 @@ def gothic_arch(name: str, x: float, y: float, width: float, shoulder_z: float, 
     return curve_tube(name, points, bevel, mat)
 
 
+def add_floor_joint_network(
+    name: str,
+    center_x: float,
+    center_y: float,
+    half_x: float,
+    half_y: float,
+    z: float,
+    mat,
+    *,
+    tile_x=1.55,
+    tile_y=1.05,
+) -> None:
+    """Lay restrained, slightly irregular paving joints over a floor slab."""
+    rows = max(2, int((half_y * 2.0) / tile_y))
+    cols = max(2, int((half_x * 2.0) / tile_x))
+    row_h = (half_y * 2.0) / rows
+    col_w = (half_x * 2.0) / cols
+
+    # Long horizontal bed joints stay almost straight, with tiny authored drift.
+    for row in range(1, rows):
+        jitter = (_hash01(row, rows, 811) - 0.5) * 0.055
+        y = center_y - half_y + row * row_h + jitter
+        thickness = 0.010 + _hash01(row, 3, 823) * 0.008
+        cube(
+            f"{name}_bed_{row}",
+            (center_x, y, z),
+            (half_x - 0.02, thickness, 0.006),
+            mat,
+            bevel=0.004,
+        )
+
+    # Short head joints alternate by row; their tiny x/y offsets stop the paving
+    # from reading like a mathematically perfect game grid.
+    for row in range(rows):
+        y0 = center_y - half_y + row * row_h
+        y_mid = y0 + row_h * 0.5
+        stagger = 0.5 if row % 2 else 0.0
+        for col in range(cols + 1):
+            x = center_x - half_x + (col + stagger) * col_w
+            if x <= center_x - half_x + 0.06 or x >= center_x + half_x - 0.06:
+                continue
+            x += (_hash01(col, row, 839) - 0.5) * 0.065
+            y = y_mid + (_hash01(row, col, 853) - 0.5) * 0.040
+            thickness = 0.009 + _hash01(col, row, 857) * 0.007
+            cube(
+                f"{name}_head_{row}_{col}",
+                (x, y, z + 0.001),
+                (thickness, row_h * 0.46, 0.006),
+                mat,
+                bevel=0.004,
+            )
+
+
 def look_at(obj, target) -> None:
     direction = Vector(target) - obj.location
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
@@ -1970,6 +2023,28 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # rather than sitting on top of a solid slab.
     cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
     cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
+    add_floor_joint_network(
+        "HOME_ARCH_floor_back_joint",
+        0.0,
+        5.80,
+        9.35,
+        3.60,
+        0.004,
+        materials["stone_dark"],
+        tile_x=1.70,
+        tile_y=1.10,
+    )
+    add_floor_joint_network(
+        "HOME_ARCH_floor_front_joint",
+        -2.10,
+        -1.10,
+        7.25,
+        3.30,
+        0.004,
+        materials["stone_dark"],
+        tile_x=1.62,
+        tile_y=1.05,
+    )
     cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"])
     # Shallow mortar courses turn the rear wall from one smooth slab into
     # readable castle masonry without adding heavy displacement geometry.
@@ -2958,12 +3033,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 16, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 18, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 24, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 31, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 176, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 126, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 194, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 142, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 90, (0.74, 0.40, 0.22), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 190, (1.0, 0.37, 0.11), 2.2, target=(-6.15, 5.65, 1.35))
     add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 255, (1.0, 0.37, 0.11), 2.25, target=(4.45, 5.65, 1.45))
@@ -2985,7 +3060,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.camera = camera
 
     try:
-        scene.view_settings.exposure = -0.28
+        scene.view_settings.exposure = -0.20
     except Exception:
         pass
     try:
