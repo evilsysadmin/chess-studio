@@ -296,6 +296,7 @@ export function chroniclesPreviewEnemyTurn(state) {
         from,
         targetId: event.targetId,
         damage: event.damage,
+        hpLost: event.fromHp - event.toHp,
         lethal: event.toHp === 0,
       };
     }
