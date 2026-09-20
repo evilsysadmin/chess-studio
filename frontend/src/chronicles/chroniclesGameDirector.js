@@ -45,16 +45,28 @@ function localFallback(mapId, seed, reason = 'remote-unavailable') {
 
 export async function chroniclesResolveAreaManifest(
   mapId,
-  { seed = 0, signal, fetchManifest } = {},
+  {
+    seed = 0,
+    signal,
+    fetchManifest,
+    allowBundledFallback = false,
+  } = {},
 ) {
-  if (!chroniclesMapIds().includes(mapId)) return localFallback(mapId, seed, 'unknown-map');
-  if (typeof fetchManifest !== 'function') return localFallback(mapId, seed, 'transport-unavailable');
+  const fail = (reason, error = null) => {
+    if (allowBundledFallback) return localFallback(mapId, seed, reason);
+    const failure = error instanceof Error ? error : new Error(reason);
+    failure.reason = reason;
+    throw failure;
+  };
+
+  if (!chroniclesMapIds().includes(mapId)) return fail('unknown-map');
+  if (typeof fetchManifest !== 'function') return fail('transport-unavailable');
 
   try {
     const payload = await fetchManifest(mapId, seed, { signal });
     return chroniclesValidateAreaEnvelope(payload, mapId, seed);
   } catch (error) {
-    if (signal?.aborted) return localFallback(mapId, seed, 'aborted');
-    return localFallback(mapId, seed, error instanceof Error ? error.message : 'remote-unavailable');
+    if (signal?.aborted) return fail('aborted', error);
+    return fail(error instanceof Error ? error.message : 'remote-unavailable', error);
   }
 }
