@@ -30,12 +30,14 @@ MESH_COMPRESSION_EXTENSION = "EXT_meshopt_compression"
 WEATHER_LAYER = "WR_weather"
 WEATHER_ALBEDO_COMP = 1.22
 # Architectural materials that receive baked macro variation and contact dirt.
-# The board, pieces, metals, fabric and emissives are deliberately excluded.
+# The board, pieces, metals, fabric and emissives are deliberately excluded, and so
+# are the near-black woods and shadow stone (albedo <= 0.06): a tint is invisible
+# there but costs ~7.5 bytes per glTF vertex, which measured at +1.25 MB in the GLB.
 WEATHER_MATERIALS = frozenset({
-    "WR_MAT_wall_walnut", "WR_MAT_wall_recess", "WR_MAT_wall_plaster",
-    "WR_MAT_trim_walnut", "WR_MAT_floor_underlay",
-    "WR_MAT_stone", "WR_MAT_stone_light", "WR_MAT_stone_shadow",
+    "WR_MAT_wall_plaster", "WR_MAT_floor_underlay",
+    "WR_MAT_stone", "WR_MAT_stone_light",
 })
+
 
 # Desktop War Room camera parity. These numbers mirror the canonical wide
 # Three.js framing profile (22° vertical FOV, targetY=2.2, targetZ=-0.16,
@@ -1666,10 +1668,10 @@ def build():
     mats = {
         "walnut": material("WR_MAT_board_walnut", (0.17, 0.070, 0.032, 1), rough=0.42, coat=0.20, texture="wood", scale=4.4, bump=0.09),
         "walnut_dark": material("WR_MAT_walnut_dark", (0.045, 0.019, 0.012, 1), rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.06),
-        "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042, weather=True),
-        "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032, weather=True),
+        "wall_wood": material("WR_MAT_wall_walnut", (0.032, 0.022, 0.016, 1), rough=0.64, coat=0.05, texture="wood", scale=3.1, bump=0.042),
+        "wall_recess": material("WR_MAT_wall_recess", (0.014, 0.012, 0.011, 1), rough=0.72, coat=0.02, texture="wood", scale=3.3, bump=0.032),
         "wall_plaster": material("WR_MAT_wall_plaster", (0.205, 0.176, 0.137, 1), rough=0.91, coat=0.008, texture="stone", scale=5.1, bump=0.070, weather=True),
-        "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042, weather=True),
+        "trim_wood": material("WR_MAT_trim_walnut", (0.054, 0.032, 0.021, 1), rough=0.48, coat=0.15, texture="wood", scale=3.7, bump=0.042),
         "floor_dark": material("WR_MAT_floor_underlay", (0.050, 0.043, 0.035, 1), rough=0.78, coat=0.018, texture="stone", scale=4.8, bump=0.062, weather=True),
         "table_wood": material("WR_MAT_table_walnut", (0.038, 0.024, 0.016, 1), rough=0.43, coat=0.22, texture="wood", scale=4.1, bump=0.047),
         "frame_wood": material("WR_MAT_frame_walnut", (0.030, 0.018, 0.012, 1), rough=0.37, coat=0.28, texture="wood", scale=3.2, bump=0.04),
@@ -1686,7 +1688,7 @@ def build():
         "table_leather": material("WR_MAT_table_leather", (0.006, 0.020, 0.016, 1), rough=0.60, coat=0.08, texture="leather", scale=56, bump=0.055),
         "stone": material("WR_MAT_stone", (0.155, 0.123, 0.088, 1), rough=0.84, coat=0.010, texture="stone", scale=4.3, bump=0.115, weather=True),
         "stone_light": material("WR_MAT_stone_light", (0.235, 0.195, 0.145, 1), rough=0.81, coat=0.010, texture="stone", scale=4.3, bump=0.095, weather=True),
-        "stone_dark": material("WR_MAT_stone_shadow", (0.061, 0.047, 0.035, 1), rough=0.83, coat=0.010, texture="stone", scale=4.4, bump=0.090, weather=True),
+        "stone_dark": material("WR_MAT_stone_shadow", (0.061, 0.047, 0.035, 1), rough=0.83, coat=0.010, texture="stone", scale=4.4, bump=0.090),
         "rug": material("WR_MAT_rug", (0.074, 0.010, 0.016, 1), rough=0.94, sheen=0.22, texture="fabric", scale=54, bump=0.12),
         "armor": material("WR_MAT_armor", (0.175, 0.170, 0.158, 1), metal=0.93, rough=0.37, coat=0.12, texture="metal", scale=28, bump=0.040),
         "armor_dark": material("WR_MAT_armor_dark", (0.070, 0.064, 0.056, 1), metal=0.90, rough=0.45, coat=0.08, texture="metal", scale=22, bump=0.030),
@@ -2186,7 +2188,7 @@ def meshopt_export_kwargs():
     # The weathering colour is exported by name because sanitize_runtime_materials
     # disconnects the Colour Attribute node the default MATERIAL mode looks for.
     if {"export_vertex_color", "export_vertex_color_name"} <= properties:
-        kwargs["export_vertex_color"] = "NONE"  # EXPERIMENT: measure geometry-only GLB size
+        kwargs["export_vertex_color"] = "NAME"
         kwargs["export_vertex_color_name"] = WEATHER_LAYER
     return kwargs
 
