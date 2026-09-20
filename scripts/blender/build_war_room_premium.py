@@ -909,7 +909,7 @@ def add_gothic_canon_v2(static, mats):
     )
     heraldic_brass = material(
         "WR_MAT_canon_heraldic_brass", (0.72, 0.38, 0.085, 1),
-        metal=0.94, rough=0.20, coat=0.22, texture="metal", scale=22, bump=0.028,
+        metal=0.82, rough=0.20, coat=0.22, texture="metal", scale=22, bump=0.028,
     )
     horse_relief = static.objects.get("WR_CREST_horse_relief")
     if horse_relief is not None and horse_relief.data.materials:
