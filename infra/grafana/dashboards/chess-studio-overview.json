@@ -21,7 +21,7 @@
   "timezone": "browser",
   "title": "Chess Studio · Salud operativa",
   "uid": "chess-studio-api-overview",
-  "version": 5,
+  "version": 6,
   "weekStart": "monday",
   "time": {
     "from": "now-6h",
@@ -433,7 +433,7 @@
     },
     {
       "id": 17,
-      "title": "OCI A1 · disco",
+      "title": "OCI A1 · I/O disco",
       "description": "I/O agregado de lectura+escritura del host durante 5 minutos. El dashboard OCI host separa ambos sentidos.",
       "type": "stat",
       "datasource": {

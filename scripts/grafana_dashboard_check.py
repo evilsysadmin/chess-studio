@@ -52,6 +52,7 @@ def main() -> int:
     required_dashboards = {
         "chess-studio-overview.json": "chess-studio-api-overview",
         "chess-studio-logs.json": "chess-studio-logs",
+        "chess-studio-log-explorer.json": "chess-studio-log-explorer",
         "chess-studio-traces.json": "chess-studio-traces",
         "chess-studio-edge.json": "chess-studio-edge",
         "chess-studio-oci-host.json": "chess-studio-oci-host",
@@ -62,6 +63,20 @@ def main() -> int:
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
+    explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
+    explorer_variables = {str(row.get("name") or "") for row in ((explorer_data.get("templating") or {}).get("list") or [])}
+    required_explorer_variables = {"selector", "event", "status", "method", "route", "path", "release", "request_id", "trace_id", "text"}
+    missing_explorer_variables = sorted(required_explorer_variables - explorer_variables)
+    if missing_explorer_variables:
+        fail(f"log explorer perdió filtros: {', '.join(missing_explorer_variables)}")
+    explorer_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for panel in (explorer_data.get("panels") or [])
+        for target in (panel.get("targets") or [])
+    )
+    for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
+        if token not in explorer_exprs:
+            fail(f"log explorer no aplica {token}")
     oci_host_dash = (INFRA / "dashboards" / "chess-studio-oci-host.json").read_text(encoding="utf-8")
     for token in (
         'chess-studio-oci-host',
@@ -181,6 +196,7 @@ def main() -> int:
         '/api/dashboards/db',
         '/api/dashboards/uid/',
         'chess-studio-oci-host.json',
+        'chess-studio-log-explorer.json',
         'runtime_variables = {"backend_service", "selector", "environment"}',
         '"overwrite": True',
         'HTTP 403',

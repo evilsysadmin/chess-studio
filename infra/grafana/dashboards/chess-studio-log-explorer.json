@@ -1,0 +1,446 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Logs accionables",
+      "type": "link",
+      "url": "/d/chess-studio-logs/chess-studio-logs",
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Trazas / Tempo",
+      "type": "link",
+      "url": "/d/chess-studio-traces/chess-studio-traces",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ],
+  "liveNow": false,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "chess-studio",
+    "logs",
+    "explorer",
+    "sre",
+    "multi-environment"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "selector",
+        "label": "Entorno",
+        "type": "custom",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"}",
+        "current": {
+          "text": "production",
+          "value": "{service_name=\"chess-studio-backend\"}"
+        },
+        "hide": 0,
+        "skipUrlSync": false,
+        "includeAll": true,
+        "allValue": "{service_name=~\"chess-studio-backend(-staging)?\"}",
+        "multi": false
+      },
+      {
+        "name": "event",
+        "label": "Evento",
+        "type": "custom",
+        "query": "todos : .*,http_request : http_request,frontend_telemetry : frontend_telemetry",
+        "current": {
+          "text": "todos",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "status",
+        "label": "Status",
+        "type": "custom",
+        "query": "todos : .*,2xx : 2..,3xx : 3..,4xx : 4..,5xx : 5..",
+        "current": {
+          "text": "todos",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "method",
+        "label": "Método",
+        "type": "custom",
+        "query": "todos : .*,GET : GET,POST : POST,PUT : PUT,PATCH : PATCH,DELETE : DELETE,OPTIONS : OPTIONS",
+        "current": {
+          "text": "todos",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "route",
+        "label": "Route · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "path",
+        "label": "Path · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "release",
+        "label": "Release · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "request_id",
+        "label": "Request ID · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "trace_id",
+        "label": "Trace ID · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "text",
+        "label": "Texto · regex",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Chess Studio · Log Explorer",
+  "uid": "chess-studio-log-explorer",
+  "version": 1,
+  "weekStart": "monday",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cómo investigar",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Exploración sin tocar LogQL.** Los filtros de `route`, `path`, `release`, `request_id` y `trace_id` se aplican **después de `| json`**: no se convierten en labels de Loki y no crean cardinalidad explosiva. Usa `.*` para no filtrar. **Texto · regex** busca sobre la línea original. Para una incidencia: acota entorno/status/ruta → copia `request_id` para correlación → usa `trace_id` en **Trazas / Tempo**."
+      },
+      "fieldConfig": {
+        "defaults": {}
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP · coincidencias",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time($selector | json | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" [$__range]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "HTTP · p95 filtrada",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "max(quantile_over_time(0.95, $selector | json | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | unwrap duration_ms | __error__=\"\" [$__range]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "noValue": "SIN DATOS"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Eventos estructurados · coincidencias",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time($selector | json | event=~\"$event\" |~ \"$text\" [$__range]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "HTTP requests · filtradas",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 11
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "$selector | json | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | line_format \"status={{.status}} method={{.method}} route={{.route}} path={{.request_path}} latency={{.duration_ms}}ms release={{.client_release}} req={{.request_id}} trace={{.trace_id}}\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Eventos JSON · por tipo/texto",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "$selector | json | event=~\"$event\" |~ \"$text\" | line_format \"event={{.event}} status={{.status}} method={{.method}} route={{.route}} type={{.event_type}} release={{.client_release}}{{.release}} req={{.request_id}} trace={{.trace_id}} · {{.error_name}}\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Raw logs · texto/regex",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "$selector |~ \"$text\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}
