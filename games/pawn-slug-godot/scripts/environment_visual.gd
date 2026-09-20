@@ -539,7 +539,7 @@ func _draw_obstacle_barrels(rect: Rect2) -> void:
         draw_rect(body, Color("35494c"), true)
         draw_circle(Vector2(x, rect.position.y + 9.0), barrel_w * 0.5, Color("465b5e"))
         for band in [0.30, 0.72]:
-            var by := body.position.y + body.size.y * band
+            var by: float = body.position.y + body.size.y * float(band)
             draw_line(Vector2(body.position.x, by), Vector2(body.end.x, by), Color(0.45, 0.52, 0.53, 0.74), 2.0)
 
 func _draw_obstacle_barricade(rect: Rect2) -> void:
