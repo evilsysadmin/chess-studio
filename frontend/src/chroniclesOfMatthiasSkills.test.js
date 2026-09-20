@@ -60,6 +60,15 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     }
   });
 
+  it('offers a second mutually exclusive build choice at level 4 for every hero', () => {
+    for (const memberId of ['matthias', 'rook', 'bishop', 'knight']) {
+      const levelFour = chroniclesSkillsForMember(memberId).filter((skill) => skill.requiredLevel === 4);
+      expect(levelFour).toHaveLength(2);
+      expect(levelFour.every((skill) => skill.cost === 1)).toBe(true);
+      expect(new Set(levelFour.map((skill) => skill.group)).size).toBe(1);
+    }
+  });
+
   it('refuses skills before their required level', () => {
     const result = unlockChroniclesSkill(createChroniclesProgression(), 'matthias', 'matthias-steel-tempo');
     expect(result.unlocked).toBe(false);
@@ -104,6 +113,24 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     const hildegard = state.party.find((member) => member.id === 'rook');
     expect(hildegard.maxHp).toBe(12);
     expect(hildegard.hp).toBe(12);
+  });
+
+  it('makes level-4 build choices alter reach, durability or ability pressure', () => {
+    const matthiasLevelFour = leveled('matthias', 4);
+    const longPoint = unlockChroniclesSkill(matthiasLevelFour, 'matthias', 'matthias-long-point');
+    expect(longPoint.unlocked).toBe(true);
+    expect(tacticsState(longPoint.progression).rpgModifiers.matthias.reachBonus).toBe(1);
+
+    const rookLevelFour = leveled('rook', 4);
+    const bastion = unlockChroniclesSkill(rookLevelFour, 'rook', 'rook-bastion');
+    expect(bastion.unlocked).toBe(true);
+    const rook = tacticsState(bastion.progression).party.find((member) => member.id === 'rook');
+    expect(rook.maxHp).toBe(13);
+
+    const knightLevelFour = leveled('knight', 4);
+    const killZone = unlockChroniclesSkill(knightLevelFour, 'knight', 'knight-kill-zone');
+    expect(killZone.unlocked).toBe(true);
+    expect(tacticsState(killZone.progression).rpgModifiers.knight.abilityPotencyBonus).toBe(2);
   });
 
   it('makes Aziz choose between stronger healing and stronger diagonal damage', () => {
