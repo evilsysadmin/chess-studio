@@ -6,6 +6,7 @@ import {
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
   chroniclesMapIds,
+  chroniclesSetRuntimeEntryMapId,
 } from './chroniclesMapCatalog.js';
 import { chroniclesCreateRun } from './chroniclesRunClient.js';
 
@@ -122,6 +123,7 @@ export async function chroniclesBootstrapTacticsWorld({
   resolved.areas.forEach((entry) => {
     chroniclesInstallRuntimeMapDefinition(entry.map);
   });
+  chroniclesSetRuntimeEntryMapId(resolved.currentMapId);
   const map = chroniclesMapById(resolved.currentMapId);
   return Object.freeze({ ...resolved, map });
 }
