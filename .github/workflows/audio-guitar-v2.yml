@@ -1,0 +1,222 @@
+name: Sampled guitar V2
+
+on:
+  push:
+    branches:
+      - audio/fender-sampler-spike-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  render-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Install audio toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build g++ libsndfile1-dev libjack-jackd2-dev \
+            libsamplerate0-dev libfftw3-dev pkg-config \
+            ladspa-sdk caps ffmpeg sox
+
+      - name: Build sfizz offline renderer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --recursive --depth 1 https://github.com/sfztools/sfizz.git /tmp/sfizz
+          cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSFIZZ_JACK=OFF \
+            -DSFIZZ_SHARED=OFF \
+            -DPLUGIN_LV2=OFF \
+            -DPLUGIN_LV2_UI=OFF \
+            -DPLUGIN_VST3=OFF \
+            -DSFIZZ_TESTS=OFF \
+            -DSFIZZ_BENCHMARKS=OFF \
+            -DSFIZZ_DEMOS=OFF \
+            -DSFIZZ_DEVTOOLS=OFF \
+            -DSFIZZ_RENDER=ON
+          cmake --build /tmp/sfizz/build --target sfizz_render -j2
+          find /tmp/sfizz/build -type f -name 'sfizz_render' -executable -print
+          SFIZZ_RENDER="$(find /tmp/sfizz/build -type f -name 'sfizz_render' -executable | head -n1)"
+          test -x "$SFIZZ_RENDER"
+          mkdir -p audio-v2
+          printf '%s\n' "$SFIZZ_RENDER" > audio-v2/sfizz-render-path.txt
+
+      - name: Fetch multi-layer sampled guitar
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 https://github.com/sfzinstruments/karoryfer.emilyguitar.git audio-v2/emily
+          cp audio-v2/emily/emily_basic.sfz audio-v2/emily/emily_pawn_slug.sfz
+          # Normalize Windows separators for Linux SFZ engines.
+          sed -i 's#\\\\#/#g' audio-v2/emily/emily_pawn_slug.sfz
+          grep -c '<region>' audio-v2/emily/emily_pawn_slug.sfz
+          du -sh audio-v2/emily
+
+      - name: Build humanized rising-riff MIDI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import random, struct
+
+          rng = random.Random(20260920)
+          PPQ = 480
+          BPM = 158
+          beat = PPQ
+          bar = 4 * beat
+
+          def vlq(n):
+              out=[n & 0x7f]
+              n >>= 7
+              while n:
+                  out.append((n & 0x7f) | 0x80)
+                  n >>= 7
+              return bytes(reversed(out))
+
+          def make(path, timing_ms=0.0, velocity_delta=0):
+              events=[]
+              def add(tick, order, data):
+                  events.append((max(0,int(tick)), order, bytes(data)))
+
+              tempo = round(60_000_000 / BPM)
+              add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
+
+              # CC11 expression and CC7 volume.
+              add(0,1,bytes([0xB0,7,115]))
+              add(0,1,bytes([0xB0,11,112]))
+
+              # E minor: deliberately sparse -> answer -> scale -> harmonized climax.
+              phrases = [
+                [(0.00,64,.82,88),(1.75,67,.48,83),(3.00,71,.68,98)],
+                [(0.00,71,.50,94),(.75,74,.36,87),(1.50,76,.68,108),(2.75,74,.28,84),(3.25,71,.46,93)],
+                [(0.00,64,.19,78),(.50,66,.19,82),(1.00,67,.19,86),(1.50,69,.19,90),
+                 (2.00,71,.19,96),(2.50,72,.19,101),(3.00,74,.19,108),(3.50,76,.32,118)],
+                [(0.00,71,.19,94),(.375,72,.18,96),(.75,74,.18,99),(1.125,76,.20,104),
+                 (1.50,79,.31,121),(2.125,76,.18,106),(2.50,74,.18,101),(2.875,72,.18,96),(3.25,71,.44,111)],
+                [(0.00,67,.72,91),(1.50,71,.42,96),(2.50,74,.56,106),(3.35,76,.36,116)],
+                [(0.00,69,.30,88),(.50,71,.30,91),(1.00,72,.30,95),(1.50,74,.42,103),
+                 (2.50,76,.25,112),(3.00,74,.25,103),(3.50,71,.35,94)],
+                [(0.00,64,.17,79),(.375,66,.17,82),(.75,67,.17,86),(1.125,69,.17,90),
+                 (1.50,71,.17,96),(1.875,72,.17,101),(2.25,74,.17,108),(2.625,76,.17,114),
+                 (3.00,79,.19,124),(3.40,76,.36,113)],
+                [(0.00,76,.19,113),(.375,74,.18,107),(.75,72,.18,101),(1.125,71,.18,96),
+                 (1.50,69,.18,91),(1.875,67,.18,87),(2.25,69,.18,93),(2.625,71,.18,100),
+                 (3.00,74,.19,111),(3.40,76,.43,124)],
+              ]
+
+              # 2 passes; second grows slightly and adds a few harmony notes.
+              for pass_i in range(2):
+                  for bi, phrase in enumerate(phrases):
+                      base=(pass_i*len(phrases)+bi)*bar
+                      for idx,(pos,note,dur_b,vel) in enumerate(phrase):
+                          jitter_ticks = round((timing_ms/1000.0) * (BPM/60.0) * PPQ * rng.uniform(-1,1))
+                          st = base + round(pos*beat) + jitter_ticks
+                          dur=max(30,round(dur_b*beat*rng.uniform(.97,1.03)))
+                          vv=max(1,min(127,vel+velocity_delta+rng.randint(-4,4)))
+                          add(st,2,bytes([0x90,note,vv]))
+                          add(st+dur,1,bytes([0x80,note,0]))
+
+                          # A restrained third above only on developed phrase peaks.
+                          if (bi in (6,7) and (note >= 74 or pos >= 2.5)) or (pass_i and bi in (3,7) and idx%2==0):
+                              h=note+(3 if idx%2==0 else 4)
+                              hv=max(1,min(127,vv-23))
+                              hs=st+round(.012*BPM/60*PPQ)
+                              add(hs,2,bytes([0x90,h,hv]))
+                              add(hs+int(dur*.94),1,bytes([0x80,h,0]))
+
+              events.sort(key=lambda x:(x[0],x[1]))
+              track=bytearray(); last=0
+              for tick,_,data in events:
+                  track += vlq(tick-last)+data
+                  last=tick
+              track += b'\x00\xff\x2f\x00'
+              midi=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)+b'MTrk'+struct.pack('>I',len(track))+track
+              Path(path).write_bytes(midi)
+
+          make('audio-v2/riff-left.mid', timing_ms=5.5, velocity_delta=0)
+          make('audio-v2/riff-right.mid', timing_ms=8.0, velocity_delta=-5)
+          PY
+
+      - name: Render independent sampled takes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          RENDER="$(cat audio-v2/sfizz-render-path.txt)"
+          SFZ="audio-v2/emily/emily_pawn_slug.sfz"
+          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-left.mid --wav audio-v2/emily-left-di.wav --samplerate 44100 --oversampling 2
+          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-right.mid --wav audio-v2/emily-right-di.wav --samplerate 44100 --oversampling 2
+          ffmpeg -hide_banner -loglevel error -y -i audio-v2/emily-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" audio-v2/left-mono.wav
+          ffmpeg -hide_banner -loglevel error -y -i audio-v2/emily-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" audio-v2/right-mono.wav
+
+      - name: Amp and cabinet offline
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export LADSPA_PATH="/usr/lib/ladspa:/usr/lib/x86_64-linux-gnu/ladspa"
+          CAPS_SO="$(find /usr/lib -type f -name 'caps.so' | head -n1)"
+          test -f "$CAPS_SO"
+          analyseplugin "$CAPS_SO" AmpVTS > audio-v2/AmpVTS.txt
+          analyseplugin "$CAPS_SO" CabinetII > audio-v2/CabinetII.txt
+
+          # AmpVTS controls: model gain bass mid treble drive watts.
+          # CabinetII controls: model gain(dB). Model 5 is Plexi-ish.
+          applyplugin audio-v2/left-mono.wav audio-v2/left-amped.wav \
+            "$CAPS_SO" AmpVTS 2 2.15 0.43 0.88 0.72 0.34 0.86 \
+            "$CAPS_SO" CabinetII 5 -2.5
+          applyplugin audio-v2/right-mono.wav audio-v2/right-amped.wav \
+            "$CAPS_SO" AmpVTS 2 2.05 0.41 0.91 0.75 0.31 0.90 \
+            "$CAPS_SO" CabinetII 5 -3.0
+
+          # Real double-track width: independent sample/velocity/timing renders, not copied audio.
+          ffmpeg -hide_banner -loglevel error -y \
+            -i audio-v2/left-amped.wav -i audio-v2/right-amped.wav \
+            -filter_complex "[0:a]volume=0.92,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=0.84,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,highpass=f=85,lowpass=f=10500,acompressor=threshold=-18dB:ratio=2.0:attack=18:release=105,loudnorm=I=-16:TP=-1.2:LRA=9[out]" \
+            -map "[out]" -ar 44100 audio-v2/emily-amp-cab-stereo.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i audio-v2/emily-amp-cab-stereo.wav -t 28 \
+            audio-v2/emily-amp-cab-preview-28s.wav
+
+          # DI comparison, same independent double-track.
+          ffmpeg -hide_banner -loglevel error -y \
+            -i audio-v2/left-mono.wav -i audio-v2/right-mono.wav \
+            -filter_complex "[0:a]volume=.80,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=.74,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,loudnorm=I=-18:TP=-1.5:LRA=10[out]" \
+            -map "[out]" -ar 44100 audio-v2/emily-di-stereo.wav
+
+      - name: Manifest
+        shell: bash
+        run: |
+          {
+            echo 'Pawn Slug sampled guitar V2'
+            echo 'Source: Karoryfer Emilyguitar / Epiphone Emily the Strange'
+            echo 'Sampling: 4 velocity layers, 3 round robins, release samples'
+            echo 'Sampler: sfizz offline renderer'
+            echo 'Amp: CAPS AmpVTS'
+            echo 'Cab: CAPS CabinetII model 5'
+            echo 'Output: 44.1kHz'
+            echo
+            sha256sum audio-v2/emily-amp-cab-stereo.wav audio-v2/emily-di-stereo.wav
+          } > audio-v2/MANIFEST.txt
+
+      - name: Upload V2 audio artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-sampled-guitar-v2
+          path: |
+            audio-v2/emily-amp-cab-stereo.wav
+            audio-v2/emily-amp-cab-preview-28s.wav
+            audio-v2/emily-di-stereo.wav
+            audio-v2/AmpVTS.txt
+            audio-v2/CabinetII.txt
+            audio-v2/MANIFEST.txt
+            audio-v2/riff-left.mid
+            audio-v2/riff-right.mid
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
