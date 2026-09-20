@@ -93,6 +93,15 @@ def _validate_manifest(payload: Any, *, expected_map_id: str) -> dict[str, Any]:
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise ChroniclesManifestError("manifest version must be a positive integer")
 
+    procedural_difficulty = payload.get("proceduralDifficulty")
+    if procedural_difficulty is not None and (
+        not isinstance(procedural_difficulty, int)
+        or isinstance(procedural_difficulty, bool)
+        or procedural_difficulty < 1
+        or procedural_difficulty > 5
+    ):
+        raise ChroniclesManifestError("proceduralDifficulty must be an integer between 1 and 5")
+
     grid = payload.get("grid")
     if not isinstance(grid, list) or not grid or not all(isinstance(row, str) and row for row in grid):
         raise ChroniclesManifestError("manifest grid must be a non-empty string array")
