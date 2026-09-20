@@ -300,6 +300,7 @@ func _draw_platforms() -> void:
                 draw_circle(Vector2(float(rivet_x), platform.position.y + 8.0), 2.2, rivet)
 
         _draw_platform_wear(platform, material, trim, index)
+        _draw_platform_material_texture(platform, material, index)
 
         var support_y := platform.end.y
         var left_support_x := platform.position.x + 20.0
@@ -343,6 +344,69 @@ func _draw_platforms() -> void:
                     1.8,
                 )
                 segment_top = segment_bottom
+
+func _draw_platform_material_texture(platform: Rect2, material: String, platform_index: int) -> void:
+    var usable_w := maxf(1.0, platform.size.x - 18.0)
+    var usable_h := maxf(1.0, platform.size.y - 10.0)
+    match material:
+        "wood":
+            var grain_count := maxi(2, int(platform.size.x / 46.0))
+            for grain in range(grain_count):
+                var x := platform.position.x + 9.0 + _detail_noise(platform_index * 41 + grain, 20.1) * usable_w
+                var y := platform.position.y + 6.0 + _detail_noise(platform_index * 43 + grain, 20.7) * usable_h
+                var length := 16.0 + _detail_noise(platform_index * 47 + grain, 21.3) * 34.0
+                draw_line(
+                    Vector2(x, y),
+                    Vector2(minf(platform.end.x - 6.0, x + length), y + (_detail_noise(grain, 21.9) - 0.5) * 2.0),
+                    Color(0.82, 0.62, 0.38, 0.12),
+                    1.2,
+                )
+                if grain % 2 == 0:
+                    draw_circle(Vector2(x, minf(platform.end.y - 4.0, y + 4.0)), 1.4, Color(0.10, 0.08, 0.055, 0.58))
+        "stone":
+            var chip_count := maxi(2, int(platform.size.x / 58.0))
+            for chip in range(chip_count):
+                var x := platform.position.x + 10.0 + _detail_noise(platform_index * 53 + chip, 22.6) * usable_w
+                var y := platform.position.y + 6.0 + _detail_noise(platform_index * 59 + chip, 23.2) * usable_h
+                var radius := 1.2 + _detail_noise(platform_index * 61 + chip, 23.8) * 2.0
+                draw_circle(Vector2(x, y), radius, Color(0.78, 0.81, 0.80, 0.10))
+                draw_line(
+                    Vector2(x - radius, y + radius * 0.7),
+                    Vector2(x + radius * 1.8, y - radius * 0.5),
+                    Color(0.12, 0.13, 0.13, 0.24),
+                    1.0,
+                )
+        "concrete":
+            var aggregate_count := maxi(3, int(platform.size.x / 44.0))
+            for pebble in range(aggregate_count):
+                var x := platform.position.x + 8.0 + _detail_noise(platform_index * 67 + pebble, 24.4) * usable_w
+                var y := platform.position.y + 6.0 + _detail_noise(platform_index * 71 + pebble, 25.0) * usable_h
+                var radius := 0.9 + _detail_noise(platform_index * 73 + pebble, 25.6) * 1.6
+                draw_circle(Vector2(x, y), radius, Color(0.84, 0.86, 0.85, 0.11))
+            if platform.size.x >= 120.0:
+                var joint_x := platform.position.x + platform.size.x * (0.42 + _detail_noise(platform_index, 26.2) * 0.16)
+                draw_line(
+                    Vector2(joint_x, platform.position.y + 4.0),
+                    Vector2(joint_x, platform.end.y - 3.0),
+                    Color(0.12, 0.13, 0.13, 0.30),
+                    1.6,
+                )
+        _:
+            var panel_x := platform.position.x + 54.0
+            while panel_x < platform.end.x - 18.0:
+                draw_line(
+                    Vector2(panel_x, platform.position.y + 4.0),
+                    Vector2(panel_x, platform.end.y - 3.0),
+                    Color(0.08, 0.10, 0.11, 0.34),
+                    1.3,
+                )
+                panel_x += 58.0
+            var grime_count := maxi(2, int(platform.size.x / 76.0))
+            for stain in range(grime_count):
+                var x := platform.position.x + 12.0 + _detail_noise(platform_index * 79 + stain, 27.0) * usable_w
+                var y0 := platform.position.y + 8.0
+                var y1 := minf(platform.end.y - 2.0, y0 + 5.0 + _detail_noise(stain, 27.6) * 9.0)
+                draw_line(Vector2(x, y0), Vector2(x + 1.0, y1), Color(0.03, 0.045, 0.05, 0.28), 1.4)
 
 func _platform_support_anchor_y(x: float, start_y: float, current_index: int) -> float:
     var anchor_y := _floor_y
