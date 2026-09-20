@@ -37,18 +37,21 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
   const name = page.getByRole('textbox', { name: 'Nombre de matthias', exact: true });
   await name.fill('Greta de la Cripta');
   await page.getByRole('button', { name: 'Subir Vigor', exact: true }).click();
-  await page.getByRole('button', { name: 'Aziz', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Aziz', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const azizSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Aziz' });
+  await azizSlot.click();
+  await expect(azizSlot).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
 
   const restored = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(restored).toBeVisible();
   await expect(restored.getByText('Borrador recuperado de esta sesión.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
-  await expect(page.getByRole('button', { name: 'Aziz', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const restoredAziz = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Aziz' });
+  await expect(restoredAziz).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: 'Matthias', exact: true }).click();
+  const matthiasSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Greta de la Cripta' });
+  await matthiasSlot.click();
+  await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
   await expect(restored.getByText('+1 HP', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toHaveCount(0);
 });
