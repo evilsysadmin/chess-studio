@@ -15,4 +15,28 @@ def make_source(path: Path) -> None:
     d = ImageDraw.Draw(atlas)
     for i in range(FRAMES):
         x = i * CELL
-        d.rectangle((x + 20, 20, x + 66, 69), fill=(72, 63"ÂSÂ#SR’¢Bç&V7FævÆR‚‡‚²‚Âc’Â‚²c2ÂsR’Âf–ÆÃÒƒCBÂ3’Â3"Â#SR’¢FÆ2ç6fR‡F‚Â%är"  ¦6Æ72w&VæF–W%c%FW7G2‡Væ—GFW7BåFW7D66R“ ¢FVbFW7Eöw&VæF–W%ö6†ævW5÷WW%÷&öf–ÆU÷v—F†÷WEöÖ÷f–æuöfVWB‡6VÆb’ÓâæöæS ¢v—F‚FV×f–ÆRåFV×÷&'”F—&V7F÷'’‚’2F× ¢&ö÷BÒF‚‡F×¢7&2Â÷WBÒ&ö÷Bò'6÷W&6Rçær"Â&ö÷Bò&÷WB ¢Ö¶U÷6÷W&6R‡7&2¢&W÷'BÒ'V–ÆB‡7&2Â÷WB¢&W7VÇBÒ–ÖvRæ÷Vâ†÷WBò&W÷'E²&÷WGWB%Ò’æ6öçfW'B‚%$t$"¢&6RÒ–ÖvRæ÷Vâ‡7&2’æ6öçfW'B‚%$t$"’æ7&÷‚ƒÂÂcCÂƒ’¢6VÆbæ76W'DWVÂ‡&W7VÇBç6—¦RÂƒcCÂƒ’¢6VÆbæ76W'D—4æ÷DæöæR„–ÖvT6†÷2æF–ffW&Væ6R‡&W7VÇBÂ&6R’ævWF&&÷‚‚’¢f÷"’–â&ævR„e$ÔU2“ ¢&Vf÷&RÒ&6Ræ7&÷‚†’¢4TÄÂÂÂ†’²’¢4TÄÂÂ4TÄÂ’’ævWF6†ææVÂ‚$"’ævWF&&÷‚‚¢gFW"Ò&W7VÇBæ7&÷‚†’¢4TÄÂÂÂ†’²’¢4TÄÂÂ4TÄÂ’’ævWF6†ææVÂ‚$"’ævWF&&÷‚‚¢6VÆbæ76W'DWVÂ†gFW%³5ÒÂ&Vf÷&U³5Ò¢6VÆbæ76W'Dw&VFW$WVÂ†gFW%³%ÒÂ&Vf÷&U³%Ò  ¦–bõöæÖUõòÓÒ%õöÖ–åõò# ¢Væ—GFW7BæÖ–â‚
+        d.rectangle((x + 20, 20, x + 66, 69), fill=(72, 63, 50, 255))
+        d.rectangle((x + 18, 69, x + 63, 75), fill=(44, 39, 32, 255))
+    atlas.save(path, "PNG")
+
+
+class GrenadierV2Tests(unittest.TestCase):
+    def test_grenadier_changes_upper_profile_without_moving_feet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, out = root / "source.png", root / "out"
+            make_source(src)
+            report = build(src, out)
+            result = Image.open(out / report["output"]).convert("RGBA")
+            base = Image.open(src).convert("RGBA").crop((0, 0, 640, 80))
+            self.assertEqual(result.size, (640, 80))
+            self.assertIsNotNone(ImageChops.difference(result, base).getbbox())
+            for i in range(FRAMES):
+                before = base.crop((i * CELL, 0, (i + 1) * CELL, CELL)).getchannel("A").getbbox()
+                after = result.crop((i * CELL, 0, (i + 1) * CELL, CELL)).getchannel("A").getbbox()
+                self.assertEqual(after[3], before[3])
+                self.assertGreaterEqual(after[2], before[2])
+
+
+if __name__ == "__main__":
+    unittest.main()
