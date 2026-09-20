@@ -278,7 +278,9 @@ def run_checks(
 
     metric_checks = {
         "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
+        "oci_host_production": 'count({service_name="chess-studio-oci-host",deployment_environment="production",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
         "backend_production_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend"})',
+        "backend_staging_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend-staging"})',
     }
     for name, query in metric_checks.items():
         payload = api.get_json(
@@ -331,6 +333,12 @@ def run_checks(
         '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"})))',
         now,
     )
+    host_production_ram_percent = _prom_value(
+        api,
+        metrics_uid,
+        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="production"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="production"})))',
+        now,
+    )
     enough_requests = requests_15m is not None and requests_15m >= min_requests_15m
     error_percent = None
     if enough_requests and errors_15m is not None and requests_15m:
@@ -355,6 +363,49 @@ def run_checks(
         max_host_ram_percent,
         "%",
     ) and passed
+    passed = _slo_report(
+        "oci_host_production_ram_percent",
+        host_production_ram_percent,
+        max_host_ram_percent,
+        "%",
+    ) and passed
+
+    staging_requests_15m = _prom_value(
+        api,
+        metrics_uid,
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging"}[15m])) or vector(0)',
+        now,
+    )
+    staging_errors_15m = _prom_value(
+        api,
+        metrics_uid,
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_response_status_class="5xx"}[15m])) or vector(0)',
+        now,
+    )
+    staging_p95_ms = _prom_value(
+        api,
+        metrics_uid,
+        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-staging"}[15m])))',
+        now,
+    )
+    staging_enough_requests = staging_requests_15m is not None and staging_requests_15m >= min_requests_15m
+    staging_error_percent = None
+    if staging_enough_requests and staging_errors_15m is not None and staging_requests_15m:
+        staging_error_percent = 100.0 * staging_errors_15m / staging_requests_15m
+    passed = _slo_report(
+        "backend_staging_5xx_percent",
+        staging_error_percent,
+        max_5xx_percent,
+        "%",
+        evaluated=staging_enough_requests,
+    ) and passed
+    passed = _slo_report(
+        "backend_staging_p95_ms",
+        staging_p95_ms,
+        max_p95_ms,
+        "ms",
+        evaluated=staging_enough_requests,
+    ) and passed
 
     log_query = f'sum(count_over_time({{service_name="chess-studio-backend"}}[{lookback_seconds}s]))'
     payload = api.get_json(
@@ -364,13 +415,41 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_production_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
-    trace_query = '{ resource.service.name = "chess-studio-backend" }'
+    staging_log_query = f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))'
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": staging_log_query, "time": str(now)},
+    )
+    ok = _vector_positive(payload)
+    passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
+
+    trace_query = '{ resource.service.name = "chess-studio-backend" && resource.deployment.environment.name = "production" }'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
         {"q": trace_query, "start": str(start), "end": str(now), "limit": "1"},
     )
     ok = _tempo_has_result(payload)
     passed = _report("backend_production_traces", ok, "queryable Tempo trace" if ok else "no matching Tempo trace") and passed
+
+    staging_trace_query = '{ resource.service.name = "chess-studio-backend-staging" && resource.deployment.environment.name = "staging" }'
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
+        {"q": staging_trace_query, "start": str(start), "end": str(now), "limit": "1"},
+    )
+    ok = _tempo_has_result(payload)
+    passed = _report("backend_staging_traces", ok, "queryable Tempo trace" if ok else "no matching Tempo trace") and passed
+
+    contamination_queries = {
+        "backend_production_environment_isolation": '{ resource.service.name = "chess-studio-backend" && resource.deployment.environment.name = "staging" }',
+        "backend_staging_environment_isolation": '{ resource.service.name = "chess-studio-backend-staging" && resource.deployment.environment.name = "production" }',
+    }
+    for name, query in contamination_queries.items():
+        payload = api.get_json(
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
+            {"q": query, "start": str(start), "end": str(now), "limit": "1"},
+        )
+        contaminated = _tempo_has_result(payload)
+        passed = _report(name, not contaminated, "no cross-environment trace identity" if not contaminated else "cross-environment trace identity found") and passed
     return passed
 
 
@@ -388,6 +467,7 @@ def self_test() -> int:
     assert _tempo_has_result({"traces": [{"traceID": "abc"}]})
     assert _tempo_has_result({"data": {"traces": [{"traceID": "abc"}]}})
     assert not _tempo_has_result({"traces": []})
+    assert 'deployment.environment.name = "production"' in '{ resource.deployment.environment.name = "production" }'
     sample_datasources = [
         {"uid": "grafanacloud-prom", "type": "prometheus", "isDefault": True},
         {"uid": "grafanacloud-alert-state-history", "type": "loki", "isDefault": False},

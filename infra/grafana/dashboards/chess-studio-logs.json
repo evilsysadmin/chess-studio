@@ -21,7 +21,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Acción primero.** Ajusta `selector` si tu stack Loki comparte logs con otros servicios (p. ej. `{service_name=\"chess-studio\"}`). Los 404 nuevos incluyen `request_path` normalizado para encontrar llamadas rotas sin guardar IDs ni query strings. Usa `request_id` para correlacionar un fallo con el traceback de Render."
+        "content": "**Acción primero.** Usa **Entorno** para cambiar entre producción, staging o ambos sin duplicar dashboards. Los 404 nuevos incluyen `request_path` normalizado para encontrar llamadas rotas sin guardar IDs ni query strings. Usa `request_id` para correlacionar un fallo con el traceback del backend."
       }
     },
     {
@@ -530,11 +530,11 @@
     "list": [
       {
         "name": "selector",
-        "label": "Backend",
+        "label": "Entorno",
         "type": "custom",
-        "query": "{service_name=\"chess-studio-backend\"},{service_name=\"chess-studio-backend-staging\"}",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"}",
         "current": {
-          "text": "{service_name=\"chess-studio-backend\"}",
+          "text": "production",
           "value": "{service_name=\"chess-studio-backend\"}"
         },
         "hide": 0,
@@ -553,6 +553,6 @@
   "timezone": "browser",
   "title": "Chess Studio · Logs accionables",
   "uid": "chess-studio-logs",
-  "version": 1,
+  "version": 2,
   "weekStart": "monday"
 }
