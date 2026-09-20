@@ -1478,6 +1478,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "leather": material("HOME_MAT_leather", (0.19, 0.015, 0.014, 1), roughness=0.60, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
         "paper": material("HOME_MAT_paper", (0.70, 0.52, 0.32, 1), roughness=0.82),
+        "wax": material("HOME_MAT_wax", (0.48, 0.34, 0.20, 1), roughness=0.86),
         "globe": material(
             "HOME_MAT_globe",
             (0.035, 0.105, 0.120, 1),
@@ -2335,18 +2336,25 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cx = 1.24 * math.cos(angle)
         cy = 2.20 + 0.72 * math.sin(angle)
         cz = 4.78 + 0.14 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.20), (0.038, 0.038, 0.17), materials["paper"], bevel=0.014)
+        cylinder(
+            f"HOME_PROP_chandelier_candle_{idx}",
+            (cx, cy, cz + 0.15),
+            0.035,
+            0.24,
+            materials["wax"],
+            vertices=16,
+        )
         cone(
             f"HOME_PROP_chandelier_flame_{idx}",
-            (cx, cy, cz + 0.395),
-            0.027,
-            0.006,
-            0.085,
+            (cx, cy, cz + 0.31),
+            0.024,
+            0.005,
+            0.075,
             materials["fire_hot"],
             vertices=12,
         )
-        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.065, 0.052, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.38), 18, (1.0, 0.34, 0.09), radius=0.24)
+        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.060, 0.050, materials["brass_dark"], vertices=16)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.33), 18, (1.0, 0.34, 0.09), radius=0.24)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
