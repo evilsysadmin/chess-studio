@@ -79,6 +79,8 @@ Criterios de aceptación:
 
 Modo de trabajo:
 - iterar PR a PR sin pedir input salvo bloqueo real
+- no esperes a que acaben los workflows de la PR/merge. Acabas pr y sigues con otra cosa. y cuando vayas a psuhear nueva pr ,
+- revisas el estado de la anterior PR
 - revisar los PNG artifacts en cada tanda
 - comparar siempre contra el baseline/canónico
 - priorizar estabilidad, claridad y compatibilidad antes que florituras
