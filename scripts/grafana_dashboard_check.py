@@ -366,7 +366,18 @@ def main() -> int:
     for token in ('grafana/alloy:v1.19.2', './alloy.alloy:/etc/alloy/config.alloy:ro', '/proc:/host/proc:ro', '/sys:/host/sys:ro'):
         if token not in oci_compose:
             fail(f"OCI host telemetry incompleta: {token}")
-    for token in ('sys.env("ENVIRONMENT")', 'service_name', 'chess-studio-oci-host', 'otelcol.exporter.otlphttp "grafana_cloud"'):
+    for token in (
+        'sys.env("ENVIRONMENT")',
+        'service_name',
+        'chess-studio-oci-host',
+        'prometheus.exporter.self "alloy_self"',
+        'chess-studio-alloy-self',
+        'string.trim_suffix',
+        '"/v1/traces"',
+        '"/v1/metrics"',
+        '"/v1/logs"',
+        'otelcol.exporter.otlphttp "grafana_cloud"',
+    ):
         if token not in oci_alloy:
             fail(f"OCI Alloy no etiqueta/exporta correctamente: {token}")
     for token in ('start_observability_best_effort', 'OCI_ALLOY state=degraded', 'CHESS_STUDIO_ALLOY_OK', 'record_successful_backend "$sha"'):
