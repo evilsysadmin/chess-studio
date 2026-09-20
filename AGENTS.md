@@ -1,121 +1,179 @@
-** ITERACON DE SPRITES DE PAWN SLUG 
- 
-Itera los sprites en Pawn Slug Godot hasta tener la siguiente generación de spritesheet deployada en staging, validada sin regresiones y con mejora visual y funcional clara.
+# Chess Studio — agent operating contract
 
-Contexto de proyecto:
-- Pawn Slug Godot es pure 2D.
-- No usar Blender para sprites.
-- Blender queda reservado para Home 3D y War Room v2.
-- Para Pawn Slug, la pipeline correcta de Matthias es:
-  image_gen → frames 2D → montaje/normalización por script → spritesheet/atlas PNG → Godot.
+This file contains the stable, repository-wide rules for working on Chess Studio.
+Keep it short and operational. Feature-specific implementation details belong in the nearest nested `AGENTS.md` or in focused docs.
 
-Objetivo:
-Generar una nueva iteración seria, consistente y utilizable en runtime, apta para importación y animación en Godot, preservando continuidad visual y mejorando calidad sin romper nada.
+## 1. Critical rule: CI must never block an iteration
 
-Restricciones visuales obligatorias:
-- han de respetar el peon matthias canonico
-- mismo tamaño visual corporal
-- misma línea de pies
-- mismo pivote
-- mismas proporciones
-- locomoción estable
-- pose de pistola por defecto consistente
-- continuidad entre frames
-- lectura clara de silueta
-- consistencia de volumen, extremidades y arma entre animaciones
+GitHub Actions is asynchronous. Do not keep a chat/agent turn alive waiting for a workflow to finish.
 
-Cobertura mínima obligatoria:
-- todas las poses relevantes
-- todas las armas soportadas
-- disparo horizontal
-- disparo arriba
-- disparo abajo
-- disparo diagonal arriba
-- disparo diagonal abajo
-- crouch fire
-- mínimo 8 frames por pose cuando aplique
+After pushing or opening a PR:
+- optionally take one status snapshot to catch an immediate failure;
+- enable automerge when appropriate;
+- remember the PR/branch/SHA;
+- immediately continue with independent useful work.
 
-Reglas de pipeline:
-- image_gen se usa solo para producir frames 2D
-- no usar el generador para fabricar una composición final “artística” difícil de trocear
-- el montaje final del atlas debe hacerse por script
-- el script debe fijar estrictamente:
-  - canvas consistente por frame
-  - pivote consistente
-  - línea de pies consistente
-  - escala corporal consistente
-  - transparencia correcta
-  - separación entre frames consistente
-  - layout del atlas determinista
-  - atlas/spritesheet PNG compatible con Godot
+Before pushing the next PR, take one status snapshot of the previous PR.
 
-Compatibilidad Godot requerida:
-- frames alineados a rejilla clara
-- sin recortes accidentales
-- sin jitter de pies
-- sin cambio de escala entre frames
-- sin desplazamientos arbitrarios del arma o del cuerpo
-- atlas fácil de consumir por AnimatedSprite2D / SpriteFrames / slicing equivalente
+Interpret that snapshot as follows:
+- `green` / merged: continue;
+- `pending` / running: continue and do not poll it again during that iteration;
+- failed: inspect only the failed check/job and the minimum logs needed to diagnose it, fix it, push, then continue;
+- conflict / out-of-date: update only when required to keep working.
 
-Proceso de iteración:
-1. Generar nueva tanda de frames 2D
-2. Montar/normalizar por script
-3. Producir artifact PNG
-4. Revisar visualmente el artifact
-5. Comparar con la iteración anterior
-6. Detectar regresiones visuales o funcionales
-7. Corregir e iterar. Guarda en cache de proyecto el ultimo worksheet validado, por si se cuelga el chat, poder continuar desde ahi
-8. Dejar la mejor versión deployada en staging
+Forbidden workflow patterns:
+- polling loops;
+- `sleep` + status checks;
+- `watch`-style workflow monitoring;
+- repeatedly rereading all checks while they are pending;
+- keeping the turn open solely to wait for CI or a deployment;
+- downloading complete workflow logs when no concrete failure requires them.
 
-Criterios de aceptación:
-- mejora visual clara
-- continuidad de animación mejor o igual
-- cobertura completa exigida
-- mínimo 8 frames por pose cuando aplique
-- sin regresiones
-- compatibilidad real con Godot
-- artifact PNG validado
-- staging validado
+A pending PR is not a blocker unless the next task materially depends on that PR being merged.
 
-Modo de trabajo:
-- iterar PR a PR sin pedir input salvo bloqueo real
-- no esperes a que acaben los workflows de la PR/merge. Acabas pr y sigues con otra cosa. y cuando vayas a psuhear nueva pr ,
-- revisas el estado de la anterior PR
-- revisar los PNG artifacts en cada tanda
-- comparar siempre contra el baseline/canónico
-- priorizar estabilidad, claridad y compatibilidad antes que florituras
+## 2. Git and GitHub discipline
 
-Stack visual aprobada para esta iteración:
-- Image Generation con referencia canónica se usa únicamente para producir frames 2D aislados.
-- Krita o Aseprite solo se usan para retoques puntuales de frames, nunca para montar el atlas final.
-- Python + Pillow, NumPy y OpenCV hacen recorte, transparencia, normalización, validación y montaje determinista.
-- ImageMagick se usa para inspección de dimensiones, alpha y hashes.
-- Godot 4 headless valida AnimatedSprite2D, SpriteFrames y consumo real del atlas.
-- GitHub Actions ejecuta los gates, artefactos de revisión y smoke tests.
-- Cloudflare R2 se publica con scripts/r2_asset_publisher.py y versionado inmutable.
-- Playwright valida la captura visual del juego desplegado en staging.
-- Blender está prohibido para sprites de Pawn Slug; queda reservado para Home 3D y War Room v2.
+Prefer local work. The normal path is:
 
-Tooling de compatibilidad Godot:
-- Entorno local: ejecutar los scripts de arte con `.venv/bin/python` (versiones fijadas de scripts/art/requirements.txt más `pytest`; el Python del sistema tiene otra versión de NumPy). Godot 4.7.2 está en `.godot-ci/4.7.2/godot` (misma versión y sha256 que CI, ignorado por git). oxipng por dnf y Krita por Flatpak de usuario (`flatpak run org.kde.krita`). Aseprite no está instalado (licencia de pago y compilación desde fuente); es opcional. No dar por validado lo que no se ha podido ejecutar.
-- Aseprite CLI (`aseprite -b`), si está disponible, solo para retoques puntuales y para exportar tags/frames como referencia; nunca monta el atlas final.
-- Prohibidos los packers de empaquetado libre (TexturePacker, Free Texture Packer, etc.): el layout es rejilla fija y determinista, emitida por nuestro packer.
-- Formato del PNG: RGBA de 8 bits, alpha recta (sin premultiplicar), sin perfil `iCCP`, gamma ni cambios de color. El RGB bajo píxeles con alpha=0 debe ser limpio (sin halos). Ancho y alto ≤ 16384 px (límite duro por textura en el export web). Los atlas actuales miden 3328x7488 (Matthias) y 1024x14976 (enemigos), así que superan 4096 y 8192; en GPU móvil con límite de 4096 o 8192 fallarían, y si eso aparece hay que partir el atlas por filas de animación.
-- Celdas de tamaño fijo, con margen transparente entre frames para que el filtrado no sangre entre celdas.
-- Manifest JSON determinista junto al atlas (celda, columnas, filas, pivote, línea de pies, frames por animación y sha256 del PNG). Godot y los validadores consumen ese manifest; no se hardcodean regiones en GDScript.
-- Import en Godot: `compress/mode=0` (lossless), `mipmaps/generate=false` y `fix_alpha_border=true`, sin premultiplicar. El juego dibuja los sprites con filtro `linear` (`TEXTURE_FILTER_LINEAR`), porque las celdas son hi-res reducidas; por eso el margen transparente entre celdas es obligatorio. No cambiar a `nearest` sin rehacer la comparación visual.
-- Godot headless (`--headless --import`) carga el atlas, construye `SpriteFrames`/`AtlasTexture` y comprueba que cada `region` coincide con el manifest y cabe dentro del PNG. Tests en games/pawn-slug-godot/tests/.
-- Validadores actuales: scripts/art/validate_pawn_slug_godot_atlas_v10.py (Matthias) y scripts/art/validate_pawn_slug_enemy_v2.py (enemigos). Los dos usan scripts/art/png_contract.py (solo Pillow, porque el CI de arte solo instala Pillow), que exige PNG RGBA sin entrelazar, sin chunks de color (`iCCP`, `gAMA`, `sRGB`, `cHRM`), sin RGB bajo alpha=0 y con lado ≤ 16384 px. Sus tests están en scripts/art/test_png_contract.py (`.venv/bin/python -m pytest scripts/art`). El margen entre celdas lo aplica el chequeo de desborde de celda de cada validador (2 px por lado).
-- `oxipng` (sin pérdida) se permite para optimizar el PNG final, siempre antes de calcular el sha256 publicado. `pngquant` queda prohibido porque cuantiza y rompe la paleta.
-- Pillow, NumPy y OpenCV se ejecutan con versiones fijadas y sin aleatoriedad, para que el mismo input produzca el mismo PNG byte a byte.
+`cached repo -> worktree/branch -> edit -> local validation -> artifacts -> commit/push -> PR -> automerge`
 
-Workflows de CI de sprites (v6, v9, v10, godot-web, sprite-smoke y los de Blender de Pawn Slug):
-- No borrar ni "limpiar" estos workflows aunque la generación se haga en local con el CLI de Claude. Se conservan como respaldo para cuando no haya tokens de Claude y la iteración pase al chat de GPT, que casi no tiene ancho de banda con el conector git y necesita que CI monte, valide y publique el artefacto.
-- Los packers y validadores deben seguir siendo ejecutables por CI sin pasos manuales, y sus dependencias (solo Pillow en el CI de arte, salvo donde el job instale más) deben instalarse dentro del propio workflow.
+Rules:
+- Reuse an existing local checkout/cache; do not clone repeatedly.
+- Use a separate worktree/branch per independent iteration when useful.
+- Sync `main` once when needed; do not continuously fetch.
+- If the sandbox has no repo, rediscover the Git/GitHub connector and continue without asking the user to re-provide repository details.
+- Use GitHub primarily for small metadata reads, SHA/check state, commit/PR operations and automerge.
+- Avoid `fetch_file` for large files, full diffs/patches, broad searches, full workflow logs and duplicate reads.
+- Treat already-read content as working cache unless there is evidence it changed.
+- If git/network access is degraded, reduce GitHub traffic further rather than compensating with repeated API calls.
+- Prepare the change completely before remote writes whenever possible.
+- Do not create project ZIPs unless the user explicitly asks for one.
 
-Contrato adicional de enemigos:
-- Las variantes militares deben mantener una familia visual común con Matthias: paleta, contraste, línea de pies, pivote y escala de celda estables.
-- Cada tipo puede tener silueta, protección, casco y arma propios, pero no puede depender de un fondo vectorial para comunicar su identidad principal.
-- El atlas enemigo se genera desde frames 2D y un packer; no se aceptan composiciones finales generadas manualmente.
-- El worksheet validado de enemigos se conserva dentro de games/pawn-slug-godot/art/ para reanudar la iteración.
-- Si trabajas en local y tienes buen hardware, puedes generar sprites y blender artifacts, pero ojo con saturar la cpu/gpu
+## 3. PR-sized iterations
+
+Prefer small, coherent iterations over large multi-feature bursts.
+
+For each iteration:
+1. inspect only the relevant code/docs/assets;
+2. make one coherent change;
+3. run the smallest useful local validation first;
+4. run broader gates when justified by the touched surface;
+5. produce and inspect visual artifacts when the change is visual;
+6. push/open a PR;
+7. enable automerge by default;
+8. continue without waiting for CI.
+
+Do not ask for user confirmation between normal implementation steps. Ask only for a genuine product decision, missing secret/authorization, destructive action that cannot be safely inferred, or another real blocker.
+
+Do not expand scope merely because adjacent cleanup is available. Follow-up cleanup should normally become another PR.
+
+## 4. Testing and claims
+
+Use repository-provided Make targets/scripts instead of inventing parallel test entrypoints when practical.
+
+General order:
+- focused tests for the touched subsystem;
+- static/preflight checks;
+- broader frontend/backend tests when the change warrants them;
+- browser/headless/runtime validation for user-visible flows.
+
+Rules:
+- Never claim a test, render, deployment or visual review passed if it was not actually executed/inspected.
+- Distinguish source/static validation from runtime validation.
+- If dependencies or infrastructure prevent a gate from running, state that precisely and continue with the strongest validation available.
+- Fix the first concrete failure; do not pull giant logs pre-emptively.
+- Preserve existing CI quality/security gates unless the change explicitly replaces them with an equivalent or stronger gate.
+
+## 5. Visual work: artifact-first validation
+
+Every visual iteration must leave a reviewable PNG artifact and that PNG must actually be inspected.
+
+Required loop:
+
+`render/generate -> artifact PNG -> inspect -> compare baseline -> detect regression -> correct -> validate`
+
+A successful process exit is not visual validation.
+
+Check at minimum:
+- composition and hierarchy;
+- clipping/overflow;
+- unexpected scale or alignment changes;
+- mobile/responsive behavior when relevant;
+- obvious rendering regressions;
+- consistency with the canonical/baseline appearance.
+
+Keep the last validated artifact/worksheet/cache needed to resume after a tool or chat failure. Long visual pipelines must be restartable rather than requiring regeneration from scratch.
+
+### Home 3D
+
+- The canonical Home visual pipeline uses Blender.
+- Interactions should remain diegetic where practical rather than becoming dashboard clutter.
+- Preserve progressive disclosure: the common path stays simple; advanced depth is revealed on demand.
+
+### War Room v2
+
+- The War Room v2 visual pipeline uses Blender.
+- Preserve the current War Room implementation/assets as a rollback baseline until v2 has passed visual, mobile, performance and functional validation.
+- Do not irreversibly overwrite/remove the rollback path while v2 is still being validated.
+
+### Pawn Slug Godot
+
+- Pawn Slug is pure 2D. Do not use Blender for its sprites.
+- Sprite generation/packing/validation rules live in `games/pawn-slug-godot/AGENTS.md` and take precedence for that subtree.
+- Runtime sprites/framesheets must be genuinely compatible with Godot, not merely visually plausible.
+
+## 6. Stable product invariants
+
+These are cross-cutting assumptions. Do not silently violate them while implementing an unrelated change.
+
+- Prefer progressive disclosure across the UI: simple default path, explicit access to advanced depth.
+- Matthias is the fixed CPU character/identity; do not add selectable CPU personalities unless the product direction is explicitly changed.
+- Any coaching, rivalry memory or contextual remarks that reference a user's play must be backed by real stored/measured events or stats. Do not invent incidents or weaknesses.
+- Combat Chess may deliberately bend chess rules, but those mutations must remain confined to Combat/Roguelike unless explicitly promoted to another mode.
+- Normal chess, tournament, puzzles and other standard modes must not inherit Combat-only HP/metamorphosis/permadeath rules accidentally.
+- Telemetry/presence should stay coarse and low-cardinality. Do not add click/mouse/keyboard surveillance, FEN/game-content telemetry, secrets, tokens or free-form private content to observability.
+- Preserve accessibility, keyboard/touch usability and mobile layouts when changing shared UI.
+- Prefer useful gameplay/performance/reliability improvements over decorative complexity.
+
+## 7. Environment and deployment assumptions
+
+Treat repository configuration/workflows as the executable source of truth and update this section when architecture changes.
+
+Current intended deployment model:
+- OCI A1 is the iterative staging environment once operational;
+- Render remains the stable production backend until deliberately migrated;
+- staging may track `main` continuously or very frequently;
+- production should not be promoted automatically on every merge merely because staging is continuous;
+- production promotion should use a known green SHA that has passed required checks and staging validation, with a manual hotfix path available.
+
+Do not sit waiting for a deployment to finish. Validate deployment state at the next natural checkpoint unless the current task specifically requires the deployed result before any useful work can continue.
+
+Observability should cover staging and production with the same privacy rules, while keeping environment/release identity clear enough to compare them.
+
+## 8. Source of truth and documentation hierarchy
+
+When instructions conflict, use this order:
+1. current code/configuration/workflows for executable facts;
+2. nearest nested `AGENTS.md` for subsystem-specific working rules;
+3. root `AGENTS.md` for repository-wide operating rules;
+4. focused current docs;
+5. historical release notes/README history.
+
+Do not preserve an obsolete assumption merely because it appears in an old release note. If architecture or workflow changes intentionally, update the relevant agent documentation in the same or a closely related PR.
+
+Avoid turning the root `AGENTS.md` into a feature backlog or release history.
+
+Canonical shorthand used in project conversations:
+- `Chronicles` = `Chronicles of Matthias`.
+- `Tactics` = `Chronicles of Matthias Tactics`.
+
+## 9. Completion report
+
+At the end of an implementation iteration, report concisely:
+- what changed;
+- what was actually validated locally;
+- PR/branch when created;
+- CI state only as the latest single snapshot, if checked;
+- any genuine remaining risk/blocker.
+
+Do not imply that pending CI is being watched in the background.
