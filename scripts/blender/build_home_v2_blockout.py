@@ -801,6 +801,13 @@ def add_bookshelf(materials):
     cube("HOME_PROP_library_frame", (x, y - 0.22, 2.55), (1.58, 0.22, 2.38), wood, bevel=0.06)
     for idx, z in enumerate((0.55, 1.25, 1.95, 2.65, 3.35, 4.05, 4.75)):
         cube(f"HOME_PROP_library_shelf_{idx}", (x, y - 0.42, z), (1.55, 0.12, 0.075), wood, bevel=0.025)
+        cube(
+            f"HOME_PROP_library_shelf_lip_{idx}",
+            (x, y - 0.555, z - 0.040),
+            (1.49, 0.018, 0.028),
+            materials["dark"],
+            bevel=0.010,
+        )
     for side in (-1, 1):
         cube(f"HOME_PROP_library_post_{side}", (x + side * 1.34, y - 0.31, 2.35), (0.11, 0.13, 2.25), wood, bevel=0.025)
         cylinder(f"HOME_PROP_library_post_band_{side}", (x + side * 1.34, y - 0.46, 2.42), 0.14, 0.055, brass, vertices=16)
