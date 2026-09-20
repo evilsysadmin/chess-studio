@@ -146,7 +146,6 @@ export default function HomeBlenderScene3D({
     let disposed = false;
     let model = null;
     let frame = null;
-    let loadTimer = null;
     let pointerX = 0;
     let pointerY = 0;
 
@@ -239,8 +238,6 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderRuntime = 'fallback';
       onUnavailable?.();
     };
-    loadTimer = window.setTimeout(failToFallback, 7000);
-
     const loader = new GLTFLoader();
     void loadHomeCastleR2Scene({
       logicalId: HOME_BLENDER_RUNTIME_LOGICAL_ID,
@@ -254,8 +251,6 @@ export default function HomeBlenderScene3D({
         failToFallback();
         return;
       }
-      window.clearTimeout(loadTimer);
-      loadTimer = null;
       model = root;
       prepareRuntimeScene(model);
       scene.add(model);
@@ -282,7 +277,6 @@ export default function HomeBlenderScene3D({
       disposed = true;
       renderRequestRef.current = null;
       if (frame !== null) window.cancelAnimationFrame(frame);
-      if (loadTimer !== null) window.clearTimeout(loadTimer);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('webglcontextlost', onContextLost);
