@@ -376,8 +376,7 @@ def run_checks(
     ) and passed
     passed = _slo_report(
         "backend_p95_ms",
-        p95_ms,
-        max_p95_ms,
+        p95_ms,        max_p95_ms,
         "ms",
         evaluated=enough_requests,
     ) and passed
@@ -459,6 +458,26 @@ def run_checks(
         "rows": loki_service_inventory,
     }, separators=(",", ":"), sort_keys=True))
 
+    direct_probe_filters = ' |= "oci_otlp_log_probe"'
+    if expected_staging_sha:
+        direct_probe_filters += f' |= "{expected_staging_sha}"'
+    direct_probe_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-log-probe-staging"}'
+        f'{direct_probe_filters} [{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": direct_probe_query, "time": str(now)},
+    )
+    direct_probe_ok = _vector_positive(payload)
+    passed = _report(
+        "oci_otlp_direct_log_probe",
+        direct_probe_ok,
+        "direct OTLP /v1/logs probe reached Loki"
+        if direct_probe_ok
+        else "direct OTLP /v1/logs probe missing; inspect endpoint/auth and logs:write scope",
+    ) and passed
+
     probe_filters = ' |= "oci_alloy_probe"'
     if expected_staging_sha:
         probe_filters += f' |= "{expected_staging_sha}"'
@@ -474,7 +493,13 @@ def run_checks(
     passed = _report(
         "oci_filelog_probe",
         ok,
-        "Alloy filelog probe reached Loki" if ok else "Alloy filelog probe missing from Loki",
+        "Alloy filelog probe reached Loki"
+        if ok
+        else (
+            "direct OTLP logs work but Alloy filelog probe is missing"
+            if direct_probe_ok
+            else "Alloy filelog probe missing and direct OTLP logs are also unavailable"
+        ),
     ) and passed
 
     oci_stdout_log_query = (
@@ -490,7 +515,13 @@ def run_checks(
     passed = _report(
         "oci_backend_stdout_logs",
         ok,
-        "structured backend stdout reached Loki" if ok else "no structured backend stdout in Loki",
+        "structured backend stdout reached Loki"
+        if ok
+        else (
+            "direct OTLP logs work but backend stdout capture is missing"
+            if direct_probe_ok
+            else "backend stdout missing while the direct OTLP log path is also unavailable"
+        ),
     ) and passed
 
     log_explorer_default_query = (
