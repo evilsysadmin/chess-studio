@@ -8,6 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / ".github/workflows/staging-preview.yml"
 STAGING_DEPLOY = ROOT / ".github/workflows/staging-deploy.yml"
+MAIN_BACKEND_IMAGE = ROOT / ".github/workflows/main-backend-image.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTE = ROOT / ".github/workflows/production-promote.yml"
 STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
@@ -52,6 +53,7 @@ def main() -> int:
     paths = (
         PREVIEW,
         STAGING_DEPLOY,
+        MAIN_BACKEND_IMAGE,
         STAGING_AI,
         PROMOTE,
         STAGING_WRANGLER,
@@ -71,6 +73,7 @@ def main() -> int:
 
     preview = PREVIEW.read_text(encoding="utf-8")
     staging_deploy = STAGING_DEPLOY.read_text(encoding="utf-8")
+    main_backend_image = MAIN_BACKEND_IMAGE.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
     staging_wrangler = STAGING_WRANGLER.read_text(encoding="utf-8")
@@ -121,8 +124,6 @@ def main() -> int:
         ("admitted=false", "superseded clean exit"),
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
-        ("Backend · publish approved GHCR signal", "generation approved backend signal"),
-        ("oci-staging-approved", "generation GHCR approved signal tag"),
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
@@ -137,6 +138,23 @@ def main() -> int:
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
+
+    # Backend image publication is decoupled from admission/Pages. It may build
+    # immutable images in parallel, but only current main may move the mutable
+    # staging signal consumed by the zero-cost OCI watcher.
+    for needle, label in (
+        ("name: Main · backend image", "backend image workflow name"),
+        ("workflows:\n      - Main · admission", "backend image admitted trigger"),
+        ("github.event.workflow_run.conclusion == 'success'", "backend image green-admission guard"),
+        ("Build and publish immutable backend image", "backend immutable image build"),
+        ("Keep stale admitted images immutable but unsignaled", "backend signal stale guard"),
+        ("git ls-remote origin refs/heads/main", "backend signal current-main probe"),
+        ("oci-staging-approved", "backend mutable approved signal"),
+        ("docker buildx imagetools create", "backend server-side signal promotion"),
+    ):
+        require(main_backend_image, needle, label, errors)
+    for needle in ("OCI_TENANCY_OCID", "OCI_USER_OCID", "OCI_PRIVATE_KEY", "RENDER_API_KEY"):
+        forbid(main_backend_image, needle, "backend image publisher no muta OCI/Render", errors)
 
     # Render production remains valid elsewhere, but the canonical staging release
     # must not need Render availability, identities or API credentials at all.
@@ -185,13 +203,13 @@ def main() -> int:
     ):
         require(oci_runtime_bundle, needle, label, errors)
 
-    names = ("prepare", "backend_signal", "backend", "frontend", "worker", "smoke", "summary")
+    names = ("prepare", "backend", "frontend", "worker", "smoke", "summary")
     blocks = split_jobs(staging_deploy, names, errors)
     if blocks:
         forbid(staging_deploy, "\n  render_reconcile:\n", "staging generation: Render reconcile volvió a job separado", errors)
         forbid(staging_deploy, "\n  parity:\n", "staging generation: parity volvió a job separado", errors)
 
-        for name in ("backend_signal", "backend", "frontend", "worker", "smoke", "summary"):
+        for name in ("backend", "frontend", "worker", "smoke", "summary"):
             require(
                 blocks[name],
                 "if: needs.prepare.outputs.admitted == 'true'",
@@ -199,12 +217,7 @@ def main() -> int:
                 errors,
             )
 
-        require(blocks["backend_signal"], "needs: prepare", "backend signal arranca tras admission", errors)
-        require(blocks["backend_signal"], "packages: write", "backend signal permiso GHCR estrecho", errors)
-        require(blocks["backend_signal"], "docker buildx imagetools create", "backend signal retag server-side", errors)
-        require(blocks["backend_signal"], "oci-staging-approved", "backend signal mutable tag", errors)
-        forbid(blocks["backend_signal"], "OCI_", "backend signal no usa credenciales OCI", errors)
-        require(blocks["backend"], "needs: [prepare, backend_signal]", "backend espera señal GHCR aprobada", errors)
+        require(blocks["backend"], "needs: prepare", "backend arranca tras admission sin bloquear Pages", errors)
         require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
@@ -259,12 +272,11 @@ def main() -> int:
                 require(parity_block, needle, label, errors)
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
-    signal_step = staging_deploy.find("Promote immutable image to approved staging signal")
     backend_step = staging_deploy.find("Deploy exact backend commit to OCI staging")
     frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
     worker_step = staging_deploy.find("run: python3 scripts/deploy_staging_ai_worker.py")
-    if stale_step >= 0 and all(step >= 0 for step in (signal_step, backend_step, frontend_step, worker_step)):
-        if not all(stale_step < step for step in (signal_step, backend_step, frontend_step, worker_step)):
+    if stale_step >= 0 and all(step >= 0 for step in (backend_step, frontend_step, worker_step)):
+        if not all(stale_step < step for step in (backend_step, frontend_step, worker_step)):
             errors.append("staging generation: stale supersede guard no está antes de todas las ramas operativas")
     if "::error::CI aprobó" in staging_deploy:
         errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")
