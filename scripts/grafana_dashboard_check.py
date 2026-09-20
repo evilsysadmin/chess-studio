@@ -159,6 +159,8 @@ def main() -> int:
         'backend_staging_metrics',
         'backend_staging_logs',
         'loki_service_inventory',
+        'oci_otlp_direct_log_probe',
+        'chess-studio-oci-log-probe-staging',
         'oci_filelog_probe',
         'oci_backend_stdout_logs',
         'chess-studio-oci-backend-staging-stdout',
@@ -217,8 +219,7 @@ def main() -> int:
         'chess-studio-log-explorer.json',
         'runtime_variables = {"backend_service", "selector", "environment"}',
         '"overwrite": True',
-        'urllib.request',
-        'stdlib only',
+        'urllib.request',        'stdlib only',
     ):
         if token not in publisher:
             fail(f"publisher Grafana incompleto: {token}")
@@ -291,6 +292,9 @@ def main() -> int:
     for token in ('TrackingOTLPSpanExporter', 'lastHttpStatus', 'successCount', 'exportedSpanCount', 'chess-studio.startup', 'startupTraceId'):
         if token not in tracing:
             fail(f"Tempo perdió diagnóstico real de entrega OTLP: {token}")
+    for token in ('TrackingOTLPLogExporter', 'exportedLogCount', 'logExporter', '_log_export_error'):
+        if token not in tracing:
+            fail(f"Loki perdió diagnóstico real de entrega OTLP: {token}")
     if tracing.count('headers=exporter_headers or None') < 3:
         fail('OTLP debe pasar las cabeceras explícitamente a traces, metrics y logs')
     render_yaml = (ROOT / 'render.yaml').read_text(encoding='utf-8')
