@@ -3505,7 +3505,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 16, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 9, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light(
+        "HOME_LIGHT_window_moon",
+        (7.70, 5.92, 4.45),
+        28,
+        (0.16, 0.28, 0.46),
+        2.15,
+        target=(4.35, 1.85, 1.25),
+    )
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 24, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
