@@ -7,6 +7,7 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
+import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
@@ -35,9 +36,7 @@ const KEY_ACTIONS = Object.freeze({
 export default function ChroniclesOfMatthias({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
-  const portraitHostRef = useRef(null);
   const engineRef = useRef(null);
-  const portraitEngineRef = useRef(null);
   const retaliationTimerRef = useRef(null);
   const retaliationSequenceRef = useRef(0);
   const partyBarkTimerRef = useRef(null);
@@ -46,7 +45,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
-  const [partyThumbnails, setPartyThumbnails] = useState({});
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
@@ -54,7 +52,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
-    portraitEngineRef.current?.renderMember(selectedMemberId);
   }, [selectedMemberId]);
 
   const dispatch = useCallback((action) => {
@@ -113,32 +110,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     let cancelled = false;
     let engine = null;
-    let portraitEngine = null;
     const host = hostRef.current;
-    const portraitHost = portraitHostRef.current;
     if (!host) return undefined;
 
-    void Promise.all([
-      import('../chroniclesOfMatthiasThree.js'),
-      import('../chroniclesOfMatthiasPartyPortrait.js'),
-    ])
-      .then(([{ createChroniclesOfMatthiasGame }, { createChroniclesPartyPortrait }]) => {
+    void import('../chroniclesOfMatthiasThree.js')
+      .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host, {
           onReady: (backend) => { if (!cancelled) setRendererName(backend); },
         });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
-
-        if (portraitHost) {
-          portraitEngine = createChroniclesPartyPortrait(portraitHost, {
-            onThumbnailsReady: (thumbnails) => {
-              if (!cancelled) setPartyThumbnails(thumbnails);
-            },
-          });
-          portraitEngineRef.current = portraitEngine;
-          portraitEngine.renderMember(selectedMemberIdRef.current);
-        }
       })
       .catch((error) => {
         console.error('Chronicles of Matthias Three.js boot failed', error);
@@ -151,9 +133,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => {
       cancelled = true;
       engine?.destroy();
-      portraitEngine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
-      if (portraitEngineRef.current === portraitEngine) portraitEngineRef.current = null;
     };
   }, []);
 
@@ -212,7 +192,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
           <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
-            <div ref={portraitHostRef} className="chronicles-party-preview-three" data-chronicles-party-renderer="three" aria-label={`Retrato 3D de ${selectedMember?.name || 'Matthias'}`} />
+            <img
+              className="chronicles-party-preview-image"
+              src={chroniclesPartyPortraitUrl(selectedMember.id)}
+              alt={`Retrato de ${selectedMember.name}`}
+              data-chronicles-party-renderer="authored"
+              data-member-id={selectedMember.id}
+              draggable="false"
+            />
             <div className="chronicles-party-preview-copy">
               <span>{selectedMember?.role}</span>
               <strong>{selectedMember?.name}</strong>
@@ -220,7 +207,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
             </div>
           </div>
           {state.party.map((member, index) => {
-            const thumbnail = partyThumbnails[member.id];
             return (
               <button
                 type="button"
@@ -230,16 +216,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 aria-label={`Seleccionar ${member.name}`}
                 aria-pressed={member.id === selectedMemberId}
               >
-                <span className={`chronicles-party-glyph ${thumbnail ? 'has-blender-portrait' : ''}`} aria-hidden="true">
-                  {thumbnail ? (
-                    <img
-                      className="chronicles-party-thumbnail"
-                      src={thumbnail}
-                      alt=""
-                      draggable="false"
-                      data-chronicles-party-thumbnail={member.id}
-                    />
-                  ) : member.glyph}
+                <span className="chronicles-party-glyph has-authored-portrait" aria-hidden="true">
+                  <img
+                    className="chronicles-party-thumbnail"
+                    src={chroniclesPartyPortraitUrl(member.id)}
+                    alt=""
+                    draggable="false"
+                    data-chronicles-party-thumbnail={member.id}
+                  />
                 </span>
                 <span><strong>{index + 1}. {member.name}</strong><small>{member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · {member.attackName} · alcance {member.reach}</small></span>
                 <b>{member.hp}/{member.maxHp}</b>

@@ -162,6 +162,34 @@ for (const capture of CAPTURES) {
       expectCanvasFillsViewport(health, capture.label);
       if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
+      const partyHud = mode.locator('.chronicles-party-hud');
+      const partyPortraits = partyHud.locator('.chronicles-party-hud__portrait-frame img');
+      await expect(partyPortraits).toHaveCount(4);
+      const authoredPortraits = await partyPortraits.evaluateAll((images) => images.every((image) => (
+        image.complete
+        && image.naturalWidth >= 128
+        && image.naturalHeight >= 128
+        && !image.src.startsWith('data:')
+      )));
+      expect(authoredPortraits, `${capture.label}: authored Tactics portraits decoded`).toBe(true);
+      await captureElement(
+        page,
+        partyHud,
+        `${ARTIFACT_DIR}/chronicles-tactics-party-portraits-${capture.label}.png`,
+      );
+
+      await partyHud.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true }).click();
+      const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+      await expect(sheet).toBeVisible();
+      const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
+      await expect(sheetPortrait).toBeVisible();
+      await captureElement(
+        page,
+        sheet,
+        `${ARTIFACT_DIR}/chronicles-tactics-character-sheet-${capture.label}.png`,
+      );
+      await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
       if (capture.hasTouch) {
         // On narrow layouts the mission, action pad and party HUD flow below the
@@ -195,6 +223,11 @@ for (const capture of CAPTURES) {
           schema: 3,
           scope: 'chronicles-tactics',
           capture: { label: capture.label, ...health },
+          portraits: {
+            source: 'authored',
+            count: 4,
+            characterSheet: true,
+          },
           gameplay: { movedNorth: true, message: movementMessage },
         }, null, 2)}\n`,
         'utf8',

@@ -17,6 +17,8 @@ import {
   chroniclesTacticsAbilityStatus,
   chroniclesTacticsProfile,
 } from '../chroniclesOfMatthiasTactics.js';
+import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
+import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import './ChroniclesTacticsPartyHud.css';
 import './ChroniclesTacticsAdventureSummary.css';
 
@@ -131,7 +133,7 @@ export default function ChroniclesTacticsPartyHud({
                 title={`Ficha de ${member.name}`}
               >
                 <span className="chronicles-party-hud__portrait-frame" aria-hidden="true">
-                  <i>{member.glyph}</i>
+                  <img src={chroniclesPartyPortraitUrl(member.id)} alt="" />
                 </span>
                 <span className="chronicles-party-hud__hotkey" aria-hidden="true">{index + 1}</span>
               </button>
@@ -210,7 +212,9 @@ export default function ChroniclesTacticsPartyHud({
             onKeyDown={onSheetKeyDown}
           >
             <header className="chronicles-character-sheet__head">
-              <div className="chronicles-character-sheet__portrait" aria-hidden="true">{sheetMember.glyph}</div>
+              <div className="chronicles-character-sheet__portrait" aria-hidden="true">
+                <img src={chroniclesPartyPortraitUrl(sheetMember.id)} alt="" />
+              </div>
               <div>
                 <span>EXPEDIENTE DE CAMPAÑA</span>
                 <h3 id="chronicles-character-sheet-title">{sheetMember.name}</h3>
