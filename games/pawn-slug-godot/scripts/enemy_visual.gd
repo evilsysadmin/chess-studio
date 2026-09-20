@@ -16,6 +16,19 @@ const LEGACY_REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, 
 const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.40, "shield": 0.45}
 const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.27, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
+const INTEGRATED_MUZZLE_SOURCE_PX := {
+    # Source-space barrel tips measured from the immutable 80x80 cast-v2 rows.
+    # The body atlas is authored facing left and mirrored at runtime.
+    "pawn": Vector2(10.0, 26.0),
+    "knight": Vector2(11.0, 31.0),
+    "rook": Vector2(12.0, 38.0),
+    "queen": Vector2(11.0, 31.0),
+    "grenadier": Vector2(10.0, 26.0),
+    "scout": Vector2(10.0, 26.0),
+    "commando": Vector2(4.0, 27.0),
+    # Shield fires from behind the shield edge; no legacy gun is drawn.
+    "shield": Vector2(10.0, 38.0),
+}
 const ENEMY_VISUAL_SCALE := 1.18
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5, "scout": 8.5, "commando": 7.5, "shield": 3.6}
 const TYPE_TINT := {
@@ -145,6 +158,11 @@ func set_bishop_telegraph(shell_strength: float, suppression_strength: float) ->
 
 func play_fire() -> void:
     if dead or _weapon_root == null:
+        return
+    if _uses_integrated_body_weapon():
+        # The gun is baked into cast-v2; moving WeaponRoot would recoil only the
+        # invisible socket and make the projectile origin drift away from it.
+        _fire_flash = 0.0
         return
     _fire_flash = 0.06
     var base_position := _weapon_root.position
@@ -355,6 +373,14 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
 func _uses_integrated_body_weapon() -> bool:
     return _using_remote_body and not _using_legacy_remote_body and enemy_type != "bishop"
 
+func _integrated_muzzle_position() -> Vector2:
+    var source: Vector2 = INTEGRATED_MUZZLE_SOURCE_PX.get(enemy_type, Vector2(10.0, 30.0))
+    var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248)) * ENEMY_VISUAL_SCALE
+    return Vector2(
+        (REMOTE_FRAME_SIZE.x * 0.5 - source.x) * body_scale,
+        (source.y - REMOTE_FRAME_SIZE.y * 0.5 - REMOTE_BODY_CENTER_Y) * body_scale,
+    )
+
 func _apply_weapon() -> void:
     if _weapon_sprite == null:
         return
@@ -364,19 +390,20 @@ func _apply_weapon() -> void:
         # The current cast-v2 rows already carry their authored weapon. Keeping
         # weapon_atlas.svg visible here draws a second gun over the hands/body.
         _weapon_sprite.visible = false
-    else:
-        var texture := load(WEAPON_ATLAS_PATH) as Texture2D
-        if texture == null:
-            _weapon_sprite.visible = false
-            return
-        _weapon_sprite.texture = texture
-        _weapon_sprite.visible = true
-        var index := int(WEAPON_FRAME.get(weapon, 0))
-        _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+        _weapon_root.position = Vector2.ZERO
+        _weapon_root.rotation = 0.0
+        _muzzle.position = _integrated_muzzle_position()
+        return
 
-    # Keep the socket alive even for integrated cast-v2 art because gameplay
-    # still asks this visual node for the projectile origin. Only the duplicate
-    # drawn weapon and its detached muzzle flash are suppressed.
+    var texture := load(WEAPON_ATLAS_PATH) as Texture2D
+    if texture == null:
+        _weapon_sprite.visible = false
+        return
+    _weapon_sprite.texture = texture
+    _weapon_sprite.visible = true
+    var index := int(WEAPON_FRAME.get(weapon, 0))
+    _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+
     var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
     var type_y_adjust := 0.0
     match enemy_type:
