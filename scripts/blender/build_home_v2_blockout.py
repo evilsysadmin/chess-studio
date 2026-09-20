@@ -2371,6 +2371,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
 
+    # A few hairline fractures break the pristine-CAD read without turning the
+    # hall into a ruined castle. Keep them sparse, shallow and structurally plausible.
+    for crack_index, points in enumerate((
+        [(-8.55, 6.676, 4.92), (-8.42, 6.674, 4.74), (-8.50, 6.672, 4.56), (-8.36, 6.670, 4.39)],
+        [(-5.48, 6.674, 1.82), (-5.35, 6.672, 1.66), (-5.43, 6.670, 1.49)],
+        [(-0.18, 6.674, 5.34), (-0.08, 6.672, 5.18), (-0.16, 6.670, 5.04), (-0.04, 6.668, 4.91)],
+        [(3.55, 6.674, 4.54), (3.69, 6.672, 4.37), (3.62, 6.670, 4.20)],
+        [(8.54, 6.674, 2.58), (8.41, 6.672, 2.42), (8.48, 6.670, 2.24)],
+    )):
+        curve_tube(
+            f"HOME_ARCH_back_crack_{crack_index}",
+            points,
+            0.008,
+            materials["stone_dark"],
+        )
+
     # The side walls need the same masonry scale as the rear wall. Low-relief
     # courses stop these large side masses reading as two perfect extruded boxes.
     for side in (-1, 1):
