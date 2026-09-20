@@ -522,23 +522,26 @@
   "tags": [
     "chess-studio",
     "logs",
-    "production",
     "sre",
-    "terraform"
+    "terraform",
+    "multi-environment"
   ],
   "templating": {
     "list": [
       {
         "name": "selector",
-        "label": "Loki selector",
-        "type": "textbox",
-        "query": "{service_name=\"chess-studio-backend\"}",
+        "label": "Backend",
+        "type": "custom",
+        "query": "{service_name=\"chess-studio-backend\"},{service_name=\"chess-studio-backend-staging\"}",
         "current": {
           "text": "{service_name=\"chess-studio-backend\"}",
           "value": "{service_name=\"chess-studio-backend\"}"
         },
         "hide": 0,
-        "skipUrlSync": false
+        "skipUrlSync": false,
+        "includeAll": true,
+        "allValue": "{service_name=~\"chess-studio-backend(-staging)?\"}",
+        "multi": false
       }
     ]
   },

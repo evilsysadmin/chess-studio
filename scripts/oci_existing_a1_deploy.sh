@@ -376,6 +376,48 @@ record_successful_backend() {
   mv -f "$tmp" "$state_file"
 }
 
+start_observability_best_effort() {
+  local target_sha="$1"
+  local alloy_image="grafana/alloy:v1.19.2"
+
+  if ! grep -Eq '^OTEL_EXPORTER_OTLP_ENDPOINT=.+' "$env_file" || \
+     ! grep -Eq '^OTEL_EXPORTER_OTLP_HEADERS=.+' "$env_file"; then
+    echo "OCI_ALLOY state=skipped target=$target reason=otel-runtime-missing"
+    return 0
+  fi
+  if [[ ! -f "$repo/infra/oci/runtime/alloy.alloy" ]]; then
+    echo "OCI_ALLOY state=degraded target=$target reason=config-missing" >&2
+    return 0
+  fi
+
+  if ! docker image inspect "$alloy_image" >/dev/null 2>&1; then
+    if ! compose "$target_sha" pull alloy >/dev/null; then
+      echo "OCI_ALLOY state=degraded target=$target reason=image-pull-failed" >&2
+      return 0
+    fi
+  fi
+  if ! compose "$target_sha" run --rm --no-deps alloy validate /etc/alloy/config.alloy >/dev/null 2>&1; then
+    echo "OCI_ALLOY state=degraded target=$target reason=config-invalid" >&2
+    return 0
+  fi
+  if ! compose "$target_sha" up -d --no-build --force-recreate alloy >/dev/null 2>&1; then
+    echo "OCI_ALLOY state=degraded target=$target reason=start-failed" >&2
+    return 0
+  fi
+
+  for _alloy_attempt in $(seq 1 12); do
+    if compose "$target_sha" ps --status running --services 2>/dev/null | grep -Fxq alloy; then
+      echo "CHESS_STUDIO_ALLOY_OK target=$target repo_ref=$target_sha"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "OCI_ALLOY state=degraded target=$target reason=not-running" >&2
+  compose "$target_sha" logs --no-color --tail=40 alloy >&2 || true
+  return 0
+}
+
 agent_diag_summary() {
   local service log version active restarts bytes mtime age now metrics
   local recent_lines poll_errors backoff throttled transport_errors
@@ -530,6 +572,7 @@ for _ in $(seq 1 60); do
     fi
     phase_done tunnel "$tunnel_started_ms"
     record_successful_backend "$sha"
+    start_observability_best_effort "$sha"
     if [[ "$target" == staging ]]; then
       enable_deploy_watcher
     fi

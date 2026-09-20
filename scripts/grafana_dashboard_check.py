@@ -63,6 +63,9 @@ def main() -> int:
     for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no cubre {token}")
+    for token in ('chess-studio-backend-staging', 'backend_service'):
+        if token not in trace_dash:
+            fail(f"dashboard Tempo no permite separar producción/staging: {token}")
 
     edge_dash = (INFRA / "dashboards" / "chess-studio-edge.json").read_text(encoding="utf-8")
     for token in (
@@ -278,6 +281,23 @@ def main() -> int:
     infra_logs = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
+
+    for token in ('chess-studio-backend-staging', '"type": "custom"', 'multi-environment'):
+        if token not in infra_logs:
+            fail(f"Loki debe permitir separar producción/staging: {token}")
+
+    oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
+    oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
+    oci_deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="utf-8")
+    for token in ('grafana/alloy:v1.19.2', './alloy.alloy:/etc/alloy/config.alloy:ro', '/proc:/host/proc:ro', '/sys:/host/sys:ro'):
+        if token not in oci_compose:
+            fail(f"OCI host telemetry incompleta: {token}")
+    for token in ('sys.env("ENVIRONMENT")', 'service_name', 'chess-studio-oci-host', 'otelcol.exporter.otlphttp "grafana_cloud"'):
+        if token not in oci_alloy:
+            fail(f"OCI Alloy no etiqueta/exporta correctamente: {token}")
+    for token in ('start_observability_best_effort', 'OCI_ALLOY state=degraded', 'CHESS_STUDIO_ALLOY_OK', 'record_successful_backend "$sha"'):
+        if token not in oci_deploy:
+            fail(f"deploy OCI perdió observabilidad fail-open: {token}")
 
     print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · API publisher 4 dashboards · OTLP + Cloudflare edge")
     return 0

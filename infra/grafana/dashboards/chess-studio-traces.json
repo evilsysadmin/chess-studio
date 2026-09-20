@@ -28,7 +28,23 @@
   },
   "timepicker": {},
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "backend_service",
+        "label": "Backend",
+        "type": "custom",
+        "query": "chess-studio-backend,chess-studio-backend-staging",
+        "current": {
+          "text": "chess-studio-backend",
+          "value": "chess-studio-backend"
+        },
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "chess-studio-backend.*",
+        "multi": false,
+        "skipUrlSync": false
+      }
+    ]
   },
   "panels": [
     {
@@ -97,7 +113,7 @@
             "type": "tempo",
             "uid": "${traces_datasource_uid}"
           },
-          "query": "{ resource.service.name = \"chess-studio-backend\" && trace:duration > 500ms }",
+          "query": "{ resource.service.name =~ \"${backend_service:regex}\" && trace:duration > 500ms }",
           "queryType": "traceql",
           "refId": "A",
           "limit": 100,
@@ -143,7 +159,7 @@
             "type": "tempo",
             "uid": "${traces_datasource_uid}"
           },
-          "query": "{ resource.service.name = \"chess-studio-backend\" && status = error }",
+          "query": "{ resource.service.name =~ \"${backend_service:regex}\" && status = error }",
           "queryType": "traceql",
           "refId": "A",
           "limit": 100,
@@ -189,7 +205,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "{service_name=\"chess-studio-backend\"} | json | trace_id != \"\" | trace_sampled = \"true\" | line_format \"trace={{.trace_id}} · sampled={{.trace_sampled}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
+          "expr": "{service_name=~\"${backend_service:regex}\"} | json | trace_id != \"\" | trace_sampled = \"true\" | line_format \"trace={{.trace_id}} · sampled={{.trace_sampled}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
           "refId": "A",
           "queryType": "range"
         }

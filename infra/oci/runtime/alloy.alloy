@@ -36,7 +36,12 @@ prometheus.relabel "oci_host" {
 
   rule {
     target_label = "deployment_environment"
-    replacement  = "staging"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "chess-studio-oci-host"
   }
 
   rule {
