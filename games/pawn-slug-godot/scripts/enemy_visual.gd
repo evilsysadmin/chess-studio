@@ -16,6 +16,16 @@ const LEGACY_REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, 
 const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.40, "shield": 0.45}
 const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.27, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
+const INTEGRATED_MUZZLE_SOURCE_PX := {
+    "pawn": Vector2(10.0, 26.0),
+    "knight": Vector2(11.0, 31.0),
+    "rook": Vector2(12.0, 38.0),
+    "queen": Vector2(11.0, 31.0),
+    "grenadier": Vector2(10.0, 26.0),
+    "scout": Vector2(10.0, 26.0),
+    "commando": Vector2(4.0, 27.0),
+    "shield": Vector2(10.0, 38.0),
+}
 const ENEMY_VISUAL_SCALE := 1.18
 const TYPE_FPS := {"pawn": 6.0, "knight": 9.0, "rook": 4.0, "queen": 8.0, "grenadier": 5.5, "scout": 8.5, "commando": 7.5, "shield": 3.6}
 const TYPE_TINT := {
@@ -35,6 +45,7 @@ const WEAPON_POSE := {
 
 static var _cached_body_texture: Texture2D
 static var _cached_body_is_legacy := false
+static var _body_texture_failed := false
 static var _body_texture_loading := false
 static var _body_texture_waiters: Array = []
 
@@ -146,6 +157,9 @@ func set_bishop_telegraph(shell_strength: float, suppression_strength: float) ->
 func play_fire() -> void:
     if dead or _weapon_root == null:
         return
+    if _uses_integrated_body_weapon():
+        _fire_flash = 0.0
+        return
     _fire_flash = 0.06
     var base_position := _weapon_root.position
     var tween := create_tween()
@@ -232,18 +246,15 @@ func _apply_type() -> void:
         _install_remote_body_texture(_cached_body_texture)
         return
 
-    var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
-    if texture == null:
-        _body.visible = false
+    if _body_texture_failed:
+        _install_fallback_body_texture()
         return
-    _using_remote_body = false
-    _body.texture = texture
-    _body.visible = true
-    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
-    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
-    _body.scale = Vector2(body_scale, body_scale)
-    _body.position = Vector2(0.0, -98.0 * body_scale)
-    _apply_body_frame()
+
+    # A healthy cast-v2 request is still pending. Keep both body and the legacy
+    # weapon overlay hidden; fallback art is reserved for a confirmed failure.
+    _body.visible = false
+    if _weapon_sprite != null:
+        _weapon_sprite.visible = false
 
 func _apply_body_frame() -> void:
     if _body == null or not _body.visible:
@@ -269,6 +280,9 @@ func _request_body_atlas() -> void:
         return
     if _cached_body_texture != null:
         _install_remote_body_texture(_cached_body_texture)
+        return
+    if _body_texture_failed:
+        _install_fallback_body_texture()
         return
     if not _body_texture_waiters.has(self):
         _body_texture_waiters.append(self)
@@ -327,18 +341,42 @@ func _finish_body_atlas_request(texture: Texture2D) -> void:
         _body_request.queue_free()
         _body_request = null
     _body_texture_loading = false
+    _body_texture_failed = texture == null
 
     var waiters := _body_texture_waiters.duplicate()
     _body_texture_waiters.clear()
-    if texture == null:
-        return
     for waiter in waiters:
-        if is_instance_valid(waiter):
+        if not is_instance_valid(waiter):
+            continue
+        if texture == null:
+            waiter.call("_install_fallback_body_texture")
+        else:
             waiter.call("_install_remote_body_texture", texture)
+
+func _install_fallback_body_texture() -> void:
+    if _body == null or enemy_type == "bishop":
+        return
+    var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
+    if texture == null:
+        _body.visible = false
+        if _weapon_sprite != null:
+            _weapon_sprite.visible = false
+        return
+    _using_remote_body = false
+    _using_legacy_remote_body = false
+    _body.texture = texture
+    _body.visible = true
+    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
+    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
+    _body.scale = Vector2(body_scale, body_scale)
+    _body.position = Vector2(0.0, -98.0 * body_scale)
+    _apply_weapon()
+    _apply_body_frame()
 
 func _install_remote_body_texture(texture: Texture2D) -> void:
     if texture == null or _body == null or enemy_type == "bishop":
         return
+    _body_texture_failed = false
     _using_remote_body = true
     _using_legacy_remote_body = _cached_body_is_legacy
     _body.texture = texture
@@ -355,28 +393,44 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
 func _uses_integrated_body_weapon() -> bool:
     return _using_remote_body and not _using_legacy_remote_body and enemy_type != "bishop"
 
+func _integrated_muzzle_position() -> Vector2:
+    var source: Vector2 = INTEGRATED_MUZZLE_SOURCE_PX.get(enemy_type, Vector2(10.0, 30.0))
+    var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248)) * ENEMY_VISUAL_SCALE
+    return Vector2(
+        (REMOTE_FRAME_SIZE.x * 0.5 - source.x) * body_scale,
+        (source.y - REMOTE_FRAME_SIZE.y * 0.5 - REMOTE_BODY_CENTER_Y) * body_scale,
+    )
+
 func _apply_weapon() -> void:
     if _weapon_sprite == null:
+        return
+    if (
+        enemy_type != "bishop"
+        and _cached_body_texture == null
+        and not _body_texture_failed
+        and not _body.visible
+    ):
+        _weapon_sprite.visible = false
+        _muzzle_flash.visible = false
         return
 
     var integrated_weapon := _uses_integrated_body_weapon()
     if integrated_weapon:
-        # The current cast-v2 rows already carry their authored weapon. Keeping
-        # weapon_atlas.svg visible here draws a second gun over the hands/body.
         _weapon_sprite.visible = false
-    else:
-        var texture := load(WEAPON_ATLAS_PATH) as Texture2D
-        if texture == null:
-            _weapon_sprite.visible = false
-            return
-        _weapon_sprite.texture = texture
-        _weapon_sprite.visible = true
-        var index := int(WEAPON_FRAME.get(weapon, 0))
-        _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+        _weapon_root.position = Vector2.ZERO
+        _weapon_root.rotation = 0.0
+        _muzzle.position = _integrated_muzzle_position()
+        return
 
-    # Keep the socket alive even for integrated cast-v2 art because gameplay
-    # still asks this visual node for the projectile origin. Only the duplicate
-    # drawn weapon and its detached muzzle flash are suppressed.
+    var texture := load(WEAPON_ATLAS_PATH) as Texture2D
+    if texture == null:
+        _weapon_sprite.visible = false
+        return
+    _weapon_sprite.texture = texture
+    _weapon_sprite.visible = true
+    var index := int(WEAPON_FRAME.get(weapon, 0))
+    _weapon_sprite.region_rect = Rect2(Vector2(index * 256.0, 0.0), Vector2(256.0, 128.0))
+
     var pose: Dictionary = WEAPON_POSE.get(weapon, WEAPON_POSE["pistol"])
     var type_y_adjust := 0.0
     match enemy_type:
