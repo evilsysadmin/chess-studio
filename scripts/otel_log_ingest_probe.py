@@ -129,7 +129,7 @@ def send_probe(env_file: Path, service_name: str, environment: str, service_vers
     try:
         with urllib.request.urlopen(req, timeout=12) as response:
             status = int(response.status)
-            response.read(2048)
+            raw_response = response.read(4096).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         status = int(exc.code)
         if status in {401, 403}:
@@ -140,6 +140,19 @@ def send_probe(env_file: Path, service_name: str, environment: str, service_vers
 
     if not 200 <= status < 300:
         fail("unexpected-http", status=status)
+    if raw_response.strip():
+        try:
+            response_payload = json.loads(raw_response)
+        except json.JSONDecodeError:
+            response_payload = {}
+        partial = response_payload.get("partialSuccess") if isinstance(response_payload, dict) else None
+        rejected = partial.get("rejectedLogRecords") if isinstance(partial, dict) else 0
+        try:
+            rejected_count = int(rejected or 0)
+        except (TypeError, ValueError):
+            rejected_count = 0
+        if rejected_count > 0:
+            fail("partial-reject", status=status)
     print(f"OTLP_LOG_PROBE_OK http_status={status} service={service_name} environment={environment}")
     return 0
 
