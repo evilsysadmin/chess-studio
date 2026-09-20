@@ -718,5 +718,107 @@
       "y": 607,
       "count": 5
     }
+  ],
+  "story_props": [
+    {
+      "kind": "jungle_tree",
+      "x": 360,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 970,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 1580,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 2190,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 2800,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 3410,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 4020,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 4630,
+      "y": 610
+    },
+    {
+      "kind": "jungle_tree",
+      "x": 5240,
+      "y": 610
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 840,
+      "y": 606
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 1660,
+      "y": 606
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 2480,
+      "y": 606
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 3300,
+      "y": 606
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 4120,
+      "y": 606
+    },
+    {
+      "kind": "fallen_trunk",
+      "x": 4940,
+      "y": 606
+    },
+    {
+      "kind": "jungle_hut",
+      "x": 1180,
+      "y": 610
+    },
+    {
+      "kind": "jungle_hut",
+      "x": 2100,
+      "y": 610
+    },
+    {
+      "kind": "jungle_hut",
+      "x": 3020,
+      "y": 610
+    },
+    {
+      "kind": "jungle_hut",
+      "x": 3940,
+      "y": 610
+    },
+    {
+      "kind": "jungle_hut",
+      "x": 4860,
+      "y": 610
+    }
   ]
 }

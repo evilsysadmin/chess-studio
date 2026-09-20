@@ -11,8 +11,9 @@ var _obstacles: Array[Rect2] = []
 var _theme := "night_front"
 var _platform_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
+var _story_prop_specs: Array[Dictionary] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = []) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = [], story_prop_specs: Array[Dictionary] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
@@ -20,6 +21,7 @@ func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obs
     _theme = theme
     _platform_specs = platform_specs.duplicate(true)
     _dressing_specs = dressing_specs.duplicate(true)
+    _story_prop_specs = story_prop_specs.duplicate(true)
     queue_redraw()
 
 func _ready() -> void:
@@ -554,15 +556,31 @@ func _draw_foreground_props() -> void:
                 push_warning("Pawn Slug dressing kind not rendered: %s" % kind)
 
 func _draw_foreground_story_props() -> void:
-    match _theme:
-        "harbor_dusk":
-            _draw_harbor_story_props()
-        "alpine_night":
-            _draw_alpine_story_props()
-        "jungle_storm":
-            _draw_jungle_story_props()
-        _:
-            _draw_front_story_props()
+    for spec in _story_prop_specs:
+        var kind := String(spec.get("kind", ""))
+        var origin := Vector2(
+            float(spec.get("x", 0.0)),
+            float(spec.get("y", _floor_y)),
+        )
+        match kind:
+            "front_wreck":
+                _draw_front_story_prop(origin)
+            "harbor_lamp":
+                _draw_harbor_lamp(origin)
+            "harbor_bollard":
+                _draw_harbor_bollard(origin)
+            "alpine_tripod":
+                _draw_alpine_tripod(origin)
+            "snowbank":
+                _draw_snowbank(origin)
+            "jungle_tree":
+                _draw_jungle_tree(origin)
+            "fallen_trunk":
+                _draw_fallen_trunk(origin)
+            "jungle_hut":
+                _draw_jungle_hut(origin)
+            _:
+                push_warning("Pawn Slug story prop kind not rendered: %s" % kind)
 
 func _draw_near_depth_dressing() -> void:
     var silhouette := Color(0.035, 0.045, 0.047, 0.46)
@@ -605,61 +623,46 @@ func _draw_near_depth_dressing() -> void:
             2.0,
         )
 
-func _draw_front_story_props() -> void:
-    for index in range(5):
-        var x := 760.0 + float(index) * 980.0
-        var base := Vector2(x, _floor_y - 2.0)
-        draw_line(base + Vector2(-42.0, 0.0), base + Vector2(38.0, -25.0), Color(0.18, 0.20, 0.20, 0.72), 7.0)
-        draw_line(base + Vector2(-18.0, -14.0), base + Vector2(12.0, -52.0), Color(0.20, 0.22, 0.22, 0.68), 6.0)
-        draw_circle(base + Vector2(-30.0, -3.0), 12.0, Color(0.11, 0.13, 0.13, 0.88))
-        draw_circle(base + Vector2(28.0, -12.0), 10.0, Color(0.11, 0.13, 0.13, 0.88))
+func _draw_front_story_prop(base: Vector2) -> void:
+    draw_line(base + Vector2(-42.0, 0.0), base + Vector2(38.0, -25.0), Color(0.18, 0.20, 0.20, 0.72), 7.0)
+    draw_line(base + Vector2(-18.0, -14.0), base + Vector2(12.0, -52.0), Color(0.20, 0.22, 0.22, 0.68), 6.0)
+    draw_circle(base + Vector2(-30.0, -3.0), 12.0, Color(0.11, 0.13, 0.13, 0.88))
+    draw_circle(base + Vector2(28.0, -12.0), 10.0, Color(0.11, 0.13, 0.13, 0.88))
 
-func _draw_harbor_story_props() -> void:
-    for index in range(6):
-        var x := 620.0 + float(index) * 860.0
-        draw_line(Vector2(x, _floor_y), Vector2(x, _floor_y - 78.0), Color("24363a"), 7.0)
-        draw_line(Vector2(x - 18.0, _floor_y - 66.0), Vector2(x + 28.0, _floor_y - 66.0), Color("71898f"), 4.0)
-        draw_circle(Vector2(x + 30.0, _floor_y - 66.0), 5.0, Color(0.88, 0.67, 0.32, 0.52))
-    for index in range(5):
-        var x := 980.0 + float(index) * 940.0
-        var base := Vector2(x, _floor_y - 3.0)
-        draw_arc(base + Vector2(0.0, -10.0), 28.0, PI, TAU, 18, Color(0.20, 0.30, 0.34, 0.68), 4.0)
-        draw_line(base + Vector2(-24.0, -8.0), base + Vector2(24.0, -8.0), Color("405a60"), 4.0)
+func _draw_harbor_lamp(base: Vector2) -> void:
+    draw_line(base, base + Vector2(0.0, -78.0), Color("24363a"), 7.0)
+    draw_line(base + Vector2(-18.0, -66.0), base + Vector2(28.0, -66.0), Color("71898f"), 4.0)
+    draw_circle(base + Vector2(30.0, -66.0), 5.0, Color(0.88, 0.67, 0.32, 0.52))
 
-func _draw_alpine_story_props() -> void:
-    for index in range(8):
-        var x := 430.0 + float(index) * 690.0
-        var base := Vector2(x, _floor_y)
-        draw_line(base + Vector2(-18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
-        draw_line(base + Vector2(18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
-        draw_line(base + Vector2(-18.0, 0.0), base + Vector2(18.0, 0.0), Color("aab6b8"), 3.0)
-    for index in range(6):
-        var x := 850.0 + float(index) * 840.0
-        draw_circle(Vector2(x, _floor_y - 4.0), 24.0, Color(0.50, 0.56, 0.58, 0.16))
-        draw_circle(Vector2(x + 18.0, _floor_y - 3.0), 18.0, Color(0.67, 0.72, 0.73, 0.12))
+func _draw_harbor_bollard(base: Vector2) -> void:
+    draw_arc(base + Vector2(0.0, -10.0), 28.0, PI, TAU, 18, Color(0.20, 0.30, 0.34, 0.68), 4.0)
+    draw_line(base + Vector2(-24.0, -8.0), base + Vector2(24.0, -8.0), Color("405a60"), 4.0)
 
-func _draw_jungle_story_props() -> void:
-    for index in range(9):
-        var x := 360.0 + float(index) * 610.0
-        var base := Vector2(x, _floor_y)
-        var trunk := Color("3c3022")
-        draw_line(base, base + Vector2(8.0, -92.0), trunk, 10.0)
-        draw_circle(base + Vector2(-18.0, -88.0), 26.0, Color(0.13, 0.24, 0.14, 0.74))
-        draw_circle(base + Vector2(18.0, -104.0), 30.0, Color(0.15, 0.28, 0.16, 0.70))
-        draw_circle(base + Vector2(34.0, -82.0), 22.0, Color(0.11, 0.22, 0.13, 0.68))
+func _draw_alpine_tripod(base: Vector2) -> void:
+    draw_line(base + Vector2(-18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
+    draw_line(base + Vector2(18.0, 0.0), base + Vector2(0.0, -34.0), Color("5a666a"), 5.0)
+    draw_line(base + Vector2(-18.0, 0.0), base + Vector2(18.0, 0.0), Color("aab6b8"), 3.0)
 
-    for index in range(6):
-        var x := 840.0 + float(index) * 820.0
-        var y := _floor_y - 4.0
-        draw_line(Vector2(x - 42.0, y), Vector2(x + 42.0, y - 26.0), Color("5a4930"), 8.0)
-        draw_line(Vector2(x - 30.0, y - 8.0), Vector2(x - 2.0, y - 38.0), Color("4b3d2b"), 5.0)
+func _draw_snowbank(base: Vector2) -> void:
+    draw_circle(base, 24.0, Color(0.50, 0.56, 0.58, 0.16))
+    draw_circle(base + Vector2(18.0, 1.0), 18.0, Color(0.67, 0.72, 0.73, 0.12))
 
-    for index in range(5):
-        var x := 1180.0 + float(index) * 920.0
-        var top := _floor_y - 104.0
-        draw_rect(Rect2(Vector2(x, top), Vector2(74.0, 104.0)), Color(0.20, 0.24, 0.18, 0.78), true)
-        draw_rect(Rect2(Vector2(x + 12.0, top + 18.0), Vector2(18.0, 30.0)), Color(0.08, 0.11, 0.08, 0.75), true)
-        draw_line(Vector2(x - 8.0, top), Vector2(x + 82.0, top), Color(0.45, 0.49, 0.34, 0.42), 3.0)
+func _draw_jungle_tree(base: Vector2) -> void:
+    var trunk := Color("3c3022")
+    draw_line(base, base + Vector2(8.0, -92.0), trunk, 10.0)
+    draw_circle(base + Vector2(-18.0, -88.0), 26.0, Color(0.13, 0.24, 0.14, 0.74))
+    draw_circle(base + Vector2(18.0, -104.0), 30.0, Color(0.15, 0.28, 0.16, 0.70))
+    draw_circle(base + Vector2(34.0, -82.0), 22.0, Color(0.11, 0.22, 0.13, 0.68))
+
+func _draw_fallen_trunk(base: Vector2) -> void:
+    draw_line(base + Vector2(-42.0, 0.0), base + Vector2(42.0, -26.0), Color("5a4930"), 8.0)
+    draw_line(base + Vector2(-30.0, -8.0), base + Vector2(-2.0, -38.0), Color("4b3d2b"), 5.0)
+
+func _draw_jungle_hut(base: Vector2) -> void:
+    var top := base.y - 104.0
+    draw_rect(Rect2(Vector2(base.x, top), Vector2(74.0, 104.0)), Color(0.20, 0.24, 0.18, 0.78), true)
+    draw_rect(Rect2(Vector2(base.x + 12.0, top + 18.0), Vector2(18.0, 30.0)), Color(0.08, 0.11, 0.08, 0.75), true)
+    draw_line(Vector2(base.x - 8.0, top), Vector2(base.x + 82.0, top), Color(0.45, 0.49, 0.34, 0.42), 3.0)
 
 func _draw_crate(origin: Vector2, size: float) -> void:
     var rect := Rect2(origin + Vector2(-size * 0.5, -size), Vector2(size, size))

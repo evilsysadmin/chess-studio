@@ -26,6 +26,8 @@ ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "
 REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "destructible_platform", "artillery_barrage"}
 ALLOWED_DRESSING_KINDS = {"crate", "barrel", "sandbags"}
 MIN_DRESSING = 10
+ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut"}
+MIN_STORY_PROPS = 5
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
@@ -99,6 +101,7 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
     platforms = stage.get("platforms") or []
     obstacles = stage.get("obstacles") or []
     dressing = stage.get("dressing") or []
+    story_props = stage.get("story_props") or []
     if len(platforms) < MIN_PLATFORMS:
         errors.append(f"{stage_name}: platform count {len(platforms)} < {MIN_PLATFORMS}")
     if len(obstacles) < MIN_OBSTACLES:
@@ -127,6 +130,20 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             count = int(prop.get("count", 5))
             if not 3 <= count <= 9:
                 errors.append(f"{stage_name}: dressing sandbag count {count} outside 3..9")
+
+    if len(story_props) < MIN_STORY_PROPS:
+        errors.append(f"{stage_name}: story prop count {len(story_props)} < {MIN_STORY_PROPS}")
+    for index, prop in enumerate(story_props):
+        if not isinstance(prop, dict):
+            errors.append(f"{stage_name}: story_props[{index}] must be an object")
+            continue
+        kind = str(prop.get("kind", ""))
+        x = float(prop.get("x", -1))
+        y = float(prop.get("y", floor_y))
+        if kind not in ALLOWED_STORY_PROP_KINDS:
+            errors.append(f"{stage_name}: story_props[{index}] has unsupported kind {kind!r}")
+        if not 0 <= x < width or not 0 <= y <= height:
+            errors.append(f"{stage_name}: story_props[{index}] leaves world bounds")
 
     low_passages = 0
     platform_heights: set[int] = set()
@@ -441,6 +458,7 @@ def self_test() -> None:
         ],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60} for i in range(7)],
         "dressing": [{"kind": "crate", "x": 220 + i * 420, "y": 607, "size": 30} for i in range(10)],
+        "story_props": [{"kind": "front_wreck", "x": 260 + i * 760, "y": 608} for i in range(5)],
         "setpieces": [
             {"id": "lift", "type": "moving_platform", "x": 900, "y": 360, "w": 140, "h": 24, "travel_y": 100, "period": 4.0},
             {"id": "bunker", "type": "bunker_turret", "x": 2500, "y": 610, "w": 126, "h": 82, "hp": 180, "trigger_x": 2000},
