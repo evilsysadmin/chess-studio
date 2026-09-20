@@ -6,7 +6,7 @@ supports UCI_LimitStrength/UCI_Elo, run enough games, and keep the JSON report
 as evidence before changing rating↔CPU anchors.
 
 Example:
-    python backend-python/cpu_strength_calibration.py \
+    python scripts/cpu_strength_calibration.py \
       --engine /usr/bin/stockfish \
       --levels 45,60,70,90 \
       --reference-elos 1320,1500,1700 \
@@ -20,9 +20,14 @@ import argparse
 import json
 import math
 import random
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
+
+BACKEND_DIR = Path(__file__).resolve().parents[1] / "backend-python"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 import chess
 import chess.engine

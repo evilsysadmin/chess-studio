@@ -5,10 +5,12 @@ import chess
 import pytest
 
 
-MODULE_PATH = Path(__file__).with_name("cpu_strength_calibration.py")
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "cpu_strength_calibration.py"
 SPEC = importlib.util.spec_from_file_location("cpu_strength_calibration", MODULE_PATH)
 calibration = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
+import sys
+sys.modules[SPEC.name] = calibration
 SPEC.loader.exec_module(calibration)
 
 
