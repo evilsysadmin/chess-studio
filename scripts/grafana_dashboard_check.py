@@ -10,6 +10,8 @@ PORTABLE_LOGS = ROOT / "ops" / "grafana" / "chess-studio-logs.json"
 INFRA = ROOT / "infra" / "grafana"
 WORKFLOW = ROOT / ".github" / "workflows" / "grafana-dashboards.yml"
 PUBLISHER = ROOT / "scripts" / "grafana_publish.py"
+LIVE_CHECK = ROOT / "scripts" / "grafana_live_check.py"
+LIVE_WORKFLOW = ROOT / ".github" / "workflows" / "observability-live.yml"
 EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-exporter.yml"
 EXPORTER_CONFIG = ROOT / "scripts" / "cloudflare_exporter_config.py"
 EXPORTER_HEALTH = ROOT / "scripts" / "cloudflare_exporter_health.py"
@@ -52,6 +54,7 @@ def main() -> int:
         "chess-studio-logs.json": "chess-studio-logs",
         "chess-studio-traces.json": "chess-studio-traces",
         "chess-studio-edge.json": "chess-studio-edge",
+        "chess-studio-oci-host.json": "chess-studio-oci-host",
     }
     for filename, uid in required_dashboards.items():
         path = INFRA / "dashboards" / filename
@@ -59,6 +62,19 @@ def main() -> int:
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
+    oci_host_dash = (INFRA / "dashboards" / "chess-studio-oci-host.json").read_text(encoding="utf-8")
+    for token in (
+        'chess-studio-oci-host',
+        'deployment_environment',
+        'node_cpu_seconds_total',
+        'node_memory_MemAvailable_bytes',
+        'node_load1',
+        'node_disk_read_bytes_total',
+        'node_network_receive_bytes_total',
+    ):
+        if token not in oci_host_dash:
+            fail(f"dashboard OCI host no cubre {token}")
+
     trace_dash = (INFRA / "dashboards" / "chess-studio-traces.json").read_text(encoding="utf-8")
     for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
         if token not in trace_dash:
@@ -101,6 +117,33 @@ def main() -> int:
         if forbidden in workflow:
             fail(f"workflow Grafana resucita plumbing innecesario: {forbidden}")
 
+    live_check = LIVE_CHECK.read_text(encoding="utf-8") if LIVE_CHECK.exists() else ""
+    live_workflow = LIVE_WORKFLOW.read_text(encoding="utf-8") if LIVE_WORKFLOW.exists() else ""
+    for token in (
+        '/api/prometheus/',
+        '/loki/api/v1/query',
+        '/api/search',
+        'chess-studio-oci-host',
+        'backend_production_metrics',
+        'backend_production_logs',
+        'backend_production_traces',
+        '--self-test',
+    ):
+        if token not in live_check:
+            fail(f"live check Grafana incompleto: {token}")
+    for token in (
+        "cron: '41 */2 * * *'",
+        'GRAFANA_URL',
+        'GRAFANA_AUTH',
+        'GRAFANA_METRICS_DATASOURCE_UID',
+        'GRAFANA_LOGS_DATASOURCE_UID',
+        'GRAFANA_TRACES_DATASOURCE_UID',
+        'python3 -S scripts/grafana_live_check.py --self-test',
+        'python3 -S scripts/grafana_live_check.py',
+    ):
+        if token not in live_workflow:
+            fail(f"workflow live Grafana incompleto: {token}")
+
     publisher = PUBLISHER.read_text(encoding="utf-8") if PUBLISHER.exists() else ""
     for token in (
         '/api/folders?limit=1000',
@@ -108,6 +151,8 @@ def main() -> int:
         '/api/datasources/uid/',
         '/api/dashboards/db',
         '/api/dashboards/uid/',
+        'chess-studio-oci-host.json',
+        'runtime_variables = {"backend_service", "selector", "environment"}',
         '"overwrite": True',
         'HTTP 403',
         'WARNING: datasource',

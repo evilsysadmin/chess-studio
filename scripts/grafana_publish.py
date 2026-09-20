@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Idempotently publish Chess Studio Grafana dashboards via the Grafana HTTP API.
 
-This deliberately avoids Terraform/state for four versioned dashboard JSON files.
+This deliberately avoids Terraform/state for five versioned dashboard JSON files.
 The publisher is standard-library only so CI does not need a package/provider download.
 """
 from __future__ import annotations
@@ -23,6 +23,7 @@ DASHBOARDS = (
     "chess-studio-logs.json",
     "chess-studio-traces.json",
     "chess-studio-edge.json",
+    "chess-studio-oci-host.json",
 )
 
 
@@ -34,7 +35,12 @@ def render_dashboard(path: Path, variables: dict[str, str]) -> dict:
     text = path.read_text(encoding="utf-8")
     for key, value in variables.items():
         text = text.replace("${" + key + "}", value)
-    unresolved = sorted({part.split("}", 1)[0] for part in text.split("${")[1:]})
+    runtime_variables = {"backend_service", "selector", "environment"}
+    unresolved = sorted({
+        token
+        for token in (part.split("}", 1)[0] for part in text.split("${")[1:])
+        if token.split(":", 1)[0] not in runtime_variables
+    })
     if unresolved:
         fail(f"{path.name}: placeholders sin resolver: {', '.join(unresolved)}")
     try:
