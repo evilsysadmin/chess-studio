@@ -185,27 +185,49 @@ jobs:
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/left.wav
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/right.wav
 
-      - name: Amp and cab
+      - name: Amp and cab IR
         shell: bash
         run: |
           set -euxo pipefail
           CAPS_SO="/usr/lib/ladspa/caps.so"
           test -f "$CAPS_SO"
-          applyplugin v3/left.wav v3/left-amp.wav \
-            "$CAPS_SO" AmpVTS 1.35 0.73 0.78 0.82 5 0.39 0.84 0.76 0.71 0.24 0.35 \
-            "$CAPS_SO" CabinetIV 5 -2.0
-          applyplugin v3/right.wav v3/right-amp.wav \
-            "$CAPS_SO" AmpVTS 1.28 0.70 0.80 0.84 5 0.37 0.86 0.78 0.69 0.22 0.34 \
-            "$CAPS_SO" CabinetIV 5 -2.5
-          test -s v3/left-amp.wav
-          test -s v3/right-amp.wav
+
+          # Amp head only. Cabinet is a real FIR convolution below.
+          applyplugin v3/left.wav v3/left-head.wav \
+            "$CAPS_SO" AmpVTS 1.35 0.73 0.78 0.82 5 0.39 0.84 0.76 0.71 0.24 0.35
+          applyplugin v3/right.wav v3/right-head.wav \
+            "$CAPS_SO" AmpVTS 1.28 0.70 0.80 0.84 5 0.37 0.86 0.78 0.69 0.22 0.34
+          test -s v3/left-head.wav
+          test -s v3/right-head.wav
+
+          # Open Riff Box GPLv3 cabinet IR. Use the same cab family for cohesion;
+          # independent Full/XTracking performances still provide stereo separation.
+          curl -fL --retry 4 \
+            'https://raw.githubusercontent.com/dlujic/open-riff-box/main/resources/irs/British%20Bite.wav' \
+            -o v3/british-bite-ir.wav
+          test -s v3/british-bite-ir.wav
 
           ffmpeg -hide_banner -loglevel error -y \
-            -i v3/left-amp.wav -i v3/right-amp.wav \
-            -filter_complex "[0:a]volume=.92,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=.85,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,highpass=f=85,lowpass=f=10800,acompressor=threshold=-19dB:ratio=1.9:attack=22:release=110,aecho=.8:.88:42:.10,loudnorm=I=-16:TP=-1.2:LRA=9[out]" \
+            -i v3/left-head.wav -i v3/british-bite-ir.wav \
+            -filter_complex "[1:a]aresample=44100[ir];[0:a][ir]afir=dry=0:wet=1:irnorm=1[out]" \
+            -map "[out]" -ar 44100 v3/left-cab.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v3/right-head.wav -i v3/british-bite-ir.wav \
+            -filter_complex "[1:a]aresample=44100[ir];[0:a][ir]afir=dry=0:wet=1:irnorm=1[out]" \
+            -map "[out]" -ar 44100 v3/right-cab.wav
+
+          test -s v3/left-cab.wav
+          test -s v3/right-cab.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v3/left-cab.wav -i v3/right-cab.wav \
+            -filter_complex "[0:a]volume=.94,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=.86,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,highpass=f=75,lowpass=f=11200,acompressor=threshold=-19dB:ratio=1.8:attack=24:release=115,aecho=.8:.88:36:.075,loudnorm=I=-16:TP=-1.2:LRA=9[out]" \
             -map "[out]" -ar 44100 v3/metal-gtx-amp-stereo.wav
 
-          ffmpeg -hide_banner -loglevel error -y -i v3/metal-gtx-amp-stereo.wav -t 30 v3/metal-gtx-preview-30s.wav
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v3/metal-gtx-amp-stereo.wav -t 30 \
+            v3/metal-gtx-preview-30s.wav
 
           ffmpeg -hide_banner -loglevel error -y \
             -i v3/left.wav -i v3/right.wav \
@@ -220,7 +242,7 @@ jobs:
             echo 'Source: Unreal Instruments Metal GTX'
             echo 'Sampler: sfizz offline'
             echo 'Articulations used: sustain alt, mute alt, hammer-on, pull-off, slide-in/up, full bend'
-            echo 'Amp: CAPS AmpVTS'
+            echo 'Amp head: CAPS AmpVTS'
             echo 'Cab: CAPS CabinetIV model 5'
             echo 'Double tracking: Full left + dedicated XTracking right, independent timing/velocity'
             echo
