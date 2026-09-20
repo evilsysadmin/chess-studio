@@ -920,9 +920,25 @@ def add_armor(materials):
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
         curve_tube(
             f"HOME_PROP_armor_weapon_{idx}",
-            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.55)],
-            0.035,
+            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.48)],
+            0.030,
             dark,
+        )
+        cone(
+            f"HOME_PROP_armor_weapon_tip_{idx}",
+            (wx, y + 0.08, 3.63),
+            0.075 if idx % 2 == 0 else 0.060,
+            0.008,
+            0.30 if idx % 2 == 0 else 0.24,
+            steel if idx % 2 == 0 else brass,
+            vertices=14,
+        )
+        cube(
+            f"HOME_PROP_armor_weapon_guard_{idx}",
+            (wx, y + 0.075, 3.39),
+            (0.12 if idx % 2 == 0 else 0.09, 0.020, 0.020),
+            brass if idx % 2 == 0 else steel,
+            bevel=0.008,
         )
 
 
