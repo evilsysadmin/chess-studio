@@ -167,7 +167,13 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   try {
     // Run up to the tunnel without wasting several seconds crouch-walking from
     // the spawn, then hold crouch long enough to clear the low ceiling.
-    await parent.waitForTimeout(800);
+    await parent.waitForTimeout(600);
+    // Throw while Matthias is still inside OPENING_SAFE_UNTIL_X. The grenade
+    // travels into the first pawn's lane while the bot crawls under the low
+    // catwalk, preventing the smoke runner from being shot to death during the
+    // deliberately slow crouch traversal.
+    await keyboard.press('x');
+    await parent.waitForTimeout(200);
     await keyboard.down('ArrowDown');
     await parent.waitForTimeout(3300);
     await keyboard.up('ArrowDown');
