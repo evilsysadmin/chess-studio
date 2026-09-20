@@ -4,6 +4,7 @@ import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import { seriesLiveMoment, seriesNextActionLabel } from '../series.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { quickMatchRecalibration } from '../quickMatchDifficulty.js';
+import { difficultyLabel } from '../difficulty.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 import './WarRoomDebrief.css';
 
@@ -120,7 +121,7 @@ export default function PostGameExperience({
             <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
             <span>{resultSummary.detail}</span>
             {adaptiveRecalibration && (
-              <span>Próximo reto adaptativo · Matthias ≈ {adaptiveRecalibration.opponentRating} Elo</span>
+              <span>Próximo reto adaptativo · {difficultyLabel(adaptiveRecalibration.difficulty)}</span>
             )}
           </p>
         )}
