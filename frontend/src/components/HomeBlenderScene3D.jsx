@@ -64,6 +64,10 @@ export function homeBlenderRuntimeEligible() {
     && policy.lod !== '2d';
 }
 
+export function homeBlenderPolicyNeedsFallback(policy) {
+  return !policy?.enabled || policy?.lod === '2d';
+}
+
 function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
@@ -163,6 +167,7 @@ export default function HomeBlenderScene3D({
     canvas.dataset.homeBlenderRuntime = 'loading';
 
     let disposed = false;
+    let fallbackRequested = false;
     let model = null;
     let frame = null;
     let loadTimer = null;
@@ -232,6 +237,10 @@ export default function HomeBlenderScene3D({
       const height = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 1);
       const policy = browserPolicy();
       canvas.dataset.homeCastleLod = policy.lod;
+      if (homeBlenderPolicyNeedsFallback(policy)) {
+        failToFallback(true);
+        return;
+      }
       renderer.setPixelRatio(Math.min(policy.pixelRatio || 1, 1.5));
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
@@ -256,7 +265,8 @@ export default function HomeBlenderScene3D({
     if (onPointerLeave) canvas.addEventListener('pointerleave', onPointerLeave, { passive: true });
 
     const failToFallback = (force = false) => {
-      if (disposed || (!force && model)) return;
+      if (disposed || fallbackRequested || (!force && model)) return;
+      fallbackRequested = true;
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
       onUnavailable?.();
