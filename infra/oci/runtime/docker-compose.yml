@@ -41,8 +41,10 @@ services:
       - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
     environment:
       GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+      OCI_LOG_SERVICE_NAME: "${CHESS_STUDIO_OCI_LOG_SERVICE_NAME:-chess-studio-oci-backend-staging-stdout}"
     command:
       - run
+      - --stability.level=public-preview
       - --server.http.listen-addr=127.0.0.1:12345
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
@@ -50,6 +52,8 @@ services:
       - ./alloy.alloy:/etc/alloy/config.alloy:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+      - "${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}/observability:/var/lib/chess-studio/observability:ro"
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - alloy-data:/var/lib/alloy/data
     restart: unless-stopped
     logging:

@@ -56,7 +56,7 @@ jobs:
           {
             echo '### Observability live'
             echo
-            echo '- OCI staging host metrics: queried from Grafana'
+            echo '- OCI staging host metrics + scoped backend stdout logs: queried from Grafana'
             echo '- Alloy self-telemetry: same OTLP path distinguishes transport from host scrape failures'
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'

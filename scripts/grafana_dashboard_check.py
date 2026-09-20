@@ -158,6 +158,8 @@ def main() -> int:
         'backend_production_traces',
         'backend_staging_metrics',
         'backend_staging_logs',
+        'oci_backend_stdout_logs',
+        'chess-studio-oci-backend-staging-stdout',
         'log_explorer_default_query',
         '| json | __error__=""',
         'backend_staging_traces',
@@ -379,14 +381,23 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    for token in ('chess-studio-backend-staging', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'multi-environment'):
+    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'staging stdout : {service_name=', 'multi-environment'):
         if token not in infra_logs:
             fail(f"Loki debe permitir separar producción/staging: {token}")
 
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
     oci_deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="utf-8")
-    for token in ('grafana/alloy:v1.19.2', './alloy.alloy:/etc/alloy/config.alloy:ro', '/proc:/host/proc:ro', '/sys:/host/sys:ro'):
+    for token in (
+        'grafana/alloy:v1.19.2',
+        './alloy.alloy:/etc/alloy/config.alloy:ro',
+        '/proc:/host/proc:ro',
+        '/sys:/host/sys:ro',
+        '--stability.level=public-preview',
+        'OCI_LOG_SERVICE_NAME',
+        '/observability:/var/lib/chess-studio/observability:ro',
+        '/var/lib/docker/containers:/var/lib/docker/containers:ro',
+    ):
         if token not in oci_compose:
             fail(f"OCI host telemetry incompleta: {token}")
     for token in (
@@ -395,6 +406,13 @@ def main() -> int:
         'chess-studio-oci-host',
         'prometheus.exporter.self "alloy_self"',
         'chess-studio-alloy-self',
+        'otelcol.storage.file "oci_backend_stdout"',
+        'otelcol.receiver.filelog "oci_backend_stdout"',
+        '/var/lib/chess-studio/observability/backend-json.log',
+        'sys.env("OCI_LOG_SERVICE_NAME")',
+        '"deployment.environment.name"',
+        'type = "container"',
+        'retry_on_failure',
         'string.trim_suffix',
         '"/v1/traces"',
         '"/v1/metrics"',
@@ -403,7 +421,16 @@ def main() -> int:
     ):
         if token not in oci_alloy:
             fail(f"OCI Alloy no etiqueta/exporta correctamente: {token}")
-    for token in ('start_observability_best_effort', 'OCI_ALLOY state=degraded', 'CHESS_STUDIO_ALLOY_OK', 'record_successful_backend "$sha"'):
+    for token in (
+        'start_observability_best_effort',
+        'prepare_backend_log_link',
+        'CHESS_STUDIO_OCI_LOG_LINK_OK',
+        'backend-log-link-unavailable',
+        '--stability.level=public-preview',
+        'OCI_ALLOY state=degraded',
+        'CHESS_STUDIO_ALLOY_OK',
+        'record_successful_backend "$sha"',
+    ):
         if token not in oci_deploy:
             fail(f"deploy OCI perdió observabilidad fail-open: {token}")
 

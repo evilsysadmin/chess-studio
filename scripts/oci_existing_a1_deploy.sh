@@ -52,6 +52,8 @@ case "$target" in
 esac
 
 state_file="$state_dir/deployed.sha"
+observability_dir="$state_dir/observability"
+backend_log_link="$observability_dir/backend-json.log"
 deploy_watcher_enable_marker="$state_dir/DEPLOY_WATCH_ENABLED"
 k3s_contract_state_file="/var/lib/chess-studio/k3s-deploy-contract.sha256"
 k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
@@ -89,6 +91,7 @@ docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required'
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
 install -d -m 0755 "$state_dir"
+install -d -m 0755 "$observability_dir"
 previous_sha=''
 if [[ -s "$state_file" ]]; then
   previous_sha="$(tr -d '\r\n' < "$state_file")"
@@ -146,6 +149,8 @@ compose() {
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
   CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
+  CHESS_STUDIO_STATE_DIR="$state_dir" \
+  CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
   docker compose -p "$project" -f "$compose_file" "$@"
 }
 
@@ -376,6 +381,39 @@ record_successful_backend() {
   mv -f "$tmp" "$state_file"
 }
 
+prepare_backend_log_link() {
+  local target_sha="$1"
+  local container_id log_path
+
+  if [[ -L "$observability_dir" ]]; then
+    echo "OCI_LOGS state=degraded target=$target reason=observability-dir-symlink" >&2
+    return 1
+  fi
+
+  container_id="$(compose "$target_sha" ps -q backend 2>/dev/null | head -n 1)"
+  if [[ -z "$container_id" ]]; then
+    echo "OCI_LOGS state=degraded target=$target reason=backend-container-missing" >&2
+    return 1
+  fi
+
+  log_path="$(docker inspect --format '{{.LogPath}}' "$container_id" 2>/dev/null || true)"
+  case "$log_path" in
+    /var/lib/docker/containers/*/*-json.log) ;;
+    *)
+      echo "OCI_LOGS state=degraded target=$target reason=unexpected-log-path" >&2
+      return 1
+      ;;
+  esac
+  if [[ ! -f "$log_path" || -L "$log_path" ]]; then
+    echo "OCI_LOGS state=degraded target=$target reason=backend-log-unreadable" >&2
+    return 1
+  fi
+
+  rm -f "$backend_log_link"
+  ln -s "$log_path" "$backend_log_link"
+  echo "CHESS_STUDIO_OCI_LOG_LINK_OK target=$target"
+}
+
 start_observability_best_effort() {
   local target_sha="$1"
   local alloy_image="grafana/alloy:v1.19.2"
@@ -390,13 +428,17 @@ start_observability_best_effort() {
     return 0
   fi
 
+  if ! prepare_backend_log_link "$target_sha"; then
+    echo "OCI_LOGS state=degraded target=$target reason=backend-log-link-unavailable" >&2
+  fi
+
   if ! docker image inspect "$alloy_image" >/dev/null 2>&1; then
     if ! compose "$target_sha" pull alloy >/dev/null; then
       echo "OCI_ALLOY state=degraded target=$target reason=image-pull-failed" >&2
       return 0
     fi
   fi
-  if ! compose "$target_sha" run --rm --no-deps alloy validate /etc/alloy/config.alloy >/dev/null 2>&1; then
+  if ! compose "$target_sha" run --rm --no-deps alloy validate --stability.level=public-preview /etc/alloy/config.alloy >/dev/null 2>&1; then
     echo "OCI_ALLOY state=degraded target=$target reason=config-invalid" >&2
     return 0
   fi

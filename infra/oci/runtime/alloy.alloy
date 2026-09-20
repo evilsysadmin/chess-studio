@@ -107,6 +107,40 @@ otelcol.receiver.prometheus "oci_host" {
   }
 }
 
+// Docker stdout is deliberately scoped to the Chess Studio backend only.
+// The deploy wrapper publishes a root-owned symlink to that container's
+// json-file LogPath. Alloy never receives the Docker socket and therefore
+// gains no Docker control-plane privileges.
+otelcol.storage.file "oci_backend_stdout" {}
+
+otelcol.receiver.filelog "oci_backend_stdout" {
+  include       = ["/var/lib/chess-studio/observability/backend-json.log"]
+  start_at      = "end"
+  poll_interval = "500ms"
+  storage       = otelcol.storage.file.oci_backend_stdout.handler
+
+  operators = [{
+    type = "container"
+  }]
+
+  resource = {
+    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME")
+    "deployment.environment.name" = sys.env("ENVIRONMENT")
+    "cloud.provider"               = "oci"
+    "cloud.region"                 = "eu-frankfurt-1"
+    "service.version"              = sys.env("GIT_COMMIT_SHA")
+  }
+
+  retry_on_failure {
+    enabled          = true
+    max_elapsed_time = "5m"
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
 // Grafana Cloud's OTEL_EXPORTER_OTLP_HEADERS value is normally a single
 // Authorization header. Accept both a literal space and the standard %20 form
 // emitted by OTLP environment-variable examples.
