@@ -21,6 +21,7 @@ const FULL_ATLAS_URLS := {
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/shotgun/v14-9bc62beb46a5be92.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/panzerfaust/v14-2177056edc0cb845.png",
 }
+const RUNTIME_PRELOAD_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
 # strict-v14 tactical bank; v10 stays disabled because its mixed silhouettes
@@ -648,14 +649,10 @@ func _install_or_request_weapon() -> void:
     if not full_url.is_empty():
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full-v9")
-        if _body_ready and not _rendered_weapon.is_empty() and _rendered_weapon != _weapon:
-            return
-        if _weapon == "pistol" and _legacy_pistol_frames != null:
-            _install_frames(_legacy_pistol_frames, false)
-        elif _fallback_frames_by_weapon.has(_weapon):
-            _install_frames(_fallback_frames_by_weapon[_weapon], false)
-        else:
-            _ensure_master()
+        # Keep the canvas hidden at boot, or keep the previously rendered weapon
+        # during a pickup switch, while the canonical strict atlas is in flight.
+        # Fallback art is reserved for a real download/decode failure in
+        # _on_atlas_loaded(), so it never flashes for a healthy R2 request.
         return
 
     if _weapon == "pistol":
@@ -1488,13 +1485,28 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
         call_deferred("_ensure_v10_locomotion", _rendered_weapon)
     elif authored_full and not v9_ready:
         call_deferred("_ensure_directional_source", _rendered_weapon)
+    if authored_full and v9_ready:
+        call_deferred("_prefetch_runtime_atlases")
 
-func _prefetch_machinegun() -> void:
-    if _atlas_request != null or _full_frames_by_weapon.has("machinegun"):
+func _prefetch_runtime_atlases() -> void:
+    if _atlas_request != null:
         return
-    var url := String(FULL_ATLAS_URLS.get("machinegun", ""))
-    if not url.is_empty():
-        _request_atlas("machinegun", url, "full-v9")
+
+    # The selected weapon wins over background prefetching. This matters when a
+    # pickup happens while another bank is still warming the browser cache.
+    if not _full_frames_by_weapon.has(_weapon):
+        var current_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
+        if not current_url.is_empty():
+            _request_atlas(_weapon, current_url, "full-v9")
+            return
+
+    for weapon_id in RUNTIME_PRELOAD_ORDER:
+        if _full_frames_by_weapon.has(weapon_id):
+            continue
+        var url := String(FULL_ATLAS_URLS.get(weapon_id, ""))
+        if not url.is_empty():
+            _request_atlas(weapon_id, url, "full-v9")
+            return
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
