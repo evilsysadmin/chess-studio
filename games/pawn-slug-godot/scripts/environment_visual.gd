@@ -608,6 +608,12 @@ func _draw_story_prop(spec: Dictionary) -> void:
             _draw_fallen_trunk(origin)
         "jungle_hut":
             _draw_jungle_hut(origin)
+        "jungle_ruin_pillar":
+            _draw_jungle_ruin_pillar(spec)
+        "jungle_brazier":
+            _draw_jungle_brazier(spec)
+        "jungle_fern_cluster":
+            _draw_jungle_fern_cluster(spec)
         "industrial_bunker":
             _draw_industrial_bunker(spec)
         "industrial_watch_post":
@@ -775,6 +781,76 @@ func _draw_alpine_tripod(base: Vector2) -> void:
 func _draw_snowbank(base: Vector2) -> void:
     draw_circle(base, 24.0, Color(0.50, 0.56, 0.58, 0.16))
     draw_circle(base + Vector2(18.0, 1.0), 18.0, Color(0.67, 0.72, 0.73, 0.12))
+
+func _draw_jungle_ruin_pillar(spec: Dictionary) -> void:
+    var x := float(spec.get("x", 700.0))
+    var base_y := float(spec.get("y", _floor_y))
+    var w := float(spec.get("w", 48.0))
+    var h := float(spec.get("h", 92.0))
+    var stone := Color(0.22, 0.25, 0.19, 0.88)
+    var dark := Color(0.08, 0.11, 0.075, 0.62)
+    draw_rect(Rect2(Vector2(x - w * 0.5, base_y - h), Vector2(w, h)), stone, true)
+    var cap := PackedVector2Array([
+        Vector2(x - w * 0.58, base_y - h + 5.0),
+        Vector2(x - w * 0.26, base_y - h - 8.0),
+        Vector2(x + w * 0.12, base_y - h - 2.0),
+        Vector2(x + w * 0.56, base_y - h + 8.0),
+    ])
+    draw_colored_polygon(cap, Color(0.25, 0.28, 0.21, 0.90))
+    for joint in range(3):
+        var jy := base_y - h + 22.0 + float(joint) * 24.0
+        draw_line(Vector2(x - w * 0.44, jy), Vector2(x + w * 0.42, jy + float(joint % 2) * 3.0), dark, 1.5)
+    draw_line(
+        Vector2(x - w * 0.10, base_y - h + 8.0),
+        Vector2(x + w * 0.08, base_y - h * 0.42),
+        Color(0.06, 0.075, 0.055, 0.52),
+        2.0,
+    )
+    draw_line(
+        Vector2(x + w * 0.22, base_y - h + 4.0),
+        Vector2(x + w * 0.34, base_y - 12.0),
+        Color(0.16, 0.29, 0.13, 0.48),
+        3.0,
+    )
+    for leaf in range(4):
+        var ly := base_y - h * 0.62 + float(leaf) * 13.0
+        draw_circle(Vector2(x + w * 0.36 + float(leaf % 2) * 5.0, ly), 5.0, Color(0.14, 0.30, 0.14, 0.58))
+
+func _draw_jungle_brazier(spec: Dictionary) -> void:
+    var base := Vector2(float(spec.get("x", 1050.0)), float(spec.get("y", _floor_y - 2.0)))
+    var scale := float(spec.get("scale", 1.0))
+    draw_line(base + Vector2(-16.0, 0.0) * scale, base + Vector2(-5.0, -28.0) * scale, Color(0.20, 0.18, 0.13, 0.86), 3.0 * scale)
+    draw_line(base + Vector2(16.0, 0.0) * scale, base + Vector2(5.0, -28.0) * scale, Color(0.20, 0.18, 0.13, 0.86), 3.0 * scale)
+    draw_line(base + Vector2(-14.0, -28.0) * scale, base + Vector2(14.0, -28.0) * scale, Color(0.34, 0.27, 0.16, 0.92), 5.0 * scale)
+    var flame := base + Vector2(0.0, -36.0) * scale
+    draw_circle(flame, 24.0 * scale, Color(1.0, 0.35, 0.08, 0.035))
+    draw_circle(flame, 11.0 * scale, Color(1.0, 0.40, 0.08, 0.11))
+    draw_colored_polygon(
+        PackedVector2Array([
+            flame + Vector2(-6.0, 7.0) * scale,
+            flame + Vector2(0.0, -17.0) * scale,
+            flame + Vector2(7.0, 7.0) * scale,
+        ]),
+        Color(1.0, 0.48, 0.10, 0.78),
+    )
+    draw_circle(flame + Vector2(1.0, 2.0) * scale, 3.6 * scale, Color(1.0, 0.78, 0.30, 0.92))
+
+func _draw_jungle_fern_cluster(spec: Dictionary) -> void:
+    var base := Vector2(float(spec.get("x", 540.0)), float(spec.get("y", _floor_y - 1.0)))
+    var scale := float(spec.get("scale", 1.0))
+    var stem := Color(0.10, 0.25, 0.10, 0.72)
+    var leaf := Color(0.14, 0.34, 0.14, 0.62)
+    for frond in range(7):
+        var angle := -1.18 + float(frond) * 0.39
+        var length := (22.0 + float(frond % 3) * 6.0) * scale
+        var tip := base + Vector2(cos(angle), -abs(sin(angle))) * length
+        draw_line(base, tip, stem, maxf(1.0, 1.8 * scale))
+        for pair in range(3):
+            var t := 0.36 + float(pair) * 0.20
+            var p := base.lerp(tip, t)
+            var side := Vector2(-(tip - base).y, (tip - base).x).normalized() * (5.0 + float(pair)) * scale
+            draw_line(p, p + side, leaf, 1.4 * scale)
+            draw_line(p, p - side, leaf, 1.4 * scale)
 
 func _draw_jungle_tree(base: Vector2) -> void:
     var trunk := Color("3c3022")
