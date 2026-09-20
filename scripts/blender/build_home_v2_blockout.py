@@ -1581,8 +1581,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "banner": material("HOME_MAT_banner", (0.14, 0.008, 0.010, 1), roughness=0.86, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
-            (0.105, 0.006, 0.009, 1),
-            roughness=0.88,
+            (0.072, 0.006, 0.008, 1),
+            roughness=0.92,
             bump_scale=22.0,
             bump_strength=0.055,
             variation=0.075,
