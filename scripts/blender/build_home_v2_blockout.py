@@ -419,9 +419,9 @@ def configure_cinematic_compositor(scene) -> None:
 
     glare.inputs["Type"].default_value = "Fog Glow"
     glare.inputs["Quality"].default_value = "High"
-    glare.inputs["Threshold"].default_value = 1.00
-    glare.inputs["Size"].default_value = 0.72
-    glare.inputs["Strength"].default_value = 0.56
+    glare.inputs["Threshold"].default_value = 1.15
+    glare.inputs["Size"].default_value = 0.68
+    glare.inputs["Strength"].default_value = 0.40
 
     links.new(layers.outputs["Image"], glare.inputs["Image"])
     links.new(glare.outputs["Image"], output.inputs["Image"])
@@ -1108,7 +1108,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.world = world
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.012, 0.007, 0.004, 1.0)
-    bg.inputs["Strength"].default_value = 0.030
+    bg.inputs["Strength"].default_value = 0.024
 
     materials = {
         "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8),
@@ -2020,17 +2020,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 24, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 56, (0.62, 0.34, 0.22), 3.0, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 74, (0.36, 0.22, 0.15), 6.2, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 215, (0.14, 0.34, 0.68), 3.7, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 224, (1.0, 0.68, 0.42), 2.65, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 236, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 188, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 90, (0.74, 0.40, 0.22), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 190, (1.0, 0.37, 0.11), 2.2, target=(-6.15, 5.65, 1.35))
     add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 255, (1.0, 0.37, 0.11), 2.25, target=(4.45, 5.65, 1.45))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 175, (0.42, 0.52, 0.66), 2.2, target=(1.55, 5.28, 2.4))
-    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 112, (0.82, 0.52, 0.28), 2.0, target=(1.55, 5.28, 2.35))
-    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 84, (0.66, 0.72, 0.78), 1.55, target=(1.55, 5.28, 2.40))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 150, (0.42, 0.52, 0.66), 2.3, target=(1.55, 5.28, 2.4))
+    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 96, (0.82, 0.52, 0.28), 2.1, target=(1.55, 5.28, 2.35))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 68, (0.66, 0.72, 0.78), 1.65, target=(1.55, 5.28, 2.40))
 
     if engine == "eevee":
         configure_cinematic_compositor(scene)
