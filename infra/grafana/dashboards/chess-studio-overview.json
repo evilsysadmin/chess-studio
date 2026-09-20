@@ -15,12 +15,13 @@
     "sre",
     "terraform",
     "multi-environment",
-    "${commit_sha}"
+    "${commit_sha}",
+    "oci"
   ],
   "timezone": "browser",
   "title": "Chess Studio · Salud operativa",
   "uid": "chess-studio-api-overview",
-  "version": 4,
+  "version": 5,
   "weekStart": "monday",
   "time": {
     "from": "now-6h",
@@ -59,7 +60,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Estado a primera vista.** Un `0` significa que la consulta respondió correctamente pero no hubo eventos en esa ventana; `No data` queda reservado para paneles donde la ausencia es semántica (logs/trazas) o para una señal que necesita diagnóstico. Si algo sale mal, abre **Chess Studio · Logs accionables** para 404/5xx/request_id y **Chess Studio · Trazas** para seguir latencia extremo a extremo. Deploy `${commit_sha}`."
+        "content": "**Estado a primera vista.** El bloque **OCI A1** muestra la salud real del host de staging (telemetría, CPU, RAM, red y disco) recogida por Alloy desde `/proc` y `/sys`; abre **Chess Studio · OCI host** para el detalle. Un `0` significa que la consulta respondió correctamente pero no hubo eventos en esa ventana; `No data` queda reservado para paneles donde la ausencia es semántica (logs/trazas) o para una señal que necesita diagnóstico. Si algo sale mal, abre **Chess Studio · Logs accionables** para 404/5xx/request_id y **Chess Studio · Trazas** para seguir latencia extremo a extremo. Deploy `${commit_sha}`."
       },
       "fieldConfig": {
         "defaults": {}
@@ -192,6 +193,290 @@
       }
     },
     {
+      "id": 13,
+      "title": "OCI A1 · telemetría",
+      "description": "Estado de recepción de métricas del host A1. Si Alloy/node-exporter deja de reportar, la serie se vuelve stale y el panel pasa a SIN DATOS.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "max(node_uname_info{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "SIN DATOS",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "OK",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 14,
+      "title": "OCI A1 · CPU",
+      "description": "CPU ocupada media del host durante 5 minutos.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 7,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\",mode=\"idle\"}[5m])) * 100)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "noValue": "SIN DATOS",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 15,
+      "title": "OCI A1 · RAM",
+      "description": "Porcentaje de RAM usada calculado con MemAvailable/MemTotal.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 7,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\"}) / avg(node_memory_MemTotal_bytes{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\"})))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "noValue": "SIN DATOS",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "title": "OCI A1 · red",
+      "description": "Tráfico agregado RX+TX del host durante 5 minutos. El dashboard OCI host separa ambos sentidos.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 7,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_network_receive_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\",device!=\"lo\"}[5m])) + sum(rate(node_network_transmit_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\",device!=\"lo\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "noValue": "SIN DATOS"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 17,
+      "title": "OCI A1 · disco",
+      "description": "I/O agregado de lectura+escritura del host durante 5 minutos. El dashboard OCI host separa ambos sentidos.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 7,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_disk_read_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\"}[5m])) + sum(rate(node_disk_written_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=\"staging\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "noValue": "SIN DATOS"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
       "id": 2,
       "title": "5xx · 15 min",
       "type": "stat",
@@ -201,7 +486,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 11,
         "w": 6,
         "h": 4
       },
@@ -241,7 +526,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 7,
+        "y": 11,
         "w": 6,
         "h": 4
       },
@@ -282,7 +567,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 7,
+        "y": 11,
         "w": 6,
         "h": 4
       },
@@ -334,7 +619,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 7,
+        "y": 11,
         "w": 6,
         "h": 4
       },
@@ -374,7 +659,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 15,
         "w": 12,
         "h": 7
       },
@@ -414,7 +699,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 11,
+        "y": 15,
         "w": 12,
         "h": 7
       },
@@ -455,7 +740,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 22,
         "w": 14,
         "h": 8
       },
@@ -492,7 +777,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 18,
+        "y": 22,
         "w": 10,
         "h": 8
       },
@@ -520,7 +805,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 30,
         "w": 8,
         "h": 4
       },
