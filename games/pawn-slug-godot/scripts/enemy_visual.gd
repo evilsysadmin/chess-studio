@@ -2,14 +2,17 @@ extends Node2D
 
 const BODY_FALLBACK_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
 const BODY_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
+const BODY_ATLAS_V2_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-87fe84e414cf18b1.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
-const REMOTE_ATLAS_ROWS := 3
+const REMOTE_ATLAS_ROWS := 8
+const LEGACY_REMOTE_ATLAS_ROWS := 3
 const FRAMES_PER_TYPE := 8
 const FALLBACK_TYPE_FRAME_BASE := {"pawn": 0, "knight": 8, "rook": 16, "queen": 8, "grenadier": 0, "scout": 0, "commando": 0, "shield": 16}
-const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 0, "shield": 2}
+const REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 3, "grenadier": 4, "scout": 5, "commando": 6, "shield": 7}
+const LEGACY_REMOTE_TYPE_ROW := {"pawn": 0, "knight": 1, "rook": 2, "queen": 1, "grenadier": 0, "scout": 0, "commando": 0, "shield": 2}
 const FALLBACK_TYPE_SCALE := {"pawn": 0.39, "knight": 0.34, "rook": 0.43, "queen": 0.37, "grenadier": 0.42, "scout": 0.38, "commando": 0.40, "shield": 0.45}
 const REMOTE_TYPE_SCALE := {"pawn": 1.248, "knight": 1.088, "rook": 1.376, "queen": 1.18, "grenadier": 1.34, "scout": 1.22, "commando": 1.27, "shield": 1.43}
 const REMOTE_BODY_CENTER_Y := 31.0
@@ -31,6 +34,7 @@ const WEAPON_POSE := {
 }
 
 static var _cached_body_texture: Texture2D
+static var _cached_body_is_legacy := false
 static var _body_texture_loading := false
 static var _body_texture_waiters: Array = []
 
@@ -50,6 +54,7 @@ var _visual_time := 0.0
 var _bishop_shell_telegraph := 0.0
 var _bishop_suppression_telegraph := 0.0
 var _using_remote_body := false
+var _using_legacy_remote_body := false
 var _idle_pose := ""
 var _surprise_remaining := 0.0
 
@@ -60,6 +65,7 @@ var _weapon_sprite: Sprite2D
 var _muzzle: Marker2D
 var _muzzle_flash: Polygon2D
 var _body_request: HTTPRequest
+var _body_request_url := ""
 
 func _ready() -> void:
     _build_nodes()
@@ -242,7 +248,8 @@ func _apply_body_frame() -> void:
         return
 
     if _using_remote_body:
-        var row := int(REMOTE_TYPE_ROW.get(enemy_type, 0))
+        var row_map: Dictionary = LEGACY_REMOTE_TYPE_ROW if _using_legacy_remote_body else REMOTE_TYPE_ROW
+        var row := int(row_map.get(enemy_type, 0))
         _body.region_rect = Rect2(
             Vector2(float(_frame) * REMOTE_FRAME_SIZE.x, float(row) * REMOTE_FRAME_SIZE.y),
             REMOTE_FRAME_SIZE,
@@ -267,12 +274,22 @@ func _request_body_atlas() -> void:
         return
 
     _body_texture_loading = true
+    _start_body_atlas_request(BODY_ATLAS_V2_URL)
+
+
+func _start_body_atlas_request(url: String) -> void:
+    if _body_request != null:
+        _body_request.queue_free()
+    _body_request_url = url
     _body_request = HTTPRequest.new()
     _body_request.name = "EnemyBodyAtlasRequest"
     add_child(_body_request)
     _body_request.request_completed.connect(_on_body_atlas_loaded)
-    if _body_request.request(BODY_ATLAS_URL) != OK:
-        _finish_body_atlas_request(null)
+    if _body_request.request(url) != OK:
+        if url == BODY_ATLAS_V2_URL:
+            _start_body_atlas_request(BODY_ATLAS_URL)
+        else:
+            _finish_body_atlas_request(null)
 
 func _on_body_atlas_loaded(
     result: int,
@@ -284,17 +301,23 @@ func _on_body_atlas_loaded(
         _body_request.queue_free()
         _body_request = null
 
+    var is_legacy := _body_request_url == BODY_ATLAS_URL
+    var expected_rows := LEGACY_REMOTE_ATLAS_ROWS if is_legacy else REMOTE_ATLAS_ROWS
     var texture: Texture2D = null
     if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
         var image := Image.new()
         if (
             image.load_webp_from_buffer(bytes) == OK
             and image.get_width() == int(REMOTE_FRAME_SIZE.x) * FRAMES_PER_TYPE
-            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * REMOTE_ATLAS_ROWS
+            and image.get_height() == int(REMOTE_FRAME_SIZE.y) * expected_rows
         ):
             texture = ImageTexture.create_from_image(image)
             _cached_body_texture = texture
+            _cached_body_is_legacy = is_legacy
 
+    if texture == null and not is_legacy:
+        _start_body_atlas_request(BODY_ATLAS_URL)
+        return
     _finish_body_atlas_request(texture)
 
 func _finish_body_atlas_request(texture: Texture2D) -> void:
@@ -315,6 +338,7 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
     if texture == null or _body == null or enemy_type == "bishop":
         return
     _using_remote_body = true
+    _using_legacy_remote_body = _cached_body_is_legacy
     _body.texture = texture
     _body.visible = true
     _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)

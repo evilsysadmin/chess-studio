@@ -41,6 +41,7 @@ INVENTORY = {
     'oci-vault-cutover-once.yml': 'infra-staging-migration',
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-commando-v2.yml': 'visual-staging-evidence',
+    'pawn-slug-enemy-cast-v2.yml': 'visual-staging-evidence',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
     'pawn-slug-enemy-shield-v2.yml': 'visual-staging-evidence',
     'pawn-slug-godot-strict-atlas.yml': 'art-generation',

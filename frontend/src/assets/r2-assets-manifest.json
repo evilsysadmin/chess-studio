@@ -104,6 +104,13 @@
       "key": "home/scene/canonical/home-v2-runtime-4cac697ab3a8e89b.glb",
       "sha256": "4cac697ab3a8e89b7bf08dba1aaf30f6d9894c95cd0216207f95fc49f070f7d1",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-4cac697ab3a8e89b.glb"
+    },
+    "pawnSlug.enemy.castV2": {
+      "bytes": 24142,
+      "contentType": "image/webp",
+      "key": "pawn-slug/enemies/cast-v2/enemy-cast-v2-87fe84e414cf18b1.webp",
+      "sha256": "87fe84e414cf18b1559c26d7d51021df3ddccb2dd2efeac15044f3e917873fbc",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-87fe84e414cf18b1.webp"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",
