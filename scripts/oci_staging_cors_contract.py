@@ -59,6 +59,8 @@ required_deploy_fragments = (
     'port="${CHESS_STUDIO_BACKEND_PORT:-4100}"',
     'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://chess-studio.shadowops.dpdns.org}"',
     'deploy_lock_file="/var/lib/chess-studio/deploy.lock"',
+    'git -C "$repo" ls-remote --exit-code origin refs/heads/main',
+    'OCI_DEPLOY_SUPERSEDED repo_ref=$sha current_main=$current_main',
     'Access-Control-Request-Method: GET',
     'Access-Control-Request-Headers: authorization,x-client-release',
     "access-control-allow-origin",
