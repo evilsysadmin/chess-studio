@@ -99,11 +99,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp"
     },
     "home.scene.runtime": {
-      "bytes": 18192500,
+      "bytes": 10812884,
       "contentType": "model/gltf-binary",
-      "key": "home/scene/canonical/home-v2-runtime-4cac697ab3a8e89b.glb",
-      "sha256": "4cac697ab3a8e89b7bf08dba1aaf30f6d9894c95cd0216207f95fc49f070f7d1",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-4cac697ab3a8e89b.glb"
+      "key": "home/scene/canonical/home-v2-runtime-ff5d3bcfc961d862.glb",
+      "sha256": "ff5d3bcfc961d8629349f10741b30749538392dd0dc41e13f6542d701affdbe6",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-ff5d3bcfc961d862.glb"
     },
     "pawnSlug.enemy.castV2": {
       "bytes": 22904,
