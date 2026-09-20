@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
+import { chroniclesMapIds } from './chroniclesMapCatalog.js';
 import {
   CHRONICLES_SCENE_MODEL_VERSION,
   chroniclesProjectSceneModel,
+  chroniclesValidateSceneModel,
 } from './chroniclesSceneModel.js';
 
 describe('Chronicles scene model projection', () => {
@@ -41,6 +43,34 @@ describe('Chronicles scene model projection', () => {
       legalMoves: [{ x: state.x + 1, y: state.y }],
       legalTargets: [{ enemyId: 'corrupted-pawn', x: 2, y: 4 }],
     });
+  });
+
+  it('projects every shipped map through the same renderer contract', () => {
+    chroniclesMapIds().forEach((mapId) => {
+      const state = createChroniclesState(mapId);
+      const model = chroniclesProjectSceneModel(state);
+
+      expect(model.mapId).toBe(mapId);
+      expect(model.scenePlan.mapId).toBe(mapId);
+      expect(new Set(model.party.map((member) => member.id)).size).toBe(model.party.length);
+      expect(new Set(model.enemies.map((enemy) => enemy.id)).size).toBe(model.enemies.length);
+      expect(() => JSON.stringify(model)).not.toThrow();
+      expect(chroniclesValidateSceneModel(model)).toBe(model);
+    });
+  });
+
+  it('fails closed when a renderer receives a malformed scene model', () => {
+    const valid = chroniclesProjectSceneModel(createChroniclesState());
+
+    expect(() => chroniclesValidateSceneModel({ ...valid, version: 999 })).toThrow(/version/i);
+    expect(() => chroniclesValidateSceneModel({
+      ...valid,
+      focusCell: { x: Number.NaN, y: 1 },
+    })).toThrow(/focusCell/i);
+    expect(() => chroniclesValidateSceneModel({
+      ...valid,
+      enemies: [...valid.enemies, valid.enemies[0]],
+    })).toThrow(/duplicate enemy/i);
   });
 
   it('does not leak RPG progression, narrative or combat-rule fields into the renderer contract', () => {
