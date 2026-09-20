@@ -67,44 +67,49 @@ describe('Chronicles Game Director frontend resolver', () => {
     });
   });
 
-  it('fails open to the bundled map when transport is unavailable', async () => {
+  it('fails closed when transport is unavailable', async () => {
     const fetchManifest = vi.fn().mockRejectedValue(new Error('network-down'));
 
-    const resolved = await chroniclesResolveAreaManifest('gallery-of-forks', { seed: 9, fetchManifest });
+    await expect(chroniclesResolveAreaManifest('gallery-of-forks', { seed: 9, fetchManifest }))
+      .rejects.toMatchObject({ reason: 'network-down' });
+  });
+
+  it('allows bundled fallback only when explicitly requested for preview/dev use', async () => {
+    const fetchManifest = vi.fn().mockRejectedValue(new Error('network-down'));
+
+    const resolved = await chroniclesResolveAreaManifest('gallery-of-forks', {
+      seed: 9,
+      fetchManifest,
+      allowBundledFallback: true,
+    });
 
     expect(resolved.source).toBe('local');
     expect(resolved.map).toBe(chroniclesMapById('gallery-of-forks'));
     expect(resolved.fallbackReason).toBe('network-down');
   });
 
-  it('rejects an incompatible or inconsistent remote envelope and keeps the local fallback', async () => {
+  it('rejects incompatible or inconsistent remote envelopes', async () => {
     const wrongSchema = remoteEnvelope('menagerie-of-ash', 12);
     wrongSchema.schemaVersion = 99;
     const wrongSeed = remoteEnvelope('menagerie-of-ash', 13);
 
-    const schemaResult = await chroniclesResolveAreaManifest('menagerie-of-ash', {
+    await expect(chroniclesResolveAreaManifest('menagerie-of-ash', {
       seed: 12,
       fetchManifest: vi.fn().mockResolvedValue(wrongSchema),
-    });
-    const seedResult = await chroniclesResolveAreaManifest('menagerie-of-ash', {
+    })).rejects.toMatchObject({ reason: 'unsupported-schema' });
+
+    await expect(chroniclesResolveAreaManifest('menagerie-of-ash', {
       seed: 12,
       fetchManifest: vi.fn().mockResolvedValue(wrongSeed),
-    });
-
-    expect(schemaResult.source).toBe('local');
-    expect(schemaResult.fallbackReason).toBe('unsupported-schema');
-    expect(seedResult.source).toBe('local');
-    expect(seedResult.fallbackReason).toBe('seed-mismatch');
+    })).rejects.toMatchObject({ reason: 'seed-mismatch' });
   });
 
   it('does not ask the backend for an unknown internal map id', async () => {
     const fetchManifest = vi.fn();
 
-    const resolved = await chroniclesResolveAreaManifest('missing-room', { fetchManifest });
+    await expect(chroniclesResolveAreaManifest('missing-room', { fetchManifest }))
+      .rejects.toMatchObject({ reason: 'unknown-map' });
 
     expect(fetchManifest).not.toHaveBeenCalled();
-    expect(resolved.source).toBe('local');
-    expect(resolved.fallbackReason).toBe('unknown-map');
-    expect(resolved.map.id).toBe('crypt-eight-squares');
   });
 });
