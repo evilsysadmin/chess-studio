@@ -626,7 +626,7 @@ def add_room(static, mats):
     cylinder("WR_CREST_plaque", (0, 6.72, 4.65), 1.32, 0.12, mats["charcoal"], static, vertices=64)
     bpy.context.object.rotation_euler.x = math.pi / 2
     torus("WR_CREST_ring", (0, 6.59, 4.65), 1.13, 0.055, mats["brass"], static, rotation=(math.pi / 2, 0, 0))
-    cube("WR_CREST_shield", (0, 6.51, 4.64), (0.68, 0.055, 0.70), mats["book_a"], static, bevel=0.22)
+    cube("WR_CREST_shield", (0, 6.51, 4.64), (0.68, 0.055, 0.70), mats["red"], static, bevel=0.22)
 
     # Graphic rampant-horse relief. A single shallow extruded silhouette reads
     # more clearly from the gameplay camera than a pile of primitive anatomy,
