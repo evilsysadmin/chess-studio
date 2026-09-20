@@ -12,7 +12,7 @@ describe('Chronicles Tactics · enemy RPG intel', () => {
       enemyTurnEvents: [],
     };
 
-    const target = chroniclesTacticsTargets(state, 'bishop')[0];
+    const target = chroniclesTacticsTargets(state, 'rook')[0];
     expect(target.enemyId).toBe('corrupted-pawn');
     expect(target.enemyBuild).toEqual(expect.objectContaining({
       version: 1,
