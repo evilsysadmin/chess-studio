@@ -51,6 +51,192 @@ def materialize_reference(reference: Path, out_dir: Path) -> Path:
     return target
 
 
+def _hash01(ix: int, iy: int, seed: int) -> float:
+    value = (ix * 374761393 + iy * 668265263 + seed * 69069) & 0xFFFFFFFF
+    value ^= value >> 13
+    value = (value * 1274126177) & 0xFFFFFFFF
+    value ^= value >> 16
+    return (value & 0xFFFF) / 65535.0
+
+
+def _smoothstep(value: float) -> float:
+    return value * value * (3.0 - 2.0 * value)
+
+
+def _value_noise(u: float, v: float, seed: int, cells: int) -> float:
+    x = u * cells
+    y = v * cells
+    x0 = math.floor(x)
+    y0 = math.floor(y)
+    tx = _smoothstep(x - x0)
+    ty = _smoothstep(y - y0)
+    x1 = x0 + 1
+    y1 = y0 + 1
+    a = _hash01(x0 % cells, y0 % cells, seed)
+    b = _hash01(x1 % cells, y0 % cells, seed)
+    c = _hash01(x0 % cells, y1 % cells, seed)
+    d = _hash01(x1 % cells, y1 % cells, seed)
+    ab = a + (b - a) * tx
+    cd = c + (d - c) * tx
+    return ab + (cd - ab) * ty
+
+
+def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
+    coarse = _value_noise(u, v, seed, 5)
+    medium = _value_noise(u, v, seed + 31, 13)
+    fine = _value_noise(u, v, seed + 73, 37)
+    if profile == "wood":
+        warp = (coarse - 0.5) * 1.35 + math.sin(v * math.tau * 2.0) * 0.08
+        grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
+        pores = 0.5 + 0.5 * math.sin((u * 43.0 + medium * 1.8) * math.tau)
+        return max(0.0, min(1.0, grain * 0.48 + pores * 0.13 + coarse * 0.24 + fine * 0.15))
+    if profile == "textile":
+        warp = 0.5 + 0.5 * math.sin(u * math.tau * 44.0)
+        weft = 0.5 + 0.5 * math.sin(v * math.tau * 44.0 + 0.65)
+        return max(0.0, min(1.0, 0.44 + (warp + weft - 1.0) * 0.21 + fine * 0.16))
+    if profile == "metal":
+        patina = _value_noise(u, v, seed + 119, 8)
+        brushing = 0.5 + 0.5 * math.sin((u * 34.0 + medium * 0.9) * math.tau)
+        return max(0.0, min(1.0, coarse * 0.38 + patina * 0.34 + brushing * 0.10 + fine * 0.18))
+    return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
+
+
+def _packed_surface_images(
+    name: str,
+    color: tuple[float, float, float, float],
+    roughness: float,
+    profile: str,
+    *,
+    size: int = 96,
+):
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(name)) & 0xFFFF
+    heights = []
+    for y in range(size):
+        row = []
+        for x in range(size):
+            row.append(_surface_height(profile, x / size, y / size, seed))
+        heights.append(row)
+
+    profile_color_span = {
+        "stone": (0.76, 1.16),
+        "wood": (0.62, 1.34),
+        "metal": (0.79, 1.15),
+        "textile": (0.78, 1.18),
+    }
+    low, high = profile_color_span.get(profile, (0.82, 1.14))
+    rough_span = {
+        "stone": 0.13,
+        "wood": 0.11,
+        "metal": 0.19,
+        "textile": 0.07,
+    }.get(profile, 0.10)
+    normal_strength = {
+        "stone": 4.2,
+        "wood": 3.1,
+        "metal": 2.0,
+        "textile": 2.8,
+    }.get(profile, 2.5)
+
+    base_pixels: list[float] = []
+    rough_pixels: list[float] = []
+    normal_pixels: list[float] = []
+
+    for y in range(size):
+        ym = (y - 1) % size
+        yp = (y + 1) % size
+        for x in range(size):
+            xm = (x - 1) % size
+            xp = (x + 1) % size
+            height = heights[y][x]
+            factor = low + (high - low) * height
+            base_pixels.extend((
+                max(0.0, min(1.0, color[0] * factor)),
+                max(0.0, min(1.0, color[1] * factor)),
+                max(0.0, min(1.0, color[2] * factor)),
+                1.0,
+            ))
+
+            local_roughness = max(
+                0.04,
+                min(1.0, roughness + (0.5 - height) * rough_span),
+            )
+            rough_pixels.extend((local_roughness, local_roughness, local_roughness, 1.0))
+
+            dx = (heights[y][xp] - heights[y][xm]) * normal_strength
+            dy = (heights[yp][x] - heights[ym][x]) * normal_strength
+            nx = -dx
+            ny = -dy
+            nz = 1.0
+            length = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
+            normal_pixels.extend((
+                nx / length * 0.5 + 0.5,
+                ny / length * 0.5 + 0.5,
+                nz / length * 0.5 + 0.5,
+                1.0,
+            ))
+
+    stem = name.replace("HOME_MAT_", "HOME_TEX_")
+    base_image = bpy.data.images.new(f"{stem}_base", width=size, height=size, alpha=True)
+    base_image.colorspace_settings.name = "sRGB"
+    base_image.pixels.foreach_set(base_pixels)
+    base_image.update()
+    base_image.pack()
+
+    rough_image = bpy.data.images.new(f"{stem}_rough", width=size, height=size, alpha=True)
+    rough_image.colorspace_settings.name = "Non-Color"
+    rough_image.pixels.foreach_set(rough_pixels)
+    rough_image.update()
+    rough_image.pack()
+
+    normal_image = bpy.data.images.new(f"{stem}_normal", width=size, height=size, alpha=True)
+    normal_image.colorspace_settings.name = "Non-Color"
+    normal_image.pixels.foreach_set(normal_pixels)
+    normal_image.update()
+    normal_image.pack()
+    return base_image, rough_image, normal_image
+
+
+def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile) -> None:
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    base_image, rough_image, normal_image = _packed_surface_images(
+        name,
+        color,
+        roughness,
+        profile,
+    )
+
+    base_tex = nodes.new("ShaderNodeTexImage")
+    base_tex.name = f"{name}_PackedBase"
+    base_tex.label = f"{profile.title()} base"
+    base_tex.image = base_image
+    base_tex.extension = "REPEAT"
+    links.new(base_tex.outputs["Color"], bsdf.inputs["Base Color"])
+
+    rough_tex = nodes.new("ShaderNodeTexImage")
+    rough_tex.name = f"{name}_PackedRoughness"
+    rough_tex.label = f"{profile.title()} roughness"
+    rough_tex.image = rough_image
+    rough_tex.extension = "REPEAT"
+    links.new(rough_tex.outputs["Color"], bsdf.inputs["Roughness"])
+
+    normal_tex = nodes.new("ShaderNodeTexImage")
+    normal_tex.name = f"{name}_PackedNormal"
+    normal_tex.label = f"{profile.title()} normal"
+    normal_tex.image = normal_image
+    normal_tex.extension = "REPEAT"
+    normal_map = nodes.new("ShaderNodeNormalMap")
+    normal_map.name = f"{name}_NormalMap"
+    normal_map.inputs["Strength"].default_value = {
+        "stone": 0.55,
+        "wood": 0.42,
+        "metal": 0.30,
+        "textile": 0.36,
+    }.get(profile, 0.35)
+    links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+    links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+
+
 def material(
     name: str,
     color: tuple[float, float, float, float],
@@ -64,6 +250,7 @@ def material(
     variation=0.0,
     variation_scale=3.0,
     grain=False,
+    texture_profile=None,
 ):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = color
@@ -121,6 +308,15 @@ def material(
         bump.inputs["Distance"].default_value = 0.12
         links.new(noise.outputs["Fac"], bump.inputs["Height"])
         links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    if texture_profile:
+        _apply_packed_surface_textures(
+            mat,
+            bsdf,
+            name=name,
+            color=color,
+            roughness=roughness,
+            profile=texture_profile,
+        )
     return mat
 
 
@@ -1549,16 +1745,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.024
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8),
-        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.046, 0.044, 0.042, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8),
-        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.058, 0.055, 0.051, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9),
-        "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0),
-        "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2),
+        "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8, texture_profile="stone"),
+        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.046, 0.044, 0.042, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8, texture_profile="stone"),
+        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.058, 0.055, 0.051, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9, texture_profile="stone"),
+        "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
+        "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2, texture_profile="stone"),
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.91, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6),
-        "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True),
-        "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True),
-        "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.91, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="stone"),
+        "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
+        "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
+        "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.27, 0.135, 0.038, 1), roughness=0.36, metallic=0.76),
         "gold": material(
             "HOME_MAT_gold",
@@ -1576,7 +1772,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission=(0.055, 0.018, 0.003, 1),
             emission_strength=0.10,
         ),
-        "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60),
+        "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
         "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.30, metallic=0.86),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
@@ -1585,11 +1781,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             metallic=0.74,
             variation=0.08,
             variation_scale=6.2,
-        ),
-        "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60),
-        "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64),
-        "rug": material("HOME_MAT_rug", (0.125, 0.018, 0.014, 1), roughness=0.92, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0),
-        "banner": material("HOME_MAT_banner", (0.108, 0.010, 0.012, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0),
+        , texture_profile="metal"),
+        "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
+        "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
+        "rug": material("HOME_MAT_rug", (0.125, 0.018, 0.014, 1), roughness=0.92, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0, texture_profile="textile"),
+        "banner": material("HOME_MAT_banner", (0.108, 0.010, 0.012, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0, texture_profile="textile"),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
             (0.072, 0.006, 0.008, 1),
@@ -1598,7 +1794,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_strength=0.055,
             variation=0.075,
             variation_scale=8.8,
-        ),
+        , texture_profile="textile"),
         "bench_velvet": material(
             "HOME_MAT_bench_velvet",
             (0.108, 0.014, 0.016, 1),
@@ -1607,7 +1803,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_strength=0.045,
             variation=0.080,
             variation_scale=8.5,
-        ),
+        , texture_profile="textile"),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
