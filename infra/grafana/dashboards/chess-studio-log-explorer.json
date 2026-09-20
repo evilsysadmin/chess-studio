@@ -40,7 +40,7 @@
         "name": "selector",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},staging stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
         "current": {
           "text": "production",
           "value": "{service_name=\"chess-studio-backend\"}"
@@ -48,7 +48,7 @@
         "hide": 0,
         "skipUrlSync": false,
         "includeAll": true,
-        "allValue": "{service_name=~\"chess-studio-backend(-staging)?\"}",
+        "allValue": "{service_name=~\"chess-studio-(backend(-staging)?|oci-backend-(production|staging)-stdout)\"}",
         "multi": false
       },
       {
