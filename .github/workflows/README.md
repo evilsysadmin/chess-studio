@@ -42,7 +42,6 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | `production-promote.yml` | Promueve sólo un SHA acreditado. Worker Terraform `plan/apply` permanece aquí; el backend se selecciona mediante el interruptor versionado `.github/production-deploy.env` (`render|oci`) y el helper de ruta posee el CNAME del API. Pages continúa después sobre el mismo SHA. |
 | `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
 | `staging-preview.yml` | Preview/restauración manual frontend-only sobre staging; no acredita ni entra en producción. Usa deps exactas + Wrangler cacheado. |
-| `staging-bootstrap.yml` | Escape hatch manual del staging legado en Render durante su periodo de retirada. No participa en el camino canónico OCI → staging. |
 | `render-production-guardrail.yml` | Guardrail específico de auto-deploy/configuración Render producción. |
 
 ## OCI staging · infraestructura y control-plane
@@ -58,7 +57,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
 
-La retirada de Render staging es deliberadamente gradual: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**. El primer cutover se completa fuera de esa línea mediante `oci-vault-cutover-once.yml`, que puede usar Render una única vez para poblar Vault si hace falta; después ese workflow se retira. Render producción no forma parte de esa migración.
+Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. `oci-vault-cutover-once.yml` se conserva sólo como migración one-shot mientras siga siendo necesario para el estado histórico del cutover. Render producción permanece independiente y no forma parte de esta retirada.
 
 ## Calidad especializada
 
