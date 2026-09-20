@@ -119,3 +119,16 @@ Contrato adicional de enemigos:
 - El atlas enemigo se genera desde frames 2D y un packer; no se aceptan composiciones finales generadas manualmente.
 - El worksheet validado de enemigos se conserva dentro de games/pawn-slug-godot/art/ para reanudar la iteración.
 - Si trabajas en local y tienes buen hardware, puedes generar sprites y blender artifacts, pero ojo con saturar la cpu/gpu
+
+
+Trituradora CI de worksheets de enemigos:
+- El worksheet generado por image_gen entra al repo como fuente de intake compacta dentro de `games/pawn-slug-godot/art/enemies/`; no es un atlas runtime ni se consume directamente desde Godot.
+- El master 2D de alta resolución se conserva fuera de Git (cache/R2 cuando corresponda). Git puede guardar una copia compacta y cuantizada del worksheet para que CI sea reproducible sin inflar el historial.
+- CI es la trituradora obligatoria: worksheet -> `scripts/art/pack_pawn_slug_enemy_v2.py` -> framesheets PNG por enemigo + atlas PNG + manifest JSON -> `scripts/art/validate_pawn_slug_enemy_v2.py` -> Godot headless real con SpriteFrames/AtlasTexture -> artifact PNG de review.
+- La salida v2 actual usa nueve tipos (pawn, knight, rook, bishop, queen, grenadier, scout, commando, shield), dos acciones iniciales (idle/run), 8 frames por acción, celdas 128x128, sheets individuales 8x2 y atlas conjunto 8x18 (1024x2304).
+- El packer fija escala por enemigo, pivote, línea de pies, margen transparente y layout; ningún frame puede decidir su propia escala o desplazamiento arbitrario.
+- CI construye dos veces y exige salida byte-a-byte idéntica. También rechaza alpha sucio, chunks PNG de color no permitidos, bleed de celda, frame vacío/duplicado, deriva de la línea de pies y regiones de AtlasTexture fuera del atlas.
+- Cada iteración debe revisar el artifact `enemy_v2_review.png` y los nueve framesheets antes de promover nada. Un gate verde no sustituye la revisión visual.
+- No cablear/promover automáticamente un worksheet nuevo a runtime. Primero artifact validado; después PR pequeña de promoción + staging smoke. Si falla visualmente, se itera el worksheet/pipeline, no se parchea el atlas final a mano.
+- Para ampliar animaciones (hurt, crouch, jump, death, fire, etc.), se amplía el contrato del worksheet/packer/manifest y sus gates; no se añaden recortes hardcodeados en GDScript.
+- Blender sigue prohibido para sprites de Pawn Slug, incluidos enemigos. Blender queda para Home 3D y War Room v2.

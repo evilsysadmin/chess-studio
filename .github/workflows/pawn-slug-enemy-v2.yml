@@ -1,0 +1,129 @@
+name: Pawn Slug · enemy v2 grinder
+
+on:
+  pull_request:
+    paths:
+      - 'games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
+      - 'games/pawn-slug-godot/tests/enemy_v2_atlas_smoke.gd'
+      - 'scripts/art/pack_pawn_slug_enemy_v2.py'
+      - 'scripts/art/validate_pawn_slug_enemy_v2.py'
+      - '.github/workflows/pawn-slug-enemy-v2.yml'
+      - 'AGENTS.md'
+  push:
+    branches: [main]
+    paths:
+      - 'games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
+      - 'games/pawn-slug-godot/tests/enemy_v2_atlas_smoke.gd'
+      - 'scripts/art/pack_pawn_slug_enemy_v2.py'
+      - 'scripts/art/validate_pawn_slug_enemy_v2.py'
+      - '.github/workflows/pawn-slug-enemy-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-enemy-v2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+  GODOT_RELEASE: '4.7.2-stable'
+  GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+
+jobs:
+  grind-enemy-worksheet:
+    name: Normalize + gate + Godot smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+      - name: Tool syntax
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            scripts/art/pack_pawn_slug_enemy_v2.py \
+            scripts/art/validate_pawn_slug_enemy_v2.py
+      - name: Grind worksheet twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE='games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
+          for lane in a b; do
+            ROOT="$RUNNER_TEMP/enemy-v2-$lane"
+            mkdir -p "$ROOT/sheets"
+            python3 scripts/art/pack_pawn_slug_enemy_v2.py \
+              --source "$SOURCE" \
+              --output "$ROOT/enemy_godot_8x18_128_v2.png" \
+              --manifest "$ROOT/enemy_v2_manifest.json" \
+              --review "$ROOT/enemy_v2_review.png" \
+              --sheets-dir "$ROOT/sheets"
+            python3 scripts/art/validate_pawn_slug_enemy_v2.py \
+              --source "$SOURCE" \
+              --atlas "$ROOT/enemy_godot_8x18_128_v2.png" \
+              --manifest "$ROOT/enemy_v2_manifest.json" \
+              --sheets-dir "$ROOT/sheets"
+          done
+      - name: Demand deterministic output
+        shell: bash
+        run: |
+          set -euo pipefail
+          A="$RUNNER_TEMP/enemy-v2-a"
+          B="$RUNNER_TEMP/enemy-v2-b"
+          cmp "$A/enemy_godot_8x18_128_v2.png" "$B/enemy_godot_8x18_128_v2.png"
+          cmp "$A/enemy_v2_manifest.json" "$B/enemy_v2_manifest.json"
+          cmp "$A/enemy_v2_review.png" "$B/enemy_v2_review.png"
+          for sheet in "$A"/sheets/*.png; do
+            cmp "$sheet" "$B/sheets/$(basename "$sheet")"
+          done
+          sha256sum "$A/enemy_godot_8x18_128_v2.png" "$A"/sheets/*.png
+      - name: Restore pinned Godot editor
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-enemy-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-v1
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 \
+              "https://github.com/godotengine/godot-builds/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" \
+              -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+      - name: Consume atlas through real SpriteFrames
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/enemy-v2-a"
+          "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless \
+            --path games/pawn-slug-godot \
+            --script res://tests/enemy_v2_atlas_smoke.gd -- \
+            "$ROOT/enemy_godot_8x18_128_v2.png" \
+            "$ROOT/enemy_v2_manifest.json"
+      - name: Upload review + Godot-ready framesheets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-enemy-v2-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            ${{ runner.temp }}/enemy-v2-a/enemy_godot_8x18_128_v2.png
+            ${{ runner.temp }}/enemy-v2-a/enemy_v2_manifest.json
+            ${{ runner.temp }}/enemy-v2-a/enemy_v2_review.png
+            ${{ runner.temp }}/enemy-v2-a/sheets/*.png
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
