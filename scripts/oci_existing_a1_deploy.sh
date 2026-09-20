@@ -18,6 +18,7 @@ target_launcher="/usr/local/sbin/chess-studio-deploy"
 source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
+otel_log_probe="$repo/scripts/otel_log_ingest_probe.py"
 k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
 k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
 signal_controller_source="$repo/scripts/oci_staging_signal_controller.sh"
@@ -377,8 +378,7 @@ record_successful_backend() {
   local tmp
   tmp="$(mktemp "$state_dir/deployed.sha.XXXXXX")"
   printf '%s\n' "$successful_sha" >"$tmp"
-  chmod 0644 "$tmp"
-  mv -f "$tmp" "$state_file"
+  chmod 0644 "$tmp"  mv -f "$tmp" "$state_file"
 }
 
 prepare_backend_log_link() {
@@ -473,6 +473,7 @@ start_observability_best_effort() {
   local alloy_image="grafana/alloy:v1.19.2"
   local backend_log_ready=0
   local probe_ready=0
+  local direct_log_probe_ready=0
 
   observability_summary="starting"
 
@@ -486,6 +487,17 @@ start_observability_best_effort() {
     observability_summary="config-missing"
     echo "OCI_ALLOY state=degraded target=$target reason=config-missing" >&2
     return 0
+  fi
+
+  if python3 -S "$otel_log_probe" \
+      --env-file "$env_file" \
+      --service-name "chess-studio-oci-log-probe-$target" \
+      --environment "$target" \
+      --service-version "$target_sha"; then
+    direct_log_probe_ready=1
+    echo "CHESS_STUDIO_OTLP_LOG_PROBE_OK target=$target repo_ref=$target_sha"
+  else
+    echo "OCI_LOGS state=degraded target=$target reason=direct-otlp-log-probe-failed" >&2
   fi
 
   if prepare_backend_log_link "$target_sha"; then
@@ -521,7 +533,9 @@ start_observability_best_effort() {
     if compose "$target_sha" ps --status running --services 2>/dev/null | grep -Fxq alloy; then
       echo "CHESS_STUDIO_ALLOY_OK target=$target repo_ref=$target_sha"
       if [[ "$probe_ready" -eq 1 ]] && emit_alloy_filelog_probe "$target_sha"; then
-        if [[ "$backend_log_ready" -eq 1 ]]; then
+        if [[ "$direct_log_probe_ready" -ne 1 ]]; then
+          observability_summary="direct-log-probe-degraded"
+        elif [[ "$backend_log_ready" -eq 1 ]]; then
           observability_summary="ok"
         else
           observability_summary="probe-ok-backend-log-degraded"
@@ -641,6 +655,8 @@ fi
 phase_done checkout "$checkout_started_ms"
 preflight_started_ms="$(now_ms)"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
+[[ -f "$otel_log_probe" && ! -L "$otel_log_probe" ]] || { echo "missing OTLP log probe in $sha: $otel_log_probe" >&2; exit 66; }
+python3 -S "$otel_log_probe" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
