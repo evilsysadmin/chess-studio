@@ -254,6 +254,10 @@ jobs:
           echo "hit=$hit" >> "$GITHUB_OUTPUT"
       - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
+      - name: Validate Cloudflare auth rate-limit contract
+        run: python3 -S scripts/cloudflare_auth_rate_limit.py --self-test
+      - name: Reconcile Cloudflare auth rate-limit
+        run: python3 scripts/cloudflare_auth_rate_limit.py
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
