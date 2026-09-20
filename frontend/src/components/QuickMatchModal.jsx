@@ -109,8 +109,9 @@ export default function QuickMatchModal({
             <summary>Cómo se ajusta Matthias</summary>
             <div className="friendly-disclosure-body">
               <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
+              <p className="hint-text">{adaptive.evidenceCopy}</p>
               <p className="hint-text">
-                Usa tu rating y forma reciente antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
+                Matthias sólo usa evidencia ya guardada antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
               </p>
             </div>
           </details>

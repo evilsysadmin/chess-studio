@@ -22,6 +22,34 @@ describe('adaptiveDifficultyPresentation', () => {
     expect(view.detailLabel).not.toContain(String(view.level));
   });
 
+  it('explica qué señales cambiaron de verdad el rival sin enseñar ajustes internos', () => {
+    const adaptive = (gameId, outcome, difficulty = 56) => [
+      { gameId, state: 'finished', outcome, difficulty, mode: 'casual' },
+      { gameId, state: 'started', detail: 'adaptive-difficulty', difficulty, mode: 'casual' },
+    ];
+    const activity = [
+      ...adaptive('g3', 'loss'),
+      ...adaptive('g2', 'loss'),
+      ...adaptive('g1', 'loss'),
+    ];
+    const quality = {
+      g1: { sufficientSample: true, clean: false, averageLoss: 140, blunders: 2 },
+      g2: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
+      g3: { sufficientSample: true, clean: false, averageLoss: 130, blunders: 2 },
+    };
+
+    const view = adaptiveDifficultyPresentation({ rating: 1000, games: 20 }, activity, quality);
+
+    expect(view.evidenceCopy).toBe('Señales activas: rating · forma reciente · partidas analizadas.');
+    expect(view.evidenceCopy).not.toMatch(/[+-]\d+/);
+    expect(view.evidenceCopy).not.toMatch(/Elo/i);
+  });
+
+  it('no presume señal de calidad cuando el análisis no cambia el objetivo', () => {
+    const view = adaptiveDifficultyPresentation({ rating: 1000, games: 20 }, [], {});
+    expect(view.evidenceCopy).toBe('Señales activas: rating.');
+  });
+
   it('normaliza contadores inválidos o negativos para no mostrar progreso absurdo', () => {
     expect(adaptiveDifficultyPresentation({ rating: 700, games: -4 }, []).completed).toBe(0);
     expect(adaptiveDifficultyPresentation({ rating: 700, games: 'basura' }, []).completed).toBe(0);
