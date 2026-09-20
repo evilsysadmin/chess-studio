@@ -1,7 +1,7 @@
 import json
 import logging
 
-from structured_logging import emit_http_event, normalize_unmatched_path
+from structured_logging import emit_auth_login_failed, emit_http_event, normalize_unmatched_path
 
 
 def test_structured_http_log_is_json_and_keeps_sensitive_payloads_out(caplog):
@@ -91,3 +91,78 @@ def test_structured_http_log_reports_whether_trace_was_sampled(monkeypatch, capl
     payload = json.loads(caplog.records[-1].getMessage())
     assert payload["trace_id"] == "a" * 32
     assert payload["trace_sampled"] is True
+
+
+
+def test_failed_login_forensics_never_logs_password_and_correlates_reuse(caplog):
+    logger = logging.getLogger("test.chess.structured.auth")
+    caplog.set_level(logging.WARNING, logger=logger.name)
+    secret = "bot-password-NEVER-LOG-THIS"
+
+    emit_auth_login_failed(
+        logger,
+        request_id="req-auth-1",
+        attempted_username="Admin\nInjected",
+        password=secret,
+        fingerprint_key="fingerprint-key-for-test",
+        account_exists=False,
+        failure_reason="unknown_user",
+        client_ip="203.0.113.8",
+        peer_ip="10.0.0.8",
+        x_forwarded_for=["203.0.113.8", "bad"],
+        client_country="es",
+        user_agent="evilbot/1.0\r\nX-Injected: yes",
+        client_release="v-test",
+    )
+    first_raw = caplog.records[-1].getMessage()
+    first = json.loads(first_raw)
+
+    emit_auth_login_failed(
+        logger,
+        request_id="req-auth-2",
+        attempted_username="other",
+        password=secret,
+        fingerprint_key="fingerprint-key-for-test",
+        account_exists=True,
+        failure_reason="bad_password",
+    )
+    second = json.loads(caplog.records[-1].getMessage())
+
+    assert secret not in first_raw
+    assert first["event"] == "auth_login_failed"
+    assert first["status"] == 401
+    assert first["username_attempted"] == "Admin Injected"
+    assert first["failure_reason"] == "unknown_user"
+    assert first["account_exists"] is False
+    assert first["password_length"] == len(secret)
+    assert first["password_classes"] == ["lower", "upper", "symbol"]
+    assert len(first["password_fingerprint"]) == 20
+    assert first["password_fingerprint"] == second["password_fingerprint"]
+    assert first["client_ip"] == "203.0.113.8"
+    assert first["peer_ip"] == "10.0.0.8"
+    assert first["x_forwarded_for"] == ["203.0.113.8"]
+    assert first["client_country"] == "ES"
+    assert first["user_agent"] == "evilbot/1.0 X-Injected: yes"
+    assert second["failure_reason"] == "bad_password"
+    assert second["account_exists"] is True
+
+
+def test_failed_login_fingerprint_changes_for_different_password(caplog):
+    logger = logging.getLogger("test.chess.structured.auth.distinct")
+    caplog.set_level(logging.WARNING, logger=logger.name)
+
+    fingerprints = []
+    for password in ("guess-one", "guess-two"):
+        emit_auth_login_failed(
+            logger,
+            request_id="req-auth-distinct",
+            attempted_username="admin",
+            password=password,
+            fingerprint_key="fingerprint-key-for-test",
+            account_exists=False,
+            failure_reason="unknown_user",
+        )
+        payload = json.loads(caplog.records[-1].getMessage())
+        fingerprints.append(payload["password_fingerprint"])
+
+    assert fingerprints[0] != fingerprints[1]
