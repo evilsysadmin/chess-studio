@@ -1148,12 +1148,24 @@ def add_gothic_canon_v2(static, mats):
     add_fireplace_blockwork("right", rx)
 
     # Cold floor globe becomes the right-side hero prop once the mirrored
-    # armour is retired, tucked closer to the window to open negative space.
+    # armour is retired. Give it enough cartographic language to read as a real
+    # globe at gameplay distance instead of a black sphere inside a brass hoop.
     gx, gy = 7.12, 4.54
-    sphere("WR_CANON_globe_sphere", (gx, gy, 1.53), 0.54, mats["picture_b"], static,
+    sphere("WR_CANON_globe_sphere", (gx, gy, 1.53), 0.54, mats["book_b"], static,
            scale=(1.0, 1.0, 1.0))
     torus("WR_CANON_globe_ring", (gx, gy, 1.53), 0.66, 0.035, mats["brass"], static,
           rotation=(math.pi / 2, 0, 0))
+    torus("WR_CANON_globe_equator", (gx, gy, 1.53), 0.545, 0.014, mats["brass_dark"], static)
+    torus("WR_CANON_globe_meridian", (gx, gy, 1.53), 0.545, 0.012, mats["brass_dark"], static,
+          rotation=(math.pi / 2, 0, 0))
+    for index, (dx, dz, sx, sz, angle) in enumerate((
+        (-0.20, 0.14, 1.25, 0.72, -0.28),
+        (0.18, 0.02, 0.92, 1.20, 0.34),
+        (0.02, -0.24, 0.72, 0.62, -0.12),
+    )):
+        land = sphere(f"WR_CANON_globe_land_{index}", (gx + dx, gy - 0.505, 1.53 + dz),
+                      0.115, mats["brass"], static, scale=(sx, 0.10, sz))
+        land.rotation_euler.y = angle
     cylinder("WR_CANON_globe_stem", (gx, gy, 0.82), 0.105, 0.78, mats["brass_dark"], static, vertices=24)
     cylinder("WR_CANON_globe_foot", (gx, gy, 0.38), 0.32, 0.10, mats["brass_dark"], static, vertices=28)
 
@@ -1727,7 +1739,7 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_command_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_command_", "WR_CANON_globe_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
             key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
