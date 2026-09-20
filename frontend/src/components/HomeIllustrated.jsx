@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
-import HomeCastle3D from './HomeCastle3D.jsx';
+import HomeScene3D from './HomeScene3D.jsx';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
@@ -160,7 +160,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-focus={activeRoom || 'none'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        <HomeCastle3D
+        <HomeScene3D
           artUrl={hall}
           ambient={castleLife.ambient}
           activeRoom={activeRoom}
