@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  WAR_ROOM_V2_RUNTIME_MODEL_URL,
   WAR_ROOM_V2_STAGING_MODEL_URL,
   configureWarRoomV2Loader,
   warRoomV2EnvMapIntensity,
@@ -19,7 +20,7 @@ import {
   shouldShowClassicWarRoomShell,
 } from './WarRoomSceneVariant.js';
 
-describe('War Room v2 staging asset URL', () => {
+describe('War Room v2 runtime asset URL', () => {
   it('registers the bundled Meshopt decoder on the v2 GLTF loader', () => {
     let decoder = null;
     const loader = {
@@ -265,9 +266,11 @@ describe('War Room v2 staging asset URL', () => {
     });
   });
 
-  it('versions the mutable current.glb alias with the frontend build SHA', () => {
+  it('versions the stable runtime current.glb alias with the frontend build SHA', () => {
+    expect(WAR_ROOM_V2_RUNTIME_MODEL_URL).toContain('/war-room/v2/runtime/current.glb');
+    expect(WAR_ROOM_V2_STAGING_MODEL_URL).toBe(WAR_ROOM_V2_RUNTIME_MODEL_URL);
     expect(warRoomV2ModelUrl({ buildSha: 'abc123' }))
-      .toBe(`${WAR_ROOM_V2_STAGING_MODEL_URL}?build=abc123`);
+      .toBe(`${WAR_ROOM_V2_RUNTIME_MODEL_URL}?build=abc123`);
   });
 
   it('keeps explicit query parameters intact and encodes the build token', () => {

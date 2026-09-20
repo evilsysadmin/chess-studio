@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
-export const WAR_ROOM_V2_STAGING_MODEL_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/current.glb';
+export const WAR_ROOM_V2_RUNTIME_MODEL_URL =
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb';
+// Backward-compatible alias for callers/tests that still import the old name.
+export const WAR_ROOM_V2_STAGING_MODEL_URL = WAR_ROOM_V2_RUNTIME_MODEL_URL;
 export const WAR_ROOM_V2_BOARD_ANCHOR_Y = 1.12;
 
 export function warRoomV2ModelUrl({
   buildSha = import.meta.env.VITE_BUILD_SHA,
-  baseUrl = WAR_ROOM_V2_STAGING_MODEL_URL,
+  baseUrl = WAR_ROOM_V2_RUNTIME_MODEL_URL,
 } = {}) {
   const version = String(buildSha || '').trim();
   if (!version) return baseUrl;
