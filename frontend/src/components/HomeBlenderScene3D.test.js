@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
+  homeBlenderPointerParallaxEnabled,
   homeBlenderRuntimePolicy,
 } from './HomeBlenderScene3D.jsx';
 
@@ -48,5 +49,26 @@ describe('HomeBlenderScene3D mobile runtime policy', () => {
       antialias: true,
       powerPreference: 'high-performance',
     });
+  });
+});
+
+
+describe('HomeBlenderScene3D pointer parallax policy', () => {
+  it('keeps camera parallax on fine-pointer desktop when motion is allowed', () => {
+    expect(homeBlenderPointerParallaxEnabled({
+      reducedMotion: false,
+      coarsePointer: false,
+    })).toBe(true);
+  });
+
+  it('disables camera parallax for touch/coarse pointer and reduced motion', () => {
+    expect(homeBlenderPointerParallaxEnabled({
+      reducedMotion: false,
+      coarsePointer: true,
+    })).toBe(false);
+    expect(homeBlenderPointerParallaxEnabled({
+      reducedMotion: true,
+      coarsePointer: false,
+    })).toBe(false);
   });
 });
