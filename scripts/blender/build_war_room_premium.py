@@ -1634,8 +1634,8 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith("WR_CANON_campaign_"):
-            key = (("__campaign_painting__",), runtime_batch_cell(obj))
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_")):
+            key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
         groups.setdefault(key, []).append(obj)
