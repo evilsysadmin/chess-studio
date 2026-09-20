@@ -509,6 +509,18 @@ def add_table_and_board(materials):
                 mat,
             )
     cube("HOME_PROP_board_frame", (0, table_y, table_z + 0.135), (board_half, board_half, 0.035), metal, bevel=0.025)
+    for idx, (bx, by) in enumerate((
+        (-board_half + 0.055, table_y - board_half + 0.055),
+        (board_half - 0.055, table_y - board_half + 0.055),
+        (-board_half + 0.055, table_y + board_half - 0.055),
+        (board_half - 0.055, table_y + board_half - 0.055),
+    )):
+        sphere(
+            f"HOME_PROP_board_corner_boss_{idx}",
+            (bx, by, table_z + 0.190),
+            (0.055, 0.055, 0.026),
+            materials["brass_dark"],
+        )
 
     # The frontal cloth is one of the master image's strongest silhouettes.
     # Pull it forward so it cannot disappear inside the table and give it the
