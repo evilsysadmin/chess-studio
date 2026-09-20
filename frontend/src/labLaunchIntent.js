@@ -1,6 +1,6 @@
 import { STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 
-const LAB_MODES = new Set(['pawnslug-godot']);
+const LAB_MODES = new Set(['pawnslug-godot', 'chronicles', 'chronicles-tactics']);
 const LAB_MODE_ALIASES = new Map([
   ['pawnslug', 'pawnslug-godot'],
 ]);
