@@ -1,0 +1,81 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v17",
+  "status": "candidate-local-validated",
+  "goal": "replace the historical strict-v16 machinegun body/proportion divergence without regressing strict Godot geometry",
+  "source": {
+    "generation": "strict-v16",
+    "weapon": "shotgun",
+    "sha256": "c2a67fc5a7f50926f5860dcd4fe48eb9678abb7bd12121de4c968fa3bff2396f",
+    "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png"
+  },
+  "comparison_baseline": {
+    "generation": "strict-v16",
+    "weapon": "machinegun",
+    "sha256": "32227acfdc2e0cffb6632bbb33456bee4bcff82b305367c096c7fc4350d67eea",
+    "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/machinegun/v16-32227acfdc2e0cff.png"
+  },
+  "contract": {
+    "weapons": [
+      "machinegun"
+    ],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "cell_guard_px": 2,
+    "body_pose": "strict-v16 shotgun body/pose bank preserved; only additive machinegun pixels are authored",
+    "machinegun_cues": [
+      "feed box",
+      "belt links",
+      "vented shroud",
+      "muzzle brake"
+    ]
+  },
+  "local_evidence": {
+    "frames": 144,
+    "rows": 18,
+    "all_rows_8_distinct": true,
+    "source_weapon": "shotgun",
+    "changed_pixels_vs_source": 386075,
+    "changed_pixels_by_row": [
+      23153,
+      23143,
+      23155,
+      23163,
+      23153,
+      23155,
+      23141,
+      23161,
+      23152,
+      22242,
+      22283,
+      22363,
+      22335,
+      22280,
+      23124,
+      23142,
+      8689,
+      11241
+    ],
+    "removed_source_alpha_samples": 0,
+    "max_alpha_y": 385,
+    "guard_ok": true,
+    "clean_transparent_rgb": true,
+    "png_chunks": [
+      "IDAT",
+      "IEND",
+      "IHDR"
+    ],
+    "candidate_sha256": "63e2021dd301fa4412d6b6cd6320927302cca73ca2bd5a330fb86a97056517ba",
+    "reproducible_sha256": true,
+    "visual_review": "local v16-v17 review and four-weapon family comparison inspected; body identity now matches the canonical v16 family and all directional rows retain authored aim/muzzle poses",
+    "godot_headless": "pending CI: local sandbox does not contain the pinned Godot editor/repository checkout"
+  },
+  "promotion": {
+    "runtime_changed": false,
+    "r2_publish": "only on green main workflow after candidate merge",
+    "next": "inspect CI review PNG + Godot 4.7.2 smoke; then promote the immutable R2 URL in a separate runtime PR"
+  }
+}
