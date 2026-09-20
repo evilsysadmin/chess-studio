@@ -22,7 +22,7 @@ function normalizeColor(color) {
   return color === 'b' ? 'b' : 'w';
 }
 
-export function createSeries({ bestOf, difficulty, firstColor, timeControlId = 'none' }) {
+export function createSeries({ bestOf, difficulty, firstColor, timeControlId = 'none', adaptiveDifficulty = false }) {
   const n = Number(bestOf);
   if (!isCompetitiveSeriesBestOf(n)) return null;
   const color = normalizeColor(firstColor);
@@ -33,6 +33,7 @@ export function createSeries({ bestOf, difficulty, firstColor, timeControlId = '
     winsNeeded: Math.floor(n / 2) + 1,
     difficulty: Number(difficulty),
     timeControlId,
+    adaptiveDifficulty: adaptiveDifficulty === true,
     humanWins: 0,
     cpuWins: 0,
     draws: 0,
@@ -58,6 +59,7 @@ export function validateSeriesState(parsed) {
   if (parsed.winner && parsed.winner !== winner) return null;
   const normalized = {
     ...parsed, bestOf, winsNeeded, humanWins, cpuWins, draws, games,
+    adaptiveDifficulty: parsed.adaptiveDifficulty === true,
     nextColor: normalizeColor(parsed.nextColor), winner,
     currentGameId: winner ? null : (parsed.currentGameId || null),
   };
