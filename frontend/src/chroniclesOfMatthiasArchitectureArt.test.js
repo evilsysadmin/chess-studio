@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_ARCHES,
+  CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL,
+  CHRONICLES_TACTICS_MASONRY_STYLE,
   chroniclesTacticsArchitectureWallCells,
   chroniclesTacticsExposedWallSide,
   installChroniclesTacticsArchitectureArt,
@@ -32,7 +34,9 @@ describe('Chronicles Tactics architecture depth', () => {
 
   it('uses supplied scene topology instead of consulting the canonical crypt', () => {
     const scenePlan = {
+      mapId: 'menagerie-of-ash',
       center: { x: 8, y: 9 },
+      sceneStyle: { palette: { wall: [0x3c342f] } },
       wallFaces: [
         { x: 8, y: 9, side: 'west' },
         { x: 9, y: 9, side: 'north' },
@@ -49,17 +53,25 @@ describe('Chronicles Tactics architecture depth', () => {
     const root = installChroniclesTacticsArchitectureArt(scene, { scenePlan });
     expect(root.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
     expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
+    expect(root.userData.chroniclesArchitectureMasonryProfile).toBe('coursed-block-face-v2');
   });
 
-  it('decorates only full-height structural walls and batches the geometry', () => {
+  it('replaces monolithic wall faces with batched coursed masonry', () => {
     const scene = fixture();
     expect(chroniclesTacticsArchitectureWallCells(scene)).toHaveLength(2);
 
     const root = installChroniclesTacticsArchitectureArt(scene, { coarsePointer: false });
+    const masonry = root.getObjectByName('chronicles-tactics-masonry-instances');
+
     expect(root.name).toBe('chronicles-tactics-architecture-depth');
     expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
     expect(root.userData.chroniclesArchitectureDrawGroups).toBe(2);
-    expect(root.getObjectByName('chronicles-tactics-masonry-instances').count).toBe(10);
+    expect(root.userData.chroniclesArchitectureMasonryProfile).toBe(CHRONICLES_TACTICS_MASONRY_STYLE.profile);
+    expect(masonry.count).toBe(
+      2 * CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL + CHRONICLES_TACTICS_ARCHES.length * 2,
+    );
+    expect(masonry.material.map?.isTexture).toBe(true);
+    expect(masonry.instanceColor).toBeTruthy();
     expect(root.getObjectByName('chronicles-tactics-arch-instances').count).toBe(CHRONICLES_TACTICS_ARCHES.length);
   });
 

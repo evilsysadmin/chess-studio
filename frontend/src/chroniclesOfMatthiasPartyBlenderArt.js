@@ -28,16 +28,22 @@ function loadPartyAsset() {
   return partyLoadPromise;
 }
 
-function configureVisual(root, { coarsePointer }) {
+export function configureChroniclesTacticsPartyVisual(root, { coarsePointer = false } = {}) {
+  if (!root) return root;
+
+  // Placement belongs to the tactical member root, but the GLB's authored
+  // orientation and scale belong to the asset. Resetting rotation/scale here
+  // discarded Blender/glTF axis compensation and could leave otherwise valid
+  // party members lying on their side.
   root.position.set(0, 0, 0);
-  root.rotation.set(0, 0, 0);
-  root.scale.set(1, 1, 1);
+  root.userData.chroniclesAuthoredTransformPreserved = true;
   root.traverse((node) => {
     if (!node.isMesh) return;
     node.castShadow = !coarsePointer;
     node.receiveShadow = true;
     node.frustumCulled = true;
   });
+  return root;
 }
 
 function hideFallbackChildren(memberRoot, visual) {
@@ -112,7 +118,7 @@ export function installChroniclesTacticsPartyBlenderArt(
         // view can reuse the single network load instead of losing its roots.
         const visual = source.clone(true);
         visual.name = source.name;
-        configureVisual(visual, { coarsePointer });
+        configureChroniclesTacticsPartyVisual(visual, { coarsePointer });
         const priorTick = memberRoot.userData.chroniclesArtTick || null;
         memberRoot.add(visual);
         hideFallbackChildren(memberRoot, visual);
