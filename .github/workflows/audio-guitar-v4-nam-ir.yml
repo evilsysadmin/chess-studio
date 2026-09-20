@@ -1,0 +1,402 @@
+name: Guitar V4 NAM IR
+
+on:
+  push:
+    branches:
+      - audio/guitar-v4-nam-ir-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Install base audio toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build g++ libsndfile1-dev libjack-jackd2-dev \
+            libsamplerate0-dev libfftw3-dev pkg-config ffmpeg sox \
+            python3-pip unzip unrar
+          python3 -m pip install --break-system-packages -q gdown
+
+      - name: Cache sfizz renderer
+        uses: actions/cache@v4
+        with:
+          path: /tmp/sfizz-cache
+          key: sfizz-render-ubuntu24-20260920-v1
+
+      - name: Build sfizz offline renderer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/sfizz-cache v4
+          if [ ! -x /tmp/sfizz-cache/sfizz_render ]; then
+            git clone --recursive --depth 1 https://github.com/sfztools/sfizz.git /tmp/sfizz
+            cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF \
+              -DPLUGIN_LV2=OFF -DPLUGIN_LV2_UI=OFF -DPLUGIN_VST3=OFF \
+              -DSFIZZ_TESTS=OFF -DSFIZZ_BENCHMARKS=OFF -DSFIZZ_DEMOS=OFF \
+              -DSFIZZ_DEVTOOLS=OFF -DSFIZZ_RENDER=ON
+            cmake --build /tmp/sfizz/build --target sfizz_render -j2
+            cp "$(find /tmp/sfizz/build -type f -name sfizz_render -executable -print -quit)" /tmp/sfizz-cache/sfizz_render
+          fi
+          test -x /tmp/sfizz-cache/sfizz_render
+          printf '%s\n' /tmp/sfizz-cache/sfizz_render > v4/sfizz-render-path.txt
+
+      - name: Download Metal GTX sample library
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/metal-gtx
+          gdown 'https://drive.google.com/uc?id=1FurY3_x_tog_56irX1VDNyRCUt5JD7bO&export=download' -O /tmp/metal-gtx.bin
+          file /tmp/metal-gtx.bin
+          if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
+            unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
+          elif unrar t -idq /tmp/metal-gtx.bin >/dev/null 2>&1; then
+            unrar x -o+ -idq /tmp/metal-gtx.bin /tmp/metal-gtx/
+          else
+            echo "Metal GTX archive format unsupported" >&2
+            exit 2
+          fi
+          PROGRAM_DIR="$(find /tmp/metal-gtx -type d -path '*/UI_METAL-GTX/Programs' -print -quit)"
+          test -d "$PROGRAM_DIR"
+          SFZ="$PROGRAM_DIR/01-METAL-GTX Full.sfz"
+          test -f "$SFZ"
+          printf '%s\n' "$SFZ" > v4/sfz-path.txt
+          grep -Ei 'sw_|keyswitch|label|sample=' "$SFZ" | head -160 > v4/sfz-map-excerpt.txt || true
+
+      - name: Build expressive rising-riff MIDI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import random, struct
+
+          BPM=158
+          PPQ=480
+          BEAT=PPQ
+          BAR=4*PPQ
+
+          KS={
+            "sus_alt":19,
+            "mute_alt":22,
+            "slide_up":24,
+            "pull_off":25,
+            "hammer_on":26,
+            "slide_in":27,
+            "slide_out":28,
+            "bend_full":92,
+          }
+
+          def vlq(n):
+              out=[n&0x7f]; n >>= 7
+              while n:
+                  out.append((n&0x7f)|0x80); n >>= 7
+              return bytes(reversed(out))
+
+          def write_midi(path, seed, timing_ms, velocity_bias):
+              rng=random.Random(seed)
+              ev=[]
+              def add(t,o,d): ev.append((max(0,int(t)),o,bytes(d)))
+              tempo=round(60_000_000/BPM)
+              add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
+              add(0,1,bytes([0xB0,7,116]))
+              add(0,1,bytes([0xB0,11,112]))
+
+              def note(tick,n,dur,vel,art):
+                  # articulation keyswitch immediately before played note
+                  k=KS[art]
+                  add(tick-24,0,bytes([0x90,k,104]))
+                  add(tick-6,0,bytes([0x80,k,0]))
+                  jitter=round((timing_ms/1000)*(BPM/60)*PPQ*rng.uniform(-1,1))
+                  t=tick+jitter
+                  vv=max(1,min(127,vel+velocity_bias+rng.randint(-4,4)))
+                  add(t,2,bytes([0x90,n,vv]))
+                  add(t+max(24,int(dur)),1,bytes([0x80,n,0]))
+
+              # Original E-minor material: sparse -> reply -> scale -> expressive peak.
+              bars=[
+                [(0.00,64,.82,91,"sus_alt"),(1.75,67,.48,86,"slide_in"),(3.00,71,.68,103,"sus_alt")],
+                [(0.00,71,.48,96,"sus_alt"),(.75,74,.34,91,"hammer_on"),(1.50,76,.68,111,"bend_full"),
+                 (2.75,74,.28,87,"pull_off"),(3.25,71,.46,97,"sus_alt")],
+                [(0.00,64,.19,82,"mute_alt"),(.50,66,.19,85,"mute_alt"),(1.00,67,.19,89,"mute_alt"),
+                 (1.50,69,.19,93,"sus_alt"),(2.00,71,.19,99,"sus_alt"),(2.50,72,.19,104,"hammer_on"),
+                 (3.00,74,.19,111,"sus_alt"),(3.50,76,.32,120,"bend_full")],
+                [(0.00,71,.19,98,"sus_alt"),(.375,72,.18,99,"hammer_on"),(.75,74,.18,103,"sus_alt"),
+                 (1.125,76,.20,108,"slide_up"),(1.50,79,.31,124,"bend_full"),(2.125,76,.18,109,"pull_off"),
+                 (2.50,74,.18,104,"sus_alt"),(2.875,72,.18,99,"pull_off"),(3.25,71,.44,114,"sus_alt")],
+                [(0.00,67,.72,94,"slide_in"),(1.50,71,.42,99,"sus_alt"),(2.50,74,.56,109,"hammer_on"),
+                 (3.35,76,.36,118,"bend_full")],
+                [(0.00,69,.30,91,"sus_alt"),(.50,71,.30,94,"hammer_on"),(1.00,72,.30,99,"sus_alt"),
+                 (1.50,74,.42,107,"slide_up"),(2.50,76,.25,115,"sus_alt"),(3.00,74,.25,106,"pull_off"),
+                 (3.50,71,.35,98,"sus_alt")],
+                [(0.00,64,.17,82,"mute_alt"),(.375,66,.17,85,"mute_alt"),(.75,67,.17,89,"mute_alt"),
+                 (1.125,69,.17,93,"sus_alt"),(1.50,71,.17,99,"sus_alt"),(1.875,72,.17,104,"hammer_on"),
+                 (2.25,74,.17,111,"sus_alt"),(2.625,76,.17,117,"slide_up"),(3.00,79,.19,126,"bend_full"),
+                 (3.40,76,.36,116,"sus_alt")],
+                [(0.00,76,.19,116,"sus_alt"),(.375,74,.18,110,"pull_off"),(.75,72,.18,104,"sus_alt"),
+                 (1.125,71,.18,99,"pull_off"),(1.50,69,.18,94,"sus_alt"),(1.875,67,.18,90,"pull_off"),
+                 (2.25,69,.18,96,"hammer_on"),(2.625,71,.18,103,"sus_alt"),(3.00,74,.19,114,"slide_up"),
+                 (3.40,76,.43,126,"bend_full")],
+              ]
+
+              for pass_i in range(2):
+                  for bi,phrase in enumerate(bars):
+                      base=(pass_i*len(bars)+bi)*BAR
+                      for pos,n,dur_b,vel,art in phrase:
+                          note(base+round(pos*BEAT),n,round(dur_b*BEAT*rng.uniform(.96,1.04)),vel,art)
+
+              ev.sort(key=lambda x:(x[0],x[1]))
+              tr=bytearray(); last=0
+              for t,_,d in ev:
+                  tr += vlq(t-last)+d; last=t
+              tr += b'\x00\xff\x2f\x00'
+              data=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)+b'MTrk'+struct.pack('>I',len(tr))+tr
+              Path(path).write_bytes(data)
+
+          write_midi('v4/metal-left.mid',20260920,4.5,0)
+          write_midi('v4/metal-right.mid',20260921,8.0,-5)
+          PY
+
+      - name: Render Metal GTX DI double takes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          RENDER="$(cat v4/sfizz-render-path.txt)"
+          SFZ="$(cat v4/sfz-path.txt)"
+          "$RENDER" --sfz "$SFZ" --midi v4/metal-left.mid --wav v4/metal-left-di.wav --samplerate 44100
+          "$RENDER" --sfz "$SFZ" --midi v4/metal-right.mid --wav v4/metal-right-di.wav --samplerate 44100
+          ffmpeg -hide_banner -loglevel error -y -i v4/metal-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v4/left-di.wav
+          ffmpeg -hide_banner -loglevel error -y -i v4/metal-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v4/right-di.wav
+
+      - name: Install NAM inference
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 -m pip install --break-system-packages -q \
+            --index-url https://download.pytorch.org/whl/cpu torch
+          python3 -m pip install --break-system-packages -q \
+            neural-amp-modeler==0.12.0 soundfile scipy
+
+      - name: Download neural amp and CC0 cabinet IR pack
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 4 --retry-delay 2 \
+            'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Phillipe%20P%20Bug1990-Lead-NoDrive-ESR0%2C004.nam' \
+            -o v4/lead-amp.nam
+          test -s v4/lead-amp.nam
+
+          curl -fL --retry 4 --retry-delay 2 \
+            'https://www.jester-dyne-productions.com/content/files/2023/04/JestersBrutalPack_1.0.zip' \
+            -o /tmp/jester-brutal.zip
+          unzip -q /tmp/jester-brutal.zip -d /tmp/jester-brutal
+          find /tmp/jester-brutal -type f -iname '*.wav' -print > v4/ir-files.txt
+          test -s v4/ir-files.txt
+
+          python3 - <<'PY'
+          from pathlib import Path
+          files=list(Path('/tmp/jester-brutal').rglob('*.wav'))
+          if not files:
+              raise SystemExit('No IR WAV files found')
+          def score(p):
+              s=str(p).lower()
+              n=0
+              if '48' in s: n+=30
+              if 'v30' in s or 'vintage 30' in s or 'vintage30' in s: n+=40
+              if 'sm57' in s or 'sm-57' in s or '57' in s: n+=30
+              if 'blend' in s or 'mix' in s: n+=4
+              if '44' in s: n-=20
+              return n
+          chosen=max(files,key=score)
+          Path('v4/ir-path.txt').write_text(str(chosen))
+          print('Selected IR:',chosen)
+          PY
+
+      - name: Neural reamp and real cabinet convolution
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+          import torch
+          from scipy.signal import resample_poly, fftconvolve, butter, sosfilt
+          from nam.models import init_from_nam
+
+          MODEL_SR=48000
+          TARGET_RMS_DB=-22.0
+
+          with open('v4/lead-amp.nam','r') as fp:
+              cfg=json.load(fp)
+          model=init_from_nam(cfg)
+          model.eval()
+          if model.sample_rate is None:
+              model.sample_rate=MODEL_SR
+          model_sr=int(round(model.sample_rate))
+          if model_sr != MODEL_SR:
+              MODEL_SR=model_sr
+
+          print('NAM architecture:',cfg.get('architecture'))
+          print('NAM version:',cfg.get('version'))
+          print('NAM sample rate:',model.sample_rate)
+          print('NAM receptive field:',model.receptive_field)
+          print('NAM metadata keys:',sorted((cfg.get('metadata') or {}).keys()))
+
+          def mono_read(path):
+              x,sr=sf.read(path,dtype='float32',always_2d=False)
+              if x.ndim>1:
+                  x=x.mean(axis=1)
+              if sr != MODEL_SR:
+                  g=math.gcd(int(sr),MODEL_SR)
+                  x=resample_poly(x,MODEL_SR//g,int(sr)//g).astype(np.float32)
+              # remove DC / subsonic before nonlinear amp
+              sos=butter(2,28/(MODEL_SR/2),btype='highpass',output='sos')
+              x=sosfilt(sos,x).astype(np.float32)
+              rms=float(np.sqrt(np.mean(x*x)+1e-12))
+              target=10**(TARGET_RMS_DB/20)
+              gain=min(8.0,target/max(rms,1e-8))
+              x=(x*gain).astype(np.float32)
+              print(path,'input rms dB',20*np.log10(np.sqrt(np.mean(x*x)+1e-12)),'gain',gain)
+              return x
+
+          def run_nam(x):
+              rf=int(model.receptive_field)
+              chunk=131072
+              out=[]
+              pos=0
+              with torch.inference_mode():
+                  while pos < len(x):
+                      end=min(len(x),pos+chunk)
+                      cur=x[pos:end]
+                      if pos==0:
+                          xt=torch.from_numpy(cur.copy())
+                          y=model(xt,pad_start=True)
+                      else:
+                          hist=x[max(0,pos-(rf-1)):pos]
+                          if len(hist)<rf-1:
+                              hist=np.pad(hist,(rf-1-len(hist),0))
+                          xt=torch.from_numpy(np.concatenate([hist,cur]).astype(np.float32))
+                          y=model(xt,pad_start=False)
+                      yn=y.detach().cpu().numpy().astype(np.float32)
+                      if len(yn)!=len(cur):
+                          raise RuntimeError(f'NAM chunk length mismatch: {len(yn)} vs {len(cur)}')
+                      out.append(yn)
+                      pos=end
+              return np.concatenate(out)
+
+          def read_ir(path):
+              ir,sr=sf.read(path,dtype='float32',always_2d=False)
+              if ir.ndim>1:
+                  ir=ir.mean(axis=1)
+              if sr != MODEL_SR:
+                  g=math.gcd(int(sr),MODEL_SR)
+                  ir=resample_poly(ir,MODEL_SR//g,int(sr)//g).astype(np.float32)
+              # trim leading silence and keep useful early response/tail
+              nz=np.where(np.abs(ir)>max(1e-7,float(np.max(np.abs(ir)))*1e-4))[0]
+              if len(nz):
+                  ir=ir[max(0,int(nz[0])-8):]
+              ir=ir[:min(len(ir),int(.25*MODEL_SR))]
+              peak=float(np.max(np.abs(ir)))+1e-12
+              ir=ir/peak
+              return ir.astype(np.float32)
+
+          ir_path=Path('v4/ir-path.txt').read_text().strip()
+          ir=read_ir(ir_path)
+          print('IR:',ir_path,'samples:',len(ir))
+
+          outs={}
+          for side in ('left','right'):
+              x=mono_read(f'v4/{side}-di.wav')
+              head=run_nam(x)
+              sf.write(f'v4/{side}-nam-head.wav',head,MODEL_SR,subtype='PCM_24')
+              cab=fftconvolve(head,ir,mode='full')[:len(head)].astype(np.float32)
+              # musical post-cab bandwidth only, no fake amp EQ
+              sos_hp=butter(2,72/(MODEL_SR/2),btype='highpass',output='sos')
+              sos_lp=butter(2,11800/(MODEL_SR/2),btype='lowpass',output='sos')
+              cab=sosfilt(sos_hp,cab)
+              cab=sosfilt(sos_lp,cab).astype(np.float32)
+              outs[side]=cab
+
+          # preserve independent double-tracking; no Haas copy trick
+          n=min(len(outs['left']),len(outs['right']))
+          stereo=np.column_stack([outs['left'][:n]*.97,outs['right'][:n]*.91])
+          peak=float(np.max(np.abs(stereo)))+1e-12
+          if peak>0.82:
+              stereo*=0.82/peak
+          sf.write('v4/metal-gtx-nam-ir-raw.wav',stereo,MODEL_SR,subtype='PCM_24')
+          PY
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v4/metal-gtx-nam-ir-raw.wav \
+            -af "acompressor=threshold=-18dB:ratio=1.45:attack=26:release=125,loudnorm=I=-16:TP=-1.0:LRA=10" \
+            -ar 48000 -c:a pcm_s24le v4/metal-gtx-nam-ir-master.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v4/metal-gtx-nam-ir-master.wav -t 30 \
+            -ar 48000 -c:a pcm_s24le v4/metal-gtx-nam-ir-preview-30s.wav
+
+          # DI comparison at same 48k family.
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v4/left-di.wav -i v4/right-di.wav \
+            -filter_complex "[0:a]aresample=48000,volume=.82,pan=stereo|c0=c0|c1=0*c0[L];[1:a]aresample=48000,volume=.76,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,loudnorm=I=-18:TP=-1.5:LRA=10[out]" \
+            -map "[out]" -ar 48000 -c:a pcm_s24le v4/metal-gtx-di-stereo.wav
+
+      - name: Validate audio
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for f in \
+            v4/metal-gtx-nam-ir-master.wav \
+            v4/metal-gtx-nam-ir-preview-30s.wav \
+            v4/metal-gtx-di-stereo.wav; do
+            test -s "$f"
+            ffprobe -v error -show_entries stream=sample_rate,channels -show_entries format=duration \
+              -of default=noprint_wrappers=1 "$f"
+          done
+
+      - name: Manifest
+        shell: bash
+        run: |
+          {
+            echo 'Pawn Slug guitar V4 — neural reamp'
+            echo 'Source instrument: Unreal Instruments Metal GTX'
+            echo 'Sampler: sfizz offline'
+            echo 'Articulations: sustain, mute, hammer-on, pull-off, slide-in/up, full bend'
+            echo 'Amp: Neural Amp Modeler .nam capture — Bug1990 Lead NoDrive, amp-only'
+            echo 'NAM runtime: neural-amp-modeler 0.12.0 / PyTorch CPU'
+            echo 'Cabinet IR pack: Jester Dyne Brutal Pack 1.0 — CC0/public domain'
+            printf 'Selected IR: '; cat v4/ir-path.txt
+            echo 'Output: 48 kHz / 24-bit PCM'
+            echo 'Double tracking: independent left/right MIDI timing, velocity, round-robin and articulation'
+            echo
+            sha256sum v4/metal-gtx-nam-ir-master.wav v4/metal-gtx-di-stereo.wav
+          } > v4/MANIFEST.txt
+
+      - name: Upload V4 audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-guitar-v4-nam-ir
+          path: |
+            v4/metal-gtx-nam-ir-master.wav
+            v4/metal-gtx-nam-ir-preview-30s.wav
+            v4/metal-gtx-di-stereo.wav
+            v4/left-nam-head.wav
+            v4/right-nam-head.wav
+            v4/MANIFEST.txt
+            v4/ir-files.txt
+            v4/ir-path.txt
+            v4/sfz-map-excerpt.txt
+            v4/metal-left.mid
+            v4/metal-right.mid
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
