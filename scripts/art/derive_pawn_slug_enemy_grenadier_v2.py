@@ -99,7 +99,7 @@ def build(source_path: Path, output_dir: Path) -> dict:
     frames = []
     for i in range(FRAMES):
         base = old_row.crop((i * CELL, 0, (i + 1) * CELL, CELL))
-        before = base.getchannel("A").getbox()
+        before = base.getchannel("A").getbbox()
         frame = decorate_grenadier(base, i)
         after = frame.getchannel("A").getbbox()
         if before is None or after is None:
