@@ -80,6 +80,35 @@ class GrafanaReadApi:
             fail(f"GET {path}: unexpected response shape")
         return payload
 
+    def get_list(self, path: str) -> list[dict]:
+        req = urllib.request.Request(
+            self.base_url + path,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/json",
+                "User-Agent": "chess-studio-grafana-live-check/1",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                raw = response.read().decode("utf-8")
+                payload = json.loads(raw or "[]")
+                status = int(response.status)
+        except urllib.error.HTTPError as exc:
+            raw = exc.read().decode("utf-8", errors="replace")
+            try:
+                payload = json.loads(raw or "{}")
+            except json.JSONDecodeError:
+                payload = {"raw": raw[:1000]}
+            fail(f"GET {path}: HTTP {exc.code}: {payload}")
+        except (OSError, TimeoutError) as exc:
+            fail(f"GET {path}: {type(exc).__name__}: {exc}")
+        if status != 200:
+            fail(f"GET {path}: unexpected HTTP {status}")
+        if not isinstance(payload, list):
+            fail(f"GET {path}: unexpected response shape")
+        return [row for row in payload if isinstance(row, dict)]
+
 
 def _vector_values(payload: dict) -> list[float]:
     data = payload.get("data") if isinstance(payload, dict) else None
@@ -120,6 +149,37 @@ def _tempo_has_result(payload: dict) -> bool:
     return False
 
 
+def _resolve_datasource_uid(datasources: list[dict], preferred_uid: str, datasource_type: str) -> str:
+    matches = [
+        row for row in datasources
+        if row.get("type") == datasource_type and str(row.get("uid") or "").strip()
+    ]
+    preferred_uid = str(preferred_uid or "").strip()
+    if preferred_uid:
+        preferred = next((row for row in matches if row.get("uid") == preferred_uid), None)
+        if preferred:
+            return preferred_uid
+    defaults = [row for row in matches if row.get("isDefault")]
+    if len(defaults) == 1:
+        chosen = str(defaults[0]["uid"])
+    elif len(matches) == 1:
+        chosen = str(matches[0]["uid"])
+    else:
+        available = ", ".join(sorted(str(row.get("uid")) for row in matches)) or "none"
+        fail(
+            f"cannot resolve {datasource_type} datasource UID"
+            + (f" (preferred {preferred_uid!r} not present)" if preferred_uid else "")
+            + f"; candidates: {available}"
+        )
+    print(json.dumps({
+        "check": "datasource_uid_recovered",
+        "type": datasource_type,
+        "preferred_uid": preferred_uid or None,
+        "resolved_uid": chosen,
+    }, separators=(",", ":"), sort_keys=True))
+    return chosen
+
+
 def _report(name: str, ok: bool, detail: str) -> bool:
     print(json.dumps({"check": name, "ok": bool(ok), "detail": detail}, separators=(",", ":"), sort_keys=True))
     return bool(ok)
@@ -149,7 +209,7 @@ def _slo_report(name: str, value: float | None, limit: float, unit: str, *, eval
 
 def _prom_value(api: GrafanaReadApi, metrics_uid: str, query: str, now: int) -> float | None:
     payload = api.get_json(
-        f"/api/prometheus/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
         {"query": query, "time": str(now)},
     )
     return _single_value(payload)
@@ -172,12 +232,12 @@ def run_checks(
     passed = True
 
     metric_checks = {
-        "oci_host_production": 'count({service_name="chess-studio-oci-host",deployment_environment="production"})',
+        "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
         "backend_production_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend"})',
     }
     for name, query in metric_checks.items():
         payload = api.get_json(
-            f"/api/prometheus/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
             {"query": query, "time": str(now)},
         )
         ok = _vector_positive(payload)
@@ -204,7 +264,7 @@ def run_checks(
     host_ram_percent = _prom_value(
         api,
         metrics_uid,
-        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="production"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="production"})))',
+        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"})))',
         now,
     )
     enough_requests = requests_15m is not None and requests_15m >= min_requests_15m
@@ -261,6 +321,14 @@ def self_test() -> int:
     assert _tempo_has_result({"traces": [{"traceID": "abc"}]})
     assert _tempo_has_result({"data": {"traces": [{"traceID": "abc"}]}})
     assert not _tempo_has_result({"traces": []})
+    sample_datasources = [
+        {"uid": "prom-default", "type": "prometheus", "isDefault": True},
+        {"uid": "loki-only", "type": "loki", "isDefault": False},
+        {"uid": "tempo-only", "type": "tempo", "isDefault": False},
+    ]
+    assert _resolve_datasource_uid(sample_datasources, "stale-prom", "prometheus") == "prom-default"
+    assert _resolve_datasource_uid(sample_datasources, "", "loki") == "loki-only"
+    assert _resolve_datasource_uid(sample_datasources, "tempo-only", "tempo") == "tempo-only"
     assert _slo_report("self-pass", 4.0, 5.0, "%")
     assert not _slo_report("self-fail", 6.0, 5.0, "%")
     assert _slo_report("self-skip", None, 5.0, "%", evaluated=False)
@@ -285,10 +353,11 @@ def main() -> int:
     metrics_uid = os.getenv("GRAFANA_METRICS_DATASOURCE_UID", "").strip()
     logs_uid = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "").strip()
     traces_uid = os.getenv("GRAFANA_TRACES_DATASOURCE_UID", "").strip()
-    missing = [name for name, value in (("metrics", metrics_uid), ("logs", logs_uid), ("traces", traces_uid)) if not value]
-    if missing:
-        fail("missing datasource UIDs: " + ", ".join(missing))
     api = GrafanaReadApi(os.getenv("GRAFANA_URL", ""), os.getenv("GRAFANA_AUTH", ""))
+    datasources = api.get_list("/api/datasources")
+    metrics_uid = _resolve_datasource_uid(datasources, metrics_uid, "prometheus")
+    logs_uid = _resolve_datasource_uid(datasources, logs_uid, "loki")
+    traces_uid = _resolve_datasource_uid(datasources, traces_uid, "tempo")
     return 0 if run_checks(
         api,
         metrics_uid=metrics_uid,

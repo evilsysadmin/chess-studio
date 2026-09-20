@@ -120,7 +120,11 @@ def main() -> int:
     live_check = LIVE_CHECK.read_text(encoding="utf-8") if LIVE_CHECK.exists() else ""
     live_workflow = LIVE_WORKFLOW.read_text(encoding="utf-8") if LIVE_WORKFLOW.exists() else ""
     for token in (
-        '/api/prometheus/',
+        '/api/datasources/proxy/uid/',
+        'api.get_list("/api/datasources")',
+        '"oci_host_staging"',
+        'deployment_environment="staging"',
+        'service_version=~".+"',
         '/loki/api/v1/query',
         '/api/search',
         'chess-studio-oci-host',
