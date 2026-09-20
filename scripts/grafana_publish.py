@@ -130,17 +130,51 @@ def ensure_folder(api: GrafanaApi) -> str:
     return uid
 
 
-def validate_datasource(api: GrafanaApi, label: str, uid: str) -> None:
-    quoted = urllib.parse.quote(uid, safe="")
-    try:
-        api.request("GET", f"/api/datasources/uid/{quoted}")
-        print(f"Datasource {label} OK · {uid}")
-    except SystemExit as exc:
-        message = str(exc)
-        if "HTTP 403" in message:
-            print(f"WARNING: datasource {label} no verificable con token least-privilege · {uid}")
-            return
-        raise
+def _resolve_datasource_uid(datasources: list[dict], preferred_uid: str, datasource_type: str) -> str:
+    matches = [
+        row for row in datasources
+        if row.get("type") == datasource_type and str(row.get("uid") or "").strip()
+    ]
+    preferred_uid = str(preferred_uid or "").strip()
+    preferred = next((row for row in matches if row.get("uid") == preferred_uid), None)
+    if preferred:
+        return preferred_uid
+
+    canonical_suffixes = {
+        "prometheus": ("-prom", "-prometheus"),
+        "loki": ("-logs", "-loki"),
+        "tempo": ("-traces", "-tempo"),
+    }
+    suffixes = canonical_suffixes.get(datasource_type, ())
+    canonical = [
+        row for row in matches
+        if str(row.get("uid") or "").strip().lower().endswith(suffixes)
+    ]
+    defaults = [row for row in matches if row.get("isDefault")]
+    if len(canonical) == 1:
+        chosen = str(canonical[0]["uid"])
+    elif len(defaults) == 1:
+        chosen = str(defaults[0]["uid"])
+    elif len(matches) == 1:
+        chosen = str(matches[0]["uid"])
+    else:
+        available = ", ".join(sorted(str(row.get("uid")) for row in matches)) or "none"
+        fail(
+            f"cannot resolve {datasource_type} datasource UID"
+            + (f" (preferred {preferred_uid!r} not present)" if preferred_uid else "")
+            + f"; candidates: {available}"
+        )
+    print(f"Datasource UID recovered · {datasource_type} · {preferred_uid or '<unset>'} -> {chosen}")
+    return chosen
+
+
+def resolve_datasource_uids(api: GrafanaApi, variables: dict[str, str]) -> None:
+    _, datasources = api.request("GET", "/api/datasources")
+    if not isinstance(datasources, list):
+        fail("/api/datasources devolvió formato inesperado")
+    variables["metrics_datasource_uid"] = _resolve_datasource_uid(datasources, variables["metrics_datasource_uid"], "prometheus")
+    variables["logs_datasource_uid"] = _resolve_datasource_uid(datasources, variables["logs_datasource_uid"], "loki")
+    variables["traces_datasource_uid"] = _resolve_datasource_uid(datasources, variables["traces_datasource_uid"], "tempo")
 
 
 def publish_dashboard(api: GrafanaApi, folder_uid: str, dashboard: dict, commit_sha: str) -> None:
@@ -175,6 +209,16 @@ def self_test() -> int:
     uids = [str(row.get("uid") or "") for row in rendered]
     if len(set(uids)) != len(DASHBOARDS):
         fail(f"UIDs duplicados: {uids}")
+    sample_datasources = [
+        {"uid": "grafanacloud-prom", "type": "prometheus", "isDefault": True},
+        {"uid": "grafanacloud-alert-state-history", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-logs", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-usage-insights", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-traces", "type": "tempo", "isDefault": False},
+    ]
+    assert _resolve_datasource_uid(sample_datasources, "stale-prom", "prometheus") == "grafanacloud-prom"
+    assert _resolve_datasource_uid(sample_datasources, "stale-logs", "loki") == "grafanacloud-logs"
+    assert _resolve_datasource_uid(sample_datasources, "stale-traces", "tempo") == "grafanacloud-traces"
     print(f"grafana-publish self-test OK · {len(rendered)} dashboards · stdlib only")
     return 0
 
@@ -201,9 +245,7 @@ def main() -> int:
         fail(f"faltan datasource UIDs: {', '.join(missing)}")
 
     api = GrafanaApi(base_url, token)
-    validate_datasource(api, "metrics", variables["metrics_datasource_uid"])
-    validate_datasource(api, "logs", variables["logs_datasource_uid"])
-    validate_datasource(api, "traces", variables["traces_datasource_uid"])
+    resolve_datasource_uids(api, variables)
     folder_uid = ensure_folder(api)
     for name in DASHBOARDS:
         publish_dashboard(api, folder_uid, render_dashboard(DASHBOARDS_DIR / name, variables), variables["commit_sha"])

@@ -433,6 +433,19 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
+    log_explorer_default_query = (
+        'sum(count_over_time({service_name="chess-studio-backend"}'
+        ' | json | __error__=""'
+        ' | event="http_request" | status=~".*" | method=~".*" | route=~".*"'
+        ' | request_path=~".*" | client_release=~".*" | request_id=~".*" | trace_id=~".*"'
+        f' |~ ".*" [{lookback_seconds}s]))'
+    )
+    api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": log_explorer_default_query, "time": str(now)},
+    )
+    passed = _report("log_explorer_default_query", True, "default Explorer LogQL accepted by Loki") and passed
+
     trace_query = '{ resource.service.name = "chess-studio-backend" && resource.deployment.environment.name = "production" }'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
