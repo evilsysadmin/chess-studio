@@ -1664,7 +1664,8 @@ func _v9_muzzle_positions_for_atlas(image: Image, weapon_id: String) -> Dictiona
     for action in V9_MUZZLE_ACTION_AIM.keys():
         var spec: Dictionary = V9_ACTIONS[action]
         var row := int(spec["row"])
-        var aim: Vector2 = Vector2(V9_MUZZLE_ACTION_AIM[action]).normalized()
+        var aim: Vector2 = V9_MUZZLE_ACTION_AIM[action]
+        aim = aim.normalized()
         var positions: Array = []
         for frame_index in range(V9_ATLAS_COLUMNS):
             positions.append(
@@ -1725,7 +1726,7 @@ func _v9_muzzle_from_cell(
                 continue
             best_forward = maxf(best_forward, forward)
 
-    if not is_finite(best_forward):
+    if best_forward == -INF:
         return Vector2.ZERO
 
     var cluster := Vector2.ZERO
