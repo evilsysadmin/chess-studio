@@ -19,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install Pillow
-        run: python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
       - name: Test deterministic Shield derivation
         run: python3 scripts/art/test_pawn_slug_enemy_shield_v2.py
       - name: Build Shield review artifact
