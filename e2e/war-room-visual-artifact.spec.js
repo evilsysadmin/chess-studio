@@ -40,7 +40,7 @@ async function installWarRoomV2RevisionRoute(page) {
   }
   if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
 
-  await page.route('**/war-room/v2/staging/current.glb*', async (route) => {
+  await page.route('**/war-room/v2/runtime/current.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
