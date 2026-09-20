@@ -45,6 +45,32 @@ runs:
         browser-scope: chromium
         build-frontend: 'true'
 
+    - name: Wait for War Room v2 revision
+      if: inputs.mode == 'canonical' && steps.scope.outputs.warroom_revision_required == 'true'
+      env:
+        APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ github.sha }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        revision_url="https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions/${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION}.glb"
+        probe_file="${RUNNER_TEMP}/war-room-v2-revision.glb"
+        deadline=$((SECONDS + 240))
+        while (( SECONDS < deadline )); do
+          rm -f "$probe_file"
+          if curl -fsSL --max-time 15 -H 'Cache-Control: no-cache' \
+            -o "$probe_file" "${revision_url}?probe=$(date +%s%N)" \
+            && [[ -s "$probe_file" ]] \
+            && [[ "$(head -c 4 "$probe_file")" == "glTF" ]]; then
+            echo "War Room v2 revision ready: ${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION} ($(wc -c < "$probe_file") bytes)"
+            rm -f "$probe_file"
+            exit 0
+          fi
+          sleep 3
+        done
+        rm -f "$probe_file"
+        echo "::error::War Room v2 revision GLB unavailable after preflight: ${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION}"
+        exit 1
+
     - name: Capture affected canonical surfaces
       if: inputs.mode == 'hans' || (inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none')
       env:
