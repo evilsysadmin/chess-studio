@@ -1315,6 +1315,13 @@ def add_stairs(materials):
             stone,
             bevel=0.025,
         )
+        cube(
+            f"HOME_PROP_dungeon_step_nosing_{i}",
+            (x, y - 0.305, z + 0.080),
+            (0.59, 0.028, 0.020),
+            materials["stone_dark"],
+            bevel=0.010,
+        )
 
     stair_rail_points = [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)]
     curve_tube(
