@@ -1237,18 +1237,57 @@ def add_bookshelf(materials):
         sphere(f"HOME_PROP_library_finial_{side}", (x + side * 1.28, y - 0.46, 5.08), (0.10, 0.07, 0.10), brass)
 
 
+def pleated_banner(name: str, cx: float, top_z: float, shoulder_z: float, tip_z: float,
+                   half_w: float, y: float, mat, *, columns=18, rows=16, thickness=0.03):
+    """Hang a banner as gathered cloth instead of a rigid flat plate.
+
+    Vertical pleats are strongest where the cloth is gathered on the bar and relax
+    towards the V hem, and they fade under the heraldic emblem so the gold relief
+    keeps sitting on the surface rather than floating in a fold trough.
+    """
+    vertices = []
+    for row in range(rows + 1):
+        v = row / rows
+        for col in range(columns + 1):
+            u = col / columns * 2.0 - 1.0
+            hem_z = shoulder_z - (shoulder_z - tip_z) * (1.0 - abs(u))
+            z = top_z + (hem_z - top_z) * v
+            emblem = math.exp(-((u / 0.55) ** 4)) * math.exp(-(((z - 4.35) / 0.80) ** 4))
+            amplitude = 0.055 * (1.0 - 0.50 * v) * (1.0 - 0.85 * emblem)
+            fold = amplitude * math.sin(u * math.pi * 3.5 + 0.35)
+            sway = 0.010 * math.sin(v * math.pi * 1.3 + u * 1.7)
+            vertices.append((cx + u * half_w, y + fold + sway, z))
+    stride = columns + 1
+    faces = [
+        (r * stride + c, (r + 1) * stride + c, (r + 1) * stride + c + 1, r * stride + c + 1)
+        for r in range(rows)
+        for c in range(columns)
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    mesh.polygons.foreach_set("use_smooth", [True] * len(mesh.polygons))
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    solid = obj.modifiers.new("Cloth thickness", "SOLIDIFY")
+    solid.thickness = thickness
+    solid.offset = 0.0
+    apply_material(obj, mat)
+    return obj
+
+
 def add_banner(name: str, x: float, materials):
     banner = materials["wall_banner"]
     brass = materials["brass"]
     gold = materials["brass_dark"]
-    points = [
-        (x - 0.48, 5.62),
-        (x + 0.48, 5.62),
-        (x + 0.48, 3.84),
-        (x, 3.44),
-        (x - 0.48, 3.84),
-    ]
-    flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
+    pleated_banner(f"HOME_PROP_banner_{name}", x, 5.62, 3.84, 3.44, 0.48, 5.79, banner)
+    # Gold hem along the V edge, so the cloth reads as finished and hung.
+    curve_tube(
+        f"HOME_PROP_banner_hem_{name}",
+        [(x - 0.48, 5.755, 3.84), (x, 5.755, 3.44), (x + 0.48, 5.755, 3.84)],
+        0.013,
+        gold,
+    )
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
     for side in (-1, 1):
         sphere(
