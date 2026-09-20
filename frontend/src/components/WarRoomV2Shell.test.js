@@ -180,6 +180,11 @@ describe('War Room v2 runtime asset URL', () => {
       roughness: [0.30, 0.46],
       clearcoatMax: 0.24,
     });
+    expect(warRoomV2MaterialFinishProfile('WR_MAT_wall_plaster')).toEqual({
+      colorScale: [0.96, 0.96, 1.00],
+      roughness: [0.76, 0.96],
+      clearcoatMax: 0.05,
+    });
     expect(warRoomV2MaterialFinishProfile('WR_MAT_stone_light')).toEqual({
       colorScale: [0.88, 0.91, 0.98],
       roughness: [0.76, 0.96],
