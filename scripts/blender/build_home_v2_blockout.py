@@ -1313,6 +1313,17 @@ def add_side_furnishings(materials):
             brass,
         )
     cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
+    cylinder("HOME_PROP_globe_base_upper", (gx, gy, 0.80), 0.28, 0.10, brass, vertices=28)
+    cylinder("HOME_PROP_globe_base_lower", (gx, gy, 0.735), 0.38, 0.055, materials["brass_dark"], vertices=28)
+    for idx, angle in enumerate((0.0, math.tau / 3.0, math.tau * 2.0 / 3.0)):
+        fx = gx + 0.31 * math.cos(angle)
+        fy = gy + 0.31 * math.sin(angle)
+        sphere(
+            f"HOME_PROP_globe_base_foot_{idx}",
+            (fx, fy, 0.70),
+            (0.085, 0.060, 0.050),
+            materials["brass_dark"],
+        )
     sphere("HOME_PROP_globe", (gx, gy, 1.86), (0.56, 0.56, 0.56), globe)
     curve_tube(
         "HOME_PROP_globe_meridian",
