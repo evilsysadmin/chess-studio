@@ -901,6 +901,16 @@ def add_gothic_canon_v2(static, mats):
             obj.location.x += 0.48
             obj.location.y += 0.62
 
+    # Layer the surviving left bench as furniture rather than one anonymous
+    # upholstered block: a narrow wooden plinth under the seat and a separate
+    # top cushion keep the existing footprint while giving the foreground edge
+    # a readable construction hierarchy.
+    left_bench_x, left_bench_y = -6.67, -4.18
+    cube("WR_CANON_bench_wood_base", (left_bench_x, left_bench_y, 0.47),
+         (0.84, 1.12, 0.10), mats["frame_wood"], static, bevel=0.055)
+    cube("WR_CANON_bench_cushion", (left_bench_x, left_bench_y, 0.99),
+         (0.78, 1.08, 0.085), mats["leather_dark"], static, bevel=0.10)
+
     burgundy = material(
         "WR_MAT_canon_burgundy", (0.205, 0.012, 0.022, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
