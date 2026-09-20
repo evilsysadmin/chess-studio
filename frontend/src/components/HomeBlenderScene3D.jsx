@@ -31,6 +31,29 @@ const EXPOSURE = Object.freeze({
   night: 1.13,
 });
 
+const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 30;
+
+export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
+  const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
+    ? Number(aspect)
+    : 16 / 9;
+  if (safeAspect >= 1) return HOME_BLENDER_CAMERA_FOV;
+
+  const horizontalRadians = HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV * Math.PI / 180;
+  const portraitVerticalFov = 2 * Math.atan(
+    Math.tan(horizontalRadians / 2) / safeAspect,
+  ) * 180 / Math.PI;
+  const blend = Math.min(1, Math.max(0, (1 - safeAspect) / 0.20));
+  return Math.min(
+    64,
+    Math.max(
+      HOME_BLENDER_CAMERA_FOV,
+      HOME_BLENDER_CAMERA_FOV
+        + (portraitVerticalFov - HOME_BLENDER_CAMERA_FOV) * blend,
+    ),
+  );
+}
+
 export function homeBlenderRuntimePolicy({
   viewportWidth = 0,
   devicePixelRatio = 1,
@@ -251,6 +274,8 @@ export default function HomeBlenderScene3D({
       renderer.setPixelRatio(Math.min(policy.pixelRatio || 1, 1.5));
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
+      camera.fov = homeBlenderCameraFovForAspect(camera.aspect);
+      canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
       camera.updateProjectionMatrix();
       requestRender();
     };
@@ -351,6 +376,7 @@ export default function HomeBlenderScene3D({
       data-home-castle-compositor="blender-runtime"
       data-home-castle-picked="none"
       data-home-blender-runtime="loading"
+      data-home-blender-camera="canonical"
       aria-hidden="true"
     />
   );
