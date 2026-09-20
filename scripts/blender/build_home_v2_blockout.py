@@ -1614,10 +1614,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "book_olive": material("HOME_MAT_book_olive", (0.078, 0.068, 0.030, 1), roughness=0.91),
         "piece_light": material(
             "HOME_MAT_piece_light",
-            (0.50, 0.40, 0.28, 1),
-            roughness=0.44,
-            metallic=0.012,
-            variation=0.045,
+            (0.38, 0.30, 0.22, 1),
+            roughness=0.50,
+            metallic=0.010,
+            variation=0.050,
             variation_scale=7.0,
         ),
         "piece_dark": material(
