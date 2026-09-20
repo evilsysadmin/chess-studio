@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createChroniclesState } from './chroniclesOfMatthias.js';
+import { CHRONICLES_ENEMIES, createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   applyChroniclesProgressionToTacticsState,
+  applyChroniclesTacticsProgression,
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
   chroniclesXpThresholdForLevel,
@@ -127,5 +128,32 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     expect(quiver.classAbilityCharges.knight).toBe(2);
     const afterVolley = chroniclesTacticsAbility(quiver, 'knight');
     expect(afterVolley.classAbilityCharges.knight).toBe(1);
+  });
+
+  it('blocks duplicate XP inside one run but rewards the same encounter in a new run', () => {
+    const previous = createChroniclesState();
+    const enemy = CHRONICLES_ENEMIES[0];
+    const next = { ...previous, [enemy.hpKey]: Math.max(0, previous[enemy.hpKey] - 1) };
+
+    const first = applyChroniclesTacticsProgression(createChroniclesProgression(), previous, next, {
+      actorMemberId: 'matthias',
+      actionKind: 'attack',
+      runId: 'run-a',
+    });
+    expect(first.awards.some((award) => award.reason === 'daño útil')).toBe(true);
+
+    const duplicate = applyChroniclesTacticsProgression(first.progression, previous, next, {
+      actorMemberId: 'matthias',
+      actionKind: 'attack',
+      runId: 'run-a',
+    });
+    expect(duplicate.awards).toHaveLength(0);
+
+    const freshRun = applyChroniclesTacticsProgression(first.progression, previous, next, {
+      actorMemberId: 'matthias',
+      actionKind: 'attack',
+      runId: 'run-b',
+    });
+    expect(freshRun.awards.some((award) => award.reason === 'daño útil')).toBe(true);
   });
 });
