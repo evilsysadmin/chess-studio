@@ -159,22 +159,38 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   const keyboard = parent.keyboard;
   let counts = {};
 
-  // Phase 1 is deliberately traversal-only. Mixing rapid fire and grenade
-  // throws into the pickup probe made the bot's progress timing-sensitive and
-  // allowed combat recoil/damage to sabotage the collision contract it was
-  // supposed to measure.
+  // Phase 1 follows the authored opening route. Industrial Front now starts
+  // with a crouch-only low catwalk (roughly x=420..610), followed by a crate.
+  // The old "run + periodic jump" bot could never pass that tunnel and would
+  // sit there getting shot until the pickup assertion failed.
   await keyboard.down('ArrowRight');
   try {
-    for (let step = 0; step < 180; step += 1) {
-      if (step % 12 === 3) await keyboard.press('Space');
+    // Run up to the tunnel without wasting several seconds crouch-walking from
+    // the spawn, then hold crouch long enough to clear the low ceiling.
+    await parent.waitForTimeout(800);
+    await keyboard.down('ArrowDown');
+    await parent.waitForTimeout(3300);
+    await keyboard.up('ArrowDown');
+
+    // Clear the crate immediately after the tunnel, then stay mostly grounded
+    // so the relocated first weapon pickup can be collected reliably.
+    await parent.waitForTimeout(80);
+    await keyboard.press('Space');
+    for (let step = 0; step < 80; step += 1) {
       await parent.waitForTimeout(105);
 
-      if (step % 4 !== 0) continue;
-      counts = await bridgeCounts(parent);
-      if (counts['weapon-pickup']) break;
-      if (counts.gameover) break;
+      if (step % 4 === 0) {
+        counts = await bridgeCounts(parent);
+        if (counts['weapon-pickup'] || counts.gameover) break;
+      }
+
+      // Recovery hops only after the deterministic tunnel/crate sequence. This
+      // keeps the bot resilient to small geometry changes without skipping the
+      // ground-level pickup by bunny-hopping continuously.
+      if (step > 18 && step % 10 === 4) await keyboard.press('Space');
     }
   } finally {
+    await keyboard.up('ArrowDown').catch(() => {});
     await keyboard.up('ArrowRight');
   }
 
