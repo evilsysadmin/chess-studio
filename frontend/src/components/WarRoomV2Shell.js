@@ -65,7 +65,14 @@ export function warRoomV2MaterialFinishProfile(materialName = '') {
       clearcoatMax: 0.18,
     });
   }
-  if (name.includes('stone') || name.includes('wall_plaster')) {
+  if (name.includes('wall_plaster')) {
+    return Object.freeze({
+      colorScale: [0.96, 0.96, 1.00],
+      roughness: [0.76, 0.96],
+      clearcoatMax: 0.05,
+    });
+  }
+  if (name.includes('stone')) {
     return Object.freeze({
       colorScale: [0.88, 0.91, 0.98],
       roughness: [0.76, 0.96],
