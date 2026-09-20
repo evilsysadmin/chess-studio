@@ -1116,8 +1116,18 @@ def add_side_furnishings(materials):
         wood,
         bevel=0.014,
     )
-    cube("HOME_PROP_library_lamp_base", (-3.10, 3.92, 1.00), (0.09, 0.09, 0.12), brass, bevel=0.02)
-    cube("HOME_PROP_library_lamp_shade", (-3.10, 3.92, 1.24), (0.24, 0.18, 0.14), paper, bevel=0.04)
+    cylinder("HOME_PROP_library_lamp_base", (-3.10, 3.92, 0.99), 0.13, 0.12, brass, vertices=20)
+    cylinder("HOME_PROP_library_lamp_stem", (-3.10, 3.92, 1.13), 0.030, 0.20, materials["brass_dark"], vertices=16)
+    cone(
+        "HOME_PROP_library_lamp_shade",
+        (-3.10, 3.92, 1.31),
+        0.24,
+        0.13,
+        0.22,
+        paper,
+        vertices=24,
+    )
+    cylinder("HOME_PROP_library_lamp_cap", (-3.10, 3.92, 1.44), 0.055, 0.04, brass, vertices=16)
 
     # Turn the library desk from set dressing into a visibly used work surface.
     # These props sit behind the main board and do not alter Home hotspots.
