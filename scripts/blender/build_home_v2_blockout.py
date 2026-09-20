@@ -2269,6 +2269,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="textile"),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.048, 0.003, 0.005, 1), roughness=0.95, bump_scale=22.0, bump_strength=0.032, variation=0.055, variation_scale=9.0, texture_profile="textile"),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.14, variation_scale=5.5, texture_profile="stone"),
+        "soot_haze": material("HOME_MAT_soot_haze", (0.030, 0.024, 0.020, 1), roughness=0.995, bump_scale=5.0, bump_strength=0.028, variation=0.055, variation_scale=4.6, texture_profile="stone"),
         "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
         "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
         "stone_grime": material("HOME_MAT_stone_grime", (0.034, 0.028, 0.024, 1), roughness=0.985, bump_scale=6.0, bump_strength=0.06, variation=0.06, variation_scale=3.5, texture_profile="stone"),
@@ -2381,6 +2382,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 bevel=0.018,
             )
             block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 0.9)
+    for soot_index, (sx, sz, sw, sh, rot) in enumerate((
+        (-6.15, 4.44, 0.58, 0.86, -1.5),
+        (-6.08, 5.08, 0.34, 0.62, 1.8),
+        (4.45, 4.30, 0.52, 0.78, 1.2),
+        (4.50, 4.88, 0.30, 0.54, -2.0),
+    )):
+        soot_patch = sphere(
+            f"HOME_ARCH_soot_haze_{soot_index}",
+            (sx, 6.674, sz),
+            (sw, 0.008, sh),
+            materials["soot_haze"],
+        )
+        soot_patch.rotation_euler[1] = math.radians(rot)
+
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
 
