@@ -1105,19 +1105,24 @@ def add_gothic_canon_v2(static, mats):
 
 
 
-    # The floor/plinth experiments were mostly occluded by the hero table from
-    # the canonical camera. Spend that geometry where it is actually visible:
-    # a pushed-in command chair gives the rear desk human scale and depth while
-    # staying below the heraldic crest and clear of the tactical board.
+    # Framed high-back command chair. The rounded upholstered crown + three
+    # buttons read as a little face in the runtime camera, so keep the leather
+    # as one tall inset and let an exposed wooden frame carry the silhouette.
+    # The frame sits slightly toward the camera so the side posts remain visible
+    # instead of disappearing behind the upholstery.
     chair_x = 0.48
-    cube("WR_CANON_command_chair_back", (chair_x, 6.46, 2.80), (0.56, 0.16, 0.60),
-         burgundy_dark, static, bevel=0.16)
-    cube("WR_CANON_command_chair_top", (chair_x, 6.49, 3.42), (0.62, 0.18, 0.055),
-         mats["frame_wood"], static, bevel=0.035)
+    cube("WR_CANON_command_chair_back", (chair_x, 6.44, 2.88), (0.45, 0.12, 0.53),
+         burgundy_dark, static, bevel=0.15)
     for side in (-1, 1):
+        side_x = chair_x + side * 0.56
         cube(f"WR_CANON_command_chair_side_{side}",
-             (chair_x + side * 0.58, 6.49, 2.80), (0.055, 0.18, 0.56),
-             mats["frame_wood"], static, bevel=0.030)
+             (side_x, 6.30, 2.90), (0.055, 0.11, 0.62),
+             mats["frame_wood"], static, bevel=0.032)
+        sphere(f"WR_CANON_command_chair_finial_{side}",
+               (side_x, 6.30, 3.53), 0.080,
+               mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
+    cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
+         mats["frame_wood"], static, bevel=0.040)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
