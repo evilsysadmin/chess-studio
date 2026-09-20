@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHRONICLES_CHARACTER_BUILD_VERSION,
   CHRONICLES_CREATOR_ATTRIBUTE_BUDGET,
+  chroniclesCreatorMechanicalSummary,
   createCanonicalChroniclesCharacterBuild,
   createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
@@ -81,6 +82,32 @@ describe('Chronicles character builds', () => {
     expect(greta.characterBuild.startingSkillModifiers).toEqual({ attackDamageBonus: 1 });
     expect(nadir.name).toBe('Nadir');
     expect(nadir.characterBuild.startingSkillModifiers).toEqual({ abilityPotencyBonus: 1 });
+  });
+
+  it('summarizes only real mechanical creator effects without inventing weaknesses', () => {
+    const build = customBuild({
+      matthias: {
+        attributes: { vigor: 1, power: 2 },
+        startingSkillId: 'matthias-keen-point',
+      },
+      knight: {
+        attributes: { precision: 2, will: 1 },
+        startingSkillId: 'knight-reserve-quiver',
+      },
+    });
+
+    expect(chroniclesCreatorMechanicalSummary(build.characters[0]).map((row) => row.label)).toEqual([
+      '+1 HP',
+      '+2 daño básico',
+      '+1 potencia de habilidad',
+    ]);
+    expect(chroniclesCreatorMechanicalSummary(build.characters[3]).map((row) => row.label)).toEqual([
+      '+1 alcance',
+      '+1 cargas de habilidad',
+    ]);
+    expect(chroniclesCreatorMechanicalSummary(build.characters[1])).toEqual([
+      { key: 'base', value: 0, label: 'Sin bonificaciones iniciales' },
+    ]);
   });
 
   it('normalizes corrupted custom data deterministically without creating impossible stats', () => {
