@@ -1652,10 +1652,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "moon": material(
             "HOME_MAT_moon",
-            (0.68, 0.69, 0.64, 1),
-            roughness=0.50,
-            emission=(0.42, 0.43, 0.38, 1),
-            emission_strength=0.30,
+            (0.50, 0.51, 0.47, 1),
+            roughness=0.58,
+            emission=(0.30, 0.31, 0.28, 1),
+            emission_strength=0.16,
         ),
         "fire": material(
             "HOME_MAT_fire",
