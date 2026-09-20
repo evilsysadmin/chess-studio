@@ -347,7 +347,7 @@ function AppInner({ isAdminUser }) {
           bestOf: Number(opts.seriesBestOf),
           difficulty,
           firstColor: created.humanColor,
-          timeControlId: opts?.timeControlId || 'none',
+          timeControlId: opts?.timeControlId || 'none', adaptiveDifficulty: nextContext.adaptiveDifficulty,
         });
         const withGame = attachSeriesGame(series, created.id);
         saveActiveSeries(withGame);
@@ -519,7 +519,7 @@ function AppInner({ isAdminUser }) {
       const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty, detail: activeSeries.adaptiveDifficulty ? 'adaptive-difficulty' : null });
       const updatedSeries = attachSeriesGame(activeSeries, created.id);
       saveActiveSeries(updatedSeries);
       setActiveSeries(updatedSeries);
