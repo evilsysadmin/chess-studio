@@ -18,7 +18,6 @@ import {
   chroniclesTacticsProfile,
 } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
-import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import './ChroniclesTacticsPartyHud.css';
 import './ChroniclesTacticsAdventureSummary.css';
 
