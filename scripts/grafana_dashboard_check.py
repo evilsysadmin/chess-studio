@@ -163,7 +163,9 @@ def main() -> int:
         'chess-studio-oci-log-probe-staging',
         'oci_filelog_probe',
         'oci_backend_stdout_logs',
+        'oci_backend_production_stdout_logs',
         'chess-studio-oci-backend-staging-stdout',
+        'chess-studio-oci-backend-production-stdout',
         'EXPECTED_STAGING_SHA',
         'log_explorer_default_query',
         '| json | __error__=""',
@@ -392,7 +394,7 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'staging stdout : {service_name=', 'multi-environment'):
+    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
         if token not in infra_logs:
             fail(f"Loki debe permitir separar producción/staging: {token}")
 
@@ -419,7 +421,11 @@ def main() -> int:
         'chess-studio-alloy-self',
         'otelcol.storage.file "oci_backend_stdout"',
         'otelcol.receiver.filelog "oci_backend_stdout"',
-        '/var/lib/chess-studio/observability/*-json.log',
+        '/var/lib/chess-studio/observability/backend-json.log',
+        'otelcol.storage.file "oci_filelog_probe"',
+        'otelcol.receiver.filelog "oci_filelog_probe"',
+        '/var/lib/chess-studio/observability/alloy-probe-*-json.log',
+        'start_at      = "beginning"',
         'sys.env("OCI_LOG_SERVICE_NAME")',
         '"deployment.environment.name"',
         'type = "container"',
