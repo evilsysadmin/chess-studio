@@ -30,7 +30,9 @@ def parse_args() -> argparse.Namespace:
 
 def parse_runtime_contract(path: Path) -> tuple[str, int, int, int, dict[str, int]]:
     text = path.read_text(encoding="utf-8")
-    url_match = URL_RE.search(text)
+    legacy_url_match = URL_RE.search(text)
+    v2_url_match = V2_URL_RE.search(text)
+    url_match = v2_url_match or legacy_url_match
     frame_match = FRAME_RE.search(text)
     rows_match = ROWS_RE.search(text)
     cols_match = COLS_RE.search(text)
@@ -185,9 +187,10 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="pawnslug-enemy-smoke-") as tmp:
         report = export(acquire(url, Path(tmp)), cfg.output_dir, cell=cell, cols=cols, rows=rows, type_rows=type_rows)
     summary = {
-        "schema": 1,
+        "schema": 2,
         "scope": "pawn-slug-godot-enemy-sprite-smoke",
         "runtimeUrl": url,
+        "runtimeSource": "BODY_ATLAS_V2_URL" if "cast-v2" in url else "BODY_ATLAS_URL",
         **report,
     }
     (cfg.output_dir / "enemy_sprite_smoke.json").write_text(
