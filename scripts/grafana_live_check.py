@@ -433,6 +433,18 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
+    oci_stdout_log_query = f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}[{lookback_seconds}s]))'
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": oci_stdout_log_query, "time": str(now)},
+    )
+    ok = _vector_positive(payload)
+    passed = _report(
+        "oci_backend_stdout_logs",
+        ok,
+        "queryable OCI backend stdout in Loki" if ok else "no matching OCI backend stdout in Loki",
+    ) and passed
+
     log_explorer_default_query = (
         'sum(count_over_time({service_name="chess-studio-backend"}'
         ' | json | __error__=""'

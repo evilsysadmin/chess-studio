@@ -40,7 +40,7 @@
         "name": "selector",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"}",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},staging stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
         "current": {
           "text": "production",
           "value": "{service_name=\"chess-studio-backend\"}"
