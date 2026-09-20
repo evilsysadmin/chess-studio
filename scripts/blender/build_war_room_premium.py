@@ -720,8 +720,13 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 225.0, (0.30, 0.38, 0.58), static, size=3.6)
-    anchor("WR_ANCHOR_window_moonlight", (8.05, 2.85, 4.10), static)
+    # Pull the cold practical slightly into the room instead of leaving it
+    # pinned to the wall plane. Runtime uses the anchor for its v2 PointLight;
+    # Blender aims the preview AREA inward so both proofs express the same depth cue.
+    moon_preview = light("WR_LIGHT_window", "AREA", (7.20, 2.60, 4.65), 255.0,
+                         (0.24, 0.34, 0.62), static, size=3.8)
+    look_at(moon_preview, (4.20, 0.40, 1.35))
+    anchor("WR_ANCHOR_window_moonlight", (7.35, 2.75, 4.45), static)
 
     # Leather benches.
     for side in (-1, 1):
