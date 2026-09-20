@@ -1,14 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CHRONICLES_PARTY } from '../chroniclesOfMatthias.js';
 import {
   CHRONICLES_CREATOR_ATTRIBUTE_BUDGET,
   CHRONICLES_CREATOR_ATTRIBUTE_CAP,
   CHRONICLES_CREATOR_RULES,
+  chroniclesCreatorMechanicalSummary,
   createCanonicalChroniclesCharacterBuild,
   createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
   validateChroniclesCharacterBuild,
 } from '../chronicles/chroniclesCharacterBuilds.js';
+import {
+  clearChroniclesCharacterDraft,
+  loadChroniclesCharacterDraft,
+  saveChroniclesCharacterDraft,
+} from '../chronicles/chroniclesCharacterDraft.js';
 import './ChroniclesCharacterSetup.css';
 
 const ATTRIBUTE_LABELS = Object.freeze({
@@ -43,10 +49,36 @@ export default function ChroniclesCharacterSetup({
     () => normalizeChroniclesCharacterBuild(currentBuild, CHRONICLES_PARTY),
     [currentBuild],
   );
-  const [editing, setEditing] = useState(false);
-  const [seed, setSeed] = useState(() => normalizedCurrent.seed || 'MATTHIAS');
-  const [activeSlot, setActiveSlot] = useState('matthias');
-  const [draft, setDraft] = useState(() => customFrom(normalizedCurrent));
+  const [recoveredDraft] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY));
+  const [editing, setEditing] = useState(() => Boolean(recoveredDraft));
+  const [seed, setSeed] = useState(() => recoveredDraft?.seed || normalizedCurrent.seed || 'MATTHIAS');
+  const [activeSlot, setActiveSlot] = useState(() => recoveredDraft?.activeSlot || 'matthias');
+  const [draft, setDraft] = useState(() => (
+    recoveredDraft?.build ? customFrom(recoveredDraft.build) : customFrom(normalizedCurrent)
+  ));
+
+  useEffect(() => {
+    if (!editing) return;
+    saveChroniclesCharacterDraft({ seed, activeSlot, build: draft }, CHRONICLES_PARTY);
+  }, [activeSlot, draft, editing, seed]);
+
+  const confirmBuild = (build) => {
+    clearChroniclesCharacterDraft();
+    onConfirm(build);
+  };
+
+  const leaveSetup = () => {
+    clearChroniclesCharacterDraft();
+    onExit();
+  };
+
+  const leaveEditor = () => {
+    clearChroniclesCharacterDraft();
+    setDraft(customFrom(normalizedCurrent));
+    setSeed(normalizedCurrent.seed || 'MATTHIAS');
+    setActiveSlot('matthias');
+    setEditing(false);
+  };
 
   const activeCharacter = draft.characters.find((character) => character.slotId === activeSlot) || draft.characters[0];
   const rules = CHRONICLES_CREATOR_RULES[activeCharacter.slotId];
@@ -116,14 +148,14 @@ export default function ChroniclesCharacterSetup({
 
           <div className="chronicles-character-setup__actions">
             {hasCustom ? (
-              <button type="button" className="primary-btn" onClick={() => onConfirm(normalizedCurrent)}>
+              <button type="button" className="primary-btn" onClick={() => confirmBuild(normalizedCurrent)}>
                 Continuar con mi compañía
               </button>
             ) : (
               <button
                 type="button"
                 className="primary-btn"
-                onClick={() => onConfirm(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
+                onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
               >
                 Entrar con grupo canónico
               </button>
@@ -140,7 +172,7 @@ export default function ChroniclesCharacterSetup({
                 Volver al grupo canónico
               </button>
             ) : null}
-            <button type="button" className="ghost-btn" onClick={onExit}>← Salir</button>
+            <button type="button" className="ghost-btn" onClick={leaveSetup}>← Salir</button>
           </div>
         </section>
       </div>
@@ -155,8 +187,11 @@ export default function ChroniclesCharacterSetup({
             <span className="section-label">CREADOR DE PJS · BUILD V1</span>
             <h2>Forma la compañía</h2>
             <p>Un PJ cada vez. Tres puntos de atributo, una skill inicial opcional y nada de numeritos decorativos.</p>
+            {recoveredDraft ? (
+              <small className="chronicles-character-setup__recovered">Borrador recuperado de esta sesión.</small>
+            ) : null}
           </div>
-          <button type="button" className="ghost-btn" onClick={() => setEditing(false)}>← Volver</button>
+          <button type="button" className="ghost-btn" onClick={leaveEditor}>← Volver</button>
         </div>
 
         <div className="chronicles-character-setup__seed">
@@ -276,22 +311,25 @@ export default function ChroniclesCharacterSetup({
         ) : null}
 
         <footer className="chronicles-character-setup__footer">
-          <span>
-            {draft.characters.map((character) => {
-              const attrs = Object.entries(character.attributes || {})
-                .filter(([, value]) => Number(value) > 0)
-                .map(([key, value]) => `${ATTRIBUTE_LABELS[key]?.slice(0, 3).toUpperCase() || key} ${value}`)
-                .join(' ');
-              const skill = CHRONICLES_CREATOR_RULES[character.slotId].startingSkills
-                .find((candidate) => candidate.id === character.startingSkillId);
-              return `${character.name}: ${attrs || 'base'}${skill ? ` · ${skill.label}` : ''}`;
-            }).join(' · ')}
-          </span>
+          <details className="chronicles-character-setup__mechanics" open>
+            <summary>Resumen mecánico de la compañía</summary>
+            <div>
+              {draft.characters.map((character) => (
+                <span key={character.slotId}>
+                  <strong>{character.name}</strong>
+                  <small>
+                    {chroniclesCreatorMechanicalSummary(character).map((row) => row.label).join(' · ')}
+                  </small>
+                </span>
+              ))}
+            </div>
+            <p>No hay penalizadores de creación en Build v1; el coste es qué mejoras dejas fuera.</p>
+          </details>
           <button
             type="button"
             className="primary-btn"
             disabled={!validation.valid}
-            onClick={() => onConfirm(draft)}
+            onClick={() => confirmBuild(draft)}
           >
             Confirmar compañía
           </button>
