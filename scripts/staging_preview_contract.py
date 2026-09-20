@@ -8,6 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / ".github/workflows/staging-preview.yml"
 STAGING_DEPLOY = ROOT / ".github/workflows/staging-deploy.yml"
+STAGING_PAGES_FAST = ROOT / ".github/workflows/staging-pages-fast.yml"
 MAIN_BACKEND_IMAGE = ROOT / ".github/workflows/main-backend-image.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTE = ROOT / ".github/workflows/production-promote.yml"
@@ -53,6 +54,7 @@ def main() -> int:
     paths = (
         PREVIEW,
         STAGING_DEPLOY,
+        STAGING_PAGES_FAST,
         MAIN_BACKEND_IMAGE,
         STAGING_AI,
         PROMOTE,
@@ -73,6 +75,7 @@ def main() -> int:
 
     preview = PREVIEW.read_text(encoding="utf-8")
     staging_deploy = STAGING_DEPLOY.read_text(encoding="utf-8")
+    staging_pages_fast = STAGING_PAGES_FAST.read_text(encoding="utf-8")
     main_backend_image = MAIN_BACKEND_IMAGE.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
@@ -138,6 +141,25 @@ def main() -> int:
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
+
+    # Pages has an independent latest-wins fast lane for visual iteration. It is
+    # intentionally non-accrediting: canonical staging still closes N/N/N before smoke.
+    for needle, label in (
+        ("name: Staging · Pages fast lane", "Pages fast workflow name"),
+        ("workflows:\n      - Main · admission", "Pages fast admitted trigger"),
+        ("github.event.workflow_run.conclusion == 'success'", "Pages fast green-admission guard"),
+        ("group: chess-studio-staging-pages-fast", "Pages fast independent mutex"),
+        ("cancel-in-progress: true", "Pages fast latest-wins policy"),
+        ("staging-frontend-${{ env.DEPLOY_SHA }}", "Pages fast exact prebuild artifact"),
+        ("Re-check main before Pages mutation", "Pages fast last stale guard"),
+        ("git ls-remote origin refs/heads/main", "Pages fast current-main probe"),
+        ("Deploy tested frontend to Cloudflare Pages", "Pages fast deployment"),
+        ("--branch main", "Pages fast canonical branch"),
+        ("Verify frontend staging build identity", "Pages fast live SHA gate"),
+    ):
+        require(staging_pages_fast, needle, label, errors)
+    for needle in ("OCI_TENANCY_OCID", "OCI_PRIVATE_KEY", "RENDER_API_KEY", "deploy_staging_ai_worker.py"):
+        forbid(staging_pages_fast, needle, "Pages fast lane no muta backend/Worker", errors)
 
     # Backend image publication is decoupled from admission/Pages. It may build
     # immutable images in parallel, but only current main may move the mutable

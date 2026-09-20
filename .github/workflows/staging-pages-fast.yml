@@ -1,0 +1,194 @@
+name: Staging · Pages fast lane
+
+on:
+  workflow_run:
+    workflows:
+      - Main · admission
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  actions: read
+
+# Visual/frontend staging is latest-wins and deliberately independent from the
+# long canonical OCI generation mutex. This lane never accredits staging.
+concurrency:
+  group: chess-studio-staging-pages-fast
+  cancel-in-progress: true
+
+env:
+  STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
+  STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+
+jobs:
+  deploy:
+    name: Pages · publish latest admitted frontend
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Validate admitted SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
+
+      - name: Checkout admitted commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
+
+      - name: Admit only current main
+        id: main_guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main HEAD"; exit 1; }
+          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
+            echo 'current=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages fast superseded::$DEPLOY_SHA ya no es main; no se publica."
+          else
+            echo 'current=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whether Pages already serves exact SHA
+        if: steps.main_guard.outputs.current == 'true'
+        id: already
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/pages-fast-current.json"
+          status="$(curl --silent --show-error --connect-timeout 3 --max-time 8             --output "$body" --write-out '%{http_code}'             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+          hit=false
+          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+          then hit=true; fi
+          echo "hit=$hit" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prebuilt frontend from admission
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        id: prebuilt_frontend_download
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          name: staging-frontend-${{ env.DEPLOY_SHA }}
+          path: frontend/dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate prebuilt frontend or select fallback build
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        id: frontend_artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          hit=false
+          if [[ -f frontend/dist/release.json ]] && python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[1].lower() else 1)
+          PY
+          then hit=true; else rm -rf frontend/dist; fi
+          echo "hit=$hit" >> "$GITHUB_OUTPUT"
+
+      - name: Cloudflare bootstrap contract smoke
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        run: python3 -S scripts/cloudflare_staging_pages_smoke.py
+
+      - name: Setup Node.js
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true' && steps.frontend_artifact.outputs.hit != 'true'
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore cached Wrangler toolchain
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
+
+      - name: Reconcile Pages project, domains and staging DNS
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        run: python3 scripts/cloudflare_staging_pages.py
+
+      - name: Build frontend for staging fallback
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true' && steps.frontend_artifact.outputs.hit != 'true'
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.STAGING_API_URL }}
+          VITE_WAR_ROOM_V2_ENABLE: '1'
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Re-check main before Pages mutation
+        if: steps.main_guard.outputs.current == 'true' && steps.already.outputs.hit != 'true'
+        id: mutation_guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          if [[ "$DEPLOY_SHA" == "$current_main" ]]; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'deploy=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages fast superseded before mutation::main avanzó a $current_main."
+          fi
+
+      - name: Deploy tested frontend to Cloudflare Pages
+        if: steps.mutation_guard.outputs.deploy == 'true'
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$WRANGLER_BIN" pages deploy dist             --project-name chess-studio-staging             --branch main             --commit-hash "$DEPLOY_SHA"             --commit-dirty=false
+
+      - name: Verify frontend staging build identity
+        if: steps.main_guard.outputs.current == 'true' && (steps.already.outputs.hit == 'true' || steps.mutation_guard.outputs.deploy == 'true')
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_ok=false
+          for attempt in {1..30}; do
+            body="$RUNNER_TEMP/pages-fast-release-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 3 --max-time 8               --output "$body" --write-out '%{http_code}'               -H 'Accept: application/json' -H 'Cache-Control: no-cache'               "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then release_ok=true; break; fi
+            sleep 1
+          done
+          [[ "$release_ok" == true ]] || { echo "::error::Pages fast lane no sirvió $DEPLOY_SHA"; exit 1; }
