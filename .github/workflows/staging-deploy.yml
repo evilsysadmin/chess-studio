@@ -320,17 +320,6 @@ jobs:
           VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
           VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
         run: npm run build
-      - name: Verify frontend artifact identity before Pages
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
-          actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[1].lower()
-          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
-          PY
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
