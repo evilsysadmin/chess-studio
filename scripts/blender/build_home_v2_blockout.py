@@ -802,6 +802,9 @@ def add_table_and_board(materials):
         )
     cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.14, 0.06, metal, vertices=20)
     cylinder("HOME_PROP_table_candle", (-2.72, 1.60, 1.55), 0.045, 0.30, materials["wax"], vertices=18)
+    cylinder("HOME_PROP_table_candle_rim", (-2.72, 1.60, 1.706), 0.051, 0.012, materials["wax"], vertices=18)
+    cylinder("HOME_PROP_table_candle_wick", (-2.72, 1.60, 1.727), 0.006, 0.034, materials["dark"], vertices=10)
+    sphere("HOME_PROP_table_candle_wax_drip", (-2.683, 1.592, 1.635), (0.013, 0.010, 0.060), materials["wax"])
     cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.76), 0.030, 0.006, 0.10, materials["fire_hot"], vertices=12)
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
@@ -2424,6 +2427,29 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["wax"],
             vertices=18,
         )
+        candle_top = mantel_candle_base_z + candle_height
+        cylinder(
+            f"HOME_PROP_fireplace_right_mantel_candle_rim_{idx}",
+            (cx, 4.98, candle_top + 0.006),
+            0.047,
+            0.012,
+            materials["wax"],
+            vertices=18,
+        )
+        cylinder(
+            f"HOME_PROP_fireplace_right_mantel_wick_{idx}",
+            (cx, 4.98, candle_top + 0.026),
+            0.006,
+            0.032,
+            materials["dark"],
+            vertices=10,
+        )
+        sphere(
+            f"HOME_PROP_fireplace_right_mantel_wax_drip_{idx}",
+            (cx + (-0.030, 0.028, -0.026)[idx], 4.973, candle_top - 0.055),
+            (0.012, 0.010, 0.050),
+            materials["wax"],
+        )
         cone(
             f"HOME_PROP_fireplace_right_mantel_flame_{idx}",
             (cx, 4.98, mantel_candle_base_z + candle_height + 0.055),
@@ -2806,6 +2832,29 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["wax"],
             vertices=16,
         )
+        cylinder(
+            f"HOME_PROP_chandelier_candle_rim_{idx}",
+            (cx, cy, cz + 0.276),
+            0.040,
+            0.012,
+            materials["wax"],
+            vertices=16,
+        )
+        cylinder(
+            f"HOME_PROP_chandelier_wick_{idx}",
+            (cx, cy, cz + 0.294),
+            0.006,
+            0.030,
+            materials["dark"],
+            vertices=10,
+        )
+        if idx % 2 == 0:
+            sphere(
+                f"HOME_PROP_chandelier_wax_drip_{idx}",
+                (cx + 0.027 * math.cos(angle), cy + 0.027 * math.sin(angle), cz + 0.225),
+                (0.011, 0.010, 0.042),
+                materials["wax"],
+            )
         cone(
             f"HOME_PROP_chandelier_flame_{idx}",
             (cx, cy, cz + 0.31),
