@@ -1590,8 +1590,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "bench_velvet": material(
             "HOME_MAT_bench_velvet",
-            (0.125, 0.007, 0.010, 1),
-            roughness=0.82,
+            (0.078, 0.008, 0.010, 1),
+            roughness=0.88,
             bump_scale=21.0,
             bump_strength=0.045,
             variation=0.075,
