@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cpuRatingForDifficulty, difficultyForCpuRating } from './playerRating.js';
 import {
+  QUICK_MATCH_FORM_MAX_AGE_DAYS,
   QUICK_MATCH_HYSTERESIS_ELO,
   QUICK_MATCH_TARGET_LEAD_ELO,
   difficultyForQuickMatchRating,
@@ -86,6 +87,30 @@ describe('quick-match Elo chaser', () => {
     ];
 
     expect(difficultyForQuickMatchRating(1000, activity, 20, {})).toBe(baseline);
+  });
+
+  it('forgets stale form instead of punishing a player for a bad month long ago', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    const staleDate = new Date(now - ((QUICK_MATCH_FORM_MAX_AGE_DAYS + 2) * 24 * 60 * 60 * 1000)).toISOString();
+    const baseline = difficultyForQuickMatchRating(1000, [], 20, {}, now);
+    const staleLosses = ['g3', 'g2', 'g1'].flatMap((gameId) => [
+      { gameId, state: 'finished', outcome: 'loss', difficulty: baseline, mode: 'casual', date: staleDate },
+      { gameId, state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual', date: staleDate },
+    ]);
+
+    expect(difficultyForQuickMatchRating(1000, staleLosses, 20, {}, now)).toBe(baseline);
+  });
+
+  it('does not let an old adaptive opponent pin hysteresis after a long break', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    const staleDate = new Date(now - ((QUICK_MATCH_FORM_MAX_AGE_DAYS + 2) * 24 * 60 * 60 * 1000)).toISOString();
+    const oldDifficulty = 55;
+    const activity = [
+      { gameId: 'old', state: 'started', detail: 'adaptive-difficulty', difficulty: oldDifficulty, mode: 'casual', date: staleDate },
+    ];
+
+    const selected = difficultyForQuickMatchRating(1200, activity, 20, {}, now);
+    expect(selected).not.toBe(oldDifficulty);
   });
 
   it('reacts to a real adaptive losing streak only between games', () => {
