@@ -211,8 +211,10 @@ const RUN_ENTER_SPEED_RATIO := 0.72
 const RUN_EXIT_SPEED_RATIO := 0.54
 const WALK_CYCLE_HZ_MIN := 1.20
 const WALK_CYCLE_HZ_MAX := 1.60
-const RUN_CYCLE_HZ_MIN := 1.85
-const RUN_CYCLE_HZ_MAX := 2.30
+# Keep the 8-frame strict run bank at or below its authored 16 fps ceiling.
+# This also narrows the walk -> run cadence jump while preserving stride phase.
+const RUN_CYCLE_HZ_MIN := 1.70
+const RUN_CYCLE_HZ_MAX := 2.00
 const WALK_BOB_PX := 0.65
 const RUN_BOB_PX := 1.65
 const RUN_LEAN_DEGREES := 1.35
