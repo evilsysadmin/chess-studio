@@ -1100,15 +1100,16 @@ def add_gothic_canon_v2(static, mats):
 
 
 
-    # A low central command dais gives the desk a grounded, architectural base
-    # instead of letting it dissolve into the dark rear-floor strip. Keep it
-    # deliberately shallow so the tactical board remains the unquestioned hero.
-    cube("WR_CANON_command_dais", (0.0, 5.70, 0.16), (2.20, 0.74, 0.14),
+    # The first floor-dais pass landed almost entirely under the hero table at
+    # this camera angle. Ground the rear desk itself instead: a compact stone
+    # plinth supports its pedestals, while one restrained brass apron line makes
+    # the furniture silhouette readable without creating another focal point.
+    cube("WR_CANON_command_plinth", (0.0, 6.18, 0.38), (1.96, 0.48, 0.28),
          mats["stone_dark"], static, bevel=0.060)
-    cube("WR_CANON_command_step", (0.0, 4.88, 0.075), (2.54, 0.30, 0.065),
-         mats["stone"], static, bevel=0.045)
-    cube("WR_CANON_command_runner", (0.0, 5.48, 0.315), (1.58, 0.84, 0.024),
-         burgundy_dark, static, bevel=0.018)
+    cube("WR_CANON_command_plinth_cap", (0.0, 5.72, 0.69), (2.06, 0.055, 0.045),
+         mats["stone"], static, bevel=0.026)
+    cube("WR_CANON_command_apron_trim", (0.0, 5.395, 1.72), (1.54, 0.022, 0.022),
+         mats["brass_dark"], static, bevel=0.010)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
