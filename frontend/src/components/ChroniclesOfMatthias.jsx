@@ -13,8 +13,14 @@ import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { CHRONICLES_TURN_ENGINE_VERSION } from '../chroniclesOfMatthiasTurns.js';
+import {
+  loadChroniclesProgression,
+  saveChroniclesProgression,
+  setChroniclesCharacterBuild,
+} from '../chroniclesOfMatthiasProgression.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
+import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
@@ -41,7 +47,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const retaliationSequenceRef = useRef(0);
   const partyBarkTimerRef = useRef(null);
   const partyBarkSequenceRef = useRef(0);
-  const stateRef = useRef(createChroniclesState());
+  const [progression, setProgression] = useState(() => loadChroniclesProgression());
+  const [characterSetupDone, setCharacterSetupDone] = useState(false);
+  const stateRef = useRef(createChroniclesState(null, progression.characterBuild));
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
@@ -53,6 +61,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
+
+  const confirmCharacterBuild = useCallback((build) => {
+    const selected = setChroniclesCharacterBuild(progression, build);
+    if (!selected.updated) return;
+    const saved = saveChroniclesProgression(selected.progression);
+    const next = createChroniclesState(null, saved.characterBuild);
+    stateRef.current = next;
+    setProgression(saved);
+    setSelectedMemberId('matthias');
+    setState(next);
+    setCharacterSetupDone(true);
+  }, [progression]);
 
   const dispatch = useCallback((action) => {
     const current = stateRef.current;
@@ -90,7 +110,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const restart = useCallback(() => {
-    const next = createChroniclesState();
+    const next = createChroniclesState(null, progression.characterBuild);
     stateRef.current = next;
     setSelectedMemberId('matthias');
     setState(next);
@@ -100,7 +120,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
     partyBarkTimerRef.current = null;
     setPartyBark(null);
-  }, []);
+  }, [progression.characterBuild]);
 
   useEffect(() => () => {
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
@@ -111,7 +131,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     let cancelled = false;
     let engine = null;
     const host = hostRef.current;
-    if (!host) return undefined;
+    if (!characterSetupDone || !host) return undefined;
 
     void import('../chroniclesOfMatthiasThree.js')
       .then(({ createChroniclesOfMatthiasGame }) => {
@@ -135,11 +155,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, []);
+  }, [characterSetupDone]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
   useEffect(() => {
+    if (!characterSetupDone) return undefined;
     const onKeyDown = (event) => {
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
@@ -161,7 +182,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, dispatch]);
+  }, [attackWithSelected, characterSetupDone, dispatch]);
+
+  if (!characterSetupDone) {
+    return (
+      <ChroniclesCharacterSetup
+        currentBuild={progression.characterBuild}
+        onConfirm={confirmCharacterBuild}
+        onExit={onExit}
+      />
+    );
+  }
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
