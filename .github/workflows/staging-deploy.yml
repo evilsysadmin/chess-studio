@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Canonical staging and manual preview share one write mutex. Generations queue
 # instead of interrupting a partially-mutated deployment; once a queued run
@@ -249,6 +250,40 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Restore prebuilt frontend from admission
+        id: prebuilt_frontend_download
+        if: github.event_name == 'workflow_run'
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          name: staging-frontend-${{ env.DEPLOY_SHA }}
+          path: frontend/dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate prebuilt frontend or select fallback build
+        id: frontend_artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          hit=false
+          if [[ -f frontend/dist/release.json ]] && python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[1].lower()
+          raise SystemExit(0 if actual == expected else 1)
+          PY
+          then
+            hit=true
+            echo "::notice title=Frontend fast-path::Reutilizando dist precompilado para $DEPLOY_SHA."
+          else
+            rm -rf frontend/dist
+            echo "::notice title=Frontend fallback::Artifact exacto ausente o inválido; se recompilará en staging."
+          fi
+          echo "hit=$hit" >> "$GITHUB_OUTPUT"
+
       - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
       - name: Setup Node.js
@@ -258,6 +293,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Restore exact frontend dependencies
+        if: steps.frontend_artifact.outputs.hit != 'true'
         uses: ./.github/actions/cache-node-modules
         with:
           working-directory: frontend
@@ -272,6 +308,7 @@ jobs:
         id: pages_bootstrap
         run: python3 scripts/cloudflare_staging_pages.py
       - name: Build frontend for staging
+        if: steps.frontend_artifact.outputs.hit != 'true'
         working-directory: frontend
         env:
           VITE_API_URL: ${{ env.STAGING_API_URL }}

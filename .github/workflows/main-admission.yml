@@ -18,6 +18,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Build the exact staging frontend while admission/backend work is still
+  # running. This job mutates nothing and is deliberately best-effort: staging
+  # verifies the SHA before consuming it and falls back to its local build on
+  # any miss/corruption.
+  frontend_staging_artifact:
+    name: Main · prebuild staging frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    env:
+      STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Build exact staging frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.STAGING_API_URL }}
+          VITE_WAR_ROOM_V2_ENABLE: '1'
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Verify prebuilt frontend identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$GITHUB_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[1].lower()
+          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
+          PY
+
+      - name: Upload exact staging frontend
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-frontend-${{ github.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
   source:
     name: Main · classify HEAD provenance
     runs-on: ubuntu-24.04
