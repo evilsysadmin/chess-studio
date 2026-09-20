@@ -1290,6 +1290,26 @@ def add_gothic_canon_v2(static, mats):
     tag(drape)
     static.objects.link(drape)
 
+    # Two shallow fold ridges stop the camera-facing cloth reading as a flat
+    # painted board. Keep them away from the central heraldry and use the lighter
+    # burgundy already present in the room so they register mainly through graze.
+    for index, (x0, z0, x1, z1) in enumerate((
+        (-1.82, 0.78, -1.18, 0.40),
+        (1.82, 0.78, 1.18, 0.40),
+    )):
+        start = Vector((x0, front_y - 0.070, z0))
+        end = Vector((x1, front_y - 0.070, z1))
+        direction = end - start
+        fold = cube(
+            f"WR_CANON_table_drape_fold_{index}",
+            (start + end) / 2,
+            (0.040, 0.020, direction.length / 2),
+            burgundy,
+            static,
+            bevel=0.018,
+        )
+        fold.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+
     # Small rampant horse relief on the drape, intentionally broad rather than
     # anatomically fussy so it survives the gameplay camera.
     emblem_y = front_y - 0.085
