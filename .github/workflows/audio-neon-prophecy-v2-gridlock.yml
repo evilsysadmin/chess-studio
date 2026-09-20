@@ -1,0 +1,259 @@
+name: Neon Prophecy V2 Gridlock
+
+on:
+  push:
+    branches:
+      - audio/neon-prophecy-v2-gridlock-20260920
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Install audio renderer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fluidsynth timgm6mb-soundfont ffmpeg python3
+
+      - name: Download approved V5 C guitar
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir -p gridlock/source gridlock/out
+          curl -fL --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/evilsysadmin/chess-studio/actions/artifacts/10614297531/zip" \
+            -o /tmp/v5.zip
+          unzip -q /tmp/v5.zip -d gridlock/source
+          test -s gridlock/source/C_dual_jcm_5150.wav
+          ffprobe -v error -show_entries stream=sample_rate,channels -show_entries format=duration \
+            -of default=noprint_wrappers=1 gridlock/source/C_dual_jcm_5150.wav
+
+      - name: Build one master-grid backing MIDI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import random, struct
+
+          BPM=158
+          PPQ=480
+          BEAT=PPQ
+          BAR=4*BEAT
+          BARS=48
+          rng=random.Random(20260920)
+
+          def vlq(n):
+              out=[n & 0x7f]
+              n >>= 7
+              while n:
+                  out.append((n & 0x7f) | 0x80)
+                  n >>= 7
+              return bytes(reversed(out))
+
+          ev=[]
+          def add(tick, order, data):
+              ev.append((max(0,int(tick)),order,bytes(data)))
+
+          tempo=round(60_000_000/BPM)
+          add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
+
+          # Channel 0 = bass, channel 1 = pad, channel 2 = arp, channel 9 = drums.
+          add(0,1,bytes([0xC0,33]))  # finger bass
+          add(0,1,bytes([0xC1,89]))  # warm pad
+          add(0,1,bytes([0xC2,81]))  # saw lead / arp
+          add(0,1,bytes([0xB0,7,98]))
+          add(0,1,bytes([0xB1,7,47]))
+          add(0,1,bytes([0xB2,7,40]))
+          add(0,1,bytes([0xB1,91,38]))
+          add(0,1,bytes([0xB2,91,20]))
+          add(0,1,bytes([0xB2,10,64]))
+
+          # EXACT progression used by the approved guitar stem: Em -> G -> D -> C.
+          roots=[40,43,38,36]  # E2 G2 D2 C2
+          chords=[
+              [52,55,59,64],   # Em
+              [55,59,62,67],   # G
+              [50,54,57,62],   # D
+              [48,52,55,60],   # C
+          ]
+
+          def note(tick,ch,n,dur,vel):
+              add(tick,2,bytes([0x90|ch,n,max(1,min(127,int(vel)))]))
+              add(tick+max(1,int(dur)),1,bytes([0x80|ch,n,0]))
+
+          # Pads, bass and chord-tone arp all derive from the same bar/chord index.
+          for bi in range(BARS):
+              base=bi*BAR
+              root=roots[bi%4]
+              chord=chords[bi%4]
+
+              # Pad holds the matching harmony.
+              for n in chord[:3]:
+                  note(base,1,n+12,int(BAR*.93),44)
+
+              # Bass starts in bar 4; no timing jitter, only tiny velocity variation.
+              if bi>=4:
+                  breakdown=24<=bi<28
+                  seq=[(0,0,.72,82),(2,7,.62,78)] if breakdown else [
+                      (0,0,.62,91),(1,0,.34,77),(2,7,.50,88),(3,5,.38,81)
+                  ]
+                  for pos,semi,dur_b,vel in seq:
+                      note(base+pos*BEAT,0,root+semi,int(dur_b*BEAT),vel+rng.randint(-3,3))
+
+              # Quiet chord-tone eighth arp. No independent melody, no syncopation.
+              if bi>=4 and not (24<=bi<28):
+                  tones=[chord[0]+12,chord[1]+12,chord[2]+12,chord[1]+12,
+                         chord[0]+24,chord[2]+12,chord[1]+12,chord[2]+12]
+                  for k,n in enumerate(tones):
+                      note(base+k*(BEAT//2),2,n,int(.23*BEAT),43 if k%2==0 else 37)
+
+              # DRUMS: hard timing anchor, exactly on MIDI grid.
+              if bi<4:
+                  continue
+              build=4<=bi<8
+              breakdown=24<=bi<28
+              rebuild=28<=bi<32
+              for q in range(4):
+                  t=base+q*BEAT
+
+                  if build:
+                      if q in (0,2):
+                          note(t,9,36,int(.08*BEAT),100+rng.randint(-3,3))
+                  elif breakdown:
+                      if q in (0,2):
+                          note(t,9,36,int(.08*BEAT),96+rng.randint(-3,3))
+                  elif rebuild:
+                      if q in (0,2):
+                          note(t,9,36,int(.08*BEAT),105+rng.randint(-3,3))
+                      if q==3:
+                          note(t+BEAT//2,9,36,int(.07*BEAT),77)
+                  else:
+                      if q in (0,2):
+                          note(t,9,36,int(.08*BEAT),111+rng.randint(-4,4))
+                      if q==3 and bi%4==3:
+                          note(t+BEAT//2,9,36,int(.07*BEAT),81)
+
+                  if q in (1,3):
+                      sv=90 if build else (97 if breakdown else 109)
+                      note(t,9,38,int(.09*BEAT),sv+rng.randint(-3,3))
+
+                  if not breakdown:
+                      note(t,9,42,int(.04*BEAT),60+rng.randint(-3,3))
+                      note(t+BEAT//2,9,46 if q==3 else 42,int(.05*BEAT),66+rng.randint(-3,3))
+                  elif q in (0,2):
+                      note(t+BEAT//2,9,42,int(.05*BEAT),52+rng.randint(-2,2))
+
+              if bi in (7,23,31,47):
+                  for k,n in enumerate([45,47,48,50]):
+                      note(base+int((2.60+.28*k)*BEAT),9,n,int(.10*BEAT),82+7*k)
+                  note(base+int(3.84*BEAT),9,49,int(.10*BEAT),111)
+
+          # End of track after exact 48-bar grid plus tail.
+          end=BARS*BAR + 2*BEAT
+          ev.sort(key=lambda x:(x[0],x[1]))
+          track=bytearray()
+          last=0
+          for t,_,data in ev:
+              track += vlq(t-last)+data
+              last=t
+          track += vlq(end-last)+b'\xff\x2f\x00'
+
+          midi=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)
+          midi+=b'MTrk'+struct.pack('>I',len(track))+track
+          Path('gridlock/backing.mid').write_bytes(midi)
+
+          beat_s=60/BPM
+          bar_s=4*beat_s
+          Path('gridlock/TIMING.txt').write_text(
+              f'BPM={BPM}\nbeat_seconds={beat_s:.9f}\nbar_seconds={bar_s:.9f}\n'
+              f'guitar_block_1_bar=8 time={8*bar_s:.9f}\n'
+              f'guitar_block_2_bar=32 time={32*bar_s:.9f}\n'
+              'progression=Em-G-D-C\n'
+              'guitar_latency_compensation_ms=8.5\n'
+          )
+          PY
+
+      - name: Render sampled backing
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SF2="$(find /usr/share/sounds -type f \( -iname 'TimGM6mb.sf2' -o -iname 'TimGM6mb.sf2' \) -print -quit)"
+          test -f "$SF2"
+          fluidsynth -ni -g 0.78 -r 48000 \
+            -F gridlock/backing-raw.wav "$SF2" gridlock/backing.mid
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i gridlock/backing-raw.wav \
+            -af "highpass=f=28,acompressor=threshold=-18dB:ratio=1.7:attack=22:release=125" \
+            -ar 48000 -c:a pcm_s24le gridlock/backing.wav
+          test -s gridlock/backing.wav
+
+      - name: Grid-lock approved guitar and mix
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          # 158 BPM: bar = 1.518987341772152 s.
+          # Guitar source is exactly the approved 16-bar performance.
+          # Trim 8.5 ms from its front to compensate measured NAM/IR attack latency,
+          # then keep exactly 16 bars of musical duration.
+          python3 - <<'PY'
+          bpm=158
+          bar=4*60/bpm
+          print(f'bar={bar:.12f}')
+          print(f'g1_ms={round(8*bar*1000)}')
+          print(f'g2_ms={round(32*bar*1000)}')
+          print(f'guitar_16bars={16*bar:.12f}')
+          PY
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i gridlock/backing.wav \
+            -i gridlock/source/C_dual_jcm_5150.wav \
+            -filter_complex "[0:a]volume=0.92[back];[1:a]atrim=start=0.0085:end=24.312297468,asetpts=PTS-STARTPTS,asplit=2[g1src][g2src];[g1src]volume=0.90,adelay=12152|12152[g1];[g2src]volume=0.98,adelay=48608|48608[g2];[back][g1][g2]amix=inputs=3:normalize=0,highpass=f=24,acompressor=threshold=-15dB:ratio=1.35:attack=30:release=170,alimiter=limit=0.89:attack=5:release=100[out]" \
+            -map "[out]" -ar 48000 -c:a pcm_s24le \
+            gridlock/out/02_neon_prophecy_gridlock_158bpm.wav
+
+          # Preview begins at bar 6, two bars before the guitar enters.
+          ffmpeg -hide_banner -loglevel error -y \
+            -ss 9.113924 -i gridlock/out/02_neon_prophecy_gridlock_158bpm.wav \
+            -t 42 -ar 48000 -c:a pcm_s24le \
+            gridlock/out/02_neon_prophecy_gridlock_preview_from_bar6_42s.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i gridlock/out/02_neon_prophecy_gridlock_158bpm.wav \
+            -c:a libvorbis -q:a 6 \
+            gridlock/out/02_neon_prophecy_gridlock_158bpm.ogg
+
+      - name: Validate render
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for f in gridlock/out/*.wav; do
+            test -s "$f"
+            ffprobe -v error -show_entries stream=sample_rate,channels \
+              -show_entries format=duration -of default=noprint_wrappers=1 "$f"
+          done
+          test -s gridlock/out/02_neon_prophecy_gridlock_158bpm.ogg
+
+      - name: Upload gridlocked song
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-neon-prophecy-v2-gridlock
+          path: |
+            gridlock/out/
+            gridlock/TIMING.txt
+            gridlock/backing.mid
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
