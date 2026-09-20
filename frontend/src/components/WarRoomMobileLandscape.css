@@ -193,13 +193,6 @@
     flex: 0 0 7px;
   }
 
-  .game-screen .game-layout-3d .game-3d-cpu-level {
-    margin-left: auto;
-    flex: 0 0 auto;
-    white-space: nowrap;
-    font-size: .47rem;
-  }
-
   /* The overflow menu is already the complete action surface in this compact
    * layout. Hide the desktop Zen/Abandon row so it cannot increase document
    * height; restore the menu to normal grid flow so the pill itself stays

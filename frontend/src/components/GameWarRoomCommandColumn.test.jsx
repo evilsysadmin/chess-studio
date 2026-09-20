@@ -37,7 +37,7 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).not.toContain('game-3d-human-id');
     expect(html).not.toContain('game-3d-turn-pill-versus');
     expect(html).toContain('Matthias');
-    expect(html).toContain('CPU nivel 7');
+    expect(html).not.toContain('CPU nivel');
     expect(html).toContain('Tu turno');
     expect(html).toContain('/matthias.png');
     expect(html).toContain('Más acciones de partida');

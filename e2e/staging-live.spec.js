@@ -276,7 +276,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomSignal).toContainText('Matthias');
-    await expect(warRoomSignal).toContainText(/CPU nivel \d+/);
+    await expect(warRoomSignal).not.toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.

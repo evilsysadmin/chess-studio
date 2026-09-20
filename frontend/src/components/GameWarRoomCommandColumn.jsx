@@ -229,7 +229,6 @@ function CompactWarRoomPill({ game, signal, board, controls, zenMode }) {
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
         <span className="game-3d-turn-pill-identity">
           <strong role="heading" aria-level="2">{CPU_IDENTITY.name}</strong>
-          <span>· CPU nivel {game.difficulty}</span>
         </span>
         <span className="game-3d-turn-pill-divider" aria-hidden="true" />
         <span className="game-3d-turn-pill-light" aria-hidden="true" />
@@ -326,7 +325,6 @@ export default function GameWarRoomCommandColumn({
           >
             {signal.label}
           </strong>
-          <span className="game-3d-cpu-level">CPU nivel {game.difficulty}</span>
         </span>
 
         <WarRoomGuideHelp />

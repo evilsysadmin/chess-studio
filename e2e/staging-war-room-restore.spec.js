@@ -129,7 +129,7 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomSignal).toContainText('Matthias');
-    await expect(warRoomSignal).toContainText(/CPU nivel \d+/);
+    await expect(warRoomSignal).not.toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
 
     // Esperamos a que el snapshot local inicial exista; después mutamos Mongo/API

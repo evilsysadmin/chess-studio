@@ -127,15 +127,6 @@
     font-weight: 760;
   }
 
-  .game-3d-cpu-level {
-    margin-left: auto;
-    flex: 0 0 auto;
-    white-space: nowrap;
-    color: color-mix(in srgb, var(--studio-muted) 82%, var(--cream));
-    font-size: .46rem;
-    letter-spacing: .02em;
-  }
-
   .game-3d-utility-menu {
     grid-area: menu;
     position: relative;
