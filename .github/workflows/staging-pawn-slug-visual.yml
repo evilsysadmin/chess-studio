@@ -34,7 +34,11 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
 
     steps:
       - name: Checkout deployed commit
@@ -81,34 +85,40 @@ jobs:
           echo 'run=true' >> "$GITHUB_OUTPUT"
           echo "Pawn Slug visual admitted para $DEPLOY_SHA"
 
-      - name: Load ephemeral staging invite code
+      - name: Restore cached OCI SDK toolchain
+        if: steps.admission.outputs.run == 'true'
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+
+      - name: Load ephemeral staging invite code from OCI runtime
         if: steps.admission.outputs.run == 'true'
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os, sys
+          import os
+          import sys
           sys.path.insert(0, 'scripts')
-          import render_staging_bootstrap as render
-          service = render.find_service(render.SERVICE_NAME)
-          service_id = str((service or {}).get('id') or '').strip()
-          if not service_id:
-              raise SystemExit('No existe el servicio Render staging legado para leer INVITE_CODE')
-          invite = render.read_env(service_id, 'INVITE_CODE') or ''
+          import oci
+          from oci_runtime_bundle import read_private_runtime_value
+
+          invite = read_private_runtime_value(oci, 'INVITE_CODE')
           if not invite:
-              raise SystemExit('INVITE_CODE de staging falta')
-          render.export_github_secret_env('STAGING_INVITE_CODE', invite)
+              raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
+          print(f'::add-mask::{invite}')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
+              handle.write(f'STAGING_INVITE_CODE={invite}\n')
           PY
 
-      - name: Derive isolated Pawn Slug smoke credentials
+      - name: Generate isolated Pawn Slug smoke credentials
         if: steps.admission.outputs.run == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          identity="$(printf 'chess-studio-staging-smoke-user:v3:%s:%s:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$DEPLOY_SHA" 'pawnslug-visual' "$RENDER_API_KEY" | sha256sum | awk '{print substr($1,1,16)}')"
-          secret="$(printf 'chess-studio-staging-smoke-password:v3:%s:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" 'pawnslug-visual' "$RENDER_API_KEY" | sha256sum | awk '{print $1}')"
-          username="ci_smoke_${identity}"
-          password="CS!${secret}"
+          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
           echo "::add-mask::$username"
           echo "::add-mask::$password"
           echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
