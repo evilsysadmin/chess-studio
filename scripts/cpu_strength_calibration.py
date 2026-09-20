@@ -60,8 +60,13 @@ class CalibrationResult:
     draws: int
     losses: int
     score: float
+    score_ci95_low: float
+    score_ci95_high: float
     estimated_rating: int
+    estimated_rating_ci95_low: int
+    estimated_rating_ci95_high: int
     estimate_method: str = "logistic-smoothed-half-point"
+    interval_method: str = "wilson-score-approximation-with-draws-as-half-point"
 
 
 def parse_int_list(raw: str) -> list[int]:
@@ -76,6 +81,32 @@ def parse_int_list(raw: str) -> list[int]:
     return values
 
 
+def score_confidence_interval(wins: int, draws: int, losses: int, z: float = 1.96) -> tuple[float, float]:
+    """Approximate confidence interval for match score.
+
+    Draws count as half a point. This is intentionally reported as an
+    approximation: chess match scores are not independent Bernoulli trials in
+    the strict statistical sense, especially when openings are paired.
+    """
+    games = wins + draws + losses
+    if games <= 0:
+        raise ValueError("at least one game is required")
+    score = (wins + draws * 0.5) / games
+    z2 = z * z
+    denominator = 1.0 + z2 / games
+    centre = score + z2 / (2.0 * games)
+    margin = z * math.sqrt((score * (1.0 - score) + z2 / (4.0 * games)) / games)
+    low = max(0.0, (centre - margin) / denominator)
+    high = min(1.0, (centre + margin) / denominator)
+    return low, high
+
+
+def rating_from_score(reference_elo: int, score: float) -> int:
+    bounded = min(1.0 - 1e-6, max(1e-6, float(score)))
+    delta = 400.0 * math.log10(bounded / (1.0 - bounded))
+    return round(reference_elo + delta)
+
+
 def estimate_rating(reference_elo: int, wins: int, draws: int, losses: int) -> int:
     """Estimate rating from match score without infinite 0%/100% outputs.
 
@@ -87,8 +118,7 @@ def estimate_rating(reference_elo: int, wins: int, draws: int, losses: int) -> i
         raise ValueError("at least one game is required")
     points = wins + draws * 0.5
     score = (points + 0.5) / (games + 1.0)
-    delta = 400.0 * math.log10(score / (1.0 - score))
-    return round(reference_elo + delta)
+    return rating_from_score(reference_elo, score)
 
 
 def apply_opening(board: chess.Board, moves: Sequence[str]) -> None:
@@ -200,6 +230,9 @@ def run_pairing(
     draws = sum(1 for score in scores if score == 0.5)
     losses = games - wins - draws
     points = wins + draws * 0.5
+    score = points / games
+    score_low, score_high = score_confidence_interval(wins, draws, losses)
+    estimate = estimate_rating(reference_elo, wins, draws, losses)
     return CalibrationResult(
         level=level,
         reference_elo=reference_elo,
@@ -207,8 +240,12 @@ def run_pairing(
         wins=wins,
         draws=draws,
         losses=losses,
-        score=round(points / games, 4),
-        estimated_rating=estimate_rating(reference_elo, wins, draws, losses),
+        score=round(score, 4),
+        score_ci95_low=round(score_low, 4),
+        score_ci95_high=round(score_high, 4),
+        estimated_rating=estimate,
+        estimated_rating_ci95_low=rating_from_score(reference_elo, score_low),
+        estimated_rating_ci95_high=rating_from_score(reference_elo, score_high),
     )
 
 
@@ -255,9 +292,11 @@ def calibration_report(
         "schemaVersion": 1,
         "kind": "chess-studio-cpu-strength-calibration",
         "warning": (
-            "Empirical estimate only. Do not treat small samples or one reference "
-            "engine as certified Elo."
+            "Empirical estimate only. Confidence intervals are approximate; do not "
+            "treat small samples or one reference engine as certified Elo."
         ),
+        "recommendedMinimumGamesPerPairing": 30,
+        "sampleBelowRecommendation": games < 30,
         "enginePath": engine_path,
         "gamesPerPairing": games,
         "referenceMoveTimeSeconds": move_time_s,
@@ -273,6 +312,8 @@ def _self_test() -> None:
     assert estimate_rating(1200, 5, 0, 5) == 1200
     assert estimate_rating(1200, 7, 0, 3) > 1200
     assert estimate_rating(1200, 3, 0, 7) < 1200
+    low, high = score_confidence_interval(5, 0, 5)
+    assert low < 0.5 < high
     board = chess.Board()
     apply_opening(board, OPENINGS[0])
     assert board.fullmove_number == 3

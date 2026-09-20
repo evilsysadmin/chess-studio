@@ -20,6 +20,20 @@ def test_rating_estimate_is_centered_and_monotonic():
     assert calibration.estimate_rating(1400, 3, 0, 7) < 1400
 
 
+def test_confidence_interval_contains_score_and_tightens_with_more_games():
+    small = calibration.score_confidence_interval(5, 0, 5)
+    large = calibration.score_confidence_interval(50, 0, 50)
+    assert small[0] < 0.5 < small[1]
+    assert large[0] < 0.5 < large[1]
+    assert (large[1] - large[0]) < (small[1] - small[0])
+
+
+def test_rating_interval_is_finite_even_for_a_clean_sweep():
+    low, high = calibration.score_confidence_interval(10, 0, 0)
+    assert 0 <= low < high <= 1
+    assert calibration.rating_from_score(1400, low) < calibration.rating_from_score(1400, high)
+
+
 def test_opening_lines_are_legal_and_leave_both_colors_to_move_across_suite():
     for line in calibration.OPENINGS:
         board = chess.Board()
