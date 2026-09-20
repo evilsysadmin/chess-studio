@@ -36,6 +36,55 @@ function projectInteraction(interaction) {
   });
 }
 
+
+function assertFiniteCell(cell, label) {
+  if (!cell || !Number.isFinite(cell.x) || !Number.isFinite(cell.y)) {
+    throw new Error(`Chronicles scene model requires finite ${label}`);
+  }
+}
+
+function assertUniqueIds(entries, label) {
+  const ids = entries.map((entry) => String(entry?.id || ''));
+  if (ids.some((id) => !id)) throw new Error(`Chronicles scene model requires ${label} ids`);
+  if (new Set(ids).size !== ids.length) throw new Error(`Chronicles scene model has duplicate ${label} ids`);
+}
+
+export function chroniclesValidateSceneModel(model) {
+  if (!model || typeof model !== 'object') throw new Error('Chronicles scene model is required');
+  if (model.version !== CHRONICLES_SCENE_MODEL_VERSION) throw new Error('Unsupported Chronicles scene model version');
+  if (typeof model.mapId !== 'string' || !model.mapId) throw new Error('Chronicles scene model requires mapId');
+  if (!model.scenePlan || model.scenePlan.mapId !== model.mapId) throw new Error('Chronicles scene model map mismatch');
+  assertFiniteCell(model.focusCell, 'focusCell');
+  if (!Array.isArray(model.party) || !Array.isArray(model.enemies) || !Array.isArray(model.content)) {
+    throw new Error('Chronicles scene model requires party, enemies and content arrays');
+  }
+  assertUniqueIds(model.party, 'party');
+  assertUniqueIds(model.enemies, 'enemy');
+  assertUniqueIds(model.content, 'content');
+
+  model.party.forEach((member) => {
+    if (member.visible) assertFiniteCell(member.cell, `party cell for ${member.id}`);
+    if (!Number.isFinite(member.hpRatio) || member.hpRatio < 0 || member.hpRatio > 1) {
+      throw new Error(`Chronicles scene model has invalid hpRatio for ${member.id}`);
+    }
+  });
+  model.enemies.forEach((enemy) => {
+    if (enemy.visible) assertFiniteCell(enemy.cell, `enemy cell for ${enemy.id}`);
+  });
+
+  if (model.interaction) {
+    if (!['move', 'attack', 'hybrid'].includes(model.interaction.mode)) {
+      throw new Error('Chronicles scene model has invalid interaction mode');
+    }
+    (model.interaction.legalMoves || []).forEach((cell) => assertFiniteCell(cell, 'legal move'));
+    (model.interaction.legalTargets || []).forEach((target) => {
+      if (!target.enemyId) throw new Error('Chronicles scene model target requires enemyId');
+      assertFiniteCell(target, `legal target ${target.enemyId}`);
+    });
+  }
+  return model;
+}
+
 export function chroniclesSceneWorldObjectStateFromContent(content = []) {
   const firstByKind = (kind) => content.find((entry) => entry.kind === kind) || null;
   return Object.freeze({
@@ -81,7 +130,7 @@ export function chroniclesProjectSceneModel(
     });
   }));
 
-  return Object.freeze({
+  return chroniclesValidateSceneModel(Object.freeze({
     version: CHRONICLES_SCENE_MODEL_VERSION,
     mapId: state.mapId,
     scenePlan,
@@ -92,5 +141,5 @@ export function chroniclesProjectSceneModel(
     content,
     worldObjects: chroniclesSceneWorldObjectStateFromContent(content),
     interaction: projectInteraction(interaction),
-  });
+  }));
 }
