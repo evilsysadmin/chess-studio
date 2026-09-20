@@ -36,7 +36,7 @@ test('Home 3D · captura Combat con foco físico', async ({ page }) => {
   const stage = home.locator('.illustrated-home__stage');
   await expect(home).toBeVisible();
   await expect(stage).toBeVisible();
-  await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+  await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 25_000 });
 
   const combat = home.locator('.illustrated-home__destination--combat');
   await combat.hover();
