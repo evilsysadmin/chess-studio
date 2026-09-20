@@ -31,7 +31,7 @@
       "w": 150,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 860,
@@ -55,7 +55,7 @@
       "w": 160,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 1680,
@@ -79,7 +79,7 @@
       "w": 140,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "metal"
     },
     {
       "x": 2420,
@@ -87,7 +87,7 @@
       "w": 190,
       "h": 24,
       "kind": "low_dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 2680,
@@ -112,7 +112,7 @@
       "w": 170,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 3470,
@@ -120,7 +120,7 @@
       "w": 150,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "metal"
     },
     {
       "x": 3700,
@@ -146,7 +146,7 @@
       "w": 170,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 4530,
@@ -170,7 +170,7 @@
       "w": 220,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "concrete"
     },
     {
       "x": 2760,
@@ -238,6 +238,56 @@
       "material": "metal",
       "route": "crane_assault",
       "one_way": true
+    },
+    {
+      "x": 520,
+      "y": 344,
+      "w": 132,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
+      "x": 1540,
+      "y": 316,
+      "w": 138,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 3370,
+      "y": 330,
+      "w": 136,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "concrete",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
+      "x": 4940,
+      "y": 312,
+      "w": 142,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
     }
   ],
   "obstacles": [
@@ -802,5 +852,6 @@
       "x": 4740,
       "y": 607
     }
-  ]
+  ],
+  "visual_revision": 2
 }
