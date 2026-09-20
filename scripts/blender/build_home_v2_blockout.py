@@ -1756,9 +1756,26 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_b.rotation_euler[2] = math.radians(-12)
     cube("HOME_PROP_fireplace_right_ember_bed", (4.45, 5.72, 0.48), (0.72, 0.12, 0.055), materials["fire"], bevel=0.04)
-    for idx, cx in enumerate((3.72, 4.45, 5.18)):
-        cube(f"HOME_PROP_fireplace_right_mantel_candle_{idx}", (cx, 4.98, 2.78), (0.055, 0.055, 0.23), materials["paper"], bevel=0.018)
-        cone(f"HOME_PROP_fireplace_right_mantel_flame_{idx}", (cx, 4.98, 3.08), 0.050, 0.010, 0.17, materials["fire_hot"], vertices=12)
+    mantel_candle_heights = (0.28, 0.36, 0.30)
+    mantel_candle_base_z = 2.55
+    for idx, (cx, candle_height) in enumerate(zip((3.72, 4.45, 5.18), mantel_candle_heights)):
+        cylinder(
+            f"HOME_PROP_fireplace_right_mantel_candle_{idx}",
+            (cx, 4.98, mantel_candle_base_z + candle_height / 2.0),
+            0.042,
+            candle_height,
+            materials["paper"],
+            vertices=18,
+        )
+        cone(
+            f"HOME_PROP_fireplace_right_mantel_flame_{idx}",
+            (cx, 4.98, mantel_candle_base_z + candle_height + 0.055),
+            0.030,
+            0.006,
+            0.090,
+            materials["fire_hot"],
+            vertices=12,
+        )
 
     # The generic fireplace gets scaled for the canonical right-hand mass.
     # Reintroduce a camera-facing flame layer after that transform so the
