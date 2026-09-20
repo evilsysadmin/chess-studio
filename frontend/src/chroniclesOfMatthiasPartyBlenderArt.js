@@ -46,6 +46,18 @@ export function configureChroniclesTacticsPartyVisual(root, { coarsePointer = fa
   return root;
 }
 
+export function installChroniclesTacticsPartyLoadout(
+  memberRoot,
+  visual,
+  memberId,
+  { coarsePointer = false } = {},
+) {
+  const host = visual || memberRoot;
+  if (!host) return () => {};
+  host.userData.chroniclesLoadoutTransformHost = visual ? 'authored-visual' : 'member-root';
+  return installChroniclesDefaultLoadoutArt(host, memberId, { coarsePointer });
+}
+
 function hideFallbackChildren(memberRoot, visual) {
   [...memberRoot.children].forEach((child) => {
     if (child !== visual) child.visible = false;
@@ -122,7 +134,15 @@ export function installChroniclesTacticsPartyBlenderArt(
         const priorTick = memberRoot.userData.chroniclesArtTick || null;
         memberRoot.add(visual);
         hideFallbackChildren(memberRoot, visual);
-        loadoutCancels.push(installChroniclesDefaultLoadoutArt(memberRoot, memberId, { coarsePointer }));
+        // Equipment is authored in the same local space as the party GLB.
+        // Parent it to the authored visual so root-axis compensation/scale is
+        // inherited instead of leaving weapons detached on the battlefield.
+        loadoutCancels.push(installChroniclesTacticsPartyLoadout(
+          memberRoot,
+          visual,
+          memberId,
+          { coarsePointer },
+        ));
         memberRoot.userData.chroniclesPartyArtSource = CHRONICLES_TACTICS_PARTY_ASSET_VERSION;
 
         const clip = clipForMember(gltf.animations, memberId);
