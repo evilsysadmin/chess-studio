@@ -60,11 +60,20 @@ jobs:
           test -d "$PROGRAM_DIR"
           echo "Root Metal GTX programs:"
           find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*.sfz' -print || true
-          SFZ="$(find "$PROGRAM_DIR" -maxdepth 1 -type f -iname 'METAL-GTX Full.sfz' -print -quit)"
-          test -f "$SFZ"
-          printf '%s\n' "$SFZ" > v3/sfz-path.txt
-          cp "$SFZ" v3/selected-metal-gtx.sfz
-          grep -Ei 'sw_|keyswitch|label|sample=' "$SFZ" | head -120 > v3/sfz-map-excerpt.txt || true
+          SFZ_LEFT="$PROGRAM_DIR/01-METAL-GTX Full.sfz"
+          SFZ_RIGHT="$PROGRAM_DIR/03-METAL-GTX XTracking.sfz"
+          test -f "$SFZ_LEFT"
+          test -f "$SFZ_RIGHT"
+          printf '%s\n' "$SFZ_LEFT" > v3/sfz-left-path.txt
+          printf '%s\n' "$SFZ_RIGHT" > v3/sfz-right-path.txt
+          cp "$SFZ_LEFT" v3/selected-metal-gtx-full.sfz
+          cp "$SFZ_RIGHT" v3/selected-metal-gtx-xtracking.sfz
+          {
+            echo '=== FULL ==='
+            grep -Ei 'sw_|keyswitch|label|sample=' "$SFZ_LEFT" | head -80 || true
+            echo '=== XTRACKING ==='
+            grep -Ei 'sw_|keyswitch|label|sample=' "$SFZ_RIGHT" | head -80 || true
+          } > v3/sfz-map-excerpt.txt
           du -sh /tmp/metal-gtx
 
       - name: Build expressive riff MIDIs
@@ -169,9 +178,10 @@ jobs:
         run: |
           set -euxo pipefail
           RENDER="$(cat v3/sfizz-render-path.txt)"
-          SFZ="$(cat v3/sfz-path.txt)"
-          "$RENDER" --sfz "$SFZ" --midi v3/metal-left.mid --wav v3/metal-left-di.wav --samplerate 44100
-          "$RENDER" --sfz "$SFZ" --midi v3/metal-right.mid --wav v3/metal-right-di.wav --samplerate 44100
+          SFZ_LEFT="$(cat v3/sfz-left-path.txt)"
+          SFZ_RIGHT="$(cat v3/sfz-right-path.txt)"
+          "$RENDER" --sfz "$SFZ_LEFT" --midi v3/metal-left.mid --wav v3/metal-left-di.wav --samplerate 44100
+          "$RENDER" --sfz "$SFZ_RIGHT" --midi v3/metal-right.mid --wav v3/metal-right-di.wav --samplerate 44100
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/left.wav
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/right.wav
 
@@ -212,7 +222,7 @@ jobs:
             echo 'Articulations used: sustain alt, mute alt, hammer-on, pull-off, slide-in/up, full bend'
             echo 'Amp: CAPS AmpVTS'
             echo 'Cab: CAPS CabinetI model 5'
-            echo 'Double tracking: independent MIDI timing/velocity and sample round-robin'
+            echo 'Double tracking: Full left + dedicated XTracking right, independent timing/velocity'
             echo
             sha256sum v3/metal-gtx-amp-stereo.wav v3/metal-gtx-di-stereo.wav
           } > v3/MANIFEST.txt
