@@ -1,6 +1,7 @@
 {
   "id": "crypt-eight-squares",
   "version": 10,
+  "proceduralDifficulty": 2,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "explorationCompleteLabel": "Vertical slice completado",
