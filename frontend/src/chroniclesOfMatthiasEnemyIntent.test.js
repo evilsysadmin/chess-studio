@@ -74,6 +74,7 @@ describe('Chronicles enemy intent preview', () => {
     expect(second.intents.find((intent) => intent.enemyId === pawn.id)).toMatchObject({
       kind: 'attack',
       damage: 1,
+      hpLost: 1,
     });
     expect(second.attackedMemberIds.length).toBe(1);
   });
