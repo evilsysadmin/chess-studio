@@ -478,6 +478,8 @@ def self_test() -> None:
             {"kind": "far_ridge", "scroll": 0.14},
             {"kind": "ruined_city", "scroll": 0.34},
             {"kind": "mid_defence", "scroll": 0.62},
+            {"kind": "near_weather", "scroll": 0.88},
+            {"kind": "near_foreground", "scroll": 0.98},
         ]},
         "boss": {"x": 4580, "trigger_x": 4300},
         "extraction": {"x": 5050},
