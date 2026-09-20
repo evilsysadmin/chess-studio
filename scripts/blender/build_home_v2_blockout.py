@@ -589,10 +589,19 @@ def curve_tube(name: str, points, bevel_depth: float, mat):
     return obj
 
 
-def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03):
+def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03, origin_xz=None):
+    """Extrude a silhouette along Y.
+
+    By default the object origin stays at the world origin with world-space
+    vertices. Pass ``origin_xz`` to seat the origin on the piece instead (for
+    example the base of a flame), so the runtime can scale or lean it in place
+    rather than about the world origin.
+    """
     half = depth / 2.0
-    front = [(x, y - half, z) for x, z in points_xz]
-    back = [(x, y + half, z) for x, z in points_xz]
+    ox, oz = origin_xz if origin_xz is not None else (0.0, 0.0)
+    oy = y if origin_xz is not None else 0.0
+    front = [(x - ox, y - half - oy, z - oz) for x, z in points_xz]
+    back = [(x - ox, y + half - oy, z - oz) for x, z in points_xz]
     vertices = front + back
     count = len(points_xz)
     faces = [tuple(range(count)), tuple(range(count, count * 2))]
@@ -603,6 +612,7 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
+    obj.location = (ox, oy, oz)
     bpy.context.collection.objects.link(obj)
     if bevel:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
@@ -1115,6 +1125,7 @@ def add_fireplace(name: str, x: float, materials):
             0.035,
             fire,
             bevel=0.022,
+            origin_xz=(cx, base),
         )
         inner_h = height * (0.48 if idx != 2 else 0.60)
         inner_w = width * 0.48
@@ -1132,6 +1143,7 @@ def add_fireplace(name: str, x: float, materials):
             0.030,
             hot,
             bevel=0.016,
+            origin_xz=(cx, base),
         )
     # The fire lights the room from flame height: falloff up the firebox wall keeps
     # the brick courses readable instead of flooding them with flat orange.
