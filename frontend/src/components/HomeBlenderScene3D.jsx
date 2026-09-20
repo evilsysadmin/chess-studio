@@ -22,6 +22,136 @@ const EXPOSURE = Object.freeze({
   night: 1.17,
 });
 
+function stableFirePhase(name = '') {
+  let hash = 2166136261;
+  for (let index = 0; index < name.length; index += 1) {
+    hash ^= name.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 1000) / 1000 * Math.PI * 2;
+}
+
+export function homeBlenderFireKind(name = '') {
+  const normalized = String(name).toLowerCase();
+  if (
+    normalized.includes('home_prop_chandelier_flame_')
+    || normalized.includes('_mantel_flame_')
+    || normalized.includes('_candle_flame')
+    || normalized.includes('home_prop_torch_flame_')
+  ) return 'candle';
+  if (!normalized.includes('home_prop_fireplace_')) return null;
+  if (normalized.includes('ember')) return 'ember';
+  if (normalized.includes('_hot_') || normalized.endsWith('_hot')) return 'hot';
+  if (
+    normalized.includes('_flame_')
+    || normalized.includes('_tongue_')
+    || normalized.includes('_front_base_')
+  ) return 'flame';
+  return null;
+}
+
+export function homeBlenderFireMotion({
+  timeMs = 0,
+  phase = 0,
+  kind = 'flame',
+} = {}) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const wave = (
+    Math.sin(seconds * 6.4 + phase)
+    + Math.sin(seconds * 10.7 + phase * 1.73) * 0.42
+    + Math.sin(seconds * 3.1 + phase * 0.61) * 0.24
+  ) / 1.66;
+  const shimmer = (
+    Math.sin(seconds * 13.3 + phase * 0.47)
+    + Math.sin(seconds * 7.9 + phase * 1.21) * 0.5
+  ) / 1.5;
+
+  if (kind === 'candle') {
+    return {
+      scaleX: 1 - wave * 0.022,
+      scaleY: 1 + wave * 0.060,
+      scaleZ: 1 - shimmer * 0.018,
+      emission: 0.92 + (shimmer + 1) * 0.045,
+      light: 1,
+    };
+  }
+  if (kind === 'ember') {
+    return {
+      scaleX: 1 + wave * 0.025,
+      scaleY: 1 + shimmer * 0.018,
+      scaleZ: 1 + wave * 0.025,
+      emission: 0.86 + (shimmer + 1) * 0.07,
+      light: 0.96 + wave * 0.035,
+    };
+  }
+
+  const amplitude = kind === 'hot' ? 0.055 : 0.105;
+  return {
+    scaleX: 1 - wave * amplitude * 0.34,
+    scaleY: 1 + wave * amplitude,
+    scaleZ: 1 - wave * amplitude * 0.22,
+    emission: 0.88 + (shimmer + 1) * (kind === 'hot' ? 0.09 : 0.07),
+    light: 0.94 + wave * 0.075 + shimmer * 0.025,
+  };
+}
+
+function prepareRuntimeFireRig(root) {
+  const nodes = [];
+  root?.traverse?.((object) => {
+    if (!object?.isMesh) return;
+    const kind = homeBlenderFireKind(object.name);
+    if (!kind) return;
+
+    if (Array.isArray(object.material)) {
+      object.material = object.material.map((material) => material?.clone?.() || material);
+    } else if (object.material?.clone) {
+      object.material = object.material.clone();
+    }
+
+    const materials = (Array.isArray(object.material) ? object.material : [object.material])
+      .filter(Boolean)
+      .map((material) => ({
+        material,
+        emissiveIntensity: Number(material.emissiveIntensity) || 0,
+      }));
+
+    nodes.push({
+      object,
+      kind,
+      phase: stableFirePhase(object.name),
+      baseScale: object.scale.clone(),
+      materials,
+    });
+  });
+  return nodes;
+}
+
+function applyRuntimeFireMotion(nodes, timeMs) {
+  let hearthLightFactor = 1;
+  for (const node of nodes) {
+    const motion = homeBlenderFireMotion({
+      timeMs,
+      phase: node.phase,
+      kind: node.kind,
+    });
+    node.object.scale.set(
+      node.baseScale.x * motion.scaleX,
+      node.baseScale.y * motion.scaleY,
+      node.baseScale.z * motion.scaleZ,
+    );
+    for (const { material, emissiveIntensity } of node.materials) {
+      if ('emissiveIntensity' in material) {
+        material.emissiveIntensity = emissiveIntensity * motion.emission;
+      }
+    }
+    if (node.kind === 'flame' || node.kind === 'hot') {
+      hearthLightFactor += (motion.light - 1) * 0.08;
+    }
+  }
+  return THREE.MathUtils.clamp(hearthLightFactor, 0.88, 1.10);
+}
+
+
 const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
 
 export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
@@ -120,6 +250,12 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   floorBounce.position.set(0, 0.55, -1.6);
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce);
+  return {
+    leftHearth,
+    rightHearth,
+    leftHearthBase: leftHearth.intensity,
+    rightHearthBase: rightHearth.intensity,
+  };
 }
 
 function disposeMaterial(material) {
@@ -177,6 +313,9 @@ export default function HomeBlenderScene3D({
     let disposed = false;
     let fallbackRequested = false;
     let model = null;
+    let fireRig = [];
+    let fireFrame = null;
+    let lastFireRenderedAt = Number.NEGATIVE_INFINITY;
     let frame = null;
     let loadTimer = null;
 
@@ -204,7 +343,7 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    addRuntimeLights(scene, initialPolicy.lod === 'full');
+    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full');
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -228,6 +367,36 @@ export default function HomeBlenderScene3D({
       });
     };
     renderRequestRef.current = requestRender;
+
+    const fireFrameIntervalMs = initialPolicy.lod === 'full' ? 42 : 66;
+    const animateFire = (timestamp) => {
+      fireFrame = null;
+      if (disposed || !model || document.hidden) return;
+      if (timestamp - lastFireRenderedAt >= fireFrameIntervalMs) {
+        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
+        runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor;
+        runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase
+          * THREE.MathUtils.clamp(lightFactor * 0.985 + 0.015, 0.88, 1.10);
+        renderFrame();
+        lastFireRenderedAt = timestamp;
+      }
+      fireFrame = window.requestAnimationFrame(animateFire);
+    };
+
+    const startFireAnimation = () => {
+      if (disposed || !model || document.hidden || fireFrame !== null) return;
+      fireFrame = window.requestAnimationFrame(animateFire);
+    };
+
+    const stopFireAnimation = () => {
+      if (fireFrame !== null) window.cancelAnimationFrame(fireFrame);
+      fireFrame = null;
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) stopFireAnimation();
+      else startFireAnimation();
+    };
 
     const resize = () => {
       const width = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 1);
@@ -275,11 +444,14 @@ export default function HomeBlenderScene3D({
       }
       model = root;
       prepareRuntimeScene(model, initialPolicy.lod === 'full');
+      fireRig = prepareRuntimeFireRig(model);
       scene.add(model);
       resize();
+      applyRuntimeFireMotion(fireRig, 0);
       renderFrame();
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
+      startFireAnimation();
     });
 
     const onContextLost = (event) => {
@@ -287,6 +459,7 @@ export default function HomeBlenderScene3D({
       failToFallback(true);
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(resize)
@@ -299,9 +472,11 @@ export default function HomeBlenderScene3D({
       disposed = true;
       renderRequestRef.current = null;
       if (frame !== null) window.cancelAnimationFrame(frame);
+      stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.classList.remove('is-ready');
       if (model) {
