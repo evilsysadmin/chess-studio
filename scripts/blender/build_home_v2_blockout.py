@@ -2298,17 +2298,28 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
             "HOME_MAT_window",
-            (0.008, 0.026, 0.052, 1),
-            roughness=0.32,
-            emission=(0.018, 0.055, 0.12, 1),
-            emission_strength=0.20,
+            (0.006, 0.020, 0.038, 1),
+            roughness=0.56,
+            emission=(0.010, 0.030, 0.060, 1),
+            emission_strength=0.075,
+            variation=0.07,
+            variation_scale=4.6,
+        ),
+        "window_dim": material(
+            "HOME_MAT_window_dim",
+            (0.0045, 0.015, 0.030, 1),
+            roughness=0.64,
+            emission=(0.006, 0.020, 0.040, 1),
+            emission_strength=0.045,
+            variation=0.08,
+            variation_scale=5.2,
         ),
         "moon": material(
             "HOME_MAT_moon",
-            (0.50, 0.51, 0.47, 1),
-            roughness=0.58,
-            emission=(0.30, 0.31, 0.28, 1),
-            emission_strength=0.16,
+            (0.42, 0.43, 0.40, 1),
+            roughness=0.72,
+            emission=(0.18, 0.19, 0.17, 1),
+            emission_strength=0.065,
         ),
         "fire": material(
             "HOME_MAT_fire",
@@ -3048,7 +3059,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
         tongue.rotation_euler[1] = math.radians(tilt)
 
-    cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
+    for pane_index, (offset, half_width, z_shift, mat_name) in enumerate((
+        (-0.64, 0.25, -0.015, "window_dim"),
+        (-0.19, 0.145, 0.010, "window"),
+        (0.19, 0.145, -0.006, "window_dim"),
+        (0.64, 0.25, 0.018, "window"),
+    )):
+        pane = cube(
+            f"HOME_ARCH_window_right_pane_{pane_index}",
+            (7.82 + offset, 6.62, 3.72 + z_shift),
+            (half_width, 0.065, 1.76),
+            materials[mat_name],
+            bevel=0.045,
+        )
+        pane.rotation_euler[2] = math.radians(
+            (_hash01(pane_index, 0, 2003) - 0.5) * 0.45
+        )
     # Canonical right window: tall Gothic lancets with clean mullions and
     # restrained tracery. Avoid the old criss-cross lattice that read as
     # branches/wires at Home scale.
