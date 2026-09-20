@@ -24,6 +24,7 @@ export function configureWarRoomV2Loader(loader) {
 
 export function warRoomV2EnvMapIntensity(materialName = '') {
   const name = String(materialName || '').toLowerCase();
+  if (name.includes('heraldic_brass')) return 0.96;
   if (name.includes('brass')) return 0.82;
   if (name.includes('armor')) return 0.76;
   if (name.includes('window')) return 0.56;
