@@ -120,6 +120,18 @@ const V9_MUZZLE_PIVOT_Y := {
     "shotgun": -35.0,
     "panzerfaust": -34.0,
 }
+const V9_MUZZLE_ACTION_AIM := {
+    "shoot": Vector2(1.0, 0.0),
+    "shoot_up": Vector2(0.0, -1.0),
+    "shoot_down": Vector2(0.0, 1.0),
+    "shoot_diag_up": Vector2(1.0, -1.0),
+    "shoot_diag_up_alt": Vector2(1.0, -1.0),
+    "shoot_diag_down": Vector2(1.0, 1.0),
+    "shoot_crouch": Vector2(1.0, 0.0),
+}
+const V9_MUZZLE_RAY_HALF_WIDTH_PX := 42.0
+const V9_MUZZLE_SCAN_Y_MAX_RATIO_DIRECTIONAL := 0.80
+const V9_MUZZLE_CLUSTER_DEPTH_PX := 12.0
 const V7_SOURCE_SIZE := Vector2i(1070, 1470)
 const DIRECTIONAL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/releases/f9134382bb1adb60/pawn_slug_godot_atlases_v2/matthias_pistol_directional_strict_v8.png",
@@ -745,7 +757,10 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         else:
             _full_frames_by_weapon[requested_weapon] = frames
             _full_body_y_by_weapon[requested_weapon] = V9_BODY_Y
-            _full_muzzle_by_weapon[requested_weapon] = {}
+            _full_muzzle_by_weapon[requested_weapon] = _v9_muzzle_positions_for_atlas(
+                image,
+                requested_weapon,
+            )
             _v9_ready_by_weapon[requested_weapon] = true
             _directional_ready_by_weapon[requested_weapon] = true
 
@@ -1612,7 +1627,18 @@ func _on_animation_finished() -> void:
 func _sync_muzzle() -> void:
     var visual_weapon := _rendered_weapon if not _rendered_weapon.is_empty() else _weapon
     if _v9_ready_by_weapon.has(visual_weapon):
-        _muzzle.position = _v9_muzzle_position(visual_weapon)
+        var used_frame_socket := false
+        var v9_poses: Dictionary = _full_muzzle_by_weapon.get(visual_weapon, {})
+        if v9_poses.has(_action):
+            var frame_positions: Array = v9_poses.get(_action, [])
+            if not frame_positions.is_empty():
+                var frame_index := clampi(_body.frame, 0, frame_positions.size() - 1)
+                var frame_position: Vector2 = frame_positions[frame_index]
+                if frame_position != Vector2.ZERO:
+                    _muzzle.position = frame_position
+                    used_frame_socket = true
+        if not used_frame_socket:
+            _muzzle.position = _v9_muzzle_position(visual_weapon)
         var v9_scale := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
         _flash.scale = Vector2(v9_scale, v9_scale)
         _sync_aim_feedback()
@@ -1632,6 +1658,101 @@ func _sync_muzzle() -> void:
     var s := float(FLASH_SCALE.get(visual_weapon, 1.0)) * _muzzle_flash_boost
     _flash.scale = Vector2(s, s)
     _sync_aim_feedback()
+
+func _v9_muzzle_positions_for_atlas(image: Image, weapon_id: String) -> Dictionary:
+    var result := {}
+    for action in V9_MUZZLE_ACTION_AIM.keys():
+        var spec: Dictionary = V9_ACTIONS[action]
+        var row := int(spec["row"])
+        var aim: Vector2 = V9_MUZZLE_ACTION_AIM[action]
+        aim = aim.normalized()
+        var positions: Array = []
+        for frame_index in range(V9_ATLAS_COLUMNS):
+            positions.append(
+                _v9_muzzle_from_cell(image, row, frame_index, weapon_id, action, aim)
+            )
+        result[action] = positions
+    return result
+
+func _v9_muzzle_from_cell(
+    image: Image,
+    row: int,
+    column: int,
+    weapon_id: String,
+    action: String,
+    aim: Vector2,
+) -> Vector2:
+    var cell := image.get_region(Rect2i(
+        column * V9_ATLAS_CELL_SIZE,
+        row * V9_ATLAS_CELL_SIZE,
+        V9_ATLAS_CELL_SIZE,
+        V9_ATLAS_CELL_SIZE,
+    ))
+    var used := cell.get_used_rect()
+    if used.size == Vector2i.ZERO:
+        return Vector2.ZERO
+
+    # Follow a narrow ray from the authored weapon-hand pivot and choose the
+    # furthest opaque cluster along the actual firing direction. This prevents
+    # vertical shots from inheriting the old centre-of-body procedural socket.
+    var crouched := action == "shoot_crouch"
+    var pivot_y := -25.0 if crouched else float(V9_MUZZLE_PIVOT_Y.get(weapon_id, -36.0))
+    var pivot_world := Vector2(7.0, pivot_y)
+    var centre := Vector2(
+        float(V9_ATLAS_CELL_SIZE) * 0.5,
+        float(V9_ATLAS_CELL_SIZE) * 0.5,
+    )
+    var pivot_px := Vector2(
+        centre.x + pivot_world.x / V9_BODY_SCALE,
+        centre.y + (pivot_world.y - V9_BODY_Y) / V9_BODY_SCALE,
+    )
+
+    var y_start := maxi(used.position.y, 2)
+    var y_end := mini(
+        used.position.y + used.size.y,
+        int(round(float(V9_ATLAS_CELL_SIZE) * V9_MUZZLE_SCAN_Y_MAX_RATIO_DIRECTIONAL)),
+    )
+    var best_forward := -INF
+    for y in range(y_start, y_end):
+        for x in range(used.position.x, used.position.x + used.size.x):
+            if cell.get_pixel(x, y).a < MUZZLE_SCAN_ALPHA:
+                continue
+            var delta := Vector2(float(x), float(y)) - pivot_px
+            var forward := delta.dot(aim)
+            if forward < 0.0:
+                continue
+            var lateral := absf(delta.cross(aim))
+            if lateral > V9_MUZZLE_RAY_HALF_WIDTH_PX:
+                continue
+            best_forward = maxf(best_forward, forward)
+
+    if best_forward == -INF:
+        return Vector2.ZERO
+
+    var cluster := Vector2.ZERO
+    var cluster_count := 0
+    for y in range(y_start, y_end):
+        for x in range(used.position.x, used.position.x + used.size.x):
+            if cell.get_pixel(x, y).a < MUZZLE_SCAN_ALPHA:
+                continue
+            var point := Vector2(float(x), float(y))
+            var delta := point - pivot_px
+            var forward := delta.dot(aim)
+            var lateral := absf(delta.cross(aim))
+            if (
+                lateral <= V9_MUZZLE_RAY_HALF_WIDTH_PX
+                and forward >= best_forward - V9_MUZZLE_CLUSTER_DEPTH_PX
+            ):
+                cluster += point
+                cluster_count += 1
+
+    if cluster_count <= 0:
+        return Vector2.ZERO
+    var tip_px := cluster / float(cluster_count)
+    return Vector2(
+        (tip_px.x - centre.x) * V9_BODY_SCALE,
+        V9_BODY_Y + (tip_px.y - centre.y) * V9_BODY_SCALE,
+    ) + aim * 2.0
 
 func _v9_muzzle_position(weapon_id: String) -> Vector2:
     var local_aim := Vector2(_aim_direction.x * _facing, _aim_direction.y)

@@ -84,6 +84,10 @@ REQUIRED_MATTHIAS = (
     "_build_v9_frames",
     "_v9_muzzle_position",
     "V9_MUZZLE_LENGTH",
+    "V9_MUZZLE_ACTION_AIM",
+    "_v9_muzzle_positions_for_atlas",
+    "_v9_muzzle_from_cell",
+    "used_frame_socket",
     "FULL_ATLAS_COLUMNS := 8",
     "FULL_ATLAS_ROWS := 11",
     "FULL_ATLAS_CELL_SIZE := 256",
@@ -314,8 +318,9 @@ REQUIRED_CONTEXTUAL_MOVEMENT_HINT = (
     "PLAYER_CROUCH_HEIGHT",
     "MOVEMENT_HINT_LOOKAHEAD",
     "SPACE salta",
-    "←/→ + ↑ FIRE diagonal",
-    "↓ + MOVER",
+    "W/UP + FIRE arriba",
+    "A/D + W/UP + FIRE diagonal",
+    "S/DOWN + MOVER",
 )
 REQUIRED_HUD_MOVEMENT_HINT = (
     'name = "MovementHintPanel"',
