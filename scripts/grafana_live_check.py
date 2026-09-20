@@ -232,7 +232,7 @@ def run_checks(
     passed = True
 
     metric_checks = {
-        "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging"})',
+        "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
         "backend_production_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend"})',
     }
     for name, query in metric_checks.items():
