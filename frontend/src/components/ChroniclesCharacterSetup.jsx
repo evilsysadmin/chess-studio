@@ -49,7 +49,7 @@ export default function ChroniclesCharacterSetup({
     () => normalizeChroniclesCharacterBuild(currentBuild, CHRONICLES_PARTY),
     [currentBuild],
   );
-  const [recoveredDraft] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY));
+  const [recoveredDraft, setRecoveredDraft] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY));
   const [editing, setEditing] = useState(() => Boolean(recoveredDraft));
   const [seed, setSeed] = useState(() => recoveredDraft?.seed || normalizedCurrent.seed || 'MATTHIAS');
   const [activeSlot, setActiveSlot] = useState(() => recoveredDraft?.activeSlot || 'matthias');
@@ -74,6 +74,7 @@ export default function ChroniclesCharacterSetup({
 
   const leaveEditor = () => {
     clearChroniclesCharacterDraft();
+    setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
     setSeed(normalizedCurrent.seed || 'MATTHIAS');
     setActiveSlot('matthias');
@@ -87,6 +88,7 @@ export default function ChroniclesCharacterSetup({
   const validation = validateChroniclesCharacterBuild(draft);
 
   const beginCustom = () => {
+    setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
     setActiveSlot('matthias');
     setEditing(true);
