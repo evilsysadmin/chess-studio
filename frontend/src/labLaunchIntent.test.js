@@ -15,6 +15,15 @@ describe('labLaunchIntent', () => {
     expect(consumeLabLaunch()).toBeNull();
   });
 
+  it('can remember Chronicles modes only while a child explicitly requests refresh recovery', () => {
+    expect(rememberLabMode('chronicles')).toBe('chronicles');
+    expect(loadRememberedLabMode()).toBe('chronicles');
+    expect(rememberLabMode('chronicles-tactics')).toBe('chronicles-tactics');
+    expect(loadRememberedLabMode()).toBe('chronicles-tactics');
+    clearRememberedLabMode();
+    expect(loadRememberedLabMode()).toBeNull();
+  });
+
   it('remembers Pawn Slug Godot across a browser refresh without turning it into a one-shot intent', () => {
     expect(rememberLabMode('pawnslug-godot')).toBe('pawnslug-godot');
     expect(loadRememberedLabMode()).toBe('pawnslug-godot');
