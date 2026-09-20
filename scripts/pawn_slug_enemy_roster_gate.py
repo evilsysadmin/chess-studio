@@ -26,7 +26,7 @@ ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "
 REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "destructible_platform", "artillery_barrage"}
 ALLOWED_DRESSING_KINDS = {"crate", "barrel", "sandbags"}
 MIN_DRESSING = 10
-ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut"}
+ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut", "industrial_bunker", "industrial_watch_post", "industrial_drain", "industrial_rubble_field"}
 MIN_STORY_PROPS = 5
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
@@ -142,8 +142,29 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         y = float(prop.get("y", floor_y))
         if kind not in ALLOWED_STORY_PROP_KINDS:
             errors.append(f"{stage_name}: story_props[{index}] has unsupported kind {kind!r}")
+        layer = str(prop.get("layer", "foreground"))
+        if layer not in {"foreground", "architecture"}:
+            errors.append(f"{stage_name}: story_props[{index}] has unsupported layer {layer!r}")
         if not 0 <= x < width or not 0 <= y <= height:
             errors.append(f"{stage_name}: story_props[{index}] leaves world bounds")
+        if kind == "industrial_bunker":
+            w = float(prop.get("w", 0)); h = float(prop.get("h", 0))
+            if w < 120 or h < 90 or x + w > width or y + h > height:
+                errors.append(f"{stage_name}: industrial bunker has invalid bounds")
+        elif kind == "industrial_watch_post":
+            top_y = float(prop.get("top_y", -1)); base_y = float(prop.get("base_y", floor_y))
+            if not 0 <= top_y < base_y <= height:
+                errors.append(f"{stage_name}: industrial watch post has invalid vertical bounds")
+        elif kind == "industrial_drain":
+            radius = float(prop.get("radius", 0))
+            if not 8 <= radius <= 48:
+                errors.append(f"{stage_name}: industrial drain radius {radius:g} outside 8..48")
+        elif kind == "industrial_rubble_field":
+            count = int(prop.get("count", 0)); spacing = float(prop.get("spacing", 0))
+            if not 1 <= count <= 40 or not 20 <= spacing <= 160:
+                errors.append(f"{stage_name}: industrial rubble field has invalid count/spacing")
+            if x + max(0, count - 1) * spacing >= width:
+                errors.append(f"{stage_name}: industrial rubble field leaves horizontal world bounds")
 
     low_passages = 0
     platform_heights: set[int] = set()
@@ -158,6 +179,17 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             low_passages += 1
         platform_heights.add(int(round(y / 20.0)) * 20)
         material = str(rect.get("material", ""))
+        visual = rect.get("visual") or {}
+        if not isinstance(visual, dict):
+            errors.append(f"{stage_name}: platform visual metadata must be an object")
+        else:
+            for visual_flag in ("rail", "lamp"):
+                if visual_flag in visual and not isinstance(visual[visual_flag], bool):
+                    errors.append(f"{stage_name}: platform visual.{visual_flag} must be boolean")
+            if "sandbags" in visual:
+                sandbags = int(visual.get("sandbags", 0))
+                if not 0 <= sandbags <= 9:
+                    errors.append(f"{stage_name}: platform visual.sandbags {sandbags} outside 0..9")
         if material not in {"metal", "wood", "stone", "concrete"}:
             errors.append(f"{stage_name}: platform has unsupported material {material!r}")
         else:

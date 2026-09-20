@@ -37,7 +37,8 @@ func _draw() -> void:
     _draw_ground()
     _draw_platforms()
     _draw_obstacles()
-    _draw_playable_architecture()
+    _draw_map_architecture()
+    _draw_platform_authored_dressing()
     _draw_foreground_props()
     _draw_foreground_story_props()
     _draw_near_depth_dressing()
@@ -475,46 +476,35 @@ func _draw_obstacles() -> void:
             true,
         )
 
-func _draw_playable_architecture() -> void:
-    if _theme != "night_front":
-        return
-
-    # Start-zone bunker sits visually behind Matthias. It has no collision and
-    # deliberately stays below/behind the authored traversal silhouettes.
-    var bunker := Rect2(150.0, _floor_y - 142.0, 190.0, 142.0)
-    draw_rect(bunker, Color(0.115, 0.125, 0.125, 0.96), true)
-    draw_rect(Rect2(bunker.position + Vector2(8.0, 9.0), Vector2(bunker.size.x - 16.0, 11.0)), Color(0.20, 0.17, 0.12, 0.58), true)
-    draw_line(Vector2(bunker.position.x, bunker.position.y), Vector2(bunker.end.x, bunker.position.y), Color(0.56, 0.43, 0.24, 0.62), 3.0)
-    draw_rect(Rect2(Vector2(182.0, _floor_y - 88.0), Vector2(54.0, 88.0)), Color(0.055, 0.062, 0.064, 0.88), true)
-    draw_rect(Rect2(Vector2(190.0, _floor_y - 79.0), Vector2(38.0, 52.0)), Color(0.025, 0.031, 0.033, 0.92), true)
-    draw_line(Vector2(198.0, _floor_y - 74.0), Vector2(220.0, _floor_y - 74.0), Color(0.76, 0.60, 0.32, 0.40), 2.0)
-    _draw_warm_lamp_pool(Vector2(252.0, _floor_y - 112.0), _floor_y - 4.0, 17.0)
-    draw_line(Vector2(252.0, _floor_y - 107.0), Vector2(252.0, _floor_y - 82.0), Color(0.76, 0.60, 0.32, 0.30), 2.0)
-    for mark in range(13):
-        var px := bunker.position.x + 16.0 + _detail_noise(mark, 61.1) * (bunker.size.x - 32.0)
-        var py := bunker.position.y + 28.0 + _detail_noise(mark, 61.7) * (bunker.size.y - 40.0)
-        var radius := 1.2 + _detail_noise(mark, 62.3) * 2.4
-        draw_circle(Vector2(px, py), radius, Color(0.035, 0.040, 0.040, 0.34))
-        if mark % 4 == 0:
-            draw_line(Vector2(px - 8.0, py + 4.0), Vector2(px + 6.0, py - 2.0), Color(0.34, 0.28, 0.20, 0.16), 1.4)
-    _draw_sandbags(Vector2(166.0, _floor_y - 145.0), 7)
-
-    # Dress every authored platform using its actual Rect2, so visual traversal
-    # continues to match collision geometry exactly.
-    for index in range(_platforms.size()):
-        var platform := _platforms[index]
-        if platform.position.x > 1650.0:
+func _draw_map_architecture() -> void:
+    for spec in _story_prop_specs:
+        if String(spec.get("layer", "foreground")) != "architecture":
             continue
+        _draw_story_prop(spec)
 
-        var rail_color := Color(0.26, 0.29, 0.29, 0.78)
-        var rail_highlight := Color(0.58, 0.45, 0.27, 0.34)
-        var rail_y := platform.position.y - 27.0
-        var left := platform.position.x + 8.0
-        var right := platform.end.x - 8.0
+func _draw_platform_authored_dressing() -> void:
+    for index in range(_platforms.size()):
+        if index >= _platform_specs.size():
+            continue
+        var spec: Dictionary = _platform_specs[index]
+        var visual = spec.get("visual", {})
+        if typeof(visual) != TYPE_DICTIONARY:
+            continue
+        var platform := _platforms[index]
 
-        if platform.size.x >= 110.0 and index % 3 != 1:
+        if bool(visual.get("rail", false)) and platform.size.x >= 110.0:
+            var rail_color := Color(0.26, 0.29, 0.29, 0.78)
+            var rail_highlight := Color(0.58, 0.45, 0.27, 0.34)
+            var rail_y := platform.position.y - 27.0
+            var left := platform.position.x + 8.0
+            var right := platform.end.x - 8.0
             draw_line(Vector2(left, rail_y), Vector2(right, rail_y), rail_color, 3.0)
-            draw_line(Vector2(left, rail_y + 12.0), Vector2(right, rail_y + 12.0), Color(rail_color.r, rail_color.g, rail_color.b, 0.52), 2.0)
+            draw_line(
+                Vector2(left, rail_y + 12.0),
+                Vector2(right, rail_y + 12.0),
+                Color(rail_color.r, rail_color.g, rail_color.b, 0.52),
+                2.0,
+            )
             var post_count := maxi(2, int(platform.size.x / 64.0))
             for post in range(post_count + 1):
                 var t := float(post) / float(post_count)
@@ -522,57 +512,27 @@ func _draw_playable_architecture() -> void:
                 draw_line(Vector2(px, platform.position.y - 2.0), Vector2(px, rail_y), rail_color, 2.0)
                 draw_circle(Vector2(px, rail_y), 1.8, rail_highlight)
 
-        # Lamps are offset under platforms, never on the walk surface.
-        if index % 3 == 0 and platform.size.x >= 140.0:
+        if bool(visual.get("lamp", false)) and platform.size.x >= 140.0:
             var lamp_x := platform.get_center().x
             var lamp_y := platform.end.y + 20.0
-            draw_line(Vector2(lamp_x, platform.end.y), Vector2(lamp_x, lamp_y - 5.0), Color(0.14, 0.16, 0.16, 0.72), 2.0)
+            draw_line(
+                Vector2(lamp_x, platform.end.y),
+                Vector2(lamp_x, lamp_y - 5.0),
+                Color(0.14, 0.16, 0.16, 0.72),
+                2.0,
+            )
             _draw_warm_lamp_pool(
                 Vector2(lamp_x, lamp_y),
                 minf(_floor_y - 4.0, lamp_y + 104.0),
                 14.0,
             )
 
-        # Sparse sandbags visually anchor selected catwalks without creating
-        # fake full-height walls or changing cover/collision rules.
-        if index in [0, 4, 11] and platform.size.x >= 145.0:
-            _draw_sandbags(Vector2(platform.position.x + 18.0, platform.position.y - 3.0), 5)
-
-    # Watch post behind the opening high route, echoing the approved mock.
-    var tower_x := 1038.0
-    var tower_base := _floor_y
-    var tower_top := 346.0
-    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x, tower_top + 58.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
-    draw_line(Vector2(tower_x + 82.0, tower_base), Vector2(tower_x + 82.0, tower_top + 58.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
-    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x + 82.0, tower_top + 58.0), Color(0.14, 0.16, 0.16, 0.70), 4.0)
-    draw_line(Vector2(tower_x + 82.0, tower_base), Vector2(tower_x, tower_top + 58.0), Color(0.14, 0.16, 0.16, 0.58), 3.0)
-    draw_rect(Rect2(Vector2(tower_x - 12.0, tower_top), Vector2(106.0, 62.0)), Color(0.095, 0.11, 0.115, 0.96), true)
-    draw_rect(Rect2(Vector2(tower_x - 4.0, tower_top + 10.0), Vector2(90.0, 30.0)), Color(0.045, 0.055, 0.058, 0.92), true)
-    draw_rect(Rect2(Vector2(tower_x + 4.0, tower_top + 13.0), Vector2(78.0, 23.0)), Color(0.95, 0.62, 0.24, 0.055), true)
-    draw_rect(Rect2(Vector2(tower_x + 8.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.46), true)
-    draw_rect(Rect2(Vector2(tower_x + 55.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.38), true)
-    draw_line(Vector2(tower_x - 18.0, tower_top), Vector2(tower_x + 100.0, tower_top), Color(0.61, 0.47, 0.25, 0.55), 3.0)
-    _draw_warm_lamp_pool(Vector2(tower_x + 43.0, tower_top + 36.0), _floor_y - 8.0, 18.0)
-
-    # Ground-level drain mouths and rubble give the lower third more material
-    # variation without implying new traversal.
-    for index in range(3):
-        var drain_x := 420.0 + float(index) * 420.0
-        var drain_y := _floor_y + 64.0
-        draw_circle(Vector2(drain_x, drain_y), 25.0, Color(0.075, 0.080, 0.078, 0.90))
-        draw_arc(Vector2(drain_x, drain_y), 25.0, PI, TAU, 18, Color(0.48, 0.40, 0.28, 0.36), 3.0)
-        draw_line(Vector2(drain_x - 18.0, drain_y + 5.0), Vector2(drain_x + 18.0, drain_y + 5.0), Color(0.02, 0.03, 0.03, 0.70), 3.0)
-
-    for index in range(18):
-        var rubble_x := 90.0 + float(index) * 83.0
-        var rubble_y := _floor_y - 2.0
-        var rubble_w := 5.0 + _detail_noise(index, 13.1) * 12.0
-        var rubble_h := 3.0 + _detail_noise(index, 13.7) * 8.0
-        draw_rect(
-            Rect2(Vector2(rubble_x, rubble_y - rubble_h), Vector2(rubble_w, rubble_h)),
-            Color(0.20, 0.19, 0.16, 0.44),
-            true,
-        )
+        var sandbag_count := int(visual.get("sandbags", 0))
+        if sandbag_count > 0 and platform.size.x >= 145.0:
+            _draw_sandbags(
+                Vector2(platform.position.x + 18.0, platform.position.y - 3.0),
+                sandbag_count,
+            )
 
 func _draw_warm_lamp_pool(origin: Vector2, bottom_y: float, radius: float = 16.0) -> void:
     var reach := maxf(36.0, bottom_y - origin.y)
@@ -621,30 +581,43 @@ func _draw_foreground_props() -> void:
 
 func _draw_foreground_story_props() -> void:
     for spec in _story_prop_specs:
-        var kind := String(spec.get("kind", ""))
-        var origin := Vector2(
-            float(spec.get("x", 0.0)),
-            float(spec.get("y", _floor_y)),
-        )
-        match kind:
-            "front_wreck":
-                _draw_front_story_prop(origin)
-            "harbor_lamp":
-                _draw_harbor_lamp(origin)
-            "harbor_bollard":
-                _draw_harbor_bollard(origin)
-            "alpine_tripod":
-                _draw_alpine_tripod(origin)
-            "snowbank":
-                _draw_snowbank(origin)
-            "jungle_tree":
-                _draw_jungle_tree(origin)
-            "fallen_trunk":
-                _draw_fallen_trunk(origin)
-            "jungle_hut":
-                _draw_jungle_hut(origin)
-            _:
-                push_warning("Pawn Slug story prop kind not rendered: %s" % kind)
+        if String(spec.get("layer", "foreground")) == "architecture":
+            continue
+        _draw_story_prop(spec)
+
+func _draw_story_prop(spec: Dictionary) -> void:
+    var kind := String(spec.get("kind", ""))
+    var origin := Vector2(
+        float(spec.get("x", 0.0)),
+        float(spec.get("y", _floor_y)),
+    )
+    match kind:
+        "front_wreck":
+            _draw_front_story_prop(origin)
+        "harbor_lamp":
+            _draw_harbor_lamp(origin)
+        "harbor_bollard":
+            _draw_harbor_bollard(origin)
+        "alpine_tripod":
+            _draw_alpine_tripod(origin)
+        "snowbank":
+            _draw_snowbank(origin)
+        "jungle_tree":
+            _draw_jungle_tree(origin)
+        "fallen_trunk":
+            _draw_fallen_trunk(origin)
+        "jungle_hut":
+            _draw_jungle_hut(origin)
+        "industrial_bunker":
+            _draw_industrial_bunker(spec)
+        "industrial_watch_post":
+            _draw_industrial_watch_post(spec)
+        "industrial_drain":
+            _draw_industrial_drain(spec)
+        "industrial_rubble_field":
+            _draw_industrial_rubble_field(spec)
+        _:
+            push_warning("Pawn Slug story prop kind not rendered: %s" % kind)
 
 func _draw_near_depth_dressing() -> void:
     var silhouette := Color(0.035, 0.045, 0.047, 0.46)
@@ -685,6 +658,98 @@ func _draw_near_depth_dressing() -> void:
             Vector2(x + lean, _floor_y - height),
             Color(accent.r, accent.g, accent.b, 0.42),
             2.0,
+        )
+
+func _draw_industrial_bunker(spec: Dictionary) -> void:
+    var x := float(spec.get("x", 150.0))
+    var y := float(spec.get("y", _floor_y - 142.0))
+    var w := float(spec.get("w", 190.0))
+    var h := float(spec.get("h", 142.0))
+    var bunker := Rect2(x, y, w, h)
+    draw_rect(bunker, Color(0.115, 0.125, 0.125, 0.96), true)
+    draw_rect(
+        Rect2(bunker.position + Vector2(8.0, 9.0), Vector2(bunker.size.x - 16.0, 11.0)),
+        Color(0.20, 0.17, 0.12, 0.58),
+        true,
+    )
+    draw_line(
+        Vector2(bunker.position.x, bunker.position.y),
+        Vector2(bunker.end.x, bunker.position.y),
+        Color(0.56, 0.43, 0.24, 0.62),
+        3.0,
+    )
+    draw_rect(Rect2(Vector2(x + 32.0, y + 54.0), Vector2(54.0, h - 54.0)), Color(0.055, 0.062, 0.064, 0.88), true)
+    draw_rect(Rect2(Vector2(x + 40.0, y + 63.0), Vector2(38.0, 52.0)), Color(0.025, 0.031, 0.033, 0.92), true)
+    draw_line(Vector2(x + 48.0, y + 68.0), Vector2(x + 70.0, y + 68.0), Color(0.76, 0.60, 0.32, 0.40), 2.0)
+
+    var lamp := Vector2(
+        float(spec.get("lamp_x", x + 102.0)),
+        float(spec.get("lamp_y", y + 30.0)),
+    )
+    _draw_warm_lamp_pool(lamp, bunker.end.y - 4.0, 17.0)
+    draw_line(lamp + Vector2(0.0, 5.0), lamp + Vector2(0.0, 30.0), Color(0.76, 0.60, 0.32, 0.30), 2.0)
+
+    for mark in range(13):
+        var px := bunker.position.x + 16.0 + _detail_noise(mark, 61.1) * (bunker.size.x - 32.0)
+        var py := bunker.position.y + 28.0 + _detail_noise(mark, 61.7) * (bunker.size.y - 40.0)
+        var radius := 1.2 + _detail_noise(mark, 62.3) * 2.4
+        draw_circle(Vector2(px, py), radius, Color(0.035, 0.040, 0.040, 0.34))
+        if mark % 4 == 0:
+            draw_line(Vector2(px - 8.0, py + 4.0), Vector2(px + 6.0, py - 2.0), Color(0.34, 0.28, 0.20, 0.16), 1.4)
+
+    var sandbag_count := int(spec.get("sandbags", 0))
+    if sandbag_count > 0:
+        _draw_sandbags(Vector2(x + 16.0, y - 3.0), sandbag_count)
+
+func _draw_industrial_watch_post(spec: Dictionary) -> void:
+    var tower_x := float(spec.get("x", 1038.0))
+    var tower_base := float(spec.get("base_y", _floor_y))
+    var tower_top := float(spec.get("top_y", 346.0))
+    var leg_span := float(spec.get("leg_span", 82.0))
+    var hut_w := float(spec.get("hut_w", 106.0))
+    var hut_h := float(spec.get("hut_h", 62.0))
+    var hut_x := tower_x - 12.0
+
+    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x, tower_top + hut_h - 4.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
+    draw_line(Vector2(tower_x + leg_span, tower_base), Vector2(tower_x + leg_span, tower_top + hut_h - 4.0), Color(0.10, 0.12, 0.13, 0.88), 8.0)
+    draw_line(Vector2(tower_x, tower_base), Vector2(tower_x + leg_span, tower_top + hut_h - 4.0), Color(0.14, 0.16, 0.16, 0.70), 4.0)
+    draw_line(Vector2(tower_x + leg_span, tower_base), Vector2(tower_x, tower_top + hut_h - 4.0), Color(0.14, 0.16, 0.16, 0.58), 3.0)
+    draw_rect(Rect2(Vector2(hut_x, tower_top), Vector2(hut_w, hut_h)), Color(0.095, 0.11, 0.115, 0.96), true)
+    draw_rect(Rect2(Vector2(tower_x - 4.0, tower_top + 10.0), Vector2(90.0, 30.0)), Color(0.045, 0.055, 0.058, 0.92), true)
+    draw_rect(Rect2(Vector2(tower_x + 4.0, tower_top + 13.0), Vector2(78.0, 23.0)), Color(0.95, 0.62, 0.24, 0.055), true)
+    draw_rect(Rect2(Vector2(tower_x + 8.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.46), true)
+    draw_rect(Rect2(Vector2(tower_x + 55.0, tower_top + 17.0), Vector2(22.0, 14.0)), Color(0.92, 0.63, 0.28, 0.38), true)
+    draw_line(Vector2(tower_x - 18.0, tower_top), Vector2(tower_x + 100.0, tower_top), Color(0.61, 0.47, 0.25, 0.55), 3.0)
+    _draw_warm_lamp_pool(Vector2(tower_x + 43.0, tower_top + 36.0), tower_base - 8.0, 18.0)
+
+func _draw_industrial_drain(spec: Dictionary) -> void:
+    var center := Vector2(
+        float(spec.get("x", 420.0)),
+        float(spec.get("y", _floor_y + 64.0)),
+    )
+    var radius := float(spec.get("radius", 25.0))
+    draw_circle(center, radius, Color(0.075, 0.080, 0.078, 0.90))
+    draw_arc(center, radius, PI, TAU, 18, Color(0.48, 0.40, 0.28, 0.36), 3.0)
+    draw_line(
+        center + Vector2(-radius * 0.72, 5.0),
+        center + Vector2(radius * 0.72, 5.0),
+        Color(0.02, 0.03, 0.03, 0.70),
+        3.0,
+    )
+
+func _draw_industrial_rubble_field(spec: Dictionary) -> void:
+    var start_x := float(spec.get("x", 90.0))
+    var base_y := float(spec.get("y", _floor_y - 2.0))
+    var count := int(spec.get("count", 18))
+    var spacing := float(spec.get("spacing", 83.0))
+    for index in range(count):
+        var rubble_x := start_x + float(index) * spacing
+        var rubble_w := 5.0 + _detail_noise(index, 13.1) * 12.0
+        var rubble_h := 3.0 + _detail_noise(index, 13.7) * 8.0
+        draw_rect(
+            Rect2(Vector2(rubble_x, base_y - rubble_h), Vector2(rubble_w, rubble_h)),
+            Color(0.20, 0.19, 0.16, 0.44),
+            true,
         )
 
 func _draw_front_story_prop(base: Vector2) -> void:

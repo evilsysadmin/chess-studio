@@ -23,7 +23,12 @@
       "w": 190,
       "h": 24,
       "kind": "low_catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true,
+        "sandbags": 5
+      }
     },
     {
       "x": 520,
@@ -40,7 +45,10 @@
       "w": 160,
       "h": 24,
       "kind": "catwalk",
-      "material": "stone"
+      "material": "stone",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 900,
@@ -48,7 +56,11 @@
       "w": 220,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 1090,
@@ -65,7 +77,10 @@
       "w": 150,
       "h": 24,
       "kind": "catwalk",
-      "material": "wood"
+      "material": "wood",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 1370,
@@ -73,7 +88,11 @@
       "w": 250,
       "h": 24,
       "kind": "low_catwalk",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 1660,
@@ -755,6 +774,56 @@
       "kind": "front_wreck",
       "x": 4680,
       "y": 608
+    },
+    {
+      "kind": "industrial_bunker",
+      "layer": "architecture",
+      "x": 150,
+      "y": 468,
+      "w": 190,
+      "h": 142,
+      "lamp_x": 252,
+      "lamp_y": 498,
+      "sandbags": 7
+    },
+    {
+      "kind": "industrial_watch_post",
+      "layer": "architecture",
+      "x": 1038,
+      "base_y": 610,
+      "top_y": 346,
+      "leg_span": 82,
+      "hut_w": 106,
+      "hut_h": 62
+    },
+    {
+      "kind": "industrial_drain",
+      "layer": "architecture",
+      "x": 420,
+      "y": 674,
+      "radius": 25
+    },
+    {
+      "kind": "industrial_drain",
+      "layer": "architecture",
+      "x": 840,
+      "y": 674,
+      "radius": 25
+    },
+    {
+      "kind": "industrial_drain",
+      "layer": "architecture",
+      "x": 1260,
+      "y": 674,
+      "radius": 25
+    },
+    {
+      "kind": "industrial_rubble_field",
+      "layer": "architecture",
+      "x": 90,
+      "y": 608,
+      "count": 18,
+      "spacing": 83
     }
   ]
 }
