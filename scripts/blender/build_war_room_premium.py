@@ -1256,6 +1256,8 @@ def add_gothic_canon_v2(static, mats):
         land.rotation_euler.y = angle
     cylinder("WR_CANON_globe_stem", (gx, gy, 0.82), 0.105, 0.78, mats["brass_dark"], static, vertices=24)
     cylinder("WR_CANON_globe_foot", (gx, gy, 0.38), 0.32, 0.10, mats["brass_dark"], static, vertices=28)
+    cylinder("WR_CANON_globe_plinth", (gx, gy, 0.29), 0.40, 0.08,
+             mats["brass_dark"], static, vertices=28)
 
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
