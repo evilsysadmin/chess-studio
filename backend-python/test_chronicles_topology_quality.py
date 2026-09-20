@@ -182,14 +182,38 @@ def test_relative_quality_always_propagates_hard_candidate_failure():
     )
 
 
-@pytest.mark.parametrize("seed", range(6))
+@pytest.mark.parametrize("seed", range(32))
 def test_shipped_local_procedural_areas_pass_quality_gate(seed):
     for map_id in chronicles_api.chronicles_shipped_map_ids():
         area = chronicles_api.chronicles_area_envelope(map_id, seed)
-        quality = area["manifest"]["generation"]["topologyQuality"]
+        generation = area["manifest"]["generation"]
+        quality = generation["topologyQuality"]
+
         assert quality["accepted"] is True, (map_id, seed, quality)
         assert quality["reachableCount"] == quality["walkableCount"]
         assert quality["exitCount"] >= 1
+        assert quality["unreachableAnchorCount"] == 0
+        assert quality["minExitDistance"] >= 4
+        assert area["seed"] == seed
+        assert area["mapCode"].endswith(f"|seed={seed}")
+        assert generation["layoutRevision"] == area["layoutRevision"]
+        assert generation["topologyQuality"]["version"] == 1
+        assert len(area["layoutRevision"]) == 64
+
+
+def test_procedural_sweep_replays_identically_for_representative_seeds():
+    for map_id in chronicles_api.chronicles_shipped_map_ids():
+        for seed in (0, 7, 15, 31):
+            first = chronicles_api.chronicles_area_envelope(map_id, seed)
+            repeated = chronicles_api.chronicles_area_envelope(map_id, seed)
+
+            assert repeated["manifestRevision"] == first["manifestRevision"]
+            assert repeated["layoutRevision"] == first["layoutRevision"]
+            assert repeated["manifest"]["grid"] == first["manifest"]["grid"]
+            assert repeated["manifest"]["partyStart"] == first["manifest"]["partyStart"]
+            assert repeated["manifest"]["generation"]["topologyQuality"] == (
+                first["manifest"]["generation"]["topologyQuality"]
+            )
 
 
 def test_planner_quality_rejection_falls_back_to_local_recipe(monkeypatch):
