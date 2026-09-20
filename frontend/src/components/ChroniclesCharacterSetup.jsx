@@ -5,6 +5,7 @@ import {
   CHRONICLES_CREATOR_ATTRIBUTE_CAP,
   CHRONICLES_CREATOR_RULES,
   createCanonicalChroniclesCharacterBuild,
+  createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
   validateChroniclesCharacterBuild,
 } from '../chronicles/chroniclesCharacterBuilds.js';
@@ -43,6 +44,7 @@ export default function ChroniclesCharacterSetup({
     [currentBuild],
   );
   const [editing, setEditing] = useState(false);
+  const [seed, setSeed] = useState(() => normalizedCurrent.seed || 'MATTHIAS');
   const [activeSlot, setActiveSlot] = useState('matthias');
   const [draft, setDraft] = useState(() => customFrom(normalizedCurrent));
 
@@ -56,6 +58,11 @@ export default function ChroniclesCharacterSetup({
     setDraft(customFrom(normalizedCurrent));
     setActiveSlot('matthias');
     setEditing(true);
+  };
+
+  const randomizeBuild = () => {
+    setDraft(createSeededChroniclesCharacterBuild(seed, CHRONICLES_PARTY));
+    setActiveSlot('matthias');
   };
 
   const patchCharacter = (slotId, patch) => {
@@ -150,6 +157,22 @@ export default function ChroniclesCharacterSetup({
             <p>Un PJ cada vez. Tres puntos de atributo, una skill inicial opcional y nada de numeritos decorativos.</p>
           </div>
           <button type="button" className="ghost-btn" onClick={() => setEditing(false)}>← Volver</button>
+        </div>
+
+        <div className="chronicles-character-setup__seed">
+          <label>
+            Seed de build
+            <input
+              aria-label="Seed de build"
+              value={seed}
+              maxLength={48}
+              onChange={(event) => setSeed(event.target.value)}
+            />
+          </label>
+          <button type="button" className="secondary-btn" onClick={randomizeBuild}>
+            Generar con seed
+          </button>
+          <small>Misma seed = mismos atributos y skills iniciales.</small>
         </div>
 
         <nav className="chronicles-character-setup__slots" aria-label="Personajes de la compañía">
@@ -253,7 +276,17 @@ export default function ChroniclesCharacterSetup({
         ) : null}
 
         <footer className="chronicles-character-setup__footer">
-          <span>{draft.characters.map((character) => character.name).join(' · ')}</span>
+          <span>
+            {draft.characters.map((character) => {
+              const attrs = Object.entries(character.attributes || {})
+                .filter(([, value]) => Number(value) > 0)
+                .map(([key, value]) => `${ATTRIBUTE_LABELS[key]?.slice(0, 3).toUpperCase() || key} ${value}`)
+                .join(' ');
+              const skill = CHRONICLES_CREATOR_RULES[character.slotId].startingSkills
+                .find((candidate) => candidate.id === character.startingSkillId);
+              return `${character.name}: ${attrs || 'base'}${skill ? ` · ${skill.label}` : ''}`;
+            }).join(' · ')}
+          </span>
           <button
             type="button"
             className="primary-btn"

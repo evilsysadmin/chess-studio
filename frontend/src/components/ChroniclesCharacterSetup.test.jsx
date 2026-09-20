@@ -5,6 +5,29 @@ import { CHRONICLES_PARTY } from '../chroniclesOfMatthias.js';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 
 describe('ChroniclesCharacterSetup', () => {
+  it('can randomize a reproducible build before confirming it', () => {
+    const onConfirm = vi.fn();
+    render(
+      <ChroniclesCharacterSetup
+        currentBuild={createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY)}
+        onConfirm={onConfirm}
+        onExit={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crear PJs' }));
+    fireEvent.change(screen.getByLabelText('Seed de build'), { target: { value: 'vault-7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generar con seed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar compañía' }));
+
+    const build = onConfirm.mock.calls[0][0];
+    expect(build.seed).toBe('vault-7');
+    expect(build.characters.every((character) => (
+      Object.values(character.attributes).reduce((sum, value) => sum + value, 0) === 3
+      && character.startingSkillId
+    ))).toBe(true);
+  });
+
   it('keeps the canonical party as a one-click path', () => {
     const onConfirm = vi.fn();
     render(

@@ -196,6 +196,54 @@ export function createCanonicalChroniclesCharacterBuild(partyTemplates) {
   };
 }
 
+function seedToUint32(seed) {
+  const text = String(seed ?? '');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seed) {
+  let state = seedToUint32(seed) || 0x9e3779b9;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function createSeededChroniclesCharacterBuild(seed, partyTemplates) {
+  const random = seededRandom(seed);
+  const canonical = createCanonicalChroniclesCharacterBuild(partyTemplates);
+  return {
+    ...canonical,
+    mode: 'custom',
+    seed: String(seed ?? '').trim().slice(0, 48),
+    characters: canonical.characters.map((character) => {
+      const rules = CHRONICLES_CREATOR_RULES[character.slotId];
+      const attributes = emptyAttributes();
+      let remaining = CHRONICLES_CREATOR_ATTRIBUTE_BUDGET;
+      while (remaining > 0) {
+        const candidates = rules.allowedAttributes.filter((key) => attributes[key] < CHRONICLES_CREATOR_ATTRIBUTE_CAP);
+        if (!candidates.length) break;
+        const key = candidates[Math.floor(random() * candidates.length)];
+        attributes[key] += 1;
+        remaining -= 1;
+      }
+      const skills = rules.startingSkills;
+      const startingSkillId = skills.length
+        ? skills[Math.floor(random() * skills.length)]?.id || null
+        : null;
+      return { ...character, attributes, startingSkillId };
+    }),
+  };
+}
+
 function normalizeCharacter(slotId, raw, partyTemplates) {
   const canonical = canonicalCharacter(slotId, partyTemplates);
   const source = raw && typeof raw === 'object' ? raw : {};
@@ -228,6 +276,7 @@ export function normalizeChroniclesCharacterBuild(raw, partyTemplates) {
   return {
     version: CHRONICLES_CHARACTER_BUILD_VERSION,
     mode: 'custom',
+    seed: String(source.seed ?? '').trim().slice(0, 48),
     characters: CHRONICLES_CHARACTER_SLOTS.map((slotId) => (
       normalizeCharacter(slotId, bySlot.get(slotId), partyTemplates)
     )),

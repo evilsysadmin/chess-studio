@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHRONICLES_CHARACTER_BUILD_VERSION,
   createCanonicalChroniclesCharacterBuild,
+  createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
   resolveChroniclesCharacterParty,
   validateChroniclesCharacterBuild,
@@ -30,6 +31,19 @@ function customBuild(overrides = {}) {
 }
 
 describe('Chronicles character builds', () => {
+  it('generates reproducible creator choices from the same seed', () => {
+    const first = createSeededChroniclesCharacterBuild('ash-vault-42', PARTY);
+    const second = createSeededChroniclesCharacterBuild('ash-vault-42', PARTY);
+
+    expect(first).toEqual(second);
+    expect(first.mode).toBe('custom');
+    expect(first.seed).toBe('ash-vault-42');
+    expect(first.characters.every((character) => (
+      Object.values(character.attributes).reduce((sum, value) => sum + value, 0) === 3
+      && character.startingSkillId
+    ))).toBe(true);
+  });
+
   it('keeps the shipped party as the exact zero-cost canonical default', () => {
     const build = createCanonicalChroniclesCharacterBuild(PARTY);
 
