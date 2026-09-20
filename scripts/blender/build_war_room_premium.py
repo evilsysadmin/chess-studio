@@ -552,49 +552,34 @@ def add_room(static, mats):
         cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
              mats["iron"], static, bevel=0.012)
 
-    # One shallow irregular flame contour reads as a single hearth fire from
-    # the gameplay camera. The previous family of separate ellipsoids improved
-    # the old candle-row look but still formed a crown/finger rhythm at distance.
-    flame_points = [
-        (-0.62, 1.30), (-0.50, 1.42), (-0.43, 1.70), (-0.29, 1.53),
-        (-0.20, 1.92), (-0.07, 1.68), (0.03, 2.10), (0.14, 1.72),
-        (0.31, 1.94), (0.28, 1.58), (0.48, 1.74), (0.43, 1.43),
-        (0.63, 1.32), (0.52, 1.23), (-0.52, 1.23),
-    ]
-    area = sum(
-        flame_points[i][0] * flame_points[(i + 1) % len(flame_points)][1]
-        - flame_points[(i + 1) % len(flame_points)][0] * flame_points[i][1]
-        for i in range(len(flame_points))
-    )
-    ring = list(flame_points if area > 0 else reversed(flame_points))
-    flame_vertices = []
-    flame_faces = []
-    for x, z in ring:
-        flame_vertices.append((-4.55 + x, 5.43, z))
-    for x, z in ring:
-        flame_vertices.append((-4.55 + x, 5.58, z))
-    count = len(ring)
-    flame_faces.append(tuple(range(count)))
-    flame_faces.append(tuple(count + i for i in reversed(range(count))))
-    for i in range(count):
-        j = (i + 1) % count
-        flame_faces.append((i, j, count + j, count + i))
-    flame_mesh = bpy.data.meshes.new("WR_FIREPLACE_flame_contour_mesh")
-    flame_mesh.from_pydata(flame_vertices, [], flame_faces)
-    flame_mesh.update()
-    flame = bpy.data.objects.new("WR_FIREPLACE_flame_contour", flame_mesh)
-    flame.data.materials.append(mats["fire"])
-    tag(flame)
-    static.objects.link(flame)
-
-    # Two small inner tongues preserve depth and a hotter centre without
-    # rebuilding the outer contour as a collection of separate blobs.
+    # Organic hearth silhouette: one broad low body plus three overlapping,
+    # uneven tongues. The overlap keeps the fire reading as one mass while the
+    # different heights/leans avoid both the old egg row and the later polygon crown.
+    sphere("WR_FIREPLACE_flame_body", (-4.55, 5.53, 1.40), 0.25,
+           mats["fire"], static, scale=(2.05, 0.52, 0.58))
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.10, 0.16, 0.33, 1.02, -0.13),
-        (0.16, 0.24, 0.28, 1.14, 0.15),
+        (-0.25, 0.18, 0.62, 1.25, -0.22),
+        (0.02, 0.32, 0.56, 1.58, 0.08),
+        (0.30, 0.12, 0.48, 0.96, 0.24),
     )):
-        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.40, 1.39 + dz),
-                      0.13, mats["fire_core"], static, scale=(sx, 0.26, sz))
+        tongue = sphere(
+            f"WR_FIREPLACE_flame_tongue_{idx}",
+            (-4.55 + dx, 5.51, 1.42 + dz),
+            0.20,
+            mats["fire"],
+            static,
+            scale=(sx, 0.34, sz),
+        )
+        tongue.rotation_euler.y = tilt
+
+    # Two small hotter cores stay low and off-centre so they reinforce depth
+    # instead of creating another symmetric row of mini flames.
+    for idx, (dx, dz, sx, sz, tilt) in enumerate((
+        (-0.12, 0.12, 0.40, 0.90, -0.10),
+        (0.12, 0.18, 0.34, 1.02, 0.14),
+    )):
+        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.46, 1.40 + dz),
+                      0.14, mats["fire_core"], static, scale=(sx, 0.28, sz))
         core.rotation_euler.y = tilt
 
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
