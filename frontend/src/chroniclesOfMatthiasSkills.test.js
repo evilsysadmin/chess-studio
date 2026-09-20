@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   applyChroniclesProgressionToTacticsState,
+  chroniclesHasUnspentProgression,
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
   chroniclesXpThresholdForLevel,
@@ -9,6 +10,7 @@ import {
   grantChroniclesXp,
   loadChroniclesProgression,
   saveChroniclesProgression,
+  spendChroniclesAttributePoint,
   unlockChroniclesSkill,
 } from './chroniclesOfMatthiasProgression.js';
 import {
@@ -67,6 +69,19 @@ describe('Chronicles Tactics · class doctrine skills', () => {
       expect(levelFour.every((skill) => skill.cost === 1)).toBe(true);
       expect(new Set(levelFour.map((skill) => skill.group)).size).toBe(1);
     }
+  });
+
+  it('flags a hero only while real level-up points remain unspent', () => {
+    const levelTwo = leveled('matthias', 2);
+    expect(chroniclesHasUnspentProgression(levelTwo, 'matthias')).toBe(true);
+
+    const learned = unlockChroniclesSkill(levelTwo, 'matthias', 'matthias-steel-tempo');
+    expect(learned.unlocked).toBe(true);
+    expect(chroniclesHasUnspentProgression(learned.progression, 'matthias')).toBe(true);
+
+    const spent = spendChroniclesAttributePoint(learned.progression, 'matthias', 'vigor');
+    expect(spent.spent).toBe(true);
+    expect(chroniclesHasUnspentProgression(spent.progression, 'matthias')).toBe(false);
   });
 
   it('refuses skills before their required level', () => {
