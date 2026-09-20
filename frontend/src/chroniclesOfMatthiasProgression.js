@@ -92,6 +92,32 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
       group: 'doctrine-1',
       modifiers: Object.freeze({ attackDamageBonus: 1 }),
     }),
+    Object.freeze({
+      id: 'bishop-dawn-orb',
+      label: 'Orbe de alba',
+      description: 'Transforma Luz del farol en un hechizo de restauración más potente: +2 curación.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'grimoire-1',
+      modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
+      profileOverrides: Object.freeze({
+        abilityName: 'Orbe de alba',
+        abilityLabel: 'hechizo de restauración',
+      }),
+    }),
+    Object.freeze({
+      id: 'bishop-twin-lumen',
+      label: 'Lumen geminado',
+      description: 'Transforma Luz del farol en un hechizo de doble reserva: +1 lanzamiento por incursión.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'grimoire-1',
+      modifiers: Object.freeze({ abilityCharges: 1 }),
+      profileOverrides: Object.freeze({
+        abilityName: 'Lumen geminado',
+        abilityLabel: 'hechizo de reserva',
+      }),
+    }),
   ]),
   knight: Object.freeze([
     Object.freeze({
@@ -293,12 +319,20 @@ function skillModifiersFor(hero, memberId) {
   }, {});
 }
 
+function skillProfileOverridesFor(hero, memberId) {
+  return chroniclesSkillsForMember(memberId).reduce((result, skill) => {
+    if (!hero.skills.includes(skill.id) || !skill.profileOverrides) return result;
+    return { ...result, ...skill.profileOverrides };
+  }, {});
+}
+
 export function chroniclesTacticsModifiers(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
   const { vigor, power, precision, will } = hero.attributes;
   const physical = memberId === 'matthias' || memberId === 'rook';
   const rangedOrMagic = memberId === 'bishop' || memberId === 'knight';
   const skillModifiers = skillModifiersFor(hero, memberId);
+  const profileOverrides = skillProfileOverridesFor(hero, memberId);
   const attackDamageBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3)) + Number(skillModifiers.attackDamageBonus || 0);
   const reachBonus = (rangedOrMagic ? Math.floor(precision / 2) : 0) + Number(skillModifiers.reachBonus || 0);
   const abilityPotencyBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
@@ -310,6 +344,7 @@ export function chroniclesTacticsModifiers(progression, memberId) {
     reachBonus,
     abilityPotencyBonus,
     abilityCharges: 1 + (will >= 3 ? 1 : 0) + Number(skillModifiers.abilityCharges || 0),
+    profileOverrides,
   };
 }
 
