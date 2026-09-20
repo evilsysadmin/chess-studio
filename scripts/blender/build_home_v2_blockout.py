@@ -1584,7 +1584,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64),
-        "rug": material("HOME_MAT_rug", (0.095, 0.010, 0.008, 1), roughness=0.94, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0),
+        "rug": material("HOME_MAT_rug", (0.125, 0.018, 0.014, 1), roughness=0.92, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0),
         "banner": material("HOME_MAT_banner", (0.14, 0.008, 0.010, 1), roughness=0.86, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
