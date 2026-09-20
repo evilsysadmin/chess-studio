@@ -1555,12 +1555,22 @@ def add_armor(materials):
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.66, y, 1.98), (x - 0.60, y - 0.02, 1.65)], 0.070, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.66, y, 1.98), (x + 0.60, y - 0.02, 1.65)], 0.070, steel)
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.31), (0.220, 0.120, 0.080), steel)
+    curve_tube(
+        "HOME_PROP_armor_left_arm",
+        [(x - 0.50, y, 2.29), (x - 0.67, y - 0.01, 2.00), (x - 0.61, y - 0.035, 1.65)],
+        0.070,
+        steel,
+    )
+    curve_tube(
+        "HOME_PROP_armor_right_arm",
+        [(x + 0.50, y - 0.01, 2.24), (x + 0.64, y - 0.03, 1.94), (x + 0.58, y - 0.055, 1.61)],
+        0.070,
+        steel,
+    )
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.035, 1.61), (0.090, 0.078, 0.092), steel)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.58, y - 0.055, 1.57), (0.090, 0.078, 0.092), steel)
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
