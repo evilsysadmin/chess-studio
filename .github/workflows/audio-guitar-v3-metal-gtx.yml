@@ -56,8 +56,11 @@ jobs:
             exit 2
           fi
           find /tmp/metal-gtx -type f -iname '*.sfz' -print | head -40 || true
-          SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' | grep -Ei 'metal.*gtx|gtx.*metal' | head -n1 || true)"
-          if [ -z "$SFZ" ]; then SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' -print -quit)"; fi
+          PROGRAM_DIR="$(find /tmp/metal-gtx -type d -path '*/UI_METAL-GTX/Programs' -print -quit)"
+          test -d "$PROGRAM_DIR"
+          echo "Root Metal GTX programs:"
+          find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*.sfz' -print || true
+          SFZ="$(find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*.sfz' -print -quit)"
           test -f "$SFZ"
           printf '%s\n' "$SFZ" > v3/sfz-path.txt
           cp "$SFZ" v3/selected-metal-gtx.sfz
@@ -167,8 +170,8 @@ jobs:
           set -euxo pipefail
           RENDER="$(cat v3/sfizz-render-path.txt)"
           SFZ="$(cat v3/sfz-path.txt)"
-          "$RENDER" --sfz "$SFZ" --midi v3/metal-left.mid --wav v3/metal-left-di.wav --samplerate 44100 --oversampling 2
-          "$RENDER" --sfz "$SFZ" --midi v3/metal-right.mid --wav v3/metal-right-di.wav --samplerate 44100 --oversampling 2
+          "$RENDER" --sfz "$SFZ" --midi v3/metal-left.mid --wav v3/metal-left-di.wav --samplerate 44100
+          "$RENDER" --sfz "$SFZ" --midi v3/metal-right.mid --wav v3/metal-right-di.wav --samplerate 44100
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/left.wav
           ffmpeg -hide_banner -loglevel error -y -i v3/metal-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/right.wav
 
