@@ -31,7 +31,7 @@
       "w": 150,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "metal"
     },
     {
       "x": 830,
@@ -47,7 +47,7 @@
       "w": 150,
       "h": 24,
       "kind": "ledge",
-      "material": "concrete"
+      "material": "metal"
     },
     {
       "x": 1270,
@@ -80,7 +80,7 @@
       "w": 160,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "concrete"
     },
     {
       "x": 2260,
@@ -112,7 +112,7 @@
       "w": 180,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "metal"
     },
     {
       "x": 3260,
@@ -164,7 +164,7 @@
       "w": 170,
       "h": 24,
       "kind": "ledge",
-      "material": "stone"
+      "material": "concrete"
     },
     {
       "x": 4860,
@@ -226,6 +226,56 @@
       "material": "metal",
       "route": "fortress_ridge",
       "one_way": true
+    },
+    {
+      "x": 500,
+      "y": 326,
+      "w": 136,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
+      "x": 1160,
+      "y": 304,
+      "w": 132,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 3380,
+      "y": 310,
+      "w": 142,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "concrete",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
+      "x": 4970,
+      "y": 300,
+      "w": 146,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
     }
   ],
   "obstacles": [
@@ -768,5 +818,6 @@
       "x": 5050,
       "y": 606
     }
-  ]
+  ],
+  "visual_revision": 2
 }
