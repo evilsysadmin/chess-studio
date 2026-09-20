@@ -1344,6 +1344,9 @@ def add_side_furnishings(materials):
 
     # Plant and ceramic pot mark the stair edge in the master.
     cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_rim", (5.10, 1.70, 0.775), 0.38, 0.085, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_soil", (5.10, 1.70, 0.818), 0.295, 0.018, materials["dark"], vertices=28)
+    cylinder("HOME_PROP_plant_pot_foot", (5.10, 1.70, 0.275), 0.29, 0.055, materials["ceramic"], vertices=28)
     for idx, (dx, dy) in enumerate(((-0.25, 0.05), (0.22, 0.02), (-0.12, 0.18), (0.10, -0.10), (0.30, 0.15))):
         curve_tube(
             f"HOME_PROP_plant_leaf_{idx}",
