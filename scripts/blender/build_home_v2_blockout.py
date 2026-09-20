@@ -1631,7 +1631,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_scale=12.0,
             bump_strength=0.045,
         ),
-        "plant": material("HOME_MAT_plant", (0.09, 0.20, 0.07, 1), roughness=0.84),
+        "plant": material("HOME_MAT_plant", (0.035, 0.085, 0.026, 1), roughness=0.90),
         "ceramic": material("HOME_MAT_ceramic", (0.50, 0.44, 0.34, 1), roughness=0.46),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
