@@ -110,7 +110,10 @@
       "h": 24,
       "kind": "climb_catwalk",
       "material": "metal",
-      "route": "climb"
+      "route": "climb",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 1840,
@@ -119,7 +122,11 @@
       "h": 24,
       "kind": "climb_catwalk",
       "material": "metal",
-      "route": "climb"
+      "route": "climb",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 1840,
@@ -127,7 +134,11 @@
       "w": 220,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 1970,
@@ -144,7 +155,10 @@
       "w": 180,
       "h": 24,
       "kind": "catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 2380,
@@ -160,7 +174,11 @@
       "w": 250,
       "h": 24,
       "kind": "catwalk",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "lamp": true,
+        "sandbags": 5
+      }
     },
     {
       "x": 2870,
@@ -176,7 +194,11 @@
       "w": 220,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 3330,
@@ -184,7 +206,10 @@
       "w": 150,
       "h": 24,
       "kind": "catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 3510,
@@ -192,7 +217,10 @@
       "w": 230,
       "h": 24,
       "kind": "low_catwalk",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "sandbags": 5
+      }
     },
     {
       "x": 3710,
@@ -201,7 +229,10 @@
       "h": 20,
       "kind": "service_ledge",
       "material": "metal",
-      "one_way": true
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 3820,
@@ -209,7 +240,11 @@
       "w": 220,
       "h": 24,
       "kind": "catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 4110,
@@ -217,7 +252,10 @@
       "w": 150,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "stone"
+      "material": "stone",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 4310,
@@ -225,7 +263,11 @@
       "w": 200,
       "h": 24,
       "kind": "catwalk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 4420,
@@ -234,7 +276,10 @@
       "h": 20,
       "kind": "service_ledge",
       "material": "stone",
-      "one_way": true
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 4600,
@@ -250,7 +295,11 @@
       "w": 300,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "wood"
+      "material": "wood",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     }
   ],
   "obstacles": [
@@ -642,7 +691,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 2,
+  "visual_revision": 3,
   "dressing": [
     {
       "kind": "crate",
