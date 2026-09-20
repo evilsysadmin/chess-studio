@@ -1,7 +1,6 @@
 import { abortableDelay } from '../asyncControl.js';
 import { chroniclesValidateAreaEnvelope } from './chroniclesGameDirector.js';
 import {
-  DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
@@ -12,15 +11,60 @@ import { chroniclesCreateRun } from './chroniclesRunClient.js';
 
 export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 5000;
 
-function localBootstrap(mapId, seed, fallbackReason) {
-  return Object.freeze({
-    source: 'local',
-    map: chroniclesMapById(mapId),
-    seed,
-    runId: null,
-    worldVersion: null,
-    fallbackReason,
+export const CHRONICLES_BOOTSTRAP_ERROR_CODES = Object.freeze({
+  timeout: 'CHR-BOOT-001',
+  unavailable: 'CHR-BOOT-002',
+  invalidWorld: 'CHR-BOOT-003',
+  auth: 'CHR-BOOT-004',
+  aborted: 'CHR-BOOT-005',
+  unknown: 'CHR-BOOT-006',
+});
+
+export class ChroniclesBootstrapError extends Error {
+  constructor(code, reason, { cause = null, requestId = null, status = null } = {}) {
+    super('No se pudo preparar una expedición autoritativa de Chronicles.');
+    this.name = 'ChroniclesBootstrapError';
+    this.code = code;
+    this.reason = String(reason || 'unknown');
+    this.requestId = requestId || null;
+    this.status = Number.isInteger(status) ? status : null;
+    this.cause = cause || undefined;
+  }
+}
+
+function bootstrapTransportError(error, { timedOut = false, aborted = false } = {}) {
+  if (error instanceof ChroniclesBootstrapError) return error;
+  const reason = String(error?.technicalMessage || error?.message || 'remote-unavailable');
+  if (aborted) {
+    return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted, 'aborted', { cause: error });
+  }
+  if (timedOut || error?.timedOut || error?.name === 'TimeoutError') {
+    return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.timeout, 'bootstrap-deadline', { cause: error });
+  }
+  if (error?.status === 401 || error?.status === 403) {
+    return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.auth, 'authorization-failed', {
+      cause: error,
+      requestId: error?.requestId,
+      status: error?.status,
+    });
+  }
+  return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable, reason, {
+    cause: error,
+    requestId: error?.requestId,
+    status: error?.status,
   });
+}
+
+function validateAuthoritativeRun(payload, mapId) {
+  try {
+    return validateRunBootstrap(payload, mapId);
+  } catch (error) {
+    throw new ChroniclesBootstrapError(
+      CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      error instanceof Error ? error.message : 'invalid-world',
+      { cause: error },
+    );
+  }
 }
 
 function validateRunBootstrap(payload, requestedMapId) {
@@ -70,22 +114,23 @@ function validateRunBootstrap(payload, requestedMapId) {
 
 export async function chroniclesBootstrapTacticsWorld({
   mapId = null,
-  seed = 0,
   budgetMs = CHRONICLES_BOOTSTRAP_BUDGET_MS,
   signal,
   operationId = null,
   createRun = chroniclesCreateRun,
 } = {}) {
-  // Chronicles generation happens before gameplay mounts, so this bootstrap is
-  // allowed a realistic WAN budget. The authored bundle remains a safety net for
-  // genuine backend/network failure; frame-critical gameplay never waits on it.
   chroniclesClearRuntimeMapDefinitions();
-  const fallbackMapId = mapId || DEFAULT_CHRONICLES_MAP_ID;
-  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
+  if (signal?.aborted) {
+    throw new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted, 'aborted');
+  }
 
   const requestController = new AbortController();
   const deadlineController = new AbortController();
+  let deadlineExpired = false;
+  let externallyAborted = false;
+
   const abortPending = () => {
+    externallyAborted = true;
     requestController.abort();
     deadlineController.abort();
   };
@@ -93,33 +138,49 @@ export async function chroniclesBootstrapTacticsWorld({
 
   const deadline = abortableDelay(Math.max(0, Number(budgetMs) || 0), deadlineController.signal)
     .then(() => {
+      deadlineExpired = true;
       requestController.abort();
-      return localBootstrap(fallbackMapId, seed, 'bootstrap-deadline');
+      return {
+        ok: false,
+        error: new ChroniclesBootstrapError(
+          CHRONICLES_BOOTSTRAP_ERROR_CODES.timeout,
+          'bootstrap-deadline',
+        ),
+      };
     })
-    .catch(() => localBootstrap(fallbackMapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
+    .catch(() => ({
+      ok: false,
+      error: bootstrapTransportError(null, { aborted: externallyAborted }),
+    }));
 
   const request = Promise.resolve()
     .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
-    .then((payload) => validateRunBootstrap(payload, mapId))
-    .catch((error) => localBootstrap(
-      fallbackMapId,
-      seed,
-      error instanceof Error ? error.message : 'remote-unavailable',
-    ));
+    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))
+    .catch((error) => ({
+      ok: false,
+      error: bootstrapTransportError(error, {
+        timedOut: deadlineExpired,
+        aborted: externallyAborted,
+      }),
+    }));
 
-  let resolved;
+  let outcome;
   try {
-    resolved = await Promise.race([request, deadline]);
+    outcome = await Promise.race([request, deadline]);
   } finally {
     deadlineController.abort();
     signal?.removeEventListener('abort', abortPending);
   }
 
-  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
-  if (resolved?.source !== 'remote') {
-    return localBootstrap(fallbackMapId, seed, resolved?.fallbackReason || 'remote-unavailable');
+  if (!outcome?.ok) {
+    chroniclesClearRuntimeMapDefinitions();
+    throw outcome?.error || new ChroniclesBootstrapError(
+      CHRONICLES_BOOTSTRAP_ERROR_CODES.unknown,
+      'unknown',
+    );
   }
 
+  const resolved = outcome.value;
   resolved.areas.forEach((entry) => {
     chroniclesInstallRuntimeMapDefinition(entry.map);
   });

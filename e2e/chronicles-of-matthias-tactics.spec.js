@@ -9,8 +9,12 @@ async function dismissGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function openTactics(page, { progression = null } = {}) {
-  await mockApi(page);
+async function openTactics(page, {
+  progression = null,
+  apiOptions = {},
+  expectReady = true,
+} = {}) {
+  await mockApi(page, apiOptions);
   await login(page);
   await dismissGuide(page);
   if (progression) {
@@ -25,7 +29,9 @@ async function openTactics(page, { progression = null } = {}) {
   const tacticalTable = page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' });
   await expect(tacticalTable).toBeVisible();
   await tacticalTable.click();
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+  if (expectReady) {
+    await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+  }
 }
 
 test('Chronicles Tactics · arranca como RPG táctico isométrico con combate por turnos, clases y habilidades', async ({ page }) => {
@@ -141,6 +147,21 @@ test('Chronicles Tactics · reiniciar incursión solicita una expedición autori
   expect(secondRun.id).not.toBe(firstRun.id);
   expect(runRequests.at(-1)).toBe(secondRun.id);
   expect(runRequests[initialRequestCount - 1]).toBe(firstRun.id);
+});
+
+test('Chronicles Tactics · bootstrap remoto fallido bloquea gameplay con error controlado', async ({ page }) => {
+  await openTactics(page, {
+    apiOptions: { chroniclesRunFailureStatus: 503 },
+    expectReady: false,
+  });
+
+  const error = page.getByRole('alert');
+  await expect(error.getByRole('heading', { name: 'No se pudo preparar Chronicles', exact: true })).toBeVisible();
+  await expect(error.getByText('Código CHR-BOOT-002', { exact: true })).toBeVisible();
+  await expect(error.getByRole('button', { name: 'Reintentar', exact: true })).toBeVisible();
+  await expect(error.getByRole('button', { name: 'Salir de Chronicles', exact: true })).toBeVisible();
+  await expect(page.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(0);
+  await expect(page.locator('[data-chronicles-tactics="true"]')).toHaveCount(0);
 });
 
 test('Chronicles Tactics · elegir doctrina desde la ficha consume skill point y cierra la alternativa', async ({ page }) => {

@@ -2,7 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
-import { chroniclesBootstrapTacticsWorld } from '../chronicles/chroniclesGameBootstrap.js';
+import {
+  CHRONICLES_BOOTSTRAP_ERROR_CODES,
+  chroniclesBootstrapTacticsWorld,
+} from '../chronicles/chroniclesGameBootstrap.js';
 import { ensureChroniclesTacticsRun } from '../chroniclesOfMatthiasProgression.js';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasTacticsPremium.css';
@@ -17,23 +20,67 @@ function BootstrapStatus() {
   );
 }
 
+function BootstrapFailure({ error, onRetry, onExit }) {
+  const aborted = error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted;
+  const requestId = error?.requestId || null;
+  return (
+    <div className="chronicles-tactics">
+      <section className="chronicles-tactics__bootstrap-error" role="alert" aria-live="assertive">
+        <span className="section-label">EXPEDICIÓN NO INICIADA</span>
+        <h2>No se pudo preparar Chronicles</h2>
+        <p>
+          El mundo autoritativo no superó el arranque. No se ha cargado ningún mapa local de sustitución.
+        </p>
+        <strong className="chronicles-tactics__bootstrap-code">
+          Código {error?.code || CHRONICLES_BOOTSTRAP_ERROR_CODES.unknown}
+        </strong>
+        {requestId && <small>Request ID · {requestId}</small>}
+        {!aborted && (
+          <div className="chronicles-tactics__bootstrap-actions">
+            <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>
+            <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
+          </div>
+        )}
+        <details>
+          <summary>Detalle técnico</summary>
+          <code>{error?.reason || 'unknown'}</code>
+        </details>
+      </section>
+    </div>
+  );
+}
+
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [ready, setReady] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
 
-  const restartExpedition = useCallback(() => {
+  const retryBootstrap = useCallback(() => {
     setReady(false);
+    setBootstrapError(null);
     setBootstrapRevision((revision) => revision + 1);
   }, []);
+
+  const restartExpedition = useCallback(() => {
+    retryBootstrap();
+  }, [retryBootstrap]);
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
 
+    setBootstrapError(null);
     const operationId = ensureChroniclesTacticsRun();
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
-      .finally(() => {
-        if (active) setReady(true);
+      .then(() => {
+        if (!active) return;
+        setBootstrapError(null);
+        setReady(true);
+      })
+      .catch((error) => {
+        if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
+        setReady(false);
+        setBootstrapError(error);
       });
 
     return () => {
@@ -43,6 +90,9 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     };
   }, [bootstrapRevision]);
 
+  if (bootstrapError) {
+    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={onExit} />;
+  }
   if (!ready) return <BootstrapStatus />;
 
   return (

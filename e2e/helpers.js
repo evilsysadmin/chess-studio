@@ -1,5 +1,67 @@
 import { expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
+
+const CHRONICLES_E2E_MAP_IDS = Object.freeze([
+  'ash-vault',
+  'black-glass-chapel',
+  'blind-king-archive',
+  'chain-basilica',
+  'crypt-eight-squares',
+  'echo-cistern',
+  'gallery-of-forks',
+  'hollow-bell-tower',
+  'iron-foundry',
+  'menagerie-of-ash',
+]);
+let chroniclesManifestPromise = null;
+
+function chroniclesE2EManifests() {
+  if (!chroniclesManifestPromise) {
+    chroniclesManifestPromise = Promise.all(CHRONICLES_E2E_MAP_IDS.map(async (mapId) => {
+      const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
+      const path = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps', `${mapId}.json`);
+      return [mapId, JSON.parse(await readFile(path, 'utf8'))];
+    })).then((entries) => Object.fromEntries(entries));
+  }
+  return chroniclesManifestPromise;
+}
+
+async function chroniclesE2ERunPayload({
+  operationKey = 'anonymous',
+  seed = 417,
+  currentMapId = 'crypt-eight-squares',
+} = {}) {
+  const manifests = await chroniclesE2EManifests();
+  const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
+    const manifest = manifests[mapId];
+    const marker = ((seed + index + 1) % 16).toString(16);
+    return {
+      schemaVersion: 1,
+      mapId,
+      contentVersion: manifest.version,
+      seed,
+      instanceId: marker.repeat(24),
+      manifestRevision: marker.repeat(64),
+      manifest,
+    };
+  });
+  const area = areas.find((entry) => entry.mapId === currentMapId);
+  return {
+    runId: `e2e-chronicles-${operationKey}`,
+    seed,
+    currentMapId,
+    contentVersion: area.contentVersion,
+    manifestRevision: area.manifestRevision,
+    status: 'active',
+    worldVersion: 0,
+    consumedContentIds: [],
+    claimedRewards: [],
+    area,
+    areas,
+  };
+}
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const CHECK_START_FEN = '7k/8/8/8/8/8/4Q3/7K w - - 0 1';
@@ -88,6 +150,7 @@ export async function mockApi(page, {
   analysisMoves = [],
   adminUsers = [],
   requestLog = [],
+  chroniclesRunFailureStatus = 0,
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -114,6 +177,8 @@ export async function mockApi(page, {
   let remainingGameCreateCommitThenFailures = Math.max(0, Number(gameCreateCommitThenFailures || 0));
   let remainingMoveCommitThenFailures = Math.max(0, Number(moveCommitThenFailures || 0));
   let analysisIndex = 0;
+  let nextChroniclesSeed = 417;
+  const chroniclesRuns = new Map();
   const games = new Map();
   const idempotentCreates = new Map();
   const idempotentMoves = new Map();
@@ -137,6 +202,20 @@ export async function mockApi(page, {
     const headers = route.request().headers();
     requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null, presenceSession: headers['x-presence-session'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
+    if (path.endsWith('/chronicles/runs') && method === 'POST') {
+      if (Number(chroniclesRunFailureStatus) > 0) {
+        return json({ detail: 'Chronicles bootstrap E2E failure' }, Number(chroniclesRunFailureStatus));
+      }
+      const operationKey = headers['idempotency-key'] || 'anonymous';
+      if (chroniclesRuns.has(operationKey)) return json(chroniclesRuns.get(operationKey), 201);
+      const payload = await chroniclesE2ERunPayload({
+        operationKey,
+        seed: nextChroniclesSeed++,
+      });
+      chroniclesRuns.set(operationKey, payload);
+      return json(payload, 201);
+    }
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
     if (path.endsWith('/auth/me')) return json({ username: 'e2e', isAdmin, email: 'e2e@example.test' });

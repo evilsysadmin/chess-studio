@@ -12,6 +12,63 @@
   --ctp-shadow: rgba(0, 0, 0, .78);
 }
 
+.chronicles-tactics__bootstrap-error {
+  width: min(620px, calc(100% - 32px));
+  margin: clamp(70px, 16vh, 170px) auto;
+  padding: 28px;
+  border: 1px solid rgba(180, 83, 59, .72);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(173, 83, 48, .12), transparent 42%),
+    linear-gradient(180deg, rgba(45, 28, 20, .98), rgba(17, 13, 10, .99));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(255, 220, 179, .04);
+  text-align: left;
+}
+
+.chronicles-tactics__bootstrap-error h2 {
+  margin: 6px 0 10px;
+  color: #f3dfc4;
+}
+
+.chronicles-tactics__bootstrap-error p {
+  margin: 0 0 16px;
+  color: #baa88f;
+  line-height: 1.55;
+}
+
+.chronicles-tactics__bootstrap-code {
+  display: block;
+  color: #e5b076;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .05em;
+}
+
+.chronicles-tactics__bootstrap-error > small {
+  display: block;
+  margin-top: 5px;
+  color: #8f806d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.chronicles-tactics__bootstrap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 14px;
+}
+
+.chronicles-tactics__bootstrap-error details {
+  margin-top: 12px;
+  color: #8f806d;
+  font-size: .76rem;
+}
+
+.chronicles-tactics__bootstrap-error details code {
+  display: block;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  color: #b8a78d;
+}
+
 .chronicles-tactics__head {
   position: relative;
   padding: 2px 7px 8px;
