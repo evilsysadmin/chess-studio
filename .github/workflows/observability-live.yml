@@ -59,7 +59,7 @@ jobs:
           {
             echo '### Observability live'
             echo
-            echo '- OCI host metrics: production + staging queried from Grafana'
+            echo '- OCI staging host metrics: queried from Grafana'
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"

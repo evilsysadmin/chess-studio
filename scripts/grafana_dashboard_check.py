@@ -66,6 +66,8 @@ def main() -> int:
     for token in (
         'chess-studio-oci-host',
         'deployment_environment',
+        '"label": "Entorno OCI"',
+        '"query": "staging"',
         'node_cpu_seconds_total',
         'node_memory_MemAvailable_bytes',
         'node_load1',
@@ -74,6 +76,9 @@ def main() -> int:
     ):
         if token not in oci_host_dash:
             fail(f"dashboard OCI host no cubre {token}")
+
+    if '"query": "production,staging"' in oci_host_dash:
+        fail("dashboard OCI host no debe ofrecer production mientras el collector físico sea sólo staging")
 
     trace_dash = (INFRA / "dashboards" / "chess-studio-traces.json").read_text(encoding="utf-8")
     for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
@@ -136,13 +141,13 @@ def main() -> int:
         'backend_staging_traces',
         'backend_production_environment_isolation',
         'backend_staging_environment_isolation',
-        'oci_host_production',
+        'host_node_inventory',
         'backend_5xx_percent',
         'backend_staging_5xx_percent',
         'backend_p95_ms',
         'backend_staging_p95_ms',
         'oci_host_ram_percent',
-        'oci_host_production_ram_percent',
+        'http_route!="/api/ready"',
         'GRAFANA_SLO_MAX_5XX_PERCENT',
         '--self-test',
     ):
