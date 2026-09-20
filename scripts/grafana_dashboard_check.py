@@ -74,6 +74,16 @@ def main() -> int:
         for panel in (explorer_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
+    explorer_raw = (INFRA / "dashboards" / "chess-studio-log-explorer.json").read_text(encoding="utf-8")
+    for token in (
+        'production OCI stdout : {service_name=',
+        'staging OCI stdout : {service_name=',
+        'chess-studio-oci-backend-production-stdout',
+        'chess-studio-oci-backend-staging-stdout',
+        'Raw logs · texto/regex',
+    ):
+        if token not in explorer_raw:
+            fail(f"log explorer no expone OCI stdout: {token}")
     for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
         if token not in explorer_exprs:
             fail(f"log explorer no aplica {token}")
