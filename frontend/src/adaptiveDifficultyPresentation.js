@@ -1,7 +1,7 @@
 import { difficultyLabel } from './difficulty.js';
 import { loadGameActivity } from './gameActivity.js';
 import { loadCleanGameRecords } from './cleanGames.js';
-import { PROVISIONAL_GAMES } from './playerRating.js';
+import { PROVISIONAL_GAMES, cpuRatingForDifficulty } from './playerRating.js';
 import {
   difficultyForQuickMatchRating,
   quickMatchQualityAdjustment,
@@ -21,6 +21,11 @@ export function adaptiveDifficultyPresentation(ratingState = {}, activity = null
   const quality = qualityRecords == null ? loadCleanGameRecords() : qualityRecords;
   const level = difficultyForQuickMatchRating(ratingState?.rating ?? 400, recent, games, quality);
   const calibrating = games < PROVISIONAL_GAMES;
+  const playerRating = Number(ratingState?.rating ?? 400);
+  const ceilingLimited = !calibrating
+    && level >= 100
+    && Number.isFinite(playerRating)
+    && playerRating >= cpuRatingForDifficulty(100);
   const formAdjustment = quickMatchRecentFormAdjustment(recent, games);
   const qualityAdjustment = quickMatchQualityAdjustment(recent, games, quality);
   const activeSignals = [
@@ -45,8 +50,11 @@ export function adaptiveDifficultyPresentation(ratingState = {}, activity = null
     level,
     calibrating,
     completed,
-    choiceCopy: 'Reto adaptativo · Matthias intenta mantenerse ligeramente por encima de tu nivel',
-    detailLabel: `Dificultad automática · ${difficultyLabel(level)}`,
+    ceilingLimited,
+    choiceCopy: ceilingLimited
+      ? 'Reto adaptativo · Matthias ya está al máximo disponible'
+      : 'Reto adaptativo · Matthias intenta mantenerse ligeramente por encima de tu nivel',
+    detailLabel: `Dificultad automática · ${difficultyLabel(level)}${ceilingLimited ? ' · máximo disponible' : ''}`,
     evidenceCopy,
   };
 }

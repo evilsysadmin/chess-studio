@@ -50,6 +50,16 @@ describe('adaptiveDifficultyPresentation', () => {
     expect(view.evidenceCopy).toBe('Señales activas: rating.');
   });
 
+  it('no promete estar por encima cuando el jugador supera el techo estimado del motor', () => {
+    const view = adaptiveDifficultyPresentation({ rating: 2200, games: 40 }, [], {});
+
+    expect(view.level).toBe(100);
+    expect(view.ceilingLimited).toBe(true);
+    expect(view.choiceCopy).toContain('máximo disponible');
+    expect(view.choiceCopy).not.toContain('por encima de tu nivel');
+    expect(view.detailLabel).toBe('Dificultad automática · Implacable · máximo disponible');
+  });
+
   it('normaliza contadores inválidos o negativos para no mostrar progreso absurdo', () => {
     expect(adaptiveDifficultyPresentation({ rating: 700, games: -4 }, []).completed).toBe(0);
     expect(adaptiveDifficultyPresentation({ rating: 700, games: 'basura' }, []).completed).toBe(0);
