@@ -63,6 +63,32 @@ function expectKnightJump(from, to) {
 }
 
 describe('Chronicles of Matthias vertical slice', () => {
+  it('applies a custom character build to the real party without changing canonical ids', () => {
+    const state = createChroniclesState(null, {
+      version: 1,
+      mode: 'custom',
+      characters: [
+        {
+          slotId: 'matthias',
+          classId: 'matthias',
+          name: 'Greta',
+          attributes: { vigor: 1, power: 2 },
+          startingSkillId: 'matthias-keen-point',
+        },
+        { slotId: 'rook', classId: 'rook', name: 'Hildegard', attributes: {}, startingSkillId: null },
+        { slotId: 'bishop', classId: 'bishop', name: 'Aziz', attributes: {}, startingSkillId: null },
+        { slotId: 'knight', classId: 'knight', name: 'Faust', attributes: {}, startingSkillId: null },
+      ],
+    });
+    const greta = state.party.find((member) => member.id === 'matthias');
+
+    expect(greta.name).toBe('Greta');
+    expect(greta.id).toBe('matthias');
+    expect(greta.maxHp).toBe(8);
+    expect(greta.damage).toBe(3);
+    expect(greta.characterBuild.creatorModifiers.attackDamageBonus).toBe(2);
+  });
+
   it('turns the four-piece party into positional combat instead of one generic attack', () => {
     let state = createChroniclesState();
     expect(chroniclesEnemyDistanceAhead(state, 1)).toBeNull();
