@@ -457,6 +457,32 @@ def add_room(static, mats):
             cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.475, y, 1.40),
                  (0.018, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
 
+        # Upper blind lancets continue the lower joinery into the tall plaster
+        # field. They are intentionally shallow: enough side-wall relief to catch
+        # grazing light without competing with the rear-wall crest or board.
+        for index, y in enumerate((-3.02, -0.28)):
+            cube(f"WR_CANON_side_lancet_field_{side}_{index}",
+                 (side * 8.472, y, 4.32), (0.018, 0.76, 0.72),
+                 mats["wall_recess"], static, bevel=0.028)
+            for edge in (-1, 1):
+                cube(f"WR_CANON_side_lancet_jamb_{side}_{index}_{edge}",
+                     (side * 8.405, y + edge * 0.80, 4.34),
+                     (0.055, 0.035, 0.74), mats["stone_dark"], static, bevel=0.018)
+            cube(f"WR_CANON_side_lancet_sill_{side}_{index}",
+                 (side * 8.405, y, 3.60), (0.055, 0.84, 0.040),
+                 mats["stone_dark"], static, bevel=0.016)
+            apex = Vector((side * 8.405, y, 5.47))
+            for edge in (-1, 1):
+                shoulder = Vector((side * 8.405, y + edge * 0.80, 5.02))
+                direction = apex - shoulder
+                beam = cube(
+                    f"WR_CANON_side_lancet_arch_{side}_{index}_{edge}",
+                    (shoulder + apex) / 2,
+                    (0.055, 0.035, direction.length / 2),
+                    mats["stone_dark"], static, bevel=0.018,
+                )
+                beam.rotation_euler = direction.to_track_quat("Z", "X").to_euler()
+
     for z in (1.25, 3.15, 5.45):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
     for x in (-7.3, -4.2, -1.55, 1.55, 4.2, 7.3):
