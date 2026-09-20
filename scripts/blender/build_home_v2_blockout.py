@@ -90,6 +90,19 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
         pores = 0.5 + 0.5 * math.sin((u * 43.0 + medium * 1.8) * math.tau)
         return max(0.0, min(1.0, grain * 0.48 + pores * 0.13 + coarse * 0.24 + fine * 0.15))
+    if profile == "leather":
+        pores = 0.5 + 0.5 * math.sin((u * 29.0 + medium * 2.3) * math.tau)
+        cross = 0.5 + 0.5 * math.sin((v * 31.0 + fine * 2.0) * math.tau + 0.8)
+        wrinkles = _value_noise(u, v, seed + 211, 7)
+        return max(0.0, min(1.0, coarse * 0.34 + wrinkles * 0.28 + pores * 0.19 + cross * 0.19))
+    if profile == "paper":
+        fiber_x = 0.5 + 0.5 * math.sin((u * 52.0 + fine * 1.7) * math.tau)
+        fiber_y = 0.5 + 0.5 * math.sin((v * 47.0 + medium * 1.5) * math.tau + 0.45)
+        return max(0.0, min(1.0, 0.46 + (fiber_x + fiber_y - 1.0) * 0.11 + coarse * 0.22 + fine * 0.12))
+    if profile == "wax":
+        bloom = _value_noise(u, v, seed + 307, 9)
+        soft = _value_noise(u, v, seed + 353, 19)
+        return max(0.0, min(1.0, coarse * 0.36 + bloom * 0.38 + soft * 0.18 + fine * 0.08))
     if profile == "textile":
         warp = 0.5 + 0.5 * math.sin(u * math.tau * 44.0)
         weft = 0.5 + 0.5 * math.sin(v * math.tau * 44.0 + 0.65)
@@ -119,9 +132,28 @@ def _packed_surface_images(
         "wood": (0.62, 1.34),
         "metal": (0.79, 1.15),
         "textile": (0.78, 1.18),
+        "leather": (0.70, 1.24),
+        "paper": (0.88, 1.12),
+        "wax": (0.90, 1.10),
     }.get(profile, (0.82, 1.14))
-    rough_span = {"stone": 0.13, "wood": 0.11, "metal": 0.19, "textile": 0.07}.get(profile, 0.10)
-    normal_strength = {"stone": 4.2, "wood": 3.1, "metal": 2.0, "textile": 2.8}.get(profile, 2.5)
+    rough_span = {
+        "stone": 0.13,
+        "wood": 0.11,
+        "metal": 0.19,
+        "textile": 0.07,
+        "leather": 0.12,
+        "paper": 0.055,
+        "wax": 0.045,
+    }.get(profile, 0.10)
+    normal_strength = {
+        "stone": 4.2,
+        "wood": 3.1,
+        "metal": 2.0,
+        "textile": 2.8,
+        "leather": 2.4,
+        "paper": 1.15,
+        "wax": 0.85,
+    }.get(profile, 2.5)
     base_pixels: list[float] = []
     rough_pixels: list[float] = []
     normal_pixels: list[float] = []
@@ -202,6 +234,9 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "wood": 0.42,
         "metal": 0.30,
         "textile": 0.36,
+        "leather": 0.34,
+        "paper": 0.18,
+        "wax": 0.12,
     }.get(profile, 0.35)
     links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
     links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
@@ -1826,14 +1861,14 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation=0.080,
             variation_scale=8.5,
         texture_profile="textile"),
-        "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
+        "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0, texture_profile="textile"),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
         "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
         "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
-        "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
-        "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91),
-        "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91),
-        "book_olive": material("HOME_MAT_book_olive", (0.078, 0.068, 0.030, 1), roughness=0.91),
+        "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91, texture_profile="leather"),
+        "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91, texture_profile="leather"),
+        "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91, texture_profile="leather"),
+        "book_olive": material("HOME_MAT_book_olive", (0.078, 0.068, 0.030, 1), roughness=0.91, texture_profile="leather"),
         "piece_light": material(
             "HOME_MAT_piece_light",
             (0.38, 0.30, 0.22, 1),
@@ -1850,9 +1885,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation=0.055,
             variation_scale=6.4,
         ),
-        "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0),
-        "paper": material("HOME_MAT_paper", (0.34, 0.24, 0.15, 1), roughness=0.94),
-        "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96),
+        "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
+        "paper": material("HOME_MAT_paper", (0.34, 0.24, 0.15, 1), roughness=0.94, texture_profile="paper"),
+        "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
             "HOME_MAT_globe",
             (0.030, 0.055, 0.048, 1),
