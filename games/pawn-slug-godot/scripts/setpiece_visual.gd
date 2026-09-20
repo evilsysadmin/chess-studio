@@ -84,6 +84,11 @@ func _draw_moving_platform() -> void:
         body = Color("4b4732")
     draw_rect(rect, body, true)
     draw_rect(rect, _theme_trim(), false, 2.0)
+    draw_rect(
+        Rect2(Vector2(-_size.x * 0.5 + 6.0, _size.y * 0.18), Vector2(_size.x - 12.0, _size.y * 0.22)),
+        Color(0.035, 0.045, 0.050, 0.72),
+        true,
+    )
     draw_line(
         Vector2(-_size.x * 0.5, -_size.y * 0.18),
         Vector2(_size.x * 0.5, -_size.y * 0.18),
@@ -92,6 +97,16 @@ func _draw_moving_platform() -> void:
     )
     for x in range(int(-_size.x * 0.5) + 14, int(_size.x * 0.5) - 6, 28):
         draw_circle(Vector2(float(x), 0.0), 2.0, Color("818b8f"))
+    var hazard := _theme_trim().lightened(0.08)
+    var hazard_y := -_size.y * 0.33
+    for index in range(maxi(2, int(_size.x / 34.0))):
+        var x0 := -_size.x * 0.44 + float(index) * 34.0
+        draw_line(
+            Vector2(x0, hazard_y + 5.0),
+            Vector2(minf(_size.x * 0.44, x0 + 14.0), hazard_y - 5.0),
+            Color(hazard.r, hazard.g, hazard.b, 0.62),
+            2.0,
+        )
 
 func _draw_bunker_turret() -> void:
     var w := _size.x
@@ -103,11 +118,27 @@ func _draw_bunker_turret() -> void:
     var body_rect := Rect2(Vector2(-w * 0.5, -h), Vector2(w, h))
     draw_rect(body_rect, body, true)
     draw_rect(body_rect, _theme_trim(), false, 2.0)
+    var roof := PackedVector2Array([
+        Vector2(-w * 0.50, -h),
+        Vector2(-w * 0.34, -h * 1.12),
+        Vector2(w * 0.34, -h * 1.12),
+        Vector2(w * 0.50, -h),
+    ])
+    draw_colored_polygon(roof, body.lightened(0.08))
+    draw_line(Vector2(-w * 0.34, -h * 1.12), Vector2(w * 0.34, -h * 1.12), Color(_theme_trim(), 0.62), 2.0)
     draw_rect(
         Rect2(Vector2(-w * 0.40, -h * 0.72), Vector2(w * 0.47, h * 0.22)),
         Color("0c1113"),
         true,
     )
+    draw_line(
+        Vector2(-w * 0.34, -h * 0.61),
+        Vector2(w * 0.02, -h * 0.61),
+        Color(0.55, 0.64, 0.66, 0.22),
+        2.0,
+    )
+    for rivet_x in [-0.38, -0.22, 0.24, 0.39]:
+        draw_circle(Vector2(w * rivet_x, -h * 0.16), 2.2, Color(0.48, 0.52, 0.53, 0.58))
     draw_line(
         Vector2(-w * 0.10, -h * 0.61),
         Vector2(-w * 0.62, -h * 0.66),
@@ -146,8 +177,14 @@ func _draw_convoy() -> void:
     draw_rect(Rect2(Vector2(-w * 0.5, -h * 0.58), Vector2(w * 0.68, h * 0.48)), chassis, true)
     draw_rect(Rect2(Vector2(w * 0.15, -h * 0.48), Vector2(w * 0.30, h * 0.38)), chassis.lightened(0.08), true)
     draw_rect(Rect2(Vector2(-w * 0.42, -h * 0.94), Vector2(w * 0.54, h * 0.36)), canvas, true)
+    draw_line(Vector2(-w * 0.42, -h * 0.78), Vector2(w * 0.12, -h * 0.78), Color(0.72, 0.74, 0.66, 0.15), 1.5)
+    for seam in range(3):
+        var seam_x := -w * 0.30 + float(seam) * w * 0.16
+        draw_line(Vector2(seam_x, -h * 0.92), Vector2(seam_x + w * 0.03, -h * 0.60), Color(0.10, 0.12, 0.11, 0.34), 1.5)
     draw_rect(Rect2(Vector2(w * 0.23, -h * 0.42), Vector2(w * 0.13, h * 0.16)), Color("152126"), true)
     draw_line(Vector2(-w * 0.48, -h * 0.10), Vector2(w * 0.46, -h * 0.10), _theme_trim(), 2.0)
+    draw_rect(Rect2(Vector2(w * 0.38, -h * 0.20), Vector2(w * 0.08, h * 0.08)), Color(0.82, 0.72, 0.42, 0.34), true)
+    draw_rect(Rect2(Vector2(-w * 0.50, -h * 0.16), Vector2(w, h * 0.07)), Color(0.06, 0.08, 0.08, 0.66), true)
     draw_circle(Vector2(-w * 0.28, 0.0), h * 0.18, Color("111517"))
     draw_circle(Vector2(w * 0.27, 0.0), h * 0.18, Color("111517"))
     draw_circle(Vector2(-w * 0.28, 0.0), h * 0.08, Color("626b6d"))
@@ -211,12 +248,23 @@ func _draw_tunnel_portal() -> void:
     draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w * 0.16, h)), stone, true)
     draw_rect(Rect2(Vector2(w * 0.34, -h), Vector2(w * 0.16, h)), stone, true)
     draw_rect(Rect2(Vector2(-w * 0.5, -h), Vector2(w, h * 0.22)), stone, true)
+    draw_rect(Rect2(Vector2(-w * 0.43, -h * 0.92), Vector2(w * 0.86, h * 0.08)), stone.lightened(0.08), true)
+    for block in range(7):
+        var bx := -w * 0.46 + float(block) * w * 0.145
+        draw_line(
+            Vector2(bx, -h * 0.98),
+            Vector2(bx + w * 0.035, -h * 0.78),
+            Color(0.07, 0.08, 0.08, 0.56),
+            2.0,
+        )
     draw_line(Vector2(-w * 0.5, -h * 0.78), Vector2(w * 0.5, -h * 0.78), trim, 3.0)
     draw_rect(
         Rect2(Vector2(-w * 0.34, -h * 0.78), Vector2(w * 0.68, h * 0.78)),
-        Color(0.015, 0.025, 0.028, 0.20),
+        Color(0.010, 0.018, 0.020, 0.42),
         true,
     )
+    draw_line(Vector2(-w * 0.31, -h * 0.74), Vector2(-w * 0.31, -h * 0.08), Color(0.34, 0.40, 0.40, 0.13), 2.0)
+    draw_line(Vector2(w * 0.31, -h * 0.74), Vector2(w * 0.31, -h * 0.08), Color(0.34, 0.40, 0.40, 0.13), 2.0)
 
 
 func _draw_destructible_barricade() -> void:
