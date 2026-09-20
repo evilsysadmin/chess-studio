@@ -119,3 +119,63 @@ Contrato adicional de enemigos:
 - El atlas enemigo se genera desde frames 2D y un packer; no se aceptan composiciones finales generadas manualmente.
 - El worksheet validado de enemigos se conserva dentro de games/pawn-slug-godot/art/ para reanudar la iteración.
 - Si trabajas en local y tienes buen hardware, puedes generar sprites y blender artifacts, pero ojo con saturar la cpu/gpu
+
+** WAR ROOM V2 — CONTRATO DE ITERACION VISUAL Y RUNTIME
+
+Contexto y fuente canónica:
+- War Room v2 es la nueva generación visual de la War Room y su pipeline visual canónica es Blender.
+- Blender está reservado para Home 3D y War Room v2; no reutilizar esta pipeline para sprites 2D de Pawn Slug.
+- La War Room actual se conserva como baseline funcional y visual de rollback hasta que War Room v2 esté validada de extremo a extremo.
+- No eliminar, sobrescribir de forma irreversible ni hacer depender el rollback de assets exclusivos de v2 antes de completar la validación.
+
+Objetivo de cada iteración:
+- mejorar de forma visible materiales, iluminación, composición, escala, profundidad, legibilidad del tablero y coherencia del espacio
+- evitar el aspecto artificial/plástico o de maqueta generado por geometría, iluminación o materiales demasiado uniformes
+- mantener la War Room reconocible, premium, sobria y jugable; la mejora visual nunca justifica degradar lectura o interacción
+
+Pipeline obligatoria:
+1. Trabajar en la escena/pipeline Blender reproducible existente; preferir scripts y generación determinista frente a retoques manuales irrepetibles.
+2. Renderizar la iteración desde las cámaras y encuadres reales objetivo.
+3. Generar artifacts PNG de revisión para cada iteración visual relevante.
+4. Revisar visualmente los PNG antes de integrar o dar por buena la iteración.
+5. Comparar contra el último artifact validado y contra la War Room baseline para detectar regresiones.
+6. Corregir iluminación, materiales, clipping, escalas, perspectiva, composición y legibilidad antes de pasar a runtime.
+7. Integrar en la app y validar de nuevo con captura real del frontend; un render correcto en Blender no demuestra por sí solo que la War Room funciona bien en runtime.
+8. Validar en staging antes de considerar v2 apta para sustituir a la War Room actual.
+
+Validación visual mínima:
+- revisar al menos composición desktop y móvil cuando el cambio pueda afectar encuadre o responsive
+- tablero y piezas deben seguir siendo el foco jugable y conservar contraste suficiente
+- evitar clipping, z-fighting, objetos flotantes, escalas incoherentes, sombras rotas, texturas estiradas, ruido visual y zonas quemadas u oscuras
+- comprobar consistencia de materiales y luz entre objetos; no aceptar superficies con apariencia de plástico genérico salvo decisión artística explícita
+- mantener profundidad y atmósfera sin sacrificar la lectura de piezas, casillas, overlays o interacciones
+- cualquier cambio visual debe poder justificarse comparando artifacts PNG antes/después
+
+Contrato funcional y de integración:
+- War Room v2 debe preservar las capacidades funcionales de la War Room actual mientras se sustituye la presentación visual.
+- No romper selección de piezas, destinos legales, movimientos, cámaras, overlays, diálogos, comentarios de Matthias, secuencias diegéticas ni controles existentes por introducir la nueva escena.
+- La integración debe ser incremental y reversible; si v2 falla visualmente, en móvil, rendimiento o funcionamiento real, restaurar el baseline sin reconstrucciones de emergencia.
+- El tutorial de primera entrada de War Room debe seguir siendo diegético y estar guiado por Matthias: selección de pieza, visualización de destinos legales y uno o dos movimientos guiados, conciso, skippable y recuperable desde ayuda.
+- Las secuencias ambientales, incluido Hans, deben dispararse sólo cuando la War Room esté realmente cargada y visible para evitar perder frames o diálogo durante renders/cargas tardías.
+
+Artifacts y regresión:
+- conservar el último render/worksheet visual validado en cache de proyecto para poder reanudar tras cortes del chat
+- cada PR visual relevante debe producir o enlazar artifacts PNG suficientes para revisar la iteración
+- revisar esos artifacts y no basarse únicamente en que Blender, CI o el build hayan terminado correctamente
+- cuando exista captura de runtime, compararla también con el render de Blender para detectar diferencias de framing, escalado, overlays o carga
+
+Rendimiento y seguridad de trabajo:
+- no saturar CPU/GPU local con renders innecesariamente caros; usar previews razonables durante iteración y calidad final para el gate visual
+- no introducir assets pesados o duplicados sin necesidad; mantener reproducibilidad y trazabilidad de la pipeline
+- no degradar tiempos de carga, memoria o fluidez de la War Room sin medirlo y justificarlo
+
+Criterios de aceptación de War Room v2:
+- mejora visual clara frente al baseline
+- artifacts PNG revisados sin regresiones obvias
+- captura/runtime real validado
+- desktop y móvil razonables
+- interacción ajedrecística intacta
+- rendimiento aceptable
+- rollback a la War Room anterior sigue siendo posible
+- staging validado antes de retirar el baseline
+
