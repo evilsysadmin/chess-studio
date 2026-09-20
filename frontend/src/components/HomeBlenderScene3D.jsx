@@ -17,10 +17,10 @@ const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
 
 const EXPOSURE = Object.freeze({
-  dawn: 1.08,
-  day: 1.03,
-  dusk: 1.07,
-  night: 1.11,
+  dawn: 1.05,
+  day: 1.00,
+  dusk: 1.04,
+  night: 1.08,
 });
 
 const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
@@ -132,7 +132,7 @@ function installHomeEnvironment(renderer, scene, enabled = true) {
   pmrem.dispose();
 
   scene.environment = target.texture;
-  scene.environmentIntensity = 0.24;
+  scene.environmentIntensity = 0.20;
 
   return () => {
     if (scene.environment === target.texture) scene.environment = null;
