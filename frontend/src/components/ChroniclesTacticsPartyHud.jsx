@@ -8,6 +8,7 @@ import {
   CHRONICLES_ATTRIBUTE_CAP,
   CHRONICLES_ATTRIBUTE_DEFINITIONS,
   chroniclesAllowedAttributes,
+  chroniclesHasUnspentProgression,
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
   chroniclesXpToNextLevel,
@@ -111,6 +112,7 @@ export default function ChroniclesTacticsPartyHud({
         {party.map((member, index) => {
           const profile = chroniclesTacticsProfile(member.id);
           const progress = chroniclesHeroProgress(progression, member.id);
+          const upgradeReady = chroniclesHasUnspentProgression(progression, member.id);
           const ability = abilityResource(state, member.id);
           const hpRatio = clampRatio(member.hp / member.maxHp);
           const selected = member.id === selectedMemberId;
@@ -142,6 +144,7 @@ export default function ChroniclesTacticsPartyHud({
                 <span className="chronicles-party-hud__identity">
                   <b>{member.name}</b>
                   <small>Nv {progress.level} · {profile.className}</small>
+                  {upgradeReady && <em className="chronicles-party-hud__upgrade">↑ MEJORA</em>}
                 </span>
                 <VitalBar kind="hp" label="HP" value={member.hp} max={member.maxHp} ratio={hpRatio} />
                 <VitalBar kind="mp" label="MP" value={ability.charges} max={ability.max} ratio={ability.ratio} />
