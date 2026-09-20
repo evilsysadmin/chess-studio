@@ -162,7 +162,11 @@ function disposeRuntimeScene(root) {
   });
 }
 
-function prepareRuntimeScene(root, shadowsEnabled = true) {
+function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
+  const maxAnisotropy = Math.min(
+    8,
+    renderer?.capabilities?.getMaxAnisotropy?.() || 1,
+  );
   root.traverse((object) => {
     if (!object.isMesh) return;
     object.castShadow = shadowsEnabled;
@@ -170,10 +174,32 @@ function prepareRuntimeScene(root, shadowsEnabled = true) {
     if (Array.isArray(object.material)) {
       object.material.forEach((material) => {
         if (!material) return;
+        for (const texture of [
+          material.map,
+          material.normalMap,
+          material.roughnessMap,
+          material.metalnessMap,
+          material.aoMap,
+        ]) {
+          if (!texture?.isTexture) continue;
+          texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+          texture.needsUpdate = true;
+        }
         material.dithering = true;
         material.needsUpdate = true;
       });
     } else if (object.material) {
+      for (const texture of [
+        object.material.map,
+        object.material.normalMap,
+        object.material.roughnessMap,
+        object.material.metalnessMap,
+        object.material.aoMap,
+      ]) {
+        if (!texture?.isTexture) continue;
+        texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+        texture.needsUpdate = true;
+      }
       object.material.dithering = true;
       object.material.needsUpdate = true;
     }
@@ -303,7 +329,7 @@ export default function HomeBlenderScene3D({
         loadTimer = null;
       }
       model = root;
-      prepareRuntimeScene(model, initialPolicy.lod === 'full');
+      prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
       scene.add(model);
       resize();
       renderFrame();
