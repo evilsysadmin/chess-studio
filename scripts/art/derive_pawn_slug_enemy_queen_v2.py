@@ -107,7 +107,7 @@ def build(source_path: Path, output_dir: Path) -> dict:
         base = old_row.crop((i * CELL, 0, (i + 1) * CELL, CELL))
         before = base.getchannel("A").getbbox()
         frame = decorate_queen(base, i)
-        after = frame.getchannel("A").getbox()
+        after = frame.getchannel("A").getbbox()
         if before is None or after is None:
             raise ValueError(f"frame {i} empty")
         if after[3] != before[3]:
