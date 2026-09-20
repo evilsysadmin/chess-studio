@@ -136,6 +136,28 @@ def _vector_values(payload: dict) -> list[float]:
     return values
 
 
+def _vector_metric_rows(payload: dict) -> list[dict]:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    result = data.get("result") if isinstance(data, dict) else None
+    if not isinstance(result, list):
+        return []
+    rows: list[dict] = []
+    for row in result:
+        if not isinstance(row, dict):
+            continue
+        value = row.get("value")
+        metric = row.get("metric")
+        if not isinstance(value, list) or len(value) < 2 or not isinstance(metric, dict):
+            continue
+        try:
+            numeric = float(value[1])
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(numeric):
+            rows.append({"metric": metric, "value": numeric})
+    return rows
+
+
 def _vector_positive(payload: dict) -> bool:
     return any(value > 0 for value in _vector_values(payload))
 
@@ -284,6 +306,25 @@ def run_checks(
         '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend"}[15m])))',
         now,
     )
+    route_p95_payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+        {
+            "query": 'topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend"}[15m]))))',
+            "time": str(now),
+        },
+    )
+    route_p95 = [
+        {
+            "route": str(row["metric"].get("http_route") or "<unmatched>"),
+            "p95_ms": round(row["value"], 3),
+        }
+        for row in _vector_metric_rows(route_p95_payload)
+    ]
+    route_p95.sort(key=lambda row: row["p95_ms"], reverse=True)
+    print(json.dumps({
+        "check": "backend_route_p95_diagnostic",
+        "routes": route_p95,
+    }, separators=(",", ":"), sort_keys=True))
     host_ram_percent = _prom_value(
         api,
         metrics_uid,
@@ -339,6 +380,9 @@ def self_test() -> int:
     assert _vector_positive({"data": {"result": [{"value": [1, "1"]}]}})
     assert not _vector_positive({"data": {"result": [{"value": [1, "0"]}]}})
     assert _vector_values({"data": {"result": [{"value": [1, "2.5"]}, {"value": [1, "NaN"]}]}}) == [2.5]
+    assert _vector_metric_rows({
+        "data": {"result": [{"metric": {"http_route": "/api/ready"}, "value": [1, "12.5"]}]}
+    }) == [{"metric": {"http_route": "/api/ready"}, "value": 12.5}]
     assert _single_value({"data": {"result": [{"value": [1, "42"]}]}}) == 42.0
     assert not _vector_positive({"data": {"result": []}})
     assert _tempo_has_result({"traces": [{"traceID": "abc"}]})
