@@ -1,5 +1,4 @@
 name: Deploy to staging
-
 on:
   workflow_run:
     workflows:
@@ -9,27 +8,17 @@ on:
     branches:
       - main
   workflow_dispatch:
-
 permissions:
   contents: read
   actions: read
-
-# Canonical staging and manual preview share one non-preemptive write mutex.
-# Never cancel a generation that has already started mutating staging: with rapid
-# merges that causes starvation and can leave remote OCI work running after its
-# observer is killed. GitHub keeps at most one running and one pending member of
-# a concurrency group, so the running generation finishes while newer pending
-# generations collapse toward the latest HEAD. The stale-HEAD admission guard
-# then drops obsolete queued work before any mutation.
+# running generation finishes while newer pending.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
-
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
   STAGING_AI_URL: https://ai-staging.shadowops.dpdns.org
-
 jobs:
   prepare:
     name: Prepare coherent staging generation
@@ -46,20 +35,17 @@ jobs:
     outputs:
       deploy_sha: ${{ steps.admission.outputs.deploy_sha }}
       admitted: ${{ steps.admission.outputs.admitted }}
-
     steps:
       - name: Validate staging commit
         shell: bash
         run: |
           set -euo pipefail
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA no es un commit completo: $DEPLOY_SHA"; exit 1; }
-
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 1
-
       - name: Supersede stale staging commit
         id: admission
         shell: bash
@@ -67,7 +53,6 @@ jobs:
           set -euo pipefail
           current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
           [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver un main HEAD válido: ${current_main:-<vacío>}"; exit 1; }
-
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo 'admitted=false' >> "$GITHUB_OUTPUT"
@@ -83,14 +68,8 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-
           echo 'admitted=true' >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
-
-  # OCI owns the canonical staging backend generation. The normal fast-path
-  # consumes installed runtime. The fallback deliberately reuses that same runtime;
-  # explicit runtime-sync remains a separate operational action so a degraded
-  # Run Command channel cannot double the delivery penalty on every release.
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -99,9 +78,6 @@ jobs:
       superseded: ${{ steps.backend_state.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    # Serialize application deploys with explicit Terraform infrastructure work
-    # using Actions' repository-wide concurrency primitive instead of polling the
-    # workflow-runs API from inside the job.
     concurrency:
       group: oci-staging-mutations
       cancel-in-progress: false
@@ -110,26 +86,19 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
       - name: Validate zero-cost host watcher contract
         run: python3 -S scripts/oci_staging_deploy_watcher.py --self-test
-
       - name: Wait for zero-cost host watcher fast-path
         id: watcher
         shell: bash
         run: |
           set -euo pipefail
           converged=false
-          # The host watcher polls every 15s. Worker publication typically lands
-          # after this job starts and the local deploy itself is fast; keep the
-          # zero-cost path alive for ~90s so we do not abandon it just before
-          # convergence and fall into multi-minute OCI Run Command delivery.
           for attempt in {1..76}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
@@ -153,7 +122,6 @@ jobs:
           else
             echo "::warning title=OCI fallback::El watcher no convergió; se usa un único Run Command de deploy."
           fi
-
       - name: Re-check main before OCI fallback
         id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
@@ -168,14 +136,12 @@ jobs:
           else
             echo 'superseded=false' >> "$GITHUB_OUTPUT"
           fi
-
       - name: Restore cached OCI SDK toolchain
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
-
       - name: Validate OCI deploy contracts
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         run: |
@@ -183,7 +149,6 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
-
       - name: Deploy exact backend commit to OCI staging
         id: deploy
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
@@ -196,9 +161,6 @@ jobs:
           OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
-
-          # The watcher can finish while the OCI SDK cache is being restored.
-          # Re-check the public build identity before paying for Run Command.
           body="$RUNNER_TEMP/backend-pre-fallback.json"
           status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
             --output "$body" --write-out '%{http_code}' \
@@ -213,9 +175,7 @@ jobs:
             echo "::notice title=OCI fallback avoided::La A1 terminó $DEPLOY_SHA durante el setup; no se envía Run Command."
             exit 0
           fi
-
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
-
           current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
           [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main después del fallback OCI"; exit 1; }
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
@@ -224,7 +184,6 @@ jobs:
           else
             echo 'superseded=false' >> "$GITHUB_OUTPUT"
           fi
-
       - name: Resolve backend generation state
         id: backend_state
         if: always()
@@ -236,7 +195,6 @@ jobs:
           else
             echo 'superseded=false' >> "$GITHUB_OUTPUT"
           fi
-
       - name: Verify backend public path reaches exact OCI generation
         if: steps.backend_state.outputs.superseded != 'true'
         run: >-
@@ -245,7 +203,6 @@ jobs:
           --sha "$DEPLOY_SHA"
           --attempts 20
           --interval 2
-
   frontend:
     name: Frontend · exact Pages generation
     needs: prepare
@@ -259,13 +216,11 @@ jobs:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
       - name: Restore prebuilt frontend from admission
         id: prebuilt_frontend_download
         if: github.event_name == 'workflow_run'
@@ -276,7 +231,6 @@ jobs:
           path: frontend/dist
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Validate prebuilt frontend or select fallback build
         id: frontend_artifact
         shell: bash
@@ -298,7 +252,6 @@ jobs:
             echo "::notice title=Frontend fallback::Artifact exacto ausente o inválido; se recompilará en staging."
           fi
           echo "hit=$hit" >> "$GITHUB_OUTPUT"
-
       - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
       - name: Setup Node.js
@@ -368,7 +321,6 @@ jobs:
           [[ "$release_ok" == true ]] || { echo '::error::Pages no sirvió el SHA esperado tras 5 minutos'; exit 1; }
           root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
           [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
-
   worker:
     name: Worker · exact AI generation
     needs: prepare
@@ -419,7 +371,6 @@ jobs:
           [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
-
   smoke:
     name: Browser smoke · ${{ matrix.label }}
     needs: [prepare, backend, frontend, worker]
@@ -496,13 +447,11 @@ jobs:
             sleep 5
           done
           [[ "$parity_ok" == true ]] || { echo '::error::Generation parity no convergió a N/N/N tras 5 minutos'; exit 1; }
-
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
-
       - name: Load ephemeral staging invite code from OCI runtime
         shell: bash
         run: |
@@ -513,7 +462,6 @@ jobs:
           sys.path.insert(0, 'scripts')
           import oci
           from oci_runtime_bundle import read_private_runtime_value
-
           invite = read_private_runtime_value(oci, 'INVITE_CODE')
           if not invite:
               raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
@@ -521,7 +469,6 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
               handle.write(f'STAGING_INVITE_CODE={invite}\n')
           PY
-
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'
         shell: bash
@@ -529,7 +476,6 @@ jobs:
           set -euo pipefail
           python3 -S scripts/staging_smoke_user_cleanup.py --self-test
           python3 -S scripts/staging_smoke_user_cleanup.py --sweep
-
       - name: Generate isolated staging smoke credentials
         shell: bash
         run: |
@@ -540,7 +486,6 @@ jobs:
           echo "::add-mask::$password"
           echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
           echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
-
       - name: Restore staging browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
@@ -568,7 +513,6 @@ jobs:
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
-
   summary:
     name: Staging generation complete
     needs: [prepare, backend, frontend, worker, smoke]
