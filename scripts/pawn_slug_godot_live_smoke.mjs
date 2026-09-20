@@ -172,9 +172,15 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
 
   await keyboard.down('ArrowRight');
   try {
-    // Run up to the tunnel without wasting several seconds crouch-walking from
-    // the spawn, then hold crouch long enough to clear the low ceiling.
-    await parent.waitForTimeout(800);
+    // Cover the second opening pawn before crossing the activation boundary.
+    // After ~600 ms Matthias is still around x=280; a grenade from there
+    // detonates near x=1000, overlapping the pawn at x=1120 before the bot
+    // reaches the weapon pickup beside it.
+    await parent.waitForTimeout(600);
+    await keyboard.press('x');
+    await parent.waitForTimeout(200);
+
+    // Hold crouch long enough to clear the low ceiling.
     await keyboard.down('ArrowDown');
     await parent.waitForTimeout(3300);
     await keyboard.up('ArrowDown');
