@@ -1189,7 +1189,28 @@ def add_gothic_canon_v2(static, mats):
     chandelier_y = 3.38
     torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.86, 0.044, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
-    cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.49), 0.030, 0.52, mats["brass_dark"], static, vertices=16)
+    # Three slim suspension stays make the fixture feel physically hung rather
+    # than floating. They converge on the same short central chain so the added
+    # structure stays legible without creating a cage above the board.
+    suspension_apex = Vector((chandelier_x, chandelier_y, 6.71))
+    for stay_index, angle in enumerate((math.pi / 2, math.pi / 2 + math.tau / 3, math.pi / 2 + 2 * math.tau / 3)):
+        stay_start = Vector((
+            chandelier_x + math.cos(angle) * 0.70,
+            chandelier_y + math.sin(angle) * 0.54,
+            cz + 0.03,
+        ))
+        stay_direction = suspension_apex - stay_start
+        stay = cylinder(
+            f"WR_CANON_chandelier_stay_{stay_index}",
+            (stay_start + suspension_apex) / 2,
+            0.018,
+            stay_direction.length,
+            mats["brass_dark"],
+            static,
+            vertices=12,
+        )
+        stay.rotation_euler = stay_direction.to_track_quat("Z", "Y").to_euler()
+    cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.84), 0.030, 0.26, mats["brass_dark"], static, vertices=16)
     for index in range(6):
         angle = index * math.tau / 6.0
         x = chandelier_x + math.cos(angle) * 0.70
