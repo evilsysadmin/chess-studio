@@ -1012,15 +1012,6 @@ def add_gothic_canon_v2(static, mats):
     # to survive the gameplay camera while remaining subordinate to the board.
     cube("WR_CANON_campaign_horizon", (px, 6.275, 5.03),
          (0.91, 0.018, 0.020), mats["brass_dark"], static, bevel=0.008)
-    # Two broad shallow territory reliefs sit behind the route linework. They
-    # give the panel a cartographic base without introducing another colour or
-    # turning the display into a UI map.
-    territory_a = sphere("WR_CANON_campaign_territory_a", (px - 0.48, 6.292, 4.91),
-                         0.26, mats["brass_dark"], static, scale=(1.45, 0.08, 0.74))
-    territory_a.rotation_euler.y = -0.18
-    territory_b = sphere("WR_CANON_campaign_territory_b", (px + 0.28, 6.292, 4.82),
-                         0.22, mats["brass_dark"], static, scale=(1.10, 0.08, 0.88))
-    territory_b.rotation_euler.y = 0.24
     route = cube("WR_CANON_campaign_route", (px - 0.18, 6.27, 4.83),
                  (0.58, 0.018, 0.024), mats["brass_dark"], static, bevel=0.008)
     route.rotation_euler.y = -0.24
