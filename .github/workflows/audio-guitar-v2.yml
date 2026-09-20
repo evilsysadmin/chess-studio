@@ -162,17 +162,17 @@ jobs:
           CAPS_SO="$(find /usr/lib -type f -name 'caps.so' | head -n1)"
           test -f "$CAPS_SO"
           analyseplugin "$CAPS_SO" AmpVTS > audio-v2/AmpVTS.txt
-          analyseplugin "$CAPS_SO" CabinetII > audio-v2/CabinetII.txt
+          analyseplugin "$CAPS_SO" CabinetIV > audio-v2/CabinetIV.txt
 
           # AmpVTS controls: model gain bass mid treble drive watts.
-          # CabinetII controls: model gain(dB). Model 5 is Plexi-ish.
+          # CabinetIV controls: model gain(dB). Model 5 is Plexi-ish.
           applyplugin audio-v2/left-mono.wav audio-v2/left-amped.wav \
             "$CAPS_SO" AmpVTS 1.25 0.72 0.68 0.78 5 0.42 0.82 0.70 0.68 0.30 0.32 \
-            "$CAPS_SO" CabinetII 5 -2.5
+            "$CAPS_SO" CabinetIV 5 -2.5
           test -s audio-v2/left-amped.wav
           applyplugin audio-v2/right-mono.wav audio-v2/right-amped.wav \
             "$CAPS_SO" AmpVTS 1.18 0.68 0.72 0.81 5 0.40 0.86 0.73 0.72 0.27 0.34 \
-            "$CAPS_SO" CabinetII 5 -3.0
+            "$CAPS_SO" CabinetIV 5 -3.0
           test -s audio-v2/right-amped.wav
 
           # Real double-track width: independent sample/velocity/timing renders, not copied audio.
@@ -200,7 +200,7 @@ jobs:
             echo 'Sampling: 4 velocity layers, 3 round robins, release samples'
             echo 'Sampler: sfizz offline renderer'
             echo 'Amp: CAPS AmpVTS'
-            echo 'Cab: CAPS CabinetII model 5'
+            echo 'Cab: CAPS CabinetIV model 5'
             echo 'Output: 44.1kHz'
             echo
             sha256sum audio-v2/emily-amp-cab-stereo.wav audio-v2/emily-di-stereo.wav
@@ -215,7 +215,7 @@ jobs:
             audio-v2/emily-amp-cab-preview-28s.wav
             audio-v2/emily-di-stereo.wav
             audio-v2/AmpVTS.txt
-            audio-v2/CabinetII.txt
+            audio-v2/CabinetIV.txt
             audio-v2/MANIFEST.txt
             audio-v2/riff-left.mid
             audio-v2/riff-right.mid
