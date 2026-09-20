@@ -85,6 +85,12 @@ def test_staging_uses_cloudflare_client_ip_for_anonymous_rate_limit(monkeypatch)
     assert main_module.rate_limit_key(_request()) == "ip:203.0.113.9"
 
 
+def test_explicit_false_disables_cloudflare_client_ip_trust(monkeypatch):
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "staging")
+    monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "false")
+    assert main_module.rate_limit_key(_request()) == "ip:172.17.0.1"
+
+
 def test_production_oci_can_opt_in_to_cloudflare_client_ip(monkeypatch):
     monkeypatch.setattr(main_module, "ENVIRONMENT", "production")
     monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "true")
