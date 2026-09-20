@@ -764,6 +764,12 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
+    # Two dark horizontal rails complete the leaded-window rhythm already
+    # established by the three vertical bars. Keep them thin so the moon and
+    # cold spill remain visible rather than turning the opening into a grille.
+    for index, z in enumerate((2.72, 3.82)):
+        cube(f"WR_CANON_window_crossbar_{index}", (8.18, 2.85, z),
+             (0.035, 1.18, 0.032), mats["brass_dark"], static, bevel=0.012)
     # Pull the cold practical slightly into the room instead of leaving it
     # pinned to the wall plane. Runtime uses the anchor for its v2 PointLight;
     # Blender aims the preview AREA inward so both proofs express the same depth cue.
