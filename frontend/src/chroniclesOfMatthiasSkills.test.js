@@ -11,6 +11,7 @@ import {
   grantChroniclesXp,
   loadChroniclesProgression,
   saveChroniclesProgression,
+  spendChroniclesAttributePoint,
   unlockChroniclesSkill,
 } from './chroniclesOfMatthiasProgression.js';
 import {
@@ -78,6 +79,10 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     const learned = unlockChroniclesSkill(levelTwo, 'matthias', 'matthias-steel-tempo');
     expect(learned.unlocked).toBe(true);
     expect(chroniclesHasUnspentProgression(learned.progression, 'matthias')).toBe(true);
+
+    const spent = spendChroniclesAttributePoint(learned.progression, 'matthias', 'vigor');
+    expect(spent.spent).toBe(true);
+    expect(chroniclesHasUnspentProgression(spent.progression, 'matthias')).toBe(false);
   });
 
   it('refuses skills before their required level', () => {
