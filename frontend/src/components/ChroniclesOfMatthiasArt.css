@@ -49,26 +49,18 @@
   background: #120d0a;
   filter: saturate(.96) contrast(1.04) brightness(.96);
 }
-.chronicles-party-preview-three,
-.chronicles-party-preview-three canvas {
+.chronicles-party-preview-image {
   position: absolute;
+  z-index: 0;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: contain;
+  object-position: 50% 50%;
+  background: #120d0a;
+  filter: saturate(.96) contrast(1.04) brightness(.96);
 }
-.chronicles-party-preview-three {
-  z-index: 0;
-  transform: translateY(-12px) scale(1.48);
-  transform-origin: 50% 38%;
-  filter: brightness(1.16) saturate(1.04) contrast(1.07) drop-shadow(0 12px 11px rgba(0, 0, 0, .34));
-  will-change: transform, filter;
-}
-/* Desktop keeps per-character framing where silhouette differences are visible. */
-.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-14px) scale(1.5); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-10px) scale(1.42); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-13px) scale(1.43); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Faust"] { transform: translateY(-11px) scale(1.4); }
 .chronicles-party-preview-copy {
   position: absolute;
   inset: auto 8px 7px;
@@ -133,10 +125,10 @@
     object-position: 50% 20%;
     background: #120d0a;
   }
-  .chronicles-party-preview-three {
-    transform: translateY(-6px) scale(1.27);
-    transform-origin: 50% 37%;
-    filter: brightness(1.17) saturate(1.035) contrast(1.055) drop-shadow(0 8px 8px rgba(0, 0, 0, .3));
+  .chronicles-party-preview-image {
+    object-fit: contain;
+    object-position: 50% 20%;
+    background: #120d0a;
   }
   .chronicles-party-preview-copy {
     inset: auto 6px 5px;
@@ -152,7 +144,7 @@
 @media (max-width: 520px) {
   .chronicles-party-preview { min-height: 124px; }
   .chronicles-party-preview-image { object-position: 50% 18%; }
-  .chronicles-party-preview-three { transform: translateY(-4px) scale(1.18); }
+  .chronicles-party-preview-image { object-position: 50% 18%; }
   .chronicles-three canvas { filter: brightness(1.14) saturate(1.05) contrast(1.01); }
   .chronicles-stage {
     box-shadow:
@@ -171,80 +163,5 @@
       inset 0 0 42px 6px rgba(0, 0, 0, .28),
       inset 0 -30px 50px rgba(0, 0, 0, .17),
       inset 0 16px 34px rgba(107, 69, 32, .065);
-  }
-}
-
-/* Canonical Chronicles portrait: keep the live Three.js model as a fallback, but
-   render the approved Matthias art above it so the expedition UI matches the
-   visual canon rather than the deliberately low-detail gameplay mesh. */
-.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] {
-  transform: none;
-  filter: none;
-}
-.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 55%, rgba(8, 6, 5, .18) 76%, rgba(8, 6, 5, .58) 100%),
-    url('../assets/chronicles/matthias-canonical.webp') center 28% / cover no-repeat;
-  filter: saturate(.96) contrast(1.035) brightness(.98);
-  transform: scale(1.015);
-  transform-origin: 50% 38%;
-}
-
-/* Hildegard keeps her lightweight live rook underneath, but the roster portrait
-   now uses the approved battle-worn guardian art at the same fidelity as Matthias. */
-.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] {
-  transform: none;
-  filter: none;
-}
-.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 52%, rgba(8, 6, 5, .2) 76%, rgba(8, 6, 5, .6) 100%),
-    radial-gradient(circle at 28% 25%, rgba(221, 158, 81, .12), transparent 39%),
-    url('../assets/chronicles/hildegard-canonical.webp') center 21% / cover no-repeat;
-  filter: saturate(.92) contrast(1.07) brightness(.94);
-  transform: scale(1.02);
-  transform-origin: 50% 36%;
-}
-
-/* Aziz reads as a seasoned rear-guard seer: warmer bronze on the face and staff,
-   deeper shadows around the hood, while retaining the live bishop as fallback. */
-.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] {
-  transform: none;
-  filter: none;
-}
-.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 50%, rgba(7, 6, 5, .22) 75%, rgba(7, 6, 5, .62) 100%),
-    radial-gradient(circle at 66% 28%, rgba(224, 151, 65, .13), transparent 40%),
-    url('../assets/chronicles/aziz-canonical.webp') center 22% / cover no-repeat;
-  filter: saturate(.93) contrast(1.08) brightness(.95);
-  transform: scale(1.018);
-  transform-origin: 50% 36%;
-}
-
-@media (max-width: 800px) {
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
-    background-position: center 23%;
-  }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"]::after {
-    background-position: center 18%;
-  }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"]::after {
-    background-position: center 19%;
   }
 }
