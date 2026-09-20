@@ -346,7 +346,10 @@ assert "DEPLOY_WATCH_ENABLED" in deploy
 assert "systemctl enable --now chess-studio-deploy-watcher.service" in deploy
 assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind("enable_deploy_watcher")
 assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
-assert "refs/heads/main" in deploy_watcher
+assert "refs/heads/main" not in deploy_watcher
+assert "ls-remote" not in deploy_watcher
+assert "OCI_DEPLOY_WATCH_SUPERSEDED" in deploy_watcher
+assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
 assert "import oci" not in deploy_watcher
