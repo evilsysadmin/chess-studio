@@ -525,6 +525,24 @@ if ! flock -w 120 8; then
   exit 75
 fi
 
+# GitHub Actions cancellation cannot retract a Run Command already accepted by
+# OCI. Re-check main after acquiring the host mutation lock so a late, obsolete
+# staging command can never overwrite a newer generation.
+if [[ "$target" == staging ]]; then
+  if ! current_main="$(git -C "$repo" ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"; then
+    echo 'failed to resolve current origin/main before staging mutation' >&2
+    exit 69
+  fi
+  [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || {
+    echo "invalid current origin/main SHA: ${current_main:-<empty>}" >&2
+    exit 69
+  }
+  if [[ "$sha" != "$current_main" ]]; then
+    echo "OCI_DEPLOY_SUPERSEDED repo_ref=$sha current_main=$current_main"
+    exit 0
+  fi
+fi
+
 previous_sha=''
 if [[ -s "$state_file" ]]; then
   previous_sha="$(tr -d '\r\n' < "$state_file")"
