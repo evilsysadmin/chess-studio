@@ -428,7 +428,7 @@ func _resolve_pickup_spawn(desired: Vector2) -> Vector2:
 
 func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:
-        return "SPACE salta · ↑ + FIRE horizontal · ←/→ + ↑ FIRE diagonal · ↓ agacha"
+        return "SPACE salta | W/UP + FIRE arriba | A/D + W/UP + FIRE diagonal | S/DOWN agacha"
 
     for platform in _platforms:
         var clearance := _floor_y - platform.end.y
@@ -442,7 +442,7 @@ func contextual_movement_hint(player_x: float) -> String:
             player_x >= platform.position.x - MOVEMENT_HINT_LOOKAHEAD
             and player_x <= platform.end.x + MOVEMENT_HINT_TRAIL
         ):
-            return "↓ + MOVER · pasa agachado bajo la plataforma"
+            return "S/DOWN + MOVER | pasa agachado bajo la plataforma"
     return ""
 
 func _process(delta: float) -> void:
