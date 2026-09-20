@@ -154,6 +154,36 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
         abilityLabel: 'hechizo de reserva',
       }),
     }),
+    Object.freeze({
+      id: 'bishop-solar-lance',
+      label: 'Lanza solar',
+      description: 'Convierte la habilidad de clase en un hechizo ofensivo diagonal de 5 de daño.',
+      requiredLevel: 6,
+      cost: 1,
+      group: 'grimoire-2',
+      modifiers: Object.freeze({}),
+      profileOverrides: Object.freeze({
+        abilityName: 'Lanza solar',
+        abilityKind: 'burst',
+        abilityLabel: 'hechizo ofensivo',
+        abilityDamage: 5,
+      }),
+    }),
+    Object.freeze({
+      id: 'bishop-aurora-liturgy',
+      label: 'Liturgia de la aurora',
+      description: 'Consagra la habilidad de clase como restauración mayor de 4 de vida.',
+      requiredLevel: 6,
+      cost: 1,
+      group: 'grimoire-2',
+      modifiers: Object.freeze({}),
+      profileOverrides: Object.freeze({
+        abilityName: 'Liturgia de la aurora',
+        abilityKind: 'heal',
+        abilityLabel: 'hechizo de restauración mayor',
+        abilityHeal: 4,
+      }),
+    }),
   ]),
   knight: Object.freeze([
     Object.freeze({
