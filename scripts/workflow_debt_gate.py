@@ -33,6 +33,7 @@ INVENTORY = {
     'home-blender-v2-runtime.yml': 'art-generation',
     'home-r2-assets.yml': 'infra-assets',
     'main-admission.yml': 'delivery-admission',
+    'main-backend-image.yml': 'delivery-backend-image',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
