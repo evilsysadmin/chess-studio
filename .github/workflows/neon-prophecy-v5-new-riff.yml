@@ -1,0 +1,304 @@
+name: Neon Prophecy V5 New Riff
+
+on:
+  push:
+    branches:
+      - audio/neon-prophecy-v5-new-riff-20260921
+
+permissions:
+  contents: read
+
+jobs:
+  render-riff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Install audio runtime
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build g++ libsndfile1-dev libjack-jackd2-dev \
+            libsamplerate0-dev libfftw3-dev pkg-config ffmpeg python3-pip python3-tk unzip unrar
+          python3 -m pip install --break-system-packages -q gdown
+          python3 -m pip install --break-system-packages -q \
+            --index-url https://download.pytorch.org/whl/cpu torch
+          python3 -m pip install --break-system-packages -q \
+            neural-amp-modeler==0.12.0 soundfile scipy numpy
+
+      - name: Restore sfizz renderer
+        uses: actions/cache@v4
+        with:
+          path: /tmp/sfizz-cache
+          key: sfizz-render-ubuntu24-20260920-v1
+
+      - name: Ensure sfizz renderer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/sfizz-cache riff
+          if [ ! -x /tmp/sfizz-cache/sfizz_render ]; then
+            git clone --recursive --depth 1 https://github.com/sfztools/sfizz.git /tmp/sfizz
+            cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF \
+              -DPLUGIN_LV2=OFF -DPLUGIN_LV2_UI=OFF -DPLUGIN_VST3=OFF \
+              -DSFIZZ_TESTS=OFF -DSFIZZ_BENCHMARKS=OFF -DSFIZZ_DEMOS=OFF \
+              -DSFIZZ_DEVTOOLS=OFF -DSFIZZ_RENDER=ON
+            cmake --build /tmp/sfizz/build --target sfizz_render -j2
+            cp "$(find /tmp/sfizz/build -type f -name sfizz_render -executable -print -quit)" /tmp/sfizz-cache/sfizz_render
+          fi
+          test -x /tmp/sfizz-cache/sfizz_render
+
+      - name: Download Metal GTX
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/metal-gtx
+          gdown 'https://drive.google.com/uc?id=1FurY3_x_tog_56irX1VDNyRCUt5JD7bO&export=download' -O /tmp/metal-gtx.bin
+          if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
+            unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
+          else
+            unrar x -o+ -idq /tmp/metal-gtx.bin /tmp/metal-gtx/
+          fi
+          PROGRAM_DIR="$(find /tmp/metal-gtx -type d -path '*/UI_METAL-GTX/Programs' -print -quit)"
+          FULL="$PROGRAM_DIR/01-METAL-GTX Full.sfz"
+          XTRACK="$(find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*XTracking*.sfz' -print -quit)"
+          test -f "$FULL"
+          if [ -z "$XTRACK" ]; then XTRACK="$FULL"; fi
+          printf '%s\n' "$FULL" > riff/full-sfz.txt
+          printf '%s\n' "$XTRACK" > riff/xtrack-sfz.txt
+
+      - name: Compose original melodic riff
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, random, struct
+
+          BPM=158
+          PPQ=480
+          BEAT=PPQ
+          BAR=4*PPQ
+          rng=random.Random(921158)
+
+          KS={
+            "sus":19,
+            "mute":22,
+            "slide_up":24,
+            "pull":25,
+            "hammer":26,
+            "slide_in":27,
+            "slide_out":28,
+            "bend":92,
+          }
+
+          # Completely original 16-bar lead. Em -> G -> D -> C.
+          # Long statements, answers, breathing spaces, one scalar connector, harmonized peaks.
+          bars = [
+            # 0-3: STATEMENT — long, vocal-like.
+            [(0.00,76,1.35,108,"sus",1),(2.00,79,.42,96,"slide_in",0),(2.70,83,.82,112,"bend",1)],
+            [(0.00,79,.72,100,"sus",1),(1.25,74,.38,88,"pull",0),(2.00,71,1.20,105,"sus",1)],
+            [(0.00,74,1.10,108,"sus",1),(1.75,78,.38,94,"hammer",0),(2.45,81,.72,110,"bend",1)],
+            [(0.00,76,1.45,108,"sus",1),(2.05,74,.34,92,"pull",0),(2.75,71,.52,98,"sus",1)],
+
+            # 4-7: ANSWER — lower register, syncopated but not repetitive.
+            [(0.00,67,.68,94,"slide_in",1),(1.10,71,.44,90,"hammer",0),(2.00,74,1.10,108,"sus",1)],
+            [(0.50,71,.50,94,"sus",0),(1.45,74,.34,90,"hammer",0),(2.20,79,.92,111,"bend",1)],
+            [(0.00,69,.76,96,"sus",1),(1.35,74,.42,93,"slide_up",0),(2.25,78,.72,106,"sus",1)],
+            [(0.00,76,1.30,108,"sus",1),(2.00,74,.38,91,"pull",0),(3.00,71,.42,96,"slide_out",1)],
+
+            # 8-11: DEVELOPMENT — only bar 9 has a run; others breathe.
+            [(0.00,76,.72,101,"sus",1),(1.25,79,.50,98,"slide_in",0),(2.25,83,1.05,116,"bend",1)],
+            [(0.00,71,.20,86,"sus",0),(.50,72,.20,88,"hammer",0),(1.00,74,.20,92,"sus",0),
+             (1.50,76,.20,96,"hammer",0),(2.00,78,.20,100,"sus",0),(2.50,79,.20,104,"hammer",0),
+             (3.00,81,.20,109,"sus",0),(3.50,83,.34,116,"bend",1)],
+            [(0.00,81,.95,112,"sus",1),(1.60,78,.42,96,"pull",0),(2.50,74,.82,104,"sus",1)],
+            [(0.50,76,.55,98,"slide_in",0),(1.55,79,.40,94,"hammer",0),(2.55,83,.95,118,"bend",1)],
+
+            # 12-15: CLIMAX — bigger targets, deliberate rests, harmony only on marked peaks.
+            [(0.00,83,1.20,119,"bend",2),(1.85,81,.42,101,"pull",0),(2.70,79,.82,109,"sus",1)],
+            [(0.00,79,.62,105,"sus",1),(1.10,83,.44,108,"hammer",0),(2.00,86,1.20,123,"bend",2)],
+            [(0.00,81,.72,108,"sus",1),(1.35,83,.42,104,"slide_up",0),(2.20,86,.84,121,"bend",2)],
+            [(0.00,83,.55,111,"sus",1),(1.05,81,.34,99,"pull",0),(1.75,79,.38,96,"pull",0),
+             (2.50,76,1.25,118,"sus",2)],
+          ]
+
+          # Diatonic third above in E natural minor for harmony peaks.
+          scale=[64,66,67,69,71,72,74,76,78,79,81,83,84,86,88]
+          def third_above(n):
+              # find closest scale index and move two degrees.
+              i=min(range(len(scale)), key=lambda k:abs(scale[k]-n))
+              j=min(len(scale)-1,i+2)
+              return scale[j]
+
+          events=[]
+          accent_map={"bpm":BPM,"bars":[]}
+          for bi,phrase in enumerate(bars):
+              bar_acc=[]
+              for pos,n,dur_b,vel,art,accent in phrase:
+                  bar_acc.append({"beat":pos,"note":n,"duration_beats":dur_b,"velocity":vel,"accent":accent})
+              accent_map["bars"].append(bar_acc)
+
+          def vlq(n):
+              out=[n&0x7f]; n>>=7
+              while n:
+                  out.append((n&0x7f)|0x80); n>>=7
+              return bytes(reversed(out))
+
+          def write(path, timing_ms=0.0, vel_bias=0, harmony=False):
+              ev=[]
+              def add(t,o,d): ev.append((max(0,int(t)),o,bytes(d)))
+              tempo=round(60_000_000/BPM)
+              add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
+              add(0,1,bytes([0xB0,7,116]))
+              add(0,1,bytes([0xB0,11,112]))
+
+              for bi,phrase in enumerate(bars):
+                  base=bi*BAR
+                  for pos,n,dur_b,vel,art,accent in phrase:
+                      tick=base+round(pos*BEAT)
+                      jitter=round((timing_ms/1000)*(BPM/60)*PPQ*rng.uniform(-1,1))
+                      t=tick+jitter
+                      ks=KS[art]
+                      add(t-24,0,bytes([0x90,ks,103]))
+                      add(t-6,0,bytes([0x80,ks,0]))
+                      vv=max(1,min(127,vel+vel_bias+rng.randint(-3,3)))
+                      dur=max(30,round(dur_b*BEAT*rng.uniform(.98,1.02)))
+                      add(t,2,bytes([0x90,n,vv])); add(t+dur,1,bytes([0x80,n,0]))
+                      if harmony and accent==2:
+                          hn=third_above(n)
+                          ht=t+round(.013*BEAT)
+                          hv=max(1,vv-22)
+                          add(ht,2,bytes([0x90,hn,hv])); add(ht+round(dur*.95),1,bytes([0x80,hn,0]))
+
+              ev.sort(key=lambda x:(x[0],x[1]))
+              tr=bytearray(); last=0
+              for t,_,d in ev:
+                  tr += vlq(t-last)+d; last=t
+              tr += b'\x00\xff\x2f\x00'
+              data=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)+b'MTrk'+struct.pack('>I',len(tr))+tr
+              Path(path).write_bytes(data)
+
+          # Main two performances. Harmony appears only on the right take at climax peaks;
+          # stereo amp stage keeps it restrained rather than "twin lead all the time".
+          write('riff/new-riff-left.mid', timing_ms=2.5, vel_bias=0, harmony=False)
+          write('riff/new-riff-right.mid', timing_ms=5.0, vel_bias=-4, harmony=True)
+          Path('riff/riff-map.json').write_text(json.dumps(accent_map,indent=2))
+          PY
+
+      - name: Render Metal GTX DI
+        shell: bash
+        run: |
+          set -euxo pipefail
+          FULL="$(cat riff/full-sfz.txt)"
+          XTRACK="$(cat riff/xtrack-sfz.txt)"
+          /tmp/sfizz-cache/sfizz_render --sfz "$FULL" --midi riff/new-riff-left.mid --wav riff/left-di-stereo.wav --samplerate 44100
+          /tmp/sfizz-cache/sfizz_render --sfz "$XTRACK" --midi riff/new-riff-right.mid --wav riff/right-di-stereo.wav --samplerate 44100
+          ffmpeg -hide_banner -loglevel error -y -i riff/left-di-stereo.wav -af "pan=mono|c0=.5*c0+.5*c1,aresample=48000" -ar 48000 riff/left-di.wav
+          ffmpeg -hide_banner -loglevel error -y -i riff/right-di-stereo.wav -af "pan=mono|c0=.5*c0+.5*c1,aresample=48000" -ar 48000 riff/right-di.wav
+
+      - name: Download dual NAM heads and IR
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 4 'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Tim%20R%20JCM2000%20L2%20G6.nam' -o riff/jcm.nam
+          curl -fL --retry 4 'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Helga%20B%205150%20BlockLetter%20-%20Boosted.nam' -o riff/5150.nam
+          curl -fL --retry 4 'https://www.jester-dyne-productions.com/content/files/2023/04/JestersBrutalPack_1.0.zip' -o /tmp/ir.zip
+          unzip -q /tmp/ir.zip -d /tmp/ir
+          IR="$(find /tmp/ir -type f -path '*/48kHz/6_Vertical_Lip_Stabber.wav' -print -quit)"
+          test -s "$IR"
+          cp "$IR" riff/cab-ir.wav
+
+      - name: Neural dual-amp reamp
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          import numpy as np, soundfile as sf, torch
+          from scipy.signal import butter,sosfilt,fftconvolve,resample_poly
+          from nam.models import init_from_nam
+
+          SR=48000
+
+          def readmono(p):
+              x,sr=sf.read(p,dtype='float32',always_2d=False)
+              if x.ndim>1:x=x.mean(axis=1)
+              if sr!=SR:
+                  g=math.gcd(int(sr),SR);x=resample_poly(x,SR//g,int(sr)//g).astype(np.float32)
+              return sosfilt(butter(2,28/(SR/2),btype='highpass',output='sos'),x).astype(np.float32)
+
+          def loadnam(p):
+              cfg=json.loads(Path(p).read_text());m=init_from_nam(cfg);m.eval()
+              if m.sample_rate is None:m.sample_rate=SR
+              if int(round(m.sample_rate))!=SR:raise RuntimeError(f'NAM SR {m.sample_rate}')
+              return m
+
+          def level(x,db):
+              rms=float(np.sqrt(np.mean(x*x)+1e-12));g=min(8.0,10**(db/20)/max(rms,1e-8));return (x*g).astype(np.float32)
+
+          def infer(m,x):
+              rf=int(m.receptive_field);chunk=131072;out=[];pos=0
+              with torch.inference_mode():
+                  while pos<len(x):
+                      end=min(len(x),pos+chunk);cur=x[pos:end]
+                      if pos==0:y=m(torch.from_numpy(cur.copy()),pad_start=True)
+                      else:
+                          hist=x[max(0,pos-rf+1):pos]
+                          if len(hist)<rf-1:hist=np.pad(hist,(rf-1-len(hist),0))
+                          y=m(torch.from_numpy(np.concatenate([hist,cur]).astype(np.float32)),pad_start=False)
+                      z=y.detach().cpu().numpy().astype(np.float32)
+                      if len(z)!=len(cur):raise RuntimeError('NAM length mismatch')
+                      out.append(z);pos=end
+              return np.concatenate(out)
+
+          ir,irsr=sf.read('riff/cab-ir.wav',dtype='float32',always_2d=False)
+          if ir.ndim>1:ir=ir.mean(axis=1)
+          if irsr!=SR:
+              g=math.gcd(int(irsr),SR);ir=resample_poly(ir,SR//g,int(irsr)//g).astype(np.float32)
+          nz=np.where(np.abs(ir)>max(1e-7,float(np.max(np.abs(ir)))*1e-4))[0]
+          if len(nz):ir=ir[max(0,int(nz[0])-8):]
+          ir=ir[:min(len(ir),int(.25*SR))];ir/=np.max(np.abs(ir))+1e-12
+          hp=butter(2,72/(SR/2),btype='highpass',output='sos');lp=butter(2,11200/(SR/2),btype='lowpass',output='sos')
+          def cab(x):
+              y=fftconvolve(x,ir,mode='full')[:len(x)].astype(np.float32)
+              return sosfilt(lp,sosfilt(hp,y)).astype(np.float32)
+
+          L=readmono('riff/left-di.wav');R=readmono('riff/right-di.wav')
+          jcm=loadnam('riff/jcm.nam');amp5150=loadnam('riff/5150.nam')
+          yl=cab(infer(jcm,level(L,-23.0)))
+          yr=cab(infer(amp5150,level(R,-25.0)))
+          n=min(len(yl),len(yr));st=np.column_stack([yl[:n]*.96,yr[:n]*.88])
+          peak=float(np.max(np.abs(st)))+1e-12
+          if peak>.80:st*=.80/peak
+          sf.write('riff/new-riff-dual-amp-raw.wav',st,SR,subtype='PCM_24')
+          PY
+          ffmpeg -hide_banner -loglevel error -y -i riff/new-riff-dual-amp-raw.wav \
+            -af "acompressor=threshold=-19dB:ratio=1.28:attack=30:release=130,loudnorm=I=-18:TP=-1.5:LRA=11" \
+            -ar 48000 -c:a pcm_s24le riff/new-riff-dual-amp.wav
+          ffmpeg -hide_banner -loglevel error -y -i riff/new-riff-dual-amp.wav -t 30 -ar 48000 -c:a pcm_s24le riff/new-riff-preview-30s.wav
+
+      - name: Validate and upload
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s riff/new-riff-dual-amp.wav
+          ffprobe -v error -show_entries stream=sample_rate,channels -show_entries format=duration -of default=noprint_wrappers=1 riff/new-riff-dual-amp.wav
+        env:
+          LC_ALL: C
+
+      - name: Upload riff artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-prophecy-v5-new-riff
+          path: |
+            riff/new-riff-dual-amp.wav
+            riff/new-riff-preview-30s.wav
+            riff/riff-map.json
+            riff/new-riff-left.mid
+            riff/new-riff-right.mid
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
