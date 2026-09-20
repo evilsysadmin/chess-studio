@@ -865,6 +865,39 @@ def add_gothic_canon_v2(static, mats):
     if horse_relief is not None and horse_relief.data.materials:
         horse_relief.data.materials[0] = heraldic_brass
 
+    # Small lived-in reading nook beside the surviving left bench. It is kept
+    # low and peripheral so the board remains the hero while the room gains one
+    # believable human-use zone instead of another ceremonial prop.
+    nx, ny = -5.56, -3.82
+    cylinder("WR_CANON_reading_table_top", (nx, ny, 0.86), 0.42, 0.10,
+             mats["frame_wood"], static, vertices=28)
+    cylinder("WR_CANON_reading_table_stem", (nx, ny, 0.49), 0.075, 0.64,
+             mats["brass_dark"], static, vertices=18)
+    cylinder("WR_CANON_reading_table_foot", (nx, ny, 0.18), 0.28, 0.08,
+             mats["brass_dark"], static, vertices=24)
+    cube("WR_CANON_reading_book_0", (nx - 0.10, ny - 0.02, 0.96), (0.20, 0.14, 0.035),
+         mats["book_a"], static, bevel=0.014)
+    book = cube("WR_CANON_reading_book_1", (nx + 0.04, ny - 0.01, 1.01), (0.18, 0.13, 0.030),
+                mats["book_b"], static, bevel=0.014)
+    book.rotation_euler.z = 0.12
+    cylinder("WR_CANON_reading_lamp_base", (nx + 0.20, ny + 0.02, 1.01), 0.10, 0.045,
+             mats["brass_dark"], static, vertices=18)
+    cylinder("WR_CANON_reading_lamp_stem", (nx + 0.20, ny + 0.02, 1.30), 0.035, 0.52,
+             mats["brass"], static, vertices=16)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=24, radius1=0.22, radius2=0.11, depth=0.30,
+        location=(nx + 0.20, ny + 0.02, 1.63),
+    )
+    shade = bpy.context.object
+    shade.name = "WR_CANON_reading_lamp_shade"
+    shade.data.materials.append(mats["ivory"])
+    tag(shade)
+    relink(shade, static)
+    sphere("WR_CANON_reading_lamp_glow", (nx + 0.20, ny + 0.02, 1.52), 0.052,
+           mats["fire_core"], static, scale=(0.58, 0.58, 0.92))
+    light("WR_CANON_reading_light", "POINT", (nx + 0.20, ny + 0.02, 1.58), 34.0,
+          (1.0, 0.46, 0.18), static, radius=0.70)
+
     def add_pointed_arch_frame(prefix, cx):
         """Stone lancet frame: curved in segments so it reads as gothic, not as a roof truss."""
         y = 6.43
@@ -1700,7 +1733,7 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_", "WR_CANON_reading_")):
             key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
