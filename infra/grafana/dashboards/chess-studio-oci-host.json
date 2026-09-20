@@ -1,0 +1,295 @@
+{
+  "uid": "chess-studio-oci-host",
+  "title": "Chess Studio · OCI host",
+  "tags": [
+    "chess-studio",
+    "oci",
+    "host",
+    "observability"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Entorno",
+        "type": "custom",
+        "query": "production,staging",
+        "current": {
+          "text": "production",
+          "value": "production"
+        },
+        "includeAll": true,
+        "allValue": "production|staging",
+        "multi": false,
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "OCI A1 · salud del host",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Métricas Linux reales recogidas por Grafana Alloy desde `/proc` y `/sys`, sin Docker socket ni modo privilegiado. Filtra por entorno; ambos collectors observan el mismo A1 pero conservan identidad `production/staging`."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "CPU busy · %",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\",mode=\"idle\"}[5m])) * 100)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "RAM usada · %",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}) / avg(node_memory_MemTotal_bytes{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"})))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Load 1m",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "avg(node_load1{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Series host visibles",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "count({service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Pressure CPU · waiting/s",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_pressure_cpu_waiting_seconds_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}[5m]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Disco · bytes/s",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "read",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_disk_read_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}[5m]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "write",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_disk_written_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}[5m]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Red · bytes/s",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "rx",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_network_receive_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}[5m]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "tx",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(node_network_transmit_bytes_total{service_name=\"chess-studio-oci-host\",deployment_environment=~\"${environment:regex}\"}[5m]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
