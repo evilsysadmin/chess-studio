@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
+  actions: read
 
 # Canonical staging and manual preview share one write mutex. Generations queue
 # instead of interrupting a partially-mutated deployment; once a queued run
