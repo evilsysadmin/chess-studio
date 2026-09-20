@@ -15,6 +15,7 @@ import {
   loadChroniclesCharacterDraft,
   saveChroniclesCharacterDraft,
 } from '../chronicles/chroniclesCharacterDraft.js';
+import { clearRememberedLabMode, rememberLabMode } from '../labLaunchIntent.js';
 import './ChroniclesCharacterSetup.css';
 
 const ATTRIBUTE_LABELS = Object.freeze({
@@ -44,6 +45,7 @@ export default function ChroniclesCharacterSetup({
   currentBuild,
   onConfirm,
   onExit,
+  recoveryLabMode = null,
 }) {
   const normalizedCurrent = useMemo(
     () => normalizeChroniclesCharacterBuild(currentBuild, CHRONICLES_PARTY),
@@ -59,21 +61,27 @@ export default function ChroniclesCharacterSetup({
 
   useEffect(() => {
     if (!editing) return;
-    saveChroniclesCharacterDraft({ seed, activeSlot, build: draft }, CHRONICLES_PARTY);
-  }, [activeSlot, draft, editing, seed]);
+    const saved = saveChroniclesCharacterDraft({ seed, activeSlot, build: draft }, CHRONICLES_PARTY);
+    if (saved && recoveryLabMode) rememberLabMode(recoveryLabMode);
+  }, [activeSlot, draft, editing, recoveryLabMode, seed]);
+
+  const clearRecovery = () => {
+    clearChroniclesCharacterDraft();
+    clearRememberedLabMode();
+  };
 
   const confirmBuild = (build) => {
-    clearChroniclesCharacterDraft();
+    clearRecovery();
     onConfirm(build);
   };
 
   const leaveSetup = () => {
-    clearChroniclesCharacterDraft();
+    clearRecovery();
     onExit();
   };
 
   const leaveEditor = () => {
-    clearChroniclesCharacterDraft();
+    clearRecovery();
     setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
     setSeed(normalizedCurrent.seed || 'MATTHIAS');
