@@ -55,6 +55,29 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
     print("main-admission exact-HEAD fallback contract: OK")
 
 
+
+def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
+    """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
+    subprocess.run(
+        [sys.executable, "-S", "scripts/cloudflare_auth_rate_limit.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
+    workflow = (root / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
+    required = (
+        "name: CF auth guard",
+        "python3 scripts/cloudflare_auth_rate_limit.py",
+        "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}",
+        "CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
+    )
+    missing = [token for token in required if token not in workflow]
+    if missing:
+        raise SystemExit(
+            "staging perdió el Cloudflare auth rate-limit: " + ", ".join(missing)
+        )
+    print("Cloudflare auth rate-limit staging wiring: OK")
+
+
 def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     """Run always-on static contracts; OCI integration stays conditional on the CI PR surface."""
     main_lineage_self_test()
@@ -62,6 +85,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     staging_release_identity_self_test()
     workflow_debt_self_test()
     validate_main_admission_fallback(root)
+    validate_cloudflare_auth_rate_limit(root)
 
     unknown, missing = inventory_drift(root)
     rows = budget_rows(root)

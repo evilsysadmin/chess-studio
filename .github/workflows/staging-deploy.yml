@@ -252,8 +252,8 @@ jobs:
             echo "::notice title=Frontend fallback::Artifact exacto ausente o inválido; se recompilará en staging."
           fi
           echo "hit=$hit" >> "$GITHUB_OUTPUT"
-      - name: Cloudflare bootstrap contract smoke
-        run: python3 -S scripts/cloudflare_staging_pages_smoke.py
+      - name: CF auth guard
+        run: python3 -S scripts/cloudflare_staging_pages_smoke.py && python3 scripts/cloudflare_auth_rate_limit.py
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
