@@ -9,6 +9,7 @@ import {
   chroniclesTacticsPartyIdleName,
   chroniclesTacticsPartyRootName,
   configureChroniclesTacticsPartyVisual,
+  installChroniclesTacticsPartyLoadout,
 } from './chroniclesOfMatthiasPartyBlenderArt.js';
 
 describe('Chronicles Tactics real Blender party runtime contract', () => {
@@ -55,5 +56,24 @@ describe('Chronicles Tactics real Blender party runtime contract', () => {
 
     mesh.geometry.dispose();
     mesh.material.dispose();
+  });
+
+  it('parents procedural equipment to the authored visual so it inherits GLB transforms', () => {
+    const memberRoot = new THREE.Group();
+    const visual = new THREE.Group();
+    visual.rotation.set(Math.PI / 2, 0.2, -0.1);
+    visual.scale.set(0.85, 0.85, 0.85);
+    memberRoot.add(visual);
+
+    const cancel = installChroniclesTacticsPartyLoadout(memberRoot, visual, 'knight');
+    const loadout = visual.getObjectByName('chronicles-default-loadout-knight');
+
+    expect(loadout).toBeTruthy();
+    expect(loadout.parent).toBe(visual);
+    expect(memberRoot.getObjectByName('chronicles-default-loadout-knight')).toBe(loadout);
+    expect(visual.userData.chroniclesLoadoutTransformHost).toBe('authored-visual');
+
+    cancel();
+    expect(visual.getObjectByName('chronicles-default-loadout-knight')).toBeFalsy();
   });
 });
