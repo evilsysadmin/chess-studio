@@ -13,6 +13,9 @@ services:
       # exports CHESS_STUDIO_CORS_ORIGINS explicitly so a stale host env cannot
       # silently replace staging CORS with production-only configuration.
       CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+      # The OCI deploy wrapper sets this only because both staging and temporary
+      # production are reachable exclusively through the outbound Cloudflare Tunnel.
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
     ports:
       - "127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:4000"
     restart: unless-stopped

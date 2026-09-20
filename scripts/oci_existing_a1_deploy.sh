@@ -151,6 +151,7 @@ compose() {
   CHESS_STUDIO_BACKEND_PORT="$port" \
   CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
   CHESS_STUDIO_STATE_DIR="$state_dir" \
+  CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
   docker compose -p "$project" -f "$compose_file" "$@"
 }
