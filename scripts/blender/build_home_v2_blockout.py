@@ -1234,13 +1234,22 @@ def add_table_and_board(materials):
     for side in (-1, 1):
         x = side * 4.18
         cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
-        cube(
+        bench_cushion = cube(
             f"HOME_PROP_bench_cushion_{side}",
-            (x, 0.98, 0.74),
-            (0.69, 1.55, 0.20),
+            (
+                x + (0.012 if side > 0 else -0.018),
+                0.98 + (0.018 if side > 0 else -0.010),
+                0.742 + (0.012 if side > 0 else -0.004),
+            ),
+            (
+                0.685 + (0.008 if side > 0 else -0.006),
+                1.545 + (0.012 if side < 0 else -0.010),
+                0.195 + (0.008 if side > 0 else 0.0),
+            ),
             materials["bench_velvet"],
             bevel=0.12,
         )
+        bench_cushion.rotation_euler[2] = math.radians(0.55 * side)
         for by in (0.08, 2.32):
             for dx in (-0.40, 0.40):
                 bx = x + dx
