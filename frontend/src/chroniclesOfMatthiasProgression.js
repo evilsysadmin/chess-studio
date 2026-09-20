@@ -289,6 +289,11 @@ export function chroniclesHeroProgress(progression, memberId) {
   return normalized.heroes[memberId] || defaultHero();
 }
 
+export function chroniclesHasUnspentProgression(progression, memberId) {
+  const hero = chroniclesHeroProgress(progression, memberId);
+  return hero.attributePoints > 0 || hero.skillPoints > 0;
+}
+
 export function chroniclesXpToNextLevel(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
   if (hero.level >= CHRONICLES_MAX_LEVEL) return { current: hero.xp, next: hero.xp, remaining: 0, maxLevel: true };
