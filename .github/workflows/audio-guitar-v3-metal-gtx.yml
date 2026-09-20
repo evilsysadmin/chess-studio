@@ -55,9 +55,9 @@ jobs:
             echo "Metal GTX archive format unsupported" >&2
             exit 2
           fi
-          find /tmp/metal-gtx -type f -iname '*.sfz' -print | head -40
+          find /tmp/metal-gtx -type f -iname '*.sfz' -print | head -40 || true
           SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' | grep -Ei 'metal.*gtx|gtx.*metal' | head -n1 || true)"
-          if [ -z "$SFZ" ]; then SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' | head -n1)"; fi
+          if [ -z "$SFZ" ]; then SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' -print -quit)"; fi
           test -f "$SFZ"
           printf '%s\n' "$SFZ" > v3/sfz-path.txt
           cp "$SFZ" v3/selected-metal-gtx.sfz
