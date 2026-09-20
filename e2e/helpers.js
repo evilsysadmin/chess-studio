@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
 const CHRONICLES_E2E_MAP_IDS = Object.freeze([
@@ -19,7 +20,8 @@ let chroniclesManifestPromise = null;
 function chroniclesE2EManifests() {
   if (!chroniclesManifestPromise) {
     chroniclesManifestPromise = Promise.all(CHRONICLES_E2E_MAP_IDS.map(async (mapId) => {
-      const path = `${process.cwd()}/frontend/src/chronicles/maps/${mapId}.json`;
+      const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
+      const path = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps', `${mapId}.json`);
       return [mapId, JSON.parse(await readFile(path, 'utf8'))];
     })).then((entries) => Object.fromEntries(entries));
   }
