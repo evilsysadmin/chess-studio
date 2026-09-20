@@ -1128,13 +1128,14 @@ def add_table_and_board(materials):
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
         book_half_w = 0.42 - idx * 0.04
-        cube(
+        table_book = cube(
             f"HOME_PROP_table_book_{idx}",
             (px, py, pz),
             (book_half_w, 0.26, 0.040),
             materials["book_brown"] if idx != 1 else materials["book_green"],
             bevel=0.025,
         )
+        table_book.rotation_euler[2] = math.radians((-4.0, 2.5, -1.5)[idx])
         cube(
             f"HOME_PROP_table_book_pages_{idx}",
             (px, py - 0.267, pz),
@@ -1150,21 +1151,24 @@ def add_table_and_board(materials):
     cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.76), 0.030, 0.006, 0.10, materials["fire_hot"], vertices=12)
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
-    cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
-    cube(
+    table_folio = cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
+    table_folio.rotation_euler[2] = math.radians(3.2)
+    table_folio_pages = cube(
         "HOME_PROP_table_folio_pages",
         (2.72, 0.315, 1.405),
         (0.32, 0.235, 0.015),
         materials["paper"],
         bevel=0.018,
     )
-    cube(
+    table_folio_pages.rotation_euler[2] = table_folio.rotation_euler[2]
+    table_folio_spine = cube(
         "HOME_PROP_table_folio_spine",
         (2.37, 0.35, 1.39),
         (0.035, 0.26, 0.050),
         materials["brass_dark"],
         bevel=0.012,
     )
+    table_folio_spine.rotation_euler[2] = table_folio.rotation_euler[2]
     cube(
         "HOME_PROP_table_folio_clasp",
         (2.95, 0.055, 1.415),
