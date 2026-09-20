@@ -1949,14 +1949,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.02, 0.085, 0.70, 3.0),
         (0.25, 0.065, 0.48, 8.0),
     )):
-        tongue = cone(
+        tongue = sphere(
             f"HOME_PROP_fireplace_left_front_tongue_{idx}",
             (-6.15 + dx, 5.390, 0.72 + tongue_h * 0.50),
-            radius,
-            0.010,
-            tongue_h,
+            (radius * 0.82, 0.030, tongue_h * 0.50),
             materials["fire"],
-            vertices=16,
         )
         tongue.rotation_euler[1] = math.radians(tilt)
 
@@ -2263,14 +2260,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.06, 0.072, 0.56, 4.0),
         (0.27, 0.055, 0.38, 8.0),
     )):
-        tongue = cone(
+        tongue = sphere(
             f"HOME_PROP_fireplace_right_front_tongue_{idx}",
             (4.45 + dx, 5.390, 0.72 + tongue_h * 0.50),
-            radius,
-            0.010,
-            tongue_h,
+            (radius * 0.82, 0.030, tongue_h * 0.50),
             materials["fire"],
-            vertices=16,
         )
         tongue.rotation_euler[1] = math.radians(tilt)
 
