@@ -1331,22 +1331,8 @@ def add_gothic_canon_v2(static, mats):
     tag(drape)
     static.objects.link(drape)
 
-    # Two shallow velvet folds break the broad front panel into cloth rather
-    # than a flat heraldic sticker. Keep them off-centre so the brass horse
-    # remains the only focal mark on the drape.
-    for fold_index, (fold_x, fold_z, fold_scale) in enumerate((
-        (-1.58, 0.60, 1.00),
-        (1.12, 0.57, 0.82),
-    )):
-        sphere(
-            f"WR_CANON_table_drape_fold_{fold_index}",
-            (fold_x, front_y - 0.072, fold_z),
-            0.16,
-            burgundy,
-            static,
-            scale=(0.22, 0.16, fold_scale),
-        )
-
+    # Keep the front drape clean around the heraldic relief. Added fold blobs
+    # were rejected in visual review because they read as decorative buttons.
     # Small rampant horse relief on the drape, intentionally broad rather than
     # anatomically fussy so it survives the gameplay camera.
     emblem_y = front_y - 0.085
