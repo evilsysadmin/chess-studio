@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHRONICLES_CHARACTER_BUILD_VERSION,
+  CHRONICLES_CREATOR_ATTRIBUTE_BUDGET,
   createCanonicalChroniclesCharacterBuild,
+  createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
   resolveChroniclesCharacterParty,
   validateChroniclesCharacterBuild,
@@ -109,6 +111,23 @@ describe('Chronicles character builds', () => {
 
     expect(normalized.mode).toBe('canonical');
     expect(normalized.characters[0].name).toBe('Matthias');
+  });
+
+  it('creates reproducible seeded builds within the creator budget', () => {
+    const first = createSeededChroniclesCharacterBuild('vault-7', PARTY);
+    const repeated = createSeededChroniclesCharacterBuild('vault-7', PARTY);
+    const other = createSeededChroniclesCharacterBuild('vault-8', PARTY);
+
+    expect(repeated).toEqual(first);
+    expect(other).not.toEqual(first);
+    expect(first.mode).toBe('custom');
+    expect(first.seed).toBe('vault-7');
+    expect(validateChroniclesCharacterBuild(first)).toEqual({ valid: true, errors: [] });
+    expect(first.characters.every((character) => (
+      Object.values(character.attributes).reduce((sum, value) => sum + value, 0)
+        === CHRONICLES_CREATOR_ATTRIBUTE_BUDGET
+      && character.startingSkillId
+    ))).toBe(true);
   });
 
   it('rejects duplicate names, foreign class ids, excess attributes and unknown skills', () => {
