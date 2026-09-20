@@ -166,8 +166,25 @@ def _resolve_datasource_uid(datasources: list[dict], preferred_uid: str, datasou
         preferred = next((row for row in matches if row.get("uid") == preferred_uid), None)
         if preferred:
             return preferred_uid
+
+    # Grafana Cloud can expose auxiliary datasources of the same engine type
+    # (for example alert-state-history and usage-insights are Loki-backed).
+    # Recover only an unambiguous canonical stack datasource; never guess
+    # between multiple plausible product datasources.
+    canonical_suffixes = {
+        "prometheus": ("-prom", "-prometheus"),
+        "loki": ("-logs", "-loki"),
+        "tempo": ("-traces", "-tempo"),
+    }
+    suffixes = canonical_suffixes.get(datasource_type, ())
+    canonical = [
+        row for row in matches
+        if str(row.get("uid") or "").strip().lower().endswith(suffixes)
+    ]
     defaults = [row for row in matches if row.get("isDefault")]
-    if len(defaults) == 1:
+    if len(canonical) == 1:
+        chosen = str(canonical[0]["uid"])
+    elif len(defaults) == 1:
         chosen = str(defaults[0]["uid"])
     elif len(matches) == 1:
         chosen = str(matches[0]["uid"])
@@ -329,13 +346,15 @@ def self_test() -> int:
     assert _tempo_has_result({"data": {"traces": [{"traceID": "abc"}]}})
     assert not _tempo_has_result({"traces": []})
     sample_datasources = [
-        {"uid": "prom-default", "type": "prometheus", "isDefault": True},
-        {"uid": "loki-only", "type": "loki", "isDefault": False},
-        {"uid": "tempo-only", "type": "tempo", "isDefault": False},
+        {"uid": "grafanacloud-prom", "type": "prometheus", "isDefault": True},
+        {"uid": "grafanacloud-alert-state-history", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-logs", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-usage-insights", "type": "loki", "isDefault": False},
+        {"uid": "grafanacloud-traces", "type": "tempo", "isDefault": False},
     ]
-    assert _resolve_datasource_uid(sample_datasources, "stale-prom", "prometheus") == "prom-default"
-    assert _resolve_datasource_uid(sample_datasources, "", "loki") == "loki-only"
-    assert _resolve_datasource_uid(sample_datasources, "tempo-only", "tempo") == "tempo-only"
+    assert _resolve_datasource_uid(sample_datasources, "stale-prom", "prometheus") == "grafanacloud-prom"
+    assert _resolve_datasource_uid(sample_datasources, "stale-logs", "loki") == "grafanacloud-logs"
+    assert _resolve_datasource_uid(sample_datasources, "stale-traces", "tempo") == "grafanacloud-traces"
     assert _slo_report("self-pass", 4.0, 5.0, "%")
     assert not _slo_report("self-fail", 6.0, 5.0, "%")
     assert _slo_report("self-skip", None, 5.0, "%", evaluated=False)
