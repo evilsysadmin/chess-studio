@@ -26,12 +26,21 @@
       "material": "metal"
     },
     {
+      "x": 520,
+      "y": 342,
+      "w": 132,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
       "x": 670,
       "y": 456,
       "w": 160,
       "h": 24,
       "kind": "catwalk",
-      "material": "concrete"
+      "material": "stone"
     },
     {
       "x": 900,
@@ -40,6 +49,15 @@
       "h": 24,
       "kind": "high_catwalk",
       "material": "metal"
+    },
+    {
+      "x": 1090,
+      "y": 318,
+      "w": 126,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "stone",
+      "one_way": true
     },
     {
       "x": 1180,
@@ -55,7 +73,7 @@
       "w": 250,
       "h": 24,
       "kind": "low_catwalk",
-      "material": "metal"
+      "material": "concrete"
     },
     {
       "x": 1660,
@@ -67,12 +85,39 @@
       "route": "climb"
     },
     {
+      "x": 1740,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "metal",
+      "route": "climb"
+    },
+    {
+      "x": 1840,
+      "y": 280,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "metal",
+      "route": "climb"
+    },
+    {
       "x": 1840,
       "y": 366,
       "w": 220,
       "h": 24,
       "kind": "high_catwalk",
       "material": "metal"
+    },
+    {
+      "x": 1970,
+      "y": 360,
+      "w": 155,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "wood",
+      "route": "climb"
     },
     {
       "x": 2130,
@@ -104,7 +149,7 @@
       "w": 150,
       "h": 24,
       "kind": "low_catwalk",
-      "material": "metal"
+      "material": "stone"
     },
     {
       "x": 3050,
@@ -131,6 +176,15 @@
       "material": "concrete"
     },
     {
+      "x": 3710,
+      "y": 326,
+      "w": 138,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
       "x": 3820,
       "y": 426,
       "w": 220,
@@ -144,7 +198,7 @@
       "w": 150,
       "h": 24,
       "kind": "high_catwalk",
-      "material": "metal"
+      "material": "stone"
     },
     {
       "x": 4310,
@@ -153,6 +207,15 @@
       "h": 24,
       "kind": "catwalk",
       "material": "metal"
+    },
+    {
+      "x": 4420,
+      "y": 306,
+      "w": 124,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "stone",
+      "one_way": true
     },
     {
       "x": 4600,
@@ -169,33 +232,6 @@
       "h": 24,
       "kind": "high_catwalk",
       "material": "wood"
-    },
-    {
-      "x": 1740,
-      "y": 360,
-      "w": 145,
-      "h": 24,
-      "kind": "climb_catwalk",
-      "material": "metal",
-      "route": "climb"
-    },
-    {
-      "x": 1840,
-      "y": 280,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_catwalk",
-      "material": "metal",
-      "route": "climb"
-    },
-    {
-      "x": 1970,
-      "y": 360,
-      "w": 155,
-      "h": 24,
-      "kind": "climb_catwalk",
-      "material": "wood",
-      "route": "climb"
     }
   ],
   "obstacles": [
@@ -436,45 +472,45 @@
     "layers": [
       {
         "kind": "sky",
-        "scroll": 0.03,
+        "scroll": 0.02,
         "z": -80,
         "intensity": 1
       },
       {
         "kind": "industrial_art",
-        "scroll": 0.08,
+        "scroll": 0.055,
         "z": -74,
-        "intensity": 1
+        "intensity": 1.08
       },
       {
         "kind": "far_ridge",
-        "scroll": 0.14,
+        "scroll": 0.115,
         "z": -70,
         "intensity": 1
       },
       {
         "kind": "ruined_city",
-        "scroll": 0.34,
+        "scroll": 0.29,
         "z": -55,
-        "intensity": 1
+        "intensity": 1.05
       },
       {
         "kind": "mid_defence",
-        "scroll": 0.62,
+        "scroll": 0.56,
         "z": -32,
-        "intensity": 1
+        "intensity": 1.08
       },
       {
         "kind": "near_weather",
-        "scroll": 0.88,
+        "scroll": 0.82,
         "z": -8,
-        "intensity": 1
+        "intensity": 0.92
       },
       {
         "kind": "near_foreground",
-        "scroll": 0.98,
+        "scroll": 1,
         "z": -4,
-        "intensity": 1
+        "intensity": 1.04
       }
     ]
   },
@@ -586,5 +622,6 @@
       "damage": 95,
       "lead": 90
     }
-  ]
+  ],
+  "visual_revision": 2
 }
