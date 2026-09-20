@@ -882,7 +882,7 @@ def add_bookshelf(materials):
 def add_banner(name: str, x: float, materials):
     banner = materials["wall_banner"]
     brass = materials["brass"]
-    gold = materials["gold"]
+    gold = materials["brass_dark"]
     points = [
         (x - 0.48, 5.62),
         (x + 0.48, 5.62),
