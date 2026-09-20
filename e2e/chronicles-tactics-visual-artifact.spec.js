@@ -163,6 +163,19 @@ for (const capture of CAPTURES) {
       if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
+
+      const actionPanel = mode.locator('.chronicles-tactics__actions');
+      const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+      await expect(moveEast).toHaveAttribute('data-forecast', 'hit');
+      await expect(moveEast.locator('.chronicles-tactics__forecast')).toHaveText('−1');
+      const forecastWarning = await moveEast.getAttribute('title');
+      expect(forecastWarning || '').toMatch(/^Aviso:/);
+      await captureElement(
+        page,
+        actionPanel,
+        `${ARTIFACT_DIR}/chronicles-tactics-forecast-${capture.label}.png`,
+      );
+
       if (capture.hasTouch) {
         // On narrow layouts the mission, action pad and party HUD flow below the
         // battlefield. Keep the battlefield crop for renderer inspection, and
@@ -195,7 +208,15 @@ for (const capture of CAPTURES) {
           schema: 3,
           scope: 'chronicles-tactics',
           capture: { label: capture.label, ...health },
-          gameplay: { movedNorth: true, message: movementMessage },
+          gameplay: {
+            movedNorth: true,
+            message: movementMessage,
+            forecastEast: {
+              level: 'hit',
+              badge: '−1',
+              warning: forecastWarning,
+            },
+          },
         }, null, 2)}\n`,
         'utf8',
       );
