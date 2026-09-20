@@ -167,7 +167,7 @@ export default function ChroniclesCharacterSetup({
               <button
                 type="button"
                 className="ghost-btn"
-                onClick={() => onConfirm(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
+                onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
               >
                 Volver al grupo canónico
               </button>
