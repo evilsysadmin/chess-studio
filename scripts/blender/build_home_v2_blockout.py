@@ -2494,13 +2494,27 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
-    for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
+    for column_index, x in enumerate((-7.6, -4.8, -0.65, 2.85, 5.95, 8.25)):
         cube(f"HOME_ARCH_pilaster_back_{x}", (x, 6.78, 2.65), (0.42, 0.15, 2.55), materials["arch_stone"], bevel=0.045)
         cube(f"HOME_ARCH_pilaster_cap_{x}", (x, 6.62, 5.18), (0.56, 0.22, 0.16), materials["arch_stone"], bevel=0.045)
-        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
+        column_radius = 0.248 + (_hash01(column_index, 0, 1901) - 0.5) * 0.010
+        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), column_radius, 5.2, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
+        for joint_index, joint_z in enumerate((1.46, 2.57, 3.68)):
+            cylinder(
+                f"HOME_ARCH_column_joint_{column_index}_{joint_index}",
+                (
+                    x,
+                    6.548,
+                    joint_z + (_hash01(column_index, joint_index, 1913) - 0.5) * 0.035,
+                ),
+                column_radius + 0.004,
+                0.018,
+                materials["back_wall_stone"],
+                vertices=36,
+            )
     cube("HOME_ARCH_upper_cornice", (0, 6.72, 5.62), (8.95, 0.20, 0.12), materials["wood"], bevel=0.045)
 
     add_fireplace("fireplace_left", -6.15, materials)
