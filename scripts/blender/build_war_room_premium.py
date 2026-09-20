@@ -709,10 +709,17 @@ def add_room(static, mats):
         cylinder(f"WR_VASE_neck_{side}", (shelf_x + side * 1.15, 5.72, 3.30), 0.10, 0.23, mats["green"], static)
         light(f"WR_LIGHT_picture_{side}", "AREA", (px, 5.85, 5.95), 110.0, (1.0, 0.68, 0.42), static, size=1.2)
 
-    # Tall night window on the right.
+    # Tall night window on the right. A shallow mullion/crossbar layer sits in
+    # front of the glass so the opening reads as built architecture rather than
+    # two flat blue panes, while leaving the moon and cold-key anchor untouched.
     cube("WR_WINDOW_frame", (8.43, 2.85, 3.42), (0.12, 1.42, 2.18), mats["brass_dark"], static, bevel=0.05)
     cube("WR_WINDOW_night", (8.29, 2.85, 3.42), (0.025, 1.20, 1.94), mats["window"], static, bevel=0.01)
     sphere("WR_WINDOW_moon", (8.20, 3.53, 4.48), 0.28, mats["moon"], static, scale=(0.18, 1.0, 1.0))
+    cube("WR_CANON_window_mullion", (8.17, 2.85, 3.42),
+         (0.035, 0.045, 1.90), mats["brass_dark"], static, bevel=0.014)
+    for index, z in enumerate((2.72, 3.78)):
+        cube(f"WR_CANON_window_crossbar_{index}", (8.17, 2.85, z),
+             (0.035, 1.18, 0.045), mats["brass_dark"], static, bevel=0.014)
     for index, (y, height) in enumerate(((1.92, 0.42), (2.20, 0.66), (2.52, 0.50), (2.88, 0.76), (3.24, 0.54), (3.58, 0.70))):
         cube(f"WR_WINDOW_horizon_{index}", (8.19, y, 1.66 + height / 2),
              (0.035, 0.12, height / 2), mats["horizon"], static, bevel=0.012)
