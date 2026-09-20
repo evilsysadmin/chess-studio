@@ -116,6 +116,43 @@ def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     assert route_plan[-1] == "echo-cistern"
 
 
+def test_distinct_run_keys_create_fresh_seed_route_and_world(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    seeds = iter((0, 2))
+    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: next(seeds))
+    client = _client()
+    auth = {"Authorization": "Bearer test-token"}
+
+    first = client.post(
+        "/api/chronicles/runs",
+        headers={**auth, "Idempotency-Key": "fresh-expedition-a"},
+        json={},
+    )
+    second = client.post(
+        "/api/chronicles/runs",
+        headers={**auth, "Idempotency-Key": "fresh-expedition-b"},
+        json={},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    first_payload = first.json()
+    second_payload = second.json()
+
+    assert first_payload["runId"] != second_payload["runId"]
+    assert first_payload["seed"] == 0
+    assert second_payload["seed"] == 2
+    assert first_payload["route"]["mapIds"] == list(chronicles_api.chronicles_route_plan_for_seed(0))
+    assert second_payload["route"]["mapIds"] == list(chronicles_api.chronicles_route_plan_for_seed(2))
+    assert first_payload["route"]["mapIds"] != second_payload["route"]["mapIds"]
+    assert first_payload["area"]["mapCode"] != second_payload["area"]["mapCode"]
+    assert first_payload["area"]["layoutRevision"] != second_payload["area"]["layoutRevision"]
+
+
 def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
     seed = 20260918
     route_snapshot = chronicles_api.chronicles_route_snapshot_for_seed(seed)
