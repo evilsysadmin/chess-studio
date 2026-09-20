@@ -829,6 +829,13 @@ def add_gothic_canon_v2(static, mats):
         if obj.name.startswith(legacy_prefixes):
             bpy.data.objects.remove(obj, do_unlink=True)
 
+    # Break the last big mirror cue from the baseline room. V2 keeps the left
+    # ceremonial suit as a military accent; the right suit is removed so the
+    # globe + night window can read as a different, quieter secondary zone.
+    for obj in list(static.objects):
+        if obj.name.startswith("WR_ARMOR_") and obj.location.x > 0:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
     burgundy = material(
         "WR_MAT_canon_burgundy", (0.205, 0.012, 0.022, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
@@ -1100,8 +1107,9 @@ def add_gothic_canon_v2(static, mats):
     add_fireplace_blockwork("left", -4.55)
     add_fireplace_blockwork("right", rx)
 
-    # Cold floor globe in the window/fireplace transition.
-    gx, gy = 6.82, 4.86
+    # Cold floor globe becomes the right-side hero prop once the mirrored
+    # armour is retired, tucked closer to the window to open negative space.
+    gx, gy = 7.12, 4.54
     sphere("WR_CANON_globe_sphere", (gx, gy, 1.53), 0.54, mats["picture_b"], static,
            scale=(1.0, 1.0, 1.0))
     torus("WR_CANON_globe_ring", (gx, gy, 1.53), 0.66, 0.035, mats["brass"], static,
