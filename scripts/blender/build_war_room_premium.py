@@ -223,10 +223,9 @@ def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_
     return obj
 
 
-def draped_banner(name, center, side, mat, owner):
+def draped_banner(name, center, side, mat, owner, *, half_height=1.36):
     """Build a shallow gathered cloth panel with real silhouette and fold relief."""
     cx, cy, cz = center
-    half_height = 1.36
     columns = (-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0)
     rows = (
         (1.00, 0.58, 0.00),
@@ -1056,7 +1055,17 @@ def add_gothic_canon_v2(static, mats):
     # Two tall heraldic banners frame the room edges. Removing the inner pair
     # opens breathing room around the crest, desk and campaign painting.
     for index, x in enumerate((-6.55, 6.55)):
-        draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
+        # Keep the two heraldic marks paired, but let the right cloth fall a
+        # little shorter so the wall stops reading like a mirrored stage set.
+        banner_half_height = 1.36 if x < 0 else 1.22
+        draped_banner(
+            f"WR_CANON_banner_{index}",
+            (x, 6.48, 4.78),
+            -1 if x < 0 else 1,
+            burgundy,
+            static,
+            half_height=banner_half_height,
+        )
         cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
         for edge in (-1, 1):
