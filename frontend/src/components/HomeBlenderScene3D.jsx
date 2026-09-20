@@ -166,7 +166,7 @@ export default function HomeBlenderScene3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.AgXToneMapping;
     renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
     renderer.setClearColor(0x000000, 0);
 
