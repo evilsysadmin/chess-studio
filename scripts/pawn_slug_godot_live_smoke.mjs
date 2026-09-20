@@ -188,7 +188,12 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
     // Clear the crate immediately after the tunnel, then stay mostly grounded
     // so the relocated first weapon pickup can be collected reliably.
     await parent.waitForTimeout(80);
-    await keyboard.press('Space');
+    // Pawn Slug has variable-height jumping: a one-frame key tap is cut to
+    // 55% upward velocity and cannot clear the 52 px opening crate. Hold jump
+    // long enough to preserve the authored full-height arc.
+    await keyboard.down('Space');
+    await parent.waitForTimeout(180);
+    await keyboard.up('Space');
     for (let step = 0; step < 80; step += 1) {
       await parent.waitForTimeout(105);
 
@@ -200,7 +205,11 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
       // Recovery hops only after the deterministic tunnel/crate sequence. This
       // keeps the bot resilient to small geometry changes without skipping the
       // ground-level pickup by bunny-hopping continuously.
-      if (step > 18 && step % 10 === 4) await keyboard.press('Space');
+      if (step > 18 && step % 10 === 4) {
+        await keyboard.down('Space');
+        await parent.waitForTimeout(160);
+        await keyboard.up('Space');
+      }
     }
   } finally {
     await keyboard.up('ArrowDown').catch(() => {});
