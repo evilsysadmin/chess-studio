@@ -1739,6 +1739,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["soot_stone"],
         bevel=0.045,
     )
+    for row, z in enumerate((0.72, 1.02, 1.32, 1.62)):
+        cube(
+            f"HOME_PROP_fireplace_left_firebox_course_{row}",
+            (-6.15, 5.955, z),
+            (0.76, 0.018, 0.014),
+            materials["dark"],
+            bevel=0.006,
+        )
+    for col, x in enumerate((-6.48, -6.15, -5.82)):
+        cube(
+            f"HOME_PROP_fireplace_left_firebox_joint_{col}",
+            (x, 5.950, 1.18 + 0.10 * (col % 2)),
+            (0.012, 0.016, 0.42),
+            materials["dark"],
+            bevel=0.004,
+        )
     flat_panel(
         "HOME_PROP_fireplace_left_lancet_shadow",
         [
