@@ -35,8 +35,8 @@ jobs:
             --output-dir /tmp/pawn-slug-enemy-variant-v2/commando
       - name: Build Grenadier review artifact
         run: |
-          python3 scripts/art/derive_pawn_slug_enemy_grenadier_v2.py \\
-            --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \\
+          python3 scripts/art/derive_pawn_slug_enemy_grenadier_v2.py \
+            --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
             --output-dir /tmp/pawn-slug-enemy-variant-v2/grenadier
       - name: Upload enemy variant v2 PNG reviews
         uses: actions/upload-artifact@v7
