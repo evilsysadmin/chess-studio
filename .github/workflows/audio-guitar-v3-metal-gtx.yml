@@ -60,7 +60,7 @@ jobs:
           test -d "$PROGRAM_DIR"
           echo "Root Metal GTX programs:"
           find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*.sfz' -print || true
-          SFZ="$(find "$PROGRAM_DIR" -maxdepth 1 -type f -iname '*.sfz' -print -quit)"
+          SFZ="$(find "$PROGRAM_DIR" -maxdepth 1 -type f -iname 'METAL-GTX Full.sfz' -print -quit)"
           test -f "$SFZ"
           printf '%s\n' "$SFZ" > v3/sfz-path.txt
           cp "$SFZ" v3/selected-metal-gtx.sfz
