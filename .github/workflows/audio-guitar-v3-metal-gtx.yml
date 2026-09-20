@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             git cmake ninja-build g++ libsndfile1-dev libjack-jackd2-dev \
             libsamplerate0-dev libfftw3-dev pkg-config ffmpeg sox \
-            ladspa-sdk caps python3-pip unzip
+            ladspa-sdk caps python3-pip unzip p7zip-full
           python3 -m pip install --break-system-packages -q gdown
 
       - name: Build sfizz offline renderer
@@ -49,8 +49,10 @@ jobs:
           file /tmp/metal-gtx.bin
           if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
             unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
+          elif 7z l /tmp/metal-gtx.bin >/dev/null 2>&1; then
+            7z x -y /tmp/metal-gtx.bin -o/tmp/metal-gtx >/dev/null
           else
-            echo "Metal GTX download is not a ZIP" >&2
+            echo "Metal GTX archive format unsupported" >&2
             exit 2
           fi
           find /tmp/metal-gtx -type f -iname '*.sfz' -print | head -40
