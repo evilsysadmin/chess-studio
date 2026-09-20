@@ -9,6 +9,7 @@ import {
   chroniclesXpThresholdForLevel,
   createChroniclesProgression,
   ensureChroniclesTacticsRun,
+  finishChroniclesTacticsRun,
   grantChroniclesXp,
   loadChroniclesProgression,
   saveChroniclesProgression,
@@ -197,7 +198,6 @@ describe('Chronicles Tactics · progression', () => {
     const first = beginChroniclesTacticsRun();
     expect(ensureChroniclesTacticsRun()).toBe(first);
 
-    const { finishChroniclesTacticsRun } = requireProgressionModuleForTest();
     expect(finishChroniclesTacticsRun(first)).toBe(true);
 
     const second = ensureChroniclesTacticsRun();
