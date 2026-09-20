@@ -30,8 +30,9 @@ CELL = 80
 COLS = 8
 BASE_ROWS = 3
 OUT_ROWS = 8
+ALPHA_FLOOR = 4
 EXPECTED_SOURCE = (COLS * CELL, BASE_ROWS * CELL)
-EXPECTED_WEBP_SHA256 = "87fe84e414cf18b1559c26d7d51021df3ddccb2dd2efeac15044f3e917873fbc"
+EXPECTED_WEBP_SHA256 = "c5916980d21f2fa6c991b43c47dadc82c274606e52d85bb3b7784308115f6912"
 ROW_SPECS = (
     ("pawn", 0, None),
     ("knight", 1, None),
@@ -49,11 +50,12 @@ def sha256(path: Path) -> str:
 
 
 def clean_hidden_rgb(image: Image.Image) -> Image.Image:
+    """Drop subvisible alpha haze so linear filtering cannot sample a dark cell background."""
     rgba = image.convert("RGBA")
     px = bytearray(rgba.tobytes())
     for i in range(0, len(px), 4):
-        if px[i + 3] == 0:
-            px[i] = px[i + 1] = px[i + 2] = 0
+        if px[i + 3] <= ALPHA_FLOOR:
+            px[i] = px[i + 1] = px[i + 2] = px[i + 3] = 0
     return Image.frombytes("RGBA", rgba.size, bytes(px))
 
 
@@ -96,6 +98,7 @@ def build(source_path: Path, output_dir: Path) -> dict:
         "types": rows,
         "webp": {"file": webp.name, "sha256": digest, "bytes": webp.stat().st_size},
         "png": {"file": png.name, "sha256": sha256(png), "bytes": png.stat().st_size},
+        "alphaFloor": ALPHA_FLOOR,
         "runtimeReady": True,
     }
     (output_dir / "enemy-cast-v2.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
