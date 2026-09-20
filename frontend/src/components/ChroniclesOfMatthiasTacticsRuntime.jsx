@@ -68,7 +68,7 @@ function chroniclesBattlefieldInteraction(state, memberId) {
 
 function createActionState(progression) {
   return applyChroniclesProgressionToTacticsState({
-    ...createChroniclesState(),
+    ...createChroniclesState(null, progression.characterBuild),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},

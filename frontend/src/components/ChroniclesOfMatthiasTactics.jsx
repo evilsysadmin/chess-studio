@@ -6,7 +6,14 @@ import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapTacticsWorld,
 } from '../chronicles/chroniclesGameBootstrap.js';
-import { ensureChroniclesTacticsRun } from '../chroniclesOfMatthiasProgression.js';
+import {
+  ensureChroniclesTacticsRun,
+  loadChroniclesProgression,
+  saveChroniclesProgression,
+  setChroniclesCharacterBuild,
+} from '../chroniclesOfMatthiasProgression.js';
+import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasTacticsPremium.css';
 
@@ -54,6 +61,20 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
+  const [progression, setProgression] = useState(() => loadChroniclesProgression());
+  const [characterSetupDone, setCharacterSetupDone] = useState(false);
+  useEscapeToClose(onExit, { disabled: ready });
+
+  const confirmCharacterBuild = useCallback((build) => {
+    const selected = setChroniclesCharacterBuild(progression, build);
+    if (!selected.updated) return;
+    const saved = saveChroniclesProgression(selected.progression);
+    setProgression(saved);
+    setReady(false);
+    setBootstrapError(null);
+    setCharacterSetupDone(true);
+    setBootstrapRevision((revision) => revision + 1);
+  }, [progression]);
 
   const retryBootstrap = useCallback(() => {
     setReady(false);
@@ -66,6 +87,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   }, [retryBootstrap]);
 
   useEffect(() => {
+    if (!characterSetupDone) return undefined;
     const controller = new AbortController();
     let active = true;
 
@@ -88,7 +110,17 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision]);
+  }, [bootstrapRevision, characterSetupDone]);
+
+  if (!characterSetupDone) {
+    return (
+      <ChroniclesCharacterSetup
+        currentBuild={progression.characterBuild}
+        onConfirm={confirmCharacterBuild}
+        onExit={onExit}
+      />
+    );
+  }
 
   if (bootstrapError) {
     return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={onExit} />;

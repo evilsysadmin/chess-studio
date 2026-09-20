@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi, openMoreGameModes } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
@@ -19,6 +19,7 @@ async function openChronicles(page) {
   const descend = page.getByRole('button').filter({ hasText: 'Descender a la cripta' });
   await expect(descend).toBeVisible();
   await descend.click();
+  await confirmChroniclesCharacterSetup(page);
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 

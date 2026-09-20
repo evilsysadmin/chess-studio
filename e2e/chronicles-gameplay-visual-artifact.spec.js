@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -32,7 +32,7 @@ async function openVisualMoreModes(page) {
   }
 }
 
-async function openChronicles(page) {
+async function openChronicles(page, captureLabel) {
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -61,6 +61,14 @@ async function openChronicles(page) {
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i }).click();
+  const setup = page.locator('[data-chronicles-character-setup]');
+  await expect(setup).toBeVisible();
+  await captureElement(
+    page,
+    setup,
+    `${ARTIFACT_DIR}/chronicles-character-setup-${captureLabel}.png`,
+  );
+  await confirmChroniclesCharacterSetup(page);
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 
@@ -124,7 +132,7 @@ for (const capture of CAPTURES) {
     });
     const page = await context.newPage();
     try {
-      await openChronicles(page);
+      await openChronicles(page, capture.label);
       const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
       const authoredPortrait = page.locator('[data-chronicles-party-renderer="authored"]');
       const stage = page.locator('.chronicles-stage');
