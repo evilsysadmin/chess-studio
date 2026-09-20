@@ -562,7 +562,7 @@ def add_table_and_board(materials):
     cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.17, 0.08, metal, vertices=20)
     cube("HOME_PROP_table_candle", (-2.72, 1.60, 1.57), (0.055, 0.055, 0.20), materials["paper"], bevel=0.02)
     cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.82), 0.055, 0.012, 0.18, materials["fire_hot"], vertices=14)
-    add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 58, (1.0, 0.48, 0.20), radius=0.30)
+    add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
     cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
@@ -1387,9 +1387,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_point_light(
         "HOME_LIGHT_fireplace_left_inner",
         (-6.15, 5.12, 0.94),
-        54,
-        (1.0, 0.28, 0.065),
-        radius=0.50,
+        68,
+        (1.0, 0.31, 0.075),
+        radius=0.58,
     )
     # One continuous irregular flame silhouette reads as a hearth fire at
     # Home distance; separate lobes collapse into a row of candle-like spikes.
@@ -1517,7 +1517,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 if "grate_cross" not in obj.name:
                     obj.scale.z *= 0.52
                     obj.location.z -= 0.15
-    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 112, (1.0, 0.26, 0.050), radius=0.82)
+    add_point_light("HOME_LIGHT_fireplace_right_boost", (4.55, 4.96, 1.18), 132, (1.0, 0.29, 0.060), radius=0.90)
 
     # The shared fireplace helper leaves a wide domestic mantel/corbel set.
     # Remove those foreground pieces so the authored Gothic surround owns the
@@ -1995,7 +1995,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.23), (0.045, 0.045, 0.20), materials["paper"], bevel=0.016)
         cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.48), 0.045, 0.008, 0.15, materials["fire_hot"], vertices=12)
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.080, 0.060, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.06, cz + 0.46), 34, (1.0, 0.42, 0.13), radius=0.28)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.06, cz + 0.46), 26, (1.0, 0.43, 0.14), radius=0.30)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -2014,23 +2014,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass_dark"], bevel=0.025)
         cube(f"HOME_PROP_torch_candle_{idx}", (x, 5.96, 2.78), (0.045, 0.045, 0.18), materials["paper"], bevel=0.012)
         cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.94, 3.02), 0.045, 0.008, 0.14, materials["fire_hot"], vertices=12)
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.62, 3.02), 48, (1.0, 0.31, 0.075), radius=0.34)
+        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.62, 3.02), 54, (1.0, 0.34, 0.085), radius=0.38)
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
-    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 34, (0.46, 0.52, 0.60), 4.0, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 30, (0.10, 0.22, 0.40), 3.8, target=(1.8, 3.0, 1.8))
-    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 42, (0.50, 0.30, 0.22), 2.8, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 54, (0.24, 0.24, 0.26), 5.8, target=(0, 1.4, 0.15))
-    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 250, (0.14, 0.34, 0.68), 3.5, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 188, (0.90, 0.66, 0.44), 2.45, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 172, (0.82, 0.48, 0.24), 1.9, target=(0, -0.72, 0.30))
-    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 76, (0.68, 0.38, 0.22), 2.0, target=(-2.65, 5.9, 2.6))
-    add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 155, (1.0, 0.34, 0.10), 2.0, target=(-6.15, 5.65, 1.35))
-    add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 230, (1.0, 0.34, 0.10), 2.1, target=(4.45, 5.65, 1.45))
-    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 205, (0.42, 0.52, 0.66), 2.1, target=(1.55, 5.28, 2.4))
-    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 142, (0.82, 0.52, 0.28), 1.9, target=(1.55, 5.28, 2.35))
-    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 112, (0.66, 0.72, 0.78), 1.45, target=(1.55, 5.28, 2.40))
+    add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 24, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 56, (0.62, 0.34, 0.22), 3.0, target=(0, 2.5, 2.2))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 74, (0.36, 0.22, 0.15), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 215, (0.14, 0.34, 0.68), 3.7, target=(3.2, 2.2, 1.8))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 224, (1.0, 0.68, 0.42), 2.65, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 188, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
+    add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 90, (0.74, 0.40, 0.22), 2.2, target=(-2.65, 5.9, 2.6))
+    add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 190, (1.0, 0.37, 0.11), 2.2, target=(-6.15, 5.65, 1.35))
+    add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 255, (1.0, 0.37, 0.11), 2.25, target=(4.45, 5.65, 1.45))
+    add_area_light("HOME_LIGHT_armor_rim", (4.8, 3.4, 5.2), 175, (0.42, 0.52, 0.66), 2.2, target=(1.55, 5.28, 2.4))
+    add_area_light("HOME_LIGHT_armor_warm", (-0.8, 2.6, 4.2), 112, (0.82, 0.52, 0.28), 2.0, target=(1.55, 5.28, 2.35))
+    add_area_light("HOME_LIGHT_armor_front", (1.1, 1.2, 4.9), 84, (0.66, 0.72, 0.78), 1.55, target=(1.55, 5.28, 2.40))
 
     if engine == "eevee":
         configure_cinematic_compositor(scene)
@@ -2046,7 +2046,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.camera = camera
 
     try:
-        scene.view_settings.exposure = -0.30
+        scene.view_settings.exposure = -0.20
     except Exception:
         pass
     try:
