@@ -769,6 +769,37 @@ def add_bookshelf(materials):
                     brass,
                     bevel=0.004,
                 )
+
+    # Break the shelf grid with a few deliberate horizontal stacks and bookends.
+    for idx, (sx, sz, width, tone) in enumerate((
+        (x - 0.86, 1.84, 0.34, materials["book_brown"]),
+        (x + 0.14, 3.22, 0.30, materials["book_green"]),
+        (x - 0.38, 4.54, 0.28, materials["book_red"]),
+    )):
+        for layer in range(2):
+            cube(
+                f"HOME_PROP_library_horizontal_book_{idx}_{layer}",
+                (sx + 0.035 * layer, y - 0.55, sz + 0.045 * layer),
+                (width, 0.085, 0.026),
+                tone if layer == 0 else materials["book_olive"],
+                bevel=0.010,
+            )
+    for idx, (bx, bz) in enumerate(((x - 1.28, 2.18), (x + 1.26, 3.54))):
+        cube(
+            f"HOME_PROP_library_bookend_{idx}",
+            (bx, y - 0.57, bz),
+            (0.035, 0.070, 0.18),
+            materials["brass_dark"],
+            bevel=0.012,
+        )
+        cube(
+            f"HOME_PROP_library_bookend_foot_{idx}",
+            (bx, y - 0.56, bz - 0.17),
+            (0.11, 0.085, 0.025),
+            brass,
+            bevel=0.010,
+        )
+
     armillary_center = (x + 0.72, y - 0.58, 3.38)
     sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
     curve_tube(
