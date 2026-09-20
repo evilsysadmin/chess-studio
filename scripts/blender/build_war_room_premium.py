@@ -1342,20 +1342,20 @@ def add_gothic_canon_v2(static, mats):
     tag(drape)
     static.objects.link(drape)
 
-    # Two shallow velvet folds break the broad front panel into cloth rather
-    # than a flat heraldic sticker. Keep them off-centre so the brass horse
-    # remains the only focal mark on the drape.
-    for fold_index, (fold_x, fold_z, fold_scale) in enumerate((
-        (-1.58, 0.60, 1.00),
-        (1.12, 0.57, 0.82),
+    # Two near-flat vertical cloth ribs break the broad front panel without
+    # reading as decorative buttons. Keep the same dark fabric as the drape and
+    # let bevel/grazing light do the work rather than a brighter red material.
+    for fold_index, (fold_x, fold_z, fold_half_height) in enumerate((
+        (-1.58, 0.58, 0.19),
+        (1.12, 0.56, 0.16),
     )):
-        sphere(
+        cube(
             f"WR_CANON_table_drape_fold_{fold_index}",
-            (fold_x, front_y - 0.072, fold_z),
-            0.16,
-            burgundy,
+            (fold_x, front_y - 0.068, fold_z),
+            (0.040, 0.016, fold_half_height),
+            burgundy_dark,
             static,
-            scale=(0.22, 0.16, fold_scale),
+            bevel=0.032,
         )
 
     # Small rampant horse relief on the drape, intentionally broad rather than
