@@ -45,6 +45,16 @@ _TRACE_EXPORT_STATE: dict[str, Any] = {
 }
 _TRACE_EXPORT_LOCK = threading.Lock()
 _TRACE_RECENT_SUCCESS_IDS: deque[str] = deque(maxlen=128)
+_LOG_EXPORT_STATE: dict[str, Any] = {
+    "attemptCount": 0,
+    "successCount": 0,
+    "failureCount": 0,
+    "exportedLogCount": 0,
+    "lastResult": None,
+    "lastError": None,
+    "lastHttpStatus": None,
+}
+_LOG_EXPORT_LOCK = threading.Lock()
 
 
 
@@ -188,6 +198,7 @@ def tracing_diagnostics(environ: dict[str, str] | None = None) -> dict[str, Any]
         "providerBinding": "explicit" if _TRACE_PROVIDER is not None else "none",
         "exporter": "otlp-http",
         "traceExporter": _trace_export_snapshot(),
+        "logExporter": _log_export_snapshot(),
         "startupTraceId": _STARTUP_TRACE_ID,
         "initializationError": _LAST_INIT_ERROR,
         "signals": signals,
@@ -199,7 +210,20 @@ def _trace_export_snapshot() -> dict[str, Any]:
         return dict(_TRACE_EXPORT_STATE)
 
 
+def _log_export_snapshot() -> dict[str, Any]:
+    with _LOG_EXPORT_LOCK:
+        return dict(_LOG_EXPORT_STATE)
+
+
 def _trace_export_error(http_status: int | None, result_name: str | None = None) -> str | None:
+    if result_name == "SUCCESS":
+        return None
+    if http_status:
+        return f"http_{int(http_status)}"
+    return "export_failed" if result_name else None
+
+
+def _log_export_error(http_status: int | None, result_name: str | None = None) -> str | None:
     if result_name == "SUCCESS":
         return None
     if http_status:
@@ -337,8 +361,7 @@ def _force_flush(provider: Any | None, timeout_ms: int = 5000) -> bool:
 def emit_trace_probe() -> dict[str, Any]:
     diagnostics = tracing_diagnostics()
     if not diagnostics["signals"]["traces"]["configured"] or _TRACE_PROVIDER is None:
-        return {"ok": False, "reason": "tracing_not_configured", "diagnostics": diagnostics}
-    try:
+        return {"ok": False, "reason": "tracing_not_configured", "diagnostics": diagnostics}    try:
         from opentelemetry import trace
         from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, TraceState
         from opentelemetry.context import attach, detach
@@ -401,13 +424,22 @@ def emit_observability_probe() -> dict[str, Any]:
     """Emit one log, one metric and one sampled trace; return only safe status."""
     trace_result = emit_trace_probe()
     record_http_otel("PROBE", "/internal/observability-probe", 200, 1.0, client_release="probe")
+    before_logs = _log_export_snapshot()
+    before_log_successes = int(before_logs.get("successCount") or 0)
+    before_log_records = int(before_logs.get("exportedLogCount") or 0)
     probe_body = {"event": "observability_probe", "component": "admin", "trace_id": trace_result.get("traceId")}
     LOGGER.info(json.dumps(probe_body, separators=(",", ":"), sort_keys=True))
     metrics_flushed = _force_flush(_METER_PROVIDER)
     logs_flushed = _force_flush(_LOGGER_PROVIDER)
+    log_state = _log_export_snapshot()
+    logs_exported = (
+        int(log_state.get("successCount") or 0) > before_log_successes
+        and int(log_state.get("exportedLogCount") or 0) > before_log_records
+    )
+    logs_exporter_ok = log_state.get("lastResult") == "SUCCESS"
     diagnostics = tracing_diagnostics()
     return {
-        "ok": bool(trace_result.get("ok") and metrics_flushed and logs_flushed),
+        "ok": bool(trace_result.get("ok") and metrics_flushed and logs_flushed and logs_exported and logs_exporter_ok),
         "traceId": trace_result.get("traceId"),
         "signals": {
             "traces": {
@@ -420,7 +452,15 @@ def emit_observability_probe() -> dict[str, Any]:
                 "httpStatus": trace_result.get("httpStatus"),
             },
             "metrics": {"configured": diagnostics["signals"]["metrics"]["configured"], "flushed": metrics_flushed},
-            "logs": {"configured": diagnostics["signals"]["logs"]["configured"], "flushed": logs_flushed},
+            "logs": {
+                "configured": diagnostics["signals"]["logs"]["configured"],
+                "flushed": logs_flushed,
+                "exported": logs_exported,
+                "ok": bool(logs_flushed and logs_exported and logs_exporter_ok),
+                "exportResult": log_state.get("lastResult"),
+                "exportError": log_state.get("lastError"),
+                "httpStatus": log_state.get("lastHttpStatus"),
+            },
         },
         "diagnostics": diagnostics,
     }
@@ -582,7 +622,58 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
             from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
             logger_provider = LoggerProvider(resource=resource)
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=settings["logs_endpoint"], headers=exporter_headers or None)))
+
+            class TrackingOTLPLogExporter(OTLPLogExporter):
+                """OTLP log exporter with safe delivery diagnostics."""
+
+                def _export(self, serialized_data, timeout_sec=None):
+                    try:
+                        response = super()._export(serialized_data, timeout_sec)
+                    except Exception as exc:
+                        with _LOG_EXPORT_LOCK:
+                            _LOG_EXPORT_STATE["lastHttpStatus"] = None
+                            _LOG_EXPORT_STATE["lastError"] = type(exc).__name__
+                        raise
+                    status = getattr(response, "status_code", None)
+                    with _LOG_EXPORT_LOCK:
+                        _LOG_EXPORT_STATE["lastHttpStatus"] = int(status) if status is not None else None
+                    return response
+
+                def export(self, batch):
+                    with _LOG_EXPORT_LOCK:
+                        _LOG_EXPORT_STATE["attemptCount"] = int(_LOG_EXPORT_STATE.get("attemptCount") or 0) + 1
+                    try:
+                        result = super().export(batch)
+                    except Exception as exc:
+                        with _LOG_EXPORT_LOCK:
+                            _LOG_EXPORT_STATE["failureCount"] = int(_LOG_EXPORT_STATE.get("failureCount") or 0) + 1
+                            _LOG_EXPORT_STATE["lastResult"] = "EXCEPTION"
+                            _LOG_EXPORT_STATE["lastError"] = type(exc).__name__
+                        raise
+
+                    result_name = getattr(result, "name", str(result))
+                    try:
+                        batch_size = len(batch)
+                    except TypeError:
+                        batch_size = 0
+                    with _LOG_EXPORT_LOCK:
+                        _LOG_EXPORT_STATE["lastResult"] = result_name
+                        status = _LOG_EXPORT_STATE.get("lastHttpStatus")
+                        if result_name == "SUCCESS":
+                            _LOG_EXPORT_STATE["successCount"] = int(_LOG_EXPORT_STATE.get("successCount") or 0) + 1
+                            _LOG_EXPORT_STATE["exportedLogCount"] = int(_LOG_EXPORT_STATE.get("exportedLogCount") or 0) + batch_size
+                            _LOG_EXPORT_STATE["lastError"] = None
+                        else:
+                            _LOG_EXPORT_STATE["failureCount"] = int(_LOG_EXPORT_STATE.get("failureCount") or 0) + 1
+                            existing_error = _LOG_EXPORT_STATE.get("lastError")
+                            _LOG_EXPORT_STATE["lastError"] = _log_export_error(status, result_name) if status else (existing_error or "export_failed")
+                    return result
+
+            logger_provider.add_log_record_processor(
+                BatchLogRecordProcessor(
+                    TrackingOTLPLogExporter(endpoint=settings["logs_endpoint"], headers=exporter_headers or None)
+                )
+            )
             set_logger_provider(logger_provider)
             handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
             handler._chess_studio_otel = True  # type: ignore[attr-defined]
