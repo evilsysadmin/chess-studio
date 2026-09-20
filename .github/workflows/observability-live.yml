@@ -3,7 +3,7 @@ name: Observability · Grafana live
 on:
   workflow_dispatch:
   schedule:
-    - cron: '41 */2 * * *'
+    - cron: '41 * * * *'
   push:
     branches: [main]
     paths:
@@ -31,6 +31,10 @@ jobs:
       GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
       GRAFANA_TRACES_DATASOURCE_UID: ${{ vars.GRAFANA_TRACES_DATASOURCE_UID || 'grafanacloud-humbletoucan355-traces' }}
       GRAFANA_LIVE_LOOKBACK: ${{ vars.GRAFANA_LIVE_LOOKBACK || '6h' }}
+      GRAFANA_SLO_MAX_5XX_PERCENT: ${{ vars.GRAFANA_SLO_MAX_5XX_PERCENT || '5' }}
+      GRAFANA_SLO_MAX_P95_MS: ${{ vars.GRAFANA_SLO_MAX_P95_MS || '3000' }}
+      GRAFANA_SLO_MAX_HOST_RAM_PERCENT: ${{ vars.GRAFANA_SLO_MAX_HOST_RAM_PERCENT || '90' }}
+      GRAFANA_SLO_MIN_REQUESTS_15M: ${{ vars.GRAFANA_SLO_MIN_REQUESTS_15M || '20' }}
     steps:
       - uses: actions/checkout@v7
       - name: Static self-test
@@ -46,5 +50,8 @@ jobs:
             echo
             echo '- OCI host metrics: queried from Grafana'
             echo '- Backend metrics/logs/traces: queried from Grafana'
-            echo "- Lookback: `${GRAFANA_LIVE_LOOKBACK}`"
+            echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"
+            echo "- Guardrail p95: ≤ `${GRAFANA_SLO_MAX_P95_MS}ms` over 15m when sample is sufficient"
+            echo "- Guardrail OCI RAM: ≤ `${GRAFANA_SLO_MAX_HOST_RAM_PERCENT}%`"
+            echo "- Lookback telemetry: `${GRAFANA_LIVE_LOOKBACK}`"
           } >> "$GITHUB_STEP_SUMMARY"
