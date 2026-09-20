@@ -1,5 +1,6 @@
 /* Primary diegetic navigation for the canonical Great Hall.
- * The scene object is the visual control; copy appears only as confirmation.
+ * The scene object is the visual control; copy appears only as confirmation,
+ * except the JUGAR / CONTINUAR title, which is always visible.
  * Touch layouts keep the existing explicit labels because hover cannot carry
  * discoverability there. */
 
@@ -48,6 +49,16 @@
       .illustrated-home__destination.is-diegetic-object > i {
       opacity: 0;
       transform: translateY(.38cqw) scale(.975);
+    }
+
+    /* JUGAR / CONTINUAR is the primary call to action, so its title stays on
+     * the central board at all times instead of appearing only on hover. The
+     * icon, detail and arrow still yield to the prop until it is engaged. */
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      .illustrated-home__destination--play.is-diegetic-object > strong {
+      opacity: 1;
+      transform: none;
+      text-shadow: 0 2px 5px #080401, 0 0 14px #d38a2a99;
     }
 
     :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
