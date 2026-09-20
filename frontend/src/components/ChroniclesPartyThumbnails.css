@@ -7,7 +7,7 @@
   border-radius: 3px;
 }
 
-.chronicles-party-glyph.has-blender-portrait {
+.chronicles-party-glyph.has-authored-portrait {
   border: 1px solid rgba(205, 164, 105, .28);
   background:
     radial-gradient(circle at 50% 30%, rgba(115, 77, 42, .34), transparent 58%),
@@ -22,13 +22,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.08);
+  object-position: 50% 22%;
   filter: saturate(.92) contrast(1.04) brightness(.96);
   image-rendering: auto;
   pointer-events: none;
 }
 
-.chronicles-party-member.is-selected .chronicles-party-glyph.has-blender-portrait {
+.chronicles-party-member.is-selected .chronicles-party-glyph.has-authored-portrait {
   border-color: rgba(235, 190, 115, .68);
   box-shadow:
     inset 0 0 10px rgba(0, 0, 0, .42),
