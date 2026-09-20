@@ -1641,6 +1641,27 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["gold"])
     cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
     cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
+    rug_medallion_outer = cube(
+        "HOME_PROP_rug_medallion_outer",
+        (0.0, -0.72, 0.067),
+        (0.46, 0.46, 0.009),
+        materials["stone_dark"],
+    )
+    rug_medallion_outer.rotation_euler[2] = math.radians(45.0)
+    rug_medallion_mid = cube(
+        "HOME_PROP_rug_medallion_mid",
+        (0.0, -0.72, 0.070),
+        (0.28, 0.28, 0.008),
+        materials["brass_dark"],
+    )
+    rug_medallion_mid.rotation_euler[2] = math.radians(45.0)
+    rug_medallion_core = cube(
+        "HOME_PROP_rug_medallion_core",
+        (0.0, -0.72, 0.073),
+        (0.11, 0.11, 0.007),
+        materials["gold"],
+    )
+    rug_medallion_core.rotation_euler[2] = math.radians(45.0)
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
