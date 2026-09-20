@@ -128,6 +128,31 @@ func _draw_sky() -> void:
         true,
     )
     _draw_cloud_bands()
+    _draw_atmosphere_texture()
+
+func _draw_atmosphere_texture() -> void:
+    var tint := Color(0.52, 0.62, 0.68, 0.020 * _intensity)
+    if _preset == "harbor_dusk":
+        tint = Color(0.86, 0.55, 0.42, 0.024 * _intensity)
+    elif _preset == "alpine_night":
+        tint = Color(0.68, 0.78, 0.84, 0.020 * _intensity)
+    elif _preset == "jungle_storm":
+        tint = Color(0.42, 0.58, 0.43, 0.026 * _intensity)
+
+    for index in range(26):
+        var depth := 0.35 + _noise(index, 80.2) * 0.65
+        var span := 90.0 + _noise(index, 80.9) * 290.0
+        var track := _world_size.x + span + 420.0
+        var drift := _atmosphere_time * (1.2 + depth * 2.8)
+        var x := fposmod(_noise(index, 81.6) * track + drift, track) - span - 160.0
+        var y := 38.0 + _noise(index, 82.3) * 330.0
+        var width := maxf(1.0, 0.7 + depth * 1.4)
+        draw_line(
+            Vector2(x, y),
+            Vector2(minf(_world_size.x + 180.0, x + span), y + (_noise(index, 83.0) - 0.5) * 5.0),
+            Color(tint.r, tint.g, tint.b, tint.a * (0.65 + depth * 0.55)),
+            width,
+        )
 
 func _draw_cloud_bands() -> void:
     if _preset == "night_front":
@@ -895,6 +920,32 @@ func _draw_near_foreground() -> void:
                 var by := wire_y - float(barb) * 1.7
                 draw_line(Vector2(bx - 5.0, by - 5.0), Vector2(bx + 5.0, by + 5.0), rust, 1.5)
                 draw_line(Vector2(bx - 5.0, by + 5.0), Vector2(bx + 5.0, by - 5.0), rust, 1.5)
+
+    # Heavy pipe runs and braces create a readable camera-near industrial
+    # texture without stealing contrast from the playable lane.
+    for index in range(7):
+        var pipe_x := 150.0 + float(index) * 790.0
+        var pipe_y := top_y + 54.0 + float(index % 2) * 18.0
+        draw_line(
+            Vector2(pipe_x - 72.0, pipe_y),
+            Vector2(pipe_x + 128.0, pipe_y - 12.0),
+            Color(0.035, 0.043, 0.044, 0.84 * _intensity),
+            14.0,
+        )
+        draw_line(
+            Vector2(pipe_x - 62.0, pipe_y - 3.0),
+            Vector2(pipe_x + 118.0, pipe_y - 15.0),
+            Color(0.14, 0.16, 0.16, 0.20 * _intensity),
+            2.0,
+        )
+        for collar in range(3):
+            var collar_x := pipe_x - 28.0 + float(collar) * 62.0
+            draw_line(
+                Vector2(collar_x, pipe_y - 12.0),
+                Vector2(collar_x + 2.0, pipe_y + 7.0),
+                rust,
+                3.0,
+            )
 
     # Broken beams and drum silhouettes produce the shallow, near-camera frame
     # seen in the approved mock while remaining entirely non-collidable.
