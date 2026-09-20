@@ -85,6 +85,26 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
     coarse = _value_noise(u, v, seed, 5)
     medium = _value_noise(u, v, seed + 31, 13)
     fine = _value_noise(u, v, seed + 73, 37)
+    if profile == "stone":
+        # Broad mineral structure reads as quarried stone instead of generic
+        # cloud noise. Strata stay subtle at Home distance; sparse pitting and
+        # low-frequency tonal drift do most of the work.
+        mineral = _value_noise(u, v, seed + 157, 9)
+        pores = _value_noise(u, v, seed + 191, 27)
+        strata = 0.5 + 0.5 * math.sin(
+            (v * 2.6 + u * 0.72 + (coarse - 0.5) * 0.55) * math.tau
+        )
+        pitting = max(0.0, 0.26 - pores) * 1.65
+        value = (
+            0.30
+            + coarse * 0.34
+            + medium * 0.19
+            + mineral * 0.10
+            + strata * 0.055
+            + fine * 0.025
+            - pitting * 0.14
+        )
+        return max(0.0, min(1.0, value))
     if profile == "floor_stone":
         # Large staggered paving breaks the floor into authored stone slabs.
         # Keep the surface itself restrained: broad slab-to-slab variation and
@@ -116,15 +136,40 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         )
         return max(0.0, min(1.0, value))
     if profile == "wood":
-        warp = (coarse - 0.5) * 1.35 + math.sin(v * math.tau * 2.0) * 0.08
-        grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
-        pores = 0.5 + 0.5 * math.sin((u * 43.0 + medium * 1.8) * math.tau)
-        return max(0.0, min(1.0, grain * 0.48 + pores * 0.13 + coarse * 0.24 + fine * 0.15))
+        # Organic lengthwise grain: broad drift bends the growth lines while
+        # narrow pores remain subordinate. Avoid perfectly periodic stripes.
+        bend = (coarse - 0.5) * 0.11 + (medium - 0.5) * 0.035
+        warped_u = u + bend + math.sin((v * 1.35 + coarse * 0.22) * math.tau) * 0.018
+        growth_noise = _value_noise(u, v, seed + 257, 11)
+        pore_noise = _value_noise(u, v, seed + 271, 29)
+        grain = 0.5 + 0.5 * math.sin(
+            (warped_u * 10.5 + growth_noise * 0.72) * math.tau
+        )
+        pores = 0.5 + 0.5 * math.sin(
+            (warped_u * 24.0 + pore_noise * 1.35 + v * 0.55) * math.tau
+        )
+        value = (
+            coarse * 0.36
+            + medium * 0.22
+            + grain * 0.28
+            + pores * 0.055
+            + fine * 0.085
+        )
+        return max(0.0, min(1.0, value))
     if profile == "leather":
-        pores = 0.5 + 0.5 * math.sin((u * 29.0 + medium * 2.3) * math.tau)
-        cross = 0.5 + 0.5 * math.sin((v * 31.0 + fine * 2.0) * math.tau + 0.8)
         wrinkles = _value_noise(u, v, seed + 211, 7)
-        return max(0.0, min(1.0, coarse * 0.34 + wrinkles * 0.28 + pores * 0.19 + cross * 0.19))
+        pebble_a = _value_noise(u, v, seed + 223, 23)
+        pebble_b = _value_noise(u, v, seed + 239, 41)
+        pebble = abs(pebble_a - pebble_b)
+        value = (
+            0.12
+            + coarse * 0.30
+            + wrinkles * 0.24
+            + medium * 0.13
+            + pebble * 0.15
+            + fine * 0.06
+        )
+        return max(0.0, min(1.0, value))
     if profile == "paper":
         fiber_x = 0.5 + 0.5 * math.sin((u * 52.0 + fine * 1.7) * math.tau)
         fiber_y = 0.5 + 0.5 * math.sin((v * 47.0 + medium * 1.5) * math.tau + 0.45)
@@ -134,13 +179,22 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         soft = _value_noise(u, v, seed + 353, 19)
         return max(0.0, min(1.0, coarse * 0.36 + bloom * 0.38 + soft * 0.18 + fine * 0.08))
     if profile == "textile":
-        warp = 0.5 + 0.5 * math.sin(u * math.tau * 44.0)
-        weft = 0.5 + 0.5 * math.sin(v * math.tau * 44.0 + 0.65)
-        return max(0.0, min(1.0, 0.44 + (warp + weft - 1.0) * 0.21 + fine * 0.16))
+        # Lower-frequency, slightly wandering weave avoids moire and the
+        # "perfect screen-door" look on large banners and rugs.
+        drift_u = (coarse - 0.5) * 0.045 + (medium - 0.5) * 0.018
+        drift_v = (medium - 0.5) * 0.040 + (coarse - 0.5) * 0.014
+        warp = 0.5 + 0.5 * math.sin((u + drift_u) * math.tau * 30.0)
+        weft = 0.5 + 0.5 * math.sin((v + drift_v) * math.tau * 28.0 + 0.58)
+        weave = (warp - 0.5) * (weft - 0.5) * 0.22
+        value = 0.40 + coarse * 0.24 + medium * 0.16 + (warp + weft - 1.0) * 0.085 + weave + fine * 0.07
+        return max(0.0, min(1.0, value))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
-        brushing = 0.5 + 0.5 * math.sin((u * 34.0 + medium * 0.9) * math.tau)
-        return max(0.0, min(1.0, coarse * 0.38 + patina * 0.34 + brushing * 0.10 + fine * 0.18))
+        brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
+        brushed_b = _value_noise(u * 0.75, v * 4.1, seed + 149, 13)
+        brushing = brushed_a * 0.68 + brushed_b * 0.32
+        value = coarse * 0.34 + patina * 0.33 + medium * 0.15 + brushing * 0.11 + fine * 0.07
+        return max(0.0, min(1.0, value))
     return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
 
 
@@ -242,7 +296,21 @@ def _packed_surface_images(
 def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile) -> None:
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
-    base_image, rough_image, normal_image = _packed_surface_images(name, color, roughness, profile)
+    texture_size = {
+        "floor_stone": 160,
+        "stone": 144,
+        "wood": 136,
+        "textile": 128,
+        "leather": 128,
+        "metal": 128,
+    }.get(profile, 96)
+    base_image, rough_image, normal_image = _packed_surface_images(
+        name,
+        color,
+        roughness,
+        profile,
+        size=texture_size,
+    )
 
     base_tex = nodes.new("ShaderNodeTexImage")
     base_tex.name = f"{name}_PackedBase"
@@ -612,6 +680,70 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
     return obj
 
 
+def draped_banner_panel(
+    name: str,
+    center_x: float,
+    y: float,
+    half_width: float,
+    top_z: float,
+    side_bottom_z: float,
+    center_bottom_z: float,
+    mat,
+    *,
+    fold_depth=0.045,
+    horizontal_segments=18,
+    vertical_segments=10,
+):
+    """Build a lightly folded hanging textile instead of a rigid flat polygon."""
+    vertices = []
+    faces = []
+    cols = horizontal_segments + 1
+
+    for row in range(vertical_segments + 1):
+        t = row / vertical_segments
+        for col in range(horizontal_segments + 1):
+            u = col / horizontal_segments
+            signed = u * 2.0 - 1.0
+            x = center_x + signed * half_width
+            edge_mix = abs(signed) ** 0.88
+            bottom_z = center_bottom_z + (side_bottom_z - center_bottom_z) * edge_mix
+            z = top_z + (bottom_z - top_z) * t
+
+            edge_fade = max(0.0, math.sin(math.pi * u)) ** 0.55
+            lower_weight = 0.38 + 0.62 * t
+            primary = math.sin(u * math.tau * 3.2 + 0.35)
+            secondary = math.sin(u * math.tau * 6.4 - 0.8) * 0.22
+            fold = (primary + secondary) * fold_depth * edge_fade * lower_weight
+            # Tiny asymmetric drop keeps the lower edge from reading as CAD-perfect.
+            z -= (0.008 + 0.018 * t) * math.sin(math.pi * u) ** 2
+            vertices.append((x, y + fold, z))
+
+    for row in range(vertical_segments):
+        for col in range(horizontal_segments):
+            a = row * cols + col
+            b = a + 1
+            c = a + cols
+            d = c + 1
+            # Winding faces the canonical camera on -Y.
+            faces.append((a, c, d, b))
+
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    apply_material(obj, mat)
+    smooth_curved_mesh(obj)
+
+    solidify = obj.modifiers.new("Cloth thickness", "SOLIDIFY")
+    solidify.thickness = 0.018
+    solidify.offset = 0.0
+    bevel = obj.modifiers.new("Soft cloth edge", "BEVEL")
+    bevel.width = 0.010
+    bevel.segments = 2
+    return obj
+
+
 def arch(name: str, x: float, y: float, width: float, spring_z: float, top_z: float, bottom_z: float, mat):
     radius = width / 2.0
     center_z = top_z - radius
@@ -636,6 +768,94 @@ def gothic_arch(name: str, x: float, y: float, width: float, shoulder_z: float, 
         points.append((x + half * t, y, top_z - (top_z - shoulder_z) * (t ** 1.38)))
     points.extend([(x + half, y, shoulder_z), (x + half, y, bottom_z)])
     return curve_tube(name, points, bevel, mat)
+
+
+def add_gothic_voussoirs(
+    name: str,
+    x: float,
+    y: float,
+    width: float,
+    shoulder_z: float,
+    top_z: float,
+    mat,
+    *,
+    count_per_side=7,
+):
+    """Add restrained low-relief wedge blocks over a pointed stone arch."""
+    half = width / 2.0
+    points = []
+    for idx in range(count_per_side + 1):
+        t = idx / count_per_side
+        points.append((
+            x - half * (1.0 - t),
+            shoulder_z + (top_z - shoulder_z) * (t ** 0.72),
+        ))
+    for idx in range(1, count_per_side + 1):
+        t = idx / count_per_side
+        points.append((
+            x + half * t,
+            top_z - (top_z - shoulder_z) * (t ** 1.38),
+        ))
+
+    for idx, (px, pz) in enumerate(points):
+        prev_x, prev_z = points[max(0, idx - 1)]
+        next_x, next_z = points[min(len(points) - 1, idx + 1)]
+        dx = next_x - prev_x
+        dz = next_z - prev_z
+        block = cube(
+            f"{name}_{idx}",
+            (
+                px,
+                y - 0.070 - _hash01(idx, 0, 1201) * 0.018,
+                pz,
+            ),
+            (
+                0.105 + _hash01(idx, 1, 1213) * 0.018,
+                0.070,
+                0.155 + _hash01(idx, 2, 1223) * 0.022,
+            ),
+            mat,
+            bevel=0.022,
+        )
+        block.rotation_euler[1] = math.atan2(dx, dz)
+
+
+def add_round_arch_voussoirs(
+    name: str,
+    x: float,
+    y: float,
+    width: float,
+    top_z: float,
+    mat,
+    *,
+    count=11,
+):
+    """Add shallow wedge blocks across the curved crown of a round arch."""
+    radius = width / 2.0
+    center_z = top_z - radius
+    for idx in range(count):
+        t = idx / (count - 1)
+        theta = math.pi * (1.0 - t)
+        px = x + radius * math.cos(theta)
+        pz = center_z + radius * math.sin(theta)
+        dx = -radius * math.sin(theta)
+        dz = radius * math.cos(theta)
+        block = cube(
+            f"{name}_{idx}",
+            (
+                px,
+                y - 0.072 - _hash01(idx, 0, 1249) * 0.016,
+                pz,
+            ),
+            (
+                0.108 + _hash01(idx, 1, 1259) * 0.016,
+                0.070,
+                0.150 + _hash01(idx, 2, 1277) * 0.018,
+            ),
+            mat,
+            bevel=0.020,
+        )
+        block.rotation_euler[1] = math.atan2(dx, dz)
 
 
 def look_at(obj, target) -> None:
@@ -788,22 +1008,27 @@ def add_table_and_board(materials):
         (-1.72, 0.28),
     ]
     flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.68, 0.08, metal, bevel=0.045)
-    flat_panel(
+    draped_banner_panel(
         "HOME_PROP_table_banner",
-        [(x * 0.975, 0.65 + (z - 0.65) * 0.96) for x, z in drape_points],
-        -0.725,
+        0.0,
+        -0.738,
+        1.675,
+        1.235,
+        0.295,
         0.055,
         banner,
-        bevel=0.035,
+        fold_depth=0.050,
+        horizontal_segments=20,
+        vertical_segments=12,
     )
     curve_tube(
         "HOME_PROP_table_banner_gold_border",
         [
-            (-1.60, -0.790, 1.17),
-            (-1.60, -0.790, 0.30),
-            (0.0, -0.790, 0.08),
-            (1.60, -0.790, 0.30),
-            (1.60, -0.790, 1.17),
+            (-1.60, -0.815, 1.17),
+            (-1.60, -0.815, 0.30),
+            (0.0, -0.815, 0.08),
+            (1.60, -0.815, 0.30),
+            (1.60, -0.815, 1.17),
         ],
         0.028,
         heraldry,
@@ -811,13 +1036,13 @@ def add_table_and_board(materials):
     for idx, x in enumerate((-1.35, -0.90, -0.45, 0.0, 0.45, 0.90, 1.35)):
         sphere(
             f"HOME_PROP_table_banner_stud_{idx}",
-            (x, -0.802, 1.16),
+            (x, -0.827, 1.16),
             (0.028, 0.014, 0.028),
             heraldry,
         )
 
     # Large canonical horse-head relief on the table drape.
-    emblem_y = -0.790
+    emblem_y = -0.820
     horse_points = [
         (-0.22, 1.08), (-0.08, 1.02), (0.02, 0.92), (0.16, 0.86),
         (0.22, 0.72), (0.16, 0.58), (0.25, 0.46), (0.18, 0.30),
@@ -1184,7 +1409,19 @@ def add_banner(name: str, x: float, materials):
         (x, 3.44),
         (x - 0.48, 3.84),
     ]
-    flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
+    draped_banner_panel(
+        f"HOME_PROP_banner_{name}",
+        x,
+        5.82,
+        0.48,
+        5.62,
+        3.84,
+        3.44,
+        banner,
+        fold_depth=0.026,
+        horizontal_segments=12,
+        vertical_segments=10,
+    )
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
     for side in (-1, 1):
         sphere(
@@ -1717,6 +1954,15 @@ def add_stairs(materials):
 
     cube("HOME_ARCH_dungeon_void", (arch_x, 1.78, -0.12), (1.42, 0.09, 1.42), dark, bevel=0.12)
     arch("HOME_ARCH_dungeon_arch", arch_x, 1.60, 2.95, 0.58, 1.42, -1.56, stone)
+    add_round_arch_voussoirs(
+        "HOME_ARCH_dungeon_voussoir",
+        arch_x,
+        1.60,
+        2.95,
+        1.42,
+        materials["arch_stone"],
+        count=11,
+    )
     arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.08, 1.48, 2.42, 0.44, 1.12, -1.46, materials["stone_dark"])
 
     for idx, x in enumerate((5.62, 5.93, 6.24, 6.55, 6.86, 7.17)):
@@ -1738,20 +1984,34 @@ def add_stairs(materials):
         x = 5.28 + 2.45 * t
         y = 1.45 - 2.28 * t
         z = 0.68 - 1.58 * t
+        depth_jitter = (_hash01(i, 0, 1031) - 0.5) * 0.026
+        width_jitter = (_hash01(i, 1, 1039) - 0.5) * 0.045
+        height_jitter = (_hash01(i, 2, 1049) - 0.5) * 0.012
+        step_depth = 0.33 + depth_jitter
+        step_width = 0.61 + width_jitter
+        step_z = z + height_jitter
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
-            (x, y, z),
-            (0.61, 0.33, 0.075),
+            (x, y, step_z),
+            (step_width, step_depth, 0.075),
             stone,
-            bevel=0.025,
+            bevel=0.025 + _hash01(i, 3, 1051) * 0.008,
         )
         cube(
             f"HOME_PROP_dungeon_step_nosing_{i}",
-            (x, y - 0.305, z + 0.080),
-            (0.59, 0.028, 0.020),
+            (x, y - step_depth + 0.022, step_z + 0.080),
+            (step_width - 0.020, 0.026 + _hash01(i, 4, 1061) * 0.006, 0.018),
             materials["stone_dark"],
-            bevel=0.010,
+            bevel=0.009,
         )
+        if i in (1, 4, 7, 9):
+            cube(
+                f"HOME_PROP_dungeon_step_wear_{i}",
+                (x + (_hash01(i, 5, 1069) - 0.5) * 0.16, y - step_depth * 0.35, step_z + 0.078),
+                (step_width * 0.52, 0.10, 0.004),
+                materials["stone_grime"],
+                bevel=0.018,
+            )
 
     stair_rail_points = [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)]
     curve_tube(
@@ -1841,41 +2101,44 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.058, 0.055, 0.051, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9, texture_profile="stone"),
         "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
         "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2, texture_profile="stone"),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
         "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
-        "brass": material("HOME_MAT_brass", (0.27, 0.135, 0.038, 1), roughness=0.36, metallic=0.76),
+        "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
         "gold": material(
             "HOME_MAT_gold",
             (0.48, 0.27, 0.065, 1),
-            roughness=0.34,
-            metallic=0.84,
-            emission=(0.08, 0.028, 0.004, 1),
-            emission_strength=0.22,
+            roughness=0.44,
+            metallic=0.76,
+            emission=(0.045, 0.014, 0.002, 1),
+            emission_strength=0.055,
+            texture_profile="metal",
         ),
         "heraldry_gold": material(
             "HOME_MAT_heraldry_gold",
             (0.34, 0.16, 0.045, 1),
-            roughness=0.42,
-            metallic=0.72,
-            emission=(0.055, 0.018, 0.003, 1),
-            emission_strength=0.10,
+            roughness=0.50,
+            metallic=0.66,
+            emission=(0.030, 0.009, 0.0015, 1),
+            emission_strength=0.025,
+            texture_profile="metal",
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
-        "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.30, metallic=0.86),
+        "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
             (0.095, 0.102, 0.110, 1),
-            roughness=0.46,
-            metallic=0.74,
-            variation=0.08,
-            variation_scale=6.2,
+            roughness=0.54,
+            metallic=0.68,
+            variation=0.10,
+            variation_scale=5.4,
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
-        "rug": material("HOME_MAT_rug", (0.125, 0.018, 0.014, 1), roughness=0.92, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0, texture_profile="textile"),
+        "rug": material("HOME_MAT_rug", (0.112, 0.015, 0.013, 1), roughness=0.94, bump_scale=24.0, bump_strength=0.065, variation=0.10, variation_scale=8.2, texture_profile="textile"),
+        "rug_worn": material("HOME_MAT_rug_worn", (0.064, 0.012, 0.011, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
         "banner": material("HOME_MAT_banner", (0.108, 0.010, 0.012, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0, texture_profile="textile"),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
@@ -1896,9 +2159,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation_scale=8.5,
         texture_profile="textile"),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0, texture_profile="textile"),
-        "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
+        "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.14, variation_scale=5.5, texture_profile="stone"),
         "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
         "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
+        "stone_grime": material("HOME_MAT_stone_grime", (0.034, 0.028, 0.024, 1), roughness=0.985, bump_scale=6.0, bump_strength=0.06, variation=0.06, variation_scale=3.5, texture_profile="stone"),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91, texture_profile="leather"),
         "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91, texture_profile="leather"),
         "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91, texture_profile="leather"),
@@ -1906,18 +2170,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "piece_light": material(
             "HOME_MAT_piece_light",
             (0.38, 0.30, 0.22, 1),
-            roughness=0.50,
-            metallic=0.010,
-            variation=0.050,
+            roughness=0.64,
+            metallic=0.0,
+            variation=0.040,
             variation_scale=7.0,
+            texture_profile="wood",
         ),
         "piece_dark": material(
             "HOME_MAT_piece_dark",
             (0.052, 0.040, 0.030, 1),
-            roughness=0.38,
-            metallic=0.020,
-            variation=0.055,
+            roughness=0.58,
+            metallic=0.0,
+            variation=0.045,
             variation_scale=6.4,
+            texture_profile="wood",
         ),
         "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
         "paper": material("HOME_MAT_paper", (0.34, 0.24, 0.15, 1), roughness=0.94, texture_profile="paper"),
@@ -1968,50 +2234,87 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # from great-hall-dungeon.webp before adding any decorative detail.
     # Split the floor so the Dungeon can actually descend below the Great Hall
     # rather than sitting on top of a solid slab.
-    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
-    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
-    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"])
-    # Shallow mortar courses turn the rear wall from one smooth slab into
-    # readable castle masonry without adding heavy displacement geometry.
-    for row, z in enumerate((0.70, 1.52, 2.34, 3.16, 3.98, 4.80, 5.62)):
-        cube(f"HOME_ARCH_back_mortar_h_{row}", (0, 6.72, z), (9.10, 0.014, 0.010), materials["stone_dark"])
-        offset = 0.90 if row % 2 else -0.20
-        for col, x in enumerate((-6.6, -2.2, 2.2, 6.6)):
-            cube(
-                f"HOME_ARCH_back_mortar_v_{row}_{col}",
-                (x + offset, 6.715, z + 0.36),
-                (0.012, 0.018, 0.31),
-                materials["stone_dark"],
-            )
+    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"], bevel=0.032)
+    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"], bevel=0.032)
+    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"], bevel=0.040)
+    # The low-relief ashlar faces below already create natural recessed joints
+    # through real depth and grazing shadow. Avoid a second perfectly straight
+    # mortar grid over the same wall.
 
     # Shallow individual ashlar faces add parallax and catch grazing light.
     # They remain low-relief so the approved focal architecture stays dominant.
     for row, z in enumerate((0.42, 1.20, 1.98, 2.76, 3.54, 4.32, 5.10, 5.88)):
         offset = 0.76 if row % 2 else 0.0
         for col in range(-6, 7):
-            bx = col * 1.48 + offset
+            jitter_x = (_hash01(col, row, 701) - 0.5) * 0.085
+            bx = col * 1.48 + offset + jitter_x
             if abs(bx) > 8.65:
                 continue
-            block_width = 0.66 + 0.045 * ((row + col) % 3)
-            block_height = 0.31 + 0.018 * ((row * 2 + col) % 2)
-            block_y = 6.710 - 0.006 * ((row * 3 + col) % 3)
-            cube(
+            block_width = 0.64 + _hash01(col, row, 709) * 0.085
+            block_height = 0.295 + _hash01(col, row, 719) * 0.045
+            block_y = 6.706 - _hash01(col, row, 727) * 0.014
+            block = cube(
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
-                (bx, block_y, z),
+                (bx, block_y, z + (_hash01(col, row, 733) - 0.5) * 0.026),
                 (block_width, 0.016, block_height),
                 materials["back_wall_stone_accent"] if (row + col) % 5 == 0 else materials["back_wall_stone"],
                 bevel=0.018,
             )
-    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
-    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
-    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
+            block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 0.9)
+    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
+    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
 
-    # Stone slab seams keep the floor from reading as one flat dark plane.
-    grout = materials["stone_dark"]
-    for idx, x in enumerate((-8.0, -6.4, -4.8, -3.2, 3.2, 4.8, 6.4, 8.0)):
-        cube(f"HOME_ARCH_floor_grout_v_{idx}", (x, 2.25, 0.018), (0.018, 5.55, 0.010), grout)
-    for idx, y in enumerate((-2.2, -0.8, 0.6, 4.8, 6.2)):
-        cube(f"HOME_ARCH_floor_grout_h_{idx}", (0, y, 0.018), (8.75, 0.018, 0.010), grout)
+    # The side walls need the same masonry scale as the rear wall. Low-relief
+    # courses stop these large side masses reading as two perfect extruded boxes.
+    for side in (-1, 1):
+        wall_x = side * 9.02
+        for row, z in enumerate((0.55, 1.32, 2.09, 2.86, 3.63, 4.40, 5.17)):
+            y_offset = 0.48 if row % 2 else 0.0
+            for col, y in enumerate((-0.1, 1.5, 3.1, 4.7, 6.3)):
+                jy = (_hash01(col, row, 811 + side) - 0.5) * 0.11
+                face = cube(
+                    f"HOME_ARCH_side_ashlar_{side}_{row}_{col}",
+                    (wall_x - side * 0.012, y + y_offset + jy, z),
+                    (0.016, 0.68 + _hash01(col, row, 823 + side) * 0.08, 0.29 + _hash01(col, row, 829 + side) * 0.045),
+                    materials["back_wall_stone_accent"] if (row + col) % 6 == 0 else materials["stone"],
+                    bevel=0.014,
+                )
+                face.rotation_euler[0] = math.radians((_hash01(col, row, 839 + side) - 0.5) * 0.8)
+
+    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"], bevel=0.022)
+    for idx, (wx, wy, sx, sy, rot) in enumerate((
+        (-0.42, -0.95, 1.10, 0.22, -6.0),
+        (0.36, 0.02, 0.94, 0.19, 4.0),
+        (-0.18, 4.26, 0.82, 0.17, -3.0),
+    )):
+        wear = sphere(
+            f"HOME_PROP_rug_wear_{idx}",
+            (wx, wy, 0.048),
+            (sx, sy, 0.008),
+            materials["rug_worn"],
+        )
+        wear.rotation_euler[2] = math.radians(rot)
+
+    # Floor joints are authored in the packed floor-stone normal/roughness maps.
+    # Keep geometry free of a second seam grid so the material scale remains
+    # the single source of truth and does not produce a doubled CAD pattern.
+
+    # Very restrained contact grime grounds the room where feet, walls and
+    # traffic meet the stone. These are broad, low-contrast shapes, not decals.
+    for idx, (gx, gy, sx, sy) in enumerate((
+        (-8.72, 3.90, 0.20, 1.65),
+        (8.72, 3.55, 0.20, 1.80),
+        (-4.18, 0.92, 0.60, 0.20),
+        (4.18, 0.96, 0.58, 0.20),
+        (-3.25, 3.95, 0.54, 0.16),
+        (7.48, 4.96, 0.52, 0.18),
+    )):
+        sphere(
+            f"HOME_PROP_floor_contact_grime_{idx}",
+            (gx, gy, 0.034),
+            (sx, sy, 0.010),
+            materials["stone_grime"],
+        )
 
     # Narrow brass/brown rug border approximates the ornate woven edge from the master.
     rug_border = materials["brass"]
@@ -2287,6 +2590,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["arch_stone"])
+    add_gothic_voussoirs(
+        "HOME_ARCH_armor_voussoir",
+        1.35,
+        6.18,
+        2.55,
+        2.55,
+        4.72,
+        materials["arch_stone"],
+        count_per_side=7,
+    )
     gothic_arch(
         "HOME_ARCH_armor_inner_trim",
         1.35,
@@ -2367,6 +2680,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.28,
         materials["arch_stone"],
         bevel=0.080,
+    )
+    add_gothic_voussoirs(
+        "HOME_ARCH_fireplace_right_voussoir",
+        4.45,
+        5.42,
+        2.45,
+        2.52,
+        3.78,
+        materials["arch_stone"],
+        count_per_side=6,
     )
     gothic_arch(
         "HOME_ARCH_fireplace_right_inner_hood",

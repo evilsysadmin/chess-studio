@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
@@ -16,10 +17,10 @@ const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
 
 const EXPOSURE = Object.freeze({
-  dawn: 1.14,
-  day: 1.09,
-  dusk: 1.13,
-  night: 1.17,
+  dawn: 1.08,
+  day: 1.03,
+  dusk: 1.07,
+  night: 1.11,
 });
 
 const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
@@ -87,10 +88,10 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
-  const ambient = new THREE.AmbientLight(0x9b806b, 0.18);
-  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.36);
+  const ambient = new THREE.AmbientLight(0x9b806b, 0.14);
+  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.28);
 
-  const key = new THREE.DirectionalLight(0xffc18a, 2.05);
+  const key = new THREE.DirectionalLight(0xffc18a, 1.62);
   key.position.set(-5.2, 7.4, 8.2);
   key.castShadow = shadowsEnabled;
   key.shadow.mapSize.set(2048, 2048);
@@ -100,27 +101,50 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   key.shadow.camera.bottom = -3;
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 28;
-  key.shadow.bias = -0.00022;
-  key.shadow.normalBias = 0.028;
-  key.shadow.intensity = 0.58;
+  key.shadow.bias = -0.00014;
+  key.shadow.normalBias = 0.016;
+  key.shadow.radius = 1.8;
+  key.shadow.intensity = 0.72;
 
-  const fill = new THREE.DirectionalLight(0x587aa8, 0.48);
+  const fill = new THREE.DirectionalLight(0x587aa8, 0.31);
   fill.position.set(7.2, 4.8, 5.6);
 
-  const leftHearth = new THREE.PointLight(0xff6f24, 18.5, 7.2, 2);
+  const leftHearth = new THREE.PointLight(0xff6f24, 15.8, 7.0, 2);
   leftHearth.position.set(-6.15, 0.95, -5.12);
 
-  const rightHearth = new THREE.PointLight(0xff6b21, 19.5, 7.2, 2);
+  const rightHearth = new THREE.PointLight(0xff6b21, 16.6, 7.0, 2);
   rightHearth.position.set(4.50, 1.10, -5.00);
 
-  const table = new THREE.PointLight(0xffb66f, 5.2, 8.5, 2);
+  const table = new THREE.PointLight(0xffb66f, 3.35, 7.4, 2);
   table.position.set(0, 4.9, 3.8);
 
-  const floorBounce = new THREE.PointLight(0xff8b45, 4.6, 10.5, 2);
+  const floorBounce = new THREE.PointLight(0xff8b45, 2.15, 8.8, 2);
   floorBounce.position.set(0, 0.55, -1.6);
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce);
 }
+
+function installHomeEnvironment(renderer, scene, enabled = true) {
+  if (!enabled) return () => {};
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const target = pmrem.fromScene(room, 0.035);
+  pmrem.dispose();
+
+  scene.environment = target.texture;
+  scene.environmentIntensity = 0.24;
+
+  return () => {
+    if (scene.environment === target.texture) scene.environment = null;
+    target.dispose?.();
+    room.traverse?.((object) => {
+      object.geometry?.dispose?.();
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.filter(Boolean).forEach((material) => material.dispose?.());
+    });
+  };
+}
+
 
 function disposeMaterial(material) {
   if (!material) return;
@@ -201,6 +225,11 @@ export default function HomeBlenderScene3D({
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
+    const releaseEnvironment = installHomeEnvironment(
+      renderer,
+      scene,
+      initialPolicy.lod === 'full',
+    );
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
@@ -308,6 +337,7 @@ export default function HomeBlenderScene3D({
         scene.remove(model);
         disposeRuntimeScene(model);
       }
+      releaseEnvironment();
       renderer.dispose();
     };
   }, [ambient, onUnavailable]);
