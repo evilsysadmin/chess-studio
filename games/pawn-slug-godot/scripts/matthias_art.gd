@@ -14,16 +14,16 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v14"
+const STRICT_RUNTIME_GENERATION := "v15"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/pistol/v14-9ded4a9961a96cf6.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/machinegun/v14-93d9f9d9f1895711.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/shotgun/v14-9bc62beb46a5be92.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/panzerfaust/v14-2177056edc0cb845.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/machinegun/v15-32227acfdc2e0cff.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/shotgun/v15-1dcb9bee090747c4.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/panzerfaust/v15-ed8aed181601acb0.png",
 }
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
-# strict-v14 tactical bank; v10 stays disabled because its mixed silhouettes
+# strict-v15 tactical bank; v10 stays disabled because its mixed silhouettes
 # would regress identity continuity.
 const V10_RUNTIME_PROMOTION_ENABLED := false
 const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
@@ -53,7 +53,7 @@ const V10_ACTIONS := {
 }
 
 # Historical V9_* names are retained as the stable 18-row runtime contract.
-# strict-v14 preserves that eight-column contract without changing
+# strict-v15 preserves that eight-column contract without changing
 # cell size, pivot, foot line, row semantics or world scale.
 const V9_ATLAS_COLUMNS := 8
 const V9_ATLAS_ROWS := 18
@@ -87,7 +87,7 @@ const V9_ACTION_ORDER := [
 ]
 const V9_ACTIONS := {
     # 8/6 speed-up preserves the authored v9 action duration after expanding
-    # each bank from six to eight frames; strict-v14 keeps that timing contract.
+    # each bank from six to eight frames; strict-v15 keeps that timing contract.
     "idle": {"row": 0, "fps": 8.0, "loop": true},
     "walk": {"row": 1, "fps": 13.333333, "loop": true},
     "run": {"row": 2, "fps": 16.0, "loop": true},

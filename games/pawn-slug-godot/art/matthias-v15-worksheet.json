@@ -1,10 +1,15 @@
 {
   "worksheet": "matthias-pawn-slug-godot-v15",
-  "status": "candidate-awaiting-ci-visual-review",
+  "status": "validated-promoted-runtime",
   "validated_contract": {
     "generation": "strict-v15",
     "source_generation": "strict-v14",
-    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "weapons": [
+      "pistol",
+      "machinegun",
+      "shotgun",
+      "panzerfaust"
+    ],
     "actions": 18,
     "frames_per_action": 8,
     "cell_size": 416,
@@ -22,17 +27,91 @@
   },
   "local_evidence": {
     "review_artifact": "v15b_all_weapons_review.png inspected at 179px runtime scale",
-    "pistol": {"face_detail_frames": 117, "changed_rgb_pixels": 13011, "max_luma_spread_delta": 0.248},
-    "machinegun": {"face_detail_frames": 132, "changed_rgb_pixels": 21368, "max_luma_spread_delta": 0.214},
-    "shotgun": {"face_detail_frames": 62, "changed_rgb_pixels": 7135, "max_luma_spread_delta": 0.056},
-    "panzerfaust": {"face_detail_frames": 104, "changed_rgb_pixels": 12510, "max_luma_spread_delta": 0.331},
+    "pistol": {
+      "face_detail_frames": 117,
+      "changed_rgb_pixels": 13011,
+      "max_luma_spread_delta": 0.248
+    },
+    "machinegun": {
+      "face_detail_frames": 132,
+      "changed_rgb_pixels": 21368,
+      "max_luma_spread_delta": 0.214
+    },
+    "shotgun": {
+      "face_detail_frames": 62,
+      "changed_rgb_pixels": 7135,
+      "max_luma_spread_delta": 0.056
+    },
+    "panzerfaust": {
+      "face_detail_frames": 104,
+      "changed_rgb_pixels": 12510,
+      "max_luma_spread_delta": 0.331
+    },
     "all_rows_8_distinct": true,
     "alpha_byte_identical": true,
     "death_row_untouched": true,
     "visual_review": "subtle but visible face readability improvement without new scribble, silhouette change, weapon drift or muzzle regression"
   },
   "resume": {
-    "next": "run strict-v15 CI across all four weapons, inspect every CI review PNG, then decide whether to promote runtime",
-    "source_of_truth": "promoted strict-v14 runtime plus strict-v15 workflow artifacts"
+    "next": "use strict-v15 as the canonical runtime baseline; address the older cross-weapon art-style divergence (especially machinegun versus the other weapon banks) as a separate structural iteration",
+    "source_of_truth": "runtime FULL_ATLAS_URLS plus strict-v15 worksheet and immutable R2 assets"
+  },
+  "runtime_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/machinegun/v15-32227acfdc2e0cff.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/shotgun/v15-1dcb9bee090747c4.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/panzerfaust/v15-ed8aed181601acb0.png"
+  },
+  "ci_evidence": {
+    "candidate_pr": 3241,
+    "candidate_commit": "7d5703d00550780f08b81e0c6bd89177a3be32f9",
+    "candidate_run": 35510962306,
+    "publish_main_commit": "9f62a9b786b0335e28e1315936a04a418352997e",
+    "publish_run": 35511080859,
+    "godot": "4.7.2",
+    "health": {
+      "pistol": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 13011,
+        "face_detail_frames": 117,
+        "max_luma_spread_delta": 0.248
+      },
+      "machinegun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 21368,
+        "face_detail_frames": 132,
+        "max_luma_spread_delta": 0.214
+      },
+      "shotgun": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 7135,
+        "face_detail_frames": 62,
+        "max_luma_spread_delta": 0.056
+      },
+      "panzerfaust": {
+        "frames": 144,
+        "rows": 18,
+        "distinct_8_per_row": true,
+        "alpha_byte_identical": true,
+        "death_row_byte_identical": true,
+        "changed_rgb_pixels": 12510,
+        "face_detail_frames": 104,
+        "max_luma_spread_delta": 0.331
+      }
+    },
+    "visual_review": "Reviewed all four v14→v15 CI review PNGs. Face cues stay subtle/readable and no silhouette, pivot, muzzle, death/downed or frame-continuity regression is visible.",
+    "publish_evidence": "All four main-run publish.txt files confirm immutable strict-v15 R2 URLs."
   }
 }

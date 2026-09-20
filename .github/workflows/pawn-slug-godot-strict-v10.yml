@@ -223,7 +223,7 @@ jobs:
           set -euo pipefail
           ROOT="$RUNNER_TEMP/matthias-v10"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
-            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/pistol/v14-9ded4a9961a96cf6.png" \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png" \
             --output "$ROOT/matthias_runtime_pistol.png"
           python3 - <<'PY'
           import json
@@ -242,9 +242,9 @@ jobs:
           if text.count(promotion) != 1:
               raise SystemExit('expected exactly one v10 runtime promotion guard')
           text = text.replace(promotion, 'const V10_RUNTIME_PROMOTION_ENABLED := true')
-          runtime_remote = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/pistol/v14-9ded4a9961a96cf6.png'
+          runtime_remote = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png'
           if text.count(runtime_remote) != 1:
-              raise SystemExit('expected exactly one strict-v13 pistol runtime URL')
+              raise SystemExit('expected exactly one strict-v15 pistol runtime URL')
           text = text.replace(runtime_remote, 'http://127.0.0.1:4179/matthias_runtime_pistol.png')
           path.write_text(text, encoding='utf-8')
 
