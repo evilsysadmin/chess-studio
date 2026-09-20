@@ -7,6 +7,7 @@ on:
       - .github/workflows/production-target-smoke.yml
       - scripts/oci_production_tunnel.py
       - scripts/production_deploy_target.py
+      - scripts/oci_production_runtime.py
       - scripts/synthetic_health_check.py
   push:
     branches: [main]
@@ -34,10 +35,18 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
       CHESS_SYNTHETIC_BASE_URL: https://api.chess-studio.shadowops.dpdns.org/api
       CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
       CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
       CHESS_SYNTHETIC_GAMEPLAY: '1'
+      CHESS_SYNTHETIC_EPHEMERAL: '1'
+      CHESS_SYNTHETIC_INVITE_CODE: ${{ secrets.CHESS_SYNTHETIC_INVITE_CODE }}
+      CHESS_SYNTHETIC_HEALTH_SLO_MS: ${{ vars.CHESS_SYNTHETIC_HEALTH_SLO_MS || '3000' }}
       CHESS_SYNTHETIC_AUTH_SLO_MS: ${{ vars.CHESS_SYNTHETIC_AUTH_SLO_MS || '10000' }}
     steps:
       - uses: actions/checkout@v7
@@ -66,13 +75,14 @@ jobs:
           DEPLOY_TARGET: ${{ steps.target.outputs.deploy_target }}
         run: python3 scripts/oci_production_tunnel.py status --target "$DEPLOY_TARGET"
 
-      - name: Report missing authenticated gameplay credentials
-        if: github.event_name != 'pull_request' && (env.CHESS_SYNTHETIC_USERNAME == '' || env.CHESS_SYNTHETIC_PASSWORD == '')
-        shell: bash
-        run: |
-          echo '::warning title=Production gameplay smoke pending::CHESS_SYNTHETIC_USERNAME/PASSWORD are not configured; routing + Mongo readiness remain authoritative, authenticated gameplay is not yet accredited.'
-          echo '- Authenticated gameplay smoke: `pending synthetic credentials`' >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore OCI SDK for ephemeral production identity
+        if: github.event_name != 'pull_request' && env.CHESS_SYNTHETIC_USERNAME == '' && env.CHESS_SYNTHETIC_INVITE_CODE == ''
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Load production invite from OCI Vault
+        if: github.event_name != 'pull_request' && env.CHESS_SYNTHETIC_USERNAME == '' && env.CHESS_SYNTHETIC_INVITE_CODE == ''
+        run: python3 scripts/oci_production_runtime.py export-synthetic-invite
 
       - name: Prove authenticated gameplay and persistence
-        if: github.event_name != 'pull_request' && env.CHESS_SYNTHETIC_USERNAME != '' && env.CHESS_SYNTHETIC_PASSWORD != ''
+        if: github.event_name != 'pull_request'
         run: python3 scripts/synthetic_health_check.py --timeout 75

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import shlex
+from pathlib import Path
 from typing import Any
 
 SECRET_NAME = "chess-studio-production-runtime-env"
@@ -78,6 +80,7 @@ PRODUCTION_ALWAYS_REQUIRED = (
     "CHESS_STUDIO_RUNTIME_SCHEMA",
 )
 TRUE_VALUES = {"1", "true", "yes", "on"}
+RUNNER_READABLE_KEYS = frozenset({"INVITE_CODE"})
 
 
 def _clean_value(key: str, value: object, *, allow_empty: bool = False) -> str:
@@ -151,6 +154,71 @@ def render_production_env(values: dict[str, str]) -> bytes:
 
 def validate_production_values(values: dict[str, str]) -> bytes:
     return render_production_env(effective_production_values(values))
+
+
+def parse_production_env(payload: bytes) -> dict[str, str]:
+    """Parse the CURRENT production runtime without exposing secret values."""
+    if not payload or len(payload) > 65536:
+        raise SystemExit("Invalid production runtime secret bundle size")
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise SystemExit("Production runtime secret bundle is not valid UTF-8") from exc
+    if "\x00" in text or "\r" in text:
+        raise SystemExit("Production runtime secret bundle contains forbidden control characters")
+
+    allowed = set(PRODUCTION_ALLOWED_KEYS)
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line or "=" not in line:
+            raise SystemExit("Malformed production runtime line")
+        key, value = line.split("=", 1)
+        if key not in allowed or key in values:
+            raise SystemExit("Unexpected or duplicate production runtime key")
+        if "\x00" in value or "\r" in value or "\n" in value:
+            raise SystemExit("Production runtime value contains forbidden control characters")
+        values[key] = value
+    return effective_production_values(values)
+
+
+def read_current_production_values(oci: Any) -> dict[str, str]:
+    """Read and validate the production runtime directly from OCI Vault."""
+    from oci_run_command import config_from_env, resolve_staging
+    from oci_vault_runtime import resolve_vault_id
+
+    config = config_from_env(oci)
+    compartment_id, _instance_id = resolve_staging(oci, config)
+    vault_id = resolve_vault_id(oci, config, compartment_id)
+    client = oci.secrets.SecretsClient(config)
+    response = client.get_secret_bundle_by_name(
+        secret_name=SECRET_NAME,
+        vault_id=vault_id,
+        stage="CURRENT",
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    )
+    bundle_content = getattr(response.data, "secret_bundle_content", None)
+    encoded = str(getattr(bundle_content, "content", "") or "")
+    try:
+        payload = base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise SystemExit("Invalid production runtime secret bundle encoding") from exc
+    return parse_production_env(payload)
+
+
+def export_synthetic_invite(oci: Any) -> None:
+    """Expose only INVITE_CODE to a trusted Actions step through GITHUB_ENV."""
+    values = read_current_production_values(oci)
+    key = "INVITE_CODE"
+    if key not in RUNNER_READABLE_KEYS:
+        raise SystemExit("Synthetic invite key is outside runner allowlist")
+    value = _clean_value(key, values.get(key, ""))
+    github_env = str(os.environ.get("GITHUB_ENV") or "").strip()
+    if not github_env:
+        raise SystemExit("GITHUB_ENV is required for synthetic invite export")
+    print(f"::add-mask::{value}")
+    with Path(github_env).open("a", encoding="utf-8") as handle:
+        handle.write(f"CHESS_SYNTHETIC_INVITE_CODE={value}\n")
+    print("OCI_PRODUCTION_SYNTHETIC_INVITE_OK configured=true source=vault")
 
 
 def collect_render_production() -> bytes:
@@ -358,7 +426,11 @@ def self_test() -> None:
     assert effective["OTEL_TRACES_SAMPLER_ARG"] == "0.20"
     assert effective["ALLOW_REGISTRATION"] == "false"
 
-    rendered = render_production_env(effective).decode("utf-8")
+    rendered_bytes = render_production_env(effective)
+    rendered = rendered_bytes.decode("utf-8")
+    parsed = parse_production_env(rendered_bytes)
+    assert parsed["INVITE_CODE"] == "invite-secret"
+    assert parsed["MONGO_DB_NAME"] == PRODUCTION_DB
     assert f"MONGO_DB_NAME={PRODUCTION_DB}\n" in rendered
     assert "MONGO_DB_NAME=chess_study_staging" not in rendered
     assert "EXPOSE_API_DOCS=false\n" in rendered
@@ -432,7 +504,7 @@ def self_test() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", nargs="?", choices=("bootstrap", "sync-current"))
+    parser.add_argument("operation", nargs="?", choices=("bootstrap", "sync-current", "export-synthetic-invite"))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -446,8 +518,10 @@ def main() -> int:
         raise SystemExit("OCI Python SDK is required: pip install oci") from exc
     if args.operation == "bootstrap":
         bootstrap(oci)
-    else:
+    elif args.operation == "sync-current":
         sync_current(oci)
+    else:
+        export_synthetic_invite(oci)
     return 0
 
 

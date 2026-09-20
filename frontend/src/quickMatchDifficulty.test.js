@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { cpuRatingForDifficulty, difficultyForCpuRating } from './playerRating.js';
 import {
+  QUICK_MATCH_FORM_MAX_AGE_DAYS,
   QUICK_MATCH_HYSTERESIS_ELO,
   QUICK_MATCH_TARGET_LEAD_ELO,
   difficultyForQuickMatchRating,
   provisionalQuickMatchLeadElo,
+  quickMatchQualityAdjustment,
   quickMatchRecalibration,
 } from './quickMatchDifficulty.js';
 
@@ -73,6 +75,44 @@ describe('quick-match Elo chaser', () => {
     expect(difficultyForQuickMatchRating(1000, activity, 20)).not.toBe(45);
   });
 
+  it('does not treat a clean early cancellation as evidence of playing strength', () => {
+    const baseline = difficultyForQuickMatchRating(1000, [], 20);
+    const activity = [
+      { gameId: 'cancelled', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-2', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-2', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-3', state: 'cancelled', difficulty: baseline, mode: 'casual' },
+      { gameId: 'cancelled-3', state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual' },
+    ];
+
+    expect(difficultyForQuickMatchRating(1000, activity, 20, {})).toBe(baseline);
+  });
+
+  it('forgets stale form instead of punishing a player for a bad month long ago', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    const staleDate = new Date(now - ((QUICK_MATCH_FORM_MAX_AGE_DAYS + 2) * 24 * 60 * 60 * 1000)).toISOString();
+    const baseline = difficultyForQuickMatchRating(1000, [], 20, {}, now);
+    const staleLosses = ['g3', 'g2', 'g1'].flatMap((gameId) => [
+      { gameId, state: 'finished', outcome: 'loss', difficulty: baseline, mode: 'casual', date: staleDate },
+      { gameId, state: 'started', detail: 'adaptive-difficulty', difficulty: baseline, mode: 'casual', date: staleDate },
+    ]);
+
+    expect(difficultyForQuickMatchRating(1000, staleLosses, 20, {}, now)).toBe(baseline);
+  });
+
+  it('does not let an old adaptive opponent pin hysteresis after a long break', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    const staleDate = new Date(now - ((QUICK_MATCH_FORM_MAX_AGE_DAYS + 2) * 24 * 60 * 60 * 1000)).toISOString();
+    const oldDifficulty = 55;
+    const activity = [
+      { gameId: 'old', state: 'started', detail: 'adaptive-difficulty', difficulty: oldDifficulty, mode: 'casual', date: staleDate },
+    ];
+
+    const selected = difficultyForQuickMatchRating(1200, activity, 20, {}, now);
+    expect(selected).not.toBe(oldDifficulty);
+  });
+
   it('reacts to a real adaptive losing streak only between games', () => {
     const baseline = difficultyForQuickMatchRating(1000, [], 20);
     const losses = [
@@ -83,6 +123,58 @@ describe('quick-match Elo chaser', () => {
     const relieved = difficultyForQuickMatchRating(1000, losses, 20);
     expect(relieved).toBeLessThan(baseline);
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
+  });
+
+  it('uses analyzed move quality only after two factual adaptive-game samples', () => {
+    const activity = [
+      ...adaptiveGame('g2', 'win', 56),
+      ...adaptiveGame('g1', 'win', 56),
+    ];
+    const one = {
+      g2: { sufficientSample: true, clean: false, averageLoss: 130, blunders: 2 },
+    };
+    const two = {
+      ...one,
+      g1: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
+    };
+
+    expect(quickMatchQualityAdjustment(activity, 20, one)).toBe(0);
+    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(-15);
+  });
+
+  it('lets repeated clean analyzed play add only a small quality boost', () => {
+    const activity = [
+      ...adaptiveGame('g3', 'draw', 56),
+      ...adaptiveGame('g2', 'draw', 56),
+      ...adaptiveGame('g1', 'draw', 56),
+    ];
+    const quality = Object.fromEntries(['g1', 'g2', 'g3'].map((gameId) => [
+      gameId,
+      { sufficientSample: true, clean: true, averageLoss: 18, blunders: 0 },
+    ]));
+
+    expect(quickMatchQualityAdjustment(activity, 20, quality)).toBe(10);
+  });
+
+  it('ignores analyzed evidence from non-adaptive games and provisional profiles', () => {
+    const normalActivity = [
+      { gameId: 'normal', state: 'finished', outcome: 'loss', difficulty: 56, mode: 'casual' },
+      { gameId: 'normal', state: 'started', difficulty: 56, mode: 'casual' },
+    ];
+    const quality = {
+      normal: { sufficientSample: true, clean: false, averageLoss: 180, blunders: 3 },
+    };
+
+    expect(quickMatchQualityAdjustment(normalActivity, 20, quality)).toBe(0);
+
+    const adaptive = [
+      ...adaptiveGame('g2', 'loss', 56),
+      ...adaptiveGame('g1', 'loss', 56),
+    ];
+    expect(quickMatchQualityAdjustment(adaptive, 3, {
+      g1: quality.normal,
+      g2: quality.normal,
+    })).toBe(0);
   });
 
   it('reports a factual post-game recalibration only when the opponent changes materially', () => {

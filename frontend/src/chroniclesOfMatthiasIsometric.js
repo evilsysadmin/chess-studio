@@ -2,7 +2,15 @@ import * as THREE from 'three';
 import {
   chroniclesProjectSceneModel,
   chroniclesSceneWorldObjectState,
+  chroniclesValidateSceneModel,
 } from './chronicles/chroniclesSceneModel.js';
+
+// Public headless projection seam: keeps the deterministic renderer snapshot
+// reachable without coupling it to React or Three.js consumers.
+export {
+  chroniclesHeadlessSceneSnapshot,
+  chroniclesHeadlessSceneSignature,
+} from './chronicles/chroniclesHeadlessScene.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { chroniclesEnemyEffectiveVisualScale } from './chroniclesEnemyRenderRoster.js';
@@ -835,6 +843,7 @@ export function createChroniclesIsometricRenderer(host, {
 
   function syncSceneModel(sceneModel) {
     if (!sceneModel) return;
+    sceneModel = chroniclesValidateSceneModel(sceneModel);
     latestSceneModel = sceneModel;
     selectedMemberId = sceneModel.selectedMemberId || selectedMemberId;
 

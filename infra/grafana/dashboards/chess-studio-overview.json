@@ -298,7 +298,19 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "noValue": "0"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -500,6 +512,65 @@
         "overrides": []
       },
       "options": {}
+    },
+    {
+      "id": 12,
+      "title": "SLO · 5xx % · 15 min",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "100 * (sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\",http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\"}[15m])), 1))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
     }
   ]
 }

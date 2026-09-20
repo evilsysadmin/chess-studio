@@ -9,6 +9,7 @@ import {
   chroniclesXpThresholdForLevel,
   createChroniclesProgression,
   ensureChroniclesTacticsRun,
+  finishChroniclesTacticsRun,
   grantChroniclesXp,
   loadChroniclesProgression,
   saveChroniclesProgression,
@@ -191,6 +192,17 @@ describe('Chronicles Tactics · progression', () => {
 
     expect(localStorage.getItem(CHRONICLES_PROGRESSION_STORAGE_KEY)).toBeTruthy();
     expect(chroniclesHeroProgress(restored, 'knight').xp).toBe(18);
+  });
+
+  it('creates a fresh run identity after the current expedition is finished', () => {
+    const first = beginChroniclesTacticsRun();
+    expect(ensureChroniclesTacticsRun()).toBe(first);
+
+    expect(finishChroniclesTacticsRun(first)).toBe(true);
+
+    const second = ensureChroniclesTacticsRun();
+    expect(second).not.toBe(first);
+    expect(ensureChroniclesTacticsRun()).toBe(second);
   });
 
   it('keeps an active run across reload but refuses to inherit it across users', () => {

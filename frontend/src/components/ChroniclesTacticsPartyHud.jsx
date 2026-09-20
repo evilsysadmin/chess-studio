@@ -8,6 +8,7 @@ import {
   CHRONICLES_ATTRIBUTE_CAP,
   CHRONICLES_ATTRIBUTE_DEFINITIONS,
   chroniclesAllowedAttributes,
+  chroniclesHasUnspentProgression,
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
   chroniclesXpToNextLevel,
@@ -111,6 +112,7 @@ export default function ChroniclesTacticsPartyHud({
         {party.map((member, index) => {
           const profile = chroniclesTacticsProfile(member.id);
           const progress = chroniclesHeroProgress(progression, member.id);
+          const upgradeReady = chroniclesHasUnspentProgression(progression, member.id);
           const ability = abilityResource(state, member.id);
           const hpRatio = clampRatio(member.hp / member.maxHp);
           const selected = member.id === selectedMemberId;
@@ -142,6 +144,7 @@ export default function ChroniclesTacticsPartyHud({
                 <span className="chronicles-party-hud__identity">
                   <b>{member.name}</b>
                   <small>Nv {progress.level} · {profile.className}</small>
+                  {upgradeReady && <em className="chronicles-party-hud__upgrade">↑ MEJORA</em>}
                 </span>
                 <VitalBar kind="hp" label="HP" value={member.hp} max={member.maxHp} ratio={hpRatio} />
                 <VitalBar kind="mp" label="MP" value={ability.charges} max={ability.max} ratio={ability.ratio} />
@@ -243,7 +246,7 @@ export default function ChroniclesTacticsPartyHud({
               <div><span>Ataque</span><b>{sheetProfile.attackName}</b></div>
               <div><span>Geometría</span><b>{sheetProfile.kindLabel}</b></div>
               <div><span>Alcance</span><b>{sheetReach}</b></div>
-              <div><span>Habilidad</span><b>{sheetProfile.abilityName}</b></div>
+              <div><span>Habilidad</span><b>{sheetAbility.abilityName}</b></div>
             </div>
 
             <div className="chronicles-character-sheet__section">
@@ -275,7 +278,7 @@ export default function ChroniclesTacticsPartyHud({
 
             <div className="chronicles-character-sheet__section">
               <div className="chronicles-character-sheet__section-head">
-                <div><span>TÉCNICAS</span><small>Una doctrina, decisiones con coste</small></div>
+                <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas y hechizos con ramas excluyentes</small></div>
                 <b>{sheetProgress.skillPoints} punto{sheetProgress.skillPoints === 1 ? '' : 's'} libre{sheetProgress.skillPoints === 1 ? '' : 's'}</b>
               </div>
               <div className="chronicles-character-sheet__skill-grid">

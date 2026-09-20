@@ -69,7 +69,7 @@ function createActionState(progression) {
   }, progression);
 }
 
-export default function ChroniclesOfMatthiasTactics({ onExit }) {
+export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = null }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
@@ -206,6 +206,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const restart = useCallback(() => {
     finishChroniclesTacticsRun(runId);
     const nextRunId = beginChroniclesTacticsRun();
+
+    if (typeof onRestartRun === 'function') {
+      onRestartRun();
+      return;
+    }
+
     const next = createActionState(progressionRef.current);
     selectedMemberRef.current = 'matthias';
     lastMoveAtRef.current = 0;
@@ -215,7 +221,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     setSheetRequest(null);
     stateRef.current = next;
     setState(next);
-  }, [runId]);
+  }, [onRestartRun, runId]);
 
   useEffect(() => {
     selectedMemberRef.current = selectedMemberId;

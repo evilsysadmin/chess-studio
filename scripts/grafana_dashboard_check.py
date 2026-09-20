@@ -120,24 +120,36 @@ def main() -> int:
     live_check = LIVE_CHECK.read_text(encoding="utf-8") if LIVE_CHECK.exists() else ""
     live_workflow = LIVE_WORKFLOW.read_text(encoding="utf-8") if LIVE_WORKFLOW.exists() else ""
     for token in (
-        '/api/prometheus/',
+        '/api/datasources/proxy/uid/',
+        'api.get_list("/api/datasources")',
+        '"oci_host_staging"',
+        'deployment_environment="staging"',
+        'service_version=~".+"',
         '/loki/api/v1/query',
         '/api/search',
         'chess-studio-oci-host',
         'backend_production_metrics',
         'backend_production_logs',
         'backend_production_traces',
+        'backend_5xx_percent',
+        'backend_p95_ms',
+        'oci_host_ram_percent',
+        'GRAFANA_SLO_MAX_5XX_PERCENT',
         '--self-test',
     ):
         if token not in live_check:
             fail(f"live check Grafana incompleto: {token}")
     for token in (
-        "cron: '41 */2 * * *'",
+        "cron: '41 * * * *'",
         'GRAFANA_URL',
         'GRAFANA_AUTH',
         'GRAFANA_METRICS_DATASOURCE_UID',
         'GRAFANA_LOGS_DATASOURCE_UID',
         'GRAFANA_TRACES_DATASOURCE_UID',
+        'GRAFANA_SLO_MAX_5XX_PERCENT',
+        'GRAFANA_SLO_MAX_P95_MS',
+        'GRAFANA_SLO_MAX_HOST_RAM_PERCENT',
+        'GRAFANA_SLO_MIN_REQUESTS_15M',
         'python3 -S scripts/grafana_live_check.py --self-test',
         'python3 -S scripts/grafana_live_check.py',
     ):

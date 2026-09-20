@@ -4,6 +4,24 @@ import { createSeries, loadActiveSeries, loadSeriesHistory, recordSeriesGame, sa
 describe('series al mejor de N', () => {
   beforeEach(() => localStorage.clear());
 
+  it('persiste si la serie nació del rival adaptativo sin cambiar su dificultad', () => {
+    const adaptive = createSeries({
+      bestOf: 3,
+      difficulty: 56,
+      firstColor: 'w',
+      adaptiveDifficulty: true,
+    });
+    const manual = createSeries({
+      bestOf: 3,
+      difficulty: 56,
+      firstColor: 'w',
+    });
+
+    expect(adaptive.adaptiveDifficulty).toBe(true);
+    expect(adaptive.difficulty).toBe(56);
+    expect(manual.adaptiveDifficulty).toBe(false);
+  });
+
   it('cierra un mejor de 3 al llegar a dos victorias', () => {
     let s = createSeries({ bestOf: 3, difficulty: 60, firstColor: 'w', timeControlId: '3+2' });
     s = recordSeriesGame(s, 'win', { gameId: 'a', humanColor: 'w', moves: 40 });

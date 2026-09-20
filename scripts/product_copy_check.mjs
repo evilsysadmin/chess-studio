@@ -50,7 +50,7 @@ const checks = [
   [chat.includes("title = 'Chat de partida'"), 'el chat visible debe usar copy castellano coherente'],
   [chat.includes('CPU_IDENTITY.name.toUpperCase()') && !chat.includes('CPU // EN DIRECTO') && !chat.includes('LIVE LOG'), 'el chat debe firmar como Matthias y no volver a una CPU anónima'],
   [voice.includes('VOZ') && !voice.includes('VOICE ON') && !voice.includes('VOICE OFF'), 'el control de voz no debe mezclar VOICE/VOZ'],
-  [notation.includes('CPU · nivel <b>{difficulty}</b>'), 'la ficha de dificultad debe decir «CPU · nivel»'],
+  [notation.includes('Matthias · {difficultyLabel(difficulty)}') && !notation.includes('CPU · nivel'), 'el cuaderno debe mostrar a Matthias con etiqueta humana, nunca el nivel técnico 0–100'],
   [admin.includes('>Retos</span>') && !admin.includes('>Contratos</span>'), 'Admin debe mostrar Retos para objetivos normales'],
   [career.includes("Reto superado ·") && career.includes('Contrato cumplido:'), 'Career debe normalizar hitos legacy al vocabulario de Retos'],
   [activityFormatting.includes("'contract-win': 'Reto superado'"), 'Actividad reciente debe etiquetar el reto completado como «Reto superado»'],

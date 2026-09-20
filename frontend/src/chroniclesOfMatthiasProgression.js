@@ -52,6 +52,24 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
       group: 'doctrine-1',
       modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
     }),
+    Object.freeze({
+      id: 'matthias-long-point',
+      label: 'Punta larga',
+      description: '+1 alcance con la estocada básica.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ reachBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'matthias-iron-hide',
+      label: 'Piel de hierro',
+      description: '+2 vida máxima al iniciar incursión.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ bonusMaxHp: 2 }),
+    }),
   ]),
   rook: Object.freeze([
     Object.freeze({
@@ -71,6 +89,24 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
       cost: 1,
       group: 'doctrine-1',
       modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
+    }),
+    Object.freeze({
+      id: 'rook-long-maul',
+      label: 'Maza de asta larga',
+      description: '+1 alcance con la línea pesada.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ reachBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'rook-bastion',
+      label: 'Bastión',
+      description: '+3 vida máxima al iniciar incursión.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ bonusMaxHp: 3 }),
     }),
   ]),
   bishop: Object.freeze([
@@ -92,6 +128,62 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
       group: 'doctrine-1',
       modifiers: Object.freeze({ attackDamageBonus: 1 }),
     }),
+    Object.freeze({
+      id: 'bishop-dawn-orb',
+      label: 'Orbe de alba',
+      description: 'Transforma Luz del farol en un hechizo de restauración más potente: +2 curación.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'grimoire-1',
+      modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
+      profileOverrides: Object.freeze({
+        abilityName: 'Orbe de alba',
+        abilityLabel: 'hechizo de restauración',
+      }),
+    }),
+    Object.freeze({
+      id: 'bishop-twin-lumen',
+      label: 'Lumen geminado',
+      description: 'Transforma Luz del farol en un hechizo de doble reserva: +1 lanzamiento por incursión.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'grimoire-1',
+      modifiers: Object.freeze({ abilityCharges: 1 }),
+      profileOverrides: Object.freeze({
+        abilityName: 'Lumen geminado',
+        abilityLabel: 'hechizo de reserva',
+      }),
+    }),
+    Object.freeze({
+      id: 'bishop-solar-lance',
+      label: 'Lanza solar',
+      description: 'Convierte la habilidad de clase en un hechizo ofensivo diagonal de 5 de daño.',
+      requiredLevel: 6,
+      cost: 1,
+      group: 'grimoire-2',
+      modifiers: Object.freeze({}),
+      profileOverrides: Object.freeze({
+        abilityName: 'Lanza solar',
+        abilityKind: 'burst',
+        abilityLabel: 'hechizo ofensivo',
+        abilityDamage: 5,
+      }),
+    }),
+    Object.freeze({
+      id: 'bishop-aurora-liturgy',
+      label: 'Liturgia de la aurora',
+      description: 'Consagra la habilidad de clase como restauración mayor de 4 de vida.',
+      requiredLevel: 6,
+      cost: 1,
+      group: 'grimoire-2',
+      modifiers: Object.freeze({}),
+      profileOverrides: Object.freeze({
+        abilityName: 'Liturgia de la aurora',
+        abilityKind: 'heal',
+        abilityLabel: 'hechizo de restauración mayor',
+        abilityHeal: 4,
+      }),
+    }),
   ]),
   knight: Object.freeze([
     Object.freeze({
@@ -111,6 +203,24 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
       cost: 1,
       group: 'doctrine-1',
       modifiers: Object.freeze({ abilityCharges: 1 }),
+    }),
+    Object.freeze({
+      id: 'knight-eagle-sight',
+      label: 'Ojo de águila',
+      description: '+1 alcance con la ballesta básica.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ reachBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'knight-kill-zone',
+      label: 'Zona de muerte',
+      description: '+2 potencia para Salva de virotes.',
+      requiredLevel: 4,
+      cost: 1,
+      group: 'doctrine-2',
+      modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
     }),
   ]),
 });
@@ -209,6 +319,11 @@ export function chroniclesHeroProgress(progression, memberId) {
   return normalized.heroes[memberId] || defaultHero();
 }
 
+export function chroniclesHasUnspentProgression(progression, memberId) {
+  const hero = chroniclesHeroProgress(progression, memberId);
+  return hero.attributePoints > 0 || hero.skillPoints > 0;
+}
+
 export function chroniclesXpToNextLevel(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
   if (hero.level >= CHRONICLES_MAX_LEVEL) return { current: hero.xp, next: hero.xp, remaining: 0, maxLevel: true };
@@ -293,12 +408,20 @@ function skillModifiersFor(hero, memberId) {
   }, {});
 }
 
+function skillProfileOverridesFor(hero, memberId) {
+  return chroniclesSkillsForMember(memberId).reduce((result, skill) => {
+    if (!hero.skills.includes(skill.id) || !skill.profileOverrides) return result;
+    return { ...result, ...skill.profileOverrides };
+  }, {});
+}
+
 export function chroniclesTacticsModifiers(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
   const { vigor, power, precision, will } = hero.attributes;
   const physical = memberId === 'matthias' || memberId === 'rook';
   const rangedOrMagic = memberId === 'bishop' || memberId === 'knight';
   const skillModifiers = skillModifiersFor(hero, memberId);
+  const profileOverrides = skillProfileOverridesFor(hero, memberId);
   const attackDamageBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3)) + Number(skillModifiers.attackDamageBonus || 0);
   const reachBonus = (rangedOrMagic ? Math.floor(precision / 2) : 0) + Number(skillModifiers.reachBonus || 0);
   const abilityPotencyBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
@@ -310,6 +433,7 @@ export function chroniclesTacticsModifiers(progression, memberId) {
     reachBonus,
     abilityPotencyBonus,
     abilityCharges: 1 + (will >= 3 ? 1 : 0) + Number(skillModifiers.abilityCharges || 0),
+    profileOverrides,
   };
 }
 

@@ -30,6 +30,13 @@ function reviewPrompt(finalOutcome) {
   return 'Revisa dónde dejaste de poder exigir más a la posición y si hubo una oportunidad concreta.';
 }
 
+
+function adaptiveRecalibrationLabel(recalibration) {
+  if (!recalibration) return null;
+  const direction = Number(recalibration.deltaOpponentElo) > 0 ? 'algo más exigente' : 'algo más amable';
+  return `Próximo reto adaptativo · ${direction} · ${difficultyLabel(recalibration.difficulty)}`;
+}
+
 export default function PostGameExperience({
   game,
   humanColor,
@@ -121,7 +128,7 @@ export default function PostGameExperience({
             <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
             <span>{resultSummary.detail}</span>
             {adaptiveRecalibration && (
-              <span>Próximo reto adaptativo · {difficultyLabel(adaptiveRecalibration.difficulty)}</span>
+              <span>{adaptiveRecalibrationLabel(adaptiveRecalibration)}</span>
             )}
           </p>
         )}
