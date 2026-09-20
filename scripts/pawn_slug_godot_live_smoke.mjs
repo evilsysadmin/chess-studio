@@ -11,7 +11,11 @@ const parsedIndex = new URL(indexUrl);
 if (parsedIndex.protocol !== 'https:') throw new Error(`Godot smoke requires HTTPS: ${indexUrl}`);
 
 const LIMIT = 40;
-const READY_BRIDGE_TIMEOUT_MS = 12_000;
+// The Godot "ready" event intentionally waits for Matthias' canonical remote
+// atlas to be installed. R2 + PNG decode can legitimately cross 12s on a cold
+// browser/runner, while engine, canvas, network and page health are already
+// proven independently above. Keep the readiness gate strict but non-flaky.
+const READY_BRIDGE_TIMEOUT_MS = 30_000;
 const clip = (value, max = 500) => String(value ?? '').slice(0, max);
 const pushBounded = (list, value) => {
   list.push(value);
