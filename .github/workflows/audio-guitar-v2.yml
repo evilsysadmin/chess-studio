@@ -149,8 +149,8 @@ jobs:
           set -euxo pipefail
           RENDER="$(cat audio-v2/sfizz-render-path.txt)"
           SFZ="audio-v2/emily/emily_pawn_slug.sfz"
-          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-left.mid --wav audio-v2/emily-left-di.wav --samplerate 44100 --oversampling 2
-          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-right.mid --wav audio-v2/emily-right-di.wav --samplerate 44100 --oversampling 2
+          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-left.mid --wav audio-v2/emily-left-di.wav --samplerate 44100
+          "$RENDER" --sfz "$SFZ" --midi audio-v2/riff-right.mid --wav audio-v2/emily-right-di.wav --samplerate 44100
           ffmpeg -hide_banner -loglevel error -y -i audio-v2/emily-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" audio-v2/left-mono.wav
           ffmpeg -hide_banner -loglevel error -y -i audio-v2/emily-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" audio-v2/right-mono.wav
 
