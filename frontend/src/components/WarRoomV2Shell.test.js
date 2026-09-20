@@ -160,6 +160,8 @@ describe('War Room v2 staging asset URL', () => {
     expect(warRoomV2EnvMapIntensity('WR_MAT_wall_walnut')).toBe(0.26);
     expect(warRoomV2EnvMapIntensity('WR_MAT_stone')).toBe(0.16);
     expect(warRoomV2EnvMapIntensity('WR_MAT_canon_burgundy')).toBe(0.11);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_canon_heraldic_brass')).toBe(0.96);
+    expect(warRoomV2EnvMapIntensity('WR_MAT_brass')).toBe(0.82);
     expect(warRoomV2EnvMapIntensity('WR_MAT_armor')).toBe(0.76);
   });
 
