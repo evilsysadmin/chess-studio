@@ -26,7 +26,7 @@ ALLOWED_SETPIECES = {"moving_platform", "bunker_turret", "reinforcement_wave", "
 REQUIRED_SETPIECE_TYPES = {"moving_platform", "bunker_turret", "reinforcement_wave", "convoy", "destructible_platform", "artillery_barrage"}
 ALLOWED_DRESSING_KINDS = {"crate", "barrel", "sandbags"}
 MIN_DRESSING = 10
-ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut", "industrial_bunker", "industrial_watch_post", "industrial_drain", "industrial_rubble_field"}
+ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut", "jungle_ruin_pillar", "jungle_brazier", "jungle_fern_cluster", "industrial_bunker", "industrial_watch_post", "industrial_drain", "industrial_rubble_field"}
 MIN_STORY_PROPS = 5
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
@@ -147,7 +147,15 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             errors.append(f"{stage_name}: story_props[{index}] has unsupported layer {layer!r}")
         if not 0 <= x < width or not 0 <= y <= height:
             errors.append(f"{stage_name}: story_props[{index}] leaves world bounds")
-        if kind == "industrial_bunker":
+        if kind == "jungle_ruin_pillar":
+            w = float(prop.get("w", 0)); h = float(prop.get("h", 0))
+            if not 24 <= w <= 90 or not 50 <= h <= 150:
+                errors.append(f"{stage_name}: jungle ruin pillar has invalid size")
+        elif kind in {"jungle_brazier", "jungle_fern_cluster"}:
+            scale = float(prop.get("scale", 1.0))
+            if not 0.6 <= scale <= 1.5:
+                errors.append(f"{stage_name}: {kind} scale {scale:g} outside 0.6..1.5")
+        elif kind == "industrial_bunker":
             w = float(prop.get("w", 0)); h = float(prop.get("h", 0))
             if w < 120 or h < 90 or x + w > width or y + h > height:
                 errors.append(f"{stage_name}: industrial bunker has invalid bounds")
