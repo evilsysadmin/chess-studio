@@ -1634,9 +1634,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96),
         "globe": material(
             "HOME_MAT_globe",
-            (0.024, 0.064, 0.070, 1),
-            roughness=0.70,
-            variation=0.22,
+            (0.030, 0.055, 0.048, 1),
+            roughness=0.78,
+            variation=0.26,
             variation_scale=3.8,
             bump_scale=12.0,
             bump_strength=0.050,
