@@ -1,7 +1,6 @@
 import { abortableDelay } from '../asyncControl.js';
 import { chroniclesValidateAreaEnvelope } from './chroniclesGameDirector.js';
 import {
-  DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
@@ -21,23 +20,6 @@ export const CHRONICLES_BOOTSTRAP_ERROR_CODES = Object.freeze({
   unknown: 'CHR-BOOT-006',
 });
 
-const WORLD_INTEGRITY_REASONS = new Set([
-  'missing-run',
-  'invalid-run-id',
-  'unknown-run-map',
-  'run-map-mismatch',
-  'invalid-run-seed',
-  'invalid-world-version',
-  'inactive-run',
-  'run-version-mismatch',
-  'run-revision-mismatch',
-  'missing-area-bundle',
-  'unknown-bundled-map',
-  'duplicate-bundled-map',
-  'incomplete-area-bundle',
-  'current-area-bundle-mismatch',
-]);
-
 export class ChroniclesBootstrapError extends Error {
   constructor(code, reason, { cause = null, requestId = null, status = null } = {}) {
     super('No se pudo preparar una expedición autoritativa de Chronicles.');
@@ -50,9 +32,9 @@ export class ChroniclesBootstrapError extends Error {
   }
 }
 
-function bootstrapErrorFor(error, { timedOut = false, aborted = false } = {}) {
+function bootstrapTransportError(error, { timedOut = false, aborted = false } = {}) {
   if (error instanceof ChroniclesBootstrapError) return error;
-  const reason = String(error?.technicalMessage || error?.message || 'unknown');
+  const reason = String(error?.technicalMessage || error?.message || 'remote-unavailable');
   if (aborted) {
     return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted, 'aborted', { cause: error });
   }
@@ -66,14 +48,23 @@ function bootstrapErrorFor(error, { timedOut = false, aborted = false } = {}) {
       status: error?.status,
     });
   }
-  if (WORLD_INTEGRITY_REASONS.has(reason)) {
-    return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld, reason, { cause: error });
-  }
   return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable, reason, {
     cause: error,
     requestId: error?.requestId,
     status: error?.status,
   });
+}
+
+function validateAuthoritativeRun(payload, mapId) {
+  try {
+    return validateRunBootstrap(payload, mapId);
+  } catch (error) {
+    throw new ChroniclesBootstrapError(
+      CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      error instanceof Error ? error.message : 'invalid-world',
+      { cause: error },
+    );
+  }
 }
 
 function validateRunBootstrap(payload, requestedMapId) {
@@ -159,15 +150,15 @@ export async function chroniclesBootstrapTacticsWorld({
     })
     .catch(() => ({
       ok: false,
-      error: bootstrapErrorFor(null, { aborted: externallyAborted }),
+      error: bootstrapTransportError(null, { aborted: externallyAborted }),
     }));
 
   const request = Promise.resolve()
     .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
-    .then((payload) => ({ ok: true, value: validateRunBootstrap(payload, mapId) }))
+    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))
     .catch((error) => ({
       ok: false,
-      error: bootstrapErrorFor(error, {
+      error: bootstrapTransportError(error, {
         timedOut: deadlineExpired,
         aborted: externallyAborted,
       }),
@@ -190,57 +181,6 @@ export async function chroniclesBootstrapTacticsWorld({
   }
 
   const resolved = outcome.value;
-  resolved.areas.forEach((entry) => {
-    chroniclesInstallRuntimeMapDefinition(entry.map);
-  });
-  chroniclesSetRuntimeEntryMapId(resolved.currentMapId);
-  const map = chroniclesMapById(resolved.currentMapId);
-  return Object.freeze({ ...resolved, map });
-} = {}) {
-  // Chronicles generation happens before gameplay mounts, so this bootstrap is
-  // allowed a realistic WAN budget. The authored bundle remains a safety net for
-  // genuine backend/network failure; frame-critical gameplay never waits on it.
-  chroniclesClearRuntimeMapDefinitions();
-  const fallbackMapId = mapId || DEFAULT_CHRONICLES_MAP_ID;
-  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
-
-  const requestController = new AbortController();
-  const deadlineController = new AbortController();
-  const abortPending = () => {
-    requestController.abort();
-    deadlineController.abort();
-  };
-  signal?.addEventListener('abort', abortPending, { once: true });
-
-  const deadline = abortableDelay(Math.max(0, Number(budgetMs) || 0), deadlineController.signal)
-    .then(() => {
-      requestController.abort();
-      return localBootstrap(fallbackMapId, seed, 'bootstrap-deadline');
-    })
-    .catch(() => localBootstrap(fallbackMapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
-
-  const request = Promise.resolve()
-    .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
-    .then((payload) => validateRunBootstrap(payload, mapId))
-    .catch((error) => localBootstrap(
-      fallbackMapId,
-      seed,
-      error instanceof Error ? error.message : 'remote-unavailable',
-    ));
-
-  let resolved;
-  try {
-    resolved = await Promise.race([request, deadline]);
-  } finally {
-    deadlineController.abort();
-    signal?.removeEventListener('abort', abortPending);
-  }
-
-  if (signal?.aborted) return localBootstrap(fallbackMapId, seed, 'aborted');
-  if (resolved?.source !== 'remote') {
-    return localBootstrap(fallbackMapId, seed, resolved?.fallbackReason || 'remote-unavailable');
-  }
-
   resolved.areas.forEach((entry) => {
     chroniclesInstallRuntimeMapDefinition(entry.map);
   });
