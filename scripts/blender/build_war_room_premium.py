@@ -836,6 +836,19 @@ def add_gothic_canon_v2(static, mats):
         if obj.name.startswith("WR_ARMOR_") and obj.location.x > 0:
             bpy.data.objects.remove(obj, do_unlink=True)
 
+    # The baseline leather benches were another mirrored cue and sat so close
+    # to the camera edges that they read as anonymous blocks. Keep one lived-in
+    # seating zone on the left, move it slightly into the room, and clear the
+    # right side for the globe/window composition.
+    for obj in list(static.objects):
+        if not obj.name.startswith("WR_BENCH_"):
+            continue
+        if obj.location.x > 0:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        else:
+            obj.location.x += 0.48
+            obj.location.y += 0.62
+
     burgundy = material(
         "WR_MAT_canon_burgundy", (0.205, 0.012, 0.022, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
