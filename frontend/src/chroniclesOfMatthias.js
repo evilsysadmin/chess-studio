@@ -5,6 +5,7 @@ import {
   chroniclesMapContentPosition,
   chroniclesMapInitialEnemyState,
   chroniclesMapTileAt,
+  chroniclesRuntimeEntryMapId,
 } from './chronicles/chroniclesMapCatalog.js';
 import {
   chroniclesApplyContentAction,
@@ -54,8 +55,8 @@ export function chroniclesJournalEntries(state) {
   return Array.isArray(state?.journal) && state.journal.length ? state.journal : [initialJournal];
 }
 
-export function createChroniclesState(mapId = DEFAULT_CHRONICLES_MAP_ID) {
-  const map = chroniclesMapById(mapId);
+export function createChroniclesState(mapId = null) {
+  const map = chroniclesMapById(mapId || chroniclesRuntimeEntryMapId());
   return {
     mapId: map.id,
     x: map.partyStart.x,
