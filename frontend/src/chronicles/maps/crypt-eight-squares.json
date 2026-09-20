@@ -1,6 +1,7 @@
 {
   "id": "crypt-eight-squares",
   "version": 10,
+  "proceduralDifficulty": 2,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "explorationCompleteLabel": "Vertical slice completado",
@@ -13,7 +14,11 @@
     "#P.E..#",
     "#######"
   ],
-  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "partyStart": {
+    "x": 1,
+    "y": 5,
+    "direction": 1
+  },
   "initialFlags": {
     "spectralLantern": false,
     "blackGateKey": false,
@@ -30,8 +35,8 @@
       "x": 3,
       "y": 5,
       "hpKey": "enemyHp",
-      "maxHp": 6,
-      "retaliation": 1,
+      "maxHp": 5,
+      "retaliation": 0,
       "activation": "always",
       "ai": {
         "movement": "cardinal-roam",
@@ -49,7 +54,21 @@
         }
       },
       "rangedHitMessage": "{attacker} alcanza desde la retaguardia con {attack}. El peón sisea, demasiado lejos para devolver el golpe.",
-      "blockingMessage": "Peón corrompido bloquea el paso. Convéncelo con violencia reglamentaria."
+      "blockingMessage": "Peón corrompido bloquea el paso. Convéncelo con violencia reglamentaria.",
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "corrupted-pawn",
+        "level": 1,
+        "attributes": {
+          "vigor": 1,
+          "power": 0,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike"
+        ]
+      }
     },
     {
       "id": "gate-jailer",
@@ -59,26 +78,53 @@
       "x": 3,
       "y": 1,
       "hpKey": "jailerHp",
-      "maxHp": 8,
-      "retaliation": 2,
+      "maxHp": 6,
+      "retaliation": 1,
       "activationWhen": [
-        { "key": "sigilAwake", "equals": true }
+        {
+          "key": "sigilAwake",
+          "equals": true
+        }
       ],
       "ai": {
         "movement": "patrol-route",
         "attackReach": 1,
         "patrolRoute": [
-          { "x": 3, "y": 1 },
-          { "x": 2, "y": 1 },
-          { "x": 1, "y": 1 },
-          { "x": 2, "y": 1 },
-          { "x": 3, "y": 1 },
-          { "x": 4, "y": 1 },
-          { "x": 5, "y": 1 },
-          { "x": 4, "y": 1 }
+          {
+            "x": 3,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 1
+          },
+          {
+            "x": 3,
+            "y": 1
+          },
+          {
+            "x": 4,
+            "y": 1
+          },
+          {
+            "x": 5,
+            "y": 1
+          },
+          {
+            "x": 4,
+            "y": 1
+          }
         ],
         "engagedMovement": "cardinal-chase",
-        "engageRange": 2
+        "engageRange": 1
       },
       "onDefeat": {
         "message": "{attacker} derriba a la torre carcelero con {attack}. La puerta parece libre durante una cantidad sospechosamente pequeña de tiempo.",
@@ -90,7 +136,21 @@
         }
       },
       "rangedHitMessage": "{attacker} castiga a la torre carcelero desde la retaguardia con {attack}. La mole no alcanza a devolver el golpe.",
-      "blockingMessage": "La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor."
+      "blockingMessage": "La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.",
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "jailer",
+        "level": 3,
+        "attributes": {
+          "vigor": 2,
+          "power": 2,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "hunter-instinct"
+        ]
+      }
     },
     {
       "id": "spectral-bishop",
@@ -99,19 +159,33 @@
       "x": 5,
       "y": 3,
       "hpKey": "spectralBishopHp",
-      "maxHp": 5,
+      "maxHp": 4,
       "retaliation": 1,
-      "retaliationReach": 2,
+      "retaliationReach": 1,
       "activationWhen": [
-        { "key": "sigilAwake", "equals": true }
+        {
+          "key": "sigilAwake",
+          "equals": true
+        }
       ],
       "optional": true,
-      "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true },
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "requiresLineOfSight": true
+      },
       "onDefeat": {
         "message": "{attacker} deshace al alfil espectral con {attack}. Aziz recupera el Farol Espectral y el grupo recuerda vagamente cómo funciona la circulación.",
         "effects": [
-          { "type": "set", "key": "spectralLantern", "value": true },
-          { "type": "heal-party", "amount": 1 }
+          {
+            "type": "set",
+            "key": "spectralLantern",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          }
         ],
         "journal": {
           "id": "spectral-bishop-falls",
@@ -121,7 +195,21 @@
         }
       },
       "rangedHitMessage": "{attacker} alcanza al alfil espectral con {attack}. Esta vez la diagonal del fantasma se queda corta.",
-      "blockingMessage": "El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia."
+      "blockingMessage": "El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia.",
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "spectral-caster",
+        "level": 2,
+        "attributes": {
+          "vigor": 1,
+          "power": 0,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "spectral-geometry"
+        ]
+      }
     },
     {
       "id": "scavenger-knight",
@@ -131,16 +219,28 @@
       "x": 2,
       "y": 3,
       "hpKey": "scavengerHp",
-      "maxHp": 6,
-      "retaliation": 1,
+      "maxHp": 5,
+      "retaliation": 0,
       "activationWhen": [
-        { "key": "sigilAwake", "equals": true },
-        { "key": "jailerHp", "lte": 0 }
+        {
+          "key": "sigilAwake",
+          "equals": true
+        },
+        {
+          "key": "jailerHp",
+          "lte": 0
+        }
       ],
       "positionKey": "scavengerPosition",
       "positions": {
-        "gate": { "x": 3, "y": 1 },
-        "west": { "x": 1, "y": 2 }
+        "gate": {
+          "x": 3,
+          "y": 1
+        },
+        "west": {
+          "x": 1,
+          "y": 2
+        }
       },
       "initialPosition": "gate",
       "evadesOnHit": true,
@@ -148,12 +248,16 @@
         "movement": "cardinal-roam",
         "attackReach": 1,
         "engagedMovement": "knight-chase",
-        "engageRange": 4
+        "engageRange": 3
       },
       "onDefeat": {
         "message": "{attacker} derriba al caballo carroñero con {attack}. La Llave Negra rebota por el suelo con mucha menos dignidad que su ladrón.",
         "effects": [
-          { "type": "set", "key": "blackGateKey", "value": true }
+          {
+            "type": "set",
+            "key": "blackGateKey",
+            "value": true
+          }
         ],
         "journal": {
           "id": "scavenger-knight-falls",
@@ -163,7 +267,22 @@
         }
       },
       "rangedHitMessage": "{attacker} alcanza al caballo carroñero con {attack}. El ladrón relincha algo jurídicamente dudoso.",
-      "blockingMessage": "El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje."
+      "blockingMessage": "El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje.",
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "skirmisher",
+        "level": 2,
+        "attributes": {
+          "vigor": 1,
+          "power": 0,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike",
+          "hunter-instinct"
+        ]
+      }
     }
   ],
   "triggers": [
@@ -181,11 +300,18 @@
         "sigil": "III"
       },
       "when": [
-        { "key": "sigilAwake", "equals": false }
+        {
+          "key": "sigilAwake",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "sigilAwake", "value": true }
+          {
+            "type": "set",
+            "key": "sigilAwake",
+            "value": true
+          }
         ],
         "message": "La compañía activa el sello. La piedra despierta y más piezas hostiles entran en la partida.",
         "journal": {
@@ -205,11 +331,18 @@
       "y": 5,
       "label": "Accionar palanca",
       "when": [
-        { "key": "runeCacheOpened", "equals": false }
+        {
+          "key": "runeCacheOpened",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "runeCacheOpened", "value": true }
+          {
+            "type": "set",
+            "key": "runeCacheOpened",
+            "value": true
+          }
         ],
         "message": "La palanca baja con un golpe seco. Una hornacina cercana expulsa un núcleo rúnico con la discreción de una tostadora medieval.",
         "journal": {
@@ -229,13 +362,25 @@
       "y": 4,
       "label": "Recoger núcleo rúnico",
       "when": [
-        { "key": "runeCacheOpened", "equals": true },
-        { "key": "runeCoreCollected", "equals": false }
+        {
+          "key": "runeCacheOpened",
+          "equals": true
+        },
+        {
+          "key": "runeCoreCollected",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "runeCoreCollected", "value": true },
-          { "type": "refill-class-abilities" }
+          {
+            "type": "set",
+            "key": "runeCoreCollected",
+            "value": true
+          },
+          {
+            "type": "refill-class-abilities"
+          }
         ],
         "message": "La compañía recoge el núcleo rúnico. Las habilidades de clase vuelven a estar cargadas. Aziz lo llama taumaturgia; Matthias, logística cara.",
         "journal": {
@@ -285,7 +430,10 @@
       ],
       "action": {
         "effects": [
-          { "type": "transition-map", "mapId": "gallery-of-forks" }
+          {
+            "type": "transition-map",
+            "mapId": "gallery-of-forks"
+          }
         ],
         "message": "La Puerta Negra se abre. Detrás no hay libertad, sino otra sala. Matthias registra una queja formal contra la arquitectura.",
         "journal": {

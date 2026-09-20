@@ -8,6 +8,10 @@ import chainBasilica from './maps/chain-basilica.json';
 import hollowBellTower from './maps/hollow-bell-tower.json';
 import blackGlassChapel from './maps/black-glass-chapel.json';
 import echoCistern from './maps/echo-cistern.json';
+import {
+  chroniclesEnemyBuildModifiers,
+  resolveChroniclesEnemyBuildDefinition,
+} from './chroniclesEnemyBuilds.js';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
@@ -47,22 +51,43 @@ function normalizeEnemy(enemy) {
   const positions = enemy?.positions && typeof enemy.positions === 'object'
     ? Object.fromEntries(Object.entries(enemy.positions).map(([key, point]) => [key, clonePoint(point)]))
     : undefined;
+  const resolvedBuild = resolveChroniclesEnemyBuildDefinition(enemy);
+  if (!resolvedBuild.build) {
+    throw new Error(`Chronicles enemy ${enemy?.id || '<missing>'} has invalid EnemyBuild: ${(resolvedBuild.errors || []).join('; ')}`);
+  }
+  const enemyBuild = Object.freeze(resolvedBuild.build);
+  const enemyBuildSource = resolvedBuild.source;
+  const buildModifiers = chroniclesEnemyBuildModifiers(enemyBuild);
+  const baseMaxHp = resolvedBuild.baseStats.maxHp;
+  const baseRetaliation = resolvedBuild.baseStats.retaliation;
+  const baseReach = resolvedBuild.baseStats.retaliationReach;
+  const baseEngageRange = resolvedBuild.baseStats.engageRange;
+  const effectiveReach = baseReach + Math.max(0, Number(buildModifiers.reachBonus || 0));
+  const effectiveEngageRange = Number.isFinite(baseEngageRange)
+    ? baseEngageRange + Math.max(0, Number(buildModifiers.engageRangeBonus || 0))
+    : undefined;
   return Object.freeze({
     ...enemy,
     x: Number(enemy?.x || 0),
     y: Number(enemy?.y || 0),
-    maxHp: Math.max(1, Number(enemy?.maxHp || 1)),
-    retaliation: Math.max(0, Number(enemy?.retaliation || 0)),
-    retaliationReach: Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1)),
+    enemyBuild,
+    enemyBuildSource,
+    baseStats: Object.freeze({
+      maxHp: baseMaxHp,
+      retaliation: baseRetaliation,
+      retaliationReach: baseReach,
+      engageRange: baseEngageRange,
+    }),
+    maxHp: baseMaxHp + Math.max(0, Number(buildModifiers.bonusMaxHp || 0)),
+    retaliation: baseRetaliation + Math.max(0, Number(buildModifiers.damageBonus || 0)),
+    retaliationReach: effectiveReach,
     activationWhen: Array.isArray(enemy?.activationWhen) ? freezeRequirements(enemy.activationWhen) : undefined,
     positions: positions ? Object.freeze(positions) : undefined,
     ai: Object.freeze({
       movement: enemy?.ai?.movement || 'cardinal-chase',
       engagedMovement: enemy?.ai?.engagedMovement || undefined,
-      engageRange: Number.isFinite(Number(enemy?.ai?.engageRange))
-        ? Math.max(1, Number(enemy.ai.engageRange))
-        : undefined,
-      attackReach: Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1)),
+      engageRange: effectiveEngageRange,
+      attackReach: effectiveReach,
       requiresLineOfSight: Boolean(enemy?.ai?.requiresLineOfSight),
       patrolRoute: Object.freeze((enemy?.ai?.patrolRoute || []).map((point) => Object.freeze(clonePoint(point)))),
     }),

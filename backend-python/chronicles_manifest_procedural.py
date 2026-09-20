@@ -97,6 +97,10 @@ def _verbs_for_manifest(manifest: dict[str, Any], theme: str) -> tuple[str, ...]
 
 
 def _difficulty_for_manifest(manifest: dict[str, Any]) -> int:
+    procedural_difficulty = manifest.get("proceduralDifficulty")
+    if procedural_difficulty is not None:
+        return int(procedural_difficulty)
+
     enemies = manifest.get("enemies", [])
     if not enemies:
         return 1
