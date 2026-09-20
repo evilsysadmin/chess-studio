@@ -1012,7 +1012,17 @@ def add_side_furnishings(materials):
     cylinder("HOME_PROP_left_side_table_base", (-6.35, 2.35, 0.16), 0.42, 0.16, wood, vertices=28)
     cylinder("HOME_PROP_left_side_table_foot", (-6.35, 2.35, 0.06), 0.48, 0.08, materials["dark"], vertices=28)
     sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
-    cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
+    cylinder("HOME_PROP_left_candle_base", (-6.55, 2.33, 1.19), 0.085, 0.045, brass, vertices=18)
+    cylinder("HOME_PROP_left_candle", (-6.55, 2.33, 1.31), 0.038, 0.22, paper, vertices=16)
+    cone(
+        "HOME_PROP_left_candle_flame",
+        (-6.55, 2.33, 1.47),
+        0.028,
+        0.006,
+        0.085,
+        materials["fire_hot"],
+        vertices=10,
+    )
     sphere("HOME_PROP_left_horse_body", (-6.45, 2.42, 1.58), (0.30, 0.16, 0.19), materials["gold"])
     curve_tube(
         "HOME_PROP_left_horse_neck",
