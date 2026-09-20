@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { speakCpuComment } from '../voiceCommentary.js';
 import {
+  captureUsesDedicatedNoteworthyLane,
   matthiasAngerState,
   matthiasCaptureReaction,
   shouldMatthiasReactToCapture,
@@ -11,12 +12,6 @@ const BOARD_BUBBLE_EVENTS = new Set([
   'PAWN_TAKES_QUEEN', 'QUEEN_CAPTURE', 'QUEEN_SACRIFICE_OFFER', 'PROMOTION',
   'SKEWER', 'DISCOVERED_CHECK', 'KNIGHT_FORK', 'PAWN_FORK', 'ROOK_SACRIFICE_OFFER',
   'QUEEN_EN_PRISE_TO_PAWN', 'PAWN_TAKES_ROOK', 'CHECK',
-]);
-
-const CAPTURE_REACTION_SUPPRESSED_EVENTS = new Set([
-  'PAWN_TAKES_QUEEN',
-  'QUEEN_CAPTURE',
-  'PAWN_TAKES_ROOK',
 ]);
 
 export default function useMatthiasBoardReactions({
@@ -111,12 +106,10 @@ export default function useMatthiasBoardReactions({
     tracking.seenId = capture.id;
     if (zenMode || (!isThreeD && !focusActive)) return;
 
-    const bubblePly = Number(latestBoardBubble?.ply);
-    const overlapsExistingNoteworthy = latestBoardBubble?.actor === 'human'
-      && CAPTURE_REACTION_SUPPRESSED_EVENTS.has(latestBoardBubble?.event)
-      && Number.isFinite(bubblePly)
-      && Math.abs(bubblePly - capture.ply) <= 1;
-    if (overlapsExistingNoteworthy) return;
+    // Las capturas con comentario táctico dedicado no pasan por la reacción
+    // genérica. Esta decisión depende del hecho ajedrecístico, no de si el
+    // comentario remoto ya llegó al chat, evitando dobles frases por latencia.
+    if (captureUsesDedicatedNoteworthyLane(capture)) return;
 
     const now = Date.now();
     if (!shouldMatthiasReactToCapture(capture, tracking.lastReaction, now)) return;
@@ -147,7 +140,6 @@ export default function useMatthiasBoardReactions({
     zenMode,
     matthiasAnger.latestHumanCapture?.id,
     matthiasAnger.level,
-    latestBoardBubble?.id,
   ]);
 
   useEffect(() => () => {
