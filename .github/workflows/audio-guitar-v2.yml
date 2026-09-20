@@ -167,11 +167,13 @@ jobs:
           # AmpVTS controls: model gain bass mid treble drive watts.
           # CabinetII controls: model gain(dB). Model 5 is Plexi-ish.
           applyplugin audio-v2/left-mono.wav audio-v2/left-amped.wav \
-            "$CAPS_SO" AmpVTS 2 2.15 0.43 0.88 0.72 0.34 0.86 \
+            "$CAPS_SO" AmpVTS 1.25 0.72 0.68 0.78 5 0.42 0.82 0.70 0.68 0.30 0.32 \
             "$CAPS_SO" CabinetII 5 -2.5
+          test -s audio-v2/left-amped.wav
           applyplugin audio-v2/right-mono.wav audio-v2/right-amped.wav \
-            "$CAPS_SO" AmpVTS 2 2.05 0.41 0.91 0.75 0.31 0.90 \
+            "$CAPS_SO" AmpVTS 1.18 0.68 0.72 0.81 5 0.40 0.86 0.73 0.72 0.27 0.34 \
             "$CAPS_SO" CabinetII 5 -3.0
+          test -s audio-v2/right-amped.wav
 
           # Real double-track width: independent sample/velocity/timing renders, not copied audio.
           ffmpeg -hide_banner -loglevel error -y \
