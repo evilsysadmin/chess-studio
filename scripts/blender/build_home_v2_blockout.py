@@ -983,6 +983,18 @@ def add_table_and_board(materials):
     table_y = 1.05
     table_z = 1.12
     cube("HOME_PROP_table_top", (0.0, table_y, table_z + 0.04), (3.72, 1.72, 0.14), wood, bevel=0.085)
+    for wear_index, (wx, wy, sx, sy, rot) in enumerate((
+        (-2.88, -0.52, 0.46, 0.10, -6.0),
+        (2.82, -0.48, 0.42, 0.11, 5.0),
+        (0.62, 2.49, 0.58, 0.085, -2.0),
+    )):
+        wear = sphere(
+            f"HOME_PROP_table_wear_{wear_index}",
+            (wx, wy, table_z + 0.188),
+            (sx, sy, 0.006),
+            materials["wood_wear"],
+        )
+        wear.rotation_euler[2] = math.radians(rot)
     cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     for x in (-3.20, 3.20):
@@ -2201,6 +2213,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
+        "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
         "gold": material(
             "HOME_MAT_gold",
