@@ -14,14 +14,16 @@ permissions:
   contents: read
   actions: read
 
-# Canonical staging and manual preview share one write mutex. Newer staging
-# generations supersede older in-progress work so obsolete deploys and browser
-# smokes cannot hold the environment queue. Host-side mutation locks still
-# serialize remote OCI writes; backend/schema changes must remain compatible
-# across adjacent generations.
+# Canonical staging and manual preview share one non-preemptive write mutex.
+# Never cancel a generation that has already started mutating staging: with rapid
+# merges that causes starvation and can leave remote OCI work running after its
+# observer is killed. GitHub keeps at most one running and one pending member of
+# a concurrency group, so the running generation finishes while newer pending
+# generations collapse toward the latest HEAD. The stale-HEAD admission guard
+# then drops obsolete queued work before any mutation.
 concurrency:
   group: chess-studio-staging-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
