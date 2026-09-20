@@ -1349,21 +1349,49 @@ def add_gothic_canon_v2(static, mats):
             bevel=0.032,
         )
 
-    # Small rampant horse relief on the drape, intentionally broad rather than
-    # anatomically fussy so it survives the gameplay camera.
-    emblem_y = front_y - 0.085
-    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.68), 0.20,
-                  mats["brass"], static, scale=(1.30, 0.28, 0.72))
-    body.rotation_euler.y = -0.26
-    sphere("WR_CANON_table_horse_head", (-0.24, emblem_y, 0.82), 0.11,
-           mats["brass"], static, scale=(1.12, 0.30, 0.78))
-    for index, (x, z, ang) in enumerate(((-0.07, 0.49, -0.72), (0.12, 0.47, 0.58))):
-        leg = cylinder(f"WR_CANON_table_horse_leg_{index}", (x, emblem_y, z),
-                       0.035, 0.34, mats["brass"], static, vertices=14)
-        leg.rotation_euler.y = ang
-    tail = cylinder("WR_CANON_table_horse_tail", (0.27, emblem_y, 0.74),
-                    0.030, 0.30, mats["brass"], static, vertices=14)
-    tail.rotation_euler.y = 0.88
+    # Small graphic rampant-horse relief on the drape. The previous body/head/
+    # leg primitives collapsed into a gold blob at gameplay distance; reuse the
+    # same heraldic silhouette language as the rear crest in one shallow mesh.
+    table_horse_source = [
+        (0.26, 4.04), (0.17, 4.05), (0.07, 4.38), (-0.02, 4.50),
+        (-0.17, 4.65), (-0.31, 4.83), (-0.52, 4.64), (-0.63, 4.67),
+        (-0.60, 4.75), (-0.34, 4.97), (-0.17, 5.05), (-0.32, 5.20),
+        (-0.61, 5.28), (-0.80, 5.34), (-0.78, 5.44), (-0.57, 5.49),
+        (-0.50, 5.65), (-0.43, 5.57), (-0.31, 5.67), (-0.30, 5.53),
+        (-0.18, 5.45), (0.04, 5.18), (0.31, 5.10), (0.49, 4.92),
+        (0.70, 5.02), (0.89, 4.92), (0.80, 4.80), (0.61, 4.71),
+        (0.48, 4.54), (0.53, 4.27), (0.60, 4.08), (0.52, 4.02),
+        (0.42, 4.05), (0.32, 4.36),
+    ]
+    table_horse_points = [
+        (x * 0.26, 0.62 + (z - 4.84) * 0.26)
+        for x, z in table_horse_source
+    ]
+    area = sum(
+        table_horse_points[i][0] * table_horse_points[(i + 1) % len(table_horse_points)][1]
+        - table_horse_points[(i + 1) % len(table_horse_points)][0] * table_horse_points[i][1]
+        for i in range(len(table_horse_points))
+    )
+    table_horse_ring = list(table_horse_points if area > 0 else reversed(table_horse_points))
+    table_horse_vertices = []
+    table_horse_faces = []
+    table_horse_front = front_y - 0.105
+    table_horse_back = front_y - 0.070
+    table_horse_vertices.extend((x, table_horse_front, z) for x, z in table_horse_ring)
+    table_horse_vertices.extend((x, table_horse_back, z) for x, z in table_horse_ring)
+    table_horse_count = len(table_horse_ring)
+    table_horse_faces.append(tuple(range(table_horse_count)))
+    table_horse_faces.append(tuple(table_horse_count + i for i in reversed(range(table_horse_count))))
+    for i in range(table_horse_count):
+        j = (i + 1) % table_horse_count
+        table_horse_faces.append((i, j, table_horse_count + j, table_horse_count + i))
+    table_horse_mesh = bpy.data.meshes.new("WR_CANON_table_horse_relief_mesh")
+    table_horse_mesh.from_pydata(table_horse_vertices, [], table_horse_faces)
+    table_horse_mesh.update()
+    table_horse = bpy.data.objects.new("WR_CANON_table_horse_relief", table_horse_mesh)
+    table_horse.data.materials.append(mats["brass"])
+    tag(table_horse)
+    static.objects.link(table_horse)
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
                        (1.0, 0.36, 0.18), static, size=3.4)
     look_at(drape_fill, (0, -5.50, 0.44))
