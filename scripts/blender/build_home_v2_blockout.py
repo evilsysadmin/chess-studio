@@ -3378,10 +3378,43 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     for idx, x in enumerate((-8.0, -4.15, 2.45, 7.95)):
-        cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass_dark"], bevel=0.025)
-        cube(f"HOME_PROP_torch_candle_{idx}", (x, 5.96, 2.78), (0.045, 0.045, 0.18), materials["paper"], bevel=0.012)
-        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.94, 3.02), 0.045, 0.008, 0.14, materials["fire_hot"], vertices=12)
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.62, 3.02), 54, (1.0, 0.34, 0.085), radius=0.38)
+        mount_z = 2.43 + (_hash01(idx, 0, 1801) - 0.5) * 0.10
+        candle_half = 0.155 + _hash01(idx, 1, 1811) * 0.040
+        candle_center_z = mount_z + 0.32 + candle_half
+        flame_h = 0.12 + _hash01(idx, 2, 1823) * 0.055
+        flame_center_z = candle_center_z + candle_half + flame_h * 0.55
+
+        cube(
+            f"HOME_PROP_torch_{idx}",
+            (x, 6.02, mount_z),
+            (0.06, 0.08, 0.34),
+            materials["brass_dark"],
+            bevel=0.025,
+        )
+        cube(
+            f"HOME_PROP_torch_candle_{idx}",
+            (x, 5.96, candle_center_z),
+            (0.043 + _hash01(idx, 3, 1831) * 0.004, 0.043, candle_half),
+            materials["paper"],
+            bevel=0.012,
+        )
+        flame = cone(
+            f"HOME_PROP_torch_flame_{idx}",
+            (x, 5.94, flame_center_z),
+            0.040 + _hash01(idx, 4, 1847) * 0.008,
+            0.008,
+            flame_h,
+            materials["fire_hot"],
+            vertices=12,
+        )
+        flame.rotation_euler[1] = math.radians((_hash01(idx, 5, 1861) - 0.5) * 8.0)
+        add_point_light(
+            f"HOME_LIGHT_torch_{idx}",
+            (x, 5.62, flame_center_z + 0.02),
+            50 + _hash01(idx, 6, 1871) * 8,
+            (1.0, 0.34, 0.085),
+            radius=0.38,
+        )
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
