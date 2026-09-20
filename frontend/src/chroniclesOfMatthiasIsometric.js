@@ -681,8 +681,8 @@ function disposeScene(root) {
   materials.forEach((material) => material.dispose?.());
 }
 
-export function createChroniclesIsometricGame(host, {
-  initialState = null,
+export function createChroniclesIsometricRenderer(host, {
+  initialSceneModel = null,
   onReady,
   onCellClick,
   onEnemyClick,
@@ -692,8 +692,7 @@ export function createChroniclesIsometricGame(host, {
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
-  const initialSceneModel = initialState ? chroniclesProjectSceneModel(initialState) : null;
-  const initialScenePlan = initialSceneModel?.scenePlan || chroniclesIsometricScenePlan(initialState);
+  const initialScenePlan = initialSceneModel?.scenePlan || chroniclesIsometricScenePlan();
   const scenePalette = chroniclesIsoScenePalette(initialScenePlan);
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -930,13 +929,6 @@ export function createChroniclesIsometricGame(host, {
     }
   }
 
-  function syncState(state, nextSelectedMemberId = selectedMemberId, nextInteraction = latestInteraction) {
-    return syncSceneModel(chroniclesProjectSceneModel(state, {
-      selectedMemberId: nextSelectedMemberId,
-      interaction: nextInteraction,
-    }));
-  }
-
   function pickPointerAction(event) {
     if (!latestSceneModel) return null;
     const bounds = renderer.domElement.getBoundingClientRect();
@@ -1046,7 +1038,6 @@ export function createChroniclesIsometricGame(host, {
 
   return {
     renderSceneModel: syncSceneModel,
-    renderState: syncState,
     renderMember(memberId) {
       selectedMemberId = memberId || 'matthias';
       syncSelection();
@@ -1063,6 +1054,27 @@ export function createChroniclesIsometricGame(host, {
       renderer.dispose();
       renderer.forceContextLoss?.();
       renderer.domElement.remove();
+    },
+  };
+}
+
+export function createChroniclesIsometricGame(host, {
+  initialState = null,
+  ...rendererOptions
+} = {}) {
+  const initialSceneModel = initialState ? chroniclesProjectSceneModel(initialState) : null;
+  const renderer = createChroniclesIsometricRenderer(host, {
+    ...rendererOptions,
+    initialSceneModel,
+  });
+
+  return {
+    ...renderer,
+    renderState(state, selectedMemberId = 'matthias', interaction = null) {
+      return renderer.renderSceneModel(chroniclesProjectSceneModel(state, {
+        selectedMemberId,
+        interaction,
+      }));
     },
   };
 }
