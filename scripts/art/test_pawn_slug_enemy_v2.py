@@ -95,4 +95,9 @@ class EnemyV2PipelineTests(unittest.TestCase):
             save_png_contract(dirty, path)
             self.assertEqual(clean_transparent_rgb(dirty).getpixel((0, 0)), (0, 0, 0, 0))
             self.assertEqual(validate_png_contract(path)["width"], 8)
-            with self.assertRaises(PngContractError"“ ¢fÆ–FFU÷æuö6öçG&7B‡F‚ÂÖ…÷6–FSÓB  ¦–bõöæÖUõòÓÒ%õöÖ–åõò# ¢Væ—GFW7BæÖ–â‚
+            with self.assertRaises(PngContractError):
+                validate_png_contract(path, max_side=4)
+
+
+if __name__ == "__main__":
+    unittest.main()
