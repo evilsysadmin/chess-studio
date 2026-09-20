@@ -19,7 +19,7 @@ STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
-STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
+STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: true"
 OCI_MUTATION_MUTEX = "concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false"
 
 
