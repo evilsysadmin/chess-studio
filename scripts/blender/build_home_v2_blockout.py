@@ -2134,7 +2134,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         2.34,
         4.18,
         0.30,
-        materials["arch_stone"],
+        materials["soot_stone"],
         bevel=0.105,
     )
     for side in (-1, 1):
@@ -2342,7 +2342,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         2.23,
         3.28,
         0.42,
-        materials["stone_dark"],
+        materials["soot_stone"],
         bevel=0.040,
     )
     cube(
@@ -2365,7 +2365,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_fireplace_right_inner_jamb_{side}",
             (4.45 + side * 0.69, 5.24, 1.28),
             (0.075, 0.105, 0.86),
-            materials["stone_dark"],
+            materials["soot_stone"],
             bevel=0.028,
         )
         cube(
