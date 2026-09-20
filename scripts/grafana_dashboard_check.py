@@ -88,6 +88,8 @@ def main() -> int:
         'node_load1',
         'node_disk_read_bytes_total',
         'node_network_receive_bytes_total',
+        'node_network_receive_errs_total',
+        'node_network_receive_drop_total',
     ):
         if token not in oci_host_dash:
             fail(f"dashboard OCI host no cubre {token}")
