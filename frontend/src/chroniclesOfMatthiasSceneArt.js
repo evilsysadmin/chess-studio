@@ -7,6 +7,7 @@ import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasRe
 import { installChroniclesTacticsEnemyIntentArt } from './chroniclesOfMatthiasEnemyIntentArt.js';
 import { installChroniclesTacticsDamageFeedbackArt } from './chroniclesOfMatthiasDamageFeedbackArt.js';
 import { installChroniclesTacticsArchitectureArt } from './chroniclesOfMatthiasArchitectureArt.js';
+import { installChroniclesTacticsThemeDressing } from './chroniclesOfMatthiasThemeDressingArt.js';
 import { installChroniclesTacticsSigilArt } from './chroniclesOfMatthiasSigilArt.js';
 import { installChroniclesTacticsPremiumMaterials } from './chroniclesOfMatthiasMaterialArt.js';
 import { installChroniclesTacticsPressurePlateArt } from './chroniclesOfMatthiasPressurePlateArt.js';
@@ -30,6 +31,7 @@ export function installChroniclesTacticsSceneArt(models, {
   const grounding = installChroniclesTacticsPartyGrounding(models, { coarsePointer });
   const readability = installChroniclesTacticsReadabilityArt(models, { coarsePointer });
   const architecture = installChroniclesTacticsArchitectureArt(scene, { coarsePointer, scenePlan });
+  const themeDressing = installChroniclesTacticsThemeDressing(scene, { coarsePointer, scenePlan });
   const pressurePlates = installChroniclesTacticsPressurePlateArt(scene, { coarsePointer, scenePlan });
   const sigil = installChroniclesTacticsSigilArt(scene);
   const enemyIntent = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer });
@@ -44,6 +46,7 @@ export function installChroniclesTacticsSceneArt(models, {
     grounding,
     readability,
     architecture,
+    themeDressing,
     pressurePlates,
     sigil,
     enemyIntent,
