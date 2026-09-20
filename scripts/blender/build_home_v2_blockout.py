@@ -1038,13 +1038,24 @@ def add_side_furnishings(materials):
         materials["gold"],
     )
     sphere("HOME_PROP_left_horse_head", (-6.94, 2.42, 1.99), (0.12, 0.07, 0.10), materials["gold"])
-    for idx, hx in enumerate((-6.61, -6.35)):
+    for idx, (hx, hy, lean) in enumerate((
+        (-6.62, 2.34, -0.04),
+        (-6.35, 2.34, 0.03),
+        (-6.61, 2.50, 0.04),
+        (-6.34, 2.50, -0.03),
+    )):
         curve_tube(
             f"HOME_PROP_left_horse_leg_{idx}",
-            [(hx, 2.42, 1.46), (hx - 0.04, 2.42, 1.18)],
-            0.035,
+            [(hx, hy, 1.47), (hx + lean, hy, 1.18)],
+            0.029,
             materials["gold"],
         )
+    curve_tube(
+        "HOME_PROP_left_horse_tail",
+        [(-6.18, 2.42, 1.62), (-6.07, 2.43, 1.51), (-6.12, 2.43, 1.34)],
+        0.030,
+        materials["gold"],
+    )
     for idx, cx in enumerate((-6.90, -6.62, -6.34)):
         cylinder(f"HOME_PROP_left_candelabra_stem_{idx}", (cx, 2.70, 1.26), 0.035, 0.24, materials["brass_dark"], vertices=12)
         cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["paper"], bevel=0.012)
