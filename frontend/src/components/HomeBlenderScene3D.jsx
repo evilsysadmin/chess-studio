@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
-import { homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
+import {
+  HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
+  homeCastle3DRenderPolicy,
+} from './HomeCastle3DRenderPolicy.js';
 
 export const HOME_BLENDER_RUNTIME_LOGICAL_ID = 'home.scene.runtime';
-export const HOME_BLENDER_RUNTIME_MIN_WIDTH = 1000;
+export const HOME_BLENDER_RUNTIME_MIN_WIDTH = HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH;
 export const HOME_BLENDER_CAMERA_FOV = 22.9;
 
 const CAMERA_BASE = Object.freeze({ x: 0, y: 4.85, z: 16 });
@@ -28,14 +31,23 @@ const EXPOSURE = Object.freeze({
   night: 1.13,
 });
 
+export function homeBlenderRuntimePolicy({
+  viewportWidth = 0,
+  devicePixelRatio = 1,
+  hardwareConcurrency = 4,
+} = {}) {
+  return homeCastle3DRenderPolicy({
+    viewportWidth,
+    devicePixelRatio,
+    hardwareConcurrency,
+  });
+}
+
 function browserPolicy() {
   if (typeof window === 'undefined') {
-    return homeCastle3DRenderPolicy({
-      viewportWidth: 0,
-      hardwareConcurrency: 4,
-    });
+    return homeBlenderRuntimePolicy();
   }
-  return homeCastle3DRenderPolicy({
+  return homeBlenderRuntimePolicy({
     viewportWidth: window.innerWidth,
     devicePixelRatio: window.devicePixelRatio || 1,
     hardwareConcurrency: typeof navigator !== 'undefined'
@@ -52,7 +64,7 @@ export function homeBlenderRuntimeEligible() {
     && policy.lod !== '2d';
 }
 
-function addRuntimeLights(scene) {
+function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -61,7 +73,7 @@ function addRuntimeLights(scene) {
 
   const key = new THREE.DirectionalLight(0xffc18a, 2.15);
   key.position.set(-5.2, 7.4, 8.2);
-  key.castShadow = true;
+  key.castShadow = shadowsEnabled;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.left = -9;
   key.shadow.camera.right = 9;
@@ -107,11 +119,11 @@ function disposeRuntimeScene(root) {
   });
 }
 
-function prepareRuntimeScene(root) {
+function prepareRuntimeScene(root, shadowsEnabled = true) {
   root.traverse((object) => {
     if (!object.isMesh) return;
-    object.castShadow = true;
-    object.receiveShadow = true;
+    object.castShadow = shadowsEnabled;
+    object.receiveShadow = shadowsEnabled;
     if (Array.isArray(object.material)) {
       object.material.forEach((material) => {
         if (!material) return;
@@ -141,6 +153,7 @@ export default function HomeBlenderScene3D({
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const initialPolicy = browserPolicy();
     if (!canvas || !homeBlenderRuntimeEligible()) {
       onUnavailable?.();
       return undefined;
@@ -161,8 +174,8 @@ export default function HomeBlenderScene3D({
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: true,
-        powerPreference: 'high-performance',
+        antialias: initialPolicy.antialias,
+        powerPreference: initialPolicy.powerPreference,
       });
     } catch {
       onUnavailable?.();
@@ -170,7 +183,7 @@ export default function HomeBlenderScene3D({
     }
 
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = initialPolicy.lod === 'full';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.AgXToneMapping;
     renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
@@ -180,7 +193,7 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    addRuntimeLights(scene);
+    addRuntimeLights(scene, initialPolicy.lod === 'full');
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -268,7 +281,7 @@ export default function HomeBlenderScene3D({
         loadTimer = null;
       }
       model = root;
-      prepareRuntimeScene(model);
+      prepareRuntimeScene(model, initialPolicy.lod === 'full');
       scene.add(model);
       resize();
       renderFrame();
@@ -312,7 +325,7 @@ export default function HomeBlenderScene3D({
     <canvas
       ref={canvasRef}
       className="illustrated-home__castle-3d"
-      data-home-castle-lod="full"
+      data-home-castle-lod="loading"
       data-home-castle-compositor="blender-runtime"
       data-home-castle-picked="none"
       data-home-blender-runtime="loading"
