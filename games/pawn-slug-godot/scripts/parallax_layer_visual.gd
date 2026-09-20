@@ -714,46 +714,57 @@ func _draw_harbor_horizon() -> void:
             draw_circle(lamp, 2.2, Color(1.0, 0.72, 0.36, 0.55 * _intensity))
 
 func _draw_alpine_peaks() -> void:
+    # Three irregular ridge planes read as a mountain range rather than a row
+    # of repeated triangles. All silhouettes stay deterministic for capture.
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
-    for index in range(18):
-        var x := float(index) * 360.0
-        var peak_y := 190.0 + _noise(index, 12.4) * 130.0
-        rear.append(Vector2(x, 430.0))
-        rear.append(Vector2(x + 180.0, peak_y))
-        rear.append(Vector2(x + 360.0, 430.0))
+    for step in range(0, int(_world_size.x) + 181, 180):
+        var x := float(step)
+        var y := 205.0 + sin(x * 0.0026 + 0.8) * 62.0 + (_noise(step / 180, 12.4) - 0.5) * 126.0
+        rear.append(Vector2(x, y))
     rear.append(Vector2(_world_size.x, _floor_y))
-    draw_colored_polygon(rear, Color(0.08, 0.12, 0.16, 0.98))
+    draw_colored_polygon(rear, Color(0.055, 0.085, 0.12, 0.99))
 
     var middle := PackedVector2Array([Vector2(0.0, _floor_y)])
-    for index in range(20):
-        var x := float(index) * 300.0
-        var peak_y := 300.0 + _noise(index, 91.2) * 92.0
-        middle.append(Vector2(x, 472.0))
-        middle.append(Vector2(x + 150.0, peak_y))
-        middle.append(Vector2(x + 300.0, 472.0))
+    for step in range(0, int(_world_size.x) + 141, 140):
+        var x := float(step)
+        var y := 320.0 + sin(x * 0.0041 + 1.35) * 42.0 + (_noise(step / 140, 91.2) - 0.5) * 78.0
+        middle.append(Vector2(x, y))
     middle.append(Vector2(_world_size.x, _floor_y))
-    draw_colored_polygon(middle, Color(0.10, 0.15, 0.18, 0.72))
+    draw_colored_polygon(middle, Color(0.085, 0.13, 0.16, 0.88))
 
-    for index in range(16):
-        var x := float(index) * 380.0 + 90.0
-        var peak_y := 245.0 + _noise(index, 13.1) * 110.0
+    var near := PackedVector2Array([Vector2(0.0, _floor_y)])
+    for step in range(0, int(_world_size.x) + 111, 110):
+        var x := float(step)
+        var y := 408.0 + sin(x * 0.0064 + 0.3) * 24.0 + (_noise(step / 110, 91.8) - 0.5) * 42.0
+        near.append(Vector2(x, y))
+    near.append(Vector2(_world_size.x, _floor_y))
+    draw_colored_polygon(near, Color(0.11, 0.16, 0.18, 0.82))
+
+    # Sparse asymmetric snow caps give scale and break the procedural rhythm.
+    for index in range(13):
+        var x := 130.0 + float(index) * 445.0
+        var peak_y := 190.0 + sin(x * 0.0026 + 0.8) * 62.0 + (_noise(index, 92.4) - 0.5) * 82.0
+        var span := 42.0 + _noise(index, 92.9) * 34.0
+        var drop := 34.0 + _noise(index, 93.4) * 32.0
         var snow := PackedVector2Array([
             Vector2(x, peak_y),
-            Vector2(x - 42.0, peak_y + 58.0),
-            Vector2(x, peak_y + 42.0),
-            Vector2(x + 42.0, peak_y + 58.0),
+            Vector2(x - span, peak_y + drop),
+            Vector2(x - span * 0.28, peak_y + drop * 0.68),
+            Vector2(x + span * 0.18, peak_y + drop * 0.86),
+            Vector2(x + span, peak_y + drop),
         ])
-        draw_colored_polygon(snow, Color(0.48, 0.56, 0.62, 0.20))
+        draw_colored_polygon(snow, Color(0.66, 0.75, 0.80, 0.19 * _intensity))
         draw_line(
-            Vector2(x, peak_y + 2.0),
-            Vector2(x + 28.0, peak_y + 48.0),
-            Color(0.76, 0.84, 0.88, 0.12 * _intensity),
-            1.5,
+            Vector2(x - span * 0.15, peak_y + 8.0),
+            Vector2(x + span * 0.42, peak_y + drop * 0.74),
+            Color(0.82, 0.88, 0.90, 0.12 * _intensity),
+            1.4,
         )
 
+    # Cold valley haze separates the fortress plane from the mountain mass.
     draw_rect(
-        Rect2(Vector2(0.0, 360.0), Vector2(_world_size.x, 92.0)),
-        Color(0.66, 0.75, 0.80, 0.028 * _intensity),
+        Rect2(Vector2(0.0, 352.0), Vector2(_world_size.x, 116.0)),
+        Color(0.58, 0.69, 0.75, 0.038 * _intensity),
         true,
     )
 
@@ -771,21 +782,71 @@ func _draw_harbor_skyline() -> void:
         draw_rect(Rect2(Vector2(x, _floor_y - 92.0), Vector2(180.0, 54.0)), Color(0.07, 0.13, 0.15, 0.92), true)
 
 func _draw_alpine_fortress() -> void:
-    for index in range(8):
-        var x := 220.0 + float(index) * 680.0
-        var base_y := _floor_y - 120.0
-        draw_rect(Rect2(Vector2(x, base_y - 88.0), Vector2(240.0, 88.0)), Color("12191e"), true)
-        draw_rect(Rect2(Vector2(x + 30.0, base_y - 150.0), Vector2(54.0, 62.0)), Color("10171c"), true)
-        draw_rect(Rect2(Vector2(x + 156.0, base_y - 138.0), Vector2(48.0, 50.0)), Color("10171c"), true)
-        draw_line(Vector2(x, base_y - 88.0), Vector2(x + 240.0, base_y - 88.0), Color(0.53, 0.61, 0.64, 0.18), 3.0)
-        if index % 2 == 0:
+    # Long retaining walls connect individual strongpoints so the fortress
+    # reads as one authored complex rather than repeated floating boxes.
+    for sector in range(8):
+        var x := 150.0 + float(sector) * 700.0
+        var base_y := _floor_y - 118.0
+        var wall_w := 310.0 + _noise(sector, 110.1) * 96.0
+        var wall_h := 62.0 + _noise(sector, 110.7) * 28.0
+        var wall := Rect2(Vector2(x, base_y - wall_h), Vector2(wall_w, wall_h))
+        draw_rect(wall, Color(0.055, 0.071, 0.080, 0.96), true)
+        draw_line(
+            wall.position,
+            Vector2(wall.end.x, wall.position.y),
+            Color(0.48, 0.57, 0.61, 0.22),
+            2.4,
+        )
+        draw_rect(
+            Rect2(Vector2(x, base_y - 12.0), Vector2(wall_w, 12.0)),
+            Color(0.028, 0.036, 0.041, 0.78),
+            true,
+        )
+
+        var tower_w := 58.0 + _noise(sector, 111.3) * 22.0
+        var tower_h := 78.0 + _noise(sector, 111.9) * 54.0
+        for tower in range(2):
+            var tx := x + 28.0 + float(tower) * (wall_w - tower_w - 56.0)
+            var ty := wall.position.y - tower_h
+            draw_rect(Rect2(Vector2(tx, ty), Vector2(tower_w, tower_h)), Color(0.045, 0.060, 0.069, 0.99), true)
+            draw_rect(
+                Rect2(Vector2(tx - 5.0, ty - 7.0), Vector2(tower_w + 10.0, 9.0)),
+                Color(0.09, 0.115, 0.125, 0.98),
+                true,
+            )
+            for merlon in range(4):
+                var mx := tx + 4.0 + float(merlon) * (tower_w - 8.0) / 3.0
+                draw_rect(Rect2(Vector2(mx - 3.0, ty - 14.0), Vector2(7.0, 8.0)), Color(0.055, 0.072, 0.080, 0.98), true)
+            draw_rect(
+                Rect2(Vector2(tx + tower_w * 0.44, ty + tower_h * 0.30), Vector2(4.0, 18.0)),
+                Color(0.012, 0.019, 0.022, 0.84),
+                true,
+            )
+            if (sector + tower) % 3 == 0:
+                var lamp := Vector2(tx + tower_w * 0.55, ty + tower_h * 0.62)
+                draw_circle(lamp, 9.0, Color(0.94, 0.58, 0.24, 0.045 * _intensity))
+                draw_circle(lamp, 2.4, Color(1.0, 0.68, 0.30, 0.46 * _intensity))
+
+        # Snow lodged on the windward wall edge.
+        var snow_y := wall.position.y - 1.0
+        draw_line(
+            Vector2(x + 8.0, snow_y),
+            Vector2(x + wall_w * 0.62, snow_y - 3.0),
+            Color(0.67, 0.75, 0.78, 0.20 * _intensity),
+            3.0,
+        )
+
+        if sector % 2 == 0:
+            var origin := Vector2(x + wall_w * 0.72, wall.position.y - 22.0)
+            var sweep := sin(_atmosphere_time * 0.24 + float(sector)) * 120.0
+            var tip := Vector2(origin.x + 310.0 + sweep, 96.0)
             var beam := PackedVector2Array([
-                Vector2(x + 54.0, base_y - 150.0),
-                Vector2(x + 360.0, 110.0),
-                Vector2(x + 440.0, 110.0),
-                Vector2(x + 70.0, base_y - 148.0),
+                origin + Vector2(-4.0, 0.0),
+                tip + Vector2(-42.0, 0.0),
+                tip + Vector2(42.0, 0.0),
+                origin + Vector2(4.0, 0.0),
             ])
-            draw_colored_polygon(beam, Color(0.75, 0.82, 0.85, 0.025))
+            draw_colored_polygon(beam, Color(0.72, 0.80, 0.82, 0.022 * _intensity))
 
 func _draw_harbor_midground() -> void:
     for index in range(14):
@@ -801,15 +862,50 @@ func _draw_harbor_midground() -> void:
 
 func _draw_alpine_midground() -> void:
     for index in range(11):
-        var x := 150.0 + float(index) * 520.0
-        var y := _floor_y - 58.0
-        draw_rect(Rect2(Vector2(x, y), Vector2(124.0, 58.0)), Color("303a3f"), true)
-        draw_rect(Rect2(Vector2(x + 14.0, y + 12.0), Vector2(96.0, 8.0)), Color("1f282c"), true)
-        draw_line(Vector2(x, y), Vector2(x + 124.0, y), Color(0.67, 0.74, 0.76, 0.30), 3.0)
+        var x := 120.0 + float(index) * 520.0
+        var base_y := _floor_y - 58.0
+        var w := 132.0 + _noise(index, 120.1) * 36.0
+        var body := Rect2(Vector2(x, base_y), Vector2(w, 58.0))
+        draw_rect(body, Color(0.15, 0.18, 0.19, 0.98), true)
+
+        # Sloped cap + snow lip turns each block into a bunker cut into rock.
+        var roof := PackedVector2Array([
+            Vector2(x - 8.0, base_y),
+            Vector2(x + 18.0, base_y - 24.0),
+            Vector2(x + w - 22.0, base_y - 20.0),
+            Vector2(x + w + 8.0, base_y),
+        ])
+        draw_colored_polygon(roof, Color(0.11, 0.14, 0.15, 0.98))
+        draw_line(
+            Vector2(x + 10.0, base_y - 16.0),
+            Vector2(x + w * 0.72, base_y - 18.0),
+            Color(0.72, 0.80, 0.82, 0.22 * _intensity),
+            2.5,
+        )
+        draw_rect(
+            Rect2(Vector2(x + 14.0, base_y + 13.0), Vector2(w - 28.0, 8.0)),
+            Color(0.055, 0.071, 0.077, 0.94),
+            true,
+        )
+        for slit in range(3):
+            var sx := x + 28.0 + float(slit) * (w - 56.0) / 2.0
+            draw_rect(Rect2(Vector2(sx, base_y + 32.0), Vector2(4.0, 11.0)), Color(0.018, 0.025, 0.028, 0.82), true)
+
+    # Anti-tank obstacles and sparse fence wire add scale without reading as
+    # playable collision because they remain on this parallax plane.
     for index in range(10):
-        var x := 420.0 + float(index) * 560.0
-        draw_line(Vector2(x - 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
-        draw_line(Vector2(x + 18.0, _floor_y), Vector2(x, _floor_y - 36.0), Color("596468"), 4.0)
+        var x := 390.0 + float(index) * 560.0
+        var base := Vector2(x, _floor_y - 3.0)
+        draw_line(base + Vector2(-20.0, 0.0), base + Vector2(0.0, -38.0), Color(0.34, 0.39, 0.40, 0.68), 4.0)
+        draw_line(base + Vector2(20.0, 0.0), base + Vector2(0.0, -38.0), Color(0.34, 0.39, 0.40, 0.68), 4.0)
+        draw_line(base + Vector2(-20.0, 0.0), base + Vector2(20.0, 0.0), Color(0.58, 0.64, 0.65, 0.34), 2.5)
+        if index < 9:
+            draw_line(
+                Vector2(x + 22.0, _floor_y - 22.0),
+                Vector2(x + 538.0, _floor_y - 28.0),
+                Color(0.15, 0.17, 0.17, 0.34),
+                1.4,
+            )
 
 func _draw_jungle_canopy() -> void:
     var rear := PackedVector2Array([Vector2(0.0, _floor_y)])
