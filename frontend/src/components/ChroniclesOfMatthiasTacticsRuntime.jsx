@@ -94,10 +94,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   const objective = chroniclesObjective(state);
   const locationLabel = chroniclesTacticsLocationLabel(state);
   const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
-  const canAttack = useMemo(
-    () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
+  const targetOptions = useMemo(
+    () => chroniclesTacticsTargets(state, selectedMemberId),
     [selectedMemberId, state],
   );
+  const canAttack = targetOptions.length > 0;
+  const targetIntel = targetOptions[0] || null;
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
   const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
   const battlefieldInteraction = useMemo(
@@ -334,6 +336,28 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
           <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
           <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad. En combate: una acción tuya, una respuesta enemiga.</small>
+          {targetIntel ? (
+            <div className="chronicles-tactics__enemy-intel" aria-label="Intel enemigo">
+              <span>OBJETIVO · NIVEL {targetIntel.enemyBuild.level}</span>
+              <strong>{targetIntel.name}</strong>
+              <small className="chronicles-tactics__enemy-archetype">
+                {String(targetIntel.enemyBuild.archetype).replaceAll('-', ' ')}
+              </small>
+              <small>
+                VIG {targetIntel.enemyBuild.attributes.vigor || 0} · POT {targetIntel.enemyBuild.attributes.power || 0}
+                {' · '}PRE {targetIntel.enemyBuild.attributes.precision || 0} · VOL {targetIntel.enemyBuild.attributes.will || 0}
+              </small>
+              {targetIntel.enemyBuild.skills.length ? (
+                <div className="chronicles-tactics__enemy-skills">
+                  {targetIntel.enemyBuild.skills.map((skill) => (
+                    <span key={skill.id} title={skill.description}>{skill.label}</span>
+                  ))}
+                </div>
+              ) : (
+                <small>Sin técnicas conocidas.</small>
+              )}
+            </div>
+          ) : null}
         </aside>
 
         <main className="chronicles-tactics__battlefield">

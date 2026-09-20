@@ -7,6 +7,7 @@ import {
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
+import { chroniclesEnemySkillDetails } from './chronicles/chroniclesEnemyBuilds.js';
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 import {
   chroniclesApplyContentAction,
@@ -347,6 +348,17 @@ export function chroniclesTacticsTargets(state, memberId) {
         x: position.x,
         y: position.y,
         attackKind: profile.attackKind,
+        enemyBuild: {
+          version: enemy.enemyBuild?.version || 1,
+          level: enemy.enemyBuild?.level || 1,
+          archetype: enemy.enemyBuild?.archetype || enemy.visualType || enemy.id,
+          attributes: { ...(enemy.enemyBuild?.attributes || {}) },
+          skills: chroniclesEnemySkillDetails(enemy.enemyBuild).map((skill) => ({
+            id: skill.id,
+            label: skill.label,
+            description: skill.description,
+          })),
+        },
       }];
     })
     .sort((left, right) => left.distance - right.distance || left.enemyId.localeCompare(right.enemyId));
