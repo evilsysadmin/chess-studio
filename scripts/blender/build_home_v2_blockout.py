@@ -1936,18 +1936,48 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.085, 0.022, 0.085),
         materials["gold"],
     )
-    cube(
+    shield_points = [
+        (5.10, 3.56),
+        (5.64, 3.56),
+        (5.64, 3.31),
+        (5.55, 3.08),
+        (5.37, 2.93),
+        (5.19, 3.08),
+        (5.10, 3.31),
+    ]
+    flat_panel(
         "HOME_PROP_fireplace_right_shield",
-        (5.37, 5.08, 3.24),
-        (0.25, 0.055, 0.34),
+        shield_points,
+        5.08,
+        0.10,
         materials["wood"],
-        bevel=0.070,
+        bevel=0.045,
+    )
+    curve_tube(
+        "HOME_PROP_fireplace_right_shield_border",
+        [(x, 5.015, z) for x, z in shield_points + [shield_points[0]]],
+        0.018,
+        materials["brass_dark"],
     )
     sphere(
         "HOME_PROP_fireplace_right_shield_emblem",
-        (5.37, 5.015, 3.25),
-        (0.085, 0.020, 0.085),
+        (5.37, 5.000, 3.28),
+        (0.070, 0.018, 0.070),
         materials["gold"],
+    )
+    cube(
+        "HOME_PROP_fireplace_right_shield_mark_v",
+        (5.37, 4.985, 3.23),
+        (0.020, 0.012, 0.095),
+        materials["gold"],
+        bevel=0.007,
+    )
+    cube(
+        "HOME_PROP_fireplace_right_shield_mark_h",
+        (5.37, 4.985, 3.27),
+        (0.070, 0.012, 0.020),
+        materials["gold"],
+        bevel=0.007,
     )
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
