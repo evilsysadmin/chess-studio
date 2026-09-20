@@ -1051,17 +1051,32 @@ def add_gothic_canon_v2(static, mats):
     for side in (-1, 1):
         cube(f"WR_CANON_bookshelf_post_{side}", (bx + side * 1.18, by, 2.52),
              (0.11, 0.48, 2.10), mats["frame_wood"], static, bevel=0.045)
+    book_profiles = (
+        (-0.94, 0.080, 0.43, -0.09, 0.18),
+        (-0.69, 0.110, 0.50, 0.03, 0.20),
+        (-0.39, 0.072, 0.39, 0.07, 0.17),
+        (-0.09, 0.118, 0.54, -0.04, 0.21),
+        (0.21, 0.088, 0.46, 0.05, 0.18),
+        (0.52, 0.102, 0.42, -0.08, 0.19),
+        (0.83, 0.076, 0.51, 0.02, 0.17),
+    )
+    row_height_delta = (0.00, 0.035, -0.020, 0.020, -0.030)
     for level, z in enumerate((0.62, 1.30, 1.98, 2.66, 3.34, 4.02)):
         cube(f"WR_CANON_bookshelf_shelf_{level}", (bx, by, z), (1.17, 0.50, 0.065),
              mats["frame_wood"], static, bevel=0.028)
         if level < 5:
-            for book in range(7):
-                px = bx - 0.92 + book * 0.30
-                height = 0.38 + (book % 3) * 0.065
-                cube(f"WR_CANON_book_{level}_{book}", (px, 5.72, z + 0.10 + height / 2),
-                     (0.105, 0.19, height / 2),
-                     mats["book_a"] if (book + level) % 2 else mats["book_b"],
-                     static, bevel=0.018)
+            lean_sign = -1.0 if level % 2 else 1.0
+            for book, (x_offset, half_width, base_height, lean, half_depth) in enumerate(book_profiles):
+                height = base_height + row_height_delta[level]
+                volume = cube(
+                    f"WR_CANON_book_{level}_{book}",
+                    (bx + x_offset, 5.72, z + 0.10 + height / 2),
+                    (half_width, half_depth, height / 2),
+                    mats["book_a"] if (book + level) % 2 else mats["book_b"],
+                    static,
+                    bevel=0.018,
+                )
+                volume.rotation_euler.y = lean * lean_sign
 
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
