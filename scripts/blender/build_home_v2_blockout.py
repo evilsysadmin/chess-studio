@@ -594,9 +594,9 @@ def add_table_and_board(materials):
             materials["book_brown"] if idx != 1 else materials["book_green"],
             bevel=0.025,
         )
-    cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.17, 0.08, metal, vertices=20)
-    cube("HOME_PROP_table_candle", (-2.72, 1.60, 1.57), (0.055, 0.055, 0.20), materials["paper"], bevel=0.02)
-    cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.82), 0.055, 0.012, 0.18, materials["fire_hot"], vertices=14)
+    cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.14, 0.06, metal, vertices=20)
+    cylinder("HOME_PROP_table_candle", (-2.72, 1.60, 1.55), 0.045, 0.30, materials["wax"], vertices=18)
+    cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.76), 0.030, 0.006, 0.10, materials["fire_hot"], vertices=12)
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
     cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
