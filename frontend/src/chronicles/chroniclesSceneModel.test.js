@@ -66,20 +66,25 @@ describe('Chronicles scene model projection', () => {
   });
 
   it('projects visibility and prop state before Three.js sees the frame', () => {
-    const state = {
+    const cryptState = {
       ...createChroniclesState(),
       enemyHp: 0,
-      sigilAwake: true,
-      runeCacheOpened: false,
-      runeCoreCollected: false,
     };
-    const model = chroniclesProjectSceneModel(state);
-    const corruptedPawn = model.enemies.find((enemy) => enemy.id === 'corrupted-pawn');
+    const cryptModel = chroniclesProjectSceneModel(cryptState);
+    const corruptedPawn = cryptModel.enemies.find((enemy) => enemy.id === 'corrupted-pawn');
 
     expect(corruptedPawn.visible).toBe(false);
     expect(corruptedPawn.cell).toBeNull();
-    expect(model.worldObjects).toMatchObject({
-      triggerActivated: true,
+
+    const galleryState = {
+      ...createChroniclesState('gallery-of-forks'),
+      galleryLeverPulled: true,
+      galleryRelicCollected: false,
+    };
+    const galleryModel = chroniclesProjectSceneModel(galleryState);
+    expect(galleryModel.worldObjects).toMatchObject({
+      leverActivated: true,
+      pickupVisible: true,
     });
   });
 });
