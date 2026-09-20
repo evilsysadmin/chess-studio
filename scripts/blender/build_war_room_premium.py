@@ -2186,7 +2186,7 @@ def meshopt_export_kwargs():
     # The weathering colour is exported by name because sanitize_runtime_materials
     # disconnects the Colour Attribute node the default MATERIAL mode looks for.
     if {"export_vertex_color", "export_vertex_color_name"} <= properties:
-        kwargs["export_vertex_color"] = "NAME"
+        kwargs["export_vertex_color"] = "NONE"  # EXPERIMENT: measure geometry-only GLB size
         kwargs["export_vertex_color_name"] = WEATHER_LAYER
     return kwargs
 
