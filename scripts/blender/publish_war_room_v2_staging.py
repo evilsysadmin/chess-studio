@@ -16,6 +16,8 @@ import r2_asset_publisher as core  # noqa: E402
 CANONICAL_PREFIX = "war-room/v2/runtime"
 STAGING_ALIAS = "war-room/v2/staging/current.glb"
 STAGING_REVISION_PREFIX = "war-room/v2/staging/revisions"
+RUNTIME_ALIAS = "war-room/v2/runtime/current.glb"
+RUNTIME_REVISION_PREFIX = "war-room/v2/runtime/revisions"
 CONTENT_TYPE = "model/gltf-binary"
 
 
@@ -27,6 +29,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
     parser.add_argument("--revision", required=True)
+    parser.add_argument("--channel", choices=("staging", "runtime"), default="staging")
     args = parser.parse_args()
 
     source = args.source.resolve()
@@ -42,8 +45,10 @@ def main() -> int:
     config = core.load_config(core.DEFAULT_CONFIG)
     token, account_id = core.require_env()
     canonical_key = core.object_key_for(source, CANONICAL_PREFIX, digest)
+    alias = RUNTIME_ALIAS if args.channel == "runtime" else STAGING_ALIAS
+    revision_prefix = RUNTIME_REVISION_PREFIX if args.channel == "runtime" else STAGING_REVISION_PREFIX
 
-    for key in (canonical_key, STAGING_ALIAS):
+    for key in (canonical_key, alias):
         transport.raw_upload_object(
             token,
             account_id,
@@ -53,13 +58,13 @@ def main() -> int:
             CONTENT_TYPE,
         )
 
-    received = core.get_object(token, account_id, config["bucket"], STAGING_ALIAS)
+    received = core.get_object(token, account_id, config["bucket"], alias)
     if sha256_bytes(received) != digest:
-        raise SystemExit("War Room v2 staging alias corrupto tras publicar")
+        raise SystemExit(f"War Room v2 {args.channel} alias corrupto tras publicar")
 
     # The immutable PR key is published last. Visual CI points directly at
     # this object, so it can never validate a stale current.glb alias.
-    revision_key = f"{STAGING_REVISION_PREFIX}/{revision}.glb"
+    revision_key = f"{revision_prefix}/{revision}.glb"
     transport.raw_upload_object(
         token,
         account_id,
@@ -74,7 +79,7 @@ def main() -> int:
 
     print(
         f"War Room v2 R2 OK · revision={revision} · sha256={digest} · "
-        f"canonical={canonical_key} · staging={STAGING_ALIAS} · revision_key={revision_key}"
+        f"channel={args.channel} · canonical={canonical_key} · alias={alias} · revision_key={revision_key}"
     )
     return 0
 
