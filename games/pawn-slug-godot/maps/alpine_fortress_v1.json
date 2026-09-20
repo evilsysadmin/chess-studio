@@ -39,7 +39,10 @@
       "w": 180,
       "h": 24,
       "kind": "cliff",
-      "material": "stone"
+      "material": "stone",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 1060,
@@ -72,7 +75,11 @@
       "w": 210,
       "h": 24,
       "kind": "cliff",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 2040,
@@ -104,7 +111,10 @@
       "w": 190,
       "h": 24,
       "kind": "cliff",
-      "material": "stone"
+      "material": "stone",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 3010,
@@ -128,7 +138,11 @@
       "w": 210,
       "h": 24,
       "kind": "cliff",
-      "material": "stone"
+      "material": "stone",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 3830,
@@ -138,7 +152,10 @@
       "kind": "ledge",
       "material": "stone",
       "one_way": true,
-      "route": "fortress_ridge"
+      "route": "fortress_ridge",
+      "visual": {
+        "sandbags": 5
+      }
     },
     {
       "x": 4050,
@@ -156,7 +173,10 @@
       "kind": "cliff",
       "material": "stone",
       "one_way": true,
-      "route": "fortress_ridge"
+      "route": "fortress_ridge",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 4610,
@@ -180,7 +200,12 @@
       "w": 250,
       "h": 24,
       "kind": "fortress_walk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true,
+        "sandbags": 5
+      }
     },
     {
       "x": 5450,
