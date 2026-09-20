@@ -8,6 +8,7 @@ legal moves.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import random
 import sys
 from typing import Optional
@@ -103,6 +104,35 @@ def _eligible_alternatives(
     return alternatives
 
 
+def _imperfect_candidate_weights(
+    snapshot: RootAnalysisSnapshot,
+    alternatives: list[RootCandidateAnalysis],
+    *,
+    maximizing: bool,
+    band: DifficultyBand,
+    level: float,
+) -> list[float]:
+    """Bias deliberate errors toward smaller factual losses.
+
+    The old policy picked uniformly inside the allowed loss band: a 350 cp
+    mistake could be as likely as a 25 cp inaccuracy once the mistake gate
+    fired. Humans do not usually distribute errors that way. Keep the hard
+    factual envelope, but make near-best mistakes more common and severe
+    blunders progressively rarer as difficulty rises.
+    """
+    if not alternatives:
+        return []
+    best = snapshot.candidates[0]
+    normalized_level = max(0.0, min(float(level), float(FACTUAL_BAND_CUTOFF)))
+    progress = normalized_level / float(FACTUAL_BAND_CUTOFF)
+    temperature = max(18.0, band.max_loss_cp * (0.70 - 0.42 * progress))
+    weights = []
+    for candidate in alternatives:
+        loss = _loss_from_best(best.score, candidate.score, maximizing)
+        weights.append(max(1e-6, math.exp(-loss / temperature)))
+    return weights
+
+
 def get_factual_difficulty_cpu_move(
     board: chess.Board,
     level: float = 50,
@@ -155,4 +185,12 @@ def get_factual_difficulty_cpu_move(
     if not alternatives or random.random() >= band.mistake_chance:
         return move_to_dict(board, best.move)
 
-    return move_to_dict(board, random.choice(alternatives).move)
+    weights = _imperfect_candidate_weights(
+        snapshot,
+        alternatives,
+        maximizing=board.turn == chess.WHITE,
+        band=band,
+        level=level,
+    )
+    chosen = random.choices(alternatives, weights=weights, k=1)[0]
+    return move_to_dict(board, chosen.move)

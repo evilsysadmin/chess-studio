@@ -60,6 +60,31 @@ def test_black_uses_the_same_loss_band_on_white_positive_engine_scores(monkeypat
     assert move["to"] == "d5"
 
 
+def test_deliberate_errors_favor_smaller_factual_losses():
+    snap = _snapshot(
+        _candidate("e2e4", 100.0),
+        _candidate("d2d4", 80.0),
+        _candidate("g1f3", -80.0),
+        _candidate("a2a3", -300.0),
+    )
+    band = policy.difficulty_band(0)
+    alternatives = policy._eligible_alternatives(
+        snap,
+        maximizing=True,
+        band=band,
+    )
+    weights = policy._imperfect_candidate_weights(
+        snap,
+        alternatives,
+        maximizing=True,
+        band=band,
+        level=0,
+    )
+
+    assert len(weights) == 3
+    assert weights[0] > weights[1] > weights[2] > 0
+
+
 def test_forced_mate_sentinel_is_never_weakened(monkeypatch):
     board = chess.Board("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1")
     snap = _snapshot(
