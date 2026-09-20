@@ -136,6 +136,105 @@ export function chroniclesEnemyBuildModifiers(build) {
   return modifiers;
 }
 
+
+function legacySkillIds(enemy) {
+  const reach = Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1));
+  const damage = Math.max(0, Number(enemy?.retaliation || 0));
+  const engageRange = Number(enemy?.ai?.engageRange);
+  const maxHp = Math.max(1, Number(enemy?.maxHp || 1));
+
+  if (reach >= 2) return ['spectral-geometry'];
+  if (Number.isFinite(engageRange) && engageRange >= 3) return ['hunter-instinct'];
+  if (damage >= 1) return ['brutal-strike'];
+  if (maxHp >= 3) return ['thick-hide'];
+  return [];
+}
+
+export function deriveLegacyChroniclesEnemyBuild(enemy) {
+  const rawMaxHp = Math.max(1, Number(enemy?.maxHp || 1));
+  const rawDamage = Math.max(0, Number(enemy?.retaliation || 0));
+  const rawReach = Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1));
+  const rawEngageRange = Number(enemy?.ai?.engageRange);
+  const skills = legacySkillIds(enemy);
+
+  const skillOnly = normalizeChroniclesEnemyBuild({
+    version: CHRONICLES_ENEMY_BUILD_VERSION,
+    archetype: enemy?.visualType || enemy?.id || 'enemy',
+    level: 1,
+    attributes: {},
+    skills,
+  });
+  const skillModifiers = chroniclesEnemyBuildModifiers(skillOnly);
+
+  const hpAfterSkills = Math.max(1, rawMaxHp - Number(skillModifiers.bonusMaxHp || 0));
+  const damageAfterSkills = Math.max(0, rawDamage - Number(skillModifiers.damageBonus || 0));
+  const reachAfterSkills = Math.max(1, rawReach - Number(skillModifiers.reachBonus || 0));
+  const engageAfterSkills = Number.isFinite(rawEngageRange)
+    ? Math.max(1, rawEngageRange - Number(skillModifiers.engageRangeBonus || 0))
+    : undefined;
+
+  const attributes = {
+    vigor: Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, hpAfterSkills - 1)),
+    power: Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, damageAfterSkills * 2),
+    precision: Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, reachAfterSkills - 1) * 2),
+    will: Number.isFinite(engageAfterSkills)
+      ? Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, engageAfterSkills - 1) * 2)
+      : 0,
+  };
+
+  const points = Object.values(attributes).reduce((sum, value) => sum + value, 0);
+  const level = Math.max(1, Math.min(
+    CHRONICLES_ENEMY_LEVEL_CAP,
+    1 + Math.floor((points + skills.length * 2) / 4),
+  ));
+  const build = normalizeChroniclesEnemyBuild({
+    version: CHRONICLES_ENEMY_BUILD_VERSION,
+    archetype: enemy?.visualType || enemy?.id || 'enemy',
+    level,
+    attributes,
+    skills,
+  });
+  const modifiers = chroniclesEnemyBuildModifiers(build);
+
+  return {
+    source: 'derived-legacy',
+    build,
+    baseStats: {
+      maxHp: Math.max(1, rawMaxHp - Number(modifiers.bonusMaxHp || 0)),
+      retaliation: Math.max(0, rawDamage - Number(modifiers.damageBonus || 0)),
+      retaliationReach: Math.max(1, rawReach - Number(modifiers.reachBonus || 0)),
+      engageRange: Number.isFinite(rawEngageRange)
+        ? Math.max(1, rawEngageRange - Number(modifiers.engageRangeBonus || 0))
+        : undefined,
+    },
+  };
+}
+
+export function resolveChroniclesEnemyBuildDefinition(enemy) {
+  if (!enemy?.enemyBuild) return deriveLegacyChroniclesEnemyBuild(enemy);
+
+  const validation = validateChroniclesEnemyBuild(enemy.enemyBuild);
+  if (!validation.valid) {
+    return { source: 'invalid', build: null, baseStats: null, errors: validation.errors };
+  }
+
+  return {
+    source: 'authored',
+    build: normalizeChroniclesEnemyBuild(
+      enemy.enemyBuild,
+      enemy?.visualType || enemy?.id || 'enemy',
+    ),
+    baseStats: {
+      maxHp: Math.max(1, Number(enemy?.maxHp || 1)),
+      retaliation: Math.max(0, Number(enemy?.retaliation || 0)),
+      retaliationReach: Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1)),
+      engageRange: Number.isFinite(Number(enemy?.ai?.engageRange))
+        ? Math.max(1, Number(enemy.ai.engageRange))
+        : undefined,
+    },
+  };
+}
+
 export function chroniclesEnemySkillDetails(build) {
   const normalized = normalizeChroniclesEnemyBuild(build, build?.archetype);
   return normalized.skills.map((skillId) => CHRONICLES_ENEMY_SKILLS[skillId]);

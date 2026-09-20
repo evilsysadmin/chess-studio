@@ -10,8 +10,7 @@ import blackGlassChapel from './maps/black-glass-chapel.json';
 import echoCistern from './maps/echo-cistern.json';
 import {
   chroniclesEnemyBuildModifiers,
-  normalizeChroniclesEnemyBuild,
-  validateChroniclesEnemyBuild,
+  resolveChroniclesEnemyBuildDefinition,
 } from './chroniclesEnemyBuilds.js';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
@@ -52,22 +51,17 @@ function normalizeEnemy(enemy) {
   const positions = enemy?.positions && typeof enemy.positions === 'object'
     ? Object.fromEntries(Object.entries(enemy.positions).map(([key, point]) => [key, clonePoint(point)]))
     : undefined;
-  const buildValidation = validateChroniclesEnemyBuild(enemy?.enemyBuild);
-  if (!buildValidation.valid) {
-    throw new Error(`Chronicles enemy ${enemy?.id || '<missing>'} has invalid EnemyBuild: ${buildValidation.errors.join('; ')}`);
+  const resolvedBuild = resolveChroniclesEnemyBuildDefinition(enemy);
+  if (!resolvedBuild.build) {
+    throw new Error(`Chronicles enemy ${enemy?.id || '<missing>'} has invalid EnemyBuild: ${(resolvedBuild.errors || []).join('; ')}`);
   }
-  const enemyBuild = Object.freeze(normalizeChroniclesEnemyBuild(
-    enemy?.enemyBuild,
-    enemy?.visualType || enemy?.id || 'enemy',
-  ));
+  const enemyBuild = Object.freeze(resolvedBuild.build);
+  const enemyBuildSource = resolvedBuild.source;
   const buildModifiers = chroniclesEnemyBuildModifiers(enemyBuild);
-  const baseMaxHp = Math.max(1, Number(enemy?.maxHp || 1));
-  const baseRetaliation = Math.max(0, Number(enemy?.retaliation || 0));
-  const baseReach = Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1));
-  const sourceEngageRange = Number(enemy?.ai?.engageRange);
-  const baseEngageRange = Number.isFinite(sourceEngageRange)
-    ? Math.max(1, sourceEngageRange)
-    : undefined;
+  const baseMaxHp = resolvedBuild.baseStats.maxHp;
+  const baseRetaliation = resolvedBuild.baseStats.retaliation;
+  const baseReach = resolvedBuild.baseStats.retaliationReach;
+  const baseEngageRange = resolvedBuild.baseStats.engageRange;
   const effectiveReach = baseReach + Math.max(0, Number(buildModifiers.reachBonus || 0));
   const effectiveEngageRange = Number.isFinite(baseEngageRange)
     ? baseEngageRange + Math.max(0, Number(buildModifiers.engageRangeBonus || 0))
@@ -77,6 +71,7 @@ function normalizeEnemy(enemy) {
     x: Number(enemy?.x || 0),
     y: Number(enemy?.y || 0),
     enemyBuild,
+    enemyBuildSource,
     baseStats: Object.freeze({
       maxHp: baseMaxHp,
       retaliation: baseRetaliation,

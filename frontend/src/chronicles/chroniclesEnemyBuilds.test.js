@@ -1,12 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { chroniclesMapById, chroniclesMapInitialEnemyState, chroniclesValidateMapDefinition } from './chroniclesMapCatalog.js';
+import {
+  chroniclesMapById,
+  chroniclesMapIds,
+  chroniclesMapInitialEnemyState,
+  chroniclesValidateMapDefinition,
+} from './chroniclesMapCatalog.js';
 import {
   chroniclesEnemyBuildModifiers,
   createDefaultChroniclesEnemyBuild,
+  deriveLegacyChroniclesEnemyBuild,
   validateChroniclesEnemyBuild,
 } from './chroniclesEnemyBuilds.js';
 
 describe('Chronicles EnemyBuild v1', () => {
+  it('derives a reproducible RPG build for legacy enemies while preserving their effective stats', () => {
+    const legacy = {
+      id: 'legacy-hound',
+      visualType: 'bone-hound',
+      maxHp: 6,
+      retaliation: 2,
+      retaliationReach: 1,
+      ai: { movement: 'cardinal-roam', engagedMovement: 'cardinal-chase', engageRange: 4 },
+    };
+    const first = deriveLegacyChroniclesEnemyBuild(legacy);
+    const second = deriveLegacyChroniclesEnemyBuild(legacy);
+    const modifiers = chroniclesEnemyBuildModifiers(first.build);
+
+    expect(first).toEqual(second);
+    expect(first.source).toBe('derived-legacy');
+    expect(first.build.level).toBeGreaterThan(1);
+    expect(first.build.skills.length).toBeGreaterThan(0);
+    expect(first.baseStats.maxHp + modifiers.bonusMaxHp).toBe(legacy.maxHp);
+    expect(first.baseStats.retaliation + modifiers.damageBonus).toBe(legacy.retaliation);
+    expect(first.baseStats.engageRange + modifiers.engageRangeBonus).toBe(legacy.ai.engageRange);
+  });
+
+  it('gives every shipped enemy a versioned build whose base plus modifiers reconstructs its effective stats', () => {
+    const enemies = chroniclesMapIds().flatMap((mapId) => chroniclesMapById(mapId).enemies);
+    expect(enemies.length).toBeGreaterThan(0);
+
+    enemies.forEach((enemy) => {
+      const modifiers = chroniclesEnemyBuildModifiers(enemy.enemyBuild);
+      expect(enemy.enemyBuild.version).toBe(1);
+      expect(enemy.enemyBuild.level).toBeGreaterThanOrEqual(1);
+      expect(['authored', 'derived-legacy']).toContain(enemy.enemyBuildSource);
+      expect(enemy.baseStats.maxHp + modifiers.bonusMaxHp).toBe(enemy.maxHp);
+      expect(enemy.baseStats.retaliation + modifiers.damageBonus).toBe(enemy.retaliation);
+      expect(enemy.baseStats.retaliationReach + modifiers.reachBonus).toBe(enemy.retaliationReach);
+      if (Number.isFinite(enemy.baseStats.engageRange)) {
+        expect(enemy.baseStats.engageRange + modifiers.engageRangeBonus).toBe(enemy.ai.engageRange);
+      }
+    });
+
+    const derived = enemies.filter((enemy) => enemy.enemyBuildSource === 'derived-legacy');
+    expect(derived.length).toBeGreaterThan(0);
+    expect(derived.some((enemy) => enemy.enemyBuild.skills.length > 0)).toBe(true);
+    expect(derived.some((enemy) => Object.values(enemy.enemyBuild.attributes).some((value) => value > 0))).toBe(true);
+  });
+
   it('keeps an implicit build mechanically neutral', () => {
     const build = createDefaultChroniclesEnemyBuild('fixture');
     expect(build).toEqual(expect.objectContaining({
