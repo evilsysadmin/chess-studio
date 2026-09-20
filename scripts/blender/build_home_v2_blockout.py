@@ -1155,25 +1155,36 @@ def add_bookshelf(materials):
     for side in (-1, 1):
         cube(f"HOME_PROP_library_door_{side}", (x + side * 0.72, y - 0.64, 0.46), (0.62, 0.035, 0.32), wood, bevel=0.035)
         sphere(f"HOME_PROP_library_handle_{side}", (x + side * 0.16, y - 0.69, 0.46), (0.035, 0.018, 0.035), brass)
-    # Book masses only: enough to match the canonical silhouette before detailing.
+    # Keep the silhouette dense, but make the shelves feel accumulated over time
+    # rather than generated from a nine-column grid. Heights grow from the shelf
+    # top so every book remains physically seated; deterministic gaps, lean and
+    # protrusion break the repeated CG rhythm without visual clutter.
     book_colors = (materials["book_red"], materials["book_green"], materials["book_brown"], materials["book_olive"])
-    for row, z in enumerate((0.82, 1.5, 2.18, 2.86, 3.54, 4.16)):
+    shelf_tops = (0.55, 1.25, 1.95, 2.65, 3.35, 4.05)
+    for row, shelf_z in enumerate(shelf_tops):
+        base_z = shelf_z + 0.086
         for col in range(9):
-            bx = x - 1.15 + col * 0.285
-            h = 0.18 + 0.030 * ((row * 2 + col) % 4)
-            w = 0.070 + 0.012 * ((row + col) % 3)
+            gap_code = (row * 11 + col * 7) % 23
+            if gap_code in (0, 1):
+                continue
+            bx = x - 1.15 + col * 0.285 + (_hash01(col, row, 901) - 0.5) * 0.040
+            h = 0.17 + _hash01(row, col, 907) * 0.105
+            w = 0.064 + _hash01(col, row, 911) * 0.026
+            by = y - 0.47 + (_hash01(row, col, 919) - 0.5) * 0.055
+            bz = base_z + h
             book = cube(
                 f"HOME_PROP_book_{row}_{col}",
-                (bx, y - 0.47, z),
+                (bx, by, bz),
                 (w, 0.075, h),
                 book_colors[(row + col * 2) % len(book_colors)],
                 bevel=0.008,
             )
-            book.rotation_euler[1] = math.radians((-3, 1, 0, 2, -1)[(row + col) % 5])
+            book.rotation_euler[1] = math.radians((_hash01(col, row, 929) - 0.5) * 8.0)
+            book.rotation_euler[2] = math.radians((_hash01(row, col, 937) - 0.5) * 2.2)
             if (row * 9 + col) % 7 == 0:
                 cube(
                     f"HOME_PROP_book_band_{row}_{col}",
-                    (bx, y - 0.552, z + h * 0.42),
+                    (bx, by - 0.082, bz + h * 0.42),
                     (w * 0.94, 0.010, 0.012),
                     brass,
                     bevel=0.004,
@@ -1898,7 +1909,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
-        "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
+        "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.27, 0.135, 0.038, 1), roughness=0.36, metallic=0.76),
         "gold": material(
             "HOME_MAT_gold",
