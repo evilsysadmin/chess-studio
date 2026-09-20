@@ -17,8 +17,10 @@ URL_RE = re.compile(r'^\s*const BODY_ATLAS_URL\s*:=\s*"(?P<url>https?://[^"]+)"\
 V2_URL_RE = re.compile(r'^\\s*const BODY_ATLAS_V2_URL\\s*:=\\s*"(?P<url>https?://[^"]+)"\\s*$', re.M)
 FRAME_RE = re.compile(r'^\s*const REMOTE_FRAME_SIZE\s*:=\s*Vector2\((?P<w>[0-9.]+),\s*(?P<h>[0-9.]+)\)\s*$', re.M)
 ROWS_RE = re.compile(r'^\s*const REMOTE_ATLAS_ROWS\s*:=\s*(?P<rows>\d+)\s*$', re.M)
+LEGACY_ROWS_RE = re.compile(r'^\s*const LEGACY_REMOTE_ATLAS_ROWS\s*:=\s*(?P<rows>\d+)\s*$', re.M)
 COLS_RE = re.compile(r'^\s*const FRAMES_PER_TYPE\s*:=\s*(?P<cols>\d+)\s*$', re.M)
 MAP_BLOCK_RE = re.compile(r'const REMOTE_TYPE_ROW\s*:=\s*\{(?P<body>[^}]*)\}')
+LEGACY_MAP_BLOCK_RE = re.compile(r'const LEGACY_REMOTE_TYPE_ROW\s*:=\s*\{(?P<body>[^}]*)\}')
 MAP_ROW_RE = re.compile(r'"(?P<type>[a-z0-9_-]+)"\s*:\s*(?P<row>\d+)')
 
 
@@ -56,6 +58,32 @@ def parse_runtime_contract(path: Path) -> tuple[str, int, int, int, dict[str, in
     invalid = {kind: row for kind, row in type_rows.items() if row < 0 or row >= rows}
     if invalid:
         raise SystemExit(f"enemy type rows outside atlas: {invalid}")
+    return url_match.group("url"), width, cols, rows, type_rows
+
+
+def parse_legacy_runtime_contract(path: Path) -> tuple[str, int, int, int, dict[str, int]]:
+    text = path.read_text(encoding="utf-8")
+    url_match = URL_RE.search(text)
+    frame_match = FRAME_RE.search(text)
+    rows_match = LEGACY_ROWS_RE.search(text)
+    cols_match = COLS_RE.search(text)
+    map_match = LEGACY_MAP_BLOCK_RE.search(text)
+    if not all((url_match, frame_match, rows_match, cols_match, map_match)):
+        raise SystemExit("enemy_visual.gd lost the legacy enemy atlas fallback contract")
+
+    width = int(round(float(frame_match.group("w"))))
+    height = int(round(float(frame_match.group("h"))))
+    if width != height:
+        raise SystemExit(f"legacy enemy atlas cells must be square, got {width}x{height}")
+    rows = int(rows_match.group("rows"))
+    cols = int(cols_match.group("cols"))
+    type_rows = {
+        match.group("type"): int(match.group("row"))
+        for match in MAP_ROW_RE.finditer(map_match.group("body"))
+    }
+    invalid = {kind: row for kind, row in type_rows.items() if row < 0 or row >= rows}
+    if not type_rows or invalid:
+        raise SystemExit(f"invalid LEGACY_REMOTE_TYPE_ROW mappings: {invalid or type_rows}")
     return url_match.group("url"), width, cols, rows, type_rows
 
 
@@ -184,14 +212,32 @@ def export(atlas_path: Path, out_root: Path, *, cell: int, cols: int, rows: int,
 def main() -> None:
     cfg = parse_args()
     url, cell, cols, rows, type_rows = parse_runtime_contract(cfg.gdscript)
+    runtime_source = "BODY_ATLAS_V2_URL" if "cast-v2" in url else "BODY_ATLAS_URL"
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pawnslug-enemy-smoke-") as tmp:
-        report = export(acquire(url, Path(tmp)), cfg.output_dir, cell=cell, cols=cols, rows=rows, type_rows=type_rows)
+        temp_dir = Path(tmp)
+        atlas_path = acquire(url, temp_dir)
+        actual_size = Image.open(atlas_path).size
+        expected_size = (cols * cell, rows * cell)
+        if actual_size != expected_size and runtime_source == "BODY_ATLAS_V2_URL":
+            # Mirror enemy_visual.gd exactly: invalid cast-v2 falls back to the
+            # legacy atlas instead of killing runtime or the evidence job.
+            url, cell, cols, rows, type_rows = parse_legacy_runtime_contract(cfg.gdscript)
+            runtime_source = "BODY_ATLAS_URL"
+            atlas_path = acquire(url, temp_dir)
+        report = export(
+            atlas_path,
+            cfg.output_dir,
+            cell=cell,
+            cols=cols,
+            rows=rows,
+            type_rows=type_rows,
+        )
     summary = {
         "schema": 2,
         "scope": "pawn-slug-godot-enemy-sprite-smoke",
         "runtimeUrl": url,
-        "runtimeSource": "BODY_ATLAS_V2_URL" if "cast-v2" in url else "BODY_ATLAS_URL",
+        "runtimeSource": runtime_source,
         **report,
     }
     (cfg.output_dir / "enemy_sprite_smoke.json").write_text(
