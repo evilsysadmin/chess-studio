@@ -1933,6 +1933,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
 
+    for idx, (dx, radius, height, tilt) in enumerate((
+        (-0.22, 0.070, 0.52, -6.0),
+        (0.02, 0.085, 0.70, 3.0),
+        (0.25, 0.065, 0.48, 8.0),
+    )):
+        tongue = cone(
+            f"HOME_PROP_fireplace_left_front_tongue_{idx}",
+            (-6.15 + dx, 5.390, 0.72 + height * 0.50),
+            radius,
+            0.010,
+            height,
+            materials["fire"],
+            vertices=16,
+        )
+        tongue.rotation_euler[1] = math.radians(tilt)
+
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
@@ -2230,6 +2246,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["fire_hot"],
         )
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
+
+    for idx, (dx, radius, height, tilt) in enumerate((
+        (-0.17, 0.060, 0.43, -5.0),
+        (0.06, 0.072, 0.56, 4.0),
+        (0.27, 0.055, 0.38, 8.0),
+    )):
+        tongue = cone(
+            f"HOME_PROP_fireplace_right_front_tongue_{idx}",
+            (4.45 + dx, 5.390, 0.72 + height * 0.50),
+            radius,
+            0.010,
+            height,
+            materials["fire"],
+            vertices=16,
+        )
+        tongue.rotation_euler[1] = math.radians(tilt)
 
     cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
     # Canonical right window: tall Gothic lancets with clean mullions and
