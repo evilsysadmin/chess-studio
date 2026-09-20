@@ -31,7 +31,7 @@ const EXPOSURE = Object.freeze({
   night: 1.13,
 });
 
-const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 30;
+const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
 
 export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
@@ -45,7 +45,7 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   ) * 180 / Math.PI;
   const blend = Math.min(1, Math.max(0, (1 - safeAspect) / 0.20));
   return Math.min(
-    64,
+    42,
     Math.max(
       HOME_BLENDER_CAMERA_FOV,
       HOME_BLENDER_CAMERA_FOV
