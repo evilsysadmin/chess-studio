@@ -1,0 +1,46 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v18-p99",
+  "status": "candidate-local-validated",
+  "goal": "replace the strict-v16 pistol's SMG/Uzi-like silhouette with a compact P99-style service pistol while keeping Matthias' canonical scale, two-hand grip, pivot, foot line and all 18 action rows",
+  "visual_reference": {
+    "kind": "reviewed generated P99 worksheet",
+    "policy": "used as visual direction only; final runtime atlas is rebuilt deterministically from the promoted strict-v16 raster body/pose bank so the worksheet's presentation grid cannot introduce scale or pivot drift",
+    "weapon": "compact P99-style pistol",
+    "grip": "two hands"
+  },
+  "source": {
+    "generation": "strict-v16",
+    "weapon": "pistol",
+    "sha256": "670506b5307a1756cdce8df7465b37631052f768bfcec9705b7600a66d21c9eb",
+    "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/pistol/v16-670506b5307a1756.png"
+  },
+  "contract": {
+    "weapons": ["pistol"],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "cell_guard_px": 2,
+    "body_pose": "strict-v16 pistol body/timing retained",
+    "weapon_cues": ["compact stepped slide", "polymer frame", "short angled grip", "trigger guard", "front/rear sights", "no SMG magazine"],
+    "grip_cues": ["rear glove on grip", "support glove under frame"]
+  },
+  "local_evidence": {
+    "frames": 144,
+    "rows": 18,
+    "all_rows_8_distinct": true,
+    "changed_pixels_vs_source": 415939,
+    "cell_guard_ok": true,
+    "bottom_y_range": [383, 389],
+    "median_height": 218.5,
+    "baseline_median_height": 218.5,
+    "candidate_sha256": "712fa3a575353995c7746d87ae1450963ff89c7c14ec6bf824f1735a0b0a015f",
+    "visual_review": "local baseline-v18 review plus zoomed firing-frame comparison inspected; compact P99 silhouette is readable, two-hand grip remains connected, authored muzzle flashes remain filled, body scale and foot line are unchanged"
+  },
+  "promotion": {
+    "runtime_changed": false,
+    "next": "merge the deterministic pipeline, publish strict-v18 pistol to immutable R2 on main, inspect the CI review artifact, then promote the emitted content-addressed URL in Matthias runtime"
+  }
+}
