@@ -44,13 +44,11 @@
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
-  object-position: 50% 26%;
+  object-fit: contain;
+  object-position: 50% 50%;
+  background: #120d0a;
   filter: saturate(.96) contrast(1.04) brightness(.96);
 }
-.chronicles-party-preview-image[data-member-id="rook"] { object-position: 50% 23%; }
-.chronicles-party-preview-image[data-member-id="bishop"] { object-position: 50% 22%; }
-.chronicles-party-preview-image[data-member-id="knight"] { object-position: 50% 24%; }
 .chronicles-party-preview-three,
 .chronicles-party-preview-three canvas {
   position: absolute;
