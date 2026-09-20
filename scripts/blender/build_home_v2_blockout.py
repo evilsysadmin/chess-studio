@@ -3218,31 +3218,31 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Chandelier: keep the same authored identity but lift and tighten it so it
     # frames the focal wall instead of masking the armour and central banner.
     cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.68), 0.034, 0.64, materials["brass_dark"])
-    ring_points = [
-        (
-            1.12 * math.cos(i * math.tau / 24),
-            2.20 + 0.64 * math.sin(i * math.tau / 24),
-            4.92 + 0.13 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
-    ]
+    ring_points = []
+    for i in range(25):
+        angle = i * math.tau / 24
+        radial = 1.12 + (_hash01(i, 0, 1601) - 0.5) * 0.035
+        depth = 0.64 + (_hash01(i, 1, 1607) - 0.5) * 0.024
+        ring_points.append((
+            radial * math.cos(angle),
+            2.20 + depth * math.sin(angle),
+            4.92 + 0.13 * math.sin(angle) + (_hash01(i, 2, 1613) - 0.5) * 0.014,
+        ))
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.032, materials["brass_dark"])
-    inner_ring = [
-        (
-            0.75 * math.cos(i * math.tau / 24),
-            2.20 + 0.43 * math.sin(i * math.tau / 24),
-            4.89 + 0.10 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
-    ]
+    inner_ring = []
+    for i in range(25):
+        angle = i * math.tau / 24
+        radial = 0.75 + (_hash01(i, 3, 1621) - 0.5) * 0.024
+        depth = 0.43 + (_hash01(i, 4, 1627) - 0.5) * 0.018
+        inner_ring.append((
+            radial * math.cos(angle),
+            2.20 + depth * math.sin(angle),
+            4.89 + 0.10 * math.sin(angle) + (_hash01(i, 5, 1637) - 0.5) * 0.010,
+        ))
     curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.021, materials["brass"])
     lower_outer_ring = [
-        (
-            1.12 * math.cos(i * math.tau / 24),
-            2.20 + 0.64 * math.sin(i * math.tau / 24),
-            4.82 + 0.13 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
+        (x, y, z - 0.10 + (_hash01(i, 6, 1643) - 0.5) * 0.008)
+        for i, (x, y, z) in enumerate(ring_points)
     ]
     curve_tube("HOME_PROP_chandelier_lower_ring", lower_outer_ring, 0.021, materials["brass_dark"])
     for idx in range(8):
