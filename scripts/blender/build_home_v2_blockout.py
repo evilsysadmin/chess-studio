@@ -597,7 +597,13 @@ def add_table_and_board(materials):
     for side in (-1, 1):
         x = side * 4.18
         cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
-        cube(f"HOME_PROP_bench_cushion_{side}", (x, 0.98, 0.74), (0.69, 1.55, 0.20), banner, bevel=0.12)
+        cube(
+            f"HOME_PROP_bench_cushion_{side}",
+            (x, 0.98, 0.74),
+            (0.69, 1.55, 0.20),
+            materials["velvet_dark"],
+            bevel=0.12,
+        )
         for by in (0.08, 2.32):
             for dx in (-0.40, 0.40):
                 bx = x + dx
