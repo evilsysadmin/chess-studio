@@ -889,8 +889,17 @@ def add_gothic_canon_v2(static, mats):
     # ceremonial suit as a military accent; the right suit is removed so the
     # globe + night window can read as a different, quieter secondary zone.
     for obj in list(static.objects):
-        if obj.name.startswith("WR_ARMOR_") and obj.location.x > 0:
+        if not obj.name.startswith("WR_ARMOR_"):
+            continue
+        if obj.location.x > 0:
             bpy.data.objects.remove(obj, do_unlink=True)
+        else:
+            # The surviving ceremonial suit was buried against the left wall
+            # from the hero camera and read like a dark side table. Nudge the
+            # complete grouped silhouette inward and slightly toward the camera
+            # so the existing plate/brass relief can catch the hearth light.
+            obj.location.x += 0.34
+            obj.location.y -= 0.42
 
     # The baseline leather benches were another mirrored cue and sat so close
     # to the camera edges that they read as anonymous blocks. Keep one lived-in
