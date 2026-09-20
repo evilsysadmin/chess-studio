@@ -1866,22 +1866,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Rounded overlapping lobes keep the fire organic at Home distance.
     # The old single polygon mass read as a row of pink triangular teeth.
     for idx, (dx, flame_w, flame_h, tilt) in enumerate((
-        (-0.36, 0.11, 0.14, -8.0),
-        (-0.17, 0.12, 0.20, 7.0),
-        (0.03, 0.13, 0.25, -4.0),
-        (0.22, 0.11, 0.18, 8.0),
-        (0.38, 0.10, 0.13, -6.0),
+        (-0.36, 0.11, 0.18, -8.0),
+        (-0.17, 0.12, 0.27, 7.0),
+        (0.03, 0.13, 0.36, -4.0),
+        (0.22, 0.11, 0.25, 8.0),
+        (0.38, 0.10, 0.17, -6.0),
     )):
         lobe = sphere(
             f"HOME_PROP_fireplace_left_front_flame_{idx}",
-            (-6.15 + dx, 5.378, 0.72 + flame_h * 0.56),
+            (-6.15 + dx, 5.378, 0.76 + flame_h * 0.56),
             (flame_w, 0.028, flame_h),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_left_front_hot_{idx}",
-            (-6.15 + dx * 0.94, 5.342, 0.70 + flame_h * 0.34),
+            (-6.15 + dx * 0.94, 5.342, 0.74 + flame_h * 0.34),
             (flame_w * 0.44, 0.019, flame_h * 0.46),
             materials["fire_hot"],
         )
