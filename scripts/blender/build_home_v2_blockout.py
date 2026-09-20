@@ -1942,74 +1942,74 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Chandelier: keep the same authored identity but lift and tighten it so it
     # frames the focal wall instead of masking the armour and central banner.
-    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.48), 0.042, 0.88, materials["brass_dark"])
+    cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.56), 0.034, 0.82, materials["brass_dark"])
     ring_points = [
         (
-            1.52 * math.cos(i * math.tau / 24),
-            2.20 + 0.90 * math.sin(i * math.tau / 24),
-            4.62 + 0.18 * math.sin(i * math.tau / 24),
+            1.34 * math.cos(i * math.tau / 24),
+            2.20 + 0.78 * math.sin(i * math.tau / 24),
+            4.74 + 0.15 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
-    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.044, materials["brass_dark"])
+    curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.032, materials["brass_dark"])
     inner_ring = [
         (
-            1.02 * math.cos(i * math.tau / 24),
-            2.20 + 0.60 * math.sin(i * math.tau / 24),
-            4.59 + 0.14 * math.sin(i * math.tau / 24),
+            0.90 * math.cos(i * math.tau / 24),
+            2.20 + 0.52 * math.sin(i * math.tau / 24),
+            4.71 + 0.12 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
-    curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.028, materials["brass"])
+    curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.021, materials["brass"])
     lower_outer_ring = [
         (
-            1.52 * math.cos(i * math.tau / 24),
-            2.20 + 0.90 * math.sin(i * math.tau / 24),
-            4.50 + 0.18 * math.sin(i * math.tau / 24),
+            1.34 * math.cos(i * math.tau / 24),
+            2.20 + 0.78 * math.sin(i * math.tau / 24),
+            4.64 + 0.15 * math.sin(i * math.tau / 24),
         )
         for i in range(25)
     ]
-    curve_tube("HOME_PROP_chandelier_lower_ring", lower_outer_ring, 0.028, materials["brass_dark"])
+    curve_tube("HOME_PROP_chandelier_lower_ring", lower_outer_ring, 0.021, materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        x = 1.52 * math.cos(angle)
-        y = 2.20 + 0.90 * math.sin(angle)
-        z_mid = 4.57 + 0.18 * math.sin(angle)
+        x = 1.34 * math.cos(angle)
+        y = 2.20 + 0.78 * math.sin(angle)
+        z_mid = 4.69 + 0.15 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_dropbar_{idx}",
             [(x, y, z_mid - 0.07), (x, y, z_mid + 0.07)],
-            0.015,
+            0.012,
             materials["brass_dark"],
         )
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
         curve_tube(
             f"HOME_PROP_chandelier_spoke_{idx}",
             [
-                (0.0, 2.20, 4.58),
-                (1.34 * math.cos(angle), 2.20 + 0.79 * math.sin(angle), 4.58),
+                (0.0, 2.20, 4.70),
+                (1.18 * math.cos(angle), 2.20 + 0.69 * math.sin(angle), 4.70),
             ],
-            0.022,
+            0.017,
             materials["brass_dark"],
         )
     for idx, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
-        rx = 1.18 * math.cos(angle)
-        ry = 2.34 + 0.74 * math.sin(angle)
+        rx = 1.02 * math.cos(angle)
+        ry = 2.32 + 0.64 * math.sin(angle)
         curve_tube(
             f"HOME_PROP_chandelier_chain_{idx}",
-            [(0.0, 2.20, 5.88), (rx, ry, 4.80)],
-            0.026,
+            [(0.0, 2.20, 5.92), (rx, ry, 4.90)],
+            0.020,
             materials["brass_dark"],
         )
-    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.59), (0.11, 0.11, 0.10), materials["brass_dark"])
+    sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.71), (0.085, 0.085, 0.078), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.42 * math.cos(angle)
-        cy = 2.20 + 0.84 * math.sin(angle)
-        cz = 4.66 + 0.16 * math.sin(angle)
-        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.23), (0.045, 0.045, 0.20), materials["paper"], bevel=0.016)
-        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.48), 0.045, 0.008, 0.15, materials["fire_hot"], vertices=12)
-        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.080, 0.060, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.06, cz + 0.46), 26, (1.0, 0.43, 0.14), radius=0.30)
+        cx = 1.24 * math.cos(angle)
+        cy = 2.20 + 0.72 * math.sin(angle)
+        cz = 4.78 + 0.14 * math.sin(angle)
+        cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.20), (0.038, 0.038, 0.17), materials["paper"], bevel=0.014)
+        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.42), 0.038, 0.007, 0.13, materials["fire_hot"], vertices=12)
+        cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.065, 0.052, materials["brass_dark"], vertices=16)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.40), 24, (1.0, 0.43, 0.14), radius=0.28)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
