@@ -74,7 +74,7 @@ def test_map_code_preview_is_deterministic_and_versioned():
     assert first.json() == repeated.json()
     payload = first.json()
     assert payload["mapCode"] == code
-    assert payload["generatorVersion"] == 1
+    assert payload["generatorVersion"] == 2
     assert len(payload["layoutRevision"]) == 64
     assert len(payload["grid"]) == 10
     assert all(len(row) == 13 for row in payload["grid"])
@@ -133,7 +133,7 @@ def test_manifest_is_versioned_and_deterministic_by_map_and_seed():
     assert len(payload["manifestRevision"]) == 64
     assert len(payload["instanceId"]) == 24
     assert payload["mapCode"].endswith("|seed=417")
-    assert payload["generatorVersion"] == 1
+    assert payload["generatorVersion"] == 2
     assert len(payload["layoutRevision"]) == 64
     assert payload["manifest"]["generation"]["mapCode"] == payload["mapCode"]
     assert payload["manifest"]["generation"]["layoutRevision"] == payload["layoutRevision"]

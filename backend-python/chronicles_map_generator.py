@@ -20,7 +20,7 @@ from chronicles_map_code import (
 )
 
 
-CHRONICLES_MAP_GENERATOR_VERSION = 1
+CHRONICLES_MAP_GENERATOR_VERSION = 2
 CHRONICLES_LAYOUT_RESERVED_OBJECT_SLOTS = 1
 
 _DIFFICULTY_OPEN_RATIO = {
@@ -176,6 +176,12 @@ def _carve_maze(recipe: ChroniclesMapCode, rng: _XorShift32) -> tuple[list[list[
     return grid, walkable_count
 
 
+def _perfect_maze_walkable_count(recipe: ChroniclesMapCode) -> int:
+    node_columns = (recipe.width - 1) // 2
+    node_rows = (recipe.height - 1) // 2
+    return max(1, 2 * node_columns * node_rows - 1)
+
+
 def _target_walkable_count(recipe: ChroniclesMapCode) -> int:
     interior = (recipe.width - 2) * (recipe.height - 2)
     required = _required_walkable_slots(recipe)
@@ -188,7 +194,13 @@ def _target_walkable_count(recipe: ChroniclesMapCode) -> int:
         recipe.theme, 0.0
     )
     ratio = max(0.42, min(0.75, ratio))
-    return min(interior, max(required, math.ceil(interior * ratio)))
+    # A perfect maze is a tree. On compact maps the density target can fall
+    # below that unavoidable carve floor, making difficulty/seed variation
+    # collapse after authored anchors are reconnected. Keep two deterministic
+    # extra loop cells whenever the interior has room; one is not enough to
+    # prevent canonical 7x7 authored anchors from collapsing adjacent seeds.
+    loop_floor = min(interior, _perfect_maze_walkable_count(recipe) + 2)
+    return min(interior, max(required, math.ceil(interior * ratio), loop_floor))
 
 
 def _open_extra_cells(
