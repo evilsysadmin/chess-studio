@@ -1891,7 +1891,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["brass_dark"],
         )
     cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
-    sphere("HOME_PROP_window_moon", (8.30, 6.40, 4.86), (0.20, 0.026, 0.20), materials["moon"])
+    sphere(
+        "HOME_PROP_window_moon",
+        (8.02, 6.50, 4.72),
+        (0.28, 0.026, 0.28),
+        materials["moon"],
+    )
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
