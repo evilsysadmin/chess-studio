@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   chroniclesProjectSceneModel,
   chroniclesSceneWorldObjectState,
+  chroniclesValidateSceneModel,
 } from './chronicles/chroniclesSceneModel.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
@@ -835,6 +836,7 @@ export function createChroniclesIsometricRenderer(host, {
 
   function syncSceneModel(sceneModel) {
     if (!sceneModel) return;
+    sceneModel = chroniclesValidateSceneModel(sceneModel);
     latestSceneModel = sceneModel;
     selectedMemberId = sceneModel.selectedMemberId || selectedMemberId;
 
