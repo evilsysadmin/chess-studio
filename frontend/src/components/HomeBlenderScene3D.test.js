@@ -180,6 +180,25 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect((mesh.geometry.boundingBox.min.x + mesh.geometry.boundingBox.max.x) / 2).toBeCloseTo(0, 5);
     });
 
+    it('handles the non-uniform node transform the published scene really carries', () => {
+      // Taken from the published home.scene.runtime: the flame nodes hold a global
+      // scene scale/translation while their vertices stay far from the node origin.
+      const mesh = panel(-6.69, 0.58, 0.38, 0.16, -5.585);
+      mesh.scale.set(0.126, 0.063, 0.9);
+      mesh.position.set(-0.615, 0.035, -1.01);
+      const before = worldBox(mesh);
+      expect(rebaseFlameToPivot(mesh)).toBe(true);
+      const after = worldBox(mesh);
+      for (const axis of ['x', 'y', 'z']) {
+        expect(after.min[axis]).toBeCloseTo(before.min[axis], 5);
+        expect(after.max[axis]).toBeCloseTo(before.max[axis], 5);
+      }
+      // Stretching about the new pivot must keep the flame's base where it was.
+      const baseY = after.min.y;
+      mesh.scale.set(0.126 * 0.96, 0.063 * 1.12, 0.9 * 0.96);
+      expect(worldBox(mesh).min.y).toBeCloseTo(baseY, 5);
+    });
+
     it('keeps the base fixed when the reseated flame is stretched and leaned', () => {
       const mesh = panel(4.45, 0.58, 0.56);
       const baseBefore = worldBox(mesh).min.y;
