@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
 import {
+  chroniclesTacticsLegalMoves,
+  chroniclesTacticsMove,
+} from '../chroniclesOfMatthiasTactics.js';
+import {
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
@@ -30,6 +34,33 @@ describe('Chronicles headless scene harness', () => {
     });
   });
 
+  it('walks every shipped map headlessly through real legal movement', () => {
+    chroniclesMapIds().forEach((mapId) => {
+      let state = createChroniclesState(mapId);
+
+      for (let step = 0; step < 6; step += 1) {
+        const legalMoves = chroniclesTacticsLegalMoves(state);
+        const snapshot = chroniclesHeadlessSceneSnapshot(state, {
+          interaction: { mode: 'move', legalMoves, legalTargets: [] },
+        });
+
+        expect(snapshot.mapId).toBe(mapId);
+        expect(snapshot.focusCell).toBe(`${state.x},${state.y}`);
+        expect(snapshot.interaction?.legalMoves).toEqual(
+          legalMoves.map((move) => `${move.x},${move.y}`),
+        );
+        expect(() => JSON.stringify(snapshot)).not.toThrow();
+
+        if (!legalMoves.length) break;
+        const chosen = legalMoves[step % legalMoves.length];
+        const next = chroniclesTacticsMove(state, chosen);
+        expect(next).not.toBe(state);
+        expect([next.x, next.y]).toEqual([chosen.x, chosen.y]);
+        state = next;
+      }
+    });
+  });
+
   it('is deterministic and ignores RPG or narrative fields that cannot change rendering', () => {
     const state = createChroniclesState();
     const first = chroniclesHeadlessSceneSignature(state);
@@ -52,7 +83,7 @@ describe('Chronicles headless scene harness', () => {
     remote.generation = {
       kind: 'seeded-layout',
       mapCode: 'CM1|theme=crypt|size=7x7|verbs=guardian|enemies=2|treasures=1|secrets=0|difficulty=2|seed=418',
-      generatorVersion: 1,
+      generatorVersion: 2,
       layoutRevision: 'c'.repeat(64),
     };
     chroniclesInstallRuntimeMapDefinition(remote);
