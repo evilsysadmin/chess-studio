@@ -739,5 +739,62 @@
       "x": 5564,
       "y": 608
     }
+  ],
+  "story_props": [
+    {
+      "kind": "harbor_lamp",
+      "x": 620,
+      "y": 610
+    },
+    {
+      "kind": "harbor_lamp",
+      "x": 1480,
+      "y": 610
+    },
+    {
+      "kind": "harbor_lamp",
+      "x": 2340,
+      "y": 610
+    },
+    {
+      "kind": "harbor_lamp",
+      "x": 3200,
+      "y": 610
+    },
+    {
+      "kind": "harbor_lamp",
+      "x": 4060,
+      "y": 610
+    },
+    {
+      "kind": "harbor_lamp",
+      "x": 4920,
+      "y": 610
+    },
+    {
+      "kind": "harbor_bollard",
+      "x": 980,
+      "y": 607
+    },
+    {
+      "kind": "harbor_bollard",
+      "x": 1920,
+      "y": 607
+    },
+    {
+      "kind": "harbor_bollard",
+      "x": 2860,
+      "y": 607
+    },
+    {
+      "kind": "harbor_bollard",
+      "x": 3800,
+      "y": 607
+    },
+    {
+      "kind": "harbor_bollard",
+      "x": 4740,
+      "y": 607
+    }
   ]
 }
