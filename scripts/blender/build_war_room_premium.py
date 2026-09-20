@@ -911,6 +911,11 @@ def add_gothic_canon_v2(static, mats):
     horse_relief = static.objects.get("WR_CREST_horse_relief")
     if horse_relief is not None and horse_relief.data.materials:
         horse_relief.data.materials[0] = heraldic_brass
+    crest_shield = static.objects.get("WR_CREST_shield")
+    if crest_shield is not None and crest_shield.data.materials:
+        # Darken only the shield field so the brass horse gains separation
+        # without another lamp or a self-lit heraldic material.
+        crest_shield.data.materials[0] = mats["wall_recess"]
 
     # The single surviving ceremonial suit sits in a deliberately dark corner.
     # Keep the plate itself subdued, but lift a handful of existing trim pieces
