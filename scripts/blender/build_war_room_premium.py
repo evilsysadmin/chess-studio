@@ -1465,9 +1465,10 @@ def weather_tint(p, is_floor, tone=1.0):
     meets the walls anchors the room without adding a single prop.
     """
     x, y, z = p
-    macro = (0.5 * value_noise(x * 0.30, y * 0.30, z * 0.42, 11)
-             + 0.3 * value_noise(x * 0.90, y * 0.90, z * 1.10, 29)
-             + 0.2 * value_noise(x * 1.60, y * 1.60, z * 1.90, 53))
+    # Frequencies stay below half the 1 m subdivision so every octave is actually resolved.
+    macro = (0.5 * value_noise(x * 0.22, y * 0.22, z * 0.32, 11)
+             + 0.3 * value_noise(x * 0.50, y * 0.50, z * 0.65, 29)
+             + 0.2 * value_noise(x * 0.85, y * 0.85, z * 1.00, 53))
     tint = 0.60 + 0.40 * _smoothstep(0.25, 0.75, macro)
     if is_floor:
         wall_gap = min(8.5 - abs(x), 6.85 - y)
@@ -1479,7 +1480,8 @@ def weather_tint(p, is_floor, tone=1.0):
         # Long vertical runs where damp and soot settle on the upper masonry.
         streak = _smoothstep(0.58, 0.88, value_noise(x * 4.0, y * 4.0, z * 0.35, 71))
         tint *= 1.0 - 0.30 * streak * _smoothstep(0.8, 5.5, z)
-    tint = max(0.0, min(1.0, tint * tone))
+    # Quantised to 1/48 steps: invisible after interpolation, but far cheaper for meshopt.
+    tint = round(max(0.0, min(1.0, tint * tone)) * 48.0) / 48.0
     return (tint, tint * 0.985, tint * 0.95, 1.0)
 
 
@@ -1495,7 +1497,7 @@ def _mesh_material_names(obj):
 ROOM_CENTER = Vector((0.0, 0.5, 2.0))
 
 
-def _subdivide_large_faces(obj, max_edge=0.6):
+def _subdivide_large_faces(obj, max_edge=1.0):
     """Cut large visible faces so the weathering colour has resolution.
 
     Faces that point away from the room (outer walls, slab undersides) are never
