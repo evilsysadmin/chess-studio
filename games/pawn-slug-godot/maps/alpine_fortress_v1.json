@@ -690,5 +690,77 @@
       "y": 607,
       "count": 6
     }
+  ],
+  "story_props": [
+    {
+      "kind": "alpine_tripod",
+      "x": 430,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 1120,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 1810,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 2500,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 3190,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 3880,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 4570,
+      "y": 610
+    },
+    {
+      "kind": "alpine_tripod",
+      "x": 5260,
+      "y": 610
+    },
+    {
+      "kind": "snowbank",
+      "x": 850,
+      "y": 606
+    },
+    {
+      "kind": "snowbank",
+      "x": 1690,
+      "y": 606
+    },
+    {
+      "kind": "snowbank",
+      "x": 2530,
+      "y": 606
+    },
+    {
+      "kind": "snowbank",
+      "x": 3370,
+      "y": 606
+    },
+    {
+      "kind": "snowbank",
+      "x": 4210,
+      "y": 606
+    },
+    {
+      "kind": "snowbank",
+      "x": 5050,
+      "y": 606
+    }
   ]
 }
