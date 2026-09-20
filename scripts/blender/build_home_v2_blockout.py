@@ -2093,9 +2093,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cy = 2.20 + 0.72 * math.sin(angle)
         cz = 4.78 + 0.14 * math.sin(angle)
         cube(f"HOME_PROP_chandelier_candle_{idx}", (cx, cy, cz + 0.20), (0.038, 0.038, 0.17), materials["paper"], bevel=0.014)
-        cone(f"HOME_PROP_chandelier_flame_{idx}", (cx, cy, cz + 0.42), 0.038, 0.007, 0.13, materials["fire_hot"], vertices=12)
+        cone(
+            f"HOME_PROP_chandelier_flame_{idx}",
+            (cx, cy, cz + 0.395),
+            0.027,
+            0.006,
+            0.085,
+            materials["fire_hot"],
+            vertices=12,
+        )
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.065, 0.052, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.40), 24, (1.0, 0.43, 0.14), radius=0.28)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.38), 18, (1.0, 0.34, 0.09), radius=0.24)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
