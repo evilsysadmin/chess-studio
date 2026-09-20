@@ -228,7 +228,7 @@ export function installWarRoomHansServiceRoutine(root) {
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
-      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 48000, salt: eventName });
+      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 6000, max: 14000, salt: eventName });
       active = false;
       state = 'idle';
       home = null;

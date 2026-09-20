@@ -237,7 +237,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
-      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 22000, max: 62000, salt: `chore:${eventName}` });
+      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 7000, max: 16000, salt: `chore:${eventName}` });
       active = false;
       state = 'idle';
       home = null;
