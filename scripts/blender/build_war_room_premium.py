@@ -417,8 +417,7 @@ def add_room(static, mats):
     cube("WR_ARCH_floor", (0, 0, -0.12), (8.8, 7.3, 0.12), mats["floor_dark"], static, bevel=0.02)
     cube("WR_ARCH_back_wall", (0, 7.02, 3.35), (8.8, 0.18, 3.35), mats["wall_wood"], static, bevel=0.02)
     cube("WR_ARCH_left_wall", (-8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)
-    cube("WR_ARCH_right_wall", (8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)
-    # Canonical v2 split: dark walnut wainscot below, warm mineral plaster
+    cube("WR_ARCH_right_wall", (8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)    # Canonical v2 split: dark walnut wainscot below, warm mineral plaster
     # above. The broad matte fields break the all-brown box effect while the
     # original rails/stiles remain the architectural frame in front.
     upper_bays = (
@@ -888,23 +887,44 @@ def add_gothic_canon_v2(static, mats):
                     mats["stone"], static, bevel=0.048,
                 )
                 beam.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+    # One ceremonial lancet is enough. Keeping only the left arch removes the
+    # twin-altar symmetry that made v2 feel like a stage set rather than a lived
+    # command room.
     add_pointed_arch_frame("left", -4.55)
-    add_pointed_arch_frame("right", 4.85)
 
-    # Canon parity: shallow gothic tracery inside the rear lancets.
-    for prefix, cx in (("left", -4.55), ("right", 4.85)):
-        cube(f"WR_CANON_arch_{prefix}_keystone", (cx, 6.34, 6.18),
-             (0.18, 0.055, 0.20), mats["stone"], static, bevel=0.055)
-        cube(f"WR_CANON_arch_{prefix}_sill", (cx, 6.36, 3.26),
-             (1.33, 0.055, 0.075), mats["stone"], static, bevel=0.030)
-        for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
-            torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
-                  (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
-                  mats["stone"], static, rotation=(math.pi / 2, 0, 0))
-        cube(f"WR_CANON_arch_{prefix}_tracery_v", (cx, 6.30, 5.18),
-             (0.038, 0.035, 0.48), mats["stone"], static, bevel=0.014)
-        cube(f"WR_CANON_arch_{prefix}_tracery_h", (cx, 6.30, 5.42),
-             (0.48, 0.035, 0.038), mats["stone"], static, bevel=0.014)
+    # Shallow tracery belongs only to the dominant left hearth.
+    prefix, cx = "left", -4.55
+    cube(f"WR_CANON_arch_{prefix}_keystone", (cx, 6.34, 6.18),
+         (0.18, 0.055, 0.20), mats["stone"], static, bevel=0.055)
+    cube(f"WR_CANON_arch_{prefix}_sill", (cx, 6.36, 3.26),
+         (1.33, 0.055, 0.075), mats["stone"], static, bevel=0.030)
+    for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
+        torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
+              (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
+              mats["stone"], static, rotation=(math.pi / 2, 0, 0))
+    cube(f"WR_CANON_arch_{prefix}_tracery_v", (cx, 6.30, 5.18),
+         (0.038, 0.035, 0.48), mats["stone"], static, bevel=0.014)
+    cube(f"WR_CANON_arch_{prefix}_tracery_h", (cx, 6.30, 5.42),
+         (0.48, 0.035, 0.038), mats["stone"], static, bevel=0.014)
+
+    # The opposite wall gets a broad campaign painting instead of a mirrored
+    # lancet. Large, quiet rectangular masses give the eye somewhere to rest
+    # and bring back the hierarchy that made the classic room feel inhabited.
+    px = 4.86
+    cube("WR_CANON_campaign_frame_back", (px, 6.49, 4.95),
+         (1.46, 0.085, 0.94), mats["frame_wood"], static, bevel=0.075)
+    cube("WR_CANON_campaign_frame_outer", (px, 6.38, 4.95),
+         (1.36, 0.045, 0.84), mats["brass_dark"], static, bevel=0.055)
+    cube("WR_CANON_campaign_canvas", (px, 6.31, 4.95),
+         (1.20, 0.028, 0.68), mats["wall_recess"], static, bevel=0.018)
+    # Restrained map-like relief: horizon, route and one objective ring.
+    cube("WR_CANON_campaign_horizon", (px, 6.275, 5.03),
+         (0.91, 0.018, 0.020), mats["brass_dark"], static, bevel=0.008)
+    route = cube("WR_CANON_campaign_route", (px - 0.18, 6.27, 4.83),
+                 (0.58, 0.018, 0.024), mats["brass_dark"], static, bevel=0.008)
+    route.rotation_euler.y = -0.24
+    torus("WR_CANON_campaign_objective", (px + 0.54, 6.26, 5.17),
+          0.16, 0.024, mats["brass_dark"], static, rotation=(math.pi / 2, 0, 0))
 
     # Shallow mortar courses break the upper wall into believable masonry.
     # They stay behind the hero props and use one existing material so runtime
@@ -925,9 +945,9 @@ def add_gothic_canon_v2(static, mats):
         cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
              (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
-    # Four tall heraldic banners frame the existing central rampant-horse crest.
-    # Their lower points sit behind the table so they read as architecture, not UI.
-    for index, x in enumerate((-6.55, -2.65, 2.65, 6.55)):
+    # Two tall heraldic banners frame the room edges. Removing the inner pair
+    # opens breathing room around the crest, desk and campaign painting.
+    for index, x in enumerate((-6.55, 6.55)):
         draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
         cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
@@ -968,14 +988,16 @@ def add_gothic_canon_v2(static, mats):
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
     rx = 4.85
-    cube("WR_CANON_right_fireplace_body", (rx, 6.34, 2.00), (1.46, 0.47, 1.46),
-         mats["stone"], static, bevel=0.105)
-    cube("WR_CANON_right_fireplace_opening", (rx, 5.84, 1.67), (0.88, 0.13, 0.76),
-         mats["charcoal"], static, bevel=0.045)
-    cube("WR_CANON_right_fireplace_mantel", (rx, 5.74, 3.49), (1.73, 0.64, 0.13),
-         mats["stone_light"], static, bevel=0.075)
-    cube("WR_CANON_right_fireplace_hearth", (rx, 5.34, 0.72), (1.42, 0.76, 0.10),
-         mats["stone"], static, bevel=0.07)
+    # Secondary hearth: deliberately lower and narrower than the ceremonial
+    # left fireplace so the two sides no longer compete at equal weight.
+    cube("WR_CANON_right_fireplace_body", (rx, 6.34, 1.84), (1.18, 0.43, 1.20),
+         mats["stone_dark"], static, bevel=0.095)
+    cube("WR_CANON_right_fireplace_opening", (rx, 5.86, 1.55), (0.74, 0.12, 0.62),
+         mats["charcoal"], static, bevel=0.042)
+    cube("WR_CANON_right_fireplace_mantel", (rx, 5.78, 3.05), (1.42, 0.56, 0.11),
+         mats["stone"], static, bevel=0.068)
+    cube("WR_CANON_right_fireplace_hearth", (rx, 5.38, 0.70), (1.18, 0.67, 0.09),
+         mats["stone_dark"], static, bevel=0.065)
     for side in (-1, 1):
         cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
              (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
@@ -988,21 +1010,21 @@ def add_gothic_canon_v2(static, mats):
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 258.0,
           (1.0, 0.23, 0.05), static, radius=1.30)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
-    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.74, 3.66), (1.84, 0.68, 0.055),
-         mats["stone"], static, bevel=0.040)
-    cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.08, 3.35), (1.80, 0.08, 0.060),
-         mats["stone_dark"], static, bevel=0.025)
-    cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.72, 0.82), (1.50, 0.12, 0.055),
-         mats["stone_dark"], static, bevel=0.025)
-    cube("WR_CANON_right_fireplace_inner_lintel", (rx, 5.68, 2.54), (1.00, 0.09, 0.12),
-         mats["stone_dark"], static, bevel=0.035)
+    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
+         mats["stone_light"], static, bevel=0.038)
+    cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
+         mats["charcoal"], static, bevel=0.022)
+    cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
+         mats["stone_dark"], static, bevel=0.022)
+    cube("WR_CANON_right_fireplace_inner_lintel", (rx, 5.72, 2.18), (0.82, 0.08, 0.10),
+         mats["stone_dark"], static, bevel=0.030)
     for side in (-1, 1):
-        cube(f"WR_CANON_right_fireplace_inner_jamb_{side}", (rx + side * 1.00, 5.68, 1.68),
-             (0.105, 0.09, 0.72), mats["stone_dark"], static, bevel=0.030)
-        cube(f"WR_CANON_right_fireplace_cap_{side}", (rx + side * 1.18, 5.72, 3.17),
-             (0.23, 0.18, 0.095), mats["stone_light"], static, bevel=0.040)
-        cube(f"WR_CANON_right_fireplace_foot_{side}", (rx + side * 1.18, 5.66, 1.05),
-             (0.23, 0.20, 0.095), mats["stone_dark"], static, bevel=0.035)
+        cube(f"WR_CANON_right_fireplace_inner_jamb_{side}", (rx + side * 0.84, 5.72, 1.55),
+             (0.090, 0.08, 0.59), mats["stone_dark"], static, bevel=0.026)
+        cube(f"WR_CANON_right_fireplace_cap_{side}", (rx + side * 0.98, 5.76, 2.78),
+             (0.18, 0.15, 0.080), mats["stone"], static, bevel=0.034)
+        cube(f"WR_CANON_right_fireplace_foot_{side}", (rx + side * 0.98, 5.70, 0.98),
+             (0.18, 0.17, 0.080), mats["stone_dark"], static, bevel=0.030)
 
 
 
@@ -1234,8 +1256,6 @@ def build():
     tag(cam)
     static.objects.link(cam)
     scene.camera = cam
-
-
 def manifest(path):
     objects = []
     for obj in sorted(bpy.context.scene.objects, key=lambda item: item.name):
@@ -1273,12 +1293,13 @@ def validate():
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1", "WR_ARMOR_belt_1",
-        "WR_CANON_banner_1", "WR_CANON_banner_2", "WR_CANON_banner_3",
+        "WR_CANON_banner_1",
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
         "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
-        "WR_CANON_arch_left_curve_-1_0", "WR_CANON_masonry_course_2",
+        "WR_CANON_arch_left_curve_-1_0", "WR_CANON_campaign_canvas",
+        "WR_CANON_masonry_course_2",
         "WR_CANON_fireplace_block_left_lintel_0", "WR_CANON_fireplace_block_right_lintel_0",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
@@ -1609,7 +1630,14 @@ def collapse_runtime_static_shell():
             material.name if material else ""
             for material in obj.data.materials
         )
-        key = (material_signature, runtime_batch_cell(obj))
+        # The campaign painting is authored from several meshes so the preview
+        # can keep wood, canvas and gilt relief materials. At runtime those
+        # pieces occupy one tiny wall patch; joining them preserves all material
+        # slots while avoiding several one-off draw-call batches.
+        if obj.name.startswith("WR_CANON_campaign_"):
+            key = (("__campaign_painting__",), runtime_batch_cell(obj))
+        else:
+            key = (material_signature, runtime_batch_cell(obj))
         groups.setdefault(key, []).append(obj)
 
     merged_away = 0
@@ -1656,7 +1684,6 @@ def meshopt_export_kwargs():
         "export_meshopt_compression_enable": True,
         "export_meshopt_extension": MESH_COMPRESSION_EXTENSION,
     }
-
 
 def export_shell(path):
     sanitized_links, runtime_textures, base_color_factors = sanitize_runtime_materials()
