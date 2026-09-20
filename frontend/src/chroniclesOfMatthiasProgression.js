@@ -6,6 +6,12 @@ import {
   setStorageItem,
 } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { CHRONICLES_PARTY } from './chroniclesOfMatthias.js';
+import {
+  createCanonicalChroniclesCharacterBuild,
+  normalizeChroniclesCharacterBuild,
+  validateChroniclesCharacterBuild,
+} from './chronicles/chroniclesCharacterBuilds.js';
 
 export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progression-v1';
 export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactics-run-v1';
@@ -365,6 +371,7 @@ function normalizeHero(raw) {
 export function createChroniclesProgression() {
   return {
     version: CHRONICLES_PROGRESSION_VERSION,
+    characterBuild: createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY),
     heroes: Object.fromEntries(HERO_IDS.map((id) => [id, defaultHero()])),
     claimedAwards: [],
   };
@@ -378,6 +385,7 @@ export function normalizeChroniclesProgression(raw) {
     : [];
   return {
     version: CHRONICLES_PROGRESSION_VERSION,
+    characterBuild: normalizeChroniclesCharacterBuild(source.characterBuild, CHRONICLES_PARTY),
     heroes,
     claimedAwards,
   };
@@ -391,6 +399,34 @@ export function saveChroniclesProgression(progression) {
   const normalized = normalizeChroniclesProgression(progression);
   setProfileStorageItem(CHRONICLES_PROGRESSION_STORAGE_KEY, JSON.stringify(normalized));
   return normalized;
+}
+
+export function chroniclesCharacterBuild(progression) {
+  return normalizeChroniclesProgression(progression).characterBuild;
+}
+
+export function setChroniclesCharacterBuild(progression, rawBuild) {
+  const current = normalizeChroniclesProgression(progression);
+  const validation = validateChroniclesCharacterBuild(rawBuild);
+  if (!validation.valid) {
+    return { progression: current, updated: false, errors: validation.errors };
+  }
+  return {
+    progression: {
+      ...current,
+      characterBuild: normalizeChroniclesCharacterBuild(rawBuild, CHRONICLES_PARTY),
+    },
+    updated: true,
+    errors: [],
+  };
+}
+
+export function resetChroniclesCharacterBuild(progression) {
+  const current = normalizeChroniclesProgression(progression);
+  return {
+    ...current,
+    characterBuild: createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY),
+  };
 }
 
 export function chroniclesHeroProgress(progression, memberId) {
@@ -520,7 +556,15 @@ export function applyChroniclesProgressionToTacticsState(state, progression) {
   const classAbilityCharges = {};
   const rpgModifiers = {};
   const party = (state.party || []).map((member) => {
-    const modifiers = chroniclesTacticsModifiers(progression, member.id);
+    const progressionModifiers = chroniclesTacticsModifiers(progression, member.id);
+    const creatorModifiers = member.characterBuild?.creatorModifiers || {};
+    const modifiers = {
+      ...progressionModifiers,
+      attackDamageBonus: progressionModifiers.attackDamageBonus + nonNegativeInteger(creatorModifiers.attackDamageBonus),
+      reachBonus: progressionModifiers.reachBonus + nonNegativeInteger(creatorModifiers.reachBonus),
+      abilityPotencyBonus: progressionModifiers.abilityPotencyBonus + nonNegativeInteger(creatorModifiers.abilityPotencyBonus),
+      abilityCharges: progressionModifiers.abilityCharges + nonNegativeInteger(creatorModifiers.abilityChargesBonus),
+    };
     rpgModifiers[member.id] = modifiers;
     classAbilityCharges[member.id] = modifiers.abilityCharges;
     const baseMaxHp = Math.max(1, nonNegativeInteger(member.maxHp, 1));

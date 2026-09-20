@@ -150,6 +150,33 @@ export function chroniclesCreatorSkill(slotId, skillId) {
   return chroniclesCreatorSkillsForSlot(slotId).find((skill) => skill.id === skillId) || null;
 }
 
+export function chroniclesCreatorRuntimeModifiers(character) {
+  const slotId = character?.slotId;
+  const attributes = character?.attributes && typeof character.attributes === 'object'
+    ? character.attributes
+    : emptyAttributes();
+  const skill = chroniclesCreatorSkill(slotId, character?.startingSkillId);
+  const skillModifiers = skill?.modifiers || {};
+  const physical = slotId === 'matthias' || slotId === 'rook';
+  const rangedOrMagic = slotId === 'bishop' || slotId === 'knight';
+  const vigor = nonNegativeInteger(attributes.vigor);
+  const power = nonNegativeInteger(attributes.power);
+  const precision = nonNegativeInteger(attributes.precision);
+  const will = nonNegativeInteger(attributes.will);
+
+  return {
+    bonusMaxHp: vigor + nonNegativeInteger(skillModifiers.bonusMaxHp),
+    attackDamageBonus: (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
+      + nonNegativeInteger(skillModifiers.attackDamageBonus),
+    reachBonus: (rangedOrMagic ? Math.floor(precision / 2) : 0)
+      + nonNegativeInteger(skillModifiers.reachBonus),
+    abilityPotencyBonus: (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
+      + Math.floor(will / 2)
+      + nonNegativeInteger(skillModifiers.abilityPotencyBonus),
+    abilityChargesBonus: nonNegativeInteger(skillModifiers.abilityCharges),
+  };
+}
+
 function canonicalCharacter(slotId, partyTemplates) {
   const template = templateById(partyTemplates, slotId);
   return {
@@ -286,9 +313,13 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild) {
   return (Array.isArray(partyTemplates) ? partyTemplates : []).map((template) => {
     const character = characters.get(template.id) || canonicalCharacter(template.id, partyTemplates);
     const skill = chroniclesCreatorSkill(template.id, character.startingSkillId);
+    const creatorModifiers = chroniclesCreatorRuntimeModifiers(character);
     return {
       ...template,
       name: character.name,
+      maxHp: Math.max(1, Number(template.maxHp || 1) + creatorModifiers.bonusMaxHp),
+      damage: Math.max(1, Number(template.damage || 1) + creatorModifiers.attackDamageBonus),
+      reach: Math.max(1, Number(template.reach || 1) + creatorModifiers.reachBonus),
       characterBuild: {
         version: normalized.version,
         mode: normalized.mode,
@@ -297,6 +328,7 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild) {
         attributes: { ...character.attributes },
         startingSkillId: character.startingSkillId,
         startingSkillModifiers: { ...(skill?.modifiers || {}) },
+        creatorModifiers,
       },
     };
   });

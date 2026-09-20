@@ -13,6 +13,7 @@ import {
   chroniclesRequirementFailure,
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
+import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -40,8 +41,9 @@ function enemiesFor(state) {
   return chroniclesMapForState(state).enemies;
 }
 
-function partyState() {
-  return CHRONICLES_PARTY.map((member) => ({ ...member, hp: member.maxHp }));
+function partyState(characterBuild = null) {
+  return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild)
+    .map((member) => ({ ...member, hp: member.maxHp }));
 }
 
 function appendJournal(state, entry) {
@@ -55,8 +57,11 @@ export function chroniclesJournalEntries(state) {
   return Array.isArray(state?.journal) && state.journal.length ? state.journal : [initialJournal];
 }
 
-export function createChroniclesState(mapId = null) {
-  const map = chroniclesMapById(mapId || chroniclesRuntimeEntryMapId());
+export function createChroniclesState(mapId = null, characterBuild = null) {
+  const buildOnly = mapId && typeof mapId === 'object' && !Array.isArray(mapId);
+  const requestedMapId = buildOnly ? null : mapId;
+  const requestedBuild = buildOnly ? mapId : characterBuild;
+  const map = chroniclesMapById(requestedMapId || chroniclesRuntimeEntryMapId());
   return {
     mapId: map.id,
     x: map.partyStart.x,
@@ -65,7 +70,7 @@ export function createChroniclesState(mapId = null) {
     ...chroniclesMapInitialEnemyState(map.id),
     ...map.initialFlags,
     phase: 'explore',
-    party: partyState(),
+    party: partyState(requestedBuild),
     turns: 0,
     journal: [map.initialJournal],
     message: map.introMessage,

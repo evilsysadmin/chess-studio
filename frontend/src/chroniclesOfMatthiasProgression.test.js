@@ -3,8 +3,10 @@ import { createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_PROGRESSION_STORAGE_KEY,
   CHRONICLES_TACTICS_RUN_STORAGE_KEY,
+  applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
   beginChroniclesTacticsRun,
+  chroniclesCharacterBuild,
   chroniclesHeroProgress,
   chroniclesXpThresholdForLevel,
   createChroniclesProgression,
@@ -13,6 +15,7 @@ import {
   grantChroniclesXp,
   loadChroniclesProgression,
   saveChroniclesProgression,
+  setChroniclesCharacterBuild,
 } from './chroniclesOfMatthiasProgression.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 
@@ -32,6 +35,62 @@ function tacticsState(overrides = {}) {
 }
 
 describe('Chronicles Tactics · progression', () => {
+  it('migrates legacy progression to the exact canonical character build', () => {
+    const legacy = {
+      version: 1,
+      heroes: createChroniclesProgression().heroes,
+      claimedAwards: [],
+    };
+
+    const build = chroniclesCharacterBuild(legacy);
+    expect(build.mode).toBe('canonical');
+    expect(build.characters.map((character) => character.name)).toEqual([
+      'Matthias',
+      'Hildegard',
+      'Aziz',
+      'Faust',
+    ]);
+  });
+
+  it('persists a valid custom build and applies creator modifiers on top of RPG progression', () => {
+    const base = createChroniclesProgression();
+    const custom = {
+      version: 1,
+      mode: 'custom',
+      characters: [
+        {
+          slotId: 'matthias',
+          classId: 'matthias',
+          name: 'Greta',
+          attributes: { vigor: 1, power: 2 },
+          startingSkillId: 'matthias-keen-point',
+        },
+        { slotId: 'rook', classId: 'rook', name: 'Hildegard', attributes: {}, startingSkillId: null },
+        {
+          slotId: 'bishop',
+          classId: 'bishop',
+          name: 'Nadir',
+          attributes: { precision: 2, will: 1 },
+          startingSkillId: 'bishop-long-diagonal',
+        },
+        { slotId: 'knight', classId: 'knight', name: 'Faust', attributes: {}, startingSkillId: null },
+      ],
+    };
+
+    const selected = setChroniclesCharacterBuild(base, custom);
+    expect(selected.updated).toBe(true);
+    const saved = saveChroniclesProgression(selected.progression);
+    expect(loadChroniclesProgression().characterBuild.characters[0].name).toBe('Greta');
+
+    const tactics = applyChroniclesProgressionToTacticsState(
+      createChroniclesState(null, saved.characterBuild),
+      saved,
+    );
+    expect(tactics.party.find((member) => member.id === 'matthias')?.maxHp).toBe(8);
+    expect(tactics.rpgModifiers.matthias.attackDamageBonus).toBe(2);
+    expect(tactics.rpgModifiers.bishop.reachBonus).toBe(2);
+  });
+
   beforeEach(() => {
     clearStorageMemoryFallback();
     localStorage.clear();
