@@ -58,22 +58,31 @@ describe('Chronicles Tactics real Blender party runtime contract', () => {
     mesh.material.dispose();
   });
 
-  it('parents procedural equipment to the authored visual so it inherits GLB transforms', () => {
+  it('uses the canonical GLB embedded kit without stacking procedural armour on top', () => {
     const memberRoot = new THREE.Group();
     const visual = new THREE.Group();
-    visual.rotation.set(Math.PI / 2, 0.2, -0.1);
-    visual.scale.set(0.85, 0.85, 0.85);
     memberRoot.add(visual);
 
     const cancel = installChroniclesTacticsPartyLoadout(memberRoot, visual, 'knight');
-    const loadout = visual.getObjectByName('chronicles-default-loadout-knight');
 
-    expect(loadout).toBeTruthy();
-    expect(loadout.parent).toBe(visual);
-    expect(memberRoot.getObjectByName('chronicles-default-loadout-knight')).toBe(loadout);
-    expect(visual.userData.chroniclesLoadoutTransformHost).toBe('authored-visual');
+    expect(visual.userData.chroniclesLoadoutSource).toBe('embedded-glb');
+    expect(visual.getObjectByName('chronicles-default-loadout-knight')).toBeFalsy();
+    expect(memberRoot.getObjectByName('chronicles-default-loadout-knight')).toBeFalsy();
 
     cancel();
-    expect(visual.getObjectByName('chronicles-default-loadout-knight')).toBeFalsy();
+    expect(visual.userData.chroniclesLoadoutSource).toBe('embedded-glb');
+  });
+
+  it('keeps the procedural kit available for non-authored fallback visuals', () => {
+    const memberRoot = new THREE.Group();
+
+    const cancel = installChroniclesTacticsPartyLoadout(memberRoot, null, 'rook');
+    const loadout = memberRoot.getObjectByName('chronicles-default-loadout-rook');
+
+    expect(memberRoot.userData.chroniclesLoadoutSource).toBe('procedural-fallback');
+    expect(loadout).toBeTruthy();
+
+    cancel();
+    expect(memberRoot.getObjectByName('chronicles-default-loadout-rook')).toBeFalsy();
   });
 });

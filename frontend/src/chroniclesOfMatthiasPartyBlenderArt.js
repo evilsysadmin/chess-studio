@@ -52,10 +52,17 @@ export function installChroniclesTacticsPartyLoadout(
   memberId,
   { coarsePointer = false } = {},
 ) {
-  const host = visual || memberRoot;
-  if (!host) return () => {};
-  host.userData.chroniclesLoadoutTransformHost = visual ? 'authored-visual' : 'member-root';
-  return installChroniclesDefaultLoadoutArt(host, memberId, { coarsePointer });
+  // The canonical Blender cast already contains the default weapon/armour kit.
+  // Adding the procedural loadout on top renders a second breastplate/weapon
+  // assembly at the member origin, which reads as a body lying on the floor.
+  // Keep procedural equipment only for non-authored fallback visuals.
+  if (visual) {
+    visual.userData.chroniclesLoadoutSource = 'embedded-glb';
+    return () => {};
+  }
+  if (!memberRoot) return () => {};
+  memberRoot.userData.chroniclesLoadoutSource = 'procedural-fallback';
+  return installChroniclesDefaultLoadoutArt(memberRoot, memberId, { coarsePointer });
 }
 
 function hideFallbackChildren(memberRoot, visual) {
@@ -134,9 +141,6 @@ export function installChroniclesTacticsPartyBlenderArt(
         const priorTick = memberRoot.userData.chroniclesArtTick || null;
         memberRoot.add(visual);
         hideFallbackChildren(memberRoot, visual);
-        // Equipment is authored in the same local space as the party GLB.
-        // Parent it to the authored visual so root-axis compensation/scale is
-        // inherited instead of leaving weapons detached on the battlefield.
         loadoutCancels.push(installChroniclesTacticsPartyLoadout(
           memberRoot,
           visual,
