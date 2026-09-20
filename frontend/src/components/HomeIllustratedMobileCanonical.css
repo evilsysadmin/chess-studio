@@ -386,6 +386,40 @@
   }
   .illustrated-home__dungeon-copy strong { font-size: 10px !important; }
 
+
+
+  /* Once the real Blender hall is on screen, keep the same generous touch
+     targets but let the authored room breathe through the navigation surfaces. */
+  @supports selector(.illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready)) {
+    .illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready[data-home-castle-compositor='blender-runtime'])
+      .illustrated-home__destination {
+      background: rgba(14, 8, 5, .20) !important;
+      backdrop-filter: blur(.6px);
+    }
+
+    .illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready[data-home-castle-compositor='blender-runtime'])
+      .illustrated-home__destination--play {
+      border-color: rgba(214, 166, 80, .14) !important;
+      background: linear-gradient(180deg, rgba(52, 28, 13, .58), rgba(24, 12, 7, .52)) !important;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .14) !important;
+    }
+
+    .illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready[data-home-castle-compositor='blender-runtime'])
+      .illustrated-home__destination--history {
+      background: rgba(14, 8, 5, .20) !important;
+    }
+
+    .illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready[data-home-castle-compositor='blender-runtime'])
+      .illustrated-home__matthias {
+      background: rgba(12, 7, 4, .34) !important;
+    }
+
+    .illustrated-home__stage:has(> .illustrated-home__castle-3d.is-ready[data-home-castle-compositor='blender-runtime'])
+      .illustrated-home__dungeon-copy {
+      background: rgba(13, 8, 5, .58) !important;
+    }
+  }
+
   .illustrated-home__stage:has(.illustrated-home__utilities.is-open) { overflow: hidden !important; }
   .illustrated-home__utilities.is-open {
     position: static !important;
