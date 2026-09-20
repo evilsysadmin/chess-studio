@@ -361,7 +361,7 @@ def _force_flush(provider: Any | None, timeout_ms: int = 5000) -> bool:
 def emit_trace_probe() -> dict[str, Any]:
     diagnostics = tracing_diagnostics()
     if not diagnostics["signals"]["traces"]["configured"] or _TRACE_PROVIDER is None:
-        return {"ok": False, "reason": "tracing_not_configured", "diagnostics": diagnostics}    try:
+        return {"ok": False, "reason": "tracing_not_configured", "diagnostics": diagnostics}\n    try:
         from opentelemetry import trace
         from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, TraceState
         from opentelemetry.context import attach, detach
