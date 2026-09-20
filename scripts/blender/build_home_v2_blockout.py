@@ -491,9 +491,19 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
     obj.name = name
     obj.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    if bevel:
+
+    # Perfect razor edges are one of the strongest CGI tells in the Home.
+    # Give genuinely solid blocks a tiny physically plausible edge catch while
+    # leaving thin panels, board squares, seams and decals intentionally crisp.
+    min_half_extent = min(abs(float(value)) for value in scale)
+    implicit_bevel = 0.0
+    if bevel <= 0.0 and min_half_extent >= 0.035:
+        implicit_bevel = min(0.018, min_half_extent * 0.18)
+    edge_width = bevel if bevel > 0.0 else implicit_bevel
+
+    if edge_width:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
-        modifier.width = bevel
+        modifier.width = edge_width
         configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
