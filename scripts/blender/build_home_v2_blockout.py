@@ -963,7 +963,7 @@ def add_armor(materials):
     sphere("HOME_PROP_armor_helmet_crest", (x, y + 0.01, 3.12), (0.075, 0.060, 0.095), steel)
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.56), 0.245, 0.105, brass, vertices=28)
-    cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), brass, bevel=0.006)
+    cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), materials["brass_dark"], bevel=0.006)
     for side in (-1, 1):
         cube(
             f"HOME_PROP_armor_pauldron_ridge_{side}",
