@@ -31,7 +31,10 @@
       "w": 150,
       "h": 24,
       "kind": "dock",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "lamp": true
+      }
     },
     {
       "x": 860,
@@ -39,7 +42,10 @@
       "w": 220,
       "h": 24,
       "kind": "crane_walk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 1140,
@@ -63,7 +69,11 @@
       "w": 210,
       "h": 24,
       "kind": "crane_walk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
     },
     {
       "x": 1960,
@@ -104,7 +114,10 @@
       "w": 190,
       "h": 24,
       "kind": "crane_walk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 3230,
@@ -112,7 +125,10 @@
       "w": 170,
       "h": 24,
       "kind": "dock",
-      "material": "concrete"
+      "material": "concrete",
+      "visual": {
+        "sandbags": 5
+      }
     },
     {
       "x": 3470,
@@ -138,7 +154,12 @@
       "kind": "crane_walk",
       "material": "metal",
       "one_way": true,
-      "route": "crane_assault"
+      "route": "crane_assault",
+      "visual": {
+        "rail": true,
+        "lamp": true,
+        "sandbags": 5
+      }
     },
     {
       "x": 4300,
@@ -162,7 +183,10 @@
       "w": 240,
       "h": 24,
       "kind": "crane_walk",
-      "material": "metal"
+      "material": "metal",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 5120,
