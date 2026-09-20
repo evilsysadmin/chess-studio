@@ -552,30 +552,34 @@ def add_room(static, mats):
         cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
              mats["iron"], static, bevel=0.012)
 
-    # Build one irregular fire silhouette instead of a row of tall ellipsoids:
-    # three low bases ground the flame on the logs, while offset leaning wisps
-    # break the repeated egg/candle rhythm that was obvious in the hero render.
-    for idx, (dx, dz, sx) in enumerate((
-        (-0.34, 0.04, 1.00),
-        (0.00, 0.08, 1.18),
-        (0.34, 0.03, 0.92),
-    )):
-        sphere(f"WR_FIREPLACE_flame_base_{idx}", (-4.55 + dx, 5.55, 1.36 + dz),
-               0.20, mats["fire"], static, scale=(sx, 0.46, 0.62))
+    # Organic hearth silhouette: one broad low body plus three overlapping,
+    # uneven tongues. The overlap keeps the fire reading as one mass while the
+    # different heights/leans avoid both the old egg row and the later polygon crown.
+    sphere("WR_FIREPLACE_flame_body", (-4.55, 5.53, 1.40), 0.25,
+           mats["fire"], static, scale=(2.05, 0.52, 0.58))
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.25, 0.24, 0.46, 1.28, -0.18),
-        (0.03, 0.38, 0.42, 1.55, 0.10),
-        (0.29, 0.22, 0.40, 1.18, 0.20),
+        (-0.25, 0.18, 0.62, 1.25, -0.22),
+        (0.02, 0.32, 0.56, 1.58, 0.08),
+        (0.30, 0.12, 0.48, 0.96, 0.24),
     )):
-        wisp = sphere(f"WR_FIREPLACE_flame_wisp_{idx}", (-4.55 + dx, 5.53, 1.38 + dz),
-                      0.18, mats["fire"], static, scale=(sx, 0.34, sz))
-        wisp.rotation_euler.y = tilt
+        tongue = sphere(
+            f"WR_FIREPLACE_flame_tongue_{idx}",
+            (-4.55 + dx, 5.51, 1.42 + dz),
+            0.20,
+            mats["fire"],
+            static,
+            scale=(sx, 0.34, sz),
+        )
+        tongue.rotation_euler.y = tilt
+
+    # Two small hotter cores stay low and off-centre so they reinforce depth
+    # instead of creating another symmetric row of mini flames.
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.10, 0.18, 0.34, 1.02, -0.12),
-        (0.15, 0.27, 0.30, 1.16, 0.14),
+        (-0.12, 0.12, 0.40, 0.90, -0.10),
+        (0.12, 0.18, 0.34, 1.02, 0.14),
     )):
-        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.49, 1.38 + dz),
-                      0.13, mats["fire_core"], static, scale=(sx, 0.28, sz))
+        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.46, 1.40 + dz),
+                      0.14, mats["fire_core"], static, scale=(sx, 0.28, sz))
         core.rotation_euler.y = tilt
 
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
@@ -585,6 +589,17 @@ def add_room(static, mats):
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
     cube("WR_DESK_blotter", (0.18, 5.45, 2.33), (0.92, 0.26, 0.025), mats["desk_leather"], static, bevel=0.025)
     cube("WR_DESK_blotter_edge", (0.18, 5.17, 2.34), (0.98, 0.025, 0.028), mats["brass_dark"], static, bevel=0.012)
+    # A couple of overlapping dispatch sheets keep the blotter from reading as
+    # one empty green slab. Their offsets are broad enough to survive the hero
+    # camera, with one small brass weight instead of a pile of desk clutter.
+    dispatch_sheet_a = cube("WR_DESK_dispatch_sheet_a", (0.42, 5.40, 2.385),
+                            (0.30, 0.18, 0.012), mats["ivory"], static, bevel=0.012)
+    dispatch_sheet_a.rotation_euler.z = -0.10
+    dispatch_sheet_b = cube("WR_DESK_dispatch_sheet_b", (0.68, 5.47, 2.405),
+                            (0.24, 0.15, 0.010), mats["ivory"], static, bevel=0.010)
+    dispatch_sheet_b.rotation_euler.z = 0.08
+    cylinder("WR_DESK_dispatch_weight", (0.79, 5.39, 2.435), 0.065, 0.035,
+             mats["brass"], static, vertices=18)
     # Give the rear desk furniture weight at the runtime camera distance.
     cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["frame_wood"], static, bevel=0.045)
     cube("WR_DESK_center_shadow", (0, 6.16, 1.33), (0.72, 0.12, 0.55), mats["wall_recess"], static, bevel=0.04)
@@ -597,7 +612,14 @@ def add_room(static, mats):
             sphere(f"WR_DESK_knob_{x}_{row}", (x, 5.67, drawer_z), 0.045, mats["brass"], static)
     cylinder("WR_DESK_lamp_base", (-0.72, 5.58, 2.39), 0.24, 0.08, mats["brass"], static)
     cylinder("WR_DESK_lamp_stem", (-0.72, 5.58, 2.68), 0.035, 0.55, mats["brass"], static)
-    sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34, mats["green"], static, scale=(1.4, 0.65, 0.45))
+    # Banker's-lamp trim: a thin elliptical brass lip and tiny top finial stop
+    # the green shade reading as a floating flattened sphere at hero distance.
+    sphere("WR_DESK_lamp_shade_lip", (-0.72, 5.56, 2.84), 0.34,
+           mats["brass_dark"], static, scale=(1.48, 0.68, 0.10))
+    sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34,
+           mats["green"], static, scale=(1.4, 0.65, 0.45))
+    sphere("WR_DESK_lamp_finial", (-0.72, 5.56, 3.14), 0.055,
+           mats["brass"], static, scale=(0.90, 0.72, 0.68))
 
     # Ceremonial rampant-horse crest. Keep the circular plaque from the approved
     # composition, but replace the old vertical pawn silhouette with a broad,
@@ -864,6 +886,16 @@ def add_gothic_canon_v2(static, mats):
             obj.location.x += 0.48
             obj.location.y += 0.62
 
+    # Layer the surviving left bench as furniture rather than one anonymous
+    # upholstered block: a narrow wooden plinth under the seat and a separate
+    # top cushion keep the existing footprint while giving the foreground edge
+    # a readable construction hierarchy.
+    left_bench_x, left_bench_y = -6.67, -4.18
+    cube("WR_CANON_bench_wood_base", (left_bench_x, left_bench_y, 0.47),
+         (0.84, 1.12, 0.10), mats["frame_wood"], static, bevel=0.055)
+    cube("WR_CANON_bench_cushion", (left_bench_x, left_bench_y, 0.99),
+         (0.78, 1.08, 0.085), mats["leather_dark"], static, bevel=0.10)
+
     burgundy = material(
         "WR_MAT_canon_burgundy", (0.205, 0.012, 0.022, 1),
         rough=0.84, coat=0.035, sheen=0.44, texture="fabric", scale=36, bump=0.075,
@@ -873,8 +905,8 @@ def add_gothic_canon_v2(static, mats):
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
     heraldic_brass = material(
-        "WR_MAT_canon_heraldic_brass", (0.46, 0.19, 0.045, 1),
-        metal=0.94, rough=0.25, coat=0.18, texture="metal", scale=22, bump=0.028,
+        "WR_MAT_canon_heraldic_brass", (0.58, 0.27, 0.060, 1),
+        metal=0.94, rough=0.22, coat=0.20, texture="metal", scale=22, bump=0.028,
     )
     horse_relief = static.objects.get("WR_CREST_horse_relief")
     if horse_relief is not None and horse_relief.data.materials:
@@ -1032,10 +1064,16 @@ def add_gothic_canon_v2(static, mats):
             for book in range(7):
                 px = bx - 0.92 + book * 0.30
                 height = 0.38 + (book % 3) * 0.065
-                cube(f"WR_CANON_book_{level}_{book}", (px, 5.72, z + 0.10 + height / 2),
-                     (0.105, 0.19, height / 2),
-                     mats["book_a"] if (book + level) % 2 else mats["book_b"],
-                     static, bevel=0.018)
+                depth_offset = (0.0, -0.025, 0.015, 0.0, -0.018)[(book + level) % 5]
+                lean = (0.0, -0.085, 0.0, 0.070, 0.0)[(book + level * 2) % 5]
+                book_obj = cube(
+                    f"WR_CANON_book_{level}_{book}",
+                    (px, 5.72 + depth_offset, z + 0.10 + height / 2),
+                    (0.105, 0.19, height / 2),
+                    mats["book_a"] if (book + level) % 2 else mats["book_b"],
+                    static, bevel=0.018,
+                )
+                book_obj.rotation_euler.y = lean
 
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
