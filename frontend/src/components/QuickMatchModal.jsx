@@ -6,7 +6,7 @@ import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
+import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentation.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
@@ -40,8 +40,7 @@ export default function QuickMatchModal({
 }) {
   useEscapeToClose(onClose);
   const handicap = rating ? handicapForGap(rating.rating, difficulty) : null;
-  const adaptiveLevel = difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0);
-  const adaptiveCalibrating = Number(rating?.games || 0) < 12;
+  const adaptive = adaptiveDifficultyPresentation(rating);
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
@@ -84,7 +83,7 @@ export default function QuickMatchModal({
         )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
-          <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>{adaptiveCalibrating ? 'Calibrando tu nivel · la siguiente partida se ajusta, nunca ésta' : 'Reto adaptativo · Matthias intenta mantenerse ligeramente por encima de tu nivel'}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+          <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>{adaptive.choiceCopy}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
         {!autoDifficulty && (
@@ -109,6 +108,7 @@ export default function QuickMatchModal({
           <details className="friendly-subdisclosure adaptive-difficulty-details">
             <summary>Cómo se ajusta Matthias</summary>
             <div className="friendly-disclosure-body">
+              <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
               <p className="hint-text">
                 Usa tu rating y forma reciente antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
               </p>
