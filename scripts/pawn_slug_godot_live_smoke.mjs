@@ -163,7 +163,9 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   // traversal is intentionally not part of this lifecycle gate because authored
   // cover/enemy tuning makes bot-reaches-pickup a map-AI test, not a Web
   // runtime health test. Headless Godot mechanics tests own crouch/aim/respawn.
-  await keyboard.press('x');
+  await keyboard.down('x');
+  await parent.waitForTimeout(120);
+  await keyboard.up('x');
   await waitForBridgeCount(parent, 'grenade-thrown', 1, 5_000);
 
   // Exercise locomotion + pistol fire together with real browser input.
