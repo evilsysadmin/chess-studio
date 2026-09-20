@@ -1,0 +1,38 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v15",
+  "status": "candidate-awaiting-ci-visual-review",
+  "validated_contract": {
+    "generation": "strict-v15",
+    "source_generation": "strict-v14",
+    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "geometry": "alpha byte-identical to promoted strict-v14",
+    "visual_pass": "reinforce only pre-existing dark facial marks so the stern expression survives runtime downscale"
+  },
+  "source_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/pistol/v14-9ded4a9961a96cf6.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/machinegun/v14-93d9f9d9f1895711.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/shotgun/v14-9bc62beb46a5be92.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v14/panzerfaust/v14-2177056edc0cb845.png"
+  },
+  "local_evidence": {
+    "review_artifact": "v15b_all_weapons_review.png inspected at 179px runtime scale",
+    "pistol": {"face_detail_frames": 117, "changed_rgb_pixels": 13011, "max_luma_spread_delta": 0.248},
+    "machinegun": {"face_detail_frames": 132, "changed_rgb_pixels": 21368, "max_luma_spread_delta": 0.214},
+    "shotgun": {"face_detail_frames": 62, "changed_rgb_pixels": 7135, "max_luma_spread_delta": 0.056},
+    "panzerfaust": {"face_detail_frames": 104, "changed_rgb_pixels": 12510, "max_luma_spread_delta": 0.331},
+    "all_rows_8_distinct": true,
+    "alpha_byte_identical": true,
+    "death_row_untouched": true,
+    "visual_review": "subtle but visible face readability improvement without new scribble, silhouette change, weapon drift or muzzle regression"
+  },
+  "resume": {
+    "next": "run strict-v15 CI across all four weapons, inspect every CI review PNG, then decide whether to promote runtime",
+    "source_of_truth": "promoted strict-v14 runtime plus strict-v15 workflow artifacts"
+  }
+}
