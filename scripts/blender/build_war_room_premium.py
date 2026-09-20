@@ -456,21 +456,6 @@ def add_room(static, mats):
             cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.475, y, 1.40),
                  (0.018, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
 
-    # One upper inset on the near-left bay gives the large foreground wall a
-    # finished architectural layer without restoring mirror symmetry on the
-    # right. It remains intentionally empty: depth and joinery, not decoration.
-    left_panel_y = -5.18
-    left_panel_z = 4.12
-    cube("WR_CANON_left_wall_upper_recess", (-8.475, left_panel_y, left_panel_z),
-         (0.020, 0.72, 0.78), mats["wall_recess"], static, bevel=0.026)
-    for edge in (-1, 1):
-        cube(f"WR_CANON_left_wall_upper_v_{edge}",
-             (-8.410, left_panel_y + edge * 0.76, left_panel_z),
-             (0.050, 0.045, 0.82), mats["trim_wood"], static, bevel=0.018)
-        cube(f"WR_CANON_left_wall_upper_h_{edge}",
-             (-8.410, left_panel_y, left_panel_z + edge * 0.82),
-             (0.050, 0.76, 0.045), mats["trim_wood"], static, bevel=0.018)
-
     for z in (1.25, 3.15, 5.45):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
     for x in (-7.3, -4.2, -1.55, 1.55, 4.2, 7.3):
