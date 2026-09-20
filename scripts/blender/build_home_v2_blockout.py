@@ -746,6 +746,10 @@ def draped_banner_panel(
     vertices = []
     faces = []
     cols = horizontal_segments + 1
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(name)) & 0xFFFF
+    fold_phase = _hash01(seed, 0, 1709) * math.tau
+    fold_scale = 0.86 + _hash01(seed, 1, 1721) * 0.26
+    side_bias = (_hash01(seed, 2, 1733) - 0.5) * 0.018
 
     for row in range(vertical_segments + 1):
         t = row / vertical_segments
@@ -759,11 +763,12 @@ def draped_banner_panel(
 
             edge_fade = max(0.0, math.sin(math.pi * u)) ** 0.55
             lower_weight = 0.38 + 0.62 * t
-            primary = math.sin(u * math.tau * 3.2 + 0.35)
-            secondary = math.sin(u * math.tau * 6.4 - 0.8) * 0.22
-            fold = (primary + secondary) * fold_depth * edge_fade * lower_weight
+            primary = math.sin(u * math.tau * 3.2 + 0.35 + fold_phase)
+            secondary = math.sin(u * math.tau * 6.4 - 0.8 + fold_phase * 0.43) * 0.22
+            fold = (primary + secondary) * fold_depth * fold_scale * edge_fade * lower_weight
             # Tiny asymmetric drop keeps the lower edge from reading as CAD-perfect.
             z -= (0.008 + 0.018 * t) * math.sin(math.pi * u) ** 2
+            z += side_bias * signed * t
             vertices.append((x, y + fold, z))
 
     for row in range(vertical_segments):
