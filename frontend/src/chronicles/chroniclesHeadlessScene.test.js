@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
 import {
+  chroniclesTacticsLegalMoves,
+  chroniclesTacticsMove,
+} from '../chroniclesOfMatthiasTactics.js';
+import {
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
@@ -27,6 +31,33 @@ describe('Chronicles headless scene harness', () => {
       expect(snapshot.geometry.floors.length).toBeGreaterThan(0);
       expect(snapshot.party.length).toBe(4);
       expect(() => JSON.stringify(snapshot)).not.toThrow();
+    });
+  });
+
+  it('walks every shipped map headlessly through real legal movement', () => {
+    chroniclesMapIds().forEach((mapId) => {
+      let state = createChroniclesState(mapId);
+
+      for (let step = 0; step < 6; step += 1) {
+        const legalMoves = chroniclesTacticsLegalMoves(state);
+        const snapshot = chroniclesHeadlessSceneSnapshot(state, {
+          interaction: { mode: 'move', legalMoves, legalTargets: [] },
+        });
+
+        expect(snapshot.mapId).toBe(mapId);
+        expect(snapshot.focusCell).toBe(`${state.x},${state.y}`);
+        expect(snapshot.interaction?.legalMoves).toEqual(
+          legalMoves.map((move) => `${move.x},${move.y}`),
+        );
+        expect(() => JSON.stringify(snapshot)).not.toThrow();
+
+        if (!legalMoves.length) break;
+        const chosen = legalMoves[step % legalMoves.length];
+        const next = chroniclesTacticsMove(state, chosen);
+        expect(next).not.toBe(state);
+        expect([next.x, next.y]).toEqual([chosen.x, chosen.y]);
+        state = next;
+      }
     });
   });
 
