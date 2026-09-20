@@ -116,3 +116,4 @@ Contrato adicional de enemigos:
 - Cada tipo puede tener silueta, protección, casco y arma propios, pero no puede depender de un fondo vectorial para comunicar su identidad principal.
 - El atlas enemigo se genera desde frames 2D y un packer; no se aceptan composiciones finales generadas manualmente.
 - El worksheet validado de enemigos se conserva dentro de games/pawn-slug-godot/art/ para reanudar la iteración.
+- Si trabajas en local y tienes buen hardware, puedes generar sprites y blender artifacts, pero ojo con saturar la cpu/gpu
