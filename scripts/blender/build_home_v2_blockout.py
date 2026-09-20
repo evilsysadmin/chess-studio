@@ -325,6 +325,26 @@ def apply_material(obj, mat) -> None:
         obj.data.materials.append(mat)
 
 
+PREMIUM_BEVEL_PREFIXES = (
+    "HOME_PROP_table_",
+    "HOME_PROP_board_",
+    "HOME_PROP_armor_",
+    "HOME_PROP_bookshelf_",
+    "HOME_PROP_library_",
+    "HOME_PROP_left_sofa_",
+    "HOME_PROP_bench_",
+    "HOME_PROP_globe_",
+    "HOME_PROP_sideboard_",
+    "HOME_PROP_pedestal_",
+)
+
+
+def configure_soft_edge_modifier(modifier, name: str) -> None:
+    modifier.segments = 3 if name.startswith(PREMIUM_BEVEL_PREFIXES) else 2
+    if hasattr(modifier, "harden_normals"):
+        modifier.harden_normals = True
+
+
 def smooth_curved_mesh(obj, *, keep_axial_caps_flat=False) -> None:
     """Export clean normals without rounding intentionally planar caps."""
     if obj.type != "MESH":
@@ -345,7 +365,7 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
     if bevel:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
         modifier.width = bevel
-        modifier.segments = 2
+        configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
 
@@ -548,7 +568,7 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
     if bevel:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
         modifier.width = bevel
-        modifier.segments = 2
+        configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
 
