@@ -465,7 +465,28 @@ def add_table_and_board(materials):
     for side in (-1, 1):
         panel_x = side * 2.58
         cube(f"HOME_PROP_table_front_panel_{side}", (panel_x, -0.70, 0.76), (0.48, 0.055, 0.30), materials["wood"], bevel=0.055)
-        sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.77, 0.77), (0.095, 0.025, 0.095), materials["gold"])
+        cube(
+            f"HOME_PROP_table_front_panel_inset_{side}",
+            (panel_x, -0.765, 0.76),
+            (0.37, 0.014, 0.205),
+            materials["dark"],
+            bevel=0.032,
+        )
+        cube(
+            f"HOME_PROP_table_front_panel_trim_top_{side}",
+            (panel_x, -0.784, 0.985),
+            (0.39, 0.010, 0.018),
+            materials["brass_dark"],
+            bevel=0.008,
+        )
+        cube(
+            f"HOME_PROP_table_front_panel_trim_bottom_{side}",
+            (panel_x, -0.784, 0.535),
+            (0.39, 0.010, 0.018),
+            materials["brass_dark"],
+            bevel=0.008,
+        )
+        sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.80, 0.77), (0.082, 0.022, 0.082), materials["gold"])
         leg_x = side * 3.12
         cube(f"HOME_PROP_table_front_leg_plinth_{side}", (leg_x, -0.40, 0.24), (0.26, 0.28, 0.18), wood, bevel=0.045)
         cube(f"HOME_PROP_table_front_leg_shaft_{side}", (leg_x, -0.40, 0.58), (0.18, 0.20, 0.28), wood, bevel=0.05)
