@@ -48,6 +48,7 @@ const WEAPON_POSE := {
 
 static var _cached_body_texture: Texture2D
 static var _cached_body_is_legacy := false
+static var _body_texture_failed := false
 static var _body_texture_loading := false
 static var _body_texture_waiters: Array = []
 
@@ -250,18 +251,16 @@ func _apply_type() -> void:
         _install_remote_body_texture(_cached_body_texture)
         return
 
-    var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
-    if texture == null:
-        _body.visible = false
+    if _body_texture_failed:
+        _install_fallback_body_texture()
         return
-    _using_remote_body = false
-    _body.texture = texture
-    _body.visible = true
-    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
-    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
-    _body.scale = Vector2(body_scale, body_scale)
-    _body.position = Vector2(0.0, -98.0 * body_scale)
-    _apply_body_frame()
+
+    # Healthy remote request still pending: render nothing. The local fallback
+    # is an error path, not a boot animation; showing it here causes a visible
+    # malformed enemy flash before cast-v2 arrives.
+    _body.visible = false
+    if _weapon_sprite != null:
+        _weapon_sprite.visible = false
 
 func _apply_body_frame() -> void:
     if _body == null or not _body.visible:
@@ -287,6 +286,9 @@ func _request_body_atlas() -> void:
         return
     if _cached_body_texture != null:
         _install_remote_body_texture(_cached_body_texture)
+        return
+    if _body_texture_failed:
+        _install_fallback_body_texture()
         return
     if not _body_texture_waiters.has(self):
         _body_texture_waiters.append(self)
@@ -345,18 +347,42 @@ func _finish_body_atlas_request(texture: Texture2D) -> void:
         _body_request.queue_free()
         _body_request = null
     _body_texture_loading = false
+    _body_texture_failed = texture == null
 
     var waiters := _body_texture_waiters.duplicate()
     _body_texture_waiters.clear()
-    if texture == null:
-        return
     for waiter in waiters:
-        if is_instance_valid(waiter):
+        if not is_instance_valid(waiter):
+            continue
+        if texture == null:
+            waiter.call("_install_fallback_body_texture")
+        else:
             waiter.call("_install_remote_body_texture", texture)
+
+func _install_fallback_body_texture() -> void:
+    if _body == null or enemy_type == "bishop":
+        return
+    var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
+    if texture == null:
+        _body.visible = false
+        if _weapon_sprite != null:
+            _weapon_sprite.visible = false
+        return
+    _using_remote_body = false
+    _using_legacy_remote_body = false
+    _body.texture = texture
+    _body.visible = true
+    _body.modulate = TYPE_TINT.get(enemy_type, Color.WHITE)
+    var body_scale := float(FALLBACK_TYPE_SCALE.get(enemy_type, 0.39)) * ENEMY_VISUAL_SCALE
+    _body.scale = Vector2(body_scale, body_scale)
+    _body.position = Vector2(0.0, -98.0 * body_scale)
+    _apply_weapon()
+    _apply_body_frame()
 
 func _install_remote_body_texture(texture: Texture2D) -> void:
     if texture == null or _body == null or enemy_type == "bishop":
         return
+    _body_texture_failed = false
     _using_remote_body = true
     _using_legacy_remote_body = _cached_body_is_legacy
     _body.texture = texture
@@ -383,6 +409,16 @@ func _integrated_muzzle_position() -> Vector2:
 
 func _apply_weapon() -> void:
     if _weapon_sprite == null:
+        return
+    if (
+        enemy_type != "bishop"
+        and _cached_body_texture == null
+        and not _body_texture_failed
+        and not _body.visible
+    ):
+        # Do not leave the legacy gun floating by itself while cast-v2 resolves.
+        _weapon_sprite.visible = false
+        _muzzle_flash.visible = false
         return
 
     var integrated_weapon := _uses_integrated_body_weapon()
