@@ -1,0 +1,37 @@
+name: Pawn Slug · enemy shield v2 art
+
+on:
+  pull_request:
+    paths:
+      - games/pawn-slug-godot/scripts/enemy_visual.gd
+      - scripts/art/derive_pawn_slug_enemy_shield_v2.py
+      - scripts/art/test_pawn_slug_enemy_shield_v2.py
+      - .github/workflows/pawn-slug-enemy-shield-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  derive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Pillow
+        run: python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+      - name: Test deterministic Shield derivation
+        run: python3 scripts/art/test_pawn_slug_enemy_shield_v2.py
+      - name: Build Shield review artifact
+        run: |
+          python3 scripts/art/derive_pawn_slug_enemy_shield_v2.py \
+            --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
+            --output-dir /tmp/pawn-slug-shield-v2
+      - name: Upload Shield v2 PNG review
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-enemy-shield-v2-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/pawn-slug-shield-v2/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

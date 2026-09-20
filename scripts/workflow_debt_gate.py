@@ -42,6 +42,7 @@ INVENTORY = {
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-commando-v2.yml': 'visual-staging-evidence',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
+    'pawn-slug-enemy-shield-v2.yml': 'visual-staging-evidence',
     'pawn-slug-godot-strict-atlas.yml': 'art-generation',
     'pawn-slug-godot-strict-v9.yml': 'art-generation',
     'pawn-slug-godot-strict-v10.yml': 'art-generation',
