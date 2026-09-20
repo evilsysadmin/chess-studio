@@ -1025,6 +1025,26 @@ def add_side_furnishings(materials):
 
     # Library work area behind the main board.
     cube("HOME_PROP_library_desk", (-3.45, 4.05, 0.82), (1.35, 0.58, 0.10), wood, bevel=0.05)
+    cube(
+        "HOME_PROP_library_desk_apron",
+        (-3.45, 3.48, 0.68),
+        (1.08, 0.035, 0.12),
+        wood,
+        bevel=0.025,
+    )
+    cube(
+        "HOME_PROP_library_desk_drawer",
+        (-3.45, 3.435, 0.71),
+        (0.54, 0.018, 0.11),
+        materials["dark"],
+        bevel=0.020,
+    )
+    sphere(
+        "HOME_PROP_library_desk_drawer_pull",
+        (-3.45, 3.405, 0.71),
+        (0.042, 0.020, 0.042),
+        brass,
+    )
     cube("HOME_PROP_library_desk_leg_l", (-4.55, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
     cube("HOME_PROP_library_desk_leg_r", (-2.35, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
     cube("HOME_PROP_library_chair_seat", (-4.65, 3.25, 0.48), (0.44, 0.42, 0.12), leather, bevel=0.06)
