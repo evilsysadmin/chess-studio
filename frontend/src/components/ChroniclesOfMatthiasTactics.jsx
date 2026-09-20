@@ -3,6 +3,7 @@ import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesBootstrapTacticsWorld } from '../chronicles/chroniclesGameBootstrap.js';
+import { ensureChroniclesTacticsRun } from '../chroniclesOfMatthiasProgression.js';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasTacticsPremium.css';
 
@@ -23,7 +24,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     const controller = new AbortController();
     let active = true;
 
-    chroniclesBootstrapTacticsWorld({ signal: controller.signal })
+    const operationId = ensureChroniclesTacticsRun();
+    chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
       .finally(() => {
         if (active) setReady(true);
       });
