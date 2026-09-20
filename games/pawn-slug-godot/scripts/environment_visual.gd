@@ -10,14 +10,16 @@ var _platforms: Array[Rect2] = []
 var _obstacles: Array[Rect2] = []
 var _theme := "night_front"
 var _platform_specs: Array[Dictionary] = []
+var _dressing_specs: Array[Dictionary] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = []) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
     _obstacles = obstacles.duplicate()
     _theme = theme
     _platform_specs = platform_specs.duplicate(true)
+    _dressing_specs = dressing_specs.duplicate(true)
     queue_redraw()
 
 func _ready() -> void:
@@ -537,34 +539,19 @@ func _draw_warm_lamp_pool(origin: Vector2, bottom_y: float, radius: float = 16.0
         )
 
 func _draw_foreground_props() -> void:
-    match _theme:
-        "harbor_dusk":
-            for index in range(10):
-                var x := 460.0 + float(index) * 560.0
-                _draw_crate(Vector2(x, _floor_y - 3.0), 34.0 + float((index % 2) * 6))
-                _draw_barrel(Vector2(x + 64.0, _floor_y - 2.0))
-        "alpine_night":
-            for index in range(8):
-                var x := 520.0 + float(index) * 650.0
-                _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
-                if index % 2 == 0:
-                    _draw_crate(Vector2(x + 105.0, _floor_y - 3.0), 30.0)
-        "jungle_storm":
-            for index in range(9):
-                var x := 500.0 + float(index) * 590.0
-                _draw_crate(Vector2(x, _floor_y - 3.0), 30.0 + float((index % 3) * 3))
-                if index % 2 == 0:
-                    _draw_sandbags(Vector2(x + 82.0, _floor_y - 3.0), 5)
-        _:
-            for index in range(8):
-                var x := 540.0 + float(index) * 640.0
-                _draw_crate(Vector2(x, _floor_y - 3.0), 32.0 + float((index % 3) * 4))
-                if index % 2 == 1:
-                    _draw_barrel(Vector2(x + 78.0, _floor_y - 2.0))
-
-            for index in range(6):
-                var x := 940.0 + float(index) * 820.0
-                _draw_sandbags(Vector2(x, _floor_y - 3.0), 6)
+    for spec in _dressing_specs:
+        var kind := String(spec.get("kind", ""))
+        var x := float(spec.get("x", 0.0))
+        var y := float(spec.get("y", _floor_y - 3.0))
+        match kind:
+            "crate":
+                _draw_crate(Vector2(x, y), float(spec.get("size", 32.0)))
+            "barrel":
+                _draw_barrel(Vector2(x, y))
+            "sandbags":
+                _draw_sandbags(Vector2(x, y), int(spec.get("count", 5)))
+            _:
+                push_warning("Pawn Slug dressing kind not rendered: %s" % kind)
 
 func _draw_foreground_story_props() -> void:
     match _theme:
