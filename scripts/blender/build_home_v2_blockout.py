@@ -880,6 +880,13 @@ def add_banner(name: str, x: float, materials):
     ]
     flat_panel(f"HOME_PROP_banner_{name}", points, 5.82, 0.08, banner, bevel=0.028)
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
+    for side in (-1, 1):
+        sphere(
+            f"HOME_PROP_banner_bar_finial_{name}_{side}",
+            (x + side * 0.64, 5.72, 5.70),
+            (0.065, 0.050, 0.065),
+            materials["brass_dark"],
+        )
 
     relief_y = 5.73
     sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.20, 0.040, 0.17), gold)
