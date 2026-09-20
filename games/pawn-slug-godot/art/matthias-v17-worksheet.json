@@ -1,6 +1,6 @@
 {
   "worksheet": "matthias-pawn-slug-godot-v17",
-  "status": "candidate-local-validated",
+  "status": "validated-promoted-runtime",
   "goal": "replace the historical strict-v16 machinegun body/proportion divergence without regressing strict Godot geometry",
   "source": {
     "generation": "strict-v16",
@@ -71,11 +71,29 @@
     "candidate_sha256": "63e2021dd301fa4412d6b6cd6320927302cca73ca2bd5a330fb86a97056517ba",
     "reproducible_sha256": true,
     "visual_review": "local v16-v17 review and four-weapon family comparison inspected; body identity now matches the canonical v16 family and all directional rows retain authored aim/muzzle poses",
-    "godot_headless": "pending CI: local sandbox does not contain the pinned Godot editor/repository checkout"
+    "godot_headless": "CI run 35519038573 passed on Godot 4.7.2: 144 AtlasTexture regions consumed through SpriteFrames"
   },
   "promotion": {
-    "runtime_changed": false,
-    "r2_publish": "only on green main workflow after candidate merge",
-    "next": "inspect CI review PNG + Godot 4.7.2 smoke; then promote the immutable R2 URL in a separate runtime PR"
+    "runtime_changed": true,
+    "r2_publish": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png",
+    "next": "use strict-v17 machinegun as the runtime baseline; keep iterating only with visual + Godot artifact evidence and no heavyweight atlas binaries in Git"
+  },
+  "ci_evidence": {
+    "candidate_pr": 3327,
+    "candidate_head_commit": "dbf57ecb0d2f45cada928fb998bf0bdf9ab0f581",
+    "merged_main_commit": "8f6a1f9f75e6ae2889ec662de190859ee8ae2cc7",
+    "strict_v17_run": 35519038573,
+    "artifact_id": 10607353226,
+    "godot": "4.7.2",
+    "build_gate": "success",
+    "godot_spriteframes_smoke": "success",
+    "r2_publish": "success",
+    "visual_review": "CI review PNG inspected after merge; v17 restores canonical Matthias body/proportion continuity for machinegun while preserving directional aim rows and clean death/downed silhouettes"
+  },
+  "runtime_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/pistol/v16-670506b5307a1756.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png"
   }
 }

@@ -222,8 +222,18 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$RUNNER_TEMP/matthias-v10"
+          RUNTIME_PISTOL_URL="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('games/pawn-slug-godot/scripts/matthias_art.gd').read_text(encoding='utf-8')
+          matches = re.findall(r'^\s*"pistol":\s*"(https://[^"]+/pawn-slug-godot/matthias/strict-v\d+/pistol/[^"]+)"', text, flags=re.MULTILINE)
+          if len(matches) != 1:
+              raise SystemExit(f'expected exactly one active strict pistol runtime URL, got {len(matches)}')
+          print(matches[0])
+          PY
+          )"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
-            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png" \
+            "$RUNTIME_PISTOL_URL" \
             --output "$ROOT/matthias_runtime_pistol.png"
           python3 - <<'PY'
           import json
@@ -242,10 +252,17 @@ jobs:
           if text.count(promotion) != 1:
               raise SystemExit('expected exactly one v10 runtime promotion guard')
           text = text.replace(promotion, 'const V10_RUNTIME_PROMOTION_ENABLED := true')
-          runtime_remote = 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png'
-          if text.count(runtime_remote) != 1:
-              raise SystemExit('expected exactly one strict-v15 pistol runtime URL')
-          text = text.replace(runtime_remote, 'http://127.0.0.1:4179/matthias_runtime_pistol.png')
+          runtime_prefix = '    "pistol": "'
+          runtime_matches = [
+              i for i, line in enumerate(lines)
+              if line.startswith(runtime_prefix)
+              and '/pawn-slug-godot/matthias/strict-v' in line
+              and '/pistol/' in line
+          ]
+          if len(runtime_matches) != 1:
+              raise SystemExit(f'expected exactly one active strict pistol runtime URL, got {len(runtime_matches)}')
+          lines[runtime_matches[0]] = '    "pistol": "http://127.0.0.1:4179/matthias_runtime_pistol.png",'
+          text = '\n'.join(lines) + '\n'
           path.write_text(text, encoding='utf-8')
 
           # The visual proof owns animation quality, not combat survivability.

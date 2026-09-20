@@ -14,17 +14,17 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v16"
+const STRICT_RUNTIME_GENERATION := "v17"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/pistol/v16-670506b5307a1756.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/machinegun/v16-32227acfdc2e0cff.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
 const RUNTIME_PRELOAD_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
-# strict-v16 tactical bank; v10 stays disabled because its mixed silhouettes
+# strict-v17 tactical bank; v10 stays disabled because its mixed silhouettes
 # would regress identity continuity.
 const V10_RUNTIME_PROMOTION_ENABLED := false
 const V10_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v10/pistol/matthias_pistol_godot_strict_12x9_256_v10-10047b75952259db.png"
@@ -54,7 +54,7 @@ const V10_ACTIONS := {
 }
 
 # Historical V9_* names are retained as the stable 18-row runtime contract.
-# strict-v16 preserves that eight-column contract without changing
+# strict-v17 preserves that eight-column contract without changing
 # cell size, pivot, foot line, row semantics or world scale.
 const V9_ATLAS_COLUMNS := 8
 const V9_ATLAS_ROWS := 18
