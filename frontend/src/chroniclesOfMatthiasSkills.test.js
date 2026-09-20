@@ -13,6 +13,7 @@ import {
 } from './chroniclesOfMatthiasProgression.js';
 import {
   chroniclesTacticsAbility,
+  chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
 } from './chroniclesOfMatthiasTactics.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
@@ -52,9 +53,9 @@ describe('Chronicles Tactics · class doctrine skills', () => {
 
   it('offers two real doctrine choices per class at level 2', () => {
     for (const memberId of ['matthias', 'rook', 'bishop', 'knight']) {
-      const skills = chroniclesSkillsForMember(memberId);
+      const skills = chroniclesSkillsForMember(memberId).filter((skill) => skill.requiredLevel === 2);
       expect(skills).toHaveLength(2);
-      expect(skills.every((skill) => skill.requiredLevel === 2 && skill.cost === 1)).toBe(true);
+      expect(skills.every((skill) => skill.cost === 1)).toBe(true);
       expect(new Set(skills.map((skill) => skill.group)).size).toBe(1);
     }
   });
@@ -117,6 +118,33 @@ describe('Chronicles Tactics · class doctrine skills', () => {
       enemyPositions: { 'corrupted-pawn': { x: 2, y: 4 } },
     });
     expect(chroniclesTacticsAttack(geometry, 'bishop', 'corrupted-pawn').enemyHp).toBe(3);
+  });
+
+  it('unlocks one level-4 spell branch and changes the real ability', () => {
+    const levelFour = leveled('bishop', 4);
+    expect(chroniclesHeroProgress(levelFour, 'bishop').skillPoints).toBe(2);
+
+    const dawn = unlockChroniclesSkill(levelFour, 'bishop', 'bishop-dawn-orb');
+    expect(dawn.unlocked).toBe(true);
+    const competing = unlockChroniclesSkill(dawn.progression, 'bishop', 'bishop-twin-lumen');
+    expect(competing.unlocked).toBe(false);
+
+    const woundedParty = createChroniclesState().party.map((member) => ({
+      ...member,
+      hp: Math.max(1, member.hp - 4),
+    }));
+    const dawnState = tacticsState(dawn.progression, { party: woundedParty });
+    expect(chroniclesTacticsAbilityStatus(dawnState, 'bishop').abilityName).toBe('Orbe de alba');
+    const healed = chroniclesTacticsAbility(dawnState, 'bishop');
+    expect(healed.party.find((member) => member.id === 'matthias').hp).toBe(7);
+
+    const twin = unlockChroniclesSkill(levelFour, 'bishop', 'bishop-twin-lumen');
+    expect(twin.unlocked).toBe(true);
+    const twinState = tacticsState(twin.progression, { party: woundedParty });
+    expect(chroniclesTacticsAbilityStatus(twinState, 'bishop')).toMatchObject({
+      abilityName: 'Lumen geminado',
+      charges: 2,
+    });
   });
 
   it('makes Faust choose between heavier bolts and an extra volley charge', () => {
