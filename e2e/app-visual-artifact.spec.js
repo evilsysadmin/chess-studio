@@ -5,14 +5,14 @@ import { login, mockApi } from './helpers.js';
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
-  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
-  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74 },
-  { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74, dismissMatthias:true },
-  { label:'android-desktop-site-landscape-980x430', width:980, height:430, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.98, minStageVisibleWidthFill:.98, minVisibleDestinations:6, expectMatthiasVisible:true },
+  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.74 },
+  { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.74, dismissMatthias:true },
+  { label:'android-desktop-site-landscape-980x430', width:980, height:430, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.98, minStageVisibleWidthFill:.98, minVisibleDestinations:6, expectMatthiasVisible:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
-  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
-  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
-  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce', forceCores:8, expectCastleReady:true },
+  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
 ];
 
 async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {}) {
@@ -135,6 +135,13 @@ async function captureHealth(page, label) {
           && rect.bottom > 0
           && rect.top < viewport.height;
       }).length;
+    const castle3d = document.querySelector('.illustrated-home__castle-3d.is-ready');
+    const castle3dDiagnostics = castle3d ? {
+      compositor:castle3d.getAttribute('data-home-castle-compositor'),
+      blenderRuntime:castle3d.getAttribute('data-home-blender-runtime'),
+      lod:castle3d.getAttribute('data-home-castle-lod'),
+      camera:castle3d.getAttribute('data-home-blender-camera'),
+    } : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
     const matthiasStyle = matthiasNode ? getComputedStyle(matthiasNode) : null;
@@ -158,7 +165,8 @@ async function captureHealth(page, label) {
       touchPoints:navigator.maxTouchPoints,
       coarsePointer:window.matchMedia('(pointer: coarse)').matches,
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-      castle3dReady:document.querySelector('.illustrated-home__castle-3d.is-ready') !== null,
+      castle3dReady:castle3d !== null,
+      castle3dDiagnostics,
       stage,
       visibleDestinationCount,
       matthiasVisible,
@@ -228,6 +236,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           ...health,
           expectedReducedMotion:capture.reducedMotion === 'reduce',
           expectedCastleReady:capture.expectCastleReady === true,
+          expectedBlenderRuntime:capture.expectBlenderRuntime === true,
           expectedCoarsePointer:capture.hasTouch === true,
           minStageViewportFill:capture.minStageViewportFill ?? null,
           minStageVisibleWidthFill:capture.minStageVisibleWidthFill ?? null,
@@ -250,7 +259,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:8, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:9, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
@@ -260,6 +269,10 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
     if (capture.expectedCastleReady) {
       expect(capture.castle3dReady, `${capture.label}: 3D canvas ready before screenshot`).toBe(true);
+    }
+    if (capture.expectedBlenderRuntime) {
+      expect(capture.castle3dDiagnostics?.compositor, `${capture.label}: Blender compositor`).toBe('blender-runtime');
+      expect(capture.castle3dDiagnostics?.blenderRuntime, `${capture.label}: Blender runtime ready`).toBe('ready');
     }
     if (capture.expectedCoarsePointer) {
       expect(capture.coarsePointer, `${capture.label}: coarse pointer emulation`).toBe(true);
