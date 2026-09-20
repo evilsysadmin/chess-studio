@@ -75,10 +75,11 @@ def decorate_grenadier(frame: Image.Image, phase: int) -> Image.Image:
         d.point((gx - 1, gy - 1), fill=OLIVE_HI)
 
     # Compact launcher canister under the current barrel, attached rather than floating.
-    d.rectangle((18, 30, 35, 38), fill=INK)
-    d.rectangle((20, 31, 33, 36), fill=OLIVE)
-    d.line([(20, 31), (31, 31)], fill=OLIVE_HI, width=1)
-    d.rectangle((17, 32, 20, 36), fill=BRASS)
+    d.polygon([(18, 27), (33, 27), (36, 29), (34, 34), (19, 34), (16, 31)], fill=INK)
+    d.rectangle((20, 28, 32, 32), fill=OLIVE)
+    d.line([(21, 28), (31, 28)], fill=OLIVE_HI, width=1)
+    d.rectangle((28, 28, 30, 33), fill=SATCHEL_HI)
+    d.line([(32, 28), (40, 28)], fill=INK, width=2)
 
     # Rear spare shell tube and hazard stripe.
     d.polygon([(66, 23), (72, 23), (74, 29), (73, 36), (67, 36), (65, 30)], fill=INK)
