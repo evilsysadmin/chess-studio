@@ -1379,7 +1379,7 @@ def add_gothic_canon_v2(static, mats):
         (0.42, 4.05), (0.32, 4.36),
     ]
     table_horse_points = [
-        (x * 0.26, 0.62 + (z - 4.84) * 0.26)
+        (x * 0.30, 0.62 + (z - 4.84) * 0.30)
         for x, z in table_horse_source
     ]
     area = sum(
@@ -1404,7 +1404,7 @@ def add_gothic_canon_v2(static, mats):
     table_horse_mesh.from_pydata(table_horse_vertices, [], table_horse_faces)
     table_horse_mesh.update()
     table_horse = bpy.data.objects.new("WR_CANON_table_horse_relief", table_horse_mesh)
-    table_horse.data.materials.append(mats["brass"])
+    table_horse.data.materials.append(heraldic_brass)
     tag(table_horse)
     static.objects.link(table_horse)
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
