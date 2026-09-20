@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Synthetic probe for a deployed Chess Studio backend (stdlib only).
 
-Always checks liveness + readiness. If CHESS_SYNTHETIC_USERNAME/PASSWORD are
-provided, it also validates login and the authenticated status endpoint. With
-CHESS_SYNTHETIC_GAMEPLAY=1 it exercises create/load/move/sync and deletes the
-synthetic savegame afterwards.
+Always checks liveness + readiness. Authenticated checks use explicit
+CHESS_SYNTHETIC_USERNAME/PASSWORD when provided, or a short-lived API-created
+identity when CHESS_SYNTHETIC_EPHEMERAL=1. With CHESS_SYNTHETIC_GAMEPLAY=1 it
+exercises create/load/move/sync and cleans up both the game and an ephemeral
+identity before exiting.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import secrets
 import sys
 import time
 import uuid
@@ -34,6 +36,11 @@ def api_base(raw: str) -> str:
 
 def env_enabled(raw: str | None) -> bool:
     return str(raw or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def ephemeral_credentials() -> tuple[str, str]:
+    """Generate a disposable identity matching the staging smoke convention."""
+    return f"ci_smoke_{secrets.token_hex(8)}", f"CS!{secrets.token_urlsafe(32)}"
 
 
 def game_state_matches(game_id: str, expected: dict, actual: dict) -> bool:
@@ -111,14 +118,18 @@ def main() -> int:
     parser.add_argument("--base-url", default=os.getenv("CHESS_SYNTHETIC_BASE_URL", ""))
     parser.add_argument("--username", default=os.getenv("CHESS_SYNTHETIC_USERNAME", ""))
     parser.add_argument("--password", default=os.getenv("CHESS_SYNTHETIC_PASSWORD", ""))
+    parser.add_argument("--invite-code", default=os.getenv("CHESS_SYNTHETIC_INVITE_CODE", ""))
     parser.add_argument("--timeout", type=float, default=8.0)
     parser.add_argument("--gameplay", action="store_true", default=env_enabled(os.getenv("CHESS_SYNTHETIC_GAMEPLAY")))
+    parser.add_argument("--ephemeral", action="store_true", default=env_enabled(os.getenv("CHESS_SYNTHETIC_EPHEMERAL")))
+    parser.add_argument("--health-slo-ms", type=float, default=os.getenv("CHESS_SYNTHETIC_HEALTH_SLO_MS", "0"))
     parser.add_argument("--auth-slo-ms", type=float, default=os.getenv("CHESS_SYNTHETIC_AUTH_SLO_MS", "0"))
     args = parser.parse_args()
 
-    if args.auth_slo_ms < 0:
-        print("synthetic: auth SLO no puede ser negativo", file=sys.stderr)
+    if args.health_slo_ms < 0 or args.auth_slo_ms < 0:
+        print("synthetic: los SLO no pueden ser negativos", file=sys.stderr)
         return 2
+    health_slo_ms = args.health_slo_ms or None
     auth_slo_ms = args.auth_slo_ms or None
 
     try:
@@ -127,21 +138,73 @@ def main() -> int:
         print(f"synthetic: {exc}", file=sys.stderr)
         return 2
 
+    username = str(args.username or "").strip()
+    password = str(args.password or "")
+    if bool(username) != bool(password):
+        print("synthetic: username/password deben configurarse juntos", file=sys.stderr)
+        return 2
+
     passed = True
+    ephemeral_created = False
+    cleanup_token: str | None = None
+
     try:
         for name, path in (("liveness", "/health"), ("readiness", "/ready")):
             status, payload, latency, req_id = _call(base, path, timeout=args.timeout)
-            passed = _check(name, status, payload, latency, req_id) and passed
+            passed = _check(name, status, payload, latency, req_id, slo_ms=health_slo_ms) and passed
 
-        if bool(args.username) != bool(args.password):
-            print("synthetic: username/password deben configurarse juntos", file=sys.stderr)
-            return 2
-        if args.username and args.password:
-            status, payload, latency, req_id = _call(base, "/auth/login", method="POST", body={"username": args.username, "password": args.password}, timeout=args.timeout)
+        if not username and args.ephemeral:
+            username, password = ephemeral_credentials()
+            registration_body = {"username": username, "password": password}
+            invite_code = str(args.invite_code or "").strip()
+            if invite_code:
+                registration_body["inviteCode"] = invite_code
+            status, registered, latency, req_id = _call(
+                base,
+                "/auth/register",
+                method="POST",
+                body=registration_body,
+                timeout=args.timeout,
+            )
+            register_ok = _check(
+                "register_ephemeral",
+                status,
+                registered,
+                latency,
+                req_id,
+                expected=201,
+                slo_ms=auth_slo_ms,
+            )
+            passed = register_ok and passed
+            ephemeral_created = status == 201
+            cleanup_token = str(registered.get("token") or "") or None if isinstance(registered, dict) else None
+            if status == 403 and not invite_code:
+                passed = _state_check(
+                    "ephemeral_registration_policy",
+                    False,
+                    "production registration requires an invite; configure CHESS_SYNTHETIC_INVITE_CODE or fixed synthetic credentials",
+                ) and passed
+            if status == 201 and not cleanup_token:
+                passed = _state_check(
+                    "register_ephemeral_token",
+                    False,
+                    "registration succeeded without a cleanup token",
+                ) and passed
+
+        if username and password and (not args.ephemeral or ephemeral_created or args.username):
+            status, payload, latency, req_id = _call(
+                base,
+                "/auth/login",
+                method="POST",
+                body={"username": username, "password": password},
+                timeout=args.timeout,
+            )
             login_ok = _check("login", status, payload, latency, req_id, slo_ms=auth_slo_ms)
             passed = login_ok and passed
-            token = payload.get("token") if status == 200 else None
+            token = str(payload.get("token") or "") or None if isinstance(payload, dict) and status == 200 else None
             if token:
+                if ephemeral_created:
+                    cleanup_token = token
                 status, payload, latency, req_id = _call(base, "/status", token=token, timeout=args.timeout)
                 passed = _check("authenticated_status", status, payload, latency, req_id, slo_ms=auth_slo_ms) and passed
 
@@ -197,10 +260,58 @@ def main() -> int:
             elif args.gameplay:
                 passed = _state_check("gameplay", False, "login did not return a token") and passed
         elif args.gameplay:
-            print(json.dumps({"check": "gameplay", "ok": True, "skipped": True, "detail": "synthetic credentials are not configured"}, separators=(",", ":"), sort_keys=True))
+            passed = _state_check(
+                "gameplay",
+                False,
+                "authenticated gameplay requested without credentials or ephemeral identity",
+            ) and passed
     except (URLError, TimeoutError, OSError) as exc:
         print(json.dumps({"check": "transport", "ok": False, "error": type(exc).__name__, "detail": str(exc)[:160]}, separators=(",", ":"), sort_keys=True))
-        return 1
+        passed = False
+    finally:
+        if ephemeral_created:
+            if not cleanup_token:
+                passed = _state_check("account_cleanup", False, "ephemeral account has no cleanup token") and passed
+            else:
+                try:
+                    status, deleted, latency, req_id = _call(
+                        base,
+                        "/auth/delete-account",
+                        method="POST",
+                        token=cleanup_token,
+                        body={"password": password},
+                        timeout=args.timeout,
+                    )
+                    cleanup_ok = _check(
+                        "account_cleanup",
+                        status,
+                        deleted,
+                        latency,
+                        req_id,
+                        expected=200,
+                        slo_ms=auth_slo_ms,
+                    )
+                    passed = cleanup_ok and passed
+                    if cleanup_ok:
+                        verify_status, verify_payload, verify_latency, verify_req_id = _call(
+                            base,
+                            "/auth/login",
+                            method="POST",
+                            body={"username": username, "password": password},
+                            timeout=args.timeout,
+                        )
+                        passed = _check(
+                            "account_cleanup_verify",
+                            verify_status,
+                            verify_payload,
+                            verify_latency,
+                            verify_req_id,
+                            expected=401,
+                            slo_ms=auth_slo_ms,
+                        ) and passed
+                except (URLError, TimeoutError, OSError) as exc:
+                    print(json.dumps({"check": "account_cleanup_transport", "ok": False, "error": type(exc).__name__, "detail": str(exc)[:160]}, separators=(",", ":"), sort_keys=True))
+                    passed = False
 
     return 0 if passed else 1
 
