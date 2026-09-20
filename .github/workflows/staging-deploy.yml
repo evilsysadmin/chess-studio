@@ -95,6 +95,8 @@ jobs:
     name: Backend · exact OCI generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true'
+    outputs:
+      superseded: ${{ steps.backend_state.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Serialize application deploys with explicit Terraform infrastructure work
@@ -152,15 +154,30 @@ jobs:
             echo "::warning title=OCI fallback::El watcher no convergió; se usa un único Run Command de deploy."
           fi
 
-      - name: Restore cached OCI SDK toolchain
+      - name: Re-check main before OCI fallback
+        id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main antes del fallback OCI"; exit 1; }
+          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
+            echo 'superseded=true' >> "$GITHUB_OUTPUT"
+            echo "::notice title=OCI fallback superseded::$DEPLOY_SHA ya no es main ($current_main); no se envía Run Command."
+          else
+            echo 'superseded=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore cached OCI SDK toolchain
+        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
 
       - name: Validate OCI deploy contracts
-        if: steps.watcher.outputs.converged != 'true'
+        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
@@ -168,7 +185,8 @@ jobs:
           python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Deploy exact backend commit to OCI staging
-        if: steps.watcher.outputs.converged != 'true'
+        id: deploy
+        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         shell: bash
         env:
           OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
@@ -198,7 +216,32 @@ jobs:
 
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
 
+          # Run Command delivery can take minutes. main may advance while OCI is
+          # merely delivering the command, and the root wrapper will then refuse
+          # the stale mutation. Reflect that clean supersession back into Actions.
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main después del fallback OCI"; exit 1; }
+          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
+            echo 'superseded=true' >> "$GITHUB_OUTPUT"
+            echo "::notice title=OCI deploy superseded::$DEPLOY_SHA dejó de ser main durante Run Command ($current_main)."
+          else
+            echo 'superseded=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve backend generation state
+        id: backend_state
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.fallback_admission.outputs.superseded }}" == "true" || "${{ steps.deploy.outputs.superseded }}" == "true" ]]; then
+            echo 'superseded=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'superseded=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify backend public path reaches exact OCI generation
+        if: steps.backend_state.outputs.superseded != 'true'
         run: >-
           python3 scripts/verify_backend_staging.py
           --api-url "$STAGING_API_URL"
@@ -383,7 +426,7 @@ jobs:
   smoke:
     name: Browser smoke · ${{ matrix.label }}
     needs: [prepare, backend, frontend, worker]
-    if: needs.prepare.outputs.admitted == 'true'
+    if: needs.prepare.outputs.admitted == 'true' && needs.backend.outputs.superseded != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
