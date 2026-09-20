@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "scope": "pawn-slug-godot-enemy-worksheet",
+  "status": "pipeline-ready",
+  "sourceContract": {
+    "logicalGrid": [4, 4],
+    "allowNonDivisibleSourceDimensions": true,
+    "transparentBackgroundRequired": true,
+    "expectedSourceExample": [1254, 1254]
+  },
+  "runtimeContract": {
+    "cell": [256, 416],
+    "gridPerType": [4, 4],
+    "pivot": [128, 392],
+    "footLine": 392,
+    "gutter": 12,
+    "framesPerType": 16,
+    "pageSize": [1024, 1664],
+    "maxPageSide": 4096,
+    "format": "PNG RGBA8 straight alpha"
+  },
+  "types": [
+    "pawn",
+    "knight",
+    "rook",
+    "queen",
+    "grenadier",
+    "scout",
+    "commando",
+    "shield",
+    "bishop"
+  ],
+  "sourceNaming": "enemy-<type>-worksheet.png",
+  "outputNaming": "enemy-<type>-v2.png",
+  "notes": [
+    "Keep the nine source worksheets out of Git when they are heavyweight; this file is the resumable contract.",
+    "The packer derives proportional 4x4 cell edges so 1254x1254 image-gen output never depends on fractional 313.5px slicing.",
+    "Each enemy gets its own 1024x1664 page to avoid the previous 1024x14976 mobile texture-height risk.",
+    "All frames are uniformly scaled, horizontally centered, and grounded to the same 392px foot line."
+  ]
+}
