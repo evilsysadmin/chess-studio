@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p /tmp/metal-gtx
-          gdown --fuzzy 'https://drive.google.com/file/d/1FurY3_x_tog_56irX1VDNyRCUt5JD7bO/view' -O /tmp/metal-gtx.bin
+          gdown 'https://drive.google.com/uc?id=1FurY3_x_tog_56irX1VDNyRCUt5JD7bO&export=download' -O /tmp/metal-gtx.bin
           file /tmp/metal-gtx.bin
           if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
             unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
