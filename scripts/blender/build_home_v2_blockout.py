@@ -129,6 +129,17 @@ def apply_material(obj, mat) -> None:
         obj.data.materials.append(mat)
 
 
+def smooth_curved_mesh(obj, *, keep_axial_caps_flat=False) -> None:
+    """Export clean normals without rounding intentionally planar caps."""
+    if obj.type != "MESH":
+        return
+    for poly in obj.data.polygons:
+        if keep_axial_caps_flat and abs(poly.normal.z) > 0.95:
+            poly.use_smooth = False
+        else:
+            poly.use_smooth = True
+
+
 def cube(name: str, location, scale, mat, *, bevel=0.0):
     bpy.ops.mesh.primitive_cube_add(location=location)
     obj = bpy.context.object
@@ -147,6 +158,7 @@ def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
+    smooth_curved_mesh(obj, keep_axial_caps_flat=True)
     apply_material(obj, mat)
     return obj
 
@@ -157,6 +169,7 @@ def sphere(name: str, location, scale, mat):
     obj.name = name
     obj.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    smooth_curved_mesh(obj)
     apply_material(obj, mat)
     return obj
 
@@ -171,6 +184,7 @@ def cone(name: str, location, radius1: float, radius2: float, depth: float, mat,
     )
     obj = bpy.context.object
     obj.name = name
+    smooth_curved_mesh(obj, keep_axial_caps_flat=True)
     apply_material(obj, mat)
     return obj
 
