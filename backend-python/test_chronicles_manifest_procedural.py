@@ -146,6 +146,22 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert len(manifest["generation"]["treasureBoons"]) <= 1
 
 
+def test_explicit_procedural_difficulty_is_stable_across_enemy_rpg_storage_changes():
+    base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
+    assert base["proceduralDifficulty"] == 2
+
+    baseline = proceduralize_chronicles_manifest(base, 417)
+    migrated_storage = deepcopy(base)
+    for enemy in migrated_storage["enemies"]:
+        enemy["maxHp"] = 1
+
+    changed = proceduralize_chronicles_manifest(migrated_storage, 417)
+
+    assert parse_chronicles_map_code(baseline.map_code).difficulty == 2
+    assert changed.map_code == baseline.map_code
+    assert changed.manifest["grid"] == baseline.manifest["grid"]
+
+
 def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():
     base, _revision = chronicles_api.load_chronicles_manifest("echo-cistern")
     recipe = chronicles_map_code_for_manifest(base, 99)
