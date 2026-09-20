@@ -156,8 +156,8 @@ def self_test() -> None:
     assert not any(name == "oci" or name.startswith("oci.") for name in imported)
     forbidden_oci_api_host = "oracle" + "cloud.com"
     assert forbidden_oci_api_host not in source.lower()
-    assert "ls-remote" not in source
-    assert "refs/heads/main" not in source
+    assert "ls" + "-remote" not in source
+    assert "refs/heads/" + "main" not in source
     assert "OCI_DEPLOY_WATCH_SUPERSEDED" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
     assert "ENABLE_MARKER.is_symlink()" in source
