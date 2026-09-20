@@ -87,6 +87,10 @@ def main() -> int:
     for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
         if token not in explorer_exprs:
             fail(f"log explorer no aplica {token}")
+    if '$selector' in explorer_exprs:
+        fail("log explorer no debe interpolar un selector LogQL sin formato raw")
+    if '${selector:raw}' not in explorer_exprs:
+        fail("log explorer debe interpolar selector LogQL con ${selector:raw}")
     oci_host_dash = (INFRA / "dashboards" / "chess-studio-oci-host.json").read_text(encoding="utf-8")
     for token in (
         'chess-studio-oci-host',
@@ -409,6 +413,10 @@ def main() -> int:
     infra_logs = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
+    if '$selector' in infra_logs:
+        fail("dashboard logs no debe interpolar un selector LogQL sin formato raw")
+    if '${selector:raw}' not in infra_logs:
+        fail("dashboard logs debe interpolar selector LogQL con ${selector:raw}")
 
     for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
         if token not in infra_logs:
