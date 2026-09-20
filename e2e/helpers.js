@@ -633,7 +633,7 @@ export async function openMoreGameModes(page) {
 
 export async function confirmChroniclesCharacterSetup(page) {
   const setup = page.locator('[data-chronicles-character-setup]');
-  if (!(await setup.isVisible().catch(() => false))) return false;
+  await expect(setup).toBeVisible({ timeout: 10_000 });
 
   const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
   await expect(canonical).toBeVisible();
