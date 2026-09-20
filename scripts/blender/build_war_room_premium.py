@@ -616,7 +616,14 @@ def add_room(static, mats):
             sphere(f"WR_DESK_knob_{x}_{row}", (x, 5.67, drawer_z), 0.045, mats["brass"], static)
     cylinder("WR_DESK_lamp_base", (-0.72, 5.58, 2.39), 0.24, 0.08, mats["brass"], static)
     cylinder("WR_DESK_lamp_stem", (-0.72, 5.58, 2.68), 0.035, 0.55, mats["brass"], static)
-    sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34, mats["green"], static, scale=(1.4, 0.65, 0.45))
+    # Banker's-lamp trim: a thin elliptical brass lip and tiny top finial stop
+    # the green shade reading as a floating flattened sphere at hero distance.
+    sphere("WR_DESK_lamp_shade_lip", (-0.72, 5.56, 2.84), 0.34,
+           mats["brass_dark"], static, scale=(1.48, 0.68, 0.10))
+    sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34,
+           mats["green"], static, scale=(1.4, 0.65, 0.45))
+    sphere("WR_DESK_lamp_finial", (-0.72, 5.56, 3.14), 0.055,
+           mats["brass"], static, scale=(0.90, 0.72, 0.68))
 
     # Ceremonial rampant-horse crest. Keep the circular plaque from the approved
     # composition, but replace the old vertical pawn silhouette with a broad,
