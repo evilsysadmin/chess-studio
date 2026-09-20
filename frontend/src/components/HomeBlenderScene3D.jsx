@@ -56,8 +56,8 @@ function addRuntimeLights(scene) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
-  const ambient = new THREE.AmbientLight(0x8f9298, 0.22);
-  const hemi = new THREE.HemisphereLight(0x8fa6c4, 0x120806, 0.48);
+  const ambient = new THREE.AmbientLight(0x8f9298, 0.12);
+  const hemi = new THREE.HemisphereLight(0x8fa6c4, 0x120806, 0.35);
 
   const key = new THREE.DirectionalLight(0xffc996, 1.85);
   key.position.set(-5.2, 7.4, 8.2);
@@ -166,7 +166,7 @@ export default function HomeBlenderScene3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.AgXToneMapping;
     renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
     renderer.setClearColor(0x000000, 0);
 
