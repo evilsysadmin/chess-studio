@@ -1690,16 +1690,25 @@ def add_side_furnishings(materials):
             materials["brass_dark"],
         )
     for idx, cy in enumerate((-0.52, 0.52)):
-        cube(
+        cushion = cube(
             f"HOME_PROP_left_sofa_seat_cushion_{idx}",
-            (-6.46, cy, 0.87),
-            (0.79, 0.45, 0.105),
+            (
+                -6.46 + (-0.018, 0.012)[idx],
+                cy + (-0.012, 0.016)[idx],
+                0.865 + (0.0, 0.014)[idx],
+            ),
+            (
+                0.785 + (-0.012, 0.010)[idx],
+                0.445 + (0.010, -0.008)[idx],
+                0.100 + (0.0, 0.008)[idx],
+            ),
             leather,
             bevel=0.095,
         )
+        cushion.rotation_euler[2] = math.radians((-0.8, 0.6)[idx])
         cube(
             f"HOME_PROP_left_sofa_piping_{idx}",
-            (-5.66, cy, 0.89),
+            (-5.66 + (-0.010, 0.006)[idx], cy, 0.89 + (0.0, 0.012)[idx]),
             (0.018, 0.40, 0.022),
             materials["dark"],
             bevel=0.010,
