@@ -578,30 +578,32 @@ def add_room(static, mats):
         cube(f"WR_FIREPLACE_grate_tooth_{idx}", (x, 5.46, 1.30), (0.035, 0.035, 0.20),
              mats["iron"], static, bevel=0.012)
 
-    # Build one irregular fire silhouette instead of a row of tall ellipsoids:
-    # three low bases ground the flame on the logs, while offset leaning wisps
-    # break the repeated egg/candle rhythm that was obvious in the hero render.
-    for idx, (dx, dz, sx) in enumerate((
-        (-0.34, 0.04, 1.00),
-        (0.00, 0.08, 1.18),
-        (0.34, 0.03, 0.92),
+    # Build one deliberately asymmetric fire silhouette. The previous pass
+    # removed the egg row but still read like a crown because its bases and tips
+    # mirrored each other. Flatten and overlap the ember-side masses, then let
+    # one off-centre lick dominate while the outer tongues fall away unevenly.
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.30, 0.02, 1.20, 0.40),
+        (0.02, 0.00, 1.38, 0.36),
+        (0.30, 0.07, 0.86, 0.44),
     )):
-        sphere(f"WR_FIREPLACE_flame_base_{idx}", (-4.55 + dx, 5.55, 1.36 + dz),
-               0.20, mats["fire"], static, scale=(sx, 0.46, 0.62))
+        sphere(f"WR_FIREPLACE_flame_base_{idx}", (-4.55 + dx, 5.55, 1.34 + dz),
+               0.20, mats["fire"], static, scale=(sx, 0.48, sz))
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.25, 0.24, 0.46, 1.28, -0.18),
-        (0.03, 0.38, 0.42, 1.55, 0.10),
-        (0.29, 0.22, 0.40, 1.18, 0.20),
+        (-0.27, 0.25, 0.40, 1.06, -0.30),
+        (-0.05, 0.43, 0.38, 1.62, -0.10),
+        (0.23, 0.23, 0.34, 0.94, 0.24),
+        (0.39, 0.12, 0.26, 0.68, 0.34),
     )):
-        wisp = sphere(f"WR_FIREPLACE_flame_wisp_{idx}", (-4.55 + dx, 5.53, 1.38 + dz),
-                      0.18, mats["fire"], static, scale=(sx, 0.34, sz))
+        wisp = sphere(f"WR_FIREPLACE_flame_wisp_{idx}", (-4.55 + dx, 5.53, 1.37 + dz),
+                      0.18, mats["fire"], static, scale=(sx, 0.33, sz))
         wisp.rotation_euler.y = tilt
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.10, 0.18, 0.34, 1.02, -0.12),
-        (0.15, 0.27, 0.30, 1.16, 0.14),
+        (-0.11, 0.20, 0.32, 0.94, -0.16),
+        (0.10, 0.31, 0.28, 1.10, 0.10),
     )):
-        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.49, 1.38 + dz),
-                      0.13, mats["fire_core"], static, scale=(sx, 0.28, sz))
+        core = sphere(f"WR_FIREPLACE_flame_core_{idx}", (-4.55 + dx, 5.49, 1.37 + dz),
+                      0.13, mats["fire_core"], static, scale=(sx, 0.27, sz))
         core.rotation_euler.y = tilt
 
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
