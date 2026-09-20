@@ -3292,17 +3292,18 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["wax"],
             vertices=16,
         )
+        candle_top = cz + candle_height + 0.025
         cylinder(
             f"HOME_PROP_chandelier_candle_rim_{idx}",
-            (cx, cy, cz + 0.276),
-            0.040,
+            (cx, cy, candle_top + 0.006),
+            0.038 + _hash01(idx, 5, 1553) * 0.004,
             0.012,
             materials["wax"],
             vertices=16,
         )
         cylinder(
             f"HOME_PROP_chandelier_wick_{idx}",
-            (cx, cy, cz + 0.294),
+            (cx, cy, candle_top + 0.023),
             0.006,
             0.030,
             materials["dark"],
@@ -3311,13 +3312,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         if idx % 2 == 0:
             sphere(
                 f"HOME_PROP_chandelier_wax_drip_{idx}",
-                (cx + 0.027 * math.cos(angle), cy + 0.027 * math.sin(angle), cz + 0.225),
+                (cx + 0.027 * math.cos(angle), cy + 0.027 * math.sin(angle), candle_top - candle_height * 0.28),
                 (0.011, 0.010, 0.042),
                 materials["wax"],
             )
         cone(
             f"HOME_PROP_chandelier_flame_{idx}",
-            (cx, cy, cz + 0.31),
+            (cx, cy, candle_top + 0.050),
             0.024,
             0.005,
             0.075,
@@ -3325,7 +3326,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             vertices=12,
         )
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.060, 0.050, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.33), 12, (1.0, 0.32, 0.08), radius=0.22)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, candle_top + 0.070), 12, (1.0, 0.32, 0.08), radius=0.22)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
