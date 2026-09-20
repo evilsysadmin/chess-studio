@@ -1069,10 +1069,16 @@ def add_gothic_canon_v2(static, mats):
             for book in range(7):
                 px = bx - 0.92 + book * 0.30
                 height = 0.38 + (book % 3) * 0.065
-                cube(f"WR_CANON_book_{level}_{book}", (px, 5.72, z + 0.10 + height / 2),
-                     (0.105, 0.19, height / 2),
-                     mats["book_a"] if (book + level) % 2 else mats["book_b"],
-                     static, bevel=0.018)
+                depth_offset = (0.0, -0.025, 0.015, 0.0, -0.018)[(book + level) % 5]
+                lean = (0.0, -0.085, 0.0, 0.070, 0.0)[(book + level * 2) % 5]
+                book_obj = cube(
+                    f"WR_CANON_book_{level}_{book}",
+                    (px, 5.72 + depth_offset, z + 0.10 + height / 2),
+                    (0.105, 0.19, height / 2),
+                    mats["book_a"] if (book + level) % 2 else mats["book_b"],
+                    static, bevel=0.018,
+                )
+                book_obj.rotation_euler.y = lean
 
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
