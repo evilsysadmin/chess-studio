@@ -1100,16 +1100,19 @@ def add_gothic_canon_v2(static, mats):
 
 
 
-    # The first floor-dais pass landed almost entirely under the hero table at
-    # this camera angle. Ground the rear desk itself instead: a compact stone
-    # plinth supports its pedestals, while one restrained brass apron line makes
-    # the furniture silhouette readable without creating another focal point.
-    cube("WR_CANON_command_plinth", (0.0, 6.18, 0.38), (1.96, 0.48, 0.28),
-         mats["stone_dark"], static, bevel=0.060)
-    cube("WR_CANON_command_plinth_cap", (0.0, 5.72, 0.69), (2.06, 0.055, 0.045),
-         mats["stone"], static, bevel=0.026)
-    cube("WR_CANON_command_apron_trim", (0.0, 5.395, 1.72), (1.54, 0.022, 0.022),
-         mats["brass_dark"], static, bevel=0.010)
+    # The floor/plinth experiments were mostly occluded by the hero table from
+    # the canonical camera. Spend that geometry where it is actually visible:
+    # a pushed-in command chair gives the rear desk human scale and depth while
+    # staying below the heraldic crest and clear of the tactical board.
+    chair_x = 0.48
+    cube("WR_CANON_command_chair_back", (chair_x, 6.46, 2.80), (0.56, 0.16, 0.60),
+         burgundy_dark, static, bevel=0.16)
+    cube("WR_CANON_command_chair_top", (chair_x, 6.49, 3.42), (0.62, 0.18, 0.055),
+         mats["frame_wood"], static, bevel=0.035)
+    for side in (-1, 1):
+        cube(f"WR_CANON_command_chair_side_{side}",
+             (chair_x + side * 0.58, 6.49, 2.80), (0.055, 0.18, 0.56),
+             mats["frame_wood"], static, bevel=0.030)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
