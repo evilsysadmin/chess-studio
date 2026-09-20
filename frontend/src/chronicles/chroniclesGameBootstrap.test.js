@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createChroniclesState } from '../chroniclesOfMatthias.js';
 import {
   DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
@@ -59,7 +60,11 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
   it('installs the backend-bound map and preserves run identity before gameplay mounts', async () => {
     const createRun = vi.fn().mockResolvedValue(remoteRun());
 
-    const resolved = await chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 });
+    const resolved = await chroniclesBootstrapTacticsWorld({
+      createRun,
+      budgetMs: 250,
+      operationId: 'browser-run-1',
+    });
 
     expect(resolved.source).toBe('remote');
     expect(resolved.runId).toBe('11111111-2222-4333-8444-555555555555');
@@ -71,7 +76,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(chroniclesMapById('echo-cistern').title).toMatch(/^Remota · /);
     expect(resolved.areas).toHaveLength(chroniclesMapIds().length);
     expect(createRun).toHaveBeenCalledWith(null, {
-      operationId: null,
+      operationId: 'browser-run-1',
       signal: expect.any(AbortSignal),
     });
   });
@@ -87,6 +92,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(resolved.currentMapId).toBe('menagerie-of-ash');
     expect(resolved.map.id).toBe('menagerie-of-ash');
     expect(resolved.map.title).toBe('Menagerie procedural');
+    expect(createChroniclesState().mapId).toBe('menagerie-of-ash');
     expect(createRun).toHaveBeenCalledWith(null, {
       operationId: null,
       signal: expect.any(AbortSignal),
