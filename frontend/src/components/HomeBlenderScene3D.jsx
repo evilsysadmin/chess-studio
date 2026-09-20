@@ -64,6 +64,13 @@ export function homeBlenderRuntimeEligible() {
     && policy.lod !== '2d';
 }
 
+export function homeBlenderPointerParallaxEnabled({
+  reducedMotion = false,
+  coarsePointer = false,
+} = {}) {
+  return !reducedMotion && !coarsePointer;
+}
+
 function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
@@ -239,15 +246,20 @@ export default function HomeBlenderScene3D({
       requestRender();
     };
 
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    const onPointerMove = reducedMotion ? null : (event) => {
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches === true;
+    const pointerParallaxEnabled = homeBlenderPointerParallaxEnabled({
+      reducedMotion,
+      coarsePointer,
+    });
+    const onPointerMove = !pointerParallaxEnabled ? null : (event) => {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       pointerX = THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
       pointerY = THREE.MathUtils.clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1);
       requestRender();
     };
-    const onPointerLeave = reducedMotion ? null : () => {
+    const onPointerLeave = !pointerParallaxEnabled ? null : () => {
       pointerX = 0;
       pointerY = 0;
       requestRender();
