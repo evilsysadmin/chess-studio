@@ -2350,7 +2350,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # polygon winding points the front-face normals toward +Y, which made the
     # focal metal render nearly black despite dedicated key/rim lights.
     def armor_panel(name, points_xz, y, depth, mat, *, bevel=0.03):
-        return flat_panel(name, list(reversed(points_xz)), y, depth, mat, bevel=bevel)
+        narrowed = [
+            (1.55 + (px - 1.55) * 0.90, pz)
+            for px, pz in reversed(points_xz)
+        ]
+        return flat_panel(name, narrowed, y, depth, mat, bevel=bevel)
 
     # Keep the dark drapery as a recess accent rather than a rectangular cape
     # behind the helmet. The canonical suit must read as articulated metal first.
