@@ -1288,13 +1288,15 @@ def add_gothic_canon_v2(static, mats):
         )
         stay.rotation_euler = stay_direction.to_track_quat("Z", "Y").to_euler()
     cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.84), 0.030, 0.26, mats["brass_dark"], static, vertices=16)
+    candle_offsets = (0.00, 0.035, -0.025, 0.018, -0.018, 0.028)
     for index in range(6):
         angle = index * math.tau / 6.0
         x = chandelier_x + math.cos(angle) * 0.70
         y = chandelier_y + math.sin(angle) * 0.54
-        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.20),
+        candle_z = cz + 0.20 + candle_offsets[index]
+        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, candle_z),
                  0.054, 0.31, mats["ivory"], static, vertices=18)
-        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.39), 0.076,
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, candle_z + 0.19), 0.076,
                mats["fire_core"], static, scale=(0.44, 0.44, 1.10))
         # short radial arm from hub; cylinders are aligned to Z by default.
         midpoint = Vector((chandelier_x + (x - chandelier_x) * 0.50, chandelier_y + (y - chandelier_y) * 0.50, cz))
