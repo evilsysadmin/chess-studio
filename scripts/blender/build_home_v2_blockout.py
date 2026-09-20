@@ -518,6 +518,22 @@ def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=
     return obj
 
 
+def rotate_group_about_z(prefix: str, origin_xy, angle_degrees: float) -> None:
+    """Rotate an authored prop group together without changing its internal layout."""
+    angle = math.radians(angle_degrees)
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    ox, oy = origin_xy
+    for obj in bpy.data.objects:
+        if not obj.name.startswith(prefix):
+            continue
+        dx = obj.location.x - ox
+        dy = obj.location.y - oy
+        obj.location.x = ox + dx * cos_a - dy * sin_a
+        obj.location.y = oy + dx * sin_a + dy * cos_a
+        obj.rotation_euler[2] += angle
+
+
 def sphere(name: str, location, scale, mat):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=20, location=location)
     obj = bpy.context.object
@@ -1803,6 +1819,11 @@ def add_side_furnishings(materials):
         (0.34, 0.045, 0.040),
         wood,
         bevel=0.014,
+    )
+    rotate_group_about_z(
+        "HOME_PROP_library_chair_",
+        (-4.65, 3.25),
+        -4.2,
     )
     cylinder("HOME_PROP_library_lamp_base", (-3.10, 3.92, 0.99), 0.13, 0.12, brass, vertices=20)
     cylinder("HOME_PROP_library_lamp_stem", (-3.10, 3.92, 1.13), 0.030, 0.20, materials["brass_dark"], vertices=16)
