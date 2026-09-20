@@ -1212,6 +1212,17 @@ def add_gothic_canon_v2(static, mats):
                mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
     cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
          mats["frame_wood"], static, bevel=0.040)
+    # Two short wooden arms peek above the rear desk and complete the furniture
+    # read. The framed back alone still looked like a wall plaque in close crop.
+    for side in (-1, 1):
+        cube(
+            f"WR_CANON_command_chair_arm_{side}",
+            (chair_x + side * 0.52, 6.04, 2.47),
+            (0.055, 0.31, 0.050),
+            mats["frame_wood"],
+            static,
+            bevel=0.026,
+        )
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
