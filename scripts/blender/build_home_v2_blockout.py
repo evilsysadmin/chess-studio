@@ -2604,7 +2604,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             vertices=12,
         )
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.060, 0.050, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.33), 18, (1.0, 0.34, 0.09), radius=0.24)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.33), 12, (1.0, 0.32, 0.08), radius=0.22)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
