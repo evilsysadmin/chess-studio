@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Idempotently publish Chess Studio Grafana dashboards via the Grafana HTTP API.
 
-This deliberately avoids Terraform/state for five versioned dashboard JSON files.
+This deliberately avoids Terraform/state for six versioned dashboard JSON files.
 The publisher is standard-library only so CI does not need a package/provider download.
 """
 from __future__ import annotations
@@ -21,6 +21,7 @@ FOLDER_UID = "chess-studio"
 DASHBOARDS = (
     "chess-studio-overview.json",
     "chess-studio-logs.json",
+    "chess-studio-log-explorer.json",
     "chess-studio-traces.json",
     "chess-studio-edge.json",
     "chess-studio-oci-host.json",
@@ -49,6 +50,20 @@ def render_dashboard(path: Path, variables: dict[str, str]) -> dict:
         fail(f"{path.name}: JSON inválido tras render: {exc}")
     if not payload.get("uid") or not payload.get("title"):
         fail(f"{path.name}: dashboard sin uid/title estable")
+    if path.name == "chess-studio-log-explorer.json":
+        variable_names = {str(row.get("name") or "") for row in ((payload.get("templating") or {}).get("list") or [])}
+        required_variables = {"selector", "event", "status", "method", "route", "path", "release", "request_id", "trace_id", "text"}
+        missing_variables = sorted(required_variables - variable_names)
+        if missing_variables:
+            fail(f"{path.name}: faltan filtros: {', '.join(missing_variables)}")
+        explorer_queries = "\n".join(
+            str(target.get("expr") or "")
+            for panel in (payload.get("panels") or [])
+            for target in (panel.get("targets") or [])
+        )
+        for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
+            if token not in explorer_queries:
+                fail(f"{path.name}: filtro no aplicado: {token}")
     payload["id"] = None
     return payload
 

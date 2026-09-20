@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -225,7 +225,7 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Disco · bytes/s",
+      "title": "I/O disco · bytes/s",
       "gridPos": {
         "h": 8,
         "w": 8,
