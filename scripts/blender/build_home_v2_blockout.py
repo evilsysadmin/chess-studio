@@ -600,6 +600,27 @@ def add_table_and_board(materials):
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
     cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
+    cube(
+        "HOME_PROP_table_folio_pages",
+        (2.72, 0.315, 1.405),
+        (0.32, 0.235, 0.015),
+        materials["paper"],
+        bevel=0.018,
+    )
+    cube(
+        "HOME_PROP_table_folio_spine",
+        (2.37, 0.35, 1.39),
+        (0.035, 0.26, 0.050),
+        materials["brass_dark"],
+        bevel=0.012,
+    )
+    cube(
+        "HOME_PROP_table_folio_clasp",
+        (2.95, 0.055, 1.415),
+        (0.055, 0.020, 0.022),
+        materials["brass"],
+        bevel=0.008,
+    )
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
     curve_tube(
