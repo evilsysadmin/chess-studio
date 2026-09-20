@@ -243,7 +243,7 @@ export default function ChroniclesTacticsPartyHud({
               <div><span>Ataque</span><b>{sheetProfile.attackName}</b></div>
               <div><span>Geometría</span><b>{sheetProfile.kindLabel}</b></div>
               <div><span>Alcance</span><b>{sheetReach}</b></div>
-              <div><span>Habilidad</span><b>{sheetProfile.abilityName}</b></div>
+              <div><span>Habilidad</span><b>{sheetAbility.abilityName}</b></div>
             </div>
 
             <div className="chronicles-character-sheet__section">
@@ -275,7 +275,7 @@ export default function ChroniclesTacticsPartyHud({
 
             <div className="chronicles-character-sheet__section">
               <div className="chronicles-character-sheet__section-head">
-                <div><span>TÉCNICAS</span><small>Una doctrina, decisiones con coste</small></div>
+                <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas y hechizos con ramas excluyentes</small></div>
                 <b>{sheetProgress.skillPoints} punto{sheetProgress.skillPoints === 1 ? '' : 's'} libre{sheetProgress.skillPoints === 1 ? '' : 's'}</b>
               </div>
               <div className="chronicles-character-sheet__skill-grid">
