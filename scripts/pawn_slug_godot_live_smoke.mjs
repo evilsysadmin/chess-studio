@@ -170,10 +170,14 @@ async function gameplayAutopilot(parent, canvas, diagnostics) {
   await keyboard.down('ArrowRight');
   try {
     await parent.waitForTimeout(350);
-    await keyboard.press('z');
+    await keyboard.down('z');
+    await parent.waitForTimeout(120);
+    await keyboard.up('z');
     await waitForBridgeCount(parent, 'player-fired', 1, 5_000);
     await parent.waitForTimeout(260);
-    await keyboard.press('z');
+    await keyboard.down('z');
+    await parent.waitForTimeout(120);
+    await keyboard.up('z');
     await parent.waitForTimeout(220);
   } finally {
     await keyboard.up('ArrowRight');
