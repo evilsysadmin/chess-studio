@@ -47,6 +47,35 @@ class _AuthenticatedClient:
 client = _AuthenticatedClient()
 
 
+def test_failed_login_emits_safe_bot_forensics(caplog):
+    import main as main_module
+
+    attempted_password = "BotGuess-42!"
+    caplog.set_level(logging.WARNING, logger=main_module.access_logger.name)
+    response = raw_client.post(
+        "/api/auth/login",
+        json={"username": "bot_probe_unknown_user", "password": attempted_password},
+        headers={"User-Agent": "masscan-ish/0.1"},
+    )
+    assert response.status_code == 401
+
+    payloads = []
+    for record in caplog.records:
+        try:
+            payloads.append(json.loads(record.getMessage()))
+        except (TypeError, json.JSONDecodeError):
+            continue
+    event = next(row for row in payloads if row.get("event") == "auth_login_failed")
+    assert event["username_attempted"] == "bot_probe_unknown_user"
+    assert event["account_exists"] is False
+    assert event["failure_reason"] == "unknown_user"
+    assert event["password_length"] == len(attempted_password)
+    assert event["password_classes"] == ["lower", "upper", "digit", "symbol"]
+    assert len(event["password_fingerprint"]) == 20
+    assert event["user_agent"] == "masscan-ish/0.1"
+    assert attempted_password not in "\n".join(record.getMessage() for record in caplog.records)
+
+
 def _seed(game_id: str, moves: list[str], human_color: str, difficulty: int = 0):
     """Sobreescribe una partida ya creada con una secuencia de jugadas SAN
     concreta, para probar posiciones puntuales sin depender de una CPU
