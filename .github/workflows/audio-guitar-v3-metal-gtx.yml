@@ -1,0 +1,229 @@
+name: Guitar V3 Metal GTX
+
+on:
+  push:
+    branches:
+      - audio/guitar-v3-metal-gtx-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Install toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build g++ libsndfile1-dev libjack-jackd2-dev \
+            libsamplerate0-dev libfftw3-dev pkg-config ffmpeg sox \
+            ladspa-sdk caps python3-pip unzip
+          python3 -m pip install --break-system-packages -q gdown
+
+      - name: Build sfizz offline renderer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --recursive --depth 1 https://github.com/sfztools/sfizz.git /tmp/sfizz
+          cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF \
+            -DPLUGIN_LV2=OFF -DPLUGIN_LV2_UI=OFF -DPLUGIN_VST3=OFF \
+            -DSFIZZ_TESTS=OFF -DSFIZZ_BENCHMARKS=OFF -DSFIZZ_DEMOS=OFF \
+            -DSFIZZ_DEVTOOLS=OFF -DSFIZZ_RENDER=ON
+          cmake --build /tmp/sfizz/build --target sfizz_render -j2
+          mkdir -p v3
+          find /tmp/sfizz/build -type f -name sfizz_render -executable | head -n1 > v3/sfizz-render-path.txt
+          test -x "$(cat v3/sfizz-render-path.txt)"
+
+      - name: Download Metal GTX sample library
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/metal-gtx
+          gdown --fuzzy 'https://drive.google.com/file/d/1FurY3_x_tog_56irX1VDNyRCUt5JD7bO/view' -O /tmp/metal-gtx.bin
+          file /tmp/metal-gtx.bin
+          if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
+            unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
+          else
+            echo "Metal GTX download is not a ZIP" >&2
+            exit 2
+          fi
+          find /tmp/metal-gtx -type f -iname '*.sfz' -print | head -40
+          SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' | grep -Ei 'metal.*gtx|gtx.*metal' | head -n1 || true)"
+          if [ -z "$SFZ" ]; then SFZ="$(find /tmp/metal-gtx -type f -iname '*.sfz' | head -n1)"; fi
+          test -f "$SFZ"
+          printf '%s\n' "$SFZ" > v3/sfz-path.txt
+          cp "$SFZ" v3/selected-metal-gtx.sfz
+          grep -Ei 'sw_|keyswitch|label|sample=' "$SFZ" | head -120 > v3/sfz-map-excerpt.txt || true
+          du -sh /tmp/metal-gtx
+
+      - name: Build expressive riff MIDIs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import random, struct
+
+          BPM=158
+          PPQ=480
+          BEAT=PPQ
+          BAR=4*PPQ
+
+          # METAL-GTX articulation key switches from its public mapping:
+          KS = {
+              "sus_alt": 19,
+              "mute_alt": 22,
+              "slide_up": 24,
+              "pull_off": 25,
+              "hammer_on": 26,
+              "slide_in": 27,
+              "slide_out": 28,
+              "bend_full": 92,
+              "sus_pbr12": 97,
+          }
+
+          def vlq(n):
+              out=[n&0x7f]; n>>=7
+              while n:
+                  out.append((n&0x7f)|0x80); n>>=7
+              return bytes(reversed(out))
+
+          def write_midi(path, seed, timing_ms, velocity_bias):
+              rng=random.Random(seed)
+              ev=[]
+              def add(t,o,d): ev.append((max(0,int(t)),o,bytes(d)))
+              tempo=round(60_000_000/BPM)
+              add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
+              add(0,1,bytes([0xB0,7,116]))
+              add(0,1,bytes([0xB0,11,112]))
+
+              def ks(tick,n):
+                  add(tick-20,0,bytes([0x90,n,100]))
+                  add(tick-5,0,bytes([0x80,n,0]))
+
+              def note(tick,n,dur,vel,art="sus_alt"):
+                  ks(tick,KS[art])
+                  jitter=round((timing_ms/1000)*(BPM/60)*PPQ*rng.uniform(-1,1))
+                  t=tick+jitter
+                  vv=max(1,min(127,vel+velocity_bias+rng.randint(-4,4)))
+                  add(t,2,bytes([0x90,n,vv]))
+                  add(t+max(24,int(dur)),1,bytes([0x80,n,0]))
+
+              # E minor, original material: sparse -> build -> scalar run -> expressive climax.
+              bars=[
+                [(0.00,64,.82,91,"sus_alt"),(1.75,67,.48,86,"slide_in"),(3.00,71,.68,103,"sus_alt")],
+                [(0.00,71,.48,96,"sus_alt"),(.75,74,.34,91,"hammer_on"),(1.50,76,.68,111,"bend_full"),
+                 (2.75,74,.28,87,"pull_off"),(3.25,71,.46,97,"sus_alt")],
+                [(0.00,64,.19,82,"mute_alt"),(.50,66,.19,85,"mute_alt"),(1.00,67,.19,89,"mute_alt"),
+                 (1.50,69,.19,93,"sus_alt"),(2.00,71,.19,99,"sus_alt"),(2.50,72,.19,104,"hammer_on"),
+                 (3.00,74,.19,111,"sus_alt"),(3.50,76,.32,120,"bend_full")],
+                [(0.00,71,.19,98,"sus_alt"),(.375,72,.18,99,"hammer_on"),(.75,74,.18,103,"sus_alt"),
+                 (1.125,76,.20,108,"slide_up"),(1.50,79,.31,124,"bend_full"),(2.125,76,.18,109,"pull_off"),
+                 (2.50,74,.18,104,"sus_alt"),(2.875,72,.18,99,"pull_off"),(3.25,71,.44,114,"sus_alt")],
+                [(0.00,67,.72,94,"slide_in"),(1.50,71,.42,99,"sus_alt"),(2.50,74,.56,109,"hammer_on"),
+                 (3.35,76,.36,118,"bend_full")],
+                [(0.00,69,.30,91,"sus_alt"),(.50,71,.30,94,"hammer_on"),(1.00,72,.30,99,"sus_alt"),
+                 (1.50,74,.42,107,"slide_up"),(2.50,76,.25,115,"sus_alt"),(3.00,74,.25,106,"pull_off"),
+                 (3.50,71,.35,98,"sus_alt")],
+                [(0.00,64,.17,82,"mute_alt"),(.375,66,.17,85,"mute_alt"),(.75,67,.17,89,"mute_alt"),
+                 (1.125,69,.17,93,"sus_alt"),(1.50,71,.17,99,"sus_alt"),(1.875,72,.17,104,"hammer_on"),
+                 (2.25,74,.17,111,"sus_alt"),(2.625,76,.17,117,"slide_up"),(3.00,79,.19,126,"bend_full"),
+                 (3.40,76,.36,116,"sus_alt")],
+                [(0.00,76,.19,116,"sus_alt"),(.375,74,.18,110,"pull_off"),(.75,72,.18,104,"sus_alt"),
+                 (1.125,71,.18,99,"pull_off"),(1.50,69,.18,94,"sus_alt"),(1.875,67,.18,90,"pull_off"),
+                 (2.25,69,.18,96,"hammer_on"),(2.625,71,.18,103,"sus_alt"),(3.00,74,.19,114,"slide_up"),
+                 (3.40,76,.43,126,"bend_full")],
+              ]
+
+              for pass_i in range(2):
+                  for bi, phrase in enumerate(bars):
+                      base=(pass_i*len(bars)+bi)*BAR
+                      for pos,n,dur_b,vel,art in phrase:
+                          t=base+round(pos*BEAT)
+                          note(t,n,round(dur_b*BEAT*rng.uniform(.96,1.04)),vel,art)
+
+              ev.sort(key=lambda x:(x[0],x[1]))
+              tr=bytearray(); last=0
+              for t,_,d in ev:
+                  tr+=vlq(t-last)+d; last=t
+              tr+=b'\x00\xff\x2f\x00'
+              data=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)+b'MTrk'+struct.pack('>I',len(tr))+tr
+              Path(path).write_bytes(data)
+
+          write_midi('v3/metal-left.mid',20260920,4.5,0)
+          write_midi('v3/metal-right.mid',20260921,8.0,-5)
+          PY
+
+      - name: Render Metal GTX double takes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          RENDER="$(cat v3/sfizz-render-path.txt)"
+          SFZ="$(cat v3/sfz-path.txt)"
+          "$RENDER" --sfz "$SFZ" --midi v3/metal-left.mid --wav v3/metal-left-di.wav --samplerate 44100 --oversampling 2
+          "$RENDER" --sfz "$SFZ" --midi v3/metal-right.mid --wav v3/metal-right-di.wav --samplerate 44100 --oversampling 2
+          ffmpeg -hide_banner -loglevel error -y -i v3/metal-left-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/left.wav
+          ffmpeg -hide_banner -loglevel error -y -i v3/metal-right-di.wav -af "pan=mono|c0=.5*c0+.5*c1" v3/right.wav
+
+      - name: Amp and cab
+        shell: bash
+        run: |
+          set -euxo pipefail
+          CAPS_SO="/usr/lib/ladspa/caps.so"
+          test -f "$CAPS_SO"
+          applyplugin v3/left.wav v3/left-amp.wav \
+            "$CAPS_SO" AmpVTS 1.35 0.73 0.78 0.82 5 0.39 0.84 0.76 0.71 0.24 0.35 \
+            "$CAPS_SO" CabinetI 5 -2.0
+          applyplugin v3/right.wav v3/right-amp.wav \
+            "$CAPS_SO" AmpVTS 1.28 0.70 0.80 0.84 5 0.37 0.86 0.78 0.69 0.22 0.34 \
+            "$CAPS_SO" CabinetI 5 -2.5
+          test -s v3/left-amp.wav
+          test -s v3/right-amp.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v3/left-amp.wav -i v3/right-amp.wav \
+            -filter_complex "[0:a]volume=.92,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=.85,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,highpass=f=85,lowpass=f=10800,acompressor=threshold=-19dB:ratio=1.9:attack=22:release=110,aecho=.8:.88:42:.10,loudnorm=I=-16:TP=-1.2:LRA=9[out]" \
+            -map "[out]" -ar 44100 v3/metal-gtx-amp-stereo.wav
+
+          ffmpeg -hide_banner -loglevel error -y -i v3/metal-gtx-amp-stereo.wav -t 30 v3/metal-gtx-preview-30s.wav
+
+          ffmpeg -hide_banner -loglevel error -y \
+            -i v3/left.wav -i v3/right.wav \
+            -filter_complex "[0:a]volume=.82,pan=stereo|c0=c0|c1=0*c0[L];[1:a]volume=.76,pan=stereo|c0=0*c0|c1=c0[R];[L][R]amix=inputs=2:normalize=0,loudnorm=I=-18:TP=-1.5:LRA=10[out]" \
+            -map "[out]" -ar 44100 v3/metal-gtx-di-stereo.wav
+
+      - name: Manifest
+        shell: bash
+        run: |
+          {
+            echo 'Pawn Slug guitar V3'
+            echo 'Source: Unreal Instruments Metal GTX'
+            echo 'Sampler: sfizz offline'
+            echo 'Articulations used: sustain alt, mute alt, hammer-on, pull-off, slide-in/up, full bend'
+            echo 'Amp: CAPS AmpVTS'
+            echo 'Cab: CAPS CabinetI model 5'
+            echo 'Double tracking: independent MIDI timing/velocity and sample round-robin'
+            echo
+            sha256sum v3/metal-gtx-amp-stereo.wav v3/metal-gtx-di-stereo.wav
+          } > v3/MANIFEST.txt
+
+      - name: Upload audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-guitar-v3-metal-gtx
+          path: |
+            v3/metal-gtx-amp-stereo.wav
+            v3/metal-gtx-preview-30s.wav
+            v3/metal-gtx-di-stereo.wav
+            v3/MANIFEST.txt
+            v3/sfz-map-excerpt.txt
+            v3/metal-left.mid
+            v3/metal-right.mid
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 6
