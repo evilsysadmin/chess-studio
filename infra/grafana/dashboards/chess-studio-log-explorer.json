@@ -216,7 +216,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time($selector | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" [$__range]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" [$__range]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -260,7 +260,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "max(quantile_over_time(0.95, $selector | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | unwrap duration_ms | __error__=\"\" [$__range]))",
+          "expr": "max(quantile_over_time(0.95, ${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | unwrap duration_ms | __error__=\"\" [$__range]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -304,7 +304,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time($selector | json | __error__=\"\" | event=~\"$event\" |~ \"$text\" [$__range]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=~\"$event\" |~ \"$text\" [$__range]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -348,7 +348,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "$selector | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | line_format \"status={{.status}} method={{.method}} route={{.route}} path={{.request_path}} latency={{.duration_ms}}ms release={{.client_release}} req={{.request_id}} trace={{.trace_id}}\"",
+          "expr": "${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"$status\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" | line_format \"status={{.status}} method={{.method}} route={{.route}} path={{.request_path}} latency={{.duration_ms}}ms release={{.client_release}} req={{.request_id}} trace={{.trace_id}}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -386,7 +386,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "$selector | json | __error__=\"\" | event=~\"$event\" |~ \"$text\" | line_format \"event={{.event}} status={{.status}} method={{.method}} route={{.route}} type={{.event_type}} release={{.client_release}}{{.release}} req={{.request_id}} trace={{.trace_id}} · {{.error_name}}\"",
+          "expr": "${selector:raw} | json | __error__=\"\" | event=~\"$event\" |~ \"$text\" | line_format \"event={{.event}} status={{.status}} method={{.method}} route={{.route}} type={{.event_type}} release={{.client_release}}{{.release}} req={{.request_id}} trace={{.trace_id}} · {{.error_name}}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -424,7 +424,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "$selector |~ \"$text\"",
+          "expr": "${selector:raw} |~ \"$text\"",
           "refId": "A",
           "queryType": "range"
         }
