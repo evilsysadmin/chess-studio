@@ -475,6 +475,7 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func _on_player_fired(origin: Vector2, direction: Vector2, shot: Dictionary) -> void:
+    _notify_parent("player-fired")
     _alert_enemies(origin.x, GUNFIRE_HEARING_RANGE)
     var safe_direction := direction.normalized()
     if safe_direction.length_squared() <= 0.001:
