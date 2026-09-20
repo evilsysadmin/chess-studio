@@ -587,12 +587,20 @@ def add_table_and_board(materials):
 
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
+        book_half_w = 0.42 - idx * 0.04
         cube(
             f"HOME_PROP_table_book_{idx}",
             (px, py, pz),
-            (0.42 - idx * 0.04, 0.26, 0.040),
+            (book_half_w, 0.26, 0.040),
             materials["book_brown"] if idx != 1 else materials["book_green"],
             bevel=0.025,
+        )
+        cube(
+            f"HOME_PROP_table_book_pages_{idx}",
+            (px, py - 0.267, pz),
+            (book_half_w * 0.84, 0.010, 0.026),
+            materials["paper"],
+            bevel=0.008,
         )
     cylinder("HOME_PROP_table_candle_base", (-2.72, 1.60, 1.36), 0.14, 0.06, metal, vertices=20)
     cylinder("HOME_PROP_table_candle", (-2.72, 1.60, 1.55), 0.045, 0.30, materials["wax"], vertices=18)
