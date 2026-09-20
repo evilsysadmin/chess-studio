@@ -259,6 +259,7 @@ const MAPS = Object.freeze({
 
 const MAP_IDS = new Set(Object.keys(MAPS));
 const RUNTIME_MAPS = new Map();
+let runtimeEntryMapId = DEFAULT_CHRONICLES_MAP_ID;
 Object.values(MAPS).forEach((map) => assertKnownTransitions(map, MAP_IDS));
 
 export function chroniclesInstallRuntimeMapDefinition(source) {
@@ -272,6 +273,19 @@ export function chroniclesInstallRuntimeMapDefinition(source) {
 
 export function chroniclesClearRuntimeMapDefinitions() {
   RUNTIME_MAPS.clear();
+  runtimeEntryMapId = DEFAULT_CHRONICLES_MAP_ID;
+}
+
+export function chroniclesSetRuntimeEntryMapId(mapId) {
+  if (!MAP_IDS.has(mapId)) {
+    throw new Error(`Chronicles runtime entry map ${mapId || '<missing>'} has no bundled fallback`);
+  }
+  runtimeEntryMapId = mapId;
+  return runtimeEntryMapId;
+}
+
+export function chroniclesRuntimeEntryMapId() {
+  return runtimeEntryMapId;
 }
 
 export function chroniclesMapById(mapId = DEFAULT_CHRONICLES_MAP_ID) {
