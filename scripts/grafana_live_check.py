@@ -232,7 +232,7 @@ def run_checks(
     passed = True
 
     metric_checks = {
-        "oci_host_production": 'count({service_name="chess-studio-oci-host",deployment_environment="production"})',
+        "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging"})',
         "backend_production_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend"})',
     }
     for name, query in metric_checks.items():
@@ -264,7 +264,7 @@ def run_checks(
     host_ram_percent = _prom_value(
         api,
         metrics_uid,
-        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="production"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="production"})))',
+        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"})))',
         now,
     )
     enough_requests = requests_15m is not None and requests_15m >= min_requests_15m
