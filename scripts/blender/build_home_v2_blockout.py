@@ -454,7 +454,7 @@ def add_table_and_board(materials):
 
     table_y = 1.05
     table_z = 1.12
-    cube("HOME_PROP_table_top", (0.0, table_y, table_z), (3.72, 1.72, 0.18), wood, bevel=0.10)
+    cube("HOME_PROP_table_top", (0.0, table_y, table_z + 0.04), (3.72, 1.72, 0.14), wood, bevel=0.085)
     cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     for x in (-3.20, 3.20):
