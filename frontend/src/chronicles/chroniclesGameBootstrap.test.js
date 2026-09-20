@@ -99,6 +99,18 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+  it('restores the canonical entry after runtime maps are cleared', async () => {
+    await chroniclesBootstrapTacticsWorld({
+      createRun: vi.fn().mockResolvedValue(remoteRun('Menagerie procedural', 733, 'menagerie-of-ash')),
+      budgetMs: 250,
+    });
+    expect(createChroniclesState().mapId).toBe('menagerie-of-ash');
+
+    chroniclesClearRuntimeMapDefinitions();
+
+    expect(createChroniclesState().mapId).toBe(DEFAULT_CHRONICLES_MAP_ID);
+  });
+
   it('waits past the old 250ms cutoff for the authoritative generated run', async () => {
     vi.useFakeTimers();
     let release;
