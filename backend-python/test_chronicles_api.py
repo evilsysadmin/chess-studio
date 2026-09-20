@@ -142,6 +142,22 @@ def test_manifest_is_versioned_and_deterministic_by_map_and_seed():
     assert other_seed.json()["instanceId"] != payload["instanceId"]
 
 
+def test_seed_sweep_produces_real_geometry_diversity():
+    grids = {
+        tuple(
+            chronicles_api.chronicles_area_envelope(
+                "crypt-eight-squares",
+                seed,
+            )["manifest"]["grid"]
+        )
+        for seed in range(16)
+    }
+
+    # This guards against a regression where seed metadata changes but the
+    # actual dungeon geometry silently collapses back to one authored layout.
+    assert len(grids) >= 8
+
+
 def test_unknown_map_and_invalid_seed_are_rejected():
     client = _client()
     headers = {"Authorization": "Bearer test-token"}
