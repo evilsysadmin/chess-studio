@@ -729,5 +729,32 @@
       "y": 607,
       "count": 6
     }
+  ],
+  "story_props": [
+    {
+      "kind": "front_wreck",
+      "x": 760,
+      "y": 608
+    },
+    {
+      "kind": "front_wreck",
+      "x": 1740,
+      "y": 608
+    },
+    {
+      "kind": "front_wreck",
+      "x": 2720,
+      "y": 608
+    },
+    {
+      "kind": "front_wreck",
+      "x": 3700,
+      "y": 608
+    },
+    {
+      "kind": "front_wreck",
+      "x": 4680,
+      "y": 608
+    }
   ]
 }
