@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v6-obstacle-safe-router-slow-travel-contract-terminal-setup';
+export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v7-prompt-arrival-obstacle-safe-router-slow-travel-contract-terminal-setup';
 // Per-game event eligibility and deterministic start delay belong to
 // WarRoomHansEventContract. This contract begins once mop has been selected.
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;

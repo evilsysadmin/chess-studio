@@ -199,7 +199,7 @@ export function installWarRoomHansMopRoutine(root) {
       if (active) clearRoutineState(actor, props, controller, root, runtime);
       gameId = nextGameId;
       eligibleSince = now;
-      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 46000, salt: 'mop' });
+      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 5000, max: 12000, salt: 'mop' });
       active = false;
       state = 'idle';
       fatigueMs = 0;

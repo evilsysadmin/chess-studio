@@ -41,7 +41,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v8-reset-before-return-terminal-setup-static-fallback-delivered-continuity';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v9-prompt-arrival-reset-before-return-terminal-setup-static-fallback-delivered-continuity';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -237,7 +237,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
-      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 22000, max: 62000, salt: `chore:${eventName}` });
+      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 7000, max: 16000, salt: `chore:${eventName}` });
       active = false;
       state = 'idle';
       home = null;

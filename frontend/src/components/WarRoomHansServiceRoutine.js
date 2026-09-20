@@ -44,7 +44,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v10-reset-prop-baselines-terminal-setup-delivered-continuity-persistent-effect';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v11-prompt-arrival-reset-prop-baselines-terminal-setup-delivered-continuity-persistent-effect';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -228,7 +228,7 @@ export function installWarRoomHansServiceRoutine(root) {
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
-      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 48000, salt: eventName });
+      delayMs = warRoomHansAmbientDelayMs(gameId, { min: 6000, max: 14000, salt: eventName });
       active = false;
       state = 'idle';
       home = null;
