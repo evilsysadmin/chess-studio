@@ -50,6 +50,7 @@ function captureRecord(index, move) {
     id: `${index + 1}:${move.from}${move.to}:${move.captured}`,
     ply: index + 1,
     piece: move.captured,
+    captor: move.piece,
     value: MATTHIAS_CAPTURE_VALUES[move.captured] || 0,
     from: move.from,
     to: move.to,
@@ -124,6 +125,12 @@ export function matthiasAngerState(history = [], humanColor = 'w') {
     latestCpuCapture,
     reconstructable: true,
   };
+}
+
+export function captureUsesDedicatedNoteworthyLane(capture) {
+  if (!capture?.piece) return false;
+  if (capture.piece === 'q') return true;
+  return capture.piece === 'r' && capture.captor === 'p';
 }
 
 export function shouldMatthiasReactToCapture(capture, previous = null, now = Date.now()) {
