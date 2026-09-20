@@ -162,6 +162,20 @@ function disposeRuntimeScene(root) {
   });
 }
 
+function stableSurfaceVariation(name = '') {
+  let hash = 2166136261;
+  for (let index = 0; index < name.length; index += 1) {
+    hash ^= name.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const unit = ((hash >>> 0) % 10000) / 10000;
+  return {
+    offsetX: (unit * 0.37) % 1,
+    offsetY: (unit * 0.73 + 0.19) % 1,
+    repeat: 0.92 + ((hash >>> 8) & 0xff) / 255 * 0.18,
+  };
+}
+
 function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
   const maxAnisotropy = Math.min(
     8,
@@ -171,6 +185,7 @@ function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
     if (!object.isMesh) return;
     object.castShadow = shadowsEnabled;
     object.receiveShadow = shadowsEnabled;
+    const surfaceVariation = stableSurfaceVariation(object.name);
     if (Array.isArray(object.material)) {
       object.material.forEach((material) => {
         if (!material) return;
@@ -183,6 +198,12 @@ function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
         ]) {
           if (!texture?.isTexture) continue;
           texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+          if (texture.wrapS !== THREE.RepeatWrapping || texture.wrapT !== THREE.RepeatWrapping) {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+          }
+          texture.offset.set(surfaceVariation.offsetX, surfaceVariation.offsetY);
+          texture.repeat.multiplyScalar(surfaceVariation.repeat);
           texture.needsUpdate = true;
         }
         material.dithering = true;
@@ -198,6 +219,12 @@ function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
       ]) {
         if (!texture?.isTexture) continue;
         texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+        if (texture.wrapS !== THREE.RepeatWrapping || texture.wrapT !== THREE.RepeatWrapping) {
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+        }
+        texture.offset.set(surfaceVariation.offsetX, surfaceVariation.offsetY);
+        texture.repeat.multiplyScalar(surfaceVariation.repeat);
         texture.needsUpdate = true;
       }
       object.material.dithering = true;
