@@ -80,10 +80,10 @@ async function captureChroniclesHealth(page) {
     return {
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
       gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
-      portraitCanvasCount: document.querySelectorAll('[data-chronicles-party-renderer="three"] canvas').length,
+      authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
-      portraitCanvas: rect('[data-chronicles-party-renderer="three"] canvas'),
+      authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
     };
   });
 }
@@ -126,24 +126,24 @@ for (const capture of CAPTURES) {
     try {
       await openChronicles(page);
       const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
-      const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+      const authoredPortrait = page.locator('[data-chronicles-party-renderer="authored"]');
       const stage = page.locator('.chronicles-stage');
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
-      await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
-      await expect(portraitCanvas).toBeVisible();
+      await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
+      await expect(authoredPortrait).toBeVisible();
       await expect(stage).toBeVisible();
       await page.waitForTimeout(450);
 
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
       expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
-      expect(health.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
+      expect(health.authoredPortraitCount, `${capture.label}: Chronicles authored portrait`).toBe(1);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-      expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-      expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+      expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
+      expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
       await captureElement(page, stage, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
       await writeFile(
