@@ -14,12 +14,13 @@
     "health",
     "sre",
     "terraform",
+    "multi-environment",
     "${commit_sha}"
   ],
   "timezone": "browser",
   "title": "Chess Studio · Salud operativa",
   "uid": "chess-studio-api-overview",
-  "version": 3,
+  "version": 4,
   "weekStart": "monday",
   "time": {
     "from": "now-6h",
@@ -30,16 +31,16 @@
     "list": [
       {
         "name": "backend_service",
-        "label": "Backend",
+        "label": "Entorno",
         "type": "custom",
-        "query": "chess-studio-backend,chess-studio-backend-staging",
+        "query": "production : chess-studio-backend,staging : chess-studio-backend-staging",
         "current": {
-          "text": "chess-studio-backend",
+          "text": "production",
           "value": "chess-studio-backend"
         },
         "hide": 0,
         "includeAll": true,
-        "allValue": "chess-studio-backend.*",
+        "allValue": "chess-studio-backend|chess-studio-backend-staging",
         "multi": false,
         "skipUrlSync": false
       }

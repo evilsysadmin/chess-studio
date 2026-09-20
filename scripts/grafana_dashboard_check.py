@@ -79,7 +79,7 @@ def main() -> int:
     for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no cubre {token}")
-    for token in ('chess-studio-backend-staging', 'backend_service'):
+    for token in ('chess-studio-backend-staging', 'backend_service', '"label": "Entorno"', 'production : chess-studio-backend', 'staging : chess-studio-backend-staging'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no permite separar producción/staging: {token}")
 
@@ -131,9 +131,18 @@ def main() -> int:
         'backend_production_metrics',
         'backend_production_logs',
         'backend_production_traces',
+        'backend_staging_metrics',
+        'backend_staging_logs',
+        'backend_staging_traces',
+        'backend_production_environment_isolation',
+        'backend_staging_environment_isolation',
+        'oci_host_production',
         'backend_5xx_percent',
+        'backend_staging_5xx_percent',
         'backend_p95_ms',
+        'backend_staging_p95_ms',
         'oci_host_ram_percent',
+        'oci_host_production_ram_percent',
         'GRAFANA_SLO_MAX_5XX_PERCENT',
         '--self-test',
     ):
@@ -151,6 +160,9 @@ def main() -> int:
         'GRAFANA_SLO_MAX_HOST_RAM_PERCENT',
         'GRAFANA_SLO_MIN_REQUESTS_15M',
         'python3 -S scripts/grafana_live_check.py --self-test',
+        'Warm production + staging telemetry',
+        'api.chess-studio.shadowops.dpdns.org/api/ready',
+        'api-staging.chess-studio.shadowops.dpdns.org/api/ready',
         'python3 -S scripts/grafana_live_check.py',
     ):
         if token not in live_workflow:
@@ -247,8 +259,8 @@ def main() -> int:
     render_yaml = (ROOT / 'render.yaml').read_text(encoding='utf-8')
     if 'OTEL_TRACES_SAMPLER_ARG' not in render_yaml or 'value: "1.0"' not in render_yaml:
         fail('producción debe mantener sampling 100% mientras se diagnostica Tempo')
-    if '"query": "{ }"' not in trace_dash:
-        fail('dashboard Tempo debe conservar una búsqueda reciente sin filtros para no ocultar trazas válidas')
+    if '"query": "{ resource.service.name =~ \\"${backend_service:regex}\\" }"' not in trace_dash:
+        fail('dashboard Tempo debe aplicar el selector Entorno también a la búsqueda de trazas recientes')
     if 'resource.service.name' not in trace_dash or 'trace:duration > 500ms' not in trace_dash:
         fail('dashboard Tempo perdió los paneles diagnósticos filtrados por recurso/duración')
     if trace_dash.count('"tableType": "traces"') < 3 or trace_dash.count('"spanLimit": 3') < 3:
@@ -264,7 +276,7 @@ def main() -> int:
     overview_path = INFRA / "dashboards" / "chess-studio-overview.json"
     overview = overview_path.read_text(encoding="utf-8")
     overview_data = load_json(overview_path)
-    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'chess-studio-backend'):
+    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'chess-studio-backend', '"label": "Entorno"', 'production : chess-studio-backend', 'staging : chess-studio-backend-staging'):
         if token not in overview:
             fail(f"overview no usa señal real: {token}")
     for panel in overview_data.get("panels") or []:
@@ -339,7 +351,7 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    for token in ('chess-studio-backend-staging', '"type": "custom"', 'multi-environment'):
+    for token in ('chess-studio-backend-staging', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'multi-environment'):
         if token not in infra_logs:
             fail(f"Loki debe permitir separar producción/staging: {token}")
 

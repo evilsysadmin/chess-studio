@@ -39,6 +39,17 @@ jobs:
       - uses: actions/checkout@v7
       - name: Static self-test
         run: python3 -S scripts/grafana_live_check.py --self-test
+      - name: Warm production + staging telemetry
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            "https://api.chess-studio.shadowops.dpdns.org/api/ready" \
+            "https://api-staging.chess-studio.shadowops.dpdns.org/api/ready"
+          do
+            curl --fail --silent --show-error --max-time 10 "$url" >/dev/null
+          done
+          sleep 12
       - name: Query Grafana from the read side
         run: python3 -S scripts/grafana_live_check.py
       - name: Summary
@@ -48,8 +59,9 @@ jobs:
           {
             echo '### Observability live'
             echo
-            echo '- OCI host metrics: queried from Grafana'
-            echo '- Backend metrics/logs/traces: queried from Grafana'
+            echo '- OCI host metrics: production + staging queried from Grafana'
+            echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
+            echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"
             echo "- Guardrail p95: ≤ `${GRAFANA_SLO_MAX_P95_MS}ms` over 15m when sample is sufficient"
             echo "- Guardrail OCI RAM: ≤ `${GRAFANA_SLO_MAX_HOST_RAM_PERCENT}%`"
