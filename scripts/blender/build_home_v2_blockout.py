@@ -1617,9 +1617,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
                 # Match the right hearth contract: legacy tongues are depth glow
                 # only. The foreground organic lobe cluster owns the silhouette.
-                obj.scale.x *= 0.28
-                obj.scale.z *= 0.15
-                obj.location.y += 0.32
+                obj.scale.x *= 0.14
+                obj.scale.z *= 0.07
+                obj.location.y += 0.40
     # The generic helper still contributes a domestic horizontal mantel that
     # cuts through the pointed canonical opening. Remove only those legacy
     # cross-pieces; the custom Gothic surround below owns the visible facade.
@@ -1720,44 +1720,29 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.62, 0.026, 0.070),
         materials["fire"],
     )
-    flat_panel(
-        "HOME_PROP_fireplace_left_front_flame_mass",
-        [
-            (-6.72, 0.58),
-            (-6.66, 0.68),
-            (-6.52, 0.64),
-            (-6.42, 1.02),
-            (-6.29, 0.76),
-            (-6.17, 1.28),
-            (-6.03, 0.80),
-            (-5.91, 1.08),
-            (-5.79, 0.67),
-            (-5.60, 0.62),
-            (-5.58, 0.58),
-        ],
-        5.380,
-        0.034,
-        materials["fire"],
-        bevel=0.032,
-    )
-    flat_panel(
-        "HOME_PROP_fireplace_left_front_hot_mass",
-        [
-            (-6.55, 0.59),
-            (-6.48, 0.66),
-            (-6.37, 0.64),
-            (-6.28, 0.92),
-            (-6.19, 0.72),
-            (-6.12, 1.10),
-            (-6.02, 0.72),
-            (-5.92, 0.88),
-            (-5.82, 0.61),
-        ],
-        5.342,
-        0.024,
-        materials["fire_hot"],
-        bevel=0.022,
-    )
+    # Rounded overlapping lobes keep the fire organic at Home distance.
+    # The old single polygon mass read as a row of pink triangular teeth.
+    for idx, (dx, width, height, tilt) in enumerate((
+        (-0.38, 0.15, 0.13, -8.0),
+        (-0.18, 0.18, 0.19, 7.0),
+        (0.03, 0.19, 0.23, -4.0),
+        (0.23, 0.17, 0.17, 8.0),
+        (0.40, 0.13, 0.12, -6.0),
+    )):
+        lobe = sphere(
+            f"HOME_PROP_fireplace_left_front_flame_{idx}",
+            (-6.15 + dx, 5.378, 0.60 + height * 0.56),
+            (width, 0.028, height),
+            materials["fire"],
+        )
+        lobe.rotation_euler[1] = math.radians(tilt)
+        inner = sphere(
+            f"HOME_PROP_fireplace_left_front_hot_{idx}",
+            (-6.15 + dx * 0.94, 5.342, 0.60 + height * 0.34),
+            (width * 0.44, 0.019, height * 0.46),
+            materials["fire_hot"],
+        )
+        inner.rotation_euler[1] = math.radians(tilt * 0.45)
 
     for idx, gx in enumerate((-6.66, -6.40, -6.15, -5.90, -5.64)):
         curve_tube(
@@ -1828,9 +1813,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             if "_flame_" in obj.name or "_flame_hot_" in obj.name:
                 # Keep legacy tongues buried as warm depth only; the canonical
                 # foreground overlay owns the visible hearth silhouette.
-                obj.scale.x *= 0.28
-                obj.scale.z *= 0.15
-                obj.location.y += 0.32
+                obj.scale.x *= 0.14
+                obj.scale.z *= 0.07
+                obj.location.y += 0.40
             if "_grate_" in obj.name:
                 if obj.data and hasattr(obj.data, "materials"):
                     obj.data.materials.clear()
@@ -1999,29 +1984,30 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (0.125, 0.020, 0.038),
             materials["fire_hot"] if idx % 2 else materials["fire"],
         )
-    for idx, (dx, h, tilt) in enumerate((
-        (-0.28, 0.18, -11.0),
-        (0.00, 0.25, 7.0),
-        (0.30, 0.17, -8.0),
+    for idx, (dx, width, height, tilt) in enumerate((
+        (-0.34, 0.14, 0.12, -8.0),
+        (-0.12, 0.16, 0.17, 6.0),
+        (0.12, 0.16, 0.15, -4.0),
+        (0.34, 0.13, 0.11, 8.0),
     )):
         base = sphere(
             f"HOME_PROP_fireplace_right_front_base_{idx}",
-            (4.45 + dx, 5.390, 0.635),
-            (0.145, 0.026, 0.070),
+            (4.45 + dx, 5.390, 0.625),
+            (width * 1.10, 0.026, 0.060),
             materials["fire"],
         )
-        base.rotation_euler[1] = math.radians(tilt * 0.20)
+        base.rotation_euler[1] = math.radians(tilt * 0.18)
         lobe = sphere(
             f"HOME_PROP_fireplace_right_front_flame_{idx}",
-            (4.45 + dx + math.sin(math.radians(tilt)) * 0.028, 5.375, 0.655 + h * 0.52),
-            (0.078, 0.026, h),
+            (4.45 + dx, 5.375, 0.60 + height * 0.56),
+            (width, 0.026, height),
             materials["fire"],
         )
         lobe.rotation_euler[1] = math.radians(tilt)
         inner = sphere(
             f"HOME_PROP_fireplace_right_front_hot_{idx}",
-            (4.45 + dx, 5.340, 0.650 + h * 0.34),
-            (0.041, 0.019, h * 0.46),
+            (4.45 + dx * 0.96, 5.340, 0.60 + height * 0.34),
+            (width * 0.43, 0.019, height * 0.45),
             materials["fire_hot"],
         )
         inner.rotation_euler[1] = math.radians(tilt * 0.45)
