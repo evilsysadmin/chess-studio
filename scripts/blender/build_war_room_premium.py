@@ -912,6 +912,21 @@ def add_gothic_canon_v2(static, mats):
     if horse_relief is not None and horse_relief.data.materials:
         horse_relief.data.materials[0] = heraldic_brass
 
+    # The single surviving ceremonial suit sits in a deliberately dark corner.
+    # Keep the plate itself subdued, but lift a handful of existing trim pieces
+    # into the same heraldic brass so the armour silhouette survives runtime
+    # lighting without adding another lamp or brightening the whole left wall.
+    for trim_name in (
+        "WR_ARMOR_gorget_-1",
+        "WR_ARMOR_belt_-1",
+        "WR_ARMOR_breastplate_ridge_-1",
+        "WR_ARMOR_breastplate_brow_-1",
+        "WR_ARMOR_helmet_brow_-1",
+    ):
+        trim_obj = static.objects.get(trim_name)
+        if trim_obj is not None and trim_obj.data.materials:
+            trim_obj.data.materials[0] = heraldic_brass
+
     def add_pointed_arch_frame(prefix, cx):
         """Stone lancet frame: curved in segments so it reads as gothic, not as a roof truss."""
         y = 6.43
