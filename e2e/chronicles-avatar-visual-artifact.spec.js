@@ -9,9 +9,9 @@ const CAPTURES = [
 ];
 const PARTY = [
   { id: 'matthias', name: 'Matthias' },
-  { id: 'hildegard', name: 'Hildegard' },
-  { id: 'aziz', name: 'Aziz' },
-  { id: 'morcilla', name: 'Faust' },
+  { id: 'rook', name: 'Hildegard' },
+  { id: 'bishop', name: 'Aziz' },
+  { id: 'knight', name: 'Faust' },
 ];
 
 async function openChronicles(page) {
@@ -59,7 +59,7 @@ async function captureElement(page, locator, path) {
 }
 
 for (const capture of CAPTURES) {
-  test(`Chronicles · los cuatro avatares 3D · ${capture.label}`, async ({ browser }) => {
+  test(`Chronicles · los cuatro retratos authored · ${capture.label}`, async ({ browser }) => {
     // Hosted SwiftShader needs materially more wall-clock budget for four
     // sequential desktop WebGL portraits than Android. Keep Android tight while
     // giving desktop enough headroom to finish real captures instead of timing
@@ -76,10 +76,10 @@ for (const capture of CAPTURES) {
     try {
       await openChronicles(page);
       const preview = page.locator('.chronicles-party-preview');
-      const portraitHost = page.locator('[data-chronicles-party-renderer="three"]');
-      const portraitCanvas = portraitHost.locator('canvas');
+      const portrait = page.locator('[data-chronicles-party-renderer="authored"]');
       await expect(preview).toBeVisible();
-      await expect(portraitCanvas).toBeVisible();
+      await expect(portrait).toBeVisible();
+      await expect(preview.locator('canvas')).toHaveCount(0);
 
       const rosterThumbnails = page.locator('[data-chronicles-party-thumbnail]');
       await expect(rosterThumbnails).toHaveCount(4);
@@ -88,17 +88,21 @@ for (const capture of CAPTURES) {
       )));
       expect(thumbnailIds, `${capture.label}: canonical roster thumbnail ids`).toEqual(PARTY.map(({ id }) => id));
       const thumbnailsDecoded = await rosterThumbnails.evaluateAll((images) => images.every((image) => (
-        image.complete && image.naturalWidth === 96 && image.naturalHeight === 96
+        image.complete
+        && image.naturalWidth >= 128
+        && image.naturalHeight >= 128
+        && !image.src.startsWith('data:')
       )));
-      expect(thumbnailsDecoded, `${capture.label}: Blender roster thumbnails decoded`).toBe(true);
+      expect(thumbnailsDecoded, `${capture.label}: authored roster portraits decoded`).toBe(true);
 
       for (const member of PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
         await expect(preview.locator('strong')).toHaveText(member.name);
-        const canvasBox = await portraitCanvas.boundingBox();
-        expect(canvasBox, `${capture.label}/${member.name}: canvas bounds`).not.toBeNull();
-        expect(canvasBox.width, `${capture.label}/${member.name}: canvas width`).toBeGreaterThan(80);
-        expect(canvasBox.height, `${capture.label}/${member.name}: canvas height`).toBeGreaterThan(80);
+        await expect(portrait).toHaveAttribute('data-member-id', member.id);
+        const portraitBox = await portrait.boundingBox();
+        expect(portraitBox, `${capture.label}/${member.name}: portrait bounds`).not.toBeNull();
+        expect(portraitBox.width, `${capture.label}/${member.name}: portrait width`).toBeGreaterThan(80);
+        expect(portraitBox.height, `${capture.label}/${member.name}: portrait height`).toBeGreaterThan(80);
         await captureElement(
           page,
           preview,
