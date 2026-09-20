@@ -19,7 +19,7 @@ STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
-STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: true"
+STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
 OCI_MUTATION_MUTEX = "concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false"
 
 
@@ -118,7 +118,8 @@ def main() -> int:
 
     # Canonical staging admits one immutable main generation before any mutation.
     for needle, label in (
-        (STAGING_WRITE_MUTEX, "canonical staging write mutex"),
+        (STAGING_WRITE_MUTEX, "canonical staging non-preemptive write mutex"),
+        ("running generation finishes while newer pending", "canonical anti-starvation mutex rationale"),
         ("name: Prepare coherent staging generation", "canonical generation prepare job"),
         ("Supersede stale staging commit", "single stale guard before mutation"),
         ("permissions:\n  contents: read", "read-only workflow permissions"),

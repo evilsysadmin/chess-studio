@@ -22,7 +22,8 @@ permissions:
 
 concurrency:
   group: chess-studio-staging-deploy
-  cancel-in-progress: true
+  # A manual preview must queue behind an active canonical deploy, never kill it.
+  cancel-in-progress: false
 
 jobs:
   deploy:
