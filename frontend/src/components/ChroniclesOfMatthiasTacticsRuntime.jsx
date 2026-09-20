@@ -265,6 +265,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
     setRunId(nextRunId);
     setSelectedMemberId('matthias');
     setSheetRequest(null);
+    setProgressionFeedback('');
     stateRef.current = next;
     setState(next);
   }, [onRestartRun, runId]);
