@@ -122,13 +122,14 @@ Contrato adicional de enemigos:
 
 
 Trituradora CI de worksheets de enemigos:
-- El worksheet generado por image_gen entra al repo como fuente de intake compacta dentro de `games/pawn-slug-godot/art/enemies/`; no es un atlas runtime ni se consume directamente desde Godot.
-- El master 2D de alta resolución se conserva fuera de Git (cache/R2 cuando corresponda). Git puede guardar una copia compacta y cuantizada del worksheet para que CI sea reproducible sin inflar el historial.
-- CI es la trituradora obligatoria: worksheet -> `scripts/art/pack_pawn_slug_enemy_v2.py` -> framesheets PNG por enemigo + atlas PNG + manifest JSON -> `scripts/art/validate_pawn_slug_enemy_v2.py` -> Godot headless real con SpriteFrames/AtlasTexture -> artifact PNG de review.
-- La salida v2 actual usa nueve tipos (pawn, knight, rook, bishop, queen, grenadier, scout, commando, shield), dos acciones iniciales (idle/run), 8 frames por acción, celdas 128x128, sheets individuales 8x2 y atlas conjunto 8x18 (1024x2304).
-- El packer fija escala por enemigo, pivote, línea de pies, margen transparente y layout; ningún frame puede decidir su propia escala o desplazamiento arbitrario.
-- CI construye dos veces y exige salida byte-a-byte idéntica. También rechaza alpha sucio, chunks PNG de color no permitidos, bleed de celda, frame vacío/duplicado, deriva de la línea de pies y regiones de AtlasTexture fuera del atlas.
-- Cada iteración debe revisar el artifact `enemy_v2_review.png` y los nueve framesheets antes de promover nada. Un gate verde no sustituye la revisión visual.
-- No cablear/promover automáticamente un worksheet nuevo a runtime. Primero artifact validado; después PR pequeña de promoción + staging smoke. Si falla visualmente, se itera el worksheet/pipeline, no se parchea el atlas final a mano.
-- Para ampliar animaciones (hurt, crouch, jump, death, fire, etc.), se amplía el contrato del worksheet/packer/manifest y sus gates; no se añaden recortes hardcodeados en GDScript.
-- Blender sigue prohibido para sprites de Pawn Slug, incluidos enemigos. Blender queda para Home 3D y War Room v2.
+- El cast generado por image_gen entra al repo como worksheet de intake compacto en `games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png`; no es un atlas runtime ni Godot lo consume directamente.
+- El master 2D de alta resolución se conserva fuera de Git (cache/R2 cuando corresponda). Git guarda una copia compacta del cast para que CI pueda reproducir la iteración sin inflar el historial.
+- `scripts/art/split_pawn_slug_enemy_cast_v2.py` separa el cast 3x3 en nueve worksheets 4x4 temporales: pawn, knight, rook, bishop, queen, grenadier, scout, commando y shield.
+- `scripts/art/pack_pawn_slug_enemy_v2.py` conserva el contrato móvil existente: nueve atlas PNG RGBA de 1024x1664, rejilla 4x4, celda 256x416, pivote X=128 y línea de pies Y=392. Cada tipo tiene 16 frames: idle 0-7 y run 8-15.
+- Todos los frames de un enemigo comparten una única escala y se alinean por el contacto inferior de los pies; queda prohibido reescalar cada frame por separado. El packer elimina únicamente componentes alpha desconectados del cuerpo principal para evitar bleed procedente de celdas vecinas.
+- CI es la trituradora obligatoria: cast -> splitter -> packer -> manifest/review -> `validate_pawn_slug_enemy_v2.py` -> Godot 4.7.2 headless con SpriteFrames/AtlasTexture -> artifact PNG.
+- CI construye dos veces y exige salida byte-a-byte idéntica. Rechaza PNG fuera de contrato, alpha sucio, bleed de celda, frame vacío/duplicado, deriva de línea de pies, hash/manifest incoherente y regiones de AtlasTexture fuera de página.
+- Cada iteración debe revisar `enemy-v2-review.png` y las nueve páginas `enemy-*-v2.png` antes de promover nada. Un gate verde no sustituye la revisión visual.
+- No se cablea/promueve automáticamente un worksheet nuevo al runtime. Primero artifact validado; después una PR pequeña de promoción y smoke en staging. Si falla visualmente se itera la fuente/pipeline, nunca se parchea el atlas final a mano.
+- Para añadir hurt, crouch, jump, death, fire u otras acciones se amplían worksheet, manifest, packer, validador y smoke de Godot de forma conjunta; no se añaden recortes hardcodeados en GDScript.
+- Blender sigue prohibido para sprites de Pawn Slug, incluidos enemigos. Blender queda reservado para Home 3D y War Room v2.

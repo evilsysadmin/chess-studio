@@ -5,17 +5,20 @@ on:
     paths:
       - 'games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
       - 'games/pawn-slug-godot/tests/enemy_v2_atlas_smoke.gd'
+      - 'scripts/art/split_pawn_slug_enemy_cast_v2.py'
       - 'scripts/art/pack_pawn_slug_enemy_v2.py'
       - 'scripts/art/validate_pawn_slug_enemy_v2.py'
+      - 'scripts/art/png_contract.py'
       - '.github/workflows/pawn-slug-enemy-v2.yml'
-      - 'AGENTS.md'
   push:
     branches: [main]
     paths:
       - 'games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
       - 'games/pawn-slug-godot/tests/enemy_v2_atlas_smoke.gd'
+      - 'scripts/art/split_pawn_slug_enemy_cast_v2.py'
       - 'scripts/art/pack_pawn_slug_enemy_v2.py'
       - 'scripts/art/validate_pawn_slug_enemy_v2.py'
+      - 'scripts/art/png_contract.py'
       - '.github/workflows/pawn-slug-enemy-v2.yml'
   workflow_dispatch:
 
@@ -38,54 +41,53 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
+
       - name: Install pinned Pillow
         run: |
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
+
       - name: Tool syntax
         run: |
           set -euo pipefail
           python3 -m py_compile \
+            scripts/art/split_pawn_slug_enemy_cast_v2.py \
             scripts/art/pack_pawn_slug_enemy_v2.py \
             scripts/art/validate_pawn_slug_enemy_v2.py
-      - name: Grind worksheet twice
+
+      - name: Grind compact cast twice
         shell: bash
         run: |
           set -euo pipefail
           SOURCE='games/pawn-slug-godot/art/enemies/enemy_cast_worksheet_v2.png'
           for lane in a b; do
             ROOT="$RUNNER_TEMP/enemy-v2-$lane"
-            mkdir -p "$ROOT/sheets"
+            python3 scripts/art/split_pawn_slug_enemy_cast_v2.py \
+              --source "$SOURCE" \
+              --output-dir "$ROOT/sources"
             python3 scripts/art/pack_pawn_slug_enemy_v2.py \
-              --source "$SOURCE" \
-              --output "$ROOT/enemy_godot_8x18_128_v2.png" \
-              --manifest "$ROOT/enemy_v2_manifest.json" \
-              --review "$ROOT/enemy_v2_review.png" \
-              --sheets-dir "$ROOT/sheets"
+              --source-dir "$ROOT/sources" \
+              --output-dir "$ROOT/output"
             python3 scripts/art/validate_pawn_slug_enemy_v2.py \
-              --source "$SOURCE" \
-              --atlas "$ROOT/enemy_godot_8x18_128_v2.png" \
-              --manifest "$ROOT/enemy_v2_manifest.json" \
-              --sheets-dir "$ROOT/sheets"
+              "$ROOT/output/enemy-v2-manifest.json"
           done
-      - name: Demand deterministic output
+
+      - name: Demand byte-for-byte reproducibility
         shell: bash
         run: |
           set -euo pipefail
           A="$RUNNER_TEMP/enemy-v2-a"
           B="$RUNNER_TEMP/enemy-v2-b"
-          cmp "$A/enemy_godot_8x18_128_v2.png" "$B/enemy_godot_8x18_128_v2.png"
-          cmp "$A/enemy_v2_manifest.json" "$B/enemy_v2_manifest.json"
-          cmp "$A/enemy_v2_review.png" "$B/enemy_v2_review.png"
-          for sheet in "$A"/sheets/*.png; do
-            cmp "$sheet" "$B/sheets/$(basename "$sheet")"
-          done
-          sha256sum "$A/enemy_godot_8x18_128_v2.png" "$A"/sheets/*.png
+          diff -qr "$A/sources" "$B/sources"
+          diff -qr "$A/output" "$B/output"
+          sha256sum "$A/output"/enemy-*-v2.png "$A/output/enemy-v2-review.png"
+
       - name: Restore pinned Godot editor
         uses: actions/cache@v6
         with:
           path: .godot-ci/${{ env.GODOT_VERSION }}
           key: pawn-slug-enemy-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-v1
+
       - name: Install pinned Godot editor
         shell: bash
         run: |
@@ -104,26 +106,27 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
-      - name: Consume atlas through real SpriteFrames
+
+      - name: Consume all pages through real SpriteFrames
         shell: bash
         run: |
           set -euo pipefail
-          ROOT="$RUNNER_TEMP/enemy-v2-a"
+          ROOT="$RUNNER_TEMP/enemy-v2-a/output"
           "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless \
             --path games/pawn-slug-godot \
             --script res://tests/enemy_v2_atlas_smoke.gd -- \
-            "$ROOT/enemy_godot_8x18_128_v2.png" \
-            "$ROOT/enemy_v2_manifest.json"
-      - name: Upload review + Godot-ready framesheets
+            "$ROOT" "$ROOT/enemy-v2-manifest.json"
+
+      - name: Upload review + Godot-ready pages
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pawn-slug-enemy-v2-${{ github.event.pull_request.number || github.run_number }}
           path: |
-            ${{ runner.temp }}/enemy-v2-a/enemy_godot_8x18_128_v2.png
-            ${{ runner.temp }}/enemy-v2-a/enemy_v2_manifest.json
-            ${{ runner.temp }}/enemy-v2-a/enemy_v2_review.png
-            ${{ runner.temp }}/enemy-v2-a/sheets/*.png
+            ${{ runner.temp }}/enemy-v2-a/output/enemy-v2-manifest.json
+            ${{ runner.temp }}/enemy-v2-a/output/enemy-v2-review.png
+            ${{ runner.temp }}/enemy-v2-a/output/enemy-*-v2.png
+            ${{ runner.temp }}/enemy-v2-a/sources/enemy-cast-v2-sources.json
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

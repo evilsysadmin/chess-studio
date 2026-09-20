@@ -1,129 +1,134 @@
 #!/usr/bin/env python3
+"""Normalize image-generated Pawn Slug enemy worksheets into Godot-safe atlases.
+
+The 4x4 worksheet may have arbitrary pixel dimensions. All 16 frames of one
+unit share one scale and are anchored by their lower-body/foot contact so the
+runtime cannot breathe in size or jitter laterally between frames.
+"""
 from __future__ import annotations
-import argparse, hashlib, json, statistics
+import argparse, json, statistics
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 from PIL import Image, ImageDraw
+from png_contract import save_png_contract, sha256_file
 
-VERSION='v2'
-TYPES=('pawn','knight','rook','bishop','queen','grenadier','scout','commando','shield')
-ACTIONS=(('idle',0,8,6.0,True),('run',8,8,10.0,True))
-SOURCE_SIZE=(576,576); TYPE_GRID=3; TYPE_TILE=192; SRC_COLS=4; SRC_ROWS=4; SRC_CELL=48
-COLS=8; ROWS=len(TYPES)*2; CELL=128; OUT_SIZE=(COLS*CELL,ROWS*CELL)
-GUARD=6; PIVOT_X=46.0; FOOT_Y=117.0; ALPHA=24
+ENEMY_TYPES=('pawn','knight','rook','queen','grenadier','scout','commando','shield','bishop')
+ACTIONS=(
+    {'name':'idle','indices':list(range(0,8)),'fps':6.0,'loop':True},
+    {'name':'run','indices':list(range(8,16)),'fps':10.0,'loop':True},
+)
+GRID_COLUMNS=4; GRID_ROWS=4; CELL_WIDTH=256; CELL_HEIGHT=416; PIVOT_X=CELL_WIDTH//2; FOOT_LINE=392; CELL_GUTTER=12
+MAX_BODY_WIDTH=CELL_WIDTH-CELL_GUTTER*2; MAX_BODY_HEIGHT=FOOT_LINE-CELL_GUTTER; ALPHA_THRESHOLD=4
 
-def sha(path:Path):
-    h=hashlib.sha256()
-    with path.open('rb') as f:
-        for c in iter(lambda:f.read(1<<20),b''): h.update(c)
-    return h.hexdigest()
+@dataclass(frozen=True)
+class PackedFrame:
+    index:int; source_region:tuple[int,int,int,int]; source_bbox:tuple[int,int,int,int]; region:tuple[int,int,int,int]; content_bbox:tuple[int,int,int,int]
 
-def clean_rgba(im:Image.Image)->Image.Image:
-    im=im.convert('RGBA'); px=im.load()
-    for y in range(im.height):
-        for x in range(im.width):
-            r,g,b,a=px[x,y]
-            if a==0: px[x,y]=(0,0,0,0)
-    return im
+def _grid_edges(size:int,cells:int)->list[int]: return [round(i*size/cells) for i in range(cells+1)]
+def _alpha_bbox(image:Image.Image,*,threshold:int=ALPHA_THRESHOLD):
+    alpha=image.getchannel('A'); mask=alpha.point(lambda value:255 if value>=threshold else 0); return mask.getbbox()
 
-def lower_anchor(sprite:Image.Image)->tuple[float,float]:
-    box=sprite.getchannel('A').getbbox()
-    if box is None: raise SystemExit('empty sprite')
-    px=sprite.load(); x0,y0,x1,y1=box
-    band=max(4,int((y1-y0)*0.16)); pts=[]
+def _foot_anchor(image:Image.Image)->tuple[float,int]:
+    box=_alpha_bbox(image)
+    if box is None: raise ValueError('cannot anchor empty frame')
+    x0,y0,x1,y1=box; px=image.load(); band=max(3,round((y1-y0)*0.08)); xs=[]
     for y in range(max(y0,y1-band),y1):
         for x in range(x0,x1):
-            if px[x,y][3]>ALPHA: pts.append((x,y))
-    if not pts: return ((x0+x1-1)/2.0,float(y1-1))
-    maxy=max(y for _,y in pts); xs=sorted(x for x,y in pts if y>=maxy-2)
-    return (float(statistics.median(xs)),float(maxy))
+            if px[x,y][3]>=ALPHA_THRESHOLD: xs.append(x)
+    if not xs: return ((x0+x1-1)/2.0,y1)
+    return (float(statistics.median(xs)),y1)
 
-def extract_frames(source:Image.Image, idx:int):
-    tx=(idx%TYPE_GRID)*TYPE_TILE; ty=(idx//TYPE_GRID)*TYPE_TILE
-    tile=source.crop((tx,ty,tx+TYPE_TILE,ty+TYPE_TILE))
-    out=[]
-    for r in range(SRC_ROWS):
-        for c in range(SRC_COLS):
-            cell=tile.crop((c*SRC_CELL,r*SRC_CELL,(c+1)*SRC_CELL,(r+1)*SRC_CELL))
-            box=cell.getchannel('A').getbbox()
-            if box is None: raise SystemExit(f'{TYPES[idx]} source frame {r*4+c} empty')
-            pad=2; x0=max(0,box[0]-pad); y0=max(0,box[1]-pad); x1=min(SRC_CELL,box[2]+pad); y1=min(SRC_CELL,box[3]+pad)
-            out.append(clean_rgba(cell.crop((x0,y0,x1,y1))))
+def _isolate_main_component(source_cell:Image.Image)->Image.Image:
+    rgba=source_cell.convert('RGBA'); alpha=rgba.getchannel('A'); px=alpha.load(); w,h=rgba.size; seen=bytearray(w*h); components=[]
+    for sy in range(h):
+        for sx in range(w):
+            idx=sy*w+sx
+            if seen[idx] or px[sx,sy]==0: continue
+            seen[idx]=1; stack=[(sx,sy)]; points=[]
+            while stack:
+                x,y=stack.pop(); points.append((x,y))
+                for nx,ny in ((x-1,y),(x+1,y),(x,y-1),(x,y+1)):
+                    if 0<=nx<w and 0<=ny<h:
+                        ni=ny*w+nx
+                        if not seen[ni] and px[nx,ny]>0:
+                            seen[ni]=1; stack.append((nx,ny))
+            components.append(points)
+    if not components: raise ValueError('source frame is fully transparent')
+    keep=max(components,key=len); src=rgba.load(); out=Image.new('RGBA',rgba.size,(0,0,0,0)); dst=out.load()
+    for x,y in keep: dst[x,y]=src[x,y]
     return out
 
-def build(source:Image.Image, source_path:Path):
-    if source.size!=SOURCE_SIZE: raise SystemExit(f'worksheet size {source.size} != {SOURCE_SIZE}')
-    if source.getchannel('A').getextrema()[0]==255: raise SystemExit('worksheet has no transparency')
-    atlas=Image.new('RGBA',OUT_SIZE,(0,0,0,0)); types_meta=[]
-    for ti,kind in enumerate(TYPES):
-        frames=extract_frames(source,ti)
-        anchors=[lower_anchor(f) for f in frames]
-        left=max(ax for f,(ax,ay) in zip(frames,anchors))
-        right=max(f.width-1-ax for f,(ax,ay) in zip(frames,anchors))
-        up=max(ay for f,(ax,ay) in zip(frames,anchors))
-        limits=[]
-        if left>0: limits.append((PIVOT_X-GUARD)/left)
-        if right>0: limits.append((CELL-GUARD-1-PIVOT_X)/right)
-        if up>0: limits.append((FOOT_Y-GUARD)/up)
-        scale=min(2.30,min(limits)*0.96)
-        if scale<0.50: raise SystemExit(f'{kind} implausible scale {scale:.3f}')
-        action_meta=[]
-        for ai,(name,start,count,fps,loop) in enumerate(ACTIONS):
-            row=ti*2+ai; fm=[]
-            for col in range(count):
-                src=frames[start+col]
-                nw=max(1,round(src.width*scale)); nh=max(1,round(src.height*scale))
-                spr=clean_rgba(src.resize((nw,nh),Image.Resampling.LANCZOS))
-                sax,say=lower_anchor(spr)
-                dx=round(col*CELL+PIVOT_X-sax); dy=round(row*CELL+FOOT_Y-say)
-                lx=dx-col*CELL; ly=dy-row*CELL
-                abox=spr.getchannel('A').getbbox()
-                if abox is None: raise SystemExit(f'{kind}/{name}[{col}] became empty after resize')
-                vis=[lx+abox[0],ly+abox[1],lx+abox[2],ly+abox[3]]
-                if vis[0]<GUARD or vis[1]<GUARD or vis[2]>CELL-GUARD or vis[3]>CELL-GUARD:
-                    raise SystemExit(f'{kind}/{name}[{col}] guard fail bbox={vis} scale={scale:.3f}')
-                atlas.alpha_composite(spr,(dx,dy))
-                fm.append({'frame':col,'source_index':start+col,'bbox':vis})
-            action_meta.append({'name':name,'row':row,'frames':count,'fps':fps,'loop':loop,'frames_meta':fm})
-        types_meta.append({'type':kind,'scale':round(scale,8),'actions':action_meta})
-    manifest={'schema':1,'kind':'pawn-slug-godot-enemy-atlas','version':VERSION,'source':{'filename':source_path.name,'sha256':sha(source_path),'size':list(source.size)},'atlas':{'columns':COLS,'rows':ROWS,'cell_size':CELL,'width':OUT_SIZE[0],'height':OUT_SIZE[1],'pivot_x':PIVOT_X,'foot_y':FOOT_Y,'cell_guard_min_px':GUARD},'types':types_meta}
-    return atlas,manifest
+def _trim(source_cell:Image.Image)->tuple[Image.Image,tuple[int,int,int,int]]:
+    rgba=_isolate_main_component(source_cell); bbox=_alpha_bbox(rgba)
+    if bbox is None: raise ValueError('source frame is fully transparent')
+    return rgba.crop(bbox),bbox
 
-def save(atlas,manifest,out:Path,mf:Path,review:Path|None,sheets_dir:Path|None):
-    out.parent.mkdir(parents=True,exist_ok=True); mf.parent.mkdir(parents=True,exist_ok=True)
-    atlas.save(out,'PNG',optimize=True); manifest['atlas']['filename']=out.name; manifest['atlas']['sha256']=sha(out)
-    if sheets_dir:
-        sheets_dir.mkdir(parents=True,exist_ok=True)
-        for ti,item in enumerate(manifest['types']):
-            sheet=atlas.crop((0,ti*2*CELL,COLS*CELL,(ti*2+2)*CELL))
-            path=sheets_dir/f"{item['type']}_godot_8x2_128_v2.png"
-            sheet.save(path,'PNG',optimize=True)
-            item['sheet']={'filename':path.name,'sha256':sha(path),'width':COLS*CELL,'height':2*CELL}
-    mf.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n',encoding='utf-8')
-    if review:
-        thumb=96; label=115; rowh=thumb*2+42
-        board=Image.new('RGBA',(label+COLS*thumb,len(TYPES)*rowh),(17,18,20,255)); d=ImageDraw.Draw(board)
-        for ti,kind in enumerate(TYPES):
-            y=ti*rowh
-            d.text((8,y+8),kind.upper(),fill=(240,240,240,255))
-            d.text((8,y+27),'idle',fill=(170,170,170,255))
-            d.text((8,y+thumb+31),'run',fill=(170,170,170,255))
-            for ai in range(2):
-                row=ti*2+ai
-                for col in range(COLS):
-                    fr=atlas.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)).resize((thumb,thumb),Image.Resampling.LANCZOS)
-                    board.alpha_composite(fr,(label+col*thumb,y+34+ai*thumb))
-        review.parent.mkdir(parents=True,exist_ok=True); board.save(review,'PNG',optimize=True)
+def _normalize_frame(trimmed:Image.Image,scale:float)->tuple[Image.Image,tuple[int,int,int,int]]:
+    size=(max(1,round(trimmed.width*scale)),max(1,round(trimmed.height*scale)))
+    sprite=trimmed.resize(size,Image.Resampling.LANCZOS) if size!=trimmed.size else trimmed.copy()
+    foot_x,foot_bottom=_foot_anchor(sprite)
+    canvas=Image.new('RGBA',(CELL_WIDTH,CELL_HEIGHT),(0,0,0,0))
+    x=round(PIVOT_X-foot_x); y=FOOT_LINE-foot_bottom
+    canvas.alpha_composite(sprite,(x,y)); content=_alpha_bbox(canvas)
+    if content is None: raise ValueError('normalized frame unexpectedly empty')
+    left,top,right,bottom=content
+    if left<CELL_GUTTER or top<CELL_GUTTER or right>CELL_WIDTH-CELL_GUTTER: raise ValueError(f'normalized frame violates cell gutter: {content}')
+    if bottom!=FOOT_LINE: raise ValueError(f'normalized frame foot line {bottom}, expected {FOOT_LINE}')
+    if bottom>CELL_HEIGHT-CELL_GUTTER: raise ValueError(f'normalized frame violates bottom gutter: {content}')
+    return canvas,content
 
+def split_worksheet(image:Image.Image)->Iterable[tuple[int,tuple[int,int,int,int],Image.Image]]:
+    xs=_grid_edges(image.width,GRID_COLUMNS); ys=_grid_edges(image.height,GRID_ROWS); index=0
+    for row in range(GRID_ROWS):
+        for col in range(GRID_COLUMNS):
+            region=(xs[col],ys[row],xs[col+1],ys[row+1]); yield index,region,image.crop(region); index+=1
+
+def pack_type(enemy_type:str,worksheet_path:Path,output_dir:Path)->dict:
+    source=Image.open(worksheet_path).convert('RGBA')
+    if source.width<GRID_COLUMNS or source.height<GRID_ROWS: raise ValueError(f'{worksheet_path} is too small for 4x4')
+    if source.getchannel('A').getextrema()[0]==255: raise ValueError(f'{worksheet_path} has no transparent pixels')
+    raw=[]
+    for index,source_region,source_cell in split_worksheet(source):
+        trimmed,bbox=_trim(source_cell); raw.append((index,source_region,bbox,trimmed))
+    anchor_geometry=[]
+    for *_,trimmed in raw:
+        foot_x,foot_bottom=_foot_anchor(trimmed)
+        anchor_geometry.append((foot_x,trimmed.width-foot_x,foot_bottom))
+    max_left=max(v[0] for v in anchor_geometry); max_right=max(v[1] for v in anchor_geometry); max_up=max(v[2] for v in anchor_geometry)
+    limits=[(PIVOT_X-CELL_GUTTER-2)/max_left,(CELL_WIDTH-CELL_GUTTER-2-PIVOT_X)/max_right,(FOOT_LINE-CELL_GUTTER-2)/max_up]
+    scale=min(limits)*0.96
+    if scale<=0: raise ValueError('invalid shared frame scale')
+    atlas=Image.new('RGBA',(GRID_COLUMNS*CELL_WIDTH,GRID_ROWS*CELL_HEIGHT),(0,0,0,0)); frames=[]
+    for index,source_region,source_bbox,trimmed in raw:
+        normalized,content_bbox=_normalize_frame(trimmed,scale); row,col=divmod(index,GRID_COLUMNS); x,y=col*CELL_WIDTH,row*CELL_HEIGHT
+        atlas.alpha_composite(normalized,(x,y))
+        frames.append(PackedFrame(index,source_region,source_bbox,(x,y,CELL_WIDTH,CELL_HEIGHT),(x+content_bbox[0],y+content_bbox[1],x+content_bbox[2],y+content_bbox[3])))
+    atlas_path=output_dir/f'enemy-{enemy_type}-v2.png'; save_png_contract(atlas,atlas_path)
+    return {'type':enemy_type,'source':worksheet_path.name,'sourceSha256':sha256_file(worksheet_path),'sourceSize':[source.width,source.height],'scale':round(scale,8),'atlas':atlas_path.name,'atlasSha256':sha256_file(atlas_path),'atlasSize':[atlas.width,atlas.height],'frames':[{'index':f.index,'sourceRegion':list(f.source_region),'sourceAlphaBBox':list(f.source_bbox),'region':list(f.region),'contentBBox':list(f.content_bbox)} for f in frames]}
+
+def build_review(manifest:dict,output_dir:Path)->Path:
+    card_w,card_h=500,300; cols=3; rows=(len(manifest['types'])+cols-1)//cols
+    review=Image.new('RGBA',(cols*card_w,rows*card_h),(24,25,27,255)); draw=ImageDraw.Draw(review); samples=(0,4,8,12)
+    for index,item in enumerate(manifest['types']):
+        atlas=Image.open(output_dir/item['atlas']).convert('RGBA'); x0=(index%cols)*card_w; y0=(index//cols)*card_h
+        draw.text((x0+12,y0+10),f"{item['type'].upper()}  scale={item['scale']:.3f}",fill=(240,238,226,255))
+        draw.text((x0+12,y0+30),'idle 0/4   run 8/12',fill=(170,170,170,255))
+        for slot,frame_index in enumerate(samples):
+            row,col=divmod(frame_index,GRID_COLUMNS); frame=atlas.crop((col*CELL_WIDTH,row*CELL_HEIGHT,(col+1)*CELL_WIDTH,(row+1)*CELL_HEIGHT)); frame.thumbnail((108,220),Image.Resampling.LANCZOS)
+            px=x0+10+slot*120+(108-frame.width)//2; py=y0+62+(220-frame.height)//2; review.alpha_composite(frame,(px,py))
+    out=output_dir/'enemy-v2-review.png'; save_png_contract(review,out); return out
+
+def parse_args():
+    p=argparse.ArgumentParser(); p.add_argument('--source-dir',type=Path,required=True); p.add_argument('--output-dir',type=Path,required=True); p.add_argument('--types',nargs='*',default=list(ENEMY_TYPES),choices=ENEMY_TYPES); return p.parse_args()
 def main():
-    p=argparse.ArgumentParser()
-    p.add_argument('--source',type=Path,required=True)
-    p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--manifest',type=Path,required=True)
-    p.add_argument('--review',type=Path)
-    p.add_argument('--sheets-dir',type=Path)
-    a=p.parse_args()
-    src=Image.open(a.source).convert('RGBA')
-    atlas,m=build(src,a.source)
-    save(atlas,m,a.output,a.manifest,a.review,a.sheets_dir)
-    print(f'OK enemy {VERSION}: {len(TYPES)} types, {ROWS} rows, {COLS*ROWS} frames, atlas={OUT_SIZE}')
+    cfg=parse_args(); cfg.output_dir.mkdir(parents=True,exist_ok=True); packed=[]
+    for enemy_type in cfg.types:
+        source=cfg.source_dir/f'enemy-{enemy_type}-worksheet.png'
+        if not source.is_file(): raise SystemExit(f'missing worksheet: {source}')
+        packed.append(pack_type(enemy_type,source,cfg.output_dir))
+    manifest={'schema':2,'scope':'pawn-slug-godot-enemy-v2','cell':[CELL_WIDTH,CELL_HEIGHT],'grid':[GRID_COLUMNS,GRID_ROWS],'pivot':[PIVOT_X,FOOT_LINE],'footLine':FOOT_LINE,'gutter':CELL_GUTTER,'framesPerType':GRID_COLUMNS*GRID_ROWS,'actions':list(ACTIONS),'types':packed}
+    review=build_review(manifest,cfg.output_dir); manifest['review']=review.name; manifest['reviewSha256']=sha256_file(review)
+    path=cfg.output_dir/'enemy-v2-manifest.json'; path.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+    print(f'OK: packed {len(packed)} enemy types into {len(packed)} mobile-safe 1024x1664 atlases')
 if __name__=='__main__': main()
