@@ -1102,19 +1102,25 @@ def add_gothic_canon_v2(static, mats):
     for side in (-1, 1):
         cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
              (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
-    # Keep this hearth visibly secondary to the ceremonial left fireplace:
-    # a low ember bed and two small wisps read as a maintained room fire rather
-    # than a duplicated hero effect.
+    # Keep this hearth visibly secondary to the ceremonial left fireplace.
+    # Two short charred logs give the ember bed a physical source; three flatter
+    # glow pockets replace the old row of pink pills while the two small wisps
+    # remain deliberately weaker than the dominant left fire.
+    for idx, (dx, rot) in enumerate(((-0.16, math.radians(82)), (0.16, math.radians(98)))):
+        log = cylinder(f"WR_CANON_right_fireplace_log_{idx}", (rx + dx * 0.30, 5.57, 1.13),
+                       0.085, 0.78, mats["charred_wood"], static, vertices=16)
+        log.rotation_euler = (0, math.pi / 2, rot - math.pi / 2)
     for idx, (dx, dz, sx) in enumerate((
-        (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
+        (-0.31, 0.01, 1.16), (0.02, 0.05, 1.34), (0.31, 0.02, 0.96),
     )):
-        sphere(f"WR_CANON_right_fireplace_ember_{idx}", (rx + dx, 5.50, 1.24 + dz), 0.105,
-               mats["ember"], static, scale=(sx, 0.62, 0.46))
+        sphere(f"WR_CANON_right_fireplace_ember_{idx}", (rx + dx, 5.49, 1.20 + dz), 0.090,
+               mats["ember"], static, scale=(sx, 0.58, 0.34))
     for idx, (dx, dz, sx, sz) in enumerate((
-        (-0.18, 0.12, 0.40, 0.82), (0.18, 0.08, 0.34, 0.70),
+        (-0.14, 0.10, 0.36, 0.78), (0.17, 0.06, 0.30, 0.64),
     )):
-        sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
-               mats["fire"], static, scale=(sx, 0.34, sz))
+        flame = sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.51, 1.31 + dz), 0.15,
+                       mats["fire"], static, scale=(sx, 0.32, sz))
+        flame.rotation_euler.y = -0.12 if idx == 0 else 0.16
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
           (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
