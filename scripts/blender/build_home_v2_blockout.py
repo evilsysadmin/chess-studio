@@ -1548,7 +1548,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
         "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.91, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True),
-        "brass": material("HOME_MAT_brass", (0.36, 0.19, 0.050, 1), roughness=0.27, metallic=0.84),
+        "brass": material("HOME_MAT_brass", (0.27, 0.135, 0.038, 1), roughness=0.36, metallic=0.76),
         "gold": material(
             "HOME_MAT_gold",
             (0.48, 0.27, 0.065, 1),
