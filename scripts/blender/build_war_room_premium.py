@@ -1118,6 +1118,11 @@ def add_gothic_canon_v2(static, mats):
     # Keep this hearth visibly secondary to the ceremonial left fireplace:
     # a low ember bed and two small wisps read as a maintained room fire rather
     # than a duplicated hero effect.
+    # One restrained charred log gives the secondary hearth a physical anchor
+    # so its low embers do not read like a row of glowing pebbles.
+    right_log = cylinder("WR_CANON_right_fireplace_log", (rx, 5.52, 1.13),
+                         0.075, 0.86, mats["charred_wood"], static, vertices=16)
+    right_log.rotation_euler = (0, math.pi / 2, math.radians(12))
     for idx, (dx, dz, sx) in enumerate((
         (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
     )):
