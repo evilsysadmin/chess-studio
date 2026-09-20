@@ -1,4 +1,4 @@
-export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 2;
+export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 3;
 
 function scenePalette(values) {
   return Object.freeze({
@@ -28,41 +28,41 @@ const CRYPT_PALETTE = scenePalette({
 });
 
 const GALLERY_PALETTE = scenePalette({
-  background: 0x101312,
-  fog: 0x1a211f,
-  floor: [0x555a56, 0x62645e, 0x4c514d, 0x696860],
-  foundation: 0x202320,
-  wall: [0x55564f, 0x626158, 0x494b47],
-  wallTrim: 0x27251f,
-  metal: 0x836f46,
-  rune: 0x9ec9bd,
-  runeEmissive: 0x3a8276,
-  runeGlow: 0x76b9aa,
-  hemiSky: 0xd8d5c6,
-  hemiGround: 0x111713,
-  key: 0xe7d9b3,
-  rim: 0x7fa3a0,
-  fill: 0xa8c0b4,
-  bounce: 0x6c5a3e,
+  background: 0x0f1312,
+  fog: 0x1b2421,
+  floor: [0x59605b, 0x696a62, 0x505752, 0x716d63],
+  foundation: 0x202420,
+  wall: [0x5a5a52, 0x69665d, 0x4a4e49],
+  wallTrim: 0x28261f,
+  metal: 0x8b7445,
+  rune: 0xa8d1c5,
+  runeEmissive: 0x3f8d80,
+  runeGlow: 0x7ec6b5,
+  hemiSky: 0xded8c8,
+  hemiGround: 0x101713,
+  key: 0xf1dfb5,
+  rim: 0x85aaa5,
+  fill: 0xb0cabc,
+  bounce: 0x735e3e,
 });
 
 const MENAGERIE_PALETTE = scenePalette({
-  background: 0x0b0a0a,
-  fog: 0x171312,
-  floor: [0x343230, 0x403a37, 0x2c2b2a, 0x48403a],
-  foundation: 0x171514,
-  wall: [0x332f2c, 0x3d3531, 0x2a2827],
-  wallTrim: 0x171311,
-  metal: 0x765033,
-  rune: 0xc78158,
-  runeEmissive: 0x8f3f24,
-  runeGlow: 0xc6673d,
-  hemiSky: 0xc9b49e,
-  hemiGround: 0x120f0e,
-  key: 0xe8b17c,
-  rim: 0x6f7c84,
-  fill: 0x8f8278,
-  bounce: 0x8e3f24,
+  background: 0x0c0908,
+  fog: 0x1d1512,
+  floor: [0x3b3834, 0x49413b, 0x322f2d, 0x55483e],
+  foundation: 0x191614,
+  wall: [0x3c342f, 0x493b35, 0x312c29],
+  wallTrim: 0x1d1612,
+  metal: 0x855a37,
+  rune: 0xd18a5d,
+  runeEmissive: 0x9d4525,
+  runeGlow: 0xd06d40,
+  hemiSky: 0xd4baa1,
+  hemiGround: 0x120e0c,
+  key: 0xf0b77e,
+  rim: 0x78868e,
+  fill: 0x9c8b80,
+  bounce: 0xa64a27,
 });
 
 const NEUTRAL_STYLE = Object.freeze({
@@ -82,13 +82,13 @@ const SCENE_STYLES = Object.freeze({
   'gallery-of-forks': Object.freeze({
     id: 'gallery-stone',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
-    dressing: 'none',
+    dressing: 'gallery-forked-v3',
     palette: GALLERY_PALETTE,
   }),
   'menagerie-of-ash': Object.freeze({
     id: 'menagerie-ash',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
-    dressing: 'none',
+    dressing: 'menagerie-ash-v3',
     palette: MENAGERIE_PALETTE,
   }),
 });
