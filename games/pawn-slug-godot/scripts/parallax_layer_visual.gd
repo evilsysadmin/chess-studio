@@ -945,9 +945,82 @@ func _draw_near_weather() -> void:
             draw_circle(Vector2(x, y), 0.9 + depth * 1.2, mote_color)
 
 func _draw_near_foreground() -> void:
-    if _preset != "night_front":
-        return
+    match _preset:
+        "harbor_dusk":
+            _draw_harbor_near_foreground()
+        "alpine_night":
+            _draw_alpine_near_foreground()
+        "jungle_storm":
+            _draw_jungle_near_foreground()
+        _:
+            _draw_industrial_near_foreground()
 
+func _draw_harbor_near_foreground() -> void:
+    var top_y := _floor_y + 54.0
+    var water_dark := Color(0.018, 0.048, 0.058, 0.80 * _intensity)
+    draw_rect(Rect2(Vector2(0.0, top_y), Vector2(_world_size.x, _world_size.y - top_y)), water_dark, true)
+    for index in range(12):
+        var x := 90.0 + float(index) * 480.0
+        var post_top := top_y - 20.0 - _noise(index, 101.2) * 36.0
+        draw_line(Vector2(x, _world_size.y + 8.0), Vector2(x, post_top), Color(0.055, 0.085, 0.090, 0.92), 9.0)
+        if index % 2 == 0:
+            draw_line(
+                Vector2(x - 20.0, post_top + 24.0),
+                Vector2(x + 120.0, post_top + 10.0),
+                Color(0.16, 0.19, 0.18, 0.46),
+                3.0,
+            )
+            draw_arc(Vector2(x + 48.0, post_top + 42.0), 38.0, PI, TAU, 18, Color(0.10, 0.14, 0.14, 0.56), 3.0)
+    for index in range(8):
+        var x := 240.0 + float(index) * 690.0
+        var y := top_y + 26.0 + float(index % 3) * 9.0
+        draw_rect(Rect2(Vector2(x, y), Vector2(62.0, 34.0)), Color(0.030, 0.055, 0.060, 0.90), true)
+        draw_line(Vector2(x, y + 9.0), Vector2(x + 62.0, y + 9.0), Color(0.20, 0.31, 0.32, 0.22), 2.0)
+
+func _draw_alpine_near_foreground() -> void:
+    var top_y := _floor_y + 48.0
+    var ridge := PackedVector2Array([Vector2(0.0, _world_size.y)])
+    for x in range(0, int(_world_size.x) + 91, 90):
+        var xf := float(x)
+        var y := top_y + (_noise(x / 90, 102.1) - 0.5) * 26.0
+        ridge.append(Vector2(xf, y))
+    ridge.append(Vector2(_world_size.x, _world_size.y))
+    draw_colored_polygon(ridge, Color(0.035, 0.050, 0.058, 0.88 * _intensity))
+    for index in range(13):
+        var x := 130.0 + float(index) * 430.0
+        var base := Vector2(x, top_y + 18.0)
+        var height := 26.0 + _noise(index, 102.8) * 46.0
+        var rock := PackedVector2Array([
+            base + Vector2(-28.0, 0.0),
+            base + Vector2(-8.0, -height * 0.72),
+            base + Vector2(8.0, -height),
+            base + Vector2(34.0, 0.0),
+        ])
+        draw_colored_polygon(rock, Color(0.08, 0.10, 0.11, 0.78))
+        draw_line(base + Vector2(-7.0, -height * 0.70), base + Vector2(7.0, -height * 0.90), Color(0.72, 0.80, 0.83, 0.16), 2.0)
+
+func _draw_jungle_near_foreground() -> void:
+    var top_y := _floor_y + 46.0
+    var shadow := Color(0.018, 0.052, 0.027, 0.88 * _intensity)
+    var leaves := Color(0.035, 0.11, 0.052, 0.78 * _intensity)
+    draw_rect(Rect2(Vector2(0.0, top_y + 18.0), Vector2(_world_size.x, _world_size.y - top_y)), shadow, true)
+    for index in range(18):
+        var x := 35.0 + float(index) * 315.0
+        var stem_top := top_y - 18.0 - _noise(index, 103.4) * 42.0
+        draw_line(Vector2(x, _world_size.y), Vector2(x + 10.0, stem_top), Color(0.075, 0.070, 0.040, 0.86), 8.0)
+        draw_circle(Vector2(x - 14.0, stem_top + 8.0), 22.0 + _noise(index, 104.0) * 16.0, leaves)
+        draw_circle(Vector2(x + 18.0, stem_top - 4.0), 18.0 + _noise(index, 104.6) * 18.0, leaves)
+    for index in range(12):
+        var x := 180.0 + float(index) * 450.0
+        var y := top_y + 8.0 + float(index % 2) * 12.0
+        draw_line(
+            Vector2(x - 36.0, y + 8.0),
+            Vector2(x + 52.0, y - 18.0),
+            Color(0.11, 0.095, 0.050, 0.66),
+            9.0,
+        )
+
+func _draw_industrial_near_foreground() -> void:
     # Camera-near framing only. It lives below the walk surface so it adds
     # depth without obscuring Matthias, enemies or projectile readability.
     var silhouette := Color(0.020, 0.027, 0.029, 0.78 * _intensity)
