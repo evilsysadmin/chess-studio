@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -19,15 +19,15 @@
     "list": [
       {
         "name": "environment",
-        "label": "Entorno",
+        "label": "Entorno OCI",
         "type": "custom",
-        "query": "production,staging",
+        "query": "staging",
         "current": {
-          "text": "production",
-          "value": "production"
+          "text": "staging",
+          "value": "staging"
         },
-        "includeAll": true,
-        "allValue": "production|staging",
+        "includeAll": false,
+        "allValue": null,
         "multi": false,
         "hide": 0,
         "skipUrlSync": false
@@ -47,7 +47,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Métricas Linux reales recogidas por Grafana Alloy desde `/proc` y `/sys`, sin Docker socket ni modo privilegiado. Filtra por entorno; ambos collectors observan el mismo A1 pero conservan identidad `production/staging`."
+        "content": "Métricas Linux reales recogidas por Grafana Alloy desde `/proc` y `/sys`, sin Docker socket ni modo privilegiado. Este collector pertenece a **OCI staging**; producción del backend se observa en los dashboards de aplicación, no como un host OCI ficticio."
       }
     },
     {

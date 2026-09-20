@@ -276,11 +276,33 @@ def run_checks(
     start = now - lookback_seconds
     passed = True
 
+    host_inventory_payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+        {
+            "query": 'count by (job, service_name, deployment_environment, cloud_provider, cloud_region) ({__name__=~"node_.*"})',
+            "time": str(now),
+        },
+    )
+    host_node_inventory = [
+        {
+            "job": str(row["metric"].get("job") or ""),
+            "service_name": str(row["metric"].get("service_name") or ""),
+            "deployment_environment": str(row["metric"].get("deployment_environment") or ""),
+            "cloud_provider": str(row["metric"].get("cloud_provider") or ""),
+            "cloud_region": str(row["metric"].get("cloud_region") or ""),
+            "series": int(row["value"]),
+        }
+        for row in _vector_metric_rows(host_inventory_payload)
+    ]
+    print(json.dumps({
+        "check": "host_node_inventory",
+        "rows": host_node_inventory,
+    }, separators=(",", ":"), sort_keys=True))
+
     metric_checks = {
         "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
-        "oci_host_production": 'count({service_name="chess-studio-oci-host",deployment_environment="production",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
-        "backend_production_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend"})',
-        "backend_staging_metrics": 'count({__name__=~"chess_studio_http_server_.*",service_name="chess-studio-backend-staging"})',
+        "backend_production_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend"}}[{lookback_seconds}s]))',
+        "backend_staging_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))',
     }
     for name, query in metric_checks.items():
         payload = api.get_json(
@@ -293,19 +315,19 @@ def run_checks(
     requests_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend",http_route!="/api/ready"}[15m])) or vector(0)',
         now,
     )
     errors_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend",http_response_status_class="5xx"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
         now,
     )
     p95_ms = _prom_value(
         api,
         metrics_uid,
-        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend"}[15m])))',
+        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend",http_route!="/api/ready"}[15m])))',
         now,
     )
     route_p95_payload = api.get_json(
@@ -333,12 +355,6 @@ def run_checks(
         '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="staging"})))',
         now,
     )
-    host_production_ram_percent = _prom_value(
-        api,
-        metrics_uid,
-        '100 * (1 - (avg(node_memory_MemAvailable_bytes{service_name="chess-studio-oci-host",deployment_environment="production"}) / avg(node_memory_MemTotal_bytes{service_name="chess-studio-oci-host",deployment_environment="production"})))',
-        now,
-    )
     enough_requests = requests_15m is not None and requests_15m >= min_requests_15m
     error_percent = None
     if enough_requests and errors_15m is not None and requests_15m:
@@ -363,29 +379,22 @@ def run_checks(
         max_host_ram_percent,
         "%",
     ) and passed
-    passed = _slo_report(
-        "oci_host_production_ram_percent",
-        host_production_ram_percent,
-        max_host_ram_percent,
-        "%",
-    ) and passed
-
     staging_requests_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_route!="/api/ready"}[15m])) or vector(0)',
         now,
     )
     staging_errors_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_response_status_class="5xx"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
         now,
     )
     staging_p95_ms = _prom_value(
         api,
         metrics_uid,
-        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-staging"}[15m])))',
+        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-staging",http_route!="/api/ready"}[15m])))',
         now,
     )
     staging_enough_requests = staging_requests_15m is not None and staging_requests_15m >= min_requests_15m
