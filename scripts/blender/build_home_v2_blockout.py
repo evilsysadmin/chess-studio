@@ -1847,17 +1847,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "fire": material(
             "HOME_MAT_fire",
-            (0.34, 0.065, 0.004, 1),
-            roughness=0.38,
-            emission=(1.0, 0.12, 0.006, 1),
-            emission_strength=0.045,
+            (0.30, 0.082, 0.004, 1),
+            roughness=0.42,
+            emission=(0.72, 0.10, 0.003, 1),
+            emission_strength=0.022,
         ),
         "fire_hot": material(
             "HOME_MAT_fire_hot",
-            (0.52, 0.18, 0.018, 1),
-            roughness=0.36,
-            emission=(0.72, 0.11, 0.004, 1),
-            emission_strength=0.026,
+            (0.72, 0.27, 0.024, 1),
+            roughness=0.34,
+            emission=(0.80, 0.19, 0.006, 1),
+            emission_strength=0.018,
         ),
     }
 
@@ -2811,7 +2811,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
     add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 24, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 48, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 62, (0.36, 0.20, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_hearth_bounce_left", (-5.45, 3.35, 3.15), 72, (1.0, 0.34, 0.12), 3.4, target=(-2.5, 2.0, 1.35))
+    add_area_light("HOME_LIGHT_hearth_bounce_right", (4.35, 3.45, 3.10), 64, (1.0, 0.31, 0.10), 3.0, target=(1.45, 2.0, 1.30))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 236, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 188, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
