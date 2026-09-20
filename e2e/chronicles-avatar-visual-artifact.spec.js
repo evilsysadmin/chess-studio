@@ -27,6 +27,11 @@ async function openChronicles(page) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
+  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+  if (await pvpLobby.isVisible().catch(() => false)) {
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+    await expect(pvpLobby).toBeHidden();
+  }
   await openMoreGameModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
@@ -78,6 +83,9 @@ for (const capture of CAPTURES) {
       await expect(preview).toBeVisible();
       await expect(portrait).toBeVisible();
       await expect(preview.locator('canvas')).toHaveCount(0);
+      await page.locator('.chronicles-stage').evaluate((node) => {
+        node.style.display = 'none';
+      });
 
       const rosterThumbnails = page.locator('[data-chronicles-party-thumbnail]');
       await expect(rosterThumbnails).toHaveCount(4);
