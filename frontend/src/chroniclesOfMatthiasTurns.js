@@ -244,3 +244,79 @@ export function chroniclesResolveEnemyTurn(state) {
     message: turnSummary(next, events),
   };
 }
+
+// Cells the party could stand on right now and be attacked by `enemy` without
+// the enemy moving first. Reuses the real attack predicate so overlays cannot
+// disagree with the turn engine.
+export function chroniclesEnemyThreatCells(
+  state,
+  enemy,
+  position = chroniclesRuntimeEnemyPosition(state, enemy),
+) {
+  const reach = Math.max(1, Number(enemy.ai?.attackReach ?? enemy.retaliationReach ?? 1));
+  const cells = [];
+  for (let dy = -reach; dy <= reach; dy += 1) {
+    for (let dx = -reach; dx <= reach; dx += 1) {
+      const separation = Math.abs(dx) + Math.abs(dy);
+      if (separation < 1 || separation > reach) continue;
+      const cell = { x: position.x + dx, y: position.y + dy };
+      const tile = chroniclesTileAt(cell.x, cell.y, state);
+      if (tile === '#' || tile === 'X') continue;
+      if (chroniclesEnemyCanAttackParty({ ...state, x: cell.x, y: cell.y }, enemy, position)) cells.push(cell);
+    }
+  }
+  return cells;
+}
+
+// Exact enemy response preview. The resolver is pure and deterministic, so the
+// preview deliberately delegates to the real turn pipeline rather than
+// reimplementing movement, targeting, damage or line-of-sight rules.
+export function chroniclesPreviewEnemyTurn(state) {
+  const empty = Object.freeze({
+    round: Number(state?.round || 0),
+    intents: Object.freeze([]),
+    attackedMemberIds: Object.freeze([]),
+    partyWouldFall: false,
+  });
+  if (!state || state.phase === 'escaped' || state.phase === 'defeated') return empty;
+  const activeEnemies = chroniclesActiveEnemies(state);
+  if (!activeEnemies.length) return empty;
+
+  const resolved = chroniclesResolveEnemyTurn(state);
+  const eventByEnemy = new Map((resolved.enemyTurnEvents || []).map((event) => [event.enemyId, event]));
+  const intents = activeEnemies.map((enemy) => {
+    const position = chroniclesRuntimeEnemyPosition(state, enemy);
+    const from = { x: position.x, y: position.y };
+    const event = eventByEnemy.get(enemy.id);
+    if (!event) return { enemyId: enemy.id, kind: 'hold', from };
+    if (event.type === 'attack') {
+      return {
+        enemyId: enemy.id,
+        kind: 'attack',
+        from,
+        targetId: event.targetId,
+        damage: event.damage,
+        lethal: event.toHp === 0,
+      };
+    }
+    return {
+      enemyId: enemy.id,
+      kind: 'move',
+      from,
+      to: { x: event.to.x, y: event.to.y },
+    };
+  });
+  const attackedMemberIds = [
+    ...new Set(
+      intents
+        .filter((intent) => intent.kind === 'attack')
+        .map((intent) => intent.targetId),
+    ),
+  ];
+  return {
+    round: Number(state.round || 0),
+    intents,
+    attackedMemberIds,
+    partyWouldFall: resolved.phase === 'defeated',
+  };
+}
