@@ -61,6 +61,17 @@ function addRuntimeLights(scene) {
 
   const key = new THREE.DirectionalLight(0xffc996, 1.85);
   key.position.set(-5.2, 7.4, 8.2);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -9;
+  key.shadow.camera.right = 9;
+  key.shadow.camera.top = 8;
+  key.shadow.camera.bottom = -3;
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 28;
+  key.shadow.bias = -0.00035;
+  key.shadow.normalBias = 0.035;
+  key.shadow.intensity = 0.45;
 
   const fill = new THREE.DirectionalLight(0x587aa8, 0.52);
   fill.position.set(7.2, 4.8, 5.6);
@@ -96,8 +107,8 @@ function disposeRuntimeScene(root) {
 function prepareRuntimeScene(root) {
   root.traverse((object) => {
     if (!object.isMesh) return;
-    object.castShadow = false;
-    object.receiveShadow = false;
+    object.castShadow = true;
+    object.receiveShadow = true;
     if (Array.isArray(object.material)) {
       object.material.forEach((material) => {
         if (material) material.needsUpdate = true;
@@ -153,6 +164,8 @@ export default function HomeBlenderScene3D({
     }
 
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
     renderer.setClearColor(0x000000, 0);
