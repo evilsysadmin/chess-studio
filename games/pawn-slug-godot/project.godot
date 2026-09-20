@@ -20,6 +20,10 @@ window/stretch/mode="canvas_items"
 
 driver/enable_input=false
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

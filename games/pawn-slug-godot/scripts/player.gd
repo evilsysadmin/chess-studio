@@ -59,7 +59,7 @@ const WEAPONS := {
         "slot": 1,
         "trigger": "semi",
         "ammo": -1,
-        "cadence": 0.380,
+        "cadence": 0.200,
         "damage": 22,
         "speed": 760.0,
         "pellets": 1,
@@ -147,6 +147,7 @@ func _ready() -> void:
     _spawn_position = global_position
     _checkpoint_position = _spawn_position
     _last_safe_position = _spawn_position
+    reset_physics_interpolation()
     _set_crouching(false, true)
     _art = MatthiasArt.new()
     _art.name = "MatthiasArt"
@@ -168,6 +169,7 @@ func configure_stage(start_x: float, checkpoints: Array) -> void:
         _checkpoint_xs.assign(DEFAULT_CHECKPOINT_X)
     _checkpoint_xs.sort()
     global_position.x = start_x
+    reset_physics_interpolation()
     _spawn_position = global_position
     _checkpoint_position = _find_safe_respawn_position(_spawn_position)
     _last_safe_position = _checkpoint_position
@@ -510,6 +512,7 @@ func _update_dead_state(delta: float) -> void:
 func _respawn() -> void:
     _clear_drop_through_exception()
     global_position = _find_safe_respawn_position(_checkpoint_position)
+    reset_physics_interpolation()
     _set_crouching(false, true)
     velocity = Vector2.ZERO
     hp = MAX_HP
