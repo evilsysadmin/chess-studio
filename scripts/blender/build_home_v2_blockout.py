@@ -427,9 +427,31 @@ def material(
     return mat
 
 
+def _material_uses_image_textures(mat) -> bool:
+    if not getattr(mat, "use_nodes", False) or not getattr(mat, "node_tree", None):
+        return False
+    return any(node.type == "TEX_IMAGE" for node in mat.node_tree.nodes)
+
+
+def _vary_uvs_for_object(obj, mat) -> None:
+    if obj.type != "MESH" or not _material_uses_image_textures(mat):
+        return
+    uv_layers = getattr(obj.data, "uv_layers", None)
+    if not uv_layers or not uv_layers.active:
+        return
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(obj.name)) & 0xFFFF
+    scale = 0.92 + _hash01(seed, 1, 1301) * 0.16
+    offset_u = _hash01(seed, 2, 1307) * 0.84
+    offset_v = _hash01(seed, 3, 1319) * 0.84
+    for loop in uv_layers.active.data:
+        loop.uv.x = loop.uv.x * scale + offset_u
+        loop.uv.y = loop.uv.y * scale + offset_v
+
+
 def apply_material(obj, mat) -> None:
     if hasattr(obj.data, "materials"):
         obj.data.materials.append(mat)
+        _vary_uvs_for_object(obj, mat)
 
 
 PREMIUM_BEVEL_PREFIXES = (
