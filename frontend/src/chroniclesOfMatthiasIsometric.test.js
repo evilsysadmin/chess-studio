@@ -3,6 +3,7 @@ import {
   CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
+  createChroniclesIsometricRenderer,
   chroniclesIsoInteractionForHit,
   chroniclesIsoPointerAction,
   chroniclesIsoUsesLegacyDressing,
@@ -15,6 +16,10 @@ import {
 } from './chroniclesOfMatthiasIsometric.js';
 
 describe('Chronicles canonical isometric viewport', () => {
+  it('exports a scene-model-only renderer API beside the legacy state adapter', () => {
+    expect(typeof createChroniclesIsometricRenderer).toBe('function');
+  });
+
   it('maps dungeon cells to a stable square world grid', () => {
     const centre = chroniclesIsoWorldForCell(3, 3);
     const east = chroniclesIsoWorldForCell(4, 3);
