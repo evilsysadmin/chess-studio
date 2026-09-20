@@ -19,7 +19,7 @@ let chroniclesManifestPromise = null;
 function chroniclesE2EManifests() {
   if (!chroniclesManifestPromise) {
     chroniclesManifestPromise = Promise.all(CHRONICLES_E2E_MAP_IDS.map(async (mapId) => {
-      const path = new URL(`../frontend/src/chronicles/maps/${mapId}.json`, import.meta.url);
+      const path = `${process.cwd()}/frontend/src/chronicles/maps/${mapId}.json`;
       return [mapId, JSON.parse(await readFile(path, 'utf8'))];
     })).then((entries) => Object.fromEntries(entries));
   }
