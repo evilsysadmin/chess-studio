@@ -508,25 +508,25 @@
         "kind": "ruined_city",
         "scroll": 0.29,
         "z": -55,
-        "intensity": 1
+        "intensity": 1.1
       },
       {
         "kind": "mid_defence",
         "scroll": 0.57,
         "z": -32,
-        "intensity": 1
+        "intensity": 1.06
       },
       {
         "kind": "near_weather",
         "scroll": 0.91,
         "z": -8,
-        "intensity": 1
+        "intensity": 0.92
       },
       {
         "kind": "near_foreground",
         "scroll": 0.99,
         "z": -4,
-        "intensity": 1.05
+        "intensity": 0.86
       }
     ]
   },
@@ -825,6 +825,82 @@
       "kind": "jungle_hut",
       "x": 4860,
       "y": 610
+    },
+    {
+      "kind": "jungle_fern_cluster",
+      "x": 500,
+      "y": 609,
+      "scale": 1
+    },
+    {
+      "kind": "jungle_ruin_pillar",
+      "x": 710,
+      "y": 610,
+      "w": 46,
+      "h": 96
+    },
+    {
+      "kind": "jungle_brazier",
+      "x": 1010,
+      "y": 608,
+      "scale": 0.92
+    },
+    {
+      "kind": "jungle_fern_cluster",
+      "x": 1120,
+      "y": 609,
+      "scale": 1.18
+    },
+    {
+      "kind": "jungle_ruin_pillar",
+      "x": 1510,
+      "y": 610,
+      "w": 52,
+      "h": 118
+    },
+    {
+      "kind": "jungle_fern_cluster",
+      "x": 1810,
+      "y": 609,
+      "scale": 0.92
+    },
+    {
+      "kind": "jungle_brazier",
+      "x": 2230,
+      "y": 608,
+      "scale": 1
+    },
+    {
+      "kind": "jungle_ruin_pillar",
+      "x": 2720,
+      "y": 610,
+      "w": 58,
+      "h": 126
+    },
+    {
+      "kind": "jungle_fern_cluster",
+      "x": 3050,
+      "y": 609,
+      "scale": 1.12
+    },
+    {
+      "kind": "jungle_brazier",
+      "x": 3760,
+      "y": 608,
+      "scale": 0.9
+    },
+    {
+      "kind": "jungle_ruin_pillar",
+      "x": 4140,
+      "y": 610,
+      "w": 50,
+      "h": 104
+    },
+    {
+      "kind": "jungle_fern_cluster",
+      "x": 4630,
+      "y": 609,
+      "scale": 1.2
     }
   ]
 }
