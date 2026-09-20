@@ -8,16 +8,18 @@ var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
 var _platforms: Array[Rect2] = []
 var _obstacles: Array[Rect2] = []
+var _obstacle_specs: Array[Dictionary] = []
 var _theme := "night_front"
 var _platform_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
 var _story_prop_specs: Array[Dictionary] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = [], story_prop_specs: Array[Dictionary] = []) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = [], story_prop_specs: Array[Dictionary] = [], obstacle_specs: Array[Dictionary] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
     _obstacles = obstacles.duplicate()
+    _obstacle_specs = obstacle_specs.duplicate(true)
     _theme = theme
     _platform_specs = platform_specs.duplicate(true)
     _dressing_specs = dressing_specs.duplicate(true)
@@ -444,37 +446,186 @@ func _draw_platform_wear(platform: Rect2, material: String, trim: Color, platfor
 func _draw_obstacles() -> void:
     for index in range(_obstacles.size()):
         var obstacle := _obstacles[index]
-        var body := Color("4a4134") if index % 2 == 0 else Color("384549")
-        var edge := Color("b18b50") if index % 2 == 0 else Color("7b888a")
-        if _theme == "harbor_dusk":
-            body = Color("31484f") if index % 2 == 0 else Color("4b3e31")
-            edge = Color("7297a0") if index % 2 == 0 else Color("a47a4e")
-        elif _theme == "alpine_night":
-            body = Color("4a5051") if index % 2 == 0 else Color("343c40")
-            edge = Color("b7c1c3") if index % 2 == 0 else Color("7f8d92")
-        elif _theme == "jungle_storm":
-            body = Color("43513a") if index % 2 == 0 else Color("4b4030")
-            edge = Color("74845e") if index % 2 == 0 else Color("9a7b4d")
-        draw_rect(obstacle, body, true)
-        draw_rect(obstacle, edge, false, 2.0)
-        if obstacle.size.x >= 58.0:
-            draw_line(
-                obstacle.position + Vector2(8.0, 8.0),
-                obstacle.end - Vector2(8.0, 8.0),
-                Color(edge.r, edge.g, edge.b, 0.38),
-                2.0,
+        var spec: Dictionary = _obstacle_specs[index] if index < _obstacle_specs.size() else {}
+        var kind := String(spec.get("kind", "crate"))
+        match kind:
+            "crate":
+                _draw_obstacle_crates(obstacle, 1, false)
+            "crate_stack":
+                _draw_obstacle_crates(obstacle, 3, false)
+            "cargo_crates":
+                _draw_obstacle_crates(obstacle, 3, true)
+            "container_stack":
+                _draw_obstacle_containers(obstacle)
+            "bollards":
+                _draw_obstacle_bollards(obstacle)
+            "barrels":
+                _draw_obstacle_barrels(obstacle)
+            "barricade":
+                _draw_obstacle_barricade(obstacle)
+            "sandbags":
+                _draw_obstacle_sandbags(obstacle)
+            "rockfall":
+                _draw_obstacle_rockfall(obstacle, index)
+            "bunker_block":
+                _draw_obstacle_bunker_block(obstacle)
+            "fallen_log":
+                _draw_obstacle_fallen_log(obstacle)
+            "root_mass":
+                _draw_obstacle_root_mass(obstacle, index)
+            "stone_ruin":
+                _draw_obstacle_stone_ruin(obstacle, index)
+            _:
+                _draw_obstacle_generic(obstacle)
+
+func _draw_obstacle_generic(rect: Rect2) -> void:
+    draw_rect(rect, Color("3d4546"), true)
+    draw_rect(rect, Color("788184"), false, 2.0)
+    draw_line(rect.position + Vector2(7.0, 7.0), rect.end - Vector2(7.0, 7.0), Color(0.16, 0.18, 0.18, 0.52), 2.0)
+    draw_line(Vector2(rect.end.x - 7.0, rect.position.y + 7.0), Vector2(rect.position.x + 7.0, rect.end.y - 7.0), Color(0.08, 0.09, 0.09, 0.48), 2.0)
+
+func _draw_obstacle_crates(rect: Rect2, count: int, cargo: bool) -> void:
+    var columns := 2 if count > 1 else 1
+    var rows := 2 if count > 2 else 1
+    var gap := 3.0
+    var cell_w := (rect.size.x - gap * float(columns - 1)) / float(columns)
+    var cell_h := (rect.size.y - gap * float(rows - 1)) / float(rows)
+    var body := Color("55422f") if not cargo else Color("4f4434")
+    var edge := Color("9a7446") if not cargo else Color("aa8754")
+    var drawn := 0
+    for row in range(rows):
+        for col in range(columns):
+            if drawn >= count:
+                continue
+            var cell := Rect2(
+                rect.position + Vector2(float(col) * (cell_w + gap), float(row) * (cell_h + gap)),
+                Vector2(cell_w, cell_h),
             )
-            draw_line(
-                Vector2(obstacle.end.x - 8.0, obstacle.position.y + 8.0),
-                Vector2(obstacle.position.x + 8.0, obstacle.end.y - 8.0),
-                Color(0.10, 0.11, 0.10, 0.48),
-                2.0,
-            )
-        draw_rect(
-            Rect2(obstacle.position + Vector2(0.0, obstacle.size.y - 7.0), Vector2(obstacle.size.x, 7.0)),
-            Color(0.08, 0.09, 0.09, 0.46),
-            true,
-        )
+            draw_rect(cell, body, true)
+            draw_rect(cell, edge, false, 1.6)
+            draw_line(cell.position + Vector2(5.0, 5.0), cell.end - Vector2(5.0, 5.0), Color(0.74, 0.55, 0.32, 0.42), 1.5)
+            draw_line(Vector2(cell.end.x - 5.0, cell.position.y + 5.0), Vector2(cell.position.x + 5.0, cell.end.y - 5.0), Color(0.18, 0.13, 0.09, 0.56), 1.5)
+            drawn += 1
+
+func _draw_obstacle_containers(rect: Rect2) -> void:
+    var rows := 2 if rect.size.y >= 70.0 else 1
+    var row_h := rect.size.y / float(rows)
+    for row in range(rows):
+        var cell := Rect2(rect.position + Vector2(0.0, float(row) * row_h), Vector2(rect.size.x, row_h - 2.0))
+        var body := Color("31484f") if row % 2 == 0 else Color("574638")
+        var edge := Color("75949a") if row % 2 == 0 else Color("9a7956")
+        draw_rect(cell, body, true)
+        draw_rect(cell, edge, false, 1.8)
+        for rib in range(1, 5):
+            var rx := cell.position.x + cell.size.x * float(rib) / 5.0
+            draw_line(Vector2(rx, cell.position.y + 4.0), Vector2(rx, cell.end.y - 4.0), Color(0.08, 0.12, 0.13, 0.32), 1.2)
+        draw_rect(Rect2(Vector2(cell.end.x - 14.0, cell.position.y + 6.0), Vector2(7.0, maxf(8.0, cell.size.y - 12.0))), Color(0.07, 0.10, 0.11, 0.42), false, 1.2)
+
+func _draw_obstacle_bollards(rect: Rect2) -> void:
+    var count := maxi(2, int(rect.size.x / 28.0))
+    for index in range(count):
+        var x := rect.position.x + (float(index) + 0.5) * rect.size.x / float(count)
+        var post_w := minf(12.0, rect.size.x / float(count) * 0.46)
+        draw_rect(Rect2(Vector2(x - post_w * 0.5, rect.position.y + 12.0), Vector2(post_w, rect.size.y - 12.0)), Color("26383d"), true)
+        draw_circle(Vector2(x, rect.position.y + 12.0), post_w * 0.65, Color("3d555b"))
+        draw_line(Vector2(x - post_w * 0.5, rect.position.y + 24.0), Vector2(x + post_w * 0.5, rect.position.y + 24.0), Color(0.78, 0.61, 0.30, 0.34), 2.0)
+
+func _draw_obstacle_barrels(rect: Rect2) -> void:
+    var count := maxi(2, int(rect.size.x / 30.0))
+    var barrel_w := minf(28.0, rect.size.x / float(count) - 2.0)
+    for index in range(count):
+        var x := rect.position.x + (float(index) + 0.5) * rect.size.x / float(count)
+        var body := Rect2(Vector2(x - barrel_w * 0.5, rect.position.y + 9.0), Vector2(barrel_w, rect.size.y - 9.0))
+        draw_rect(body, Color("35494c"), true)
+        draw_circle(Vector2(x, rect.position.y + 9.0), barrel_w * 0.5, Color("465b5e"))
+        for band in [0.30, 0.72]:
+            var by: float = body.position.y + body.size.y * float(band)
+            draw_line(Vector2(body.position.x, by), Vector2(body.end.x, by), Color(0.45, 0.52, 0.53, 0.74), 2.0)
+
+func _draw_obstacle_barricade(rect: Rect2) -> void:
+    draw_line(
+        rect.position + Vector2(7.0, rect.size.y - 8.0),
+        Vector2(rect.end.x - 8.0, rect.position.y + 10.0),
+        Color("5a4930"),
+        9.0,
+    )
+    draw_line(
+        Vector2(rect.end.x - 8.0, rect.size.y + rect.position.y - 8.0),
+        rect.position + Vector2(8.0, 10.0),
+        Color("4a3b28"),
+        8.0,
+    )
+    draw_line(Vector2(rect.position.x + 10.0, rect.end.y), Vector2(rect.position.x + 18.0, rect.position.y + 6.0), Color("252b2c"), 5.0)
+    draw_line(Vector2(rect.end.x - 10.0, rect.end.y), Vector2(rect.end.x - 18.0, rect.position.y + 6.0), Color("252b2c"), 5.0)
+
+func _draw_obstacle_sandbags(rect: Rect2) -> void:
+    var cols := maxi(2, int(rect.size.x / 24.0))
+    var rows := maxi(2, int(rect.size.y / 18.0))
+    var bag_w := rect.size.x / float(cols) + 2.0
+    var bag_h := rect.size.y / float(rows) + 1.0
+    for row in range(rows):
+        for col in range(cols):
+            var offset := (bag_w * 0.5) if row % 2 == 1 else 0.0
+            var x := rect.position.x + float(col) * bag_w - offset
+            if x + bag_w < rect.position.x or x > rect.end.x:
+                continue
+            var y := rect.end.y - float(row + 1) * bag_h
+            var bag := Rect2(Vector2(maxf(rect.position.x, x), y), Vector2(minf(bag_w, rect.end.x - maxf(rect.position.x, x)), bag_h - 2.0))
+            draw_rect(bag, Color("655b45"), true)
+            draw_line(Vector2(bag.position.x + 4.0, bag.get_center().y), Vector2(bag.end.x - 4.0, bag.get_center().y), Color(0.74, 0.67, 0.50, 0.28), 1.0)
+
+func _draw_obstacle_rockfall(rect: Rect2, seed_index: int) -> void:
+    var count := maxi(4, int(rect.size.x / 22.0))
+    for index in range(count):
+        var radius := 9.0 + _detail_noise(seed_index * 17 + index, 31.2) * 13.0
+        var x := rect.position.x + radius + _detail_noise(seed_index * 19 + index, 31.8) * maxf(1.0, rect.size.x - radius * 2.0)
+        var y := rect.end.y - radius * (0.70 + _detail_noise(index, 32.4) * 0.45)
+        draw_circle(Vector2(x, y), radius, Color(0.28, 0.31, 0.31, 0.96))
+        draw_line(Vector2(x - radius * 0.45, y - radius * 0.35), Vector2(x + radius * 0.28, y + radius * 0.15), Color(0.54, 0.60, 0.61, 0.17), 1.4)
+
+func _draw_obstacle_bunker_block(rect: Rect2) -> void:
+    draw_rect(rect, Color("343b3d"), true)
+    draw_rect(rect, Color("899294"), false, 2.0)
+    var cap := PackedVector2Array([
+        Vector2(rect.position.x - 4.0, rect.position.y + 5.0),
+        Vector2(rect.position.x + 10.0, rect.position.y - 8.0),
+        Vector2(rect.end.x - 10.0, rect.position.y - 8.0),
+        Vector2(rect.end.x + 4.0, rect.position.y + 5.0),
+    ])
+    draw_colored_polygon(cap, Color(0.25, 0.29, 0.30, 0.96))
+    draw_rect(Rect2(Vector2(rect.position.x + 12.0, rect.position.y + 18.0), Vector2(rect.size.x - 24.0, 9.0)), Color(0.04, 0.055, 0.060, 0.88), true)
+    draw_line(Vector2(rect.position.x + 6.0, rect.end.y - 9.0), Vector2(rect.end.x - 6.0, rect.end.y - 9.0), Color(0.08, 0.09, 0.09, 0.50), 2.0)
+
+func _draw_obstacle_fallen_log(rect: Rect2) -> void:
+    var start := Vector2(rect.position.x + 6.0, rect.end.y - 7.0)
+    var finish := Vector2(rect.end.x - 7.0, rect.position.y + 15.0)
+    draw_line(start, finish, Color("5a4930"), minf(16.0, rect.size.y * 0.32))
+    draw_line(start + Vector2(0.0, -3.0), finish + Vector2(0.0, -3.0), Color(0.48, 0.34, 0.20, 0.36), 2.2)
+    for t in [0.26, 0.58, 0.82]:
+        var p := start.lerp(finish, t)
+        draw_circle(p, 3.0, Color(0.18, 0.13, 0.08, 0.70))
+
+func _draw_obstacle_root_mass(rect: Rect2, seed_index: int) -> void:
+    var base := Vector2(rect.get_center().x, rect.end.y)
+    for root in range(9):
+        var start_x := rect.position.x + _detail_noise(seed_index * 23 + root, 33.2) * rect.size.x
+        var tip_x := rect.position.x + _detail_noise(seed_index * 29 + root, 33.8) * rect.size.x
+        var tip_y := rect.position.y + _detail_noise(seed_index * 31 + root, 34.4) * rect.size.y * 0.72
+        draw_line(Vector2(start_x, rect.end.y), Vector2(tip_x, tip_y), Color(0.20, 0.16, 0.09, 0.84), 5.0 - float(root % 3))
+    draw_circle(base, minf(rect.size.x, rect.size.y) * 0.22, Color(0.17, 0.14, 0.08, 0.78))
+
+func _draw_obstacle_stone_ruin(rect: Rect2, seed_index: int) -> void:
+    draw_rect(rect, Color(0.27, 0.29, 0.23, 0.94), true)
+    var courses := maxi(2, int(rect.size.y / 20.0))
+    for row in range(1, courses):
+        var y := rect.position.y + rect.size.y * float(row) / float(courses)
+        draw_line(Vector2(rect.position.x + 2.0, y), Vector2(rect.end.x - 2.0, y), Color(0.09, 0.10, 0.08, 0.40), 1.4)
+    for col in range(1, 3):
+        var x := rect.position.x + rect.size.x * float(col) / 3.0
+        var offset := (_detail_noise(seed_index * 7 + col, 35.0) - 0.5) * 10.0
+        draw_line(Vector2(x + offset, rect.position.y + 4.0), Vector2(x - offset, rect.end.y - 4.0), Color(0.10, 0.11, 0.09, 0.30), 1.3)
+    draw_line(rect.position + Vector2(5.0, 8.0), rect.get_center(), Color(0.06, 0.07, 0.055, 0.50), 2.0)
+    draw_line(rect.get_center(), rect.end - Vector2(7.0, 6.0), Color(0.06, 0.07, 0.055, 0.44), 1.8)
 
 func _draw_map_architecture() -> void:
     for spec in _story_prop_specs:

@@ -113,6 +113,7 @@ var _checkpoints: Array = [110.0]
 var _platforms: Array[Rect2] = []
 var _platform_specs: Array[Dictionary] = []
 var _obstacles: Array[Rect2] = []
+var _obstacle_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
 var _story_prop_specs: Array[Dictionary] = []
 var _enemy_spawns: Array[Dictionary] = []
@@ -232,7 +233,11 @@ func _load_stage_manifest(stage_id: String) -> bool:
         if typeof(entry) == TYPE_DICTIONARY:
             _platform_specs.append(Dictionary(entry).duplicate(true))
     _platforms = _stage_rects(_platform_specs)
-    _obstacles = _stage_rects(_stage_manifest.get("obstacles", []))
+    _obstacle_specs.clear()
+    for entry in _stage_manifest.get("obstacles", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _obstacle_specs.append(Dictionary(entry).duplicate(true))
+    _obstacles = _stage_rects(_obstacle_specs)
     _dressing_specs.clear()
     for entry in _stage_manifest.get("dressing", []):
         if typeof(entry) == TYPE_DICTIONARY:
@@ -1220,7 +1225,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs)
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs, _obstacle_specs)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
