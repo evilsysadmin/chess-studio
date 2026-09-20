@@ -790,7 +790,7 @@ def add_fireplace(name: str, x: float, materials):
             hot,
             bevel=0.016,
         )
-    add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 390, (1.0, 0.24, 0.045), radius=1.10)
+    add_point_light(f"HOME_LIGHT_{name}", (x, 5.34, 1.20), 240, (1.0, 0.24, 0.045), radius=1.10)
 
 
 def add_bookshelf(materials):
