@@ -484,7 +484,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
   if (!previous || !next || !safeRunId) return { progression: progress, awards, levelUps };
 
   const map = chroniclesMapForState(previous);
-  const namespace = progressionNamespace(previous);
+  const namespace = `${safeRunId}:${progressionNamespace(previous)}`;
 
   if (actorMemberId && HERO_IDS.includes(actorMemberId)) {
     map.enemies.forEach((enemy) => {

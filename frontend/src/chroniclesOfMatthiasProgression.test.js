@@ -61,7 +61,7 @@ describe('Chronicles Tactics · progression', () => {
     expect(chroniclesHeroProgress(duplicate.progression, 'rook').xp).toBe(12);
   });
 
-  it('uses a fixed encounter XP budget so F5, retry and replay cannot farm damage or kills', () => {
+  it('uses a fixed encounter XP budget inside one run but rewards a genuinely new expedition', () => {
     const before = tacticsState({ enemyHp: 6 });
     const after = tacticsState({ enemyHp: 0 });
     const first = applyChroniclesTacticsProgression(createChroniclesProgression(), before, after, {
@@ -72,17 +72,24 @@ describe('Chronicles Tactics · progression', () => {
     const replay = applyChroniclesTacticsProgression(first.progression, before, after, {
       actorMemberId: 'rook',
       actionKind: 'ability',
-      runId: 'brand-new-retry',
+      runId: 'run-before-f5',
+    });
+    const freshRun = applyChroniclesTacticsProgression(replay.progression, before, after, {
+      actorMemberId: 'rook',
+      actionKind: 'ability',
+      runId: 'next-expedition',
     });
 
     expect(first.awards.some((award) => award.reason === 'daño útil')).toBe(true);
     expect(first.awards.some((award) => award.reason === 'baja')).toBe(true);
     expect(replay.awards).toEqual([]);
-    expect(chroniclesHeroProgress(replay.progression, 'rook').xp)
-      .toBe(chroniclesHeroProgress(first.progression, 'rook').xp);
+    expect(freshRun.awards.some((award) => award.reason === 'daño útil')).toBe(true);
+    expect(freshRun.awards.some((award) => award.reason === 'baja')).toBe(true);
+    expect(chroniclesHeroProgress(freshRun.progression, 'rook').xp)
+      .toBeGreaterThan(chroniclesHeroProgress(first.progression, 'rook').xp);
   });
 
-  it('preserves the legacy crypt claim namespace so existing profiles cannot refarm old damage', () => {
+  it('does not let legacy cross-run claim ids poison future expeditions', () => {
     const seeded = grantChroniclesXp(
       createChroniclesProgression(),
       'rook',
@@ -98,8 +105,11 @@ describe('Chronicles Tactics · progression', () => {
       runId: 'legacy-profile',
     });
 
-    expect(result.awards).toEqual([]);
-    expect(chroniclesHeroProgress(result.progression, 'rook').xp).toBe(2);
+    expect(result.awards).toContainEqual(expect.objectContaining({
+      awardId: 'legacy-profile:crypt-01:damage:corrupted-pawn:hp-5',
+      reason: 'daño útil',
+    }));
+    expect(chroniclesHeroProgress(result.progression, 'rook').xp).toBe(4);
   });
 
   it('gives each map an independent finite XP budget even when enemy ids are reused', () => {
@@ -120,11 +130,11 @@ describe('Chronicles Tactics · progression', () => {
     });
 
     expect(crypt.awards).toContainEqual(expect.objectContaining({
-      awardId: 'crypt-01:damage:corrupted-pawn:hp-5',
+      awardId: 'campaign-run:crypt-01:damage:corrupted-pawn:hp-5',
       reason: 'daño útil',
     }));
     expect(gallery.awards).toContainEqual(expect.objectContaining({
-      awardId: 'gallery-01:damage:corrupted-pawn:hp-7',
+      awardId: 'campaign-run:gallery-01:damage:corrupted-pawn:hp-7',
       reason: 'daño útil',
     }));
   });
@@ -143,7 +153,7 @@ describe('Chronicles Tactics · progression', () => {
     expect(chroniclesHeroProgress(result.progression, 'rook').xp).toBe(0);
   });
 
-  it('deduplicates objective, support and survival rewards across later runs', () => {
+  it('deduplicates objective, support and survival rewards inside a run but pays them in a new run', () => {
     const wounded = createChroniclesState().party.map((member) => ({ ...member, hp: Math.max(1, member.hp - 2) }));
     const healed = wounded.map((member) => ({ ...member, hp: Math.min(member.maxHp, member.hp + 2) }));
     const before = tacticsState({ party: wounded, sigilAwake: false, phase: 'explore' });
@@ -157,6 +167,11 @@ describe('Chronicles Tactics · progression', () => {
     const replay = applyChroniclesTacticsProgression(first.progression, before, after, {
       actorMemberId: 'bishop',
       actionKind: 'ability',
+      runId: 'first-run',
+    });
+    const freshRun = applyChroniclesTacticsProgression(replay.progression, before, after, {
+      actorMemberId: 'bishop',
+      actionKind: 'ability',
       runId: 'second-run',
     });
 
@@ -164,6 +179,9 @@ describe('Chronicles Tactics · progression', () => {
     expect(first.awards.some((award) => award.reason === 'objetivo')).toBe(true);
     expect(first.awards.filter((award) => award.reason === 'supervivencia')).toHaveLength(4);
     expect(replay.awards).toEqual([]);
+    expect(freshRun.awards.some((award) => award.reason === 'soporte efectivo')).toBe(true);
+    expect(freshRun.awards.some((award) => award.reason === 'objetivo')).toBe(true);
+    expect(freshRun.awards.filter((award) => award.reason === 'supervivencia')).toHaveLength(4);
   });
 
   it('persists progression through the registered profile key', () => {
