@@ -118,7 +118,7 @@ jobs:
         run: |
           set -euo pipefail
           converged=false
-          for attempt in {1..46}; do
+          for attempt in {1..100}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
               --output "$body" --write-out '%{http_code}' \
@@ -133,7 +133,7 @@ jobs:
               converged=true
               break
             fi
-            [[ "$attempt" -eq 46 ]] || sleep 1
+            [[ "$attempt" -eq 100 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
