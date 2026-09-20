@@ -631,6 +631,27 @@ def add_table_and_board(materials):
     )
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
+    sphere(
+        "HOME_PROP_table_hourglass_glass_top",
+        (-2.10, 2.05, 1.49),
+        (0.075, 0.050, 0.075),
+        materials["window"],
+    )
+    sphere(
+        "HOME_PROP_table_hourglass_glass_bottom",
+        (-2.10, 2.05, 1.41),
+        (0.075, 0.050, 0.075),
+        materials["window"],
+    )
+    cone(
+        "HOME_PROP_table_hourglass_sand",
+        (-2.10, 2.02, 1.405),
+        0.055,
+        0.016,
+        0.060,
+        materials["gold"],
+        vertices=16,
+    )
     curve_tube(
         "HOME_PROP_table_hourglass_frame_l",
         [(-2.18, 2.05, 1.36), (-2.18, 2.05, 1.55)],
