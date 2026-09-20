@@ -5,6 +5,7 @@ import {
   QUICK_MATCH_TARGET_LEAD_ELO,
   difficultyForQuickMatchRating,
   provisionalQuickMatchLeadElo,
+  quickMatchQualityAdjustment,
   quickMatchRecalibration,
 } from './quickMatchDifficulty.js';
 
@@ -83,6 +84,58 @@ describe('quick-match Elo chaser', () => {
     const relieved = difficultyForQuickMatchRating(1000, losses, 20);
     expect(relieved).toBeLessThan(baseline);
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
+  });
+
+  it('uses analyzed move quality only after two factual adaptive-game samples', () => {
+    const activity = [
+      ...adaptiveGame('g2', 'win', 56),
+      ...adaptiveGame('g1', 'win', 56),
+    ];
+    const one = {
+      g2: { sufficientSample: true, clean: false, averageLoss: 130, blunders: 2 },
+    };
+    const two = {
+      ...one,
+      g1: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
+    };
+
+    expect(quickMatchQualityAdjustment(activity, 20, one)).toBe(0);
+    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(-15);
+  });
+
+  it('lets repeated clean analyzed play add only a small quality boost', () => {
+    const activity = [
+      ...adaptiveGame('g3', 'draw', 56),
+      ...adaptiveGame('g2', 'draw', 56),
+      ...adaptiveGame('g1', 'draw', 56),
+    ];
+    const quality = Object.fromEntries(['g1', 'g2', 'g3'].map((gameId) => [
+      gameId,
+      { sufficientSample: true, clean: true, averageLoss: 18, blunders: 0 },
+    ]));
+
+    expect(quickMatchQualityAdjustment(activity, 20, quality)).toBe(10);
+  });
+
+  it('ignores analyzed evidence from non-adaptive games and provisional profiles', () => {
+    const normalActivity = [
+      { gameId: 'normal', state: 'finished', outcome: 'loss', difficulty: 56, mode: 'casual' },
+      { gameId: 'normal', state: 'started', difficulty: 56, mode: 'casual' },
+    ];
+    const quality = {
+      normal: { sufficientSample: true, clean: false, averageLoss: 180, blunders: 3 },
+    };
+
+    expect(quickMatchQualityAdjustment(normalActivity, 20, quality)).toBe(0);
+
+    const adaptive = [
+      ...adaptiveGame('g2', 'loss', 56),
+      ...adaptiveGame('g1', 'loss', 56),
+    ];
+    expect(quickMatchQualityAdjustment(adaptive, 3, {
+      g1: quality.normal,
+      g2: quality.normal,
+    })).toBe(0);
   });
 
   it('reports a factual post-game recalibration only when the opponent changes materially', () => {
