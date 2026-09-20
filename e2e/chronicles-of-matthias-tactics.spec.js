@@ -105,6 +105,44 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   expect(contract.hasWait).toBe(false);
 });
 
+test('Chronicles Tactics · reiniciar incursión solicita una expedición autoritativa nueva', async ({ page }) => {
+  const runRequests = [];
+  page.on('request', (request) => {
+    try {
+      const url = new URL(request.url());
+      if (request.method() !== 'POST' || url.pathname !== '/api/chronicles/runs') return;
+      runRequests.push(request.headers()['idempotency-key'] || '');
+    } catch {
+      // Ignore non-URL browser internals.
+    }
+  });
+
+  await openTactics(page);
+  await expect.poll(() => runRequests.length).toBeGreaterThan(0);
+  const initialRequestCount = runRequests.length;
+  const firstRun = await page.evaluate(() => {
+    const raw = localStorage.getItem('chess-study-chronicles-tactics-run-v1');
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect(firstRun?.id).toBeTruthy();
+
+  const restart = page.getByRole('button', { name: 'Reiniciar incursión', exact: true });
+  await expect(restart).toBeVisible();
+  await restart.evaluate((button) => button.click());
+
+  await expect.poll(() => runRequests.length).toBeGreaterThan(initialRequestCount);
+  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+
+  const secondRun = await page.evaluate(() => {
+    const raw = localStorage.getItem('chess-study-chronicles-tactics-run-v1');
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect(secondRun?.id).toBeTruthy();
+  expect(secondRun.id).not.toBe(firstRun.id);
+  expect(runRequests.at(-1)).toBe(secondRun.id);
+  expect(runRequests[initialRequestCount - 1]).toBe(firstRun.id);
+});
+
 test('Chronicles Tactics · elegir doctrina desde la ficha consume skill point y cierra la alternativa', async ({ page }) => {
   await openTactics(page, {
     progression: {

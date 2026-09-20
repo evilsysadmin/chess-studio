@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
@@ -19,6 +19,12 @@ function BootstrapStatus() {
 
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [ready, setReady] = useState(false);
+  const [bootstrapRevision, setBootstrapRevision] = useState(0);
+
+  const restartExpedition = useCallback(() => {
+    setReady(false);
+    setBootstrapRevision((revision) => revision + 1);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,13 +41,17 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, []);
+  }, [bootstrapRevision]);
 
   if (!ready) return <BootstrapStatus />;
 
   return (
     <Suspense fallback={<BootstrapStatus />}>
-      <ChroniclesOfMatthiasTacticsRuntime onExit={onExit} />
+      <ChroniclesOfMatthiasTacticsRuntime
+        key={bootstrapRevision}
+        onExit={onExit}
+        onRestartRun={restartExpedition}
+      />
     </Suspense>
   );
 }
