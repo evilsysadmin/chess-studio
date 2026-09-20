@@ -17,6 +17,7 @@ import {
   chroniclesTacticsAbility,
   chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
+  chroniclesTacticsEffectiveProfile,
 } from './chroniclesOfMatthiasTactics.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 
@@ -82,6 +83,54 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     const spent = spendChroniclesAttributePoint(learned.progression, 'matthias', 'vigor');
     expect(spent.spent).toBe(true);
     expect(chroniclesHasUnspentProgression(spent.progression, 'matthias')).toBe(false);
+  });
+
+  it('offers a third mutually exclusive build choice at level 6 for every hero', () => {
+    for (const memberId of ['matthias', 'rook', 'bishop', 'knight']) {
+      const levelSix = chroniclesSkillsForMember(memberId).filter((skill) => skill.requiredLevel === 6);
+      expect(levelSix).toHaveLength(2);
+      expect(levelSix.every((skill) => skill.cost === 1)).toBe(true);
+      expect(new Set(levelSix.map((skill) => skill.group)).size).toBe(1);
+    }
+  });
+
+  it('makes level-6 martial branches change real ability pressure or reserves', () => {
+    const matthiasLevelSix = leveled('matthias', 6);
+    const executioner = unlockChroniclesSkill(matthiasLevelSix, 'matthias', 'matthias-executioner-oath');
+    expect(executioner.unlocked).toBe(true);
+    expect(unlockChroniclesSkill(executioner.progression, 'matthias', 'matthias-twin-rupture').unlocked).toBe(false);
+    const executionState = tacticsState(executioner.progression, { x: 2, y: 5 });
+    expect(chroniclesTacticsAbilityStatus(executionState, 'matthias').abilityName).toBe('Ruptura del verdugo');
+    expect(executionState.rpgModifiers.matthias.abilityPotencyBonus).toBe(3);
+
+    const twin = unlockChroniclesSkill(matthiasLevelSix, 'matthias', 'matthias-twin-rupture');
+    expect(twin.unlocked).toBe(true);
+    expect(tacticsState(twin.progression).classAbilityCharges.matthias).toBe(2);
+
+    const rookLevelSix = leveled('rook', 6);
+    const breaker = unlockChroniclesSkill(rookLevelSix, 'rook', 'rook-wallbreaker');
+    expect(breaker.unlocked).toBe(true);
+    const breakerState = tacticsState(breaker.progression);
+    expect(chroniclesTacticsAbilityStatus(breakerState, 'rook').abilityName).toBe('Martillo Quebramuros');
+    expect(breakerState.rpgModifiers.rook.abilityPotencyBonus).toBe(3);
+
+    const reserve = unlockChroniclesSkill(rookLevelSix, 'rook', 'rook-reserve-hammer');
+    expect(reserve.unlocked).toBe(true);
+    expect(tacticsState(reserve.progression).classAbilityCharges.rook).toBe(2);
+
+    const knightLevelSix = leveled('knight', 6);
+    const grandVolley = unlockChroniclesSkill(knightLevelSix, 'knight', 'knight-grand-volley');
+    expect(grandVolley.unlocked).toBe(true);
+    const grandState = tacticsState(grandVolley.progression);
+    expect(chroniclesTacticsEffectiveProfile(grandState, 'knight')).toMatchObject({
+      abilityName: 'Gran salva',
+      abilityMaxTargets: 3,
+    });
+    expect(grandState.rpgModifiers.knight.abilityPotencyBonus).toBe(1);
+
+    const fieldQuiver = unlockChroniclesSkill(knightLevelSix, 'knight', 'knight-field-quiver');
+    expect(fieldQuiver.unlocked).toBe(true);
+    expect(tacticsState(fieldQuiver.progression).classAbilityCharges.knight).toBe(2);
   });
 
   it('opens a second Aziz grimoire page at level 6', () => {
