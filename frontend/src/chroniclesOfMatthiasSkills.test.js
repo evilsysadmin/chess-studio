@@ -84,6 +84,35 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     expect(chroniclesHasUnspentProgression(spent.progression, 'matthias')).toBe(false);
   });
 
+  it('opens a second Aziz grimoire page at level 6', () => {
+    const spells = chroniclesSkillsForMember('bishop').filter((skill) => skill.requiredLevel === 6);
+    expect(spells).toHaveLength(2);
+    expect(spells.map((spell) => spell.group)).toEqual(['grimoire-2', 'grimoire-2']);
+
+    const levelSix = leveled('bishop', 6);
+    const solar = unlockChroniclesSkill(levelSix, 'bishop', 'bishop-solar-lance');
+    expect(solar.unlocked).toBe(true);
+    expect(unlockChroniclesSkill(solar.progression, 'bishop', 'bishop-aurora-liturgy').unlocked).toBe(false);
+
+    const attackState = tacticsState(solar.progression, {
+      x: 1,
+      y: 5,
+      enemyPositions: { 'corrupted-pawn': { x: 2, y: 4 } },
+    });
+    expect(chroniclesTacticsAbilityStatus(attackState, 'bishop').abilityName).toBe('Lanza solar');
+    expect(chroniclesTacticsAbility(attackState, 'bishop').enemyHp).toBe(1);
+
+    const aurora = unlockChroniclesSkill(levelSix, 'bishop', 'bishop-aurora-liturgy');
+    expect(aurora.unlocked).toBe(true);
+    const woundedParty = createChroniclesState().party.map((member) => ({
+      ...member,
+      hp: Math.max(1, member.hp - 5),
+    }));
+    const healState = tacticsState(aurora.progression, { party: woundedParty });
+    expect(chroniclesTacticsAbilityStatus(healState, 'bishop').abilityName).toBe('Liturgia de la aurora');
+    expect(chroniclesTacticsAbility(healState, 'bishop').party.find((member) => member.id === 'matthias').hp).toBe(6);
+  });
+
   it('refuses skills before their required level', () => {
     const result = unlockChroniclesSkill(createChroniclesProgression(), 'matthias', 'matthias-steel-tempo');
     expect(result.unlocked).toBe(false);
