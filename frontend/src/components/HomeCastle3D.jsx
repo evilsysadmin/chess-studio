@@ -39,10 +39,6 @@ import {
 } from './HomeCastle3DPicking.js';
 
 const CAMERA_Z = 3;
-const PARALLAX_X = 0.034;
-const PARALLAX_Y = 0.022;
-const ROOM_CAMERA_X = 0.012;
-const ROOM_CAMERA_Y = 0.01;
 const IDLE_ROOM_LIGHT_DEPTH = 1.18;
 const IDLE_ROOM_LIGHT_REACH = 1.45;
 
@@ -281,8 +277,6 @@ export default function HomeCastle3D({
     const raycaster = new THREE.Raycaster();
     const pickPointer = new THREE.Vector2();
 
-    const pointer = new THREE.Vector2();
-    const target = new THREE.Vector2();
     const roomFocus = new THREE.Vector3();
     const roomTarget = new THREE.Vector3();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -399,16 +393,10 @@ export default function HomeCastle3D({
 
       fireplaceLight.intensity = fireplaceIntensity * homeCastleFireplacePulse(timestamp, reduced);
 
-      if (!reduced) {
-        pointer.lerp(target, 0.055);
-        camera.position.x = pointer.x * PARALLAX_X + roomFocus.x * ROOM_CAMERA_X;
-        camera.position.y = -pointer.y * PARALLAX_Y + roomFocus.y * ROOM_CAMERA_Y;
-        camera.lookAt(roomFocus.x * 0.006, roomFocus.y * 0.005, 0.035);
-      } else {
-        pointer.set(0, 0);
-        camera.position.set(0, 0, CAMERA_Z);
-        camera.lookAt(0, 0, 0.035);
-      }
+      // Interaction belongs to the focused prop/light, never to the camera.
+      // Keep the hall visually anchored while hover/focus/click wakes local detail.
+      camera.position.set(0, 0, CAMERA_Z);
+      camera.lookAt(0, 0, 0.035);
 
       try {
         renderer.render(scene, camera);
@@ -429,16 +417,6 @@ export default function HomeCastle3D({
       if (!disposed && shouldRender() && !frame) frame = window.requestAnimationFrame(render);
     };
     renderRequestRef.current = resumeRender;
-
-    const onPointerMove = (event) => {
-      if (reducedMotion?.matches) return;
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      target.set(
-        THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1),
-        THREE.MathUtils.clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1),
-      );
-    };
 
     const pickedDestinationAt = (event) => {
       const rect = canvas.getBoundingClientRect();
@@ -477,7 +455,6 @@ export default function HomeCastle3D({
       if (destination) onDestinationActivateRef.current?.(destination);
     };
 
-    const onPointerLeave = () => target.set(0, 0);
     const onContextLost = (event) => {
       event.preventDefault();
       texturedFramePainted = false;
@@ -510,9 +487,7 @@ export default function HomeCastle3D({
     reducedMotion?.addEventListener?.('change', onReducedMotionChange);
     window.addEventListener('resize', resize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
-    canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
     canvas.parentElement?.addEventListener('pointermove', onCanvasPointerMove, { passive: true });
-    canvas.parentElement?.addEventListener('pointerleave', onPointerLeave, { passive: true });
     canvas.parentElement?.addEventListener('pointerleave', onCanvasPointerLeave, { passive: true });
     canvas.addEventListener('click', onCanvasClick);
     canvas.addEventListener('webglcontextlost', onContextLost);
@@ -574,9 +549,7 @@ export default function HomeCastle3D({
       reducedMotion?.removeEventListener?.('change', onReducedMotionChange);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
       canvas.parentElement?.removeEventListener('pointermove', onCanvasPointerMove);
-      canvas.parentElement?.removeEventListener('pointerleave', onPointerLeave);
       canvas.parentElement?.removeEventListener('pointerleave', onCanvasPointerLeave);
       canvas.removeEventListener('click', onCanvasClick);
       canvas.removeEventListener('webglcontextlost', onContextLost);
