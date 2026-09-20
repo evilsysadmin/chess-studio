@@ -193,6 +193,18 @@ describe('Chronicles Tactics · progression', () => {
     expect(chroniclesHeroProgress(restored, 'knight').xp).toBe(18);
   });
 
+  it('creates a fresh run identity after the current expedition is finished', () => {
+    const first = beginChroniclesTacticsRun();
+    expect(ensureChroniclesTacticsRun()).toBe(first);
+
+    const { finishChroniclesTacticsRun } = requireProgressionModuleForTest();
+    expect(finishChroniclesTacticsRun(first)).toBe(true);
+
+    const second = ensureChroniclesTacticsRun();
+    expect(second).not.toBe(first);
+    expect(ensureChroniclesTacticsRun()).toBe(second);
+  });
+
   it('keeps an active run across reload but refuses to inherit it across users', () => {
     const aliceRun = beginChroniclesTacticsRun();
     expect(ensureChroniclesTacticsRun()).toBe(aliceRun);
