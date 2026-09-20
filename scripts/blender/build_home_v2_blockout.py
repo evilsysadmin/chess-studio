@@ -1106,7 +1106,7 @@ def add_side_furnishings(materials):
     )
     for idx, cx in enumerate((-6.90, -6.62, -6.34)):
         cylinder(f"HOME_PROP_left_candelabra_stem_{idx}", (cx, 2.70, 1.26), 0.035, 0.24, materials["brass_dark"], vertices=12)
-        cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["paper"], bevel=0.012)
+        cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["wax"], bevel=0.012)
         cone(f"HOME_PROP_left_candelabra_flame_{idx}", (cx, 2.70, 1.68), 0.035, 0.006, 0.10, materials["fire_hot"], vertices=10)
         add_point_light(f"HOME_LIGHT_left_candelabra_{idx}", (cx, 2.58, 1.72), 18, (1.0, 0.36, 0.08), radius=0.18)
     for idx in range(4):
@@ -1402,7 +1402,7 @@ def add_stairs(materials):
         sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, py, pz + 0.60), (0.14, 0.14, 0.14), materials["stone_dark"])
         sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.065, 0.065, 0.065), materials["gold"])
     for idx, (px, py, pz) in enumerate(((5.35, 0.95, 1.18), (6.35, 0.10, 0.53), (7.25, -0.65, -0.06))):
-        cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["paper"], vertices=12)
+        cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["wax"], vertices=12)
         cone(f"HOME_PROP_dungeon_candle_flame_{idx}", (px, py, pz + 0.18), 0.040, 0.008, 0.12, materials["fire_hot"], vertices=10)
         add_point_light(f"HOME_LIGHT_dungeon_candle_{idx}", (px, py - 0.04, pz + 0.22), 22, (1.0, 0.40, 0.12), radius=0.20)
     cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
@@ -2065,7 +2065,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             (cx, 4.98, mantel_candle_base_z + candle_height / 2.0),
             0.042,
             candle_height,
-            materials["paper"],
+            materials["wax"],
             vertices=18,
         )
         cone(
