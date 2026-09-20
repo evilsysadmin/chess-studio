@@ -16,7 +16,7 @@ async function loginWithHomeFramesHeld(page) {
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }
 
-test('Home 3D mantiene el fallback hasta pintar el primer frame texturizado', async ({ page }) => {
+test('Home Blender no muestra el fallback mientras espera su primer frame', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
@@ -70,13 +70,16 @@ test('Home 3D mantiene el fallback hasta pintar el primer frame texturizado', as
   await expect.poll(() => art.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
   await page.waitForTimeout(150);
 
-  // Texture loading may already be complete, but no WebGL frame has been
-  // allowed through. The canonical image must therefore still be the visible
-  // safety net; marking the canvas ready here recreates the blank-Home race.
+  // The GLB may already be downloaded, but no WebGL frame has been allowed
+  // through. Eligible Blender devices must stay on the intentional dark loading
+  // surface instead of flashing the legacy hall before the real room appears.
   await expect(canvas).not.toHaveClass(/is-ready/);
-  await expect(art).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'loading');
+  await expect(art).toHaveCSS('opacity', '0');
 
   await page.evaluate(() => window.__homeFrameGate.release());
   await expect(canvas).toHaveClass(/is-ready/, { timeout: 15_000 });
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
   await expect(art).toHaveCSS('opacity', '0');
 });
