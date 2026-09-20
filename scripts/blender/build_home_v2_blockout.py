@@ -1538,8 +1538,7 @@ def add_armor(materials):
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    helmet = sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
-    helmet.rotation_euler[2] = math.radians(-1.4)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
     cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.205, 0.040, 0.042), dark, bevel=0.012)
     for slot, sx in enumerate((-0.11, -0.055, 0.0, 0.055, 0.11)):
         cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.308, 2.82), (0.012, 0.008, 0.018), dark, bevel=0.004)
@@ -1548,6 +1547,25 @@ def add_armor(materials):
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.56), 0.245, 0.105, brass, vertices=28)
     cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), materials["brass_dark"], bevel=0.006)
+
+    helmet_angle = math.radians(-1.4)
+    helmet_parts = [
+        obj for obj in bpy.data.objects
+        if obj.name in {
+            "HOME_PROP_armor_helmet",
+            "HOME_PROP_armor_visor",
+            "HOME_PROP_armor_brow",
+            "HOME_PROP_armor_helmet_crest",
+            "HOME_PROP_armor_visor_edge",
+        }
+        or obj.name.startswith("HOME_PROP_armor_visor_slot_")
+    ]
+    for part in helmet_parts:
+        dx = part.location.x - x
+        dy = part.location.y - y
+        part.location.x = x + dx * math.cos(helmet_angle) - dy * math.sin(helmet_angle)
+        part.location.y = y + dx * math.sin(helmet_angle) + dy * math.cos(helmet_angle)
+        part.rotation_euler[2] += helmet_angle
     for side in (-1, 1):
         cube(
             f"HOME_PROP_armor_pauldron_ridge_{side}",
