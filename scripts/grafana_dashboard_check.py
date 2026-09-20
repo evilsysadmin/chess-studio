@@ -81,9 +81,18 @@ def main() -> int:
         'chess-studio-oci-backend-production-stdout',
         'chess-studio-oci-backend-staging-stdout',
         'Raw logs · texto/regex',
+        'auth_login_failed : auth_login_failed',
+        '401 login · bot forensics',
+        'username_attempted',
+        'password_fingerprint',
+        'password_length',
+        'password_classes',
+        'user_agent',
     ):
         if token not in explorer_raw:
-            fail(f"log explorer no expone OCI stdout: {token}")
+            fail(f"log explorer no expone OCI stdout/auth forensics: {token}")
+    if '{{.password}}' in explorer_raw:
+        fail("log explorer no debe renderizar contraseñas")
     for token in ('request_id=~"$request_id"', 'trace_id=~"$trace_id"', 'client_release=~"$release"', 'request_path=~"$path"', 'route=~"$route"', '|~ "$text"'):
         if token not in explorer_exprs:
             fail(f"log explorer no aplica {token}")
@@ -336,6 +345,9 @@ def main() -> int:
         fail("falta dependencia OTLP HTTP")
     if 'payload["trace_id"]' not in structured:
         fail("los logs no correlacionan trace_id")
+    for token in ('emit_auth_login_failed', 'auth_login_failed', 'password_fingerprint', 'password_classes', 'hmac.new'):
+        if token not in structured:
+            fail(f"logs 401 perdieron forensics segura: {token}")
     overview_path = INFRA / "dashboards" / "chess-studio-overview.json"
     overview = overview_path.read_text(encoding="utf-8")
     overview_data = load_json(overview_path)

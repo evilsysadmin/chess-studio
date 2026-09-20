@@ -28,6 +28,7 @@ import matthias_daily_store
 import matthias_memory_store
 from db import PersistentStorageUnavailable
 from auth import (
+    JWT_SECRET,
     hash_password, verify_password, create_token, verify_token,
     create_password_reset_token, verify_password_reset_token,
 )
@@ -43,7 +44,7 @@ from game_api import build_game_router
 from admin_api import build_admin_router
 from system_api import build_system_router
 from observability import record_http_request, sanitize_client_release
-from structured_logging import emit_http_event, sanitize_forwarded_for, sanitize_ip
+from structured_logging import emit_auth_login_failed, emit_http_event, sanitize_forwarded_for, sanitize_ip
 from observability_history import schedule_history_flush
 from resilience import request_enter, request_exit, should_shed, record_shed
 from tracing import configure_tracing
@@ -581,7 +582,25 @@ async def register(body: RegisterRequest, request: Request):
 async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
     user = await ustore.get_user(username)
-    if not user or not verify_password(body.password, user["password_hash"]):
+    password_ok = bool(user and verify_password(body.password, user["password_hash"]))
+    if not password_ok:
+        client_ip, peer_ip, x_forwarded_for = _request_network_log_fields(request)
+        _, client_country = _client_network(request)
+        emit_auth_login_failed(
+            access_logger,
+            request_id=_request_id(request),
+            attempted_username=username,
+            password=body.password,
+            fingerprint_key=JWT_SECRET,
+            account_exists=bool(user),
+            failure_reason="bad_password" if user else "unknown_user",
+            client_ip=client_ip,
+            peer_ip=peer_ip,
+            x_forwarded_for=x_forwarded_for,
+            client_country=client_country,
+            user_agent=request.headers.get("user-agent"),
+            client_release=_client_release(request),
+        )
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
     request.state.username = username
     await _touch_activity_best_effort(username, force=True, request=request)
