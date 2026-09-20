@@ -13,16 +13,7 @@ export const HOME_BLENDER_CAMERA_FOV = 22.9;
 
 const CAMERA_BASE = Object.freeze({ x: 0, y: 4.85, z: 16 });
 const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
-const ROOM_FOCUS = Object.freeze({
-  tournament: Object.freeze({ x: -0.20, y: 0.03 }),
-  train: Object.freeze({ x: -0.11, y: 0.01 }),
-  combat: Object.freeze({ x: 0.11, y: 0.02 }),
-  daily: Object.freeze({ x: 0.20, y: 0.02 }),
-  history: Object.freeze({ x: -0.18, y: -0.02 }),
-  play: Object.freeze({ x: 0, y: -0.05 }),
-  pawnslug: Object.freeze({ x: 0.20, y: -0.05 }),
-  dungeon: Object.freeze({ x: 0.27, y: -0.07 }),
-});
+
 
 const EXPOSURE = Object.freeze({
   dawn: 1.10,
@@ -31,7 +22,7 @@ const EXPOSURE = Object.freeze({
   night: 1.13,
 });
 
-const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 30;
+const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
 
 export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
@@ -45,7 +36,7 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   ) * 180 / Math.PI;
   const blend = Math.min(1, Math.max(0, (1 - safeAspect) / 0.20));
   return Math.min(
-    64,
+    42,
     Math.max(
       HOME_BLENDER_CAMERA_FOV,
       HOME_BLENDER_CAMERA_FOV
@@ -91,12 +82,6 @@ export function homeBlenderPolicyNeedsFallback(policy) {
   return !policy?.enabled || policy?.lod === '2d';
 }
 
-export function homeBlenderPointerParallaxEnabled({
-  reducedMotion = false,
-  coarsePointer = false,
-} = {}) {
-  return !reducedMotion && !coarsePointer;
-}
 
 function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
@@ -173,17 +158,10 @@ function prepareRuntimeScene(root, shadowsEnabled = true) {
 
 export default function HomeBlenderScene3D({
   ambient = 'day',
-  activeRoom = null,
   onUnavailable = null,
 }) {
   const canvasRef = useRef(null);
-  const activeRoomRef = useRef(activeRoom);
   const renderRequestRef = useRef(null);
-
-  useEffect(() => {
-    activeRoomRef.current = activeRoom;
-    renderRequestRef.current?.();
-  }, [activeRoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -201,8 +179,6 @@ export default function HomeBlenderScene3D({
     let model = null;
     let frame = null;
     let loadTimer = null;
-    let pointerX = 0;
-    let pointerY = 0;
 
     let renderer;
     try {
@@ -239,17 +215,8 @@ export default function HomeBlenderScene3D({
 
     const renderFrame = () => {
       if (disposed || !model) return;
-      const focus = ROOM_FOCUS[activeRoomRef.current] || { x: 0, y: 0 };
-      camera.position.set(
-        CAMERA_BASE.x + pointerX * 0.12 + focus.x * 0.22,
-        CAMERA_BASE.y - pointerY * 0.075 + focus.y * 0.14,
-        CAMERA_BASE.z,
-      );
-      camera.lookAt(
-        CAMERA_TARGET.x + pointerX * 0.035 + focus.x * 0.42,
-        CAMERA_TARGET.y - pointerY * 0.025 + focus.y * 0.22,
-        CAMERA_TARGET.z,
-      );
+      camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
+      camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
       renderer.render(scene, camera);
     };
 
@@ -279,27 +246,6 @@ export default function HomeBlenderScene3D({
       camera.updateProjectionMatrix();
       requestRender();
     };
-
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
-    const coarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches === true;
-    const pointerParallaxEnabled = homeBlenderPointerParallaxEnabled({
-      reducedMotion,
-      coarsePointer,
-    });
-    const onPointerMove = !pointerParallaxEnabled ? null : (event) => {
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      pointerX = THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
-      pointerY = THREE.MathUtils.clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1);
-      requestRender();
-    };
-    const onPointerLeave = !pointerParallaxEnabled ? null : () => {
-      pointerX = 0;
-      pointerY = 0;
-      requestRender();
-    };
-    if (onPointerMove) canvas.addEventListener('pointermove', onPointerMove, { passive: true });
-    if (onPointerLeave) canvas.addEventListener('pointerleave', onPointerLeave, { passive: true });
 
     const failToFallback = (force = false) => {
       if (disposed || fallbackRequested || (!force && model)) return;
@@ -357,8 +303,6 @@ export default function HomeBlenderScene3D({
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('webglcontextlost', onContextLost);
-      if (onPointerMove) canvas.removeEventListener('pointermove', onPointerMove);
-      if (onPointerLeave) canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.classList.remove('is-ready');
       if (model) {
         scene.remove(model);
