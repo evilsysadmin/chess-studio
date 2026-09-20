@@ -196,10 +196,10 @@ def _target_walkable_count(recipe: ChroniclesMapCode) -> int:
     ratio = max(0.42, min(0.75, ratio))
     # A perfect maze is a tree. On compact maps the density target can fall
     # below that unavoidable carve floor, making difficulty/seed variation
-    # collapse after authored anchors are reconnected. Keep one deterministic
-    # extra loop whenever the interior has room so small maps retain meaningful
-    # topology diversity instead of converging onto the same few corridors.
-    loop_floor = min(interior, _perfect_maze_walkable_count(recipe) + 1)
+    # collapse after authored anchors are reconnected. Keep two deterministic
+    # extra loop cells whenever the interior has room; one is not enough to
+    # prevent canonical 7x7 authored anchors from collapsing adjacent seeds.
+    loop_floor = min(interior, _perfect_maze_walkable_count(recipe) + 2)
     return min(interior, max(required, math.ceil(interior * ratio), loop_floor))
 
 
