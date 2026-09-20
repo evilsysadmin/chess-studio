@@ -21,7 +21,6 @@ const FULL_ATLAS_URLS := {
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
-const RUNTIME_PRELOAD_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
 # strict-v17 tactical bank; v10 stays disabled because its mixed silhouettes
@@ -344,7 +343,6 @@ var _facing := 1.0
 var _aim_direction := Vector2.RIGHT
 var _one_shot_action := ""
 var _hold_one_shot := false
-var _locomotion_frame_accumulator := 0.0
 var _climbing := false
 var _climb_progress := 0.0
 
@@ -481,12 +479,13 @@ func update_visual(delta: float, horizontal_speed_ratio: float, on_floor: bool, 
                     _action in ["walk", "run", "crouch_walk"]
                     and next in ["walk", "run", "crouch_walk"]
                 )
+                var stride_phase := _locomotion_phase() if preserve_stride_phase else 0.0
                 _action = next
-                if not preserve_stride_phase:
-                    _locomotion_frame_accumulator = 0.0
                 _play_action()
+                if preserve_stride_phase:
+                    _restore_locomotion_phase(stride_phase)
             if _action in ["walk", "run", "crouch_walk"]:
-                _advance_locomotion(delta, horizontal_speed_ratio)
+                _sync_locomotion_playback(horizontal_speed_ratio)
 
     var authored_shoot := (
         not authored_shoot_action.is_empty()
@@ -759,10 +758,12 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         else:
             _full_frames_by_weapon[requested_weapon] = frames
             _full_body_y_by_weapon[requested_weapon] = V9_BODY_Y
-            _full_muzzle_by_weapon[requested_weapon] = _v9_muzzle_positions_for_atlas(
-                image,
-                requested_weapon,
-            )
+            # Runtime atlases are validated before publication. Per-frame muzzle
+            # pixel scans used to walk millions of pixels here on the web main
+            # thread, causing visible stalls. Use the stable procedural socket;
+            # exact authored sockets belong in the published manifest, not a
+            # runtime image-analysis pass.
+            _full_muzzle_by_weapon[requested_weapon] = {}
             _v9_ready_by_weapon[requested_weapon] = true
             _directional_ready_by_weapon[requested_weapon] = true
 
@@ -1126,9 +1127,9 @@ func _build_v9_frames(image: Image) -> SpriteFrames:
                 V9_ATLAS_CELL_SIZE,
                 V9_ATLAS_CELL_SIZE,
             )
-            if image.get_region(rect).get_used_rect().size == Vector2i.ZERO:
-                push_error("Strict Matthias v9 contains empty cell %s/%d" % [action, frame_index])
-                return null
+            # Empty/guard/cell validation is a publish-time CI gate. Re-scanning
+            # all 144 cells here copies and inspects the full 3328x7488 image on
+            # the web main thread and can freeze gameplay when an atlas lands.
             var texture := AtlasTexture.new()
             texture.atlas = atlas_texture
             texture.region = Rect2(rect)
@@ -1502,28 +1503,6 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
         call_deferred("_ensure_v10_locomotion", _rendered_weapon)
     elif authored_full and not v9_ready:
         call_deferred("_ensure_directional_source", _rendered_weapon)
-    if authored_full and v9_ready:
-        call_deferred("_prefetch_runtime_atlases")
-
-func _prefetch_runtime_atlases() -> void:
-    if _atlas_request != null:
-        return
-
-    # The selected weapon wins over background prefetching. This matters when a
-    # pickup happens while another bank is still warming the browser cache.
-    if not _full_frames_by_weapon.has(_weapon):
-        var current_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
-        if not current_url.is_empty():
-            _request_atlas(_weapon, current_url, "full-v9")
-            return
-
-    for weapon_id in RUNTIME_PRELOAD_ORDER:
-        if _full_frames_by_weapon.has(weapon_id):
-            continue
-        var url := String(FULL_ATLAS_URLS.get(weapon_id, ""))
-        if not url.is_empty():
-            _request_atlas(weapon_id, url, "full-v9")
-            return
 
 func _animation_available(name: String) -> bool:
     return _body_ready and _body.sprite_frames != null and _body.sprite_frames.has_animation(name) and _body.sprite_frames.get_frame_count(name) > 0
@@ -1533,14 +1512,34 @@ func _play_action() -> void:
         return
     _apply_body_transform(_action, _body.frame)
     if _action in ["walk", "run", "crouch_walk"]:
-        _body.animation = _action
-        _body.frame = 0
-        _body.pause()
+        _body.speed_scale = 1.0
+        _body.play(_action)
         return
     _body.speed_scale = 1.0
     _body.play(_action)
 
-func _advance_locomotion(delta: float, horizontal_speed_ratio: float) -> void:
+func _locomotion_phase() -> float:
+    if not _animation_available(_action):
+        return 0.0
+    var frame_count := _body.sprite_frames.get_frame_count(_action)
+    if frame_count <= 0:
+        return 0.0
+    return fposmod(
+        (float(_body.frame) + _body.frame_progress) / float(frame_count),
+        1.0,
+    )
+
+func _restore_locomotion_phase(phase: float) -> void:
+    if not _animation_available(_action):
+        return
+    var frame_count := _body.sprite_frames.get_frame_count(_action)
+    if frame_count <= 0:
+        return
+    var frame_position := fposmod(phase, 1.0) * float(frame_count)
+    var frame_index := int(floor(frame_position)) % frame_count
+    _body.set_frame_and_progress(frame_index, frame_position - floor(frame_position))
+
+func _sync_locomotion_playback(horizontal_speed_ratio: float) -> void:
     if not _animation_available(_action):
         return
     var frame_count := _body.sprite_frames.get_frame_count(_action)
@@ -1560,16 +1559,21 @@ func _advance_locomotion(delta: float, horizontal_speed_ratio: float) -> void:
         var walk_t := clampf(ratio / RUN_ENTER_SPEED_RATIO, 0.0, 1.0)
         cycle_hz = lerpf(WALK_CYCLE_HZ_MIN, WALK_CYCLE_HZ_MAX, smoothstep(0.0, 1.0, walk_t))
 
-    _locomotion_frame_accumulator += delta * float(frame_count) * cycle_hz
-    _body.animation = _action
-    _body.frame = int(floor(_locomotion_frame_accumulator)) % frame_count
-    _body.pause()
+    # Let AnimatedSprite2D advance on the render clock. The old manual
+    # floor(accumulator) stepping was quantized to the 60 Hz physics tick, so an
+    # authored 13-16 fps stride alternated uneven tick counts and looked jerky
+    # on common 120/144 Hz displays even while world movement was interpolated.
+    var authored_fps := _body.sprite_frames.get_animation_speed(_action)
+    var desired_fps := float(frame_count) * cycle_hz
+    _body.speed_scale = desired_fps / maxf(0.001, authored_fps)
+    if _body.animation != _action or not _body.is_playing():
+        _body.play(_action)
     _apply_locomotion_polish(frame_count, ratio)
 
 func _apply_locomotion_polish(frame_count: int, speed_ratio: float) -> void:
     if frame_count <= 1:
         return
-    var phase := fmod(_locomotion_frame_accumulator / float(frame_count), 1.0) * TAU
+    var phase := _locomotion_phase() * TAU
     if _action == "run":
         var intensity := clampf(
             (speed_ratio - RUN_EXIT_SPEED_RATIO) / maxf(0.001, 1.0 - RUN_EXIT_SPEED_RATIO),
