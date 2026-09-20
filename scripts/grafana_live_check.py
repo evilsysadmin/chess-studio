@@ -80,7 +80,7 @@ class GrafanaReadApi:
             fail(f"GET {path}: unexpected response shape")
         return payload
 
-    def get_list(self, path: str) -> list[dict]:
+    def get_list(self, path: str) -> list[dict] | None:
         req = urllib.request.Request(
             self.base_url + path,
             headers={
@@ -100,6 +100,13 @@ class GrafanaReadApi:
                 payload = json.loads(raw or "{}")
             except json.JSONDecodeError:
                 payload = {"raw": raw[:1000]}
+            if exc.code == 403:
+                print(json.dumps({
+                    "check": "datasource_discovery",
+                    "ok": True,
+                    "detail": "datasources:read forbidden; keeping configured UIDs",
+                }, separators=(",", ":"), sort_keys=True))
+                return None
             fail(f"GET {path}: HTTP {exc.code}: {payload}")
         except (OSError, TimeoutError) as exc:
             fail(f"GET {path}: {type(exc).__name__}: {exc}")
@@ -355,9 +362,21 @@ def main() -> int:
     traces_uid = os.getenv("GRAFANA_TRACES_DATASOURCE_UID", "").strip()
     api = GrafanaReadApi(os.getenv("GRAFANA_URL", ""), os.getenv("GRAFANA_AUTH", ""))
     datasources = api.get_list("/api/datasources")
-    metrics_uid = _resolve_datasource_uid(datasources, metrics_uid, "prometheus")
-    logs_uid = _resolve_datasource_uid(datasources, logs_uid, "loki")
-    traces_uid = _resolve_datasource_uid(datasources, traces_uid, "tempo")
+    if datasources is not None:
+        metrics_uid = _resolve_datasource_uid(datasources, metrics_uid, "prometheus")
+        logs_uid = _resolve_datasource_uid(datasources, logs_uid, "loki")
+        traces_uid = _resolve_datasource_uid(datasources, traces_uid, "tempo")
+    else:
+        missing = [
+            name for name, value in (
+                ("metrics", metrics_uid),
+                ("logs", logs_uid),
+                ("traces", traces_uid),
+            )
+            if not value
+        ]
+        if missing:
+            fail("datasource discovery forbidden and configured UIDs missing: " + ", ".join(missing))
     return 0 if run_checks(
         api,
         metrics_uid=metrics_uid,
