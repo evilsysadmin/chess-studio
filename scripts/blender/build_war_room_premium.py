@@ -1027,6 +1027,42 @@ def add_gothic_canon_v2(static, mats):
              (0.18, 0.17, 0.080), mats["stone_dark"], static, bevel=0.030)
 
 
+    # Lived-in dispatch station between the central desk and the secondary
+    # hearth. This is intentionally low and asymmetric: it adds the layered,
+    # inhabited depth of the classic room without stealing focus from the board.
+    dx, dy = 2.95, 5.78
+    cube("WR_CANON_dispatch_body", (dx, dy, 1.02), (0.70, 0.38, 0.70),
+         mats["walnut_dark"], static, bevel=0.055)
+    cube("WR_CANON_dispatch_top", (dx, dy - 0.02, 1.76), (0.78, 0.43, 0.085),
+         mats["frame_wood"], static, bevel=0.045)
+    for row, z in enumerate((0.72, 1.08, 1.44)):
+        cube(f"WR_CANON_dispatch_drawer_{row}", (dx, dy - 0.405, z), (0.58, 0.035, 0.135),
+             mats["table_wood"], static, bevel=0.025)
+        sphere(f"WR_CANON_dispatch_pull_{row}", (dx, dy - 0.455, z), 0.045,
+               mats["brass"], static, scale=(1.35, 0.55, 0.72))
+
+    # A couple of folios and rolled campaign maps keep the station functional
+    # rather than decorative. Broad silhouettes survive the gameplay camera.
+    cube("WR_CANON_dispatch_folio_0", (dx - 0.25, dy - 0.08, 1.88), (0.28, 0.23, 0.035),
+         mats["book_a"], static, bevel=0.018)
+    folio = cube("WR_CANON_dispatch_folio_1", (dx - 0.18, dy - 0.10, 1.94), (0.25, 0.20, 0.028),
+                 mats["book_b"], static, bevel=0.016)
+    folio.rotation_euler.z = -0.10
+    for index, (x, z, angle) in enumerate(((dx + 0.22, 1.90, math.pi / 2), (dx + 0.39, 1.86, math.pi / 2))):
+        roll = cylinder(f"WR_CANON_dispatch_map_{index}", (x, dy - 0.10, z), 0.055, 0.46,
+                        mats["ivory"], static, vertices=18)
+        roll.rotation_euler.y = angle
+
+    cylinder("WR_CANON_dispatch_candle_base", (dx + 0.58, dy - 0.10, 1.90), 0.10, 0.055,
+             mats["brass_dark"], static, vertices=18)
+    cylinder("WR_CANON_dispatch_candle", (dx + 0.58, dy - 0.10, 2.08), 0.045, 0.30,
+             mats["ivory"], static, vertices=16)
+    sphere("WR_CANON_dispatch_flame", (dx + 0.58, dy - 0.10, 2.27), 0.060,
+           mats["fire_core"], static, scale=(0.50, 0.50, 1.12))
+    light("WR_CANON_dispatch_light", "POINT", (dx + 0.58, dy - 0.18, 2.30), 42.0,
+          (1.0, 0.39, 0.12), static, radius=0.75)
+
+
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
     # structurally sound but their broad uninterrupted slabs read like toy
@@ -1634,7 +1670,7 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_")):
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
             key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
