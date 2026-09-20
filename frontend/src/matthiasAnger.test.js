@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   angerLevelForMaterial,
+  captureUsesDedicatedNoteworthyLane,
   matthiasAngerState,
   matthiasCaptureReaction,
   shouldMatthiasReactToCapture,
@@ -26,8 +27,8 @@ describe('matthiasAnger', () => {
     expect(state.reconstructable).toBe(true);
     expect(state.material).toBe(1);
     expect(state.level).toBe(1);
-    expect(state.latestHumanCapture).toMatchObject({ piece: 'p', value: 1, ply: 3 });
-    expect(state.latestCpuCapture).toMatchObject({ piece: 'p', value: 1, ply: 4 });
+    expect(state.latestHumanCapture).toMatchObject({ piece: 'p', captor: 'p', value: 1, ply: 3 });
+    expect(state.latestCpuCapture).toMatchObject({ piece: 'p', captor: 'q', value: 1, ply: 4 });
   });
 
   it('no fabrica rabia ni capturas si una partida especial no puede reconstruirse', () => {
@@ -39,6 +40,14 @@ describe('matthiasAnger', () => {
       latestCpuCapture: null,
       reconstructable: false,
     });
+  });
+
+  it('reserva las capturas con comentario táctico dedicado y evita una segunda frase emocional', () => {
+    expect(captureUsesDedicatedNoteworthyLane({ piece: 'q', captor: 'b' })).toBe(true);
+    expect(captureUsesDedicatedNoteworthyLane({ piece: 'q', captor: 'p' })).toBe(true);
+    expect(captureUsesDedicatedNoteworthyLane({ piece: 'r', captor: 'p' })).toBe(true);
+    expect(captureUsesDedicatedNoteworthyLane({ piece: 'r', captor: 'b' })).toBe(false);
+    expect(captureUsesDedicatedNoteworthyLane({ piece: 'n', captor: 'p' })).toBe(false);
   });
 
   it('aplica cooldown a capturas normales y deja pasar una dama', () => {
