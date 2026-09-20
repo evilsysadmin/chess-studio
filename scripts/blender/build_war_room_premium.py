@@ -720,8 +720,13 @@ def add_room(static, mats):
     cube("WR_WINDOW_header", (8.12, 2.85, 5.50), (0.16, 1.50, 0.09), mats["trim_wood"], static, bevel=0.035)
     for y in (1.75, 2.85, 3.95):
         cube(f"WR_WINDOW_bar_{y}", (8.20, y, 3.42), (0.03, 0.035, 1.90), mats["brass"], static, bevel=0.012)
-    light("WR_LIGHT_window", "AREA", (7.75, 2.8, 4.0), 225.0, (0.30, 0.38, 0.58), static, size=3.6)
-    anchor("WR_ANCHOR_window_moonlight", (8.05, 2.85, 4.10), static)
+    # Pull the cold practical slightly into the room instead of leaving it
+    # pinned to the wall plane. Runtime uses the anchor for its v2 PointLight;
+    # Blender aims the preview AREA inward so both proofs express the same depth cue.
+    moon_preview = light("WR_LIGHT_window", "AREA", (7.20, 2.60, 4.65), 255.0,
+                         (0.24, 0.34, 0.62), static, size=3.8)
+    look_at(moon_preview, (4.20, 0.40, 1.35))
+    anchor("WR_ANCHOR_window_moonlight", (7.35, 2.75, 4.45), static)
 
     # Leather benches.
     for side in (-1, 1):
@@ -1030,14 +1035,21 @@ def add_gothic_canon_v2(static, mats):
     for side in (-1, 1):
         cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
              (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
-    for idx, (dx, dz, sx, sz) in enumerate((
-        (-0.34, 0.18, 0.52, 1.18), (-0.06, 0.34, 0.45, 1.42),
-        (0.22, 0.16, 0.56, 1.04), (0.43, 0.28, 0.42, 1.28),
+    # Keep this hearth visibly secondary to the ceremonial left fireplace:
+    # a low ember bed and two small wisps read as a maintained room fire rather
+    # than a duplicated hero effect.
+    for idx, (dx, dz, sx) in enumerate((
+        (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
     )):
-        sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
-               mats["fire"], static, scale=(sx, 0.40, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 205.0,
-          (1.0, 0.21, 0.045), static, radius=1.16)
+        sphere(f"WR_CANON_right_fireplace_ember_{idx}", (rx + dx, 5.50, 1.24 + dz), 0.105,
+               mats["ember"], static, scale=(sx, 0.62, 0.46))
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.18, 0.12, 0.40, 0.82), (0.18, 0.08, 0.34, 0.70),
+    )):
+        sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
+               mats["fire"], static, scale=(sx, 0.34, sz))
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
+          (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
          mats["stone_light"], static, bevel=0.038)
@@ -1091,6 +1103,21 @@ def add_gothic_canon_v2(static, mats):
     light("WR_CANON_dispatch_light", "POINT", (dx + 0.58, dy - 0.18, 2.30), 42.0,
           (1.0, 0.39, 0.12), static, radius=0.75)
 
+
+
+    # The floor/plinth experiments were mostly occluded by the hero table from
+    # the canonical camera. Spend that geometry where it is actually visible:
+    # a pushed-in command chair gives the rear desk human scale and depth while
+    # staying below the heraldic crest and clear of the tactical board.
+    chair_x = 0.48
+    cube("WR_CANON_command_chair_back", (chair_x, 6.46, 2.80), (0.56, 0.16, 0.60),
+         burgundy_dark, static, bevel=0.16)
+    cube("WR_CANON_command_chair_top", (chair_x, 6.49, 3.42), (0.62, 0.18, 0.055),
+         mats["frame_wood"], static, bevel=0.035)
+    for side in (-1, 1):
+        cube(f"WR_CANON_command_chair_side_{side}",
+             (chair_x + side * 0.58, 6.49, 2.80), (0.055, 0.18, 0.56),
+             mats["frame_wood"], static, bevel=0.030)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
@@ -1700,7 +1727,7 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_command_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
             key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
