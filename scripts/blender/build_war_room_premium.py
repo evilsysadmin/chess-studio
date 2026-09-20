@@ -1326,10 +1326,10 @@ def add_gothic_canon_v2(static, mats):
         fold = cube(
             f"WR_CANON_table_drape_fold_{index}",
             (start + end) / 2,
-            (0.040, 0.020, direction.length / 2),
-            burgundy,
+            (0.026, 0.012, direction.length / 2),
+            burgundy_dark,
             static,
-            bevel=0.018,
+            bevel=0.012,
         )
         fold.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
 
