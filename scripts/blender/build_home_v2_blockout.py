@@ -932,7 +932,10 @@ def add_trophy(materials):
     x, y = -3.45, 5.76
     cube("HOME_PROP_trophy_shelf", (x, y, 2.78), (0.56, 0.22, 0.08), wood, bevel=0.025)
     cylinder("HOME_PROP_trophy_stem", (x, y - 0.18, 3.05), 0.07, 0.34, brass)
-    sphere("HOME_PROP_trophy_cup", (x, y - 0.18, 3.34), (0.28, 0.22, 0.22), brass)
+    cylinder("HOME_PROP_trophy_foot", (x, y - 0.18, 2.90), 0.18, 0.08, materials["brass_dark"], vertices=20)
+    cone("HOME_PROP_trophy_cup", (x, y - 0.18, 3.34), 0.18, 0.30, 0.30, brass, vertices=28)
+    cylinder("HOME_PROP_trophy_rim", (x, y - 0.18, 3.50), 0.32, 0.045, materials["gold"], vertices=28)
+    sphere("HOME_PROP_trophy_finial", (x, y - 0.18, 3.56), (0.055, 0.045, 0.045), materials["gold"])
     curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.18, y - 0.18, 3.42), (x - 0.34, y - 0.18, 3.33), (x - 0.23, y - 0.18, 3.18)], 0.035, brass)
     curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.18, y - 0.18, 3.42), (x + 0.34, y - 0.18, 3.33), (x + 0.23, y - 0.18, 3.18)], 0.035, brass)
 
