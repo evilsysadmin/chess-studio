@@ -1,4 +1,4 @@
-"""Security regressions specific to Internet-facing OCI staging."""
+"""Security regressions for Internet-facing OCI ingress and auth boundaries."""
 
 from __future__ import annotations
 
@@ -80,12 +80,26 @@ def test_staging_rejects_admin_wildcard():
 
 
 def test_staging_uses_cloudflare_client_ip_for_anonymous_rate_limit(monkeypatch):
+    monkeypatch.delenv("TRUST_CLOUDFLARE_CLIENT_IP", raising=False)
     monkeypatch.setattr(main_module, "ENVIRONMENT", "staging")
     assert main_module.rate_limit_key(_request()) == "ip:203.0.113.9"
 
 
+def test_production_oci_can_opt_in_to_cloudflare_client_ip(monkeypatch):
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "production")
+    monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "true")
+    assert main_module.rate_limit_key(_request()) == "ip:203.0.113.9"
+
+
+def test_production_without_tunnel_opt_in_does_not_trust_cloudflare_ip(monkeypatch):
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "production")
+    monkeypatch.delenv("TRUST_CLOUDFLARE_CLIENT_IP", raising=False)
+    assert main_module.rate_limit_key(_request()) == "ip:172.17.0.1"
+
+
 def test_non_tunnel_environment_does_not_trust_cloudflare_ip_for_rate_limit(monkeypatch):
     monkeypatch.setattr(main_module, "ENVIRONMENT", "development")
+    monkeypatch.delenv("TRUST_CLOUDFLARE_CLIENT_IP", raising=False)
     assert main_module.rate_limit_key(_request()) == "ip:172.17.0.1"
 
 
