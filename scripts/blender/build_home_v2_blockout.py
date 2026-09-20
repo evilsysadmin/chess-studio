@@ -1619,7 +1619,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation=0.055,
             variation_scale=6.4,
         ),
-        "leather": material("HOME_MAT_leather", (0.19, 0.015, 0.014, 1), roughness=0.60, bump_scale=18.0, bump_strength=0.05, variation=0.09, variation_scale=6.0),
+        "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0),
         "paper": material("HOME_MAT_paper", (0.70, 0.52, 0.32, 1), roughness=0.82),
         "wax": material("HOME_MAT_wax", (0.48, 0.34, 0.20, 1), roughness=0.86),
         "globe": material(
