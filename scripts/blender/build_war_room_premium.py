@@ -951,12 +951,20 @@ def add_gothic_canon_v2(static, mats):
          (1.36, 0.045, 0.84), mats["brass_dark"], static, bevel=0.055)
     cube("WR_CANON_campaign_canvas", (px, 6.31, 4.95),
          (1.20, 0.028, 0.68), mats["wall_recess"], static, bevel=0.018)
-    # Restrained map-like relief: horizon, route and one objective ring.
+    # Restrained campaign-map relief: a long front line, two route legs,
+    # three field pins and one objective ring. The elements stay broad enough
+    # to survive the gameplay camera while remaining subordinate to the board.
     cube("WR_CANON_campaign_horizon", (px, 6.275, 5.03),
          (0.91, 0.018, 0.020), mats["brass_dark"], static, bevel=0.008)
     route = cube("WR_CANON_campaign_route", (px - 0.18, 6.27, 4.83),
                  (0.58, 0.018, 0.024), mats["brass_dark"], static, bevel=0.008)
     route.rotation_euler.y = -0.24
+    route_branch = cube("WR_CANON_campaign_route_branch", (px + 0.30, 6.268, 5.04),
+                        (0.34, 0.018, 0.022), mats["brass_dark"], static, bevel=0.008)
+    route_branch.rotation_euler.y = 0.34
+    for index, (dx, dz) in enumerate(((-0.70, -0.22), (-0.16, -0.08), (0.26, 0.08))):
+        sphere(f"WR_CANON_campaign_pin_{index}", (px + dx, 6.238, 4.95 + dz), 0.046,
+               mats["brass"], static, scale=(1.0, 0.55, 1.0))
     torus("WR_CANON_campaign_objective", (px + 0.54, 6.26, 5.17),
           0.16, 0.024, mats["brass_dark"], static, rotation=(math.pi / 2, 0, 0))
 
