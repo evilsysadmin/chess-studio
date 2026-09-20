@@ -1030,14 +1030,21 @@ def add_gothic_canon_v2(static, mats):
     for side in (-1, 1):
         cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
              (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
-    for idx, (dx, dz, sx, sz) in enumerate((
-        (-0.34, 0.18, 0.52, 1.18), (-0.06, 0.34, 0.45, 1.42),
-        (0.22, 0.16, 0.56, 1.04), (0.43, 0.28, 0.42, 1.28),
+    # Keep this hearth visibly secondary to the ceremonial left fireplace:
+    # a low ember bed and two small wisps read as a maintained room fire rather
+    # than a duplicated hero effect.
+    for idx, (dx, dz, sx) in enumerate((
+        (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
     )):
-        sphere(f"WR_CANON_right_fire_{idx}", (rx + dx, 5.53, 1.30 + dz), 0.20,
-               mats["fire"], static, scale=(sx, 0.40, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.15, 1.82), 205.0,
-          (1.0, 0.21, 0.045), static, radius=1.16)
+        sphere(f"WR_CANON_right_fireplace_ember_{idx}", (rx + dx, 5.50, 1.24 + dz), 0.105,
+               mats["ember"], static, scale=(sx, 0.62, 0.46))
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.18, 0.12, 0.40, 0.82), (0.18, 0.08, 0.34, 0.70),
+    )):
+        sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
+               mats["fire"], static, scale=(sx, 0.34, sz))
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
+          (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
          mats["stone_light"], static, bevel=0.038)
