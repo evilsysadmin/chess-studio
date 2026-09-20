@@ -936,6 +936,22 @@ def add_gothic_canon_v2(static, mats):
             mats["stone_dark"], static, bevel=0.006,
         )
 
+
+    # Recessed command alcove behind the crest and desk. The classic room gets
+    # much of its depth from large overlapping masses; v2 needs the same spatial
+    # hierarchy without copying v1 furniture. Keep the recess physically behind
+    # the crest and trim so it reads as architecture, not a flat dark poster.
+    cube("WR_CANON_command_recess", (0.0, 6.84, 4.76), (2.26, 0.045, 1.43),
+         mats["wall_recess"], static, bevel=0.032)
+    for side in (-1, 1):
+        cube(f"WR_CANON_command_reveal_{side}", (side * 2.25, 6.66, 4.76),
+             (0.105, 0.085, 1.47), mats["frame_wood"], static, bevel=0.034)
+    cube("WR_CANON_command_header", (0.0, 6.66, 6.18), (2.31, 0.085, 0.105),
+         mats["frame_wood"], static, bevel=0.038)
+    cube("WR_CANON_command_sill", (0.0, 6.64, 3.34), (2.20, 0.075, 0.075),
+         mats["trim_wood"], static, bevel=0.026)
+
+
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
     for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
         cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
@@ -1670,7 +1686,7 @@ def collapse_runtime_static_shell():
         # can keep wood, canvas and gilt relief materials. At runtime those
         # pieces occupy one tiny wall patch; joining them preserves all material
         # slots while avoiding several one-off draw-call batches.
-        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_")):
+        if obj.name.startswith(("WR_CANON_campaign_", "WR_CANON_right_fireplace_", "WR_CANON_dispatch_", "WR_CANON_bookshelf_", "WR_CANON_book_", "WR_CANON_command_")):
             key = (("__v2_decor_cluster__",), runtime_batch_cell(obj))
         else:
             key = (material_signature, runtime_batch_cell(obj))
