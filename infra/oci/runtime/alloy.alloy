@@ -60,6 +60,47 @@ prometheus.relabel "oci_host" {
   }
 }
 
+// Meta-monitor the exact same OTLP delivery path. If this signal reaches Grafana
+// while node_* does not, the transport is healthy and the host scrape is the
+// remaining fault domain.
+prometheus.exporter.self "alloy_self" {}
+
+prometheus.scrape "alloy_self" {
+  targets         = prometheus.exporter.self.alloy_self.targets
+  scrape_interval = "30s"
+  job_name        = "chess-studio-alloy-self"
+  forward_to      = [prometheus.relabel.alloy_self.receiver]
+}
+
+prometheus.relabel "alloy_self" {
+  forward_to = [otelcol.receiver.prometheus.oci_host.receiver]
+
+  rule {
+    target_label = "deployment_environment"
+    replacement  = sys.env("ENVIRONMENT")
+  }
+
+  rule {
+    target_label = "service_name"
+    replacement  = "chess-studio-alloy-self"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "oci"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "eu-frankfurt-1"
+  }
+
+  rule {
+    target_label = "service_version"
+    replacement  = sys.env("GIT_COMMIT_SHA")
+  }
+}
+
 otelcol.receiver.prometheus "oci_host" {
   output {
     metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
@@ -85,7 +126,19 @@ otelcol.auth.headers "grafana_cloud" {
 
 otelcol.exporter.otlphttp "grafana_cloud" {
   client {
-    endpoint    = sys.env("OTEL_EXPORTER_OTLP_ENDPOINT")
+    // Match backend-python/tracing.py endpoint recovery. The shared Vault value
+    // should be a gateway base (normally .../otlp), but old values may carry one
+    // signal-specific suffix. otlphttp appends /v1/metrics itself.
+    endpoint = string.trim_suffix(
+      string.trim_suffix(
+        string.trim_suffix(
+          string.trim_suffix(sys.env("OTEL_EXPORTER_OTLP_ENDPOINT"), "/"),
+          "/v1/traces",
+        ),
+        "/v1/metrics",
+      ),
+      "/v1/logs",
+    )
     auth        = otelcol.auth.headers.grafana_cloud.handler
     compression = "gzip"
   }

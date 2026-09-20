@@ -4,13 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '41 * * * *'
-  push:
-    branches: [main]
-    paths:
-      - "infra/oci/runtime/alloy.alloy"
-      - "infra/grafana/dashboards/chess-studio-oci-host.json"
-      - "scripts/grafana_live_check.py"
-      - ".github/workflows/observability-live.yml"
+  workflow_run:
+    workflows: ["Deploy to staging"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -22,6 +18,7 @@ concurrency:
 jobs:
   verify:
     name: OCI host + backend signals reach Grafana
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -60,6 +57,7 @@ jobs:
             echo '### Observability live'
             echo
             echo '- OCI staging host metrics: queried from Grafana'
+            echo '- Alloy self-telemetry: same OTLP path distinguishes transport from host scrape failures'
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"

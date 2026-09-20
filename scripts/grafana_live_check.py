@@ -300,6 +300,7 @@ def run_checks(
     }, separators=(",", ":"), sort_keys=True))
 
     metric_checks = {
+        "alloy_self_staging": 'count({service_name="chess-studio-alloy-self",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
         "oci_host_staging": 'count({service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",service_version=~".+"})',
         "backend_production_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend"}}[{lookback_seconds}s]))',
         "backend_staging_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))',
