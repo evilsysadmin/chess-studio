@@ -1056,6 +1056,13 @@ def add_gothic_canon_v2(static, mats):
     )):
         sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
                mats["fire"], static, scale=(sx, 0.34, sz))
+    # Low iron grate anchors the secondary fire to the hearth instead of
+    # leaving the ember/flame blobs visually suspended in the dark opening.
+    cube("WR_CANON_right_fireplace_grate_bar", (rx, 5.39, 1.23),
+         (0.58, 0.060, 0.035), mats["charcoal"], static, bevel=0.012)
+    for side in (-1, 1):
+        cube(f"WR_CANON_right_fireplace_grate_post_{side}", (rx + side * 0.46, 5.39, 1.31),
+             (0.035, 0.060, 0.14), mats["charcoal"], static, bevel=0.012)
     light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
           (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
