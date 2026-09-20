@@ -34,7 +34,7 @@ export default function NotationPanel({ history, difficulty }) {
         ))}
       </div>
       <div className="difficulty-tag">
-        CPU · nivel <b>{difficulty}</b> · {difficultyLabel(difficulty)}
+        Matthias · {difficultyLabel(difficulty)}
       </div>
     </aside>
   );
