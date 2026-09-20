@@ -7,7 +7,10 @@ import {
   chroniclesMapIds,
 } from './chroniclesMapCatalog.js';
 import { CHRONICLES_DIRECTOR_SCHEMA_VERSION } from './chroniclesGameDirector.js';
-import { chroniclesBootstrapTacticsWorld } from './chroniclesGameBootstrap.js';
+import {
+  CHRONICLES_BOOTSTRAP_ERROR_CODES,
+  chroniclesBootstrapTacticsWorld,
+} from './chroniclesGameBootstrap.js';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -129,19 +132,20 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta procedural tardía');
   });
 
-  it('keeps the bundled map when run creation fails open', async () => {
+  it('fails closed when authoritative run creation is unavailable', async () => {
     const local = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
     const createRun = vi.fn().mockRejectedValue(new Error('network-down'));
 
-    const resolved = await chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 });
+    await expect(chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 }))
+      .rejects.toMatchObject({
+        code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable,
+        reason: 'network-down',
+      });
 
-    expect(resolved.source).toBe('local');
-    expect(resolved.runId).toBeNull();
-    expect(resolved.fallbackReason).toBe('network-down');
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID)).toBe(local);
   });
 
-  it('does not let a late run response change gameplay after the deadline', async () => {
+  it('fails closed on deadline and ignores a late authoritative response', async () => {
     vi.useFakeTimers();
     const local = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
     let release;
@@ -150,16 +154,32 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     }));
 
     const bootstrap = chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 50 });
+    const rejection = expect(bootstrap).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.timeout,
+      reason: 'bootstrap-deadline',
+    });
     await vi.advanceTimersByTimeAsync(50);
-    const resolved = await bootstrap;
-
-    expect(resolved.source).toBe('local');
-    expect(resolved.fallbackReason).toBe('bootstrap-deadline');
+    await rejection;
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID)).toBe(local);
 
     release(remoteRun('Demasiado tarde'));
     await Promise.resolve();
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID)).toBe(local);
+  });
+
+  it('preserves HTTP request diagnostics without exposing a local fallback', async () => {
+    const error = new Error('Sesión caducada');
+    error.status = 401;
+    error.requestId = 'req-chronicles-401';
+
+    await expect(chroniclesBootstrapTacticsWorld({
+      createRun: vi.fn().mockRejectedValue(error),
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.auth,
+      reason: 'authorization-failed',
+      requestId: 'req-chronicles-401',
+      status: 401,
+    });
   });
 
   it('rejects an incomplete area bundle without partially installing remote maps', async () => {
@@ -168,12 +188,12 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     const payload = remoteRun();
     payload.areas = payload.areas.slice(0, -1);
 
-    const resolved = await chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapTacticsWorld({
       createRun: vi.fn().mockResolvedValue(payload),
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'incomplete-area-bundle',
     });
-
-    expect(resolved.source).toBe('local');
-    expect(resolved.fallbackReason).toBe('incomplete-area-bundle');
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe(localCryptTitle);
     expect(chroniclesMapById('gallery-of-forks').title).toBe(localGalleryTitle);
   });
@@ -182,12 +202,12 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     const payload = remoteRun();
     payload.manifestRevision = 'c'.repeat(64);
 
-    const resolved = await chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapTacticsWorld({
       createRun: vi.fn().mockResolvedValue(payload),
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'run-revision-mismatch',
     });
-
-    expect(resolved.source).toBe('local');
-    expect(resolved.fallbackReason).toBe('run-revision-mismatch');
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta de las Ocho Casillas');
   });
 
@@ -197,11 +217,13 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Primera remota');
 
-    const resolved = await chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapTacticsWorld({
       createRun: vi.fn().mockRejectedValue(new Error('offline')),
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable,
+      reason: 'offline',
     });
 
-    expect(resolved.source).toBe('local');
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta de las Ocho Casillas');
   });
 });
