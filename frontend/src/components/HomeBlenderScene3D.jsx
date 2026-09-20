@@ -141,6 +141,35 @@ export function rebaseFlameToPivot(object) {
   return true;
 }
 
+// The fire re-renders the whole room every few frames, which is only worth it when
+// a frame is cheap. Two signals decide that: how long the render call takes on the
+// main thread, and how late requestAnimationFrame arrives. The second matters
+// because WebGL rasterises in the GPU process, so with software GL or a weak GPU the
+// render call returns quickly while frames still back up. Stretch the interval so
+// the fire stays a small share of the thread, and stop it (leaving the authored
+// still frame) on hardware that cannot afford it.
+export const HOME_BLENDER_FIRE_MIN_SAMPLES = 6;
+export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 45;
+export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 45;
+export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
+
+export function homeBlenderFireFramePlan({
+  baseIntervalMs = 42,
+  renderCostMs = 0,
+  frameGapMs = 0,
+  samples = 0,
+} = {}) {
+  const cost = Math.max(0, Number(renderCostMs) || 0);
+  const gap = Math.max(0, Number(frameGapMs) || 0);
+  if (samples < HOME_BLENDER_FIRE_MIN_SAMPLES) {
+    return { enabled: true, intervalMs: baseIntervalMs };
+  }
+  if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS || gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS) {
+    return { enabled: false, intervalMs: baseIntervalMs };
+  }
+  return { enabled: true, intervalMs: Math.min(250, Math.max(baseIntervalMs, cost * 3)) };
+}
+
 function prepareRuntimeFireRig(root) {
   const nodes = [];
   root?.traverse?.((object) => {
@@ -422,16 +451,47 @@ export default function HomeBlenderScene3D({
     };
     renderRequestRef.current = requestRender;
 
-    const fireFrameIntervalMs = initialPolicy.lod === 'full' ? 42 : 66;
+    const baseFireIntervalMs = initialPolicy.lod === 'full' ? 42 : 66;
+    let fireIntervalMs = baseFireIntervalMs;
+    let fireRenderCostMs = 0;
+    let fireSamples = 0;
+    let fireFrameGapMs = 0;
+    let fireRafCount = 0;
+    let lastFireRafAt = null;
     const animateFire = (timestamp) => {
       fireFrame = null;
       if (disposed || !model || document.hidden) return;
-      if (timestamp - lastFireRenderedAt >= fireFrameIntervalMs) {
+      if (lastFireRafAt !== null) {
+        fireRafCount += 1;
+        // Ignore the warm-up: decoding the scene legitimately delays the first frames.
+        if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
+          const gap = timestamp - lastFireRafAt;
+          fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+        }
+      }
+      lastFireRafAt = timestamp;
+      if (timestamp - lastFireRenderedAt >= fireIntervalMs) {
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
+        const startedAt = performance.now();
         renderFrame();
+        const cost = performance.now() - startedAt;
+        fireRenderCostMs = fireSamples === 0 ? cost : fireRenderCostMs * 0.8 + cost * 0.2;
+        fireSamples += 1;
         lastFireRenderedAt = timestamp;
+        const plan = homeBlenderFireFramePlan({
+          baseIntervalMs: baseFireIntervalMs,
+          renderCostMs: fireRenderCostMs,
+          frameGapMs: fireFrameGapMs,
+          samples: fireSamples,
+        });
+        fireIntervalMs = plan.intervalMs;
+        if (!plan.enabled) {
+          // Too expensive here: settle on the still frame and stay there.
+          canvas.dataset.homeFireMotion = 'off-slow';
+          return;
+        }
       }
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -440,8 +500,14 @@ export default function HomeBlenderScene3D({
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const startFireAnimation = () => {
-      if (prefersReducedMotion) return;
+      if (prefersReducedMotion) {
+        canvas.dataset.homeFireMotion = 'reduced';
+        return;
+      }
+      if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
+      canvas.dataset.homeFireMotion = 'live';
+      lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
 

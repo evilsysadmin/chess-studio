@@ -5,6 +5,10 @@ import {
   homeBlenderFireKind,
   homeBlenderFireMotion,
   rebaseFlameToPivot,
+  homeBlenderFireFramePlan,
+  HOME_BLENDER_FIRE_MAX_RENDER_MS,
+  HOME_BLENDER_FIRE_MIN_SAMPLES,
+  HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS,
   homeBlenderPolicyNeedsFallback,
   homeBlenderRuntimePolicy,
 } from './HomeBlenderScene3D.jsx';
@@ -218,6 +222,62 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect(rebaseFlameToPivot(mesh)).toBe(false);
       expect(mesh.geometry).toBe(geometry);
       expect(mesh.position.toArray()).toEqual([-6.15, 0.58, -6.04]);
+    });
+  });
+
+  describe('fire frame budget', () => {
+    it('keeps the base cadence while it has too few samples to judge', () => {
+      expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 500, samples: HOME_BLENDER_FIRE_MIN_SAMPLES - 1 }))
+        .toEqual({ enabled: true, intervalMs: 42 });
+    });
+
+    it('keeps the base cadence on cheap frames', () => {
+      for (const renderCostMs of [0, 1, 4, 9]) {
+        expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs, samples: 30 }))
+          .toEqual({ enabled: true, intervalMs: 42 });
+      }
+    });
+
+    it('stretches the interval so the fire never takes more than about a third of the thread', () => {
+      const plan = homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 30, samples: 30 });
+      expect(plan.enabled).toBe(true);
+      expect(plan.intervalMs).toBe(90);
+      expect(plan.intervalMs).toBeGreaterThanOrEqual(30 * 3);
+    });
+
+    it('caps the stretched interval', () => {
+      const plan = homeBlenderFireFramePlan({
+        baseIntervalMs: 42,
+        renderCostMs: HOME_BLENDER_FIRE_MAX_RENDER_MS,
+        samples: 30,
+      });
+      expect(plan.enabled).toBe(true);
+      expect(plan.intervalMs).toBeLessThanOrEqual(250);
+    });
+
+    it('turns the fire off when animation frames arrive late even if render calls look cheap', () => {
+      // WebGL rasterises in the GPU process: the render call returns fast while the
+      // frame pacing collapses. That is the software-GL / weak-GPU case.
+      const starved = homeBlenderFireFramePlan({
+        baseIntervalMs: 42,
+        renderCostMs: 2,
+        frameGapMs: HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS + 5,
+        samples: 30,
+      });
+      expect(starved.enabled).toBe(false);
+      for (const frameGapMs of [16.7, 20, 33.4, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
+        expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
+          .toBe(true);
+      }
+    });
+
+    it('turns the fire off on hardware that cannot afford it', () => {
+      const plan = homeBlenderFireFramePlan({
+        baseIntervalMs: 42,
+        renderCostMs: HOME_BLENDER_FIRE_MAX_RENDER_MS + 1,
+        samples: 30,
+      });
+      expect(plan.enabled).toBe(false);
     });
   });
 });
