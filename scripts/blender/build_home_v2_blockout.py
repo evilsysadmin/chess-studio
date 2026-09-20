@@ -1477,7 +1477,7 @@ def add_stairs(materials):
         "HOME_PROP_dungeon_gold_rail",
         [(x, y - 0.02, z + 0.11) for x, y, z in stair_rail_points],
         0.024,
-        materials["gold"],
+        materials["brass_dark"],
     )
     curve_tube(
         "HOME_ARCH_dungeon_lower_stone_rail",
@@ -1498,7 +1498,7 @@ def add_stairs(materials):
     }.items():
         cube(f"HOME_ARCH_dungeon_newel_{name}", (px, py, pz), (0.105, 0.105, 0.48), stone, bevel=0.036)
         sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, py, pz + 0.60), (0.115, 0.115, 0.115), materials["stone_dark"])
-        sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.050, 0.050, 0.050), materials["gold"])
+        sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.050, 0.050, 0.050), materials["brass_dark"])
     for idx, (px, py, pz) in enumerate(((5.35, 0.95, 1.18), (6.35, 0.10, 0.53), (7.25, -0.65, -0.06))):
         cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["wax"], vertices=12)
         cone(f"HOME_PROP_dungeon_candle_flame_{idx}", (px, py, pz + 0.18), 0.040, 0.008, 0.12, materials["fire_hot"], vertices=10)
