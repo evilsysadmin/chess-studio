@@ -1258,14 +1258,20 @@ def add_table_and_board(materials):
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
+    piece_light_alt = materials["piece_light_alt"]
+    piece_dark_alt = materials["piece_dark_alt"]
     order = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
     board_z = table_z + 0.215
     for col, kind in enumerate(order):
         px = start_x + col * square
-        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, piece_light, kind)
-        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, piece_dark, kind)
-        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, piece_light, "pawn")
-        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, piece_dark, "pawn")
+        white_back_mat = piece_light_alt if col in (1, 5, 7) else piece_light
+        black_back_mat = piece_dark_alt if col in (0, 3, 6) else piece_dark
+        white_pawn_mat = piece_light_alt if col in (0, 4, 6) else piece_light
+        black_pawn_mat = piece_dark_alt if col in (2, 5, 7) else piece_dark
+        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, white_back_mat, kind)
+        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, black_back_mat, kind)
+        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, white_pawn_mat, "pawn")
+        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, black_pawn_mat, "pawn")
 
 
 def add_fireplace(name: str, x: float, materials):
@@ -2293,6 +2299,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             metallic=0.0,
             variation=0.045,
             variation_scale=6.4,
+            texture_profile="wood",
+        ),
+        "piece_light_alt": material(
+            "HOME_MAT_piece_light_alt",
+            (0.345, 0.270, 0.198, 1),
+            roughness=0.67,
+            metallic=0.0,
+            variation=0.038,
+            variation_scale=7.2,
+            texture_profile="wood",
+        ),
+        "piece_dark_alt": material(
+            "HOME_MAT_piece_dark_alt",
+            (0.045, 0.034, 0.026, 1),
+            roughness=0.61,
+            metallic=0.0,
+            variation=0.042,
+            variation_scale=6.6,
             texture_profile="wood",
         ),
         "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
