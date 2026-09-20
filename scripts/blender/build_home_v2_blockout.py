@@ -760,7 +760,7 @@ def add_bookshelf(materials):
 
 
 def add_banner(name: str, x: float, materials):
-    banner = materials["banner"]
+    banner = materials["wall_banner"]
     brass = materials["brass"]
     gold = materials["gold"]
     points = [
@@ -1218,6 +1218,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "board_dark": material("HOME_MAT_board_dark", (0.065, 0.028, 0.013, 1), roughness=0.58),
         "rug": material("HOME_MAT_rug", (0.14, 0.006, 0.010, 1), roughness=0.90, bump_scale=26.0, bump_strength=0.08, variation=0.10, variation_scale=9.0),
         "banner": material("HOME_MAT_banner", (0.22, 0.008, 0.012, 1), roughness=0.80, bump_scale=20.0, bump_strength=0.05, variation=0.10, variation_scale=8.0),
+        "wall_banner": material(
+            "HOME_MAT_wall_banner",
+            (0.105, 0.006, 0.009, 1),
+            roughness=0.88,
+            bump_scale=22.0,
+            bump_strength=0.055,
+            variation=0.075,
+            variation_scale=8.8,
+        ),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
