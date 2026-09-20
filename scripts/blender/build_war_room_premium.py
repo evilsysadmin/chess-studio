@@ -625,7 +625,13 @@ def add_room(static, mats):
             sphere(f"WR_DESK_knob_{x}_{row}", (x, 5.67, drawer_z), 0.045, mats["brass"], static)
     cylinder("WR_DESK_lamp_base", (-0.72, 5.58, 2.39), 0.24, 0.08, mats["brass"], static)
     cylinder("WR_DESK_lamp_stem", (-0.72, 5.58, 2.68), 0.035, 0.55, mats["brass"], static)
-    sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34, mats["green"], static, scale=(1.4, 0.65, 0.45))
+    # Banker-lamp shade: the old flattened sphere read like a green saucer.
+    # A broad beveled glass hood with a thin brass lower rail is cleaner and
+    # remains legible from the gameplay camera.
+    cube("WR_DESK_lamp_shade", (-0.72, 5.56, 2.99), (0.47, 0.18, 0.105),
+         mats["green"], static, bevel=0.10)
+    cube("WR_DESK_lamp_shade_rail", (-0.72, 5.385, 2.91), (0.50, 0.025, 0.025),
+         mats["brass_dark"], static, bevel=0.012)
 
     # Ceremonial rampant-horse crest. Keep the circular plaque from the approved
     # composition, but replace the old vertical pawn silhouette with a broad,
