@@ -632,5 +632,91 @@
       "damage": 92,
       "lead": 82
     }
+  ],
+  "dressing": [
+    {
+      "kind": "crate",
+      "x": 500,
+      "y": 607,
+      "size": 30
+    },
+    {
+      "kind": "sandbags",
+      "x": 582,
+      "y": 607,
+      "count": 5
+    },
+    {
+      "kind": "crate",
+      "x": 1090,
+      "y": 607,
+      "size": 33
+    },
+    {
+      "kind": "crate",
+      "x": 1680,
+      "y": 607,
+      "size": 36
+    },
+    {
+      "kind": "sandbags",
+      "x": 1762,
+      "y": 607,
+      "count": 5
+    },
+    {
+      "kind": "crate",
+      "x": 2270,
+      "y": 607,
+      "size": 30
+    },
+    {
+      "kind": "crate",
+      "x": 2860,
+      "y": 607,
+      "size": 33
+    },
+    {
+      "kind": "sandbags",
+      "x": 2942,
+      "y": 607,
+      "count": 5
+    },
+    {
+      "kind": "crate",
+      "x": 3450,
+      "y": 607,
+      "size": 36
+    },
+    {
+      "kind": "crate",
+      "x": 4040,
+      "y": 607,
+      "size": 30
+    },
+    {
+      "kind": "sandbags",
+      "x": 4122,
+      "y": 607,
+      "count": 5
+    },
+    {
+      "kind": "crate",
+      "x": 4630,
+      "y": 607,
+      "size": 33
+    },
+    {
+      "kind": "crate",
+      "x": 5220,
+      "y": 607,
+      "size": 36
+    },
+    {
+      "kind": "sandbags",
+      "x": 5302,
+      "y": 607,
+      "count": 5
+    }
   ]
 }
