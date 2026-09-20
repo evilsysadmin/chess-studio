@@ -234,6 +234,7 @@ export default function ChroniclesCharacterSetup({
               <button
                 type="button"
                 key={skill.id}
+                aria-label={skill.label}
                 className={activeCharacter.startingSkillId === skill.id ? 'is-selected' : ''}
                 onClick={() => patchCharacter(activeCharacter.slotId, { startingSkillId: skill.id })}
                 aria-pressed={activeCharacter.startingSkillId === skill.id}
