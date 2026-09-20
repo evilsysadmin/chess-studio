@@ -29,6 +29,12 @@ import {
   chroniclesTacticsCombatActive,
   chroniclesTacticsResolvePlayerAction,
 } from '../chroniclesTacticsTurnMode.js';
+import {
+  chroniclesForecastBadge,
+  chroniclesForecastDescription,
+  chroniclesForecastMoves,
+} from '../chronicles/chroniclesActionForecast.js';
+import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
 import { chroniclesTacticsLocationLabel } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
@@ -104,6 +110,31 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
     () => chroniclesBattlefieldInteraction(state, selectedMemberId),
     [selectedMemberId, state],
   );
+  const sceneModel = useMemo(
+    () => chroniclesProjectSceneModel(state, {
+      selectedMemberId,
+      interaction: battlefieldInteraction,
+    }),
+    [battlefieldInteraction, selectedMemberId, state],
+  );
+  const forecastView = useMemo(() => {
+    if (!canAct) return {};
+    return Object.fromEntries(
+      Object.entries(chroniclesForecastMoves(state)).map(([key, forecast]) => [key, {
+        level: forecast.level,
+        badge: chroniclesForecastBadge(forecast),
+        text: chroniclesForecastDescription(state, forecast),
+      }]),
+    );
+  }, [canAct, state]);
+  const forecastProps = (key) => ({
+    'data-forecast': forecastView[key]?.level,
+    'aria-describedby': forecastView[key]?.text ? `chronicles-forecast-${key}` : undefined,
+    title: forecastView[key]?.text || undefined,
+  });
+  const forecastBadge = (key) => (forecastView[key]?.badge
+    ? <b className="chronicles-tactics__forecast" aria-hidden="true">{forecastView[key].badge}</b>
+    : null);
 
   const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
     const previous = stateRef.current;
@@ -234,10 +265,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
     if (!host) return undefined;
 
     void import('../chroniclesOfMatthiasIsometric.js')
-      .then(({ createChroniclesIsometricGame }) => {
+      .then(({ createChroniclesIsometricRenderer }) => {
         if (cancelled) return;
-        engine = createChroniclesIsometricGame(host, {
-          initialState: stateRef.current,
+        const initialSceneModel = chroniclesProjectSceneModel(stateRef.current, {
+          selectedMemberId: selectedMemberRef.current,
+          interaction: chroniclesBattlefieldInteraction(stateRef.current, selectedMemberRef.current),
+        });
+        engine = createChroniclesIsometricRenderer(host, {
+          initialSceneModel,
           onReady: (backend) => { if (!cancelled) setRendererName(backend); },
           onCellClick: (cell) => {
             const current = stateRef.current;
@@ -247,11 +282,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
           onMemberClick: (memberId) => openMemberSheet(memberId),
         });
         engineRef.current = engine;
-        engine.renderState(
-          stateRef.current,
-          selectedMemberRef.current,
-          chroniclesBattlefieldInteraction(stateRef.current, selectedMemberRef.current),
-        );
+        engine.renderSceneModel(initialSceneModel);
       })
       .catch((error) => {
         console.error('Chronicles of Matthias Tactics renderer failed', error);
@@ -269,8 +300,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   }, [attackEnemy, moveParty, openMemberSheet, state.mapId]);
 
   useEffect(() => {
-    engineRef.current?.renderState(state, selectedMemberId, battlefieldInteraction);
-  }, [battlefieldInteraction, selectedMemberId, state]);
+    engineRef.current?.renderSceneModel(sceneModel);
+  }, [sceneModel]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -348,10 +379,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al oeste" onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span></button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al norte" onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span></button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al sur" onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span></button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al este" onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span></button>
+            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
               className={contextualAction ? 'is-ready' : ''}
@@ -369,6 +400,9 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
               title={selectedAbility.ready ? selectedProfile.abilityName : selectedAbility.reason}
               onClick={useClassAbility}
             ><i aria-hidden="true">✦</i><span>E · HABILIDAD</span></button>
+            {Object.entries(forecastView).map(([key, view]) => (view.text
+              ? <span key={key} id={`chronicles-forecast-${key}`} className="sr-only">{view.text}</span>
+              : null))}
           </div>
         </main>
 
