@@ -1,0 +1,63 @@
+{
+  "worksheet": "matthias-pawn-slug-godot-v16",
+  "status": "candidate-awaiting-ci-visual-review",
+  "validated_contract": {
+    "generation": "strict-v16",
+    "source_generation": "strict-v15",
+    "reference_generation": "strict-v15 machinegun",
+    "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    "actions": 18,
+    "frames_per_action": 8,
+    "cell_size": 416,
+    "atlas_size": "3328x7488 RGBA PNG",
+    "pivot_x": 200,
+    "foot_y": 382,
+    "geometry": "alpha byte-identical to strict-v15 for every weapon",
+    "death_row": "byte-identical to strict-v15",
+    "visual_pass": "interior uniform denoise plus shared skin/dark-uniform palette statistics; weapon/fire masks untouched"
+  },
+  "source_urls": {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/pistol/v15-c864afdb9bb6f8bb.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/machinegun/v15-32227acfdc2e0cff.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/shotgun/v15-1dcb9bee090747c4.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v15/panzerfaust/v15-ed8aed181601acb0.png"
+  },
+  "reference": {
+    "weapon": "machinegun",
+    "reason": "cleanest current material rendering; used only for palette statistics, never for geometry or compositing"
+  },
+  "local_evidence": {
+    "pistol": {
+      "changed_rgb_pixels": 2787909,
+      "skin_reduction_pct": 74.37,
+      "body_reduction_pct": 81.73,
+      "max_luma_spread_delta": 0.357
+    },
+    "machinegun": {
+      "changed_rgb_pixels": 0,
+      "reference_passthrough": true,
+      "max_luma_spread_delta": 0.0
+    },
+    "shotgun": {
+      "changed_rgb_pixels": 2984771,
+      "skin_reduction_pct": 72.73,
+      "body_reduction_pct": 83.19,
+      "max_luma_spread_delta": 0.507
+    },
+    "panzerfaust": {
+      "changed_rgb_pixels": 2645253,
+      "skin_reduction_pct": 75.51,
+      "body_reduction_pct": 82.76,
+      "max_luma_spread_delta": 0.597
+    },
+    "all_rows_8_distinct": true,
+    "alpha_byte_identical": true,
+    "death_row_untouched": true,
+    "visual_review": "v16b review inspected: material/skin tones converge and interior speckle drops without weapon, muzzle, silhouette or pose changes",
+    "known_limit": "machinegun still has an older structural/proportion divergence from the other three banks; v16 intentionally does not claim to solve geometry"
+  },
+  "resume": {
+    "next": "run strict-v16 CI for all four weapons, inspect every v15→v16 review PNG, then decide whether the material harmonisation is strong enough to promote",
+    "source_of_truth": "promoted strict-v15 runtime plus strict-v16 workflow artifacts"
+  }
+}
