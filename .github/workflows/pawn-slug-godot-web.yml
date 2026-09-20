@@ -134,7 +134,7 @@ jobs:
             if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
               changed="$(git diff --name-only HEAD^ HEAD)"
               printf 'Changed files:\n%s\n' "$changed"
-              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|scripts/pawn_slug_enemy_roster_gate\.py$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
+              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|scripts/pawn_slug_enemy_roster_gate\.py$|scripts/pawn_slug_godot_live_smoke\.mjs$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
                 export_required=true
               fi
             else
