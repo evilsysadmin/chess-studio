@@ -37,7 +37,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install pinned Pillow
-        run: python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
       - name: Build deterministic 8-row enemy cast
         run: |
           set -euo pipefail
