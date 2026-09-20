@@ -631,6 +631,17 @@ export async function openMoreGameModes(page) {
   return details;
 }
 
+export async function confirmChroniclesCharacterSetup(page) {
+  const setup = page.locator('[data-chronicles-character-setup]');
+  if (!(await setup.isVisible().catch(() => false))) return false;
+
+  const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
+  await expect(canonical).toBeVisible();
+  await canonical.click();
+  await expect(setup).toBeHidden();
+  return true;
+}
+
 export async function openFreeCombat(page) {
   const details = await openMoreGameModes(page);
   const illustratedFree = details.getByRole('button', { name: 'Combat Chess libre', exact: true });
