@@ -776,6 +776,13 @@ def add_room(static, mats):
     for side in (-1, 1):
         x = side * 7.15
         cube(f"WR_BENCH_seat_{side}", (x, -4.8, 0.72), (0.9, 1.2, 0.24), mats["leather"], static, bevel=0.12)
+        # Two shallow seat seams break the broad cushion into believable padded
+        # sections. They use the existing dark leather and sit almost flush so
+        # the remaining v2 bench reads as upholstery, not another UI-like stripe.
+        for seam_index, seam_y in enumerate((-5.20, -4.40)):
+            cube(f"WR_BENCH_seat_seam_{side}_{seam_index}",
+                 (x, seam_y, 0.966), (0.78, 0.018, 0.010),
+                 mats["leather_dark"], static, bevel=0.008)
         cube(f"WR_BENCH_back_{side}", (x + side * 0.62, -4.8, 1.30), (0.18, 1.20, 0.72), mats["leather_dark"], static, bevel=0.12)
         for button_y in (-5.45, -4.8, -4.15):
             for button_z in (1.08, 1.52):
