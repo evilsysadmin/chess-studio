@@ -9,9 +9,9 @@ const CAPTURES = [
 ];
 const PARTY = [
   { id: 'matthias', name: 'Matthias' },
-  { id: 'hildegard', name: 'Hildegard' },
-  { id: 'aziz', name: 'Aziz' },
-  { id: 'morcilla', name: 'Faust' },
+  { id: 'rook', name: 'Hildegard' },
+  { id: 'bishop', name: 'Aziz' },
+  { id: 'knight', name: 'Faust' },
 ];
 
 async function openChronicles(page) {
@@ -27,6 +27,11 @@ async function openChronicles(page) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
+  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+  if (await pvpLobby.isVisible().catch(() => false)) {
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+    await expect(pvpLobby).toBeHidden();
+  }
   await openMoreGameModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
@@ -34,7 +39,7 @@ async function openChronicles(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
-  await expect(page.locator('[data-chronicles-party-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
 }
 
 async function captureElement(page, locator, path) {
@@ -59,11 +64,9 @@ async function captureElement(page, locator, path) {
 }
 
 for (const capture of CAPTURES) {
-  test(`Chronicles · los cuatro avatares 3D · ${capture.label}`, async ({ browser }) => {
-    // Hosted SwiftShader needs materially more wall-clock budget for four
-    // sequential desktop WebGL portraits than Android. Keep Android tight while
-    // giving desktop enough headroom to finish real captures instead of timing
-    // out during context cleanup after the screenshots already succeeded.
+  test(`Chronicles · los cuatro retratos authored · ${capture.label}`, async ({ browser }) => {
+    // The dungeon remains WebGL, but party identity is now file-backed authored
+    // art. Keep enough budget for the dungeon render plus sequential screenshots.
     test.setTimeout(capture.hasTouch ? 150_000 : 210_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -76,10 +79,13 @@ for (const capture of CAPTURES) {
     try {
       await openChronicles(page);
       const preview = page.locator('.chronicles-party-preview');
-      const portraitHost = page.locator('[data-chronicles-party-renderer="three"]');
-      const portraitCanvas = portraitHost.locator('canvas');
+      const portrait = page.locator('[data-chronicles-party-renderer="authored"]');
       await expect(preview).toBeVisible();
-      await expect(portraitCanvas).toBeVisible();
+      await expect(portrait).toBeVisible();
+      await expect(preview.locator('canvas')).toHaveCount(0);
+      await page.locator('.chronicles-stage').evaluate((node) => {
+        node.style.display = 'none';
+      });
 
       const rosterThumbnails = page.locator('[data-chronicles-party-thumbnail]');
       await expect(rosterThumbnails).toHaveCount(4);
@@ -88,17 +94,21 @@ for (const capture of CAPTURES) {
       )));
       expect(thumbnailIds, `${capture.label}: canonical roster thumbnail ids`).toEqual(PARTY.map(({ id }) => id));
       const thumbnailsDecoded = await rosterThumbnails.evaluateAll((images) => images.every((image) => (
-        image.complete && image.naturalWidth === 96 && image.naturalHeight === 96
+        image.complete
+        && image.naturalWidth >= 128
+        && image.naturalHeight >= 128
+        && !image.src.startsWith('data:')
       )));
-      expect(thumbnailsDecoded, `${capture.label}: Blender roster thumbnails decoded`).toBe(true);
+      expect(thumbnailsDecoded, `${capture.label}: authored roster portraits decoded`).toBe(true);
 
       for (const member of PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
         await expect(preview.locator('strong')).toHaveText(member.name);
-        const canvasBox = await portraitCanvas.boundingBox();
-        expect(canvasBox, `${capture.label}/${member.name}: canvas bounds`).not.toBeNull();
-        expect(canvasBox.width, `${capture.label}/${member.name}: canvas width`).toBeGreaterThan(80);
-        expect(canvasBox.height, `${capture.label}/${member.name}: canvas height`).toBeGreaterThan(80);
+        await expect(portrait).toHaveAttribute('data-member-id', member.id);
+        const portraitBox = await portrait.boundingBox();
+        expect(portraitBox, `${capture.label}/${member.name}: portrait bounds`).not.toBeNull();
+        expect(portraitBox.width, `${capture.label}/${member.name}: portrait width`).toBeGreaterThan(80);
+        expect(portraitBox.height, `${capture.label}/${member.name}: portrait height`).toBeGreaterThan(80);
         await captureElement(
           page,
           preview,
