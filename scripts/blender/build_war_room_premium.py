@@ -223,10 +223,9 @@ def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_
     return obj
 
 
-def draped_banner(name, center, side, mat, owner):
+def draped_banner(name, center, side, mat, owner, *, half_height=1.36):
     """Build a shallow gathered cloth panel with real silhouette and fold relief."""
     cx, cy, cz = center
-    half_height = 1.36
     columns = (-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0)
     rows = (
         (1.00, 0.58, 0.00),
@@ -1047,7 +1046,17 @@ def add_gothic_canon_v2(static, mats):
     # Two tall heraldic banners frame the room edges. Removing the inner pair
     # opens breathing room around the crest, desk and campaign painting.
     for index, x in enumerate((-6.55, 6.55)):
-        draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
+        # Keep the two heraldic marks paired, but let the right cloth fall a
+        # little shorter so the wall stops reading like a mirrored stage set.
+        banner_half_height = 1.36 if x < 0 else 1.22
+        draped_banner(
+            f"WR_CANON_banner_{index}",
+            (x, 6.48, 4.78),
+            -1 if x < 0 else 1,
+            burgundy,
+            static,
+            half_height=banner_half_height,
+        )
         cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
         for edge in (-1, 1):
@@ -1109,6 +1118,11 @@ def add_gothic_canon_v2(static, mats):
     # Keep this hearth visibly secondary to the ceremonial left fireplace:
     # a low ember bed and two small wisps read as a maintained room fire rather
     # than a duplicated hero effect.
+    # One restrained charred log gives the secondary hearth a physical anchor
+    # so its low embers do not read like a row of glowing pebbles.
+    right_log = cylinder("WR_CANON_right_fireplace_log", (rx, 5.52, 1.13),
+                         0.075, 0.86, mats["charred_wood"], static, vertices=16)
+    right_log.rotation_euler = (0, math.pi / 2, math.radians(12))
     for idx, (dx, dz, sx) in enumerate((
         (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
     )):
@@ -1274,13 +1288,15 @@ def add_gothic_canon_v2(static, mats):
         )
         stay.rotation_euler = stay_direction.to_track_quat("Z", "Y").to_euler()
     cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.84), 0.030, 0.26, mats["brass_dark"], static, vertices=16)
+    candle_offsets = (0.00, 0.035, -0.025, 0.018, -0.018, 0.028)
     for index in range(6):
         angle = index * math.tau / 6.0
         x = chandelier_x + math.cos(angle) * 0.70
         y = chandelier_y + math.sin(angle) * 0.54
-        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, cz + 0.20),
+        candle_z = cz + 0.20 + candle_offsets[index]
+        cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, candle_z),
                  0.054, 0.31, mats["ivory"], static, vertices=18)
-        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, cz + 0.39), 0.076,
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, candle_z + 0.19), 0.076,
                mats["fire_core"], static, scale=(0.44, 0.44, 1.10))
         # short radial arm from hub; cylinders are aligned to Z by default.
         midpoint = Vector((chandelier_x + (x - chandelier_x) * 0.50, chandelier_y + (y - chandelier_y) * 0.50, cz))
@@ -1317,21 +1333,65 @@ def add_gothic_canon_v2(static, mats):
     tag(drape)
     static.objects.link(drape)
 
-    # Small rampant horse relief on the drape, intentionally broad rather than
-    # anatomically fussy so it survives the gameplay camera.
-    emblem_y = front_y - 0.085
-    body = sphere("WR_CANON_table_horse_body", (0.06, emblem_y, 0.68), 0.20,
-                  mats["brass"], static, scale=(1.30, 0.28, 0.72))
-    body.rotation_euler.y = -0.26
-    sphere("WR_CANON_table_horse_head", (-0.24, emblem_y, 0.82), 0.11,
-           mats["brass"], static, scale=(1.12, 0.30, 0.78))
-    for index, (x, z, ang) in enumerate(((-0.07, 0.49, -0.72), (0.12, 0.47, 0.58))):
-        leg = cylinder(f"WR_CANON_table_horse_leg_{index}", (x, emblem_y, z),
-                       0.035, 0.34, mats["brass"], static, vertices=14)
-        leg.rotation_euler.y = ang
-    tail = cylinder("WR_CANON_table_horse_tail", (0.27, emblem_y, 0.74),
-                    0.030, 0.30, mats["brass"], static, vertices=14)
-    tail.rotation_euler.y = 0.88
+    # Two near-flat vertical cloth ribs break the broad front panel without
+    # reading as decorative buttons. Keep the same dark fabric as the drape and
+    # let bevel/grazing light do the work rather than a brighter red material.
+    for fold_index, (fold_x, fold_z, fold_half_height) in enumerate((
+        (-1.58, 0.58, 0.19),
+        (1.12, 0.56, 0.16),
+    )):
+        cube(
+            f"WR_CANON_table_drape_fold_{fold_index}",
+            (fold_x, front_y - 0.068, fold_z),
+            (0.040, 0.016, fold_half_height),
+            burgundy_dark,
+            static,
+            bevel=0.032,
+        )
+
+    # Small graphic rampant-horse relief on the drape. The previous body/head/
+    # leg primitives collapsed into a gold blob at gameplay distance; reuse the
+    # same heraldic silhouette language as the rear crest in one shallow mesh.
+    table_horse_source = [
+        (0.26, 4.04), (0.17, 4.05), (0.07, 4.38), (-0.02, 4.50),
+        (-0.17, 4.65), (-0.31, 4.83), (-0.52, 4.64), (-0.63, 4.67),
+        (-0.60, 4.75), (-0.34, 4.97), (-0.17, 5.05), (-0.32, 5.20),
+        (-0.61, 5.28), (-0.80, 5.34), (-0.78, 5.44), (-0.57, 5.49),
+        (-0.50, 5.65), (-0.43, 5.57), (-0.31, 5.67), (-0.30, 5.53),
+        (-0.18, 5.45), (0.04, 5.18), (0.31, 5.10), (0.49, 4.92),
+        (0.70, 5.02), (0.89, 4.92), (0.80, 4.80), (0.61, 4.71),
+        (0.48, 4.54), (0.53, 4.27), (0.60, 4.08), (0.52, 4.02),
+        (0.42, 4.05), (0.32, 4.36),
+    ]
+    table_horse_points = [
+        (x * 0.30, 0.62 + (z - 4.84) * 0.30)
+        for x, z in table_horse_source
+    ]
+    area = sum(
+        table_horse_points[i][0] * table_horse_points[(i + 1) % len(table_horse_points)][1]
+        - table_horse_points[(i + 1) % len(table_horse_points)][0] * table_horse_points[i][1]
+        for i in range(len(table_horse_points))
+    )
+    table_horse_ring = list(table_horse_points if area > 0 else reversed(table_horse_points))
+    table_horse_vertices = []
+    table_horse_faces = []
+    table_horse_front = front_y - 0.105
+    table_horse_back = front_y - 0.070
+    table_horse_vertices.extend((x, table_horse_front, z) for x, z in table_horse_ring)
+    table_horse_vertices.extend((x, table_horse_back, z) for x, z in table_horse_ring)
+    table_horse_count = len(table_horse_ring)
+    table_horse_faces.append(tuple(range(table_horse_count)))
+    table_horse_faces.append(tuple(table_horse_count + i for i in reversed(range(table_horse_count))))
+    for i in range(table_horse_count):
+        j = (i + 1) % table_horse_count
+        table_horse_faces.append((i, j, table_horse_count + j, table_horse_count + i))
+    table_horse_mesh = bpy.data.meshes.new("WR_CANON_table_horse_relief_mesh")
+    table_horse_mesh.from_pydata(table_horse_vertices, [], table_horse_faces)
+    table_horse_mesh.update()
+    table_horse = bpy.data.objects.new("WR_CANON_table_horse_relief", table_horse_mesh)
+    table_horse.data.materials.append(heraldic_brass)
+    tag(table_horse)
+    static.objects.link(table_horse)
     drape_fill = light("WR_CANON_drape_fill", "AREA", (0, -7.0, 2.3), 135.0,
                        (1.0, 0.36, 0.18), static, size=3.4)
     look_at(drape_fill, (0, -5.50, 0.44))
@@ -1404,8 +1464,8 @@ def build():
         "window": material("WR_MAT_window_night", (0.003, 0.010, 0.055, 1), rough=0.20, coat=0.44),
         "moon": material("WR_MAT_window_moon", (0.56, 0.68, 0.90, 1), rough=0.26, emission=(0.16, 0.28, 0.62, 1)),
         "horizon": material("WR_MAT_window_horizon", (0.004, 0.007, 0.014, 1), rough=0.96),
-        "fire": material("WR_MAT_fire", (0.88, 0.085, 0.006, 1), rough=0.18, emission=(1.0, 0.045, 0.002, 1)),
-        "fire_core": material("WR_MAT_fire_core", (1.0, 0.32, 0.015, 1), rough=0.16, emission=(1.0, 0.18, 0.008, 1)),
+        "fire": material("WR_MAT_fire", (0.90, 0.27, 0.010, 1), rough=0.18, emission=(0.92, 0.20, 0.003, 1)),
+        "fire_core": material("WR_MAT_fire_core", (0.92, 0.60, 0.050, 1), rough=0.16, emission=(0.88, 0.40, 0.015, 1)),
         "ember": material("WR_MAT_ember", (0.24, 0.010, 0.003, 1), rough=0.38, emission=(0.44, 0.012, 0.002, 1)),
         "charred_wood": material("WR_MAT_charred_log", (0.018, 0.008, 0.004, 1), rough=0.90, texture="wood", scale=3.2, bump=0.08),
         "iron": material("WR_MAT_hearth_iron", (0.025, 0.028, 0.032, 1), metal=0.86, rough=0.52, texture="metal", scale=30, bump=0.018),
