@@ -40,7 +40,7 @@ test('War Room · Android landscape convierte el ancho extra en tablero, no en a
   await expect(command).toBeVisible();
   await expect(turnPill).toBeVisible();
   await expect(turnPill).toContainText('Matthias');
-  await expect(turnPill).toContainText(/CPU nivel \d+/i);
+  await expect(turnPill).not.toContainText(/CPU nivel \d+/i);
   await expect(turnPill.locator('.game-3d-turn-pill-light')).toBeVisible();
 
   // Recheck after the deferred 3D CSS/chunk has had time to settle. This is the

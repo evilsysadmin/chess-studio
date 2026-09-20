@@ -30,7 +30,7 @@ test('War Room · desktop prioriza el tablero, flota el estado sobre la escena y
   await expect(capturesTab).toHaveAttribute('aria-pressed', 'false');
   await expect(turnPill).toBeVisible();
   await expect(turnPill).toContainText('Matthias');
-  await expect(turnPill).toContainText(/CPU nivel \d+/i);
+  await expect(turnPill).not.toContainText(/CPU nivel \d+/i);
   await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
 
   // Board3D is lazy. Recheck once its deferred CSS has settled: the cinematic
