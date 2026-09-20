@@ -40,13 +40,29 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(argv_after_double_dash())
 
 
-def flatten_runtime_materials() -> None:
-    """Keep PBR intent while removing Blender-only procedural inputs.
+def _gltf_safe_image_socket(socket, *, normal=False) -> bool:
+    """Return True when a Principled input is driven by a glTF-safe image chain."""
+    if socket is None or not socket.is_linked or len(socket.links) != 1:
+        return False
+    source = socket.links[0].from_node
+    if not normal:
+        return source is not None and source.type == "TEX_IMAGE"
+    if source is None or source.type != "NORMAL_MAP":
+        return False
+    color = source.inputs.get("Color")
+    if color is None or not color.is_linked or len(color.links) != 1:
+        return False
+    image_node = color.links[0].from_node
+    return image_node is not None and image_node.type == "TEX_IMAGE"
 
-    The review scene uses procedural noise/bump nodes that glTF cannot carry
-    directly. Runtime v1 intentionally exports the authored base colour,
-    roughness, metallic and emission values instead of silently producing
-    broken shader graphs.
+
+def flatten_runtime_materials() -> None:
+    """Strip Blender-only procedural links while preserving glTF image maps.
+
+    Review materials may use Noise/Bump nodes that glTF cannot serialize.
+    Runtime export falls back to authored scalar/base values for those chains,
+    but keeps direct Image Texture inputs (and Image Texture -> Normal Map)
+    intact so packed PBR textures survive into the GLB.
     """
     for mat in bpy.data.materials:
         if not mat.use_nodes or not mat.node_tree:
@@ -54,14 +70,21 @@ def flatten_runtime_materials() -> None:
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf is None:
             continue
-        for input_name in ("Base Color", "Normal"):
+
+        for input_name in ("Base Color", "Roughness", "Metallic"):
             socket = bsdf.inputs.get(input_name)
-            if socket is None:
+            if socket is None or _gltf_safe_image_socket(socket):
                 continue
             for link in list(socket.links):
                 mat.node_tree.links.remove(link)
+
+        normal = bsdf.inputs.get("Normal")
+        if normal is not None and not _gltf_safe_image_socket(normal, normal=True):
+            for link in list(normal.links):
+                mat.node_tree.links.remove(link)
+
         base = bsdf.inputs.get("Base Color")
-        if base is not None:
+        if base is not None and not base.is_linked:
             base.default_value = tuple(mat.diffuse_color)
 
 
