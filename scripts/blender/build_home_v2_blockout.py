@@ -924,6 +924,35 @@ def add_fireplace(name: str, x: float, materials):
             )
     cube(f"HOME_PROP_{name}_hearth", (x, 6.52, 0.88), (1.15, 0.10, 0.88), dark, bevel=0.05)
     cube(f"HOME_PROP_{name}_hearth_slab", (x, 5.62, 0.28), (1.42, 0.46, 0.12), stone, bevel=0.05)
+    # Ash and charcoal sit in front of the fire instead of leaving a perfectly
+    # clean slab. Small overlapping flattened forms read as accumulated residue
+    # at Home distance without turning the hearth into noisy rubble.
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.62, 0.00, 0.24, 0.050),
+        (-0.31, 0.02, 0.30, 0.060),
+        (0.02, 0.00, 0.34, 0.055),
+        (0.34, 0.03, 0.27, 0.050),
+        (0.63, 0.00, 0.20, 0.042),
+    )):
+        sphere(
+            f"HOME_PROP_{name}_ash_{idx}",
+            (x + dx, 5.48, 0.47 + dz),
+            (sx, 0.026, sz),
+            materials["ash"],
+        )
+    for idx, (dx, dz, sx, sz) in enumerate((
+        (-0.46, 0.04, 0.11, 0.045),
+        (-0.12, 0.08, 0.13, 0.052),
+        (0.22, 0.05, 0.10, 0.042),
+        (0.49, 0.07, 0.12, 0.048),
+    )):
+        charcoal = sphere(
+            f"HOME_PROP_{name}_charcoal_{idx}",
+            (x + dx, 5.45, 0.51 + dz),
+            (sx, 0.024, sz),
+            materials["charcoal"],
+        )
+        charcoal.rotation_euler[1] = math.radians((-11.0, 7.0, -5.0, 13.0)[idx])
     for side in (-1, 1):
         cube(f"HOME_PROP_{name}_jamb_{side}", (x + side * 1.18, 6.02, 1.20), (0.18, 0.34, 1.15), stone, bevel=0.05)
         cube(f"HOME_PROP_{name}_corbel_{side}", (x + side * 1.22, 5.82, 1.95), (0.24, 0.28, 0.18), stone, bevel=0.05)
@@ -1796,6 +1825,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="textile"),
         "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0),
         "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
+        "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
+        "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91),
         "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91),
         "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91),
