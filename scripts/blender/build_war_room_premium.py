@@ -604,6 +604,17 @@ def add_room(static, mats):
     cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
     cube("WR_DESK_blotter", (0.18, 5.45, 2.33), (0.92, 0.26, 0.025), mats["desk_leather"], static, bevel=0.025)
     cube("WR_DESK_blotter_edge", (0.18, 5.17, 2.34), (0.98, 0.025, 0.028), mats["brass_dark"], static, bevel=0.012)
+    # A couple of overlapping dispatch sheets keep the blotter from reading as
+    # one empty green slab. Their offsets are broad enough to survive the hero
+    # camera, with one small brass weight instead of a pile of desk clutter.
+    dispatch_sheet_a = cube("WR_DESK_dispatch_sheet_a", (0.42, 5.40, 2.385),
+                            (0.30, 0.18, 0.012), mats["ivory"], static, bevel=0.012)
+    dispatch_sheet_a.rotation_euler.z = -0.10
+    dispatch_sheet_b = cube("WR_DESK_dispatch_sheet_b", (0.68, 5.47, 2.405),
+                            (0.24, 0.15, 0.010), mats["ivory"], static, bevel=0.010)
+    dispatch_sheet_b.rotation_euler.z = 0.08
+    cylinder("WR_DESK_dispatch_weight", (0.79, 5.39, 2.435), 0.065, 0.035,
+             mats["brass"], static, vertices=18)
     # Give the rear desk furniture weight at the runtime camera distance.
     cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["frame_wood"], static, bevel=0.045)
     cube("WR_DESK_center_shadow", (0, 6.16, 1.33), (0.72, 0.12, 0.55), mats["wall_recess"], static, bevel=0.04)
