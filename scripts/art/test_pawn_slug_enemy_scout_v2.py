@@ -30,7 +30,7 @@ class ScoutV2Tests(unittest.TestCase):
             result = Image.open(out / report["output"]).convert("RGBA")
             base = Image.open(src).convert("RGBA").crop((0, 0, 640, 80))
             self.assertEqual(result.size, (640, 80))
-            self.assertIsNotNone(ImageChops.difference(result, base).getbbbox())
+            self.assertIsNotNone(ImageChops.difference(result, base).getbbox())
             for i in range(FRAMES):
                 before = base.crop((i * CELL, 0, (i + 1) * CELL, CELL)).getchannel("A").getbbox()
                 after = result.crop((i * CELL, 0, (i + 1) * CELL, CELL)).getchannel("A").getbbox()
