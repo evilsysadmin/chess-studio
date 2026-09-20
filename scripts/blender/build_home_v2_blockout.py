@@ -85,6 +85,36 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
     coarse = _value_noise(u, v, seed, 5)
     medium = _value_noise(u, v, seed + 31, 13)
     fine = _value_noise(u, v, seed + 73, 37)
+    if profile == "floor_stone":
+        # Large staggered paving breaks the floor into authored stone slabs.
+        # Keep the surface itself restrained: broad slab-to-slab variation and
+        # narrow, slightly irregular recessed joints read more naturally than
+        # high-frequency procedural speckle at the canonical Home distance.
+        rows = 6
+        cols = 8
+        scaled_u = u * cols
+        scaled_v = v * rows
+        row = math.floor(scaled_v)
+        stagger = 0.5 if row % 2 else 0.0
+        shifted_u = scaled_u + stagger
+        col = math.floor(shifted_u)
+        local_u = shifted_u - col
+        local_v = scaled_v - row
+        edge = min(local_u, 1.0 - local_u, local_v, 1.0 - local_v)
+        joint_width = 0.045 + (medium - 0.5) * 0.016
+        if edge < joint_width:
+            return max(0.0, min(1.0, 0.10 + fine * 0.055))
+        tile_bias = (_hash01(col % cols, row % rows, seed + 401) - 0.5) * 0.12
+        wear = _value_noise(u, v, seed + 509, 9)
+        value = (
+            0.54
+            + tile_bias
+            + (coarse - 0.5) * 0.20
+            + (medium - 0.5) * 0.09
+            + (wear - 0.5) * 0.055
+            + (fine - 0.5) * 0.035
+        )
+        return max(0.0, min(1.0, value))
     if profile == "wood":
         warp = (coarse - 0.5) * 1.35 + math.sin(v * math.tau * 2.0) * 0.08
         grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
@@ -128,8 +158,9 @@ def _packed_surface_images(
         for y in range(size)
     ]
     low, high = {
-        "stone": (0.76, 1.16),
-        "wood": (0.62, 1.34),
+        "stone": (0.88, 1.08),
+        "floor_stone": (0.68, 1.10),
+        "wood": (0.78, 1.20),
         "metal": (0.79, 1.15),
         "textile": (0.78, 1.18),
         "leather": (0.70, 1.24),
@@ -137,8 +168,9 @@ def _packed_surface_images(
         "wax": (0.90, 1.10),
     }.get(profile, (0.82, 1.14))
     rough_span = {
-        "stone": 0.13,
-        "wood": 0.11,
+        "stone": 0.07,
+        "floor_stone": 0.12,
+        "wood": 0.08,
         "metal": 0.19,
         "textile": 0.07,
         "leather": 0.12,
@@ -146,8 +178,9 @@ def _packed_surface_images(
         "wax": 0.045,
     }.get(profile, 0.10)
     normal_strength = {
-        "stone": 4.2,
-        "wood": 3.1,
+        "stone": 2.5,
+        "floor_stone": 4.0,
+        "wood": 2.2,
         "metal": 2.0,
         "textile": 2.8,
         "leather": 2.4,
@@ -230,8 +263,9 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
     normal_map = nodes.new("ShaderNodeNormalMap")
     normal_map.name = f"{name}_NormalMap"
     normal_map.inputs["Strength"].default_value = {
-        "stone": 0.55,
-        "wood": 0.42,
+        "stone": 0.32,
+        "floor_stone": 0.38,
+        "wood": 0.28,
         "metal": 0.30,
         "textile": 0.36,
         "leather": 0.34,
@@ -1808,7 +1842,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "arch_stone": material("HOME_MAT_arch_stone", (0.074, 0.065, 0.056, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
         "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2, texture_profile="stone"),
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.91, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="stone"),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.035, 0.012, 0.006, 1), roughness=0.70, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
@@ -2924,12 +2958,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 24, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 16, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
-    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 48, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 24, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
-    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 236, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
-    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 188, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
+    add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 176, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
+    add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 126, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
     add_area_light("HOME_LIGHT_library_read", (-4.6, 2.8, 5.4), 90, (0.74, 0.40, 0.22), 2.2, target=(-2.65, 5.9, 2.6))
     add_area_light("HOME_LIGHT_fireplace_left_pool", (-6.15, 3.65, 3.4), 190, (1.0, 0.37, 0.11), 2.2, target=(-6.15, 5.65, 1.35))
     add_area_light("HOME_LIGHT_fireplace_right_pool", (4.45, 3.65, 3.5), 255, (1.0, 0.37, 0.11), 2.25, target=(4.45, 5.65, 1.45))
@@ -2951,7 +2985,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     scene.camera = camera
 
     try:
-        scene.view_settings.exposure = -0.20
+        scene.view_settings.exposure = -0.28
     except Exception:
         pass
     try:
