@@ -1202,12 +1202,12 @@ def add_gothic_canon_v2(static, mats):
         side_x = chair_x + side * 0.56
         cube(f"WR_CANON_command_chair_side_{side}",
              (side_x, 6.30, 2.90), (0.055, 0.11, 0.62),
-             mats["frame_wood"], static, bevel=0.032)
+             mats["trim_wood"], static, bevel=0.032)
         sphere(f"WR_CANON_command_chair_finial_{side}",
                (side_x, 6.30, 3.53), 0.080,
                mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
     cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
-         mats["frame_wood"], static, bevel=0.040)
+         mats["trim_wood"], static, bevel=0.040)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
