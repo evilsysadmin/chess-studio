@@ -14,12 +14,14 @@ permissions:
   contents: read
   actions: read
 
-# Canonical staging and manual preview share one write mutex. Generations queue
-# instead of interrupting a partially-mutated deployment; once a queued run
-# starts, admission drops it cleanly if main has already superseded its SHA.
+# Canonical staging and manual preview share one write mutex. Newer staging
+# generations supersede older in-progress work so obsolete deploys and browser
+# smokes cannot hold the environment queue. Host-side mutation locks still
+# serialize remote OCI writes; backend/schema changes must remain compatible
+# across adjacent generations.
 concurrency:
   group: chess-studio-staging-deploy
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
