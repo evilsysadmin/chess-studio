@@ -226,7 +226,6 @@ func _run() -> void:
         _expect(absf((right_floor.shape as RectangleShape2D).size.x - 280.0) <= EPSILON, "pozo reanuda la losa tras el hueco")
 
     geometry_probe._add_stage_body(
-    geometry_probe._add_stage_body(
         Rect2(0.0, 0.0, 160.0, 24.0),
         "OneWayProbe",
         true,
