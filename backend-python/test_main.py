@@ -771,6 +771,27 @@ def test_game_ends_in_checkmate_and_cpu_does_not_respond():
 
 # ---------- Auth: registro y login ----------
 
+def test_new_password_policy_requires_eight_chars_but_legacy_login_still_works(monkeypatch):
+    import main as main_module
+
+    short = raw_client.post(
+        "/api/auth/register",
+        json={"username": "short_pw_user", "password": "1234567"},
+    )
+    assert short.status_code == 400
+    assert "8 caracteres" in short.json()["detail"]
+
+    username = "legacy_pw_user"
+    asyncio.run(ustore.create_user(username, main_module.hash_password("legacy7")))
+    legacy = raw_client.post(
+        "/api/auth/login",
+        json={"username": username, "password": "legacy7"},
+    )
+    assert legacy.status_code == 200
+    assert legacy.json()["username"] == username
+
+
+
 def test_register_new_user():
     r = client.post("/api/auth/register", json={"username": "nuevo_usuario", "password": "clave123456"})
     assert r.status_code == 201
