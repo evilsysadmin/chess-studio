@@ -200,6 +200,20 @@ for (const capture of CAPTURES) {
       await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
+
+      await page.keyboard.press('Escape');
+      const pause = page.getByRole('dialog', { name: 'Pausa', exact: true });
+      await expect(pause).toBeVisible();
+      await expect(mode).toHaveAttribute('data-paused', 'true');
+      await captureElement(
+        page,
+        pause,
+        `${ARTIFACT_DIR}/chronicles-tactics-pause-menu-${capture.label}.png`,
+      );
+      await page.keyboard.press('Escape');
+      await expect(pause).toHaveCount(0);
+      await expect(mode).toHaveAttribute('data-paused', 'false');
+
       if (capture.hasTouch) {
         // On narrow layouts the mission, action pad and party HUD flow below the
         // battlefield. Keep the battlefield crop for renderer inspection, and
