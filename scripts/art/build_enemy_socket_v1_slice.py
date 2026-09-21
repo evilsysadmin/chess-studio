@@ -36,7 +36,11 @@ def _diamond(draw: ImageDraw.ImageDraw, xy: tuple[float, float], radius: int, fi
 
 def main() -> int:
     body = Image.open(BODY).convert("RGBA")
+    if body.getchannel("A").getbbox() is None:
+        raise SystemExit("body fixture has empty alpha")
     weapon_atlas = Image.open(WEAPON).convert("RGBA")
+    if weapon_atlas.getchannel("A").getbbox() is None:
+        raise SystemExit("weapon fixture has empty alpha")
     payload = json.loads(SOCKETS.read_text(encoding="utf-8"))
     sockets = payload["frames"]
     if len(sockets) != 8:
