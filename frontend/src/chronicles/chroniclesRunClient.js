@@ -15,3 +15,16 @@ export function chroniclesCreateRun(mapId, { operationId = null, signal } = {}) 
     signal,
   });
 }
+
+
+export function chroniclesCheckpointRun(runId, checkpoint, { signal } = {}) {
+  return requestJson(`${BASE_URL}/chronicles/runs/${encodeURIComponent(runId)}/checkpoint`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader(),
+    },
+    body: JSON.stringify(checkpoint),
+    signal,
+  });
+}
