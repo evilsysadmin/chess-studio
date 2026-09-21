@@ -119,3 +119,14 @@ Contrato adicional de enemigos:
 - El atlas enemigo se genera desde frames 2D y un packer; no se aceptan composiciones finales generadas manualmente.
 - El worksheet validado de enemigos se conserva dentro de games/pawn-slug-godot/art/ para reanudar la iteración.
 - Si trabajas en local y tienes buen hardware, puedes generar sprites y blender artifacts, pero ojo con saturar la cpu/gpu
+
+** ITERACIÓN VISUAL DE WAR ROOM V2
+
+- War Room v2 se itera exclusivamente con la pipeline Blender; War Room v1 se conserva como baseline/rollback y no se modifica durante estas pasadas.
+- Cada iteración visual debe producir un artifact PNG real desde la pipeline Blender.
+- El PNG se revisa visualmente antes de aceptar la iteración. Un CI verde no equivale a aceptación visual.
+- Comparar siempre con el PNG de la iteración anterior y con el canon actual.
+- Revisar de forma explícita: solapes/interpenetraciones, oclusiones accidentales, clipping, escala/proporciones, jerarquía de composición, legibilidad del tablero, materiales, iluminación y regresiones en desktop/móvil cuando aplique.
+- Si el PNG no mejora claramente o introduce una regresión, corregir y volver a renderizar; no apilar decoración encima de un layout roto.
+- Prioridad de trabajo: 1) layout/colisiones, 2) escala y siluetas, 3) iluminación/materiales, 4) detalle secundario.
+- Iterar PR a PR sin pedir input salvo bloqueo real; mantener las PR en draft mientras se sigue iterando y pasarlas a ready for review cuando la tanda esté visualmente validada y los checks estén pasando.
