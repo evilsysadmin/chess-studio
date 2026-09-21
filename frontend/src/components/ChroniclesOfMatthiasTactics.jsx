@@ -19,7 +19,15 @@ import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasTacticsPremium.css';
 
-const ChroniclesOfMatthiasTacticsRuntime = lazy(() => import('./ChroniclesOfMatthiasTacticsRuntime.jsx'));
+function loadChroniclesTacticsRuntime() {
+  return import('./ChroniclesOfMatthiasTacticsRuntime.jsx');
+}
+
+function loadChroniclesTacticsRenderer() {
+  return import('../chroniclesOfMatthiasIsometric.js');
+}
+
+const ChroniclesOfMatthiasTacticsRuntime = lazy(loadChroniclesTacticsRuntime);
 
 function BootstrapStatus() {
   return (
@@ -108,6 +116,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     setBootstrapError(null);
     const operationId = ensureChroniclesTacticsRun();
     activeRunIdRef.current = operationId;
+
+    // Preload the mode code and renderer while the authoritative run resolves.
+    // The runtime component still does not mount until bootstrap succeeds.
+    void loadChroniclesTacticsRuntime().catch(() => {});
+    void loadChroniclesTacticsRenderer().catch(() => {});
+
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
       .then(() => {
         if (!active) return;

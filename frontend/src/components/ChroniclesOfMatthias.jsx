@@ -51,6 +51,10 @@ const KEY_ACTIONS = Object.freeze({
 
 const FIRST_PERSON_RUN_SCOPE = 'first-person';
 
+function loadChroniclesFirstPersonRenderer() {
+  return import('../chroniclesOfMatthiasThree.js');
+}
+
 function BootstrapStatus() {
   return (
     <div className="menu chronicles-bootstrap" role="status" aria-live="polite">
@@ -216,6 +220,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
     activeRunIdRef.current = operationId;
 
+    // Overlap renderer chunk loading with the authoritative world bootstrap.
+    // Gameplay still stays fail-closed until the backend bundle validates.
+    void loadChroniclesFirstPersonRenderer().catch(() => {});
+
     chroniclesBootstrapWorld({ signal: controller.signal, operationId })
       .then(() => {
         if (!active) return;
@@ -258,7 +266,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const host = hostRef.current;
     if (!ready || !stateRef.current || !host) return undefined;
 
-    void import('../chroniclesOfMatthiasThree.js')
+    void loadChroniclesFirstPersonRenderer()
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host);
