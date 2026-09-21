@@ -230,3 +230,89 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           compression-level: 0
+
+
+  build-strict-v19-p99:
+    name: Build + gate strict-v19 · P99
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install deterministic 2D sprite toolchain
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v19.py --self-test
+          python3 -m py_compile             scripts/art/pack_pawn_slug_godot_strict_v19.py             scripts/art/validate_pawn_slug_godot_atlas_v19.py
+
+      - name: Download strict-v16 pistol baseline
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v19/pistol'
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PISTOL_SOURCE_URL" --output "$ROOT/source-v16.png"
+
+      - name: Build + gate P99 v19 candidate
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v19/pistol'
+          python3 scripts/art/pack_pawn_slug_godot_strict_v19.py             --source "$ROOT/source-v16.png"             --output "$ROOT/v19.png"             --manifest "$ROOT/manifest.json"
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v19.py             --atlas "$ROOT/v19.png"             --manifest "$ROOT/manifest.json"             --baseline "$ROOT/source-v16.png"             --report "$ROOT/health.json"
+          python3 scripts/art/build_pawn_slug_v17_review.py             --baseline "$ROOT/source-v16.png"             --atlas "$ROOT/v19.png"             --output "$ROOT/review.png"
+
+      - name: Restore pinned Godot editor
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+
+      - name: Consume candidate in real Godot SpriteFrames
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v19/pistol'
+          .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot             --script res://tests/matthias_strict_v17_atlas_smoke.gd --             "$ROOT/v19.png" "$ROOT/manifest.json"
+
+      - name: Publish immutable strict-v19 P99 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v19/pistol'
+          python3 -S scripts/r2_asset_publish.py publish             "$ROOT/v19.png"             --logical-id 'pawnSlug.godot.matthias.pistol.strictV19'             --prefix 'pawn-slug-godot/matthias/strict-v19/pistol'             | tee "$ROOT/publish.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v19-p99-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict-v19/pistol/v19.png
+            /tmp/pawn-slug-godot-strict-v19/pistol/manifest.json
+            /tmp/pawn-slug-godot-strict-v19/pistol/health.json
+            /tmp/pawn-slug-godot-strict-v19/pistol/review.png
+            /tmp/pawn-slug-godot-strict-v19/pistol/publish.txt
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
