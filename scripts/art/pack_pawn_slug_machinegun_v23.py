@@ -10,6 +10,46 @@ SOURCE_ORDER=['idle','walk','run13','shoot','crouch','crouch_shoot','hurt6']
 SOURCE_COUNTS={'idle':8,'walk':8,'run13':13,'shoot':8,'crouch':8,'crouch_shoot':8,'hurt6':6}
 REGEN={0,1,2,6,8,14,16}
 RUN8_INDEX=(0,2,3,5,7,9,10,12)
+SOURCE_ALPHA_THRESHOLD=24
+SOURCE_FOOTER_Y=88
+SOURCE_ANNOTATION_MAX_AREA=180
+SOURCE_ANNOTATION_MAX_WIDTH=24
+SOURCE_ANNOTATION_MAX_HEIGHT=24
+SOURCE_ANNOTATION_MIN_LUMA=165.0
+SOURCE_ANNOTATION_MAX_CHROMA=48.0
+
+def _alpha_components(arr):
+ points={tuple(point) for point in np.argwhere(arr[:,:,3]>SOURCE_ALPHA_THRESHOLD)}
+ components=[]
+ while points:
+  seed=points.pop(); stack=[seed]; component=[seed]
+  while stack:
+   y,x=stack.pop()
+   for dy in (-1,0,1):
+    for dx in (-1,0,1):
+     if dx==0 and dy==0: continue
+     neighbor=(y+dy,x+dx)
+     if neighbor in points:
+      points.remove(neighbor); stack.append(neighbor); component.append(neighbor)
+  components.append(component)
+ return components
+
+def sanitize_source_cell(cell):
+ """Strip presentation-only frame labels from the transparent technical source."""
+ arr=np.array(cell.convert('RGBA'))
+ for component in _alpha_components(arr):
+  ys=np.fromiter((p[0] for p in component),dtype=np.int16)
+  xs=np.fromiter((p[1] for p in component),dtype=np.int16)
+  y0,y1=int(ys.min()),int(ys.max())+1; x0,x1=int(xs.min()),int(xs.max())+1
+  area=len(component)
+  if y0<SOURCE_FOOTER_Y: continue
+  if area>SOURCE_ANNOTATION_MAX_AREA or x1-x0>SOURCE_ANNOTATION_MAX_WIDTH or y1-y0>SOURCE_ANNOTATION_MAX_HEIGHT: continue
+  rgb=arr[ys,xs,:3].astype(np.float32); mean=rgb.mean(axis=0)
+  luma=float(mean.mean()); chroma=float(mean.max()-mean.min())
+  if luma<SOURCE_ANNOTATION_MIN_LUMA or chroma>SOURCE_ANNOTATION_MAX_CHROMA: continue
+  arr[ys,xs]=0
+ arr[arr[:,:,3]==0,:3]=0
+ return Image.fromarray(arr,'RGBA')
 
 def sha(p:Path)->str: return hashlib.sha256(p.read_bytes()).hexdigest()
 def skin_center(arr):
@@ -28,7 +68,9 @@ def canonical_targets(pistol):
   out[row]={'fx':statistics.median(fx),'fy':statistics.median(fy),'foot':statistics.median(feet),'height':statistics.median(heights)}
  return out
 def source_frame(src,row,col):
- cell=src.crop((col*SOURCE_CELL,row*SOURCE_CELL,(col+1)*SOURCE_CELL,(row+1)*SOURCE_CELL)); bb=cell.getchannel('A').getbbox()
+ cell=src.crop((col*SOURCE_CELL,row*SOURCE_CELL,(col+1)*SOURCE_CELL,(row+1)*SOURCE_CELL))
+ cell=sanitize_source_cell(cell)
+ bb=cell.getchannel('A').getbbox()
  if not bb: raise ValueError(f'empty source frame {row}:{col}')
  return cell.crop(bb)
 def normalize(sp,row,target):
