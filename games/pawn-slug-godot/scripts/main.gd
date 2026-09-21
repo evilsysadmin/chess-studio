@@ -192,7 +192,6 @@ func _ready() -> void:
         traversal_manager.configure_stage(_stage_manifest)
     if player.has_method("configure_stage"):
         player.configure_stage(_stage_start_x, _checkpoints)
-    _apply_visual_capture_probe()
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
@@ -213,6 +212,7 @@ func _ready() -> void:
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
     player.connect("landed", Callable(self, "_on_player_landed"))
     player.connect("checkpoint_changed", Callable(self, "_on_player_checkpoint_changed"))
+    _apply_visual_capture_probe()
     pause_menu.connect("exit_requested", Callable(self, "_on_pause_exit_requested"))
     touch_controls.connect("pause_requested", Callable(pause_menu, "toggle_pause"))
     touch_controls.connect("weapon_cycle_requested", Callable(self, "_on_touch_weapon_cycle_requested"))
