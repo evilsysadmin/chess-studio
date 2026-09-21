@@ -286,6 +286,60 @@
       "visual": {
         "sandbags": 5
       }
+    },
+    {
+      "x": 1990,
+      "y": 318,
+      "w": 124,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "wood",
+      "one_way": true,
+      "route": "ladder"
+    },
+    {
+      "x": 3540,
+      "y": 330,
+      "w": 126,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "stone",
+      "one_way": true,
+      "route": "ladder"
+    }
+  ],
+  "ladders": [
+    {
+      "id": "vine-ladder-west",
+      "x": 556,
+      "y": 330,
+      "w": 42,
+      "h": 280,
+      "style": "rope"
+    },
+    {
+      "id": "vine-ladder-mid",
+      "x": 3378,
+      "y": 308,
+      "w": 42,
+      "h": 302,
+      "style": "rope"
+    },
+    {
+      "id": "canopy-vine",
+      "x": 4220,
+      "y": 236,
+      "w": 42,
+      "h": 374,
+      "style": "rope"
+    }
+  ],
+  "pits": [
+    {
+      "id": "jungle-ravine",
+      "x": 600,
+      "w": 100,
+      "kind": "ravine"
     }
   ],
   "obstacles": [
@@ -951,5 +1005,5 @@
       "scale": 1.2
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3
 }
