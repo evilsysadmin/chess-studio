@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -252,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if not args.lane:
         parser.error('lane is required unless --self-test is used')
+    os.environ.setdefault('CHESS_E2E_LIGHTWEIGHT', '1')
     try:
         run_lane(args.lane)
     except ValueError as exc:
