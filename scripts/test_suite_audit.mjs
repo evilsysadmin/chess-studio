@@ -197,6 +197,8 @@ if (checkCiWiring) {
   }
 
   if (!setupBrowserSource.includes('playwright-${{ inputs.browser-scope }}-')) fail('Playwright debe separar la cache por browser-scope');
+  if (!setupBrowserSource.includes('install --only-shell chromium')) fail('Chromium CI headless debe instalar sólo chromium-headless-shell');
+  if (!setupBrowserSource.includes('chromium.launch({ headless: true })')) fail('setup-browser-e2e debe verificar el runtime headless real');
   if (!setupBrowserSource.includes('chromium firefox webkit')) fail('setup-browser-e2e debe conservar instalación multi-browser');
   if (!mainCiSource.includes('trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}')) fail('Trivy CI debe usar cache diaria/versionada, no una cache por run');
   if (!mainCiSource.includes('docker/setup-buildx-action@v4')) fail('Security images debe preparar Buildx para reutilizar capas GHA');
