@@ -312,6 +312,26 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2045,
+      "y": 392,
+      "w": 122,
+      "h": 20,
+      "kind": "mooring_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "water_bypass"
+    },
+    {
+      "x": 2188,
+      "y": 334,
+      "w": 112,
+      "h": 20,
+      "kind": "crane_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "water_bypass"
     }
   ],
   "obstacles": [
@@ -877,7 +897,7 @@
       "y": 607
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "ladders": [
     {
       "x": 2842,
