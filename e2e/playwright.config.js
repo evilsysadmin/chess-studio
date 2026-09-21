@@ -51,6 +51,11 @@ export default defineConfig({
     // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
     // suite separada con serviceWorkers habilitado.
     serviceWorkers: 'block',
+    // Functional journeys assert behavior, not decorative motion. Disable
+    // continuous Home/Matthias transitions by default so Playwright does not
+    // spend the action budget waiting for a moving control to become stable.
+    // Visual/motion specs opt back into no-preference explicitly with emulateMedia().
+    reducedMotion: 'reduce',
     // Switching 2D↔3D remounts WebGL while the settings control is still
     // settling. The dedicated War Room helpers already budget 12 s for the
     // opening action; use the same ceiling for the close/actionability phase.
