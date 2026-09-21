@@ -267,6 +267,21 @@ func _run() -> void:
         ],
     }
 
+    # Low-cover ballistics probe: a standing-height normal round may skim the
+    # top of a small crate, while low shots and explosives still hit geometry.
+    _expect(
+        not enemy_probe._point_hits_player_projectile_geometry(Vector2(220.0, 560.0), false),
+        "disparo alto normal pasa por la franja superior de cobertura baja",
+    )
+    _expect(
+        enemy_probe._point_hits_player_projectile_geometry(Vector2(220.0, 585.0), false),
+        "disparo bajo normal sigue chocando con la caja",
+    )
+    _expect(
+        enemy_probe._point_hits_player_projectile_geometry(Vector2(220.0, 560.0), true),
+        "explosivo sigue impactando cobertura baja",
+    )
+
     var crate_enemy := {
         "type": "pawn",
         "x": 145.0,
@@ -347,7 +362,7 @@ func _run() -> void:
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + ladders + pits + enemy traversal + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + ladders + pits + enemy traversal + low-cover ballistics + safe respawn")
         quit(0)
         return
     print("FAILED Pawn Slug Godot runtime mechanics smoke · enemy traversal included · %d fallo(s)" % _failures.size())
