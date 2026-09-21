@@ -25,7 +25,6 @@ from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
     ChroniclesMapCodeError,
-    parse_chronicles_map_code,
 )
 from chronicles_map_generator import (
     ChroniclesMapGenerationError,
@@ -33,7 +32,6 @@ from chronicles_map_generator import (
 )
 from chronicles_manifest_procedural import proceduralize_chronicles_manifest
 from chronicles_map_planner import normalize_chronicles_planner_proposal
-from chronicles_planner_cloudflare import request_chronicles_planner_snapshot
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -506,71 +504,6 @@ def chronicles_area_envelope(
     }
 
 
-def _chronicles_planner_descriptors(
-    map_ids: tuple[str, ...] | list[str],
-    seed: int,
-    *,
-    route_snapshot: dict[str, Any] | None,
-) -> list[dict[str, Any]]:
-    descriptors: list[dict[str, Any]] = []
-    for map_id in map_ids:
-        local_area = chronicles_area_envelope(
-            map_id,
-            seed,
-            route_snapshot=route_snapshot,
-        )
-        recipe = parse_chronicles_map_code(local_area["mapCode"])
-        verbs = ",".join(recipe.verbs)
-        descriptors.append(
-            {
-                "map_id": map_id,
-                "theme": recipe.theme,
-                "current_verbs": verbs,
-                "difficulty": recipe.difficulty,
-                # Contract v1 may only select/reorder/subset authored verbs.
-                # Workers AI cannot invent a semantic mechanic here.
-                "allowed_verbs": verbs,
-            }
-        )
-    return descriptors
-
-
-def _normalize_remote_planner_snapshot(
-    raw_snapshot: dict[str, Any] | None,
-    *,
-    planner_descriptors: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if raw_snapshot is None:
-        return None
-    try:
-        snapshot = _normalize_planner_snapshot(raw_snapshot)
-    except ChroniclesManifestError:
-        return None
-    if snapshot is None:
-        return None
-
-    allowed_verbs_by_map = {
-        descriptor["map_id"]: {
-            verb.strip()
-            for verb in str(descriptor.get("allowed_verbs") or "").split(",")
-            if verb.strip()
-        }
-        for descriptor in planner_descriptors
-    }
-    if not set(snapshot["areas"]).issubset(allowed_verbs_by_map):
-        return None
-
-    for map_id, proposal in snapshot["areas"].items():
-        if proposal.get("source") != "workers-ai":
-            return None
-        proposed_verbs = proposal.get("verbs")
-        if proposed_verbs is not None and not set(proposed_verbs).issubset(
-            allowed_verbs_by_map[map_id]
-        ):
-            return None
-    return snapshot
-
-
 def _run_id(username: str, idempotency_key: str | None) -> str:
     if idempotency_key:
         return str(uuid.uuid5(CHRONICLES_RUN_NAMESPACE, f"{username}:{idempotency_key}"))
@@ -673,31 +606,18 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             if body.map_id is None:
                 route_snapshot = chronicles_route_snapshot_for_seed(seed)
                 selected_map_id = route_snapshot["mapIds"][0]
-                planner_map_ids = tuple(route_snapshot["mapIds"])
             else:
                 route_snapshot = None
                 selected_map_id = body.map_id
-                planner_map_ids = (selected_map_id,)
 
-            planner_descriptors = _chronicles_planner_descriptors(
-                planner_map_ids,
-                seed,
-                route_snapshot=route_snapshot,
-            )
-            raw_planner_snapshot = await request_chronicles_planner_snapshot(
-                planner_descriptors,
-                request_id=f"chronicles:{run_id}",
-            )
-            planner_snapshot = _normalize_remote_planner_snapshot(
-                raw_planner_snapshot,
-                planner_descriptors=planner_descriptors,
-            )
-
+            # Runtime bootstrap is deliberately deterministic-only. Optional AI
+            # planning remains supported for authored/offline experiments and
+            # historical snapshots, but it must never add network latency to
+            # entering a playable Chronicles run.
             area = chronicles_area_envelope(
                 selected_map_id,
                 seed,
                 route_snapshot=route_snapshot,
-                planner_snapshot=planner_snapshot,
             )
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=run_id,
@@ -708,7 +628,6 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 manifest_revision=area["manifestRevision"],
                 create_fingerprint=fingerprint,
                 route_snapshot=route_snapshot,
-                planner_snapshot=planner_snapshot,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
