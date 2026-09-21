@@ -40,6 +40,7 @@ static func score_intents(context: Dictionary) -> Dictionary:
     var grenade_evade := not is_zero_approx(float(context.get("grenade_evade", 0.0)))
     var role := String(context.get("role", ""))
     var enemy_type := String(context.get("enemy_type", "pawn"))
+    var pressure_slot_available := bool(context.get("pressure_slot_available", true))
 
     if grenade_evade:
         scores[INTENT_EVADE] = 100.0
@@ -68,6 +69,18 @@ static func score_intents(context: Dictionary) -> Dictionary:
         scores[INTENT_SHOOT] = 72.0
         if role == "support":
             scores[INTENT_SHOOT] += 5.0
+
+    # Keep arcade pressure legible: once enough nearby mobile enemies are
+    # already committed to shooting, the rest should move or hold instead of
+    # joining a synchronized firing wall.
+    if not pressure_slot_available and float(scores[INTENT_SHOOT]) > -999.0:
+        scores[INTENT_SHOOT] = -1000.0
+        if role == "support":
+            scores[INTENT_HOLD] = maxf(float(scores[INTENT_HOLD]), 56.0)
+        elif distance > retreat_threshold + float(context.get("comfort_margin", 24.0)):
+            scores[INTENT_ADVANCE] = maxf(float(scores[INTENT_ADVANCE]), 58.0)
+        else:
+            scores[INTENT_HOLD] = maxf(float(scores[INTENT_HOLD]), 44.0)
 
     match enemy_type:
         "scout":
