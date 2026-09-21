@@ -22,9 +22,9 @@ const FULL_ATLAS_URLS := {
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
 
-# v22 keeps the stable 18x8 full banks and overlays only the run cycle with
-# twelve real phases. If this optional overlay cannot load, the eight-frame
-# run already present in the full bank remains authoritative.
+# v23 keeps the stable 18x8 full banks and overlays only the run cycle:
+# SMG uses its dedicated 13 authored phases; the other weapons keep RUN12 v22.
+# If an optional overlay cannot load, the eight-frame full-bank run remains.
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
