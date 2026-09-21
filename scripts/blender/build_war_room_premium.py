@@ -1076,14 +1076,16 @@ def add_gothic_canon_v2(static, mats):
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
     rx = 4.85
-    # Secondary hearth: deliberately lower and narrower than the ceremonial
-    # left fireplace so the two sides no longer compete at equal weight.
+    # Secondary hearth: deliberately lower, narrower and lower-contrast than
+    # the ceremonial left fireplace so the two sides no longer compete at equal
+    # weight. Its darker mantel and softer practical keep warmth without creating
+    # a second architectural focal point.
     cube("WR_CANON_right_fireplace_body", (rx, 6.34, 1.84), (1.18, 0.43, 1.20),
          mats["stone_dark"], static, bevel=0.095)
     cube("WR_CANON_right_fireplace_opening", (rx, 5.86, 1.55), (0.74, 0.12, 0.62),
          mats["charcoal"], static, bevel=0.042)
     cube("WR_CANON_right_fireplace_mantel", (rx, 5.78, 3.05), (1.42, 0.56, 0.11),
-         mats["stone"], static, bevel=0.068)
+         mats["stone_dark"], static, bevel=0.068)
     cube("WR_CANON_right_fireplace_hearth", (rx, 5.38, 0.70), (1.18, 0.67, 0.09),
          mats["stone_dark"], static, bevel=0.065)
     for side in (-1, 1):
@@ -1107,11 +1109,11 @@ def add_gothic_canon_v2(static, mats):
     )):
         sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
                mats["fire"], static, scale=(sx, 0.34, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 108.0,
           (1.0, 0.19, 0.035), static, radius=1.00)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
     cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
-         mats["stone_light"], static, bevel=0.038)
+         mats["stone"], static, bevel=0.038)
     cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
          mats["charcoal"], static, bevel=0.022)
     cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
