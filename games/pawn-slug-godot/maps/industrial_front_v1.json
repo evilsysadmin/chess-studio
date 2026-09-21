@@ -60,7 +60,8 @@
       "visual": {
         "rail": true,
         "lamp": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 1090,
@@ -198,7 +199,8 @@
       "visual": {
         "rail": true,
         "lamp": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 3330,
@@ -255,7 +257,8 @@
       "material": "stone",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 4310,
@@ -300,6 +303,42 @@
         "rail": true,
         "lamp": true
       }
+    },
+    {
+      "x": 2290,
+      "y": 332,
+      "w": 150,
+      "h": 22,
+      "kind": "service_catwalk",
+      "material": "metal",
+      "one_way": true,
+      "route": "upper_service",
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 2480,
+      "y": 270,
+      "w": 165,
+      "h": 22,
+      "kind": "service_catwalk",
+      "material": "metal",
+      "one_way": true,
+      "route": "upper_service",
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
+      "x": 2670,
+      "y": 326,
+      "w": 150,
+      "h": 22,
+      "kind": "service_catwalk",
+      "material": "concrete",
+      "one_way": true,
+      "route": "upper_service"
     }
   ],
   "obstacles": [
@@ -691,7 +730,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "dressing": [
     {
       "kind": "crate",
@@ -873,6 +912,48 @@
       "y": 608,
       "count": 18,
       "spacing": 83
+    }
+  ],
+  "ladders": [
+    {
+      "x": 990,
+      "y": 400,
+      "w": 40,
+      "h": 210,
+      "kind": "service_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 3140,
+      "y": 390,
+      "w": 40,
+      "h": 220,
+      "kind": "service_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 4165,
+      "y": 358,
+      "w": 40,
+      "h": 252,
+      "kind": "service_ladder",
+      "route": "vertical"
+    }
+  ],
+  "pits": [
+    {
+      "x": 490,
+      "y": 610,
+      "w": 110,
+      "h": 110,
+      "kind": "trench"
+    },
+    {
+      "x": 1560,
+      "y": 610,
+      "w": 84,
+      "h": 110,
+      "kind": "shell_crater"
     }
   ]
 }
