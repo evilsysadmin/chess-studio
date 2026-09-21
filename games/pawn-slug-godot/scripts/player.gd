@@ -31,6 +31,10 @@ const AIR_ACCEL := 1350.0
 const GROUND_DECEL := 2800.0
 const JUMP_SPEED := 610.0
 const GRAVITY := 1550.0
+const LADDER_SPEED := 235.0
+const LADDER_SNAP_SPEED := 420.0
+const LADDER_ENTRY_MARGIN_X := 24.0
+const LADDER_EXIT_MARGIN_Y := 54.0
 const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
 const DROP_THROUGH_SPEED := 150.0
@@ -138,6 +142,10 @@ var _collision_shape: CollisionShape2D
 var _crouching := false
 var _last_safe_position := Vector2.ZERO
 var _checkpoint_xs: Array[float] = []
+var _ladders: Array[Rect2] = []
+var _ladder_climbing := false
+var _active_ladder := Rect2()
+var _kill_y := 820.0
 
 func _ready() -> void:
     _touch_controls = get_parent().get_node_or_null("TouchControls")
@@ -161,13 +169,20 @@ func _ready() -> void:
 func visual_ready() -> bool:
     return _art != null and _art.body_ready()
 
-func configure_stage(start_x: float, checkpoints: Array) -> void:
+func configure_stage(start_x: float, checkpoints: Array, ladders: Array = [], kill_y: float = 820.0) -> void:
     _checkpoint_xs.clear()
     for value in checkpoints:
         _checkpoint_xs.append(float(value))
     if _checkpoint_xs.is_empty():
         _checkpoint_xs.assign(DEFAULT_CHECKPOINT_X)
     _checkpoint_xs.sort()
+    _ladders.clear()
+    for entry in ladders:
+        if entry is Rect2:
+            _ladders.append(entry)
+    _kill_y = maxf(kill_y, 720.0)
+    _ladder_climbing = false
+    _active_ladder = Rect2()
     global_position.x = start_x
     reset_physics_interpolation()
     _spawn_position = global_position
@@ -187,6 +202,10 @@ func _physics_process(delta: float) -> void:
         return
     if _climbing:
         _update_ledge_climb(delta)
+        return
+
+    var ladder_axis := _ladder_axis()
+    if _update_ladder_state(ladder_axis, delta):
         return
 
     _ledge_tap_remaining = maxf(0.0, _ledge_tap_remaining - delta)
@@ -240,6 +259,9 @@ func _physics_process(delta: float) -> void:
 
     var landing_speed := maxf(0.0, velocity.y)
     move_and_slide()
+    if global_position.y > _kill_y:
+        _begin_death()
+        return
     _update_crouch_state()
     _update_checkpoint()
     if is_on_floor() and _respawn_position_is_clear(global_position):
@@ -775,6 +797,76 @@ func _find_safe_respawn_position(preferred: Vector2) -> Vector2:
         if _respawn_position_is_clear(spawn_candidate):
             return spawn_candidate
     return _spawn_position
+
+func _ladder_axis() -> float:
+    var axis := 0.0
+    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+        axis -= 1.0
+    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+        axis += 1.0
+    if _touch_controls != null:
+        if _touch_controls.has_method("aim_vector"):
+            var touch_aim: Vector2 = _touch_controls.aim_vector()
+            if absf(touch_aim.y) > 0.45:
+                axis = signf(touch_aim.y)
+        if bool(_touch_controls.crouch_pressed()):
+            axis = maxf(axis, 1.0)
+    var joypads := Input.get_connected_joypads()
+    if not joypads.is_empty():
+        var joypad := joypads[0]
+        var left_y := Input.get_joy_axis(joypad, JOY_AXIS_LEFT_Y)
+        if absf(left_y) > 0.45:
+            axis = left_y
+        elif Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_UP):
+            axis = -1.0
+        elif Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_DOWN):
+            axis = 1.0
+    return clampf(axis, -1.0, 1.0)
+
+func _ladder_near_player() -> Rect2:
+    for ladder in _ladders:
+        var x_ok := global_position.x >= ladder.position.x - LADDER_ENTRY_MARGIN_X and global_position.x <= ladder.end.x + LADDER_ENTRY_MARGIN_X
+        var y_ok := global_position.y >= ladder.position.y - LADDER_EXIT_MARGIN_Y and global_position.y <= ladder.end.y + LADDER_EXIT_MARGIN_Y
+        if x_ok and y_ok:
+            return ladder
+    return Rect2()
+
+func _update_ladder_state(axis: float, delta: float) -> bool:
+    var ladder := _ladder_near_player()
+    if ladder.size == Vector2.ZERO:
+        if _ladder_climbing:
+            _ladder_climbing = false
+            _active_ladder = Rect2()
+            if _art != null:
+                _art.set_climb_state(false, 1.0)
+        return false
+    if not _ladder_climbing and absf(axis) <= 0.15:
+        return false
+
+    _ladder_climbing = true
+    _active_ladder = ladder
+    _set_crouching(false, true)
+    var target_x := ladder.get_center().x
+    global_position.x = move_toward(global_position.x, target_x, LADDER_SNAP_SPEED * delta)
+    velocity = Vector2(0.0, axis * LADDER_SPEED)
+    move_and_slide()
+    if global_position.y > _kill_y:
+        _ladder_climbing = false
+        _active_ladder = Rect2()
+        _begin_death()
+        return true
+
+    if _art != null:
+        var ladder_progress := clampf((ladder.end.y - global_position.y) / maxf(1.0, ladder.size.y), 0.0, 1.0)
+        _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+        _art.set_aim_direction(Vector2(facing, 0.0))
+        _art.set_climb_state(true, ladder_progress)
+        _art.update_visual(delta, 0.0, false, false, false, velocity.y, facing, false)
+    queue_redraw()
+    return true
+
+func is_ladder_climbing() -> bool:
+    return _ladder_climbing
 
 func _aim_vertical_axis() -> float:
     if _touch_controls != null and _touch_controls.has_method("aim_vector"):
