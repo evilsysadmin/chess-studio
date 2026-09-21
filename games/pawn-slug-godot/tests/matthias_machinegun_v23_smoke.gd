@@ -99,5 +99,5 @@ func _init() -> void:
         quit(15)
         return
 
-    print("OK strict-v23 SMG Godot smoke: 18 actions + hurt6 + run13")
+    print("OK strict-v23 SMG Godot smoke: 18 fixed-grid actions + authored hurt6 + run13")
     quit(0)
