@@ -531,6 +531,12 @@ def _validate_bank_contract(data: object) -> dict:
         if not isinstance(data.get(key), str) or not data[key].strip():
             raise BankContractError(f"{key} must be a non-empty string")
 
+    composition = data.get("composition", "integrated")
+    if composition not in {"integrated", "socketed-body", "weapon-layer"}:
+        raise BankContractError(
+            "composition must be integrated, socketed-body or weapon-layer"
+        )
+
     cell = data.get("cell")
     if not isinstance(cell, dict):
         raise BankContractError("cell must be an object")
@@ -614,6 +620,78 @@ def _validate_bank_contract(data: object) -> dict:
         if not isinstance(source_dir, str) or not source_dir:
             raise BankContractError(f"animation {name}.source_dir must be a non-empty string")
 
+        sockets = animation.get("sockets")
+        normalized_sockets = None
+        if sockets is not None:
+            if composition != "socketed-body":
+                raise BankContractError(
+                    f"animation {name} declares sockets but composition is {composition}"
+                )
+            if not isinstance(sockets, list) or len(sockets) != authored:
+                raise BankContractError(
+                    f"animation {name}.sockets must contain exactly {authored} authored-frame entries"
+                )
+            normalized_sockets = []
+            for socket_index, socket in enumerate(sockets):
+                if not isinstance(socket, dict):
+                    raise BankContractError(
+                        f"animation {name}.sockets[{socket_index}] must be an object"
+                    )
+                required = ("weapon_anchor", "rear_hand", "front_hand", "muzzle")
+                missing = [key for key in required if key not in socket]
+                if missing:
+                    raise BankContractError(
+                        f"animation {name}.sockets[{socket_index}] missing {','.join(missing)}"
+                    )
+                normalized_socket = {}
+                for point_name in required:
+                    point = socket[point_name]
+                    if (
+                        not isinstance(point, list)
+                        or len(point) != 2
+                        or any(
+                            isinstance(value, bool) or not isinstance(value, (int, float))
+                            for value in point
+                        )
+                    ):
+                        raise BankContractError(
+                            f"animation {name}.sockets[{socket_index}].{point_name} must be [x,y]"
+                        )
+                    x, y = float(point[0]), float(point[1])
+                    if not (0.0 <= x <= width and 0.0 <= y <= height):
+                        raise BankContractError(
+                            f"animation {name}.sockets[{socket_index}].{point_name} outside cell"
+                        )
+                    normalized_socket[point_name] = [x, y]
+                angle = socket.get("angle_degrees", 0.0)
+                scale = socket.get("scale", 1.0)
+                if isinstance(angle, bool) or not isinstance(angle, (int, float)):
+                    raise BankContractError(
+                        f"animation {name}.sockets[{socket_index}].angle_degrees must be numeric"
+                    )
+                if (
+                    isinstance(scale, bool)
+                    or not isinstance(scale, (int, float))
+                    or scale <= 0
+                ):
+                    raise BankContractError(
+                        f"animation {name}.sockets[{socket_index}].scale must be > 0"
+                    )
+                z = socket.get("z", "front")
+                if z not in {"front", "back"}:
+                    raise BankContractError(
+                        f"animation {name}.sockets[{socket_index}].z must be front or back"
+                    )
+                normalized_socket["angle_degrees"] = float(angle)
+                normalized_socket["scale"] = float(scale)
+                normalized_socket["z"] = z
+                normalized_sockets.append(normalized_socket)
+
+        if composition == "socketed-body" and normalized_sockets is None:
+            raise BankContractError(
+                f"animation {name} requires authored sockets for socketed-body composition"
+            )
+
         normalized_animations.append(
             {
                 "name": name,
@@ -625,6 +703,7 @@ def _validate_bank_contract(data: object) -> dict:
                 "slots": normalized_slots,
                 "source_dir": source_dir,
                 "allowed_detached_components": allowed_detached,
+                "sockets": normalized_sockets,
             }
         )
 
@@ -633,6 +712,7 @@ def _validate_bank_contract(data: object) -> dict:
         "quality_contract": data["quality_contract"],
         "actor": data["actor"],
         "weapon": data["weapon"],
+        "composition": composition,
         "cell": {"width": width, "height": height},
         "parts": normalized_parts,
         "animations": normalized_animations,
@@ -726,6 +806,11 @@ def build_bank(
                 "slots": animation["slots"],
                 "source_sha256": source_hashes,
                 "regions": regions,
+                "sockets": (
+                    [animation["sockets"][source_index] for source_index in animation["slots"]]
+                    if animation["sockets"] is not None
+                    else None
+                ),
             }
         )
 
@@ -750,6 +835,7 @@ def build_bank(
         "quality_contract": contract["quality_contract"],
         "actor": contract["actor"],
         "weapon": contract["weapon"],
+        "composition": contract["composition"],
         "cell": contract["cell"],
         "contract_sha256": _sha256_file(contract_path),
         "parts": manifest_parts,
