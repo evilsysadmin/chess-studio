@@ -884,6 +884,12 @@ func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool
             else:
                 if weapon_id == _background_full_inflight_weapon:
                     _background_full_inflight_weapon = ""
+                if not accepted and weapon_id == _weapon and not _body_ready:
+                    # A pickup can race the background request. If that request
+                    # exhausts its retries, hand ownership back to the normal
+                    # foreground path so the authored fallback/CDN error handling
+                    # can recover instead of leaving Matthias hidden forever.
+                    call_deferred("_install_or_request_weapon")
                 _start_next_background_full_bank()
         return
 
