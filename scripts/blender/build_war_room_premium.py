@@ -589,20 +589,20 @@ def add_room(static, mats):
     # Organic hearth silhouette: one broad low body plus three overlapping,
     # uneven tongues. The overlap keeps the fire reading as one mass while the
     # different heights/leans avoid both the old egg row and the later polygon crown.
-    sphere("WR_FIREPLACE_flame_body", (-4.55, 5.53, 1.40), 0.25,
-           mats["fire"], static, scale=(2.05, 0.52, 0.58))
+    sphere("WR_FIREPLACE_flame_body", (-4.55, 5.53, 1.36), 0.25,
+           mats["fire"], static, scale=(1.72, 0.44, 0.50))
     for idx, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.25, 0.18, 0.62, 1.25, -0.22),
-        (0.02, 0.32, 0.56, 1.58, 0.08),
-        (0.30, 0.12, 0.48, 0.96, 0.24),
+        (-0.22, 0.16, 0.56, 1.12, -0.22),
+        (0.01, 0.28, 0.48, 1.38, 0.08),
+        (0.27, 0.10, 0.42, 0.86, 0.24),
     )):
         tongue = sphere(
             f"WR_FIREPLACE_flame_tongue_{idx}",
-            (-4.55 + dx, 5.51, 1.42 + dz),
-            0.20,
+            (-4.55 + dx, 5.51, 1.38 + dz),
+            0.18,
             mats["fire"],
             static,
-            scale=(sx, 0.34, sz),
+            scale=(sx, 0.31, sz),
         )
         tongue.rotation_euler.y = tilt
 
@@ -616,7 +616,7 @@ def add_room(static, mats):
                       0.14, mats["fire_core"], static, scale=(sx, 0.28, sz))
         core.rotation_euler.y = tilt
 
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.78), 258.0, (1.0, 0.23, 0.048), static, radius=1.28)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk. Use the slightly lighter trim walnut on the structural
