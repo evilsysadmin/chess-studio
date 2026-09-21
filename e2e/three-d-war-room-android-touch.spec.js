@@ -118,10 +118,23 @@ async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   if (await board3d.isVisible().catch(() => false)) return;
 
-  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
+  // Quick games default to 3D. Hosted software rendering can mount the real
+  // War Room after the surrounding game chrome, so do not race the appearance
+  // controls when the renderer is simply still booting.
+  await board3d.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => null);
+  if (await board3d.isVisible().catch(() => false)) return;
+
+  const directAppearance = page.getByRole('button', {
+    name: /^(?:Apariencia|Cambiar apariencia y piezas del tablero)$/,
+  });
+  let dialog;
+  if (await directAppearance.isVisible().catch(() => false)) {
+    await directAppearance.click();
+    dialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(dialog).toBeVisible();
+  } else {
+    dialog = await openWarRoomAppearance(page);
+  }
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
