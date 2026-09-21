@@ -9,6 +9,7 @@ on:
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
       - scripts/art/ingest_matthias_pistol_v1.py
+      - scripts/art/build_matthias_pistol_v1_seed.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/sprite_forge_contract.schema.json
@@ -34,6 +35,7 @@ on:
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
       - scripts/art/ingest_matthias_pistol_v1.py
+      - scripts/art/build_matthias_pistol_v1_seed.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/sprite_forge_contract.schema.json
@@ -166,6 +168,17 @@ jobs:
           python3 scripts/art/ingest_matthias_pistol_v1.py \
             --master "$master" \
             --output-dir /tmp/matthias-pistol-v1-seed
+      - name: Build Matthias pistol v1 seed bank
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/art/build_matthias_pistol_v1_seed.py \
+            --frames-root /tmp/matthias-pistol-v1-seed/normalized \
+            --output-dir /tmp/matthias-pistol-v1-seed
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          "$godot" --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_pistol_v1_seed_smoke.gd
       - name: Upload Matthias pistol v1 seed review
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
@@ -177,7 +190,7 @@ jobs:
       - name: Sprite Forge fail-closed contract
         run: |
           set -euo pipefail
-          python3 -m py_compile scripts/art/sprite_forge.py scripts/art/test_sprite_forge.py scripts/art/ingest_matthias_pistol_v1.py
+          python3 -m py_compile scripts/art/sprite_forge.py scripts/art/test_sprite_forge.py scripts/art/ingest_matthias_pistol_v1.py scripts/art/build_matthias_pistol_v1_seed.py
           python3 scripts/art/test_sprite_forge.py
           python3 scripts/art/sprite_forge_acceptance.py --self-test
           python3 scripts/art/sprite_forge_acceptance.py check
