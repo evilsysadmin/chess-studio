@@ -17,10 +17,10 @@ const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
 
 const EXPOSURE = Object.freeze({
-  dawn: 1.05,
-  day: 1.00,
-  dusk: 1.04,
-  night: 1.08,
+  dawn: 1.17,
+  day: 1.12,
+  dusk: 1.16,
+  night: 1.22,
 });
 
 function stableFirePhase(name = '') {
@@ -381,7 +381,16 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   const floorBounce = new THREE.PointLight(0xff8b45, 2.15, 8.8, 2);
   floorBounce.position.set(0, 0.55, -1.6);
 
-  scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce);
+  // The authored Blender scene lights the armour with dedicated rim and front
+  // lights; the runtime had none, so the dark steel read as a black silhouette.
+  // A narrow, soft-edged cool spot aimed at the suit lets its plates catch a
+  // highlight without spilling onto the board, whose colours must stay honest.
+  const armour = new THREE.SpotLight(0xb9c6da, 26, 6, 0.36, 0.75, 2);
+  armour.position.set(1.4, 3.6, -3.4);
+  armour.target.position.set(1.5, 2.2, -5.7);
+  armour.castShadow = false;
+
+  scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target);
   return {
     leftHearth,
     rightHearth,
