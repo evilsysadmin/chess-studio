@@ -94,6 +94,8 @@ PAWN_SLUG_GODOT_PATHS = {
     "scripts/art/sprite_forge.py",
     "scripts/art/test_sprite_forge.py",
     "scripts/art/sprite_forge_contract.schema.json",
+    "scripts/art/generate_pawn_slug_v1_contracts.py",
+    "games/pawn-slug-godot/art/sprite-forge-v1/catalog.json",
     "docs/pawnslug-sprites.md",
     "skills/godot-spritesheets/SKILL.md",
 }
@@ -386,6 +388,8 @@ def self_test() -> None:
     _expect(["scripts/art/sprite_forge.py"], run_pawn_slug_godot=True)
     _expect(["scripts/art/test_sprite_forge.py"], run_pawn_slug_godot=True)
     _expect(["scripts/art/sprite_forge_contract.schema.json"], run_pawn_slug_godot=True)
+    _expect(["games/pawn-slug-godot/art/sprite-forge-v1/catalog.json"], run_pawn_slug_godot=True)
+    _expect(["scripts/art/generate_pawn_slug_v1_contracts.py"], run_pawn_slug_godot=True)
     _expect(["docs/pawnslug-sprites.md"], run_pawn_slug_godot=True)
     _expect(["skills/godot-spritesheets/SKILL.md"], run_pawn_slug_godot=True)
     _expect_core(

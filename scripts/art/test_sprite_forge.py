@@ -438,5 +438,85 @@ class SpriteForgeCompilerTests(unittest.TestCase):
                 build_bank(contract, frames, root / "out")
 
 
+class SpriteForgeSocketContractTests(unittest.TestCase):
+    def _base_contract(self) -> dict:
+        return {
+            "schema": 1,
+            "quality_contract": "sprite-forge-v1",
+            "actor": "enemy-pawn",
+            "weapon": "none",
+            "composition": "socketed-body",
+            "cell": {"width": 64, "height": 64},
+            "parts": {"main": {"columns": 2, "rows": 1}},
+            "animations": [
+                {
+                    "name": "idle",
+                    "part": "main",
+                    "row": 0,
+                    "fps": 8,
+                    "loop": True,
+                    "authored_frames": 2,
+                    "slots": [0, 1],
+                    "sockets": [
+                        {
+                            "weapon_anchor": [35, 30],
+                            "rear_hand": [31, 29],
+                            "front_hand": [39, 30],
+                            "muzzle": [52, 29],
+                            "angle_degrees": -2,
+                            "scale": 1.0,
+                            "z": "front",
+                        },
+                        {
+                            "weapon_anchor": [36, 30],
+                            "rear_hand": [32, 29],
+                            "front_hand": [40, 30],
+                            "muzzle": [53, 29],
+                            "angle_degrees": -1,
+                            "scale": 1.0,
+                            "z": "front",
+                        },
+                    ],
+                }
+            ],
+        }
+
+    def test_socketed_body_requires_one_socket_per_authored_frame(self) -> None:
+        data = self._base_contract()
+        data["animations"][0]["sockets"].pop()
+        with self.assertRaisesRegex(BankContractError, "exactly 2"):
+            from sprite_forge import _validate_bank_contract
+            _validate_bank_contract(data)
+
+    def test_socket_points_must_stay_inside_cell(self) -> None:
+        data = self._base_contract()
+        data["animations"][0]["sockets"][0]["muzzle"] = [99, 30]
+        with self.assertRaisesRegex(BankContractError, "outside cell"):
+            from sprite_forge import _validate_bank_contract
+            _validate_bank_contract(data)
+
+    def test_compiled_slots_carry_authored_socket_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            frames = root / "frames" / "idle"
+            frames.mkdir(parents=True)
+            for index, x in enumerate((20, 21)):
+                image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+                ImageDraw.Draw(image).rectangle(
+                    (x, 12, x + 19, 51),
+                    fill=(180, 120, 80, 255),
+                )
+                image.save(frames / f"{index:03d}.png", "PNG")
+            contract = root / "contract.json"
+            contract.write_text(
+                json.dumps(self._base_contract(), indent=2) + "\n",
+                encoding="utf-8",
+            )
+            manifest = build_bank(contract, root / "frames", root / "out")
+            animation = manifest["animations"][0]
+            self.assertEqual(animation["sockets"][0]["weapon_anchor"], [35.0, 30.0])
+            self.assertEqual(animation["sockets"][1]["muzzle"], [53.0, 29.0])
+
+
 if __name__ == "__main__":
     unittest.main()
