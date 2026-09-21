@@ -239,14 +239,19 @@ if (checkCiWiring) {
     if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender del preflight y poder correr en paralelo`);
   }
 
+  const frontendBlock = jobBlock('frontend');
   const buildBlock = jobBlock('e2e_build');
   const lanesBlock = jobBlock('e2e_lanes');
   const specializedBlock = jobBlock('e2e_specialized');
   const aggregateBlock = jobBlock('e2e');
+  if (frontendBlock.includes('./.github/actions/setup-browser-e2e') && !frontendBlock.includes("restore-frontend-deps: 'false'")) {
+    fail('El browser smoke targeted del job frontend debe reutilizar sus deps ya restauradas, no restaurarlas otra vez');
+  }
   if (!buildBlock.includes('Build frontend once for all required browser gates')) fail('Playwright debe compilar el frontend una sola vez por Quality run');
   if (!buildBlock.includes('quality-browser-frontend-${{ github.sha }}')) fail('El artefacto browser debe quedar ligado al SHA probado');
   for (const [label, block] of [['core', lanesBlock], ['specialized', specializedBlock]]) {
     if (!block.includes('needs: [preflight, e2e_build]')) fail(`Las lanes ${label} deben esperar el único build compartido`);
+    if (!block.includes("restore-frontend-deps: 'false'")) fail(`Las lanes ${label} no deben restaurar frontend/node_modules si consumen el dist compartido`);
     if (!block.includes("build-frontend: 'false'")) fail(`Las lanes ${label} no deben recompilar el frontend`);
     if (!block.includes('actions/download-artifact@v6')) fail(`Las lanes ${label} deben consumir el dist compartido`);
   }
