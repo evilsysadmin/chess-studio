@@ -268,8 +268,8 @@ export function withAmbientPremiumProduction(theme, feel) {
     percussion: premiumPercussion(feel, theme.genre),
     ...(signature ? { signature } : {}),
     production: Object.freeze({
-      grade: 'premium-v2',
-      performance: 'articulation-v2',
+      grade: 'premium-v1',
+      performance: 'articulation-v1',
       genre: theme.genre || 'Ambient / Otros',
       intent: theme.genre === 'Energía' || theme.genre === 'Tropical House' ? 'tight-forward' : theme.genre === 'SPA / Zen' || theme.genre === 'Dark Ambient' ? 'deep-wide' : 'warm-controlled',
     }),
