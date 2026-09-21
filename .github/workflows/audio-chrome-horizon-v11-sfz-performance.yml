@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends git cmake ninja-build g++ libsndfile1-dev libsamplerate0-dev libfftw3-dev pkg-config ffmpeg python3-pip unzip unrar
+          sudo apt-get install -y --no-install-recommends git cmake ninja-build g++ libsndfile1-dev libsamplerate0-dev libfftw3-dev pkg-config ffmpeg python3-pip python3-tk unzip unrar
           python3 -m pip install --break-system-packages -q gdown mido soundfile scipy numpy
           python3 -m pip install --break-system-packages -q --index-url https://download.pytorch.org/whl/cpu torch
           python3 -m pip install --break-system-packages -q neural-amp-modeler==0.12.0
