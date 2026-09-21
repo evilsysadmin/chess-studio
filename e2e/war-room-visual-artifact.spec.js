@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
@@ -335,7 +335,12 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  // Legacy desktop can take longer than the mobile/v2 captures to settle under
+  // headless SwiftShader. Gate first on the semantic game state, as the other
+  // War Room E2Es do, then confirm the screen wrapper rather than treating a
+  // slow renderer mount as a failed game launch.
+  await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 15_000 });
 
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
