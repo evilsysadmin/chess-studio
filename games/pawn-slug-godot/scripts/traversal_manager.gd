@@ -175,13 +175,16 @@ func _draw_pits() -> void:
         # mouth is deliberately irregular so the hazard reads as authored
         # terrain rather than a black rectangle cut out of the floor.
         var rim_points := PackedVector2Array()
-        var teeth := maxi(4, int(round(width / 30.0)))
+        var rim_notches: Array[float] = [-3.0, 4.0, 0.0, 6.0, -1.0]
+        var teeth: int = maxi(4, int(round(width / 30.0)))
         for point_index in range(teeth + 1):
-            var phase := float(point_index) / float(teeth)
-            var notch := [-3.0, 4.0, 0.0, 6.0, -1.0][point_index % 5]
+            var phase: float = float(point_index) / float(teeth)
+            var notch: float = rim_notches[point_index % rim_notches.size()]
             rim_points.append(Vector2(x + width * phase, _floor_y + notch))
 
-        var mouth := PackedVector2Array(rim_points)
+        var mouth := PackedVector2Array()
+        for rim_point in rim_points:
+            mouth.append(rim_point)
         mouth.append(Vector2(x + width + 4.0, _world_size.y + 4.0))
         mouth.append(Vector2(x - 4.0, _world_size.y + 4.0))
         draw_colored_polygon(mouth, void_color)
@@ -192,8 +195,8 @@ func _draw_pits() -> void:
         if _theme == "harbor_dusk":
             # Water glints make the gap immediately legible as a dock hazard.
             for wave_index in range(3):
-                var wave_y := _floor_y + 22.0 + float(wave_index) * 19.0
-                var inset := 10.0 + float(wave_index % 2) * 9.0
+                var wave_y: float = _floor_y + 22.0 + float(wave_index) * 19.0
+                var inset: float = 10.0 + float(wave_index % 2) * 9.0
                 draw_line(
                     Vector2(x + inset, wave_y),
                     Vector2(x + width - inset - 6.0, wave_y + 2.0),
@@ -203,21 +206,23 @@ func _draw_pits() -> void:
         elif _theme == "alpine_night":
             # Ice/rock facets sell a crevasse without changing its hit geometry.
             for shard_index in range(4):
-                var shard_x := x + 12.0 + float(shard_index) * maxf(24.0, (width - 24.0) / 4.0)
+                var shard_x: float = x + 12.0 + float(shard_index) * maxf(24.0, (width - 24.0) / 4.0)
+                var shard_dx: float = -10.0 if shard_index % 2 == 0 else 8.0
                 draw_line(
                     Vector2(shard_x, _floor_y + 5.0),
-                    Vector2(shard_x + (-10.0 if shard_index % 2 == 0 else 8.0), _floor_y + 42.0 + float(shard_index % 3) * 8.0),
+                    Vector2(shard_x + shard_dx, _floor_y + 42.0 + float(shard_index % 3) * 8.0),
                     Color(accent_color.r, accent_color.g, accent_color.b, 0.36),
                     2.0,
                 )
         elif _theme == "jungle_storm":
             # Hanging roots and faint mist distinguish the ravine from flat void.
             for root_index in range(4):
-                var root_x := x + 10.0 + float(root_index) * maxf(22.0, (width - 20.0) / 4.0)
-                var root_len := 24.0 + float((root_index * 13) % 26)
+                var root_x: float = x + 10.0 + float(root_index) * maxf(22.0, (width - 20.0) / 4.0)
+                var root_len: float = 24.0 + float((root_index * 13) % 26)
+                var root_dx: float = -5.0 if root_index % 2 == 0 else 5.0
                 draw_line(
                     Vector2(root_x, _floor_y + 2.0),
-                    Vector2(root_x + (-5.0 if root_index % 2 == 0 else 5.0), _floor_y + root_len),
+                    Vector2(root_x + root_dx, _floor_y + root_len),
                     Color(rim_color.r, rim_color.g, rim_color.b, 0.46),
                     2.0,
                 )
@@ -230,7 +235,7 @@ func _draw_pits() -> void:
         else:
             # Industrial shell craters/trenches get broken hazard-metal cues.
             for marker_index in range(0, maxi(1, int(width / 42.0))):
-                var marker_x := x + 10.0 + float(marker_index) * 42.0
+                var marker_x: float = x + 10.0 + float(marker_index) * 42.0
                 draw_line(
                     Vector2(marker_x, _floor_y + 1.0),
                     Vector2(minf(marker_x + 20.0, x + width - 5.0), _floor_y + 7.0),
