@@ -14,9 +14,9 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v18"
+const STRICT_RUNTIME_GENERATION := "v19"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v18/pistol/v18-85849b4873c0f88e.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v19/pistol/v19-0b8781557495b922.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
