@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -507,6 +508,94 @@ def validate_sequence(
     )
 
 
+@dataclass(frozen=True)
+class SocketQualityContract:
+    min_hand_separation_px: float = 6.0
+    max_hand_separation_px: float = 72.0
+    max_hand_to_anchor_px: float = 44.0
+    min_muzzle_forward_px: float = 12.0
+    max_anchor_delta_px: float = 10.0
+    max_angle_delta_degrees: float = 10.0
+    max_scale_delta: float = 0.15
+
+
+@dataclass(frozen=True)
+class SocketQualityResult:
+    ok: bool
+    errors: tuple[str, ...]
+
+
+def _point_distance(left: list[float], right: list[float]) -> float:
+    return math.hypot(float(right[0]) - float(left[0]), float(right[1]) - float(left[1]))
+
+
+def _angle_delta(left: float, right: float) -> float:
+    delta = (float(right) - float(left) + 180.0) % 360.0 - 180.0
+    return abs(delta)
+
+
+def validate_socket_sequence(
+    sockets: list[dict],
+    contract: SocketQualityContract = SocketQualityContract(),
+    *,
+    loop: bool = False,
+) -> SocketQualityResult:
+    errors: list[str] = []
+    if not sockets:
+        return SocketQualityResult(False, ("socket-sequence-empty",))
+
+    for index, socket in enumerate(sockets):
+        anchor = socket["weapon_anchor"]
+        rear = socket["rear_hand"]
+        front = socket["front_hand"]
+        muzzle = socket["muzzle"]
+
+        hand_span = _point_distance(rear, front)
+        if hand_span < contract.min_hand_separation_px:
+            errors.append(f"hand-span-too-small:{index}:{hand_span:.2f}")
+        if hand_span > contract.max_hand_separation_px:
+            errors.append(f"hand-span-too-large:{index}:{hand_span:.2f}")
+
+        rear_distance = _point_distance(rear, anchor)
+        front_distance = _point_distance(front, anchor)
+        if rear_distance > contract.max_hand_to_anchor_px:
+            errors.append(f"rear-hand-detached:{index}:{rear_distance:.2f}")
+        if front_distance > contract.max_hand_to_anchor_px:
+            errors.append(f"front-hand-detached:{index}:{front_distance:.2f}")
+
+        muzzle_forward = float(muzzle[0]) - float(anchor[0])
+        if muzzle_forward < contract.min_muzzle_forward_px:
+            errors.append(f"muzzle-not-forward:{index}:{muzzle_forward:.2f}")
+
+    pairs = [(index - 1, index) for index in range(1, len(sockets))]
+    if loop and len(sockets) > 1:
+        pairs.append((len(sockets) - 1, 0))
+
+    for left_index, right_index in pairs:
+        left = sockets[left_index]
+        right = sockets[right_index]
+        label = f"{left_index}->{right_index}"
+        anchor_delta = _point_distance(
+            left["weapon_anchor"],
+            right["weapon_anchor"],
+        )
+        if anchor_delta > contract.max_anchor_delta_px:
+            errors.append(f"socket-anchor-jump:{label}:{anchor_delta:.2f}")
+
+        angle_delta = _angle_delta(
+            left["angle_degrees"],
+            right["angle_degrees"],
+        )
+        if angle_delta > contract.max_angle_delta_degrees:
+            errors.append(f"socket-angle-jump:{label}:{angle_delta:.2f}")
+
+        scale_delta = abs(float(right["scale"]) - float(left["scale"]))
+        if scale_delta > contract.max_scale_delta:
+            errors.append(f"socket-scale-jump:{label}:{scale_delta:.4f}")
+
+    return SocketQualityResult(not errors, tuple(errors))
+
+
 class BankContractError(ValueError):
     pass
 
@@ -519,6 +608,22 @@ def _require_int(value: object, label: str, *, minimum: int = 0) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise BankContractError(f"{label} must be an integer >= {minimum}")
     return value
+
+
+def _require_number(
+    value: object,
+    label: str,
+    *,
+    minimum: float = 0.0,
+    strict: bool = False,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise BankContractError(f"{label} must be numeric")
+    number = float(value)
+    if (strict and number <= minimum) or (not strict and number < minimum):
+        op = ">" if strict else ">="
+        raise BankContractError(f"{label} must be {op} {minimum}")
+    return number
 
 
 def _validate_bank_contract(data: object) -> dict:
@@ -535,6 +640,48 @@ def _validate_bank_contract(data: object) -> dict:
     if composition not in {"integrated", "socketed-body", "weapon-layer"}:
         raise BankContractError(
             "composition must be integrated, socketed-body or weapon-layer"
+        )
+
+    socket_quality_data = data.get("socket_quality", {})
+    if not isinstance(socket_quality_data, dict):
+        raise BankContractError("socket_quality must be an object")
+    socket_quality = SocketQualityContract(
+        min_hand_separation_px=_require_number(
+            socket_quality_data.get("min_hand_separation_px", 6.0),
+            "socket_quality.min_hand_separation_px",
+        ),
+        max_hand_separation_px=_require_number(
+            socket_quality_data.get("max_hand_separation_px", 72.0),
+            "socket_quality.max_hand_separation_px",
+            strict=True,
+        ),
+        max_hand_to_anchor_px=_require_number(
+            socket_quality_data.get("max_hand_to_anchor_px", 44.0),
+            "socket_quality.max_hand_to_anchor_px",
+            strict=True,
+        ),
+        min_muzzle_forward_px=_require_number(
+            socket_quality_data.get("min_muzzle_forward_px", 12.0),
+            "socket_quality.min_muzzle_forward_px",
+        ),
+        max_anchor_delta_px=_require_number(
+            socket_quality_data.get("max_anchor_delta_px", 10.0),
+            "socket_quality.max_anchor_delta_px",
+            strict=True,
+        ),
+        max_angle_delta_degrees=_require_number(
+            socket_quality_data.get("max_angle_delta_degrees", 10.0),
+            "socket_quality.max_angle_delta_degrees",
+            strict=True,
+        ),
+        max_scale_delta=_require_number(
+            socket_quality_data.get("max_scale_delta", 0.15),
+            "socket_quality.max_scale_delta",
+        ),
+    )
+    if socket_quality.min_hand_separation_px >= socket_quality.max_hand_separation_px:
+        raise BankContractError(
+            "socket_quality hand separation minimum must be smaller than maximum"
         )
 
     cell = data.get("cell")
@@ -692,6 +839,18 @@ def _validate_bank_contract(data: object) -> dict:
                 f"animation {name} requires authored sockets for socketed-body composition"
             )
 
+        if composition == "socketed-body" and normalized_sockets is not None:
+            socket_result = validate_socket_sequence(
+                normalized_sockets,
+                socket_quality,
+                loop=loop,
+            )
+            if not socket_result.ok:
+                raise BankContractError(
+                    f"animation {name} socket quality failed: "
+                    + ",".join(socket_result.errors)
+                )
+
         normalized_animations.append(
             {
                 "name": name,
@@ -713,6 +872,7 @@ def _validate_bank_contract(data: object) -> dict:
         "actor": data["actor"],
         "weapon": data["weapon"],
         "composition": composition,
+        "socket_quality": asdict(socket_quality),
         "cell": {"width": width, "height": height},
         "parts": normalized_parts,
         "animations": normalized_animations,
@@ -836,6 +996,7 @@ def build_bank(
         "actor": contract["actor"],
         "weapon": contract["weapon"],
         "composition": contract["composition"],
+        "socket_quality": contract["socket_quality"],
         "cell": contract["cell"],
         "contract_sha256": _sha256_file(contract_path),
         "parts": manifest_parts,
