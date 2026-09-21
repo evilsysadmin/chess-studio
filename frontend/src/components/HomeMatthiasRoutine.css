@@ -126,6 +126,7 @@
     width: clamp(108px, 30vw, 148px) !important;
     min-width: 108px !important;
     min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr);
     padding: 0 !important;
     overflow: visible !important;
     border: 0 !important;
@@ -137,6 +138,8 @@
   .illustrated-home__matthias-portrait {
     display: block !important;
     width: 100% !important;
+    min-width: 100%;
+    justify-self: stretch;
     aspect-ratio: 4 / 5;
     margin: 0 !important;
   }
