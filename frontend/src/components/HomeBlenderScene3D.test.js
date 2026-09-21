@@ -452,7 +452,7 @@ describe('HomeBlenderScene3D live flame animation', () => {
     it('makes the tip hotter (more green) than the base', () => {
       const { base, tip } = HOME_BLENDER_FLAME_GRADIENT;
       expect(tip[1]).toBeGreaterThan(base[1] * 1.3);
-      expect(tip[2]).toBeGreaterThanOrEqual(base[2] * 0.5);
+      expect(tip[2]).toBeLessThan(base[2]);
     });
 
     it('injects the gradient into the shader without dropping the emissive chunk', () => {
