@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -360,6 +361,149 @@ def normalize_frame(
     if not result.ok:
         raise GeometryError("geometry:" + ",".join(result.errors))
     return out
+
+
+@dataclass(frozen=True)
+class TemporalContract:
+    expected_frames: int
+    max_foot_delta_px: float = 6.0
+    max_centroid_delta_px: float = 10.0
+    max_height_delta_px: float = 8.0
+    max_width_delta_px: float = 16.0
+    max_area_ratio_delta: float = 0.20
+    allowed_hold_indices: tuple[int, ...] = ()
+    loop: bool = False
+
+
+@dataclass(frozen=True)
+class TemporalResult:
+    ok: bool
+    errors: tuple[str, ...]
+    frame_count: int
+    unique_frames: int
+
+
+def _body_temporal_metrics(
+    image: Image.Image,
+    alpha_threshold: int,
+) -> tuple[float, float, int, int, int] | None:
+    components = connected_components(image, alpha_threshold)
+    if not components:
+        return None
+    body = components[0]
+    left, top, right, bottom = body.bbox
+    return (
+        float(bottom),
+        float(body.centroid[0]),
+        bottom - top,
+        right - left,
+        body.area,
+    )
+
+
+def validate_sequence(
+    frames: list[Image.Image],
+    contract: TemporalContract,
+    alpha_threshold: int = 8,
+) -> TemporalResult:
+    errors: list[str] = []
+    if len(frames) != contract.expected_frames:
+        errors.append(
+            f"frame-count:{len(frames)}!={contract.expected_frames}"
+        )
+
+    rgba_frames = [frame.convert("RGBA") for frame in frames]
+    hashes = [
+        hashlib.sha256(frame.tobytes()).hexdigest()
+        for frame in rgba_frames
+    ]
+    seen: dict[str, int] = {}
+    allowed_holds = set(contract.allowed_hold_indices)
+
+    for index, digest in enumerate(hashes):
+        if digest in seen and index not in allowed_holds:
+            errors.append(f"duplicate-frame:{index}=={seen[digest]}")
+        seen.setdefault(digest, index)
+
+    metrics = [
+        _body_temporal_metrics(frame, alpha_threshold)
+        for frame in rgba_frames
+    ]
+    for index, metric in enumerate(metrics):
+        if metric is None:
+            errors.append(f"empty-frame:{index}")
+
+    pairs = [
+        (index - 1, index)
+        for index in range(1, len(frames))
+    ]
+    if contract.loop and len(frames) > 1:
+        pairs.append((len(frames) - 1, 0))
+
+    for left_index, right_index in pairs:
+        left = metrics[left_index]
+        right = metrics[right_index]
+        if left is None or right is None:
+            continue
+
+        (
+            left_foot,
+            left_centroid,
+            left_height,
+            left_width,
+            left_area,
+        ) = left
+        (
+            right_foot,
+            right_centroid,
+            right_height,
+            right_width,
+            right_area,
+        ) = right
+        label = f"{left_index}->{right_index}"
+
+        if abs(right_foot - left_foot) > contract.max_foot_delta_px:
+            errors.append(
+                f"foot-jump:{label}:"
+                f"{abs(right_foot-left_foot):.2f}"
+            )
+        if (
+            abs(right_centroid - left_centroid)
+            > contract.max_centroid_delta_px
+        ):
+            errors.append(
+                f"centroid-jump:{label}:"
+                f"{abs(right_centroid-left_centroid):.2f}"
+            )
+        if (
+            abs(right_height - left_height)
+            > contract.max_height_delta_px
+        ):
+            errors.append(
+                f"height-jump:{label}:"
+                f"{abs(right_height-left_height)}"
+            )
+        if abs(right_width - left_width) > contract.max_width_delta_px:
+            errors.append(
+                f"width-jump:{label}:"
+                f"{abs(right_width-left_width)}"
+            )
+
+        area_delta = abs(right_area - left_area) / max(
+            1,
+            max(right_area, left_area),
+        )
+        if area_delta > contract.max_area_ratio_delta:
+            errors.append(
+                f"area-jump:{label}:{area_delta:.4f}"
+            )
+
+    return TemporalResult(
+        ok=not errors,
+        errors=tuple(errors),
+        frame_count=len(frames),
+        unique_frames=len(set(hashes)),
+    )
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
