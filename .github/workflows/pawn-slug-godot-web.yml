@@ -9,6 +9,7 @@ on:
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
+      - scripts/art/sprite_forge_contract.schema.json
       - docs/pawnslug-sprites.md
       - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
@@ -27,6 +28,7 @@ on:
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
+      - scripts/art/sprite_forge_contract.schema.json
       - docs/pawnslug-sprites.md
       - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
