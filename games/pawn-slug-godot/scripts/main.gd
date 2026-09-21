@@ -1764,6 +1764,7 @@ func _update_enemy_ai_plan(enemy: Dictionary, stats: Dictionary, standoff: float
         "ladder_route": ladder_route,
         "grenade_evade": grenade_evade,
         "role": String(enemy.get("role", "")),
+        "enemy_type": String(enemy.get("type", "pawn")),
         "retreat_ratio": SOLDIER_RETREAT_RATIO,
         "comfort_margin": SOLDIER_COMFORT_MARGIN,
         "advance_margin": SOLDIER_ADVANCE_MARGIN,
@@ -1890,16 +1891,21 @@ func _update_enemies(delta: float) -> void:
         if can_act:
             var speed := float(stats["speed"])
             var standoff := _enemy_weapon_standoff(enemy, stats)
+            if speed > 0.0:
+                _update_enemy_ai_plan(enemy, stats, standoff, delta)
             if type == "knight":
                 var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta)
                 if ladder_scale >= 0.0:
                     movement_speed_scale = ladder_scale
                 else:
-                    var move_direction := 1.0 if distance_x > 0.0 else -1.0
+                    var target_x := float(enemy.get("ai_target_x", float(player.global_position.x)))
+                    var target_distance_x := target_x - float(enemy["x"])
+                    var target_abs_distance := absf(target_distance_x)
+                    var move_direction := 1.0 if target_distance_x > 0.0 else -1.0
                     var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
-                    if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+                    if target_abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
                         knight_speed_scale = KNIGHT_SPRINT_MULTIPLIER
-                    elif abs_distance > standoff:
+                    elif target_abs_distance > standoff:
                         knight_speed_scale = 1.0
                     if not bool(enemy.get("on_ground", true)):
                         move_direction = float(enemy.get("air_direction", move_direction))
@@ -1924,7 +1930,7 @@ func _update_enemies(delta: float) -> void:
                         movement_speed_scale = knight_speed_scale
                     if (
                         float(enemy["leap_cooldown"]) <= 0.0
-                        and abs_distance < KNIGHT_LEAP_RANGE
+                        and target_abs_distance < KNIGHT_LEAP_RANGE
                         and bool(enemy["on_ground"])
                         and String(enemy.get("traversal_mode", "ground")) == "ground"
                     ):
@@ -1939,7 +1945,6 @@ func _update_enemies(delta: float) -> void:
                             KNIGHT_LEAP_COOLDOWN_MAX,
                         )
             elif speed > 0.0:
-                _update_enemy_ai_plan(enemy, stats, standoff, delta)
                 movement_speed_scale = _update_soldier_movement(
                     enemy,
                     stats,
