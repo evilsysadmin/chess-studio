@@ -11,7 +11,10 @@ export const FRONTEND_CSP = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-src 'self' https://assets.chess-studio.shadowops.dpdns.org",
-  "script-src 'self' 'wasm-unsafe-eval'",
+  // Cloudflare Web Analytics is provisioned on purpose (scripts/cloudflare_staging_pages.py)
+  // and Cloudflare injects its beacon from this single host. Without it the beacon is
+  // blocked on every page load and the analytics we configured never report.
+  "script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com",
   "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
