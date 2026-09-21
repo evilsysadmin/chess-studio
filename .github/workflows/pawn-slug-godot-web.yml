@@ -6,6 +6,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
@@ -19,6 +20,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
@@ -103,12 +105,17 @@ jobs:
           set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/player_runtime_smoke.gd
+          "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_initial_v4_atlas_smoke.gd
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
       - name: Enemy roster composition gate
         run: |
           python3 -S scripts/pawn_slug_enemy_roster_gate.py self-test
           python3 -S scripts/pawn_slug_enemy_roster_gate.py
+      - name: Initial enemy v4 PNG contract
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+          python3 scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded
