@@ -177,6 +177,40 @@
         "socketed-body",
         "weapon-layer"
       ]
+    },
+    "socket_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_hand_separation_px": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_hand_separation_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_hand_to_anchor_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "min_muzzle_forward_px": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_anchor_delta_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_angle_delta_degrees": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_scale_delta": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
     }
   },
   "$defs": {
