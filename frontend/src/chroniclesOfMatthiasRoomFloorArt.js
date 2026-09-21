@@ -6,7 +6,7 @@ import { createChroniclesStoneSurfaceTexture } from './chroniclesStoneSurfaceTex
 const ROOT_NAME = 'chronicles-tactics-room-floor-detail';
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 
-export const CHRONICLES_TACTICS_ROOM_FLOOR_VERSION = 1;
+export const CHRONICLES_TACTICS_ROOM_FLOOR_VERSION = 2;
 
 const SIDE = Object.freeze({
   north: Object.freeze({ nx: 0, nz: -1, yaw: 0 }),
@@ -121,12 +121,12 @@ function buildCurbs(root, edges, material, { coarsePointer }) {
   const dummy = new THREE.Object3D();
   edges.forEach((edge, index) => {
     setBox(mesh, index, dummy, {
-      x: edge.x + edge.nx * 0.06,
-      y: 0.055,
-      z: edge.z + edge.nz * 0.06,
-      sx: 1.08,
-      sy: 0.065,
-      sz: 0.13,
+      x: edge.x + edge.nx * 0.055,
+      y: 0.07,
+      z: edge.z + edge.nz * 0.055,
+      sx: 1.12,
+      sy: 0.09,
+      sz: 0.18,
       yaw: edge.yaw,
     });
   });
@@ -139,23 +139,23 @@ function addGalleryFork(root, anchor, index, material, { coarsePointer }) {
   const group = new THREE.Group();
   group.name = `chronicles-room-gallery-floor-fork-${index}`;
   group.position.set(
-    anchor.x + anchor.nx * 0.29,
-    0.04,
-    anchor.z + anchor.nz * 0.29,
+    anchor.x + anchor.nx * 0.34,
+    0.055,
+    anchor.z + anchor.nz * 0.34,
   );
   group.rotation.y = anchor.yaw;
 
-  const stem = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.025, 0.62), material);
-  stem.position.z = 0.03;
+  const stem = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.035, 0.78), material);
+  stem.position.z = 0.04;
   stem.castShadow = !coarsePointer;
 
-  const left = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.34), material);
-  left.position.set(-0.105, 0.004, -0.19);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.035, 0.42), material);
+  left.position.set(-0.14, 0.004, -0.24);
   left.rotation.y = 0.48;
   left.castShadow = !coarsePointer;
 
   const right = left.clone();
-  right.position.x = 0.105;
+  right.position.x = 0.14;
   right.rotation.y = -0.48;
 
   group.add(stem, left, right);
@@ -166,33 +166,33 @@ function addMenagerieGrate(root, anchor, index, iron, ember, { coarsePointer }) 
   const group = new THREE.Group();
   group.name = `chronicles-room-menagerie-floor-grate-${index}`;
   group.position.set(
-    anchor.x + anchor.nx * 0.31,
-    0.035,
-    anchor.z + anchor.nz * 0.31,
+    anchor.x + anchor.nx * 0.36,
+    0.05,
+    anchor.z + anchor.nz * 0.36,
   );
   group.rotation.y = anchor.yaw;
 
-  const underglow = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.012, 0.42), ember);
-  underglow.position.y = -0.006;
+  const underglow = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.016, 0.5), ember);
+  underglow.position.y = -0.004;
   underglow.castShadow = false;
   group.add(underglow);
 
-  const frameA = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.03, 0.055), iron);
-  frameA.position.z = -0.24;
+  const frameA = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.045, 0.065), iron);
+  frameA.position.z = -0.28;
   const frameB = frameA.clone();
-  frameB.position.z = 0.24;
+  frameB.position.z = 0.28;
   group.add(frameA, frameB);
 
-  [-0.34, 0.34].forEach((x) => {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.03, 0.54), iron);
+  [-0.4, 0.4].forEach((x) => {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.045, 0.62), iron);
     side.position.x = x;
     group.add(side);
   });
 
   const barCount = coarsePointer ? 3 : 5;
   for (let bar = 0; bar < barCount; bar += 1) {
-    const x = barCount === 1 ? 0 : -0.25 + (bar * 0.5) / (barCount - 1);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.46), iron);
+    const x = barCount === 1 ? 0 : -0.3 + (bar * 0.6) / (barCount - 1);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.045, 0.54), iron);
     rail.position.x = x;
     rail.castShadow = !coarsePointer;
     group.add(rail);
@@ -225,10 +225,12 @@ export function installChroniclesTacticsRoomFloorArt(scene, {
   root.userData.chroniclesArtCancel = () => surfaceTexture.dispose();
 
   const curb = ownedMaterial({
-    color: scenePlan?.sceneStyle?.palette?.wallTrim ?? 0x24211e,
+    color: scenePlan?.sceneStyle?.palette?.wall?.[1]
+      ?? scenePlan?.sceneStyle?.palette?.wall?.[0]
+      ?? 0x4a443d,
     map: surfaceTexture,
-    roughness: 0.92,
-    metalness: 0.02,
+    roughness: 0.88,
+    metalness: 0.025,
   });
   buildCurbs(root, plan.edges, curb, { coarsePointer });
 
@@ -237,8 +239,8 @@ export function installChroniclesTacticsRoomFloorArt(scene, {
       color: scenePlan?.sceneStyle?.palette?.metal ?? 0x8b7445,
       roughness: 0.42,
       metalness: 0.66,
-      emissive: 0x121a17,
-      emissiveIntensity: 0.08,
+      emissive: 0x2a2418,
+      emissiveIntensity: coarsePointer ? 0.12 : 0.18,
     });
     plan.features.forEach((anchor, index) => {
       addGalleryFork(root, anchor, index, metal, { coarsePointer });
@@ -250,11 +252,11 @@ export function installChroniclesTacticsRoomFloorArt(scene, {
       metalness: 0.58,
     });
     const ember = ownedMaterial({
-      color: 0x4f2517,
-      roughness: 0.7,
+      color: 0x6a2b18,
+      roughness: 0.66,
       metalness: 0.04,
-      emissive: 0x8f2d16,
-      emissiveIntensity: coarsePointer ? 0.42 : 0.62,
+      emissive: 0xb63f1d,
+      emissiveIntensity: coarsePointer ? 0.58 : 0.92,
     });
     plan.features.forEach((anchor, index) => {
       addMenagerieGrate(root, anchor, index, iron, ember, { coarsePointer });
