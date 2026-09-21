@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { clearCombatSession, hasCombatSession, hasCombatSessionMarker, loadCombatSession, saveCombatSession } from './combatSession.js';
-import { CPU_DELAY_MS, buildCombatSessionSnapshot } from './combatControllerSupport.js';
+import { CPU_DELAY_MS } from './combatControllerSupport.js';
+import { buildCombatBattleState } from './combatBattleState.js';
 
 export function loadCombatSessionBootstrap(combatSessionId, loader = loadCombatSession) {
   return loader(combatSessionId) || null;
@@ -72,7 +73,7 @@ export function useCombatSessionPersistence({
     nextBossHp = bossHpRef.current,
     nextBossPhase = bossPhase,
   } = {}) {
-    return saveBattleSnapshot(buildCombatSessionSnapshot({
+    return saveBattleSnapshot(buildCombatBattleState({
       fen: nextFen,
       registry: nextRegistry,
       humanColor,
