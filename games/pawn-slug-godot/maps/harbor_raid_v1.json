@@ -910,7 +910,7 @@
     {
       "x": 4042,
       "top_y": 318,
-      "bottom_y": 610,
+      "bottom_y": 404,
       "w": 30,
       "exit_dir": 1,
       "kind": "dock_ladder"
