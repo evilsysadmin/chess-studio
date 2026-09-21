@@ -51,6 +51,12 @@ export default defineConfig({
     // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
     // suite separada con serviceWorkers habilitado.
     serviceWorkers: 'block',
+    // Functional journeys validate state and interaction, not animation timing.
+    // The illustrated/3D Home intentionally moves interactive elements, which
+    // makes Playwright's actionability "stable" check flaky on hosted CI.
+    // Exercise the app's real reduced-motion contract for functional E2E while
+    // preserving full motion in the dedicated visual-artifact pipeline.
+    reducedMotion: visualArtifactMode ? 'no-preference' : 'reduce',
     // Switching 2D↔3D remounts WebGL while the settings control is still
     // settling. The dedicated War Room helpers already budget 12 s for the
     // opening action; use the same ceiling for the close/actionability phase.
