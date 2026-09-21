@@ -26,8 +26,8 @@ _index_ready = False
 def identity_key(username: str, secret: str) -> str:
     normalized = str(username or "").strip().lower()
     key = str(secret or "").encode("utf-8")
-    if not normalized or not key:
-        raise ValueError("username y secret son obligatorios")
+    if not key:
+        raise ValueError("secret es obligatorio")
     message = b"chess-studio:auth-login-identity\x00" + normalized.encode("utf-8")
     return hmac.new(key, message, hashlib.sha256).hexdigest()[:32]
 
