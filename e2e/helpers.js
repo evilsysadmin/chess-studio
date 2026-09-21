@@ -427,6 +427,7 @@ export async function mockApi(page, {
 
 export async function login(page) {
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
   }
   await page.goto('./');
