@@ -638,6 +638,10 @@ def add_room(static, mats):
              mats["brass"], static, vertices=18)
     # Give the rear desk furniture weight at the runtime camera distance.
     cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["trim_wood"], static, bevel=0.045)
+    # One restrained dark-brass inlay gives the command desk a readable front
+    # edge at gameplay distance without adding another bright focal point.
+    cube("WR_DESK_apron_inlay", (0, 5.395, 1.91), (1.42, 0.020, 0.035),
+         mats["brass_dark"], static, bevel=0.012)
     cube("WR_DESK_center_shadow", (0, 6.16, 1.33), (0.72, 0.12, 0.55), mats["wall_recess"], static, bevel=0.04)
     for x in (-1.48, 1.48):
         cube(f"WR_DESK_pedestal_{x}", (x, 6.18, 1.27), (0.35, 0.43, 0.78), mats["trim_wood"], static, bevel=0.06)
