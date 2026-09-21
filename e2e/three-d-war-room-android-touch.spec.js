@@ -114,24 +114,12 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-async function open3DFromAppearance(page) {
-  const board3d = page.locator('[data-board3d-war-room="true"]');
-  if (await board3d.isVisible().catch(() => false)) return;
-  try {
-    await board3d.waitFor({ state: 'visible', timeout: 8_000 });
-    return;
-  } catch {
-    // Fall back to Appearance only when the canonical lazy 3D mount did not arrive.
-  }
-
-  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
-  await dialog.getByRole('radio', { name: /3D$/ }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  await expect(board3d).toBeVisible({ timeout: 30_000 });
+async function ensureQuickMatch3D(page, quickDialog) {
+  const renderer = quickDialog.getByRole('group', { name: 'Tipo de tablero' });
+  const threeD = renderer.getByRole('button', { name: '3D', exact: true });
+  await expect(threeD).toBeVisible();
+  if (await threeD.getAttribute('aria-pressed') !== 'true') await threeD.click();
+  await expect(threeD).toHaveAttribute('aria-pressed', 'true');
 }
 
 async function openWarRoomAppearance(page) {
@@ -234,10 +222,11 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickDialog).toBeVisible();
+  await ensureQuickMatch3D(page, quickDialog);
+  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-
-  await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
@@ -343,10 +332,9 @@ test('War Room · orientación negra conserva back rank, color, raycast y navega
   const black = quickDialog.getByRole('radio', { name: 'Negras', exact: true });
   await black.click();
   await expect(black).toHaveAttribute('aria-checked', 'true');
+  await ensureQuickMatch3D(page, quickDialog);
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-
-  await open3DFromAppearance(page);
   let board3d = page.locator('[data-board3d-war-room="true"]');
   let canvas = page.locator('.board3d-main-canvas');
   await expect(board3d).toBeVisible({ timeout: 30_000 });
