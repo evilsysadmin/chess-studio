@@ -4,6 +4,10 @@ const MEMORY_SECONDS := 1.60
 const HEARD_MEMORY_SECONDS := 0.90
 const DECISION_INTERVAL := 0.26
 const INTENT_COMMIT_SECONDS := 0.44
+const MIN_DECISION_INTERVAL := 0.16
+const MAX_DECISION_INTERVAL := 0.38
+const MIN_COMMIT_SECONDS := 0.28
+const MAX_COMMIT_SECONDS := 0.66
 
 const INTENT_HOLD := "hold"
 const INTENT_SHOOT := "shoot"
@@ -92,6 +96,48 @@ static func score_intents(context: Dictionary) -> Dictionary:
     if not visible:
         scores[INTENT_HOLD] = 12.0
     return scores
+
+static func decision_interval_for(enemy_type: String, role: String = "") -> float:
+    var interval := DECISION_INTERVAL
+    match enemy_type:
+        "scout":
+            interval = 0.18
+        "commando":
+            interval = 0.21
+        "knight":
+            interval = 0.22
+        "queen":
+            interval = 0.24
+        "shield":
+            interval = 0.31
+        "grenadier":
+            interval = 0.34
+    if role == "support":
+        interval += 0.03
+    return clampf(interval, MIN_DECISION_INTERVAL, MAX_DECISION_INTERVAL)
+
+static func commit_seconds_for(enemy_type: String, intent: String, role: String = "") -> float:
+    var seconds := INTENT_COMMIT_SECONDS
+    match enemy_type:
+        "scout":
+            seconds = 0.30
+        "commando":
+            seconds = 0.37
+        "knight":
+            seconds = 0.36
+        "queen":
+            seconds = 0.42
+        "shield":
+            seconds = 0.58
+        "grenadier":
+            seconds = 0.61
+    if role == "support":
+        seconds += 0.04
+    if intent == INTENT_TRAVERSE:
+        seconds = maxf(seconds, 0.48)
+    elif intent == INTENT_EVADE:
+        seconds = 0.12
+    return clampf(seconds, MIN_COMMIT_SECONDS, MAX_COMMIT_SECONDS) if intent != INTENT_EVADE else seconds
 
 static func choose_intent(context: Dictionary) -> String:
     var scores := score_intents(context)
