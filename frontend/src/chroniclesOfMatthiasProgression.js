@@ -14,7 +14,7 @@ import {
 } from './chronicles/chroniclesCharacterBuilds.js';
 
 export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progression-v1';
-export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactics-run-v1';
+export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactics-run-v2';
 export const CHRONICLES_PROGRESSION_VERSION = 1;
 export const CHRONICLES_MAX_LEVEL = 12;
 export const CHRONICLES_ATTRIBUTE_CAP = 5;
