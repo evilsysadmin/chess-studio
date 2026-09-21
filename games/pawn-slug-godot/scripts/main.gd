@@ -98,6 +98,8 @@ const BISHOP_SUPPRESSION_LANES := [
 ]
 const PLAYER_STANDING_HEIGHT := 84.0
 const PLAYER_CROUCH_HEIGHT := 48.0
+const LOW_COVER_MAX_HEIGHT := 64.0
+const LOW_COVER_PROJECTILE_CLEARANCE := 16.0
 const PLATFORM_ONE_WAY_MARGIN := 7.0
 const MOVEMENT_HINT_LOOKAHEAD := 180.0
 const MOVEMENT_HINT_TRAIL := 36.0
@@ -396,6 +398,38 @@ func _point_hits_stage_geometry(point: Vector2) -> bool:
         if rect.has_point(point):
             return true
     return false
+
+func _point_hits_player_projectile_geometry(point: Vector2, explosive: bool) -> bool:
+    # Low floor clutter should not eat a standing pistol/SMG round just because
+    # the muzzle grazes the top few pixels of a crate. Keep the real physics
+    # body for movement, crouched/low shots and hostile cover, but give normal
+    # player bullets a small arcade clearance over genuinely low cover.
+    if explosive:
+        return _point_hits_stage_geometry(point)
+    if point.y >= _floor_y:
+        return true
+    for rect in _platforms:
+        if rect.has_point(point):
+            return true
+    for rect in _obstacles:
+        if not rect.has_point(point):
+            continue
+        if _player_projectile_clears_low_cover(point, rect):
+            continue
+        return true
+    for rect in _dynamic_platform_rects():
+        if rect.has_point(point):
+            return true
+    for rect in _destructible_geometry_rects():
+        if rect.has_point(point):
+            return true
+    return false
+
+func _player_projectile_clears_low_cover(point: Vector2, rect: Rect2) -> bool:
+    if rect.size.y > LOW_COVER_MAX_HEIGHT:
+        return false
+    var clearance := minf(LOW_COVER_PROJECTILE_CLEARANCE, rect.size.y * 0.34)
+    return point.y <= rect.position.y + clearance
 
 func _pickup_spawn_rect(position: Vector2) -> Rect2:
     return Rect2(position - PICKUP_SPAWN_SIZE * 0.5, PICKUP_SPAWN_SIZE)
@@ -1418,7 +1452,7 @@ func _update_projectiles(delta: float) -> void:
             projectiles.remove_at(index)
             continue
 
-        if _point_hits_stage_geometry(position):
+        if _point_hits_player_projectile_geometry(position, bool(projectile["explosive"])):
             if bool(projectile["explosive"]):
                 _explode_player_weapon(position, PANZER_BLAST_RADIUS, int(projectile["damage"]))
             else:
