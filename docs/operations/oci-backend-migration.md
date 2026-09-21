@@ -1,6 +1,6 @@
 # OCI backend migration runbook
 
-Status: **preparación, no cutover**. Este documento deja el camino reproducible sin cambiar todavía la producción de Render.
+Status: **migración de producción aún no ejecutada**. OCI ya es el backend canónico de **staging**; este runbook se refiere únicamente al eventual cutover de producción desde Render a OCI y no describe el release diario de staging.
 
 ## Objetivo
 

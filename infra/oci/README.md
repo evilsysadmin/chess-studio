@@ -1,6 +1,6 @@
 # OCI staging/lab
 
-**Producción sigue en Render. OCI es staging/laboratorio experimental hasta superar los drills de shadow.**
+**OCI es el backend canónico de staging. Producción sigue en Render salvo promoción explícita mediante el selector versionado de producción; K3s y el laboratorio Terraform continúan siendo experimentales/reversibles.**
 
 La infraestructura OCI se divide deliberadamente por responsabilidad:
 
@@ -12,7 +12,7 @@ La infraestructura OCI se divide deliberadamente por responsabilidad:
 
 ## Primer encendido desde GitHub Actions
 
-La consola OCI se usa una vez para crear la API signing key. Después, la ruta normal es `.github/workflows/oci-staging-lab.yml`.
+La consola OCI se usa una vez para crear la API signing key. Para provisioning/recovery del laboratorio se usa `.github/workflows/oci-staging-lab.yml`; el release normal de aplicación llega por la cadena `Main · admission` → `Deploy to staging`, que consume el runtime OCI ya instalado.
 
 Secrets de repositorio obligatorios:
 
@@ -33,7 +33,7 @@ Secuencia de adopción:
 4. `apply`: crea el staging shadow desde el SHA inmutable seleccionado, sólo si ese SHA sigue siendo el `main` actual.
 5. Validar arranque, servicio, persistencia separada de producción y observabilidad del shadow.
 6. `destroy` + `apply` dos veces, demostrando recuperación sin abrir la consola.
-7. Sólo después de esos drills se puede plantear retirar Render staging. **Render producción no entra en esta decisión.**
+7. Estos drills quedan como prueba de recovery de la infraestructura. **Render staging ya está retirado del release canónico; Render producción sigue siendo una decisión independiente.**
 
 No hay auto-apply por push a `main`. GitHub Actions orquesta; Terraform provisiona.
 
@@ -100,16 +100,17 @@ El workflow obtiene el Object Storage namespace mediante el provider Terraform y
 - cambios IaC puros ejecutan OCI readiness pero no despiertan Trivy/Docker/Compose.
 - futuras capas K3s/GitOps no pueden introducir builders A1 temporales, Custom Images facturables ni otros recursos OCI fuera del presupuesto zero-cost sin cambiar explícitamente este contrato.
 
-## Gate para sustituir Render staging
+## Estado operativo actual
 
-OCI permanece en **shadow** hasta demostrar, con la cuenta real:
+OCI ya sirve el backend canónico de staging. El release normal **no** ejecuta Terraform ni depende de Render staging: despliega/reconcilia el runtime instalado sobre el SHA acreditado.
 
-- `probe` verde con la identidad configurada en GitHub;
+Los antiguos drills de shadow siguen siendo requisitos útiles de disaster recovery y cambios de infraestructura:
+
+- `probe` verde con la identidad configurada;
 - bootstrap remoto zero-drift;
-- `plan` y `apply` verdes;
-- backend de staging usable con datos/secrets separados de producción;
-- observabilidad y recovery suficientes para diagnosticar una A1 reclamada;
-- dos ciclos consecutivos `destroy → apply` verdes sin abrir la consola;
-- reconstrucción satisfactoria tras simular o sufrir pérdida de VM.
+- `plan/apply` reproducibles cuando se cambia infraestructura;
+- datos/secrets de staging separados de producción;
+- observabilidad suficiente para diagnosticar una A1 perdida/reclamada;
+- reconstrucción del host sin depender de intervención manual en consola.
 
-Hasta cumplir ese gate, Render staging sigue siendo la referencia operativa. Producción permanece en Render en cualquier caso.
+Producción permanece en Render salvo cambio explícito del selector versionado de producción y su correspondiente promoción/rollback.

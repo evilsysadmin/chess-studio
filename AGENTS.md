@@ -27,18 +27,21 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - Cuando todos los required checks estén verdes, pasar la PR a Ready for review y habilitar/verificar native automerge.
 - Tras merge, comprobar los workflows posteriores relevantes (main admission, staging/deploy, smoke checks) antes de cerrar la iteración.
 - Mantener las llamadas a GitHub pequeñas y dirigidas: metadata, checks, SHA, commit/PR. Evitar diffs enormes, lecturas repetidas y blobs pesados cuando el trabajo pueda hacerse sobre artefactos locales/cacheados.
+- Si el conector GitHub/git no aparece inicialmente, **redescubrirlo antes de declarar el repositorio inaccesible**. No sustituir de entrada el flujo normal por fetches web, clones repetidos o llamadas grandes.
 
 ## Enrutado por tarea
 
 | Tarea | Documentos que hay que leer |
 | --- | --- |
 | Sprites, frames, atlases o animaciones de Pawn Slug/Godot | [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
+| Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md) |
-| Home / Castillo / lenguaje visual | [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), experimentos de Castillo bajo `docs/experiments/` |
+| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
+| Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
-| OCI / staging / secretos / runtime | [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
-| Grafana / observabilidad | [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
+| OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
+| Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
 | CI, workflows, entrega y automerge | [`.github/workflows/README.md`](.github/workflows/README.md), [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) |
 | Contexto de producto y arranque local | [`README.md`](README.md) |
 | Historia antigua de releases | [`docs/archive/README-release-diary.md`](docs/archive/README-release-diary.md) |
@@ -54,6 +57,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Skills / contratos operativos
 
 - [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md) — generación, normalización, validación y entrega de spritesheets 2D compatibles con Godot.
+- [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) — contrato del export Web, bridge, input real y smoke determinista de Pawn Slug.
+- [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md) — iteración Home Blender → GLB → R2 → captura runtime.
+- [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md) — exact-SHA staging, generaciones superseded y diagnóstico seguro de observabilidad.
 
 ### Diseño, producto y experimentos
 
@@ -68,6 +74,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Operaciones y runtime
 
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
+- [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
 - [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md)
 - [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md)
