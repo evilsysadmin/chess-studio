@@ -55,7 +55,7 @@
         "name": "event",
         "label": "Evento",
         "type": "custom",
-        "query": "todos : .*,http_request : http_request,auth_login_failed : auth_login_failed,frontend_telemetry : frontend_telemetry",
+        "query": "todos : .*,http_request : http_request,auth_login_failed : auth_login_failed,auth_ip_ban_activated : auth_ip_ban_activated,frontend_telemetry : frontend_telemetry",
         "current": {
           "text": "todos",
           "value": ".*"
@@ -175,7 +175,7 @@
   "timezone": "browser",
   "title": "Chess Studio · Log Explorer",
   "uid": "chess-studio-log-explorer",
-  "version": 2,
+  "version": 3,
   "weekStart": "monday",
   "panels": [
     {
