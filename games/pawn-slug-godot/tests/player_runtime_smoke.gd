@@ -2,6 +2,7 @@ extends SceneTree
 
 const PlayerProbe := preload("res://tests/player_probe.gd")
 const MainRuntime := preload("res://scripts/main.gd")
+const EnemyUtilityAI := preload("res://scripts/enemy_utility_ai.gd")
 const TraversalManager := preload("res://scripts/traversal_manager.gd")
 const EPSILON := 0.01
 
@@ -251,6 +252,76 @@ func _run() -> void:
         var right_shape := right_floor.get_node("CollisionShape2D") as CollisionShape2D
         _expect(absf(left_shape.shape.size.x - 420.0) <= EPSILON, "segmento izquierdo termina al borde del pozo")
         _expect(absf(right_shape.shape.size.x - 260.0) <= EPSILON, "segmento derecho empieza tras el pozo")
+    # Utility AI probe: bounded intent selection must prefer traversal over
+    # staring at blocked geometry, remember a target briefly, and preserve
+    # deliberate arcade breathing room.
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": true,
+            "visible": false,
+            "distance": 210.0,
+            "standoff": 260.0,
+            "vertical_gap": 0.0,
+            "vertical_threshold": 64.0,
+            "blocker_ahead": true,
+            "pit_ahead": false,
+            "ladder_route": false,
+            "grenade_evade": 0.0,
+            "role": "assaulter",
+            "retreat_ratio": 0.64,
+            "comfort_margin": 24.0,
+            "advance_margin": 80.0,
+        }) == EnemyUtilityAI.INTENT_TRAVERSE,
+        "utility AI prefiere atravesar un obstáculo a quedarse mirando",
+    )
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": true,
+            "visible": true,
+            "distance": 265.0,
+            "standoff": 260.0,
+            "vertical_gap": 0.0,
+            "vertical_threshold": 64.0,
+            "blocker_ahead": false,
+            "pit_ahead": false,
+            "ladder_route": false,
+            "grenade_evade": 0.0,
+            "role": "support",
+            "retreat_ratio": 0.64,
+            "comfort_margin": 24.0,
+            "advance_margin": 80.0,
+        }) == EnemyUtilityAI.INTENT_SHOOT,
+        "utility AI puede mantener una posición de tiro razonable",
+    )
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": true,
+            "visible": true,
+            "distance": 260.0,
+            "standoff": 260.0,
+            "vertical_gap": 0.0,
+            "vertical_threshold": 64.0,
+            "blocker_ahead": false,
+            "pit_ahead": false,
+            "ladder_route": false,
+            "grenade_evade": -1.0,
+            "role": "support",
+            "retreat_ratio": 0.64,
+            "comfort_margin": 24.0,
+            "advance_margin": 80.0,
+        }) == EnemyUtilityAI.INTENT_EVADE,
+        "granada cercana interrumpe una intención normal con evasión urgente",
+    )
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": false,
+            "visible": false,
+            "distance": 999.0,
+            "standoff": 260.0,
+        }) == EnemyUtilityAI.INTENT_HOLD,
+        "sin percepción ni memoria el enemigo no rastrea telepáticamente",
+    )
+
     # Enemy traversal probe: mobile enemies should read authored geometry
     # instead of freezing below platforms or phasing through crates/pits.
     var enemy_probe = MainRuntime.new()
@@ -268,6 +339,11 @@ func _run() -> void:
             {"x": 700.0, "w": 180.0, "kind": "test_pit"},
         ],
     }
+    var pursuit_target := Node2D.new()
+    pursuit_target.name = "EnemyTraversalTarget"
+    pursuit_target.position = Vector2(340.0, 568.0)
+    enemy_probe.add_child(pursuit_target)
+    enemy_probe.player = pursuit_target
 
     # Low-cover ballistics probe: a standing-height normal round may skim the
     # top of a small crate, while low shots and explosives still hit geometry.
@@ -303,6 +379,82 @@ func _run() -> void:
     _expect(float(crate_enemy["vy"]) < 0.0, "salto enemigo aplica velocidad vertical ascendente")
     _expect(not bool(crate_enemy["on_ground"]), "salto enemigo abandona estado de suelo")
 
+    # Short-memory probe: acquire a visible target, then hide it behind the
+    # crate. The AI must continue toward the remembered point rather than
+    # snapping to Matthias' new hidden location.
+    pursuit_target.position = Vector2(165.0, 568.0)
+    var memory_enemy := {
+        "type": "pawn",
+        "x": 145.0,
+        "spawn_x": 145.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "alerted": true,
+        "role": "assaulter",
+        "ai_intent": EnemyUtilityAI.INTENT_HOLD,
+        "ai_decision_timer": 0.0,
+        "ai_commit_remaining": 0.0,
+        "ai_memory_remaining": 0.0,
+        "ai_last_target_x": 145.0,
+        "ai_last_target_foot_y": 610.0,
+        "hp": 34,
+    }
+    var memory_stats: Dictionary = enemy_probe.ENEMY_TYPES["pawn"]
+    enemy_probe._update_enemy_ai_plan(memory_enemy, memory_stats, 270.0, 0.05)
+    _expect(bool(memory_enemy["ai_visible"]), "utility AI adquiere a Matthias con LOS real")
+    var remembered_x := float(memory_enemy["ai_target_x"])
+    pursuit_target.position = Vector2(340.0, 568.0)
+    enemy_probe._update_enemy_ai_plan(memory_enemy, memory_stats, 270.0, 0.10)
+    _expect(not bool(memory_enemy["ai_visible"]), "utility AI detecta pérdida real de LOS tras la caja")
+    _expect(
+        absf(float(memory_enemy["ai_target_x"]) - remembered_x) <= EPSILON,
+        "memoria corta conserva la última posición vista en vez de hacer tracking oculto",
+    )
+    _expect(
+        float(memory_enemy["ai_memory_remaining"]) > 0.0,
+        "memoria corta sigue viva durante su ventana acotada",
+    )
+
+    var blocked_enemy := {
+        "type": "pawn",
+        "x": 145.0,
+        "spawn_x": 145.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "alerted": true,
+        "hp": 34,
+    }
+    var blocked_stats: Dictionary = enemy_probe.ENEMY_TYPES["pawn"]
+    var blocked_distance_x := pursuit_target.global_position.x - float(blocked_enemy["x"])
+    var blocked_standoff := enemy_probe._enemy_weapon_standoff(blocked_enemy, blocked_stats)
+    var blocked_speed := enemy_probe._update_soldier_movement(
+        blocked_enemy,
+        blocked_stats,
+        blocked_standoff,
+        blocked_distance_x,
+        absf(blocked_distance_x),
+        1.0 / 60.0,
+    )
+    _expect(blocked_speed > 0.0, "LOS bloqueada no convierte al soldado en tancredo")
+    _expect(float(blocked_enemy["vy"]) < 0.0, "soldado con LOS bloqueada salta la caja al avanzar")
+
+    var pursuit_bounds := enemy_probe._enemy_horizontal_bounds(
+        {"x": 900.0, "spawn_x": 145.0, "alerted": true},
+        enemy_probe.SOLDIER_ROAM_LIMIT,
+    )
+    _expect(
+        pursuit_bounds.x <= EPSILON and absf(pursuit_bounds.y - 1280.0) <= EPSILON,
+        "enemigo alertado deja atrás el leash de spawn y puede perseguir por el escenario",
+    )
+
     var ladder_enemy := {
         "type": "commando",
         "x": 250.0,
@@ -316,6 +468,21 @@ func _run() -> void:
     _expect(not route_ladder.is_empty(), "enemigo móvil encuentra escalera que conecta su nivel con Matthias")
     if not route_ladder.is_empty():
         _expect(absf(float(route_ladder["x"]) - 320.0) <= EPSILON, "routing enemigo conserva la escalera authored")
+
+    var far_ladder_enemy := {
+        "type": "commando",
+        "x": 1200.0,
+        "spawn_x": 1200.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+    }
+    var far_route_ladder := enemy_probe._enemy_route_ladder_toward(far_ladder_enemy, 456.0)
+    _expect(
+        not far_route_ladder.is_empty(),
+        "enemigo busca una escalera útil aunque no esté pegada a su spawn",
+    )
 
     var pit_enemy := {
         "type": "scout",
