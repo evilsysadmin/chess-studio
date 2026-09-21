@@ -1,0 +1,38 @@
+{
+  "schema": 4,
+  "scope": "pawn-slug-initial-enemies",
+  "pageSize": [2560, 1664],
+  "cell": [320, 416],
+  "columns": 8,
+  "rows": 4,
+  "pivot": [148, 392],
+  "footLine": 392,
+  "guard": 8,
+  "runtimeScale": 0.47,
+  "actions": [
+    {"name": "idle", "row": 0, "frames": 8, "fps": 6.0, "loop": true},
+    {"name": "run", "row": 1, "frames": 8, "fps": 10.0, "loop": true},
+    {"name": "shoot", "row": 2, "frames": 8, "fps": 12.0, "loop": false},
+    {"name": "hurt", "row": 3, "frames": 8, "fps": 8.0, "loop": false}
+  ],
+  "types": [
+    {
+      "type": "pawn",
+      "page": "enemy-pawn-initial-v4.png",
+      "sha256": "7abbcb1d31f72a4e10c80c0c97c30f8f796f3803ec70943fb4c6a16d3037468e",
+      "muzzle": [216, 321]
+    },
+    {
+      "type": "rook",
+      "page": "enemy-rook-initial-v4.png",
+      "sha256": "68b3160c9d0bad34a85089b86c89ce79274fb3270dc331cff6c8809f164c0d68",
+      "muzzle": [226, 328]
+    },
+    {
+      "type": "scout",
+      "page": "enemy-scout-initial-v4.png",
+      "sha256": "163227d61974fa93887c6051155b83b283e8b5462c346f54b7bd7ca2b0916591",
+      "muzzle": [236, 314]
+    }
+  ]
+}

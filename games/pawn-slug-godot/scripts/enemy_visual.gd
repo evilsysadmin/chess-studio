@@ -4,6 +4,8 @@ const BODY_FALLBACK_ATLAS_PATH := "res://assets/enemy_body_motion_atlas.svg"
 const BODY_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
 const BODY_ATLAS_V2_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/cast-v2/enemy-cast-v2-3ebbf4a9c5180051.webp"
 const WEAPON_ATLAS_PATH := "res://assets/weapon_atlas.svg"
+const INITIAL_V4_MANIFEST_PATH := "res://assets/enemies-v4/enemy-initial-v4-manifest.json"
+const INITIAL_V4_ASSET_ROOT := "res://assets/enemies-v4/"
 
 const FALLBACK_FRAME_SIZE := Vector2(256.0, 256.0)
 const REMOTE_FRAME_SIZE := Vector2(80.0, 80.0)
@@ -48,6 +50,8 @@ static var _cached_body_is_legacy := false
 static var _body_texture_failed := false
 static var _body_texture_loading := false
 static var _body_texture_waiters: Array = []
+static var _initial_v4_manifest: Dictionary = {}
+static var _initial_v4_manifest_loaded := false
 
 var enemy_type := "pawn"
 var weapon := "pistol"
@@ -66,6 +70,10 @@ var _bishop_shell_telegraph := 0.0
 var _bishop_suppression_telegraph := 0.0
 var _using_remote_body := false
 var _using_legacy_remote_body := false
+var _using_initial_v4 := false
+var _initial_v4_action := "idle"
+var _initial_v4_action_time := 0.0
+var _initial_v4_action_remaining := 0.0
 var _idle_pose := ""
 var _surprise_remaining := 0.0
 
@@ -157,6 +165,11 @@ func set_bishop_telegraph(shell_strength: float, suppression_strength: float) ->
 func play_fire() -> void:
     if dead or _weapon_root == null:
         return
+    if _using_initial_v4:
+        if _initial_v4_action != "hurt":
+            _start_initial_v4_action("shoot")
+        _fire_flash = 0.0
+        return
     if _uses_integrated_body_weapon():
         _fire_flash = 0.0
         return
@@ -182,6 +195,9 @@ func _process(delta: float) -> void:
 
     if enemy_type == "bishop":
         queue_redraw()
+        return
+    if _using_initial_v4:
+        _process_initial_v4(delta)
         return
     if moving:
         _frame_time += delta * float(TYPE_FPS.get(enemy_type, 6.0)) * movement_speed_scale
@@ -237,6 +253,9 @@ func _build_nodes() -> void:
 func _apply_type() -> void:
     if _body == null:
         return
+    _using_initial_v4 = false
+    if enemy_type != "bishop" and _install_initial_v4_body():
+        return
     if enemy_type == "bishop":
         _body.visible = false
         queue_redraw()
@@ -260,6 +279,16 @@ func _apply_body_frame() -> void:
     if _body == null or not _body.visible:
         return
 
+    if _using_initial_v4:
+        var manifest := _initial_v4_manifest_data()
+        var action := _initial_v4_action_config(_initial_v4_action)
+        var cell := _initial_v4_vector(manifest.get("cell", []), Vector2(320.0, 416.0))
+        var row := int(action.get("row", 0))
+        var frame_count := maxi(1, int(action.get("frames", 8)))
+        var col := clampi(_frame, 0, frame_count - 1)
+        _body.region_rect = Rect2(Vector2(float(col) * cell.x, float(row) * cell.y), cell)
+        return
+
     if _using_remote_body:
         var row_map: Dictionary = LEGACY_REMOTE_TYPE_ROW if _using_legacy_remote_body else REMOTE_TYPE_ROW
         var row := int(row_map.get(enemy_type, 0))
@@ -275,8 +304,123 @@ func _apply_body_frame() -> void:
         FALLBACK_FRAME_SIZE,
     )
 
+func _initial_v4_manifest_data() -> Dictionary:
+    if _initial_v4_manifest_loaded:
+        return _initial_v4_manifest
+    _initial_v4_manifest_loaded = true
+    if not FileAccess.file_exists(INITIAL_V4_MANIFEST_PATH):
+        return _initial_v4_manifest
+    var parsed = JSON.parse_string(FileAccess.get_file_as_string(INITIAL_V4_MANIFEST_PATH))
+    if typeof(parsed) == TYPE_DICTIONARY:
+        _initial_v4_manifest = parsed
+    return _initial_v4_manifest
+
+func _initial_v4_vector(value, fallback: Vector2) -> Vector2:
+    if typeof(value) != TYPE_ARRAY or value.size() < 2:
+        return fallback
+    return Vector2(float(value[0]), float(value[1]))
+
+func _initial_v4_type_config(kind: String) -> Dictionary:
+    var manifest := _initial_v4_manifest_data()
+    var types = manifest.get("types", [])
+    if typeof(types) != TYPE_ARRAY:
+        return {}
+    for item in types:
+        if typeof(item) == TYPE_DICTIONARY and String(item.get("type", "")) == kind:
+            return item
+    return {}
+
+func _initial_v4_action_config(action_name: String) -> Dictionary:
+    var manifest := _initial_v4_manifest_data()
+    var actions = manifest.get("actions", [])
+    if typeof(actions) != TYPE_ARRAY:
+        return {}
+    for item in actions:
+        if typeof(item) == TYPE_DICTIONARY and String(item.get("name", "")) == action_name:
+            return item
+    return {}
+
+func _install_initial_v4_body() -> bool:
+    var manifest := _initial_v4_manifest_data()
+    if manifest.is_empty():
+        return false
+    var type_config := _initial_v4_type_config(enemy_type)
+    if type_config.is_empty():
+        return false
+    var page := String(type_config.get("page", ""))
+    if page.is_empty():
+        return false
+    var path := INITIAL_V4_ASSET_ROOT + page
+    if not ResourceLoader.exists(path):
+        return false
+    var texture := load(path) as Texture2D
+    if texture == null:
+        return false
+    var cell := _initial_v4_vector(manifest.get("cell", []), Vector2(320.0, 416.0))
+    var pivot := _initial_v4_vector(manifest.get("pivot", []), Vector2(148.0, 392.0))
+    var runtime_scale := float(manifest.get("runtimeScale", 0.47))
+    _using_initial_v4 = true
+    _using_remote_body = false
+    _using_legacy_remote_body = false
+    _body.texture = texture
+    _body.visible = true
+    _body.modulate = Color.WHITE
+    _body.scale = Vector2(runtime_scale, runtime_scale)
+    _body.position = Vector2(
+        (cell.x * 0.5 - pivot.x) * runtime_scale,
+        -(pivot.y - cell.y * 0.5) * runtime_scale,
+    )
+    _initial_v4_action = "run" if moving else "idle"
+    _initial_v4_action_time = 0.0
+    _initial_v4_action_remaining = 0.0
+    _frame = 0
+    _apply_weapon()
+    _apply_body_frame()
+    return true
+
+func _start_initial_v4_action(action_name: String) -> void:
+    if not _using_initial_v4:
+        return
+    var config := _initial_v4_action_config(action_name)
+    if config.is_empty():
+        return
+    _initial_v4_action = action_name
+    _initial_v4_action_time = 0.0
+    _frame = 0
+    var fps := maxf(1.0, float(config.get("fps", 8.0)))
+    var frames := maxi(1, int(config.get("frames", 8)))
+    _initial_v4_action_remaining = float(frames) / fps
+    _apply_body_frame()
+
+func _process_initial_v4(delta: float) -> void:
+    var transient := _initial_v4_action == "shoot" or _initial_v4_action == "hurt"
+    if transient:
+        var config := _initial_v4_action_config(_initial_v4_action)
+        var fps := maxf(1.0, float(config.get("fps", 8.0)))
+        var frames := maxi(1, int(config.get("frames", 8)))
+        _initial_v4_action_time += delta
+        _initial_v4_action_remaining = maxf(0.0, _initial_v4_action_remaining - delta)
+        _frame = mini(frames - 1, int(floor(_initial_v4_action_time * fps)))
+        if _initial_v4_action_remaining <= 0.0:
+            _initial_v4_action = "run" if moving else "idle"
+            _initial_v4_action_time = 0.0
+            _frame = 0
+    else:
+        var desired := "run" if moving else "idle"
+        if _initial_v4_action != desired:
+            _initial_v4_action = desired
+            _initial_v4_action_time = 0.0
+            _frame = 0
+        var config := _initial_v4_action_config(_initial_v4_action)
+        var fps := maxf(1.0, float(config.get("fps", 8.0)))
+        var frames := maxi(1, int(config.get("frames", 8)))
+        var speed := movement_speed_scale if _initial_v4_action == "run" else 1.0
+        _initial_v4_action_time += delta * speed
+        _frame = int(floor(_initial_v4_action_time * fps)) % frames
+    _apply_body_frame()
+
 func _request_body_atlas() -> void:
-    if enemy_type == "bishop":
+    if enemy_type == "bishop" or _using_initial_v4:
         return
     if _cached_body_texture != null:
         _install_remote_body_texture(_cached_body_texture)
@@ -356,6 +500,7 @@ func _finish_body_atlas_request(texture: Texture2D) -> void:
 func _install_fallback_body_texture() -> void:
     if _body == null or enemy_type == "bishop":
         return
+    _using_initial_v4 = false
     var texture := load(BODY_FALLBACK_ATLAS_PATH) as Texture2D
     if texture == null:
         _body.visible = false
@@ -376,6 +521,7 @@ func _install_fallback_body_texture() -> void:
 func _install_remote_body_texture(texture: Texture2D) -> void:
     if texture == null or _body == null or enemy_type == "bishop":
         return
+    _using_initial_v4 = false
     _body_texture_failed = false
     _using_remote_body = true
     _using_legacy_remote_body = _cached_body_is_legacy
@@ -391,9 +537,16 @@ func _install_remote_body_texture(texture: Texture2D) -> void:
     _apply_body_frame()
 
 func _uses_integrated_body_weapon() -> bool:
-    return _using_remote_body and not _using_legacy_remote_body and enemy_type != "bishop"
+    return _using_initial_v4 or (_using_remote_body and not _using_legacy_remote_body and enemy_type != "bishop")
 
 func _integrated_muzzle_position() -> Vector2:
+    if _using_initial_v4:
+        var manifest := _initial_v4_manifest_data()
+        var type_config := _initial_v4_type_config(enemy_type)
+        var source := _initial_v4_vector(type_config.get("muzzle", []), Vector2(216.0, 321.0))
+        var pivot := _initial_v4_vector(manifest.get("pivot", []), Vector2(148.0, 392.0))
+        var runtime_scale := float(manifest.get("runtimeScale", 0.47))
+        return Vector2((source.x - pivot.x) * runtime_scale, (source.y - pivot.y) * runtime_scale)
     var source: Vector2 = INTEGRATED_MUZZLE_SOURCE_PX.get(enemy_type, Vector2(10.0, 30.0))
     var body_scale := float(REMOTE_TYPE_SCALE.get(enemy_type, 1.248)) * ENEMY_VISUAL_SCALE
     return Vector2(
@@ -456,6 +609,8 @@ func _apply_weapon() -> void:
 func _play_hurt() -> void:
     if _facing_root == null:
         return
+    if _using_initial_v4:
+        _start_initial_v4_action("hurt")
     _facing_root.modulate = Color(1.0, 0.48, 0.42, 1.0)
     var tween := create_tween()
     tween.tween_property(_facing_root, "modulate", Color.WHITE, 0.16)
