@@ -192,6 +192,14 @@ func _run() -> void:
     var ladder_target := player.find_ladder_candidate_probe()
     _expect(ladder_target.size.x > 0.0, "ladder detecta a Matthias en su carril de entrada")
     if ladder_target.size.x > 0.0:
+        _expect(
+            not player.can_enter_ladder_probe(ladder_target, 1.0),
+            "DOWN al pie de escalera conserva crouch en vez de secuestrar input",
+        )
+        _expect(
+            player.can_enter_ladder_probe(ladder_target, -1.0),
+            "UP al pie de escalera sí inicia ascenso",
+        )
         player.start_ladder_climb_probe(ladder_target)
         _expect(player.is_ladder_climbing_probe(), "ladder activa estado de subida real")
         var ladder_start_y: float = float(player.position.y)
