@@ -14,10 +14,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v22"
+const STRICT_RUNTIME_GENERATION := "v23"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
@@ -27,14 +27,17 @@ const FULL_ATLAS_URLS := {
 # run already present in the full bank remains authoritative.
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/machinegun/v22-8f32a167a5d4f161.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
 }
+const MACHINEGUN_RUN13_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-34b7a35793047e39.png"
 const RUN12_ATLAS_COLUMNS := 12
+const RUN13_ATLAS_COLUMNS := 13
 const RUN12_ATLAS_CELL_SIZE := 416
 const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
+const RUN13_ATLAS_SIZE := Vector2i(RUN13_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
 const RUN12_FPS := 24.0
+const RUN13_FPS := 26.0
 const WEAPON_BOOTSTRAP_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 const BOOTSTRAP_RETRY_LIMIT := 2
 
@@ -684,6 +687,20 @@ func _build_nodes() -> void:
     _muzzle.add_child(_flash)
 
 
+func _run_overlay_layout(weapon_id: String) -> String:
+    return "run13-v23" if weapon_id == "machinegun" else "run12-v22"
+
+func _run_overlay_url(weapon_id: String) -> String:
+    if weapon_id == "machinegun":
+        return MACHINEGUN_RUN13_URL
+    return String(RUN12_ATLAS_URLS.get(weapon_id, ""))
+
+func _run_overlay_columns(layout: String) -> int:
+    return RUN13_ATLAS_COLUMNS if layout == "run13-v23" else RUN12_ATLAS_COLUMNS
+
+func _run_overlay_fps(layout: String) -> float:
+    return RUN13_FPS if layout == "run13-v23" else RUN12_FPS
+
 func _begin_atlas_bootstrap() -> void:
     if _bootstrap_complete:
         _install_or_request_weapon()
@@ -728,10 +745,11 @@ func _begin_run12_bootstrap() -> void:
 
     _bootstrap_run_pending = missing_run.size()
     for weapon_id in missing_run:
+        var layout := _run_overlay_layout(weapon_id)
         _start_bootstrap_request(
             weapon_id,
-            String(RUN12_ATLAS_URLS.get(weapon_id, "")),
-            "run12-v22",
+            _run_overlay_url(weapon_id),
+            layout,
             0,
         )
 
@@ -767,20 +785,20 @@ func _on_bootstrap_atlas_loaded(
 ) -> void:
     _dispose_bootstrap_request(request)
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        var url := String(
-            FULL_ATLAS_URLS.get(weapon_id, "")
+        var url := (
+            String(FULL_ATLAS_URLS.get(weapon_id, ""))
             if layout == "full-v9"
-            else RUN12_ATLAS_URLS.get(weapon_id, "")
+            else _run_overlay_url(weapon_id)
         )
         _retry_or_settle_bootstrap(weapon_id, url, layout, attempt)
         return
 
     var image := _decode_raster(bytes)
     if image == null:
-        var url := String(
-            FULL_ATLAS_URLS.get(weapon_id, "")
+        var url := (
+            String(FULL_ATLAS_URLS.get(weapon_id, ""))
             if layout == "full-v9"
-            else RUN12_ATLAS_URLS.get(weapon_id, "")
+            else _run_overlay_url(weapon_id)
         )
         _retry_or_settle_bootstrap(weapon_id, url, layout, attempt)
         return
@@ -795,8 +813,13 @@ func _on_bootstrap_atlas_loaded(
             _v9_ready_by_weapon[weapon_id] = true
             _directional_ready_by_weapon[weapon_id] = true
             accepted = true
-    elif layout == "run12-v22":
-        accepted = _append_run12_frames(weapon_id, image)
+    elif layout in ["run12-v22", "run13-v23"]:
+        accepted = _append_run12_frames(
+            weapon_id,
+            image,
+            _run_overlay_columns(layout),
+            _run_overlay_fps(layout),
+        )
         if accepted:
             _run12_ready_by_weapon[weapon_id] = true
 
@@ -804,10 +827,10 @@ func _on_bootstrap_atlas_loaded(
         _settle_bootstrap_request(weapon_id, layout, true)
         return
 
-    var retry_url := String(
-        FULL_ATLAS_URLS.get(weapon_id, "")
+    var retry_url := (
+        String(FULL_ATLAS_URLS.get(weapon_id, ""))
         if layout == "full-v9"
-        else RUN12_ATLAS_URLS.get(weapon_id, "")
+        else _run_overlay_url(weapon_id)
     )
     _retry_or_settle_bootstrap(weapon_id, retry_url, layout, attempt)
 
@@ -831,7 +854,7 @@ func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool
             _begin_run12_bootstrap()
         return
 
-    if layout == "run12-v22":
+    if layout in ["run12-v22", "run13-v23"]:
         if not accepted and not _bootstrap_run_failures.has(weapon_id):
             _bootstrap_run_failures.append(weapon_id)
         _bootstrap_run_pending = maxi(0, _bootstrap_run_pending - 1)
@@ -893,10 +916,11 @@ func _ensure_run12_locomotion(weapon_id: String) -> void:
         return
     if not _full_frames_by_weapon.has(weapon_id):
         return
-    var url := String(RUN12_ATLAS_URLS.get(weapon_id, ""))
+    var layout := _run_overlay_layout(weapon_id)
+    var url := _run_overlay_url(weapon_id)
     if url.is_empty():
         return
-    _request_atlas(weapon_id, url, "run12-v22")
+    _request_atlas(weapon_id, url, layout)
 
 func _ensure_v10_locomotion(weapon_id: String) -> void:
     if not V10_RUNTIME_PROMOTION_ENABLED:
@@ -932,8 +956,8 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
-        if layout == "run12-v22":
-            push_warning("Matthias run12 v22 request could not start; keeping eight-frame run")
+        if layout in ["run12-v22", "run13-v23"]:
+            push_warning("Matthias run overlay request could not start; keeping eight-frame run")
             return
         if layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion request could not start; keeping strict-v9")
@@ -952,8 +976,8 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        if requested_layout == "run12-v22":
-            push_warning("Matthias run12 v22 download failed; keeping eight-frame run")
+        if requested_layout in ["run12-v22", "run13-v23"]:
+            push_warning("Matthias run overlay download failed; keeping eight-frame run")
             return
         if requested_layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion download failed; keeping strict-v9")
@@ -964,8 +988,8 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         return
     var image := _decode_raster(bytes)
     if image == null:
-        if requested_layout == "run12-v22":
-            push_warning("Matthias run12 v22 PNG decode failed; keeping eight-frame run")
+        if requested_layout in ["run12-v22", "run13-v23"]:
+            push_warning("Matthias run overlay PNG decode failed; keeping eight-frame run")
             return
         if requested_layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion PNG decode failed; keeping strict-v9")
@@ -993,7 +1017,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             _v9_ready_by_weapon[requested_weapon] = true
             _directional_ready_by_weapon[requested_weapon] = true
 
-    elif requested_layout == "run12-v22":
+    elif requested_layout in ["run12-v22", "run13-v23"]:
         var run_phase := 0.0
         var preserve_run_phase := (
             requested_weapon == _weapon
@@ -1003,14 +1027,22 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         )
         if preserve_run_phase:
             run_phase = _locomotion_phase()
-        if _append_run12_frames(requested_weapon, image):
+        if _append_run12_frames(
+            requested_weapon,
+            image,
+            _run_overlay_columns(requested_layout),
+            _run_overlay_fps(requested_layout),
+        ):
             _run12_ready_by_weapon[requested_weapon] = true
             if requested_weapon == _weapon:
                 _install_frames(_full_frames_by_weapon[requested_weapon], true)
                 if preserve_run_phase and _action == "run":
                     _restore_locomotion_phase(run_phase)
         else:
-            push_warning("Matthias run12 v22 atlas rejected for %s; keeping eight-frame run" % requested_weapon)
+            push_warning(
+                "Matthias run overlay rejected for %s; keeping eight-frame run"
+                % requested_weapon
+            )
         return
 
     elif requested_layout == "locomotion-v10":
@@ -1305,8 +1337,14 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
     return repaired
 
 
-func _append_run12_frames(weapon_id: String, image: Image) -> bool:
-    if image.get_size() != RUN12_ATLAS_SIZE or not _full_frames_by_weapon.has(weapon_id):
+func _append_run12_frames(
+    weapon_id: String,
+    image: Image,
+    frame_count: int = RUN12_ATLAS_COLUMNS,
+    fps: float = RUN12_FPS,
+) -> bool:
+    var expected_size := Vector2i(frame_count * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
+    if image.get_size() != expected_size or not _full_frames_by_weapon.has(weapon_id):
         return false
     var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
     var atlas_texture := ImageTexture.create_from_image(image)
@@ -1314,8 +1352,8 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
         frames.remove_animation("run")
     frames.add_animation("run")
     frames.set_animation_loop("run", true)
-    frames.set_animation_speed("run", RUN12_FPS)
-    for frame_index in range(RUN12_ATLAS_COLUMNS):
+    frames.set_animation_speed("run", fps)
+    for frame_index in range(frame_count):
         var texture := AtlasTexture.new()
         texture.atlas = atlas_texture
         texture.region = Rect2(
@@ -1325,7 +1363,7 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
             RUN12_ATLAS_CELL_SIZE,
         )
         frames.add_frame("run", texture)
-    return frames.get_frame_count("run") == RUN12_ATLAS_COLUMNS
+    return frames.get_frame_count("run") == frame_count
 
 func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
     if weapon_id != "pistol" or image.get_size() != V10_ATLAS_SIZE:
