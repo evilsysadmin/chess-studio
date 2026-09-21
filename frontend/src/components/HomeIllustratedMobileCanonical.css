@@ -119,8 +119,8 @@
     pointer-events: auto;
   }
   .illustrated-home__matthias strong { font-size: clamp(8px, 1.9vw, 12px); }
-  .illustrated-home__matthias span,
-  .illustrated-home__matthias em { display: none; }
+  .illustrated-home__matthias-copy span,
+  .illustrated-home__matthias-copy em { display: none; }
 
   /* Speech may visually float over the castle, but its empty/card surface must not
      steal taps from the diegetic destinations underneath. Its own controls remain interactive. */
