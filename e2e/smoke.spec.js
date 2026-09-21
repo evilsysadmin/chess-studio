@@ -64,7 +64,7 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
 test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home', async ({ page }) => {
   // Mantén suficientes fallos consecutivos para cubrir restauración y
   // reconciliaciones automáticas antes de comprobar el reintento manual.
-  await mockApi(page, { gameGetFailures: 4 });
+  await mockApi(page, { gameGetFailures: 3 });
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
