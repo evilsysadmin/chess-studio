@@ -447,6 +447,23 @@ func _run() -> void:
     enemy_probe.add_child(pursuit_target)
     enemy_probe.player = pursuit_target
 
+    enemy_probe._enemy_suppression_remaining = 0.5
+    enemy_probe._enemy_suppression_origin_x = 400.0
+    _expect(
+        enemy_probe._enemy_under_local_suppression({"role": "assaulter", "x": 900.0}),
+        "supresión coordina assaulter cercano al support",
+    )
+    _expect(
+        not enemy_probe._enemy_under_local_suppression({"role": "assaulter", "x": 1200.0}),
+        "supresión no empuja assaulter remoto fuera del radio local",
+    )
+    _expect(
+        not enemy_probe._enemy_under_local_suppression({"role": "support", "x": 500.0}),
+        "support no consume el bonus de avance reservado a assaulters",
+    )
+    enemy_probe._enemy_suppression_remaining = 0.0
+    enemy_probe._enemy_suppression_origin_x = -INF
+
     # Hearing probe: noise should carry its source position into short memory,
     # not merely flip alerted=true and not reveal Matthias' later hidden X.
     pursuit_target.position = Vector2(340.0, 568.0)

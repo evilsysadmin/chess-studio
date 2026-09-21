@@ -29,6 +29,7 @@ const ARTILLERY_PLAYER_DAMAGE_RADIUS := 74.0
 const GRENADE_EVADE_RADIUS := 250.0
 const GRENADE_EVADE_SPEED_SCALE := 2.15
 const SUPPRESSION_PUSH_SECONDS := 0.65
+const SUPPRESSION_SQUAD_RADIUS := 720.0
 const SUPPRESSION_ASSAULT_STANDOFF_BONUS := 95.0
 const SUPPRESSION_ASSAULT_SPEED_MULTIPLIER := 1.18
 const BLOCKED_LOS_PUSH_BONUS := 80.0
@@ -174,6 +175,7 @@ var _reduced_motion := false
 var _hostile_fire_gap_remaining := 0.0
 var _hostile_grace_remaining := 0.0
 var _enemy_suppression_remaining := 0.0
+var _enemy_suppression_origin_x := -INF
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
@@ -1813,6 +1815,15 @@ func _update_enemy_ai_plan(enemy: Dictionary, stats: Dictionary, standoff: float
         enemy_role,
     )
 
+func _enemy_under_local_suppression(enemy: Dictionary) -> bool:
+    if _enemy_suppression_remaining <= 0.0:
+        return false
+    if not is_finite(_enemy_suppression_origin_x):
+        return false
+    if String(enemy.get("role", "")) != "assaulter":
+        return false
+    return absf(float(enemy.get("x", 0.0)) - _enemy_suppression_origin_x) <= SUPPRESSION_SQUAD_RADIUS
+
 func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
     var standoff := float(stats["standoff"])
     match String(enemy.get("weapon", "pistol")):
@@ -1822,7 +1833,7 @@ func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
             standoff = 330.0
         "panzerfaust":
             standoff = 590.0
-    if _enemy_suppression_remaining > 0.0 and String(enemy.get("role", "")) == "assaulter":
+    if _enemy_under_local_suppression(enemy):
         standoff = maxf(145.0, standoff - SUPPRESSION_ASSAULT_STANDOFF_BONUS)
     if not _enemy_has_line_of_sight(enemy, stats):
         standoff = maxf(140.0, standoff - BLOCKED_LOS_PUSH_BONUS)
@@ -2091,8 +2102,7 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
     if is_zero_approx(move_direction):
         return 0.0
     if (
-        _enemy_suppression_remaining > 0.0
-        and String(enemy.get("role", "")) == "assaulter"
+        _enemy_under_local_suppression(enemy)
         and is_equal_approx(move_direction, toward_target)
     ):
         speed_scale *= SUPPRESSION_ASSAULT_SPEED_MULTIPLIER
@@ -2643,6 +2653,7 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
         # Local squad coordination: a support burst briefly encourages assault
         # units to close distance while the gunner keeps Matthias occupied.
         _enemy_suppression_remaining = SUPPRESSION_PUSH_SECONDS
+        _enemy_suppression_origin_x = float(enemy.get("x", origin.x))
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
         visual.play_fire()
