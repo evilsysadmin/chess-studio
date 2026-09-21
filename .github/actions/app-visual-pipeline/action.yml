@@ -43,6 +43,7 @@ runs:
         VITE_APP_VISUAL_CAPTURE: 'true'
       with:
         browser-scope: chromium
+        restore-frontend-deps: 'true'
         build-frontend: 'true'
 
     - name: Wait for War Room v2 revision
