@@ -25,7 +25,6 @@ from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
     ChroniclesMapCodeError,
-    parse_chronicles_map_code,
 )
 from chronicles_map_generator import (
     ChroniclesMapGenerationError,
@@ -503,71 +502,6 @@ def chronicles_area_envelope(
         "layoutRevision": generated.layout_revision,
         "manifest": manifest,
     }
-
-
-def _chronicles_planner_descriptors(
-    map_ids: tuple[str, ...] | list[str],
-    seed: int,
-    *,
-    route_snapshot: dict[str, Any] | None,
-) -> list[dict[str, Any]]:
-    descriptors: list[dict[str, Any]] = []
-    for map_id in map_ids:
-        local_area = chronicles_area_envelope(
-            map_id,
-            seed,
-            route_snapshot=route_snapshot,
-        )
-        recipe = parse_chronicles_map_code(local_area["mapCode"])
-        verbs = ",".join(recipe.verbs)
-        descriptors.append(
-            {
-                "map_id": map_id,
-                "theme": recipe.theme,
-                "current_verbs": verbs,
-                "difficulty": recipe.difficulty,
-                # Contract v1 may only select/reorder/subset authored verbs.
-                # Workers AI cannot invent a semantic mechanic here.
-                "allowed_verbs": verbs,
-            }
-        )
-    return descriptors
-
-
-def _normalize_remote_planner_snapshot(
-    raw_snapshot: dict[str, Any] | None,
-    *,
-    planner_descriptors: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if raw_snapshot is None:
-        return None
-    try:
-        snapshot = _normalize_planner_snapshot(raw_snapshot)
-    except ChroniclesManifestError:
-        return None
-    if snapshot is None:
-        return None
-
-    allowed_verbs_by_map = {
-        descriptor["map_id"]: {
-            verb.strip()
-            for verb in str(descriptor.get("allowed_verbs") or "").split(",")
-            if verb.strip()
-        }
-        for descriptor in planner_descriptors
-    }
-    if not set(snapshot["areas"]).issubset(allowed_verbs_by_map):
-        return None
-
-    for map_id, proposal in snapshot["areas"].items():
-        if proposal.get("source") != "workers-ai":
-            return None
-        proposed_verbs = proposal.get("verbs")
-        if proposed_verbs is not None and not set(proposed_verbs).issubset(
-            allowed_verbs_by_map[map_id]
-        ):
-            return None
-    return snapshot
 
 
 def _run_id(username: str, idempotency_key: str | None) -> str:
