@@ -34,7 +34,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Tarea | Documentos que hay que leer |
 | --- | --- |
 | Sprites, frames, atlases o animaciones de Pawn Slug/Godot | [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
-| Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
+| Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |\n| Pawn Slug OST / synthwave / composición y mezcla | [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
@@ -57,7 +57,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Skills / contratos operativos
 
 - [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md) — generación, normalización, validación y entrega de spritesheets 2D compatibles con Godot.
-- [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) — contrato del export Web, bridge, input real y smoke determinista de Pawn Slug.
+- [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) — contrato del export Web, bridge, input real y smoke determinista de Pawn Slug.\n- [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) — composición, groove, mezcla, normalización y entrega de OST synthwave/rock de Pawn Slug.
 - [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md) — iteración Home Blender → GLB → R2 → captura runtime.
 - [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md) — exact-SHA staging, generaciones superseded y diagnóstico seguro de observabilidad.
 
