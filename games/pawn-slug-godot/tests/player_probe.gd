@@ -53,6 +53,9 @@ func configure_traversal_probe(ladders: Array, fall_death_y: float = 816.0) -> v
 func find_ladder_candidate_probe() -> Rect2:
     return _find_ladder_candidate()
 
+func can_enter_ladder_probe(ladder: Rect2, climb_axis: float) -> bool:
+    return _can_enter_ladder(ladder, climb_axis)
+
 func start_ladder_climb_probe(ladder: Rect2) -> void:
     _start_ladder_climb(ladder)
 
