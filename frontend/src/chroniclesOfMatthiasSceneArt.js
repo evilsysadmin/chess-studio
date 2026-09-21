@@ -7,6 +7,7 @@ import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasRe
 import { installChroniclesTacticsEnemyIntentArt } from './chroniclesOfMatthiasEnemyIntentArt.js';
 import { installChroniclesTacticsDamageFeedbackArt } from './chroniclesOfMatthiasDamageFeedbackArt.js';
 import { installChroniclesTacticsArchitectureArt } from './chroniclesOfMatthiasArchitectureArt.js';
+import { installChroniclesTacticsRoomFloorArt } from './chroniclesOfMatthiasRoomFloorArt.js';
 import { installChroniclesTacticsThemeDressing } from './chroniclesOfMatthiasThemeDressingArt.js';
 import { installChroniclesTacticsSigilArt } from './chroniclesOfMatthiasSigilArt.js';
 import { installChroniclesTacticsPremiumMaterials } from './chroniclesOfMatthiasMaterialArt.js';
