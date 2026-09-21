@@ -160,26 +160,17 @@ jobs:
         with:
           browser-scope: chromium
           build-frontend: 'false'
-      - name: Targeted experiment browser smoke
+      - name: Targeted browser smokes
         if: env.TARGETED_BROWSER == 'true'
         working-directory: e2e
-        env:
-          RUN_PAWN_SLUG_E2E: ${{ needs.preflight.outputs.run_pawn_slug_e2e }}
-          RUN_CHESSCOM_E2E: ${{ needs.preflight.outputs.run_chesscom_e2e }}
-          RUN_TRAILBLAZER_E2E: ${{ needs.preflight.outputs.run_trailblazer_e2e }}
-          RUN_MATTHIAS_HOME_E2E: ${{ needs.preflight.outputs.run_matthias_home_e2e }}
         run: |
           set -euo pipefail
           specs=()
-          [[ "$RUN_PAWN_SLUG_E2E" == 'true' ]] && specs+=('(^|/)pawn-slug\.spec\.js$')
-          [[ "$RUN_CHESSCOM_E2E" == 'true' ]] && specs+=(chesscom.spec.js)
-          [[ "$RUN_TRAILBLAZER_E2E" == 'true' ]] && specs+=(pawn-trailblazer.spec.js)
-          [[ "$RUN_MATTHIAS_HOME_E2E" == 'true' ]] && specs+=(matthias-home-priority.spec.js)
-          if (( ${#specs[@]} == 0 )); then
-            echo '::error::TARGETED_BROWSER=true sin specs Playwright seleccionados'
-            exit 2
-          fi
-          printf 'Targeted Playwright specs: %s\n' "${specs[*]}"
+          [[ '${{ needs.preflight.outputs.run_pawn_slug_e2e }}' == true ]] && specs+=('(^|/)pawn-slug\.spec\.js$')
+          [[ '${{ needs.preflight.outputs.run_chesscom_e2e }}' == true ]] && specs+=(chesscom.spec.js)
+          [[ '${{ needs.preflight.outputs.run_trailblazer_e2e }}' == true ]] && specs+=(pawn-trailblazer.spec.js)
+          [[ '${{ needs.preflight.outputs.run_matthias_home_e2e }}' == true ]] && specs+=(matthias-home-priority.spec.js)
+          (( ${#specs[@]} )) || { echo '::error::Targeted browser sin specs'; exit 2; }
           ./node_modules/.bin/playwright test "${specs[@]}" --workers=1 --retries=0
       - name: Upload targeted browser diagnostics on failure
         if: failure() && env.TARGETED_BROWSER == 'true'
