@@ -43,6 +43,8 @@ REQUIRED_OBJECTS = {
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
+    "RoutineSandwichBread",
+    "RoutineSandwichFilling",
 }
 
 FORBIDDEN_NAME_TOKENS = (

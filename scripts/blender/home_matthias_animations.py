@@ -1,7 +1,7 @@
 import math
 import bpy
 
-PROP_BONES = ('prop_book', 'prop_cup', 'prop_pen')
+PROP_BONES = ('prop_book', 'prop_cup', 'prop_pen', 'prop_bite')
 HIDDEN_PROP_SCALE = (.001, .001, .001)
 VISIBLE_PROP_SCALE = (1.0, 1.0, 1.0)
 
@@ -72,9 +72,10 @@ def build_actions(rig):
             (84, {'head': (d(-1.3), d(.2), d(.2))}, {'root': (0, 0, .006)}),
         ]),
         'Speak': (48, [
-            (10, {'head': (d(-2), d(1), d(-1)), 'upper_arm.R': (d(-8), d(-2), d(12)), 'forearm.R': (d(-18), 0, d(-12))}, None),
-            (22, {'head': (d(1), d(-1), d(.8)), 'upper_arm.R': (d(-4), d(1), d(8)), 'forearm.R': (d(-10), 0, d(7))}, None),
-            (35, {'head': (d(-1), d(.4), d(-.4)), 'forearm.L': (d(-7), 0, d(5))}, None),
+            (8, {'head': (d(-2), d(1), d(-1)), 'upper_arm.R': (d(-8), d(-2), d(12)), 'forearm.R': (d(-18), 0, d(-12))}, {'face_mouth': (0, 0, -.016)}),
+            (16, {'head': (d(1), d(-1), d(.8)), 'upper_arm.R': (d(-4), d(1), d(8)), 'forearm.R': (d(-10), 0, d(7))}, {'face_mouth': (0, 0, .006)}),
+            (26, {'head': (d(-1), d(.4), d(-.4)), 'forearm.L': (d(-7), 0, d(5))}, {'face_mouth': (0, 0, -.012)}),
+            (36, {'head': (d(.5), d(-.5), d(.5)), 'forearm.R': (d(-14), 0, d(-8))}, {'face_mouth': (0, 0, .004)}),
         ]),
         'Think': (84, [
             (24, {'head': (d(7), d(-7), d(2)), 'forearm.R': (d(-42), d(-7), d(-14)), 'spine': (d(3), 0, d(-1))}, None),
@@ -87,11 +88,11 @@ def build_actions(rig):
             (84, None, None, hide('prop_book')),
         ]),
         'Write': (72, [
-            (2, None, None, show('prop_pen')),
+            (2, None, None, {**show('prop_book'), **show('prop_pen')}),
             (18, {'head': (d(11), d(-5), d(1)), 'spine': (d(5), 0, d(-1)), 'forearm.R': (d(-38), d(-5), d(-12))}, None),
             (36, {'forearm.R': (d(-28), d(-3), d(-7))}, None),
             (54, {'forearm.R': (d(-40), d(-6), d(-13))}, None),
-            (68, None, None, hide('prop_pen')),
+            (68, None, None, {**hide('prop_book'), **hide('prop_pen')}),
         ]),
         'Dossier': (80, [
             (2, None, None, show('prop_book')),
@@ -107,9 +108,11 @@ def build_actions(rig):
             (68, None, None, hide('prop_cup')),
         ]),
         'Bite': (74, [
+            (2, None, None, show('prop_bite')),
             (18, {'forearm.L': (d(-42), d(6), d(14)), 'head': (d(-4), d(-4), d(1))}, None),
             (36, {'forearm.L': (d(-58), d(8), d(18)), 'head': (d(2), d(-2), d(1))}, None),
             (54, {'forearm.L': (d(-12), 0, d(4))}, None),
+            (70, None, None, hide('prop_bite')),
         ]),
         'Sleep': (104, [
             (36, {'head': (d(11), d(-6), d(9)), 'spine': (d(5), 0, d(4))}, {'root': (0, 0, -.018)}),

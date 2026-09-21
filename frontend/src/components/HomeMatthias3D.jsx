@@ -102,8 +102,11 @@ export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 }
   const height = Number.isFinite(low) && Number.isFinite(high) && high > low ? high - low : 2.35;
   const base = Number.isFinite(low) ? low : 0;
   const safeFov = Number.isFinite(fov) && fov > 1 && fov < 120 ? fov : 24;
-  const targetY = base + (height * 0.62);
-  const visibleHeight = height * 0.78;
+  // Matthias must read as a pawn, not as a cropped humanoid bust. Keep the
+  // complete flared base and cap inside the portrait while preserving the
+  // existing on-screen scale for the canonical runtime GLB.
+  const targetY = base + (height * 0.5);
+  const visibleHeight = height * 1.035;
   const distance = Math.max(4.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
   return { targetY, distance };
 }
