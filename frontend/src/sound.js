@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem, removeS
 import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
+import { AMBIENT_PERCUSSION_FINISH, snareBodyFrequencies } from './ambientPercussionFinish.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import { shouldPlayStructuredLead, shouldPlayStructuredSignature } from './ambientTiming.js';
@@ -538,26 +539,47 @@ function getAmbientPercussionOutput(ctx) {
     // La percusión sintetizada tenía demasiado ataque medio/agudo y
     // poco peso. Un low-shelf suave antes del compresor conserva darbukas,
     // brushes y hats, pero deja sitio a un dum/kick que realmente empuje aire.
+    const finish = AMBIENT_PERCUSSION_FINISH;
     const lowShelf = ctx.createBiquadFilter();
     lowShelf.type = 'lowshelf';
-    lowShelf.frequency.value = 118;
-    lowShelf.gain.value = 3.2;
+    lowShelf.frequency.value = finish.lowShelfHz;
+    lowShelf.gain.value = finish.lowShelfDb;
 
     const compressor = ctx.createDynamicsCompressor();
     // Glue, no brick wall: dejamos pasar el ataque de kick/caja y comprimimos
     // la cola. La mezcla gana pegada real sin convertir todos los golpes en
     // el mismo bloque ni hacer bombear al backing.
-    compressor.threshold.value = -18;
-    compressor.knee.value = 18;
-    compressor.ratio.value = 2.2;
-    compressor.attack.value = 0.018;
-    compressor.release.value = 0.18;
+    compressor.threshold.value = finish.compressor.threshold;
+    compressor.knee.value = finish.compressor.knee;
+    compressor.ratio.value = finish.compressor.ratio;
+    compressor.attack.value = finish.compressor.attack;
+    compressor.release.value = finish.compressor.release;
 
     ambientPercussionBus = ctx.createGain();
-    ambientPercussionBus.gain.value = 1.03;
+    ambientPercussionBus.gain.value = finish.busGain;
     ambientPercussionBus.connect(lowShelf);
     lowShelf.connect(compressor);
     compressor.connect(getAmbientOutput(ctx));
+
+    // Una sola reflexión temprana, corta y filtrada: cohesiona el kit sin
+    // lavar transitorios ni crear una cola de reverb audible.
+    if (typeof ctx.createDelay === 'function') {
+      const roomDelay = ctx.createDelay(0.08);
+      const roomHighpass = ctx.createBiquadFilter();
+      const roomLowpass = ctx.createBiquadFilter();
+      const roomGain = ctx.createGain();
+      roomDelay.delayTime.value = finish.room.delayMs / 1000;
+      roomHighpass.type = 'highpass';
+      roomHighpass.frequency.value = finish.room.highpassHz;
+      roomLowpass.type = 'lowpass';
+      roomLowpass.frequency.value = finish.room.lowpassHz;
+      roomGain.gain.value = finish.room.gain;
+      ambientPercussionBus.connect(roomDelay);
+      roomDelay.connect(roomHighpass);
+      roomHighpass.connect(roomLowpass);
+      roomLowpass.connect(roomGain);
+      roomGain.connect(getAmbientOutput(ctx));
+    }
   }
   return ambientPercussionBus;
 }
@@ -1281,6 +1303,23 @@ function playNoiseHit(kind, volume = 0.03, options = {}) {
   source.connect(filter);
   filter.connect(gain);
   connectPercussionWithPan(ctx, gain, pan);
+
+  if (kind === 'snare' && typeof ctx.createOscillator === 'function') {
+    const body = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    const bodyFreq = snareBodyFrequencies(tone);
+    const bodyDuration = AMBIENT_PERCUSSION_FINISH.snare.duration * decay;
+    body.type = 'sine';
+    body.frequency.setValueAtTime(bodyFreq.startHz, start);
+    body.frequency.exponentialRampToValueAtTime(bodyFreq.endHz, start + bodyDuration * 0.72);
+    bodyGain.gain.setValueAtTime(volume * AMBIENT_PERCUSSION_FINISH.snare.bodyGain, start);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration);
+    body.connect(bodyGain);
+    connectPercussionWithPan(ctx, bodyGain, pan * 0.35);
+    body.start(start);
+    body.stop(start + bodyDuration + 0.02);
+  }
+
   source.start(start);
 }
 
