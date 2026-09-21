@@ -1,6 +1,6 @@
 extends SceneTree
 
-const BODY_PATH := "res://assets/enemy_body_motion_atlas.svg"
+const BODY_PATH := "res://tests/fixtures/enemy_pawn_socket_body_v1.svg"
 const WEAPON_PATH := "res://assets/weapon_atlas.svg"
 const OUTPUT_DIR := "/tmp/pawn-slug-v1-slice"
 const FRAME_SIZE := Vector2(256.0, 256.0)
@@ -37,11 +37,17 @@ func _initialize() -> void:
 
     var body_image := body_texture.get_image()
     var weapon_image := weapon_texture.get_image()
-    if body_image == null or body_image.get_width() < 2048 or body_image.get_height() != 256:
+    if body_image == null or body_image.get_width() != 2048 or body_image.get_height() != 256:
         _fail("Godot did not rasterize the body fixture as expected")
+        return
+    if body_image.get_used_rect().size == Vector2i.ZERO:
+        _fail("Godot body fixture imported with empty alpha")
         return
     if weapon_image == null or weapon_image.get_width() != 1024 or weapon_image.get_height() != 128:
         _fail("Godot did not rasterize the weapon fixture as expected")
+        return
+    if weapon_image.get_used_rect().size == Vector2i.ZERO:
+        _fail("Godot weapon fixture imported with empty alpha")
         return
 
     DirAccess.make_dir_recursive_absolute(OUTPUT_DIR)
