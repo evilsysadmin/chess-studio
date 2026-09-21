@@ -13,8 +13,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - uses: actions/checkout@v7
+
       - name: Install toolchain
-        shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
@@ -23,165 +24,35 @@ jobs:
           python3 -m pip install --break-system-packages -q --index-url https://download.pytorch.org/whl/cpu torch
           python3 -m pip install --break-system-packages -q neural-amp-modeler==0.12.0
 
-      - name: Build sfizz renderer
-        shell: bash
+      - name: Build sfizz
         run: |
           set -euxo pipefail
           git clone --recursive --depth 1 https://github.com/sfztools/sfizz.git /tmp/sfizz
-          cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja             -DCMAKE_BUILD_TYPE=Release -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF             -DPLUGIN_LV2=OFF -DPLUGIN_LV2_UI=OFF -DPLUGIN_VST3=OFF             -DSFIZZ_TESTS=OFF -DSFIZZ_BENCHMARKS=OFF -DSFIZZ_DEMOS=OFF             -DSFIZZ_DEVTOOLS=OFF -DSFIZZ_RENDER=ON
+          cmake -S /tmp/sfizz -B /tmp/sfizz/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF -DPLUGIN_LV2=OFF -DPLUGIN_LV2_UI=OFF -DPLUGIN_VST3=OFF -DSFIZZ_TESTS=OFF -DSFIZZ_BENCHMARKS=OFF -DSFIZZ_DEMOS=OFF -DSFIZZ_DEVTOOLS=OFF -DSFIZZ_RENDER=ON
           cmake --build /tmp/sfizz/build --target sfizz_render -j2
           mkdir -p v11
           find /tmp/sfizz/build -type f -name sfizz_render -executable | head -n1 > v11/sfizz-render-path.txt
           test -x "$(cat v11/sfizz-render-path.txt)"
 
       - name: Download Metal GTX
-        shell: bash
         run: |
           set -euxo pipefail
           mkdir -p /tmp/metal-gtx
           gdown 'https://drive.google.com/uc?id=1FurY3_x_tog_56irX1VDNyRCUt5JD7bO&export=download' -O /tmp/metal-gtx.bin
-          if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then
-            unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx
-          else
-            unrar x -o+ -idq /tmp/metal-gtx.bin /tmp/metal-gtx/
-          fi
+          if unzip -tq /tmp/metal-gtx.bin >/dev/null 2>&1; then unzip -q /tmp/metal-gtx.bin -d /tmp/metal-gtx; else unrar x -o+ -idq /tmp/metal-gtx.bin /tmp/metal-gtx/; fi
           PROGRAM_DIR="$(find /tmp/metal-gtx -type d -path '*/UI_METAL-GTX/Programs' -print -quit)"
           test -d "$PROGRAM_DIR"
-          printf '%s
-' "$PROGRAM_DIR/01-METAL-GTX Full.sfz" > v11/sfz-left-path.txt
-          printf '%s
-' "$PROGRAM_DIR/03-METAL-GTX XTracking.sfz" > v11/sfz-right-path.txt
+          echo "$PROGRAM_DIR/01-METAL-GTX Full.sfz" > v11/sfz-left-path.txt
+          echo "$PROGRAM_DIR/03-METAL-GTX XTracking.sfz" > v11/sfz-right-path.txt
           test -s "$(cat v11/sfz-left-path.txt)"
           test -s "$(cat v11/sfz-right-path.txt)"
 
-      - name: Build expressive performance MIDI
-        shell: bash
+      - name: Build expressive MIDI
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import random, struct
-
-          BPM=152
-          PPQ=480
-          BEAT=PPQ
-          BAR=4*PPQ
-          KS={"sus":19,"mute":22,"slide_up":24,"pull":25,"hammer":26,"slide_in":27,"bend":92}
-
-          # Four chord-aware bars. Repeated through four stages:
-          # seed -> development -> lift -> climax.
-          P={
-            "Em":[(0.00,64,.78,88,"sus"),(1.15,67,.52,84,"hammer"),(2.05,71,1.48,104,"bend")],
-            "C":[(0.00,64,.70,87,"sus"),(1.08,67,.52,84,"slide_in"),(2.02,72,1.50,105,"bend")],
-            "Bm":[(0.00,66,.56,82,"mute"),(1.05,69,.54,86,"hammer"),(2.02,74,1.44,106,"bend")],
-            "Am":[(0.00,69,.68,88,"sus"),(1.08,72,.50,85,"hammer"),(2.02,67,.90,97,"pull"),(3.22,64,.46,79,"mute")],
-          }
-          DEV={
-            "Em":[(0.00,64,.52,82,"mute"),(.86,67,.38,83,"hammer"),(1.38,71,.70,94,"sus"),(2.42,74,.38,91,"slide_up"),(3.02,71,.64,104,"bend")],
-            "C":[(0.00,64,.56,87,"sus"),(.86,67,.38,83,"hammer"),(1.38,72,.72,96,"sus"),(2.40,71,.34,86,"pull"),(3.00,67,.66,103,"bend")],
-            "Bm":[(0.00,66,.50,81,"mute"),(.84,69,.38,84,"hammer"),(1.36,74,.72,97,"sus"),(2.38,72,.34,86,"pull"),(3.00,71,.66,104,"bend")],
-            "Am":[(0.00,69,.54,88,"sus"),(.86,72,.36,84,"hammer"),(1.38,76,.72,108,"bend"),(2.48,72,.32,86,"pull"),(3.00,67,.64,95,"sus")],
-          }
-          LIFT={
-            "Em":[(0.00,64,.48,81,"mute"),(.72,67,.32,84,"hammer"),(1.18,71,.52,91,"slide_up"),(2.02,76,1.28,111,"bend")],
-            "C":[(0.00,67,.50,89,"sus"),(.72,71,.32,85,"hammer"),(1.18,72,.52,92,"slide_up"),(2.02,76,1.28,112,"bend")],
-            "Bm":[(0.00,66,.48,81,"mute"),(.72,69,.32,85,"hammer"),(1.18,74,.54,94,"slide_up"),(2.02,79,1.25,114,"bend")],
-            "Am":[(0.00,69,.50,89,"sus"),(.72,72,.32,86,"hammer"),(1.18,76,.62,110,"bend"),(2.25,74,.32,87,"pull"),(2.80,71,.76,98,"sus")],
-          }
-          CLIMAX={
-            "Em":[(0.00,64,.44,82,"mute"),(.60,67,.28,86,"hammer"),(1.00,71,.48,96,"slide_up"),(1.66,76,1.08,118,"bend"),(3.12,74,.28,89,"pull")],
-            "C":[(0.00,67,.44,91,"sus"),(.60,71,.28,87,"hammer"),(1.00,72,.48,97,"slide_up"),(1.66,76,1.08,119,"bend"),(3.12,74,.28,89,"pull")],
-            "Bm":[(0.00,66,.42,82,"mute"),(.58,69,.28,87,"hammer"),(.98,74,.48,99,"slide_up"),(1.64,79,1.04,122,"bend"),(3.08,76,.28,91,"pull")],
-            "Am":[(0.00,69,.42,92,"sus"),(.58,72,.28,88,"hammer"),(.98,76,.54,114,"bend"),(1.92,74,.24,91,"pull"),(2.30,72,.22,88,"pull"),(2.66,71,.22,86,"pull"),(3.08,67,.48,99,"sus")],
-          }
-
-          stages=[("seed",P,0),("development",DEV,4),("lift",LIFT,8),("climax",CLIMAX,12)]
-          prog=["Em","C","Bm","Am"]
-
-          def vlq(n):
-              out=[n&0x7f]; n>>=7
-              while n:
-                  out.append((n&0x7f)|0x80); n>>=7
-              return bytes(reversed(out))
-
-          def write(path,seed,timing_ms,vel_bias,xtrack=False):
-              rng=random.Random(seed)
-              ev=[]
-              def add(t,o,d): ev.append((max(0,int(t)),o,bytes(d)))
-              tempo=round(60_000_000/BPM)
-              add(0,0,b'\xff\x51\x03'+tempo.to_bytes(3,'big'))
-              add(0,1,bytes([0xB0,7,116]))
-              add(0,1,bytes([0xB0,11,112]))
-
-              # Base controller state: moderate tension/resonance, natural picking.
-              defaults={20:10,21:58,22:54,23:72,24:70,25:86,28:56,29:76,30:72,31:60,46:69,48:64,52:58,53:66}
-              for cc,val in defaults.items(): add(0,1,bytes([0xB0,cc,val]))
-
-              def setcc(t,cc,val): add(t,0,bytes([0xB0,cc,max(0,min(127,int(val)))]))
-              def keyswitch(t,n):
-                  add(t-22,0,bytes([0x90,n,100])); add(t-6,0,bytes([0x80,n,0]))
-
-              def play(tick,n,dur,vel,art,stage,note_index):
-                  keyswitch(tick,KS[art])
-                  # Phrase-level controller expression, BEFORE the note.
-                  # Picking varies per role/articulation.
-                  pick={"mute":42,"hammer":54,"pull":50,"slide_up":58,"slide_in":58,"sus":72,"bend":78}[art]
-                  pick += rng.randint(-4,4) + (4 if stage=="climax" else 0)
-                  setcc(tick-18,30,pick)
-                  setcc(tick-18,31,58+rng.randint(-8,8))
-                  # Vibrato belongs mainly to targets/bends.
-                  vib=8 if art not in ("bend","sus") else (22 if art=="sus" else (36 if stage!="climax" else 50))
-                  setcc(tick-18,20,vib)
-                  setcc(tick-18,21,54+rng.randint(-3,4))
-                  # Muting / release shape differ per role.
-                  setcc(tick-18,22,82 if art=="mute" else 44+rng.randint(-4,5))
-                  setcc(tick-18,24,62 if art=="mute" else 78)
-                  setcc(tick-18,25,72 if art=="mute" else 92)
-                  # Bend timing and start/speed on actual bend notes.
-                  if art=="bend":
-                      setcc(tick-18,28,68 if stage in ("seed","development") else 55)
-                      setcc(tick-18,52,46 if stage!="climax" else 38)
-                      setcc(tick-18,53,64 if stage!="climax" else 78)
-                  # Tension/resonance open up with intensity.
-                  tension={"seed":62,"development":68,"lift":75,"climax":84}[stage] + rng.randint(-3,3)
-                  resonance={"seed":68,"development":72,"lift":78,"climax":84}[stage] + rng.randint(-3,3)
-                  setcc(tick-18,46,tension); setcc(tick-18,29,resonance)
-                  # Long/Extra rises on long targets.
-                  setcc(tick-18,23,92 if dur>=.9*BEAT else 60)
-
-                  jitter=round((timing_ms/1000)*(BPM/60)*PPQ*rng.uniform(-1,1))
-                  # XTracking intentionally looser and slightly behind.
-                  if xtrack: jitter += round((.003+rng.uniform(-.002,.005))*(BPM/60)*PPQ)
-                  vv=max(1,min(127,vel+vel_bias+rng.randint(-3,3)))
-                  add(tick+jitter,2,bytes([0x90,n,vv]))
-                  add(tick+jitter+max(30,int(dur)),1,bytes([0x80,n,0]))
-
-              for stage,patterns,start_bar in stages:
-                  # repeat climax three times, other stages once
-                  reps=3 if stage=="climax" else 1
-                  for rep in range(reps):
-                      for i,key in enumerate(prog):
-                          bar=start_bar + (rep*4 if stage=="climax" else 0) + i
-                          phrase=patterns[key]
-                          # correlated phrase-level push/pull
-                          bar_offset=round((rng.uniform(-.004,.004)+(0.010 if stage=="seed" else 0.0))*(BPM/60)*PPQ)
-                          for j,(pos,n,dur_b,vel,art) in enumerate(phrase):
-                              tick=bar*BAR+round(pos*BEAT)+bar_offset
-                              play(tick,n,round(dur_b*BEAT*rng.uniform(.97,1.03)),vel,art,stage,j)
-
-              ev.sort(key=lambda x:(x[0],x[1]))
-              tr=bytearray(); last=0
-              for t,o,d in ev:
-                  tr+=vlq(t-last)+d; last=t
-              tr+=b'\x00\xff\x2f\x00'
-              data=b'MThd'+struct.pack('>IHHH',6,0,1,PPQ)+b'MTrk'+struct.pack('>I',len(tr))+tr
-              Path(path).write_bytes(data)
-
-          write('v11/performance-left.mid',20260921,4.2,0,False)
-          write('v11/performance-right.mid',20260922,7.5,-5,True)
-          PY
+          set -euxo pipefail
+          python3 tools/audio/chrome_horizon_v11_performance.py midi v11
 
       - name: Render Metal GTX DI
-        shell: bash
         run: |
           set -euxo pipefail
           RENDER="$(cat v11/sfizz-render-path.txt)"
@@ -190,8 +61,7 @@ jobs:
           ffmpeg -hide_banner -loglevel error -y -i v11/left-di-44.wav -af "pan=mono|c0=.5*c0+.5*c1" -ar 48000 -c:a pcm_f32le v11/left-di.wav
           ffmpeg -hide_banner -loglevel error -y -i v11/right-di-44.wav -af "pan=mono|c0=.5*c0+.5*c1" -ar 48000 -c:a pcm_f32le v11/right-di.wav
 
-      - name: Download approved NAM heads and IR
-        shell: bash
+      - name: Download NAM and cabinet
         run: |
           set -euxo pipefail
           curl -fL --retry 4 'https://raw.githubusercontent.com/pelennor2170/NAM_models/main/Tim%20R%20JCM2000%20L2%20G6.nam' -o v11/jcm2000.nam
@@ -202,87 +72,22 @@ jobs:
           test -s "$IR"
           cp "$IR" v11/cab-ir.wav
 
-      - name: Reamp JCM2000 left and 5150 right
-        shell: bash
+      - name: Reamp approved dual NAM
         run: |
-          python3 - <<'PY'
-          import json, math
-          from pathlib import Path
-          import numpy as np
-          import soundfile as sf
-          import torch
-          from scipy.signal import butter, sosfilt, resample_poly, fftconvolve
-          from nam.models import init_from_nam
-
-          SR=48000
-          def read(path):
-              x,sr=sf.read(path,dtype='float32',always_2d=False)
-              if x.ndim>1:x=x.mean(axis=1)
-              if sr!=SR:
-                  g=math.gcd(sr,SR); x=resample_poly(x,SR//g,sr//g).astype(np.float32)
-              return x.astype(np.float32)
-          L=read('v11/left-di.wav'); R=read('v11/right-di.wav')
-          ir=read('v11/cab-ir.wav')
-          nz=np.where(np.abs(ir)>max(1e-7,float(np.max(np.abs(ir)))*1e-4))[0]
-          if len(nz): ir=ir[max(0,int(nz[0])-8):]
-          ir=ir[:min(len(ir),int(.25*SR))]
-          ir/=np.max(np.abs(ir))+1e-12
-          hp=butter(2,72/(SR/2),btype='highpass',output='sos')
-          lp=butter(2,11200/(SR/2),btype='lowpass',output='sos')
-
-          def load(path):
-              cfg=json.loads(Path(path).read_text())
-              m=init_from_nam(cfg); m.eval()
-              if m.sample_rate is None:m.sample_rate=SR
-              return m
-
-          def level(x,target_db):
-              rms=float(np.sqrt(np.mean(x*x)+1e-12)); target=10**(target_db/20)
-              return (x*min(8.0,target/max(rms,1e-8))).astype(np.float32)
-
-          def infer(m,x):
-              rf=int(m.receptive_field); out=[]; pos=0; chunk=131072
-              with torch.inference_mode():
-                  while pos<len(x):
-                      end=min(len(x),pos+chunk); cur=x[pos:end]
-                      if pos==0:y=m(torch.from_numpy(cur.copy()),pad_start=True)
-                      else:
-                          hist=x[max(0,pos-(rf-1)):pos]
-                          if len(hist)<rf-1:hist=np.pad(hist,(rf-1-len(hist),0))
-                          xx=np.concatenate([hist,cur]).astype(np.float32)
-                          y=m(torch.from_numpy(xx),pad_start=False)
-                      out.append(y.detach().cpu().numpy().astype(np.float32)); pos=end
-              return np.concatenate(out)
-
-          def cab(x):
-              y=fftconvolve(x,ir,mode='full')[:len(x)].astype(np.float32)
-              return sosfilt(lp,sosfilt(hp,y)).astype(np.float32)
-
-          jcm=load('v11/jcm2000.nam'); amp5150=load('v11/5150.nam')
-          yl=cab(infer(jcm,level(L,-22.0)))
-          yr=cab(infer(amp5150,level(R,-24.0)))
-          n=min(len(yl),len(yr))
-          st=np.column_stack([yl[:n]*.97,yr[:n]*.91])
-          pk=float(np.max(np.abs(st)))+1e-12
-          if pk>.82:st*=.82/pk
-          sf.write('v11/guitar-performance-raw.wav',st,SR,subtype='PCM_24')
-          PY
-          ffmpeg -hide_banner -loglevel error -y -i v11/guitar-performance-raw.wav             -af "acompressor=threshold=-19dB:ratio=1.20:attack=35:release=150,loudnorm=I=-18:TP=-1.2:LRA=11"             -ar 48000 -c:a pcm_s24le v11/guitar-performance.wav
-          ffmpeg -hide_banner -loglevel error -y -i v11/guitar-performance.wav -t 42             -ar 48000 -c:a pcm_s24le v11/guitar-performance-preview-42s.wav
+          set -euxo pipefail
+          python3 tools/audio/chrome_horizon_v11_performance.py reamp v11
+          ffmpeg -hide_banner -loglevel error -y -i v11/guitar-performance-raw.wav -af "acompressor=threshold=-19dB:ratio=1.20:attack=35:release=150,loudnorm=I=-18:TP=-1.2:LRA=11" -ar 48000 -c:a pcm_s24le v11/guitar-performance.wav
+          ffmpeg -hide_banner -loglevel error -y -i v11/guitar-performance.wav -t 80 -ar 48000 -c:a pcm_s24le v11/guitar-performance-preview.wav
 
       - name: Manifest
-        shell: bash
         run: |
+          set -euxo pipefail
           {
-            echo 'Chrome Horizon V11 - direct SFZ performance'
-            echo 'Source: Unreal Instruments Metal GTX'
-            echo 'Renderer: sfizz offline'
-            echo 'Left: Full / JCM2000 NAM'
-            echo 'Right: XTracking / 5150 BlockLetter Boosted NAM'
-            echo 'Cab: Jester Dyne Vertical Lip Stabber 48k'
-            echo 'Tempo: 152 BPM'
-            echo 'Controllers used: CC20/21 vibrato, CC22 mute time, CC23 long-extra, CC24/25 release, CC28 bend time, CC29 resonance, CC30/31 picking, CC46 tension, CC52/53 bend start/speed'
-            echo 'Performance: chord-aware seed -> development -> lift -> climax'
+            echo "Chrome Horizon V11 direct SFZ performance"
+            echo "Metal GTX Full left / XTracking right"
+            echo "JCM2000 NAM left / 5150 Boosted NAM right"
+            echo "152 BPM"
+            echo "CC: vibrato, mute, long-extra, release, bend, resonance, picking, tension"
             sha256sum v11/guitar-performance.wav
           } > v11/MANIFEST.txt
 
@@ -292,7 +97,7 @@ jobs:
           name: chrome-horizon-v11-sfz-performance
           path: |
             v11/guitar-performance.wav
-            v11/guitar-performance-preview-42s.wav
+            v11/guitar-performance-preview.wav
             v11/left-di.wav
             v11/right-di.wav
             v11/performance-left.mid
