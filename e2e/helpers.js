@@ -445,6 +445,14 @@ export async function login(page) {
 }
 
 
+export async function scheduleDomClick(locator) {
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.evaluate((element) => {
+    setTimeout(() => element.click(), 0);
+  });
+}
+
 export function gameStatus(page) {
   return page.getByRole('status', { name: 'Estado de la partida' });
 }
