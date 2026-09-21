@@ -5,17 +5,17 @@ const WEAPON_PATH := "res://assets/weapon_atlas.svg"
 const OUTPUT_DIR := "/tmp/pawn-slug-v1-slice"
 const FRAME_SIZE := Vector2(256.0, 256.0)
 const WEAPON_FRAME_SIZE := Vector2(256.0, 128.0)
-const WEAPON_SCALE := Vector2(0.40, 0.40)
+const WEAPON_SCALE := Vector2(0.34, 0.34)
 
 const SOCKETS := [
-    {"anchor": [12.0, -12.0], "rear": [-13.0, 13.0], "front": [16.0, 12.0], "muzzle": [62.0, -11.0], "angle": -2.5},
-    {"anchor": [13.0, -13.0], "rear": [-12.0, 12.0], "front": [17.0, 11.0], "muzzle": [63.0, -12.0], "angle": -1.8},
-    {"anchor": [14.0, -14.0], "rear": [-11.0, 11.0], "front": [18.0, 10.0], "muzzle": [64.0, -13.0], "angle": -1.0},
-    {"anchor": [15.0, -13.0], "rear": [-10.0, 12.0], "front": [19.0, 11.0], "muzzle": [65.0, -12.0], "angle": -0.2},
-    {"anchor": [14.0, -12.0], "rear": [-11.0, 13.0], "front": [18.0, 12.0], "muzzle": [64.0, -11.0], "angle": 0.8},
-    {"anchor": [13.0, -11.0], "rear": [-12.0, 14.0], "front": [17.0, 13.0], "muzzle": [63.0, -10.0], "angle": 0.2},
-    {"anchor": [12.0, -12.0], "rear": [-13.0, 13.0], "front": [16.0, 12.0], "muzzle": [62.0, -11.0], "angle": -1.0},
-    {"anchor": [11.0, -13.0], "rear": [-14.0, 12.0], "front": [15.0, 11.0], "muzzle": [61.0, -12.0], "angle": -2.0},
+    {"anchor": [10.0, 34.0], "rear": [-10.0, 52.0], "front": [19.0, 49.0], "muzzle": [56.0, 35.0], "angle": -2.5},
+    {"anchor": [11.0, 33.0], "rear": [-9.0, 51.0], "front": [20.0, 48.0], "muzzle": [57.0, 34.0], "angle": -1.8},
+    {"anchor": [12.0, 32.0], "rear": [-8.0, 50.0], "front": [21.0, 47.0], "muzzle": [58.0, 33.0], "angle": -1.0},
+    {"anchor": [13.0, 33.0], "rear": [-7.0, 51.0], "front": [22.0, 48.0], "muzzle": [59.0, 34.0], "angle": -0.2},
+    {"anchor": [12.0, 35.0], "rear": [-8.0, 53.0], "front": [21.0, 50.0], "muzzle": [58.0, 36.0], "angle": 0.8},
+    {"anchor": [11.0, 36.0], "rear": [-9.0, 54.0], "front": [20.0, 51.0], "muzzle": [57.0, 37.0], "angle": 0.2},
+    {"anchor": [10.0, 35.0], "rear": [-10.0, 53.0], "front": [19.0, 50.0], "muzzle": [56.0, 36.0], "angle": -1.0},
+    {"anchor": [9.0, 34.0], "rear": [-11.0, 52.0], "front": [18.0, 49.0], "muzzle": [55.0, 35.0], "angle": -2.0},
 ]
 
 func _fail(message: String) -> void:
