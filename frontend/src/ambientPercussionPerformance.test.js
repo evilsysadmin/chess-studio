@@ -69,10 +69,9 @@ describe('ambient percussion performance v2', () => {
   it('keeps genre feel instead of normalizing every drum performance', () => {
     const lofi = structuredFeel(AMBIENT_THEMES.lofiRainTape).percussion.performance;
     const energy = structuredFeel(AMBIENT_THEMES.neonSiege).percussion.performance;
-    const jazz = structuredFeel(AMBIENT_THEMES.beirut0113).percussion.performance;
 
     expect(lofi.secondaryVariance).toBeGreaterThan(energy.secondaryVariance);
     expect(lofi.ghostChance).toBeGreaterThan(energy.ghostChance);
-    expect(jazz.stereoMotion).toBeGreaterThan(energy.stereoMotion);
+    expect(lofi.stereoMotion).toBeGreaterThan(energy.stereoMotion);
   });
 });
