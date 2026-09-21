@@ -322,6 +322,85 @@ func _run() -> void:
         "sin percepción ni memoria el enemigo no rastrea telepáticamente",
     )
 
+    var scout_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": true,
+        "distance": 430.0,
+        "standoff": 260.0,
+        "vertical_gap": 0.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": false,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "scout",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    var grenadier_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": true,
+        "distance": 430.0,
+        "standoff": 260.0,
+        "vertical_gap": 0.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": false,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "grenadier",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    _expect(
+        float(scout_scores[EnemyUtilityAI.INTENT_ADVANCE])
+            > float(grenadier_scores[EnemyUtilityAI.INTENT_ADVANCE]),
+        "scout puntúa avance por encima de grenadier sin duplicar su cerebro",
+    )
+    var commando_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": false,
+        "distance": 240.0,
+        "standoff": 260.0,
+        "vertical_gap": 90.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": true,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "commando",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    var pawn_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": false,
+        "distance": 240.0,
+        "standoff": 260.0,
+        "vertical_gap": 90.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": true,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "pawn",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    _expect(
+        float(commando_scores[EnemyUtilityAI.INTENT_TRAVERSE])
+            > float(pawn_scores[EnemyUtilityAI.INTENT_TRAVERSE]),
+        "commando favorece traversal más que pawn sobre la misma policy",
+    )
+
     # Enemy traversal probe: mobile enemies should read authored geometry
     # instead of freezing below platforms or phasing through crates/pits.
     var enemy_probe = MainRuntime.new()
