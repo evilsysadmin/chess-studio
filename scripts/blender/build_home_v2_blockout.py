@@ -2314,6 +2314,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     width, height = int(ref_image.size[0]), int(ref_image.size[1])
     if width <= 0 or height <= 0:
         width, height = 320, 180
+    # `width`/`height` are common local names further down build_scene (a loop once
+    # reused `height` and silently corrupted the exported reference_size), so the
+    # reference size is captured under names nothing else uses.
+    reference_width, reference_height = width, height
     canon_width, canon_height = 1672, 941
     render_width = min(canon_width, max(640, max_width))
     render_height = round(canon_height * render_width / canon_width)
@@ -2623,11 +2627,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             jitter_x = (_hash01(col, row, 1409) - 0.5) * 0.060
             jitter_y = (_hash01(col, row, 1423) - 0.5) * 0.038
             half_width = 0.69 + (_hash01(col, row, 1427) - 0.5) * 0.045
-            height = 0.010 + _hash01(col, row, 1433) * 0.008
+            slab_height = 0.010 + _hash01(col, row, 1433) * 0.008
             slab = cube(
                 f"HOME_ARCH_floor_slab_{row}_{col}",
-                (sx + jitter_x, sy + jitter_y, height * 0.55),
-                (half_width, half_depth, height),
+                (sx + jitter_x, sy + jitter_y, slab_height * 0.55),
+                (half_width, half_depth, slab_height),
                 materials["floor_stone"],
                 bevel=0.018,
             )
@@ -3752,7 +3756,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             scene.view_settings.look = "Medium High Contrast"
         except Exception:
             pass
-    return scene, camera, target, width, height, render_width, render_height
+    return scene, camera, target, reference_width, reference_height, render_width, render_height
 
 
 def render(scene, path: Path) -> None:
