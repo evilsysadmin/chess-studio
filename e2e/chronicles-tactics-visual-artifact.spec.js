@@ -17,10 +17,12 @@ async function dismissGuide(page) {
 
 async function openTactics(page, {
   chroniclesRunFailureStatus = 0,
+  chroniclesCurrentMapId = 'crypt-eight-squares',
   expectReady = true,
 } = {}) {
   await mockApi(page, {
     chroniclesRunFailureStatus,
+    chroniclesCurrentMapId,
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
@@ -244,6 +246,30 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+
+test('Chronicles Tactics · large-map scenery regression · Hollow Bell Tower', async ({ browser }) => {
+  test.setTimeout(150_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openTactics(page, { chroniclesCurrentMapId: 'hollow-bell-tower' });
+    const mode = page.locator('[data-chronicles-tactics="true"]');
+    const viewport = mode.locator('.chronicles-tactics__viewport');
+    const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    await expect(mode).toContainText('Torre de las Campanas Huecas');
+    await page.waitForTimeout(700);
+    await captureElement(
+      page,
+      viewport,
+      `${ARTIFACT_DIR}/chronicles-tactics-hollow-bell-tower-desktop-1440x900.png`,
+    );
+  } finally {
+    await context.close();
+  }
+});
 
 
 for (const capture of CAPTURES) {

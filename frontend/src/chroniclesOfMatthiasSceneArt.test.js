@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { installChroniclesTacticsSceneArt } from './chroniclesOfMatthiasSceneArt.js';
+import {
+  chroniclesTacticsUsesCanonicalSceneryFrame,
+  installChroniclesTacticsSceneArt,
+} from './chroniclesOfMatthiasSceneArt.js';
 import {
   chroniclesTacticsTrapVisualMode,
   syncChroniclesTacticsPressurePlateArt,
@@ -39,6 +42,26 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(scene.getObjectByName('chronicles-tactics-pressure-plates')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-grounding')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-damage-feedback')).toBeTruthy();
+  });
+
+  it('does not mount the fixed 7x7 fortress frame inside larger battlefields', () => {
+    const { scene, models } = sceneModels();
+    const scenePlan = {
+      width: 11,
+      height: 11,
+      center: { x: 5, y: 5 },
+      wallFaces: [],
+      content: [],
+    };
+
+    const art = installChroniclesTacticsSceneArt(models, { coarsePointer: true, scenePlan });
+
+    expect(chroniclesTacticsUsesCanonicalSceneryFrame(scenePlan)).toBe(false);
+    expect(art?.fortress).toBeNull();
+    expect(art?.foreground).toBeNull();
+    expect(scene.getObjectByName('chronicles-fortress-backdrop')).toBeFalsy();
+    expect(scene.getObjectByName('chronicles-foreground-framing')).toBeFalsy();
+    expect(art?.architecture?.name).toBe('chronicles-tactics-architecture-depth');
   });
 
   it('forwards supplied map topology into the premium architecture layer', () => {

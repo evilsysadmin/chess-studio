@@ -151,6 +151,7 @@ export async function mockApi(page, {
   adminUsers = [],
   requestLog = [],
   chroniclesRunFailureStatus = 0,
+  chroniclesCurrentMapId = 'crypt-eight-squares',
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -212,6 +213,7 @@ export async function mockApi(page, {
       const payload = await chroniclesE2ERunPayload({
         operationKey,
         seed: nextChroniclesSeed++,
+        currentMapId: chroniclesCurrentMapId,
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);
