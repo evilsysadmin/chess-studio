@@ -33,7 +33,6 @@ from chronicles_map_generator import (
 )
 from chronicles_manifest_procedural import proceduralize_chronicles_manifest
 from chronicles_map_planner import normalize_chronicles_planner_proposal
-from chronicles_planner_cloudflare import request_chronicles_planner_snapshot
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -673,25 +672,15 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             if body.map_id is None:
                 route_snapshot = chronicles_route_snapshot_for_seed(seed)
                 selected_map_id = route_snapshot["mapIds"][0]
-                planner_map_ids = tuple(route_snapshot["mapIds"])
             else:
                 route_snapshot = None
                 selected_map_id = body.map_id
-                planner_map_ids = (selected_map_id,)
 
-            planner_descriptors = _chronicles_planner_descriptors(
-                planner_map_ids,
-                seed,
-                route_snapshot=route_snapshot,
-            )
-            raw_planner_snapshot = await request_chronicles_planner_snapshot(
-                planner_descriptors,
-                request_id=f"chronicles:{run_id}",
-            )
-            planner_snapshot = _normalize_remote_planner_snapshot(
-                raw_planner_snapshot,
-                planner_descriptors=planner_descriptors,
-            )
+            # Runtime bootstrap is deliberately deterministic and network-free beyond
+            # the run API itself. Workers AI planner proposals remain supported as
+            # persisted snapshots for older runs and authoring/offline tooling, but a
+            # fresh expedition never waits on remote AI before gameplay can mount.
+            planner_snapshot = None
 
             area = chronicles_area_envelope(
                 selected_map_id,

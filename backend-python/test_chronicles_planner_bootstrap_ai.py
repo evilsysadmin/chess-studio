@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 import chronicles_api
+import chronicles_planner_cloudflare
 import chronicles_run_store
 
 
@@ -25,145 +26,62 @@ def _memory_store(monkeypatch):
     monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
 
 
-def test_ai_planner_runs_once_and_idempotent_retry_reuses_snapshot(monkeypatch):
+def test_runtime_bootstrap_never_waits_for_ai_planner(monkeypatch):
     _memory_store(monkeypatch)
     monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 417)
     calls = []
 
-    async def fake_planner(areas, **kwargs):
-        calls.append((areas, kwargs))
-        assert len(areas) == 1
-        assert areas[0]["map_id"] == "echo-cistern"
-        assert areas[0]["theme"] == "water"
-        assert isinstance(areas[0]["allowed_verbs"], str)
-        return {
-            "version": 1,
-            "areas": {
-                "echo-cistern": {
-                    "version": 1,
-                    "source": "workers-ai",
-                    "verbs": ["guardian", "sluice"],
-                    "difficulty": 5,
-                }
-            },
-        }
+    async def fail_if_called(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("runtime bootstrap must not call Workers AI planner")
 
-    monkeypatch.setattr(chronicles_api, "request_chronicles_planner_snapshot", fake_planner)
-    client = _client()
-    headers = {
-        "Authorization": "Bearer test-token",
-        "Idempotency-Key": "chronicles-ai-bootstrap-0001",
-    }
-
-    first = client.post(
-        "/api/chronicles/runs",
-        headers=headers,
-        json={"mapId": "echo-cistern"},
+    monkeypatch.setattr(
+        chronicles_planner_cloudflare,
+        "request_chronicles_planner_snapshot",
+        fail_if_called,
     )
-    repeated = client.post(
+
+    response = _client().post(
         "/api/chronicles/runs",
-        headers=headers,
+        headers={"Authorization": "Bearer test-token"},
         json={"mapId": "echo-cistern"},
     )
 
-    assert first.status_code == 201
-    assert repeated.status_code == 201
-    assert repeated.json() == first.json()
-    assert len(calls) == 1
-
-    payload = first.json()
+    assert response.status_code == 201
+    assert calls == []
+    payload = response.json()
     assert payload["seed"] == 417
-    assert payload["plannerSnapshot"]["areas"]["echo-cistern"]["source"] == "workers-ai"
+    assert "plannerSnapshot" not in payload
     generation = payload["area"]["manifest"]["generation"]
-    assert generation["plannerAccepted"] is True
-    assert generation["plannerSource"] == "workers-ai"
-    assert generation["plannerReason"] == "accepted"
+    assert generation["plannerAccepted"] is False
+    assert generation["plannerReason"] == "no-proposal"
 
 
-def test_ai_planner_unauthorized_area_is_discarded_without_breaking_run(monkeypatch):
+def test_seeded_default_entry_is_also_planner_free(monkeypatch):
     _memory_store(monkeypatch)
-    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 99)
+    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 918273)
+    calls = []
 
-    async def fake_planner(_areas, **_kwargs):
-        return {
-            "version": 1,
-            "areas": {
-                "blind-king-archive": {
-                    "version": 1,
-                    "source": "workers-ai",
-                    "difficulty": 5,
-                }
-            },
-        }
+    async def fail_if_called(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("seeded default entry must not call Workers AI planner")
 
-    monkeypatch.setattr(chronicles_api, "request_chronicles_planner_snapshot", fake_planner)
+    monkeypatch.setattr(
+        chronicles_planner_cloudflare,
+        "request_chronicles_planner_snapshot",
+        fail_if_called,
+    )
+
     response = _client().post(
         "/api/chronicles/runs",
         headers={"Authorization": "Bearer test-token"},
-        json={"mapId": "echo-cistern"},
+        json={},
     )
 
     assert response.status_code == 201
+    assert calls == []
     payload = response.json()
+    route_plan = chronicles_api.chronicles_route_plan_for_seed(918273)
+    assert payload["currentMapId"] == route_plan[0]
+    assert payload["route"]["mapIds"] == list(route_plan)
     assert "plannerSnapshot" not in payload
-    assert payload["area"]["manifest"]["generation"]["plannerAccepted"] is False
-    assert payload["area"]["manifest"]["generation"]["plannerReason"] == "no-proposal"
-
-
-def test_ai_planner_source_spoof_is_discarded(monkeypatch):
-    _memory_store(monkeypatch)
-
-    async def fake_planner(_areas, **_kwargs):
-        return {
-            "version": 1,
-            "areas": {
-                "echo-cistern": {
-                    "version": 1,
-                    "source": "definitely-not-workers",
-                    "difficulty": 4,
-                }
-            },
-        }
-
-    monkeypatch.setattr(chronicles_api, "request_chronicles_planner_snapshot", fake_planner)
-    response = _client().post(
-        "/api/chronicles/runs",
-        headers={"Authorization": "Bearer test-token"},
-        json={"mapId": "echo-cistern"},
-    )
-    assert response.status_code == 201
-    assert "plannerSnapshot" not in response.json()
-
-
-def test_ai_planner_unapproved_global_verb_is_discarded(monkeypatch):
-    _memory_store(monkeypatch)
-
-    async def fake_planner(areas, **_kwargs):
-        assert areas[0]["map_id"] == "echo-cistern"
-        assert "keys" not in areas[0]["allowed_verbs"].split(",")
-        return {
-            "version": 1,
-            "areas": {
-                "echo-cistern": {
-                    "version": 1,
-                    "source": "workers-ai",
-                    # "keys" is a valid MapCode verb globally, but this authored
-                    # map did not authorize it for planner contract v1.
-                    "verbs": ["sluice", "keys"],
-                    "difficulty": 4,
-                }
-            },
-        }
-
-    monkeypatch.setattr(chronicles_api, "request_chronicles_planner_snapshot", fake_planner)
-    response = _client().post(
-        "/api/chronicles/runs",
-        headers={"Authorization": "Bearer test-token"},
-        json={"mapId": "echo-cistern"},
-    )
-
-    assert response.status_code == 201
-    payload = response.json()
-    assert "plannerSnapshot" not in payload
-    assert payload["area"]["manifest"]["generation"]["plannerAccepted"] is False
-    assert payload["area"]["manifest"]["generation"]["plannerReason"] == "no-proposal"
