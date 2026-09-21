@@ -60,13 +60,26 @@ export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start
     const depth = ctx.createGain();
     lfo.type = 'sine';
     lfo.frequency.value = tremolo;
-    if (organicWind && typeof depth.gain?.setValueAtTime === 'function' && typeof depth.gain?.linearRampToValueAtTime === 'function') {
-      // Real breath/reed vibrato blooms after the attack instead of arriving at
-      // full depth on sample zero. Keep the modulation shallower than synths.
-      depth.gain.setValueAtTime(0.008, start);
-      depth.gain.linearRampToValueAtTime(organicWind.tremoloDepth, start + Math.min(0.22, duration * 0.34));
+    if (typeof depth.gain?.setValueAtTime === 'function' && typeof depth.gain?.linearRampToValueAtTime === 'function') {
+      if (organicWind) {
+        // Real breath/reed vibrato blooms after the attack instead of arriving at
+        // full depth on sample zero. Keep the modulation shallower than synths.
+        depth.gain.setValueAtTime(0.008, start);
+        depth.gain.linearRampToValueAtTime(organicWind.tremoloDepth, start + Math.min(0.22, duration * 0.34));
+      } else {
+        // No vibrato de preset desde sample cero: en notas cortas apenas existe,
+        // y en objetivos largos aparece después del ataque. Así la misma voz
+        // puede frasear sin delatar un LFO idéntico en cada nota.
+        const durationWeight = clamp((duration - 0.12) / 0.95, 0, 1);
+        const targetDepth = 0.008 + (0.082 * durationWeight);
+        const initialDepth = Math.min(0.004, targetDepth * 0.35);
+        const bloomTime = Math.min(0.24, Math.max(0.045, duration * 0.30));
+        depth.gain.setValueAtTime(initialDepth, start);
+        depth.gain.linearRampToValueAtTime(targetDepth, start + bloomTime);
+      }
     } else {
-      depth.gain.value = 0.09;
+      const durationWeight = clamp((duration - 0.12) / 0.95, 0, 1);
+      depth.gain.value = organicWind?.tremoloDepth ?? (0.008 + (0.082 * durationWeight));
     }
     lfo.connect(depth);
     depth.connect(modulation.gain);
