@@ -457,7 +457,11 @@ def add_room(static, mats):
             cube(f"WR_ARCH_side_panel_{side}_{index}", (side * 8.475, y, 1.40),
                  (0.018, 0.98, 0.62), mats["wall_recess"], static, bevel=0.030)
 
-    for z in (1.25, 3.15, 5.45):
+    # Keep the two lower architectural rails. The former upper rail at z=5.45
+    # crossed the hero wall in projection and visually stitched together the
+    # lancet, crest and campaign display even after the decorative mortar
+    # courses were removed. Vertical stiles still provide the upper-wall cadence.
+    for z in (1.25, 3.15):
         cube(f"WR_ARCH_back_rail_{z}", (0, 6.78, z), (8.45, 0.06, 0.05), mats["brass_dark"], static, bevel=0.018)
     for x in (-7.3, -4.2, -1.55, 1.55, 4.2, 7.3):
         cube(f"WR_ARCH_back_stile_{x}", (x, 6.78, 3.35), (0.05, 0.06, 2.45), mats["trim_wood"], static, bevel=0.018)
@@ -1515,6 +1519,8 @@ def validate():
     )
     if retired_wall_courses:
         raise RuntimeError(f"retired upper-wall mortar courses returned: {retired_wall_courses}")
+    if "WR_ARCH_back_rail_5.45" in {obj.name for obj in scene.objects}:
+        raise RuntimeError("retired upper hero-wall rail returned")
     roles = {}
     for obj in scene.objects:
         role = obj.get("war_room_role")
