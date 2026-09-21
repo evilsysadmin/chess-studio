@@ -3,8 +3,26 @@ import {
   chroniclesMapIds,
 } from './chroniclesMapCatalog.js';
 
+const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
+
+function authoredSetKeys(map) {
+  const contentEffects = CONTENT_GROUPS.flatMap((group) => (
+    (map?.[group] || []).flatMap((entry) => entry?.action?.effects || [])
+  ));
+  const defeatEffects = (map?.enemies || []).flatMap((enemy) => enemy?.onDefeat?.effects || []);
+  return [...contentEffects, ...defeatEffects]
+    .filter((effect) => effect?.type === 'set' && typeof effect.key === 'string' && effect.key)
+    .map((effect) => effect.key);
+}
+
 function checkpointFlagKeys() {
-  return chroniclesMapIds().flatMap((mapId) => Object.keys(chroniclesMapById(mapId).initialFlags || {}));
+  return chroniclesMapIds().flatMap((mapId) => {
+    const map = chroniclesMapById(mapId);
+    return [
+      ...Object.keys(map.initialFlags || {}),
+      ...authoredSetKeys(map),
+    ];
+  });
 }
 
 function durableFlagValue(value) {
