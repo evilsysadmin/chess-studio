@@ -223,7 +223,7 @@ def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_
     return obj
 
 
-def draped_banner(name, center, side, mat, owner):
+def draped_banner(name, center, side, mat, owner, *, width_scale=1.0):
     """Build a shallow gathered cloth panel with real silhouette and fold relief."""
     cx, cy, cz = center
     half_height = 1.36
@@ -247,7 +247,7 @@ def draped_banner(name, center, side, mat, owner):
                 fold_depth *= 0.62
             row.append(len(verts))
             verts.append((
-                cx + shift + factor * width,
+                cx + (shift + factor * width) * width_scale,
                 cy - fold_depth,
                 cz + height * half_height,
             ))
@@ -1049,15 +1049,20 @@ def add_gothic_canon_v2(static, mats):
         cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
              (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
-    # Keep one ceremonial banner on the left. The right banner was mostly hidden
-    # behind the campaign panel and physically occupied the same wall bay.
-    for index, x in enumerate((-6.55,)):
-        draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
-        cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
+    # Keep one ceremonial banner on the left. Give it its own wall bay instead
+    # of letting the cloth/rod almost merge with the ceremonial lancet in the
+    # gameplay projection. Narrowing the cloth is preferable to moving the arch
+    # or fireplace, whose silhouette already works.
+    for index, x in enumerate((-6.62,)):
+        draped_banner(
+            f"WR_CANON_banner_{index}", (x, 6.48, 4.78),
+            -1 if x < 0 else 1, burgundy, static, width_scale=0.82,
+        )
+        cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.60, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
         for edge in (-1, 1):
             sphere(f"WR_CANON_banner_finial_{index}_{edge}",
-                   (x + edge * 0.76, 6.38, 6.22), 0.075, mats["brass"], static)
+                   (x + edge * 0.64, 6.38, 6.22), 0.070, mats["brass"], static)
         # Restrained cross + horse-head relief: readable from the hero camera.
         cube(f"WR_CANON_banner_cross_v_{index}", (x, 6.335, 4.54), (0.055, 0.028, 0.42),
              mats["brass"], static, bevel=0.018)
