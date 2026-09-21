@@ -1177,24 +1177,25 @@ def add_gothic_canon_v2(static, mats):
 
 
 
-    # Framed high-back command chair. The rounded upholstered crown + three
-    # buttons read as a little face in the runtime camera, so keep the leather
-    # as one tall inset and let an exposed wooden frame carry the silhouette.
-    # The frame sits slightly toward the camera so the side posts remain visible
-    # instead of disappearing behind the upholstery.
-    chair_x = 0.48
-    cube("WR_CANON_command_chair_back", (chair_x, 6.44, 2.88), (0.45, 0.12, 0.53),
-         burgundy, static, bevel=0.15)
+    # High-back command chair: keep the upholstery as a dark inset inside a
+    # clearly visible wooden frame. The previous bright, nearly frame-filling
+    # rectangle read like wall art in the gameplay camera rather than furniture.
+    # A lower rail just above the desk line completes the chair silhouette.
+    chair_x = 0.18
+    cube("WR_CANON_command_chair_back", (chair_x, 6.44, 2.90), (0.36, 0.12, 0.44),
+         burgundy_dark, static, bevel=0.12)
     for side in (-1, 1):
-        side_x = chair_x + side * 0.56
+        side_x = chair_x + side * 0.50
         cube(f"WR_CANON_command_chair_side_{side}",
-             (side_x, 6.30, 2.90), (0.055, 0.11, 0.62),
+             (side_x, 6.30, 2.90), (0.060, 0.11, 0.56),
              mats["trim_wood"], static, bevel=0.032)
         sphere(f"WR_CANON_command_chair_finial_{side}",
-               (side_x, 6.30, 3.53), 0.080,
-               mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
-    cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
-         mats["trim_wood"], static, bevel=0.040)
+               (side_x, 6.30, 3.48), 0.066,
+               mats["brass_dark"], static, scale=(0.80, 0.62, 1.0))
+    cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.43), (0.54, 0.11, 0.060),
+         mats["trim_wood"], static, bevel=0.038)
+    cube("WR_CANON_command_chair_lower_rail", (chair_x, 6.30, 2.39), (0.51, 0.10, 0.050),
+         mats["trim_wood"], static, bevel=0.028)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
