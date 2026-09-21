@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_FOREGROUND_PLAN,
   CHRONICLES_TACTICS_FOREGROUND_STYLE,
+  chroniclesTacticsForegroundZForScenePlan,
   installChroniclesTacticsForegroundFraming,
 } from './chroniclesOfMatthiasForegroundArt.js';
 
@@ -36,6 +37,20 @@ describe('Chronicles Tactics canonical foreground framing', () => {
     expect(scene.getObjectByName('chronicles-foreground-brazier-1')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-foreground-brazier-light-0')).toBeTruthy();
     expect(scene.children.filter((child) => child.name === 'chronicles-foreground-framing')).toHaveLength(1);
+  });
+
+  it('moves the foreground framing with the south edge on large maps', () => {
+    const scene = new THREE.Scene();
+    const scenePlan = { width: 11, height: 11 };
+    const framing = installChroniclesTacticsForegroundFraming(scene, {
+      coarsePointer: true,
+      scenePlan,
+    });
+
+    expect(chroniclesTacticsForegroundZForScenePlan(scenePlan)).toBeCloseTo(4.9, 6);
+    expect(framing?.position.z).toBeCloseTo(4.9, 6);
+    expect(scene.getObjectByName('chronicles-foreground-guardian-0').getWorldPosition(new THREE.Vector3()).z)
+      .toBeGreaterThan(11);
   });
 
   it('keeps coarse rendering lighter by omitting point lights', () => {

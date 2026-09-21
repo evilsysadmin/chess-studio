@@ -6,6 +6,7 @@ import {
   CHRONICLES_TACTICS_SKYLINE_PLAN,
   applyChroniclesTacticsPaintedAtmosphere,
   buildChroniclesTacticsDistantSkyline,
+  chroniclesTacticsBackdropZForScenePlan,
   installChroniclesTacticsFortressAccents,
   installChroniclesTacticsFortressBackdrop,
 } from './chroniclesOfMatthiasFortressArt.js';
@@ -88,6 +89,21 @@ describe('Chronicles Tactics canonical fortress accents', () => {
     expect(scene.fog.density).toBeCloseTo(CHRONICLES_TACTICS_PAINTED_LIGHTING.coarseFogDensity, 6);
     expect(second).toBe(first);
     expect(scene.children.filter((child) => child.name === 'chronicles-fortress-backdrop')).toHaveLength(1);
+  });
+
+  it('pushes the backdrop beyond the north edge on large maps instead of letting skyline towers enter the battlefield', () => {
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.1);
+    const scenePlan = { width: 11, height: 11 };
+
+    const backdrop = installChroniclesTacticsFortressBackdrop(scene, {
+      coarsePointer: true,
+      scenePlan,
+    });
+
+    expect(chroniclesTacticsBackdropZForScenePlan(scenePlan)).toBeCloseTo(-13.25, 6);
+    expect(backdrop?.position.z).toBeCloseTo(-13.25, 6);
+    expect(backdrop?.position.z).toBeLessThan(-12.25);
   });
 
   it('fails closed when the host is unavailable', () => {

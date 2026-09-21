@@ -1,4 +1,13 @@
 import * as THREE from 'three';
+import { CHRONICLES_ISOMETRIC_CELL_SIZE } from './chronicles/chroniclesIsometricDungeonPlan.js';
+
+const CANONICAL_SCENE_HALF_DEPTH = CHRONICLES_ISOMETRIC_CELL_SIZE * 3;
+
+export function chroniclesTacticsForegroundZForScenePlan(scenePlan = null) {
+  const height = Math.max(1, Number(scenePlan?.height) || 7);
+  const halfDepth = ((height - 1) * CHRONICLES_ISOMETRIC_CELL_SIZE) / 2;
+  return Math.max(0, halfDepth - CANONICAL_SCENE_HALF_DEPTH);
+}
 
 export const CHRONICLES_TACTICS_FOREGROUND_STYLE = Object.freeze({
   motif: 'stone-guardians',
@@ -166,13 +175,17 @@ function buildBrazier(root, plan, index, { iron, ember, glow, coarsePointer }) {
   return brazier;
 }
 
-export function installChroniclesTacticsForegroundFraming(scene, { coarsePointer = false } = {}) {
+export function installChroniclesTacticsForegroundFraming(
+  scene,
+  { coarsePointer = false, scenePlan = null } = {},
+) {
   if (!scene?.add) return null;
   const existing = scene.getObjectByName?.('chronicles-foreground-framing');
   if (existing) return existing;
 
   const root = new THREE.Group();
   root.name = 'chronicles-foreground-framing';
+  root.position.z = chroniclesTacticsForegroundZForScenePlan(scenePlan);
 
   const stone = ownedMaterial({ color: 0x3b3834, roughness: 0.98, metalness: 0 });
   const darkStone = ownedMaterial({ color: 0x24211e, roughness: 0.98, metalness: 0.01 });

@@ -1,4 +1,15 @@
 import * as THREE from 'three';
+import { CHRONICLES_ISOMETRIC_CELL_SIZE } from './chronicles/chroniclesIsometricDungeonPlan.js';
+
+const CANONICAL_SCENE_HALF_DEPTH = CHRONICLES_ISOMETRIC_CELL_SIZE * 3;
+const CANONICAL_BACKDROP_Z = -8.35;
+
+export function chroniclesTacticsBackdropZForScenePlan(scenePlan = null) {
+  const height = Math.max(1, Number(scenePlan?.height) || 7);
+  const halfDepth = ((height - 1) * CHRONICLES_ISOMETRIC_CELL_SIZE) / 2;
+  const extraDepth = Math.max(0, halfDepth - CANONICAL_SCENE_HALF_DEPTH);
+  return CANONICAL_BACKDROP_Z - extraDepth;
+}
 
 export const CHRONICLES_TACTICS_FORTRESS_STYLE = Object.freeze({
   motif: 'heraldic-fortress',
@@ -377,7 +388,10 @@ export function applyChroniclesTacticsPaintedAtmosphere(scene, { coarsePointer =
   return lighting;
 }
 
-export function installChroniclesTacticsFortressBackdrop(scene, { coarsePointer = false } = {}) {
+export function installChroniclesTacticsFortressBackdrop(
+  scene,
+  { coarsePointer = false, scenePlan = null } = {},
+) {
   if (!scene?.add) return null;
   const existing = scene.getObjectByName?.('chronicles-fortress-backdrop');
   if (existing) return existing;
@@ -386,7 +400,7 @@ export function installChroniclesTacticsFortressBackdrop(scene, { coarsePointer 
 
   const backdrop = new THREE.Group();
   backdrop.name = 'chronicles-fortress-backdrop';
-  backdrop.position.set(0, 0, -8.35);
+  backdrop.position.set(0, 0, chroniclesTacticsBackdropZForScenePlan(scenePlan));
 
   const wall = ownedMaterial({ color: 0x413b35, roughness: 0.96, metalness: 0.01 });
   const trim = ownedMaterial({ color: 0x201b17, roughness: 0.96, metalness: 0.02 });
