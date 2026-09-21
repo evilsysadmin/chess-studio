@@ -256,8 +256,10 @@ func _run() -> void:
     var enemy_probe = MainRuntime.new()
     enemy_probe._floor_y = 610.0
     enemy_probe._world_size = Vector2(1280.0, 720.0)
-    enemy_probe._obstacles = [Rect2(200.0, 550.0, 60.0, 60.0)]
-    enemy_probe._platforms = [Rect2(420.0, 520.0, 190.0, 24.0)]
+    var enemy_probe_obstacles: Array[Rect2] = [Rect2(200.0, 550.0, 60.0, 60.0)]
+    var enemy_probe_platforms: Array[Rect2] = [Rect2(420.0, 520.0, 190.0, 24.0)]
+    enemy_probe._obstacles = enemy_probe_obstacles
+    enemy_probe._platforms = enemy_probe_platforms
     enemy_probe._stage_manifest = {
         "ladders": [
             {"x": 320.0, "top_y": 456.0, "bottom_y": 610.0, "w": 30.0, "exit_dir": 1.0},
