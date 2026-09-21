@@ -392,6 +392,29 @@ Una iteración sólo está terminada si:
 - runtime no presenta regresiones;
 - staging fue validado cuando el cambio llega a deploy.
 
+### 10.4. Artefactos fantasma alrededor de armas
+
+La revisión visual debe buscar **componentes alpha aislados o geometría fantasma** alrededor del arma y de las manos.
+
+Rechazar una pose si aparecen:
+
+- píxeles o islotes desconectados cerca del cañón, culata, cargador o manos;
+- un segundo cañón aparente;
+- una segunda empuñadura o arma fantasma;
+- residuos de una pose/arma anterior;
+- trazos oscuros que no pertenecen claramente al cuerpo ni al arma;
+- pequeños componentes alpha separados que sólo aparecen en algunos frames;
+- flashes o proyectiles baked dentro del sprite cuando el runtime ya los genera proceduralmente.
+
+El gate técnico debe complementar la inspección humana con análisis de componentes conectados cuando sea viable:
+
+- identificar el componente principal cuerpo+arma;
+- contar componentes secundarios con alpha significativo;
+- rechazar islotes por encima de un umbral de área/distancia;
+- permitir únicamente efectos intencionados documentados.
+
+**Regresión conocida:** el banco SMG/machinegun de Matthias ha mostrado artefactos fantasma alrededor del arma en runtime. Antes de volver a promover esa variante, revisar explícitamente `idle`, `walk`, `run`, `run+fire`, `shoot`, diagonales, `crouch_fire` y `reload` con close-up runtime y contact strips.
+
 ## 13. Enemigos
 
 Los enemigos siguen el mismo contrato técnico.
