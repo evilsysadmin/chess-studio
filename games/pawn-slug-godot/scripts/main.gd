@@ -1636,6 +1636,12 @@ func _alert_enemies(world_x: float, hearing_range: float) -> void:
             continue
         if absf(float(enemy["x"]) - world_x) <= effective_hearing:
             enemy["alerted"] = true
+            _enemy_remember_target(
+                enemy,
+                world_x,
+                _player_foot_y(),
+                EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+            )
             if player.global_position.x < START_ZONE_END_X:
                 enemy["reaction"] = maxf(
                     float(enemy.get("reaction", 0.0)),
@@ -1681,6 +1687,10 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
     source["reaction"] = minf(float(source.get("reaction", 0.0)), 0.18)
     enemies[source_index] = source
     var source_x := float(source["x"])
+    var shared_target_x := float(source.get("ai_last_target_x", source_x))
+    var shared_target_foot_y := float(
+        source.get("ai_last_target_foot_y", source.get("y", _floor_y))
+    )
     for index in range(enemies.size()):
         if index == source_index:
             continue
@@ -1690,7 +1700,12 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
         if absf(float(enemy["x"]) - source_x) > radius:
             continue
         enemy["alerted"] = true
-        _enemy_remember_player(enemy, EnemyUtilityAI.HEARD_MEMORY_SECONDS)
+        _enemy_remember_target(
+            enemy,
+            shared_target_x,
+            shared_target_foot_y,
+            EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+        )
         if String(enemy.get("idle_pose", "")) != "":
             enemy["reaction"] = maxf(
                 float(enemy.get("reaction", 0.0)),
@@ -1700,11 +1715,24 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
             enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.22)
         enemies[index] = enemy
 
-func _enemy_remember_player(enemy: Dictionary, memory_seconds: float) -> void:
-    enemy["ai_last_target_x"] = float(player.global_position.x)
-    enemy["ai_last_target_foot_y"] = _player_foot_y()
+func _enemy_remember_target(
+    enemy: Dictionary,
+    target_x: float,
+    target_foot_y: float,
+    memory_seconds: float,
+) -> void:
+    enemy["ai_last_target_x"] = target_x
+    enemy["ai_last_target_foot_y"] = target_foot_y
     enemy["ai_memory_remaining"] = maxf(
         float(enemy.get("ai_memory_remaining", 0.0)),
+        memory_seconds,
+    )
+
+func _enemy_remember_player(enemy: Dictionary, memory_seconds: float) -> void:
+    _enemy_remember_target(
+        enemy,
+        float(player.global_position.x),
+        _player_foot_y(),
         memory_seconds,
     )
 
