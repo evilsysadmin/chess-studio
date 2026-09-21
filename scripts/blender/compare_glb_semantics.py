@@ -182,6 +182,14 @@ def semantic_document(document: dict, binary: bytes) -> dict:
             sampler["input"] = payload(sampler["input"])
             sampler["output"] = payload(sampler["output"])
 
+    # glTF defines omitted TRS properties as these identity transforms. Blender
+    # 5.2.40 started serializing a near-identity scale on a few nodes that
+    # 5.2.39 omitted, so materialize the spec defaults before numeric comparison.
+    for node in result.get("nodes", []):
+        node.setdefault("translation", [0.0, 0.0, 0.0])
+        node.setdefault("rotation", [0.0, 0.0, 0.0, 1.0])
+        node.setdefault("scale", [1.0, 1.0, 1.0])
+
     # No Home Matthias asset embeds images. Fail explicitly if a future asset
     # introduces another bufferView consumer that this comparator must learn.
     for image in result.get("images", []):
@@ -280,6 +288,21 @@ def self_test() -> None:
     assert_equivalent(
         semantic_document(generator_39, position),
         semantic_document(generator_40, position),
+        FLOAT_TOLERANCE,
+    )
+
+    omitted_transform = copy.deepcopy(shared)
+    omitted_transform["nodes"] = [{"name": "default-transform"}]
+    explicit_transform = copy.deepcopy(shared)
+    explicit_transform["nodes"] = [{
+        "name": "default-transform",
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0 - (FLOAT_TOLERANCE / 2), 1.0, 1.0],
+    }]
+    assert_equivalent(
+        semantic_document(omitted_transform, position),
+        semantic_document(explicit_transform, position),
         FLOAT_TOLERANCE,
     )
     print("GLB semantic comparator self-test OK")
