@@ -42,6 +42,10 @@ describe('finite ambient voice finish', () => {
     expect(nodes.oscillators[0].outputs[0].outputs).toEqual([modulation.gain]);
     expect(nodes.oscillators[0].stopped).toBeCloseTo(5.25);
     expect(modulation.gain.value).toBe(1);
+    expect(nodes.gains[1].gain.events).toEqual([
+      { type:'set', value:0.004, time:4 },
+      { type:'linear', value:0.09, time:4.24 },
+    ]);
     expect(nodes.panners[0].pan.value).toBe(0.18);
     expect(modulation.outputs).toEqual([nodes.panners[0], nodes.delays[0]]);
     expect(nodes.delays[0].outputs).toEqual([nodes.filters[0]]);
@@ -49,6 +53,28 @@ describe('finite ambient voice finish', () => {
     expect(nodes.filters[0].outputs[0].gain.value).toBe(0.26);
     expect(nodes.filters[0].outputs[0].outputs).toEqual([nodes.panners[0]]);
     expect(nodes.panners[0].outputs).toEqual([output]);
+  });
+
+  it('keeps tremolo almost absent on short notes and lets long notes bloom', () => {
+    const render = (duration) => {
+      const gains = [];
+      const oscillators = [];
+      const ctx = {
+        currentTime: 2,
+        createGain: () => { const next = node(); gains.push(next); return next; },
+        createOscillator: () => { const next = node(); oscillators.push(next); return next; },
+      };
+      connectFinishedAmbientVoice(ctx, node(), node(), {}, { start:2, duration, tremolo:5 });
+      return gains[1].gain.events;
+    };
+
+    const short = render(0.18);
+    const long = render(1.2);
+    expect(short[0]).toEqual({ type:'set', value:0.004, time:2 });
+    expect(short[1].type).toBe('linear');
+    expect(short[1].value).toBeLessThan(0.02);
+    expect(long[1].value).toBeCloseTo(0.09);
+    expect(long[1].value).toBeGreaterThan(short[1].value * 4);
   });
 
   it('adds finite breath/body/edge paths and blooms reed tremolo after the attack', () => {
