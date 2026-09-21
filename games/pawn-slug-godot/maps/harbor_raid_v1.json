@@ -312,6 +312,63 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 1010,
+      "y": 312,
+      "w": 120,
+      "h": 20,
+      "kind": "service_dock",
+      "material": "wood",
+      "one_way": true,
+      "route": "ladder"
+    },
+    {
+      "x": 3560,
+      "y": 342,
+      "w": 126,
+      "h": 20,
+      "kind": "service_dock",
+      "material": "metal",
+      "one_way": true,
+      "route": "ladder",
+      "visual": {
+        "lamp": true
+      }
+    }
+  ],
+  "ladders": [
+    {
+      "id": "dock-ladder-west",
+      "x": 552,
+      "y": 344,
+      "w": 42,
+      "h": 266,
+      "style": "steel"
+    },
+    {
+      "id": "dock-ladder-mid",
+      "x": 3400,
+      "y": 330,
+      "w": 42,
+      "h": 280,
+      "style": "steel"
+    },
+    {
+      "id": "crane-ladder",
+      "x": 4228,
+      "y": 240,
+      "w": 42,
+      "h": 370,
+      "style": "steel"
+    }
+  ],
+  "pits": [
+    {
+      "id": "tidal-gap",
+      "x": 600,
+      "w": 100,
+      "kind": "water"
     }
   ],
   "obstacles": [
@@ -877,5 +934,5 @@
       "y": 607
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3
 }
