@@ -1855,7 +1855,8 @@ def add_armor(materials):
         cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
-    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
+    # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
+    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.34, 0.48, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
     sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
