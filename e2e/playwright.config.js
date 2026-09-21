@@ -4,6 +4,7 @@ const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
+const lightweightCore = process.env.CHESS_E2E_LIGHTWEIGHT === '1';
 const traceDiagnostics = process.env.PLAYWRIGHT_TRACE === '1';
 const visualArtifactMode = Boolean(
   process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
@@ -46,6 +47,13 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://127.0.0.1:4173/chess-studio/',
+    storageState: lightweightCore ? {
+      cookies: [],
+      origins: [{
+        origin: 'http://127.0.0.1:4173',
+        localStorage: [{ name: 'chess-study-device-board-renderer-v1', value: '2d' }],
+      }],
+    } : undefined,
     // Los journeys E2E mockean red con page.route(). Un Service Worker activo
     // puede interceptar esas peticiones antes que Playwright y volver invisibles
     // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
