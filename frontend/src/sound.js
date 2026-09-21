@@ -1345,13 +1345,11 @@ function percussionHumanization(feel, localStep, code) {
   const half = Math.floor(period / 2);
   const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
   const signed = (shift) => (((seed >>> shift) % 2001) / 1000) - 1;
-  const normalized = (shift) => ((seed >>> shift) % 1001) / 1000;
   const performance = feel?.percussion?.performance || {};
   const anchorVariance = Math.max(0, Math.min(0.12, Number(performance.anchorVariance) || 0.035));
   const secondaryVariance = Math.max(0.04, Math.min(0.32, Number(performance.secondaryVariance) || 0.18));
   const phraseLift = Math.max(0, Math.min(0.18, Number(performance.phraseLift) || 0.08));
   const stereoMotion = Math.max(0, Math.min(0.18, Number(performance.stereoMotion) || 0.08));
-  const ghostChance = Math.max(0, Math.min(0.22, Number(performance.ghostChance) || 0.06));
 
   const isAnchor = code === 'K' || code === 'S' || code === 'A';
   const isHat = code === 'H';
@@ -1384,11 +1382,10 @@ function percussionHumanization(feel, localStep, code) {
   const panRange = isAnchor ? stereoMotion * 0.20 : stereoMotion;
   const pan = signed(11) * panRange;
 
-  // Los ghosts sólo pertenecen a texturas/brushes secundarias. Nunca duplican
-  // kick, snare ni hats principales, evitando flams y batería "borracha".
-  const ghost = isTexture
-    && pos !== 0
-    && normalized(13) < ghostChance;
+  // No inventamos golpes fantasma duplicados: las B/W/M/T ya son las
+  // articulaciones secundarias escritas. La vida viene de dinámica, timbre,
+  // decay y panorama, no de añadir un segundo ataque que pueda sonar a flam.
+  const ghost = false;
 
   return {
     velocity: accent * microDynamics * lift * (feel?.percussion?.punch || 1),
