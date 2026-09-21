@@ -38,6 +38,7 @@ await page.addInitScript(() => {
   };
   window.__pawnSlugVisualProbeX =
     params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
+  window.__pawnSlugVisualProbeWeapon = params.get('weaponProbe') || '';
   window.addEventListener('message', (event) => {
     const data = event.data;
     if (data?.source !== 'pawn-slug-godot') return;
@@ -48,11 +49,13 @@ await page.addInitScript(() => {
   });
 });
 
-function urlForStage(stageId, { visualProbe = false } = {}) {
+function urlForStage(stageId, { visualProbe = false, weaponProbe = '' } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
   if (visualProbe) url.searchParams.set('visualProbe', '1');
   else url.searchParams.delete('visualProbe');
+  if (weaponProbe) url.searchParams.set('weaponProbe', weaponProbe);
+  else url.searchParams.delete('weaponProbe');
   return url.toString();
 }
 
@@ -142,35 +145,18 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
-// Dedicated SMG switch proof. Reload the opening stage so previous combat does
-// not influence the pickup run. The game emits "weapon-pickup" on the exact
-// frame grant_weapon() selects the machinegun.
-const smgStage = await loadStage(detailedStage);
+// Dedicated SMG render/switch proof. The local PR capture uses a JS-only
+// visual probe rather than depending on combat traversal. Staging E2E remains
+// responsible for proving the real pickup path and weapon-pickup event.
+const smgStage = await loadStage(detailedStage, { weaponProbe: 'machinegun' });
 await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
-await page.keyboard.down('ArrowRight');
-await page.waitForTimeout(850);
-let smgPickedUp = await page.evaluate(() => (
-  Array.isArray(window.__pawnSlugCaptureEvents)
-  && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
-));
-for (let step = 0; step < 18 && !smgPickedUp; step += 1) {
-  await page.keyboard.press('z');
-  if (step === 7 || step === 13) await page.keyboard.press('x');
-  await page.waitForTimeout(240);
-  smgPickedUp = await page.evaluate(() => (
-    Array.isArray(window.__pawnSlugCaptureEvents)
-    && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
-  ));
-}
-if (!smgPickedUp) {
-  throw new Error('Pawn Slug visual capture did not reach the first SMG pickup');
-}
-await capture('50-smg-pickup-immediate');
-await captureDetailedCloseup('50-smg-pickup-immediate', smgStage.canvas);
+await capture('50-smg-selected-immediate');
+await captureDetailedCloseup('50-smg-selected-immediate', smgStage.canvas);
 await page.waitForTimeout(100);
-await capture('51-smg-pickup-after-100ms');
-await captureDetailedCloseup('51-smg-pickup-after-100ms', smgStage.canvas);
+await capture('51-smg-selected-after-100ms');
+await captureDetailedCloseup('51-smg-selected-after-100ms', smgStage.canvas);
 
+await page.keyboard.down('ArrowRight');
 for (let frame = 0; frame < 13; frame += 1) {
   const label = `52-smg-run-${String(frame).padStart(2, '0')}`;
   await capture(label);
