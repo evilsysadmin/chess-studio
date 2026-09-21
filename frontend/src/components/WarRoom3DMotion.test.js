@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
+  applyWarRoomMoveFrameBudget,
   warRoomAdaptiveMovePlan,
   applyWarRoomHemisphereGrade,
   applyWarRoomMaterialGrade,
@@ -255,6 +256,35 @@ describe('WarRoom3DMotion', () => {
       paintIntervalMs: 32,
       shouldPaint: true,
     });
+  });
+
+  it('applies the slow-move quality cut without leaving renderer work enabled', () => {
+    const calls = [];
+    const state = {
+      lastAnimationFrameAt: 70,
+      lastAnimationPaintAt: 84,
+      slowFrameCount: 3,
+      coarsePointer: false,
+      renderScale: 1.2,
+      adaptiveQualityReduced: false,
+      renderer: {
+        setPixelRatio: (value) => calls.push(['ratio', value]),
+        setSize: (...args) => calls.push(['size', ...args]),
+        shadowMap: { enabled: true, autoUpdate: true, needsUpdate: true },
+        domElement: { dataset: {} },
+      },
+    };
+    const plan = applyWarRoomMoveFrameBudget(state, {
+      now: 100,
+      devicePixelRatio: 2,
+      host: { clientWidth: 1000, clientHeight: 700 },
+    });
+
+    expect(plan).toEqual({ reduced: true, paintIntervalMs: 32, shouldPaint: false });
+    expect(state.renderScale).toBe(0.9);
+    expect(state.renderer.shadowMap).toMatchObject({ enabled: false, autoUpdate: false, needsUpdate: false });
+    expect(state.renderer.domElement.dataset.board3dAdaptiveQuality).toBe('reduced');
+    expect(calls).toEqual([['ratio', 0.9], ['size', 1000, 700, false]]);
   });
 
   it('spends shadow-map budget slowly while idle and restores the tight cadence during motion', () => {

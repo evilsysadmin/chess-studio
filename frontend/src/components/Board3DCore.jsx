@@ -6,7 +6,7 @@ import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSur
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep, warRoomAdaptiveMovePlan } from './WarRoom3DMotion.js';
+import { applyWarRoomMoveFrameBudget, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -99,8 +99,6 @@ function Board3DCanvas({
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
-  const hoverFrameRef = useRef(0);
-  const pendingHoverEventRef = useRef(null);
   const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
@@ -531,26 +529,13 @@ function Board3DCanvas({
         return;
       }
       if (coarsePointer) return;
-      pendingHoverEventRef.current = event;
-      if (hoverFrameRef.current) return;
-      hoverFrameRef.current = window.requestAnimationFrame(() => {
-        hoverFrameRef.current = 0;
-        const pendingEvent = pendingHoverEventRef.current;
-        pendingHoverEventRef.current = null;
-        if (!pendingEvent || inspectModeRef.current) return;
-        const square = squareFromPointer(pendingEvent);
-        const pieceHover = square && pieceMeshes.has(square) ? square : null;
-        renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
-        updatePieceHover(pieceHover, pendingEvent);
-      });
+      const square = squareFromPointer(event);
+      const pieceHover = square && pieceMeshes.has(square) ? square : null;
+      renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
+      updatePieceHover(pieceHover, event);
     }
 
     function onPointerLeave(event) {
-      pendingHoverEventRef.current = null;
-      if (hoverFrameRef.current) {
-        window.cancelAnimationFrame(hoverFrameRef.current);
-        hoverFrameRef.current = 0;
-      }
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
       motion.targetY = 0;
@@ -708,11 +693,6 @@ function Board3DCanvas({
     return () => {
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
-      if (hoverFrameRef.current) {
-        window.cancelAnimationFrame(hoverFrameRef.current);
-        hoverFrameRef.current = 0;
-      }
-      pendingHoverEventRef.current = null;
       ambientScheduler?.dispose();
       ambientScheduler = null;
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
@@ -963,33 +943,7 @@ function Board3DCanvas({
         castleRook.position.y = 0.1 + Math.sin(rookRaw * Math.PI) * 0.075;
       }
 
-      const dt = state.lastAnimationFrameAt ? now - state.lastAnimationFrameAt : 16;
-      state.lastAnimationFrameAt = now;
-      state.slowFrameCount = dt > 23 ? state.slowFrameCount + 1 : Math.max(0, state.slowFrameCount - 1);
-      const requestedScale = adaptiveRenderScale({ coarsePointer: state.coarsePointer, slowFrameCount: state.slowFrameCount });
-      const cappedScale = Math.min(window.devicePixelRatio || 1, requestedScale);
-      if (cappedScale + 0.05 < state.renderScale) {
-        state.renderScale = cappedScale;
-        state.renderer.setPixelRatio(cappedScale);
-        const host = hostRef.current;
-        if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
-      }
-
-      const adaptivePlan = warRoomAdaptiveMovePlan({
-        slowFrameCount: state.slowFrameCount,
-        reduced: state.adaptiveQualityReduced,
-        now,
-        lastPaintAt: state.lastAnimationPaintAt,
-      });
-      if (adaptivePlan.reduced && !state.adaptiveQualityReduced) {
-        state.adaptiveQualityReduced = true;
-        state.renderer.shadowMap.enabled = false;
-        state.renderer.shadowMap.autoUpdate = false;
-        state.renderer.shadowMap.needsUpdate = false;
-        state.renderer.domElement.dataset.board3dAdaptiveQuality = 'reduced';
-        state.renderer.domElement.dataset.board3dAnimationCadence = 'adaptive-30fps';
-        state.renderer.domElement.dataset.board3dAdaptiveReason = 'slow-move-frames';
-      }
+      const adaptivePlan = applyWarRoomMoveFrameBudget(state, { now, devicePixelRatio: window.devicePixelRatio || 1, host: hostRef.current });
 
       if (raw < 1) {
         if (adaptivePlan.shouldPaint) {

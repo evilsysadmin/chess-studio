@@ -27,6 +27,51 @@ export {
   smoothstep,
 };
 
+export function applyWarRoomMoveFrameBudget(state, {
+  now = 0,
+  devicePixelRatio = 1,
+  host = null,
+} = {}) {
+  const frameNow = Number(now);
+  const dt = state.lastAnimationFrameAt ? frameNow - state.lastAnimationFrameAt : 16;
+  state.lastAnimationFrameAt = frameNow;
+  state.slowFrameCount = dt > 23 ? state.slowFrameCount + 1 : Math.max(0, state.slowFrameCount - 1);
+
+  const requestedScale = adaptiveRenderScale({
+    coarsePointer: state.coarsePointer,
+    slowFrameCount: state.slowFrameCount,
+  });
+  const cappedScale = Math.min(Number(devicePixelRatio) || 1, requestedScale);
+  if (cappedScale + 0.05 < state.renderScale) {
+    state.renderScale = cappedScale;
+    state.renderer.setPixelRatio(cappedScale);
+    if (host) {
+      state.renderer.setSize(
+        Math.max(280, host.clientWidth || 280),
+        Math.max(300, host.clientHeight || 300),
+        false,
+      );
+    }
+  }
+
+  const plan = warRoomAdaptiveMovePlan({
+    slowFrameCount: state.slowFrameCount,
+    reduced: state.adaptiveQualityReduced,
+    now: frameNow,
+    lastPaintAt: state.lastAnimationPaintAt,
+  });
+  if (plan.reduced && !state.adaptiveQualityReduced) {
+    state.adaptiveQualityReduced = true;
+    state.renderer.shadowMap.enabled = false;
+    state.renderer.shadowMap.autoUpdate = false;
+    state.renderer.shadowMap.needsUpdate = false;
+    state.renderer.domElement.dataset.board3dAdaptiveQuality = 'reduced';
+    state.renderer.domElement.dataset.board3dAnimationCadence = 'adaptive-30fps';
+    state.renderer.domElement.dataset.board3dAdaptiveReason = 'slow-move-frames';
+  }
+  return plan;
+}
+
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
