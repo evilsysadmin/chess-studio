@@ -3,6 +3,8 @@ name: Pawn Slug · Godot strict Matthias v17
 on:
   pull_request:
     paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v22.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
@@ -33,6 +35,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v22.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
@@ -597,6 +601,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile \
+            scripts/art/pack_pawn_slug_godot_strict_v22.py \
+            scripts/art/validate_pawn_slug_godot_atlas_v22.py \
             scripts/art/pack_pawn_slug_machinegun_v22.py \
             scripts/art/pack_pawn_slug_run12_v22.py \
             scripts/art/validate_pawn_slug_machinegun_v22.py \
@@ -609,9 +615,33 @@ jobs:
           ROOT='/tmp/pawn-slug-godot-strict-v22'
           mkdir -p "$ROOT/baseline" "$ROOT/machinegun" "$ROOT/run12"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PISTOL_V21_URL" --output "$ROOT/baseline/pistol.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PISTOL_V20_URL" --output "$ROOT/baseline/pistol-v20.png"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$MACHINEGUN_V17_URL" --output "$ROOT/baseline/machinegun.png"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$SHOTGUN_V16_URL" --output "$ROOT/baseline/shotgun.png"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PANZERFAUST_V16_URL" --output "$ROOT/baseline/panzerfaust.png"
+
+      - name: Build + gate reviewed P99 pistol bank
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v22'
+          mkdir -p "$ROOT/pistol-p99/poses"
+          python3 scripts/art/pack_pawn_slug_godot_strict_v22.py \
+            --v21 "$ROOT/baseline/pistol.png" \
+            --v20 "$ROOT/baseline/pistol-v20.png" \
+            --output "$ROOT/pistol-p99/v22.png" \
+            --manifest "$ROOT/pistol-p99/manifest.json"
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v22.py \
+            --atlas "$ROOT/pistol-p99/v22.png" \
+            --manifest "$ROOT/pistol-p99/manifest.json" \
+            --report "$ROOT/pistol-p99/health.json"
+          python3 scripts/art/build_pawn_slug_v17_review.py \
+            --baseline "$ROOT/baseline/pistol.png" \
+            --atlas "$ROOT/pistol-p99/v22.png" \
+            --output "$ROOT/pistol-p99/review-v21-v22.png"
+          python3 scripts/art/build_pawn_slug_pose_review.py \
+            --atlas "$ROOT/pistol-p99/v22.png" \
+            --output-dir "$ROOT/pistol-p99/poses"
+          test "$(sha256sum "$ROOT/pistol-p99/v22.png" | awk '{print $1}')" = "778e2fb3da5649b484c36af633723de3218ca83a09a071d75c239c1130fd4c87"
 
       - name: Build + gate cleaned SMG bank
         run: |
@@ -686,6 +716,9 @@ jobs:
           ROOT='/tmp/pawn-slug-godot-strict-v22'
           .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
             --script res://tests/matthias_strict_v17_atlas_smoke.gd -- \
+            "$ROOT/pistol-p99/v22.png" "$ROOT/pistol-p99/manifest.json"
+          .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_strict_v17_atlas_smoke.gd -- \
             "$ROOT/machinegun/v22.png" "$ROOT/machinegun/manifest.json"
           for weapon in pistol machinegun shotgun panzerfaust; do
             .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
@@ -701,6 +734,9 @@ jobs:
         run: |
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v22'
+          python3 -S scripts/r2_asset_publish.py publish "$ROOT/pistol-p99/v22.png" \
+            --logical-id 'pawnSlug.godot.matthias.pistol.strictV22' \
+            --prefix 'pawn-slug-godot/matthias/strict-v22/pistol' | tee "$ROOT/pistol-p99/publish.txt"
           python3 -S scripts/r2_asset_publish.py publish "$ROOT/machinegun/v22.png" \
             --logical-id 'pawnSlug.godot.matthias.machinegun.strictV22' \
             --prefix 'pawn-slug-godot/matthias/strict-v22/machinegun' | tee "$ROOT/machinegun/publish.txt"
@@ -715,6 +751,7 @@ jobs:
         with:
           name: pawn-slug-godot-strict-v22-${{ github.event.pull_request.number || github.run_number }}
           path: |
+            /tmp/pawn-slug-godot-strict-v22/pistol-p99/
             /tmp/pawn-slug-godot-strict-v22/machinegun/
             /tmp/pawn-slug-godot-strict-v22/run12/
             /tmp/pawn-slug-godot-strict-v22/review.png
