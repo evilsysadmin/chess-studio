@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_ARCHES,
+  CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE,
+  CHRONICLES_TACTICS_CUTAWAY_CAP_BLOCKS_PER_WALL,
+  CHRONICLES_TACTICS_CUTAWAY_STYLE,
   CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL,
   CHRONICLES_TACTICS_MASONRY_STYLE,
   chroniclesTacticsArchitectureWallCells,
+  chroniclesTacticsCutawayWallCells,
   chroniclesTacticsExposedWallSide,
   chroniclesTacticsExposedWallSides,
   installChroniclesTacticsArchitectureArt,
@@ -82,6 +86,26 @@ describe('Chronicles Tactics architecture depth', () => {
     );
   });
 
+  it('finishes waist-high cutaway cover with low masonry and a readable coping cap', () => {
+    const scene = fixture();
+    const cutawayFaces = chroniclesTacticsCutawayWallCells(scene);
+
+    expect(cutawayFaces).toHaveLength(2);
+
+    const root = installChroniclesTacticsArchitectureArt(scene, { coarsePointer: false });
+    const finish = root.getObjectByName('chronicles-tactics-cutaway-finish-instances');
+
+    expect(root.userData.chroniclesArchitectureCutawayFaceCount).toBe(2);
+    expect(root.userData.chroniclesArchitectureCutawayProfile).toBe(CHRONICLES_TACTICS_CUTAWAY_STYLE.profile);
+    expect(finish).toBeTruthy();
+    expect(finish.count).toBe(
+      2 * CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE
+      + CHRONICLES_TACTICS_CUTAWAY_CAP_BLOCKS_PER_WALL,
+    );
+    expect(finish.material.map?.isTexture).toBe(true);
+    expect(finish.instanceColor).toBeTruthy();
+  });
+
   it('replaces monolithic wall faces with batched coursed masonry', () => {
     const scene = fixture();
     expect(chroniclesTacticsArchitectureWallCells(scene)).toHaveLength(2);
@@ -91,7 +115,7 @@ describe('Chronicles Tactics architecture depth', () => {
 
     expect(root.name).toBe('chronicles-tactics-architecture-depth');
     expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
-    expect(root.userData.chroniclesArchitectureDrawGroups).toBe(2);
+    expect(root.userData.chroniclesArchitectureDrawGroups).toBe(3);
     expect(root.userData.chroniclesArchitectureMasonryProfile).toBe(CHRONICLES_TACTICS_MASONRY_STYLE.profile);
     expect(masonry.count).toBe(
       2 * CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL + CHRONICLES_TACTICS_ARCHES.length * 2,
