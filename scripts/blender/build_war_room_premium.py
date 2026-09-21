@@ -1070,9 +1070,12 @@ def add_gothic_canon_v2(static, mats):
     route_branch = cube("WR_CANON_campaign_route_branch", (px + 0.30, 6.268, 5.04),
                         (0.34, 0.018, 0.022), mats["art_gilt"], static, bevel=0.008)
     route_branch.rotation_euler.y = 0.34
+    # Keep route pins subordinate in runtime. Small polished brass spheres were
+    # catching the app lighting like tiny bulbs and stealing attention from the
+    # crest; use the same quieter gilt family as the map relief and trim their size.
     for index, (dx, dz) in enumerate(((-0.70, -0.22), (-0.16, -0.08), (0.26, 0.08))):
-        sphere(f"WR_CANON_campaign_pin_{index}", (px + dx, 6.238, 4.95 + dz), 0.046,
-               mats["brass"], static, scale=(1.0, 0.55, 1.0))
+        sphere(f"WR_CANON_campaign_pin_{index}", (px + dx, 6.238, 4.95 + dz), 0.034,
+               mats["art_gilt"], static, scale=(1.0, 0.50, 1.0))
     torus("WR_CANON_campaign_objective", (px + 0.54, 6.26, 5.17),
           0.16, 0.024, mats["art_gilt"], static, rotation=(math.pi / 2, 0, 0))
 
