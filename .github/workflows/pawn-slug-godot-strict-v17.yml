@@ -767,7 +767,7 @@ jobs:
             --run13 "$ROOT/machinegun-run13-v23.png" \
             --baseline "$ROOT/baseline-v22.png" \
             --report "$ROOT/health.json"
-          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "501eff7c729e79fcf0c45f284f4b4515e811a7c99d699aa80db1e4a52d20aeb7"
+          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "7192d24b6df75b883d65b5e078bf851afd8289808155b72659c81aaabd4b7a22"
           test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" = "5d173e717875da0c646a02f717e7e1964ec0dec137cb2cec1c0a44506caab05b"
 
       - name: Restore pinned Godot editor
