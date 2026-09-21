@@ -147,8 +147,11 @@ async function startScenario(page, scenario, requestLog) {
   await installSpecialStateRoutes(page, scenario, requestLog);
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await setRendererViaAppearance(page, '2D');
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  const twoD = dialog.getByRole('group', { name: 'Tipo de tablero' }).getByRole('button', { name: '2D', exact: true });
+  if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
 }
 

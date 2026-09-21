@@ -4,6 +4,7 @@ import {
   mockApi,
   openCampaignBriefing,
   openMoreGameModes,
+  scheduleDomClick,
 } from './helpers.js';
 
 const READY = 45_000;
@@ -73,7 +74,7 @@ async function openHeavy3DSurface(button, readySurface) {
   // and enabled; dispatch its DOM click and synchronize on the resulting 3D UI.
   await expect(button).toBeVisible();
   await expect(button).toBeEnabled();
-  await button.evaluate((element) => element.click());
+  await scheduleDomClick(button);
   await expect(readySurface).toBeVisible({ timeout: READY });
 }
 

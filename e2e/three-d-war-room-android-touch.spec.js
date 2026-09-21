@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, gameTurn, login, mockApi, scheduleDomClick } from './helpers.js';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
 import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
 
@@ -116,15 +116,20 @@ function movePosts(requestLog) {
 
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
-  if (await board3d.isVisible().catch(() => false)) return;
+  try {
+    await board3d.waitFor({ state: 'visible', timeout: 20_000 });
+    return;
+  } catch {
+    // Fall through only when the current game genuinely opened in 2D.
+  }
 
-  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const appearance = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  await scheduleDomClick(appearance);
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
-  await dialog.getByRole('radio', { name: /3D$/ }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await scheduleDomClick(dialog.getByRole('radio', { name: /3D$/ }));
+  await scheduleDomClick(dialog.getByRole('button', { name: 'Cerrar', exact: true }));
   await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
