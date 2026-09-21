@@ -62,10 +62,9 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
 
 
 test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home', async ({ page }) => {
-  // Dos fallos hacen determinista el contrato: el primero rompe la restauración
-  // inicial y el segundo la reconciliación automática. Así el botón manual no
-  // desaparece por una carrera antes de que Playwright pueda pulsarlo.
-  await mockApi(page, { gameGetFailures: 2 });
+  // Mantén suficientes fallos consecutivos para cubrir restauración y
+  // reconciliaciones automáticas antes de comprobar el reintento manual.
+  await mockApi(page, { gameGetFailures: 4 });
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();

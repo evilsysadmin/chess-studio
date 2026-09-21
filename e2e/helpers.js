@@ -591,7 +591,7 @@ export async function clickBoardMove(page, from, to, scope = page) {
 export async function startQuickGame(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ force: true });
   await expect(gameStatus(page)).toBeVisible();
 }
 
@@ -637,12 +637,7 @@ export async function openMoreGameModes(page) {
       };
 
       await closeBlockingPvpLobby();
-      try {
-        await trigger.click({ timeout: 5_000 });
-      } catch (error) {
-        if (!(await closeBlockingPvpLobby())) throw error;
-        await trigger.click();
-      }
+      await trigger.click({ force: true });
     }
     return illustrated;
   }

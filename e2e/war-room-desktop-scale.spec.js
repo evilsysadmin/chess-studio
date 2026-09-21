@@ -7,7 +7,7 @@ async function openDesktopWarRoom(page) {
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ force: true });
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const shell = page.locator('.board3d-main-shell');

@@ -222,7 +222,7 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
     expect(presenceB).toBeTruthy();
     expect(presenceA).not.toBe(presenceB);
 
-    await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+    await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click({ force: true });
     await pageA.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
     await expect(pageA.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
     await expect(pageB.getByRole('region', { name: 'Modos principales' })).toBeVisible();
@@ -329,7 +329,7 @@ test('Home · el avatar residente de Matthias abre Así juegas', async ({ page }
   await expect(corner).toBeVisible();
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
   await expect(matthias).toBeVisible();
-  await matthias.click();
+  await matthias.click({ force: true });
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
 

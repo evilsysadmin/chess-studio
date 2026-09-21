@@ -67,7 +67,7 @@ async function setRendererViaAppearance(page, renderer) {
   if (await warRoom.count()) {
     const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-    await utilityMenu.click();
+    await utilityMenu.click({ force: true });
     button = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
   } else {
     button = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });

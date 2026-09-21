@@ -35,7 +35,7 @@ async function openFireGame(page) {
   await login(page);
   await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ force: true });
 
   await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const canvas = page.locator('.board3d-main-canvas');

@@ -119,9 +119,7 @@ async function open3DFromAppearance(page) {
   if (await board3d.isVisible().catch(() => false)) return;
 
   await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
+  const dialog = await openWarRoomAppearance(page);
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
