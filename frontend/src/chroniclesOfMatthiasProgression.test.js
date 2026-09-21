@@ -254,6 +254,23 @@ describe('Chronicles Tactics · progression', () => {
     expect(chroniclesHeroProgress(restored, 'knight').xp).toBe(18);
   });
 
+  it('does not let the legacy v1 run key pin a fresh expedition after the random-entry fix', () => {
+    localStorage.setItem('chess-study-chronicles-tactics-run-v1', JSON.stringify({
+      id: 'legacy-crypt-run',
+      owner: 'alice',
+      ended: false,
+    }));
+
+    expect(CHRONICLES_TACTICS_RUN_STORAGE_KEY).toBe('chess-study-chronicles-tactics-run-v2');
+    const current = ensureChroniclesTacticsRun();
+    expect(current).not.toBe('legacy-crypt-run');
+
+    const stored = JSON.parse(localStorage.getItem(CHRONICLES_TACTICS_RUN_STORAGE_KEY));
+    expect(stored.id).toBe(current);
+    expect(stored.owner).toBe('alice');
+    expect(stored.ended).toBe(false);
+  });
+
   it('creates a fresh run identity after the current expedition is finished', () => {
     const first = beginChroniclesTacticsRun();
     expect(ensureChroniclesTacticsRun()).toBe(first);
