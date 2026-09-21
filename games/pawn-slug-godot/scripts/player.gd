@@ -45,6 +45,10 @@ const LEDGE_SCAN_DOWN := 88.0
 const LEDGE_TARGET_INSET := 10.0
 const LEDGE_CLIMB_DURATION := 0.34
 const LEDGE_CLIMB_ARC_HEIGHT := 16.0
+const LADDER_CLIMB_SPEED := 235.0
+const LADDER_X_SNAP_SPEED := 280.0
+const LADDER_EXIT_NUDGE := 34.0
+const FALL_DEATH_Y := 790.0
 const MAX_HP := 3
 const STARTING_LIVES := 3
 const STARTING_GRENADES := 4
@@ -130,6 +134,8 @@ var _climbing := false
 var _climb_elapsed := 0.0
 var _climb_from := Vector2.ZERO
 var _climb_target := Vector2.ZERO
+var _ladder_active := false
+var _active_ladder: Dictionary = {}
 var _fire_was_pressed := false
 var _grenade_was_pressed := false
 var _art
@@ -188,6 +194,8 @@ func _physics_process(delta: float) -> void:
     if _climbing:
         _update_ledge_climb(delta)
         return
+    if _update_ladder_traversal(delta):
+        return
 
     _ledge_tap_remaining = maxf(0.0, _ledge_tap_remaining - delta)
     var was_on_floor := is_on_floor()
@@ -240,6 +248,8 @@ func _physics_process(delta: float) -> void:
 
     var landing_speed := maxf(0.0, velocity.y)
     move_and_slide()
+    if _check_fall_death():
+        return
     _update_crouch_state()
     _update_checkpoint()
     if is_on_floor() and _respawn_position_is_clear(global_position):
@@ -465,6 +475,7 @@ func _begin_death() -> void:
     hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
     _climbing = false
+    _leave_ladder()
     _ledge_tap_remaining = 0.0
     if _art != null:
         _art.set_climb_state(false, 0.0)
@@ -603,6 +614,97 @@ func _set_crouching(value: bool, force := false) -> void:
     _crouching = value
     rect.size = CROUCH_HITBOX_SIZE if value else STANDING_HITBOX_SIZE
     _collision_shape.position.y = CROUCH_HITBOX_OFFSET_Y if value else 0.0
+
+func _traversal_manager():
+    return get_parent().get_node_or_null("TraversalManager")
+
+func _ladder_spec_at_player() -> Dictionary:
+    var manager = _traversal_manager()
+    if manager == null or not manager.has_method("ladder_for_player"):
+        return {}
+    return Dictionary(manager.ladder_for_player(global_position))
+
+func _leave_ladder() -> void:
+    _ladder_active = false
+    _active_ladder.clear()
+    if _art != null:
+        _art.set_climb_state(false, 1.0)
+
+func _update_ladder_traversal(delta: float) -> bool:
+    var candidate := _ladder_spec_at_player()
+    var vertical := _aim_vertical_axis()
+    if not _ladder_active:
+        if candidate.is_empty() or absf(vertical) <= 0.25 or _crouching:
+            return false
+        _active_ladder = candidate
+        _ladder_active = true
+        _set_crouching(false, true)
+        velocity = Vector2.ZERO
+        _jump_buffer_remaining = 0.0
+        _coyote_remaining = 0.0
+    elif not candidate.is_empty():
+        _active_ladder = candidate
+
+    if _active_ladder.is_empty():
+        _leave_ladder()
+        return false
+
+    var jump_pressed := _jump_pressed()
+    if jump_pressed and not _jump_was_pressed:
+        _leave_ladder()
+        velocity.y = -JUMP_SPEED * 0.82
+        _jump_was_pressed = true
+        return false
+    _jump_was_pressed = jump_pressed
+
+    var ladder_x := float(_active_ladder.get("x", global_position.x))
+    var top_y := float(_active_ladder.get("top_y", global_position.y + STANDING_HITBOX_SIZE.y * 0.5))
+    var bottom_y := float(_active_ladder.get("bottom_y", global_position.y + STANDING_HITBOX_SIZE.y * 0.5))
+    var top_center := top_y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0
+    var bottom_center := bottom_y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0
+
+    global_position.x = move_toward(global_position.x, ladder_x, LADDER_X_SNAP_SPEED * delta)
+    velocity.x = 0.0
+    velocity.y = vertical * LADDER_CLIMB_SPEED
+    global_position.y = clampf(global_position.y + velocity.y * delta, top_center, bottom_center)
+
+    if vertical < -0.25 and global_position.y <= top_center + 1.0:
+        var exit_dir := signf(float(_active_ladder.get("exit_dir", 1.0)))
+        _leave_ladder()
+        global_position.x += exit_dir * LADDER_EXIT_NUDGE
+        velocity = Vector2.ZERO
+        reset_physics_interpolation()
+        return false
+    if vertical > 0.25 and global_position.y >= bottom_center - 1.0:
+        _leave_ladder()
+        velocity = Vector2.ZERO
+        return false
+
+    var progress := clampf((global_position.y - top_center) / maxf(1.0, bottom_center - top_center), 0.0, 1.0)
+    _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+    _art.set_aim_direction(Vector2(facing, 0.0))
+    _art.set_climb_state(true, progress)
+    _art.update_visual(
+        delta,
+        0.0,
+        false,
+        false,
+        false,
+        velocity.y,
+        facing,
+        false,
+    )
+    fire_cooldown = maxf(0.0, fire_cooldown - delta)
+    queue_redraw()
+    return true
+
+func _check_fall_death() -> bool:
+    if global_position.y <= FALL_DEATH_Y or dead or is_game_over:
+        return false
+    hp = 0
+    _leave_ladder()
+    _begin_death()
+    return true
 
 func _find_ledge_climb_target() -> Dictionary:
     if _crouching or _collision_shape == null:
