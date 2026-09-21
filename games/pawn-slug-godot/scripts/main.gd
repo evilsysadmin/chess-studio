@@ -1804,9 +1804,13 @@ func _update_enemy_ai_plan(enemy: Dictionary, stats: Dictionary, standoff: float
         "advance_margin": SOLDIER_ADVANCE_MARGIN,
     }
     enemy["ai_intent"] = EnemyUtilityAI.choose_intent(context)
-    enemy["ai_decision_timer"] = EnemyUtilityAI.DECISION_INTERVAL
-    enemy["ai_commit_remaining"] = (
-        0.12 if urgent_evade else EnemyUtilityAI.INTENT_COMMIT_SECONDS
+    var enemy_type := String(enemy.get("type", "pawn"))
+    var enemy_role := String(enemy.get("role", ""))
+    enemy["ai_decision_timer"] = EnemyUtilityAI.decision_interval_for(enemy_type, enemy_role)
+    enemy["ai_commit_remaining"] = EnemyUtilityAI.commit_seconds_for(
+        enemy_type,
+        String(enemy["ai_intent"]),
+        enemy_role,
     )
 
 func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
