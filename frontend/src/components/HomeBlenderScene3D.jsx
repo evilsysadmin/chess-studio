@@ -141,6 +141,24 @@ export function rebaseFlameToPivot(object) {
   return true;
 }
 
+// Software rasterisers (SwiftShader, llvmpipe...) draw the whole room on the CPU, so
+// re-rendering it for a flickering fire would starve the page. The render call
+// itself returns quickly (the work happens in the GPU process), so the cost cannot
+// be measured reliably from the main thread: recognise the renderer by name.
+export function homeBlenderIsSoftwareRenderer(rendererName = '') {
+  return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(rendererName));
+}
+
+function readRendererName(renderer) {
+  try {
+    const gl = renderer?.getContext?.();
+    const info = gl?.getExtension?.('WEBGL_debug_renderer_info');
+    return info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
+  } catch {
+    return '';
+  }
+}
+
 // The fire re-renders the whole room every few frames, which is only worth it when
 // a frame is cheap. Two signals decide that: how long the render call takes on the
 // main thread, and how late requestAnimationFrame arrives. The second matters
@@ -503,9 +521,15 @@ export default function HomeBlenderScene3D({
     const prefersReducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    const softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
+
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
         canvas.dataset.homeFireMotion = 'reduced';
+        return;
+      }
+      if (softwareRenderer) {
+        canvas.dataset.homeFireMotion = 'off-software';
         return;
       }
       if (canvas.dataset.homeFireMotion === 'off-slow') return;

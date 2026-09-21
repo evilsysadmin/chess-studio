@@ -6,6 +6,7 @@ import {
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
+  homeBlenderIsSoftwareRenderer,
   HOME_BLENDER_FIRE_MAX_RENDER_MS,
   HOME_BLENDER_FIRE_MIN_SAMPLES,
   HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS,
@@ -278,6 +279,34 @@ describe('HomeBlenderScene3D live flame animation', () => {
         samples: 30,
       });
       expect(plan.enabled).toBe(false);
+    });
+  });
+
+  describe('software renderer detection', () => {
+    it('recognises CPU rasterisers by name', () => {
+      for (const name of [
+        'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)',
+        'llvmpipe (LLVM 15.0.7, 256 bits)',
+        'Google SwiftShader',
+        'Microsoft Basic Render Driver',
+        'Mesa softpipe',
+        'Software Rasterizer',
+      ]) {
+        expect(homeBlenderIsSoftwareRenderer(name)).toBe(true);
+      }
+    });
+
+    it('lets real GPUs animate', () => {
+      for (const name of [
+        'ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti Laptop GPU (0x00002C19) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+        'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)',
+        'Mali-G78',
+        'Adreno (TM) 740',
+        'Intel(R) Iris(R) Xe Graphics',
+        '',
+      ]) {
+        expect(homeBlenderIsSoftwareRenderer(name)).toBe(false);
+      }
     });
   });
 });
