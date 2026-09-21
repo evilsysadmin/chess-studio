@@ -144,6 +144,16 @@ async function switchWarRoomTo2D(page) {
   await expect(page.locator('.board-grid').first()).toBeVisible({ timeout: 30_000 });
 }
 
+async function switchWarRoomTo3D(page) {
+  const dialog = await openWarRoomAppearance(page);
+  await dialog.getByRole('radio', { name: /3D$/ }).click();
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
+}
+
 async function installBlackQuickGameRoute(page, moveLog = []) {
   const cpuOpening = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'cpu' };
   const humanReply = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'human' };
@@ -387,7 +397,7 @@ test('War Room · orientación negra conserva back rank, color, raycast y navega
   await expect(d1).toHaveAttribute('aria-label', /dama blanca/);
   await expect(e1).toHaveAttribute('aria-label', /rey blanco/);
 
-  await open3DFromAppearance(page);
+  await switchWarRoomTo3D(page);
   board3d = page.locator('[data-board3d-war-room="true"]');
   canvas = page.locator('.board3d-main-canvas');
   await expect(board3d).toBeVisible({ timeout: 30_000 });
