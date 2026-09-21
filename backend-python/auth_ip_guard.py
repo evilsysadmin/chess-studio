@@ -145,9 +145,8 @@ def _remember_active_block(identity: str, doc: dict[str, Any] | None) -> None:
     if len(_blocked_cache) <= BLOCK_CACHE_LIMIT:
         return
 
-    expired = [key for key, value in _blocked_cache.items() if value <= now]
-    for key in expired:
-        _blocked_cache.pop(key, None)
+    # Dicts preserve insertion order. Evicting the oldest cache entry is O(1)
+    # and safe: Mongo remains authoritative if that IP appears again.
     while len(_blocked_cache) > BLOCK_CACHE_LIMIT:
         _blocked_cache.pop(next(iter(_blocked_cache)))
 
