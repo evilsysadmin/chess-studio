@@ -43,6 +43,14 @@ async function captureViewportPng(context, page, path) {
   }
 }
 
+
+async function closeWithDeadline(close, timeoutMs = 5_000) {
+  await Promise.race([
+    Promise.resolve().then(close).catch(() => null),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
 test('War Room · canario visual de Hans físicamente en escena', async () => {
   test.setTimeout(120_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -142,7 +150,10 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     );
     await captureViewportPng(context, page, `${ARTIFACT_DIR}/${LABEL}.png`);
   } finally {
-    await context.close();
-    await browser.close();
+    // SwiftShader can occasionally finish the screenshot and then stall while
+    // tearing down the GPU process. The artifact/diagnostics above are the
+    // contract; do not let a stuck browser shutdown consume the whole test timeout.
+    await closeWithDeadline(() => context.close());
+    await closeWithDeadline(() => browser.close());
   }
 });
