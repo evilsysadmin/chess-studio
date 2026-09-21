@@ -1,9 +1,7 @@
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 import {
   STORAGE_LOCAL,
-  getStorageItem,
   readJsonStorage,
-  setStorageItem,
 } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { CHRONICLES_PARTY } from './chroniclesOfMatthias.js';
@@ -12,14 +10,20 @@ import {
   normalizeChroniclesCharacterBuild,
   validateChroniclesCharacterBuild,
 } from './chronicles/chroniclesCharacterBuilds.js';
+import {
+  beginChroniclesRun,
+  ensureChroniclesRun,
+  finishChroniclesRun,
+  renewChroniclesRun,
+} from './chronicles/chroniclesRunIdentity.js';
+
+export { CHRONICLES_TACTICS_RUN_STORAGE_KEY } from './chronicles/chroniclesRunIdentity.js';
 
 export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progression-v1';
-export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactics-run-v2';
 export const CHRONICLES_PROGRESSION_VERSION = 1;
 export const CHRONICLES_MAX_LEVEL = 12;
 export const CHRONICLES_ATTRIBUTE_CAP = 5;
 
-const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const CLAIM_LIMIT = 256;
 const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will']);
@@ -625,63 +629,20 @@ export function grantChroniclesXp(progression, memberId, amount, awardId) {
   return { progression: next, awarded, duplicate: false, levelUps };
 }
 
-function currentOwner() {
-  return String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLowerCase();
-}
-
-function createRunId() {
-  try {
-    if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
-  } catch {
-    // Fall through to a compact non-cryptographic id; uniqueness is enough here.
-  }
-  return `chronicles-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function readRunState() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.id !== 'string' || !parsed.id.trim()) return null;
-    const owner = String(parsed.owner || '').trim().toLowerCase();
-    if (owner !== currentOwner()) return null;
-    return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended) };
-  } catch {
-    return null;
-  }
-}
-
 export function beginChroniclesTacticsRun() {
-  const run = { id: createRunId(), owner: currentOwner(), ended: false };
-  setStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify(run));
-  return run.id;
+  return beginChroniclesRun('tactics');
 }
 
 export function ensureChroniclesTacticsRun() {
-  const current = readRunState();
-  if (current && !current.ended) return current.id;
-  return beginChroniclesTacticsRun();
+  return ensureChroniclesRun('tactics');
 }
 
 export function renewChroniclesTacticsRun(runId) {
-  const current = readRunState();
-  if (current && !current.ended && current.id !== runId) return current.id;
-  if (current && current.id === runId && !current.ended) {
-    setStorageItem(
-      STORAGE_LOCAL,
-      CHRONICLES_TACTICS_RUN_STORAGE_KEY,
-      JSON.stringify({ ...current, ended: true }),
-    );
-  }
-  return beginChroniclesTacticsRun();
+  return renewChroniclesRun('tactics', runId);
 }
 
 export function finishChroniclesTacticsRun(runId) {
-  const current = readRunState();
-  if (!current || current.id !== runId) return false;
-  setStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify({ ...current, ended: true }));
-  return true;
+  return finishChroniclesRun('tactics', runId);
 }
 
 function enemyHp(state, enemy) {
