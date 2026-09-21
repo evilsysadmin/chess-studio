@@ -1032,15 +1032,11 @@ def add_gothic_canon_v2(static, mats):
     torus("WR_CANON_campaign_objective", (px + 0.54, 6.26, 5.17),
           0.16, 0.024, mats["brass_dark"], static, rotation=(math.pi / 2, 0, 0))
 
-    # Shallow mortar courses break the upper wall into believable masonry.
-    # They stay behind the hero props and use one existing material so runtime
-    # batching can collapse them aggressively.
-    for course, z in enumerate((3.62, 4.18, 4.74, 5.30, 5.86, 6.36)):
-        cube(
-            f"WR_CANON_masonry_course_{course}",
-            (0, 6.555, z), (8.10, 0.018, 0.018),
-            mats["stone_dark"], static, bevel=0.006,
-        )
+    # Keep the upper hero wall quiet. Full-width faux mortar courses were
+    # technically behind the crest, lancet and campaign display, but in the
+    # rendered composition they read as dark lines cutting through those
+    # silhouettes. The real architectural rails/stiles already provide enough
+    # cadence, so v2 deliberately leaves the plaster fields uninterrupted.
 
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
     # The inner-right pier is retired because the campaign panel crossed it;
@@ -1502,7 +1498,6 @@ def validate():
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
         "WR_CANON_table_drape",
         "WR_CANON_arch_left_curve_-1_0", "WR_CANON_campaign_canvas",
-        "WR_CANON_masonry_course_2",
         "WR_CANON_fireplace_block_left_lintel_0", "WR_CANON_fireplace_block_right_lintel_0",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
@@ -1515,6 +1510,11 @@ def validate():
         raise RuntimeError(f"retired rear-wall bookshelf returned: {retired_overlap_props}")
     if "WR_CANON_banner_1" in {obj.name for obj in scene.objects}:
         raise RuntimeError("retired right banner returned")
+    retired_wall_courses = sorted(
+        obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_masonry_course_")
+    )
+    if retired_wall_courses:
+        raise RuntimeError(f"retired upper-wall mortar courses returned: {retired_wall_courses}")
     roles = {}
     for obj in scene.objects:
         role = obj.get("war_room_role")
