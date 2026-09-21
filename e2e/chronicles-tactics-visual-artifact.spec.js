@@ -35,7 +35,20 @@ async function openTactics(page, {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
-  await openMoreGameModes(page);
+  try {
+    await openMoreGameModes(page);
+  } catch (error) {
+    // Visual proof cares about the rendered Tactics surface, not whether Home's
+    // animated dungeon trigger satisfies Playwright's transient "stable" check.
+    // Keep the canonical helper first; only bypass actionability after its own
+    // timeout when the real trigger is already visible and enabled.
+    const trigger = page.locator('.illustrated-home__utilities')
+      .getByRole('button', { name: /Más modos y herramientas/ });
+    if (!(await trigger.isVisible().catch(() => false)) || await trigger.isDisabled().catch(() => true)) {
+      throw error;
+    }
+    await trigger.evaluate((button) => button.click());
+  }
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
