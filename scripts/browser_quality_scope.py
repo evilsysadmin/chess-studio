@@ -334,8 +334,76 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
     return {"include": cases}
 
 
+BROWSER_JOB_GROUPS = (
+    (
+        "war-room-input-visual",
+        "War Room · input + mount/scale",
+        ("hans-fire-call", "desktop-input", "desktop-scale"),
+    ),
+    (
+        "war-room-android",
+        "War Room · Android interaction",
+        ("android-selection", "android-focus"),
+    ),
+    (
+        "war-room-special-states",
+        "War Room · special states",
+        ("special-surfaces", "special-state-canaries"),
+    ),
+    (
+        "matthias-home-insights",
+        "Matthias · Home + Así juegas motion",
+        ("matthias-home-motion", "matthias-insights"),
+    ),
+)
+
+
+def _aggregate_commands(cases: list[dict[str, str]]) -> str:
+    if len(cases) == 1:
+        return cases[0]["command"]
+    # GitHub's run shell uses bash -e. Guard each command explicitly so one
+    # failure does not hide the remaining canaries in the same batched job, then
+    # fail the job once every member has had a chance to report.
+    return "rc=0; " + "; ".join(f'{case["command"]} || rc=1' for case in cases) + '; exit "$rc"'
+
+
+def build_job_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
+    cases = build_matrix(scope)["include"]
+    by_id = {case["id"]: case for case in cases}
+    group_by_member = {
+        member: (group_id, label, members)
+        for group_id, label, members in BROWSER_JOB_GROUPS
+        for member in members
+    }
+    consumed: set[str] = set()
+    jobs: list[dict[str, str]] = []
+
+    for case in cases:
+        case_id = case["id"]
+        if case_id in consumed:
+            continue
+        group = group_by_member.get(case_id)
+        if group is not None:
+            group_id, label, members = group
+            present = [by_id[member] for member in members if member in by_id]
+            if len(present) > 1:
+                jobs.append(
+                    {
+                        "id": group_id,
+                        "label": label,
+                        "command": _aggregate_commands(present),
+                    }
+                )
+                consumed.update(member["id"] for member in present)
+                continue
+        jobs.append(case)
+        consumed.add(case_id)
+
+    return {"include": jobs}
+
+
 def output_lines(scope: BrowserScope) -> list[str]:
-    matrix = build_matrix(scope)
+    matrix = build_job_matrix(scope)
     rendered = json.dumps(matrix, ensure_ascii=False, separators=(",", ":"))
     return [
         f"matrix={rendered}",
@@ -369,6 +437,10 @@ def _ids(scope: BrowserScope) -> list[str]:
     return [case["id"] for case in build_matrix(scope)["include"]]
 
 
+def _job_ids(scope: BrowserScope) -> list[str]:
+    return [case["id"] for case in build_job_matrix(scope)["include"]]
+
+
 def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
@@ -383,22 +455,35 @@ def self_test() -> None:
         "hans-fire-call", "android-selection", "desktop-input",
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
+    assert _job_ids(full) == [
+        "war-room-input-visual", "war-room-android", "war-room-special-states",
+    ]
+    full_jobs = build_job_matrix(full)["include"]
+    assert full_jobs[0]["command"].startswith("rc=0; ")
+    assert "war-room-hans-fire-call.spec.js" in full_jobs[0]["command"]
+    assert "three-d-war-room.spec.js" in full_jobs[0]["command"]
+    assert "war-room-desktop-scale.spec.js" in full_jobs[0]["command"]
+    assert full_jobs[0]["command"].endswith('exit "$rc"')
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
     assert _ids(chrome) == ["hans-fire-call", "android-selection", "desktop-input", "desktop-scale", "android-focus"]
+    assert _job_ids(chrome) == ["war-room-input-visual", "war-room-android"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
     assert _ids(direct_special) == ["special-surfaces", "special-state-canaries"]
+    assert _job_ids(direct_special) == ["war-room-special-states"]
     special_canary = build_matrix(direct_special)["include"][1]
     assert "jaque mate" in special_canary["command"]
     assert "promoción 3D" in special_canary["command"]
     assert "sobrevive rotación" in special_canary["command"]
 
-    assert _ids(classify(["frontend/src/components/MatthiasAvatar.jsx"])) == [
+    matthias_shared = classify(["frontend/src/components/MatthiasAvatar.jsx"])
+    assert _ids(matthias_shared) == [
         "matthias-home-motion", "matthias-war-room", "matthias-insights",
     ]
+    assert _job_ids(matthias_shared) == ["matthias-home-insights", "matthias-war-room"]
     assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True)
     assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion"]
     assert _ids(classify(["e2e/matthias-home-visual-critical.spec.js"])) == ["matthias-home-motion"]
