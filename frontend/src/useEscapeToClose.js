@@ -163,18 +163,26 @@ function ensurePopstateListener() {
   window.addEventListener?.('popstate', dispatchBrowserBack);
 }
 
-// ESC, clic derecho de ratón y Back del navegador/sistema ejecutan la misma
-// acción de "volver/cerrar". Una pulsación larga táctil NO cuenta como back.
+// ESC, clic derecho de ratón y Back del navegador/sistema usan el mismo
+// back-stack por defecto. Una pulsación larga táctil NO cuenta como back.
 // `disabled` permite a una pantalla padre ceder el control a una subpantalla
 // activa (por ejemplo Roguelike -> Combate) sin dos niveles armados a la vez.
-export function useEscapeToClose(onClose, { disabled = false } = {}) {
+// `contextMenuAction: 'ignore'` consume el clic derecho sin ejecutar back.
+export function useEscapeToClose(onClose, {
+  disabled = false,
+  contextMenuAction = 'back',
+} = {}) {
   const callbackRef = useRef(onClose);
   const idRef = useRef(Symbol('back-handler'));
   callbackRef.current = onClose;
 
   useEffect(() => {
     if (disabled) return undefined;
-    const entry = { id: idRef.current, callbackRef };
+    const entry = {
+      id: idRef.current,
+      callbackRef,
+      contextMenuAction: contextMenuAction === 'ignore' ? 'ignore' : 'back',
+    };
     backStack.push(entry);
     clearScheduledBrowserBackDisarm();
     installGlobalListeners();
@@ -185,5 +193,5 @@ export function useEscapeToClose(onClose, { disabled = false } = {}) {
       backStack.remove(entry.id);
       uninstallGlobalListenersIfIdle();
     };
-  }, [disabled]);
+  }, [contextMenuAction, disabled]);
 }
