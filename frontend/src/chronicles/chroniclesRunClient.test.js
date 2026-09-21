@@ -7,7 +7,7 @@ vi.mock('../auth.js', () => ({
 const { requestJson } = vi.hoisted(() => ({ requestJson: vi.fn() }));
 vi.mock('../http.js', () => ({ requestJson }));
 
-import { chroniclesCheckpointRun, chroniclesCreateRun } from './chroniclesRunClient.js';
+import { chroniclesCheckpointRun, chroniclesCheckpointState, chroniclesCreateRun } from './chroniclesRunClient.js';
 
 beforeEach(() => {
   requestJson.mockReset();
@@ -74,4 +74,29 @@ describe('Chronicles run transport', () => {
       },
     );
   });
+
+  it('projects state through the bounded checkpoint contract before sending', async () => {
+    await chroniclesCheckpointState(
+      'run-2',
+      {
+        mapId: 'gallery-of-forks',
+        galleryLeverPulled: true,
+        x: 99,
+        message: 'never persist me',
+      },
+      7,
+    );
+
+    const [, options] = requestJson.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual({
+      expectedWorldVersion: 7,
+      currentMapId: 'gallery-of-forks',
+      worldFlags: {
+        galleryLeverPulled: true,
+      },
+      consumedContentIds: [],
+      claimedRewards: [],
+    });
+  });
+
 });
