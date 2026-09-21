@@ -1,6 +1,6 @@
 {
   "id": "jungle_relay_v1",
-  "version": 1,
+  "version": 2,
   "theme": "jungle_storm",
   "world": {
     "width": 5500,
@@ -951,5 +951,35 @@
       "scale": 1.2
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3,
+  "ladders": [
+    {
+      "x": 1552,
+      "top_y": 275,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "vine_ladder"
+    },
+    {
+      "x": 4022,
+      "top_y": 318,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "relay_ladder"
+    }
+  ],
+  "pits": [
+    {
+      "x": 1890,
+      "w": 210,
+      "kind": "ravine"
+    },
+    {
+      "x": 3920,
+      "w": 260,
+      "kind": "washed_out_ground"
+    }
+  ]
 }
