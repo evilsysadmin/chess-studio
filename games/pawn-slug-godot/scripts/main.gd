@@ -1777,10 +1777,15 @@ func _update_enemies(delta: float) -> void:
                     knight_speed_scale = 1.0
                 var knight_speed := speed * knight_speed_scale
                 var previous_x := float(enemy["x"])
-                enemy["x"] = clampf(
+                var knight_candidate_x := clampf(
                     previous_x + move_direction * knight_speed * delta,
                     maxf(0.0, float(enemy["spawn_x"]) - 360.0),
                     minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
+                )
+                enemy["x"] = _enemy_safe_ground_x(
+                    enemy,
+                    knight_candidate_x,
+                    float(stats["width"]) * 0.5,
                 )
                 if not is_equal_approx(previous_x, float(enemy["x"])):
                     movement_speed_scale = knight_speed_scale
@@ -1841,10 +1846,15 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         speed_scale *= SUPPRESSION_ASSAULT_SPEED_MULTIPLIER
 
     var previous_x := float(enemy["x"])
-    enemy["x"] = clampf(
+    var candidate_x := clampf(
         previous_x + move_direction * speed * speed_scale * delta,
         maxf(0.0, float(enemy["spawn_x"]) - SOLDIER_ROAM_LIMIT),
         minf(_world_size.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
+    )
+    enemy["x"] = _enemy_safe_ground_x(
+        enemy,
+        candidate_x,
+        float(stats["width"]) * 0.5,
     )
     if is_equal_approx(previous_x, float(enemy["x"])):
         return 0.0
@@ -1875,9 +1885,30 @@ func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
     enemy["vy"] = velocity_y
     enemy["on_ground"] = on_ground
 
+func _enemy_safe_ground_x(enemy: Dictionary, candidate_x: float, half_width: float = 20.0) -> float:
+    var previous_x := float(enemy.get("x", candidate_x))
+    var foot_y := float(enemy.get("y", _floor_y))
+    if not bool(enemy.get("on_ground", true)) or foot_y < _floor_y - 2.0:
+        return candidate_x
+    if is_equal_approx(previous_x, candidate_x):
+        return candidate_x
+    var moving_right := candidate_x > previous_x
+    for pit in _pit_specs:
+        var pit_left := float(pit.get("x", 0.0))
+        var pit_right := pit_left + maxf(0.0, float(pit.get("w", 0.0)))
+        var safe_left := pit_left - maxf(8.0, half_width)
+        var safe_right := pit_right + maxf(8.0, half_width)
+        if moving_right and previous_x <= safe_left and candidate_x > safe_left:
+            return safe_left
+        if not moving_right and previous_x >= safe_right and candidate_x < safe_right:
+            return safe_right
+        if candidate_x > safe_left and candidate_x < safe_right:
+            return previous_x
+    return candidate_x
+
 func _knight_has_support(world_x: float, foot_y: float) -> bool:
     if is_equal_approx(foot_y, _floor_y):
-        return true
+        return not _x_over_pit(world_x)
     for platform in _platforms + _dynamic_platform_rects():
         if (
             absf(foot_y - platform.position.y) <= 2.0
@@ -1899,7 +1930,12 @@ func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> floa
         ):
             if landing_y < 0.0 or top < landing_y:
                 landing_y = top
-    if previous_y <= _floor_y and next_y >= _floor_y and (landing_y < 0.0 or _floor_y < landing_y):
+    if (
+        not _x_over_pit(world_x)
+        and previous_y <= _floor_y
+        and next_y >= _floor_y
+        and (landing_y < 0.0 or _floor_y < landing_y)
+    ):
         landing_y = _floor_y
     return landing_y
 
@@ -1936,12 +1972,18 @@ func _update_bishop(enemy: Dictionary, delta: float, distance: float, distance_x
     else:
         if not suppression_charging and distance > float(stats["standoff"]):
             var move_direction := 1.0 if distance_x > 0.0 else -1.0
-            enemy["x"] = clampf(
-                float(enemy["x"]) + move_direction * float(stats["speed"]) * delta,
+            var bishop_previous_x := float(enemy["x"])
+            var bishop_candidate_x := clampf(
+                bishop_previous_x + move_direction * float(stats["speed"]) * delta,
                 maxf(0.0, float(enemy["spawn_x"]) - 360.0),
                 minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
             )
-            moved = true
+            enemy["x"] = _enemy_safe_ground_x(
+                enemy,
+                bishop_candidate_x,
+                float(stats["width"]) * 0.5,
+            )
+            moved = not is_equal_approx(bishop_previous_x, float(enemy["x"]))
 
         var regular_fire_clear := not suppression_charging and float(enemy["shell_cooldown"]) > BISHOP_SHELL_TELEGRAPH
         if regular_fire_clear:
