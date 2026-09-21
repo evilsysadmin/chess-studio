@@ -139,6 +139,27 @@ class SpriteForgeGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(metrics.foot_y, 80.0, delta=1.0)
         self.assertAlmostEqual(metrics.body_center_x, 48.0, delta=1.0)
 
+    def test_normalize_does_not_create_resample_orphans(self) -> None:
+        source = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(source)
+        # One connected, jagged silhouette with thin diagonal limbs. This is the
+        # shape class that exposed LANCZOS alpha ringing on canonical sprites.
+        draw.ellipse((25, 10, 39, 25), fill=(180, 120, 80, 255))
+        draw.polygon(
+            [(29, 24), (37, 24), (42, 45), (36, 51), (31, 38), (25, 52), (20, 48), (27, 29)],
+            fill=(180, 120, 80, 255),
+        )
+        draw.line((27, 30, 15, 42), fill=(180, 120, 80, 255), width=3)
+        draw.line((37, 30, 49, 39), fill=(180, 120, 80, 255), width=3)
+
+        normalized = normalize_frame(source, self.contract())
+        lint = lint_frame(
+            normalized,
+            LintConfig(edge_guard_px=0, min_detached_area=1),
+        )
+        self.assertTrue(lint.ok, lint.errors)
+        self.assertEqual(len(lint.components), 1)
+
     def test_normalize_refuses_to_clip_allowed_detached_component(self) -> None:
         source = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
         draw = ImageDraw.Draw(source)
