@@ -14,13 +14,27 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v21"
+const STRICT_RUNTIME_GENERATION := "v22"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
+
+# v22 keeps the stable 18x8 full banks and overlays only the run cycle with
+# twelve real phases. If this optional overlay cannot load, the eight-frame
+# run already present in the full bank remains authoritative.
+const RUN12_ATLAS_URLS := {
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/machinegun/v22-8f32a167a5d4f161.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
+}
+const RUN12_ATLAS_COLUMNS := 12
+const RUN12_ATLAS_CELL_SIZE := 416
+const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
+const RUN12_FPS := 24.0
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
 # strict-v17 tactical bank; v10 stays disabled because its mixed silhouettes
@@ -322,6 +336,7 @@ static var _directional_ready_by_weapon: Dictionary = {}
 static var _directional_body_y_by_weapon: Dictionary = {}
 static var _v9_ready_by_weapon: Dictionary = {}
 static var _v10_ready_by_weapon: Dictionary = {}
+static var _run12_ready_by_weapon: Dictionary = {}
 static var _legacy_pistol_frames: SpriteFrames
 static var _fallback_frames_by_weapon: Dictionary = {}
 static var _master_texture: Texture2D
@@ -681,6 +696,18 @@ func _install_or_request_weapon() -> void:
         return
     _ensure_master()
 
+func _ensure_run12_locomotion(weapon_id: String) -> void:
+    if _run12_ready_by_weapon.has(weapon_id):
+        return
+    if _atlas_request != null or not _v9_ready_by_weapon.has(weapon_id):
+        return
+    if not _full_frames_by_weapon.has(weapon_id):
+        return
+    var url := String(RUN12_ATLAS_URLS.get(weapon_id, ""))
+    if url.is_empty():
+        return
+    _request_atlas(weapon_id, url, "run12-v22")
+
 func _ensure_v10_locomotion(weapon_id: String) -> void:
     if not V10_RUNTIME_PROMOTION_ENABLED:
         return
@@ -715,6 +742,9 @@ func _request_atlas(weapon_id: String, url: String, layout: String) -> void:
         _atlas_request = null
         _atlas_request_weapon = ""
         _atlas_request_layout = ""
+        if layout == "run12-v22":
+            push_warning("Matthias run12 v22 request could not start; keeping eight-frame run")
+            return
         if layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion request could not start; keeping strict-v9")
             return
@@ -732,6 +762,9 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
     _atlas_request_layout = ""
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        if requested_layout == "run12-v22":
+            push_warning("Matthias run12 v22 download failed; keeping eight-frame run")
+            return
         if requested_layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion download failed; keeping strict-v9")
             return
@@ -741,6 +774,9 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
         return
     var image := _decode_raster(bytes)
     if image == null:
+        if requested_layout == "run12-v22":
+            push_warning("Matthias run12 v22 PNG decode failed; keeping eight-frame run")
+            return
         if requested_layout == "locomotion-v10":
             push_warning("Matthias v10 locomotion PNG decode failed; keeping strict-v9")
             return
@@ -766,6 +802,26 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
             _full_muzzle_by_weapon[requested_weapon] = {}
             _v9_ready_by_weapon[requested_weapon] = true
             _directional_ready_by_weapon[requested_weapon] = true
+
+    elif requested_layout == "run12-v22":
+        var run_phase := 0.0
+        var preserve_run_phase := (
+            requested_weapon == _weapon
+            and _body_ready
+            and _action == "run"
+            and _animation_available("run")
+        )
+        if preserve_run_phase:
+            run_phase = _locomotion_phase()
+        if _append_run12_frames(requested_weapon, image):
+            _run12_ready_by_weapon[requested_weapon] = true
+            if requested_weapon == _weapon:
+                _install_frames(_full_frames_by_weapon[requested_weapon], true)
+                if preserve_run_phase and _action == "run":
+                    _restore_locomotion_phase(run_phase)
+        else:
+            push_warning("Matthias run12 v22 atlas rejected for %s; keeping eight-frame run" % requested_weapon)
+        return
 
     elif requested_layout == "locomotion-v10":
         if _append_v10_locomotion_frames(requested_weapon, image):
@@ -1058,6 +1114,28 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
         )
     return repaired
 
+
+func _append_run12_frames(weapon_id: String, image: Image) -> bool:
+    if image.get_size() != RUN12_ATLAS_SIZE or not _full_frames_by_weapon.has(weapon_id):
+        return false
+    var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
+    var atlas_texture := ImageTexture.create_from_image(image)
+    if frames.has_animation("run"):
+        frames.remove_animation("run")
+    frames.add_animation("run")
+    frames.set_animation_loop("run", true)
+    frames.set_animation_speed("run", RUN12_FPS)
+    for frame_index in range(RUN12_ATLAS_COLUMNS):
+        var texture := AtlasTexture.new()
+        texture.atlas = atlas_texture
+        texture.region = Rect2(
+            frame_index * RUN12_ATLAS_CELL_SIZE,
+            0,
+            RUN12_ATLAS_CELL_SIZE,
+            RUN12_ATLAS_CELL_SIZE,
+        )
+        frames.add_frame("run", texture)
+    return frames.get_frame_count("run") == RUN12_ATLAS_COLUMNS
 
 func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
     if weapon_id != "pistol" or image.get_size() != V10_ATLAS_SIZE:
@@ -1499,6 +1577,8 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
+    if authored_full and v9_ready and not _run12_ready_by_weapon.has(_rendered_weapon):
+        call_deferred("_ensure_run12_locomotion", _rendered_weapon)
     if authored_full and v9_ready and _rendered_weapon == "pistol" and not v10_ready:
         call_deferred("_ensure_v10_locomotion", _rendered_weapon)
     elif authored_full and not v9_ready:
