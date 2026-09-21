@@ -52,9 +52,10 @@ SMOKE_GREP = (
 class LaneCommand:
     spec: str
     args: tuple[str, ...] = ()
+    additional_specs: tuple[str, ...] = ()
 
     def argv(self) -> list[str]:
-        return [PLAYWRIGHT, 'test', self.spec, *self.args]
+        return [PLAYWRIGHT, 'test', self.spec, *self.additional_specs, *self.args]
 
     @property
     def grep(self) -> str | None:
@@ -120,6 +121,27 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
 }
 
 
+COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
+    'regression-state+regression-school': (
+        LaneCommand(
+            'regression-journeys.spec.js',
+            (
+                '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
+                '--grep-invert', REGRESSION_STATE_INVERT,
+                '--workers=2', '--retries=0', '--timeout=75000',
+            ),
+        ),
+    ),
+    'learning-golden+learning-observation': (
+        LaneCommand(
+            'learning-golden-path.spec.js',
+            ('--workers=2', '--retries=0'),
+            ('learning-second-observation.spec.js',),
+        ),
+    ),
+}
+
+
 NARROW_ALIAS_LANES = frozenset({'app-boot', 'admin', 'tournament', 'combat', 'home'})
 
 
@@ -134,10 +156,12 @@ def critical_targets() -> list[tuple[str, str]]:
 
 
 def run_lane(lane: str, runner: Callable[..., object] = subprocess.run) -> None:
-    try:
-        commands = LANE_COMMANDS[lane]
-    except KeyError as exc:
-        raise ValueError(f'Lane Playwright desconocida: {lane}') from exc
+    commands = COMPOSITE_LANE_COMMANDS.get(lane)
+    if commands is None:
+        try:
+            commands = LANE_COMMANDS[lane]
+        except KeyError as exc:
+            raise ValueError(f'Lane Playwright desconocida: {lane}') from exc
     for command in commands:
         runner(command.argv(), cwd=E2E_DIR, check=True)
 
@@ -181,6 +205,24 @@ def self_test() -> None:
     run_lane('combat', fake_runner)
     assert calls == [
         ([PLAYWRIGHT, 'test', 'smoke.spec.js', '--grep', COMBAT_GREP, '--workers=1', '--retries=0'], E2E_DIR, True)
+    ]
+    calls.clear()
+    run_lane('regression-state+regression-school', fake_runner)
+    assert calls == [
+        ([
+            PLAYWRIGHT, 'test', 'regression-journeys.spec.js',
+            '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
+            '--grep-invert', REGRESSION_STATE_INVERT,
+            '--workers=2', '--retries=0', '--timeout=75000',
+        ], E2E_DIR, True)
+    ]
+    calls.clear()
+    run_lane('learning-golden+learning-observation', fake_runner)
+    assert calls == [
+        ([
+            PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', 'learning-second-observation.spec.js',
+            '--workers=2', '--retries=0',
+        ], E2E_DIR, True)
     ]
     calls.clear()
     run_lane('home', fake_runner)
