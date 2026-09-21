@@ -1043,7 +1043,9 @@ def add_gothic_canon_v2(static, mats):
         )
 
     # Rear-wall pilasters give the canon its layered stone/wood cadence.
-    for index, x in enumerate((-7.72, -3.20, 3.20, 7.72)):
+    # The inner-right pier is retired because the campaign panel crossed it;
+    # the panel now owns that bay instead of sharing it with a stone post.
+    for index, x in enumerate((-7.72, -3.20, 7.72)):
         cube(f"WR_CANON_rear_pilaster_{index}", (x, 6.50, 4.60),
              (0.22, 0.115, 1.62), mats["stone"], static, bevel=0.065)
         cube(f"WR_CANON_rear_pilaster_cap_{index}", (x, 6.47, 6.16),
@@ -1051,9 +1053,9 @@ def add_gothic_canon_v2(static, mats):
         cube(f"WR_CANON_rear_pilaster_base_{index}", (x, 6.47, 3.09),
              (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
-    # Two tall heraldic banners frame the room edges. Removing the inner pair
-    # opens breathing room around the crest, desk and campaign painting.
-    for index, x in enumerate((-6.55, 6.55)):
+    # Keep one ceremonial banner on the left. The right banner was mostly hidden
+    # behind the campaign panel and physically occupied the same wall bay.
+    for index, x in enumerate((-6.55,)):
         draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
         cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
@@ -1495,7 +1497,6 @@ def validate():
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1",
-        "WR_CANON_banner_1",
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
@@ -1512,6 +1513,8 @@ def validate():
     )
     if retired_overlap_props:
         raise RuntimeError(f"retired rear-wall bookshelf returned: {retired_overlap_props}")
+    if "WR_CANON_banner_1" in {obj.name for obj in scene.objects}:
+        raise RuntimeError("retired right banner returned")
     roles = {}
     for obj in scene.objects:
         role = obj.get("war_room_role")
