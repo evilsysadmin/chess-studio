@@ -54,7 +54,7 @@ describe('Chronicles Tactics architecture depth', () => {
     const root = installChroniclesTacticsArchitectureArt(scene, { scenePlan });
     expect(root.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
     expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
-    expect(root.userData.chroniclesArchitectureMasonryProfile).toBe('coursed-block-face-v2');
+    expect(root.userData.chroniclesArchitectureMasonryProfile).toBe('coursed-block-face-v3');
   });
 
   it('decorates every walkable-facing side of a corner wall cell', () => {
