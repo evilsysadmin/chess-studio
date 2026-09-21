@@ -369,6 +369,12 @@
       "x": 600,
       "w": 100,
       "kind": "water"
+    },
+    {
+      "id": "service-water-gap",
+      "x": 2990,
+      "w": 84,
+      "kind": "water"
     }
   ],
   "obstacles": [
@@ -934,5 +940,5 @@
       "y": 607
     }
   ],
-  "visual_revision": 3
+  "visual_revision": 4
 }
