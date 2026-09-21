@@ -122,6 +122,7 @@ func _add_floor_segment(geometry: Node, x: float, width: float, index: int) -> v
     body.name = "FloorSegment_%02d" % index
     body.position = Vector2(x + width * 0.5, _floor_y + maxf(1.0, (_world_size.y - _floor_y) * 0.5))
     var collision := CollisionShape2D.new()
+    collision.name = "CollisionShape2D"
     var shape := RectangleShape2D.new()
     shape.size = Vector2(width, maxf(1.0, _world_size.y - _floor_y))
     collision.shape = shape
