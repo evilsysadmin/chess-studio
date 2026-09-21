@@ -1,8 +1,9 @@
-"""One-shot Workers AI planner adapter for Chronicles run bootstrap.
+"""Optional Workers AI planner adapter for Chronicles authoring/experiments.
 
-The provider may suggest only the tiny topology intent already whitelisted by
-chronicles_map_planner. Any local fallback, malformed JSON or provider failure
-returns None so the deterministic generator remains authoritative.
+The playable runtime bootstrap does not call this adapter. The provider may
+suggest only the tiny topology intent already whitelisted by
+chronicles_map_planner; deterministic generation remains the runtime authority.
+Any local fallback, malformed JSON or provider failure returns None.
 """
 from __future__ import annotations
 
