@@ -92,7 +92,7 @@ const SCENE_STYLES = Object.freeze({
     id: 'menagerie-ash',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
     dressing: 'menagerie-ash-v3',
-    lighting: Object.freeze({ exposure: 1.09, hemi: 1.22, fill: 1.34, bounce: 1.18 }),
+    lighting: Object.freeze({ exposure: 1.15, hemi: 1.28, fill: 1.42, bounce: 1.24 }),
     palette: MENAGERIE_PALETTE,
   }),
 });
