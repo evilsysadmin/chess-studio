@@ -3704,6 +3704,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 31, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_hearth_bounce_left", (-5.45, 3.35, 3.15), 72, (1.0, 0.34, 0.12), 3.4, target=(-2.5, 2.0, 1.35))
+    add_area_light("HOME_LIGHT_hearth_bounce_right", (4.35, 3.45, 3.10), 64, (1.0, 0.31, 0.10), 3.0, target=(1.45, 2.0, 1.30))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 194, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 142, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))
