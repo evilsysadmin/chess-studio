@@ -350,12 +350,17 @@ export function homeBlenderPolicyNeedsFallback(policy) {
 // Wall-torch x positions from the authored Blender scene (Blender x maps to three x).
 const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
 
+// The lite LOD lacks IBL, torch lights and shadows; lift what it does have.
+const HOME_BLENDER_LITE_EXPOSURE_BOOST = 1.75;
+const HOME_BLENDER_LITE_AMBIENT_BOOST = 2.6;
+
 function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
-  const ambient = new THREE.AmbientLight(0x9b806b, 0.20);
-  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.36);
+  const lift = shadowsEnabled ? 1 : HOME_BLENDER_LITE_AMBIENT_BOOST;
+  const ambient = new THREE.AmbientLight(0x9b806b, 0.20 * lift);
+  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.36 * lift);
 
   const key = new THREE.DirectionalLight(0xffc18a, 1.62);
   key.position.set(-5.2, 7.4, 8.2);
@@ -551,7 +556,11 @@ export default function HomeBlenderScene3D({
     // computed once instead of re-rasterising every mesh on each animated frame.
     renderer.shadowMap.autoUpdate = false;
     renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
+    // The lite LOD (phones, small windows) drops the IBL environment, the torch lights
+    // and shadows, so the same exposure leaves the room ~2.5x darker than on desktop
+    // (measured on staging: luma 14.5 vs 35.7). Compensate with more exposure.
+    renderer.toneMappingExposure = (EXPOSURE[ambient] || EXPOSURE.day)
+      * (initialPolicy.lod === 'full' ? 1 : HOME_BLENDER_LITE_EXPOSURE_BOOST);
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
