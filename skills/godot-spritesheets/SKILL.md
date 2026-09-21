@@ -290,6 +290,69 @@ Antes de Ready/merge, revisar siempre:
 - silueta a escala real del juego, además del contact sheet.
 
 
+### 10.2. Fluidez de locomoción: validar fases, no sólo unicidad
+
+Una fila de `run` puede contener 8 hashes distintos y seguir percibiéndose como una animación de 2 poses. Por tanto, **`N frames distintos` no equivale a `N fases de zancada perceptibles`**.
+
+Para locomoción rápida:
+
+- revisar la secuencia como ciclo completo, no sólo como contact sheet estático;
+- comprobar que piernas, cadera, torso y arma avanzan por fases intermedias legibles;
+- comprobar explícitamente el cierre último→primero para evitar un salto al repetir;
+- no crear fluidez duplicando frames;
+- si los keyframes buenos son escasos, preferir **in-betweens motion-compensated** derivados de las poses aprobadas antes que cross-fades de dos sprites;
+- un in-between debe deformar una sola silueta hacia la siguiente pose; no mezclar dos cuerpos, dos armas ni dos pares de piernas;
+- conservar X/centro de masa de la animación salvo que exista deriva real: no recentrar cada frame automáticamente porque puede introducir jitter lateral artificial;
+- sí reanclar verticalmente cuando haga falta para conservar la footline contractual;
+- limpiar RGB bajo alpha cero y revalidar guard/pivote/footline después de interpolar.
+
+Para Matthias, si una carrera de 8 keyframes sigue leyéndose como 2–4 poses, la solución preferida es un **run strip suplementario de 16 frames**:
+
+`K0, I0→1, K1, I1→2, …, K7, I7→0`
+
+donde `K` son keyframes revisados e `I` son in-betweens motion-compensated.
+
+El runtime debe preservar la **frecuencia de ciclo** al aumentar el frame count. La velocidad efectiva de animación debe derivarse como:
+
+`desired_fps = frame_count × cycle_hz`
+
+y no como un FPS fijo heredado del banco de 8 frames. Doblar muestras no debe hacer que Matthias corra a cámara lenta ni que doble la cadencia.
+
+Gates mínimos para un run strip ampliado:
+
+- todos los frames son distintos;
+- footline constante;
+- cierre 7→0/último→primero sin salto visual;
+- no aparece arma/miembro fantasma;
+- no hay drift horizontal inducido por el interpolador;
+- preview/contact strip de los 16 frames;
+- captura runtime corriendo y, si aplica, corriendo+disparando;
+- revisión humana explícita `PASS` antes de Ready.
+
+### 10.3. Lecciones de la iteración P99 full-bank
+
+Cuando una regresión visual existe en varias poses (por ejemplo, segunda arma aparente, `hurt` cayendo al suelo o `run+fire` incoherente), **dejar de parchear filas legacy una a una** y reconstruir el banco completo desde una fuente saneada.
+
+Proceso que funcionó y debe reutilizarse:
+
+1. congelar image generation cuando ya existe material suficiente;
+2. sanear la fuente y convertirla en input técnico sin UI/textos;
+3. reconstruir las 18 acciones respetando el orden runtime;
+4. normalizar todas a la misma escala, pivot y footline;
+5. generar contact strip por cada acción;
+6. revisar todas las filas, no una muestra;
+7. verificar close-ups runtime de `idle`, `run`, `run+fire`, `crouch`, `hurt` y direccionales;
+8. si una pose falla visualmente, corregir la fuente/normalización correspondiente y repetir;
+9. sólo después publicar el asset inmutable y promover runtime.
+
+Especialmente:
+
+- `hurt` debe ser un flinch de pie;
+- `die` es la única fila que puede terminar tumbada;
+- `crouch`, `crouch_walk` y `shoot_crouch` deben leerse realmente agachados a escala de juego;
+- una P99 debe leerse como **una sola pistola** con agarre a dos manos, no como arma + bulto ambiguo;
+- el smoke funcional del navegador no sustituye estas comprobaciones visuales.
+
 ## 11. Secuencia de trabajo
 
 1. Identificar master/worksheet canónico y último artifact validado.
