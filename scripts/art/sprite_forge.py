@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from collections import deque
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -505,22 +506,305 @@ def validate_sequence(
         unique_frames=len(set(hashes)),
     )
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Pawn Slug Sprite Forge fail-closed raw-frame lint"
+
+class BankContractError(ValueError):
+    pass
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _require_int(value: object, label: str, *, minimum: int = 0) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise BankContractError(f"{label} must be an integer >= {minimum}")
+    return value
+
+
+def _validate_bank_contract(data: object) -> dict:
+    if not isinstance(data, dict):
+        raise BankContractError("contract must be an object")
+    if data.get("schema") != 1:
+        raise BankContractError("contract schema must be 1")
+
+    for key in ("quality_contract", "actor", "weapon"):
+        if not isinstance(data.get(key), str) or not data[key].strip():
+            raise BankContractError(f"{key} must be a non-empty string")
+
+    cell = data.get("cell")
+    if not isinstance(cell, dict):
+        raise BankContractError("cell must be an object")
+    width = _require_int(cell.get("width"), "cell.width", minimum=1)
+    height = _require_int(cell.get("height"), "cell.height", minimum=1)
+
+    parts = data.get("parts")
+    if not isinstance(parts, dict) or not parts:
+        raise BankContractError("parts must be a non-empty object")
+    normalized_parts: dict[str, dict] = {}
+    for name, part in sorted(parts.items()):
+        if not isinstance(name, str) or not name:
+            raise BankContractError("part names must be non-empty strings")
+        if not isinstance(part, dict):
+            raise BankContractError(f"part {name} must be an object")
+        columns = _require_int(part.get("columns"), f"parts.{name}.columns", minimum=1)
+        rows = _require_int(part.get("rows"), f"parts.{name}.rows", minimum=1)
+        normalized_parts[name] = {"columns": columns, "rows": rows}
+
+    animations = data.get("animations")
+    if not isinstance(animations, list) or not animations:
+        raise BankContractError("animations must be a non-empty array")
+
+    seen_names: set[str] = set()
+    seen_rows: set[tuple[str, int]] = set()
+    normalized_animations: list[dict] = []
+    for index, animation in enumerate(animations):
+        if not isinstance(animation, dict):
+            raise BankContractError(f"animations[{index}] must be an object")
+        name = animation.get("name")
+        if not isinstance(name, str) or not name:
+            raise BankContractError(f"animations[{index}].name must be a non-empty string")
+        if name in seen_names:
+            raise BankContractError(f"duplicate animation name: {name}")
+        seen_names.add(name)
+
+        part_name = animation.get("part")
+        if part_name not in normalized_parts:
+            raise BankContractError(f"animation {name} references unknown part {part_name!r}")
+        row = _require_int(animation.get("row"), f"animation {name}.row")
+        if row >= normalized_parts[part_name]["rows"]:
+            raise BankContractError(f"animation {name} row {row} exceeds part {part_name}")
+        row_key = (part_name, row)
+        if row_key in seen_rows:
+            raise BankContractError(f"part row reused: {part_name}:{row}")
+        seen_rows.add(row_key)
+
+        authored = _require_int(
+            animation.get("authored_frames"),
+            f"animation {name}.authored_frames",
+            minimum=1,
+        )
+        slots = animation.get("slots")
+        if not isinstance(slots, list) or not slots:
+            raise BankContractError(f"animation {name}.slots must be a non-empty array")
+        if len(slots) > normalized_parts[part_name]["columns"]:
+            raise BankContractError(f"animation {name} has more slots than part columns")
+        normalized_slots: list[int] = []
+        for slot_index, source_index in enumerate(slots):
+            source_index = _require_int(
+                source_index,
+                f"animation {name}.slots[{slot_index}]",
+            )
+            if source_index >= authored:
+                raise BankContractError(
+                    f"animation {name} slot {slot_index} references missing authored frame {source_index}"
+                )
+            normalized_slots.append(source_index)
+
+        fps = animation.get("fps")
+        if isinstance(fps, bool) or not isinstance(fps, (int, float)) or fps <= 0:
+            raise BankContractError(f"animation {name}.fps must be > 0")
+        loop = animation.get("loop")
+        if not isinstance(loop, bool):
+            raise BankContractError(f"animation {name}.loop must be boolean")
+        allowed_detached = _require_int(
+            animation.get("allowed_detached_components", 0),
+            f"animation {name}.allowed_detached_components",
+        )
+        source_dir = animation.get("source_dir", name)
+        if not isinstance(source_dir, str) or not source_dir:
+            raise BankContractError(f"animation {name}.source_dir must be a non-empty string")
+
+        normalized_animations.append(
+            {
+                "name": name,
+                "part": part_name,
+                "row": row,
+                "fps": float(fps),
+                "loop": loop,
+                "authored_frames": authored,
+                "slots": normalized_slots,
+                "source_dir": source_dir,
+                "allowed_detached_components": allowed_detached,
+            }
+        )
+
+    return {
+        "schema": 1,
+        "quality_contract": data["quality_contract"],
+        "actor": data["actor"],
+        "weapon": data["weapon"],
+        "cell": {"width": width, "height": height},
+        "parts": normalized_parts,
+        "animations": normalized_animations,
+    }
+
+
+def load_bank_contract(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BankContractError(f"cannot load contract {path}: {exc}") from exc
+    return _validate_bank_contract(data)
+
+
+def _save_png_deterministic(image: Image.Image, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path, "PNG", optimize=False, compress_level=9)
+
+
+def build_bank(
+    contract_path: Path,
+    frames_root: Path,
+    output_dir: Path,
+) -> dict:
+    contract = load_bank_contract(contract_path)
+    cell_w = contract["cell"]["width"]
+    cell_h = contract["cell"]["height"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    part_images: dict[str, Image.Image] = {}
+    for part_name, part in contract["parts"].items():
+        part_images[part_name] = Image.new(
+            "RGBA",
+            (part["columns"] * cell_w, part["rows"] * cell_h),
+            (0, 0, 0, 0),
+        )
+
+    manifest_animations: list[dict] = []
+    for animation in contract["animations"]:
+        authored_frames: list[Image.Image] = []
+        source_hashes: list[str] = []
+        source_dir = frames_root / animation["source_dir"]
+        lint_config = LintConfig(
+            edge_guard_px=0,
+            allowed_detached_components=animation["allowed_detached_components"],
+        )
+        for source_index in range(animation["authored_frames"]):
+            path = source_dir / f"{source_index:03d}.png"
+            if not path.is_file():
+                raise BankContractError(f"missing authored frame: {path}")
+            frame = Image.open(path).convert("RGBA")
+            if frame.size != (cell_w, cell_h):
+                raise BankContractError(
+                    f"bad frame size for {path}: {frame.size} != {(cell_w, cell_h)}"
+                )
+            lint = lint_frame(frame, lint_config)
+            if not lint.ok:
+                raise BankContractError(
+                    f"frame failed lint {path}: {','.join(lint.errors)}"
+                )
+            authored_frames.append(_clean_transparent_rgb(frame))
+            source_hashes.append(_sha256_file(path))
+
+        part = part_images[animation["part"]]
+        regions: list[dict] = []
+        for column, source_index in enumerate(animation["slots"]):
+            frame = authored_frames[source_index]
+            x = column * cell_w
+            y = animation["row"] * cell_h
+            part.alpha_composite(frame, (x, y))
+            regions.append(
+                {
+                    "slot": column,
+                    "source_index": source_index,
+                    "x": x,
+                    "y": y,
+                    "width": cell_w,
+                    "height": cell_h,
+                }
+            )
+
+        manifest_animations.append(
+            {
+                "name": animation["name"],
+                "part": animation["part"],
+                "row": animation["row"],
+                "fps": animation["fps"],
+                "loop": animation["loop"],
+                "authored_frames": animation["authored_frames"],
+                "stored_frames": len(animation["slots"]),
+                "slots": animation["slots"],
+                "source_sha256": source_hashes,
+                "regions": regions,
+            }
+        )
+
+    manifest_parts: dict[str, dict] = {}
+    for part_name, image in sorted(part_images.items()):
+        filename = f"{part_name}.png"
+        path = output_dir / filename
+        image = _clean_transparent_rgb(image)
+        _save_png_deterministic(image, path)
+        part = contract["parts"][part_name]
+        manifest_parts[part_name] = {
+            "filename": filename,
+            "sha256": _sha256_file(path),
+            "size": [image.width, image.height],
+            "columns": part["columns"],
+            "rows": part["rows"],
+        }
+
+    manifest = {
+        "schema": 1,
+        "kind": "pawn-slug-sprite-forge-bank",
+        "quality_contract": contract["quality_contract"],
+        "actor": contract["actor"],
+        "weapon": contract["weapon"],
+        "cell": contract["cell"],
+        "contract_sha256": _sha256_file(contract_path),
+        "parts": manifest_parts,
+        "animations": manifest_animations,
+    }
+    manifest_path = output_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
-    parser.add_argument("frame", type=Path)
-    parser.add_argument("--alpha-threshold", type=int, default=8)
-    parser.add_argument("--edge-guard-px", type=int, default=2)
-    parser.add_argument("--min-detached-area", type=int, default=4)
-    parser.add_argument("--allow-detached", type=int, default=0)
-    parser.add_argument("--allow-hidden-rgb", action="store_true")
-    parser.add_argument("--report", type=Path)
-    return parser.parse_args()
+    return manifest
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw and raw[0] not in {"lint", "build"}:
+        raw.insert(0, "lint")
+
+    parser = argparse.ArgumentParser(
+        description="Pawn Slug Sprite Forge fail-closed compiler"
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    lint = sub.add_parser("lint", help="lint one raw candidate frame")
+    lint.add_argument("frame", type=Path)
+    lint.add_argument("--alpha-threshold", type=int, default=8)
+    lint.add_argument("--edge-guard-px", type=int, default=2)
+    lint.add_argument("--min-detached-area", type=int, default=4)
+    lint.add_argument("--allow-detached", type=int, default=0)
+    lint.add_argument("--allow-hidden-rgb", action="store_true")
+    lint.add_argument("--report", type=Path)
+
+    build = sub.add_parser("build", help="compile an accepted atomic-frame bank")
+    build.add_argument("contract", type=Path)
+    build.add_argument("frames_root", type=Path)
+    build.add_argument("output_dir", type=Path)
+    return parser.parse_args(raw)
 
 
-def main() -> int:
-    args = _parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    if args.command == "build":
+        manifest = build_bank(args.contract, args.frames_root, args.output_dir)
+        print(json.dumps(
+            {
+                "actor": manifest["actor"],
+                "weapon": manifest["weapon"],
+                "parts": {
+                    name: value["sha256"]
+                    for name, value in manifest["parts"].items()
+                },
+            },
+            sort_keys=True,
+        ))
+        return 0
+
     config = LintConfig(
         alpha_threshold=args.alpha_threshold,
         edge_guard_px=args.edge_guard_px,

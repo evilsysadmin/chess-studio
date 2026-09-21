@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 from sprite_forge import (
+    BankContractError,
     GeometryContract,
     GeometryError,
     LintConfig,
@@ -15,6 +19,7 @@ from sprite_forge import (
     normalize_frame,
     validate_geometry,
     validate_sequence,
+    build_bank,
 )
 
 
@@ -309,6 +314,128 @@ class SpriteForgeTemporalTests(unittest.TestCase):
             ),
             result.errors,
         )
+
+
+class SpriteForgeCompilerTests(unittest.TestCase):
+    def _write_frame(self, path: Path, x: int) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        ImageDraw.Draw(image).rectangle(
+            (x, 12, x + 19, 51),
+            fill=(180, 120, 80, 255),
+        )
+        image.save(path, "PNG", optimize=False, compress_level=9)
+
+    def _contract(self) -> dict:
+        return {
+            "schema": 1,
+            "quality_contract": "sprite-forge-v1",
+            "actor": "matthias",
+            "weapon": "testgun",
+            "cell": {"width": 64, "height": 64},
+            "parts": {
+                "main": {"columns": 4, "rows": 2},
+                "run13": {"columns": 3, "rows": 1},
+            },
+            "animations": [
+                {
+                    "name": "idle",
+                    "part": "main",
+                    "row": 0,
+                    "fps": 8,
+                    "loop": True,
+                    "authored_frames": 2,
+                    "slots": [0, 1, 0, 1],
+                },
+                {
+                    "name": "hurt",
+                    "part": "main",
+                    "row": 1,
+                    "fps": 16,
+                    "loop": False,
+                    "authored_frames": 2,
+                    "slots": [0, 1, 1, 1],
+                },
+                {
+                    "name": "run_high_fidelity",
+                    "part": "run13",
+                    "row": 0,
+                    "fps": 26,
+                    "loop": True,
+                    "authored_frames": 3,
+                    "slots": [0, 1, 2],
+                },
+            ],
+        }
+
+    def _fixture(self, root: Path) -> tuple[Path, Path]:
+        frames = root / "frames"
+        for name, xs in {
+            "idle": (20, 21),
+            "hurt": (19, 22),
+            "run_high_fidelity": (18, 20, 22),
+        }.items():
+            for index, x in enumerate(xs):
+                self._write_frame(frames / name / f"{index:03d}.png", x)
+        contract = root / "contract.json"
+        contract.write_text(
+            json.dumps(self._contract(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return contract, frames
+
+    def test_build_is_byte_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            left = root / "left"
+            right = root / "right"
+            first = build_bank(contract, frames, left)
+            second = build_bank(contract, frames, right)
+            self.assertEqual(first, second)
+            self.assertEqual(
+                (left / "manifest.json").read_bytes(),
+                (right / "manifest.json").read_bytes(),
+            )
+            for part in ("main.png", "run13.png"):
+                self.assertEqual(
+                    (left / part).read_bytes(),
+                    (right / part).read_bytes(),
+                )
+
+    def test_manifest_distinguishes_authored_frames_from_stored_slots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            manifest = build_bank(contract, frames, root / "out")
+            hurt = next(
+                animation
+                for animation in manifest["animations"]
+                if animation["name"] == "hurt"
+            )
+            self.assertEqual(hurt["authored_frames"], 2)
+            self.assertEqual(hurt["stored_frames"], 4)
+            self.assertEqual(hurt["slots"], [0, 1, 1, 1])
+
+    def test_bad_slot_reference_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            data = json.loads(contract.read_text(encoding="utf-8"))
+            data["animations"][0]["slots"] = [0, 2]
+            contract.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(BankContractError, "missing authored frame 2"):
+                build_bank(contract, frames, root / "out")
+
+    def test_duplicate_part_row_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            data = json.loads(contract.read_text(encoding="utf-8"))
+            data["animations"][1]["row"] = 0
+            contract.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(BankContractError, "part row reused"):
+                build_bank(contract, frames, root / "out")
 
 
 if __name__ == "__main__":
