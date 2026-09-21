@@ -1,147 +1,76 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, hashlib, json
+import argparse, hashlib, json, statistics
 from pathlib import Path
-import cv2, numpy as np
+import numpy as np
 from PIL import Image, ImageDraw
+CELL=416; COLS=8; ROWS=18; SIZE=(3328,7488); SOURCE_CELL=128; SOURCE_COLS=13
+ACTIONS=['idle','walk','run','jump','fall','land','crouch','crouch_walk','shoot','shoot_up','shoot_down','shoot_diag_up','shoot_diag_up_alt','shoot_diag_down','shoot_crouch','reload','hurt','die']
+SOURCE_ORDER=['idle','walk','run13','shoot','crouch','crouch_shoot','hurt6']
+SOURCE_COUNTS={'idle':8,'walk':8,'run13':13,'shoot':8,'crouch':8,'crouch_shoot':8,'hurt6':6}
+REGEN={0,1,2,6,8,14,16}
+RUN8_INDEX=(0,2,3,5,7,9,10,12)
 
-CELL=416; COLS=8; ROWS=18; SIZE=(CELL*COLS,CELL*ROWS); FOOT=382
-# poster source coordinates: y0,y1, x centers, target visible height
-SPECS={
-  'idle':(20,108,[70,177,279,384,489,595,700,802],236),
-  'walk':(145,238,[77,178,286,392,496,605,710,814],236),
-  'run13':(270,374,[76,173,268,365,458,545,641,731,818,908,999,1091,1184],236),
-  'shoot':(405,502,[73,178,281,391,503,617,724,835],236),
-  'crouch':(680,760,[70,175,278,384,490,595,702,806],185),
-  'crouch_shoot':(802,885,[73,178,285,392,502,606,717,825],185),
-  'hurt6':(925,1012,[57,155,252,352,451,550],236),
-}
-NEW_ROWS={0:'idle',1:'walk',6:'crouch',8:'shoot',14:'crouch_shoot',16:'hurt6'}
-RUN8_INDEX=[0,2,3,5,7,9,10,12]
-RETAINED_ROWS=[3,4,5,7,9,10,11,12,13,15,17]
-
-def sha(path:Path)->str: return hashlib.sha256(path.read_bytes()).hexdigest()
-
-def flood_extract(src_bgr, center:int, y0:int, y1:int, half:int=54, tol:int=6) -> Image.Image:
-    x0=max(0,center-half); x1=min(src_bgr.shape[1],center+half)
-    crop=src_bgr[y0:y1,x0:x1].copy(); h,w=crop.shape[:2]
-    mask=np.zeros((h+2,w+2),np.uint8); work=crop.copy(); flags=4|cv2.FLOODFILL_MASK_ONLY|(255<<8)
-    for x in range(0,w,3):
-        for y in (0,h-1): cv2.floodFill(work,mask,(x,y),(0,0,0),(tol,tol,tol),(tol,tol,tol),flags)
-    for y in range(0,h,3):
-        for x in (0,w-1): cv2.floodFill(work,mask,(x,y),(0,0,0),(tol,tol,tol),(tol,tol,tol),flags)
-    fg=(mask[1:-1,1:-1]==0).astype(np.uint8)*255
-    n,lab,stats,_=cv2.connectedComponentsWithStats(fg,8)
-    if n<=1: raise RuntimeError('poster frame has no foreground')
-    keep_i=max(range(1,n),key=lambda i:int(stats[i,cv2.CC_STAT_AREA]))
-    keep=np.where(lab==keep_i,255,0).astype(np.uint8)
-    rgba=cv2.cvtColor(crop,cv2.COLOR_BGR2RGBA); rgba[:,:,3]=keep; rgba[keep==0,:3]=0
-    pil=Image.fromarray(rgba,'RGBA')
-    # Remove baked muzzle flash while preserving face/beret insignia: only bright warm pixels well to the right of face.
-    ar=np.array(pil); a=ar[:,:,3]; r,g,b=ar[:,:,0],ar[:,:,1],ar[:,:,2]
-    skin=(a>80)&(r>115)&(g>55)&(r>g*1.07)&(g>b*1.02)
-    ys,xs=np.where(skin); face_x=float(np.median(xs)) if len(xs) else w*0.45
-    flash=(a>0)&(np.indices(a.shape)[1] > face_x+34)&(r>165)&(g>70)&(b<110)&((r-g)>35)
-    ar[flash]=0
-    # keep only components connected to the main body/weapon after flash removal, plus tiny hand pixels within 8px
-    alpha=(ar[:,:,3]>0).astype(np.uint8)*255
-    n,lab,stats,_=cv2.connectedComponentsWithStats(alpha,8)
-    if n>1:
-        main=max(range(1,n),key=lambda i:int(stats[i,cv2.CC_STAT_AREA]))
-        ar[lab!=main]=0
-    pil=Image.fromarray(ar,'RGBA'); bb=pil.getchannel('A').getbbox()
-    if not bb: raise RuntimeError('poster frame became empty')
-    return pil.crop(bb)
-
-def normalize(sprite:Image.Image,target_h:int)->Image.Image:
-    w,h=sprite.size; scale=target_h/h; tw=max(1,round(w*scale)); sp=sprite.resize((tw,target_h),Image.Resampling.NEAREST)
-    arr=np.array(sp); r,g,b,a=[arr[:,:,i] for i in range(4)]
-    skin=(a>80)&(r>115)&(g>55)&(r>g*1.07)&(g>b*1.02); ys,xs=np.where(skin)
-    face_x=float(np.median(xs)) if len(xs) else tw*.45
-    x=round(220-face_x); y=FOOT-target_h
-    cell=Image.new('RGBA',(CELL,CELL),(0,0,0,0)); cell.alpha_composite(sp,(x,y))
-    ar=np.array(cell); ar[ar[:,:,3]==0,:3]=0
-    return Image.fromarray(ar,'RGBA')
-
-def source_frames(src_bgr):
-    out={}
-    for name,(y0,y1,centers,target_h) in SPECS.items():
-        frames=[]
-        for c in centers:
-            frame=normalize(flood_extract(src_bgr,c,y0,y1),target_h)
-            if name in ('shoot','crouch_shoot'):
-                ar=np.array(frame)
-                # Poster bakes a warm/white muzzle flash. Godot owns muzzle FX. Strip only
-                # bright forward pixels so the dark/green barrel remains intact.
-                yy,xx=np.indices(ar.shape[:2]); rr,gg,bb,aa=[ar[:,:,i] for i in range(4)]
-                bright=rr.astype(np.int16)+gg.astype(np.int16)+bb.astype(np.int16)
-                flash=(aa>0)&(xx>258)&(rr>135)&(gg>70)&(bright>330)
-                ar[flash]=0
-                frame=Image.fromarray(ar,'RGBA')
-            frames.append(frame)
-        out[name]=frames
-    # Remove any residual baked muzzle-flash geometry using the first two
-    # no-flash frames as the authored SMG silhouette. This is spatial, not
-    # color-based, so orange/white antialias remnants cannot survive.
-    for name in ('shoot','crouch_shoot'):
-        frames=out[name]
-        allowed=np.zeros((CELL,CELL),np.uint8)
-        for fr in frames[:1]: allowed=np.maximum(allowed,(np.array(fr)[:,:,3]>0).astype(np.uint8)*255)
-        allowed=cv2.dilate(allowed,np.ones((3,3),np.uint8),iterations=1)
-        xx=np.indices(allowed.shape)[1]
-        for i in range(2,len(frames)):
-            ar=np.array(frames[i]); alpha=ar[:,:,3]
-            remove=(xx>238)&(alpha>0)&(allowed==0)
-            ar[remove]=0; ar[ar[:,:,3]==0,:3]=0
-            # Remove residual warm muzzle-flash antialias that can remain inside
-            # the allowed silhouette. Verified no-flash frames contain no warm
-            # SMG pixels beyond x=285, so this does not trim authored gun geometry.
-            rr,gg,bb,aa=[ar[:,:,j].astype(np.int16) for j in range(4)]
-            warm=(aa>0)&(xx>285)&(rr>gg*1.15)&(rr>bb*1.20)&((rr-gg)>18)
-            ar[warm]=0; ar[ar[:,:,3]==0,:3]=0
-            frames[i]=Image.fromarray(ar,'RGBA')
-    return out
-
+def sha(p:Path)->str: return hashlib.sha256(p.read_bytes()).hexdigest()
+def skin_center(arr):
+ R,G,B,A=[arr[:,:,i] for i in range(4)]; m=(A>80)&(R>120)&(G>55)&(B<170)&(R>G*1.06)&((R-G)>10); ys,xs=np.where(m)
+ return None if not len(xs) else (float(np.median(xs)),float(np.median(ys)))
+def canonical_targets(pistol):
+ out={}
+ for row in range(ROWS):
+  fx=[]; fy=[]; feet=[]; heights=[]
+  for col in range(COLS):
+   cell=pistol.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); bb=cell.getchannel('A').getbbox()
+   if not bb: continue
+   face=skin_center(np.array(cell));
+   if face: fx.append(face[0]); fy.append(face[1])
+   feet.append(bb[3]); heights.append(bb[3]-bb[1])
+  out[row]={'fx':statistics.median(fx),'fy':statistics.median(fy),'foot':statistics.median(feet),'height':statistics.median(heights)}
+ return out
+def source_frame(src,row,col):
+ cell=src.crop((col*SOURCE_CELL,row*SOURCE_CELL,(col+1)*SOURCE_CELL,(row+1)*SOURCE_CELL)); bb=cell.getchannel('A').getbbox()
+ if not bb: raise ValueError(f'empty source frame {row}:{col}')
+ return cell.crop(bb)
+def normalize(sp,row,target):
+ arr=np.array(sp); face=skin_center(arr); bb=sp.getchannel('A').getbbox(); assert bb
+ if face: scale=(target['foot']-target['fy'])/max(1.0,bb[3]-face[1])
+ else: scale=target['height']/max(1.0,bb[3]-bb[1])
+ scale=max(1.0,min(scale,5.0)); sp=sp.resize((max(1,round(sp.width*scale)),max(1,round(sp.height*scale))),Image.Resampling.NEAREST)
+ face=skin_center(np.array(sp)); bb=sp.getchannel('A').getbbox(); assert bb
+ if face: x=round(target['fx']-face[0]); y=round(target['fy']-face[1])
+ else: x=round(208-sp.width/2); y=round(target['foot']-bb[3])
+ cell=Image.new('RGBA',(CELL,CELL),(0,0,0,0)); cell.alpha_composite(sp,(x,y)); bb=cell.getchannel('A').getbbox()
+ if bb and bb[3]!=382:
+  shifted=Image.new('RGBA',(CELL,CELL),(0,0,0,0)); shifted.alpha_composite(cell,(0,382-bb[3])); cell=shifted
+ a=np.array(cell); a[a[:,:,3]==0,:3]=0; return Image.fromarray(a,'RGBA')
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--source',type=Path,required=True); ap.add_argument('--baseline',type=Path,required=True); ap.add_argument('--output',type=Path,required=True); ap.add_argument('--run-output',type=Path,required=True); ap.add_argument('--manifest',type=Path,required=True); ap.add_argument('--review-dir',type=Path,required=True); a=ap.parse_args()
-    src_bgr=cv2.imread(str(a.source),cv2.IMREAD_COLOR)
-    if src_bgr is None: raise SystemExit('cannot load source poster')
-    base=Image.open(a.baseline).convert('RGBA')
-    if base.size!=SIZE: raise SystemExit(f'baseline size {base.size}')
-    sf=source_frames(src_bgr)
-    atlas=base.copy()
-    # New poster-authored rows.
-    for row,name in NEW_ROWS.items():
-        frames=sf[name]
-        for col in range(COLS):
-            box=(col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)
-            atlas.paste((0,0,0,0),box)
-            if col < len(frames): atlas.alpha_composite(frames[col],(col*CELL,row*CELL))
-    # Fallback run row uses 8 authored phases sampled across all 13; runtime overlay uses all 13.
-    for col,idx in enumerate(RUN8_INDEX):
-        box=(col*CELL,2*CELL,(col+1)*CELL,3*CELL); atlas.paste((0,0,0,0),box); atlas.alpha_composite(sf['run13'][idx],(col*CELL,2*CELL))
-    # Runtime run13 overlay.
-    run=Image.new('RGBA',(CELL*13,CELL),(0,0,0,0))
-    for i,fr in enumerate(sf['run13']): run.alpha_composite(fr,(i*CELL,0))
-    for im in (atlas,run):
-        ar=np.array(im); ar[ar[:,:,3]==0,:3]=0; im.paste(Image.fromarray(ar,'RGBA'))
-    a.output.parent.mkdir(parents=True,exist_ok=True); a.run_output.parent.mkdir(parents=True,exist_ok=True); a.review_dir.mkdir(parents=True,exist_ok=True)
-    atlas.save(a.output,'PNG',compress_level=9); run.save(a.run_output,'PNG',compress_level=9)
-    actions=['idle','walk','run','jump','fall','land','crouch','crouch_walk','shoot','shoot_up','shoot_down','shoot_diag_up','shoot_diag_up_alt','shoot_diag_down','shoot_crouch','reload','hurt','die']
-    status={name:('regenerated' if i in [0,1,2,6,8,14,16] else 'retained-reviewed') for i,name in enumerate(actions)}
-    counts={name:(6 if name=='hurt' else 8) for name in actions}; counts['run_overlay']=13
-    m={'schema':1,'generation':'strict-v23','weapon':'machinegun','source_sha256':sha(a.source),'baseline_sha256':sha(a.baseline),'atlas_sha256':sha(a.output),'run13_sha256':sha(a.run_output),'atlas':{'size':list(SIZE),'cell_size':CELL,'columns':8,'rows':18,'pivot_x':200,'foot_y':FOOT},'actions':actions,'status':status,'frame_counts':counts,'run13_size':[CELL*13,CELL],'notes':'Poster-authored SMG idle/walk/run/shoot/crouch/crouch-shoot/hurt; missing directional/jump/fall/land/crouch-walk/reload/die rows retained only after explicit visual review.'}
-    a.manifest.write_text(json.dumps(m,indent=2)+'\n')
-    # Per-row review strips with actual runtime count.
-    for row,name in enumerate(actions):
-        count=counts[name]; strip=Image.new('RGBA',(CELL*count,CELL),(14,16,20,255))
-        for col in range(count): strip.alpha_composite(atlas.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)),(col*CELL,0))
-        strip.resize((max(1,round(strip.width*.35)),round(CELL*.35)),Image.Resampling.NEAREST).save(a.review_dir/f'{row:02d}-{name}.png')
-    # overview
-    strips=[Image.open(a.review_dir/f'{i:02d}-{name}.png').convert('RGBA') for i,name in enumerate(actions)]
-    W=max(x.width for x in strips); H=sum(x.height+20 for x in strips); board=Image.new('RGBA',(W,H),(8,10,13,255)); d=ImageDraw.Draw(board); y=0
-    for i,(name,im) in enumerate(zip(actions,strips)):
-        d.text((4,y+2),f'{i:02d} {name} [{status[name]}]',fill='white'); board.alpha_composite(im,(0,y+18)); y+=im.height+20
-    board.save(a.review_dir/'all-poses.png')
-    print(json.dumps({'atlas':str(a.output),'atlas_sha256':sha(a.output),'run13':str(a.run_output),'run13_sha256':sha(a.run_output)}))
+ ap=argparse.ArgumentParser(); ap.add_argument('--source',type=Path,required=True); ap.add_argument('--baseline',type=Path,required=True); ap.add_argument('--pistol',type=Path,required=True); ap.add_argument('--output',type=Path,required=True); ap.add_argument('--run-output',type=Path,required=True); ap.add_argument('--manifest',type=Path,required=True); ap.add_argument('--review-dir',type=Path,required=True); a=ap.parse_args()
+ src=Image.open(a.source).convert('RGBA'); base=Image.open(a.baseline).convert('RGBA'); pistol=Image.open(a.pistol).convert('RGBA')
+ if src.size!=(SOURCE_COLS*SOURCE_CELL,len(SOURCE_ORDER)*SOURCE_CELL): raise SystemExit(f'bad source size {src.size}')
+ if base.size!=SIZE or pistol.size!=SIZE: raise SystemExit('bad baseline size')
+ targets=canonical_targets(pistol); src_rows={n:i for i,n in enumerate(SOURCE_ORDER)}; target_row={'idle':0,'walk':1,'run13':2,'shoot':8,'crouch':6,'crouch_shoot':14,'hurt6':16}
+ authored={name:[normalize(source_frame(src,src_rows[name],i),target_row[name],targets[target_row[name]]) for i in range(count)] for name,count in SOURCE_COUNTS.items()}
+ run13=authored['run13']; run8=[run13[i] for i in RUN8_INDEX]; hurt8=authored['hurt6']+[authored['hurt6'][-1].copy(),authored['hurt6'][-1].copy()]
+ repl={0:authored['idle'],1:authored['walk'],2:run8,6:authored['crouch'],8:authored['shoot'],14:authored['crouch_shoot'],16:hurt8}
+ atlas=base.copy()
+ for row,frames in repl.items():
+  for col,fr in enumerate(frames): atlas.paste((0,0,0,0),(col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); atlas.alpha_composite(fr,(col*CELL,row*CELL))
+ ar=np.array(atlas); ar[ar[:,:,3]==0,:3]=0; atlas=Image.fromarray(ar,'RGBA'); a.output.parent.mkdir(parents=True,exist_ok=True); atlas.save(a.output,'PNG',compress_level=9)
+ run=Image.new('RGBA',(CELL*13,CELL),(0,0,0,0));
+ for i,fr in enumerate(run13): run.alpha_composite(fr,(i*CELL,0))
+ rr=np.array(run); rr[rr[:,:,3]==0,:3]=0; run=Image.fromarray(rr,'RGBA'); a.run_output.parent.mkdir(parents=True,exist_ok=True); run.save(a.run_output,'PNG',compress_level=9)
+ status={name:('regenerated' if i in REGEN else 'retained-reviewed') for i,name in enumerate(ACTIONS)}
+ frame_counts={name:(6 if name=='hurt' else 8) for name in ACTIONS}
+ fps={'idle':8.0,'walk':13.333333,'run':16.0,'jump':13.333333,'fall':10.666667,'land':16.0,'crouch':8.0,'crouch_walk':10.666667,'shoot':20.0,'shoot_up':20.0,'shoot_down':20.0,'shoot_diag_up':20.0,'shoot_diag_up_alt':20.0,'shoot_diag_down':20.0,'shoot_crouch':20.0,'reload':13.333333,'hurt':16.0,'die':12.0}
+ loop={name:(name in {'idle','walk','run','fall','crouch','crouch_walk'}) for name in ACTIONS}
+ manifest={'schema':1,'generation':'strict-v23','weapon':'machinegun','source_sha256':sha(a.source),'baseline_sha256':sha(a.baseline),'pistol_alignment_sha256':sha(a.pistol),'atlas_sha256':sha(a.output),'run13_sha256':sha(a.run_output),'actions':ACTIONS,'frame_counts':frame_counts,'fps':fps,'loop':loop,'atlas':{'size':list(SIZE),'cell_size':CELL,'columns':8,'rows':18,'pivot_x':200,'foot_y':382},'run13':{'size':[CELL*13,CELL],'frames':13,'cell_size':CELL,'fps':26.0,'loop':True},'status':status,'regenerated_rows':sorted(REGEN),'retained_reviewed_rows':[i for i in range(ROWS) if i not in REGEN],'notes':{'hurt':'6 authored phases + 2 intentional final-pose holds in fixed 8-column atlas','source':'dedicated transparent SMG technical source'}}
+ a.manifest.write_text(json.dumps(manifest,indent=2)+'\n'); a.review_dir.mkdir(parents=True,exist_ok=True)
+ for row,name in enumerate(ACTIONS):
+  board=Image.new('RGBA',(CELL*8,CELL+28),(14,16,20,255)); d=ImageDraw.Draw(board); d.text((6,6),f'{row:02d} {name} · {status[name]}',fill='white')
+  for col in range(8): board.alpha_composite(atlas.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)),(col*CELL,28))
+  board.resize((round(board.width*.32),round(board.height*.32)),Image.Resampling.NEAREST).save(a.review_dir/f'{row:02d}-{name}.png')
+ strips=[Image.open(a.review_dir/f'{i:02d}-{name}.png').convert('RGBA') for i,name in enumerate(ACTIONS)]; W=max(x.width for x in strips); H=sum(x.height for x in strips); overview=Image.new('RGBA',(W,H),(8,10,13,255)); y=0
+ for x in strips: overview.alpha_composite(x,(0,y)); y+=x.height
+ overview.save(a.review_dir/'all-poses.png')
+ print(json.dumps({'atlas_sha256':manifest['atlas_sha256'],'run13_sha256':manifest['run13_sha256']}))
 if __name__=='__main__': main()

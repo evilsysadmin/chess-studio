@@ -1,6 +1,7 @@
 extends Node2D
 
 const EnemyVisual := preload("res://scripts/enemy_visual.gd")
+const EnemyUtilityAI := preload("res://scripts/enemy_utility_ai.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
@@ -46,7 +47,7 @@ const ENEMY_TRAVERSAL_PIT_JUMP_SPEED := 610.0
 const ENEMY_TRAVERSAL_LOOKAHEAD := 74.0
 const ENEMY_TRAVERSAL_MAX_CLIMB_HEIGHT := 118.0
 const ENEMY_TRAVERSAL_LADDER_THRESHOLD := 64.0
-const ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE := 520.0
+const ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE := 1200.0
 const ENEMY_TRAVERSAL_LADDER_SNAP_X := 11.0
 const ENEMY_TRAVERSAL_LADDER_SPEED := 155.0
 const ENEMY_TRAVERSAL_LADDER_EXIT_NUDGE := 20.0
@@ -713,6 +714,16 @@ func _enemy_from_spawn(spawn: Dictionary, variant: int, id_prefix: String) -> Di
         "weapon": weapon,
         "role": role,
         "cooldown": 0.35 + float(variant % 5) * 0.08,
+        "ai_intent": EnemyUtilityAI.INTENT_HOLD,
+        "ai_decision_timer": 0.0,
+        "ai_commit_remaining": 0.0,
+        "ai_memory_remaining": 0.0,
+        "ai_last_target_x": spawn_x,
+        "ai_last_target_foot_y": spawn_y,
+        "ai_target_x": spawn_x,
+        "ai_target_foot_y": spawn_y,
+        "ai_visible": false,
+        "ai_grenade_evade": 0.0,
     }
     if type == "bishop":
         enemy["shell_cooldown"] = 1.65 + randf_range(0.0, 0.45)
@@ -1634,6 +1645,12 @@ func _alert_enemies(world_x: float, hearing_range: float) -> void:
             continue
         if absf(float(enemy["x"]) - world_x) <= effective_hearing:
             enemy["alerted"] = true
+            _enemy_remember_target(
+                enemy,
+                world_x,
+                _player_foot_y(),
+                EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+            )
             if player.global_position.x < START_ZONE_END_X:
                 enemy["reaction"] = maxf(
                     float(enemy.get("reaction", 0.0)),
@@ -1650,6 +1667,7 @@ func _enemy_engaged(enemy: Dictionary, abs_distance: float) -> bool:
         return false
     if abs_distance <= _enemy_aggro_range() and not bool(enemy.get("alerted", false)):
         enemy["alerted"] = true
+        _enemy_remember_player(enemy, EnemyUtilityAI.HEARD_MEMORY_SECONDS)
         if String(enemy.get("idle_pose", "")) != "":
             enemy["reaction"] = maxf(
                 float(enemy.get("reaction", 0.0)),
@@ -1674,9 +1692,20 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
         return
     var source := enemies[source_index]
     source["alerted"] = true
+    var source_x := float(source["x"])
+    if float(source.get("ai_memory_remaining", 0.0)) <= 0.0:
+        _enemy_remember_target(
+            source,
+            source_x,
+            float(source.get("y", _floor_y)),
+            EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+        )
     source["reaction"] = minf(float(source.get("reaction", 0.0)), 0.18)
     enemies[source_index] = source
-    var source_x := float(source["x"])
+    var shared_target_x := float(source.get("ai_last_target_x", source_x))
+    var shared_target_foot_y := float(
+        source.get("ai_last_target_foot_y", source.get("y", _floor_y))
+    )
     for index in range(enemies.size()):
         if index == source_index:
             continue
@@ -1686,6 +1715,12 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
         if absf(float(enemy["x"]) - source_x) > radius:
             continue
         enemy["alerted"] = true
+        _enemy_remember_target(
+            enemy,
+            shared_target_x,
+            shared_target_foot_y,
+            EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+        )
         if String(enemy.get("idle_pose", "")) != "":
             enemy["reaction"] = maxf(
                 float(enemy.get("reaction", 0.0)),
@@ -1694,6 +1729,98 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
         else:
             enemy["reaction"] = minf(float(enemy.get("reaction", 0.0)), 0.22)
         enemies[index] = enemy
+
+func _enemy_remember_target(
+    enemy: Dictionary,
+    target_x: float,
+    target_foot_y: float,
+    memory_seconds: float,
+) -> void:
+    enemy["ai_last_target_x"] = target_x
+    enemy["ai_last_target_foot_y"] = target_foot_y
+    enemy["ai_memory_remaining"] = maxf(
+        float(enemy.get("ai_memory_remaining", 0.0)),
+        memory_seconds,
+    )
+
+func _enemy_remember_player(enemy: Dictionary, memory_seconds: float) -> void:
+    _enemy_remember_target(
+        enemy,
+        float(player.global_position.x),
+        _player_foot_y(),
+        memory_seconds,
+    )
+
+func _update_enemy_ai_plan(enemy: Dictionary, stats: Dictionary, standoff: float, delta: float) -> void:
+    var visible := _enemy_has_line_of_sight(enemy, stats)
+    var memory_remaining := maxf(0.0, float(enemy.get("ai_memory_remaining", 0.0)) - delta)
+    enemy["ai_memory_remaining"] = memory_remaining
+    enemy["ai_visible"] = visible
+
+    if visible:
+        _enemy_remember_player(enemy, EnemyUtilityAI.MEMORY_SECONDS)
+        memory_remaining = float(enemy["ai_memory_remaining"])
+
+    var target_known := visible or memory_remaining > 0.0
+    var target_x := float(enemy.get("ai_last_target_x", enemy.get("x", 0.0)))
+    var target_foot_y := float(enemy.get("ai_last_target_foot_y", enemy.get("y", _floor_y)))
+    enemy["ai_target_x"] = target_x
+    enemy["ai_target_foot_y"] = target_foot_y
+
+    var decision_timer := maxf(0.0, float(enemy.get("ai_decision_timer", 0.0)) - delta)
+    var commit_remaining := maxf(0.0, float(enemy.get("ai_commit_remaining", 0.0)) - delta)
+    enemy["ai_decision_timer"] = decision_timer
+    enemy["ai_commit_remaining"] = commit_remaining
+
+    var current_x := float(enemy.get("x", 0.0))
+    var direction := signf(target_x - current_x)
+    var grenade_evade := _grenade_evade_direction(current_x)
+    enemy["ai_grenade_evade"] = grenade_evade
+    var urgent_evade := not is_zero_approx(grenade_evade)
+
+    if (
+        not urgent_evade
+        and decision_timer > 0.0
+        and commit_remaining > 0.0
+        and String(enemy.get("ai_intent", "")) != ""
+    ):
+        return
+
+    var blocker_ahead := false
+    var pit_ahead := false
+    if target_known and not is_zero_approx(direction):
+        blocker_ahead = not _enemy_jump_blocker_ahead(enemy, direction).is_empty()
+        pit_ahead = not _enemy_pit_ahead(enemy, direction).is_empty()
+    var ladder_route := (
+        target_known
+        and not _enemy_route_ladder_toward(enemy, target_foot_y).is_empty()
+    )
+    var context := {
+        "target_known": target_known,
+        "visible": visible,
+        "distance": absf(target_x - current_x),
+        "standoff": standoff,
+        "vertical_gap": target_foot_y - float(enemy.get("y", _floor_y)),
+        "vertical_threshold": ENEMY_TRAVERSAL_LADDER_THRESHOLD,
+        "blocker_ahead": blocker_ahead,
+        "pit_ahead": pit_ahead,
+        "ladder_route": ladder_route,
+        "grenade_evade": grenade_evade,
+        "role": String(enemy.get("role", "")),
+        "enemy_type": String(enemy.get("type", "pawn")),
+        "retreat_ratio": SOLDIER_RETREAT_RATIO,
+        "comfort_margin": SOLDIER_COMFORT_MARGIN,
+        "advance_margin": SOLDIER_ADVANCE_MARGIN,
+    }
+    enemy["ai_intent"] = EnemyUtilityAI.choose_intent(context)
+    var enemy_type := String(enemy.get("type", "pawn"))
+    var enemy_role := String(enemy.get("role", ""))
+    enemy["ai_decision_timer"] = EnemyUtilityAI.decision_interval_for(enemy_type, enemy_role)
+    enemy["ai_commit_remaining"] = EnemyUtilityAI.commit_seconds_for(
+        enemy_type,
+        String(enemy["ai_intent"]),
+        enemy_role,
+    )
 
 func _enemy_weapon_standoff(enemy: Dictionary, stats: Dictionary) -> float:
     var standoff := float(stats["standoff"])
@@ -1811,16 +1938,21 @@ func _update_enemies(delta: float) -> void:
         if can_act:
             var speed := float(stats["speed"])
             var standoff := _enemy_weapon_standoff(enemy, stats)
+            if speed > 0.0:
+                _update_enemy_ai_plan(enemy, stats, standoff, delta)
             if type == "knight":
                 var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta)
                 if ladder_scale >= 0.0:
                     movement_speed_scale = ladder_scale
                 else:
-                    var move_direction := 1.0 if distance_x > 0.0 else -1.0
+                    var target_x := float(enemy.get("ai_target_x", float(player.global_position.x)))
+                    var target_distance_x := target_x - float(enemy["x"])
+                    var target_abs_distance := absf(target_distance_x)
+                    var move_direction := 1.0 if target_distance_x > 0.0 else -1.0
                     var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
-                    if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+                    if target_abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
                         knight_speed_scale = KNIGHT_SPRINT_MULTIPLIER
-                    elif abs_distance > standoff:
+                    elif target_abs_distance > standoff:
                         knight_speed_scale = 1.0
                     if not bool(enemy.get("on_ground", true)):
                         move_direction = float(enemy.get("air_direction", move_direction))
@@ -1835,16 +1967,17 @@ func _update_enemies(delta: float) -> void:
                         )
                     var knight_speed := speed * knight_speed_scale
                     var previous_x := float(enemy["x"])
+                    var movement_bounds := _enemy_horizontal_bounds(enemy, 360.0)
                     enemy["x"] = clampf(
                         previous_x + move_direction * knight_speed * delta,
-                        maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                        minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
+                        movement_bounds.x,
+                        movement_bounds.y,
                     )
                     if not is_equal_approx(previous_x, float(enemy["x"])):
                         movement_speed_scale = knight_speed_scale
                     if (
                         float(enemy["leap_cooldown"]) <= 0.0
-                        and abs_distance < KNIGHT_LEAP_RANGE
+                        and target_abs_distance < KNIGHT_LEAP_RANGE
                         and bool(enemy["on_ground"])
                         and String(enemy.get("traversal_mode", "ground")) == "ground"
                     ):
@@ -1877,6 +2010,8 @@ func _update_enemies(delta: float) -> void:
             can_act
             and float(enemy["cooldown"]) <= 0.0
             and String(enemy.get("traversal_mode", "ground")) != "ladder"
+            and bool(enemy.get("ai_visible", true))
+            and String(enemy.get("ai_intent", EnemyUtilityAI.INTENT_SHOOT)) != EnemyUtilityAI.INTENT_EVADE
         ):
             _try_enemy_fire(enemy)
             enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
@@ -1887,48 +2022,87 @@ func _enemy_is_traversal_mobile(type: String) -> bool:
         return false
     return float(ENEMY_TYPES.get(type, {}).get("speed", 0.0)) > 0.0
 
+func _enemy_horizontal_bounds(enemy: Dictionary, idle_roam: float) -> Vector2:
+    if bool(enemy.get("alerted", false)):
+        return Vector2(0.0, _world_size.x)
+    var spawn_x := float(enemy.get("spawn_x", enemy.get("x", 0.0)))
+    return Vector2(
+        maxf(0.0, spawn_x - idle_roam),
+        minf(_world_size.x, spawn_x + idle_roam),
+    )
+
 func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: float, distance_x: float, abs_distance: float, delta: float) -> float:
     var speed := float(stats["speed"])
     if speed <= 0.0:
         return 0.0
 
-    var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta)
-    if ladder_scale >= 0.0:
-        return ladder_scale
+    var intent := String(enemy.get("ai_intent", "legacy"))
+    var target_x := float(enemy.get("ai_target_x", float(enemy["x"]) + distance_x))
+    var target_foot_y := float(enemy.get("ai_target_foot_y", _player_foot_y()))
+    var target_distance_x := target_x - float(enemy["x"])
+    var target_abs_distance := absf(target_distance_x)
+    var toward_target := 1.0 if target_distance_x > 0.0 else -1.0
 
-    var toward_player := 1.0 if distance_x > 0.0 else -1.0
+    if intent in [EnemyUtilityAI.INTENT_TRAVERSE, "legacy"]:
+        var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta, target_foot_y)
+        if ladder_scale >= 0.0:
+            return ladder_scale
+
     var move_direction := 0.0
     var speed_scale := 0.0
-    var grenade_evade := _grenade_evade_direction(float(enemy["x"]))
-    if not is_zero_approx(grenade_evade):
-        move_direction = grenade_evade
-        speed_scale = GRENADE_EVADE_SPEED_SCALE
-    elif abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
-        move_direction = toward_player
-        speed_scale = SOLDIER_SPRINT_MULTIPLIER
-    elif abs_distance > standoff + SOLDIER_ADVANCE_MARGIN:
-        move_direction = toward_player
-        speed_scale = SOLDIER_ADVANCE_MULTIPLIER
-    elif abs_distance > standoff + SOLDIER_COMFORT_MARGIN:
-        move_direction = toward_player
-        speed_scale = SOLDIER_CREEP_MULTIPLIER
-    elif abs_distance < standoff * SOLDIER_RETREAT_RATIO:
-        # Too close: create firing room while keeping the visual facing Matthias.
-        move_direction = -toward_player
-        speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
-    elif absf(_player_foot_y() - float(enemy.get("y", _floor_y))) > ENEMY_TRAVERSAL_LADDER_THRESHOLD:
-        # Vertical separation must not freeze a soldier directly below/above
-        # Matthias. Keep searching laterally for a route instead of becoming a
-        # firing-range tancredo.
-        move_direction = toward_player
-        speed_scale = SOLDIER_CREEP_MULTIPLIER
+    if intent != "legacy":
+        match intent:
+            EnemyUtilityAI.INTENT_EVADE:
+                move_direction = float(enemy.get("ai_grenade_evade", 0.0))
+                speed_scale = GRENADE_EVADE_SPEED_SCALE
+            EnemyUtilityAI.INTENT_TRAVERSE:
+                move_direction = toward_target
+                speed_scale = 1.10
+            EnemyUtilityAI.INTENT_ADVANCE:
+                move_direction = toward_target
+                if target_abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+                    speed_scale = SOLDIER_SPRINT_MULTIPLIER
+                elif target_abs_distance > standoff + SOLDIER_ADVANCE_MARGIN:
+                    speed_scale = SOLDIER_ADVANCE_MULTIPLIER
+                else:
+                    speed_scale = SOLDIER_CREEP_MULTIPLIER
+            EnemyUtilityAI.INTENT_RETREAT:
+                move_direction = -toward_target
+                speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
+            _:
+                return 0.0
     else:
-        return 0.0
+        var grenade_evade := _grenade_evade_direction(float(enemy["x"]))
+        if not is_zero_approx(grenade_evade):
+            move_direction = grenade_evade
+            speed_scale = GRENADE_EVADE_SPEED_SCALE
+        elif abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+            move_direction = toward_target
+            speed_scale = SOLDIER_SPRINT_MULTIPLIER
+        elif abs_distance > standoff + SOLDIER_ADVANCE_MARGIN:
+            move_direction = toward_target
+            speed_scale = SOLDIER_ADVANCE_MULTIPLIER
+        elif abs_distance > standoff + SOLDIER_COMFORT_MARGIN:
+            move_direction = toward_target
+            speed_scale = SOLDIER_CREEP_MULTIPLIER
+        elif abs_distance < standoff * SOLDIER_RETREAT_RATIO:
+            move_direction = -toward_target
+            speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
+        elif not _enemy_has_line_of_sight(enemy, stats):
+            move_direction = toward_target
+            speed_scale = SOLDIER_CREEP_MULTIPLIER
+        elif absf(_player_foot_y() - float(enemy.get("y", _floor_y))) > ENEMY_TRAVERSAL_LADDER_THRESHOLD:
+            move_direction = toward_target
+            speed_scale = SOLDIER_CREEP_MULTIPLIER
+        else:
+            return 0.0
 
+    if is_zero_approx(move_direction):
+        return 0.0
     if (
         _enemy_suppression_remaining > 0.0
         and String(enemy.get("role", "")) == "assaulter"
-        and is_equal_approx(move_direction, toward_player)
+        and is_equal_approx(move_direction, toward_target)
     ):
         speed_scale *= SUPPRESSION_ASSAULT_SPEED_MULTIPLIER
 
@@ -1939,10 +2113,11 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
 
     var previous_x := float(enemy["x"])
+    var movement_bounds := _enemy_horizontal_bounds(enemy, SOLDIER_ROAM_LIMIT)
     enemy["x"] = clampf(
         previous_x + move_direction * speed * speed_scale * delta,
-        maxf(0.0, float(enemy["spawn_x"]) - SOLDIER_ROAM_LIMIT),
-        minf(_world_size.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
+        movement_bounds.x,
+        movement_bounds.y,
     )
     if is_equal_approx(previous_x, float(enemy["x"])):
         return 0.0
@@ -1951,14 +2126,22 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
 func _player_foot_y() -> float:
     return float(player.global_position.y) + PLAYER_STANDING_HEIGHT * 0.5
 
-func _update_enemy_ladder_movement(enemy: Dictionary, stats: Dictionary, delta: float) -> float:
+func _update_enemy_ladder_movement(
+    enemy: Dictionary,
+    stats: Dictionary,
+    delta: float,
+    target_foot_y: float = INF,
+) -> float:
     if String(enemy.get("traversal_mode", "ground")) == "ladder":
         return _climb_enemy_ladder(enemy, delta)
 
     if not bool(enemy.get("on_ground", true)):
         return -1.0
 
-    var ladder := _enemy_route_ladder_toward(enemy, _player_foot_y())
+    var effective_target_foot_y := target_foot_y
+    if is_inf(effective_target_foot_y):
+        effective_target_foot_y = _player_foot_y()
+    var ladder := _enemy_route_ladder_toward(enemy, effective_target_foot_y)
     if ladder.is_empty():
         return -1.0
 
@@ -1977,11 +2160,11 @@ func _update_enemy_ladder_movement(enemy: Dictionary, stats: Dictionary, delta: 
     if _enemy_try_auto_jump(enemy, direction):
         speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
     var speed := float(stats["speed"]) * speed_scale
-    var roam := SOLDIER_ROAM_LIMIT + 120.0
+    var movement_bounds := _enemy_horizontal_bounds(enemy, SOLDIER_ROAM_LIMIT + 120.0)
     enemy["x"] = clampf(
         float(enemy["x"]) + direction * speed * delta,
-        maxf(0.0, float(enemy["spawn_x"]) - roam),
-        minf(_world_size.x, float(enemy["spawn_x"]) + roam),
+        movement_bounds.x,
+        movement_bounds.y,
     )
     return speed_scale
 

@@ -575,7 +575,7 @@ def self_test() -> None:
     assert '"machinegun": 13' in REQUIRED_MATTHIAS
     assert '"machinegun": {"hurt": 6}' in REQUIRED_MATTHIAS
     assert "_ensure_run12_locomotion" in REQUIRED_MATTHIAS
-    assert "/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png" in REQUIRED_MATTHIAS
+    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS

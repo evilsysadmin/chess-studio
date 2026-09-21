@@ -6,7 +6,6 @@ on:
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
-      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -37,7 +36,6 @@ on:
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
-      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -85,6 +83,7 @@ env:
   SHOTGUN_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png'
   PANZERFAUST_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png'
   MACHINEGUN_V22_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png'
+  MACHINEGUN_V23_SOURCE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/source-v23/machinegun/matthias-v23-machinegun-source-9ba9f7fd29c1cf86.png'
 
 jobs:
   build-strict-v17-machinegun:
@@ -743,21 +742,26 @@ jobs:
             scripts/art/pack_pawn_slug_machinegun_v23.py \
             scripts/art/validate_pawn_slug_machinegun_v23.py
 
-      - name: Download strict-v22 SMG baseline
+      - name: Download dedicated SMG source + strict-v22 baseline + pistol alignment
         run: |
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v23'
           mkdir -p "$ROOT"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$MACHINEGUN_V23_SOURCE_URL" --output "$ROOT/source-v23.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
             "$MACHINEGUN_V22_URL" --output "$ROOT/baseline-v22.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$PISTOL_V21_URL" --output "$ROOT/pistol-v21.png"
 
       - name: Build dedicated SMG v23 + run13
         run: |
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v23'
           python3 scripts/art/pack_pawn_slug_machinegun_v23.py \
-            --source games/pawn-slug-godot/art/matthias-v23-machinegun-source.png \
+            --source "$ROOT/source-v23.png" \
             --baseline "$ROOT/baseline-v22.png" \
+            --pistol "$ROOT/pistol-v21.png" \
             --output "$ROOT/machinegun-v23.png" \
             --run-output "$ROOT/machinegun-run13-v23.png" \
             --manifest "$ROOT/manifest.json" \
@@ -766,9 +770,10 @@ jobs:
             --atlas "$ROOT/machinegun-v23.png" \
             --run13 "$ROOT/machinegun-run13-v23.png" \
             --baseline "$ROOT/baseline-v22.png" \
+            --manifest "$ROOT/manifest.json" \
             --report "$ROOT/health.json"
-          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "7192d24b6df75b883d65b5e078bf851afd8289808155b72659c81aaabd4b7a22"
-          test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" = "5d173e717875da0c646a02f717e7e1964ec0dec137cb2cec1c0a44506caab05b"
+          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "c54d056006d165c2653ee36c765442825be5225858daa5b79da75ff9f5670fce"
+          test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" = "34b7a35793047e39591fa74014dd8a703aae886e5ea40fbc70c7446870d3a8ee"
 
       - name: Restore pinned Godot editor
         uses: actions/cache@v6
@@ -802,7 +807,7 @@ jobs:
             "$ROOT/machinegun-v23.png" "$ROOT/machinegun-run13-v23.png" "$ROOT/manifest.json"
 
       - name: Publish immutable strict-v23 SMG assets to R2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

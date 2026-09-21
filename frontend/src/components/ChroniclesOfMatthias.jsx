@@ -8,6 +8,16 @@ import {
 } from '../chroniclesOfMatthias.js';
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
+import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
+import {
+  CHRONICLES_BOOTSTRAP_ERROR_CODES,
+  chroniclesBootstrapWorld,
+} from '../chronicles/chroniclesGameBootstrap.js';
+import {
+  ensureChroniclesRun,
+  finishChroniclesRun,
+  renewChroniclesRun,
+} from '../chronicles/chroniclesRunIdentity.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
@@ -39,8 +49,41 @@ const KEY_ACTIONS = Object.freeze({
   ArrowRight: 'turn-right', d: 'turn-right', D: 'turn-right',
 });
 
+const FIRST_PERSON_RUN_SCOPE = 'first-person';
+
+function BootstrapStatus() {
+  return (
+    <div className="menu chronicles-bootstrap" role="status" aria-live="polite">
+      <section className="menu-section">
+        <span className="section-label">CHRONICLES OF MATTHIAS</span>
+        <h2>Preparando expedición…</h2>
+        <p>El Game Director está ensamblando el mundo de esta run.</p>
+      </section>
+    </div>
+  );
+}
+
+function BootstrapFailure({ error, onRetry, onExit }) {
+  const aborted = error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted;
+  return (
+    <div className="menu chronicles-bootstrap">
+      <section className="menu-section" role="alert" aria-live="assertive">
+        <span className="section-label">EXPEDICIÓN NO INICIADA</span>
+        <h2>No se pudo preparar Chronicles</h2>
+        <p>El mundo autoritativo no superó el arranque. No se cargará la cripta local como sustituto.</p>
+        <p className="hint-text">Código {error?.code || CHRONICLES_BOOTSTRAP_ERROR_CODES.unknown}{error?.requestId ? ` · ${error.requestId}` : ''}</p>
+        {!aborted && (
+          <div className="game-controls">
+            <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>
+            <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function ChroniclesOfMatthias({ onExit }) {
-  useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const retaliationTimerRef = useRef(null);
@@ -49,8 +92,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
-  const stateRef = useRef(createChroniclesState(null, progression.characterBuild));
-  const [state, setState] = useState(stateRef.current);
+  const [ready, setReady] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState(null);
+  const [bootstrapRevision, setBootstrapRevision] = useState(0);
+  const staleRunRecoveryAttemptedRef = useRef(false);
+  const activeRunIdRef = useRef(null);
+  const stateRef = useRef(null);
+  const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
   const [rendererError, setRendererError] = useState('');
@@ -61,20 +109,45 @@ export default function ChroniclesOfMatthias({ onExit }) {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
 
+  const exitChronicles = useCallback(() => {
+    if (activeRunIdRef.current) {
+      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
+      activeRunIdRef.current = null;
+    }
+    onExit?.();
+  }, [onExit]);
+
+  useEscapeToClose(exitChronicles);
+
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
-    const next = createChroniclesState(null, saved.characterBuild);
-    stateRef.current = next;
+    stateRef.current = null;
+    staleRunRecoveryAttemptedRef.current = false;
     setProgression(saved);
     setSelectedMemberId('matthias');
-    setState(next);
+    setState(null);
+    setReady(false);
+    setBootstrapError(null);
+    setRendererError('');
     setCharacterSetupDone(true);
+    setBootstrapRevision((revision) => revision + 1);
   }, [progression]);
+
+  const retryBootstrap = useCallback(() => {
+    staleRunRecoveryAttemptedRef.current = false;
+    stateRef.current = null;
+    setState(null);
+    setReady(false);
+    setBootstrapError(null);
+    setRendererError('');
+    setBootstrapRevision((revision) => revision + 1);
+  }, []);
 
   const dispatch = useCallback((action) => {
     const current = stateRef.current;
+    if (!current) return;
     const next = chroniclesReduce(current, action);
     stateRef.current = next;
     setState(next);
@@ -109,17 +182,25 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const restart = useCallback(() => {
-    const next = createChroniclesState(null, progression.characterBuild);
-    stateRef.current = next;
+    if (activeRunIdRef.current) {
+      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
+      activeRunIdRef.current = null;
+    }
+    stateRef.current = null;
+    setState(null);
     setSelectedMemberId('matthias');
-    setState(next);
+    setReady(false);
+    setBootstrapError(null);
+    setRendererError('');
+    staleRunRecoveryAttemptedRef.current = false;
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
     retaliationTimerRef.current = null;
     setRetaliationCue(null);
     if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
     partyBarkTimerRef.current = null;
     setPartyBark(null);
-  }, [progression.characterBuild]);
+    setBootstrapRevision((revision) => revision + 1);
+  }, []);
 
   useEffect(() => () => {
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
@@ -127,10 +208,55 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   useEffect(() => {
+    if (!characterSetupDone) return undefined;
+    const controller = new AbortController();
+    let active = true;
+
+    setBootstrapError(null);
+    const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    activeRunIdRef.current = operationId;
+
+    chroniclesBootstrapWorld({ signal: controller.signal, operationId })
+      .then(() => {
+        if (!active) return;
+        const next = createChroniclesState(null, progression.characterBuild);
+        stateRef.current = next;
+        staleRunRecoveryAttemptedRef.current = false;
+        setSelectedMemberId('matthias');
+        setState(next);
+        setBootstrapError(null);
+        setRendererError('');
+        setReady(true);
+      })
+      .catch((error) => {
+        if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
+        if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
+          staleRunRecoveryAttemptedRef.current = true;
+          const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
+          activeRunIdRef.current = replacementRunId;
+          setReady(false);
+          setBootstrapError(null);
+          setBootstrapRevision((revision) => revision + 1);
+          return;
+        }
+        stateRef.current = null;
+        setState(null);
+        setReady(false);
+        setBootstrapError(error);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+      chroniclesClearRuntimeMapDefinitions();
+    };
+  }, [bootstrapRevision, characterSetupDone, progression.characterBuild]);
+
+  useEffect(() => {
     let cancelled = false;
     let engine = null;
     const host = hostRef.current;
-    if (!characterSetupDone || !host) return undefined;
+    if (!ready || !stateRef.current || !host) return undefined;
 
     void import('../chroniclesOfMatthiasThree.js')
       .then(({ createChroniclesOfMatthiasGame }) => {
@@ -151,12 +277,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [characterSetupDone]);
+  }, [ready]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
   useEffect(() => {
-    if (!characterSetupDone) return undefined;
+    if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
@@ -178,7 +304,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, characterSetupDone, dispatch]);
+  }, [attackWithSelected, dispatch, ready]);
 
   if (!characterSetupDone) {
     return (
@@ -186,10 +312,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
         currentBuild={progression.characterBuild}
         recoveryLabMode="chronicles"
         onConfirm={confirmCharacterBuild}
-        onExit={onExit}
+        onExit={exitChronicles}
       />
     );
   }
+
+  if (bootstrapError) {
+    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={exitChronicles} />;
+  }
+  if (!ready || !state) return <BootstrapStatus />;
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
@@ -204,6 +335,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     <div
       className="chronicles"
       data-chronicles="true"
+      data-chronicles-map-id={state.mapId}
+      data-chronicles-turns={state.turns}
       data-chronicles-phase={state.phase}
       data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
     >
@@ -213,7 +346,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <h2>Chronicles of Matthias</h2>
           <p>Dungeon crawler en primera persona. El grupo avanza por casillas; las piezas siguen siendo piezas y la arquitectura tiene memoria de tablero.</p>
         </div>
-        <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
+        <button type="button" className="secondary-btn" onClick={exitChronicles}>← Experimentos</button>
       </header>
 
       <div className="chronicles-shell">

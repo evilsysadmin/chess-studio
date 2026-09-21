@@ -62,15 +62,29 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
 
 
 test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home', async ({ page }) => {
-  // Dos fallos hacen determinista el contrato: el primero rompe la restauración
-  // inicial y el segundo la reconciliación automática. Así el botón manual no
-  // desaparece por una carrera antes de que Playwright pueda pulsarlo.
-  await mockApi(page, { gameGetFailures: 2 });
+  await mockApi(page);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+
+  // Arm the failures only after the game is fully mounted. Supplying GET
+  // failures to mockApi up front lets an eager post-create reconciliation
+  // consume them before reload, turning this restoration contract into a race.
+  let remainingRestoreFailures = 2;
+  await page.route('http://localhost:4000/api/games/*', async (route) => {
+    if (route.request().method() === 'GET' && remainingRestoreFailures > 0) {
+      remainingRestoreFailures -= 1;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Servicio temporalmente no disponible' }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
 
   await page.reload();
   await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();

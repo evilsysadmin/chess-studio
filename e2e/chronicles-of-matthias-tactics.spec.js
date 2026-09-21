@@ -35,6 +35,66 @@ async function openTactics(page, {
   }
 }
 
+async function openFirstPerson(page, {
+  apiOptions = {},
+  expectReady = true,
+} = {}) {
+  await mockApi(page, apiOptions);
+  await login(page);
+  await dismissGuide(page);
+  const moreModes = await openMoreGameModes(page);
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeVisible();
+  await experiments.click();
+  const bookOne = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  await expect(bookOne).toBeVisible();
+  await bookOne.click();
+  await confirmChroniclesCharacterSetup(page);
+  if (expectReady) {
+    await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
+  }
+}
+
+test('Chronicles primera persona · monta el mapa autoritativo y nunca la entrada local legacy', async ({ page }) => {
+  const requestLog = [];
+  await openFirstPerson(page, {
+    apiOptions: {
+      requestLog,
+      chroniclesCurrentMapId: 'menagerie-of-ash',
+    },
+  });
+
+  const root = page.locator('[data-chronicles="true"]');
+  await expect(root).toHaveAttribute('data-chronicles-map-id', 'menagerie-of-ash');
+  await expect(root.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
+
+  const runRequests = requestLog.filter((entry) => (
+    entry.method === 'POST' && entry.path === '/api/chronicles/runs'
+  ));
+  expect(runRequests).toHaveLength(1);
+  expect(runRequests[0].idempotencyKey).toBeTruthy();
+
+  const storedRun = await page.evaluate(() => {
+    const raw = localStorage.getItem('chess-study-chronicles-first-person-run-v1');
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect(storedRun?.id).toBe(runRequests[0].idempotencyKey);
+  expect(storedRun?.ended).toBe(false);
+});
+
+test('Chronicles primera persona · fallo de bootstrap queda fail-closed y no monta la cripta local', async ({ page }) => {
+  await openFirstPerson(page, {
+    apiOptions: { chroniclesRunFailureStatus: 503 },
+    expectReady: false,
+  });
+
+  const error = page.getByRole('alert');
+  await expect(error.getByRole('heading', { name: 'No se pudo preparar Chronicles', exact: true })).toBeVisible();
+  await expect(error).toContainText('No se cargará la cripta local como sustituto.');
+  await expect(page.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(0);
+  await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
+});
+
 test('Chronicles Tactics · arranca como RPG táctico isométrico con combate por turnos, clases y habilidades', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');

@@ -68,12 +68,19 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   // pointer action can stall while the software renderer owns the main thread,
   // even though the visible button is enabled and stable.
   const hildegard = mode.getByRole('button', { name: 'Seleccionar Hildegard', exact: true });
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '0');
   await page.keyboard.press('2');
   await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
+
+  // Procedural worlds do not promise an authored enemy at one fixed square.
+  // Prove the real input/reducer contract instead: movement always consumes a
+  // turn (even when blocked), then Hildegard's positional attack consumes the
+  // next turn and authors feedback about the selected party member.
   await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
   await page.keyboard.press('Space');
-  await expect(mode.getByText('9/10', { exact: true })).toBeVisible();
-  await expect(mode.getByText(/Hildegard impacta/i)).toHaveCount(0);
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
+  await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', async ({ page }) => {
