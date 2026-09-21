@@ -71,6 +71,7 @@ const BOSS_SHELL_WINDUP := 0.62
 const ENEMY_FIRE_SCREEN_MARGIN := 84.0
 const MAX_HOSTILE_PROJECTILES := 6
 const MAX_HOSTILE_EXPLOSIVES := 2
+# Arcade fairness budget: intelligence changes positioning, not firing volume.
 const MAX_ENEMY_PRESSURE_SHOOTERS := 2
 const HOSTILE_FIRE_GAP := 0.18
 const ENEMY_INTENTIONAL_MISS_CHANCE := 0.30
