@@ -46,3 +46,15 @@ func drop_through_body_probe() -> PhysicsBody2D:
 
 func clear_drop_through_probe() -> void:
     _clear_drop_through_exception()
+
+func configure_traversal_probe(ladders: Array, kill_y: float = 820.0) -> void:
+    configure_stage(global_position.x, [global_position.x], ladders, kill_y)
+
+func ladder_near_player_probe() -> Rect2:
+    return _ladder_near_player()
+
+func update_ladder_state_probe(axis: float, delta: float) -> bool:
+    return _update_ladder_state(axis, delta)
+
+func is_ladder_climbing_probe() -> bool:
+    return is_ladder_climbing()
