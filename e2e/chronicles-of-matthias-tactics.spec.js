@@ -112,6 +112,52 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   expect(contract.hasWait).toBe(false);
 });
 
+test('Chronicles Tactics · ESC abre pausa, sonido persiste y clic derecho nunca sale del juego', async ({ page }) => {
+  await openTactics(page);
+  const mode = page.locator('[data-chronicles-tactics="true"]');
+  const heading = page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true });
+  const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+
+  await expect(heading).toBeVisible();
+  await expect(moveNorth).toBeEnabled();
+
+  await heading.click({ button: 'right' });
+  await expect(heading).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Pausa', exact: true })).toHaveCount(0);
+
+  await page.keyboard.press('Escape');
+  const pause = page.getByRole('dialog', { name: 'Pausa', exact: true });
+  await expect(pause).toBeVisible();
+  await expect(mode).toHaveAttribute('data-paused', 'true');
+  await expect(moveNorth).toBeDisabled();
+
+  const pauseBackdrop = page.locator('[data-chronicles-pause="true"]');
+  await pauseBackdrop.click({ button: 'right', position: { x: 6, y: 6 } });
+  await expect(pause).toBeVisible();
+  await expect(mode).toHaveAttribute('data-paused', 'true');
+
+  await expect(pause.getByRole('button', { name: 'Salir de Chronicles', exact: true })).toBeVisible();
+  await expect(pause.getByRole('slider', { name: 'Volumen de música', exact: true })).toBeVisible();
+
+  const music = pause.getByRole('button', { name: /Música/ });
+  await expect(music).toHaveAttribute('aria-pressed', 'true');
+  await music.click();
+  await expect(music).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => localStorage.getItem('chess-study-music-muted'))).toBe('1');
+
+  const fx = pause.getByRole('button', { name: /Efectos/ });
+  await expect(fx).toHaveAttribute('aria-pressed', 'true');
+  await fx.click();
+  await expect(fx).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => localStorage.getItem('chess-study-fx-muted'))).toBe('1');
+
+  await page.keyboard.press('Escape');
+  await expect(pause).toHaveCount(0);
+  await expect(mode).toHaveAttribute('data-paused', 'false');
+  await expect(moveNorth).toBeEnabled();
+  await expect(heading).toBeVisible();
+});
+
 test('Chronicles Tactics · salir y volver a entrar inicia una expedición autoritativa nueva', async ({ page }) => {
   const requestLog = [];
   await openTactics(page, { apiOptions: { requestLog } });
