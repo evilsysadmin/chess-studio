@@ -301,6 +301,26 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2105,
+      "y": 394,
+      "w": 118,
+      "h": 20,
+      "kind": "ice_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "crevasse_bypass"
+    },
+    {
+      "x": 2240,
+      "y": 330,
+      "w": 106,
+      "h": 20,
+      "kind": "fortress_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "crevasse_bypass"
     }
   ],
   "obstacles": [
@@ -844,7 +864,7 @@
       "y": 606
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "ladders": [
     {
       "x": 1692,
