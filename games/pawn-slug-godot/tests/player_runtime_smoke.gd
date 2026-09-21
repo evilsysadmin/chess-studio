@@ -268,6 +268,11 @@ func _run() -> void:
             {"x": 700.0, "w": 180.0, "kind": "test_pit"},
         ],
     }
+    var pursuit_target := Node2D.new()
+    pursuit_target.name = "EnemyTraversalTarget"
+    pursuit_target.position = Vector2(340.0, 568.0)
+    enemy_probe.add_child(pursuit_target)
+    enemy_probe.player = pursuit_target
 
     # Low-cover ballistics probe: a standing-height normal round may skim the
     # top of a small crate, while low shots and explosives still hit geometry.
@@ -303,6 +308,42 @@ func _run() -> void:
     _expect(float(crate_enemy["vy"]) < 0.0, "salto enemigo aplica velocidad vertical ascendente")
     _expect(not bool(crate_enemy["on_ground"]), "salto enemigo abandona estado de suelo")
 
+    var blocked_enemy := {
+        "type": "pawn",
+        "x": 145.0,
+        "spawn_x": 145.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "alerted": true,
+        "hp": 34,
+    }
+    var blocked_stats: Dictionary = enemy_probe.ENEMY_TYPES["pawn"]
+    var blocked_distance_x := pursuit_target.global_position.x - float(blocked_enemy["x"])
+    var blocked_standoff := enemy_probe._enemy_weapon_standoff(blocked_enemy, blocked_stats)
+    var blocked_speed := enemy_probe._update_soldier_movement(
+        blocked_enemy,
+        blocked_stats,
+        blocked_standoff,
+        blocked_distance_x,
+        absf(blocked_distance_x),
+        1.0 / 60.0,
+    )
+    _expect(blocked_speed > 0.0, "LOS bloqueada no convierte al soldado en tancredo")
+    _expect(float(blocked_enemy["vy"]) < 0.0, "soldado con LOS bloqueada salta la caja al avanzar")
+
+    var pursuit_bounds := enemy_probe._enemy_horizontal_bounds(
+        {"x": 900.0, "spawn_x": 145.0, "alerted": true},
+        enemy_probe.SOLDIER_ROAM_LIMIT,
+    )
+    _expect(
+        pursuit_bounds.x <= EPSILON and absf(pursuit_bounds.y - 1280.0) <= EPSILON,
+        "enemigo alertado deja atrás el leash de spawn y puede perseguir por el escenario",
+    )
+
     var ladder_enemy := {
         "type": "commando",
         "x": 250.0,
@@ -316,6 +357,21 @@ func _run() -> void:
     _expect(not route_ladder.is_empty(), "enemigo móvil encuentra escalera que conecta su nivel con Matthias")
     if not route_ladder.is_empty():
         _expect(absf(float(route_ladder["x"]) - 320.0) <= EPSILON, "routing enemigo conserva la escalera authored")
+
+    var far_ladder_enemy := {
+        "type": "commando",
+        "x": 1200.0,
+        "spawn_x": 1200.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+    }
+    var far_route_ladder := enemy_probe._enemy_route_ladder_toward(far_ladder_enemy, 456.0)
+    _expect(
+        not far_route_ladder.is_empty(),
+        "enemigo busca una escalera útil aunque no esté pegada a su spawn",
+    )
 
     var pit_enemy := {
         "type": "scout",
