@@ -239,18 +239,24 @@ if (checkCiWiring) {
     if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender del preflight y poder correr en paralelo`);
   }
 
+  const frontendBlock = jobBlock('frontend');
   const buildBlock = jobBlock('e2e_build');
   const lanesBlock = jobBlock('e2e_lanes');
   const specializedBlock = jobBlock('e2e_specialized');
   const aggregateBlock = jobBlock('e2e');
+  if (frontendBlock.includes('./.github/actions/setup-browser-e2e') && !frontendBlock.includes("restore-frontend-deps: 'false'")) {
+    fail('El browser smoke targeted debe reutilizar frontend/node_modules ya restaurado por el job frontend');
+  }
   if (!buildBlock.includes('Build frontend once for all required browser gates')) fail('Playwright debe compilar el frontend una sola vez por Quality run');
   if (!buildBlock.includes('quality-browser-frontend-${{ github.sha }}')) fail('El artefacto browser debe quedar ligado al SHA probado');
   for (const [label, block] of [['core', lanesBlock], ['specialized', specializedBlock]]) {
     if (!block.includes('needs: [preflight, e2e_build]')) fail(`Las lanes ${label} deben esperar el único build compartido`);
+    if (!block.includes("restore-frontend-deps: 'false'")) fail(`Las lanes ${label} no deben restaurar frontend/node_modules si consumen dist`);
     if (!block.includes("build-frontend: 'false'")) fail(`Las lanes ${label} no deben recompilar el frontend`);
     if (!block.includes('actions/download-artifact@v6')) fail(`Las lanes ${label} deben consumir el dist compartido`);
   }
   if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
+  if (!lanesBlock.includes("CHESS_E2E_LIGHTWEIGHT: '1'")) fail('Las core lanes funcionales deben arrancar con el fast path 2D');
   if (!lanesBlock.includes('fail-fast: false') || !specializedBlock.includes('fail-fast: false')) fail('Las matrices Playwright deben completar diagnóstico aunque falle una lane');
   if (!aggregateBlock.includes('needs: [preflight, e2e_lanes, e2e_specialized]')) fail('Tests · Playwright debe agregar core + especializado antes de acreditar el required check');
   if (!aggregateBlock.includes('if: always()')) fail('El agregador Playwright debe ejecutarse siempre para convertir fallos/skips en un required check determinista');
