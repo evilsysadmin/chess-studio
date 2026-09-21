@@ -71,6 +71,8 @@ const BOSS_SHELL_WINDUP := 0.62
 const ENEMY_FIRE_SCREEN_MARGIN := 84.0
 const MAX_HOSTILE_PROJECTILES := 6
 const MAX_HOSTILE_EXPLOSIVES := 2
+# Arcade fairness budget: intelligence changes positioning, not firing volume.
+const MAX_ENEMY_PRESSURE_SHOOTERS := 2
 const HOSTILE_FIRE_GAP := 0.18
 const ENEMY_INTENTIONAL_MISS_CHANCE := 0.30
 const ENEMY_MISS_ANGLE_MIN := 0.085
@@ -1810,6 +1812,7 @@ func _update_enemy_ai_plan(enemy: Dictionary, stats: Dictionary, standoff: float
         "grenade_evade": grenade_evade,
         "role": String(enemy.get("role", "")),
         "enemy_type": String(enemy.get("type", "pawn")),
+        "pressure_slot_available": _enemy_pressure_slot_available(enemy),
         "retreat_ratio": SOLDIER_RETREAT_RATIO,
         "comfort_margin": SOLDIER_COMFORT_MARGIN,
         "advance_margin": SOLDIER_ADVANCE_MARGIN,
@@ -2022,7 +2025,10 @@ func _update_enemies(delta: float) -> void:
             and float(enemy["cooldown"]) <= 0.0
             and String(enemy.get("traversal_mode", "ground")) != "ladder"
             and bool(enemy.get("ai_visible", true))
-            and String(enemy.get("ai_intent", EnemyUtilityAI.INTENT_SHOOT)) != EnemyUtilityAI.INTENT_EVADE
+            and (
+                not _enemy_is_traversal_mobile(type)
+                or String(enemy.get("ai_intent", EnemyUtilityAI.INTENT_SHOOT)) == EnemyUtilityAI.INTENT_SHOOT
+            )
         ):
             _try_enemy_fire(enemy)
             enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
@@ -2032,6 +2038,28 @@ func _enemy_is_traversal_mobile(type: String) -> bool:
     if type in ["rook", "bishop"]:
         return false
     return float(ENEMY_TYPES.get(type, {}).get("speed", 0.0)) > 0.0
+
+func _enemy_pressure_shooter_count(exclude_id: String = "") -> int:
+    var count := 0
+    for candidate in enemies:
+        if int(candidate.get("hp", 0)) <= 0:
+            continue
+        if exclude_id != "" and String(candidate.get("id", "")) == exclude_id:
+            continue
+        if not bool(candidate.get("alerted", false)):
+            continue
+        if not bool(candidate.get("ai_visible", false)):
+            continue
+        if String(candidate.get("ai_intent", "")) != EnemyUtilityAI.INTENT_SHOOT:
+            continue
+        if not _world_x_is_combat_visible(float(candidate.get("x", 0.0))):
+            continue
+        count += 1
+    return count
+
+func _enemy_pressure_slot_available(enemy: Dictionary) -> bool:
+    var enemy_id := String(enemy.get("id", ""))
+    return _enemy_pressure_shooter_count(enemy_id) < MAX_ENEMY_PRESSURE_SHOOTERS
 
 func _enemy_horizontal_bounds(enemy: Dictionary, idle_roam: float) -> Vector2:
     if bool(enemy.get("alerted", false)):
