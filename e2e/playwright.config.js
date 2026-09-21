@@ -59,13 +59,14 @@ export default defineConfig({
     actionTimeout: visualArtifactMode ? 30_000 : 12_000,
     navigationTimeout: ciMode ? 20_000 : 10_000,
     headless: true,
-    // Canonical visual producers already emit purpose-built screenshots. Recording
-    // trace/video for every software-rendered WebGL frame and deleting it on success
-    // adds substantial runner CPU/I/O without adding another visual contract.
-    // Required functional Playwright lanes keep retain-on-failure diagnostics.
+    // Canonical visual producers already emit purpose-built screenshots. Video
+    // encoding is especially expensive for software-rendered WebGL and Playwright
+    // records it even for green tests before deleting retain-on-failure captures.
+    // Keep trace + failure screenshots for functional diagnosis, but never encode
+    // per-test video in CI/local browser gates.
     trace: visualArtifactMode ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: visualArtifactMode ? 'off' : 'retain-on-failure',
+    video: 'off',
   },
   webServer: {
     command: 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',

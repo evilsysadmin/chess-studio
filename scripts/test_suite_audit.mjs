@@ -340,6 +340,7 @@ if (!playwrightConfig.includes('fullyParallel: true')) fail('Playwright CI debe 
 if (/workers:\s*process\.env\.CI\s*\?\s*1\s*:/.test(playwrightConfig)) fail('Playwright CI no debe volver a 1 worker: serializa toda la suite');
 if (!playwrightConfig.includes('actionTimeout:')) fail('Playwright debe tener actionTimeout explícito para fallar cerca de la causa y no a los 30 s');
 if (!/retries:\s*0/.test(playwrightConfig)) fail('Playwright informativo no debe reintentar: los retries alargan ruido y esconden fallos deterministas');
+if (!/video:\s*['\"]off['\"]/.test(playwrightConfig)) fail('Playwright no debe grabar vídeo por test: WebGL software lo hace caro incluso cuando luego se descarta');
 if (!playwrightConfig.includes("PLAYWRIGHT_ALL_BROWSERS") || !playwrightConfig.includes("Desktop Firefox") || !playwrightConfig.includes("Desktop Safari")) fail('Playwright informativo debe conservar matriz Chromium/Firefox/WebKit');
 const fullE2EWorkflow = read(path.join(root, '.github', 'workflows', 'e2e-full.yml'));
 const browserSetupAction = read(path.join(root, '.github', 'actions', 'setup-browser-e2e', 'action.yml'));
