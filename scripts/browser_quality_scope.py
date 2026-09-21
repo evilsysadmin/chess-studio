@@ -29,13 +29,14 @@ class BrowserScope:
     quick_2d: bool = False
     network_race: bool = False
     chronicles: bool = False
+    render_budget: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -128,6 +129,12 @@ CHRONICLES_PATTERNS = (
     "e2e/chronicles-of-matthias.spec.js",
     "e2e/chronicles-of-matthias-tactics.spec.js",
 )
+RENDER_BUDGET_PATTERNS = (
+    "frontend/src/components/Board3DCore.jsx",
+    "frontend/src/components/WarRoomRenderBudget.js",
+    "frontend/src/components/WarRoom3DMotion.js",
+    "e2e/war-room-render-budget.spec.js",
+)
 NETWORK_RACE_PATTERNS = (
     "frontend/src/useGameReconnect.js",
     "frontend/src/gameReconnect.js",
@@ -160,7 +167,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = render_budget = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -191,6 +198,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         elif _matches(path, MATTHIAS_PATTERNS):
             matthias = True
 
+        if _matches(path, RENDER_BUDGET_PATTERNS):
+            render_budget = True
+
         if _matches(path, NETWORK_RACE_PATTERNS):
             network_race = True
 
@@ -198,7 +208,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             chronicles = True
 
         if path in BROWSER_ACTION_PATHS:
-            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = True
+            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = render_budget = True
             matthias_home = matthias_insights = False
 
         if path == CICD_WORKFLOW:
@@ -206,7 +216,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             quick_2d = True
 
     return BrowserScope(
-        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles
+        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles, render_budget
     )
 
 
@@ -231,6 +241,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                     "command": "./node_modules/.bin/playwright test three-d-war-room.spec.js --grep \"War Room · desktop input mantiene cámara fija y juega e2→e4\" --workers=1 --retries=0 --timeout=75000",
                 },
             ]
+        )
+    if scope.render_budget:
+        cases.append(
+            {
+                "id": "war-room-motion-budget",
+                "label": "War Room · sustained move render budget",
+                "command": "./node_modules/.bin/playwright test war-room-render-budget.spec.js --grep \"una jugada real queda dentro del presupuesto de render sostenido\" --workers=1 --retries=0 --timeout=120000",
+            }
         )
     if scope.special_states:
         cases.extend(
@@ -359,6 +377,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
             f"- Game network races: `{yn(scope.network_race)}`",
             f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
+            f"- War Room sustained render budget: `{yn(scope.render_budget)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
         ]
@@ -376,6 +395,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
     assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
+    assert classify(["e2e/war-room-render-budget.spec.js"]) == BrowserScope(render_budget=True)
+    assert _ids(classify(["e2e/war-room-render-budget.spec.js"])) == ["war-room-motion-budget"]
 
     full = classify(["frontend/src/components/Board3DRenderer.js"])
     assert full == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
@@ -434,7 +455,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 13
+    assert len(_ids(all_scope)) == 14
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
@@ -460,6 +481,7 @@ def self_test() -> None:
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
     assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
+    assert "War Room sustained render budget: `true`" in render_summary(BrowserScope(render_budget=True))
 
     try:
         classify(["../outside"])
