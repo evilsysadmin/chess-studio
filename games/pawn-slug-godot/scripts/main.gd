@@ -1683,10 +1683,16 @@ func _raise_enemy_alarm(source_index: int, radius: float = STATIC_ALARM_RANGE) -
         return
     var source := enemies[source_index]
     source["alerted"] = true
-    _enemy_remember_player(source, EnemyUtilityAI.HEARD_MEMORY_SECONDS)
+    var source_x := float(source["x"])
+    if float(source.get("ai_memory_remaining", 0.0)) <= 0.0:
+        _enemy_remember_target(
+            source,
+            source_x,
+            float(source.get("y", _floor_y)),
+            EnemyUtilityAI.HEARD_MEMORY_SECONDS,
+        )
     source["reaction"] = minf(float(source.get("reaction", 0.0)), 0.18)
     enemies[source_index] = source
-    var source_x := float(source["x"])
     var shared_target_x := float(source.get("ai_last_target_x", source_x))
     var shared_target_foot_y := float(
         source.get("ai_last_target_foot_y", source.get("y", _floor_y))
