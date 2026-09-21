@@ -39,7 +39,8 @@
       "w": 210,
       "h": 24,
       "kind": "canopy_walk",
-      "material": "wood"
+      "material": "wood",
+      "one_way": true
     },
     {
       "x": 1130,
@@ -104,7 +105,8 @@
       "w": 200,
       "h": 24,
       "kind": "canopy_walk",
-      "material": "wood"
+      "material": "wood",
+      "one_way": true
     },
     {
       "x": 3170,
@@ -286,6 +288,36 @@
       "visual": {
         "sandbags": 5
       }
+    },
+    {
+      "x": 2320,
+      "y": 326,
+      "w": 150,
+      "h": 22,
+      "kind": "canopy_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "vine_route"
+    },
+    {
+      "x": 2490,
+      "y": 258,
+      "w": 160,
+      "h": 22,
+      "kind": "canopy_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "vine_route"
+    },
+    {
+      "x": 2675,
+      "y": 324,
+      "w": 150,
+      "h": 22,
+      "kind": "canopy_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "vine_route"
     }
   ],
   "obstacles": [
@@ -951,5 +983,47 @@
       "scale": 1.2
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3,
+  "ladders": [
+    {
+      "x": 945,
+      "y": 382,
+      "w": 40,
+      "h": 228,
+      "kind": "vine_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 2980,
+      "y": 378,
+      "w": 40,
+      "h": 232,
+      "kind": "vine_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 4025,
+      "y": 404,
+      "w": 40,
+      "h": 206,
+      "kind": "vine_ladder",
+      "route": "vertical"
+    }
+  ],
+  "pits": [
+    {
+      "x": 490,
+      "y": 610,
+      "w": 110,
+      "h": 110,
+      "kind": "ravine"
+    },
+    {
+      "x": 3345,
+      "y": 610,
+      "w": 78,
+      "h": 110,
+      "kind": "ravine"
+    }
+  ]
 }
