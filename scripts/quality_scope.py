@@ -412,6 +412,7 @@ def self_test() -> None:
     _expect([".github/actions/cache-python-venv/action.yml"], run_backend=True)
     _expect_core([".github/actions/cache-node-modules/action.yml"], run_frontend=True)
     _expect_core([".github/actions/setup-browser-e2e/action.yml"])
+    _expect_core([".github/actions/build-browser-frontend/action.yml"])
     _expect_core(["scripts/run_core_e2e_lane.py"])
 
     assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["app-boot"]}
