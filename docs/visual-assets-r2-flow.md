@@ -59,3 +59,40 @@ For Matthias specifically:
 - every atlas must preserve the same Matthias identity, proportions, uniform, face, cap, and silhouette;
 - only the weapon, grip, recoil, and weapon-dependent poses may differ;
 - style drift across weapons is a regression even when the runtime technically loads the atlas.
+
+
+## Runtime promotion is not the same as authoring
+
+For Blender scenes and other large runtime assets, merging the generator/source does **not** mean users are already seeing the new asset.
+
+The application resolves stable logical IDs through `frontend/src/assets/r2-assets-manifest.json`. Until that manifest points to the newly published immutable object, runtime may continue to load an older GLB/atlas even though newer Blender renders or CI artifacts exist.
+
+Therefore treat asset delivery as two distinct proofs:
+
+1. **authored/published**: the generator produced the intended binary and R2 contains it;
+2. **promoted/consumed**: the manifest points to that exact object and the real application loaded it.
+
+Never infer the second from the first.
+
+## Exact-byte promotion gate
+
+Before changing a runtime manifest pointer:
+
+- prove the public R2 object exists;
+- record byte size and SHA-256;
+- when practical, download/read it back and verify the SHA matches the manifest;
+- keep the old content-addressed object for rollback;
+- update integrity tests that pin the logical ID/hash;
+- capture the real application after promotion.
+
+For PR-scoped Blender assets, use the pull-request **head SHA** as the authored revision identity. Do not use an ephemeral synthetic merge SHA as the publication/capture key unless the publishing workflow explicitly created an object for it.
+
+## Visual scenes
+
+Home and War Room require both authoring and runtime evidence:
+
+- Blender preview proves authored geometry/material/light intent;
+- application PNG proves GLTF loading, CSP, Three.js material/tone-mapping, framing and overlays;
+- mobile capture is required when composition or camera can change.
+
+A render can be correct while runtime is white, dark, mis-pivoted or still loading an older manifest object. Treat those as separate failure domains.
