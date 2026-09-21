@@ -41,6 +41,26 @@ describe('pila global de volver/cerrar', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it('puede consumir clic derecho sin ejecutar back en superficies de juego', () => {
+    const stack = createBackNavigationStack();
+    const close = vi.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    stack.push({
+      id: 'game-surface',
+      callbackRef: { current: close },
+      contextMenuAction: 'ignore',
+    });
+
+    expect(stack.dispatch({ type: 'contextmenu', preventDefault, stopPropagation })).toBe(true);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+
+    expect(stack.dispatch({ type: 'keydown', key: 'Escape', stopPropagation: vi.fn() })).toBe(true);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it('una pulsación larga táctil consume contextmenu sin ejecutar back', () => {
     const stack = createBackNavigationStack();
     const close = vi.fn();
