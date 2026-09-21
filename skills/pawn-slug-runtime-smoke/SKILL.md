@@ -24,7 +24,7 @@ El arranque de Pawn Slug usa una ruta crítica mínima y un warmup posterior. El
 Contrato:
 
 - sólo el atlas completo del arma equipada al arrancar —normalmente `pistol`— puede bloquear el primer `body_ready()`;
-- en cuanto Matthias es visible, iniciar el warmup de `machinegun`, `shotgun` y `panzerfaust` y después completar los overlays de locomoción activos (`run12`/`run13`) sin volver a bloquear el juego;
+- en cuanto Matthias es visible, iniciar el warmup de los bancos grandes en orden de uso probable: `machinegun` primero y después `shotgun`/`panzerfaust`, de uno en uno para no convertir el primer segundo jugable en otra ráfaga de red/decodificación; después completar los overlays de locomoción activos (`run12`/`run13`) sin volver a bloquear el juego;
 - el camino normal de un pickup debe encontrar su `SpriteFrames` ya en memoria; una petición foreground al seleccionar arma existe sólo como red de seguridad si un pickup excepcionalmente temprano gana la carrera al warmup o falla el CDN;
 - **nunca mantener visible el sprite del arma anterior** mientras llega el banco de la nueva;
 - ante un fallo excepcional de CDN, ocultar el body o mostrar un estado de carga/error correcto; no disfrazar el fallo enseñando otra arma;

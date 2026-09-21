@@ -384,6 +384,8 @@ var _atlas_request_weapon := ""
 var _atlas_request_layout := ""
 var _bootstrap_requests: Array[HTTPRequest] = []
 var _bootstrap_startup_pending := false
+var _background_full_queue: Array[String] = []
+var _background_full_inflight_weapon := ""
 var _bootstrap_full_pending := 0
 var _bootstrap_run_pending := 0
 var _bootstrap_full_failures: Array[String] = []
@@ -725,25 +727,32 @@ func _begin_atlas_bootstrap() -> void:
     )
 
 func _begin_background_atlas_warmup() -> void:
-    var missing_full: Array[String] = []
+    _background_full_queue.clear()
     for weapon_id in WEAPON_BOOTSTRAP_ORDER:
         if weapon_id == _weapon:
             continue
         if not _full_frames_by_weapon.has(weapon_id) or not _v9_ready_by_weapon.has(weapon_id):
-            missing_full.append(weapon_id)
+            _background_full_queue.append(weapon_id)
 
-    if missing_full.is_empty():
-        _begin_run12_bootstrap()
-        return
+    _start_next_background_full_bank()
 
-    _bootstrap_full_pending = missing_full.size()
-    for weapon_id in missing_full:
+func _start_next_background_full_bank() -> void:
+    _background_full_inflight_weapon = ""
+    while not _background_full_queue.is_empty():
+        var weapon_id := _background_full_queue.pop_front()
+        if _full_frames_by_weapon.has(weapon_id) and _v9_ready_by_weapon.has(weapon_id):
+            continue
+        _background_full_inflight_weapon = weapon_id
+        _bootstrap_full_pending = 1
         _start_bootstrap_request(
             weapon_id,
             String(FULL_ATLAS_URLS.get(weapon_id, "")),
             "full-v9",
             0,
         )
+        return
+    _bootstrap_full_pending = 0
+    _begin_run12_bootstrap()
 
 func _begin_run12_bootstrap() -> void:
     var missing_run: Array[String] = []
@@ -873,7 +882,9 @@ func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool
                     _install_or_request_weapon()
                 call_deferred("_begin_background_atlas_warmup")
             else:
-                _begin_run12_bootstrap()
+                if weapon_id == _background_full_inflight_weapon:
+                    _background_full_inflight_weapon = ""
+                _start_next_background_full_bank()
         return
 
     if layout == "run12-v22":
@@ -910,6 +921,11 @@ func _install_or_request_weapon() -> void:
 
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
+        if _background_full_inflight_weapon == _weapon:
+            # The background request already owns this bank. Keep the old weapon
+            # hidden; _on_bootstrap_atlas_loaded() installs it as soon as decoding
+            # completes instead of starting a duplicate foreground download.
+            return
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full-v9")
         # Background warmup normally has non-default banks in memory before a
