@@ -23,8 +23,8 @@ export function installChroniclesTacticsSceneArt(models, {
   const scene = partyRoot?.parent || null;
   if (!scene?.add) return null;
 
-  const fortress = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer });
-  const foreground = installChroniclesTacticsForegroundFraming(scene, { coarsePointer });
+  const fortress = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer, scenePlan });
+  const foreground = installChroniclesTacticsForegroundFraming(scene, { coarsePointer, scenePlan });
   const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer });
   const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
