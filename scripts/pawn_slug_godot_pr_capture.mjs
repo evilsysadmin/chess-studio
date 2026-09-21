@@ -94,21 +94,21 @@ await captureDetailedCloseup('00-idle', detailed.canvas);
 await detailed.canvasLocator.click({ position: { x: detailed.canvas.width / 2, y: detailed.canvas.height / 2 } });
 await page.keyboard.down('ArrowRight');
 await page.waitForTimeout(320);
-for (let frame = 0; frame < 10; frame += 1) {
+for (let frame = 0; frame < 12; frame += 1) {
   const label = `10-run-${String(frame).padStart(2, '0')}`;
   await capture(label);
-  if ([0, 3, 7].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
-  await page.waitForTimeout(70);
+  if ([0, 3, 7, 11].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
+  await page.waitForTimeout(50);
 }
 
 // Fire while still moving so pistol-vs-SMG silhouette mistakes, bad muzzle
 // alignment, or one-shot animation pops are visible frame-by-frame.
 await page.keyboard.down('z');
-for (let frame = 0; frame < 8; frame += 1) {
+for (let frame = 0; frame < 12; frame += 1) {
   const label = `20-run-fire-${String(frame).padStart(2, '0')}`;
   await capture(label);
-  if ([0, 3, 7].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
-  await page.waitForTimeout(80);
+  if ([0, 3, 7, 11].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
+  await page.waitForTimeout(55);
 }
 await page.keyboard.up('z');
 await page.keyboard.up('ArrowRight');
@@ -140,7 +140,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 4,
+    schema: 5,
     detailedStage,
     stageOverviews,
     captures,
