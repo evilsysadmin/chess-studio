@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "status": "validated-local-candidate",
+  "generation": "strict-v22",
+  "weapon": "pistol",
+  "baseline": {
+    "generation": "strict-v21",
+    "sha256": "24640d861efc30873c2b858f14a61dfc1ac0879dfc87a1c3dcf8af4092b78db3"
+  },
+  "atlas": {
+    "expected_sha256": "2960140445e64bb791b7932a10895b6ad9746f3c9a21c94173a94237a91e02ec",
+    "size": [
+      3328,
+      7488
+    ],
+    "grid": [
+      8,
+      18
+    ],
+    "cell": 416,
+    "pivot_x": 200,
+    "foot_y": 382
+  },
+  "processing": {
+    "kind": "deterministic crouch-height correction",
+    "vertical_scale": 0.84,
+    "changed_rows": [
+      6,
+      7,
+      14
+    ],
+    "preserved_rows": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      15,
+      16,
+      17
+    ]
+  },
+  "review": {
+    "rows_0_5": "PASS",
+    "row_6_crouch": "PASS after v22 correction",
+    "row_7_crouch_walk": "PASS after v22 correction",
+    "rows_8_13": "PASS",
+    "row_14_shoot_crouch": "PASS after v22 correction",
+    "rows_15_17": "PASS",
+    "run_fire_runtime_v21": "PASS across 8 captured frames"
+  }
+}
