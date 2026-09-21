@@ -233,37 +233,5 @@ export function buildCombatLogEntry(result, humanColor) {
   return { text, tone: defender.color === humanColor ? 'good' : 'neutral', kind: 'miss' };
 }
 
-export function buildCombatSessionSnapshot({
-  fen,
-  registry,
-  humanColor,
-  combatLog,
-  uiLog,
-  autoLevelUpEnabled,
-  focus,
-  positionCounts,
-  bossHp,
-  bossPhase,
-  battleStartRoster,
-  battleParticipants,
-  unitBattleStats,
-  activityGameId,
-}) {
-  return {
-    phase: 'battle',
-    fen,
-    registry,
-    humanColor,
-    combatLog,
-    uiLog: Array.isArray(uiLog) ? uiLog.slice(0, 8) : [],
-    autoLevelUpEnabled: autoLevelUpEnabled !== false,
-    focus,
-    positionCounts: Array.from(positionCounts || []),
-    bossHp,
-    bossPhase,
-    battleStartRoster,
-    battleParticipants,
-    unitBattleStats,
-    activityGameId,
-  };
-}
+// Temporary compatibility export; new code should import from combatBattleState.js.
+export { buildCombatSessionSnapshot } from './combatBattleState.js';
