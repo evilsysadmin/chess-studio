@@ -589,8 +589,10 @@ def add_room(static, mats):
     light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.82), 292.0, (1.0, 0.23, 0.048), static, radius=1.35)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
-    # Back desk.
-    cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["table_wood"], static, bevel=0.08)
+    # Back desk. Use the slightly lighter trim walnut on the structural
+    # surfaces so the command station separates from the dark wainscot without
+    # introducing a Blender-only fill light or another material family.
+    cube("WR_DESK_top", (0, 6.0, 2.18), (1.82, 0.52, 0.12), mats["trim_wood"], static, bevel=0.08)
     cube("WR_DESK_blotter", (0.18, 5.45, 2.33), (0.92, 0.26, 0.025), mats["desk_leather"], static, bevel=0.025)
     cube("WR_DESK_blotter_edge", (0.18, 5.17, 2.34), (0.98, 0.025, 0.028), mats["brass_dark"], static, bevel=0.012)
     # A couple of overlapping dispatch sheets keep the blotter from reading as
@@ -605,10 +607,10 @@ def add_room(static, mats):
     cylinder("WR_DESK_dispatch_weight", (0.79, 5.39, 2.435), 0.065, 0.035,
              mats["brass"], static, vertices=18)
     # Give the rear desk furniture weight at the runtime camera distance.
-    cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["frame_wood"], static, bevel=0.045)
+    cube("WR_DESK_apron", (0, 5.49, 1.91), (1.70, 0.08, 0.20), mats["trim_wood"], static, bevel=0.045)
     cube("WR_DESK_center_shadow", (0, 6.16, 1.33), (0.72, 0.12, 0.55), mats["wall_recess"], static, bevel=0.04)
     for x in (-1.48, 1.48):
-        cube(f"WR_DESK_pedestal_{x}", (x, 6.18, 1.27), (0.35, 0.43, 0.78), mats["frame_wood"], static, bevel=0.06)
+        cube(f"WR_DESK_pedestal_{x}", (x, 6.18, 1.27), (0.35, 0.43, 0.78), mats["trim_wood"], static, bevel=0.06)
         for row in range(3):
             drawer_z = 1.02 + row * 0.38
             cube(f"WR_DESK_drawer_{x}_{row}", (x, 5.72, drawer_z), (0.27, 0.035, 0.14),
@@ -1178,12 +1180,12 @@ def add_gothic_canon_v2(static, mats):
         side_x = chair_x + side * 0.56
         cube(f"WR_CANON_command_chair_side_{side}",
              (side_x, 6.30, 2.90), (0.055, 0.11, 0.62),
-             mats["frame_wood"], static, bevel=0.032)
+             mats["trim_wood"], static, bevel=0.032)
         sphere(f"WR_CANON_command_chair_finial_{side}",
                (side_x, 6.30, 3.53), 0.080,
                mats["brass_dark"], static, scale=(0.82, 0.62, 1.0))
     cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.47), (0.60, 0.11, 0.065),
-         mats["frame_wood"], static, bevel=0.040)
+         mats["trim_wood"], static, bevel=0.040)
 
 
     # Dressed stone faces around both hearths. The big v2 fireplaces were
