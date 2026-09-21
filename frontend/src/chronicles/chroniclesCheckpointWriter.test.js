@@ -44,7 +44,7 @@ describe('Chronicles checkpoint writer', () => {
     });
 
     writer.offer({ ...initial, galleryLeverPulled: true });
-    writer.offer({ ...initial, galleryLeverPulled: true, sigilAwake: true });
+    writer.offer({ ...initial, galleryLeverPulled: true, galleryRelicCollected: true });
     expect(checkpointState).toHaveBeenCalledTimes(1);
     expect(checkpointState.mock.calls[0][2]).toBe(0);
 
