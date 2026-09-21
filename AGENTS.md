@@ -14,6 +14,22 @@
 - El objetivo de este orden es impedir merges prematuros mientras aún se están empujando fixes o mientras CI sigue ejecutándose, y a la vez aprovechar las esperas para avanzar trabajo relacionado.
 - Tras el merge, revisar los workflows posteriores relevantes (main admission, deploy, staging/live checks, etc.) y corregir cualquier fallo derivado antes de dar la iteración por cerrada.
 
+** CONECTOR GITHUB / GIT Y DISCIPLINA DE LLAMADAS
+
+- El conector GitHub/git está disponible para operar con el repositorio. Si en un chat, sandbox o sesión no aparece expuesto de primeras, **redescubrirlo en el registro de herramientas/conectores antes de concluir que no hay acceso al repo**.
+- No afirmar que GitHub/git no está disponible sin haber intentado esa redetección cuando el trabajo depende del repositorio.
+- Priorizar el conector GitHub para metadata, PRs, checks, SHA, commits, ramas y operaciones de merge/automerge.
+- Evitar llamadas largas o masivas mientras exista una alternativa pequeña:
+  - cero `fetch_file` de archivos grandes salvo necesidad real;
+  - cero diffs/patches completos salvo necesidad real;
+  - cero búsquedas amplias que devuelvan media Biblia;
+  - usar llamadas pequeñas y dirigidas para metadata, checks, SHA, commit y PR.
+- Reutilizar todo lo ya leído en el contexto de trabajo y no volver a pedir el mismo contenido innecesariamente.
+- Cuando haya artefactos o repositorios ya descargados localmente, trabajar sobre esa copia/cache y dejar el fix preparado antes de hacer escrituras remotas.
+- Hacer las escrituras GitHub mínimas imprescindibles una vez que el cambio esté listo; después revisar CI con checks pequeños, secuenciales y dirigidos.
+- Si git por red/DNS está lento o degradado, preferir el conector GitHub para leer PRs, checks, estados y operar con el repositorio.
+- Tras cada push/actualización de PR, comprobar CI y corregir hasta dejar la PR mergeable; no detenerse simplemente porque la PR exista.
+
 ** ITERACON DE SPRITES DE PAWN SLUG 
  
 Itera los sprites en Pawn Slug Godot hasta tener la siguiente generación de spritesheet deployada en staging, validada sin regresiones y con mejora visual y funcional clara.
