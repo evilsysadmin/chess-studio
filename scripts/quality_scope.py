@@ -80,7 +80,11 @@ GLOBAL_HARNESS_PATHS = {
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
 BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
-BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
+BROWSER_HARNESS_PATHS = {
+    ".github/actions/setup-browser-e2e/action.yml",
+    ".github/actions/build-browser-frontend/action.yml",
+    "scripts/run_core_e2e_lane.py",
+}
 PACKAGE_METADATA_PATH = "frontend/package.json"
 
 PAWN_SLUG_GODOT_PATHS = {
