@@ -148,11 +148,22 @@ await page.keyboard.up('ArrowDown');
 const smgStage = await loadStage(detailedStage);
 await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
 await page.keyboard.down('ArrowRight');
-await page.waitForFunction(
-  () => Array.isArray(window.__pawnSlugCaptureEvents) && window.__pawnSlugCaptureEvents.includes('weapon-pickup'),
-  null,
-  { timeout: 10_000 },
-);
+let smgPickedUp = await page.evaluate(() => (
+  Array.isArray(window.__pawnSlugCaptureEvents)
+  && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
+));
+for (let step = 0; step < 36 && !smgPickedUp; step += 1) {
+  await page.keyboard.press('z');
+  if (step === 14 || step === 27) await page.keyboard.press('x');
+  await page.waitForTimeout(120);
+  smgPickedUp = await page.evaluate(() => (
+    Array.isArray(window.__pawnSlugCaptureEvents)
+    && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
+  ));
+}
+if (!smgPickedUp) {
+  throw new Error('Pawn Slug visual capture did not reach the first SMG pickup');
+}
 await capture('50-smg-pickup-immediate');
 await captureDetailedCloseup('50-smg-pickup-immediate', smgStage.canvas);
 await page.waitForTimeout(100);
