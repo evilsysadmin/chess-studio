@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "status": "validated-local-candidate",
+  "generation": "strict-v21",
+  "weapon": "pistol",
+  "source": {
+    "path": "games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png",
+    "sha256": "4d9057f0e194a8d67e463d79d5c968b5f83e2da162186f52e764e67ab5ff91e3",
+    "size": [
+      1024,
+      2304
+    ],
+    "grid": [
+      8,
+      18
+    ],
+    "cell": 128,
+    "origin": "reviewed generated full 18-pose source"
+  },
+  "atlas": {
+    "expected_sha256": "24640d861efc30873c2b858f14a61dfc1ac0879dfc87a1c3dcf8af4092b78db3",
+    "size": [
+      3328,
+      7488
+    ],
+    "grid": [
+      8,
+      18
+    ],
+    "cell": 416,
+    "pivot_x": 200,
+    "foot_y": 382,
+    "scale": 2.75
+  },
+  "rebuild": {
+    "full_bank": true,
+    "preserved_runtime_rows": [],
+    "source_rows": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ]
+  },
+  "pose_review": [
+    {
+      "row": 0,
+      "action": "idle",
+      "status": "PASS",
+      "note": "single compact pistol silhouette; no second-weapon read"
+    },
+    {
+      "row": 1,
+      "action": "walk",
+      "status": "PASS",
+      "note": "stable scale and grip across stride"
+    },
+    {
+      "row": 2,
+      "action": "run",
+      "status": "PASS",
+      "note": "clean run silhouette; this is the runtime body used during horizontal moving fire"
+    },
+    {
+      "row": 3,
+      "action": "jump",
+      "status": "PASS",
+      "note": "airborne motion reads clearly; weapon remains attached"
+    },
+    {
+      "row": 4,
+      "action": "fall",
+      "status": "PASS",
+      "note": "descending compression is intentional; grounded anchor remains deterministic"
+    },
+    {
+      "row": 5,
+      "action": "land",
+      "status": "PASS",
+      "note": "returns cleanly to grounded pose"
+    },
+    {
+      "row": 6,
+      "action": "crouch",
+      "status": "PASS",
+      "note": "low ready pose remains one-weapon silhouette"
+    },
+    {
+      "row": 7,
+      "action": "crouch_walk",
+      "status": "PASS",
+      "note": "stable crouched locomotion"
+    },
+    {
+      "row": 8,
+      "action": "shoot",
+      "status": "PASS",
+      "note": "single P99, two-hand grip, no baked muzzle flash"
+    },
+    {
+      "row": 9,
+      "action": "shoot_up",
+      "status": "PASS",
+      "note": "vertical-up aim reads unambiguously"
+    },
+    {
+      "row": 10,
+      "action": "shoot_down",
+      "status": "PASS",
+      "note": "downward aim reads unambiguously"
+    },
+    {
+      "row": 11,
+      "action": "shoot_diag_up",
+      "status": "PASS",
+      "note": "first diagonal-up bank coherent"
+    },
+    {
+      "row": 12,
+      "action": "shoot_diag_up_alt",
+      "status": "PASS",
+      "note": "alternate diagonal-up bank coherent and distinct"
+    },
+    {
+      "row": 13,
+      "action": "shoot_diag_down",
+      "status": "PASS",
+      "note": "diagonal-down bank coherent"
+    },
+    {
+      "row": 14,
+      "action": "shoot_crouch",
+      "status": "PASS",
+      "note": "crouched firing silhouette remains grounded"
+    },
+    {
+      "row": 15,
+      "action": "reload",
+      "status": "PASS",
+      "note": "support hand may leave grip only for reload semantics"
+    },
+    {
+      "row": 16,
+      "action": "hurt",
+      "status": "PASS",
+      "note": "standing flinch with squeezed eye/grimace; no knockdown"
+    },
+    {
+      "row": 17,
+      "action": "die",
+      "status": "PASS",
+      "note": "only row allowed to transition fully prone"
+    }
+  ],
+  "validation": {
+    "frames": 144,
+    "all_rows_8_distinct": true,
+    "guard_px": 2,
+    "clean_transparent_rgb": true,
+    "footline": [
+      382
+    ],
+    "min_connected_component_ratio": 0.987569,
+    "hurt_standing": true,
+    "visual_review": "all 18 rows reviewed individually before PR"
+  }
+}
