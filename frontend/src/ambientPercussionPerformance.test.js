@@ -24,8 +24,6 @@ describe('ambient percussion performance v2', () => {
       expect(performance.phraseLift, theme.id).toBeLessThanOrEqual(0.18);
       expect(performance.stereoMotion, theme.id).toBeGreaterThanOrEqual(0);
       expect(performance.stereoMotion, theme.id).toBeLessThanOrEqual(0.18);
-      expect(performance.ghostChance, theme.id).toBeGreaterThanOrEqual(0);
-      expect(performance.ghostChance, theme.id).toBeLessThanOrEqual(0.22);
     }
   });
 
@@ -48,22 +46,24 @@ describe('ambient percussion performance v2', () => {
     expect(spread(hats.map((hit) => hit.tone))).toBeGreaterThan(spread(kicks.map((hit) => hit.tone)));
   });
 
-  it('uses deterministic brush-kit ghosts as texture without duplicating anchors', () => {
-    const brushes = Array.from({ length: 256 }, (_, index) => (
+  it('keeps brush texture deterministic and expressive without duplicate attacks', () => {
+    const brushes = Array.from({ length: 64 }, (_, index) => (
       getPercussionHumanizationPreview('malagaLastTram', index + 1, 'B')
     ));
-    const repeated = Array.from({ length: 256 }, (_, index) => (
+    const repeated = Array.from({ length: 64 }, (_, index) => (
       getPercussionHumanizationPreview('malagaLastTram', index + 1, 'B')
     ));
 
     expect(brushes).toEqual(repeated);
-    expect(brushes.every((hit) => hit.delayMs === 0)).toBe(true);
-    expect(brushes.some((hit) => hit.ghost)).toBe(true);
+    expect(brushes.every((hit) => hit.delayMs === 0 && hit.ghost === false)).toBe(true);
+    expect(spread(brushes.map((hit) => hit.velocity))).toBeGreaterThan(0);
+    expect(spread(brushes.map((hit) => hit.tone))).toBeGreaterThan(0);
 
     const anchors = Array.from({ length: 64 }, (_, index) => (
       getPercussionHumanizationPreview('malagaLastTram', index, index % 2 === 0 ? 'K' : 'S')
     ));
     expect(anchors.every((hit) => hit.ghost === false && hit.delayMs === 0)).toBe(true);
+    expect(spread(brushes.map((hit) => hit.velocity))).toBeGreaterThan(spread(anchors.map((hit) => hit.velocity)));
   });
 
   it('keeps genre feel instead of normalizing every drum performance', () => {
@@ -71,7 +71,6 @@ describe('ambient percussion performance v2', () => {
     const energy = structuredFeel(AMBIENT_THEMES.neonSiege).percussion.performance;
 
     expect(lofi.secondaryVariance).toBeGreaterThan(energy.secondaryVariance);
-    expect(lofi.ghostChance).toBeGreaterThan(energy.ghostChance);
     expect(lofi.stereoMotion).toBeGreaterThan(energy.stereoMotion);
   });
 });
