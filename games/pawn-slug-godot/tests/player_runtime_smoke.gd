@@ -214,7 +214,8 @@ func _run() -> void:
     geometry_probe._world_size = Vector2(600.0, 240.0)
     geometry_probe._floor_y = 200.0
     geometry_probe._floor_depth = 40.0
-    geometry_probe._pit_specs = [{"x": 220.0, "w": 100.0}]
+    geometry_probe._pit_specs.clear()
+    geometry_probe._pit_specs.append({"x": 220.0, "w": 100.0})
     geometry_probe._build_floor_bodies()
     _expect(geometry_probe._map_geometry_root.has_node("Floor_00"), "pit conserva suelo físico a su izquierda")
     _expect(geometry_probe._map_geometry_root.has_node("Floor_01"), "pit conserva suelo físico a su derecha")
