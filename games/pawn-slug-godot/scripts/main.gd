@@ -247,7 +247,7 @@ func _load_stage_manifest(stage_id: String) -> bool:
         if typeof(entry) == TYPE_DICTIONARY:
             _pit_specs.append(Dictionary(entry).duplicate(true))
     _pits = _stage_rects(_pit_specs)
-    _pits.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.x < b.position.x)
+    _pits.sort_custom(func(a, b): return a.position.x < b.position.x)
     _obstacle_specs.clear()
     for entry in _stage_manifest.get("obstacles", []):
         if typeof(entry) == TYPE_DICTIONARY:
