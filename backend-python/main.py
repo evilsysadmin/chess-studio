@@ -24,6 +24,7 @@ from slowapi.util import get_remote_address
 import profile_store as pstore
 import users_store as ustore
 import auth_login_guard
+import auth_ip_guard
 import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
@@ -175,6 +176,26 @@ def rate_limit_key(request: Request) -> str:
     return f"ip:{get_remote_address(request)}"
 
 
+_AUTH_IP_GUARD_PATHS = frozenset({"/api/auth/login", "/api/auth/register"})
+
+
+def _auth_ip_guard_identity(request: Request) -> str | None:
+    """Key repeated failed public-auth requests by a non-reversible IP fingerprint."""
+    if request.method.upper() != "POST" or request.url.path not in _AUTH_IP_GUARD_PATHS:
+        return None
+
+    client_ip = None
+    if _trust_cloudflare_client_ip():
+        client_ip, _ = _client_network(request)
+    if not client_ip:
+        raw_ip = get_remote_address(request)
+        try:
+            client_ip = str(ipaddress.ip_address(str(raw_ip or "").strip()))
+        except ValueError:
+            return None
+    return auth_ip_guard.ip_key(client_ip, JWT_SECRET)
+
+
 @app.middleware("http")
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
@@ -184,7 +205,22 @@ async def log_request_with_user(request: Request, call_next):
     inflight = request_enter()
     status_code = 500
     raised = False
+    auth_ip_identity = _auth_ip_guard_identity(request)
     try:
+        if auth_ip_identity:
+            try:
+                retry_after = await auth_ip_guard.retry_after(auth_ip_identity)
+            except PersistentStorageUnavailable:
+                access_logger.warning("Auth IP guard unavailable during pre-check")
+                retry_after = 0
+            if retry_after:
+                status_code = 429
+                request.state.route_label = request.url.path
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Demasiados intentos de acceso. Reintenta más tarde."},
+                    headers={"X-Request-ID": request_id, "Retry-After": str(retry_after)},
+                )
         if should_shed(request.url.path, inflight):
             status_code = 503
             record_shed()
@@ -200,6 +236,11 @@ async def log_request_with_user(request: Request, call_next):
             )
         response = await call_next(request)
         status_code = response.status_code
+        if auth_ip_identity and status_code in {401, 403}:
+            try:
+                await auth_ip_guard.record_failure(auth_ip_identity)
+            except PersistentStorageUnavailable:
+                access_logger.warning("Auth IP guard unavailable while recording failure")
         response.headers["X-Request-ID"] = request_id
         return response
     except Exception:
