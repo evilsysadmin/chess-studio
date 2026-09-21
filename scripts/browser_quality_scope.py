@@ -518,9 +518,13 @@ def self_test() -> None:
     assert "abre una cripta Three\\.js real" in chronicles_case["command"]
     assert "arranca como RPG táctico isométrico" in chronicles_case["command"]
 
-    all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
-    assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 13
+    for harness_path in (
+        ".github/actions/setup-browser-e2e/action.yml",
+        ".github/actions/build-browser-frontend/action.yml",
+    ):
+        all_scope = classify([harness_path])
+        assert all_scope == BrowserScope.all()
+        assert len(_ids(all_scope)) == 13
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
