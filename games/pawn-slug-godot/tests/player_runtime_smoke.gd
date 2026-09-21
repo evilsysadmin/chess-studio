@@ -318,6 +318,23 @@ func _run() -> void:
         float(pit_enemy["air_speed_scale"]) >= enemy_probe.ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE,
         "salto de hueco conserva impulso arcade suficiente",
     )
+    var shield_enemy := {
+        "type": "shield",
+        "x": 640.0,
+        "spawn_x": 640.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "hp": 168,
+    }
+    _expect(enemy_probe._enemy_try_auto_jump(shield_enemy, 1.0), "shield lento también inicia salto de hueco")
+    _expect(
+        32.0 * float(shield_enemy["air_speed_scale"]) >= enemy_probe.ENEMY_TRAVERSAL_PIT_MIN_AIR_SPEED,
+        "shield lento recibe velocidad horizontal mínima para cruzar el hueco",
+    )
 
     var landing_y := enemy_probe._enemy_landing_y(230.0, 530.0, 570.0)
     _expect(absf(landing_y - 550.0) <= EPSILON, "enemigo puede aterrizar/trepar sobre una caja")
