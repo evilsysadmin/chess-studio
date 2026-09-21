@@ -638,7 +638,7 @@ export async function openMoreGameModes(page) {
 
       await closeBlockingPvpLobby();
       try {
-        await trigger.click({ timeout: 5_000 });
+        await trigger.click({ timeout: 12_000 });
       } catch (error) {
         if (!(await closeBlockingPvpLobby())) throw error;
         await trigger.click();
