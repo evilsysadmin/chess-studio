@@ -60,7 +60,7 @@ REQUIRED_MATTHIAS = (
     "_append_v10_locomotion_frames",
     "_ensure_v10_locomotion",
     '"locomotion-v10"',
-    'STRICT_RUNTIME_GENERATION := "v22"',
+    'STRICT_RUNTIME_GENERATION := "v23"',
     "WEAPON_BOOTSTRAP_ORDER",
     "_begin_atlas_bootstrap",
     "_begin_run12_bootstrap",
@@ -73,14 +73,20 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png",
+    "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png",
     "/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "/pawn-slug-godot/matthias/run12-v22/machinegun/v22-8f32a167a5d4f161.png",
+    "/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-34b7a35793047e39.png",
     "/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
     "RUN12_ATLAS_COLUMNS := 12",
+    "RUN13_ATLAS_COLUMNS := 13",
+    "MACHINEGUN_RUN13_URL",
+    "RUN13_ATLAS_SIZE := Vector2i(",
+    "_run_overlay_layout",
+    "_run_overlay_url",
+    '"run13-v23"',
     "RUN12_ATLAS_CELL_SIZE := 416",
     "RUN12_ATLAS_SIZE := Vector2i(",
     "_append_run12_frames",
@@ -562,9 +568,12 @@ def self_test() -> None:
     assert "return _body_ready and _bootstrap_complete" in REQUIRED_MATTHIAS
     assert "V9_ATLAS_CELL_SIZE := 416" in REQUIRED_MATTHIAS
     assert "RUN12_ATLAS_COLUMNS := 12" in REQUIRED_MATTHIAS
+    assert "RUN13_ATLAS_COLUMNS := 13" in REQUIRED_MATTHIAS
+    assert "MACHINEGUN_RUN13_URL" in REQUIRED_MATTHIAS
+    assert '"run13-v23"' in REQUIRED_MATTHIAS
     assert "_append_run12_frames" in REQUIRED_MATTHIAS
     assert "_ensure_run12_locomotion" in REQUIRED_MATTHIAS
-    assert "/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png" in REQUIRED_MATTHIAS
+    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
