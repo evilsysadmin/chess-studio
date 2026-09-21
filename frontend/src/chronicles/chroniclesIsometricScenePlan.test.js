@@ -10,7 +10,7 @@ describe('Chronicles isometric scene plan', () => {
     const plan = chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares'));
 
     expect(plan.mapId).toBe('crypt-eight-squares');
-    expect(plan.sceneStyle).toMatchObject({ id: 'crypt-stone', version: 3, dressing: 'crypt-legacy' });
+    expect(plan.sceneStyle).toMatchObject({ id: 'crypt-stone', version: 4, dressing: 'crypt-legacy' });
     expect(plan.sceneStyle.palette).toEqual(expect.objectContaining({
       background: 0x100c09,
       floor: expect.any(Array),
@@ -38,7 +38,7 @@ describe('Chronicles isometric scene plan', () => {
     expect(gallery.mapId).toBe('gallery-of-forks');
     expect(gallery.sceneStyle).toMatchObject({
       id: 'gallery-stone',
-      version: 3,
+      version: 4,
       dressing: 'gallery-forked-v3',
     });
     expect(gallery.sceneStyle.palette).not.toEqual(crypt.sceneStyle.palette);
@@ -70,7 +70,7 @@ describe('Chronicles isometric scene plan', () => {
       exits: [],
     });
 
-    expect(plan.sceneStyle).toMatchObject({ id: 'neutral', version: 3, dressing: 'none' });
+    expect(plan.sceneStyle).toMatchObject({ id: 'neutral', version: 4, dressing: 'none' });
     expect(plan.sceneStyle.palette.floor.length).toBeGreaterThan(0);
     expect(plan.sceneStyle.palette.wall.length).toBeGreaterThan(0);
     expect(plan.center).toEqual({ x: 2, y: 1 });
