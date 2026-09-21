@@ -983,20 +983,15 @@ def add_gothic_canon_v2(static, mats):
     # command room.
     add_pointed_arch_frame("left", -4.55)
 
-    # Shallow tracery belongs only to the dominant left hearth.
+    # Keep the dominant left lancet architectural rather than decorative.
+    # The former quatrefoil/tracery cluster created another small focal point
+    # between the banner, fireplace and crest. A simple keystone + sill keeps
+    # the gothic silhouette without crowding the left wall.
     prefix, cx = "left", -4.55
     cube(f"WR_CANON_arch_{prefix}_keystone", (cx, 6.34, 6.18),
          (0.18, 0.055, 0.20), mats["stone"], static, bevel=0.055)
     cube(f"WR_CANON_arch_{prefix}_sill", (cx, 6.36, 3.26),
          (1.33, 0.055, 0.075), mats["stone"], static, bevel=0.030)
-    for lobe, (dx, dz) in enumerate(((0.0, 0.24), (0.0, -0.24), (-0.24, 0.0), (0.24, 0.0))):
-        torus(f"WR_CANON_arch_{prefix}_tracery_{lobe}",
-              (cx + dx, 6.30, 5.42 + dz), 0.18, 0.036,
-              mats["stone"], static, rotation=(math.pi / 2, 0, 0))
-    cube(f"WR_CANON_arch_{prefix}_tracery_v", (cx, 6.30, 5.18),
-         (0.038, 0.035, 0.48), mats["stone"], static, bevel=0.014)
-    cube(f"WR_CANON_arch_{prefix}_tracery_h", (cx, 6.30, 5.42),
-         (0.48, 0.035, 0.038), mats["stone"], static, bevel=0.014)
 
     # The opposite wall gets a broad campaign painting instead of a mirrored
     # lancet. Large, quiet rectangular masses give the eye somewhere to rest
@@ -1521,6 +1516,12 @@ def validate():
         raise RuntimeError(f"retired upper-wall mortar courses returned: {retired_wall_courses}")
     if "WR_ARCH_back_rail_5.45" in {obj.name for obj in scene.objects}:
         raise RuntimeError("retired upper hero-wall rail returned")
+    retired_left_tracery = sorted(
+        obj.name for obj in scene.objects
+        if obj.name.startswith("WR_CANON_arch_left_tracery_")
+    )
+    if retired_left_tracery:
+        raise RuntimeError(f"retired left-arch tracery returned: {retired_left_tracery}")
     roles = {}
     for obj in scene.objects:
         role = obj.get("war_room_role")
