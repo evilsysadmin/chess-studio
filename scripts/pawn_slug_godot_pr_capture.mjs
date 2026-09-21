@@ -35,8 +35,13 @@ await page.addInitScript(() => {
     alpine_fortress_v1: 4200,
     jungle_relay_v1: 3820,
   };
+  const requestedProbeX = Number(params.get('probeX'));
   window.__pawnSlugVisualProbeX =
-    params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
+    params.get('visualProbe') === '1'
+      ? Number.isFinite(requestedProbeX) && requestedProbeX > 0
+        ? requestedProbeX
+        : traversalProbes[stage] ?? null
+      : null;
   window.addEventListener('message', (event) => {
     const data = event.data;
     if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
@@ -45,11 +50,13 @@ await page.addInitScript(() => {
   });
 });
 
-function urlForStage(stageId, { visualProbe = false } = {}) {
+function urlForStage(stageId, { visualProbe = false, probeX = null } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
   if (visualProbe) url.searchParams.set('visualProbe', '1');
   else url.searchParams.delete('visualProbe');
+  if (Number.isFinite(probeX) && probeX > 0) url.searchParams.set('probeX', String(probeX));
+  else url.searchParams.delete('probeX');
   return url.toString();
 }
 
@@ -152,6 +159,21 @@ stageOverviews.push({
   canvas: traversalProbe.canvas,
   path: traversalProbePath,
 });
+
+// Industrial changes often span more than one viewport. Keep a second late-stage
+// proof so short platforms/ladders added past the midpoint are not approved blind.
+if (detailedStage === 'industrial_front_v1') {
+  const lateTraversal = await loadStage(detailedStage, { visualProbe: true, probeX: 3650 });
+  const lateTraversalPath = `${outputDir}/stage-${detailedStage}-traversal-late.png`;
+  await page.screenshot({ path: lateTraversalPath, fullPage: false });
+  stageOverviews.push({
+    stageId: detailedStage,
+    variant: 'traversal-late',
+    url: lateTraversal.url,
+    canvas: lateTraversal.canvas,
+    path: lateTraversalPath,
+  });
+}
 
 // Every shipped stage gets a first-screen visual proof. This keeps scenery,
 // parallax and map-authored props reviewable without multiplying the expensive
