@@ -591,24 +591,82 @@
 
 @media (max-width: 700px) {
   .chronicles-pause {
-    padding: 12px;
+    padding: 10px;
   }
 
   .chronicles-pause__panel {
-    max-height: calc(100vh - 24px);
-    padding: 18px;
+    max-height: calc(100vh - 20px);
+    padding: 14px 14px 0;
+    overscroll-behavior: contain;
+  }
+
+  .chronicles-pause__heading {
+    margin-bottom: 12px;
+  }
+
+  .chronicles-pause__heading h2 {
+    margin-top: 2px;
+    font-size: 1.7rem;
+  }
+
+  .chronicles-pause__resume {
+    min-height: 44px;
+    margin-bottom: 14px;
   }
 
   .chronicles-pause__grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .chronicles-pause__section {
+    padding: 12px;
+  }
+
+  .chronicles-pause__section h3 {
+    margin-bottom: 9px;
+  }
+
+  .chronicles-pause__toggle {
+    min-height: 38px;
+    margin: 6px 0;
+    padding: 7px 10px;
+  }
+
+  .chronicles-pause__volume {
+    gap: 6px;
+    margin: 10px 0;
+  }
+
+  .chronicles-pause__controls {
+    gap: 4px;
+  }
+
+  .chronicles-pause__controls > div {
+    padding-bottom: 4px;
+  }
+
+  .chronicles-pause__hint {
+    margin-top: 8px;
+    line-height: 1.35;
   }
 
   .chronicles-pause__footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
     flex-direction: column;
+    gap: 8px;
+    margin: 12px -14px 0;
+    padding: 10px 14px 14px;
+    background:
+      linear-gradient(180deg, rgba(12, 10, 8, .76), rgba(12, 10, 8, .99) 28%);
+    box-shadow: 0 -10px 20px rgba(0, 0, 0, .22);
   }
 
   .chronicles-pause__footer > button {
     width: 100%;
+    min-height: 40px;
   }
 }
 
