@@ -91,6 +91,10 @@ PAWN_SLUG_GODOT_PATHS = {
     "scripts/pawn_slug_enemy_roster_gate.py",
     "scripts/pawn_slug_godot_live_smoke.mjs",
     "scripts/apply_frontend_csp.mjs",
+    "scripts/art/sprite_forge.py",
+    "scripts/art/test_sprite_forge.py",
+    "docs/pawnslug-sprites.md",
+    "skills/godot-spritesheets/SKILL.md",
 }
 PAWN_SLUG_RE = re.compile(
     r"^frontend/src/pawnSlug[^/]*\.(?:js|jsx)$|"
@@ -378,6 +382,10 @@ def self_test() -> None:
     _expect(["scripts/pawn_slug_enemy_roster_gate.py"], run_pawn_slug_godot=True)
     _expect(["scripts/apply_frontend_csp.mjs"], run_pawn_slug_godot=True)
     _expect([".github/workflows/pawn-slug-godot-web.yml"], run_pawn_slug_godot=True)
+    _expect(["scripts/art/sprite_forge.py"], run_pawn_slug_godot=True)
+    _expect(["scripts/art/test_sprite_forge.py"], run_pawn_slug_godot=True)
+    _expect(["docs/pawnslug-sprites.md"], run_pawn_slug_godot=True)
+    _expect(["skills/godot-spritesheets/SKILL.md"], run_pawn_slug_godot=True)
     _expect_core(
         ["e2e/helpers.js"],
         run_pawn_slug_e2e=True,
