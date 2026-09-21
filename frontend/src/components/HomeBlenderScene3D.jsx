@@ -168,10 +168,14 @@ function readRendererName(renderer) {
 // because WebGL rasterises in the GPU process, so with software GL or a weak GPU the
 // render call returns quickly while frames still back up. Stretch the interval so
 // the fire stays a small share of the thread, and stop it (leaving the authored
-// still frame) on hardware that cannot afford it.
+// still frame) only when a frame is truly unaffordable. The render call is mostly
+// three.js CPU overhead for ~1200 meshes, so a desktop with a modest CPU (and a
+// strong GPU) legitimately measures 30-60 ms: that must slow the fire down, not
+// kill it. Only a CPU-throttled 2x laptop already crossed the old 24 ms limit.
 export const HOME_BLENDER_FIRE_MIN_SAMPLES = 6;
-export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 24;
-export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 28;
+export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 80;
+export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
+export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 400;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
 
 export function homeBlenderFireFramePlan({
@@ -188,7 +192,7 @@ export function homeBlenderFireFramePlan({
   if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS || gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS) {
     return { enabled: false, intervalMs: baseIntervalMs };
   }
-  return { enabled: true, intervalMs: Math.min(250, Math.max(baseIntervalMs, cost * 3)) };
+  return { enabled: true, intervalMs: Math.min(HOME_BLENDER_FIRE_MAX_INTERVAL_MS, Math.max(baseIntervalMs, cost * 3)) };
 }
 
 // The exported flame materials are dark orange *lit* surfaces with an almost zero
@@ -661,6 +665,8 @@ export default function HomeBlenderScene3D({
           samples: fireSamples,
         });
         fireIntervalMs = plan.intervalMs;
+        canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
+        canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
         if (!plan.enabled) {
           // Too expensive here: settle on the still frame and stay there.
           canvas.dataset.homeFireMotion = 'off-slow';
