@@ -356,6 +356,12 @@
   ],
   "pits": [
     {
+      "id": "maintenance-gap",
+      "x": 450,
+      "w": 84,
+      "kind": "trench"
+    },
+    {
       "id": "factory-trench",
       "x": 1580,
       "w": 100,
@@ -751,7 +757,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 4,
+  "visual_revision": 5,
   "dressing": [
     {
       "kind": "crate",
