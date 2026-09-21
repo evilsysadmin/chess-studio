@@ -76,7 +76,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose(exitChronicles, { disabled: ready });
+  useEscapeToClose(exitChronicles, {
+    disabled: ready,
+    contextMenuAction: 'ignore',
+  });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
