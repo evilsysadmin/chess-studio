@@ -840,7 +840,18 @@ func _update_ladder_state(axis: float, delta: float) -> bool:
             if _art != null:
                 _art.set_climb_state(false, 1.0)
         return false
-    if not _ladder_climbing and absf(axis) <= 0.15:
+    if not _ladder_climbing:
+        if absf(axis) <= 0.15:
+            return false
+        # DOWN at floor level remains crouch. Descending grabs the ladder only
+        # after Matthias is already on it / above the floor.
+        if axis > 0.15 and is_on_floor():
+            return false
+    elif axis > 0.15 and is_on_floor():
+        _ladder_climbing = false
+        _active_ladder = Rect2()
+        if _art != null:
+            _art.set_climb_state(false, 1.0)
         return false
 
     _ladder_climbing = true
