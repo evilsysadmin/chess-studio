@@ -4,6 +4,7 @@ import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { AMBIENT_PERCUSSION_FINISH, snareBodyFrequencies } from './ambientPercussionFinish.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
+import { structuredPartialDetune, structuredVoiceTimbre } from './ambientStructuredTimbre.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import { shouldPlayStructuredLead, shouldPlayStructuredSignature } from './ambientTiming.js';
 import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
@@ -655,20 +656,44 @@ function playPadNote(freq) {
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = freq;
-  const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
+  filter.type = 'lowpass';
+  filter.frequency.value = 1480;
+  filter.Q.value = 0.34;
+  const start = ctx.currentTime;
 
-  gainNode.gain.setValueAtTime(0, start);
-  gainNode.gain.linearRampToValueAtTime(0.02, start + PAD_ATTACK_S);
-  gainNode.gain.linearRampToValueAtTime(0, start + PAD_DURATION_S);
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.linearRampToValueAtTime(0.018, start + PAD_ATTACK_S);
+  gainNode.gain.setValueAtTime(0.014, start + Math.max(PAD_ATTACK_S + 0.04, PAD_DURATION_S * 0.68));
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + PAD_DURATION_S);
 
-  osc.connect(gainNode);
+  filter.connect(gainNode);
   gainNode.connect(getAmbientOutput(ctx));
-  osc.start(start);
-  osc.stop(start + PAD_DURATION_S + 0.05);
+
+  // The legacy Andalus bed used one naked sine: stable, clean and therefore
+  // unmistakably "keyboard preset". Keep the same harmony, but build a quiet
+  // dark ensemble from coherent partials with only sub-cent movement.
+  const oscillators = [
+    ['triangle', 1, 0.72, -0.35],
+    ['sine', 2.01, 0.18, 0.22],
+    ['sine', 0.5, 0.10, 0.08],
+  ].map(([type, ratio, mix, detune]) => {
+    const osc = ctx.createOscillator();
+    const mixGain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq * ratio;
+    osc.detune.value = detune;
+    mixGain.gain.value = mix;
+    osc.connect(mixGain);
+    mixGain.connect(filter);
+    return osc;
+  });
+
+  oscillators.forEach((osc) => {
+    osc.start(start);
+    osc.stop(start + PAD_DURATION_S + 0.05);
+  });
 }
 
 // Contrabajo: triangle (más cuerpo que sine, menos brillo que sawtooth)
@@ -768,7 +793,7 @@ function playGuitarPluck(freq) {
   filter.connect(gainNode);
   gainNode.connect(getAmbientOutput(ctx));
 
-  const detunesCents = [-6, 6]; // dos voces, una levemente grave y otra aguda
+  const detunesCents = [-1.8, 1.8]; // doble cuerda sutil: cuerpo sin chorus de teclado
   const oscs = detunesCents.map((cents) => {
     const osc = ctx.createOscillator();
     osc.type = 'sawtooth';
@@ -822,7 +847,8 @@ function playSax(freq) {
   const lfoGain = ctx.createGain();
   lfo.type = 'sine';
   lfo.frequency.value = 5.3; // Hz — vibrato natural, ni tembloroso ni imperceptible
-  lfoGain.gain.value = freq * 0.008; // profundidad chica y sutil
+  lfoGain.gain.setValueAtTime(freq * 0.0012, ctx.currentTime);
+  lfoGain.gain.linearRampToValueAtTime(freq * 0.0052, ctx.currentTime + 0.34); // el vibrato entra después del ataque
   lfo.connect(lfoGain);
   lfoGain.connect(osc.frequency);
 
@@ -1112,8 +1138,8 @@ function voicePreset(kind) {
     case 'harpsichord': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.13]], gain: 0.018, attack: 0.003, release: 0.48, cutoff: 3900 };
     case 'vibes': return { waves: [['sine', 1, 1], ['sine', 4, 0.16]], gain: 0.026, attack: 0.008, release: 2.35, cutoff: 5200, tremolo: 5.2 };
     case 'warmVibes': return { waves: [['sine', 1, 0.92], ['sine', 2.99, 0.11], ['sine', 4.03, 0.12], ['triangle', 0.5, 0.08]], gain: 0.022, attack: 0.012, release: 2.8, cutoff: 3850, tremolo: 4.6 };
-    case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
-    case 'rhodesWarm': return { waves: [['sine', 1, 1], ['triangle', 2, 0.16], ['sine', 0.5, 0.1]], gain: 0.020, attack: 0.028, release: 2.15, cutoff: 1950, tremolo: 3.1 };
+    case 'epiano': return { waves: [['triangle', 1, 0.72], ['sine', 1, 0.38], ['sine', 2.01, 0.16], ['sine', 3.98, 0.045]], gain: 0.019, attack: 0.016, release: 1.85, cutoff: 2250 };
+    case 'rhodesWarm': return { waves: [['sine', 1, 0.82], ['triangle', 1, 0.26], ['sine', 2.01, 0.14], ['sine', 3.97, 0.035], ['sine', 0.5, 0.08]], gain: 0.019, attack: 0.022, release: 2.45, cutoff: 1800, tremolo: 2.8 };
     case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
     case 'spiccatoCello': return { waves: [['triangle', 1, 0.82], ['sawtooth', 1, 0.18]], gain: 0.025, attack: 0.004, release: 0.62, cutoff: 1480 };
     case 'pizz': return { waves: [['triangle', 1, 1], ['sine', 2, 0.12]], gain: 0.026, attack: 0.004, release: 0.52, cutoff: 1700 };
@@ -1131,9 +1157,9 @@ function voicePreset(kind) {
     case 'powerPad': return { waves: [['sawtooth', 1, 0.25], ['sawtooth', 1.008, 0.21], ['triangle', 0.5, 0.32], ['sine', 2.01, 0.08]], gain: 0.012, attack: 0.18, release: 2.6, cutoff: 2050, tremolo: 2.2 };
     case 'stormPad': return { waves: [['triangle', 1, 0.54], ['sawtooth', 0.5, 0.20], ['sine', 2.01, 0.10]], gain: 0.012, attack: 0.16, release: 2.2, cutoff: 1320, tremolo: 3.4 };
     case 'synthbass': return { waves: [['square', 1, 0.55], ['triangle', 1, 1]], gain: 0.026, attack: 0.006, release: 0.42, cutoff: 640 };
-    case 'pad': return { waves: [['sine', 1, 1], ['triangle', 2, 0.08]], gain: 0.014, attack: 0.28, release: 2.9, cutoff: 1600 };
-    case 'organ': return { waves: [['sine', 1, 1], ['sine', 2, 0.28], ['sine', 3, 0.09]], gain: 0.014, attack: 0.22, release: 4.25, cutoff: 2100 };
-    case 'organbass': return { waves: [['sine', 1, 1], ['triangle', 0.5, 0.2]], gain: 0.022, attack: 0.18, release: 4.0, cutoff: 580 };
+    case 'pad': return { waves: [['triangle', 1, 0.58], ['sawtooth', 0.5, 0.12], ['sine', 2.01, 0.08], ['sine', 0.5, 0.16]], gain: 0.012, attack: 0.42, release: 3.4, cutoff: 1380 };
+    case 'organ': return { waves: [['sine', 1, 0.72], ['triangle', 0.5, 0.16], ['sine', 2.002, 0.18], ['sine', 3.01, 0.055], ['sine', 4.005, 0.025]], gain: 0.0125, attack: 0.34, release: 4.8, cutoff: 1750 };
+    case 'organbass': return { waves: [['triangle', 1, 0.68], ['sine', 1, 0.44], ['sine', 0.5, 0.22], ['sine', 2.01, 0.045]], gain: 0.019, attack: 0.12, release: 3.6, cutoff: 520 };
     case 'tremolo': return { waves: [['triangle', 1, 1], ['sawtooth', 1, 0.09]], gain: 0.019, attack: 0.02, release: 1.9, cutoff: 2100, tremolo: 7.0 };
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
@@ -1144,7 +1170,7 @@ function voicePreset(kind) {
     case 'vocalAir': return { waves: [['sine', 1, 0.88], ['triangle', 1, 0.16], ['sine', 2.01, 0.13], ['sine', 3.02, 0.04]], gain: 0.014, attack: 0.065, release: 1.7, cutoff: 2250, tremolo: 4.8 };
     case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
-    case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
+    case 'choir': return { waves: [['sine', 1, 0.72], ['triangle', 1, 0.28], ['sine', 0.5, 0.10], ['sine', 2.01, 0.10], ['sine', 3.03, 0.03]], gain: 0.012, attack: 0.46, release: 4.8, cutoff: 1420, tremolo: 3.7 };
     case 'pulse': return { waves: [['square', 1, 0.46], ['sine', 1, 0.54]], gain: 0.014, attack: 0.004, release: 0.24, cutoff: 1800 };
     // V15.3: timbres dedicados al jazz árabe nocturno. El ney prioriza aire y vibrato;
     // el oud estructurado es más seco y oscuro que la guitarra genérica.
@@ -1180,6 +1206,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
   const preset = voicePreset(kind);
+  const timbre = structuredVoiceTimbre(kind);
   const finish = tone?.finish || {};
   const freq = midiToFreq(midiNote);
   const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
@@ -1228,7 +1255,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   filter.type = 'lowpass';
   const finishBrightness = Math.max(0.68, Math.min(1.18, Number(finish.brightness) || 1));
   scheduleAmbientFilterSweep(filter.frequency, Math.max(260, preset.cutoff * (tone?.warmth || 1) * finishBrightness), start, attack, release);
-  filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
+  filter.Q.value = Number.isFinite(timbre.filterQ) ? timbre.filterQ : (kind === 'synth' || kind === 'arp' ? 1.4 : 0.55);
 
   const peak = preset.gain * volumeScale;
   gainNode.gain.setValueAtTime(0.0001, start);
@@ -1238,19 +1265,42 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   }
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
-  filter.connect(gainNode);
+  let timbreOutput = filter;
+  if (Number(timbre.bodyGainDb) !== 0 && Number(timbre.bodyHz) > 0) {
+    const body = ctx.createBiquadFilter();
+    body.type = 'peaking';
+    body.frequency.value = timbre.bodyHz;
+    body.Q.value = Number(timbre.bodyQ) || 0.72;
+    body.gain.value = timbre.bodyGainDb;
+    timbreOutput.connect(body);
+    timbreOutput = body;
+  }
+  if (Number(timbre.edgeGainDb) !== 0 && Number(timbre.edgeHz) > 0) {
+    const edge = ctx.createBiquadFilter();
+    edge.type = 'highshelf';
+    edge.frequency.value = timbre.edgeHz;
+    edge.gain.value = timbre.edgeGainDb;
+    timbreOutput.connect(edge);
+    timbreOutput = edge;
+  }
+  timbreOutput.connect(gainNode);
   const output = getAmbientStructuredMusicOutput(ctx);
-  connectFinishedAmbientVoice(ctx, gainNode, output, tone, { start, duration: release, tremolo: preset.tremolo });
+  connectFinishedAmbientVoice(ctx, gainNode, output, tone, {
+    start,
+    duration: release,
+    tremolo: (preset.tremolo || 0) * (Number(timbre.tremoloScale) || 1),
+  });
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
     const osc = ctx.createOscillator();
     const mixGain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq * ratio;
-    // Un desafinado microscópico evita que acordes de osciladores idénticos
-    // se conviertan en una onda clínica sin vida.
-    const drift = Math.max(0, Math.min(7, Number(finish.driftCents) || 0));
-    osc.detune.value = (index === 0 ? -2 : 2 + index) + (index % 2 === 0 ? -drift : drift);
+    // Acoustic partials must move as one instrument. The previous fixed
+    // -2/+3/+4 cent spread made pianos, reeds and especially organs beat like
+    // a cheap chorus preset. Synth families keep controlled width; acoustic
+    // families get only sub-cent, note-stable imperfection.
+    osc.detune.value = structuredPartialDetune(kind, midiNote, index, finish.driftCents);
     mixGain.gain.value = mix;
     osc.connect(mixGain);
     mixGain.connect(filter);

@@ -16,6 +16,24 @@ const GENRE_PRODUCTION = Object.freeze({
   'Ambient / Otros': Object.freeze({ warmth: 0.88, releaseScale: 1.14, space: 0.16, delayMs: 212, mix: { lead: 0.58, counter: 0.36, bass: 0.68, chord: 0.42 } }),
 });
 
+const GENRE_FINISH = Object.freeze({
+  'SPA / Zen': Object.freeze({ brightness: 0.84, reflectionScale: 1.16, stereoWidth: 1.10, driftCents: 0.28 }),
+  'Smooth Jazz': Object.freeze({ brightness: 0.90, reflectionScale: 0.92, stereoWidth: 0.98, driftCents: 0.24 }),
+  'Tropical House': Object.freeze({ brightness: 1.06, reflectionScale: 0.74, stereoWidth: 0.94, driftCents: 0.46 }),
+  'House / Afro': Object.freeze({ brightness: 1.02, reflectionScale: 0.76, stereoWidth: 1.02, driftCents: 0.58 }),
+  'Energía': Object.freeze({ brightness: 1.05, reflectionScale: 0.70, stereoWidth: 0.94, driftCents: 0.62 }),
+  'Ecléctica': Object.freeze({ brightness: 0.96, reflectionScale: 0.90, stereoWidth: 1.00, driftCents: 0.44 }),
+  'Clásica': Object.freeze({ brightness: 0.94, reflectionScale: 1.12, stereoWidth: 1.08, driftCents: 0.20 }),
+  'Lo-Fi / Chill': Object.freeze({ brightness: 0.78, reflectionScale: 0.86, stereoWidth: 0.80, driftCents: 0.72 }),
+  'Trip-Hop / Downtempo': Object.freeze({ brightness: 0.83, reflectionScale: 1.00, stereoWidth: 0.92, driftCents: 0.54 }),
+  'Bossa / Latin Lounge': Object.freeze({ brightness: 0.92, reflectionScale: 0.88, stereoWidth: 0.96, driftCents: 0.26 }),
+  'Piano / Minimal': Object.freeze({ brightness: 0.82, reflectionScale: 1.10, stereoWidth: 0.96, driftCents: 0.16 }),
+  'Dark Ambient': Object.freeze({ brightness: 0.72, reflectionScale: 1.22, stereoWidth: 1.14, driftCents: 0.30 }),
+  'Jazz / Mediterráneo': Object.freeze({ brightness: 0.87, reflectionScale: 0.94, stereoWidth: 1.02, driftCents: 0.24 }),
+  'Electrónica / Experimental': Object.freeze({ brightness: 1.06, reflectionScale: 0.84, stereoWidth: 1.10, driftCents: 1.10 }),
+  'Ambient / Otros': Object.freeze({ brightness: 0.85, reflectionScale: 1.14, stereoWidth: 1.08, driftCents: 0.38 }),
+});
+
 const PERFORMANCE_FINISH = Object.freeze({
   'Smooth Jazz': Object.freeze({ swing: 0.11, signatureVolume: 0.27, signatureDuration: 4.2 }),
   'Bossa / Latin Lounge': Object.freeze({ swing: 0.18, signatureVolume: 0.25, signatureDuration: 3.4 }),
@@ -244,6 +262,29 @@ function premiumSignature(feel, genre) {
   });
 }
 
+function premiumFinish(feel, genre) {
+  const target = GENRE_FINISH[genre] || GENRE_FINISH['Ambient / Otros'];
+  const authored = feel?.finish || {};
+  const numeric = (key, min, max, amount) => {
+    const current = Number(authored[key]);
+    const targetValue = Number(target[key]);
+    if (!Number.isFinite(current)) return targetValue;
+    return clamp(blend(current, targetValue, amount), min, max);
+  };
+
+  // Numeric finish values are mastering, not composition. Authored rooms keep
+  // their names/flags and most of their exact character; un-authored themes get
+  // a restrained genre fingerprint so the whole radio no longer shares one
+  // generic WebAudio sheen.
+  return Object.freeze({
+    ...authored,
+    brightness: numeric('brightness', 0.68, 1.18, 0.16),
+    reflectionScale: numeric('reflectionScale', 0.62, 1.30, 0.14),
+    stereoWidth: numeric('stereoWidth', 0.70, 1.22, 0.14),
+    driftCents: numeric('driftCents', 0, 2.4, 0.18),
+  });
+}
+
 export function withAmbientPremiumProduction(theme, feel) {
   if (!theme || !feel) return feel;
   const target = GENRE_PRODUCTION[theme.genre] || GENRE_PRODUCTION['Ambient / Otros'];
@@ -255,6 +296,7 @@ export function withAmbientPremiumProduction(theme, feel) {
     chord: premiumMixValue(currentMix.chord, target.mix.chord, theme.genre, 'chord', 0.26, 0.72),
   });
   const signature = premiumSignature(feel, theme.genre);
+  const finish = premiumFinish(feel, theme.genre);
 
   const result = {
     ...feel,
@@ -265,10 +307,12 @@ export function withAmbientPremiumProduction(theme, feel) {
     delayMs: premiumDelay(theme, feel, target.delayMs),
     mix,
     percussion: premiumPercussion(feel, theme.genre),
+    finish,
     ...(signature ? { signature } : {}),
     production: Object.freeze({
-      grade: 'premium-v1',
-      performance: 'articulation-v1',
+      grade: 'premium-v2',
+      performance: 'articulation-v2',
+      timbre: 'coherent-voice-v2',
       genre: theme.genre || 'Ambient / Otros',
       intent: theme.genre === 'Energía' || theme.genre === 'Tropical House' ? 'tight-forward' : theme.genre === 'SPA / Zen' || theme.genre === 'Dark Ambient' ? 'deep-wide' : 'warm-controlled',
     }),
@@ -282,4 +326,4 @@ export function withAmbientPremiumProduction(theme, feel) {
   return Object.freeze(result);
 }
 
-export { GENRE_PRODUCTION, INSTRUMENT_UPGRADES, PERFORMANCE_FINISH, THEME_INSTRUMENT_UPGRADES };
+export { GENRE_FINISH, GENRE_PRODUCTION, INSTRUMENT_UPGRADES, PERFORMANCE_FINISH, THEME_INSTRUMENT_UPGRADES };
