@@ -50,10 +50,25 @@ class Scope:
             redundant_lanes.update(("app-boot", "tournament", "combat"))
         if self.run_e2e_regression_state:
             redundant_lanes.update(("admin", "home"))
-        lanes = [
+
+        # Full-surface changes used to fan out into five independent browser jobs.
+        # Batch pairs that share the same Playwright runtime so the required gate
+        # pays checkout/cache/browser startup three times instead of five, while
+        # the runner still executes every canonical test below.
+        lanes: list[str] = []
+        paired = set()
+        if self.run_e2e_regression_state and self.run_e2e_regression_school:
+            lanes.append("regression-state+regression-school")
+            paired.update(("regression-state", "regression-school"))
+        if self.run_e2e_learning_golden and self.run_e2e_learning_observation:
+            lanes.append("learning-golden+learning-observation")
+            paired.update(("learning-golden", "learning-observation"))
+        lanes.extend(
             lane for lane in CORE_E2E_LANES
-            if getattr(self, CORE_E2E_FIELDS[lane]) and lane not in redundant_lanes
-        ]
+            if lane not in paired
+            and getattr(self, CORE_E2E_FIELDS[lane])
+            and lane not in redundant_lanes
+        )
         lines.append(f"core_e2e_matrix={json.dumps({'lane': lanes}, separators=(',', ':'))}")
         return lines
 
@@ -399,7 +414,7 @@ def self_test() -> None:
     generic_matrix = json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/App.jsx"]).lines())["core_e2e_matrix"])["lane"]
     assert "smoke" in generic_matrix and "app-boot" not in generic_matrix and "combat" not in generic_matrix
     assert json.loads(dict(line.split("=", 1) for line in Scope.all().lines())["core_e2e_matrix"])["lane"] == [
-        "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
+        "regression-state+regression-school", "learning-golden+learning-observation", "smoke",
     ]
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/tournament.js"]).lines())["core_e2e_matrix"]) == {"lane": ["tournament"]}
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/combatBosses.js"]).lines())["core_e2e_matrix"]) == {"lane": ["combat"]}
