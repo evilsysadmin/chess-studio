@@ -58,7 +58,7 @@
   max-width: none;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(225px, 255px) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 275px) minmax(0, 1fr);
   gap: 12px;
 }
 .chronicles-party,
@@ -78,7 +78,7 @@
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   overflow: hidden;
 }
 .chronicles-party::before {
@@ -104,10 +104,10 @@
   text-align: left;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 34px 1fr auto;
+  grid-template-columns: 38px 1fr auto;
   align-items: center;
-  gap: 8px;
-  padding: 8px 7px;
+  gap: 9px;
+  padding: 8px 8px;
   border: 1px solid rgba(188, 152, 101, .16);
   border-radius: 2px;
   background:
@@ -124,9 +124,9 @@
   border-color: rgba(232, 185, 105, .78);
   background: linear-gradient(90deg, rgba(139, 88, 31, .4), rgba(18, 13, 9, .75));
   box-shadow:
-    inset 3px 0 0 rgba(236, 178, 87, .82),
-    inset 0 0 24px rgba(209, 126, 39, .06),
-    0 4px 18px rgba(0, 0, 0, .16);
+    inset 3px 0 0 rgba(236, 178, 87, .88),
+    inset 0 0 28px rgba(209, 126, 39, .075),
+    0 5px 20px rgba(0, 0, 0, .2);
 }
 .chronicles-party-member.is-down { opacity: .46; filter: saturate(.45); }
 .chronicles-party-member:hover,
@@ -386,7 +386,7 @@
 }
 
 @media (max-width: 1100px) and (min-width: 801px) {
-  .chronicles-shell { grid-template-columns: minmax(210px, 235px) minmax(0, 1fr); }
+  .chronicles-shell { grid-template-columns: minmax(220px, 250px) minmax(0, 1fr); }
   .chronicles-stage { height: clamp(430px, 62dvh, 650px); }
   .chronicles-head p { max-width: 700px; }
 }
