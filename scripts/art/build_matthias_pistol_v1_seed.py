@@ -27,6 +27,12 @@ ACTIONS = (
     ("hurt", 1, 14.0, False),
 )
 
+TEMPORAL_WIDTH_LIMITS = {
+    # The authored reload returns from close-to-body manipulation to a fully
+    # extended ready pose on its final frame: 37 px of canonical width change.
+    "reload": 40.0,
+}
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -56,7 +62,7 @@ def _validate_temporal(root: Path) -> dict[str, dict]:
             # Canonical v1 run seam measures 35 px between the two extreme
             # stride silhouettes. Keep one pixel of deterministic headroom;
             # larger width jumps remain a hard failure.
-            max_width_delta_px=36.0,
+            max_width_delta_px=TEMPORAL_WIDTH_LIMITS.get(action, 36.0),
             max_area_ratio_delta=0.24,
             loop=loop,
         )
