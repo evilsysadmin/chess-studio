@@ -109,6 +109,53 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
     errors += _rect_errors(stage_name, "platforms", platforms, width, height)
     errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+
+    pits = stage.get("pits") or []
+    ladders = stage.get("ladders") or []
+    for index, pit in enumerate(pits):
+        if not isinstance(pit, dict):
+            errors.append(f"{stage_name}: pits[{index}] must be an object")
+            continue
+        pit_x = float(pit.get("x", -1))
+        pit_w = float(pit.get("w", 0))
+        if pit_w < 48 or pit_x < 0 or pit_x + pit_w > width:
+            errors.append(f"{stage_name}: pits[{index}] has invalid bounds")
+
+    def platform_supports(x: float, y: float) -> bool:
+        for platform in platforms:
+            if not isinstance(platform, dict):
+                continue
+            px = float(platform.get("x", -999999))
+            py = float(platform.get("y", -999999))
+            pw = float(platform.get("w", 0))
+            if abs(py - y) <= 2.0 and px - 42.0 <= x <= px + pw + 42.0:
+                return True
+        return False
+
+    for index, ladder in enumerate(ladders):
+        if not isinstance(ladder, dict):
+            errors.append(f"{stage_name}: ladders[{index}] must be an object")
+            continue
+        x = float(ladder.get("x", -1))
+        top_y = float(ladder.get("top_y", -1))
+        bottom_y = float(ladder.get("bottom_y", -1))
+        if not 0 <= x < width or not 0 < top_y < bottom_y <= floor_y:
+            errors.append(f"{stage_name}: ladders[{index}] has invalid geometry")
+            continue
+        if not platform_supports(x, top_y):
+            errors.append(f"{stage_name}: ladders[{index}] has no platform at top_y={top_y:g}")
+        if abs(bottom_y - floor_y) <= 2.0:
+            for pit in pits:
+                if not isinstance(pit, dict):
+                    continue
+                pit_x = float(pit.get("x", -1))
+                pit_w = float(pit.get("w", 0))
+                if pit_x <= x <= pit_x + pit_w:
+                    errors.append(f"{stage_name}: ladders[{index}] ends on floor inside a pit")
+                    break
+        elif not platform_supports(x, bottom_y):
+            errors.append(f"{stage_name}: ladders[{index}] has no platform at bottom_y={bottom_y:g}")
+
     for index, obstacle in enumerate(obstacles):
         if not isinstance(obstacle, dict):
             continue
@@ -494,6 +541,8 @@ def self_test() -> None:
     stage = {
         "world": {"width": 5200, "height": 720, "floor_y": 610, "start_x": 110},
         "checkpoints": [110, 1480, 2980, 4140],
+        "pits": [{"x": 1500, "w": 120, "kind": "test_pit"}],
+        "ladders": [{"x": 938, "top_y": 430, "bottom_y": 610, "w": 30, "exit_dir": 1}],
         "platforms": [
             {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood"}
             for i in range(18)
@@ -546,6 +595,9 @@ def self_test() -> None:
     crowded = json.loads(json.dumps(stage))
     crowded["enemies"][1]["x"] = 650
     assert any("gap" in e for e in validate_stage(crowded, stats, "self-test"))
+    suicide_ladder = json.loads(json.dumps(stage))
+    suicide_ladder["ladders"][0]["x"] = 1540
+    assert any("ends on floor inside a pit" in e for e in validate_stage(suicide_ladder, stats, "self-test"))
     print("OK Pawn Slug stage manifest gate self-test")
 
 def main() -> int:
