@@ -13,12 +13,14 @@ from sprite_forge import (
     GeometryContract,
     GeometryError,
     LintConfig,
+    SocketQualityContract,
     TemporalContract,
     geometry_metrics,
     lint_frame,
     normalize_frame,
     validate_geometry,
     validate_sequence,
+    validate_socket_sequence,
     build_bank,
 )
 
@@ -516,6 +518,96 @@ class SpriteForgeSocketContractTests(unittest.TestCase):
             animation = manifest["animations"][0]
             self.assertEqual(animation["sockets"][0]["weapon_anchor"], [35.0, 30.0])
             self.assertEqual(animation["sockets"][1]["muzzle"], [53.0, 29.0])
+
+
+class SpriteForgeSocketQualityTests(unittest.TestCase):
+    def sockets(self) -> list[dict]:
+        values = [
+            ([138, 162], [118, 180], [147, 177], [184, 163], -2.5),
+            ([139, 161], [119, 179], [148, 176], [185, 162], -1.8),
+            ([140, 160], [120, 178], [149, 175], [186, 161], -1.0),
+            ([141, 161], [121, 179], [150, 176], [187, 162], -0.2),
+            ([140, 163], [120, 181], [149, 178], [186, 164], 0.8),
+            ([139, 164], [119, 182], [148, 179], [185, 165], 0.2),
+            ([138, 163], [118, 181], [147, 178], [184, 164], -1.0),
+            ([137, 162], [117, 180], [146, 177], [183, 163], -2.0),
+        ]
+        return [
+            {
+                "weapon_anchor": anchor,
+                "rear_hand": rear,
+                "front_hand": front,
+                "muzzle": muzzle,
+                "angle_degrees": angle,
+                "scale": 1.0,
+                "z": "front",
+            }
+            for anchor, rear, front, muzzle, angle in values
+        ]
+
+    def test_calibrated_enemy_slice_passes(self) -> None:
+        result = validate_socket_sequence(
+            self.sockets(),
+            SocketQualityContract(
+                max_anchor_delta_px=4.0,
+                max_angle_delta_degrees=4.0,
+            ),
+            loop=True,
+        )
+        self.assertTrue(result.ok, result.errors)
+
+    def test_muzzle_behind_anchor_is_rejected(self) -> None:
+        sockets = self.sockets()
+        sockets[3]["muzzle"] = [130, 162]
+        result = validate_socket_sequence(sockets)
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(error.startswith("muzzle-not-forward:3:") for error in result.errors),
+            result.errors,
+        )
+
+    def test_detached_hand_is_rejected(self) -> None:
+        sockets = self.sockets()
+        sockets[2]["front_hand"] = [250, 175]
+        result = validate_socket_sequence(sockets)
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(error.startswith("front-hand-detached:2:") for error in result.errors),
+            result.errors,
+        )
+
+    def test_anchor_teleport_is_rejected(self) -> None:
+        sockets = self.sockets()
+        sockets[4]["weapon_anchor"] = [180, 163]
+        result = validate_socket_sequence(
+            sockets,
+            SocketQualityContract(max_anchor_delta_px=8.0),
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(error.startswith("socket-anchor-jump:3->4:") for error in result.errors),
+            result.errors,
+        )
+
+    def test_angle_jump_is_rejected(self) -> None:
+        sockets = self.sockets()
+        sockets[5]["angle_degrees"] = 40.0
+        result = validate_socket_sequence(
+            sockets,
+            SocketQualityContract(max_angle_delta_degrees=8.0),
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(error.startswith("socket-angle-jump:4->5:") for error in result.errors),
+            result.errors,
+        )
+
+    def test_bank_contract_runs_socket_quality_fail_closed(self) -> None:
+        data = SpriteForgeSocketContractTests()._base_contract()
+        data["animations"][0]["sockets"][1]["muzzle"] = [34, 30]
+        from sprite_forge import _validate_bank_contract
+        with self.assertRaisesRegex(BankContractError, "socket quality failed"):
+            _validate_bank_contract(data)
 
 
 if __name__ == "__main__":
