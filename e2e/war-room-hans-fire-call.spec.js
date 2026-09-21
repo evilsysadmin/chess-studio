@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi, scheduleDomClick } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 import { WAR_ROOM_HANS_COMPLETED_GAMES_KEY } from '../frontend/src/components/WarRoomHansPerGame.js';
 
@@ -34,23 +34,10 @@ async function openFireGame(page) {
   await mockApi(page);
   await login(page);
   await seedGamesBeforeFire(page);
-  await page.evaluate(() => {
-    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
-    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
-  });
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
-  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameStatus(page)).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-
-  const appearance = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
-  await expect(appearance).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await appearance.click();
-  const settings = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(settings).toBeVisible();
-  await settings.getByRole('radio', { name: /3D$/ }).click();
-  await settings.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await scheduleDomClick(quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const canvas = page.locator('.board3d-main-canvas');
