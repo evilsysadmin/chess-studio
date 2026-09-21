@@ -23,7 +23,7 @@ requireText('backend-python/game_api.py', 'load_stored_game_board(entry)', 'las 
 
 // Modos que no usan el endpoint /move siguen obligados a pasar por chess.js o
 // por la resolución legal de Combat antes de cambiar el tablero.
-requireText('frontend/src/components/SpectatorScreen.jsx', 'applySuggestedOrLegalFallback', 'Espectador debe validar/fallbackear sugerencias CPU contra chess.js');
+requireText('frontend/src/standardChessCpuMatch.js', 'applySuggestedOrLegalFallback', 'Espectador debe validar/fallbackear sugerencias CPU contra chess.js');
 requireText('frontend/src/components/SpectatorScreen.jsx', 'standardChessStatus', 'Espectador debe detectar terminales con el contrato común');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'matchesExpectedPuzzleMove', 'Puzzles debe comparar la solución sobre una jugada legal real');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'localChess.moves', 'Puzzles sólo debe ofrecer movimientos legales');
