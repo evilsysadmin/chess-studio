@@ -27,6 +27,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
+  window.__pawnSlugCaptureEvents = [];
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -39,7 +40,9 @@ await page.addInitScript(() => {
     params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
   window.addEventListener('message', (event) => {
     const data = event.data;
-    if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
+    if (data?.source !== 'pawn-slug-godot') return;
+    window.__pawnSlugCaptureEvents.push(String(data?.type || ''));
+    if (data?.type === 'ready') {
       window.__pawnSlugCaptureReady = true;
     }
   });
@@ -139,6 +142,43 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
+// Dedicated SMG switch proof. Reload the opening stage so previous combat does
+// not influence the pickup run. The game emits "weapon-pickup" on the exact
+// frame grant_weapon() selects the machinegun.
+const smgStage = await loadStage(detailedStage);
+await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
+await page.keyboard.down('ArrowRight');
+await page.waitForFunction(
+  () => Array.isArray(window.__pawnSlugCaptureEvents) && window.__pawnSlugCaptureEvents.includes('weapon-pickup'),
+  null,
+  { timeout: 10_000 },
+);
+await capture('50-smg-pickup-immediate');
+await captureDetailedCloseup('50-smg-pickup-immediate', smgStage.canvas);
+await page.waitForTimeout(100);
+await capture('51-smg-pickup-after-100ms');
+await captureDetailedCloseup('51-smg-pickup-after-100ms', smgStage.canvas);
+
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `52-smg-run-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
+  await page.waitForTimeout(48);
+}
+
+await page.keyboard.down('z');
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `53-smg-run-fire-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
+  await page.waitForTimeout(55);
+}
+await page.keyboard.up('z');
+await page.keyboard.up('ArrowRight');
+await page.waitForTimeout(120);
+await capture('54-smg-idle');
+await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -177,7 +217,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 5,
+    schema: 6,
     detailedStage,
     stageOverviews,
     captures,
