@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
@@ -9,6 +9,7 @@ import {
 import {
   ensureChroniclesTacticsRun,
   loadChroniclesProgression,
+  renewChroniclesTacticsRun,
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from '../chroniclesOfMatthiasProgression.js';
@@ -63,6 +64,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
+  const staleRunRecoveryAttemptedRef = useRef(false);
   useEscapeToClose(onExit, { disabled: ready });
 
   const confirmCharacterBuild = useCallback((build) => {
@@ -77,6 +79,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   }, [progression]);
 
   const retryBootstrap = useCallback(() => {
+    staleRunRecoveryAttemptedRef.current = false;
     setReady(false);
     setBootstrapError(null);
     setBootstrapRevision((revision) => revision + 1);
@@ -96,11 +99,20 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
       .then(() => {
         if (!active) return;
+        staleRunRecoveryAttemptedRef.current = false;
         setBootstrapError(null);
         setReady(true);
       })
       .catch((error) => {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
+        if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
+          staleRunRecoveryAttemptedRef.current = true;
+          renewChroniclesTacticsRun(operationId);
+          setReady(false);
+          setBootstrapError(null);
+          setBootstrapRevision((revision) => revision + 1);
+          return;
+        }
         setReady(false);
         setBootstrapError(error);
       });
