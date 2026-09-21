@@ -128,14 +128,14 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             (
                 '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
                 '--grep-invert', REGRESSION_STATE_INVERT,
-                '--workers=2', '--retries=0', '--timeout=75000',
+                '--workers=1', '--retries=0', '--timeout=75000',
             ),
         ),
     ),
     'learning-golden+learning-observation': (
         LaneCommand(
             'learning-golden-path.spec.js',
-            ('--workers=2', '--retries=0'),
+            ('--workers=1', '--retries=0'),
             ('learning-second-observation.spec.js',),
         ),
     ),
@@ -213,7 +213,7 @@ def self_test() -> None:
             PLAYWRIGHT, 'test', 'regression-journeys.spec.js',
             '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
             '--grep-invert', REGRESSION_STATE_INVERT,
-            '--workers=2', '--retries=0', '--timeout=75000',
+            '--workers=1', '--retries=0', '--timeout=75000',
         ], E2E_DIR, True)
     ]
     calls.clear()
@@ -221,7 +221,7 @@ def self_test() -> None:
     assert calls == [
         ([
             PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', 'learning-second-observation.spec.js',
-            '--workers=2', '--retries=0',
+            '--workers=1', '--retries=0',
         ], E2E_DIR, True)
     ]
     calls.clear()
