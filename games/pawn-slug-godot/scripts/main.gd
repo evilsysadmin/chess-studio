@@ -112,6 +112,8 @@ var _stage_start_x := 110.0
 var _checkpoints: Array = [110.0]
 var _platforms: Array[Rect2] = []
 var _platform_specs: Array[Dictionary] = []
+var _ladder_specs: Array[Dictionary] = []
+var _pit_specs: Array[Dictionary] = []
 var _obstacles: Array[Rect2] = []
 var _obstacle_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
@@ -169,7 +171,12 @@ func _ready() -> void:
         push_error("Pawn Slug stage manifest failed; using minimal safe fallback")
     _build_stage_geometry()
     if player.has_method("configure_stage"):
-        player.configure_stage(_stage_start_x, _checkpoints)
+        player.configure_stage(
+            _stage_start_x,
+            _checkpoints,
+            _ladder_specs,
+            _world_size.y + 96.0,
+        )
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
@@ -233,6 +240,14 @@ func _load_stage_manifest(stage_id: String) -> bool:
         if typeof(entry) == TYPE_DICTIONARY:
             _platform_specs.append(Dictionary(entry).duplicate(true))
     _platforms = _stage_rects(_platform_specs)
+    _ladder_specs.clear()
+    for entry in _stage_manifest.get("ladders", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _ladder_specs.append(Dictionary(entry).duplicate(true))
+    _pit_specs.clear()
+    for entry in _stage_manifest.get("pits", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _pit_specs.append(Dictionary(entry).duplicate(true))
     _obstacle_specs.clear()
     for entry in _stage_manifest.get("obstacles", []):
         if typeof(entry) == TYPE_DICTIONARY:
@@ -305,10 +320,7 @@ func _build_stage_geometry() -> void:
     _map_geometry_root.name = "StageGeometry"
     add_child(_map_geometry_root)
 
-    _add_stage_body(
-        Rect2(0.0, _floor_y, _world_size.x, _floor_depth),
-        "Floor",
-    )
+    _build_floor_bodies()
     _add_stage_body(
         Rect2(-_boundary_thickness, 0.0, _boundary_thickness, _world_size.y),
         "LeftBoundary",
@@ -324,6 +336,36 @@ func _build_stage_geometry() -> void:
         _add_stage_body(_platforms[index], "Platform_%02d" % index, one_way)
     for index in range(_obstacles.size()):
         _add_stage_body(_obstacles[index], "Obstacle_%02d" % index)
+
+func _build_floor_bodies() -> void:
+    var cursor := 0.0
+    var segment_index := 0
+    for pit in _pit_specs:
+        var pit_x := clampf(float(pit.get("x", 0.0)), 0.0, _world_size.x)
+        var pit_width := maxf(0.0, float(pit.get("w", 0.0)))
+        var pit_end := clampf(pit_x + pit_width, 0.0, _world_size.x)
+        if pit_end <= cursor:
+            continue
+        if pit_x > cursor:
+            _add_stage_body(
+                Rect2(cursor, _floor_y, pit_x - cursor, _floor_depth),
+                "Floor_%02d" % segment_index,
+            )
+            segment_index += 1
+        cursor = maxf(cursor, pit_end)
+    if cursor < _world_size.x:
+        _add_stage_body(
+            Rect2(cursor, _floor_y, _world_size.x - cursor, _floor_depth),
+            "Floor_%02d" % segment_index,
+        )
+
+func _x_over_pit(x: float) -> bool:
+    for pit in _pit_specs:
+        var pit_x := float(pit.get("x", 0.0))
+        var pit_width := maxf(0.0, float(pit.get("w", 0.0)))
+        if x >= pit_x and x <= pit_x + pit_width:
+            return true
+    return false
 
 func _add_stage_body(rect: Rect2, body_name: String, one_way := false) -> void:
     if rect.size.x <= 0.0 or rect.size.y <= 0.0:
@@ -343,7 +385,7 @@ func _add_stage_body(rect: Rect2, body_name: String, one_way := false) -> void:
     _map_geometry_root.add_child(body)
 
 func _point_hits_stage_geometry(point: Vector2) -> bool:
-    if point.y >= _floor_y:
+    if point.y >= _floor_y and not _x_over_pit(point.x):
         return true
     for rect in _platforms:
         if rect.has_point(point):
@@ -1226,7 +1268,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs, _obstacle_specs)
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs, _obstacle_specs, _ladder_specs, _pit_specs)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
