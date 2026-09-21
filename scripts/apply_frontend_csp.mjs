@@ -17,7 +17,10 @@ export const FRONTEND_CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' http: https: ws: wss:",
+  // blob: is required because GLTFLoader decodes embedded glTF textures through
+  // ImageBitmapLoader, which fetch()es a blob: URL. Without it every textured GLB
+  // (such as the Home runtime scene) has its textures blocked.
+  "connect-src 'self' blob: http: https: ws: wss:",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "manifest-src 'self'",

@@ -19,7 +19,17 @@ const FRONT_GEOMETRY_NAMES = Object.freeze([
   'Classic chest cross brass',
   'Classic chest cross inset',
 ]);
-const FRONT_GEOMETRY_SET = new Set(FRONT_GEOMETRY_NAMES);
+export function homeMatthiasCanonicalMeshName(value = '') {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+const FRONT_GEOMETRY_SET = new Set(
+  FRONT_GEOMETRY_NAMES.map((name) => homeMatthiasCanonicalMeshName(name)),
+);
+
+export function homeMatthiasIsFrontGeometryName(value = '') {
+  return FRONT_GEOMETRY_SET.has(homeMatthiasCanonicalMeshName(value));
+}
 const CLIP_BY_PROFILE = Object.freeze({
   idle: 'Idle',
   speak: 'Speak',
@@ -172,10 +182,12 @@ function visibleGeometryCenter(node) {
 }
 
 function deriveVisibleFrontGeometry(model, center) {
-  const points = FRONT_GEOMETRY_NAMES
-    .map((name) => visibleGeometryCenter(model.getObjectByName(name)))
-    .filter(Boolean)
-    .map((point) => ({ x: point.x, z: point.z }));
+  const points = [];
+  model.traverse((node) => {
+    if (!node?.isMesh || !homeMatthiasIsFrontGeometryName(node.name)) return;
+    const point = visibleGeometryCenter(node);
+    if (point) points.push({ x: point.x, z: point.z });
+  });
   return homeMatthiasFrontDirectionFromPoints({
     centerX: center.x,
     centerZ: center.z,
@@ -472,10 +484,11 @@ export default function HomeMatthias3D({
 
         model.traverse((node) => {
           if (node.isMesh) {
+            const isFrontGeometry = homeMatthiasIsFrontGeometryName(node.name);
             node.castShadow = false;
             node.receiveShadow = false;
-            node.frustumCulled = !FRONT_GEOMETRY_SET.has(node.name);
-            if (FRONT_GEOMETRY_SET.has(node.name)) {
+            node.frustumCulled = !isFrontGeometry;
+            if (isFrontGeometry) {
               const materials = Array.isArray(node.material) ? node.material : [node.material];
               for (const material of materials) {
                 if (!material) continue;

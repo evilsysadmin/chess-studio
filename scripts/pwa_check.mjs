@@ -48,6 +48,7 @@ assert(FRONTEND_CSP.includes("script-src 'self' 'wasm-unsafe-eval'"), 'script-sr
 assert(FRONTEND_CSP.includes("script-src-attr 'none'"), 'CSP no bloquea handlers JavaScript inline');
 assert(!/script-src[^;]*'unsafe-inline'/.test(FRONTEND_CSP), 'script-src permite unsafe-inline');
 assert(!/script-src[^;]*'unsafe-eval'/.test(FRONTEND_CSP), 'script-src permite unsafe-eval genérico');
+assert(/connect-src[^;]*\bblob:/.test(FRONTEND_CSP), 'connect-src debe permitir blob: para las texturas incrustadas de los GLB (GLTFLoader/ImageBitmapLoader)');
 assert(FRONTEND_CSP.includes("object-src 'none'") && FRONTEND_CSP.includes("base-uri 'self'"), 'CSP carece de object/base hardening');
 assert(pagesHeaders.includes('X-Content-Type-Options: nosniff'), 'Cloudflare Pages no envía nosniff');
 assert(pagesHeaders.includes('X-Frame-Options: SAMEORIGIN'), 'Cloudflare Pages no restringe framing a same-origin');

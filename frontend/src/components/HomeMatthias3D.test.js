@@ -5,6 +5,7 @@ import {
   homeMatthiasClipForProfile,
   homeMatthiasClipStartTime,
   homeMatthiasFrontDirectionFromPoints,
+  homeMatthiasIsFrontGeometryName,
   homeMatthiasMotionPhase,
   homeMatthiasMotionProfile,
   homeMatthiasPlaybackPolicy,
@@ -116,6 +117,14 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(front.faceX).toBeCloseTo(0, 1);
     expect(front.faceZ).toBeGreaterThan(0.99);
     expect(front.anchorZ).toBeGreaterThan(0.4);
+  });
+
+  it('matches canonical front anchors after GLTFLoader sanitizes Blender node names', () => {
+    expect(homeMatthiasIsFrontGeometryName('Eye.L')).toBe(true);
+    expect(homeMatthiasIsFrontGeometryName('Eye_L')).toBe(true);
+    expect(homeMatthiasIsFrontGeometryName('Classic cap badge')).toBe(true);
+    expect(homeMatthiasIsFrontGeometryName('Classic_cap_badge')).toBe(true);
+    expect(homeMatthiasIsFrontGeometryName('Unrelated mesh')).toBe(false);
   });
 
   it('rejects collapsed or missing front geometry so Home can use the canonical fallback', () => {
