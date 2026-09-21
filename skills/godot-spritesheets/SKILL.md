@@ -256,6 +256,7 @@ Como mínimo generar:
 La revisión visual debe buscar específicamente:
 
 - armas duplicadas o fantasma;
+- artefactos residuales específicos por arma (píxeles/volúmenes flotantes, dobles cañones, manos duplicadas o fragmentos de un arma anterior), revisando por separado pistol, SMG/machinegun, shotgun y panzerfaust;
 - cambios de mano;
 - frames con proporciones distintas;
 - pies/pivote que bailan;
