@@ -56,6 +56,33 @@ No debe producir:
 - un segundo objeto en la mano libre salvo que el diseño lo exija;
 - sprites con perspectiva incompatible entre frames.
 
+### 2.3. Rebuild completo de un banco animado
+
+Cuando el objetivo sea rehacer un framesheet completo, **no generar el atlas entero como una sola imagen de presentación**.
+
+El flujo obligatorio es **animación por animación**:
+
+1. una animación concreta;
+2. exactamente los frames que exige su contrato (para Matthias actual: 8);
+3. fondo transparente;
+4. sin títulos, números, paneles, flechas, leyendas ni muestras ampliadas;
+5. misma dirección base, escala corporal, vestuario, arma y agarre que el resto del banco;
+6. normalización por script a la celda runtime;
+7. contact strip PNG de esa animación;
+8. revisión visual explícita frame a frame;
+9. aceptar o regenerar esa animación antes de pasar a la siguiente.
+
+Una generación que produzca un póster, tablero UI, ficha técnica o composición con sprites fuera de una rejilla técnica **se considera referencia visual, nunca source runtime**.
+
+En un rebuild completo no se mezclan silenciosamente filas legacy sólo porque ya existan. Cada animación debe quedar marcada como una de estas tres categorías en el worksheet/manifest:
+
+- `regenerated`;
+- `retained-reviewed`;
+- `rejected`.
+
+Si el usuario pide rehacer **todo** el framesheet, la categoría `retained-reviewed` sólo puede usarse si se ha revisado explícitamente esa animación y se ha justificado conservarla.
+
+
 ## 3. Contrato visual por frame
 
 Todos los frames de una misma familia deben tener:
@@ -241,6 +268,27 @@ La revisión visual debe buscar específicamente:
 - desalineación entre celda y región real.
 
 **CI verde no sustituye esta revisión.** Si el PNG se ve mal, la iteración está mal aunque todos los checks estructurales pasen.
+
+### 10.1. Revisión pose a pose obligatoria
+
+Para Matthias, el artifact visual debe permitir revisar **cada animación del manifest**, no sólo una muestra representativa.
+
+En un banco 18×8 deben existir como mínimo:
+
+- un contact strip por fila/animación con sus 8 frames;
+- un overview global del atlas;
+- close-ups runtime de `idle`, `walk/run`, `run+fire`, `shoot`, direccionales, `crouch/crouch_fire`, `reload`, `hurt` y `die`;
+- captura runtime de cualquier transición que haya sido motivo de una regresión previa.
+
+La revisión humana debe registrar explícitamente, por animación, `PASS` o `REJECT`. No basta con revisar un frame de `run+fire` y asumir que `idle` o `hurt` están bien.
+
+Antes de Ready/merge, revisar siempre:
+
+- frame 0 y frame intermedio de cada fila;
+- todos los frames de las filas que cambian agarre/arma;
+- primer/último frame de transiciones no-loop;
+- silueta a escala real del juego, además del contact sheet.
+
 
 ## 11. Secuencia de trabajo
 
