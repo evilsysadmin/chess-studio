@@ -19,7 +19,7 @@ FRAME_H = 350
 BODY_Y = 52
 ORIGIN = (128, 180)
 SMG_REGION = (256, 0, 512, 128)
-WEAPON_SCALE = 0.40
+WEAPON_SCALE = 0.34
 
 
 def _point(origin: tuple[int, int], offset: list[float]) -> tuple[float, float]:
