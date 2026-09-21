@@ -159,7 +159,6 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Pawn Slug browser smoke
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
@@ -329,7 +328,6 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
@@ -363,7 +361,6 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
