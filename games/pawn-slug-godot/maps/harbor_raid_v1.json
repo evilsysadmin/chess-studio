@@ -45,7 +45,8 @@
       "material": "metal",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 1140,
@@ -117,7 +118,8 @@
       "material": "metal",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 3230,
@@ -312,6 +314,43 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2440,
+      "y": 328,
+      "w": 150,
+      "h": 22,
+      "kind": "cargo_catwalk",
+      "material": "metal",
+      "one_way": true,
+      "route": "crane_upper",
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 2620,
+      "y": 258,
+      "w": 165,
+      "h": 22,
+      "kind": "crane_catwalk",
+      "material": "metal",
+      "one_way": true,
+      "route": "crane_upper",
+      "visual": {
+        "lamp": true,
+        "rail": true
+      }
+    },
+    {
+      "x": 2820,
+      "y": 320,
+      "w": 150,
+      "h": 22,
+      "kind": "cargo_catwalk",
+      "material": "wood",
+      "one_way": true,
+      "route": "crane_upper"
     }
   ],
   "obstacles": [
@@ -877,5 +916,47 @@
       "y": 607
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3,
+  "ladders": [
+    {
+      "x": 950,
+      "y": 396,
+      "w": 40,
+      "h": 214,
+      "kind": "dock_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 3035,
+      "y": 372,
+      "w": 40,
+      "h": 238,
+      "kind": "dock_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 4080,
+      "y": 404,
+      "w": 40,
+      "h": 206,
+      "kind": "dock_ladder",
+      "route": "vertical"
+    }
+  ],
+  "pits": [
+    {
+      "x": 490,
+      "y": 610,
+      "w": 110,
+      "h": 110,
+      "kind": "dock_gap"
+    },
+    {
+      "x": 2420,
+      "y": 610,
+      "w": 84,
+      "h": 110,
+      "kind": "water_gap"
+    }
+  ]
 }
