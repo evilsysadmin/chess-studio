@@ -196,25 +196,39 @@ def main() -> int:
     oci_cost, oci_currency = collect_oci_cost(oci)
     costs = [("oci", oci_cost, oci_currency)]
     cloudflare_error: str | None = None
-    try:
-        cf_cost, cf_currency = collect_cloudflare_cost()
-    except SystemExit as exc:
-        cloudflare_error = str(exc)
-    else:
-        costs.append(("cloudflare", cf_cost, cf_currency))
+    cloudflare_failure_is_fatal = False
+    billing_token_configured = bool(os.environ.get("CLOUDFLARE_BILLING_API_TOKEN", "").strip())
 
-    # Publish every trustworthy provider sample we have. A Cloudflare permission
-    # failure must not blind the independent OCI billing widget.
+    if billing_token_configured:
+        try:
+            cf_cost, cf_currency = collect_cloudflare_cost()
+        except SystemExit as exc:
+            cloudflare_error = str(exc)
+            cloudflare_failure_is_fatal = True
+        else:
+            costs.append(("cloudflare", cf_cost, cf_currency))
+    else:
+        cloudflare_error = (
+            "CLOUDFLARE_BILLING_API_TOKEN is not configured; "
+            "Cloudflare billing collection was skipped"
+        )
+
+    # Publish every trustworthy provider sample we have. Missing optional
+    # Cloudflare billing credentials must not blind the independent OCI widget.
     publish_via_staging(oci, costs)
 
     if cloudflare_error:
+        prefix = "::warning::" if not cloudflare_failure_is_fatal else ""
         print(
-            "billing-cost-export PARTIAL · "
+            prefix
+            + "billing-cost-export PARTIAL · "
             f"oci={oci_cost:.2f} {oci_currency} published · cloudflare=unavailable · "
             f"{cloudflare_error}",
             file=sys.stderr,
         )
-        raise SystemExit(cloudflare_error)
+        if cloudflare_failure_is_fatal:
+            raise SystemExit(cloudflare_error)
+        return 0
 
     print(
         "billing-cost-export OK · "
