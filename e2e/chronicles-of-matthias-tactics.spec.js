@@ -165,6 +165,49 @@ test('Chronicles Tactics · bootstrap remoto fallido bloquea gameplay con error 
   await expect(page.locator('[data-chronicles-tactics="true"]')).toHaveCount(0);
 });
 
+test('Chronicles Tactics · un 409 de run obsoleta rota la identidad una vez y recupera el arranque', async ({ page }) => {
+  const runRequests = [];
+  await mockApi(page);
+  let rejectStaleRun = true;
+  await page.route('http://localhost:4000/api/chronicles/runs', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.fallback();
+    runRequests.push(request.headers()['idempotency-key'] || '');
+    if (!rejectStaleRun) return route.fallback();
+    rejectStaleRun = false;
+    return route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      headers: { 'X-Request-ID': 'e2e-stale-chronicles-run' },
+      body: JSON.stringify({
+        detail: 'La revisión de contenido de esta run ya no está disponible.',
+        requestId: 'e2e-stale-chronicles-run',
+      }),
+    });
+  });
+
+  await login(page);
+  await dismissGuide(page);
+  const moreModes = await openMoreGameModes(page);
+  await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' }).click();
+  await confirmChroniclesCharacterSetup(page);
+
+  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
+  await expect.poll(() => runRequests.length).toBe(2);
+  expect(runRequests[0]).toBeTruthy();
+  expect(runRequests[1]).toBeTruthy();
+  expect(runRequests[1]).not.toBe(runRequests[0]);
+
+  const stored = await page.evaluate(() => {
+    const raw = localStorage.getItem('chess-study-chronicles-tactics-run-v1');
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect(stored?.id).toBe(runRequests[1]);
+  expect(stored?.ended).toBe(false);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
 test('Chronicles Tactics · elegir doctrina desde la ficha consume skill point y cierra la alternativa', async ({ page }) => {
   await openTactics(page, {
     progression: {
