@@ -9,6 +9,12 @@ const WALL_NAME = /^chronicles-iso-wall-(\d+)-(\d+)$/;
 const MASONRY_COURSES = 4;
 const MASONRY_BLOCKS_PER_COURSE = 3;
 const MASONRY_TRIM_BLOCKS = 2;
+const CUTAWAY_COURSES = 2;
+const CUTAWAY_BLOCKS_PER_COURSE = 3;
+const CUTAWAY_CAP_BLOCKS_PER_WALL = 5;
+
+export const CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE = CUTAWAY_COURSES * CUTAWAY_BLOCKS_PER_COURSE;
+export const CHRONICLES_TACTICS_CUTAWAY_CAP_BLOCKS_PER_WALL = CUTAWAY_CAP_BLOCKS_PER_WALL;
 
 export const CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL = (
   MASONRY_COURSES * MASONRY_BLOCKS_PER_COURSE
@@ -26,6 +32,15 @@ export const CHRONICLES_TACTICS_MASONRY_STYLE = Object.freeze({
   blockWidth: 0.72,
   blockHeight: 0.48,
   faceDepth: 0.17,
+});
+
+export const CHRONICLES_TACTICS_CUTAWAY_STYLE = Object.freeze({
+  profile: 'low-wall-coping-v1',
+  courseCount: CUTAWAY_COURSES,
+  blocksPerCourse: CUTAWAY_BLOCKS_PER_COURSE,
+  capBlocksPerWall: CUTAWAY_CAP_BLOCKS_PER_WALL,
+  faceDepth: 0.12,
+  capHeight: 1.105,
 });
 
 const SIDES = Object.freeze([
@@ -68,6 +83,23 @@ export function chroniclesTacticsArchitectureWallCells(
     if (!match || object.userData?.chroniclesTacticsCutaway || object.visible === false) return;
     const height = Number(object.geometry?.parameters?.height || 0);
     if (height && height < 1.8) return;
+    const x = Number(match[1]);
+    const y = Number(match[2]);
+    chroniclesTacticsExposedWallSides(x, y, scenePlan).forEach((side) => {
+      cells.push({ x, y, side, wall: object });
+    });
+  });
+  return cells;
+}
+
+export function chroniclesTacticsCutawayWallCells(
+  scene,
+  scenePlan = chroniclesIsometricScenePlan(),
+) {
+  const cells = [];
+  scene?.traverse?.((object) => {
+    const match = WALL_NAME.exec(String(object.name || ''));
+    if (!match || !object.userData?.chroniclesTacticsCutaway || object.visible === false) return;
     const x = Number(match[1]);
     const y = Number(match[2]);
     chroniclesTacticsExposedWallSides(x, y, scenePlan).forEach((side) => {
@@ -190,6 +222,84 @@ function buildMasonryInstances(root, wallCells, material, { coarsePointer }) {
   return mesh;
 }
 
+
+function buildCutawayFinishInstances(root, cutawayCells, material, { coarsePointer }) {
+  if (!cutawayCells.length) return null;
+
+  const uniqueWalls = [...new Map(
+    cutawayCells.map((entry) => [`${entry.x}:${entry.y}`, entry]),
+  ).values()];
+  const instanceCount = (
+    cutawayCells.length * CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE
+    + uniqueWalls.length * CHRONICLES_TACTICS_CUTAWAY_CAP_BLOCKS_PER_WALL
+  );
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const mesh = new THREE.InstancedMesh(geometry, material, instanceCount);
+  mesh.name = 'chronicles-tactics-cutaway-finish-instances';
+  mesh.castShadow = !coarsePointer;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+  const baseColor = new THREE.Color(material.color);
+  const dummy = new THREE.Object3D();
+  let index = 0;
+
+  cutawayCells.forEach(({ x, y, wall, side }) => {
+    const faceX = wall.position.x + side.nx * (CELL * 0.5 + 0.072);
+    const faceZ = wall.position.z + side.nz * (CELL * 0.5 + 0.072);
+    for (let course = 0; course < CUTAWAY_COURSES; course += 1) {
+      const courseY = 0.26 + course * 0.41;
+      const stagger = course % 2 ? 0.12 : 0;
+      for (let block = 0; block < CUTAWAY_BLOCKS_PER_COURSE; block += 1) {
+        const tangentOffset = (block - 1) * 0.76 + stagger;
+        const jitter = (deterministicNoise(x + block, y + course, 83) - 0.5) * 0.03;
+        setBox(mesh, index, dummy, {
+          x: faceX + side.tx * tangentOffset + side.nx * jitter,
+          y: courseY,
+          z: faceZ + side.tz * tangentOffset + side.nz * jitter,
+          sx: 0.71 + (deterministicNoise(x, y, 101 + block) - 0.5) * 0.045,
+          sy: 0.34,
+          sz: CHRONICLES_TACTICS_CUTAWAY_STYLE.faceDepth,
+          yaw: side.yaw,
+        });
+        mesh.setColorAt(index, colorForBlock(baseColor, x, y, course + 7, block));
+        index += 1;
+      }
+    }
+  });
+
+  uniqueWalls.forEach(({ x, y, wall }) => {
+    const capY = CHRONICLES_TACTICS_CUTAWAY_STYLE.capHeight;
+    const lighter = baseColor.clone().offsetHSL(0, -0.012, 0.065);
+    const darker = baseColor.clone().offsetHSL(0, -0.02, -0.035);
+    const capPieces = [
+      { x: wall.position.x, z: wall.position.z, sx: 0.72, sy: 0.07, sz: 0.72, color: lighter },
+      { x: wall.position.x, z: wall.position.z - 0.98, sx: 1.12, sy: 0.10, sz: 0.20, color: lighter },
+      { x: wall.position.x, z: wall.position.z + 0.98, sx: 1.12, sy: 0.10, sz: 0.20, color: lighter },
+      { x: wall.position.x - 0.98, z: wall.position.z, sx: 0.20, sy: 0.10, sz: 1.12, color: darker },
+      { x: wall.position.x + 0.98, z: wall.position.z, sx: 0.20, sy: 0.10, sz: 1.12, color: darker },
+    ];
+    capPieces.forEach((piece) => {
+      setBox(mesh, index, dummy, {
+        x: piece.x,
+        y: capY,
+        z: piece.z,
+        sx: piece.sx,
+        sy: piece.sy,
+        sz: piece.sz,
+      });
+      mesh.setColorAt(index, piece.color);
+      index += 1;
+    });
+  });
+
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  root.add(mesh);
+  return mesh;
+}
+
 function buildArchInstances(root, material) {
   const geometry = new THREE.TorusGeometry(1.03, 0.13, 8, 24, Math.PI);
   const mesh = new THREE.InstancedMesh(geometry, material, CHRONICLES_TACTICS_ARCHES.length);
@@ -241,15 +351,20 @@ export function installChroniclesTacticsArchitectureArt(scene, {
   material.userData.chroniclesIsoOwned = true;
 
   const wallCells = chroniclesTacticsArchitectureWallCells(scene, scenePlan);
+  const cutawayCells = chroniclesTacticsCutawayWallCells(scene, scenePlan);
   const masonry = buildMasonryInstances(root, wallCells, material, { coarsePointer });
+  const cutawayFinish = buildCutawayFinishInstances(root, cutawayCells, material, { coarsePointer });
   const arches = buildArchInstances(root, material);
 
   root.userData.chroniclesArtCancel = () => surfaceTexture.dispose();
   root.userData.chroniclesArchitectureWallCount = wallCells.length;
-  root.userData.chroniclesArchitectureDrawGroups = 2;
+  root.userData.chroniclesArchitectureCutawayFaceCount = cutawayCells.length;
+  root.userData.chroniclesArchitectureDrawGroups = 2 + Number(Boolean(cutawayFinish));
   root.userData.chroniclesArchitectureMasonry = masonry;
+  root.userData.chroniclesArchitectureCutawayFinish = cutawayFinish;
   root.userData.chroniclesArchitectureArches = arches;
   root.userData.chroniclesArchitectureMasonryProfile = CHRONICLES_TACTICS_MASONRY_STYLE.profile;
-  root.userData.chroniclesArchitectureInstanceCount = masonry.count;
+  root.userData.chroniclesArchitectureCutawayProfile = CHRONICLES_TACTICS_CUTAWAY_STYLE.profile;
+  root.userData.chroniclesArchitectureInstanceCount = masonry.count + (cutawayFinish?.count || 0);
   return root;
 }
