@@ -13,11 +13,13 @@ from sprite_forge import (
     GeometryContract,
     GeometryError,
     LintConfig,
+    PlacementContract,
     SocketQualityContract,
     TemporalContract,
     geometry_metrics,
     lint_frame,
     normalize_frame,
+    place_frame_fixed_scale,
     validate_geometry,
     validate_sequence,
     validate_socket_sequence,
@@ -186,6 +188,77 @@ class SpriteForgeGeometryTests(unittest.TestCase):
             ),
             result.errors,
         )
+
+
+class SpriteForgeFixedScalePlacementTests(unittest.TestCase):
+    def contract(self, scale: float = 2.5) -> PlacementContract:
+        return PlacementContract(
+            canvas_size=(416, 416),
+            scale=scale,
+            body_center_x=208.0,
+            foot_y=382.0,
+            safe_margin_px=10,
+        )
+
+    def test_horizontal_pose_preserves_explicit_scale(self) -> None:
+        source = Image.new("RGBA", (160, 100), (0, 0, 0, 0))
+        ImageDraw.Draw(source).rounded_rectangle(
+            (20, 35, 133, 85),
+            radius=12,
+            fill=(180, 120, 80, 255),
+        )
+        placed = place_frame_fixed_scale(source, self.contract())
+        metrics = geometry_metrics(placed)
+        self.assertIsNotNone(metrics)
+        self.assertAlmostEqual(metrics.foot_y, 382.0, delta=2.0)
+        self.assertAlmostEqual(metrics.body_center_x, 208.0, delta=3.0)
+        self.assertAlmostEqual(
+            metrics.body_height,
+            51 * 2.5,
+            delta=3.0,
+        )
+
+    def test_fixed_scale_refuses_horizontal_width_clipping(self) -> None:
+        source = Image.new("RGBA", (140, 80), (0, 0, 0, 0))
+        ImageDraw.Draw(source).rectangle(
+            (5, 25, 134, 70),
+            fill=(180, 120, 80, 255),
+        )
+        with self.assertRaisesRegex(GeometryError, "would-clip"):
+            place_frame_fixed_scale(source, self.contract(scale=3.2))
+
+    def test_fixed_scale_includes_allowed_detached_content_in_clip_check(self) -> None:
+        source = Image.new("RGBA", (160, 100), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(source)
+        draw.rectangle((60, 30, 99, 80), fill=(180, 120, 80, 255))
+        draw.rectangle((150, 40, 155, 45), fill=(255, 220, 120, 255))
+        config = LintConfig(
+            edge_guard_px=0,
+            allowed_detached_components=1,
+        )
+        with self.assertRaisesRegex(GeometryError, "would-clip"):
+            place_frame_fixed_scale(
+                source,
+                self.contract(scale=2.5),
+                config,
+            )
+
+    def test_fixed_scale_bicubic_does_not_create_alpha_orphans(self) -> None:
+        source = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(source)
+        draw.ellipse((31, 8, 48, 26), fill=(180, 120, 80, 255))
+        draw.polygon(
+            [(34, 25), (45, 25), (53, 58), (45, 66), (39, 48), (31, 66), (24, 61), (32, 32)],
+            fill=(180, 120, 80, 255),
+        )
+        draw.line((33, 34, 16, 49), fill=(180, 120, 80, 255), width=3)
+        placed = place_frame_fixed_scale(source, self.contract(scale=2.3))
+        lint = lint_frame(
+            placed,
+            LintConfig(edge_guard_px=0, min_detached_area=1),
+        )
+        self.assertTrue(lint.ok, lint.errors)
+        self.assertEqual(len(lint.components), 1)
 
 
 class SpriteForgeTemporalTests(unittest.TestCase):
