@@ -120,21 +120,6 @@ jobs:
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/player_runtime_smoke.gd
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_initial_v4_atlas_smoke.gd
-      - name: Enemy v1 socket visual slice
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
-          "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_socket_v1_visual_smoke.gd
-      - name: Upload enemy v1 socket slice
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v7
-        with:
-          name: pawn-slug-enemy-socket-v1-\${{ github.event.pull_request.number }}
-          path: /tmp/pawn-slug-v1-slice/
-          if-no-files-found: error
-          retention-days: 7
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
       - name: Enemy roster composition gate
@@ -145,6 +130,22 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
           python3 scripts/art/validate_pawn_slug_initial_enemy_v4.py
+      - name: Enemy v1 socket transform smoke
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_socket_v1_visual_smoke.gd
+          python3 scripts/art/build_enemy_socket_v1_slice.py
+      - name: Upload enemy v1 socket slice
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-enemy-socket-v1-\${{ github.event.pull_request.number }}
+          path: /tmp/pawn-slug-v1-slice/
+          if-no-files-found: error
+          retention-days: 7
       - name: Sprite Forge fail-closed contract
         run: |
           set -euo pipefail
