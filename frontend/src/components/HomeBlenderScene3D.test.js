@@ -6,6 +6,7 @@ import {
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
+  homeBlenderGlowOpacity,
   flameHeightRange,
   applyFlameGradient,
   HOME_BLENDER_FLAME_GRADIENT,
@@ -471,6 +472,22 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect(shader.fragmentShader).toContain('totalEmissiveRadiance = mix(');
       expect(material.customProgramCacheKey()).toBe('home-flame-gradient');
       expect(applyFlameGradient(material, null)).toBe(false);
+    });
+  });
+
+  describe('flame glow', () => {
+    it('follows the light flicker but stays inside a sane band', () => {
+      expect(homeBlenderGlowOpacity(0.5, 1)).toBeCloseTo(0.5);
+      expect(homeBlenderGlowOpacity(0.5, 0.9)).toBeCloseTo(0.45);
+      expect(homeBlenderGlowOpacity(0.5, 0.1)).toBeCloseTo(0.25);
+      expect(homeBlenderGlowOpacity(0.5, 9)).toBeCloseTo(0.7);
+    });
+
+    it('never leaves 0..1 and tolerates bad input', () => {
+      expect(homeBlenderGlowOpacity(0.9, 1.4)).toBe(1);
+      expect(homeBlenderGlowOpacity(0, 1)).toBe(0);
+      expect(homeBlenderGlowOpacity(undefined, undefined)).toBe(0);
+      expect(homeBlenderGlowOpacity(0.5, Number.NaN)).toBeCloseTo(0.25);
     });
   });
 });

@@ -467,6 +467,52 @@ const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
 const HOME_BLENDER_LITE_EXPOSURE_BOOST = 1.75;
 const HOME_BLENDER_LITE_AMBIENT_BOOST = 2.6;
 
+// Flames and candles were a bright shape with a hard edge and no halo, so they read
+// as stickers. Each practical light now carries a soft additive sprite (a radial
+// gradient, no post-processing pass) whose opacity follows the same flicker as the
+// light behind it. The ratio is clamped so a deep dip in the noise never blacks the
+// glow out and a spike never blows it out.
+export function homeBlenderGlowOpacity(base = 0, lightRatio = 1) {
+  const ratio = Math.min(1.4, Math.max(0.5, Number(lightRatio) || 0));
+  return Math.min(1, Math.max(0, Number(base) * ratio));
+}
+
+function createGlowTexture() {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.18, 'rgba(255,255,255,0.55)');
+  gradient.addColorStop(0.5, 'rgba(255,255,255,0.14)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createGlowSprite(texture, color, size, opacity, position) {
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    color,
+    transparent: true,
+    opacity,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.copy(position);
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
 function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
@@ -531,6 +577,7 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     ? HOME_BLENDER_TORCH_X.map((x) => {
       const light = new THREE.PointLight(0xff8a3c, 7, 6, 2);
       light.position.set(x, 3.15, -5.5);
+      light.userData.glow = { size: 1.05, opacity: 0.5 };
       return light;
     })
     : [];
@@ -548,24 +595,49 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     // and the reading light at the library desk. Positions map Blender (x, y, z) to
     // three (x, z, -y). Kept modest: the chandelier hangs right over the board, whose
     // colours must stay honest.
-    for (const [color, intensity, distance, x, y, z] of [
-      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2],
-      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4],
-      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76],
+    for (const [color, intensity, distance, x, y, z, glowSize] of [
+      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2, 0],
+      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55],
+      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55],
       // The three candles on the Dungeon balustrade: they give the step treads (in
       // shadow otherwise) a raking warm light, one per flight of the stair.
-      [0xff7a30, 3.0, 3.2, 5.35, 1.40, -0.91],
-      [0xff7a30, 3.0, 3.2, 6.35, 0.75, -0.06],
-      [0xff7a30, 3.0, 3.2, 7.25, 0.16, 0.69],
+      [0xff7a30, 3.0, 3.2, 5.35, 1.40, -0.91, 0.5],
+      [0xff7a30, 3.0, 3.2, 6.35, 0.75, -0.06, 0.5],
+      [0xff7a30, 3.0, 3.2, 7.25, 0.16, 0.69, 0.5],
     ]) {
       const light = new THREE.PointLight(color, intensity, distance, 2);
       light.position.set(x, y, z);
+      if (glowSize) light.userData.glow = { size: glowSize, opacity: 0.5 };
       torches.push(light);
     }
   }
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
+
+  const glowTexture = createGlowTexture();
+  const glows = [];
+  if (glowTexture) {
+    for (const light of torches) {
+      const spec = light.userData.glow;
+      if (!spec) continue;
+      const sprite = createGlowSprite(glowTexture, light.color, spec.size, spec.opacity, light.position);
+      scene.add(sprite);
+      glows.push({ sprite, light, lightBase: light.intensity, base: spec.opacity, hearth: null });
+    }
+    for (const [hearth, side] of [[leftHearth, 'left'], [rightHearth, 'right']]) {
+      const sprite = createGlowSprite(glowTexture, hearth.color, 2.6, 0.30, hearth.position);
+      scene.add(sprite);
+      glows.push({ sprite, light: hearth, lightBase: hearth.intensity, base: 0.30, hearth: side });
+    }
+  }
+  const disposeGlows = () => {
+    for (const glow of glows) glow.sprite.material.dispose();
+    glowTexture?.dispose?.();
+  };
+
   return {
+    glows,
+    disposeGlows,
     torches: torches.map((light, index) => ({
       light,
       base: light.intensity,
@@ -776,6 +848,12 @@ export default function HomeBlenderScene3D({
           torch.light.intensity = torch.base
             * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle' }).light;
         }
+        for (const glow of runtimeLights.glows) {
+          glow.sprite.material.opacity = homeBlenderGlowOpacity(
+            glow.base,
+            glow.light.intensity / (glow.lightBase || 1),
+          );
+        }
         const startedAt = performance.now();
         renderFrame();
         const cost = performance.now() - startedAt;
@@ -920,6 +998,7 @@ export default function HomeBlenderScene3D({
         scene.remove(model);
         disposeRuntimeScene(model);
       }
+      runtimeLights.disposeGlows?.();
       releaseEnvironment();
       renderer.dispose();
     };
