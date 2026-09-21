@@ -178,10 +178,17 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
 
   expect(pickedUp, 'Pawn Slug Godot debe alcanzar el primer pickup de arma').toBeTruthy();
 
-  // La SMG se selecciona automáticamente al recogerla; una ráfaga breve hace
-  // visible cualquier mezcla de atlas/cambio de arma en la evidencia.
+  // La SMG se selecciona automáticamente al recogerla. Capturar el mismo tick
+  // observable y +100 ms protege específicamente la regresión donde el HUD ya
+  // decía SMG pero Matthias seguía renderizando la pistola mientras descargaba.
+  await captureGodot(page, testInfo, '02-godot-smg-pickup-immediate.png');
+  await page.waitForTimeout(100);
+  await captureGodot(page, testInfo, '03-godot-smg-pickup-after-100ms.png');
+
+  // Una ráfaga breve hace además visible cualquier mezcla de atlas, arma
+  // fantasma o transición incorrecta durante firing.
   await page.keyboard.down('z');
   await page.waitForTimeout(160);
-  await captureGodot(page, testInfo, '02-godot-smg-fire.png');
+  await captureGodot(page, testInfo, '04-godot-smg-fire.png');
   await page.keyboard.up('z');
 });
