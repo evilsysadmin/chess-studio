@@ -22,7 +22,10 @@ from typing import Iterable
 JSON_CHUNK = 0x4E4F534A
 BIN_CHUNK = 0x004E4942
 TRIANGLES = 4
-FLOAT_TOLERANCE = 1e-6
+# Blender 5.2.x can recalculate otherwise identical split normals with roughly
+# 3e-5 absolute drift between clean software renders. 1e-4 remains far below a
+# visible mesh or animation change while keeping CI stable across runner CPUs.
+FLOAT_TOLERANCE = 1e-4
 
 _COMPONENTS = {
     5120: ("b", 1),
