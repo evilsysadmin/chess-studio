@@ -383,6 +383,7 @@ var _atlas_request: HTTPRequest
 var _atlas_request_weapon := ""
 var _atlas_request_layout := ""
 var _bootstrap_requests: Array[HTTPRequest] = []
+var _bootstrap_startup_pending := false
 var _bootstrap_full_pending := 0
 var _bootstrap_run_pending := 0
 var _bootstrap_full_failures: Array[String] = []
@@ -395,7 +396,9 @@ func _ready() -> void:
     queue_redraw()
 
 func body_ready() -> bool:
-    return _body_ready and _bootstrap_complete
+    # First paint depends only on the currently equipped authored bank. The
+    # remaining arsenal keeps warming in the background after Matthias is visible.
+    return _body_ready
 
 func current_weapon() -> String:
     return _weapon
@@ -428,9 +431,9 @@ func set_weapon(kind: String) -> void:
     _weapon = next
     _one_shot_action = ""
     _hold_one_shot = false
-    # Normal gameplay should never reach this path because every weapon bank is
-    # prefetched before body_ready(). If a CDN/bootstrap failure leaves a bank
-    # missing, never keep rendering the previously selected weapon.
+    # The startup weapon is the only first-frame dependency. The remaining banks
+    # warm in the background; if an unusually early pickup beats that warmup (or
+    # the CDN fails), never keep rendering the previously selected weapon.
     if not _full_frames_by_weapon.has(_weapon):
         _body_ready = false
         _rendered_weapon = ""
@@ -702,9 +705,30 @@ func _begin_atlas_bootstrap() -> void:
     _body.visible = false
     _bootstrap_full_failures.clear()
     _bootstrap_run_failures.clear()
+    _bootstrap_startup_pending = true
 
+    # Keep the first frame on one critical request only. Starting all four large
+    # 8x18 PNG banks together makes Web startup bandwidth/decode bound and can
+    # leave the host on "Arrancando runtime Godot..." for tens of seconds.
+    if _full_frames_by_weapon.has(_weapon) and _v9_ready_by_weapon.has(_weapon):
+        _install_or_request_weapon()
+        _bootstrap_startup_pending = false
+        call_deferred("_begin_background_atlas_warmup")
+        return
+
+    _bootstrap_full_pending = 1
+    _start_bootstrap_request(
+        _weapon,
+        String(FULL_ATLAS_URLS.get(_weapon, "")),
+        "full-v9",
+        0,
+    )
+
+func _begin_background_atlas_warmup() -> void:
     var missing_full: Array[String] = []
     for weapon_id in WEAPON_BOOTSTRAP_ORDER:
+        if weapon_id == _weapon:
+            continue
         if not _full_frames_by_weapon.has(weapon_id) or not _v9_ready_by_weapon.has(weapon_id):
             missing_full.append(weapon_id)
 
@@ -810,6 +834,10 @@ func _on_bootstrap_atlas_loaded(
             _run12_ready_by_weapon[weapon_id] = true
 
     if accepted:
+        if layout == "full-v9" and weapon_id == _weapon and not _body_ready:
+            # Show the game as soon as the equipped bank is decoded. Non-critical
+            # weapons and run overlays continue through the bootstrap in parallel.
+            _install_or_request_weapon()
         _settle_bootstrap_request(weapon_id, layout, true)
         return
 
@@ -837,7 +865,15 @@ func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool
             _bootstrap_full_failures.append(weapon_id)
         _bootstrap_full_pending = maxi(0, _bootstrap_full_pending - 1)
         if _bootstrap_full_pending == 0:
-            _begin_run12_bootstrap()
+            if _bootstrap_startup_pending:
+                _bootstrap_startup_pending = false
+                if not _body_ready:
+                    # A failed critical request gets the normal fallback/request
+                    # path immediately; background warmup must never gate it.
+                    _install_or_request_weapon()
+                call_deferred("_begin_background_atlas_warmup")
+            else:
+                _begin_run12_bootstrap()
         return
 
     if layout == "run12-v22":
@@ -876,9 +912,9 @@ func _install_or_request_weapon() -> void:
     if not full_url.is_empty():
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full-v9")
-        # Bootstrap normally has every bank in memory before body_ready(). If a
-        # CDN failure leaves one missing, set_weapon() hides the old bank rather
-        # than showing the previously selected weapon during this request.
+        # Background warmup normally has non-default banks in memory before a
+        # pickup. If a pickup beats warmup or the CDN misses, set_weapon() hides
+        # the old bank rather than showing the wrong weapon during this request.
         return
 
     if _weapon == "pistol":
@@ -1784,7 +1820,12 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
-    if authored_full and v9_ready and not _run12_ready_by_weapon.has(_rendered_weapon):
+    if (
+        authored_full
+        and v9_ready
+        and _bootstrap_complete
+        and not _run12_ready_by_weapon.has(_rendered_weapon)
+    ):
         call_deferred("_ensure_run12_locomotion", _rendered_weapon)
     if authored_full and v9_ready and _rendered_weapon == "pistol" and not v10_ready:
         call_deferred("_ensure_v10_locomotion", _rendered_weapon)
