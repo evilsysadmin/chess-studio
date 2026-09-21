@@ -180,6 +180,10 @@ func _ready() -> void:
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
+    var visual_probe_x := _local_visual_probe_x()
+    if visual_probe_x >= 0.0:
+        player.global_position.x = visual_probe_x
+        player.reset_physics_interpolation()
     _build_parallax_backdrop()
     _build_environment_visual()
     _build_stage_setpieces()
@@ -216,6 +220,22 @@ func _selected_stage_id() -> String:
 
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()
+
+func _local_visual_probe_x() -> float:
+    if not OS.has_feature("web"):
+        return -1.0
+    var raw = JavaScriptBridge.eval(
+        """(() => {
+            const url = new URL(window.location.href);
+            if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return '';
+            return url.searchParams.get('visual_probe_x') || '';
+        })()""",
+        true,
+    )
+    var candidate := String(raw)
+    if not candidate.is_valid_float():
+        return -1.0
+    return clampf(float(candidate), 0.0, _world_size.x)
 
 func _load_stage_manifest(stage_id: String) -> bool:
     _stage_id = stage_id
