@@ -9,8 +9,8 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { checkedKingSquare } from '../boardState.js';
-import { abortableDelay, isAbortError } from '../asyncControl.js';
-import { applySuggestedOrLegalFallback, standardChessStatus } from '../chessRules.js';
+import { standardChessStatus } from '../chessRules.js';
+import { runStandardCpuMatch } from '../standardChessCpuMatch.js';
 
 const PACE_OPTIONS = [
   { id: 'slow', label: 'Lenta (4s)', ms: 4000 },
@@ -95,72 +95,42 @@ export default function SpectatorScreen({ onExit }) {
 
   async function runMatchLoop(wLevel, bLevel, generation, controller) {
     const pace = PACE_OPTIONS.find((p) => p.id === paceId) || PACE_OPTIONS[1];
-    const signal = controller.signal;
-    const stale = () => stopRef.current || signal.aborted || generationRef.current !== generation;
+    const chess = chessRef.current;
 
-    try {
-      while (!stale()) {
-        const chess = chessRef.current;
-        if (chess.isGameOver()) {
-          if (!stale()) setPhase('over');
-          return;
-        }
-
-        while (pausedRef.current && !stale()) {
-          await abortableDelay(150, signal);
-        }
-        if (stale()) return;
-
-        const turn = chess.turn();
-        const level = turn === 'w' ? wLevel : bLevel;
-        const requestedFen = chess.fen();
-        setThinking(true);
-        let suggestion = null;
-        try {
-          suggestion = await api.analyzePosition(requestedFen, level, { signal });
-        } catch (e) {
-          if (isAbortError(e) || stale()) return;
-          // El loop no depende de que el analizador remoto esté sano.
-          suggestion = null;
-        }
-        if (stale() || chessRef.current !== chess || chess.fen() !== requestedFen) return;
-        setThinking(false);
-
-        const { move: applied } = applySuggestedOrLegalFallback(chess, suggestion);
-        if (!applied) {
-          if (chess.isGameOver()) setPhase('over');
-          else {
-            setError('No se encontró ninguna jugada legal para continuar.');
-            setPhase('setup');
-          }
-          return;
-        }
-
+    await runStandardCpuMatch({
+      chess,
+      whiteLevel: wLevel,
+      blackLevel: bLevel,
+      paceMs: pace.ms,
+      analyzePosition: (requestedFen, level, options) => api.analyzePosition(requestedFen, level, options),
+      signal: controller.signal,
+      isPaused: () => pausedRef.current,
+      isStale: () => stopRef.current || generationRef.current !== generation || chessRef.current !== chess,
+      onThinking: (value) => {
+        if (generationRef.current === generation) setThinking(value);
+      },
+      onMove: ({ move, turn }) => {
+        if (generationRef.current !== generation) return;
         setFen(chess.fen());
-        setLastMove({ from: applied.from, to: applied.to });
-        setMoves((prev) => [...prev, { san: applied.san, from: applied.from, to: applied.to, captured: !!applied.captured, by: turn }]);
-
-        if (applied.captured) playCaptureSound();
+        setLastMove({ from: move.from, to: move.to });
+        setMoves((prev) => [...prev, { san: move.san, from: move.from, to: move.to, captured: !!move.captured, by: turn }]);
+        if (move.captured) playCaptureSound();
         else playMoveSound();
-
-        if (chess.isGameOver()) {
-          if (chess.isCheckmate()) playSuccessSound();
-          setPhase('over');
-          return;
-        }
-
-        await abortableDelay(pace.ms, signal);
-      }
-    } catch (e) {
-      if (!isAbortError(e) && !stale()) {
-        setError(e?.message || 'La partida espectador se interrumpió.');
+      },
+      onComplete: () => {
+        if (generationRef.current !== generation) return;
+        if (chess.isCheckmate()) playSuccessSound();
+        setPhase('over');
+      },
+      onError: (runError) => {
+        if (generationRef.current !== generation) return;
+        setError(runError?.message || 'La partida espectador se interrumpió.');
         setPhase('setup');
-      }
-    } finally {
-      if (generationRef.current === generation) {
-        setThinking(false);
-        if (loopAbortRef.current === controller) loopAbortRef.current = null;
-      }
+      },
+    });
+
+    if (generationRef.current === generation && loopAbortRef.current === controller) {
+      loopAbortRef.current = null;
     }
   }
 
