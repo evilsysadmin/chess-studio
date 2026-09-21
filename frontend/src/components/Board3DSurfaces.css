@@ -20,6 +20,15 @@
   filter: brightness(1.055) contrast(1.085) saturate(1.18) sepia(.055);
 }
 
+/*
+ * A measured slow-move downgrade removes the full-canvas compositor pass.
+ * High-end machines keep the approved grade; struggling GPUs trade the subtle
+ * finishing pass for steadier piece animation.
+ */
+.game-screen .board-live-row.is-3d-warroom .board3d-main-canvas[data-board3d-adaptive-quality='reduced'] {
+  filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .game-screen .board-live-row.is-3d-warroom .board3d-main-canvas {
     filter: brightness(1.055) contrast(1.085) saturate(1.18) sepia(.055);

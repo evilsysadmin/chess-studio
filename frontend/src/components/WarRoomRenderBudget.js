@@ -49,3 +49,29 @@ export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 
   if (coarsePointer) return slowFrameCount >= 4 ? 0.75 : 1;
   return slowFrameCount >= 4 ? 0.9 : 1.2;
 }
+
+const ADAPTIVE_MOVE_SLOW_FRAME_THRESHOLD = 4;
+const ADAPTIVE_MOVE_PAINT_INTERVAL_MS = 32;
+
+export function warRoomAdaptiveMovePlan({
+  slowFrameCount = 0,
+  reduced = false,
+  now = 0,
+  lastPaintAt = Number.NEGATIVE_INFINITY,
+} = {}) {
+  const slowFrames = Math.max(0, Number(slowFrameCount) || 0);
+  const nextReduced = Boolean(reduced) || slowFrames >= ADAPTIVE_MOVE_SLOW_FRAME_THRESHOLD;
+  const current = Number(now);
+  const previous = Number(lastPaintAt);
+  const paintIntervalMs = nextReduced ? ADAPTIVE_MOVE_PAINT_INTERVAL_MS : 0;
+  const shouldPaint = !nextReduced
+    || !Number.isFinite(previous)
+    || !Number.isFinite(current)
+    || current - previous >= paintIntervalMs;
+
+  return Object.freeze({
+    reduced: nextReduced,
+    paintIntervalMs,
+    shouldPaint,
+  });
+}

@@ -28,6 +28,16 @@ export function squarePosition(square) {
   return { x: file - 3.5, z: 4.5 - rank };
 }
 
+export function squareFromBoardPoint(point) {
+  const x = Number(point?.x);
+  const z = Number(point?.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || x < -4 || x >= 4 || z < -4 || z >= 4) return null;
+  const fileIndex = Math.floor(x + 4);
+  const rank = Math.floor(4 - z) + 1;
+  if (fileIndex < 0 || fileIndex >= FILES.length || rank < 1 || rank > 8) return null;
+  return `${FILES[fileIndex]}${rank}`;
+}
+
 export function isLightSquare(square) {
   const file = FILES.indexOf(square?.[0]);
   const rank = Number(square?.[1]);

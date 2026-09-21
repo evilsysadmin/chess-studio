@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
+  warRoomAdaptiveMovePlan,
   applyWarRoomHemisphereGrade,
   applyWarRoomMaterialGrade,
   deriveMoveKinetics,
@@ -236,6 +237,24 @@ describe('WarRoom3DMotion', () => {
     expect(adaptiveRenderScale({ slowFrameCount: 4 })).toBe(0.9);
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 0 })).toBe(1);
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 4 })).toBe(0.75);
+  });
+
+  it('sticks to a 30 FPS-class paint cadence after repeated slow move frames', () => {
+    expect(warRoomAdaptiveMovePlan({ slowFrameCount: 3, now: 100, lastPaintAt: 84 })).toEqual({
+      reduced: false,
+      paintIntervalMs: 0,
+      shouldPaint: true,
+    });
+    expect(warRoomAdaptiveMovePlan({ slowFrameCount: 4, now: 100, lastPaintAt: 84 })).toEqual({
+      reduced: true,
+      paintIntervalMs: 32,
+      shouldPaint: false,
+    });
+    expect(warRoomAdaptiveMovePlan({ reduced: true, slowFrameCount: 0, now: 116, lastPaintAt: 84 })).toEqual({
+      reduced: true,
+      paintIntervalMs: 32,
+      shouldPaint: true,
+    });
   });
 
   it('spends shadow-map budget slowly while idle and restores the tight cadence during motion', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adjacentSquare, isLightSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { adjacentSquare, isLightSquare, parseFen, squareFromBoardPoint, squarePosition } from './Board3DBoardMath.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const FILES = 'abcdefgh';
@@ -57,6 +57,15 @@ describe('Board3D board math', () => {
     expect(squarePosition('h8')).toEqual({ x: 3.5, z: -3.5 });
     expect(squarePosition('d8')).toEqual({ x: -0.5, z: -3.5 });
     expect(squarePosition('e8')).toEqual({ x: 0.5, z: -3.5 });
+  });
+
+  it('maps one board-plane hit directly to a square without traversing scene meshes', () => {
+    expect(squareFromBoardPoint({ x: -3.5, z: 3.5 })).toBe('a1');
+    expect(squareFromBoardPoint({ x: 3.5, z: 3.5 })).toBe('h1');
+    expect(squareFromBoardPoint({ x: -3.5, z: -3.5 })).toBe('a8');
+    expect(squareFromBoardPoint({ x: 0.49, z: -3.49 })).toBe('e8');
+    expect(squareFromBoardPoint({ x: 4.01, z: 0 })).toBeNull();
+    expect(squareFromBoardPoint({ x: 0, z: 4.01 })).toBeNull();
   });
 
   it('keeps keyboard movement screen-relative for both orientations', () => {

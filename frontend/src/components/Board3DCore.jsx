@@ -6,7 +6,7 @@ import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSur
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep, warRoomAdaptiveMovePlan } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -20,7 +20,7 @@ import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
-import { adjacentSquare, isLightSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { adjacentSquare, isLightSquare, parseFen, squareFromBoardPoint, squarePosition } from './Board3DBoardMath.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -99,6 +99,8 @@ function Board3DCanvas({
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
+  const hoverFrameRef = useRef(0);
+  const pendingHoverEventRef = useRef(null);
   const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
@@ -229,12 +231,13 @@ function Board3DCanvas({
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const boardHit = new THREE.Vector3();
+    const boardPickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.105);
     const squareMeshes = new Map();
     const highlightMeshes = new Map();
     const pieceMeshes = new Map();
     const terrainGroup = new THREE.Group();
     const pieceGroup = new THREE.Group();
-    const pickTargets = [pieceGroup];
     const forensicGroup = new THREE.Group();
     const coordinateGroup = new THREE.Group();
     const boardGroup = new THREE.Group();
@@ -261,7 +264,10 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
-    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
+    renderer.domElement.dataset.board3dInteractionHotPath = 'board-plane-pick-adaptive-motion-v1';
+    renderer.domElement.dataset.board3dPointerPicking = 'board-plane-v1';
+    renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
+    renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
@@ -313,7 +319,6 @@ function Board3DCanvas({
         tile.userData.square = square;
         boardGroup.add(tile);
         squareMeshes.set(square, tile);
-        pickTargets.push(tile);
 
         const marker = new THREE.Mesh(
           new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
@@ -459,13 +464,8 @@ function Board3DCanvas({
         -((event.clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects(pickTargets, true);
-      for (const hit of intersections) {
-        let object = hit.object;
-        while (object && !object.userData?.square) object = object.parent;
-        if (object?.userData?.square) return object.userData.square;
-      }
-      return null;
+      if (!raycaster.ray.intersectPlane(boardPickPlane, boardHit)) return null;
+      return squareFromBoardPoint(boardHit);
     }
 
     function updatePieceHover(nextSquare, event) {
@@ -531,13 +531,26 @@ function Board3DCanvas({
         return;
       }
       if (coarsePointer) return;
-      const square = squareFromPointer(event);
-      const pieceHover = square && pieceMeshes.has(square) ? square : null;
-      renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
-      updatePieceHover(pieceHover, event);
+      pendingHoverEventRef.current = event;
+      if (hoverFrameRef.current) return;
+      hoverFrameRef.current = window.requestAnimationFrame(() => {
+        hoverFrameRef.current = 0;
+        const pendingEvent = pendingHoverEventRef.current;
+        pendingHoverEventRef.current = null;
+        if (!pendingEvent || inspectModeRef.current) return;
+        const square = squareFromPointer(pendingEvent);
+        const pieceHover = square && pieceMeshes.has(square) ? square : null;
+        renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
+        updatePieceHover(pieceHover, pendingEvent);
+      });
     }
 
     function onPointerLeave(event) {
+      pendingHoverEventRef.current = null;
+      if (hoverFrameRef.current) {
+        window.cancelAnimationFrame(hoverFrameRef.current);
+        hoverFrameRef.current = 0;
+      }
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
       motion.targetY = 0;
@@ -681,6 +694,8 @@ function Board3DCanvas({
       clearInspectCameraDirty: () => { inspectCameraDirty = false; },
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
+      adaptiveQualityReduced: false,
+      lastAnimationPaintAt: 0,
     };
     const rendererApi = renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL';
     const rendererClass = compactWebGLRendererLabel(rendererName);
@@ -693,6 +708,11 @@ function Board3DCanvas({
     return () => {
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
+      if (hoverFrameRef.current) {
+        window.cancelAnimationFrame(hoverFrameRef.current);
+        hoverFrameRef.current = 0;
+      }
+      pendingHoverEventRef.current = null;
       ambientScheduler?.dispose();
       ambientScheduler = null;
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
@@ -955,9 +975,29 @@ function Board3DCanvas({
         if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
       }
 
-      state.render();
-      if (raw < 1) animationFrameRef.current = window.requestAnimationFrame(frame);
-      else {
+      const adaptivePlan = warRoomAdaptiveMovePlan({
+        slowFrameCount: state.slowFrameCount,
+        reduced: state.adaptiveQualityReduced,
+        now,
+        lastPaintAt: state.lastAnimationPaintAt,
+      });
+      if (adaptivePlan.reduced && !state.adaptiveQualityReduced) {
+        state.adaptiveQualityReduced = true;
+        state.renderer.shadowMap.enabled = false;
+        state.renderer.shadowMap.autoUpdate = false;
+        state.renderer.shadowMap.needsUpdate = false;
+        state.renderer.domElement.dataset.board3dAdaptiveQuality = 'reduced';
+        state.renderer.domElement.dataset.board3dAnimationCadence = 'adaptive-30fps';
+        state.renderer.domElement.dataset.board3dAdaptiveReason = 'slow-move-frames';
+      }
+
+      if (raw < 1) {
+        if (adaptivePlan.shouldPaint) {
+          state.render();
+          state.lastAnimationPaintAt = now;
+        }
+        animationFrameRef.current = window.requestAnimationFrame(frame);
+      } else {
         animatedMesh.position.set(to.x, 0.1, to.z);
         animatedMesh.rotation.z = 0;
         animatedMesh.scale.copy(baseScale);
@@ -976,15 +1016,18 @@ function Board3DCanvas({
         state.render();
         animationFrameRef.current = 0;
         state.lastAnimationFrameAt = 0;
+        state.lastAnimationPaintAt = 0;
       }
     }
 
     animatedMesh.position.set(from.x, 0.1, from.z);
     state.render();
+    state.lastAnimationPaintAt = performance.now();
     animationFrameRef.current = window.requestAnimationFrame(frame);
     return () => {
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
+      state.lastAnimationPaintAt = 0;
       if (capturedGhost) {
         state.pieceGroup.remove(capturedGhost);
         disposeObject(capturedGhost);

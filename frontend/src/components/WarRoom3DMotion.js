@@ -9,12 +9,14 @@ import {
 import {
   adaptiveRenderScale,
   nextRuntimeRenderScale,
+  warRoomAdaptiveMovePlan,
   shadowRefreshInterval,
   shouldRefreshShadowMap,
 } from './WarRoomRenderBudget.js';
 
 export {
   adaptiveRenderScale,
+  warRoomAdaptiveMovePlan,
   clamp01,
   deriveMoveKinetics,
   easeOutCubic,
