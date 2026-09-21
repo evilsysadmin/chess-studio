@@ -58,3 +58,27 @@ export function chroniclesRunCheckpointPayload(state, worldVersion) {
     claimedRewards: normalizedLedger(state.claimedRewards),
   });
 }
+
+
+export function chroniclesCheckpointSignature(state) {
+  const payload = chroniclesRunCheckpointPayload(state, 0);
+  return JSON.stringify({
+    currentMapId: payload.currentMapId,
+    worldFlags: payload.worldFlags,
+    consumedContentIds: payload.consumedContentIds,
+    claimedRewards: payload.claimedRewards,
+  });
+}
+
+export function chroniclesHydrateRunState(state, authoritativeRun) {
+  if (!state?.mapId) throw new Error('Chronicles recovery requires an initialized state');
+  if (!authoritativeRun?.currentMapId || state.mapId !== authoritativeRun.currentMapId) {
+    throw new Error('Chronicles recovery map does not match authoritative run');
+  }
+  return {
+    ...state,
+    ...(authoritativeRun.worldFlags || {}),
+    consumedContentIds: normalizedLedger(authoritativeRun.consumedContentIds),
+    claimedRewards: normalizedLedger(authoritativeRun.claimedRewards),
+  };
+}

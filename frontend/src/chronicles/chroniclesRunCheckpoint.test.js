@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chroniclesCheckpointSignature,
+  chroniclesHydrateRunState,
   chroniclesRunCheckpointPayload,
   chroniclesWorldFlagsForCheckpoint,
 } from './chroniclesRunCheckpoint.js';
@@ -58,4 +60,31 @@ describe('Chronicles checkpoint projection', () => {
     expect(() => chroniclesRunCheckpointPayload({}, 0)).toThrow(/current map/i);
     expect(() => chroniclesRunCheckpointPayload({ mapId: 'crypt-eight-squares' }, -1)).toThrow(/worldVersion/i);
   });
+
+  it('hydrates only the authoritative durable layer onto an initialized map state', () => {
+    const initial = createChroniclesState('gallery-of-forks');
+    const restored = chroniclesHydrateRunState(initial, {
+      currentMapId: 'gallery-of-forks',
+      worldFlags: { galleryLeverPulled: true, sigilAwake: true },
+      consumedContentIds: ['gallery-lever'],
+      claimedRewards: ['reward:gallery'],
+    });
+
+    expect(restored.galleryLeverPulled).toBe(true);
+    expect(restored.sigilAwake).toBe(true);
+    expect(restored.consumedContentIds).toEqual(['gallery-lever']);
+    expect(restored.claimedRewards).toEqual(['reward:gallery']);
+    expect(restored.x).toBe(initial.x);
+    expect(restored.y).toBe(initial.y);
+  });
+
+  it('uses a durable signature that ignores movement and UI chatter', () => {
+    const initial = createChroniclesState('gallery-of-forks');
+    const moved = { ...initial, x: initial.x + 1, turns: 99, message: 'noise' };
+    expect(chroniclesCheckpointSignature(moved)).toBe(chroniclesCheckpointSignature(initial));
+
+    const changed = { ...moved, galleryLeverPulled: true };
+    expect(chroniclesCheckpointSignature(changed)).not.toBe(chroniclesCheckpointSignature(initial));
+  });
+
 });

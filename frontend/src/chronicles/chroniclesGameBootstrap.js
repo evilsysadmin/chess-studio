@@ -74,6 +74,27 @@ function validateAuthoritativeRun(payload, mapId) {
   }
 }
 
+function normalizeRunLedger(value, label) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || !entry.trim())) {
+    throw new Error(`invalid-${label}`);
+  }
+  return [...new Set(value.map((entry) => entry.trim()))];
+}
+
+function normalizeRunWorldFlags(value) {
+  if (value == null) return {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid-world-flags');
+  const entries = Object.entries(value);
+  if (entries.some(([key, flag]) => (
+    !key
+    || (flag !== null && !['boolean', 'number', 'string'].includes(typeof flag))
+  ))) {
+    throw new Error('invalid-world-flags');
+  }
+  return Object.fromEntries(entries);
+}
+
 function validateRunBootstrap(payload, requestedMapId) {
   if (!payload || typeof payload !== 'object') throw new Error('missing-run');
   if (typeof payload.runId !== 'string' || !payload.runId) throw new Error('invalid-run-id');
@@ -83,6 +104,9 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
   if (payload.status !== 'active') throw new Error('inactive-run');
+  const worldFlags = normalizeRunWorldFlags(payload.worldFlags);
+  const consumedContentIds = normalizeRunLedger(payload.consumedContentIds, 'consumed-content-ids');
+  const claimedRewards = normalizeRunLedger(payload.claimedRewards, 'claimed-rewards');
 
   const area = chroniclesValidateAreaEnvelope(payload.area, currentMapId, payload.seed);
   if (payload.contentVersion !== area.contentVersion) throw new Error('run-version-mismatch');
@@ -115,6 +139,9 @@ function validateRunBootstrap(payload, requestedMapId) {
     runId: payload.runId,
     currentMapId,
     worldVersion: payload.worldVersion,
+    worldFlags: Object.freeze(worldFlags),
+    consumedContentIds: Object.freeze(consumedContentIds),
+    claimedRewards: Object.freeze(claimedRewards),
     runStatus: payload.status,
   });
 }

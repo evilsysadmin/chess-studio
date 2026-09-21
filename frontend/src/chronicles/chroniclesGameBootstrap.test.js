@@ -48,6 +48,7 @@ function remoteRun(title = 'Cripta remota', seed = 417, currentMapId = DEFAULT_C
     manifestRevision: area.manifestRevision,
     status: 'active',
     worldVersion: 0,
+    worldFlags: {},
     consumedContentIds: [],
     claimedRewards: [],
     area,
@@ -66,7 +67,12 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
   });
 
   it('installs the backend-bound map and preserves run identity before gameplay mounts', async () => {
-    const createRun = vi.fn().mockResolvedValue(remoteRun());
+    const payload = remoteRun();
+    payload.worldVersion = 3;
+    payload.worldFlags = { sigilAwake: true };
+    payload.consumedContentIds = ['crypt-sigil'];
+    payload.claimedRewards = ['reward:crypt'];
+    const createRun = vi.fn().mockResolvedValue(payload);
 
     const resolved = await chroniclesBootstrapWorld({
       createRun,
@@ -77,7 +83,10 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(resolved.source).toBe('remote');
     expect(resolved.runId).toBe('11111111-2222-4333-8444-555555555555');
     expect(resolved.seed).toBe(417);
-    expect(resolved.worldVersion).toBe(0);
+    expect(resolved.worldVersion).toBe(3);
+    expect(resolved.worldFlags).toEqual({ sigilAwake: true });
+    expect(resolved.consumedContentIds).toEqual(['crypt-sigil']);
+    expect(resolved.claimedRewards).toEqual(['reward:crypt']);
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta remota');
     expect(chroniclesMapById('gallery-of-forks').title).toMatch(/^Remota · /);
     expect(chroniclesMapById('hollow-bell-tower').title).toMatch(/^Remota · /);
