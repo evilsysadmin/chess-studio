@@ -220,14 +220,16 @@ func _run() -> void:
     )
     var traversal = TraversalManager.new()
     traversal_host.add_child(traversal)
-    traversal._world_size = Vector2(800.0, 240.0)
-    traversal._floor_y = 200.0
-    traversal._ladders = [
-        {"x": 300.0, "top_y": 80.0, "bottom_y": 200.0, "w": 30.0, "exit_dir": 1.0},
-    ]
-    traversal._pits = [
-        {"x": 420.0, "w": 120.0, "kind": "test_pit"},
-    ]
+    traversal.configure_stage({
+        "theme": "night_front",
+        "world": {"width": 800.0, "height": 240.0, "floor_y": 200.0},
+        "ladders": [
+            {"x": 300.0, "top_y": 80.0, "bottom_y": 200.0, "w": 30.0, "exit_dir": 1.0},
+        ],
+        "pits": [
+            {"x": 420.0, "w": 120.0, "kind": "test_pit"},
+        ],
+    })
     var ladder_hit := traversal.ladder_for_player(Vector2(305.0, 130.0))
     _expect(not ladder_hit.is_empty(), "ladder zone reconoce a Matthias dentro del ancho y recorrido")
     _expect(
