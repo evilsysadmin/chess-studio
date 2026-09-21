@@ -175,7 +175,7 @@
   "timezone": "browser",
   "title": "Chess Studio · Log Explorer",
   "uid": "chess-studio-log-explorer",
-  "version": 3,
+  "version": 4,
   "weekStart": "monday",
   "panels": [
     {
@@ -478,6 +478,43 @@
         "prettifyLogMessage": false,
         "enableLogDetails": true,
         "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Biggest offenders · 401/403",
+      "description": "Ranking por client_ip de respuestas 401/403 dentro del entorno y rango seleccionados. Respeta los filtros de método, ruta, path, release, request_id, trace_id y texto; el status queda fijado a 401/403.",
+      "type": "bargauge",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(20, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403\" | client_ip != \"\" | method=~\"$method\" | route=~\"$route\" | request_path=~\"$path\" | client_release=~\"$release\" | request_id=~\"$request_id\" | trace_id=~\"$trace_id\" |~ \"$text\" [$__range])))",
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{client_ip}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
       }
     }
   ]
