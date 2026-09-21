@@ -61,7 +61,7 @@ def test_checkpoint_persists_world_state_and_increments_version(monkeypatch):
         client,
         run["runId"],
         version=0,
-        flags={"cryptLeverPulled": True, "visitCount": 2},
+        flags={"sigilAwake": True, "runeCacheOpened": True},
         consumed=["crypt-lever"],
         rewards=["reward:first-cache"],
     )
@@ -70,7 +70,7 @@ def test_checkpoint_persists_world_state_and_increments_version(monkeypatch):
     saved = response.json()
     assert saved["worldVersion"] == 1
     assert saved["currentMapId"] == "crypt-eight-squares"
-    assert saved["worldFlags"] == {"cryptLeverPulled": True, "visitCount": 2}
+    assert saved["worldFlags"] == {"sigilAwake": True, "runeCacheOpened": True}
     assert saved["consumedContentIds"] == ["crypt-lever"]
     assert saved["claimedRewards"] == ["reward:first-cache"]
 
@@ -80,7 +80,7 @@ def test_checkpoint_persists_world_state_and_increments_version(monkeypatch):
     )
     assert stored.status_code == 200
     assert stored.json()["worldVersion"] == 1
-    assert stored.json()["worldFlags"]["cryptLeverPulled"] is True
+    assert stored.json()["worldFlags"]["sigilAwake"] is True
 
 
 def test_checkpoint_is_compare_and_swap_and_never_unconsumes(monkeypatch):
@@ -97,7 +97,7 @@ def test_checkpoint_is_compare_and_swap_and_never_unconsumes(monkeypatch):
     )
     assert first.status_code == 200
 
-    stale = _checkpoint(client, run["runId"], version=0, flags={"stale": True})
+    stale = _checkpoint(client, run["runId"], version=0, flags={"sigilAwake": True})
     assert stale.status_code == 409
 
     second = _checkpoint(
@@ -106,14 +106,14 @@ def test_checkpoint_is_compare_and_swap_and_never_unconsumes(monkeypatch):
         version=1,
         consumed=[],
         rewards=[],
-        flags={"doorOpen": True},
+        flags={"runeCacheOpened": True},
     )
     assert second.status_code == 200
     payload = second.json()
     assert payload["worldVersion"] == 2
     assert payload["consumedContentIds"] == ["crypt-lever"]
     assert payload["claimedRewards"] == ["reward:first-cache"]
-    assert payload["worldFlags"] == {"doorOpen": True}
+    assert payload["worldFlags"] == {"runeCacheOpened": True}
 
 
 def test_checkpoint_rejects_teleport_to_unreachable_map(monkeypatch):

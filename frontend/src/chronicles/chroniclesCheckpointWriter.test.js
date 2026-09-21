@@ -49,15 +49,11 @@ describe('Chronicles checkpoint writer', () => {
     expect(checkpointState.mock.calls[0][2]).toBe(0);
 
     first.resolve({ worldVersion: 1 });
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(checkpointState).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(checkpointState).toHaveBeenCalledTimes(2));
     expect(checkpointState.mock.calls[1][2]).toBe(1);
 
     second.resolve({ worldVersion: 2 });
-    await Promise.resolve();
-    expect(writer.worldVersion()).toBe(2);
+    await vi.waitFor(() => expect(writer.worldVersion()).toBe(2));
   });
 
   it('surfaces CAS conflicts without retry storms', async () => {
