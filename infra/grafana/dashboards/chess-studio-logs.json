@@ -553,6 +553,44 @@
         "enableLogDetails": true,
         "sortOrder": "Descending"
       }
+    },
+    {
+      "id": 16,
+      "title": "Auth IP bans · 1 h",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} |= \"auth_ip_ban_activated\" [1h]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "auto"
+      }
     }
   ],
   "refresh": "30s",
@@ -591,6 +629,6 @@
   "timezone": "browser",
   "title": "Chess Studio · Logs accionables",
   "uid": "chess-studio-logs",
-  "version": 2,
+  "version": 3,
   "weekStart": "monday"
 }
