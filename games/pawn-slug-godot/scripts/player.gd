@@ -178,7 +178,7 @@ func configure_stage(start_x: float, checkpoints: Array, ladders: Array = [], ki
     _checkpoint_xs.sort()
     _ladders.clear()
     for entry in ladders:
-        if entry is Rect2:
+        if typeof(entry) == TYPE_RECT2:
             _ladders.append(entry)
     _kill_y = maxf(kill_y, 720.0)
     _ladder_climbing = false
