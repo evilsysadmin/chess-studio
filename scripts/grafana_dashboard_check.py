@@ -63,9 +63,17 @@ def main() -> int:
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
-    logs_raw = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
-    for token in ("Biggest offenders · 401/403", 'status=~\\\"401|403\\\"', "client_ip"):
-        if token not in logs_raw:
+    logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
+    logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
+    if "Biggest offenders · 401/403" not in logs_titles:
+        fail("logs dashboard perdió ranking 401/403")
+    logs_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for panel in (logs_data.get("panels") or [])
+        for target in (panel.get("targets") or [])
+    )
+    for token in ('status=~"401|403"', "client_ip"):
+        if token not in logs_exprs:
             fail(f"logs dashboard perdió ranking 401/403: {token}")
 
     explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
@@ -79,6 +87,12 @@ def main() -> int:
         for panel in (explorer_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
+    explorer_titles = {str(row.get("title") or "") for row in (explorer_data.get("panels") or [])}
+    if "Biggest offenders · 401/403" not in explorer_titles:
+        fail("log explorer perdió ranking 401/403")
+    for token in ('status=~"401|403"', "client_ip"):
+        if token not in explorer_exprs:
+            fail(f"log explorer perdió query de offenders: {token}")
     explorer_raw = (INFRA / "dashboards" / "chess-studio-log-explorer.json").read_text(encoding="utf-8")
     for token in (
         'production OCI stdout : {service_name=',
@@ -89,8 +103,6 @@ def main() -> int:
         'auth_login_failed : auth_login_failed',
         'auth_ip_ban_activated : auth_ip_ban_activated',
         '401 login · bot forensics',
-        'Biggest offenders · 401/403',
-        'status=~\\\"401|403\\\"',
         'username_attempted',
         'password_fingerprint',
         'password_length',
