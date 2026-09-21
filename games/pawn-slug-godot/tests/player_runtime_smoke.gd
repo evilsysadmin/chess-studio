@@ -225,6 +225,15 @@ func _run() -> void:
     if right_floor != null and right_floor.shape is RectangleShape2D:
         _expect(absf((right_floor.shape as RectangleShape2D).size.x - 280.0) <= EPSILON, "pozo reanuda la losa tras el hueco")
 
+    var ground_enemy := {"x": 180.0, "y": 200.0, "on_ground": true}
+    var safe_enemy_x: float = geometry_probe._enemy_safe_ground_x(ground_enemy, 250.0, 20.0)
+    _expect(absf(safe_enemy_x - 200.0) <= EPSILON, "enemigo terrestre frena antes del borde del pozo")
+    var airborne_enemy := {"x": 180.0, "y": 200.0, "on_ground": false}
+    var airborne_x: float = geometry_probe._enemy_safe_ground_x(airborne_enemy, 250.0, 20.0)
+    _expect(absf(airborne_x - 250.0) <= EPSILON, "knight en salto puede cruzar horizontalmente el pozo")
+    _expect(not geometry_probe._knight_has_support(250.0, 200.0), "el vacío no cuenta como suelo para un knight")
+    _expect(geometry_probe._knight_landing_y(250.0, 190.0, 210.0) < 0.0, "knight no aterriza sobre suelo inexistente")
+
     geometry_probe._add_stage_body(
         Rect2(0.0, 0.0, 160.0, 24.0),
         "OneWayProbe",
