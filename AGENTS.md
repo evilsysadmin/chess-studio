@@ -10,6 +10,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 - `Tactics` = **Chronicles of Matthias Tactics**.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender.
 - Home 3D y War Room v2 usan la pipeline Blender.
+- En Home 3D, los overlays globales de aplicación (incluidos **RetroPlayer** y **Usuarios online**) son contrato de shell: Home 3D no puede ocultarlos, recortarlos, taparlos ni interceptar su interacción. Ver [`docs/home3d.md`](docs/home3d.md).
 - La War Room actual sigue siendo baseline de rollback hasta que War Room v2 esté validada visualmente, en móvil, rendimiento y runtime.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
@@ -37,7 +38,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |\n| Pawn Slug OST / synthwave / composición y mezcla | [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
+| Home / Castillo / Blender | [`docs/home3d.md`](docs/home3d.md), [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
@@ -65,6 +66,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Diseño, producto y experimentos
 
 - [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md) — lenguaje visual.
+- [`docs/home3d.md`](docs/home3d.md) — contrato canónico de composición/runtime de Home 3D y preservación de overlays globales.
 - [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md) — contrato mínimo de Home/Castillo.
 - [`docs/experiments/castle-hall-fame-shame.md`](docs/experiments/castle-hall-fame-shame.md)
 - [`docs/experiments/castle-progression-space.md`](docs/experiments/castle-progression-space.md)
