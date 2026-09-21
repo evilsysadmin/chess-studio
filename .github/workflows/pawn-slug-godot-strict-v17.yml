@@ -3,11 +3,13 @@ name: Pawn Slug · Godot strict Matthias v17
 on:
   pull_request:
     paths:
+      - 'scripts/art/build_pawn_slug_run16.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v22.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v21.py'
       - 'scripts/art/build_pawn_slug_pose_review.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v20.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v18.py'
+      - 'scripts/art/validate_pawn_slug_run16.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v21.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v20.py'
@@ -15,6 +17,7 @@ on:
       - 'scripts/art/pack_pawn_slug_godot_strict_v17.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v17.py'
       - 'scripts/art/build_pawn_slug_v17_review.py'
+      - 'games/pawn-slug-godot/tests/matthias_run16_strip_smoke.gd'
       - 'games/pawn-slug-godot/tests/matthias_strict_v17_atlas_smoke.gd'
       - 'games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png'
       - 'games/pawn-slug-godot/art/matthias-v21-worksheet.json'
@@ -25,11 +28,13 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/art/build_pawn_slug_run16.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v22.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v21.py'
       - 'scripts/art/build_pawn_slug_pose_review.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v20.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v18.py'
+      - 'scripts/art/validate_pawn_slug_run16.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v21.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v20.py'
@@ -37,6 +42,7 @@ on:
       - 'scripts/art/pack_pawn_slug_godot_strict_v17.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v17.py'
       - 'scripts/art/build_pawn_slug_v17_review.py'
+      - 'games/pawn-slug-godot/tests/matthias_run16_strip_smoke.gd'
       - 'games/pawn-slug-godot/tests/matthias_strict_v17_atlas_smoke.gd'
       - 'games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png'
       - 'games/pawn-slug-godot/art/matthias-v21-worksheet.json'
@@ -568,15 +574,18 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install deterministic 2D sprite toolchain
-        run: python3 -m pip install --disable-pip-version-check --only-binary=:all: 'Pillow==12.3.0'
+        run: python3 -m pip install --disable-pip-version-check --only-binary=:all: -r scripts/art/requirements.txt
 
       - name: Tool sanity
         run: |
           set -euo pipefail
           python3 scripts/art/pack_pawn_slug_godot_strict_v22.py --self-test
+          python3 scripts/art/build_pawn_slug_run16.py --self-test
           python3 -m py_compile \
             scripts/art/pack_pawn_slug_godot_strict_v22.py \
             scripts/art/validate_pawn_slug_godot_atlas_v22.py \
+            scripts/art/build_pawn_slug_run16.py \
+            scripts/art/validate_pawn_slug_run16.py \
             scripts/art/build_pawn_slug_pose_review.py
 
       - name: Download strict-v21 pistol baseline
@@ -609,6 +618,23 @@ jobs:
             --output-dir "$ROOT/poses"
           test "$(sha256sum "$ROOT/v22.png" | awk '{print $1}')" = "2960140445e64bb791b7932a10895b6ad9746f3c9a21c94173a94237a91e02ec"
 
+      - name: Build + gate 16-frame run strip
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v22/pistol'
+          python3 scripts/art/build_pawn_slug_run16.py \
+            --source "$ROOT/v22.png" \
+            --output "$ROOT/run16.png" \
+            --manifest "$ROOT/run16-manifest.json" \
+            --review "$ROOT/run16-review.png" \
+            --weapon pistol
+          python3 scripts/art/validate_pawn_slug_run16.py \
+            --strip "$ROOT/run16.png" \
+            --manifest "$ROOT/run16-manifest.json" \
+            --source "$ROOT/v22.png" \
+            --report "$ROOT/run16-health.json"
+          test "$(sha256sum "$ROOT/run16.png" | awk '{print $1}')" = "853841624cf1e381c1ae0826bbd2fb3ac7a9e53bb90a37ce7276c7732788195c"
+
       - name: Restore pinned Godot editor
         uses: actions/cache@v6
         with:
@@ -639,6 +665,9 @@ jobs:
           .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
             --script res://tests/matthias_strict_v17_atlas_smoke.gd -- \
             "$ROOT/v22.png" "$ROOT/manifest.json"
+          .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_run16_strip_smoke.gd -- \
+            "$ROOT/run16.png" "$ROOT/run16-manifest.json"
 
       - name: Publish immutable strict-v22 P99 to R2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -653,6 +682,11 @@ jobs:
             --logical-id 'pawnSlug.godot.matthias.pistol.strictV22' \
             --prefix 'pawn-slug-godot/matthias/strict-v22/pistol' \
             | tee "$ROOT/publish.txt"
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$ROOT/run16.png" \
+            --logical-id 'pawnSlug.godot.matthias.pistol.run16V1' \
+            --prefix 'pawn-slug-godot/matthias/run16-v1/pistol' \
+            | tee "$ROOT/run16-publish.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -664,7 +698,12 @@ jobs:
             /tmp/pawn-slug-godot-strict-v22/pistol/health.json
             /tmp/pawn-slug-godot-strict-v22/pistol/review-v21-v22.png
             /tmp/pawn-slug-godot-strict-v22/pistol/poses/
+            /tmp/pawn-slug-godot-strict-v22/pistol/run16.png
+            /tmp/pawn-slug-godot-strict-v22/pistol/run16-manifest.json
+            /tmp/pawn-slug-godot-strict-v22/pistol/run16-health.json
+            /tmp/pawn-slug-godot-strict-v22/pistol/run16-review.png
             /tmp/pawn-slug-godot-strict-v22/pistol/publish.txt
+            /tmp/pawn-slug-godot-strict-v22/pistol/run16-publish.txt
           if-no-files-found: warn
           retention-days: 14
           compression-level: 0
