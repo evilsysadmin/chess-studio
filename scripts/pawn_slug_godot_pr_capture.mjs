@@ -27,6 +27,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
+  window.__pawnSlugWeaponChangeCount = 0;
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -37,19 +38,22 @@ await page.addInitScript(() => {
   };
   window.__pawnSlugVisualProbeX =
     params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
+  window.__pawnSlugVisualProbeWeapon = params.get('visualWeapon') || '';
   window.addEventListener('message', (event) => {
     const data = event.data;
-    if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
-      window.__pawnSlugCaptureReady = true;
-    }
+    if (data?.source !== 'pawn-slug-godot') return;
+    if (data?.type === 'ready') window.__pawnSlugCaptureReady = true;
+    if (data?.type === 'weapon-changed') window.__pawnSlugWeaponChangeCount += 1;
   });
 });
 
-function urlForStage(stageId, { visualProbe = false } = {}) {
+function urlForStage(stageId, { visualProbe = false, visualWeapon = '' } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
   if (visualProbe) url.searchParams.set('visualProbe', '1');
   else url.searchParams.delete('visualProbe');
+  if (visualWeapon) url.searchParams.set('visualWeapon', visualWeapon);
+  else url.searchParams.delete('visualWeapon');
   return url.toString();
 }
 
@@ -139,6 +143,44 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
+// Dedicated SMG proof: the CI-only probe unlocks machinegun but deliberately
+// leaves pistol selected. Pressing the real slot key after ready exercises the
+// same Player.select_weapon -> MatthiasArt.set_weapon path used by gameplay.
+const smg = await loadStage(detailedStage, { visualWeapon: 'machinegun' });
+await smg.canvasLocator.click({ position: { x: smg.canvas.width / 2, y: smg.canvas.height / 2 } });
+const switchCount = await page.evaluate(() => window.__pawnSlugWeaponChangeCount || 0);
+await page.keyboard.press('2');
+await page.waitForFunction(
+  (before) => (window.__pawnSlugWeaponChangeCount || 0) > before,
+  switchCount,
+  { timeout: 3_000 },
+);
+await page.waitForTimeout(16);
+await capture('50-smg-switch-immediate');
+await captureDetailedCloseup('50-smg-switch-immediate', smg.canvas);
+await page.waitForTimeout(180);
+await capture('51-smg-idle');
+await captureDetailedCloseup('51-smg-idle', smg.canvas);
+
+await page.keyboard.down('ArrowRight');
+await page.waitForTimeout(240);
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `52-smg-run-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smg.canvas);
+  await page.waitForTimeout(42);
+}
+await page.keyboard.down('z');
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `53-smg-run-fire-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smg.canvas);
+  await page.waitForTimeout(48);
+}
+await page.keyboard.up('z');
+await page.keyboard.up('ArrowRight');
+await page.waitForTimeout(120);
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -177,7 +219,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 5,
+    schema: 6,
     detailedStage,
     stageOverviews,
     captures,
