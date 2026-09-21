@@ -35,14 +35,19 @@ await page.addInitScript(() => {
   });
 });
 
-function urlForStage(stageId) {
+function urlForStage(stageId, visualProbeX = null) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
+  if (Number.isFinite(visualProbeX)) {
+    url.searchParams.set('visual_probe_x', String(visualProbeX));
+  } else {
+    url.searchParams.delete('visual_probe_x');
+  }
   return url.toString();
 }
 
-async function loadStage(stageId) {
-  const url = urlForStage(stageId);
+async function loadStage(stageId, visualProbeX = null) {
+  const url = urlForStage(stageId, visualProbeX);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
   await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
   await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
@@ -57,6 +62,7 @@ async function loadStage(stageId) {
 }
 
 const stageOverviews = [];
+const traversalProbes = [];
 const captures = [];
 async function capture(label) {
   const path = `${outputDir}/${label}.png`;
@@ -118,12 +124,31 @@ for (const stageId of stageIds.slice(1)) {
   stageOverviews.push({ stageId, url: stage.url, canvas: stage.canvas, path });
 }
 
+// Traversal changes can live well beyond the opening viewport. A localhost-only
+// Godot visual probe positions Matthias/camera at the authored pit so PR review
+// sees the actual runtime geometry without walking through combat for 10+ seconds.
+const traversalProbeX = {
+  industrial_front_v1: 1630,
+  harbor_raid_v1: 650,
+  alpine_fortress_v1: 3510,
+  jungle_relay_v1: 650,
+};
+for (const stageId of stageIds) {
+  const probeX = traversalProbeX[stageId];
+  if (!Number.isFinite(probeX)) continue;
+  const stage = await loadStage(stageId, probeX);
+  const path = `${outputDir}/traversal-${stageId}.png`;
+  await page.screenshot({ path, fullPage: false });
+  traversalProbes.push({ stageId, probeX, url: stage.url, canvas: stage.canvas, path });
+}
+
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 3,
+    schema: 4,
     detailedStage,
     stageOverviews,
+    traversalProbes,
     captures,
   }, null, 2)}\n`,
   'utf8',
@@ -132,6 +157,7 @@ await writeFile(
 console.log(JSON.stringify({
   detailedStage,
   stageOverviews: stageOverviews.length,
+  traversalProbes: traversalProbes.length,
   captures: captures.length,
   legacyOutputPath,
 }));
