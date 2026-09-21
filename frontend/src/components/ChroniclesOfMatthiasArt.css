@@ -47,19 +47,7 @@
   object-fit: contain;
   object-position: 50% 50%;
   background: #120d0a;
-  filter: saturate(.96) contrast(1.04) brightness(.96);
-}
-.chronicles-party-preview-image {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  object-position: 50% 50%;
-  background: #120d0a;
-  filter: saturate(.96) contrast(1.04) brightness(.96);
+  filter: saturate(.98) contrast(1.035) brightness(.985);
 }
 .chronicles-party-preview-copy {
   position: absolute;
@@ -93,8 +81,9 @@
 .chronicles-party-preview-copy span { text-transform: uppercase; }
 .chronicles-party-preview-copy small { letter-spacing: .02em; color: #baaa93; }
 
-/* The Three.js lighting now carries the mood without crushing dungeon detail. */
-.chronicles-three canvas { filter: brightness(1.11) saturate(1.06) contrast(1.015); }
+/* Let authored Three.js lighting carry the mood while preserving mid-distance
+   stone, enemy silhouettes and floor relief in the first-person viewport. */
+.chronicles-three canvas { filter: brightness(1.145) saturate(1.045) contrast(1.022); }
 .chronicles-stage {
   box-shadow:
     inset 0 0 0 1px rgba(202, 159, 94, .24),
@@ -104,14 +93,15 @@
 }
 .chronicles-stage::after {
   background:
-    linear-gradient(180deg, rgba(198, 145, 69, .03), transparent 24%),
-    radial-gradient(circle at 50% 48%, transparent 62%, rgba(0, 0, 0, .14) 100%);
+    linear-gradient(180deg, rgba(198, 145, 69, .038), transparent 26%),
+    radial-gradient(ellipse at 50% 54%, rgba(121, 149, 168, .028) 0 22%, transparent 48%),
+    radial-gradient(circle at 50% 48%, transparent 66%, rgba(0, 0, 0, .105) 100%);
 }
 .chronicles-vignette {
   box-shadow:
-    inset 0 0 68px 10px rgba(0, 0, 0, .34),
-    inset 0 -44px 72px rgba(0, 0, 0, .2),
-    inset 0 20px 42px rgba(107, 69, 32, .07);
+    inset 0 0 58px 8px rgba(0, 0, 0, .29),
+    inset 0 -38px 64px rgba(0, 0, 0, .165),
+    inset 0 18px 38px rgba(107, 69, 32, .075);
 }
 
 @media (max-width: 800px) {
@@ -120,11 +110,6 @@
     min-height: 144px;
   }
   .chronicles-party-preview::before { inset: 5px; }
-  .chronicles-party-preview-image {
-    object-fit: contain;
-    object-position: 50% 20%;
-    background: #120d0a;
-  }
   .chronicles-party-preview-image {
     object-fit: contain;
     object-position: 50% 20%;
@@ -144,8 +129,7 @@
 @media (max-width: 520px) {
   .chronicles-party-preview { min-height: 124px; }
   .chronicles-party-preview-image { object-position: 50% 18%; }
-  .chronicles-party-preview-image { object-position: 50% 18%; }
-  .chronicles-three canvas { filter: brightness(1.14) saturate(1.05) contrast(1.01); }
+  .chronicles-three canvas { filter: brightness(1.16) saturate(1.04) contrast(1.018); }
   .chronicles-stage {
     box-shadow:
       inset 0 0 0 1px rgba(202, 159, 94, .24),
