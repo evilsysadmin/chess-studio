@@ -145,8 +145,14 @@ async function switchWarRoomTo2D(page) {
 }
 
 async function switchWarRoomTo3D(page) {
-  const dialog = await openWarRoomAppearance(page);
-  await dialog.getByRole('radio', { name: /3D$/ }).click();
+  const appearance = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  await expect(appearance).toBeVisible({ timeout: 30_000 });
+  await appearance.evaluate((element) => element.click());
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  const threeD = dialog.getByRole('radio', { name: /3D$/ });
+  await expect(threeD).toBeVisible();
+  await threeD.evaluate((element) => element.click());
   const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
   await expect(close).toBeVisible();
   await close.evaluate((element) => element.click());
