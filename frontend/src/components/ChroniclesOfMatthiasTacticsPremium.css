@@ -562,7 +562,7 @@
 
 .chronicles-pause__footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin-top: 22px;
   padding-top: 16px;
