@@ -274,6 +274,59 @@ export function applyFlameLook(material, kind) {
   return true;
 }
 
+// Flat orange emission makes every flame a cut-out blob. Real flames are darker and
+// redder at the base and yellow-white at the tip, so the emission is graded along the
+// flame's own height (object-space y between the geometry bounds). The base value is
+// a multiplier on the authored orange and the tip a hot yellow scaled by the same
+// intensity, so the animated emissiveIntensity keeps driving the flicker.
+export const HOME_BLENDER_FLAME_GRADIENT = Object.freeze({
+  base: Object.freeze([0.95, 0.40, 0.28]),
+  tip: Object.freeze([1.0, 0.60, 0.10]),
+  from: 0.25,
+  to: 1.0,
+});
+
+export function flameHeightRange(geometry) {
+  if (!geometry) return null;
+  geometry.computeBoundingBox?.();
+  const box = geometry.boundingBox;
+  if (!box) return null;
+  const min = box.min.y;
+  const max = box.max.y;
+  return max - min > 1e-5 ? { min, max } : null;
+}
+
+export function applyFlameGradient(material, range) {
+  if (!material || !range) return false;
+  const { base, tip, from, to } = HOME_BLENDER_FLAME_GRADIENT;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uFlameMin = { value: range.min };
+    shader.uniforms.uFlameMax = { value: range.max };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vFlameY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlameY = position.y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying float vFlameY;\nuniform float uFlameMin;\nuniform float uFlameMax;',
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        float flameT = smoothstep(${from.toFixed(2)}, ${to.toFixed(2)},
+          clamp((vFlameY - uFlameMin) / max(uFlameMax - uFlameMin, 1e-4), 0.0, 1.0));
+        float flameGain = max(max(emissive.r, emissive.g), emissive.b);
+        totalEmissiveRadiance = mix(
+          totalEmissiveRadiance * vec3(${base.map((v) => v.toFixed(2)).join(',')}),
+          vec3(${tip.map((v) => v.toFixed(2)).join(',')}) * flameGain,
+          flameT);`,
+      );
+  };
+  material.customProgramCacheKey = () => 'home-flame-gradient';
+  material.needsUpdate = true;
+  return true;
+}
+
 function prepareRuntimeFireRig(root) {
   const nodes = [];
   root?.traverse?.((object) => {
@@ -291,6 +344,7 @@ function prepareRuntimeFireRig(root) {
 
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
       if (kind !== 'ember') applyFlameLook(material, kind);
+      if (kind !== 'ember') applyFlameGradient(material, flameHeightRange(object.geometry));
     }
 
     const materials = (Array.isArray(object.material) ? object.material : [object.material])
