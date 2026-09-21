@@ -6,6 +6,9 @@ import {
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
+  flameHeightRange,
+  applyFlameGradient,
+  HOME_BLENDER_FLAME_GRADIENT,
   homeBlenderTimeOfDayLook,
   applyHomeBlenderMoonVisibility,
   HOME_BLENDER_TIME_OF_DAY,
@@ -432,6 +435,42 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect([moon.visible, mare.visible, other.visible]).toEqual([false, false, true]);
       applyHomeBlenderMoonVisibility(root, 'night');
       expect([moon.visible, mare.visible, other.visible]).toEqual([true, true, true]);
+    });
+  });
+
+  describe('flame gradient', () => {
+    it('reads the vertical extent of a flame geometry', () => {
+      const geometry = {
+        computeBoundingBox() {},
+        boundingBox: { min: { y: 0.1 }, max: { y: 0.7 } },
+      };
+      expect(flameHeightRange(geometry)).toEqual({ min: 0.1, max: 0.7 });
+      expect(flameHeightRange(null)).toBeNull();
+      expect(flameHeightRange({ computeBoundingBox() {}, boundingBox: { min: { y: 1 }, max: { y: 1 } } })).toBeNull();
+    });
+
+    it('makes the tip hotter (more green) than the base', () => {
+      const { base, tip } = HOME_BLENDER_FLAME_GRADIENT;
+      expect(tip[1]).toBeGreaterThan(base[1] * 1.3);
+      expect(tip[2]).toBeLessThan(base[2]);
+    });
+
+    it('injects the gradient into the shader without dropping the emissive chunk', () => {
+      const material = { needsUpdate: false };
+      expect(applyFlameGradient(material, { min: 0, max: 1 })).toBe(true);
+      const shader = {
+        uniforms: {},
+        vertexShader: '#include <common>\n#include <begin_vertex>',
+        fragmentShader: '#include <common>\n#include <emissivemap_fragment>',
+      };
+      material.onBeforeCompile(shader);
+      expect(shader.uniforms.uFlameMin.value).toBe(0);
+      expect(shader.uniforms.uFlameMax.value).toBe(1);
+      expect(shader.vertexShader).toContain('vFlameY = position.y');
+      expect(shader.fragmentShader).toContain('#include <emissivemap_fragment>');
+      expect(shader.fragmentShader).toContain('totalEmissiveRadiance = mix(');
+      expect(material.customProgramCacheKey()).toBe('home-flame-gradient');
+      expect(applyFlameGradient(material, null)).toBe(false);
     });
   });
 });
