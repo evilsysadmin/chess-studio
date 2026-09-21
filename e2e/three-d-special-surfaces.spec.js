@@ -6,6 +6,8 @@ import {
   openMoreGameModes,
 } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 const READY = 45_000;
 
 function normalized(vector) {

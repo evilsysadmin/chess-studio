@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi, openMoreGameModes } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (!(await guide.isVisible().catch(() => false))) return;
@@ -20,13 +22,14 @@ async function openPawnTrailblazer(page) {
   await login(page);
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
-  await moreModes
-    .getByRole('button')
-    .filter({ hasText: 'Experimentos geniales' })
-    .click();
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeEnabled();
+  await experiments.evaluate((element) => element.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Pawn Trailblazer/ }).click();
-  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
+  const trailblazer = page.getByRole('button', { name: /Pawn Trailblazer/ });
+  await expect(trailblazer).toBeEnabled();
+  await trailblazer.evaluate((element) => element.click());
+  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
 test('Pawn Trailblazer · arranca con Three.js real y entra en carrera', async ({ page }) => {

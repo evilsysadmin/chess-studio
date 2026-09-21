@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 test('Home · el avatar residente de Matthias abre Así juegas aunque haya partida guardada', async ({ page }) => {
   await mockApi(page, { profileSeed: {
     'matthias.onboarded': '2',

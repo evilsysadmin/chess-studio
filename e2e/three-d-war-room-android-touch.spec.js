@@ -3,7 +3,7 @@ import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
 import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
 
-test.use({ ...devices['Pixel 5'] });
+test.use({ ...devices['Pixel 5'], reducedMotion: 'reduce' });
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const BLACK_AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
@@ -117,6 +117,12 @@ function movePosts(requestLog) {
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   if (await board3d.isVisible().catch(() => false)) return;
+  try {
+    await board3d.waitFor({ state: 'visible', timeout: 8_000 });
+    return;
+  } catch {
+    // Fall back to Appearance only when the canonical lazy 3D mount did not arrive.
+  }
 
   await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();

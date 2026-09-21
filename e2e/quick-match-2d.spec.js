@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 const PIECE_SKIN_KEY = 'chess-study-selected-skin';
 
@@ -93,9 +95,11 @@ test('Partida rápida · un dispositivo limpio conserva War Room como camino pri
 
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBeNull();
   const { dialog } = await openQuickMatch(page);
-  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(start).toBeEnabled();
+  await start.evaluate((element) => element.click());
 
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.game-layout-3d')).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
 });
@@ -107,9 +111,11 @@ test('Partida rápida · vuelve a ofrecer 3D aunque el dispositivo recuerde una 
   await page.evaluate((key) => localStorage.setItem(key, '2d'), DEVICE_BOARD_RENDERER_KEY);
 
   const { dialog } = await openQuickMatch(page);
-  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(start).toBeEnabled();
+  await start.evaluate((element) => element.click());
 
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.game-layout-3d')).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
 });

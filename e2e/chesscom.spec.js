@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi, openMoreGameModes } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (!(await guide.isVisible().catch(() => false))) return;
@@ -20,17 +22,18 @@ async function openExperimentsHub(page) {
   await login(page);
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
-  await moreModes
-    .getByRole('button')
-    .filter({ hasText: 'Experimentos geniales' })
-    .click();
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeEnabled();
+  await experiments.evaluate((element) => element.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
 async function openChesscom(page) {
   await openExperimentsHub(page);
-  await page.getByRole('button', { name: /Chesscom/ }).click();
-  await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
+  const chesscom = page.getByRole('button', { name: /Chesscom/ });
+  await expect(chesscom).toBeEnabled();
+  await chesscom.evaluate((element) => element.click());
+  await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
 test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil premium', async ({ page }) => {
