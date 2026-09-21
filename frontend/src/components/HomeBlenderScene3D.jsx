@@ -411,6 +411,15 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
       return light;
     })
     : [];
+  // The Dungeon's two fire pits sit under the gate at the foot of the stairs and glow
+  // up the steps in the Blender scene; the runtime ignored them, so the stairs read as
+  // flat dark slabs. A warm light from below gives them relief and life, and it wavers
+  // with the torches. Full LOD only, like them.
+  if (shadowsEnabled) {
+    const dungeon = new THREE.PointLight(0xff5a18, 9, 6, 2);
+    dungeon.position.set(6.42, -0.45, -1.05);
+    torches.push(dungeon);
+  }
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
   return {
