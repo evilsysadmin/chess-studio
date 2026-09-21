@@ -17,6 +17,10 @@ const RENDER_BUDGET = Object.freeze({
   // allocates environment/PMREM intermediates. Keep modest headroom as a ratchet.
   liveBuffers: 3_600,
   maxRafP95Ms: 100,
+  // Generous first ratchet for a real move-animation sample. This is tightened
+  // from observed CI data rather than guessed from a workstation.
+  movingTotalDrawCalls: 50_000,
+  movingPaintedFrames: 64,
 });
 
 async function installGpuProbe(page) {
@@ -26,12 +30,18 @@ async function installGpuProbe(page) {
       frameTriangles: 0,
       peakDrawCalls: 0,
       peakTriangles: 0,
+      paintedFrames: 0,
+      totalDrawCalls: 0,
       liveTextures: new Set(),
       liveBuffers: new Set(),
       longTasks: [],
     };
 
     const finishFrame = () => {
+      if (state.frameDrawCalls > 0) {
+        state.paintedFrames += 1;
+        state.totalDrawCalls += state.frameDrawCalls;
+      }
       state.peakDrawCalls = Math.max(state.peakDrawCalls, state.frameDrawCalls);
       state.peakTriangles = Math.max(state.peakTriangles, state.frameTriangles);
       state.frameDrawCalls = 0;
@@ -145,6 +155,8 @@ async function installGpuProbe(page) {
         state.frameTriangles = 0;
         state.peakDrawCalls = 0;
         state.peakTriangles = 0;
+        state.paintedFrames = 0;
+        state.totalDrawCalls = 0;
         state.liveTextures.clear();
         state.liveBuffers.clear();
         state.longTasks.length = 0;
@@ -155,6 +167,8 @@ async function installGpuProbe(page) {
         state.frameTriangles = 0;
         state.peakDrawCalls = 0;
         state.peakTriangles = 0;
+        state.paintedFrames = 0;
+        state.totalDrawCalls = 0;
         state.longTasks.length = 0;
       },
       snapshot() {
@@ -162,6 +176,8 @@ async function installGpuProbe(page) {
         return {
           peakDrawCalls: state.peakDrawCalls,
           peakTriangles: state.peakTriangles,
+          paintedFrames: state.paintedFrames,
+          totalDrawCalls: state.totalDrawCalls,
           liveTextures: state.liveTextures.size,
           liveBuffers: state.liveBuffers.size,
           longTaskCount: state.longTasks.length,
@@ -269,6 +285,38 @@ async function collectRenderAudit(page, { viewport } = {}) {
   };
 }
 
+
+async function sampleMoveAnimationGpu(page) {
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+
+  await canvas.focus();
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await canvas.press('ArrowUp');
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e4');
+
+  await page.evaluate(() => window.__warRoomGpuAudit.resetFramePeaks());
+  const startedAt = Date.now();
+  await canvas.press('Enter');
+  await page.waitForTimeout(900);
+
+  const metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
+  const diagnostics = await canvas.evaluate((element) => ({
+    adaptiveQuality: element.dataset.board3dAdaptiveQuality || 'unknown',
+    animationCadence: element.dataset.board3dAnimationCadence || 'unknown',
+  }));
+
+  return {
+    ...metrics,
+    ...diagnostics,
+    sampleMs: Date.now() - startedAt,
+  };
+}
+
 function logRenderAudit(label, audit, contract) {
   console.log('[war-room-render-budget]', JSON.stringify({
     profile: label,
@@ -332,4 +380,39 @@ test('War Room · Pixel 5 conserva el tier táctil y el presupuesto GPU', async 
   } finally {
     await context.close();
   }
+});
+
+
+test('War Room · una jugada real queda dentro del presupuesto de render sostenido', async ({ page }) => {
+  test.setTimeout(120_000);
+  await installGpuProbe(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await page.evaluate(() => window.__warRoomGpuAudit.reset());
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await page.waitForTimeout(1_500);
+
+  const movement = await sampleMoveAnimationGpu(page);
+  console.log('[war-room-motion-budget]', JSON.stringify({
+    sampleMs: movement.sampleMs,
+    paintedFrames: movement.paintedFrames,
+    totalDrawCalls: movement.totalDrawCalls,
+    peakDrawCalls: movement.peakDrawCalls,
+    peakTriangles: movement.peakTriangles,
+    adaptiveQuality: movement.adaptiveQuality,
+    animationCadence: movement.animationCadence,
+    longTaskCount: movement.longTaskCount,
+    maxLongTaskMs: movement.maxLongTaskMs,
+  }));
+
+  expect(movement.paintedFrames).toBeGreaterThan(1);
+  expect(movement.totalDrawCalls).toBeGreaterThan(movement.peakDrawCalls);
+  expect(movement.paintedFrames).toBeLessThanOrEqual(RENDER_BUDGET.movingPaintedFrames);
+  expect(movement.totalDrawCalls).toBeLessThanOrEqual(RENDER_BUDGET.movingTotalDrawCalls);
 });
