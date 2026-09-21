@@ -231,7 +231,7 @@ class SpriteForgeFixedScalePlacementTests(unittest.TestCase):
         source = Image.new("RGBA", (160, 100), (0, 0, 0, 0))
         draw = ImageDraw.Draw(source)
         draw.rectangle((60, 30, 99, 80), fill=(180, 120, 80, 255))
-        draw.rectangle((150, 40, 155, 45), fill=(255, 220, 120, 255))
+        draw.rectangle((157, 40, 159, 42), fill=(255, 220, 120, 255))
         config = LintConfig(
             edge_guard_px=0,
             allowed_detached_components=1,
