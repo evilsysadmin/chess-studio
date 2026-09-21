@@ -1,6 +1,7 @@
 extends Node
 
-const MIX_RATE := 44100
+const SFX_MIX_RATE := 44100
+const AMBIENT_MIX_RATE := 22050
 const POOL_SIZE := 12
 
 var _players: Array[AudioStreamPlayer] = []
@@ -92,7 +93,7 @@ func _make_arcade_gunshot(
     bolt_gain: float,
     seed: int,
 ) -> AudioStreamWAV:
-    var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+    var sample_count := maxi(1, int(duration * float(SFX_MIX_RATE)))
     var data := PackedByteArray()
     data.resize(sample_count * 2)
     var noise_state := seed
@@ -101,10 +102,10 @@ func _make_arcade_gunshot(
     var bolt_time := minf(duration * 0.52, 0.024)
 
     for index in range(sample_count):
-        var seconds := float(index) / float(MIX_RATE)
+        var seconds := float(index) / float(SFX_MIX_RATE)
         var progress := float(index) / float(sample_count)
         var hz := lerpf(body_start_hz, body_end_hz, progress)
-        phase += TAU * hz / float(MIX_RATE)
+        phase += TAU * hz / float(SFX_MIX_RATE)
 
         noise_state = int((noise_state * 1103515245 + 12345) & 0x7fffffff)
         var noise := (float(noise_state) / 1073741824.0) - 1.0
@@ -135,7 +136,7 @@ func _make_arcade_gunshot(
         sample = clampf(sample, -1.0, 1.0)
         data.encode_s16(index * 2, int(round(sample * 32767.0)))
 
-    return _wav_from_data(data)
+    return _wav_from_data(data, SFX_MIX_RATE)
 
 func _make_noise_tone(
     duration: float,
@@ -145,7 +146,7 @@ func _make_noise_tone(
     gain: float,
     seed: int,
 ) -> AudioStreamWAV:
-    var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+    var sample_count := maxi(1, int(duration * float(SFX_MIX_RATE)))
     var data := PackedByteArray()
     data.resize(sample_count * 2)
     var noise_state := seed
@@ -154,7 +155,7 @@ func _make_noise_tone(
     for index in range(sample_count):
         var t := float(index) / float(sample_count)
         var hz := lerpf(start_hz, end_hz, t)
-        phase += TAU * hz / float(MIX_RATE)
+        phase += TAU * hz / float(SFX_MIX_RATE)
         noise_state = int((noise_state * 1103515245 + 12345) & 0x7fffffff)
         var noise := (float(noise_state) / 1073741824.0) - 1.0
         var tone := sin(phase)
@@ -164,10 +165,10 @@ func _make_noise_tone(
         var sample := clampf(body * attack * decay * gain, -1.0, 1.0)
         data.encode_s16(index * 2, int(round(sample * 32767.0)))
 
-    return _wav_from_data(data)
+    return _wav_from_data(data, SFX_MIX_RATE)
 
 func _make_chirp(duration: float, start_hz: float, end_hz: float, gain: float) -> AudioStreamWAV:
-    var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+    var sample_count := maxi(1, int(duration * float(SFX_MIX_RATE)))
     var data := PackedByteArray()
     data.resize(sample_count * 2)
     var phase := 0.0
@@ -175,20 +176,20 @@ func _make_chirp(duration: float, start_hz: float, end_hz: float, gain: float) -
     for index in range(sample_count):
         var t := float(index) / float(sample_count)
         var hz := lerpf(start_hz, end_hz, t)
-        phase += TAU * hz / float(MIX_RATE)
+        phase += TAU * hz / float(SFX_MIX_RATE)
         var envelope := sin(PI * clampf(t, 0.0, 1.0))
         var sample := clampf(sin(phase) * envelope * gain, -1.0, 1.0)
         data.encode_s16(index * 2, int(round(sample * 32767.0)))
 
-    return _wav_from_data(data)
+    return _wav_from_data(data, SFX_MIX_RATE)
 
 func _make_ambient_loop(duration: float) -> AudioStreamWAV:
-    var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+    var sample_count := maxi(1, int(duration * float(AMBIENT_MIX_RATE)))
     var data := PackedByteArray()
     data.resize(sample_count * 2)
 
     for index in range(sample_count):
-        var time := float(index) / float(MIX_RATE)
+        var time := float(index) / float(AMBIENT_MIX_RATE)
         var cycle := TAU * time / duration
         # All components complete whole cycles over the buffer so the loop seam
         # stays quiet. Keep this texture deliberately below combat SFX/music.
@@ -201,16 +202,16 @@ func _make_ambient_loop(duration: float) -> AudioStreamWAV:
         var sample := clampf((low_rumble * breathe) + wind + distant_pulse, -1.0, 1.0)
         data.encode_s16(index * 2, int(round(sample * 32767.0)))
 
-    var stream := _wav_from_data(data)
+    var stream := _wav_from_data(data, AMBIENT_MIX_RATE)
     stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
     stream.loop_begin = 0
     stream.loop_end = sample_count
     return stream
 
-func _wav_from_data(data: PackedByteArray) -> AudioStreamWAV:
+func _wav_from_data(data: PackedByteArray, mix_rate: int) -> AudioStreamWAV:
     var stream := AudioStreamWAV.new()
     stream.format = AudioStreamWAV.FORMAT_16_BITS
-    stream.mix_rate = MIX_RATE
+    stream.mix_rate = mix_rate
     stream.stereo = false
     stream.data = data
     return stream
