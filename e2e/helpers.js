@@ -645,11 +645,12 @@ export async function openMoreGameModes(page) {
           && !(await trigger.isDisabled().catch(() => true));
         if (!actionable) throw error;
         // The illustrated Home trigger has a long-lived ambient animation.
-        // For navigation helpers, a visible+enabled control is actionable even
-        // when Playwright never observes a fully static bounding box.
-        await trigger.click({ force: true, timeout: 5_000 });
+        // Dispatch the native DOM click after Playwright's actionability check
+        // times out; this exercises the real React click handler without
+        // requiring a perfectly static bounding box.
+        await trigger.evaluate((button) => button.click());
       }
-      await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
+      await expect(page.locator('#illustrated-home-tools')).toBeVisible({ timeout: 5_000 });
     }
     return illustrated;
   }
