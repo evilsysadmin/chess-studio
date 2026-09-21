@@ -107,3 +107,33 @@ def test_active_block_cache_is_bounded():
         )
 
     assert len(guard._blocked_cache) == guard.BLOCK_CACHE_LIMIT
+
+
+def test_block_activation_logs_once_without_identity(monkeypatch):
+    async def no_collection():
+        return None
+
+    events = []
+    monkeypatch.setattr(guard, "_get_collection", no_collection)
+    monkeypatch.setattr(
+        guard._logger,
+        "warning",
+        lambda message, *args: events.append((message, args)),
+    )
+    identity = guard.ip_key("203.0.113.88", "secret")
+
+    for _ in range(guard.FAILURE_LIMIT + 1):
+        asyncio.run(guard.record_failure(identity))
+
+    assert len(events) == 1
+    message, args = events[0]
+    assert args == ()
+    payload = __import__("json").loads(message)
+    assert payload == {
+        "block_seconds": guard.BLOCK_SECONDS,
+        "event": "auth_ip_ban_activated",
+        "failure_limit": guard.FAILURE_LIMIT,
+        "window_seconds": guard.WINDOW_SECONDS,
+    }
+    assert identity not in message
+    assert "203.0.113.88" not in message

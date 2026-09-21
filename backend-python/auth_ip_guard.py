@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import ipaddress
+import json
+import logging
 import math
 from typing import Any
 
@@ -24,6 +26,7 @@ BLOCK_CACHE_LIMIT = 4096
 _memory: dict[str, dict[str, Any]] = {}
 _blocked_cache: dict[str, datetime] = {}
 _index_ready = False
+_logger = logging.getLogger("uvicorn.error")
 
 
 def ip_key(client_ip: str, secret: str) -> str:
@@ -151,6 +154,24 @@ def _remember_active_block(identity: str, doc: dict[str, Any] | None) -> None:
         _blocked_cache.pop(next(iter(_blocked_cache)))
 
 
+def _log_block_activation(previous: dict[str, Any] | None, current: dict[str, Any] | None) -> None:
+    """Emit one privacy-safe operational event when an IP ban becomes active."""
+    if retry_after_seconds(previous) or not retry_after_seconds(current):
+        return
+    _logger.warning(
+        json.dumps(
+            {
+                "event": "auth_ip_ban_activated",
+                "failure_limit": FAILURE_LIMIT,
+                "window_seconds": WINDOW_SECONDS,
+                "block_seconds": BLOCK_SECONDS,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    )
+
+
 async def retry_after(identity: str) -> int:
     cached = _cached_retry_after(identity)
     if cached:
@@ -191,11 +212,13 @@ async def retry_after(identity: str) -> int:
 async def record_failure(identity: str) -> int:
     col = await _get_collection()
     if col is None:
-        next_state = state_after_failure(_memory.get(identity))
+        previous = _memory.get(identity)
+        next_state = state_after_failure(previous)
         _memory[identity] = next_state
         retry = retry_after_seconds(next_state)
         if retry:
             _remember_active_block(identity, next_state)
+            _log_block_activation(previous, next_state)
         return retry
 
     await _ensure_index(col)
@@ -251,6 +274,7 @@ async def record_failure(identity: str) -> int:
             retry = retry_after_seconds(next_state)
             if retry:
                 _remember_active_block(identity, next_state)
+                _log_block_activation(current, next_state)
             return retry
 
     raise PersistentStorageUnavailable(
