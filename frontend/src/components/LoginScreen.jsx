@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { forgotPassword, login, register, resetPassword, wakeBackend } from '../auth.js';
 import { SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { connectionErrorCopy } from '../networkErrorCopy.js';
+import { minPasswordLengthForAuthMode, NEW_PASSWORD_MIN_LENGTH } from '../passwordPolicy.js';
 
 const COPY = {
   es: {
@@ -9,14 +10,14 @@ const COPY = {
     loginHint: 'Entra con tu usuario para seguir donde lo dejaste.', registerHint: 'Cada cuenta tiene su propio progreso. El email se usa únicamente para recuperar el acceso.',
     forgotHint: 'Te enviaremos un enlace temporal si el email pertenece a una cuenta.', resetHint: 'El enlace caduca a los 30 minutos y queda invalidado después de usarlo.',
     username: 'Usuario', email: 'Email', password: 'Contraseña', newPassword: 'Nueva contraseña', repeatPassword: 'Repite la contraseña', language: 'Idioma', invite: 'Código de invitación', invitePlaceholder: 'Sólo si el servidor lo exige',
-    wait: 'Un momento…', create: 'Crear cuenta', send: 'Enviar enlace', change: 'Cambiar contraseña', enter: 'Entrar', forgotLink: 'He olvidado la contraseña', createLink: '¿No tienes cuenta? Créala', back: 'Volver a iniciar sesión', mismatch: 'Las contraseñas no coinciden.', missingToken: 'Falta el token de recuperación. Solicita un enlace nuevo.', recoveryNotice: 'Si ese email está registrado, recibirás un enlace de recuperación.',
+    wait: 'Un momento…', create: 'Crear cuenta', send: 'Enviar enlace', change: 'Cambiar contraseña', enter: 'Entrar', forgotLink: 'He olvidado la contraseña', createLink: '¿No tienes cuenta? Créala', back: 'Volver a iniciar sesión', mismatch: 'Las contraseñas no coinciden.', missingToken: 'Falta el token de recuperación. Solicita un enlace nuevo.', recoveryNotice: 'Si ese email está registrado, recibirás un enlace de recuperación.', passwordRule: `Mínimo ${NEW_PASSWORD_MIN_LENGTH} caracteres para contraseñas nuevas.`,
   },
   en: {
     login: 'Sign in', register: 'Create account', forgot: 'Reset password', reset: 'New password',
     loginHint: 'Sign in to continue where you left off.', registerHint: 'Each account keeps its own progress. Your email is only used for account recovery.',
     forgotHint: 'We will send a temporary link if the email belongs to an account.', resetHint: 'The link expires after 30 minutes and can only be used once.',
     username: 'Username', email: 'Email', password: 'Password', newPassword: 'New password', repeatPassword: 'Repeat password', language: 'Language', invite: 'Invitation code', invitePlaceholder: 'Only if required by the server',
-    wait: 'One moment…', create: 'Create account', send: 'Send link', change: 'Change password', enter: 'Sign in', forgotLink: 'I forgot my password', createLink: 'No account yet? Create one', back: 'Back to sign in', mismatch: 'Passwords do not match.', missingToken: 'The recovery token is missing. Request a new link.', recoveryNotice: 'If that email is registered, you will receive a recovery link.',
+    wait: 'One moment…', create: 'Create account', send: 'Send link', change: 'Change password', enter: 'Sign in', forgotLink: 'I forgot my password', createLink: 'No account yet? Create one', back: 'Back to sign in', mismatch: 'Passwords do not match.', missingToken: 'The recovery token is missing. Request a new link.', recoveryNotice: 'If that email is registered, you will receive a recovery link.', passwordRule: `Minimum ${NEW_PASSWORD_MIN_LENGTH} characters for new passwords.`,
   },
 };
 
@@ -166,14 +167,15 @@ export default function LoginScreen({ onLoggedIn }) {
             {(mode === 'login' || mode === 'register' || mode === 'reset') && (
               <>
                 <label className="field-label" htmlFor="login-password">{mode === 'reset' ? text.newPassword : text.password}</label>
-                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={minPasswordLengthForAuthMode(mode)} maxLength={128} required style={{ width: '100%', marginBottom: mode === 'login' ? '0.7rem' : '0.25rem' }} />
+                {mode !== 'login' && <p className="hint-text" style={{ marginBottom: '0.7rem' }}>{text.passwordRule}</p>}
               </>
             )}
 
             {mode === 'reset' && (
               <>
                 <label className="field-label" htmlFor="login-password-confirm">{text.repeatPassword}</label>
-                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={NEW_PASSWORD_MIN_LENGTH} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
