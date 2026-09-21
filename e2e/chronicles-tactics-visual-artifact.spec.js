@@ -35,7 +35,20 @@ async function openTactics(page, {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) await close.click({ force: true });
   }
-  await openMoreGameModes(page);
+  try {
+    await openMoreGameModes(page);
+  } catch (error) {
+    // Visual proof cares about the rendered Tactics surface, not whether Home's
+    // animated dungeon trigger satisfies Playwright's transient "stable" check.
+    // Keep the canonical helper first; only bypass actionability after its own
+    // timeout when the real trigger is already visible and enabled.
+    const trigger = page.locator('.illustrated-home__utilities')
+      .getByRole('button', { name: /Más modos y herramientas/ });
+    if (!(await trigger.isVisible().catch(() => false)) || await trigger.isDisabled().catch(() => true)) {
+      throw error;
+    }
+    await trigger.evaluate((button) => button.click());
+  }
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
@@ -238,6 +251,59 @@ for (const capture of CAPTURES) {
             characterSheet: true,
           },
           gameplay: { movedNorth: true, message: movementMessage },
+        }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+const AUTHORED_ROOM_VISUAL_CAPTURES = Object.freeze([
+  Object.freeze({ mapId: 'gallery-of-forks', slug: 'gallery-of-forks' }),
+  Object.freeze({ mapId: 'menagerie-of-ash', slug: 'menagerie-of-ash' }),
+]);
+
+for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
+  test(`Chronicles Tactics · authored room visual proof · ${room.mapId}`, async ({ browser }) => {
+    test.setTimeout(150_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    try {
+      await openTactics(page, { chroniclesCurrentMapId: room.mapId });
+      const mode = page.locator('[data-chronicles-tactics="true"]');
+      const viewport = mode.locator('.chronicles-tactics__viewport');
+      const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
+
+      await expect(canvas).toHaveCount(1, { timeout: 30_000 });
+      await expect(canvas).toBeVisible();
+      await expect(viewport).toBeVisible();
+      await page.waitForTimeout(700);
+
+      const health = await captureTacticsHealth(page);
+      expect(health.horizontalOverflow, `${room.mapId}: Tactics overflow`).toBe(false);
+      expect(health.canvasCount, `${room.mapId}: Tactics canvas`).toBe(1);
+      expect(health.partyMemberCount, `${room.mapId}: canonical four-member party`).toBe(4);
+      expectCanvasFillsViewport(health, room.mapId);
+      expectDesktopCanonicalComposition(health, room.mapId);
+
+      await captureElement(
+        page,
+        viewport,
+        `${ARTIFACT_DIR}/chronicles-tactics-${room.slug}-desktop-1440x900.png`,
+      );
+
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-tactics-${room.slug}-visual-health-desktop-1440x900.json`,
+        `${JSON.stringify({
+          schema: 1,
+          scope: 'chronicles-tactics-authored-room',
+          mapId: room.mapId,
+          capture: { label: 'desktop-1440x900', ...health },
         }, null, 2)}\n`,
         'utf8',
       );
