@@ -2619,6 +2619,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission=(0.18, 0.19, 0.17, 1),
             emission_strength=0.065,
         ),
+        "moon_mare": material(
+            "HOME_MAT_moon_mare",
+            (0.27, 0.285, 0.285, 1),
+            roughness=0.86,
+            emission=(0.10, 0.11, 0.11, 1),
+            emission_strength=0.045,
+        ),
         "fire": material(
             "HOME_MAT_fire",
             (0.34, 0.065, 0.004, 1),
@@ -3486,6 +3493,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.27, 0.026, 0.27),
         materials["moon"],
     )
+    # A single pale disc reads as a plate on the wall. Darker maria (a few
+    # overlapping blotches, offset from the centre and slightly different in size)
+    # make it a moon; they sit just proud of the flattened sphere surface.
+    for idx, (dx, dz, rx, rz) in enumerate((
+        (-0.085, 0.070, 0.085, 0.060),
+        (0.060, 0.115, 0.055, 0.045),
+        (0.020, -0.040, 0.075, 0.090),
+        (0.115, -0.070, 0.045, 0.040),
+        (-0.110, -0.095, 0.040, 0.055),
+    )):
+        rho = math.hypot(dx, dz)
+        surface_y = 6.50 - 0.026 * math.sqrt(max(0.0, 1.0 - (rho / 0.27) ** 2))
+        sphere(
+            f"HOME_PROP_window_moon_mare_{idx}",
+            (7.02 + dx, surface_y + 0.001, 4.56 + dz),
+            (rx, 0.006, rz),
+            materials["moon_mare"],
+        )
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)
