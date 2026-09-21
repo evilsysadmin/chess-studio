@@ -19,6 +19,8 @@ DENSITY_WINDOW = 600.0
 MAX_IN_WINDOW = 6
 MIN_PLATFORMS = 15
 MIN_OBSTACLES = 6
+MIN_LADDERS = 2
+MIN_PITS = 1
 ALLOWED_OBSTACLE_KINDS = {"barrels", "barricade", "bollards", "bunker_block", "cargo_crates", "container_stack", "crate", "crate_stack", "fallen_log", "rockfall", "root_mass", "sandbags", "stone_ruin"}
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
@@ -101,14 +103,72 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
 
     platforms = stage.get("platforms") or []
     obstacles = stage.get("obstacles") or []
+    ladders = stage.get("ladders") or []
+    pits = stage.get("pits") or []
     dressing = stage.get("dressing") or []
     story_props = stage.get("story_props") or []
     if len(platforms) < MIN_PLATFORMS:
         errors.append(f"{stage_name}: platform count {len(platforms)} < {MIN_PLATFORMS}")
     if len(obstacles) < MIN_OBSTACLES:
         errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
+    if len(ladders) < MIN_LADDERS:
+        errors.append(f"{stage_name}: ladder count {len(ladders)} < {MIN_LADDERS}")
+    if len(pits) < MIN_PITS:
+        errors.append(f"{stage_name}: pit count {len(pits)} < {MIN_PITS}")
     errors += _rect_errors(stage_name, "platforms", platforms, width, height)
     errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+    errors += _rect_errors(stage_name, "ladders", ladders, width, height)
+    errors += _rect_errors(stage_name, "pits", pits, width, height)
+
+    for index, ladder in enumerate(ladders):
+        if not isinstance(ladder, dict):
+            errors.append(f"{stage_name}: ladders[{index}] must be an object")
+            continue
+        lx = float(ladder.get("x", -1)); ly = float(ladder.get("y", -1))
+        lw = float(ladder.get("w", 0)); lh = float(ladder.get("h", 0))
+        if abs((ly + lh) - floor_y) > 3.0:
+            errors.append(f"{stage_name}: ladders[{index}] must terminate at floor_y")
+        supported = any(
+            isinstance(platform, dict)
+            and bool(platform.get("one_way", False))
+            and abs(float(platform.get("y", -999)) - ly) <= 3.0
+            and lx + lw >= float(platform.get("x", 0)) + 4.0
+            and lx <= float(platform.get("x", 0)) + float(platform.get("w", 0)) - 4.0
+            for platform in platforms
+        )
+        if not supported:
+            errors.append(f"{stage_name}: ladders[{index}] lacks a one-way landing platform")
+
+    forbidden_pit_points = [
+        ("checkpoint", float(x)) for x in (stage.get("checkpoints") or [])
+    ]
+    forbidden_pit_points += [
+        ("enemy", float(item.get("x", -1))) for item in (stage.get("enemies") or [])
+        if isinstance(item, dict)
+    ]
+    forbidden_pit_points += [
+        ("pickup", float(item.get("x", -1))) for item in (stage.get("pickups") or [])
+        if isinstance(item, dict)
+    ]
+    for index, pit in enumerate(pits):
+        if not isinstance(pit, dict):
+            errors.append(f"{stage_name}: pits[{index}] must be an object")
+            continue
+        px = float(pit.get("x", -1)); py = float(pit.get("y", -1))
+        pw = float(pit.get("w", 0)); ph = float(pit.get("h", 0))
+        if abs(py - floor_y) > 1.0 or py + ph < height - 1.0:
+            errors.append(f"{stage_name}: pits[{index}] must cut floor_y through world bottom")
+        for label, x in forbidden_pit_points:
+            if px <= x <= px + pw:
+                errors.append(f"{stage_name}: pits[{index}] overlaps {label} at x={x:g}")
+        for obstacle_index, obstacle in enumerate(obstacles):
+            if not isinstance(obstacle, dict):
+                continue
+            ox = float(obstacle.get("x", -1)); ow = float(obstacle.get("w", 0))
+            if px < ox + ow and px + pw > ox:
+                errors.append(
+                    f"{stage_name}: pits[{index}] overlaps obstacle[{obstacle_index}]"
+                )
     for index, obstacle in enumerate(obstacles):
         if not isinstance(obstacle, dict):
             continue
