@@ -301,6 +301,63 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2340,
+      "y": 326,
+      "w": 124,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "stone",
+      "one_way": true,
+      "route": "ladder"
+    },
+    {
+      "x": 4480,
+      "y": 286,
+      "w": 126,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "route": "ladder",
+      "visual": {
+        "rail": true
+      }
+    }
+  ],
+  "ladders": [
+    {
+      "id": "fortress-ladder-west",
+      "x": 548,
+      "y": 326,
+      "w": 42,
+      "h": 284,
+      "style": "steel"
+    },
+    {
+      "id": "fortress-ladder-mid",
+      "x": 3395,
+      "y": 310,
+      "w": 42,
+      "h": 300,
+      "style": "steel"
+    },
+    {
+      "id": "fortress-ladder-east",
+      "x": 5020,
+      "y": 300,
+      "w": 42,
+      "h": 310,
+      "style": "steel"
+    }
+  ],
+  "pits": [
+    {
+      "id": "ice-crevasse",
+      "x": 3460,
+      "w": 100,
+      "kind": "crevasse"
     }
   ],
   "obstacles": [
@@ -844,5 +901,5 @@
       "y": 606
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3
 }
