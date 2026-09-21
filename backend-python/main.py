@@ -59,6 +59,7 @@ ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower(
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+NEW_PASSWORD_MIN_LENGTH = 12
 
 
 def _trust_cloudflare_client_ip() -> bool:
@@ -553,8 +554,8 @@ async def register(body: RegisterRequest, request: Request):
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
-    if len(body.password) < 6:
-        raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    if len(body.password) < NEW_PASSWORD_MIN_LENGTH:
+        raise HTTPException(400, f"La contraseña tiene que tener al menos {NEW_PASSWORD_MIN_LENGTH} caracteres.")
     email = _normalize_email(body.email) if ENABLE_EMAIL_RECOVERY else None
     if ENABLE_EMAIL_RECOVERY and not email:
         raise HTTPException(400, "El email es obligatorio para cuentas nuevas.")
@@ -656,8 +657,8 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request):
 async def reset_password(body: ResetPasswordRequest, request: Request):
     if not ENABLE_EMAIL_RECOVERY:
         raise HTTPException(404, "Recuperación por email no habilitada.")
-    if len(body.new_password) < 6:
-        raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    if len(body.new_password) < NEW_PASSWORD_MIN_LENGTH:
+        raise HTTPException(400, f"La contraseña tiene que tener al menos {NEW_PASSWORD_MIN_LENGTH} caracteres.")
     # El username está firmado dentro del token, pero necesitamos el hash
     # actual para que el enlace quede invalidado en cuanto se use/cambie.
     try:
