@@ -223,16 +223,16 @@ def torus(name, loc, major, minor, mat, owner, *, rotation=(0, 0, 0), role=ROLE_
     return obj
 
 
-def draped_banner(name, center, side, mat, owner):
+def draped_banner(name, center, side, mat, owner, *, width_scale=1.0):
     """Build a shallow gathered cloth panel with real silhouette and fold relief."""
     cx, cy, cz = center
     half_height = 1.36
     columns = (-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0)
     rows = (
-        (1.00, 0.58, 0.00),
-        (0.28, 0.50, side * 0.04),
-        (-0.48, 0.31, side * 0.30),
-        (-1.00, 0.56, side * 0.15),
+        (1.00, 0.58 * width_scale, 0.00),
+        (0.28, 0.50 * width_scale, side * 0.04 * width_scale),
+        (-0.48, 0.31 * width_scale, side * 0.30 * width_scale),
+        (-1.00, 0.56 * width_scale, side * 0.15 * width_scale),
     )
 
     verts = []
@@ -1055,22 +1055,28 @@ def add_gothic_canon_v2(static, mats):
     # behind the campaign panel and physically occupied the same wall bay. Shift
     # the survivor into the outer bay so its cloth and heraldry no longer tuck
     # behind the left lancet in the gameplay projection.
-    for index, x in enumerate((-6.92,)):
-        draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
-        cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
+    for index, x in enumerate((-6.98,)):
+        # Keep the surviving ceremonial banner inside the outer bay instead of
+        # letting its cloth/heraldry merge with the lancet silhouette.
+        draped_banner(
+            f"WR_CANON_banner_{index}", (x, 6.48, 4.78),
+            -1 if x < 0 else 1, burgundy, static, width_scale=0.78,
+        )
+        cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.60, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
         for edge in (-1, 1):
             sphere(f"WR_CANON_banner_finial_{index}_{edge}",
-                   (x + edge * 0.76, 6.38, 6.22), 0.075, mats["brass"], static)
-        # Restrained cross + horse-head relief: readable from the hero camera.
-        cube(f"WR_CANON_banner_cross_v_{index}", (x, 6.335, 4.54), (0.055, 0.028, 0.42),
+                   (x + edge * 0.64, 6.38, 6.22), 0.068, mats["brass"], static)
+        # Scale the heraldry with the narrower cloth so it reads as one restrained
+        # emblem rather than another focal point next to the arch.
+        cube(f"WR_CANON_banner_cross_v_{index}", (x, 6.335, 4.54), (0.050, 0.028, 0.36),
              mats["brass"], static, bevel=0.018)
-        cube(f"WR_CANON_banner_cross_h_{index}", (x, 6.332, 4.70), (0.30, 0.028, 0.055),
+        cube(f"WR_CANON_banner_cross_h_{index}", (x, 6.332, 4.70), (0.24, 0.028, 0.050),
              mats["brass"], static, bevel=0.018)
-        sphere(f"WR_CANON_banner_horse_head_{index}", (x - 0.11, 6.325, 5.18), 0.17,
-               mats["brass"], static, scale=(1.12, 0.32, 0.78))
-        muzzle = cube(f"WR_CANON_banner_horse_muzzle_{index}", (x - 0.25, 6.318, 5.10),
-                      (0.14, 0.026, 0.055), mats["brass"], static, bevel=0.04)
+        sphere(f"WR_CANON_banner_horse_head_{index}", (x - 0.09, 6.325, 5.16), 0.15,
+               mats["brass"], static, scale=(1.08, 0.30, 0.76))
+        muzzle = cube(f"WR_CANON_banner_horse_muzzle_{index}", (x - 0.20, 6.318, 5.09),
+                      (0.11, 0.026, 0.048), mats["brass"], static, bevel=0.035)
         muzzle.rotation_euler.y = -0.16
 
     # Keep this bay intentionally open. The full bookcase intersected the left
