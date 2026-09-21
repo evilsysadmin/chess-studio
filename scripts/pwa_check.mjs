@@ -46,6 +46,13 @@ assert(cspIndex > 0 && firstScript > cspIndex, 'la CSP de producción no queda a
 assert(frontendPackage.scripts?.build?.includes('apply_frontend_csp.mjs'), 'el build de producción no inyecta la CSP');
 assert(FRONTEND_CSP.includes("script-src 'self' 'wasm-unsafe-eval'"), 'script-src no conserva WebAssembly sin abrir eval genérico');
 assert(FRONTEND_CSP.includes("script-src-attr 'none'"), 'CSP no bloquea handlers JavaScript inline');
+assert(/script-src[^;]*https:\/\/static\.cloudflareinsights\.com/.test(FRONTEND_CSP), 'script-src debe permitir el beacon de Cloudflare Web Analytics');
+{
+  // The only remote script host allowed is Cloudflare's analytics beacon; anything else weakens the policy.
+  const scriptSrc = FRONTEND_CSP.split('; ').find((directive) => directive.startsWith('script-src '));
+  const remoteHosts = scriptSrc.split(' ').slice(1).filter((token) => /^https?:/.test(token) || token === '*');
+  assert(remoteHosts.length === 1 && remoteHosts[0] === 'https://static.cloudflareinsights.com', `script-src solo puede añadir el beacon de Cloudflare: ${remoteHosts.join(' ')}`);
+}
 assert(!/script-src[^;]*'unsafe-inline'/.test(FRONTEND_CSP), 'script-src permite unsafe-inline');
 assert(!/script-src[^;]*'unsafe-eval'/.test(FRONTEND_CSP), 'script-src permite unsafe-eval genérico');
 assert(/connect-src[^;]*\bblob:/.test(FRONTEND_CSP), 'connect-src debe permitir blob: para las texturas incrustadas de los GLB (GLTFLoader/ImageBitmapLoader)');
