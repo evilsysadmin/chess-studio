@@ -128,10 +128,10 @@ for (const stageId of stageIds.slice(1)) {
 // Godot visual probe positions Matthias/camera at the authored pit so PR review
 // sees the actual runtime geometry without walking through combat for 10+ seconds.
 const traversalProbeX = {
-  industrial_front_v1: 1630,
-  harbor_raid_v1: 650,
-  alpine_fortress_v1: 3510,
-  jungle_relay_v1: 650,
+  industrial_front_v1: 1460,
+  harbor_raid_v1: 480,
+  alpine_fortress_v1: 3340,
+  jungle_relay_v1: 480,
 };
 for (const stageId of stageIds) {
   const probeX = traversalProbeX[stageId];
