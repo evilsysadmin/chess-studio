@@ -32,22 +32,22 @@ const PERFORMANCE_FINISH = Object.freeze({
 });
 
 const PERCUSSION_PERFORMANCE = Object.freeze({
-  default: Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.18, phraseLift: 0.08, stereoMotion: 0.08, ghostChance: 0.06 }),
-  'SPA / Zen': Object.freeze({ anchorVariance: 0.02, secondaryVariance: 0.12, phraseLift: 0.04, stereoMotion: 0.06, ghostChance: 0.02 }),
-  'Smooth Jazz': Object.freeze({ anchorVariance: 0.045, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.14, ghostChance: 0.14 }),
-  'Tropical House': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.14, phraseLift: 0.08, stereoMotion: 0.07, ghostChance: 0.04 }),
-  'House / Afro': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.16, phraseLift: 0.09, stereoMotion: 0.10, ghostChance: 0.06 }),
-  'Energía': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.18, phraseLift: 0.12, stereoMotion: 0.08, ghostChance: 0.05 }),
-  'Ecléctica': Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.18, phraseLift: 0.08, stereoMotion: 0.10, ghostChance: 0.07 }),
-  'Clásica': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.14, phraseLift: 0.07, stereoMotion: 0.08, ghostChance: 0.03 }),
-  'Lo-Fi / Chill': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.25, phraseLift: 0.09, stereoMotion: 0.13, ghostChance: 0.14 }),
-  'Trip-Hop / Downtempo': Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.22, phraseLift: 0.10, stereoMotion: 0.12, ghostChance: 0.12 }),
-  'Bossa / Latin Lounge': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.13, ghostChance: 0.12 }),
-  'Piano / Minimal': Object.freeze({ anchorVariance: 0.02, secondaryVariance: 0.10, phraseLift: 0.05, stereoMotion: 0.06, ghostChance: 0.02 }),
-  'Dark Ambient': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.12, phraseLift: 0.06, stereoMotion: 0.10, ghostChance: 0.04 }),
-  'Jazz / Mediterráneo': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.13, ghostChance: 0.12 }),
-  'Electrónica / Experimental': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.20, phraseLift: 0.10, stereoMotion: 0.12, ghostChance: 0.08 }),
-  'Ambient / Otros': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.14, phraseLift: 0.06, stereoMotion: 0.09, ghostChance: 0.04 }),
+  default: Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.18, phraseLift: 0.08, stereoMotion: 0.08 }),
+  'SPA / Zen': Object.freeze({ anchorVariance: 0.02, secondaryVariance: 0.12, phraseLift: 0.04, stereoMotion: 0.06 }),
+  'Smooth Jazz': Object.freeze({ anchorVariance: 0.045, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.14 }),
+  'Tropical House': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.14, phraseLift: 0.08, stereoMotion: 0.07 }),
+  'House / Afro': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.16, phraseLift: 0.09, stereoMotion: 0.10 }),
+  'Energía': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.18, phraseLift: 0.12, stereoMotion: 0.08 }),
+  'Ecléctica': Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.18, phraseLift: 0.08, stereoMotion: 0.10 }),
+  'Clásica': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.14, phraseLift: 0.07, stereoMotion: 0.08 }),
+  'Lo-Fi / Chill': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.25, phraseLift: 0.09, stereoMotion: 0.13 }),
+  'Trip-Hop / Downtempo': Object.freeze({ anchorVariance: 0.035, secondaryVariance: 0.22, phraseLift: 0.10, stereoMotion: 0.12 }),
+  'Bossa / Latin Lounge': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.13 }),
+  'Piano / Minimal': Object.freeze({ anchorVariance: 0.02, secondaryVariance: 0.10, phraseLift: 0.05, stereoMotion: 0.06 }),
+  'Dark Ambient': Object.freeze({ anchorVariance: 0.025, secondaryVariance: 0.12, phraseLift: 0.06, stereoMotion: 0.10 }),
+  'Jazz / Mediterráneo': Object.freeze({ anchorVariance: 0.04, secondaryVariance: 0.24, phraseLift: 0.10, stereoMotion: 0.13 }),
+  'Electrónica / Experimental': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.20, phraseLift: 0.10, stereoMotion: 0.12 }),
+  'Ambient / Otros': Object.freeze({ anchorVariance: 0.03, secondaryVariance: 0.14, phraseLift: 0.06, stereoMotion: 0.09 }),
 });
 
 const INSTRUMENT_UPGRADES = Object.freeze({
@@ -140,7 +140,6 @@ function premiumPercussion(feel, genre) {
     secondaryVariance: clamp(finiteOr(authored.secondaryVariance, targetPerformance.secondaryVariance), 0.04, 0.32),
     phraseLift: clamp(finiteOr(authored.phraseLift, targetPerformance.phraseLift), 0, 0.18),
     stereoMotion: clamp(finiteOr(authored.stereoMotion, targetPerformance.stereoMotion), 0, 0.18),
-    ghostChance: clamp(finiteOr(authored.ghostChance, targetPerformance.ghostChance), 0, 0.22),
   });
 
   return Object.freeze({
