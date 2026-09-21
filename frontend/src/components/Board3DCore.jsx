@@ -229,8 +229,8 @@ function Board3DCanvas({
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const boardHit = new THREE.Vector3();
-    const boardPickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.105);
+    const boardHit = new THREE.Vector3(), pieceHit = new THREE.Vector3();
+    const boardPickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.105), piecePickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.76);
     const squareMeshes = new Map();
     const highlightMeshes = new Map();
     const pieceMeshes = new Map();
@@ -263,7 +263,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'board-plane-pick-adaptive-motion-v1';
-    renderer.domElement.dataset.board3dPointerPicking = 'board-plane-v1';
+    renderer.domElement.dataset.board3dPointerPicking = 'piece-board-planes-v2';
     renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
     renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
@@ -462,6 +462,8 @@ function Board3DCanvas({
         -((event.clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.setFromCamera(pointer, camera);
+      const pieceSquare = raycaster.ray.intersectPlane(piecePickPlane, pieceHit) ? squareFromBoardPoint(pieceHit) : null;
+      if (pieceSquare && pieceMeshes.has(pieceSquare)) return pieceSquare;
       if (!raycaster.ray.intersectPlane(boardPickPlane, boardHit)) return null;
       return squareFromBoardPoint(boardHit);
     }
