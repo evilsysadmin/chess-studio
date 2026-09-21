@@ -126,7 +126,6 @@ export default function ChroniclesPauseMenu({ onResume, onExit }) {
         </div>
 
         <div className="chronicles-pause__footer">
-          <button type="button" className="secondary-btn" onClick={onResume}>Volver al tablero</button>
           <button type="button" className="chronicles-pause__exit" onClick={onExit}>Salir de Chronicles</button>
         </div>
       </section>
