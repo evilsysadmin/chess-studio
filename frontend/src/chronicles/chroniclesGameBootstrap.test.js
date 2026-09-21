@@ -182,6 +182,21 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+  it('classifies an authoritative 409 conflict as an invalid/stale world while preserving diagnostics', async () => {
+    const error = new Error('La revisión de contenido de esta run ya no está disponible.');
+    error.status = 409;
+    error.requestId = 'req-chronicles-stale';
+
+    await expect(chroniclesBootstrapTacticsWorld({
+      createRun: vi.fn().mockRejectedValue(error),
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'La revisión de contenido de esta run ya no está disponible.',
+      requestId: 'req-chronicles-stale',
+      status: 409,
+    });
+  });
+
   it('rejects an incomplete area bundle without partially installing remote maps', async () => {
     const localCryptTitle = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title;
     const localGalleryTitle = chroniclesMapById('gallery-of-forks').title;
