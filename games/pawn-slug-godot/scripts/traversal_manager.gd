@@ -13,19 +13,16 @@ var _pits: Array[Dictionary] = []
 var _floor_y := 610.0
 var _world_size := Vector2(1280.0, 720.0)
 var _theme := "night_front"
+var _configured := false
 
 func _ready() -> void:
+    # Child _ready runs before the stage's _ready. Keep a one-shot deferred
+    # fallback for scene reuse, but never spin forever when embedded in tests.
     call_deferred("_install_stage")
 
-func _install_stage() -> void:
-    var stage = get_parent()
-    if stage == null:
+func configure_stage(manifest: Dictionary) -> void:
+    if manifest.is_empty():
         return
-    var manifest_variant = stage.get("_stage_manifest")
-    if typeof(manifest_variant) != TYPE_DICTIONARY or Dictionary(manifest_variant).is_empty():
-        call_deferred("_install_stage")
-        return
-    var manifest: Dictionary = Dictionary(manifest_variant)
     var world: Dictionary = manifest.get("world", {})
     _floor_y = float(world.get("floor_y", 610.0))
     _world_size = Vector2(
@@ -35,8 +32,20 @@ func _install_stage() -> void:
     _theme = String(manifest.get("theme", "night_front"))
     _ladders = _validated_ladders(manifest.get("ladders", []))
     _pits = _validated_pits(manifest.get("pits", []))
+    _configured = true
     _rebuild_floor_with_pits()
     queue_redraw()
+
+func _install_stage() -> void:
+    if _configured:
+        return
+    var stage = get_parent()
+    if stage == null:
+        return
+    var manifest_variant = stage.get("_stage_manifest")
+    if typeof(manifest_variant) != TYPE_DICTIONARY:
+        return
+    configure_stage(Dictionary(manifest_variant))
 
 func _validated_ladders(raw: Array) -> Array[Dictionary]:
     var result: Array[Dictionary] = []
@@ -89,6 +98,10 @@ func _rebuild_floor_with_pits() -> void:
     if old_floor != null:
         geometry.remove_child(old_floor)
         old_floor.queue_free()
+    for child in geometry.get_children():
+        if String(child.name).begins_with("FloorSegment_"):
+            geometry.remove_child(child)
+            child.queue_free()
 
     var cursor := 0.0
     var segment_index := 0
