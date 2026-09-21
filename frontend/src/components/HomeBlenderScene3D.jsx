@@ -18,10 +18,10 @@ const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
 
 const EXPOSURE = Object.freeze({
-  dawn: 1.17,
-  day: 1.12,
-  dusk: 1.16,
-  night: 1.22,
+  dawn: 1.27,
+  day: 1.22,
+  dusk: 1.26,
+  night: 1.32,
 });
 
 function stableFirePhase(name = '') {
@@ -345,12 +345,15 @@ export function homeBlenderPolicyNeedsFallback(policy) {
 }
 
 
+// Wall-torch x positions from the authored Blender scene (Blender x maps to three x).
+const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
+
 function addRuntimeLights(scene, shadowsEnabled = true) {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
-  const ambient = new THREE.AmbientLight(0x9b806b, 0.14);
-  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.28);
+  const ambient = new THREE.AmbientLight(0x9b806b, 0.20);
+  const hemi = new THREE.HemisphereLight(0x8198b8, 0x2a1208, 0.36);
 
   const key = new THREE.DirectionalLight(0xffc18a, 1.62);
   key.position.set(-5.2, 7.4, 8.2);
@@ -370,10 +373,10 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   const fill = new THREE.DirectionalLight(0x587aa8, 0.31);
   fill.position.set(7.2, 4.8, 5.6);
 
-  const leftHearth = new THREE.PointLight(0xff6f24, 15.8, 7.0, 2);
+  const leftHearth = new THREE.PointLight(0xff6f24, 26, 8.5, 2);
   leftHearth.position.set(-6.15, 0.95, -5.12);
 
-  const rightHearth = new THREE.PointLight(0xff6b21, 16.6, 7.0, 2);
+  const rightHearth = new THREE.PointLight(0xff6b21, 27, 8.5, 2);
   rightHearth.position.set(4.50, 1.10, -5.00);
 
   const table = new THREE.PointLight(0xffb66f, 3.35, 7.4, 2);
@@ -391,7 +394,18 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   armour.target.position.set(1.5, 2.2, -5.7);
   armour.castShadow = false;
 
-  scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target);
+  // The four wall torches carry a point light in the Blender scene but had none in
+  // the runtime, so they were bright flames that lit nothing around them. Full LOD
+  // only: every extra light is paid by every material.
+  const torches = shadowsEnabled
+    ? HOME_BLENDER_TORCH_X.map((x) => {
+      const light = new THREE.PointLight(0xff8a3c, 7, 6, 2);
+      light.position.set(x, 3.15, -5.5);
+      return light;
+    })
+    : [];
+
+  scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
   return {
     leftHearth,
     rightHearth,
