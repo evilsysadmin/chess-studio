@@ -46,7 +46,7 @@ const ENEMY_TRAVERSAL_PIT_JUMP_SPEED := 610.0
 const ENEMY_TRAVERSAL_LOOKAHEAD := 74.0
 const ENEMY_TRAVERSAL_MAX_CLIMB_HEIGHT := 118.0
 const ENEMY_TRAVERSAL_LADDER_THRESHOLD := 64.0
-const ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE := 520.0
+const ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE := 1200.0
 const ENEMY_TRAVERSAL_LADDER_SNAP_X := 11.0
 const ENEMY_TRAVERSAL_LADDER_SPEED := 155.0
 const ENEMY_TRAVERSAL_LADDER_EXIT_NUDGE := 20.0
@@ -1826,10 +1826,11 @@ func _update_enemies(delta: float) -> void:
                         )
                     var knight_speed := speed * knight_speed_scale
                     var previous_x := float(enemy["x"])
+                    var movement_bounds := _enemy_horizontal_bounds(enemy, 360.0)
                     enemy["x"] = clampf(
                         previous_x + move_direction * knight_speed * delta,
-                        maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                        minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
+                        movement_bounds.x,
+                        movement_bounds.y,
                     )
                     if not is_equal_approx(previous_x, float(enemy["x"])):
                         movement_speed_scale = knight_speed_scale
@@ -1878,6 +1879,15 @@ func _enemy_is_traversal_mobile(type: String) -> bool:
         return false
     return float(ENEMY_TYPES.get(type, {}).get("speed", 0.0)) > 0.0
 
+func _enemy_horizontal_bounds(enemy: Dictionary, idle_roam: float) -> Vector2:
+    if bool(enemy.get("alerted", false)):
+        return Vector2(0.0, _world_size.x)
+    var spawn_x := float(enemy.get("spawn_x", enemy.get("x", 0.0)))
+    return Vector2(
+        maxf(0.0, spawn_x - idle_roam),
+        minf(_world_size.x, spawn_x + idle_roam),
+    )
+
 func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: float, distance_x: float, abs_distance: float, delta: float) -> float:
     var speed := float(stats["speed"])
     if speed <= 0.0:
@@ -1907,6 +1917,11 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         # Too close: create firing room while keeping the visual facing Matthias.
         move_direction = -toward_player
         speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
+    elif not _enemy_has_line_of_sight(enemy, stats):
+        # A crate/platform between the soldier and Matthias is not a valid
+        # firing position. Keep advancing so traversal can jump/climb it.
+        move_direction = toward_player
+        speed_scale = SOLDIER_CREEP_MULTIPLIER
     elif absf(_player_foot_y() - float(enemy.get("y", _floor_y))) > ENEMY_TRAVERSAL_LADDER_THRESHOLD:
         # Vertical separation must not freeze a soldier directly below/above
         # Matthias. Keep searching laterally for a route instead of becoming a
@@ -1930,10 +1945,11 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
 
     var previous_x := float(enemy["x"])
+    var movement_bounds := _enemy_horizontal_bounds(enemy, SOLDIER_ROAM_LIMIT)
     enemy["x"] = clampf(
         previous_x + move_direction * speed * speed_scale * delta,
-        maxf(0.0, float(enemy["spawn_x"]) - SOLDIER_ROAM_LIMIT),
-        minf(_world_size.x, float(enemy["spawn_x"]) + SOLDIER_ROAM_LIMIT),
+        movement_bounds.x,
+        movement_bounds.y,
     )
     if is_equal_approx(previous_x, float(enemy["x"])):
         return 0.0
@@ -1968,11 +1984,11 @@ func _update_enemy_ladder_movement(enemy: Dictionary, stats: Dictionary, delta: 
     if _enemy_try_auto_jump(enemy, direction):
         speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
     var speed := float(stats["speed"]) * speed_scale
-    var roam := SOLDIER_ROAM_LIMIT + 120.0
+    var movement_bounds := _enemy_horizontal_bounds(enemy, SOLDIER_ROAM_LIMIT + 120.0)
     enemy["x"] = clampf(
         float(enemy["x"]) + direction * speed * delta,
-        maxf(0.0, float(enemy["spawn_x"]) - roam),
-        minf(_world_size.x, float(enemy["spawn_x"]) + roam),
+        movement_bounds.x,
+        movement_bounds.y,
     )
     return speed_scale
 
