@@ -640,8 +640,13 @@ export async function openMoreGameModes(page) {
       try {
         await trigger.click({ timeout: 5_000 });
       } catch (error) {
-        if (!(await closeBlockingPvpLobby())) throw error;
-        await trigger.click();
+        if (await closeBlockingPvpLobby()) {
+          await trigger.click();
+        } else {
+          await trigger.focus();
+          await trigger.press('Enter');
+          await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
+        }
       }
     }
     return illustrated;
