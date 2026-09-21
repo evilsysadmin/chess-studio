@@ -506,35 +506,34 @@ func _run() -> void:
     enemy_probe._enemy_suppression_remaining = 0.0
     enemy_probe._enemy_suppression_origin_x = -INF
 
-    enemy_probe.enemies = [
-        {
-            "id": "pressure-a",
-            "type": "pawn",
-            "x": 300.0,
-            "hp": 34,
-            "alerted": true,
-            "ai_visible": true,
-            "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
-        },
-        {
-            "id": "pressure-b",
-            "type": "commando",
-            "x": 360.0,
-            "hp": 78,
-            "alerted": true,
-            "ai_visible": true,
-            "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
-        },
-        {
-            "id": "pressure-c",
-            "type": "scout",
-            "x": 420.0,
-            "hp": 46,
-            "alerted": true,
-            "ai_visible": true,
-            "ai_intent": EnemyUtilityAI.INTENT_ADVANCE,
-        },
-    ]
+    enemy_probe.enemies.clear()
+    enemy_probe.enemies.append({
+        "id": "pressure-a",
+        "type": "pawn",
+        "x": 300.0,
+        "hp": 34,
+        "alerted": true,
+        "ai_visible": true,
+        "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
+    })
+    enemy_probe.enemies.append({
+        "id": "pressure-b",
+        "type": "commando",
+        "x": 360.0,
+        "hp": 78,
+        "alerted": true,
+        "ai_visible": true,
+        "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
+    })
+    enemy_probe.enemies.append({
+        "id": "pressure-c",
+        "type": "scout",
+        "x": 420.0,
+        "hp": 46,
+        "alerted": true,
+        "ai_visible": true,
+        "ai_intent": EnemyUtilityAI.INTENT_ADVANCE,
+    })
     _expect(
         enemy_probe._enemy_pressure_shooter_count() == enemy_probe.MAX_ENEMY_PRESSURE_SHOOTERS,
         "pressure budget cuenta sólo tiradores móviles visibles comprometidos",
