@@ -135,6 +135,17 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             errors.append(f"{stage_name}: ladders[{index}] width {ladder_w:g} outside 24..72")
         if abs((ladder_y + ladder_h) - floor_y) > 4.0:
             errors.append(f"{stage_name}: ladders[{index}] must reach the authored floor")
+        ladder_x = float(ladder.get("x", 0))
+        landing = any(
+            isinstance(platform, dict)
+            and bool(platform.get("one_way", False))
+            and abs(float(platform.get("y", -999)) - ladder_y) <= 4.0
+            and ladder_x + ladder_w >= float(platform.get("x", 0)) + 4.0
+            and ladder_x <= float(platform.get("x", 0)) + float(platform.get("w", 0)) - 4.0
+            for platform in platforms
+        )
+        if not landing:
+            errors.append(f"{stage_name}: ladders[{index}] lacks a one-way landing platform")
 
     pit_ranges: list[tuple[float, float]] = []
     previous_pit_end = -1.0
@@ -160,6 +171,33 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
             errors.append(f"{stage_name}: pits must be ordered and non-overlapping")
         previous_pit_end = max(previous_pit_end, pit_end)
         pit_ranges.append((pit_x, pit_end))
+
+    pit_point_sources = [
+        ("checkpoint", [{"x": x} for x in (stage.get("checkpoints") or [])]),
+        ("enemy", stage.get("enemies") or []),
+        ("pickup", stage.get("pickups") or []),
+        ("dressing", dressing),
+        ("story prop", story_props),
+    ]
+    for pit_index, (pit_x, pit_end) in enumerate(pit_ranges):
+        for label, items in pit_point_sources:
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                x = float(item.get("x", -1))
+                if pit_x <= x <= pit_end:
+                    errors.append(
+                        f"{stage_name}: pits[{pit_index}] overlaps {label} at x={x:g}"
+                    )
+        for obstacle_index, obstacle in enumerate(obstacles):
+            if not isinstance(obstacle, dict):
+                continue
+            obstacle_x = float(obstacle.get("x", -1))
+            obstacle_w = float(obstacle.get("w", 0))
+            if pit_x < obstacle_x + obstacle_w and pit_end > obstacle_x:
+                errors.append(
+                    f"{stage_name}: pits[{pit_index}] overlaps obstacle[{obstacle_index}]"
+                )
 
     for index, obstacle in enumerate(obstacles):
         if not isinstance(obstacle, dict):
