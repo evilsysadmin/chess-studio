@@ -4,6 +4,7 @@ const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
+const traceDiagnostics = process.env.PLAYWRIGHT_TRACE === '1';
 const visualArtifactMode = Boolean(
   process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
 );
@@ -60,11 +61,10 @@ export default defineConfig({
     navigationTimeout: ciMode ? 20_000 : 10_000,
     headless: true,
     // Canonical visual producers already emit purpose-built screenshots. Video
-    // encoding is especially expensive for software-rendered WebGL and Playwright
-    // records it even for green tests before deleting retain-on-failure captures.
-    // Keep trace + failure screenshots for functional diagnosis, but never encode
-    // per-test video in CI/local browser gates.
-    trace: visualArtifactMode ? 'off' : 'retain-on-failure',
+    // and trace both collect data during green tests before retain-on-failure can
+    // discard it, which is expensive on software-rendered WebGL. Keep cheap failure
+    // screenshots by default and make tracing an explicit diagnostic opt-in.
+    trace: traceDiagnostics ? 'retain-on-failure' : 'off',
     screenshot: 'only-on-failure',
     video: 'off',
   },
