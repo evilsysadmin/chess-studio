@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import bpy
+import numpy as np
 from mathutils import Vector
 
 
@@ -187,19 +188,135 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
     return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
 
 
-def _packed_surface_images(
+def _np_noise(size: int, seed: int, cells_u: int, cells_v: int | None = None) -> "np.ndarray":
+    """Tileable smooth value noise on a size x size grid, deterministic per seed.
+
+    Unequal cell counts stretch the noise along one axis, which is how wood
+    fibres, brushed metal and thread fuzz get their direction.
+    """
+    cells_v = cells_u if cells_v is None else cells_v
+    lattice = np.random.RandomState(seed & 0x7FFFFFFF).random_sample((cells_v, cells_u))
+    xs = np.arange(size) / size * cells_u
+    ys = np.arange(size) / size * cells_v
+    x0 = np.floor(xs).astype(int)
+    y0 = np.floor(ys).astype(int)
+    tx = xs - x0
+    ty = ys - y0
+    tx = tx * tx * (3.0 - 2.0 * tx)
+    ty = ty * ty * (3.0 - 2.0 * ty)
+    x1 = (x0 + 1) % cells_u
+    y1 = (y0 + 1) % cells_v
+    x0 %= cells_u
+    y0 %= cells_v
+    a = lattice[np.ix_(y0, x0)]
+    b = lattice[np.ix_(y0, x1)]
+    c = lattice[np.ix_(y1, x0)]
+    d = lattice[np.ix_(y1, x1)]
+    top = a + (b - a) * tx[None, :]
+    bottom = c + (d - c) * tx[None, :]
+    return top + (bottom - top) * ty[:, None]
+
+
+def _np_fbm(size: int, seed: int, cells: int, octaves: int = 3) -> "np.ndarray":
+    total = np.zeros((size, size))
+    amplitude = 1.0
+    norm = 0.0
+    for octave in range(octaves):
+        total += _np_noise(size, seed + octave * 97, cells * (2 ** octave)) * amplitude
+        norm += amplitude
+        amplitude *= 0.5
+    return total / norm
+
+
+def _resample_tileable(grid: "np.ndarray", size: int) -> "np.ndarray":
+    """Bilinear, wrap-around resample so the base look survives a bigger canvas."""
+    source = grid.shape[0]
+    if source == size:
+        return grid
+    coords = np.arange(size) / size * source
+    i0 = np.floor(coords).astype(int)
+    t = coords - i0
+    i1 = (i0 + 1) % source
+    i0 %= source
+    rows = grid[i0, :] * (1.0 - t)[:, None] + grid[i1, :] * t[:, None]
+    return rows[:, i0] * (1.0 - t)[None, :] + rows[:, i1] * t[None, :]
+
+
+def _micro_detail(profile: str, size: int, seed: int) -> "np.ndarray":
+    """Zero-mean fine relief added on top of the authored macro height.
+
+    The macro profiles top out around 37 cells, so simply enlarging them adds
+    pixels but no information. Real premium surfaces need detail an order of
+    magnitude finer: chisel grain and chips in stone, pores and fibre in wood,
+    pebbling in leather, individual threads in cloth, scratches in metal.
+    """
+    if profile in ("stone", "floor_stone"):
+        grain = _np_fbm(size, seed + 601, 40, 3) - 0.5
+        ridge = 1.0 - np.abs(_np_fbm(size, seed + 619, 14, 3) * 2.0 - 1.0)
+        chips = np.clip(0.30 - _np_noise(size, seed + 631, 70), 0.0, None) * 3.2
+        amplitude = 0.16 if profile == "stone" else 0.10
+        return (grain * 0.55 + (ridge - 0.55) * 0.20 - chips * 0.16) * amplitude / 0.16 * 0.62
+    if profile == "wood":
+        fibre = _np_noise(size, seed + 641, size // 4, 6) - 0.5
+        fibre_fine = _np_noise(size, seed + 643, size // 2, 9) - 0.5
+        pores = np.clip(0.24 - _np_noise(size, seed + 647, size // 3, size // 12), 0.0, None) * 4.0
+        return fibre * 0.16 + fibre_fine * 0.08 - pores * 0.10
+    if profile == "leather":
+        a = _np_noise(size, seed + 653, 44)
+        b = _np_noise(size, seed + 659, 61)
+        pebble = np.abs(a - b) - 0.17
+        crease = _np_fbm(size, seed + 661, 9, 3) - 0.5
+        return pebble * 0.20 + crease * 0.07
+    if profile == "textile":
+        threads_u = np.sin((np.arange(size) / size * 88.0 + _np_noise(size, seed + 673, 8, 1)[0] * 0.9) * math.tau)
+        threads_v = np.sin((np.arange(size) / size * 84.0) * math.tau + 0.6)
+        weave = threads_u[None, :] * threads_v[:, None]
+        fuzz = _np_fbm(size, seed + 677, 56, 2) - 0.5
+        return weave * 0.11 + fuzz * 0.10
+    if profile == "metal":
+        scratches = np.clip(_np_noise(size, seed + 683, 3, size // 2) - 0.62, 0.0, None) * 1.6
+        hairline = _np_noise(size, seed + 691, 5, size) - 0.5
+        dents = _np_fbm(size, seed + 697, 12, 3) - 0.5
+        return hairline * 0.06 - scratches * 0.24 + dents * 0.10
+    return np.zeros((size, size))
+
+
+def _packed_surface_arrays(
     name: str,
     color: tuple[float, float, float, float],
     roughness: float,
     profile: str,
     *,
     size: int = 96,
+    base_size: int | None = None,
 ):
+    """Return flat RGBA float lists (base colour, roughness, normal) for one material.
+
+    The authored macro height is evaluated on the historical `base_size` grid so
+    the overall tone of every surface stays exactly as approved, then resampled
+    to `size` and enriched with `_micro_detail`. Normals are derived from the
+    combined height with a strength scaled by the resolution ratio, so relief
+    keeps its apparent depth while the new fine detail resolves.
+    """
+    base_size = base_size or size
     seed = sum((index + 1) * ord(char) for index, char in enumerate(name)) & 0xFFFF
-    heights = [
-        [_surface_height(profile, x / size, y / size, seed) for x in range(size)]
-        for y in range(size)
-    ]
+    macro = np.array(
+        [
+            [_surface_height(profile, x / base_size, y / base_size, seed) for x in range(base_size)]
+            for y in range(base_size)
+        ]
+    )
+    macro = _resample_tileable(macro, size)
+    detail_gain = {
+        "stone": 1.0,
+        "floor_stone": 0.85,
+        "wood": 1.7,
+        "metal": 1.0,
+        "textile": 1.0,
+        "leather": 1.0,
+    }.get(profile, 0.0)
+    detail = _micro_detail(profile, size, seed) * detail_gain if size > base_size else 0.0
+    heights = np.clip(macro + detail, 0.0, 1.0)
     low, high = {
         "stone": (0.88, 1.08),
         "floor_stone": (0.68, 1.10),
@@ -229,63 +346,56 @@ def _packed_surface_images(
         "leather": 2.4,
         "paper": 1.15,
         "wax": 0.85,
-    }.get(profile, 2.5)
-    base_pixels: list[float] = []
-    rough_pixels: list[float] = []
-    normal_pixels: list[float] = []
+    }.get(profile, 2.5) * (size / base_size)
 
-    for y in range(size):
-        ym = (y - 1) % size
-        yp = (y + 1) % size
-        for x in range(size):
-            xm = (x - 1) % size
-            xp = (x + 1) % size
-            height = heights[y][x]
-            factor = low + (high - low) * height
-            base_pixels.extend((
-                max(0.0, min(1.0, color[0] * factor)),
-                max(0.0, min(1.0, color[1] * factor)),
-                max(0.0, min(1.0, color[2] * factor)),
-                1.0,
-            ))
-            local_roughness = max(0.04, min(1.0, roughness + (0.5 - height) * rough_span))
-            rough_pixels.extend((local_roughness, local_roughness, local_roughness, 1.0))
-            dx = (heights[y][xp] - heights[y][xm]) * normal_strength
-            dy = (heights[yp][x] - heights[ym][x]) * normal_strength
-            nx, ny, nz = -dx, -dy, 1.0
-            length = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
-            normal_pixels.extend((
-                nx / length * 0.5 + 0.5,
-                ny / length * 0.5 + 0.5,
-                nz / length * 0.5 + 0.5,
-                1.0,
-            ))
+    factor = low + (high - low) * heights
+    rgb = np.clip(np.array(color[:3])[None, None, :] * factor[:, :, None], 0.0, 1.0)
+    base = np.concatenate([rgb, np.ones((size, size, 1))], axis=2)
 
+    local_roughness = np.clip(roughness + (0.5 - heights) * rough_span, 0.04, 1.0)
+    rough = np.repeat(local_roughness[:, :, None], 3, axis=2)
+    rough = np.concatenate([rough, np.ones((size, size, 1))], axis=2)
+
+    dx = (np.roll(heights, -1, axis=1) - np.roll(heights, 1, axis=1)) * normal_strength
+    dy = (np.roll(heights, -1, axis=0) - np.roll(heights, 1, axis=0)) * normal_strength
+    length = np.sqrt(dx * dx + dy * dy + 1.0)
+    normal = np.stack([-dx / length, -dy / length, 1.0 / length], axis=2) * 0.5 + 0.5
+    normal = np.concatenate([normal, np.ones((size, size, 1))], axis=2)
+    return base, rough, normal
+
+
+def _packed_surface_images(
+    name: str,
+    color: tuple[float, float, float, float],
+    roughness: float,
+    profile: str,
+    *,
+    size: int = 96,
+    base_size: int | None = None,
+):
+    base, rough, normal = _packed_surface_arrays(
+        name, color, roughness, profile, size=size, base_size=base_size
+    )
     stem = name.replace("HOME_MAT_", "HOME_TEX_")
-    base_image = bpy.data.images.new(f"{stem}_base", width=size, height=size, alpha=True)
-    base_image.colorspace_settings.name = "sRGB"
-    base_image.pixels.foreach_set(base_pixels)
-    base_image.update()
-    base_image.pack()
-
-    rough_image = bpy.data.images.new(f"{stem}_rough", width=size, height=size, alpha=True)
-    rough_image.colorspace_settings.name = "Non-Color"
-    rough_image.pixels.foreach_set(rough_pixels)
-    rough_image.update()
-    rough_image.pack()
-
-    normal_image = bpy.data.images.new(f"{stem}_normal", width=size, height=size, alpha=True)
-    normal_image.colorspace_settings.name = "Non-Color"
-    normal_image.pixels.foreach_set(normal_pixels)
-    normal_image.update()
-    normal_image.pack()
-    return base_image, rough_image, normal_image
+    images = []
+    for suffix, pixels, colorspace in (
+        ("base", base, "sRGB"),
+        ("rough", rough, "Non-Color"),
+        ("normal", normal, "Non-Color"),
+    ):
+        image = bpy.data.images.new(f"{stem}_{suffix}", width=size, height=size, alpha=True)
+        image.colorspace_settings.name = colorspace
+        image.pixels.foreach_set(pixels.astype(np.float32).ravel().tolist())
+        image.update()
+        image.pack()
+        images.append(image)
+    return tuple(images)
 
 
 def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile) -> None:
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
-    texture_size = {
+    base_size = {
         "floor_stone": 160,
         "stone": 144,
         "wood": 136,
@@ -293,12 +403,33 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "leather": 128,
         "metal": 128,
     }.get(profile, 96)
+    # Normal maps are ~3/4 of the texture bytes, so resolution is spent only on
+    # the surfaces that dominate the frame. Dark decals, soot and small props keep
+    # their historical size (no micro detail is added at base size).
+    material_key = name.replace("HOME_MAT_", "")
+    texture_size = {
+        "stone": 256,
+        "back_wall_stone": 256,
+        "floor_stone": 256,
+        "table_wood": 256,
+        "back_wall_stone_accent": 192,
+        "arch_stone": 192,
+        "stair_stone": 192,
+        "wood": 192,
+        "library_wood": 192,
+    }.get(material_key)
+    if texture_size is None:
+        texture_size = base_size
+        if not material_key.startswith(("book_", "soot_", "stone_dark", "stone_grime", "ash")):
+            texture_size = {"textile": 160, "leather": 160, "metal": 160, "wood": 160}.get(profile, base_size)
+    texture_size = max(texture_size, base_size)
     base_image, rough_image, normal_image = _packed_surface_images(
         name,
         color,
         roughness,
         profile,
         size=texture_size,
+        base_size=base_size,
     )
 
     base_tex = nodes.new("ShaderNodeTexImage")
@@ -320,12 +451,12 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
     normal_map = nodes.new("ShaderNodeNormalMap")
     normal_map.name = f"{name}_NormalMap"
     normal_map.inputs["Strength"].default_value = {
-        "stone": 0.32,
-        "floor_stone": 0.38,
-        "wood": 0.28,
-        "metal": 0.30,
-        "textile": 0.36,
-        "leather": 0.34,
+        "stone": 0.55,
+        "floor_stone": 0.50,
+        "wood": 0.42,
+        "metal": 0.36,
+        "textile": 0.40,
+        "leather": 0.38,
         "paper": 0.18,
         "wax": 0.12,
     }.get(profile, 0.35)
