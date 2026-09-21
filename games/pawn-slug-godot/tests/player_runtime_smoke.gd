@@ -322,6 +322,29 @@ func _run() -> void:
         "sin percepción ni memoria el enemigo no rastrea telepáticamente",
     )
 
+    _expect(
+        EnemyUtilityAI.decision_interval_for("scout", "assaulter")
+            < EnemyUtilityAI.decision_interval_for("shield", "assaulter"),
+        "scout reevalúa antes que shield sin cambiar de cerebro",
+    )
+    _expect(
+        EnemyUtilityAI.commit_seconds_for("grenadier", EnemyUtilityAI.INTENT_SHOOT, "support")
+            > EnemyUtilityAI.commit_seconds_for("commando", EnemyUtilityAI.INTENT_SHOOT, "assaulter"),
+        "grenadier support mantiene una decisión de tiro más estable que commando",
+    )
+    _expect(
+        absf(
+            EnemyUtilityAI.commit_seconds_for("scout", EnemyUtilityAI.INTENT_EVADE, "assaulter")
+                - 0.12
+        ) <= EPSILON,
+        "evasión urgente rompe el commitment aunque el arquetipo sea estable",
+    )
+    _expect(
+        EnemyUtilityAI.commit_seconds_for("scout", EnemyUtilityAI.INTENT_TRAVERSE, "assaulter")
+            >= 0.48,
+        "traversal recibe commitment suficiente para no abortar una escalada/salto a mitad",
+    )
+
     var scout_scores := EnemyUtilityAI.score_intents({
         "target_known": true,
         "visible": true,
