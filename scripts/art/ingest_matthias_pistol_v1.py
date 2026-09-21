@@ -23,6 +23,11 @@ CANVAS = 416
 # Seed poses deliberately come only from the immutable approved v1 master.
 # Rear views, labels, portrait art and legacy runtime atlases are excluded.
 SOURCES = {
+    "idle": [
+        {"box": (90, 120, 190, 260), "guide": "idle"},
+        {"box": (190, 120, 290, 260), "guide": "idle"},
+        {"box": (290, 120, 390, 260), "guide": "idle"},
+    ],
     "shoot": [
         {"box": (100, 573, 191, 687), "guide": "aim"},
     ],
@@ -179,7 +184,7 @@ def ingest(master: Path, output_dir: Path) -> dict:
         "frames": records,
         "limitations": [
             "seed only; not an accepted Sprite Forge bank",
-            "missing full idle/jump/fall/land/directional/crouch-walk/reload/hurt/die coverage",
+            "missing jump/fall/land/directional/crouch-walk/reload/hurt/die coverage",
             "no runtime promotion in this step",
         ],
     }
