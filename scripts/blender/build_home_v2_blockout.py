@@ -2373,7 +2373,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
-            (0.095, 0.102, 0.110, 1),
+            (0.190, 0.202, 0.225, 1),
             roughness=0.54,
             metallic=0.68,
             variation=0.10,
