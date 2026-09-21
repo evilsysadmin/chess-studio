@@ -93,6 +93,12 @@ def source_frames(src_bgr):
             ar=np.array(frames[i]); alpha=ar[:,:,3]
             remove=(xx>238)&(alpha>0)&(allowed==0)
             ar[remove]=0; ar[ar[:,:,3]==0,:3]=0
+            # Remove residual warm muzzle-flash antialias that can remain inside
+            # the allowed silhouette. Verified no-flash frames contain no warm
+            # SMG pixels beyond x=285, so this does not trim authored gun geometry.
+            rr,gg,bb,aa=[ar[:,:,j].astype(np.int16) for j in range(4)]
+            warm=(aa>0)&(xx>285)&(rr>gg*1.15)&(rr>bb*1.20)&((rr-gg)>18)
+            ar[warm]=0; ar[ar[:,:,3]==0,:3]=0
             frames[i]=Image.fromarray(ar,'RGBA')
     return out
 
