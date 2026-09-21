@@ -22,17 +22,29 @@ Un draft no es progreso de juego.
 - Restaurar F5 debe reabrir en el personaje/step correcto sin convertir el borrador en una compañía confirmada.
 - El resumen de build deriva de modificadores mecánicos reales. No inventar penalizadores/debilidades que el sistema no mida.
 
-## Bootstrap autoritativo de Tactics
+## Bootstrap autoritativo compartido
 
-La creación de run usa una identidad/idempotency key estable para evitar expediciones duplicadas.
+Chronicles primera persona y Tactics consumen el mismo Game Director y el mismo
+contrato versionado de mundo. Cada experiencia conserva su propia identidad de
+run para no mezclar expediciones, pero ninguna puede crear estado jugable desde
+el catálogo local antes de instalar el bundle autoritativo.
 
-Distinguir causas:
+La creación de run usa una identity/idempotency key estable para evitar
+expediciones duplicadas. Distinguir causas:
 
 - red/503 → conservar la misma key y reintentar;
 - 409 por revisión/mundo autoritativo obsoleto → rotar una sola vez la identidad local y pedir una nueva run compatible;
-- no sobrescribir una identidad más nueva si otro flujo ya la reemplazó.
+- no sobrescribir una identidad más nueva si otro flujo ya la reemplazó;
+- error de bootstrap → fallar cerrado; no sustituir silenciosamente por un mapa authored local.
 
-Los errores deben conservar status/request-id suficiente para diagnóstico y no etiquetar un 409 autoritativo como “backend no disponible”.
+El bootstrap runtime es **determinista-only**: seed, ruta, manifests y validadores
+locales/backend deciden el mundo. Workers AI no forma parte del critical path de
+entrada ni puede añadir latencia de red antes de gameplay. El soporte de
+`plannerSnapshot` se conserva sólo para reproducir contenido histórico y para
+authoring/experimentos fuera del arranque jugable.
+
+Los errores deben conservar status/request-id suficiente para diagnóstico y no
+etiquetar un 409 autoritativo como “backend no disponible”.
 
 ## Escenarios y arte
 
@@ -55,7 +67,9 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 
 - setup compartido funciona en ambos modos;
 - draft sobrevive F5 sin convertirse en progreso;
+- ambos runtimes arrancan sólo después del bootstrap autoritativo compartido;
 - bootstrap conserva idempotencia y recupera 409 stale de forma controlada;
+- runtime bootstrap no espera ni llama a Workers AI;
 - builds muestran sólo efectos reales;
 - mapas grandes mantienen scenery fuera del battlefield;
 - cambios visuales tienen PNG desktop/móvil cuando procede;
