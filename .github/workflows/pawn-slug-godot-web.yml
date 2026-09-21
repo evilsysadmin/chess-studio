@@ -8,6 +8,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
+      - scripts/art/ingest_matthias_pistol_v1.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/sprite_forge_contract.schema.json
@@ -32,6 +33,7 @@ on:
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
+      - scripts/art/ingest_matthias_pistol_v1.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/sprite_forge_contract.schema.json
@@ -152,10 +154,30 @@ jobs:
           path: /tmp/pawn-slug-v1-slice/
           if-no-files-found: error
           retention-days: 7
+      - name: Matthias pistol v1 canonical master seed
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          master="$RUNNER_TEMP/matthias-canonical-master-v1.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png" \
+            -o "$master"
+          python3 scripts/art/ingest_matthias_pistol_v1.py \
+            --master "$master" \
+            --output-dir /tmp/matthias-pistol-v1-seed
+      - name: Upload Matthias pistol v1 seed review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-matthias-pistol-v1-seed-${{ github.event.pull_request.number }}
+          path: /tmp/matthias-pistol-v1-seed/
+          if-no-files-found: error
+          retention-days: 7
       - name: Sprite Forge fail-closed contract
         run: |
           set -euo pipefail
-          python3 -m py_compile scripts/art/sprite_forge.py scripts/art/test_sprite_forge.py
+          python3 -m py_compile scripts/art/sprite_forge.py scripts/art/test_sprite_forge.py scripts/art/ingest_matthias_pistol_v1.py
           python3 scripts/art/test_sprite_forge.py
           python3 scripts/art/sprite_forge_acceptance.py --self-test
           python3 scripts/art/sprite_forge_acceptance.py check
