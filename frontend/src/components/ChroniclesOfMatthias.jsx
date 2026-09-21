@@ -53,7 +53,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
-  const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
@@ -136,17 +135,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     void import('../chroniclesOfMatthiasThree.js')
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
-        engine = createChroniclesOfMatthiasGame(host, {
-          onReady: (backend) => { if (!cancelled) setRendererName(backend); },
-        });
+        engine = createChroniclesOfMatthiasGame(host);
         engineRef.current = engine;
         engine.renderState(stateRef.current);
       })
       .catch((error) => {
         console.error('Chronicles of Matthias Three.js boot failed', error);
         if (!cancelled) {
-          setRendererName('THREE.JS · ERROR');
-          setRendererError('La cripta se ha negado a materializarse. El motor 3D no ha arrancado.');
+          setRendererError('La cripta se ha negado a materializarse. La escena no ha podido arrancar.');
         }
       });
 
@@ -213,7 +209,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     >
       <header className="chronicles-head">
         <div>
-          <span className="section-label">EXPERIMENTO RPG · THREE.JS · BOOK I</span>
+          <span className="section-label">CRÓNICA RPG · BOOK I</span>
           <h2>Chronicles of Matthias</h2>
           <p>Dungeon crawler en primera persona. El grupo avanza por casillas; las piezas siguen siendo piezas y la arquitectura tiene memoria de tablero.</p>
         </div>
@@ -317,7 +313,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
         </main>
       </div>
 
-      <p className="chronicles-tech-note">Motor {rendererName}. Combate de grupo posicional: piezas de frente absorben represalias; retaguardia puede golpear a distancia según su geometría. Sin rating, sin economía y sin tocar el ajedrez estándar.</p>
     </div>
   );
 }
