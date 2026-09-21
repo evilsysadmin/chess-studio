@@ -14,10 +14,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v22"
+const STRICT_RUNTIME_GENERATION := "v23"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
@@ -27,7 +27,7 @@ const FULL_ATLAS_URLS := {
 # run already present in the full bank remains authoritative.
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/machinegun/v22-8f32a167a5d4f161.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-34b7a35793047e39.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
 }
@@ -35,6 +35,15 @@ const RUN12_ATLAS_COLUMNS := 12
 const RUN12_ATLAS_CELL_SIZE := 416
 const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
 const RUN12_FPS := 24.0
+const RUN_OVERLAY_COLUMNS := {
+    "pistol": 12,
+    "machinegun": 13,
+    "shotgun": 12,
+    "panzerfaust": 12,
+}
+const V9_ACTION_FRAME_COUNT_OVERRIDES := {
+    "machinegun": {"hurt": 6},
+}
 const WEAPON_BOOTSTRAP_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 const BOOTSTRAP_RETRY_LIMIT := 2
 
@@ -374,6 +383,9 @@ var _atlas_request: HTTPRequest
 var _atlas_request_weapon := ""
 var _atlas_request_layout := ""
 var _bootstrap_requests: Array[HTTPRequest] = []
+var _bootstrap_startup_pending := false
+var _background_full_queue: Array[String] = []
+var _background_full_inflight_weapon := ""
 var _bootstrap_full_pending := 0
 var _bootstrap_run_pending := 0
 var _bootstrap_full_failures: Array[String] = []
@@ -386,7 +398,9 @@ func _ready() -> void:
     queue_redraw()
 
 func body_ready() -> bool:
-    return _body_ready and _bootstrap_complete
+    # First paint depends only on the currently equipped authored bank. The
+    # remaining arsenal keeps warming in the background after Matthias is visible.
+    return _body_ready
 
 func current_weapon() -> String:
     return _weapon
@@ -419,9 +433,9 @@ func set_weapon(kind: String) -> void:
     _weapon = next
     _one_shot_action = ""
     _hold_one_shot = false
-    # Normal gameplay should never reach this path because every weapon bank is
-    # prefetched before body_ready(). If a CDN/bootstrap failure leaves a bank
-    # missing, never keep rendering the previously selected weapon.
+    # The startup weapon is the only first-frame dependency. The remaining banks
+    # warm in the background; if an unusually early pickup beats that warmup (or
+    # the CDN fails), never keep rendering the previously selected weapon.
     if not _full_frames_by_weapon.has(_weapon):
         _body_ready = false
         _rendered_weapon = ""
@@ -693,24 +707,52 @@ func _begin_atlas_bootstrap() -> void:
     _body.visible = false
     _bootstrap_full_failures.clear()
     _bootstrap_run_failures.clear()
+    _bootstrap_startup_pending = true
 
-    var missing_full: Array[String] = []
-    for weapon_id in WEAPON_BOOTSTRAP_ORDER:
-        if not _full_frames_by_weapon.has(weapon_id) or not _v9_ready_by_weapon.has(weapon_id):
-            missing_full.append(weapon_id)
-
-    if missing_full.is_empty():
-        _begin_run12_bootstrap()
+    # Keep the first frame on one critical request only. Starting all four large
+    # 8x18 PNG banks together makes Web startup bandwidth/decode bound and can
+    # leave the host on "Arrancando runtime Godot..." for tens of seconds.
+    if _full_frames_by_weapon.has(_weapon) and _v9_ready_by_weapon.has(_weapon):
+        _install_or_request_weapon()
+        _bootstrap_startup_pending = false
+        call_deferred("_begin_background_atlas_warmup")
         return
 
-    _bootstrap_full_pending = missing_full.size()
-    for weapon_id in missing_full:
+    _bootstrap_full_pending = 1
+    _start_bootstrap_request(
+        _weapon,
+        String(FULL_ATLAS_URLS.get(_weapon, "")),
+        "full-v9",
+        0,
+    )
+
+func _begin_background_atlas_warmup() -> void:
+    _background_full_queue.clear()
+    for weapon_id in WEAPON_BOOTSTRAP_ORDER:
+        if weapon_id == _weapon:
+            continue
+        if not _full_frames_by_weapon.has(weapon_id) or not _v9_ready_by_weapon.has(weapon_id):
+            _background_full_queue.append(weapon_id)
+
+    _start_next_background_full_bank()
+
+func _start_next_background_full_bank() -> void:
+    _background_full_inflight_weapon = ""
+    while not _background_full_queue.is_empty():
+        var weapon_id: String = _background_full_queue.pop_front()
+        if _full_frames_by_weapon.has(weapon_id) and _v9_ready_by_weapon.has(weapon_id):
+            continue
+        _background_full_inflight_weapon = weapon_id
+        _bootstrap_full_pending = 1
         _start_bootstrap_request(
             weapon_id,
             String(FULL_ATLAS_URLS.get(weapon_id, "")),
             "full-v9",
             0,
         )
+        return
+    _bootstrap_full_pending = 0
+    _begin_run12_bootstrap()
 
 func _begin_run12_bootstrap() -> void:
     var missing_run: Array[String] = []
@@ -787,7 +829,7 @@ func _on_bootstrap_atlas_loaded(
 
     var accepted := false
     if layout == "full-v9":
-        var frames := _build_v9_frames(image)
+        var frames := _build_v9_frames(image, weapon_id)
         if frames != null:
             _full_frames_by_weapon[weapon_id] = frames
             _full_body_y_by_weapon[weapon_id] = V9_BODY_Y
@@ -801,6 +843,10 @@ func _on_bootstrap_atlas_loaded(
             _run12_ready_by_weapon[weapon_id] = true
 
     if accepted:
+        if layout == "full-v9" and weapon_id == _weapon and not _body_ready:
+            # Show the game as soon as the equipped bank is decoded. Non-critical
+            # weapons and run overlays continue through the bootstrap in parallel.
+            _install_or_request_weapon()
         _settle_bootstrap_request(weapon_id, layout, true)
         return
 
@@ -828,7 +874,23 @@ func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool
             _bootstrap_full_failures.append(weapon_id)
         _bootstrap_full_pending = maxi(0, _bootstrap_full_pending - 1)
         if _bootstrap_full_pending == 0:
-            _begin_run12_bootstrap()
+            if _bootstrap_startup_pending:
+                _bootstrap_startup_pending = false
+                if not _body_ready:
+                    # A failed critical request gets the normal fallback/request
+                    # path immediately; background warmup must never gate it.
+                    _install_or_request_weapon()
+                call_deferred("_begin_background_atlas_warmup")
+            else:
+                if weapon_id == _background_full_inflight_weapon:
+                    _background_full_inflight_weapon = ""
+                if not accepted and weapon_id == _weapon and not _body_ready:
+                    # A pickup can race the background request. If that request
+                    # exhausts its retries, hand ownership back to the normal
+                    # foreground path so the authored fallback/CDN error handling
+                    # can recover instead of leaving Matthias hidden forever.
+                    call_deferred("_install_or_request_weapon")
+                _start_next_background_full_bank()
         return
 
     if layout == "run12-v22":
@@ -865,12 +927,16 @@ func _install_or_request_weapon() -> void:
 
     var full_url := String(FULL_ATLAS_URLS.get(_weapon, ""))
     if not full_url.is_empty():
+        if _background_full_inflight_weapon == _weapon:
+            # The background request already owns this bank. Keep the old weapon
+            # hidden; _on_bootstrap_atlas_loaded() installs it as soon as decoding
+            # completes instead of starting a duplicate foreground download.
+            return
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full-v9")
-        # Keep the canvas hidden at boot, or keep the previously rendered weapon
-        # during a pickup switch, while the canonical strict atlas is in flight.
-        # Fallback art is reserved for a real download/decode failure in
-        # _on_atlas_loaded(), so it never flashes for a healthy R2 request.
+        # Background warmup normally has non-default banks in memory before a
+        # pickup. If a pickup beats warmup or the CDN misses, set_weapon() hides
+        # the old bank rather than showing the wrong weapon during this request.
         return
 
     if _weapon == "pistol":
@@ -977,7 +1043,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
 
     var frames: SpriteFrames
     if requested_layout == "full-v9":
-        frames = _build_v9_frames(image)
+        frames = _build_v9_frames(image, requested_weapon)
         if frames == null:
             if _request_full_fallback(requested_weapon):
                 return
@@ -1306,7 +1372,9 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
 
 
 func _append_run12_frames(weapon_id: String, image: Image) -> bool:
-    if image.get_size() != RUN12_ATLAS_SIZE or not _full_frames_by_weapon.has(weapon_id):
+    var columns := int(RUN_OVERLAY_COLUMNS.get(weapon_id, RUN12_ATLAS_COLUMNS))
+    var expected_size := Vector2i(columns * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
+    if image.get_size() != expected_size or not _full_frames_by_weapon.has(weapon_id):
         return false
     var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
     var atlas_texture := ImageTexture.create_from_image(image)
@@ -1315,7 +1383,7 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
     frames.add_animation("run")
     frames.set_animation_loop("run", true)
     frames.set_animation_speed("run", RUN12_FPS)
-    for frame_index in range(RUN12_ATLAS_COLUMNS):
+    for frame_index in range(columns):
         var texture := AtlasTexture.new()
         texture.atlas = atlas_texture
         texture.region = Rect2(
@@ -1325,7 +1393,7 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
             RUN12_ATLAS_CELL_SIZE,
         )
         frames.add_frame("run", texture)
-    return frames.get_frame_count("run") == RUN12_ATLAS_COLUMNS
+    return frames.get_frame_count("run") == columns
 
 func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
     if weapon_id != "pistol" or image.get_size() != V10_ATLAS_SIZE:
@@ -1371,7 +1439,7 @@ func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
             frames.add_frame(action, texture)
     return true
 
-func _build_v9_frames(image: Image) -> SpriteFrames:
+func _build_v9_frames(image: Image, weapon_id: String = "") -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:
         push_error(
             "Strict Matthias runtime atlas has invalid dimensions: %s, expected %s"
@@ -1388,7 +1456,14 @@ func _build_v9_frames(image: Image) -> SpriteFrames:
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
         var row := int(spec["row"])
-        for frame_index in range(V9_ATLAS_COLUMNS):
+        var weapon_overrides_value = V9_ACTION_FRAME_COUNT_OVERRIDES.get(weapon_id, {})
+        var weapon_overrides: Dictionary = (
+            weapon_overrides_value
+            if typeof(weapon_overrides_value) == TYPE_DICTIONARY
+            else {}
+        )
+        var frame_count := int(weapon_overrides.get(action, V9_ATLAS_COLUMNS))
+        for frame_index in range(frame_count):
             var rect := Rect2i(
                 frame_index * V9_ATLAS_CELL_SIZE,
                 row * V9_ATLAS_CELL_SIZE,
@@ -1767,7 +1842,12 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     _body.visible = true
     _sync_muzzle()
     queue_redraw()
-    if authored_full and v9_ready and not _run12_ready_by_weapon.has(_rendered_weapon):
+    if (
+        authored_full
+        and v9_ready
+        and _bootstrap_complete
+        and not _run12_ready_by_weapon.has(_rendered_weapon)
+    ):
         call_deferred("_ensure_run12_locomotion", _rendered_weapon)
     if authored_full and v9_ready and _rendered_weapon == "pistol" and not v10_ready:
         call_deferred("_ensure_v10_locomotion", _rendered_weapon)

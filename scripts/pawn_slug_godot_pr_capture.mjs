@@ -27,6 +27,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
+  window.__pawnSlugCaptureEvents = [];
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -37,19 +38,24 @@ await page.addInitScript(() => {
   };
   window.__pawnSlugVisualProbeX =
     params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
+  window.__pawnSlugVisualProbeWeapon = params.get('weaponProbe') || '';
   window.addEventListener('message', (event) => {
     const data = event.data;
-    if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
+    if (data?.source !== 'pawn-slug-godot') return;
+    window.__pawnSlugCaptureEvents.push(String(data?.type || ''));
+    if (data?.type === 'ready') {
       window.__pawnSlugCaptureReady = true;
     }
   });
 });
 
-function urlForStage(stageId, { visualProbe = false } = {}) {
+function urlForStage(stageId, { visualProbe = false, weaponProbe = '' } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
   if (visualProbe) url.searchParams.set('visualProbe', '1');
   else url.searchParams.delete('visualProbe');
+  if (weaponProbe) url.searchParams.set('weaponProbe', weaponProbe);
+  else url.searchParams.delete('weaponProbe');
   return url.toString();
 }
 
@@ -139,6 +145,45 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
+// Dedicated SMG render/switch proof. The local PR capture uses a JS-only
+// visual probe rather than depending on combat traversal. Staging E2E remains
+// responsible for proving the real pickup path and weapon-pickup event.
+const smgStage = await loadStage(detailedStage, { weaponProbe: 'machinegun' });
+const smgProbeSelected = await page.evaluate(() => (
+  Array.isArray(window.__pawnSlugCaptureEvents)
+  && window.__pawnSlugCaptureEvents.includes('weapon-changed')
+));
+if (!smgProbeSelected) {
+  throw new Error('Pawn Slug SMG visual probe did not emit weapon-changed');
+}
+await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
+await capture('50-smg-selected-immediate');
+await captureDetailedCloseup('50-smg-selected-immediate', smgStage.canvas);
+await page.waitForTimeout(100);
+await capture('51-smg-selected-after-100ms');
+await captureDetailedCloseup('51-smg-selected-after-100ms', smgStage.canvas);
+
+await page.keyboard.down('ArrowRight');
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `52-smg-run-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
+  await page.waitForTimeout(48);
+}
+
+await page.keyboard.down('z');
+for (let frame = 0; frame < 13; frame += 1) {
+  const label = `53-smg-run-fire-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
+  await page.waitForTimeout(55);
+}
+await page.keyboard.up('z');
+await page.keyboard.up('ArrowRight');
+await page.waitForTimeout(120);
+await capture('54-smg-idle');
+await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -177,7 +222,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 5,
+    schema: 6,
     detailedStage,
     stageOverviews,
     captures,

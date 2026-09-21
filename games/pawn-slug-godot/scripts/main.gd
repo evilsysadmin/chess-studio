@@ -195,7 +195,6 @@ func _ready() -> void:
         traversal_manager.configure_stage(_stage_manifest)
     if player.has_method("configure_stage"):
         player.configure_stage(_stage_start_x, _checkpoints)
-    _apply_visual_capture_probe()
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
@@ -216,6 +215,7 @@ func _ready() -> void:
     player.connect("weapon_changed", Callable(self, "_on_player_weapon_changed"))
     player.connect("landed", Callable(self, "_on_player_landed"))
     player.connect("checkpoint_changed", Callable(self, "_on_player_checkpoint_changed"))
+    _apply_visual_capture_probe()
     pause_menu.connect("exit_requested", Callable(self, "_on_pause_exit_requested"))
     touch_controls.connect("pause_requested", Callable(pause_menu, "toggle_pause"))
     touch_controls.connect("weapon_cycle_requested", Callable(self, "_on_touch_weapon_cycle_requested"))
@@ -234,18 +234,27 @@ func _selected_stage_id() -> String:
     return DEFAULT_STAGE_ID
 
 func _apply_visual_capture_probe() -> void:
-    # CI's Playwright harness injects this JS-only global before Godot boots.
-    # Normal production pages never define it, so this cannot become a URL
-    # teleport or alter regular gameplay.
+    # CI's Playwright harness injects these JS-only globals before Godot boots.
+    # Normal production pages never define them, so probes cannot alter regular
+    # gameplay or become public URL cheats.
     if not OS.has_feature("web"):
         return
-    var probe = JavaScriptBridge.eval(
+
+    var weapon_probe = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeWeapon === 'string' ? window.__pawnSlugVisualProbeWeapon : ''",
+        true,
+    )
+    var weapon_id := String(weapon_probe)
+    if weapon_id in ["machinegun", "shotgun", "panzerfaust"]:
+        player.grant_weapon(weapon_id)
+
+    var position_probe = JavaScriptBridge.eval(
         "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
         true,
     )
-    if typeof(probe) not in [TYPE_INT, TYPE_FLOAT]:
+    if typeof(position_probe) not in [TYPE_INT, TYPE_FLOAT]:
         return
-    var target_x := clampf(float(probe), _stage_start_x, _world_size.x - 96.0)
+    var target_x := clampf(float(position_probe), _stage_start_x, _world_size.x - 96.0)
     player.global_position.x = target_x
     player.velocity = Vector2.ZERO
     player.reset_physics_interpolation()

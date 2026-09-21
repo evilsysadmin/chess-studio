@@ -19,13 +19,13 @@ Godot headless y tests de gameplay poseen reglas más profundas como estados/acc
 
 ## Bootstrap de assets de Matthias
 
-Los bancos de armas de Matthias forman parte del bootstrap del runtime, no de la interacción de cambio de arma.
+El arranque de Pawn Slug usa una ruta crítica mínima y un warmup posterior. El cambio de arma no debe volver a ser el mecanismo normal de carga.
 
 Contrato:
 
-- precargar en background/paralelo los atlas completos de `pistol`, `machinegun`, `shotgun` y `panzerfaust` antes de declarar el player visualmente listo;
-- precargar también los overlays de locomoción activos (por ejemplo `run12`) antes de `body_ready()`;
-- una vez terminado el bootstrap, cambiar de arma debe ser una operación puramente en memoria sobre `SpriteFrames`;
+- sólo el atlas completo del arma equipada al arrancar —normalmente `pistol`— puede bloquear el primer `body_ready()`;
+- en cuanto Matthias es visible, iniciar el warmup de los bancos grandes en orden de uso probable: `machinegun` primero y después `shotgun`/`panzerfaust`, de uno en uno para no convertir el primer segundo jugable en otra ráfaga de red/decodificación; después completar los overlays de locomoción activos (`run12`/`run13`) sin volver a bloquear el juego;
+- el camino normal de un pickup debe encontrar su `SpriteFrames` ya en memoria; una petición foreground al seleccionar arma existe sólo como red de seguridad si un pickup excepcionalmente temprano gana la carrera al warmup o falla el CDN;
 - **nunca mantener visible el sprite del arma anterior** mientras llega el banco de la nueva;
 - ante un fallo excepcional de CDN, ocultar el body o mostrar un estado de carga/error correcto; no disfrazar el fallo enseñando otra arma;
 - los caches estáticos pueden reutilizarse entre remounts de la misma sesión.
