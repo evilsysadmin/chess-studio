@@ -231,14 +231,9 @@ function Board3DCanvas({
     const pointer = new THREE.Vector2();
     const boardHit = new THREE.Vector3(), pieceHit = new THREE.Vector3();
     const boardPickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.105), piecePickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.76);
-    const squareMeshes = new Map();
-    const highlightMeshes = new Map();
-    const pieceMeshes = new Map();
-    const terrainGroup = new THREE.Group();
-    const pieceGroup = new THREE.Group();
-    const forensicGroup = new THREE.Group();
-    const coordinateGroup = new THREE.Group();
-    const boardGroup = new THREE.Group();
+    const squareMeshes = new Map(), highlightMeshes = new Map(), pieceMeshes = new Map();
+    const terrainGroup = new THREE.Group(), pieceGroup = new THREE.Group(), pickTargets = [pieceGroup];
+    const forensicGroup = new THREE.Group(), coordinateGroup = new THREE.Group(), boardGroup = new THREE.Group();
     const theme = BOARD_THEME_3D[effectiveThemeId] || BOARD_THEME_3D.classic;
     const whiteSide = orientation !== 'black';
     const initialLights = reactiveLightProfile({ coarsePointer });
@@ -263,7 +258,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'board-plane-pick-adaptive-motion-v1';
-    renderer.domElement.dataset.board3dPointerPicking = 'piece-board-planes-v2';
+    renderer.domElement.dataset.board3dPointerPicking = warRoomVariant === 'v2' ? 'scene-raycast-legacy' : 'piece-board-planes-v2';
     renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
     renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
@@ -316,7 +311,7 @@ function Board3DCanvas({
         tile.receiveShadow = true;
         tile.userData.square = square;
         boardGroup.add(tile);
-        squareMeshes.set(square, tile);
+        squareMeshes.set(square, tile); pickTargets.push(tile);
 
         const marker = new THREE.Mesh(
           new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
@@ -462,6 +457,10 @@ function Board3DCanvas({
         -((event.clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.setFromCamera(pointer, camera);
+      if (warRoomVariant === 'v2') {
+        for (const hit of raycaster.intersectObjects(pickTargets, true)) { let object = hit.object; while (object && !object.userData?.square) object = object.parent; if (object?.userData?.square) return object.userData.square; }
+        return null;
+      }
       const pieceSquare = raycaster.ray.intersectPlane(piecePickPlane, pieceHit) ? squareFromBoardPoint(pieceHit) : null;
       if (pieceSquare && pieceMeshes.has(pieceSquare)) return pieceSquare;
       if (!raycaster.ray.intersectPlane(boardPickPlane, boardHit)) return null;
