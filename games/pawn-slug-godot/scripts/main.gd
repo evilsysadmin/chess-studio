@@ -112,6 +112,10 @@ var _stage_start_x := 110.0
 var _checkpoints: Array = [110.0]
 var _platforms: Array[Rect2] = []
 var _platform_specs: Array[Dictionary] = []
+var _ladders: Array[Rect2] = []
+var _ladder_specs: Array[Dictionary] = []
+var _pits: Array[Rect2] = []
+var _pit_specs: Array[Dictionary] = []
 var _obstacles: Array[Rect2] = []
 var _obstacle_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
@@ -169,7 +173,7 @@ func _ready() -> void:
         push_error("Pawn Slug stage manifest failed; using minimal safe fallback")
     _build_stage_geometry()
     if player.has_method("configure_stage"):
-        player.configure_stage(_stage_start_x, _checkpoints)
+        player.configure_stage(_stage_start_x, _checkpoints, _ladders, _world_size.y + 96.0)
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
@@ -233,6 +237,17 @@ func _load_stage_manifest(stage_id: String) -> bool:
         if typeof(entry) == TYPE_DICTIONARY:
             _platform_specs.append(Dictionary(entry).duplicate(true))
     _platforms = _stage_rects(_platform_specs)
+    _ladder_specs.clear()
+    for entry in _stage_manifest.get("ladders", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _ladder_specs.append(Dictionary(entry).duplicate(true))
+    _ladders = _stage_rects(_ladder_specs)
+    _pit_specs.clear()
+    for entry in _stage_manifest.get("pits", []):
+        if typeof(entry) == TYPE_DICTIONARY:
+            _pit_specs.append(Dictionary(entry).duplicate(true))
+    _pits = _stage_rects(_pit_specs)
+    _pits.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.x < b.position.x)
     _obstacle_specs.clear()
     for entry in _stage_manifest.get("obstacles", []):
         if typeof(entry) == TYPE_DICTIONARY:
@@ -305,10 +320,23 @@ func _build_stage_geometry() -> void:
     _map_geometry_root.name = "StageGeometry"
     add_child(_map_geometry_root)
 
-    _add_stage_body(
-        Rect2(0.0, _floor_y, _world_size.x, _floor_depth),
-        "Floor",
-    )
+    var floor_cursor := 0.0
+    var floor_segment := 0
+    for pit in _pits:
+        var pit_left := clampf(pit.position.x, 0.0, _world_size.x)
+        var pit_right := clampf(pit.end.x, 0.0, _world_size.x)
+        if pit_left > floor_cursor:
+            _add_stage_body(
+                Rect2(floor_cursor, _floor_y, pit_left - floor_cursor, _floor_depth),
+                "Floor_%02d" % floor_segment,
+            )
+            floor_segment += 1
+        floor_cursor = maxf(floor_cursor, pit_right)
+    if floor_cursor < _world_size.x:
+        _add_stage_body(
+            Rect2(floor_cursor, _floor_y, _world_size.x - floor_cursor, _floor_depth),
+            "Floor_%02d" % floor_segment,
+        )
     _add_stage_body(
         Rect2(-_boundary_thickness, 0.0, _boundary_thickness, _world_size.y),
         "LeftBoundary",
@@ -342,9 +370,15 @@ func _add_stage_body(rect: Rect2, body_name: String, one_way := false) -> void:
     body.add_child(collision)
     _map_geometry_root.add_child(body)
 
+func _x_over_pit(x: float) -> bool:
+    for pit in _pits:
+        if x >= pit.position.x and x <= pit.end.x:
+            return true
+    return false
+
 func _point_hits_stage_geometry(point: Vector2) -> bool:
     if point.y >= _floor_y:
-        return true
+        return not _x_over_pit(point.x)
     for rect in _platforms:
         if rect.has_point(point):
             return true
@@ -363,6 +397,8 @@ func _pickup_spawn_rect(position: Vector2) -> Rect2:
     return Rect2(position - PICKUP_SPAWN_SIZE * 0.5, PICKUP_SPAWN_SIZE)
 
 func _pickup_spawn_clear(position: Vector2) -> bool:
+    if _x_over_pit(position.x):
+        return false
     var rect := _pickup_spawn_rect(position)
     if rect.position.x < 0.0 or rect.end.x > _world_size.x:
         return false
@@ -430,6 +466,12 @@ func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:
         return "SPACE salta | W/UP + FIRE arriba | A/D + W/UP + FIRE diagonal | S/DOWN agacha"
 
+    for ladder in _ladders:
+        if player_x >= ladder.position.x - MOVEMENT_HINT_LOOKAHEAD and player_x <= ladder.end.x + MOVEMENT_HINT_TRAIL:
+            return "W/UP · S/DOWN | sube o baja por la escalera"
+    for pit in _pits:
+        if player_x >= pit.position.x - MOVEMENT_HINT_LOOKAHEAD and player_x <= pit.end.x + MOVEMENT_HINT_TRAIL:
+            return "SPACE | salva el hueco o busca la ruta elevada"
     for platform in _platforms:
         var clearance := _floor_y - platform.end.y
         var crouch_only := (
@@ -1226,7 +1268,7 @@ func _build_environment_visual() -> void:
     environment_visual.name = "PremiumEnvironment"
     environment_visual.z_index = -20
     add_child(environment_visual)
-    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs, _obstacle_specs)
+    environment_visual.configure(_world_size, _floor_y, _platforms, _obstacles, String(_stage_manifest.get("theme", "night_front")), _platform_specs, _dressing_specs, _story_prop_specs, _obstacle_specs, _ladder_specs, _pit_specs)
 
 func _build_enemy_visuals() -> void:
     for enemy in enemies:
