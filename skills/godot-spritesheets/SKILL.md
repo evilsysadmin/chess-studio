@@ -2,11 +2,13 @@
 
 Este documento es el contrato operativo para **generar, completar, normalizar, validar e integrar sprites y spritesheets 2D de Pawn Slug en Godot**.
 
-Se aplica a Matthias, enemigos y cualquier nuevo actor animado que use la misma pipeline. Es obligatorio leer también [`scripts/art/README.md`](../../scripts/art/README.md) y, cuando el resultado se publique por CDN, [`docs/visual-assets-r2-flow.md`](../../docs/visual-assets-r2-flow.md).
+Se aplica a Matthias, enemigos y cualquier nuevo actor animado que use la misma pipeline. La especificación canónica de authoring/aceptación es [`docs/pawnslug-sprites.md`](../../docs/pawnslug-sprites.md); este skill traduce ese contrato a operación diaria. Es obligatorio leer también [`scripts/art/README.md`](../../scripts/art/README.md) y, cuando el resultado se publique por CDN, [`docs/visual-assets-r2-flow.md`](../../docs/visual-assets-r2-flow.md).
 
 ## 1. Principio rector
 
 El objetivo no es producir una imagen bonita. El objetivo es producir una **secuencia animable estable y determinista que Godot pueda consumir sin sorpresas**.
+
+**Toda salida de generación de imagen es un candidato en cuarentena.** No se considera source runtime hasta pasar raw lint, normalización fail-closed, QA geométrica/temporal, revisión visual ligada a hash y validación real de Godot. Si un gate no puede decidir con seguridad, rechaza.
 
 Pipeline canónica:
 
