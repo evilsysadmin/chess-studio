@@ -14,6 +14,12 @@ import { installChroniclesTacticsPressurePlateArt } from './chroniclesOfMatthias
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
+export function chroniclesTacticsUsesCanonicalSceneryFrame(scenePlan = null) {
+  const width = Math.max(1, Number(scenePlan?.width) || 7);
+  const height = Math.max(1, Number(scenePlan?.height) || 7);
+  return width <= 7 && height <= 7;
+}
+
 export function installChroniclesTacticsSceneArt(models, {
   coarsePointer = false,
   scenePlan = undefined,
@@ -23,8 +29,13 @@ export function installChroniclesTacticsSceneArt(models, {
   const scene = partyRoot?.parent || null;
   if (!scene?.add) return null;
 
-  const fortress = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer, scenePlan });
-  const foreground = installChroniclesTacticsForegroundFraming(scene, { coarsePointer, scenePlan });
+  const useCanonicalFrame = chroniclesTacticsUsesCanonicalSceneryFrame(scenePlan);
+  const fortress = useCanonicalFrame
+    ? installChroniclesTacticsFortressBackdrop(scene, { coarsePointer, scenePlan })
+    : null;
+  const foreground = useCanonicalFrame
+    ? installChroniclesTacticsForegroundFraming(scene, { coarsePointer, scenePlan })
+    : null;
   const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer });
   const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
