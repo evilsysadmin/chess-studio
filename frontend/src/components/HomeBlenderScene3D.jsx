@@ -419,6 +419,21 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
     const dungeon = new THREE.PointLight(0xff5a18, 9, 6, 2);
     dungeon.position.set(6.42, -0.45, -1.05);
     torches.push(dungeon);
+
+    // Three more flames that light the Blender scene but not the runtime: the eight
+    // candles of the chandelier (one light at their centre), the candle on the table
+    // and the reading light at the library desk. Positions map Blender (x, y, z) to
+    // three (x, z, -y). Kept modest: the chandelier hangs right over the board, whose
+    // colours must stay honest.
+    for (const [color, intensity, distance, x, y, z] of [
+      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2],
+      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4],
+      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76],
+    ]) {
+      const light = new THREE.PointLight(color, intensity, distance, 2);
+      light.position.set(x, y, z);
+      torches.push(light);
+    }
   }
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
