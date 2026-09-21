@@ -178,6 +178,15 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         weave = (warp - 0.5) * (weft - 0.5) * 0.22
         value = 0.40 + coarse * 0.24 + medium * 0.16 + (warp + weft - 1.0) * 0.085 + weave + fine * 0.07
         return max(0.0, min(1.0, value))
+    if profile == "leaf":
+        # The leaves are flattened UV spheres seen face-on, so the meridians (lines of
+        # constant u) fan out from the centre like veins. Narrow raised ribs on those
+        # meridians, faint cross veins and slow tonal drift make a flat green blob
+        # read as a leaf.
+        rib = 0.5 + 0.5 * math.cos((u * 14.0 + (coarse - 0.5) * 0.30) * math.tau)
+        cross = 0.5 + 0.5 * math.sin((v * 9.0 + u * 3.0) * math.tau)
+        return max(0.0, min(1.0, 0.40 + rib ** 6 * 0.30 + (coarse - 0.5) * 0.32
+                            + (cross - 0.5) * 0.06 + (fine - 0.5) * 0.08))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
         brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
@@ -325,6 +334,7 @@ def _packed_surface_arrays(
         "leather": (0.70, 1.24),
         "paper": (0.88, 1.12),
         "wax": (0.90, 1.10),
+        "leaf": (0.74, 1.24),
     }.get(profile, (0.82, 1.14))
     rough_span = {
         "stone": 0.07,
@@ -335,6 +345,7 @@ def _packed_surface_arrays(
         "leather": 0.12,
         "paper": 0.055,
         "wax": 0.045,
+        "leaf": 0.09,
     }.get(profile, 0.10)
     normal_strength = {
         "stone": 2.5,
@@ -345,6 +356,7 @@ def _packed_surface_arrays(
         "leather": 2.4,
         "paper": 1.15,
         "wax": 0.85,
+        "leaf": 1.8,
     }.get(profile, 2.5) * (size / base_size)
 
     factor = low + (high - low) * heights
@@ -401,6 +413,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "textile": 128,
         "leather": 128,
         "metal": 128,
+        "leaf": 128,
     }.get(profile, 96)
     # Normal maps are ~3/4 of the texture bytes, so resolution is spent only on
     # the surfaces that dominate the frame. Dark decals, soot and small props keep
@@ -458,6 +471,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "leather": 0.38,
         "paper": 0.18,
         "wax": 0.12,
+        "leaf": 0.16,
     }.get(profile, 0.35)
     links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
     links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
@@ -2653,7 +2667,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_scale=10.0,
             bump_strength=0.038,
         ),
-        "plant": material("HOME_MAT_plant", (0.035, 0.085, 0.026, 1), roughness=0.90),
+        "plant": material("HOME_MAT_plant", (0.085, 0.200, 0.055, 1), roughness=0.82, texture_profile="leaf"),
         "ceramic": material("HOME_MAT_ceramic", (0.42, 0.37, 0.30, 1), roughness=0.68, bump_scale=7.0, bump_strength=0.035, variation=0.08, variation_scale=4.4),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
