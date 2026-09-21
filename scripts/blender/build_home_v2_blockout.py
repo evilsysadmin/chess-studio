@@ -141,11 +141,11 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         # panels and legs of the table. Real grain is uneven: two unrelated
         # frequencies, both bent by low-frequency noise, so no two growth rings
         # are the same width, and most of the variation comes from soft noise.
-        warp = (coarse - 0.5) * 1.6 + math.sin(v * math.tau * 2.0) * 0.08
+        warp = (coarse - 0.5) * 0.8 + math.sin(v * math.tau * 2.0) * 0.05
         rings = 0.5 + 0.5 * math.sin((u * 11.0 + warp) * math.tau)
         fibres = 0.5 + 0.5 * math.sin((u * 27.0 + medium * 2.4 + coarse * 1.1) * math.tau)
-        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.30 + (fibres - 0.5) * 0.16
-                            + (coarse - 0.5) * 0.30 + (fine - 0.5) * 0.14))
+        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.13 + (fibres - 0.5) * 0.12
+                            + (coarse - 0.5) * 0.22 + (fine - 0.5) * 0.12))
     if profile == "leather":
         wrinkles = _value_noise(u, v, seed + 211, 7)
         pebble_a = _value_noise(u, v, seed + 223, 23)
@@ -309,7 +309,7 @@ def _packed_surface_arrays(
     detail_gain = {
         "stone": 1.0,
         "floor_stone": 0.85,
-        "wood": 1.7,
+        "wood": 0.6,
         "metal": 1.0,
         "textile": 1.0,
         "leather": 1.0,
@@ -452,7 +452,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
     normal_map.inputs["Strength"].default_value = {
         "stone": 0.55,
         "floor_stone": 0.50,
-        "wood": 0.42,
+        "wood": 0.22,
         "metal": 0.36,
         "textile": 0.40,
         "leather": 0.38,
@@ -567,6 +567,65 @@ def _vary_uvs_for_object(obj, mat) -> None:
         loop.uv.y = loop.uv.y * scale + offset_v
 
 
+# Metres of surface covered by one repeat of the packed texture. A default Blender
+# cube maps every face to a quarter-by-quarter window of the texture whatever its
+# size, so a table top a few metres wide showed ~64 px stretched over it (about
+# 14 px/m) and thin legs got the same window squashed. Wood and stone therefore get
+# world-scale UVs: the same texel density on every face, grain along the long side.
+WORLD_UV_TILE_M = {
+    "HOME_MAT_table_wood": 1.6,
+    "HOME_MAT_wood": 1.6,
+    "HOME_MAT_library_wood": 1.6,
+    "HOME_MAT_wood_wear": 1.6,
+    "HOME_MAT_stone": 1.6,
+    "HOME_MAT_back_wall_stone": 1.6,
+    "HOME_MAT_back_wall_stone_accent": 1.6,
+    "HOME_MAT_arch_stone": 1.6,
+    "HOME_MAT_stair_stone": 1.6,
+    "HOME_MAT_stone_dark": 1.6,
+}
+
+
+def _world_scale_cube_uvs(obj, tile: float) -> None:
+    mesh = obj.data
+    layer = mesh.uv_layers.active if getattr(mesh, "uv_layers", None) else None
+    if layer is None:
+        return
+    data = layer.data
+    for poly in mesh.polygons:
+        loops = list(poly.loop_indices)
+        if len(loops) != 4:
+            continue
+        us = [data[i].uv.x for i in loops]
+        vs = [data[i].uv.y for i in loops]
+        u0, u1, v0, v1 = min(us), max(us), min(vs), max(vs)
+        if u1 - u0 < 1e-6 or v1 - v0 < 1e-6:
+            continue
+
+        def corner(cu, cv):
+            return min(
+                loops,
+                key=lambda i: (data[i].uv.x - cu) ** 2 + (data[i].uv.y - cv) ** 2,
+            )
+
+        def position(loop_index):
+            return mesh.vertices[mesh.loops[loop_index].vertex_index].co
+
+        origin = position(corner(u0, v0))
+        along_u = (position(corner(u1, v0)) - origin).length
+        along_v = (position(corner(u0, v1)) - origin).length
+        for i in loops:
+            fu = (data[i].uv.x - u0) / (u1 - u0)
+            fv = (data[i].uv.y - v0) / (v1 - v0)
+            if along_u > along_v:
+                # Rings vary along u, so put the long side on v: grain runs the length.
+                data[i].uv.x = fv * along_v / tile
+                data[i].uv.y = fu * along_u / tile
+            else:
+                data[i].uv.x = fu * along_u / tile
+                data[i].uv.y = fv * along_v / tile
+
+
 def apply_material(obj, mat) -> None:
     if hasattr(obj.data, "materials"):
         obj.data.materials.append(mat)
@@ -624,6 +683,9 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
         modifier.width = edge_width
         configure_soft_edge_modifier(modifier, name)
+    world_tile = WORLD_UV_TILE_M.get(getattr(mat, "name", ""))
+    if world_tile:
+        _world_scale_cube_uvs(obj, world_tile)
     apply_material(obj, mat)
     return obj
 
