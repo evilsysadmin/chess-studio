@@ -149,6 +149,13 @@ await page.keyboard.up('ArrowDown');
 // visual probe rather than depending on combat traversal. Staging E2E remains
 // responsible for proving the real pickup path and weapon-pickup event.
 const smgStage = await loadStage(detailedStage, { weaponProbe: 'machinegun' });
+const smgProbeSelected = await page.evaluate(() => (
+  Array.isArray(window.__pawnSlugCaptureEvents)
+  && window.__pawnSlugCaptureEvents.includes('weapon-changed')
+));
+if (!smgProbeSelected) {
+  throw new Error('Pawn Slug SMG visual probe did not emit weapon-changed');
+}
 await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
 await capture('50-smg-selected-immediate');
 await captureDetailedCloseup('50-smg-selected-immediate', smgStage.canvas);
