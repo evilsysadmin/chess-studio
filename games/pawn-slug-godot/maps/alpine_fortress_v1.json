@@ -42,7 +42,8 @@
       "material": "stone",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 1060,
@@ -114,7 +115,8 @@
       "material": "stone",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 3010,
@@ -301,6 +303,39 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2210,
+      "y": 326,
+      "w": 145,
+      "h": 22,
+      "kind": "cliff_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "ridge_step"
+    },
+    {
+      "x": 2385,
+      "y": 260,
+      "w": 155,
+      "h": 22,
+      "kind": "cliff_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "ridge_step",
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 2570,
+      "y": 322,
+      "w": 145,
+      "h": 22,
+      "kind": "cliff_step",
+      "material": "concrete",
+      "one_way": true,
+      "route": "ridge_step"
     }
   ],
   "obstacles": [
@@ -844,5 +879,47 @@
       "y": 606
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 3,
+  "ladders": [
+    {
+      "x": 900,
+      "y": 362,
+      "w": 40,
+      "h": 248,
+      "kind": "cliff_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 2825,
+      "y": 378,
+      "w": 40,
+      "h": 232,
+      "kind": "cliff_ladder",
+      "route": "vertical"
+    },
+    {
+      "x": 4405,
+      "y": 360,
+      "w": 40,
+      "h": 250,
+      "kind": "cliff_ladder",
+      "route": "vertical"
+    }
+  ],
+  "pits": [
+    {
+      "x": 450,
+      "y": 610,
+      "w": 110,
+      "h": 110,
+      "kind": "ice_crevasse"
+    },
+    {
+      "x": 2610,
+      "y": 610,
+      "w": 84,
+      "h": 110,
+      "kind": "ice_crevasse"
+    }
+  ]
 }
