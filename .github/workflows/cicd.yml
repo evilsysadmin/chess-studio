@@ -334,7 +334,7 @@ jobs:
         with:
           name: quality-browser-frontend-${{ github.sha }}
           path: frontend/dist
-      - name: Critical browser lane
+      - name: Core lane
         env:
           CRITICAL_E2E_LANE: ${{ matrix.lane }}
           CHESS_E2E_LIGHTWEIGHT: '1'
