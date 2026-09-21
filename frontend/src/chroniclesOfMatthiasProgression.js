@@ -664,6 +664,19 @@ export function ensureChroniclesTacticsRun() {
   return beginChroniclesTacticsRun();
 }
 
+export function renewChroniclesTacticsRun(runId) {
+  const current = readRunState();
+  if (current && !current.ended && current.id !== runId) return current.id;
+  if (current && current.id === runId && !current.ended) {
+    setStorageItem(
+      STORAGE_LOCAL,
+      CHRONICLES_TACTICS_RUN_STORAGE_KEY,
+      JSON.stringify({ ...current, ended: true }),
+    );
+  }
+  return beginChroniclesTacticsRun();
+}
+
 export function finishChroniclesTacticsRun(runId) {
   const current = readRunState();
   if (!current || current.id !== runId) return false;

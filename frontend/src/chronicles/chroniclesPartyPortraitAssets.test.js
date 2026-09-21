@@ -17,9 +17,8 @@ describe('Chronicles canonical party portraits', () => {
     }
   });
 
-  it('falls back to Matthias only for unknown non-party ids', () => {
-    expect(chroniclesPartyPortraitUrl('missing')).toBe(
-      chroniclesPartyPortraitUrl('matthias'),
-    );
+  it('uses the dedicated Chronicles portrait for Matthias and unknown ids', () => {
+    expect(chroniclesPartyPortraitUrl('matthias')).toBe(CHRONICLES_PARTY_PORTRAITS.matthias);
+    expect(chroniclesPartyPortraitUrl('missing')).toBe(CHRONICLES_PARTY_PORTRAITS.matthias);
   });
 });

@@ -3,6 +3,8 @@ import { forgotPassword, login, register, resetPassword, wakeBackend } from '../
 import { SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { connectionErrorCopy } from '../networkErrorCopy.js';
 
+const NEW_PASSWORD_MIN_LENGTH = 8;
+
 const COPY = {
   es: {
     login: 'Iniciar sesión', register: 'Crear cuenta', forgot: 'Recuperar contraseña', reset: 'Nueva contraseña',
@@ -166,14 +168,14 @@ export default function LoginScreen({ onLoggedIn }) {
             {(mode === 'login' || mode === 'register' || mode === 'reset') && (
               <>
                 <label className="field-label" htmlFor="login-password">{mode === 'reset' ? text.newPassword : text.password}</label>
-                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'login' ? 1 : NEW_PASSWORD_MIN_LENGTH} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
             {mode === 'reset' && (
               <>
                 <label className="field-label" htmlFor="login-password-confirm">{text.repeatPassword}</label>
-                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={NEW_PASSWORD_MIN_LENGTH} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 

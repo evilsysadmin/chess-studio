@@ -1,4 +1,4 @@
-import matthiasPortrait from '../assets/chronicles/matthias-canonical-v2.webp';
+import matthiasPortrait from '../assets/chronicles/matthias-chronicles-canonical-v3.webp';
 import hildegardPortrait from '../assets/chronicles/hildegard-canonical-v2.webp';
 import azizPortrait from '../assets/chronicles/aziz-canonical-v2.webp';
 import faustPortrait from '../assets/chronicles/faust-canonical-v2.webp';

@@ -35,6 +35,10 @@ import {
   chroniclesForecastMoves,
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
+import {
+  chroniclesProgressionFeedback,
+  chroniclesProgressionFeedbackLabel,
+} from '../chronicles/chroniclesProgressionFeedback.js';
 import { chroniclesTacticsLocationLabel } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
@@ -92,6 +96,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   const [sheetRequest, setSheetRequest] = useState(null);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
+  const [progressionFeedback, setProgressionFeedback] = useState('');
 
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
   const selectedAbility = useMemo(
@@ -152,6 +157,13 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
       const saved = saveChroniclesProgression(progressResult.progression);
       progressionRef.current = saved;
       setProgression(saved);
+      const feedback = chroniclesProgressionFeedback(progressResult);
+      setProgressionFeedback(chroniclesProgressionFeedbackLabel(
+        feedback,
+        (memberId) => previous.party?.find((member) => member.id === memberId)?.name || memberId,
+      ));
+    } else {
+      setProgressionFeedback('');
     }
 
     stateRef.current = next;
@@ -253,6 +265,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
     setRunId(nextRunId);
     setSelectedMemberId('matthias');
     setSheetRequest(null);
+    setProgressionFeedback('');
     stateRef.current = next;
     setState(next);
   }, [onRestartRun, runId]);
@@ -399,6 +412,9 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
             <div className="chronicles-tactics__narrator" aria-live="polite">
               <span>{inCombat ? `RONDA ${state.round || 1} · TU TURNO` : 'CRÓNICA'}</span>
               <p>{state.message}</p>
+              {progressionFeedback ? (
+                <strong data-chronicles-progression-feedback="true">{progressionFeedback}</strong>
+              ) : null}
             </div>
             {rendererError && <div className="chronicles-tactics__error" role="alert">{rendererError}</div>}
           </div>

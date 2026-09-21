@@ -85,6 +85,26 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
     coarse = _value_noise(u, v, seed, 5)
     medium = _value_noise(u, v, seed + 31, 13)
     fine = _value_noise(u, v, seed + 73, 37)
+    if profile == "stone":
+        # Broad mineral structure reads as quarried stone instead of generic
+        # cloud noise. Strata stay subtle at Home distance; sparse pitting and
+        # low-frequency tonal drift do most of the work.
+        mineral = _value_noise(u, v, seed + 157, 9)
+        pores = _value_noise(u, v, seed + 191, 27)
+        strata = 0.5 + 0.5 * math.sin(
+            (v * 2.6 + u * 0.72 + (coarse - 0.5) * 0.55) * math.tau
+        )
+        pitting = max(0.0, 0.26 - pores) * 1.65
+        value = (
+            0.30
+            + coarse * 0.34
+            + medium * 0.19
+            + mineral * 0.10
+            + strata * 0.055
+            + fine * 0.025
+            - pitting * 0.14
+        )
+        return max(0.0, min(1.0, value))
     if profile == "floor_stone":
         # Large staggered paving breaks the floor into authored stone slabs.
         # Keep the surface itself restrained: broad slab-to-slab variation and
@@ -116,15 +136,29 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         )
         return max(0.0, min(1.0, value))
     if profile == "wood":
-        warp = (coarse - 0.5) * 1.35 + math.sin(v * math.tau * 2.0) * 0.08
-        grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
-        pores = 0.5 + 0.5 * math.sin((u * 43.0 + medium * 1.8) * math.tau)
-        return max(0.0, min(1.0, grain * 0.48 + pores * 0.13 + coarse * 0.24 + fine * 0.15))
+        # A single sine repeated 18 times reads as a zebra stripe on the small
+        # panels and legs of the table. Real grain is uneven: two unrelated
+        # frequencies, both bent by low-frequency noise, so no two growth rings
+        # are the same width, and most of the variation comes from soft noise.
+        warp = (coarse - 0.5) * 1.6 + math.sin(v * math.tau * 2.0) * 0.08
+        rings = 0.5 + 0.5 * math.sin((u * 11.0 + warp) * math.tau)
+        fibres = 0.5 + 0.5 * math.sin((u * 27.0 + medium * 2.4 + coarse * 1.1) * math.tau)
+        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.30 + (fibres - 0.5) * 0.16
+                            + (coarse - 0.5) * 0.30 + (fine - 0.5) * 0.14))
     if profile == "leather":
-        pores = 0.5 + 0.5 * math.sin((u * 29.0 + medium * 2.3) * math.tau)
-        cross = 0.5 + 0.5 * math.sin((v * 31.0 + fine * 2.0) * math.tau + 0.8)
         wrinkles = _value_noise(u, v, seed + 211, 7)
-        return max(0.0, min(1.0, coarse * 0.34 + wrinkles * 0.28 + pores * 0.19 + cross * 0.19))
+        pebble_a = _value_noise(u, v, seed + 223, 23)
+        pebble_b = _value_noise(u, v, seed + 239, 41)
+        pebble = abs(pebble_a - pebble_b)
+        value = (
+            0.12
+            + coarse * 0.30
+            + wrinkles * 0.24
+            + medium * 0.13
+            + pebble * 0.15
+            + fine * 0.06
+        )
+        return max(0.0, min(1.0, value))
     if profile == "paper":
         fiber_x = 0.5 + 0.5 * math.sin((u * 52.0 + fine * 1.7) * math.tau)
         fiber_y = 0.5 + 0.5 * math.sin((v * 47.0 + medium * 1.5) * math.tau + 0.45)
@@ -134,13 +168,22 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         soft = _value_noise(u, v, seed + 353, 19)
         return max(0.0, min(1.0, coarse * 0.36 + bloom * 0.38 + soft * 0.18 + fine * 0.08))
     if profile == "textile":
-        warp = 0.5 + 0.5 * math.sin(u * math.tau * 44.0)
-        weft = 0.5 + 0.5 * math.sin(v * math.tau * 44.0 + 0.65)
-        return max(0.0, min(1.0, 0.44 + (warp + weft - 1.0) * 0.21 + fine * 0.16))
+        # Lower-frequency, slightly wandering weave avoids moire and the
+        # "perfect screen-door" look on large banners and rugs.
+        drift_u = (coarse - 0.5) * 0.045 + (medium - 0.5) * 0.018
+        drift_v = (medium - 0.5) * 0.040 + (coarse - 0.5) * 0.014
+        warp = 0.5 + 0.5 * math.sin((u + drift_u) * math.tau * 30.0)
+        weft = 0.5 + 0.5 * math.sin((v + drift_v) * math.tau * 28.0 + 0.58)
+        weave = (warp - 0.5) * (weft - 0.5) * 0.22
+        value = 0.40 + coarse * 0.24 + medium * 0.16 + (warp + weft - 1.0) * 0.085 + weave + fine * 0.07
+        return max(0.0, min(1.0, value))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
-        brushing = 0.5 + 0.5 * math.sin((u * 34.0 + medium * 0.9) * math.tau)
-        return max(0.0, min(1.0, coarse * 0.38 + patina * 0.34 + brushing * 0.10 + fine * 0.18))
+        brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
+        brushed_b = _value_noise(u * 0.75, v * 4.1, seed + 149, 13)
+        brushing = brushed_a * 0.68 + brushed_b * 0.32
+        value = coarse * 0.34 + patina * 0.33 + medium * 0.15 + brushing * 0.11 + fine * 0.07
+        return max(0.0, min(1.0, value))
     return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
 
 
@@ -160,7 +203,7 @@ def _packed_surface_images(
     low, high = {
         "stone": (0.88, 1.08),
         "floor_stone": (0.68, 1.10),
-        "wood": (0.78, 1.20),
+        "wood": (0.86, 1.12),
         "metal": (0.79, 1.15),
         "textile": (0.78, 1.18),
         "leather": (0.70, 1.24),
@@ -180,7 +223,7 @@ def _packed_surface_images(
     normal_strength = {
         "stone": 2.5,
         "floor_stone": 4.0,
-        "wood": 2.2,
+        "wood": 1.3,
         "metal": 2.0,
         "textile": 2.8,
         "leather": 2.4,
@@ -242,7 +285,21 @@ def _packed_surface_images(
 def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile) -> None:
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
-    base_image, rough_image, normal_image = _packed_surface_images(name, color, roughness, profile)
+    texture_size = {
+        "floor_stone": 160,
+        "stone": 144,
+        "wood": 136,
+        "textile": 128,
+        "leather": 128,
+        "metal": 128,
+    }.get(profile, 96)
+    base_image, rough_image, normal_image = _packed_surface_images(
+        name,
+        color,
+        roughness,
+        profile,
+        size=texture_size,
+    )
 
     base_tex = nodes.new("ShaderNodeTexImage")
     base_tex.name = f"{name}_PackedBase"
@@ -359,9 +416,31 @@ def material(
     return mat
 
 
+def _material_uses_image_textures(mat) -> bool:
+    if not getattr(mat, "use_nodes", False) or not getattr(mat, "node_tree", None):
+        return False
+    return any(node.type == "TEX_IMAGE" for node in mat.node_tree.nodes)
+
+
+def _vary_uvs_for_object(obj, mat) -> None:
+    if obj.type != "MESH" or not _material_uses_image_textures(mat):
+        return
+    uv_layers = getattr(obj.data, "uv_layers", None)
+    if not uv_layers or not uv_layers.active:
+        return
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(obj.name)) & 0xFFFF
+    scale = 0.92 + _hash01(seed, 1, 1301) * 0.16
+    offset_u = _hash01(seed, 2, 1307) * 0.84
+    offset_v = _hash01(seed, 3, 1319) * 0.84
+    for loop in uv_layers.active.data:
+        loop.uv.x = loop.uv.x * scale + offset_u
+        loop.uv.y = loop.uv.y * scale + offset_v
+
+
 def apply_material(obj, mat) -> None:
     if hasattr(obj.data, "materials"):
         obj.data.materials.append(mat)
+        _vary_uvs_for_object(obj, mat)
 
 
 PREMIUM_BEVEL_PREFIXES = (
@@ -401,9 +480,19 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
     obj.name = name
     obj.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    if bevel:
+
+    # Perfect razor edges are one of the strongest CGI tells in the Home.
+    # Give genuinely solid blocks a tiny physically plausible edge catch while
+    # leaving thin panels, board squares, seams and decals intentionally crisp.
+    min_half_extent = min(abs(float(value)) for value in scale)
+    implicit_bevel = 0.0
+    if bevel <= 0.0 and min_half_extent >= 0.035:
+        implicit_bevel = min(0.018, min_half_extent * 0.18)
+    edge_width = bevel if bevel > 0.0 else implicit_bevel
+
+    if edge_width:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
-        modifier.width = bevel
+        modifier.width = edge_width
         configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
@@ -416,6 +505,22 @@ def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=
     smooth_curved_mesh(obj, keep_axial_caps_flat=True)
     apply_material(obj, mat)
     return obj
+
+
+def rotate_group_about_z(prefix: str, origin_xy, angle_degrees: float) -> None:
+    """Rotate an authored prop group together without changing its internal layout."""
+    angle = math.radians(angle_degrees)
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    ox, oy = origin_xy
+    for obj in bpy.data.objects:
+        if not obj.name.startswith(prefix):
+            continue
+        dx = obj.location.x - ox
+        dy = obj.location.y - oy
+        obj.location.x = ox + dx * cos_a - dy * sin_a
+        obj.location.y = oy + dx * sin_a + dy * cos_a
+        obj.rotation_euler[2] += angle
 
 
 def sphere(name: str, location, scale, mat):
@@ -589,10 +694,19 @@ def curve_tube(name: str, points, bevel_depth: float, mat):
     return obj
 
 
-def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03):
+def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03, origin_xz=None):
+    """Extrude a silhouette along Y.
+
+    By default the object origin stays at the world origin with world-space
+    vertices. Pass ``origin_xz`` to seat the origin on the piece instead (for
+    example the base of a flame), so the runtime can scale or lean it in place
+    rather than about the world origin.
+    """
     half = depth / 2.0
-    front = [(x, y - half, z) for x, z in points_xz]
-    back = [(x, y + half, z) for x, z in points_xz]
+    ox, oz = origin_xz if origin_xz is not None else (0.0, 0.0)
+    oy = y if origin_xz is not None else 0.0
+    front = [(x - ox, y - half - oy, z - oz) for x, z in points_xz]
+    back = [(x - ox, y + half - oy, z - oz) for x, z in points_xz]
     vertices = front + back
     count = len(points_xz)
     faces = [tuple(range(count)), tuple(range(count, count * 2))]
@@ -603,12 +717,82 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03)
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
+    obj.location = (ox, oy, oz)
     bpy.context.collection.objects.link(obj)
     if bevel:
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
         modifier.width = bevel
         configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
+    return obj
+
+
+def draped_banner_panel(
+    name: str,
+    center_x: float,
+    y: float,
+    half_width: float,
+    top_z: float,
+    side_bottom_z: float,
+    center_bottom_z: float,
+    mat,
+    *,
+    fold_depth=0.045,
+    horizontal_segments=18,
+    vertical_segments=10,
+):
+    """Build a lightly folded hanging textile instead of a rigid flat polygon."""
+    vertices = []
+    faces = []
+    cols = horizontal_segments + 1
+    seed = sum((index + 1) * ord(char) for index, char in enumerate(name)) & 0xFFFF
+    fold_phase = _hash01(seed, 0, 1709) * math.tau
+    fold_scale = 0.86 + _hash01(seed, 1, 1721) * 0.26
+    side_bias = (_hash01(seed, 2, 1733) - 0.5) * 0.018
+
+    for row in range(vertical_segments + 1):
+        t = row / vertical_segments
+        for col in range(horizontal_segments + 1):
+            u = col / horizontal_segments
+            signed = u * 2.0 - 1.0
+            x = center_x + signed * half_width
+            edge_mix = abs(signed) ** 0.88
+            bottom_z = center_bottom_z + (side_bottom_z - center_bottom_z) * edge_mix
+            z = top_z + (bottom_z - top_z) * t
+
+            edge_fade = max(0.0, math.sin(math.pi * u)) ** 0.55
+            lower_weight = 0.38 + 0.62 * t
+            primary = math.sin(u * math.tau * 3.2 + 0.35 + fold_phase)
+            secondary = math.sin(u * math.tau * 6.4 - 0.8 + fold_phase * 0.43) * 0.22
+            fold = (primary + secondary) * fold_depth * fold_scale * edge_fade * lower_weight
+            # Tiny asymmetric drop keeps the lower edge from reading as CAD-perfect.
+            z -= (0.008 + 0.018 * t) * math.sin(math.pi * u) ** 2
+            z += side_bias * signed * t
+            vertices.append((x, y + fold, z))
+
+    for row in range(vertical_segments):
+        for col in range(horizontal_segments):
+            a = row * cols + col
+            b = a + 1
+            c = a + cols
+            d = c + 1
+            # Winding faces the canonical camera on -Y.
+            faces.append((a, c, d, b))
+
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    apply_material(obj, mat)
+    smooth_curved_mesh(obj)
+
+    solidify = obj.modifiers.new("Cloth thickness", "SOLIDIFY")
+    solidify.thickness = 0.018
+    solidify.offset = 0.0
+    bevel = obj.modifiers.new("Soft cloth edge", "BEVEL")
+    bevel.width = 0.010
+    bevel.segments = 2
     return obj
 
 
@@ -691,6 +875,94 @@ def add_floor_joint_network(
             )
 
 
+def add_gothic_voussoirs(
+    name: str,
+    x: float,
+    y: float,
+    width: float,
+    shoulder_z: float,
+    top_z: float,
+    mat,
+    *,
+    count_per_side=7,
+):
+    """Add restrained low-relief wedge blocks over a pointed stone arch."""
+    half = width / 2.0
+    points = []
+    for idx in range(count_per_side + 1):
+        t = idx / count_per_side
+        points.append((
+            x - half * (1.0 - t),
+            shoulder_z + (top_z - shoulder_z) * (t ** 0.72),
+        ))
+    for idx in range(1, count_per_side + 1):
+        t = idx / count_per_side
+        points.append((
+            x + half * t,
+            top_z - (top_z - shoulder_z) * (t ** 1.38),
+        ))
+
+    for idx, (px, pz) in enumerate(points):
+        prev_x, prev_z = points[max(0, idx - 1)]
+        next_x, next_z = points[min(len(points) - 1, idx + 1)]
+        dx = next_x - prev_x
+        dz = next_z - prev_z
+        block = cube(
+            f"{name}_{idx}",
+            (
+                px,
+                y - 0.070 - _hash01(idx, 0, 1201) * 0.018,
+                pz,
+            ),
+            (
+                0.105 + _hash01(idx, 1, 1213) * 0.018,
+                0.070,
+                0.155 + _hash01(idx, 2, 1223) * 0.022,
+            ),
+            mat,
+            bevel=0.022,
+        )
+        block.rotation_euler[1] = math.atan2(dx, dz)
+
+
+def add_round_arch_voussoirs(
+    name: str,
+    x: float,
+    y: float,
+    width: float,
+    top_z: float,
+    mat,
+    *,
+    count=11,
+):
+    """Add shallow wedge blocks across the curved crown of a round arch."""
+    radius = width / 2.0
+    center_z = top_z - radius
+    for idx in range(count):
+        t = idx / (count - 1)
+        theta = math.pi * (1.0 - t)
+        px = x + radius * math.cos(theta)
+        pz = center_z + radius * math.sin(theta)
+        dx = -radius * math.sin(theta)
+        dz = radius * math.cos(theta)
+        block = cube(
+            f"{name}_{idx}",
+            (
+                px,
+                y - 0.072 - _hash01(idx, 0, 1249) * 0.016,
+                pz,
+            ),
+            (
+                0.108 + _hash01(idx, 1, 1259) * 0.016,
+                0.070,
+                0.150 + _hash01(idx, 2, 1277) * 0.018,
+            ),
+            mat,
+            bevel=0.020,
+        )
+        block.rotation_euler[1] = math.atan2(dx, dz)
+
+
 def look_at(obj, target) -> None:
     direction = Vector(target) - obj.location
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
@@ -763,6 +1035,18 @@ def add_table_and_board(materials):
     table_y = 1.05
     table_z = 1.12
     cube("HOME_PROP_table_top", (0.0, table_y, table_z + 0.04), (3.72, 1.72, 0.14), wood, bevel=0.085)
+    for wear_index, (wx, wy, sx, sy, rot) in enumerate((
+        (-2.88, -0.52, 0.46, 0.10, -6.0),
+        (2.82, -0.48, 0.42, 0.11, 5.0),
+        (0.62, 2.49, 0.58, 0.085, -2.0),
+    )):
+        wear = sphere(
+            f"HOME_PROP_table_wear_{wear_index}",
+            (wx, wy, table_z + 0.188),
+            (sx, sy, 0.006),
+            materials["wood_wear"],
+        )
+        wear.rotation_euler[2] = math.radians(rot)
     cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     for x in (-3.20, 3.20):
@@ -841,22 +1125,27 @@ def add_table_and_board(materials):
         (-1.72, 0.28),
     ]
     flat_panel("HOME_PROP_table_banner_trim", drape_points, -0.68, 0.08, metal, bevel=0.045)
-    flat_panel(
+    draped_banner_panel(
         "HOME_PROP_table_banner",
-        [(x * 0.975, 0.65 + (z - 0.65) * 0.96) for x, z in drape_points],
-        -0.725,
+        0.0,
+        -0.738,
+        1.675,
+        1.235,
+        0.295,
         0.055,
         banner,
-        bevel=0.035,
+        fold_depth=0.050,
+        horizontal_segments=20,
+        vertical_segments=12,
     )
     curve_tube(
         "HOME_PROP_table_banner_gold_border",
         [
-            (-1.60, -0.790, 1.17),
-            (-1.60, -0.790, 0.30),
-            (0.0, -0.790, 0.08),
-            (1.60, -0.790, 0.30),
-            (1.60, -0.790, 1.17),
+            (-1.60, -0.815, 1.17),
+            (-1.60, -0.815, 0.30),
+            (0.0, -0.815, 0.08),
+            (1.60, -0.815, 0.30),
+            (1.60, -0.815, 1.17),
         ],
         0.028,
         heraldry,
@@ -864,13 +1153,13 @@ def add_table_and_board(materials):
     for idx, x in enumerate((-1.35, -0.90, -0.45, 0.0, 0.45, 0.90, 1.35)):
         sphere(
             f"HOME_PROP_table_banner_stud_{idx}",
-            (x, -0.802, 1.16),
+            (x, -0.827, 1.16),
             (0.028, 0.014, 0.028),
             heraldry,
         )
 
     # Large canonical horse-head relief on the table drape.
-    emblem_y = -0.790
+    emblem_y = -0.820
     horse_points = [
         (-0.22, 1.08), (-0.08, 1.02), (0.02, 0.92), (0.16, 0.86),
         (0.22, 0.72), (0.16, 0.58), (0.25, 0.46), (0.18, 0.30),
@@ -908,13 +1197,14 @@ def add_table_and_board(materials):
     # Canonical lived-in table props, kept outside the board interaction footprint.
     for idx, (px, py, pz) in enumerate(((-2.55, 0.20, 1.36), (-2.48, 0.18, 1.45), (-2.58, 0.18, 1.54))):
         book_half_w = 0.42 - idx * 0.04
-        cube(
+        table_book = cube(
             f"HOME_PROP_table_book_{idx}",
             (px, py, pz),
             (book_half_w, 0.26, 0.040),
             materials["book_brown"] if idx != 1 else materials["book_green"],
             bevel=0.025,
         )
+        table_book.rotation_euler[2] = math.radians((-4.0, 2.5, -1.5)[idx])
         cube(
             f"HOME_PROP_table_book_pages_{idx}",
             (px, py - 0.267, pz),
@@ -930,15 +1220,15 @@ def add_table_and_board(materials):
     cone("HOME_PROP_table_candle_flame", (-2.72, 1.60, 1.76), 0.030, 0.006, 0.10, materials["fire_hot"], vertices=12)
     add_point_light("HOME_LIGHT_table_candle", (-2.72, 1.40, 1.88), 70, (1.0, 0.50, 0.22), radius=0.34)
 
-    cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
-    cube(
+    table_folio = cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
+    table_folio_pages = cube(
         "HOME_PROP_table_folio_pages",
         (2.72, 0.315, 1.405),
         (0.32, 0.235, 0.015),
         materials["paper"],
         bevel=0.018,
     )
-    cube(
+    table_folio_spine = cube(
         "HOME_PROP_table_folio_spine",
         (2.37, 0.35, 1.39),
         (0.035, 0.26, 0.050),
@@ -951,6 +1241,11 @@ def add_table_and_board(materials):
         (0.055, 0.020, 0.022),
         materials["brass"],
         bevel=0.008,
+    )
+    rotate_group_about_z(
+        "HOME_PROP_table_folio",
+        (2.72, 0.35),
+        3.2,
     )
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
@@ -991,13 +1286,22 @@ def add_table_and_board(materials):
     for side in (-1, 1):
         x = side * 4.18
         cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
-        cube(
+        bench_cushion = cube(
             f"HOME_PROP_bench_cushion_{side}",
-            (x, 0.98, 0.74),
-            (0.69, 1.55, 0.20),
+            (
+                x + (0.012 if side > 0 else -0.018),
+                0.98 + (0.018 if side > 0 else -0.010),
+                0.742 + (0.012 if side > 0 else -0.004),
+            ),
+            (
+                0.685 + (0.008 if side > 0 else -0.006),
+                1.545 + (0.012 if side < 0 else -0.010),
+                0.195 + (0.008 if side > 0 else 0.0),
+            ),
             materials["bench_velvet"],
             bevel=0.12,
         )
+        bench_cushion.rotation_euler[2] = math.radians(0.55 * side)
         for by in (0.08, 2.32):
             for dx in (-0.40, 0.40):
                 bx = x + dx
@@ -1015,14 +1319,20 @@ def add_table_and_board(materials):
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
+    piece_light_alt = materials["piece_light_alt"]
+    piece_dark_alt = materials["piece_dark_alt"]
     order = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
     board_z = table_z + 0.215
     for col, kind in enumerate(order):
         px = start_x + col * square
-        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, piece_light, kind)
-        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, piece_dark, kind)
-        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, piece_light, "pawn")
-        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, piece_dark, "pawn")
+        white_back_mat = piece_light_alt if col in (1, 5, 7) else piece_light
+        black_back_mat = piece_dark_alt if col in (0, 3, 6) else piece_dark
+        white_pawn_mat = piece_light_alt if col in (0, 4, 6) else piece_light
+        black_pawn_mat = piece_dark_alt if col in (2, 5, 7) else piece_dark
+        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, white_back_mat, kind)
+        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, black_back_mat, kind)
+        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, white_pawn_mat, "pawn")
+        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, black_pawn_mat, "pawn")
 
 
 def add_fireplace(name: str, x: float, materials):
@@ -1115,6 +1425,7 @@ def add_fireplace(name: str, x: float, materials):
             0.035,
             fire,
             bevel=0.022,
+            origin_xz=(cx, base),
         )
         inner_h = height * (0.48 if idx != 2 else 0.60)
         inner_w = width * 0.48
@@ -1132,6 +1443,7 @@ def add_fireplace(name: str, x: float, materials):
             0.030,
             hot,
             bevel=0.016,
+            origin_xz=(cx, base),
         )
     # The fire lights the room from flame height: falloff up the firebox wall keeps
     # the brick courses readable instead of flooding them with flat orange.
@@ -1340,12 +1652,22 @@ def add_armor(materials):
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.015, 2.34), (0.220, 0.120, 0.080), steel)
-    curve_tube("HOME_PROP_armor_left_arm", [(x - 0.50, y, 2.27), (x - 0.66, y, 1.98), (x - 0.60, y - 0.02, 1.65)], 0.070, steel)
-    curve_tube("HOME_PROP_armor_right_arm", [(x + 0.50, y, 2.27), (x + 0.66, y, 1.98), (x + 0.60, y - 0.02, 1.65)], 0.070, steel)
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.60, y - 0.02, 1.61), (0.090, 0.078, 0.092), steel)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.31), (0.220, 0.120, 0.080), steel)
+    curve_tube(
+        "HOME_PROP_armor_left_arm",
+        [(x - 0.50, y, 2.29), (x - 0.67, y - 0.01, 2.00), (x - 0.61, y - 0.035, 1.65)],
+        0.070,
+        steel,
+    )
+    curve_tube(
+        "HOME_PROP_armor_right_arm",
+        [(x + 0.50, y - 0.01, 2.24), (x + 0.64, y - 0.03, 1.94), (x + 0.58, y - 0.055, 1.61)],
+        0.070,
+        steel,
+    )
+    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.035, 1.61), (0.090, 0.078, 0.092), steel)
+    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.58, y - 0.055, 1.57), (0.090, 0.078, 0.092), steel)
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
@@ -1359,6 +1681,25 @@ def add_armor(materials):
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.56), 0.245, 0.105, brass, vertices=28)
     cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), materials["brass_dark"], bevel=0.006)
+
+    helmet_angle = math.radians(-1.4)
+    helmet_parts = [
+        obj for obj in bpy.data.objects
+        if obj.name in {
+            "HOME_PROP_armor_helmet",
+            "HOME_PROP_armor_visor",
+            "HOME_PROP_armor_brow",
+            "HOME_PROP_armor_helmet_crest",
+            "HOME_PROP_armor_visor_edge",
+        }
+        or obj.name.startswith("HOME_PROP_armor_visor_slot_")
+    ]
+    for part in helmet_parts:
+        dx = part.location.x - x
+        dy = part.location.y - y
+        part.location.x = x + dx * math.cos(helmet_angle) - dy * math.sin(helmet_angle)
+        part.location.y = y + dx * math.sin(helmet_angle) + dy * math.cos(helmet_angle)
+        part.rotation_euler[2] += helmet_angle
     for side in (-1, 1):
         cube(
             f"HOME_PROP_armor_pauldron_ridge_{side}",
@@ -1406,15 +1747,18 @@ def add_armor(materials):
 
     # Weapon rack frames the armour without becoming part of its body.
     for idx, wx in enumerate((x - 0.88, x - 0.68, x + 0.68, x + 0.88)):
+        lean = (-0.045, 0.028, -0.020, 0.052)[idx]
+        tip_z = (3.60, 3.66, 3.62, 3.69)[idx]
+        shaft_top_x = wx + lean
         curve_tube(
             f"HOME_PROP_armor_weapon_{idx}",
-            [(wx, y + 0.10, 0.45), (wx, y + 0.08, 3.48)],
+            [(wx, y + 0.10, 0.45), (shaft_top_x, y + 0.08, tip_z - 0.15)],
             0.030,
             dark,
         )
         cone(
             f"HOME_PROP_armor_weapon_tip_{idx}",
-            (wx, y + 0.08, 3.63),
+            (shaft_top_x, y + 0.08, tip_z),
             0.075 if idx % 2 == 0 else 0.060,
             0.008,
             0.30 if idx % 2 == 0 else 0.24,
@@ -1423,7 +1767,7 @@ def add_armor(materials):
         )
         cube(
             f"HOME_PROP_armor_weapon_guard_{idx}",
-            (wx, y + 0.075, 3.39),
+            (wx + lean * 0.86, y + 0.075, tip_z - 0.24),
             (0.12 if idx % 2 == 0 else 0.09, 0.020, 0.020),
             brass if idx % 2 == 0 else steel,
             bevel=0.008,
@@ -1480,16 +1824,25 @@ def add_side_furnishings(materials):
             materials["brass_dark"],
         )
     for idx, cy in enumerate((-0.52, 0.52)):
-        cube(
+        cushion = cube(
             f"HOME_PROP_left_sofa_seat_cushion_{idx}",
-            (-6.46, cy, 0.87),
-            (0.79, 0.45, 0.105),
+            (
+                -6.46 + (-0.018, 0.012)[idx],
+                cy + (-0.012, 0.016)[idx],
+                0.865 + (0.0, 0.014)[idx],
+            ),
+            (
+                0.785 + (-0.012, 0.010)[idx],
+                0.445 + (0.010, -0.008)[idx],
+                0.100 + (0.0, 0.008)[idx],
+            ),
             leather,
             bevel=0.095,
         )
+        cushion.rotation_euler[2] = math.radians((-0.8, 0.6)[idx])
         cube(
             f"HOME_PROP_left_sofa_piping_{idx}",
-            (-5.66, cy, 0.89),
+            (-5.66 + (-0.010, 0.006)[idx], cy, 0.89 + (0.0, 0.012)[idx]),
             (0.018, 0.40, 0.022),
             materials["dark"],
             bevel=0.010,
@@ -1556,7 +1909,17 @@ def add_side_furnishings(materials):
         materials["brass_dark"],
         vertices=14,
     )
-    cube("HOME_PROP_left_candle", (-6.55, 2.33, 1.15), (0.055, 0.055, 0.27), paper, bevel=0.015)
+    cylinder("HOME_PROP_left_candle_base", (-6.55, 2.33, 1.19), 0.085, 0.045, brass, vertices=18)
+    cylinder("HOME_PROP_left_candle", (-6.55, 2.33, 1.31), 0.038, 0.22, paper, vertices=16)
+    cone(
+        "HOME_PROP_left_candle_flame",
+        (-6.55, 2.33, 1.47),
+        0.028,
+        0.006,
+        0.085,
+        materials["fire_hot"],
+        vertices=10,
+    )
     sphere("HOME_PROP_left_horse_body", (-6.45, 2.42, 1.58), (0.30, 0.16, 0.19), materials["gold"])
     curve_tube(
         "HOME_PROP_left_horse_neck",
@@ -1642,6 +2005,11 @@ def add_side_furnishings(materials):
         (0.34, 0.045, 0.040),
         wood,
         bevel=0.014,
+    )
+    rotate_group_about_z(
+        "HOME_PROP_library_chair_",
+        (-4.65, 3.25),
+        -4.2,
     )
     cylinder("HOME_PROP_library_lamp_base", (-3.10, 3.92, 0.99), 0.13, 0.12, brass, vertices=20)
     cylinder("HOME_PROP_library_lamp_stem", (-3.10, 3.92, 1.13), 0.030, 0.20, materials["brass_dark"], vertices=16)
@@ -1825,6 +2193,15 @@ def add_stairs(materials):
 
     cube("HOME_ARCH_dungeon_void", (arch_x, 1.78, -0.12), (1.42, 0.09, 1.42), dark, bevel=0.12)
     arch("HOME_ARCH_dungeon_arch", arch_x, 1.60, 2.95, 0.58, 1.42, -1.56, stone)
+    add_round_arch_voussoirs(
+        "HOME_ARCH_dungeon_voussoir",
+        arch_x,
+        1.60,
+        2.95,
+        1.42,
+        materials["arch_stone"],
+        count=11,
+    )
     arch("HOME_ARCH_dungeon_arch_inner", arch_x + 0.08, 1.48, 2.42, 0.44, 1.12, -1.46, materials["stone_dark"])
 
     for idx, x in enumerate((5.62, 5.93, 6.24, 6.55, 6.86, 7.17)):
@@ -1846,20 +2223,34 @@ def add_stairs(materials):
         x = 5.28 + 2.45 * t
         y = 1.45 - 2.28 * t
         z = 0.68 - 1.58 * t
+        depth_jitter = (_hash01(i, 0, 1031) - 0.5) * 0.026
+        width_jitter = (_hash01(i, 1, 1039) - 0.5) * 0.045
+        height_jitter = (_hash01(i, 2, 1049) - 0.5) * 0.012
+        step_depth = 0.33 + depth_jitter
+        step_width = 0.61 + width_jitter
+        step_z = z + height_jitter
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
-            (x, y, z),
-            (0.61, 0.33, 0.075),
+            (x, y, step_z),
+            (step_width, step_depth, 0.075),
             stone,
-            bevel=0.025,
+            bevel=0.025 + _hash01(i, 3, 1051) * 0.008,
         )
         cube(
             f"HOME_PROP_dungeon_step_nosing_{i}",
-            (x, y - 0.305, z + 0.080),
-            (0.59, 0.028, 0.020),
+            (x, y - step_depth + 0.022, step_z + 0.080),
+            (step_width - 0.020, 0.026 + _hash01(i, 4, 1061) * 0.006, 0.018),
             materials["stone_dark"],
-            bevel=0.010,
+            bevel=0.009,
         )
+        if i in (1, 4, 7, 9):
+            cube(
+                f"HOME_PROP_dungeon_step_wear_{i}",
+                (x + (_hash01(i, 5, 1069) - 0.5) * 0.16, y - step_depth * 0.35, step_z + 0.078),
+                (step_width * 0.52, 0.10, 0.004),
+                materials["stone_grime"],
+                bevel=0.018,
+            )
 
     stair_rail_points = [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)]
     curve_tube(
@@ -1949,46 +2340,51 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.073, 0.068, 0.061, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9, texture_profile="stone"),
         "arch_stone": material("HOME_MAT_arch_stone", (0.092, 0.079, 0.065, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
         "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2, texture_profile="stone"),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
         "floor_stone": material("HOME_MAT_floor_stone", (0.056, 0.047, 0.043, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
-        "brass": material("HOME_MAT_brass", (0.27, 0.135, 0.038, 1), roughness=0.36, metallic=0.76),
+        "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
+        "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
         "gold": material(
             "HOME_MAT_gold",
             (0.48, 0.27, 0.065, 1),
-            roughness=0.34,
-            metallic=0.84,
-            emission=(0.08, 0.028, 0.004, 1),
-            emission_strength=0.22,
+            roughness=0.44,
+            metallic=0.76,
+            emission=(0.045, 0.014, 0.002, 1),
+            emission_strength=0.055,
+            texture_profile="metal",
         ),
         "heraldry_gold": material(
             "HOME_MAT_heraldry_gold",
             (0.34, 0.16, 0.045, 1),
-            roughness=0.42,
-            metallic=0.72,
-            emission=(0.055, 0.018, 0.003, 1),
-            emission_strength=0.10,
+            roughness=0.50,
+            metallic=0.66,
+            emission=(0.030, 0.009, 0.0015, 1),
+            emission_strength=0.025,
+            texture_profile="metal",
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
-        "steel": material("HOME_MAT_steel", (0.16, 0.17, 0.18, 1), roughness=0.30, metallic=0.86),
+        "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
             (0.095, 0.102, 0.110, 1),
-            roughness=0.46,
-            metallic=0.74,
-            variation=0.08,
-            variation_scale=6.2,
+            roughness=0.54,
+            metallic=0.68,
+            variation=0.10,
+            variation_scale=5.4,
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
-        "rug": material("HOME_MAT_rug", (0.125, 0.018, 0.014, 1), roughness=0.92, bump_scale=26.0, bump_strength=0.08, variation=0.12, variation_scale=9.0, texture_profile="textile"),
-        "banner": material("HOME_MAT_banner", (0.108, 0.010, 0.012, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.05, variation=0.12, variation_scale=8.0, texture_profile="textile"),
+        "rug": material("HOME_MAT_rug", (0.086, 0.013, 0.012, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
+        "rug_worn": material("HOME_MAT_rug_worn", (0.064, 0.012, 0.011, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug_thread": material("HOME_MAT_rug_thread", (0.26, 0.145, 0.040, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
+        "banner": material("HOME_MAT_banner", (0.078, 0.008, 0.010, 1), roughness=0.94, bump_scale=20.0, bump_strength=0.045, variation=0.10, variation_scale=8.0, texture_profile="textile"),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
-            (0.072, 0.006, 0.008, 1),
-            roughness=0.92,
+            (0.056, 0.005, 0.007, 1),
+            roughness=0.95,
             bump_scale=22.0,
             bump_strength=0.055,
             variation=0.075,
@@ -1996,17 +2392,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="textile"),
         "bench_velvet": material(
             "HOME_MAT_bench_velvet",
-            (0.108, 0.014, 0.016, 1),
-            roughness=0.86,
+            (0.082, 0.011, 0.013, 1),
+            roughness=0.91,
             bump_scale=21.0,
             bump_strength=0.045,
             variation=0.080,
             variation_scale=8.5,
         texture_profile="textile"),
-        "velvet_dark": material("HOME_MAT_velvet_dark", (0.070, 0.004, 0.007, 1), roughness=0.90, bump_scale=22.0, bump_strength=0.035, variation=0.06, variation_scale=9.0, texture_profile="textile"),
-        "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.18, variation_scale=5.5),
+        "velvet_dark": material("HOME_MAT_velvet_dark", (0.048, 0.003, 0.005, 1), roughness=0.95, bump_scale=22.0, bump_strength=0.032, variation=0.055, variation_scale=9.0, texture_profile="textile"),
+        "soot_stone": material("HOME_MAT_soot_stone", (0.040, 0.020, 0.012, 1), roughness=0.98, bump_scale=9.0, bump_strength=0.16, variation=0.14, variation_scale=5.5, texture_profile="stone"),
+        "soot_haze": material("HOME_MAT_soot_haze", (0.030, 0.024, 0.020, 1), roughness=0.995, bump_scale=5.0, bump_strength=0.028, variation=0.055, variation_scale=4.6, texture_profile="stone"),
         "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
         "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
+        "stone_grime": material("HOME_MAT_stone_grime", (0.034, 0.028, 0.024, 1), roughness=0.985, bump_scale=6.0, bump_strength=0.06, variation=0.06, variation_scale=3.5, texture_profile="stone"),
         "book_green": material("HOME_MAT_book_green", (0.040, 0.058, 0.038, 1), roughness=0.91, texture_profile="leather"),
         "book_brown": material("HOME_MAT_book_brown", (0.085, 0.030, 0.016, 1), roughness=0.91, texture_profile="leather"),
         "book_red": material("HOME_MAT_book_red", (0.095, 0.018, 0.018, 1), roughness=0.91, texture_profile="leather"),
@@ -2014,47 +2412,78 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "piece_light": material(
             "HOME_MAT_piece_light",
             (0.38, 0.30, 0.22, 1),
-            roughness=0.50,
-            metallic=0.010,
-            variation=0.050,
+            roughness=0.64,
+            metallic=0.0,
+            variation=0.040,
             variation_scale=7.0,
+            texture_profile="wood",
         ),
         "piece_dark": material(
             "HOME_MAT_piece_dark",
             (0.052, 0.040, 0.030, 1),
-            roughness=0.38,
-            metallic=0.020,
-            variation=0.055,
+            roughness=0.58,
+            metallic=0.0,
+            variation=0.045,
             variation_scale=6.4,
+            texture_profile="wood",
+        ),
+        "piece_light_alt": material(
+            "HOME_MAT_piece_light_alt",
+            (0.345, 0.270, 0.198, 1),
+            roughness=0.67,
+            metallic=0.0,
+            variation=0.038,
+            variation_scale=7.2,
+            texture_profile="wood",
+        ),
+        "piece_dark_alt": material(
+            "HOME_MAT_piece_dark_alt",
+            (0.045, 0.034, 0.026, 1),
+            roughness=0.61,
+            metallic=0.0,
+            variation=0.042,
+            variation_scale=6.6,
+            texture_profile="wood",
         ),
         "leather": material("HOME_MAT_leather", (0.105, 0.014, 0.012, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
-        "paper": material("HOME_MAT_paper", (0.34, 0.24, 0.15, 1), roughness=0.94, texture_profile="paper"),
+        "paper": material("HOME_MAT_paper", (0.31, 0.22, 0.14, 1), roughness=0.97, variation=0.035, variation_scale=5.8, texture_profile="paper"),
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
             "HOME_MAT_globe",
-            (0.030, 0.055, 0.048, 1),
-            roughness=0.78,
-            variation=0.26,
-            variation_scale=3.8,
-            bump_scale=12.0,
-            bump_strength=0.050,
+            (0.028, 0.050, 0.044, 1),
+            roughness=0.86,
+            variation=0.18,
+            variation_scale=3.4,
+            bump_scale=10.0,
+            bump_strength=0.038,
         ),
         "plant": material("HOME_MAT_plant", (0.035, 0.085, 0.026, 1), roughness=0.90),
-        "ceramic": material("HOME_MAT_ceramic", (0.50, 0.44, 0.34, 1), roughness=0.46),
+        "ceramic": material("HOME_MAT_ceramic", (0.42, 0.37, 0.30, 1), roughness=0.68, bump_scale=7.0, bump_strength=0.035, variation=0.08, variation_scale=4.4),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
             "HOME_MAT_window",
-            (0.008, 0.026, 0.052, 1),
-            roughness=0.32,
-            emission=(0.018, 0.055, 0.12, 1),
-            emission_strength=0.20,
+            (0.006, 0.020, 0.038, 1),
+            roughness=0.56,
+            emission=(0.010, 0.030, 0.060, 1),
+            emission_strength=0.075,
+            variation=0.07,
+            variation_scale=4.6,
+        ),
+        "window_dim": material(
+            "HOME_MAT_window_dim",
+            (0.0045, 0.015, 0.030, 1),
+            roughness=0.64,
+            emission=(0.006, 0.020, 0.040, 1),
+            emission_strength=0.045,
+            variation=0.08,
+            variation_scale=5.2,
         ),
         "moon": material(
             "HOME_MAT_moon",
-            (0.50, 0.51, 0.47, 1),
-            roughness=0.58,
-            emission=(0.30, 0.31, 0.28, 1),
-            emission_strength=0.16,
+            (0.42, 0.43, 0.40, 1),
+            roughness=0.72,
+            emission=(0.18, 0.19, 0.17, 1),
+            emission_strength=0.065,
         ),
         "fire": material(
             "HOME_MAT_fire",
@@ -2076,8 +2505,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # from great-hall-dungeon.webp before adding any decorative detail.
     # Split the floor so the Dungeon can actually descend below the Great Hall
     # rather than sitting on top of a solid slab.
-    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"])
-    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"])
+    cube("HOME_ARCH_floor_back", (0, 5.80, -0.18), (9.35, 3.60, 0.18), materials["floor_stone"], bevel=0.032)
+    cube("HOME_ARCH_floor_front_left", (-2.10, -1.10, -0.18), (7.25, 3.30, 0.18), materials["floor_stone"], bevel=0.032)
     add_floor_joint_network(
         "HOME_ARCH_floor_back_joint",
         0.0,
@@ -2100,51 +2529,153 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         tile_x=1.62,
         tile_y=1.05,
     )
-    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"])
-    # Shallow mortar courses turn the rear wall from one smooth slab into
-    # readable castle masonry without adding heavy displacement geometry.
-    for row, z in enumerate((0.70, 1.52, 2.34, 3.16, 3.98, 4.80, 5.62)):
-        cube(f"HOME_ARCH_back_mortar_h_{row}", (0, 6.72, z), (9.10, 0.014, 0.010), materials["stone_dark"])
-        offset = 0.90 if row % 2 else -0.20
-        for col, x in enumerate((-6.6, -2.2, 2.2, 6.6)):
-            cube(
-                f"HOME_ARCH_back_mortar_v_{row}_{col}",
-                (x + offset, 6.715, z + 0.36),
-                (0.012, 0.018, 0.31),
-                materials["stone_dark"],
-            )
+    cube("HOME_ARCH_back_wall", (0, 7.0, 3.2), (9.35, 0.25, 3.4), materials["back_wall_stone"], bevel=0.040)
+    # The low-relief ashlar faces below already create natural recessed joints
+    # through real depth and grazing shadow. Avoid a second perfectly straight
+    # mortar grid over the same wall.
 
     # Shallow individual ashlar faces add parallax and catch grazing light.
     # They remain low-relief so the approved focal architecture stays dominant.
     for row, z in enumerate((0.42, 1.20, 1.98, 2.76, 3.54, 4.32, 5.10, 5.88)):
         offset = 0.76 if row % 2 else 0.0
         for col in range(-6, 7):
-            bx = col * 1.48 + offset
+            jitter_x = (_hash01(col, row, 701) - 0.5) * 0.085
+            bx = col * 1.48 + offset + jitter_x
             if abs(bx) > 8.65:
                 continue
-            block_width = 0.66 + 0.045 * ((row + col) % 3)
-            block_height = 0.31 + 0.018 * ((row * 2 + col) % 2)
-            block_y = 6.710 - 0.006 * ((row * 3 + col) % 3)
-            cube(
+            block_width = 0.64 + _hash01(col, row, 709) * 0.085
+            block_height = 0.295 + _hash01(col, row, 719) * 0.045
+            block_y = 6.706 - _hash01(col, row, 727) * 0.014
+            block = cube(
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
-                (bx, block_y, z),
+                (bx, block_y, z + (_hash01(col, row, 733) - 0.5) * 0.026),
                 (block_width, 0.016, block_height),
                 materials["back_wall_stone_accent"] if (row + col) % 5 == 0 else materials["back_wall_stone"],
                 bevel=0.018,
             )
-    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
-    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"])
-    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"])
+            block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 0.9)
+    for soot_index, (sx, sz, sw, sh, rot) in enumerate((
+        (-6.15, 4.44, 0.58, 0.86, -1.5),
+        (-6.08, 5.08, 0.34, 0.62, 1.8),
+        (4.45, 4.30, 0.52, 0.78, 1.2),
+        (4.50, 4.88, 0.30, 0.54, -2.0),
+    )):
+        soot_patch = sphere(
+            f"HOME_ARCH_soot_haze_{soot_index}",
+            (sx, 6.674, sz),
+            (sw, 0.008, sh),
+            materials["soot_haze"],
+        )
+        soot_patch.rotation_euler[1] = math.radians(rot)
 
-    # Stone slab seams keep the floor from reading as one flat dark plane.
-    grout = materials["stone_dark"]
-    for idx, x in enumerate((-8.0, -6.4, -4.8, -3.2, 3.2, 4.8, 6.4, 8.0)):
-        cube(f"HOME_ARCH_floor_grout_v_{idx}", (x, 2.25, 0.018), (0.018, 5.55, 0.010), grout)
-    for idx, y in enumerate((-2.2, -0.8, 0.6, 4.8, 6.2)):
-        cube(f"HOME_ARCH_floor_grout_h_{idx}", (0, y, 0.018), (8.75, 0.018, 0.010), grout)
+    cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
+    cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
 
-    # Narrow brass/brown rug border approximates the ornate woven edge from the master.
-    rug_border = materials["brass"]
+    # A few hairline fractures break the pristine-CAD read without turning the
+    # hall into a ruined castle. Keep them sparse, shallow and structurally plausible.
+    for crack_index, points in enumerate((
+        [(-8.55, 6.676, 4.92), (-8.42, 6.674, 4.74), (-8.50, 6.672, 4.56), (-8.36, 6.670, 4.39)],
+        [(-5.48, 6.674, 1.82), (-5.35, 6.672, 1.66), (-5.43, 6.670, 1.49)],
+        [(-0.18, 6.674, 5.34), (-0.08, 6.672, 5.18), (-0.16, 6.670, 5.04), (-0.04, 6.668, 4.91)],
+        [(3.55, 6.674, 4.54), (3.69, 6.672, 4.37), (3.62, 6.670, 4.20)],
+        [(8.54, 6.674, 2.58), (8.41, 6.672, 2.42), (8.48, 6.670, 2.24)],
+    )):
+        curve_tube(
+            f"HOME_ARCH_back_crack_{crack_index}",
+            points,
+            0.008,
+            materials["stone_dark"],
+        )
+
+    # The side walls need the same masonry scale as the rear wall. Low-relief
+    # courses stop these large side masses reading as two perfect extruded boxes.
+    for side in (-1, 1):
+        wall_x = side * 9.02
+        for row, z in enumerate((0.55, 1.32, 2.09, 2.86, 3.63, 4.40, 5.17)):
+            y_offset = 0.48 if row % 2 else 0.0
+            for col, y in enumerate((-0.1, 1.5, 3.1, 4.7, 6.3)):
+                jy = (_hash01(col, row, 811 + side) - 0.5) * 0.11
+                face = cube(
+                    f"HOME_ARCH_side_ashlar_{side}_{row}_{col}",
+                    (wall_x - side * 0.012, y + y_offset + jy, z),
+                    (0.016, 0.68 + _hash01(col, row, 823 + side) * 0.08, 0.29 + _hash01(col, row, 829 + side) * 0.045),
+                    materials["back_wall_stone_accent"] if (row + col) % 6 == 0 else materials["stone"],
+                    bevel=0.014,
+                )
+                face.rotation_euler[0] = math.radians((_hash01(col, row, 839 + side) - 0.5) * 0.8)
+
+    # Low-relief paving faces turn the large floor plane into laid stone.
+    # Keep the relief to millimetres at room scale: enough for grazing light and
+    # contact shadow, never enough to interfere with navigation or the rug.
+    slab_rows = (
+        (-2.42, 0.60),
+        (-1.18, 0.62),
+        (0.08, 0.64),
+        (4.72, 0.62),
+        (5.98, 0.60),
+    )
+    slab_centers = (-7.75, -6.25, -4.75, 4.75, 6.25, 7.75)
+    for row, (sy, half_depth) in enumerate(slab_rows):
+        for col, sx in enumerate(slab_centers):
+            # Front-right floor is intentionally absent where the Dungeon drops.
+            if sy < 1.2 and sx > 5.15:
+                continue
+            jitter_x = (_hash01(col, row, 1409) - 0.5) * 0.060
+            jitter_y = (_hash01(col, row, 1423) - 0.5) * 0.038
+            half_width = 0.69 + (_hash01(col, row, 1427) - 0.5) * 0.045
+            height = 0.010 + _hash01(col, row, 1433) * 0.008
+            slab = cube(
+                f"HOME_ARCH_floor_slab_{row}_{col}",
+                (sx + jitter_x, sy + jitter_y, height * 0.55),
+                (half_width, half_depth, height),
+                materials["floor_stone"],
+                bevel=0.018,
+            )
+            slab.rotation_euler[2] = math.radians(
+                (_hash01(col, row, 1447) - 0.5) * 0.55
+            )
+
+    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"], bevel=0.022)
+    for idx, (wx, wy, sx, sy, rot) in enumerate((
+        (-0.42, -0.95, 1.10, 0.22, -6.0),
+        (0.36, 0.02, 0.94, 0.19, 4.0),
+        (-0.18, 4.26, 0.82, 0.17, -3.0),
+    )):
+        wear = sphere(
+            f"HOME_PROP_rug_wear_{idx}",
+            (wx, wy, 0.048),
+            (sx, sy, 0.008),
+            materials["rug_worn"],
+        )
+        wear.rotation_euler[2] = math.radians(rot)
+
+    # Floor joints are authored in the packed floor-stone normal/roughness maps.
+    # Keep geometry free of a second seam grid so the material scale remains
+    # the single source of truth and does not produce a doubled CAD pattern.
+
+    # Very restrained contact grime grounds the room where feet, walls and
+    # traffic meet the stone. These are broad, low-contrast shapes, not decals.
+    for idx, (gx, gy, sx, sy) in enumerate((
+        (-8.72, 3.90, 0.20, 1.65),
+        (8.72, 3.55, 0.20, 1.80),
+        (-4.18, 0.92, 0.60, 0.20),
+        (4.18, 0.96, 0.58, 0.20),
+        (-3.25, 3.95, 0.54, 0.16),
+        (7.48, 4.96, 0.52, 0.18),
+        (-3.12, -0.42, 0.30, 0.17),
+        (3.12, -0.42, 0.30, 0.17),
+        (-4.66, 3.22, 0.34, 0.20),
+    )):
+        sphere(
+            f"HOME_PROP_floor_contact_grime_{idx}",
+            (gx, gy, 0.034),
+            (sx, sy, 0.010),
+            materials["stone_grime"],
+        )
+
+    # Woven ochre/gold thread reads as textile at grazing angles instead of
+    # reflecting like a strip of polished brass laid on top of the rug.
+    rug_border = materials["rug_thread"]
     cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
     cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
@@ -2169,15 +2700,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 f"HOME_PROP_rug_medallion_{row}_{col}",
                 (x, y, 0.060),
                 (0.055 + 0.010 * ((row + col) % 2), 0.055 + 0.010 * ((row + col) % 2), 0.010),
-                materials["gold"] if (row + col) % 3 == 0 else materials["stone_dark"],
+                materials["rug_thread"] if (row + col) % 3 == 0 else materials["stone_dark"],
             )
             motif.rotation_euler[2] = math.radians(45)
-    cube("HOME_PROP_rug_inner_front", (0, -1.42, 0.064), (2.86, 0.022, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
-    cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["gold"])
+    cube("HOME_PROP_rug_inner_front", (0, -1.42, 0.064), (2.86, 0.022, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
     rug_medallion_outer = cube(
         "HOME_PROP_rug_medallion_outer",
         (0.0, -0.72, 0.067),
@@ -2196,19 +2727,33 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "HOME_PROP_rug_medallion_core",
         (0.0, -0.72, 0.073),
         (0.11, 0.11, 0.007),
-        materials["gold"],
+        materials["rug_thread"],
     )
     rug_medallion_core.rotation_euler[2] = math.radians(45.0)
 
     # Large canonical masses, left-to-right: fireplace, library, armor portal,
     # second fireplace, window and dungeon stair.
-    for x in (-7.6, -4.8, -0.65, 2.85, 5.95, 8.25):
+    for column_index, x in enumerate((-7.6, -4.8, -0.65, 2.85, 5.95, 8.25)):
         cube(f"HOME_ARCH_pilaster_back_{x}", (x, 6.78, 2.65), (0.42, 0.15, 2.55), materials["arch_stone"], bevel=0.045)
         cube(f"HOME_ARCH_pilaster_cap_{x}", (x, 6.62, 5.18), (0.56, 0.22, 0.16), materials["arch_stone"], bevel=0.045)
-        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), 0.25, 5.2, materials["stone"], vertices=40)
+        column_radius = 0.248 + (_hash01(column_index, 0, 1901) - 0.5) * 0.010
+        cylinder(f"HOME_ARCH_column_{x}", (x, 6.55, 2.6), column_radius, 5.2, materials["stone"], vertices=40)
         cylinder(f"HOME_ARCH_column_base_{x}", (x, 6.55, 0.25), 0.4, 0.5, materials["stone_dark"], vertices=36)
         cylinder(f"HOME_ARCH_column_ring_low_{x}", (x, 6.55, 0.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
         cylinder(f"HOME_ARCH_column_ring_high_{x}", (x, 6.55, 4.70), 0.31, 0.12, materials["stone_dark"], vertices=28)
+        for joint_index, joint_z in enumerate((1.46, 2.57, 3.68)):
+            cylinder(
+                f"HOME_ARCH_column_joint_{column_index}_{joint_index}",
+                (
+                    x,
+                    6.548,
+                    joint_z + (_hash01(column_index, joint_index, 1913) - 0.5) * 0.035,
+                ),
+                column_radius + 0.004,
+                0.018,
+                materials["back_wall_stone"],
+                vertices=36,
+            )
     cube("HOME_ARCH_upper_cornice", (0, 6.72, 5.62), (8.95, 0.20, 0.12), materials["wood"], bevel=0.045)
 
     add_fireplace("fireplace_left", -6.15, materials)
@@ -2417,6 +2962,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
     cube("HOME_PROP_armor_recess", (1.35, 6.72, 2.46), (0.95, 0.08, 1.78), materials["dark"], bevel=0.08)
     gothic_arch("HOME_ARCH_armor_portal", 1.35, 6.18, 2.55, 2.55, 4.72, 0.15, materials["arch_stone"])
+    add_gothic_voussoirs(
+        "HOME_ARCH_armor_voussoir",
+        1.35,
+        6.18,
+        2.55,
+        2.55,
+        4.72,
+        materials["arch_stone"],
+        count_per_side=7,
+    )
     gothic_arch(
         "HOME_ARCH_armor_inner_trim",
         1.35,
@@ -2497,6 +3052,16 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.28,
         materials["arch_stone"],
         bevel=0.080,
+    )
+    add_gothic_voussoirs(
+        "HOME_ARCH_fireplace_right_voussoir",
+        4.45,
+        5.42,
+        2.45,
+        2.52,
+        3.78,
+        materials["arch_stone"],
+        count_per_side=6,
     )
     gothic_arch(
         "HOME_ARCH_fireplace_right_inner_hood",
@@ -2710,7 +3275,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
         tongue.rotation_euler[1] = math.radians(tilt)
 
-    cube("HOME_ARCH_window_right", (7.82, 6.62, 3.72), (0.98, 0.07, 1.80), materials["window"], bevel=0.08)
+    for pane_index, (offset, half_width, z_shift, mat_name) in enumerate((
+        (-0.64, 0.25, -0.015, "window_dim"),
+        (-0.19, 0.145, 0.010, "window"),
+        (0.19, 0.145, -0.006, "window_dim"),
+        (0.64, 0.25, 0.018, "window"),
+    )):
+        pane = cube(
+            f"HOME_ARCH_window_right_pane_{pane_index}",
+            (7.82 + offset, 6.62, 3.72 + z_shift),
+            (half_width, 0.065, 1.76),
+            materials[mat_name],
+            bevel=0.045,
+        )
+        pane.rotation_euler[2] = math.radians(
+            (_hash01(pane_index, 0, 2003) - 0.5) * 0.45
+        )
     # Canonical right window: tall Gothic lancets with clean mullions and
     # restrained tracery. Avoid the old criss-cross lattice that read as
     # branches/wires at Home scale.
@@ -2960,31 +3540,31 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Chandelier: keep the same authored identity but lift and tighten it so it
     # frames the focal wall instead of masking the armour and central banner.
     cylinder("HOME_PROP_chandelier_drop", (0, 2.20, 5.68), 0.034, 0.64, materials["brass_dark"])
-    ring_points = [
-        (
-            1.12 * math.cos(i * math.tau / 24),
-            2.20 + 0.64 * math.sin(i * math.tau / 24),
-            4.92 + 0.13 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
-    ]
+    ring_points = []
+    for i in range(25):
+        angle = i * math.tau / 24
+        radial = 1.12 + (_hash01(i, 0, 1601) - 0.5) * 0.035
+        depth = 0.64 + (_hash01(i, 1, 1607) - 0.5) * 0.024
+        ring_points.append((
+            radial * math.cos(angle),
+            2.20 + depth * math.sin(angle),
+            4.92 + 0.13 * math.sin(angle) + (_hash01(i, 2, 1613) - 0.5) * 0.014,
+        ))
     curve_tube("HOME_PROP_chandelier_ring", ring_points, 0.032, materials["brass_dark"])
-    inner_ring = [
-        (
-            0.75 * math.cos(i * math.tau / 24),
-            2.20 + 0.43 * math.sin(i * math.tau / 24),
-            4.89 + 0.10 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
-    ]
+    inner_ring = []
+    for i in range(25):
+        angle = i * math.tau / 24
+        radial = 0.75 + (_hash01(i, 3, 1621) - 0.5) * 0.024
+        depth = 0.43 + (_hash01(i, 4, 1627) - 0.5) * 0.018
+        inner_ring.append((
+            radial * math.cos(angle),
+            2.20 + depth * math.sin(angle),
+            4.89 + 0.10 * math.sin(angle) + (_hash01(i, 5, 1637) - 0.5) * 0.010,
+        ))
     curve_tube("HOME_PROP_chandelier_inner_ring", inner_ring, 0.021, materials["brass"])
     lower_outer_ring = [
-        (
-            1.12 * math.cos(i * math.tau / 24),
-            2.20 + 0.64 * math.sin(i * math.tau / 24),
-            4.82 + 0.13 * math.sin(i * math.tau / 24),
-        )
-        for i in range(25)
+        (x, y, z - 0.10 + (_hash01(i, 6, 1643) - 0.5) * 0.008)
+        for i, (x, y, z) in enumerate(ring_points)
     ]
     curve_tube("HOME_PROP_chandelier_lower_ring", lower_outer_ring, 0.021, materials["brass_dark"])
     for idx in range(8):
@@ -3020,28 +3600,32 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     sphere("HOME_PROP_chandelier_hub", (0, 2.20, 4.89), (0.080, 0.080, 0.074), materials["brass_dark"])
     for idx in range(8):
         angle = idx * math.tau / 8.0
-        cx = 1.04 * math.cos(angle)
-        cy = 2.20 + 0.60 * math.sin(angle)
-        cz = 4.96 + 0.12 * math.sin(angle)
+        radial_jitter = (_hash01(idx, 0, 1501) - 0.5) * 0.045
+        tangential_jitter = (_hash01(idx, 1, 1511) - 0.5) * 0.030
+        cx = (1.04 + radial_jitter) * math.cos(angle) - tangential_jitter * math.sin(angle)
+        cy = 2.20 + (0.60 + radial_jitter * 0.45) * math.sin(angle) + tangential_jitter * math.cos(angle)
+        cz = 4.96 + 0.12 * math.sin(angle) + (_hash01(idx, 2, 1523) - 0.5) * 0.035
+        candle_height = 0.215 + _hash01(idx, 3, 1531) * 0.055
         cylinder(
             f"HOME_PROP_chandelier_candle_{idx}",
-            (cx, cy, cz + 0.15),
-            0.035,
-            0.24,
+            (cx, cy, cz + candle_height * 0.5 + 0.025),
+            0.033 + _hash01(idx, 4, 1543) * 0.004,
+            candle_height,
             materials["wax"],
             vertices=16,
         )
+        candle_top = cz + candle_height + 0.025
         cylinder(
             f"HOME_PROP_chandelier_candle_rim_{idx}",
-            (cx, cy, cz + 0.276),
-            0.040,
+            (cx, cy, candle_top + 0.006),
+            0.038 + _hash01(idx, 5, 1553) * 0.004,
             0.012,
             materials["wax"],
             vertices=16,
         )
         cylinder(
             f"HOME_PROP_chandelier_wick_{idx}",
-            (cx, cy, cz + 0.294),
+            (cx, cy, candle_top + 0.023),
             0.006,
             0.030,
             materials["dark"],
@@ -3050,13 +3634,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         if idx % 2 == 0:
             sphere(
                 f"HOME_PROP_chandelier_wax_drip_{idx}",
-                (cx + 0.027 * math.cos(angle), cy + 0.027 * math.sin(angle), cz + 0.225),
+                (cx + 0.027 * math.cos(angle), cy + 0.027 * math.sin(angle), candle_top - candle_height * 0.28),
                 (0.011, 0.010, 0.042),
                 materials["wax"],
             )
         cone(
             f"HOME_PROP_chandelier_flame_{idx}",
-            (cx, cy, cz + 0.31),
+            (cx, cy, candle_top + 0.050),
             0.024,
             0.005,
             0.075,
@@ -3064,7 +3648,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             vertices=12,
         )
         cylinder(f"HOME_PROP_chandelier_cup_{idx}", (cx, cy, cz + 0.025), 0.060, 0.050, materials["brass_dark"], vertices=16)
-        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, cz + 0.33), 12, (1.0, 0.32, 0.08), radius=0.22)
+        add_point_light(f"HOME_LIGHT_chandelier_{idx}", (cx, cy - 0.05, candle_top + 0.070), 12, (1.0, 0.32, 0.08), radius=0.22)
 
     # Side chandeliers are intentionally partial in frame, matching the master.
     for side in (-1, 1):
@@ -3080,17 +3664,60 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     for idx, x in enumerate((-8.0, -4.15, 2.45, 7.95)):
-        cube(f"HOME_PROP_torch_{idx}", (x, 6.02, 2.45), (0.06, 0.08, 0.34), materials["brass_dark"], bevel=0.025)
-        cube(f"HOME_PROP_torch_candle_{idx}", (x, 5.96, 2.78), (0.045, 0.045, 0.18), materials["paper"], bevel=0.012)
-        cone(f"HOME_PROP_torch_flame_{idx}", (x, 5.94, 3.02), 0.045, 0.008, 0.14, materials["fire_hot"], vertices=12)
-        add_point_light(f"HOME_LIGHT_torch_{idx}", (x, 5.62, 3.02), 54, (1.0, 0.34, 0.085), radius=0.38)
+        mount_z = 2.43 + (_hash01(idx, 0, 1801) - 0.5) * 0.10
+        candle_half = 0.155 + _hash01(idx, 1, 1811) * 0.040
+        candle_center_z = mount_z + 0.32 + candle_half
+        flame_h = 0.12 + _hash01(idx, 2, 1823) * 0.055
+        flame_center_z = candle_center_z + candle_half + flame_h * 0.55
+
+        cube(
+            f"HOME_PROP_torch_{idx}",
+            (x, 6.02, mount_z),
+            (0.06, 0.08, 0.34),
+            materials["brass_dark"],
+            bevel=0.025,
+        )
+        cube(
+            f"HOME_PROP_torch_candle_{idx}",
+            (x, 5.96, candle_center_z),
+            (0.043 + _hash01(idx, 3, 1831) * 0.004, 0.043, candle_half),
+            materials["paper"],
+            bevel=0.012,
+        )
+        flame = cone(
+            f"HOME_PROP_torch_flame_{idx}",
+            (x, 5.94, flame_center_z),
+            0.040 + _hash01(idx, 4, 1847) * 0.008,
+            0.008,
+            flame_h,
+            materials["fire_hot"],
+            vertices=12,
+        )
+        flame.rotation_euler[1] = math.radians((_hash01(idx, 5, 1861) - 0.5) * 8.0)
+        add_point_light(
+            f"HOME_LIGHT_torch_{idx}",
+            (x, 5.62, flame_center_z + 0.02),
+            50 + _hash01(idx, 6, 1871) * 8,
+            (1.0, 0.34, 0.085),
+            radius=0.38,
+        )
 
     # Global lights establish readable stone/wood while practicals keep the
     # warmth local. Cool right-side fill hints at the window/exterior.
     add_area_light("HOME_LIGHT_key", (-3.8, -2.0, 6.5), 36, (0.56, 0.50, 0.44), 4.2, target=(0, 2.4, 1.6))
-    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 18, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light("HOME_LIGHT_fill", (5.4, 0.6, 5.0), 9, (0.11, 0.24, 0.44), 3.8, target=(1.8, 3.0, 1.8))
+    add_area_light(
+        "HOME_LIGHT_window_moon",
+        (7.70, 5.92, 4.45),
+        28,
+        (0.16, 0.28, 0.46),
+        2.15,
+        target=(4.35, 1.85, 1.25),
+    )
     add_area_light("HOME_LIGHT_back", (0, 7.0, 5.8), 62, (0.62, 0.34, 0.22), 3.2, target=(0, 2.5, 2.2))
     add_area_light("HOME_LIGHT_floor_bounce", (0, -3.2, 2.6), 31, (0.30, 0.18, 0.12), 6.2, target=(0, 1.4, 0.15))
+    add_area_light("HOME_LIGHT_hearth_bounce_left", (-5.45, 3.35, 3.15), 72, (1.0, 0.34, 0.12), 3.4, target=(-2.5, 2.0, 1.35))
+    add_area_light("HOME_LIGHT_hearth_bounce_right", (4.35, 3.45, 3.10), 64, (1.0, 0.31, 0.10), 3.0, target=(1.45, 2.0, 1.30))
     add_area_light("HOME_LIGHT_moon", (8.4, 4.2, 5.6), 225, (0.14, 0.34, 0.68), 3.9, target=(3.2, 2.2, 1.8))
     add_area_light("HOME_LIGHT_table_read", (0.0, -3.0, 5.8), 194, (1.0, 0.68, 0.42), 2.75, target=(0, 1.0, 1.25))
     add_area_light("HOME_LIGHT_drape_read", (0.0, -5.0, 2.8), 142, (0.90, 0.49, 0.23), 2.0, target=(0, -0.72, 0.30))

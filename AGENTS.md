@@ -1,3 +1,19 @@
+** FLUJO GLOBAL DE PULL REQUESTS
+
+- Toda PR nueva debe abrirse inicialmente en **Draft**.
+- No marcar una PR como **Ready for review** mientras haya checks requeridos pendientes, cancelados o en rojo.
+- Iterar y corregir la misma PR mientras CI esté fallando; no abrir una PR nueva para esquivar un fallo.
+- Cuando una PR Draft queda funcionalmente terminada y sus checks están corriendo, **no quedarse esperando GitHub Actions**: buscar e iterar otra tarea pendiente, relacionada o naturalmente contigua al trabajo recién hecho, preferiblemente en una segunda PR también abierta como Draft.
+- Mientras esa segunda PR se prepara, dejar que la primera siga ejecutando CI en paralelo. El objetivo es solapar trabajo útil con las esperas de GitHub y evitar tiempo muerto.
+- Sólo cuando la segunda PR haya quedado también funcionalmente lista en Draft y con sus propios checks en marcha, volver a revisar la(s) PR(s) Draft anteriores.
+- Este patrón puede encadenarse hasta un máximo de **5 PRs por chat** en rotación simultánea. No abrir una sexta PR en el mismo chat mientras sigan ocupados esos cinco huecos.
+- Al alcanzar 5 PRs, hacer una pasada obligatoria sobre las anteriores: pasar a **Ready for review** las que tengan todos los required checks verdes, corregir las que estén rojas y mantener en Draft las que sigan pendientes. Sólo cuando se libere al menos un hueco se abre otra PR.
+- Para cada PR anterior: si todos sus required checks están verdes, cambiarla a **Ready for review**; si alguno sigue pendiente o rojo, mantenerla en Draft y continuar iterando trabajo útil sin bloquearse esperando.
+- Cuando todos los required checks de una PR estén verdes, cambiarla a **Ready for review**.
+- Sólo después de estar en Ready for review debe permitirse que GitHub complete el **automerge**; comprobar que automerge está habilitado y dejar que fusione cuando cumpla las protecciones de rama.
+- El objetivo de este orden es impedir merges prematuros mientras aún se están empujando fixes o mientras CI sigue ejecutándose, y a la vez aprovechar las esperas para avanzar trabajo relacionado.
+- Tras el merge, revisar los workflows posteriores relevantes (main admission, deploy, staging/live checks, etc.) y corregir cualquier fallo derivado antes de dar la iteración por cerrada.
+
 ** ITERACON DE SPRITES DE PAWN SLUG 
  
 Itera los sprites en Pawn Slug Godot hasta tener la siguiente generación de spritesheet deployada en staging, validada sin regresiones y con mejora visual y funcional clara.

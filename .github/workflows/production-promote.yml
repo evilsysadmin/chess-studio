@@ -374,6 +374,16 @@ jobs:
           esac
           echo "Production mutation admission OK: snapshot $DEPLOY_SHA fijado por el release train."
 
+      - name: Reconcile Cloudflare auth burst guard
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/scripts/cloudflare_auth_rate_limit.py" --self-test
+          python3 "$GITHUB_WORKSPACE/scripts/cloudflare_auth_rate_limit.py"
+
       - name: Terraform apply
         run: terraform apply -auto-approve tfplan
 

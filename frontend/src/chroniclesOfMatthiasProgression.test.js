@@ -14,6 +14,7 @@ import {
   finishChroniclesTacticsRun,
   grantChroniclesXp,
   loadChroniclesProgression,
+  renewChroniclesTacticsRun,
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from './chroniclesOfMatthiasProgression.js';
@@ -262,6 +263,16 @@ describe('Chronicles Tactics · progression', () => {
     const second = ensureChroniclesTacticsRun();
     expect(second).not.toBe(first);
     expect(ensureChroniclesTacticsRun()).toBe(second);
+  });
+
+  it('renews a stale active run once without clobbering a newer replacement', () => {
+    const staleRun = beginChroniclesTacticsRun();
+    const replacement = renewChroniclesTacticsRun(staleRun);
+
+    expect(replacement).not.toBe(staleRun);
+    expect(ensureChroniclesTacticsRun()).toBe(replacement);
+    expect(renewChroniclesTacticsRun(staleRun)).toBe(replacement);
+    expect(ensureChroniclesTacticsRun()).toBe(replacement);
   });
 
   it('keeps an active run across reload but refuses to inherit it across users', () => {

@@ -23,6 +23,7 @@ from slowapi.util import get_remote_address
 
 import profile_store as pstore
 import users_store as ustore
+import auth_login_guard
 import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
@@ -58,6 +59,17 @@ ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower(
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+NEW_PASSWORD_MIN_LENGTH = 8
+
+
+def _trust_cloudflare_client_ip() -> bool:
+    """Trust Cloudflare client-IP headers only inside a closed/explicit edge boundary."""
+    configured = os.environ.get("TRUST_CLOUDFLARE_CLIENT_IP")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    # Backwards-compatible staging default: canonical staging is tunnel-only.
+    # Production must opt in explicitly because Render remains a rollback target.
+    return ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS
 
 # Staging is Internet-facing through Cloudflare Tunnel. A missing invite secret
 # must not silently turn a misconfigured deployment into open registration.
@@ -152,11 +164,11 @@ def rate_limit_key(request: Request) -> str:
     if username != "-":
         return f"user:{username}"
 
-    # OCI staging is loopback-only behind Cloudflare Tunnel. There the ASGI peer
+    # OCI ingress is loopback-only behind Cloudflare Tunnel. There the ASGI peer
     # is the local proxy/Docker gateway, so using it directly would put every
-    # anonymous visitor in one login/register bucket. CF-Connecting-IP is safe
-    # to consume only inside this network-closed staging trust boundary.
-    if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS:
+    # anonymous visitor in one login/register bucket. Production opts in only
+    # on the OCI runtime; Render rollback remains fail-closed by default.
+    if _trust_cloudflare_client_ip():
         client_ip, _ = _client_network(request)
         if client_ip:
             return f"ip:{client_ip}"
@@ -542,8 +554,8 @@ async def register(body: RegisterRequest, request: Request):
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
-    if len(body.password) < 6:
-        raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    if len(body.password) < NEW_PASSWORD_MIN_LENGTH:
+        raise HTTPException(400, f"La contraseña tiene que tener al menos {NEW_PASSWORD_MIN_LENGTH} caracteres.")
     email = _normalize_email(body.email) if ENABLE_EMAIL_RECOVERY else None
     if ENABLE_EMAIL_RECOVERY and not email:
         raise HTTPException(400, "El email es obligatorio para cuentas nuevas.")
@@ -581,6 +593,15 @@ async def register(body: RegisterRequest, request: Request):
 @limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
+    identity = auth_login_guard.identity_key(username, JWT_SECRET)
+    retry_after = await auth_login_guard.retry_after(identity)
+    if retry_after:
+        raise HTTPException(
+            429,
+            "Demasiados intentos de acceso. Reintenta más tarde.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = await ustore.get_user(username)
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
@@ -601,7 +622,15 @@ async def login(body: LoginRequest, request: Request):
             user_agent=request.headers.get("user-agent"),
             client_release=_client_release(request),
         )
+        retry_after = await auth_login_guard.record_failure(identity)
+        if retry_after:
+            raise HTTPException(
+                429,
+                "Demasiados intentos de acceso. Reintenta más tarde.",
+                headers={"Retry-After": str(retry_after)},
+            )
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
+    await auth_login_guard.clear(identity)
     request.state.username = username
     await _touch_activity_best_effort(username, force=True, request=request)
     return {"token": create_token(username), "username": username}
@@ -628,8 +657,8 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request):
 async def reset_password(body: ResetPasswordRequest, request: Request):
     if not ENABLE_EMAIL_RECOVERY:
         raise HTTPException(404, "Recuperación por email no habilitada.")
-    if len(body.new_password) < 6:
-        raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    if len(body.new_password) < NEW_PASSWORD_MIN_LENGTH:
+        raise HTTPException(400, f"La contraseña tiene que tener al menos {NEW_PASSWORD_MIN_LENGTH} caracteres.")
     # El username está firmado dentro del token, pero necesitamos el hash
     # actual para que el enlace quede invalidado en cuanto se use/cambie.
     try:

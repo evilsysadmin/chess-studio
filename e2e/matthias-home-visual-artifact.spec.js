@@ -72,10 +72,11 @@ async function expectLiveMatthiasArt(home) {
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toBeVisible({ timeout:15_000 });
   await expect(canvas).toHaveCSS('opacity', '1');
-  await expect(canvas).toHaveAttribute('data-matthias-camera-facing', 'head-nose-vector');
-  await expect(canvas).toHaveAttribute('data-matthias-camera-contract', 'canonical-glb-plus-z');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-facing', 'visible-front-geometry');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-contract', 'visible-front-geometry');
   await expect(canvas).toHaveAttribute('data-matthias-camera-face-x', '0.0000');
   await expect(canvas).toHaveAttribute('data-matthias-camera-face-z', '1.0000');
+  await expect(canvas).toHaveAttribute('data-matthias-front-geometry-count', '10');
   return { avatar, image, canvas };
 }
 

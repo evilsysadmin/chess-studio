@@ -108,15 +108,20 @@ jobs:
     needs: source
     if: needs.source.outputs.source == 'pr'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 2
+          ref: ${{ github.sha }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
 
       - name: Admission logic self-test
         run: python3 -S scripts/main_ci_admission.py --self-test
@@ -129,21 +134,65 @@ jobs:
       # Si main avanza, cancel-in-progress convierte esta generación obsoleta en
       # cancelled/superseded; si Quality termina rojo, admission sigue fallando.
       - name: Wait for / reuse green PR quality gate
+        id: pr_admission
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MAIN_ADMISSION_WAIT_ATTEMPTS: 25
           MAIN_ADMISSION_WAIT_SECONDS: 12
         run: python3 -S scripts/main_ci_admission_wait.py
 
-      # Seguimos validando en el SHA final de main los contratos baratos que no
-      # necesitan dependencias pesadas ni navegador. Así un squash/merge jamás
-      # salta directamente de "PR verde" a staging sin inspeccionar el artefacto
-      # final que realmente vamos a desplegar.
+      # Fast path: the immutable PR receipt proves that this final tree is the
+      # tested tree (or a file-disjoint concurrent main advance).
       - name: Static preflight on final main SHA
+        if: steps.pr_admission.outcome == 'success'
         run: make static-preflight
 
       - name: Staging preview isolation contract
+        if: steps.pr_admission.outcome == 'success'
         run: python3 scripts/staging_preview_contract.py
+
+      # Slow but safe path: if the PR receipt cannot be reused (for example two
+      # concurrent PRs touched the same file), test the exact final main SHA
+      # instead of weakening the concurrency proof or blocking staging forever.
+      - uses: actions/setup-python@v7
+        if: steps.pr_admission.outcome == 'failure'
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            backend-python/requirements.txt
+            backend-python/requirements-dev.txt
+
+      - name: Resolve Trivy cache epoch
+        if: steps.pr_admission.outcome == 'failure'
+        id: pr_fallback_trivy_epoch
+        shell: bash
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
+        if: steps.pr_admission.outcome == 'failure'
+        uses: actions/cache@v6
+        with:
+          path: |
+            .tools/trivy
+            .trivy-cache
+          key: pr-main-fallback-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.pr_fallback_trivy_epoch.outputs.day }}
+          restore-keys: |
+            pr-main-fallback-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
+            trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
+
+      - name: Explain exact-HEAD PR fallback
+        if: steps.pr_admission.outcome == 'failure'
+        run: |
+          echo '::warning title=PR admission fallback::El recibo Quality del PR no puede reutilizarse de forma segura para este árbol final.'
+          echo 'Se ejecutará el gate completo sobre el HEAD exacto de main antes de permitir staging.'
+
+      - name: Full exact-HEAD quality fallback
+        if: steps.pr_admission.outcome == 'failure'
+        env:
+          TRIVY_DB_TTL_MINUTES: '1440'
+        run: make tests security-images compose-smoke
 
   admit_direct:
     name: Main · direct HEAD full fallback gate

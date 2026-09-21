@@ -48,6 +48,13 @@ function bootstrapTransportError(error, { timedOut = false, aborted = false } = 
       status: error?.status,
     });
   }
+  if (error?.status === 409) {
+    return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld, reason, {
+      cause: error,
+      requestId: error?.requestId,
+      status: error?.status,
+    });
+  }
   return new ChroniclesBootstrapError(CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable, reason, {
     cause: error,
     requestId: error?.requestId,

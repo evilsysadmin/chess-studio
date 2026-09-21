@@ -101,6 +101,53 @@ def convert_curves_to_meshes() -> int:
     return converted
 
 
+def consolidate_static_architecture() -> tuple[int, int]:
+    """Batch HOME_ARCH meshes by material for browser draw-call efficiency.
+
+    Runtime Home interaction is owned by DOM/UI overlays, while animated fire
+    and authored props retain their individual HOME_PROP names. Only static
+    architecture is eligible for consolidation.
+    """
+    candidates = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.name.startswith("HOME_ARCH_")
+    ]
+    original_count = len(candidates)
+    groups: dict[tuple[str, ...], list] = {}
+
+    for obj in candidates:
+        # Joining would otherwise discard non-active modifiers. Converting a
+        # mesh to mesh bakes its bevel/solidify stack before batching.
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        if obj.modifiers:
+            bpy.ops.object.convert(target="MESH")
+        signature = tuple(mat.name if mat else "" for mat in obj.data.materials)
+        groups.setdefault(signature, []).append(obj)
+
+    batch_index = 0
+    for signature, group in groups.items():
+        live = [obj for obj in group if obj.name in bpy.context.scene.objects]
+        if len(live) < 2:
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in live:
+            obj.select_set(True)
+        active = live[0]
+        bpy.context.view_layer.objects.active = active
+        bpy.ops.object.join()
+        material_label = signature[0].replace("HOME_MAT_", "").lower() if signature else "mixed"
+        active.name = f"HOME_ARCH_BATCH_{batch_index}_{material_label}"
+        batch_index += 1
+
+    remaining = sum(
+        1 for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.name.startswith("HOME_ARCH_")
+    )
+    return original_count, remaining
+
+
 def select_runtime_geometry() -> int:
     bpy.ops.object.select_all(action="DESELECT")
     count = 0
@@ -133,6 +180,7 @@ def main() -> None:
 
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
+    architecture_meshes_before, architecture_meshes_after = consolidate_static_architecture()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
         raise SystemExit(f"Refusing suspicious Home runtime export with only {mesh_count} meshes")
@@ -164,6 +212,8 @@ def main() -> None:
         },
         "mesh_count": mesh_count,
         "converted_curves": converted_curves,
+        "architecture_meshes_before": architecture_meshes_before,
+        "architecture_meshes_after": architecture_meshes_after,
         "materials": len(bpy.data.materials),
         "bytes": glb_path.stat().st_size,
     }
