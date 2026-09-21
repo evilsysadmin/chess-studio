@@ -1,4 +1,4 @@
-export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 3;
+export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 4;
 
 function scenePalette(values) {
   return Object.freeze({
@@ -69,6 +69,7 @@ const NEUTRAL_STYLE = Object.freeze({
   id: 'neutral',
   version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
   dressing: 'none',
+  lighting: Object.freeze({ exposure: 1, hemi: 1, fill: 1, bounce: 1 }),
   palette: CRYPT_PALETTE,
 });
 
@@ -77,18 +78,21 @@ const SCENE_STYLES = Object.freeze({
     id: 'crypt-stone',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
     dressing: 'crypt-legacy',
+    lighting: Object.freeze({ exposure: 1, hemi: 1, fill: 1, bounce: 1 }),
     palette: CRYPT_PALETTE,
   }),
   'gallery-of-forks': Object.freeze({
     id: 'gallery-stone',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
     dressing: 'gallery-forked-v3',
+    lighting: Object.freeze({ exposure: 1.035, hemi: 1.06, fill: 1.08, bounce: 1.02 }),
     palette: GALLERY_PALETTE,
   }),
   'menagerie-of-ash': Object.freeze({
     id: 'menagerie-ash',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
     dressing: 'menagerie-ash-v3',
+    lighting: Object.freeze({ exposure: 1.15, hemi: 1.28, fill: 1.42, bounce: 1.24 }),
     palette: MENAGERIE_PALETTE,
   }),
 });

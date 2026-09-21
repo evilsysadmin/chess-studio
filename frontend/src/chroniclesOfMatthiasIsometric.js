@@ -702,10 +702,15 @@ export function createChroniclesIsometricRenderer(host, {
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
   const initialScenePlan = initialSceneModel?.scenePlan || chroniclesIsometricScenePlan();
   const scenePalette = chroniclesIsoScenePalette(initialScenePlan);
+  const lighting = initialScenePlan?.sceneStyle?.lighting || {};
+  const exposureScale = Math.max(0.8, Math.min(1.25, Number(lighting.exposure) || 1));
+  const hemiScale = Math.max(0.75, Math.min(1.5, Number(lighting.hemi) || 1));
+  const fillScale = Math.max(0.75, Math.min(1.6, Number(lighting.fill) || 1));
+  const bounceScale = Math.max(0.75, Math.min(1.6, Number(lighting.bounce) || 1));
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = coarse ? 1.27 : 1.2;
+  renderer.toneMappingExposure = (coarse ? 1.27 : 1.2) * exposureScale;
   renderer.setClearColor(scenePalette.background, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.7));
   renderer.shadowMap.enabled = !coarse;
@@ -727,7 +732,11 @@ export function createChroniclesIsometricRenderer(host, {
   camera.lookAt(initialPose.target);
   const cameraTarget = initialPose.target.clone();
 
-  const hemi = new THREE.HemisphereLight(scenePalette.hemiSky, scenePalette.hemiGround, coarse ? 0.82 : 0.64);
+  const hemi = new THREE.HemisphereLight(
+    scenePalette.hemiSky,
+    scenePalette.hemiGround,
+    (coarse ? 0.82 : 0.64) * hemiScale,
+  );
   scene.add(hemi);
   const key = new THREE.DirectionalLight(scenePalette.key, coarse ? 2.35 : 2.95);
   key.position.set(5.5, 10, 7.5);
@@ -745,10 +754,15 @@ export function createChroniclesIsometricRenderer(host, {
   const rim = new THREE.DirectionalLight(scenePalette.rim, coarse ? 0.84 : 1.2);
   rim.position.set(-7, 5, -6);
   scene.add(rim);
-  const fill = new THREE.DirectionalLight(scenePalette.fill, coarse ? 0.38 : 0.52);
+  const fill = new THREE.DirectionalLight(scenePalette.fill, (coarse ? 0.38 : 0.52) * fillScale);
   fill.position.set(3, 4.5, -7);
   scene.add(fill);
-  const warmBounce = new THREE.PointLight(scenePalette.bounce, coarse ? 0.28 : 0.4, 18, 2);
+  const warmBounce = new THREE.PointLight(
+    scenePalette.bounce,
+    (coarse ? 0.28 : 0.4) * bounceScale,
+    18,
+    2,
+  );
   warmBounce.position.set(0, 2.4, 2.8);
   scene.add(warmBounce);
 

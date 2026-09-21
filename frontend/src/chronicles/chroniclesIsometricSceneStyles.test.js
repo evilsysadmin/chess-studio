@@ -10,7 +10,7 @@ describe('Chronicles isometric scene styles', () => {
     const gallery = chroniclesIsometricSceneStyle('gallery-of-forks');
     const menagerie = chroniclesIsometricSceneStyle('menagerie-of-ash');
 
-    expect(CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION).toBe(3);
+    expect(CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION).toBe(4);
     expect(crypt.dressing).toBe('crypt-legacy');
     expect(gallery.dressing).toBe('gallery-forked-v3');
     expect(menagerie.dressing).toBe('menagerie-ash-v3');
@@ -20,6 +20,8 @@ describe('Chronicles isometric scene styles', () => {
     expect(menagerie.palette).not.toBe(crypt.palette);
     expect(menagerie.palette).not.toBe(gallery.palette);
     expect(menagerie.palette.floor[3]).toBeGreaterThan(menagerie.palette.floor[0]);
+    expect(menagerie.lighting.exposure).toBeGreaterThan(gallery.lighting.exposure);
+    expect(menagerie.lighting.fill).toBeGreaterThan(1);
   });
 
   it('freezes palette collections and keeps the neutral fallback renderable', () => {
@@ -29,6 +31,7 @@ describe('Chronicles isometric scene styles', () => {
     expect(Object.isFrozen(gallery.palette)).toBe(true);
     expect(Object.isFrozen(gallery.palette.floor)).toBe(true);
     expect(Object.isFrozen(gallery.palette.wall)).toBe(true);
+    expect(Object.isFrozen(gallery.lighting)).toBe(true);
     expect(fallback.id).toBe('neutral');
     expect(fallback.palette.floor.length).toBeGreaterThan(0);
     expect(fallback.palette.wall.length).toBeGreaterThan(0);

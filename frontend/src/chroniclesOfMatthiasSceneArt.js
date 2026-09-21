@@ -1,6 +1,7 @@
 import { installChroniclesTacticsFortressBackdrop } from './chroniclesOfMatthiasFortressArt.js';
 import { installChroniclesTacticsForegroundFraming } from './chroniclesOfMatthiasForegroundArt.js';
 import { installChroniclesTacticsWetStone } from './chroniclesOfMatthiasGroundArt.js';
+import { installChroniclesTacticsFloorDetail } from './chroniclesOfMatthiasFloorDetailArt.js';
 import { installChroniclesTacticsStoneWeathering } from './chroniclesOfMatthiasWeatheringArt.js';
 import { installChroniclesTacticsPartyGrounding } from './chroniclesOfMatthiasPartyGroundingArt.js';
 import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasReadabilityArt.js';
@@ -38,6 +39,7 @@ export function installChroniclesTacticsSceneArt(models, {
     : null;
   const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer });
   const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
+  const floorDetail = installChroniclesTacticsFloorDetail(scene, { coarsePointer, scenePlan });
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
   const grounding = installChroniclesTacticsPartyGrounding(models, { coarsePointer });
   const readability = installChroniclesTacticsReadabilityArt(models, { coarsePointer });
@@ -53,6 +55,7 @@ export function installChroniclesTacticsSceneArt(models, {
     foreground,
     materials,
     wetStone,
+    floorDetail,
     weathering,
     grounding,
     readability,

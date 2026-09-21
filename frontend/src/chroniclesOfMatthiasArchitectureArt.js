@@ -8,7 +8,7 @@ const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 const WALL_NAME = /^chronicles-iso-wall-(\d+)-(\d+)$/;
 const MASONRY_COURSES = 4;
 const MASONRY_BLOCKS_PER_COURSE = 3;
-const MASONRY_TRIM_BLOCKS = 2;
+const MASONRY_TRIM_BLOCKS = 4;
 
 export const CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL = (
   MASONRY_COURSES * MASONRY_BLOCKS_PER_COURSE
@@ -20,7 +20,7 @@ export const CHRONICLES_TACTICS_ARCHES = Object.freeze([
 ]);
 
 export const CHRONICLES_TACTICS_MASONRY_STYLE = Object.freeze({
-  profile: 'coursed-block-face-v2',
+  profile: 'coursed-block-face-v3',
   courseCount: MASONRY_COURSES,
   blocksPerCourse: MASONRY_BLOCKS_PER_COURSE,
   blockWidth: 0.72,
@@ -152,17 +152,23 @@ function buildMasonryInstances(root, wallCells, material, { coarsePointer }) {
     mesh.setColorAt(index, baseColor.clone().offsetHSL(0, -0.015, -0.075));
     index += 1;
 
-    setBox(mesh, index, dummy, {
-      x: faceX,
-      y: 2.43,
-      z: faceZ,
-      sx: 1.16,
-      sy: 0.16,
-      sz: 0.24,
-      yaw: side.yaw,
+    [-0.76, 0, 0.76].forEach((tangentOffset, copingIndex) => {
+      const lift = copingIndex === 1 ? 0.025 : 0;
+      setBox(mesh, index, dummy, {
+        x: faceX + side.tx * tangentOffset,
+        y: 2.48 + lift,
+        z: faceZ + side.tz * tangentOffset,
+        sx: copingIndex === 1 ? 0.76 : 0.68,
+        sy: 0.18,
+        sz: 0.34,
+        yaw: side.yaw,
+      });
+      mesh.setColorAt(
+        index,
+        baseColor.clone().offsetHSL(0, -0.01, 0.025 + copingIndex * 0.012),
+      );
+      index += 1;
     });
-    mesh.setColorAt(index, baseColor.clone().offsetHSL(0, -0.01, 0.035));
-    index += 1;
   });
 
   CHRONICLES_TACTICS_ARCHES.forEach((arch) => {
