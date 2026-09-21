@@ -48,7 +48,7 @@ runs:
     - name: Wait for War Room v2 revision
       if: inputs.mode == 'canonical' && steps.scope.outputs.warroom_revision_required == 'true'
       env:
-        APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ github.sha }}
+        # PR workflows checkout/publish the real head SHA; github.sha is the ephemeral merge commit.\n        APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       shell: bash
       run: |
         set -euo pipefail
