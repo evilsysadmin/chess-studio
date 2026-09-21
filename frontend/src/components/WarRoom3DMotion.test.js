@@ -10,6 +10,7 @@ import {
   materialGradeRefreshInterval,
   nextRuntimeRenderScale,
   reactiveLightProfile,
+  restoreWarRoomFullQuality,
   shadowRefreshInterval,
   shouldRefreshMaterialGrade,
   shouldRefreshShadowMap,
@@ -285,6 +286,29 @@ describe('WarRoom3DMotion', () => {
     expect(state.renderer.shadowMap).toMatchObject({ enabled: false, autoUpdate: false, needsUpdate: false });
     expect(state.renderer.domElement.dataset.board3dAdaptiveQuality).toBe('reduced');
     expect(calls).toEqual([['ratio', 0.9], ['size', 1000, 700, false]]);
+  });
+
+  it('restores full quality immediately when leaving a degraded v1 scene', () => {
+    const state = {
+      renderLite: false,
+      adaptiveQualityReduced: true,
+      renderer: {
+        shadowMap: { enabled: false, needsUpdate: false },
+        domElement: { dataset: {
+          board3dAdaptiveQuality: 'reduced',
+          board3dAnimationCadence: 'adaptive-30fps',
+          board3dAdaptiveReason: 'slow-move-frames',
+        } },
+      },
+    };
+    expect(restoreWarRoomFullQuality(state)).toBe(true);
+    expect(state.adaptiveQualityReduced).toBe(false);
+    expect(state.renderer.shadowMap).toMatchObject({ enabled: true, needsUpdate: true });
+    expect(state.renderer.domElement.dataset).toMatchObject({
+      board3dAdaptiveQuality: 'full',
+      board3dAnimationCadence: 'full-raf',
+    });
+    expect(state.renderer.domElement.dataset.board3dAdaptiveReason).toBeUndefined();
   });
 
   it('keeps v2 on full visual cadence even when the shared renderer has seen slow frames', () => {

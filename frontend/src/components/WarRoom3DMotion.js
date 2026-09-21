@@ -27,6 +27,17 @@ export {
   smoothstep,
 };
 
+export function restoreWarRoomFullQuality(state) {
+  if (!state?.adaptiveQualityReduced) return false;
+  state.adaptiveQualityReduced = false;
+  state.renderer.shadowMap.enabled = !state.renderLite;
+  state.renderer.shadowMap.needsUpdate = !state.renderLite;
+  state.renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
+  state.renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
+  delete state.renderer.domElement.dataset.board3dAdaptiveReason;
+  return true;
+}
+
 export function applyWarRoomMoveFrameBudget(state, {
   now = 0,
   devicePixelRatio = 1,
@@ -55,14 +66,7 @@ export function applyWarRoomMoveFrameBudget(state, {
   }
 
   if (state.scene?.userData?.warRoomRenderedVariant === 'v2') {
-    if (state.adaptiveQualityReduced) {
-      state.adaptiveQualityReduced = false;
-      state.renderer.shadowMap.enabled = !state.renderLite;
-      state.renderer.shadowMap.needsUpdate = !state.renderLite;
-      state.renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
-      state.renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
-      delete state.renderer.domElement.dataset.board3dAdaptiveReason;
-    }
+    restoreWarRoomFullQuality(state);
     return warRoomAdaptiveMovePlan({
       slowFrameCount: 0,
       reduced: false,

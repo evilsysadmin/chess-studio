@@ -6,7 +6,7 @@ import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSur
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { applyWarRoomMoveFrameBudget, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { applyWarRoomMoveFrameBudget, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, restoreWarRoomFullQuality, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -723,6 +723,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
+    if (warRoomVariant === 'v2') restoreWarRoomFullQuality(state);
     return startWarRoomVariantScene({
       scene: state.scene,
       classicShellController: state.classicShellController,
