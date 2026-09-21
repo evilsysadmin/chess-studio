@@ -154,11 +154,11 @@ jobs:
             printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
           fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
-      - name: Restore targeted experiment browser runtime
+      - uses: ./.github/actions/setup-browser-e2e
         if: env.TARGETED_BROWSER == 'true'
-        uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
+          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Pawn Slug browser smoke
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
@@ -324,10 +324,10 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Restore critical browser runtime
-        uses: ./.github/actions/setup-browser-e2e
+      - uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
+          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
@@ -337,6 +337,7 @@ jobs:
       - name: Critical browser lane
         env:
           CRITICAL_E2E_LANE: ${{ matrix.lane }}
+          CHESS_E2E_LIGHTWEIGHT: '1'
         run: python3 -S scripts/run_core_e2e_lane.py "$CRITICAL_E2E_LANE"
       - name: Upload Playwright diagnostics on failure
         if: failure()
@@ -357,10 +358,10 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Restore specialized browser runtime
-        uses: ./.github/actions/setup-browser-e2e
+      - uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
+          restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
