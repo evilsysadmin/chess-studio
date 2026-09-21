@@ -10,6 +10,7 @@ import { CHRONICLES_DIRECTOR_SCHEMA_VERSION } from './chroniclesGameDirector.js'
 import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapTacticsWorld,
+  chroniclesBootstrapWorld,
 } from './chroniclesGameBootstrap.js';
 
 function clone(value) {
@@ -60,10 +61,14 @@ afterEach(() => {
 });
 
 describe('Chronicles bounded authoritative-run bootstrap', () => {
+  it('keeps the old Tactics export as an alias of the shared world bootstrap', () => {
+    expect(chroniclesBootstrapTacticsWorld).toBe(chroniclesBootstrapWorld);
+  });
+
   it('installs the backend-bound map and preserves run identity before gameplay mounts', async () => {
     const createRun = vi.fn().mockResolvedValue(remoteRun());
 
-    const resolved = await chroniclesBootstrapTacticsWorld({
+    const resolved = await chroniclesBootstrapWorld({
       createRun,
       budgetMs: 250,
       operationId: 'browser-run-1',
@@ -89,7 +94,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
       remoteRun('Menagerie procedural', 733, 'menagerie-of-ash'),
     );
 
-    const resolved = await chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 });
+    const resolved = await chroniclesBootstrapWorld({ createRun, budgetMs: 250 });
 
     expect(resolved.source).toBe('remote');
     expect(resolved.currentMapId).toBe('menagerie-of-ash');
@@ -103,7 +108,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
   });
 
   it('restores the canonical entry after runtime maps are cleared', async () => {
-    await chroniclesBootstrapTacticsWorld({
+    await chroniclesBootstrapWorld({
       createRun: vi.fn().mockResolvedValue(remoteRun('Menagerie procedural', 733, 'menagerie-of-ash')),
       budgetMs: 250,
     });
@@ -121,7 +126,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
       release = resolve;
     }));
 
-    const bootstrap = chroniclesBootstrapTacticsWorld({ createRun });
+    const bootstrap = chroniclesBootstrapWorld({ createRun });
     await vi.advanceTimersByTimeAsync(300);
 
     release(remoteRun('Cripta procedural tardía', 991));
@@ -136,7 +141,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     const local = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
     const createRun = vi.fn().mockRejectedValue(new Error('network-down'));
 
-    await expect(chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 250 }))
+    await expect(chroniclesBootstrapWorld({ createRun, budgetMs: 250 }))
       .rejects.toMatchObject({
         code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable,
         reason: 'network-down',
@@ -153,7 +158,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
       release = resolve;
     }));
 
-    const bootstrap = chroniclesBootstrapTacticsWorld({ createRun, budgetMs: 50 });
+    const bootstrap = chroniclesBootstrapWorld({ createRun, budgetMs: 50 });
     const rejection = expect(bootstrap).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.timeout,
       reason: 'bootstrap-deadline',
@@ -172,7 +177,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     error.status = 401;
     error.requestId = 'req-chronicles-401';
 
-    await expect(chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapWorld({
       createRun: vi.fn().mockRejectedValue(error),
     })).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.auth,
@@ -187,7 +192,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     error.status = 409;
     error.requestId = 'req-chronicles-stale';
 
-    await expect(chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapWorld({
       createRun: vi.fn().mockRejectedValue(error),
     })).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
@@ -203,7 +208,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     const payload = remoteRun();
     payload.areas = payload.areas.slice(0, -1);
 
-    await expect(chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapWorld({
       createRun: vi.fn().mockResolvedValue(payload),
     })).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
@@ -217,7 +222,7 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     const payload = remoteRun();
     payload.manifestRevision = 'c'.repeat(64);
 
-    await expect(chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapWorld({
       createRun: vi.fn().mockResolvedValue(payload),
     })).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
@@ -227,12 +232,12 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
   });
 
   it('clears a previous remote override before a new bootstrap attempt', async () => {
-    await chroniclesBootstrapTacticsWorld({
+    await chroniclesBootstrapWorld({
       createRun: vi.fn().mockResolvedValue(remoteRun('Primera remota')),
     });
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Primera remota');
 
-    await expect(chroniclesBootstrapTacticsWorld({
+    await expect(chroniclesBootstrapWorld({
       createRun: vi.fn().mockRejectedValue(new Error('offline')),
     })).rejects.toMatchObject({
       code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable,
