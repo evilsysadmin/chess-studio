@@ -12,31 +12,6 @@ import { chroniclesCheckpointRun, chroniclesCreateRun } from './chroniclesRunCli
 beforeEach(() => {
   requestJson.mockReset();
   requestJson.mockResolvedValue({ runId: 'run-1' });
-  it('sends authoritative checkpoint payloads with auth and caller cancellation', async () => {
-    const signal = new AbortController().signal;
-    const checkpoint = {
-      expectedWorldVersion: 3,
-      currentMapId: 'gallery-of-forks',
-      worldFlags: { galleryLeverPulled: true },
-      consumedContentIds: ['gallery-lever'],
-      claimedRewards: ['reward:gallery-relic'],
-    };
-
-    await chroniclesCheckpointRun('run/with spaces', checkpoint, { signal });
-
-    expect(requestJson).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/chronicles\/runs\/run%2Fwith%20spaces\/checkpoint$/),
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-token',
-        },
-        body: JSON.stringify(checkpoint),
-        signal,
-      },
-    );
-  });
 });
 
 describe('Chronicles run transport', () => {
@@ -72,5 +47,31 @@ describe('Chronicles run transport', () => {
       },
       signal,
     });
+  });
+
+  it('sends authoritative checkpoint payloads with auth and caller cancellation', async () => {
+    const signal = new AbortController().signal;
+    const checkpoint = {
+      expectedWorldVersion: 3,
+      currentMapId: 'gallery-of-forks',
+      worldFlags: { galleryLeverPulled: true },
+      consumedContentIds: ['gallery-lever'],
+      claimedRewards: ['reward:gallery-relic'],
+    };
+
+    await chroniclesCheckpointRun('run/with spaces', checkpoint, { signal });
+
+    expect(requestJson).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/chronicles\/runs\/run%2Fwith%20spaces\/checkpoint$/),
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token',
+        },
+        body: JSON.stringify(checkpoint),
+        signal,
+      },
+    );
   });
 });
