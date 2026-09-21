@@ -127,25 +127,39 @@ for (const stageId of stageIds.slice(1)) {
 // Traversal changes can live well beyond the opening viewport. A localhost-only
 // Godot visual probe positions Matthias/camera at the authored pit so PR review
 // sees the actual runtime geometry without walking through combat for 10+ seconds.
-const traversalProbeX = {
-  industrial_front_v1: 1460,
-  harbor_raid_v1: 480,
-  alpine_fortress_v1: 3340,
-  jungle_relay_v1: 480,
+const traversalProbeXs = {
+  // First value keeps the historical proof location/name. Additional probes
+  // cover a second traversal beat so new pits/canopy routes cannot hide outside
+  // the single screenshot the PR reviewer sees.
+  industrial_front_v1: [1460, 430],
+  harbor_raid_v1: [480, 2920],
+  alpine_fortress_v1: [3340, 2200],
+  jungle_relay_v1: [480, 4160],
 };
 for (const stageId of stageIds) {
-  const probeX = traversalProbeX[stageId];
-  if (!Number.isFinite(probeX)) continue;
-  const stage = await loadStage(stageId, probeX);
-  const path = `${outputDir}/traversal-${stageId}.png`;
-  await page.screenshot({ path, fullPage: false });
-  traversalProbes.push({ stageId, probeX, url: stage.url, canvas: stage.canvas, path });
+  const probes = traversalProbeXs[stageId] || [];
+  for (let probeIndex = 0; probeIndex < probes.length; probeIndex += 1) {
+    const probeX = probes[probeIndex];
+    if (!Number.isFinite(probeX)) continue;
+    const stage = await loadStage(stageId, probeX);
+    const suffix = probeIndex === 0 ? '' : `-${String(probeIndex + 1).padStart(2, '0')}`;
+    const path = `${outputDir}/traversal-${stageId}${suffix}.png`;
+    await page.screenshot({ path, fullPage: false });
+    traversalProbes.push({
+      stageId,
+      probeIndex,
+      probeX,
+      url: stage.url,
+      canvas: stage.canvas,
+      path,
+    });
+  }
 }
 
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 4,
+    schema: 5,
     detailedStage,
     stageOverviews,
     traversalProbes,
