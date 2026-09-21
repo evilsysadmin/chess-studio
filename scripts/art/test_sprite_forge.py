@@ -9,10 +9,12 @@ from sprite_forge import (
     GeometryContract,
     GeometryError,
     LintConfig,
+    TemporalContract,
     geometry_metrics,
     lint_frame,
     normalize_frame,
     validate_geometry,
+    validate_sequence,
 )
 
 
@@ -173,6 +175,136 @@ class SpriteForgeGeometryTests(unittest.TestCase):
         self.assertTrue(
             any(
                 error.startswith("centroid-x:")
+                for error in result.errors
+            ),
+            result.errors,
+        )
+
+
+class SpriteForgeTemporalTests(unittest.TestCase):
+    def frame(
+        self,
+        x: int = 32,
+        y: int = 28,
+        w: int = 24,
+        h: int = 48,
+    ) -> Image.Image:
+        image = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+        ImageDraw.Draw(image).rectangle(
+            (x, y, x + w - 1, y + h - 1),
+            fill=(180, 120, 80, 255),
+        )
+        return image
+
+    def test_stable_sequence_passes(self) -> None:
+        frames = [
+            self.frame(x=32 + shift)
+            for shift in (0, 1, 2, 3)
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(
+                expected_frames=4,
+                max_centroid_delta_px=3.0,
+                loop=True,
+            ),
+        )
+        self.assertTrue(result.ok, result.errors)
+
+    def test_accidental_duplicate_is_rejected(self) -> None:
+        frames = [
+            self.frame(x=32),
+            self.frame(x=33),
+            self.frame(x=33),
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(expected_frames=3),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("duplicate-frame:2==1", result.errors)
+
+    def test_declared_hold_can_repeat_previous_frame(self) -> None:
+        frames = [
+            self.frame(x=32),
+            self.frame(x=33),
+            self.frame(x=33),
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(
+                expected_frames=3,
+                allowed_hold_indices=(2,),
+            ),
+        )
+        self.assertTrue(result.ok, result.errors)
+
+    def test_sudden_foot_jump_is_rejected(self) -> None:
+        frames = [
+            self.frame(y=28),
+            self.frame(y=38),
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(
+                expected_frames=2,
+                max_foot_delta_px=4.0,
+            ),
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                error.startswith("foot-jump:")
+                for error in result.errors
+            ),
+            result.errors,
+        )
+
+    def test_scale_and_area_jump_are_rejected(self) -> None:
+        frames = [
+            self.frame(w=24, h=48),
+            self.frame(w=40, h=64),
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(
+                expected_frames=2,
+                max_height_delta_px=4.0,
+                max_width_delta_px=4.0,
+                max_area_ratio_delta=0.10,
+            ),
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                error.startswith("height-jump:")
+                for error in result.errors
+            )
+        )
+        self.assertTrue(
+            any(
+                error.startswith("area-jump:")
+                for error in result.errors
+            )
+        )
+
+    def test_loop_seam_is_checked(self) -> None:
+        frames = [
+            self.frame(x=20),
+            self.frame(x=30),
+            self.frame(x=40),
+        ]
+        result = validate_sequence(
+            frames,
+            TemporalContract(
+                expected_frames=3,
+                max_centroid_delta_px=15.0,
+                loop=True,
+            ),
+        )
+        self.assertTrue(
+            any(
+                error.startswith("centroid-jump:2->0")
                 for error in result.errors
             ),
             result.errors,
