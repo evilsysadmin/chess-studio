@@ -154,12 +154,10 @@ jobs:
             printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
           fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
-      - name: Restore targeted experiment browser runtime
+      - name: Targeted browser
         if: env.TARGETED_BROWSER == 'true'
         uses: ./.github/actions/setup-browser-e2e
-        with:
-          browser-scope: chromium
-          build-frontend: 'false'
+        with: {browser-scope: chromium,restore-frontend-deps: 'false',build-frontend: 'false'}
       - name: Pawn Slug browser smoke
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
         working-directory: e2e
@@ -324,11 +322,9 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Restore critical browser runtime
+      - name: Critical browser
         uses: ./.github/actions/setup-browser-e2e
-        with:
-          browser-scope: chromium
-          build-frontend: 'false'
+        with: {browser-scope: chromium,restore-frontend-deps: 'false',build-frontend: 'false'}
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
         with:
@@ -357,11 +353,9 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Restore specialized browser runtime
+      - name: Specialized browser
         uses: ./.github/actions/setup-browser-e2e
-        with:
-          browser-scope: chromium
-          build-frontend: 'false'
+        with: {browser-scope: chromium,restore-frontend-deps: 'false',build-frontend: 'false'}
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
         with:
