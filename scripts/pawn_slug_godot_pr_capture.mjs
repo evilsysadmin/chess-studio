@@ -31,6 +31,9 @@ await page.addInitScript(() => {
   const stage = params.get('stage') || '';
   const traversalProbes = {
     industrial_front_v1: 1900,
+    harbor_raid_v1: 3860,
+    alpine_fortress_v1: 4200,
+    jungle_relay_v1: 3820,
   };
   window.__pawnSlugVisualProbeX =
     params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
@@ -157,7 +160,18 @@ for (const stageId of stageIds.slice(1)) {
   const stage = await loadStage(stageId);
   const path = `${outputDir}/stage-${stageId}.png`;
   await page.screenshot({ path, fullPage: false });
-  stageOverviews.push({ stageId, url: stage.url, canvas: stage.canvas, path });
+  stageOverviews.push({ stageId, variant: 'overview', url: stage.url, canvas: stage.canvas, path });
+
+  const traversal = await loadStage(stageId, { visualProbe: true });
+  const traversalPath = `${outputDir}/stage-${stageId}-traversal.png`;
+  await page.screenshot({ path: traversalPath, fullPage: false });
+  stageOverviews.push({
+    stageId,
+    variant: 'traversal',
+    url: traversal.url,
+    canvas: traversal.canvas,
+    path: traversalPath,
+  });
 }
 
 await writeFile(
