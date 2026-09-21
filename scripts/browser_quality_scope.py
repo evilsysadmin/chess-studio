@@ -138,6 +138,7 @@ NETWORK_RACE_PATTERNS = (
 )
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
+    ".github/actions/build-browser-frontend/action.yml",
     ".github/actions/cache-node-modules/action.yml",
 }
 CICD_WORKFLOW = ".github/workflows/cicd.yml"
