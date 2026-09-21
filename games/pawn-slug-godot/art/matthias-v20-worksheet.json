@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "status": "validated-local-candidate",
+  "generation": "strict-v20",
+  "weapon": "pistol",
+  "source": {
+    "path": "games/pawn-slug-godot/art/matthias-v20-pistol-source.png",
+    "sha256": "0f80c7b127b1cd4ea5a5b7bcbfc181dd0bf7a0037bf36288f71cd78aaab75911",
+    "size": [
+      1024,
+      1152
+    ],
+    "grid": [
+      8,
+      9
+    ],
+    "cell": 128,
+    "origin": "reviewed image-generation combat rows"
+  },
+  "baseline": {
+    "generation": "strict-v19",
+    "sha256": "0b8781557495b922368db15b0932c7d15863516f2b86e2ec43adccff725a67f1"
+  },
+  "atlas": {
+    "expected_sha256": "2b12fd13f4f73f742d3a94faf0dd36af4c116a10d59ff5482c19516c47c02d29",
+    "size": [
+      3328,
+      7488
+    ],
+    "grid": [
+      8,
+      18
+    ],
+    "cell": 416,
+    "pivot_x": 200,
+    "foot_y": 382
+  },
+  "rows": {
+    "preserved": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      17
+    ],
+    "replaced": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "actions": [
+      "shoot",
+      "shoot_up",
+      "shoot_down",
+      "shoot_diag_up",
+      "shoot_diag_up_alt",
+      "shoot_diag_down",
+      "shoot_crouch",
+      "reload",
+      "hurt"
+    ]
+  },
+  "validation": {
+    "all_rows_8_distinct": true,
+    "guard_px": 2,
+    "clean_transparent_rgb": true,
+    "generated_rows_footline": 382,
+    "min_connected_component_ratio": 0.987569,
+    "hurt_standing": true,
+    "visual_review": "single readable compact P99; two-hand silhouette; no apparent second weapon; hurt stays upright with closed-eye grimace"
+  }
+}
