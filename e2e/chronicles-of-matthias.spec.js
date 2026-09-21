@@ -61,8 +61,8 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   const mode = page.locator('[data-chronicles="true"]');
   const stage = mode.locator('[data-chronicles-renderer="three"]');
   await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText(/Motor THREE\.JS · FIRST PERSON/)).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText(/motor 3D no ha arrancado/i)).toHaveCount(0);
+  await expect(mode.getByText('CRÓNICA RPG · BOOK I', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
 
   // Use the real keyboard gameplay path for hosted WebGL. Chromium's synthetic
   // pointer action can stall while the software renderer owns the main thread,
