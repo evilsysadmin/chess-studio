@@ -55,6 +55,6 @@ def main():
       for col in range(COLS):
         cell=src.crop((col*CELL,row*CELL,(col+1)*CELL,(row+1)*CELL)); out.alpha_composite(process(cell,row,col),(col*CELL,row*CELL))
     a.output.parent.mkdir(parents=True,exist_ok=True); out.save(a.output,'PNG',compress_level=9)
-    m={'schema':1,'version':VERSION,'weapon':WEAPON,'source_sha256':sha(a.source),'atlas_sha256':sha(a.output),'size':list(SIZE),'cell_size':CELL,'columns':COLS,'rows':ROWS,'processing':'scripted single-SMG silhouette cleanup; body geometry retained'}
+    m={'schema':1,'version':VERSION,'weapon':WEAPON,'source_sha256':sha(a.source),'atlas_sha256':sha(a.output),'atlas':{'filename':a.output.name,'sha256':sha(a.output),'columns':COLS,'rows':ROWS,'cell_size':CELL,'width':SIZE[0],'height':SIZE[1],'pivot_x':200.0,'foot_y':382.0,'frames_per_pose':COLS,'cell_guard_px':2},'processing':'scripted single-SMG silhouette cleanup; body geometry retained'}
     a.manifest.write_text(json.dumps(m,indent=2)+'\n'); print(a.output)
 if __name__=='__main__': main()
