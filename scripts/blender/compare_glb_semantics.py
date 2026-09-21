@@ -139,6 +139,10 @@ def _accessor_payload(
 def semantic_document(document: dict, binary: bytes) -> dict:
     """Return a document with every accessor reference replaced by its data."""
     result = copy.deepcopy(document)
+    # Blender patch releases bump this provenance string even when the exported
+    # scene is semantically identical. Keep the glTF version contract below,
+    # but do not mistake exporter metadata for runtime geometry.
+    result.get("asset", {}).pop("generator", None)
     cache: dict[tuple[int, bool], dict] = {}
 
     def payload(index: int, *, triangles: bool = False) -> dict:
@@ -266,6 +270,16 @@ def self_test() -> None:
     assert_equivalent(
         semantic_document(shared, position),
         semantic_document(duplicated, position + position),
+        FLOAT_TOLERANCE,
+    )
+
+    generator_39 = copy.deepcopy(shared)
+    generator_39["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.39"}
+    generator_40 = copy.deepcopy(shared)
+    generator_40["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.40"}
+    assert_equivalent(
+        semantic_document(generator_39, position),
+        semantic_document(generator_40, position),
         FLOAT_TOLERANCE,
     )
     print("GLB semantic comparator self-test OK")
