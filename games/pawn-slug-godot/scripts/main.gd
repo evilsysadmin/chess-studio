@@ -247,6 +247,14 @@ func _apply_visual_capture_probe() -> void:
     player.velocity = Vector2.ZERO
     player.reset_physics_interpolation()
 
+    var weapon_probe = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeWeapon === 'string' ? window.__pawnSlugVisualProbeWeapon : ''",
+        true,
+    )
+    var weapon_id := String(weapon_probe)
+    if weapon_id in ["machinegun", "shotgun", "panzerfaust"]:
+        player.grant_weapon(weapon_id)
+
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()
 
