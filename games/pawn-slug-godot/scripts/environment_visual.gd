@@ -11,10 +11,12 @@ var _obstacles: Array[Rect2] = []
 var _obstacle_specs: Array[Dictionary] = []
 var _theme := "night_front"
 var _platform_specs: Array[Dictionary] = []
+var _ladder_specs: Array[Dictionary] = []
+var _pit_specs: Array[Dictionary] = []
 var _dressing_specs: Array[Dictionary] = []
 var _story_prop_specs: Array[Dictionary] = []
 
-func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = [], story_prop_specs: Array[Dictionary] = [], obstacle_specs: Array[Dictionary] = []) -> void:
+func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obstacles: Array[Rect2] = [], theme: String = "night_front", platform_specs: Array[Dictionary] = [], dressing_specs: Array[Dictionary] = [], story_prop_specs: Array[Dictionary] = [], obstacle_specs: Array[Dictionary] = [], ladder_specs: Array[Dictionary] = [], pit_specs: Array[Dictionary] = []) -> void:
     _world_size = world_size
     _floor_y = floor_y
     _platforms = platforms.duplicate()
@@ -22,6 +24,8 @@ func configure(world_size: Vector2, floor_y: float, platforms: Array[Rect2], obs
     _obstacle_specs = obstacle_specs.duplicate(true)
     _theme = theme
     _platform_specs = platform_specs.duplicate(true)
+    _ladder_specs = ladder_specs.duplicate(true)
+    _pit_specs = pit_specs.duplicate(true)
     _dressing_specs = dressing_specs.duplicate(true)
     _story_prop_specs = story_prop_specs.duplicate(true)
     queue_redraw()
@@ -37,7 +41,9 @@ func _draw() -> void:
     # Sky, distant skyline and midground now live in real Parallax2D layers.
     # This node owns only world-locked ground/traversal/foreground dressing.
     _draw_ground()
+    _draw_pits()
     _draw_platforms()
+    _draw_ladders()
     _draw_obstacles()
     _draw_map_architecture()
     _draw_platform_authored_dressing()
@@ -215,6 +221,95 @@ func _draw_ground_texture(edge: Color) -> void:
             var width := 74.0 + _detail_noise(index, 6.4) * 70.0
             draw_line(Vector2(x, y), Vector2(x + width, y), Color(0.03, 0.05, 0.06, 0.38), 9.0)
             draw_line(Vector2(x + 9.0, y - 1.0), Vector2(x + width * 0.68, y - 1.0), reflection, 2.0)
+
+func _draw_pits() -> void:
+    for spec in _pit_specs:
+        var x := float(spec.get("x", 0.0))
+        var width := maxf(0.0, float(spec.get("w", 0.0)))
+        if width <= 0.0:
+            continue
+        var depth := maxf(1.0, _world_size.y - _floor_y + 4.0)
+        var pit_rect := Rect2(Vector2(x, _floor_y - 2.0), Vector2(width, depth))
+        var void_color := Color("070b0d")
+        var rim_color := Color("5a4a36")
+        match _theme:
+            "harbor_dusk":
+                void_color = Color("071b24")
+                rim_color = Color("66858e")
+            "alpine_night":
+                void_color = Color("07131a")
+                rim_color = Color("90a5ad")
+            "jungle_storm":
+                void_color = Color("07110c")
+                rim_color = Color("665b39")
+        draw_rect(pit_rect, void_color, true)
+        draw_rect(
+            Rect2(Vector2(x + 5.0, _floor_y + 10.0), Vector2(maxf(0.0, width - 10.0), depth - 10.0)),
+            Color(0.0, 0.0, 0.0, 0.38),
+            true,
+        )
+        draw_line(Vector2(x, _floor_y - 2.0), Vector2(x, _floor_y + 22.0), rim_color, 4.0)
+        draw_line(Vector2(x + width, _floor_y - 2.0), Vector2(x + width, _floor_y + 22.0), rim_color, 4.0)
+        if _theme == "harbor_dusk":
+            for offset in [30.0, 45.0, 61.0]:
+                draw_line(
+                    Vector2(x + 8.0, _floor_y + offset),
+                    Vector2(x + width - 8.0, _floor_y + offset),
+                    Color(0.25, 0.57, 0.66, 0.18),
+                    2.0,
+                )
+        elif _theme == "alpine_night":
+            draw_line(
+                Vector2(x + 10.0, _floor_y + 20.0),
+                Vector2(x + width * 0.58, _world_size.y - 4.0),
+                Color(0.35, 0.56, 0.66, 0.17),
+                3.0,
+            )
+        elif _theme == "jungle_storm":
+            draw_line(
+                Vector2(x + width * 0.30, _floor_y + 6.0),
+                Vector2(x + width * 0.58, _world_size.y - 6.0),
+                Color(0.15, 0.28, 0.14, 0.24),
+                5.0,
+            )
+
+func _draw_ladders() -> void:
+    for spec in _ladder_specs:
+        var x := float(spec.get("x", 0.0))
+        var y := float(spec.get("y", 0.0))
+        var width := maxf(22.0, float(spec.get("w", 42.0)))
+        var height := maxf(40.0, float(spec.get("h", _floor_y - y)))
+        var style := String(spec.get("style", "steel"))
+        var rail := Color("69747a")
+        var rung := Color("a8864e")
+        if style == "rope":
+            rail = Color("6f5735")
+            rung = Color("927044")
+        elif style == "wood":
+            rail = Color("61482f")
+            rung = Color("936b3f")
+        elif _theme == "alpine_night":
+            rail = Color("7d8c91")
+            rung = Color("b2c0c3")
+        elif _theme == "harbor_dusk":
+            rail = Color("54737d")
+            rung = Color("87a1a7")
+        var left := x + 6.0
+        var right := x + width - 6.0
+        var bottom := y + height
+        draw_line(Vector2(left + 3.0, y), Vector2(left + 3.0, bottom), Color(0.0, 0.0, 0.0, 0.34), 6.0)
+        draw_line(Vector2(right + 3.0, y), Vector2(right + 3.0, bottom), Color(0.0, 0.0, 0.0, 0.34), 6.0)
+        draw_line(Vector2(left, y), Vector2(left, bottom), rail, 5.0)
+        draw_line(Vector2(right, y), Vector2(right, bottom), rail, 5.0)
+        for rung_y in range(int(y + 12.0), int(bottom - 4.0), 22):
+            draw_line(Vector2(left, float(rung_y)), Vector2(right, float(rung_y)), rung, 4.0)
+            draw_line(
+                Vector2(left + 2.0, float(rung_y) - 1.0),
+                Vector2(right - 2.0, float(rung_y) - 1.0),
+                Color(rung.r, rung.g, rung.b, 0.24),
+                1.0,
+            )
+        draw_line(Vector2(left - 5.0, y), Vector2(right + 5.0, y), Color(rail.r, rail.g, rail.b, 0.56), 3.0)
 
 func _draw_platforms() -> void:
     for index in range(_platforms.size()):
