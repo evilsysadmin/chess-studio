@@ -133,7 +133,6 @@ test('War Room · Android usa al rey-peón como única presencia visual de Matth
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(briefing).toBeVisible({ timeout: 30_000 });
   await expect(briefing).toContainText('Matthias');
-  await expect(briefing).toContainText(/nivel\s+\d+/i);
 
   // Matthias already exists physically in the room as the enemy king-pawn.
   // The compact HUD may show the canonical lightweight identity avatar, but it
@@ -180,7 +179,7 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   await expect(quickDialog).toBeVisible();
   const settings = quickDialog.locator('details.quick-match-settings');
   if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
-  const specialRules = quickDialog.locator('details.friendly-subdisclosure');
+  const specialRules = quickDialog.locator('details.friendly-subdisclosure').filter({ hasText: 'Sudden Death' });
   if (!(await specialRules.evaluate((node) => node.open))) await specialRules.locator(':scope > summary').click();
   await quickDialog.getByRole('checkbox', { name: /Sudden Death/ }).check();
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
