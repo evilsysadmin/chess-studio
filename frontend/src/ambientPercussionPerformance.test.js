@@ -48,12 +48,12 @@ describe('ambient percussion performance v2', () => {
     expect(spread(hats.map((hit) => hit.tone))).toBeGreaterThan(spread(kicks.map((hit) => hit.tone)));
   });
 
-  it('uses deterministic brush ghosts as texture without duplicating anchors', () => {
+  it('uses deterministic brush-kit ghosts as texture without duplicating anchors', () => {
     const brushes = Array.from({ length: 256 }, (_, index) => (
-      getPercussionHumanizationPreview('lofiRainTape', index + 1, 'B')
+      getPercussionHumanizationPreview('malagaLastTram', index + 1, 'B')
     ));
     const repeated = Array.from({ length: 256 }, (_, index) => (
-      getPercussionHumanizationPreview('lofiRainTape', index + 1, 'B')
+      getPercussionHumanizationPreview('malagaLastTram', index + 1, 'B')
     ));
 
     expect(brushes).toEqual(repeated);
@@ -61,7 +61,7 @@ describe('ambient percussion performance v2', () => {
     expect(brushes.some((hit) => hit.ghost)).toBe(true);
 
     const anchors = Array.from({ length: 64 }, (_, index) => (
-      getPercussionHumanizationPreview('lofiRainTape', index, index % 2 === 0 ? 'K' : 'S')
+      getPercussionHumanizationPreview('malagaLastTram', index, index % 2 === 0 ? 'K' : 'S')
     ));
     expect(anchors.every((hit) => hit.ghost === false && hit.delayMs === 0)).toBe(true);
   });
