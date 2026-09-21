@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
@@ -37,6 +37,7 @@ import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
+import { buildCombatBattleState } from '../combatBattleState.js';
 import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, resolveCombatCpuTurnSuggestion } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
 import { awardCombatCredits, battleCreditReward, buyEquipment, combatCreditSignalForAttempt, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
@@ -190,26 +191,33 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     cpuRetryContextRef.current = null;
   }, [fen, onError]);
 
-  const { saveBattleSnapshot, persistBattleSession, clearBattleSession } = useCombatSessionPersistence({
+  const readBattleState = useCallback((overrides = {}) => {
+    const has = (key) => Object.prototype.hasOwnProperty.call(overrides, key);
+    return buildCombatBattleState({
+      fen: has('fen') ? overrides.fen : fen,
+      registry: has('registry') ? overrides.registry : registry,
+      humanColor: has('humanColor') ? overrides.humanColor : humanColor,
+      combatLog: has('combatLog') ? overrides.combatLog : combatLog,
+      uiLog: has('uiLog') ? overrides.uiLog : uiLogRef.current,
+      autoLevelUpEnabled: has('autoLevelUpEnabled') ? overrides.autoLevelUpEnabled : autoLevelUpEnabled,
+      focus: has('focus') ? overrides.focus : focusRef.current,
+      positionCounts: has('positionCounts') ? overrides.positionCounts : positionCountsRef.current.entries(),
+      bossHp: has('bossHp') ? overrides.bossHp : bossHpRef.current,
+      bossPhase: has('bossPhase') ? overrides.bossPhase : bossPhase,
+      battleStartRoster: has('battleStartRoster') ? overrides.battleStartRoster : battleStartRosterRef.current,
+      battleParticipants: has('battleParticipants') ? overrides.battleParticipants : battleParticipantsRef.current,
+      unitBattleStats: has('unitBattleStats') ? overrides.unitBattleStats : unitBattleStatsRef.current,
+      activityGameId: has('activityGameId') ? overrides.activityGameId : activityGameIdRef.current,
+    });
+  }, [autoLevelUpEnabled, bossPhase, combatLog, fen, humanColor, registry]);
+
+  const { persistBattleSession, clearBattleSession } = useCombatSessionPersistence({
     combatSessionId,
     onPersistenceState,
     restoredSession,
-    activityGameIdRef,
     phase,
-    fen,
-    registry,
-    humanColor,
-    combatLog,
-    uiLogRef,
-    autoLevelUpEnabled,
-    bossPhase,
-    localChess,
-    focusRef,
-    positionCountsRef,
-    bossHpRef,
-    battleStartRosterRef,
-    battleParticipantsRef,
-    unitBattleStatsRef,
+    currentTurn: localChess.turn(),
+    readBattleState,
     setBusy,
     runCpuTurn,
   });
@@ -390,22 +398,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRepetitionDraw(false);
     const activityGameId = `${combatSessionId}:${Date.now()}`;
     activityGameIdRef.current = activityGameId;
-    saveBattleSnapshot({
-      phase: 'battle',
+    persistBattleSession({
       fen: startFen,
       registry: initialRegistry,
       humanColor: resolved,
       combatLog: [],
       uiLog: [],
-      autoLevelUpEnabled,
-      focus: focusRef.current,
-      positionCounts: [...positionCountsRef.current.entries()],
-      bossHp: bossHpRef.current,
       bossPhase: bossConfig ? 1 : null,
-      battleStartRoster: battleStartRosterRef.current,
-      battleParticipants: battleParticipantsRef.current,
-      unitBattleStats: unitBattleStatsRef.current,
-      activityGameId,
     });
     advanceCombatPhase(COMBAT_FLOW_EVENT.START);
     onBattleStart?.({
@@ -662,22 +661,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig);
     setBossPhase(restoredBossPhase);
     pushLog({ text: `${bossConfig?.label || 'El Rey Viejo'} rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad', kind: 'boss' });
-    saveBattleSnapshot({
-      phase: 'battle',
+    persistBattleSession({
       fen: nextFen,
       registry: fresh,
       humanColor: currentHumanColor,
-      combatLog,
-      uiLog: uiLogRef.current,
-      autoLevelUpEnabled,
-      focus: focusRef.current,
-      positionCounts: [...positionCountsRef.current.entries()],
-      bossHp: bossHpRef.current,
       bossPhase: restoredBossPhase,
-      battleStartRoster: battleStartRosterRef.current,
-      battleParticipants: battleParticipantsRef.current,
-      unitBattleStats: unitBattleStatsRef.current,
-      activityGameId: activityGameIdRef.current,
     });
     setBusy(false);
   }
@@ -854,11 +842,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     }
 
     persistBattleSession({
-      nextFen: result.fen,
-      nextRegistry: finalRegistry,
-      nextCombatLog: updatedLog,
-      nextBossHp: bossHpRef.current,
-      nextBossPhase: bossConfig ? bossPhaseForHp(bossHpRef.current, bossConfig) : null,
+      fen: result.fen,
+      registry: finalRegistry,
+      humanColor: currentHumanColor,
+      combatLog: updatedLog,
+      bossHp: bossHpRef.current,
+      bossPhase: bossConfig ? bossPhaseForHp(bossHpRef.current, bossConfig) : null,
     });
 
     if (chessAfter.turn() !== currentHumanColor) {
