@@ -63,8 +63,6 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
-        cache: npm
-        cache-dependency-path: e2e/package-lock.json
 
     - name: Restore exact frontend dependencies
       if: inputs.restore-frontend-deps == 'true'
