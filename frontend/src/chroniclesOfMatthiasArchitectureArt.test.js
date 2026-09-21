@@ -6,6 +6,7 @@ import {
   CHRONICLES_TACTICS_MASONRY_STYLE,
   chroniclesTacticsArchitectureWallCells,
   chroniclesTacticsExposedWallSide,
+  chroniclesTacticsExposedWallSides,
   installChroniclesTacticsArchitectureArt,
 } from './chroniclesOfMatthiasArchitectureArt.js';
 
@@ -54,6 +55,31 @@ describe('Chronicles Tactics architecture depth', () => {
     expect(root.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
     expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
     expect(root.userData.chroniclesArchitectureMasonryProfile).toBe('coursed-block-face-v2');
+  });
+
+  it('decorates every walkable-facing side of a corner wall cell', () => {
+    const scenePlan = {
+      center: { x: 2, y: 2 },
+      wallFaces: [
+        { x: 2, y: 2, side: 'east' },
+        { x: 2, y: 2, side: 'south' },
+      ],
+    };
+    const scene = new THREE.Scene();
+    scene.add(wall('chronicles-iso-wall-2-2', [0, 1.23, 0]));
+
+    expect(chroniclesTacticsExposedWallSides(2, 2, scenePlan).map((side) => side.key)).toEqual([
+      'east',
+      'south',
+    ]);
+    const faces = chroniclesTacticsArchitectureWallCells(scene, scenePlan);
+    expect(faces).toHaveLength(2);
+
+    const root = installChroniclesTacticsArchitectureArt(scene, { scenePlan });
+    expect(root.userData.chroniclesArchitectureWallCount).toBe(2);
+    expect(root.getObjectByName('chronicles-tactics-masonry-instances').count).toBe(
+      2 * CHRONICLES_TACTICS_MASONRY_BLOCKS_PER_WALL + CHRONICLES_TACTICS_ARCHES.length * 2,
+    );
   });
 
   it('replaces monolithic wall faces with batched coursed masonry', () => {
