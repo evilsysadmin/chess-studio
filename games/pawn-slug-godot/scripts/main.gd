@@ -53,9 +53,12 @@ const BOSS_REGULAR_RANGE := 1280.0
 const BOSS_SHELL_RANGE := 1440.0
 const BOSS_SHELL_WINDUP := 0.62
 const ENEMY_FIRE_SCREEN_MARGIN := 84.0
-const MAX_HOSTILE_PROJECTILES := 9
+const MAX_HOSTILE_PROJECTILES := 6
 const MAX_HOSTILE_EXPLOSIVES := 2
-const HOSTILE_FIRE_GAP := 0.055
+const HOSTILE_FIRE_GAP := 0.18
+const ENEMY_INTENTIONAL_MISS_CHANCE := 0.30
+const ENEMY_MISS_ANGLE_MIN := 0.085
+const ENEMY_MISS_ANGLE_MAX := 0.14
 const GRENADE_START_SPEED := Vector2(540.0, -600.0)
 const GRENADE_GRAVITY := 1116.0
 const GRENADE_FUSE := 1.35
@@ -96,10 +99,10 @@ const ENEMY_TYPES := {
     "shield": {"hp": 168, "speed": 32.0, "width": 72.0, "height": 94.0, "standoff": 255.0},
 }
 const ENEMY_FIRE_PROFILES := {
-    "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.05, "cooldown_max": 1.55, "speed": 540.0, "pellets": 1, "spread": 0.0, "explosive": false},
-    "machinegun": {"range": 840.0, "min_range": 0.0, "cooldown_min": 0.62, "cooldown_max": 0.95, "speed": 630.0, "pellets": 1, "spread": 0.035, "explosive": false},
-    "shotgun": {"range": 545.0, "min_range": 0.0, "cooldown_min": 1.25, "cooldown_max": 1.70, "speed": 510.0, "pellets": 5, "spread": 0.16, "explosive": false},
-    "panzerfaust": {"range": 1200.0, "min_range": 290.0, "cooldown_min": 1.80, "cooldown_max": 2.45, "speed": 420.0, "pellets": 1, "spread": 0.0, "explosive": true},
+    "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.55, "cooldown_max": 2.25, "speed": 500.0, "pellets": 1, "spread": 0.085, "explosive": false},
+    "machinegun": {"range": 840.0, "min_range": 0.0, "cooldown_min": 1.35, "cooldown_max": 1.95, "speed": 560.0, "pellets": 1, "spread": 0.105, "explosive": false},
+    "shotgun": {"range": 545.0, "min_range": 0.0, "cooldown_min": 1.85, "cooldown_max": 2.50, "speed": 470.0, "pellets": 5, "spread": 0.20, "explosive": false},
+    "panzerfaust": {"range": 1200.0, "min_range": 290.0, "cooldown_min": 2.50, "cooldown_max": 3.35, "speed": 390.0, "pellets": 1, "spread": 0.035, "explosive": true},
 }
 
 var _stage_id := DEFAULT_STAGE_ID
@@ -2043,8 +2046,12 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
         return
     var base_direction: Vector2 = target_delta.normalized()
     var spread := float(profile["spread"])
+    var miss_bias := 0.0
+    if not bool(profile["explosive"]) and randf() < ENEMY_INTENTIONAL_MISS_CHANCE:
+        var miss_sign := -1.0 if randf() < 0.5 else 1.0
+        miss_bias = miss_sign * randf_range(ENEMY_MISS_ANGLE_MIN, ENEMY_MISS_ANGLE_MAX)
     for _pellet in range(pellets):
-        var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
+        var angle := miss_bias + (randf_range(-spread, spread) if spread > 0.0 else 0.0)
         enemy_projectiles.append({
             "position": origin,
             "velocity": base_direction.rotated(angle) * float(profile["speed"]),
@@ -2110,10 +2117,8 @@ func _can_spawn_hostile_shot(origin: Vector2, weapon: String, projectile_count: 
 
 func _enemy_fire_cooldown(weapon: String) -> float:
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
-    if weapon == "machinegun":
-        if randf() < 0.60:
-            return 0.11
-        return randf_range(1.50, 2.10)
+    # Enemy weapons intentionally fire as discrete arcade beats. Even gunners
+    # pause between shots instead of chaining sub-0.2s bursts.
     return randf_range(float(profile["cooldown_min"]), float(profile["cooldown_max"]))
 
 func _update_enemy_projectiles(delta: float) -> void:
