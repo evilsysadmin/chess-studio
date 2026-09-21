@@ -1071,29 +1071,31 @@ def add_gothic_canon_v2(static, mats):
                       (0.14, 0.026, 0.055), mats["brass"], static, bevel=0.04)
         muzzle.rotation_euler.y = -0.16
 
-    # Deep bookcase to the left of the central desk. It deliberately overlaps the
-    # old rear joinery: the canon needs a real dark mass and visible book depth.
-    bx, by = -2.62, 6.16
-    cube("WR_CANON_bookshelf_back", (bx, 6.63, 2.52), (1.18, 0.12, 1.95),
+    # Narrow archive tower between the ceremonial hearth and the command desk.
+    # Earlier passes used a full-width bookcase here, which physically intersected
+    # the fireplace surround and visually crushed the desk. Keep real book depth,
+    # but make the furniture fit the available bay instead of relying on overlap.
+    bx, by = -2.32, 6.16
+    cube("WR_CANON_bookshelf_back", (bx, 6.63, 2.52), (0.34, 0.12, 1.95),
          mats["walnut_dark"], static, bevel=0.035)
     for side in (-1, 1):
-        cube(f"WR_CANON_bookshelf_post_{side}", (bx + side * 1.18, by, 2.52),
-             (0.11, 0.48, 2.10), mats["frame_wood"], static, bevel=0.045)
+        cube(f"WR_CANON_bookshelf_post_{side}", (bx + side * 0.39, by, 2.52),
+             (0.07, 0.48, 2.10), mats["frame_wood"], static, bevel=0.038)
     for level, z in enumerate((0.62, 1.30, 1.98, 2.66, 3.34, 4.02)):
-        cube(f"WR_CANON_bookshelf_shelf_{level}", (bx, by, z), (1.17, 0.50, 0.065),
-             mats["frame_wood"], static, bevel=0.028)
+        cube(f"WR_CANON_bookshelf_shelf_{level}", (bx, by, z), (0.38, 0.50, 0.060),
+             mats["frame_wood"], static, bevel=0.024)
         if level < 5:
-            for book in range(7):
-                px = bx - 0.92 + book * 0.30
-                height = 0.38 + (book % 3) * 0.065
+            for book in range(2):
+                px = bx - 0.18 + book * 0.36
+                height = 0.40 + ((book + level) % 3) * 0.055
                 depth_offset = (0.0, -0.025, 0.015, 0.0, -0.018)[(book + level) % 5]
-                lean = (0.0, -0.085, 0.0, 0.070, 0.0)[(book + level * 2) % 5]
+                lean = (0.0, -0.075, 0.055, 0.0, -0.045)[(book + level * 2) % 5]
                 book_obj = cube(
                     f"WR_CANON_book_{level}_{book}",
                     (px, 5.72 + depth_offset, z + 0.10 + height / 2),
-                    (0.105, 0.19, height / 2),
+                    (0.080, 0.19, height / 2),
                     mats["book_a"] if (book + level) % 2 else mats["book_b"],
-                    static, bevel=0.018,
+                    static, bevel=0.016,
                 )
                 book_obj.rotation_euler.y = lean
 
@@ -1154,37 +1156,37 @@ def add_gothic_canon_v2(static, mats):
     # Lived-in dispatch station between the central desk and the secondary
     # hearth. This is intentionally low and asymmetric: it adds the layered,
     # inhabited depth of the classic room without stealing focus from the board.
-    dx, dy = 2.95, 5.78
-    cube("WR_CANON_dispatch_body", (dx, dy, 1.02), (0.70, 0.38, 0.70),
-         mats["walnut_dark"], static, bevel=0.055)
-    cube("WR_CANON_dispatch_top", (dx, dy - 0.02, 1.76), (0.78, 0.43, 0.085),
-         mats["frame_wood"], static, bevel=0.045)
+    dx, dy = 2.53, 5.78
+    cube("WR_CANON_dispatch_body", (dx, dy, 1.02), (0.47, 0.38, 0.70),
+         mats["walnut_dark"], static, bevel=0.050)
+    cube("WR_CANON_dispatch_top", (dx, dy - 0.02, 1.76), (0.52, 0.43, 0.085),
+         mats["frame_wood"], static, bevel=0.042)
     for row, z in enumerate((0.72, 1.08, 1.44)):
-        cube(f"WR_CANON_dispatch_drawer_{row}", (dx, dy - 0.405, z), (0.58, 0.035, 0.135),
-             mats["table_wood"], static, bevel=0.025)
-        sphere(f"WR_CANON_dispatch_pull_{row}", (dx, dy - 0.455, z), 0.045,
-               mats["brass"], static, scale=(1.35, 0.55, 0.72))
+        cube(f"WR_CANON_dispatch_drawer_{row}", (dx, dy - 0.405, z), (0.39, 0.035, 0.135),
+             mats["table_wood"], static, bevel=0.023)
+        sphere(f"WR_CANON_dispatch_pull_{row}", (dx, dy - 0.455, z), 0.041,
+               mats["brass"], static, scale=(1.25, 0.55, 0.72))
 
     # A couple of folios and rolled campaign maps keep the station functional
-    # rather than decorative. Broad silhouettes survive the gameplay camera.
-    cube("WR_CANON_dispatch_folio_0", (dx - 0.25, dy - 0.08, 1.88), (0.28, 0.23, 0.035),
+    # rather than decorative, but stay inside the narrower cabinet footprint.
+    cube("WR_CANON_dispatch_folio_0", (dx - 0.14, dy - 0.08, 1.88), (0.20, 0.22, 0.035),
          mats["book_a"], static, bevel=0.018)
-    folio = cube("WR_CANON_dispatch_folio_1", (dx - 0.18, dy - 0.10, 1.94), (0.25, 0.20, 0.028),
+    folio = cube("WR_CANON_dispatch_folio_1", (dx - 0.08, dy - 0.10, 1.94), (0.18, 0.19, 0.028),
                  mats["book_b"], static, bevel=0.016)
     folio.rotation_euler.z = -0.10
-    for index, (x, z, angle) in enumerate(((dx + 0.22, 1.90, math.pi / 2), (dx + 0.39, 1.86, math.pi / 2))):
-        roll = cylinder(f"WR_CANON_dispatch_map_{index}", (x, dy - 0.10, z), 0.055, 0.46,
+    for index, (x, z, angle) in enumerate(((dx + 0.14, 1.90, math.pi / 2), (dx + 0.28, 1.86, math.pi / 2))):
+        roll = cylinder(f"WR_CANON_dispatch_map_{index}", (x, dy - 0.10, z), 0.048, 0.34,
                         mats["ivory"], static, vertices=18)
         roll.rotation_euler.y = angle
 
-    cylinder("WR_CANON_dispatch_candle_base", (dx + 0.58, dy - 0.10, 1.90), 0.10, 0.055,
+    cylinder("WR_CANON_dispatch_candle_base", (dx + 0.36, dy - 0.10, 1.90), 0.085, 0.050,
              mats["brass_dark"], static, vertices=18)
-    cylinder("WR_CANON_dispatch_candle", (dx + 0.58, dy - 0.10, 2.08), 0.045, 0.30,
+    cylinder("WR_CANON_dispatch_candle", (dx + 0.36, dy - 0.10, 2.08), 0.040, 0.30,
              mats["ivory"], static, vertices=16)
-    sphere("WR_CANON_dispatch_flame", (dx + 0.58, dy - 0.10, 2.27), 0.060,
+    sphere("WR_CANON_dispatch_flame", (dx + 0.36, dy - 0.10, 2.27), 0.056,
            mats["fire_core"], static, scale=(0.50, 0.50, 1.12))
-    light("WR_CANON_dispatch_light", "POINT", (dx + 0.58, dy - 0.18, 2.30), 42.0,
-          (1.0, 0.39, 0.12), static, radius=0.75)
+    light("WR_CANON_dispatch_light", "POINT", (dx + 0.36, dy - 0.18, 2.30), 38.0,
+          (1.0, 0.39, 0.12), static, radius=0.72)
 
 
 
@@ -1262,8 +1264,11 @@ def add_gothic_canon_v2(static, mats):
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
     cz = 6.28
-    chandelier_x = 1.90
-    chandelier_y = 3.38
+    # Pull the chandelier out of the heraldic crest's screen-space silhouette.
+    # It still hangs over the room, but now occupies the quiet bay between crest
+    # and campaign display instead of tangling with the central emblem.
+    chandelier_x = 2.70
+    chandelier_y = 2.85
     torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.86, 0.044, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
     # Three slim suspension stays make the fixture feel physically hung rather
