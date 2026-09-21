@@ -3,6 +3,10 @@ name: Pawn Slug · Godot strict Matthias v17
 on:
   pull_request:
     paths:
+      - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
+      - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
+      - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
+      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -30,6 +34,10 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
+      - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
+      - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
+      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -76,6 +84,7 @@ env:
   MACHINEGUN_V17_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v17/machinegun/v17-63e2021dd301fa44.png'
   SHOTGUN_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png'
   PANZERFAUST_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png'
+  MACHINEGUN_V22_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png'
 
 jobs:
   build-strict-v17-machinegun:
@@ -711,5 +720,114 @@ jobs:
             /tmp/pawn-slug-godot-strict-v22/run12/
             /tmp/pawn-slug-godot-strict-v22/review.png
           if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+
+  build-strict-v23-smg:
+    name: Build + gate strict-v23 · dedicated SMG bank
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned 2D sprite toolchain
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: \
+            'Pillow==12.3.0' 'numpy==2.3.5' 'opencv-python-headless==4.13.0.92'
+
+      - name: Tool sanity
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            scripts/art/pack_pawn_slug_machinegun_v23.py \
+            scripts/art/validate_pawn_slug_machinegun_v23.py
+
+      - name: Download strict-v22 SMG baseline
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v23'
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$MACHINEGUN_V22_URL" --output "$ROOT/baseline-v22.png"
+
+      - name: Build dedicated SMG v23 + run13
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v23'
+          python3 scripts/art/pack_pawn_slug_machinegun_v23.py \
+            --source games/pawn-slug-godot/art/matthias-v23-machinegun-source.png \
+            --baseline "$ROOT/baseline-v22.png" \
+            --output "$ROOT/machinegun-v23.png" \
+            --run-output "$ROOT/machinegun-run13-v23.png" \
+            --manifest "$ROOT/manifest.json" \
+            --review-dir "$ROOT/review"
+          python3 scripts/art/validate_pawn_slug_machinegun_v23.py \
+            --atlas "$ROOT/machinegun-v23.png" \
+            --run13 "$ROOT/machinegun-run13-v23.png" \
+            --baseline "$ROOT/baseline-v22.png" \
+            --report "$ROOT/health.json"
+          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "501eff7c729e79fcf0c45f284f4b4515e811a7c99d699aa80db1e4a52d20aeb7"
+          test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" = "5d173e717875da0c646a02f717e7e1964ec0dec137cb2cec1c0a44506caab05b"
+
+      - name: Restore pinned Godot editor
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+
+      - name: Consume v23 contract in real Godot SpriteFrames
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v23'
+          .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_machinegun_v23_smoke.gd -- \
+            "$ROOT/machinegun-v23.png" "$ROOT/machinegun-run13-v23.png" "$ROOT/manifest.json"
+
+      - name: Publish immutable strict-v23 SMG assets to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v23'
+          python3 -S scripts/r2_asset_publish.py publish "$ROOT/machinegun-v23.png" \
+            --logical-id 'pawnSlug.godot.matthias.machinegun.strictV23' \
+            --prefix 'pawn-slug-godot/matthias/strict-v23/machinegun' | tee "$ROOT/publish-atlas.txt"
+          python3 -S scripts/r2_asset_publish.py publish "$ROOT/machinegun-run13-v23.png" \
+            --logical-id 'pawnSlug.godot.matthias.machinegun.run13V23' \
+            --prefix 'pawn-slug-godot/matthias/run13-v23/machinegun' | tee "$ROOT/publish-run13.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v23-smg-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict-v23/machinegun-v23.png
+            /tmp/pawn-slug-godot-strict-v23/machinegun-run13-v23.png
+            /tmp/pawn-slug-godot-strict-v23/manifest.json
+            /tmp/pawn-slug-godot-strict-v23/health.json
+            /tmp/pawn-slug-godot-strict-v23/review/
+            /tmp/pawn-slug-godot-strict-v23/publish-atlas.txt
+            /tmp/pawn-slug-godot-strict-v23/publish-run13.txt
+          if-no-files-found: warn
           retention-days: 14
           compression-level: 0
