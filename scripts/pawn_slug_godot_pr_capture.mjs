@@ -27,6 +27,13 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
+  const params = new URLSearchParams(window.location.search);
+  const stage = params.get('stage') || '';
+  const traversalProbes = {
+    industrial_front_v1: 1900,
+  };
+  window.__pawnSlugVisualProbeX =
+    params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
   window.addEventListener('message', (event) => {
     const data = event.data;
     if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
@@ -35,14 +42,16 @@ await page.addInitScript(() => {
   });
 });
 
-function urlForStage(stageId) {
+function urlForStage(stageId, { visualProbe = false } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
+  if (visualProbe) url.searchParams.set('visualProbe', '1');
+  else url.searchParams.delete('visualProbe');
   return url.toString();
 }
 
-async function loadStage(stageId) {
-  const url = urlForStage(stageId);
+async function loadStage(stageId, options = {}) {
+  const url = urlForStage(stageId, options);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
   await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
   await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
@@ -126,6 +135,20 @@ for (let frame = 0; frame < 4; frame += 1) {
   await page.waitForTimeout(90);
 }
 await page.keyboard.up('ArrowDown');
+
+// Capture one representative traversal sector where the new industrial
+// ladder, pit mouth and stepping-route platforms share the same viewport.
+// This is a real Godot runtime frame; the probe only chooses the starting X.
+const traversalProbe = await loadStage(detailedStage, { visualProbe: true });
+const traversalProbePath = `${outputDir}/stage-${detailedStage}-traversal.png`;
+await page.screenshot({ path: traversalProbePath, fullPage: false });
+stageOverviews.push({
+  stageId: detailedStage,
+  variant: 'traversal',
+  url: traversalProbe.url,
+  canvas: traversalProbe.canvas,
+  path: traversalProbePath,
+});
 
 // Every shipped stage gets a first-screen visual proof. This keeps scenery,
 // parallax and map-authored props reviewable without multiplying the expensive
