@@ -25,6 +25,7 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: all
+          restore-frontend-deps: 'true'
           build-frontend: 'true'
 
       - name: Run full Playwright suite
