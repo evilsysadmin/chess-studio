@@ -63,8 +63,9 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
-        cache: npm
-        cache-dependency-path: e2e/package-lock.json
+      # e2e/node_modules is restored exactly below. Restoring setup-node's npm
+      # tarball cache as well adds another cache download to every browser lane
+      # while helping only on the rare exact node_modules cache miss.
 
     - name: Restore exact frontend dependencies
       if: inputs.restore-frontend-deps == 'true'
