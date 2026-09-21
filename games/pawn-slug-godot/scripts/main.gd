@@ -234,21 +234,32 @@ func _selected_stage_id() -> String:
     return DEFAULT_STAGE_ID
 
 func _apply_visual_capture_probe() -> void:
-    # CI's Playwright harness injects this JS-only global before Godot boots.
-    # Normal production pages never define it, so this cannot become a URL
-    # teleport or alter regular gameplay.
+    # CI's Playwright harness injects JS-only globals before Godot boots.
+    # Normal production pages never define them, so this cannot alter regular
+    # gameplay or expose a URL-driven weapon/teleport shortcut.
     if not OS.has_feature("web"):
         return
-    var probe = JavaScriptBridge.eval(
+    var position_probe = JavaScriptBridge.eval(
         "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
         true,
     )
-    if typeof(probe) not in [TYPE_INT, TYPE_FLOAT]:
-        return
-    var target_x := clampf(float(probe), _stage_start_x, _world_size.x - 96.0)
-    player.global_position.x = target_x
-    player.velocity = Vector2.ZERO
-    player.reset_physics_interpolation()
+    if typeof(position_probe) in [TYPE_INT, TYPE_FLOAT]:
+        var target_x := clampf(float(position_probe), _stage_start_x, _world_size.x - 96.0)
+        player.global_position.x = target_x
+        player.velocity = Vector2.ZERO
+        player.reset_physics_interpolation()
+
+    var weapon_probe = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeWeapon === 'string' ? window.__pawnSlugVisualProbeWeapon : ''",
+        true,
+    )
+    var probe_weapon := String(weapon_probe)
+    if probe_weapon in ["machinegun", "shotgun", "panzerfaust"]:
+        # Unlock through the real player API, then return to pistol. The browser
+        # capture will switch with the real hotkey after ready and verify that
+        # the rendered bank changes immediately instead of showing stale pistol.
+        if player.grant_weapon(probe_weapon):
+            player.select_weapon("pistol")
 
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()
