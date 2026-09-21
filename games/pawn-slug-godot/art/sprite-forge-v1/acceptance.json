@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "generation": "v1",
+  "banks": {
+    "matthias-pistol-v1": {
+      "status": "authoring"
+    },
+    "matthias-machinegun-v1": {
+      "status": "authoring"
+    },
+    "matthias-shotgun-v1": {
+      "status": "authoring"
+    },
+    "matthias-panzerfaust-v1": {
+      "status": "authoring"
+    },
+    "enemy-pawn-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-knight-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-rook-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-queen-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-grenadier-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-scout-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-commando-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-shield-body-v1": {
+      "status": "authoring"
+    },
+    "enemy-weapons-v1": {
+      "status": "authoring"
+    },
+    "boss-panzer-rook-v1": {
+      "status": "authoring"
+    }
+  }
+}

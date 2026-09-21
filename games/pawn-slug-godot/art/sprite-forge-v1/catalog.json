@@ -1,7 +1,6 @@
 {
   "schema": 1,
   "generation": "v1",
-  "status": "authoring",
   "policy": {
     "legacy": "reference-and-rollback-only",
     "promotion": "fail-closed-after-sprite-forge-and-runtime-review",
@@ -13,7 +12,6 @@
       "actor": "matthias",
       "weapon": "pistol",
       "strategy": "integrated",
-      "status": "authoring",
       "notes": "Body, hands and weapon authored together."
     },
     {
@@ -21,7 +19,6 @@
       "actor": "matthias",
       "weapon": "machinegun",
       "strategy": "integrated",
-      "status": "authoring",
       "notes": "Body, hands and weapon authored together."
     },
     {
@@ -29,7 +26,6 @@
       "actor": "matthias",
       "weapon": "shotgun",
       "strategy": "integrated",
-      "status": "authoring",
       "notes": "Body, hands and weapon authored together."
     },
     {
@@ -37,7 +33,6 @@
       "actor": "matthias",
       "weapon": "panzerfaust",
       "strategy": "integrated",
-      "status": "authoring",
       "notes": "Body, hands and weapon authored together."
     },
     {
@@ -45,7 +40,6 @@
       "actor": "enemy-pawn",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -53,7 +47,6 @@
       "actor": "enemy-knight",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -61,7 +54,6 @@
       "actor": "enemy-rook",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -69,7 +61,6 @@
       "actor": "enemy-queen",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -77,7 +68,6 @@
       "actor": "enemy-grenadier",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -85,7 +75,6 @@
       "actor": "enemy-scout",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -93,7 +82,6 @@
       "actor": "enemy-commando",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -101,7 +89,6 @@
       "actor": "enemy-shield",
       "weapon": "none",
       "strategy": "socketed-body",
-      "status": "authoring",
       "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
     },
     {
@@ -109,7 +96,6 @@
       "actor": "enemy-weapons",
       "weapon": "shared",
       "strategy": "weapon-layer",
-      "status": "authoring",
       "weapons": [
         "pistol",
         "machinegun",
@@ -123,7 +109,6 @@
       "actor": "boss-panzer-rook",
       "weapon": "panzerfaust",
       "strategy": "integrated",
-      "status": "authoring",
       "notes": "Boss silhouette is authored as one integrated bank."
     }
   ]
