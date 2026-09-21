@@ -8,6 +8,7 @@ import {
 } from '../chronicles/chroniclesGameBootstrap.js';
 import {
   ensureChroniclesTacticsRun,
+  finishChroniclesTacticsRun,
   loadChroniclesProgression,
   renewChroniclesTacticsRun,
   saveChroniclesProgression,
@@ -65,7 +66,17 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
   const staleRunRecoveryAttemptedRef = useRef(false);
-  useEscapeToClose(onExit, { disabled: ready });
+  const activeRunIdRef = useRef(null);
+
+  const exitChronicles = useCallback(() => {
+    if (activeRunIdRef.current) {
+      finishChroniclesTacticsRun(activeRunIdRef.current);
+      activeRunIdRef.current = null;
+    }
+    onExit?.();
+  }, [onExit]);
+
+  useEscapeToClose(exitChronicles, { disabled: ready });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
@@ -96,6 +107,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
 
     setBootstrapError(null);
     const operationId = ensureChroniclesTacticsRun();
+    activeRunIdRef.current = operationId;
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
       .then(() => {
         if (!active) return;
@@ -107,7 +119,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
         if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
-          renewChroniclesTacticsRun(operationId);
+          const replacementRunId = renewChroniclesTacticsRun(operationId);
+          activeRunIdRef.current = replacementRunId;
           setReady(false);
           setBootstrapError(null);
           setBootstrapRevision((revision) => revision + 1);
@@ -130,13 +143,13 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         currentBuild={progression.characterBuild}
         recoveryLabMode="chronicles-tactics"
         onConfirm={confirmCharacterBuild}
-        onExit={onExit}
+        onExit={exitChronicles}
       />
     );
   }
 
   if (bootstrapError) {
-    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={onExit} />;
+    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={exitChronicles} />;
   }
   if (!ready) return <BootstrapStatus />;
 
@@ -144,7 +157,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     <Suspense fallback={<BootstrapStatus />}>
       <ChroniclesOfMatthiasTacticsRuntime
         key={bootstrapRevision}
-        onExit={onExit}
+        onExit={exitChronicles}
         onRestartRun={restartExpedition}
       />
     </Suspense>
