@@ -8,7 +8,12 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from sprite_forge import TemporalContract, build_bank, validate_sequence
+from sprite_forge import (
+    TemporalContract,
+    build_bank,
+    geometry_metrics,
+    validate_sequence,
+)
 
 CELL = 416
 PART = "core"
@@ -41,21 +46,32 @@ def _validate_temporal(root: Path) -> dict[str, dict]:
     results: dict[str, dict] = {}
     for action, count, _fps, loop in ACTIONS:
         frames = _load_frames(root, action, count)
-        result = validate_sequence(
-            frames,
-            TemporalContract(
-                expected_frames=count,
-                max_foot_delta_px=3.0,
-                max_centroid_delta_px=18.0,
-                max_height_delta_px=4.0,
-                # Canonical v1 run seam measures 35 px between the two extreme\n                # stride silhouettes. Keep one pixel of deterministic headroom;\n                # larger width jumps remain a hard failure.\n                max_width_delta_px=36.0,
-                max_area_ratio_delta=0.24,
-                loop=loop,
-            ),
+        temporal_contract = TemporalContract(
+            expected_frames=count,
+            max_foot_delta_px=3.0,
+            max_centroid_delta_px=18.0,
+            max_height_delta_px=4.0,
+            # Canonical v1 run seam measures 35 px between the two extreme
+            # stride silhouettes. Keep one pixel of deterministic headroom;
+            # larger width jumps remain a hard failure.
+            max_width_delta_px=36.0,
+            max_area_ratio_delta=0.24,
+            loop=loop,
         )
+        result = validate_sequence(frames, temporal_contract)
         if not result.ok:
+            widths = []
+            for frame in frames:
+                metrics = geometry_metrics(frame)
+                widths.append(
+                    None
+                    if metrics is None
+                    else metrics.body_bbox[2] - metrics.body_bbox[0]
+                )
             raise SystemExit(
-                f"{action} temporal QA failed: {','.join(result.errors)}"
+                f"{action} temporal QA failed: {','.join(result.errors)}; "
+                f"max_width_delta_px={temporal_contract.max_width_delta_px}; "
+                f"widths={widths}"
             )
         results[action] = {
             "frame_count": result.frame_count,
