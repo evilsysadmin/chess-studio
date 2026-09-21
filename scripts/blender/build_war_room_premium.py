@@ -1178,23 +1178,27 @@ def add_gothic_canon_v2(static, mats):
 
 
     # High-back command chair: keep the upholstery as a dark inset inside a
-    # clearly visible wooden frame. The previous bright, nearly frame-filling
-    # rectangle read like wall art in the gameplay camera rather than furniture.
-    # A lower rail just above the desk line completes the chair silhouette.
+    # clearly visible wooden frame. Runtime review still read the previous
+    # near-square back as a framed wall plaque, so make the silhouette distinctly
+    # chair-like: taller, narrower, with long posts and a small central crown.
     chair_x = 0.18
-    cube("WR_CANON_command_chair_back", (chair_x, 6.44, 2.90), (0.36, 0.12, 0.44),
+    cube("WR_CANON_command_chair_back", (chair_x, 6.44, 3.02), (0.31, 0.12, 0.56),
          burgundy_dark, static, bevel=0.12)
     for side in (-1, 1):
-        side_x = chair_x + side * 0.50
+        side_x = chair_x + side * 0.44
         cube(f"WR_CANON_command_chair_side_{side}",
-             (side_x, 6.30, 2.90), (0.060, 0.11, 0.56),
+             (side_x, 6.30, 3.02), (0.060, 0.11, 0.68),
              mats["trim_wood"], static, bevel=0.032)
         sphere(f"WR_CANON_command_chair_finial_{side}",
-               (side_x, 6.30, 3.48), 0.066,
+               (side_x, 6.30, 3.74), 0.066,
                mats["brass_dark"], static, scale=(0.80, 0.62, 1.0))
-    cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.43), (0.54, 0.11, 0.060),
+    cube("WR_CANON_command_chair_top", (chair_x, 6.30, 3.67), (0.48, 0.11, 0.060),
          mats["trim_wood"], static, bevel=0.038)
-    cube("WR_CANON_command_chair_lower_rail", (chair_x, 6.30, 2.39), (0.51, 0.10, 0.050),
+    cube("WR_CANON_command_chair_crown", (chair_x, 6.29, 3.80), (0.20, 0.10, 0.050),
+         mats["trim_wood"], static, bevel=0.040)
+    sphere("WR_CANON_command_chair_crown_finial", (chair_x, 6.28, 3.89), 0.055,
+           mats["brass_dark"], static, scale=(0.90, 0.65, 1.10))
+    cube("WR_CANON_command_chair_lower_rail", (chair_x, 6.30, 2.37), (0.45, 0.10, 0.050),
          mats["trim_wood"], static, bevel=0.028)
 
 
