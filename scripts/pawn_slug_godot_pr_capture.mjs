@@ -61,7 +61,19 @@ const captures = [];
 async function capture(label) {
   const path = `${outputDir}/${label}.png`;
   await page.screenshot({ path, fullPage: false });
-  captures.push({ label, path });
+  captures.push({ label, path, kind: 'overview' });
+}
+
+async function captureDetailedCloseup(label, canvas) {
+  const path = `${outputDir}/${label}-closeup.png`;
+  const clip = {
+    x: Math.max(0, canvas.x),
+    y: Math.max(0, canvas.y + canvas.height * 0.38),
+    width: Math.min(canvas.width * 0.52, 560),
+    height: Math.min(canvas.height * 0.58, 420),
+  };
+  await page.screenshot({ path, clip });
+  captures.push({ label: `${label}-closeup`, path, kind: 'player-closeup' });
 }
 
 const detailedStage = stageIds[0];
@@ -74,6 +86,7 @@ stageOverviews.push({ stageId: detailedStage, url: detailed.url, canvas: detaile
 const legacyOutputPath = `${outputDir}/pawn-slug-industrial-runtime.png`;
 await page.screenshot({ path: legacyOutputPath, fullPage: false });
 await capture('00-idle');
+await captureDetailedCloseup('00-idle', detailed.canvas);
 
 // Exercise the actual Godot runtime, not only the packed sheet. The short burst
 // samples almost every 16 fps run frame and makes blank/sunk/jumping frames or
@@ -82,7 +95,9 @@ await detailed.canvasLocator.click({ position: { x: detailed.canvas.width / 2, y
 await page.keyboard.down('ArrowRight');
 await page.waitForTimeout(320);
 for (let frame = 0; frame < 10; frame += 1) {
-  await capture(`10-run-${String(frame).padStart(2, '0')}`);
+  const label = `10-run-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 3, 7].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
   await page.waitForTimeout(70);
 }
 
@@ -90,7 +105,9 @@ for (let frame = 0; frame < 10; frame += 1) {
 // alignment, or one-shot animation pops are visible frame-by-frame.
 await page.keyboard.down('z');
 for (let frame = 0; frame < 8; frame += 1) {
-  await capture(`20-run-fire-${String(frame).padStart(2, '0')}`);
+  const label = `20-run-fire-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 3, 7].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
   await page.waitForTimeout(80);
 }
 await page.keyboard.up('z');
@@ -103,7 +120,9 @@ await capture('30-idle-after-run-fire');
 await page.keyboard.down('ArrowDown');
 await page.waitForTimeout(160);
 for (let frame = 0; frame < 4; frame += 1) {
-  await capture(`40-crouch-${String(frame).padStart(2, '0')}`);
+  const label = `40-crouch-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 2, 3].includes(frame)) await captureDetailedCloseup(label, detailed.canvas);
   await page.waitForTimeout(90);
 }
 await page.keyboard.up('ArrowDown');
@@ -121,7 +140,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 3,
+    schema: 4,
     detailedStage,
     stageOverviews,
     captures,
