@@ -2,6 +2,7 @@ extends SceneTree
 
 const PlayerProbe := preload("res://tests/player_probe.gd")
 const MainRuntime := preload("res://scripts/main.gd")
+const TraversalManager := preload("res://scripts/traversal_manager.gd")
 const EPSILON := 0.01
 
 var _failures: Array[String] = []
@@ -203,10 +204,59 @@ func _run() -> void:
     geometry_probe._map_geometry_root = null
     geometry_probe.free()
 
+    # Traversal authoring probe: ladders expose only a tight climb zone and
+    # authored pits physically split the canonical floor into safe segments.
+    var traversal_host := Node2D.new()
+    traversal_host.name = "TraversalHost"
+    world.add_child(traversal_host)
+    var traversal_geometry := Node2D.new()
+    traversal_geometry.name = "StageGeometry"
+    traversal_host.add_child(traversal_geometry)
+    _static_rect(
+        traversal_geometry,
+        "Floor",
+        Vector2(400.0, 220.0),
+        Vector2(800.0, 40.0),
+    )
+    var traversal = TraversalManager.new()
+    traversal_host.add_child(traversal)
+    traversal.configure_stage({
+        "theme": "night_front",
+        "world": {"width": 800.0, "height": 240.0, "floor_y": 200.0},
+        "ladders": [
+            {"x": 300.0, "top_y": 80.0, "bottom_y": 200.0, "w": 30.0, "exit_dir": 1.0},
+        ],
+        "pits": [
+            {"x": 420.0, "w": 120.0, "kind": "test_pit"},
+        ],
+    })
+    var ladder_hit := traversal.ladder_for_player(Vector2(305.0, 130.0))
+    _expect(not ladder_hit.is_empty(), "ladder zone reconoce a Matthias dentro del ancho y recorrido")
+    _expect(
+        traversal.ladder_for_player(Vector2(360.0, 130.0)).is_empty(),
+        "ladder zone no captura movimiento lateral lejos de la escalera",
+    )
+    _expect(traversal.pit_below_x(470.0), "pit contract identifica suelo ausente dentro del hueco")
+    _expect(not traversal.pit_below_x(390.0), "pit contract conserva suelo fuera del hueco")
+    traversal._rebuild_floor_with_pits()
+    _expect(
+        traversal_geometry.get_node_or_null("Floor") == null,
+        "pit rebuild retira la losa continua legacy",
+    )
+    var left_floor := traversal_geometry.get_node_or_null("FloorSegment_00") as StaticBody2D
+    var right_floor := traversal_geometry.get_node_or_null("FloorSegment_01") as StaticBody2D
+    _expect(left_floor != null and right_floor != null, "pit rebuild crea suelo a ambos lados del hueco")
+    if left_floor != null and right_floor != null:
+        var left_shape := left_floor.get_node("CollisionShape2D") as CollisionShape2D
+        var right_shape := right_floor.get_node("CollisionShape2D") as CollisionShape2D
+        _expect(absf(left_shape.shape.size.x - 420.0) <= EPSILON, "segmento izquierdo termina al borde del pozo")
+        _expect(absf(right_shape.shape.size.x - 260.0) <= EPSILON, "segmento derecho empieza tras el pozo")
+    traversal_host.queue_free()
+
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + ladders + pits + safe respawn")
         quit(0)
         return
     print("FAILED Pawn Slug Godot runtime mechanics smoke · %d fallo(s)" % _failures.size())

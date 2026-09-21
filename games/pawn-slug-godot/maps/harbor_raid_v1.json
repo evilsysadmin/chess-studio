@@ -1,6 +1,6 @@
 {
   "id": "harbor_raid_v1",
-  "version": 1,
+  "version": 2,
   "theme": "harbor_dusk",
   "world": {
     "width": 5600,
@@ -312,6 +312,26 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 2045,
+      "y": 392,
+      "w": 122,
+      "h": 20,
+      "kind": "mooring_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "water_bypass"
+    },
+    {
+      "x": 2188,
+      "y": 334,
+      "w": 112,
+      "h": 20,
+      "kind": "crane_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "water_bypass"
     }
   ],
   "obstacles": [
@@ -877,5 +897,35 @@
       "y": 607
     }
   ],
-  "visual_revision": 2
+  "visual_revision": 4,
+  "ladders": [
+    {
+      "x": 2842,
+      "top_y": 280,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "crane_ladder"
+    },
+    {
+      "x": 4042,
+      "top_y": 318,
+      "bottom_y": 404,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "dock_ladder"
+    }
+  ],
+  "pits": [
+    {
+      "x": 1940,
+      "w": 230,
+      "kind": "water_gap"
+    },
+    {
+      "x": 3970,
+      "w": 260,
+      "kind": "harbor_gap"
+    }
+  ]
 }

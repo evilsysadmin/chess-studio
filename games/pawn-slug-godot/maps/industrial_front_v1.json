@@ -1,6 +1,6 @@
 {
   "id": "industrial_front_v1",
-  "version": 1,
+  "version": 2,
   "theme": "night_front",
   "world": {
     "width": 5200,
@@ -300,6 +300,26 @@
         "rail": true,
         "lamp": true
       }
+    },
+    {
+      "x": 2180,
+      "y": 392,
+      "w": 118,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
+      "x": 2318,
+      "y": 338,
+      "w": 112,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "pit_bypass"
     }
   ],
   "obstacles": [
@@ -691,7 +711,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 5,
   "dressing": [
     {
       "kind": "crate",
@@ -873,6 +893,36 @@
       "y": 608,
       "count": 18,
       "spacing": 83
+    }
+  ],
+  "ladders": [
+    {
+      "x": 1822,
+      "top_y": 280,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "service_ladder"
+    },
+    {
+      "x": 3032,
+      "top_y": 390,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "access_ladder"
+    }
+  ],
+  "pits": [
+    {
+      "x": 2100,
+      "w": 210,
+      "kind": "shell_crater"
+    },
+    {
+      "x": 3790,
+      "w": 190,
+      "kind": "bombed_trench"
     }
   ]
 }

@@ -1,0 +1,270 @@
+extends Node2D
+
+# Data-driven traversal layer for Pawn Slug stages.
+# The canonical stage manifest owns ladders and floor gaps; this node turns
+# those authored specs into runtime collision plus lightweight 2D dressing.
+
+const PLAYER_HALF_HEIGHT := 42.0
+const LADDER_ENTRY_X_PAD := 18.0
+const LADDER_ENTRY_Y_PAD := 18.0
+
+var _ladders: Array[Dictionary] = []
+var _pits: Array[Dictionary] = []
+var _floor_y := 610.0
+var _world_size := Vector2(1280.0, 720.0)
+var _theme := "night_front"
+var _configured := false
+
+func _ready() -> void:
+    # Child _ready runs before the stage's _ready. Keep a one-shot deferred
+    # fallback for scene reuse, but never spin forever when embedded in tests.
+    call_deferred("_install_stage")
+
+func configure_stage(manifest: Dictionary) -> void:
+    if manifest.is_empty():
+        return
+    var world: Dictionary = manifest.get("world", {})
+    _floor_y = float(world.get("floor_y", 610.0))
+    _world_size = Vector2(
+        float(world.get("width", 1280.0)),
+        float(world.get("height", 720.0))
+    )
+    _theme = String(manifest.get("theme", "night_front"))
+    _ladders = _validated_ladders(manifest.get("ladders", []))
+    _pits = _validated_pits(manifest.get("pits", []))
+    _configured = true
+    _rebuild_floor_with_pits()
+    queue_redraw()
+
+func _install_stage() -> void:
+    if _configured:
+        return
+    var stage = get_parent()
+    if stage == null:
+        return
+    var manifest_variant = stage.get("_stage_manifest")
+    if typeof(manifest_variant) != TYPE_DICTIONARY:
+        return
+    configure_stage(Dictionary(manifest_variant))
+
+func _validated_ladders(raw: Array) -> Array[Dictionary]:
+    var result: Array[Dictionary] = []
+    for entry in raw:
+        if typeof(entry) != TYPE_DICTIONARY:
+            continue
+        var spec := Dictionary(entry).duplicate(true)
+        var x := float(spec.get("x", -1.0))
+        var top_y := float(spec.get("top_y", -1.0))
+        var bottom_y := float(spec.get("bottom_y", _floor_y))
+        var width := float(spec.get("w", 28.0))
+        if x < 0.0 or width <= 8.0 or top_y < 0.0 or bottom_y <= top_y:
+            continue
+        spec["x"] = x
+        spec["top_y"] = top_y
+        spec["bottom_y"] = bottom_y
+        spec["w"] = width
+        spec["exit_dir"] = signf(float(spec.get("exit_dir", 1.0)))
+        result.append(spec)
+    return result
+
+func _validated_pits(raw: Array) -> Array[Dictionary]:
+    var result: Array[Dictionary] = []
+    for entry in raw:
+        if typeof(entry) != TYPE_DICTIONARY:
+            continue
+        var spec := Dictionary(entry).duplicate(true)
+        var x := float(spec.get("x", -1.0))
+        var width := float(spec.get("w", 0.0))
+        if x < 0.0 or width < 48.0:
+            continue
+        spec["x"] = clampf(x, 0.0, _world_size.x)
+        spec["w"] = minf(width, _world_size.x - float(spec["x"]))
+        if float(spec["w"]) >= 48.0:
+            result.append(spec)
+    result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return float(a["x"]) < float(b["x"])
+    )
+    return result
+
+func _rebuild_floor_with_pits() -> void:
+    var stage = get_parent()
+    if stage == null:
+        return
+    var geometry = stage.get_node_or_null("StageGeometry")
+    if geometry == null:
+        call_deferred("_install_stage")
+        return
+    var old_floor = geometry.get_node_or_null("Floor")
+    if old_floor != null:
+        geometry.remove_child(old_floor)
+        old_floor.queue_free()
+    for child in geometry.get_children():
+        if String(child.name).begins_with("FloorSegment_"):
+            geometry.remove_child(child)
+            child.queue_free()
+
+    var cursor := 0.0
+    var segment_index := 0
+    for pit in _pits:
+        var pit_x := float(pit["x"])
+        var pit_end := pit_x + float(pit["w"])
+        if pit_x > cursor:
+            _add_floor_segment(geometry, cursor, pit_x - cursor, segment_index)
+            segment_index += 1
+        cursor = maxf(cursor, pit_end)
+    if cursor < _world_size.x:
+        _add_floor_segment(geometry, cursor, _world_size.x - cursor, segment_index)
+
+func _add_floor_segment(geometry: Node, x: float, width: float, index: int) -> void:
+    if width <= 1.0:
+        return
+    var body := StaticBody2D.new()
+    body.name = "FloorSegment_%02d" % index
+    body.position = Vector2(x + width * 0.5, _floor_y + maxf(1.0, (_world_size.y - _floor_y) * 0.5))
+    var collision := CollisionShape2D.new()
+    collision.name = "CollisionShape2D"
+    var shape := RectangleShape2D.new()
+    shape.size = Vector2(width, maxf(1.0, _world_size.y - _floor_y))
+    collision.shape = shape
+    body.add_child(collision)
+    geometry.add_child(body)
+
+func ladder_for_player(position: Vector2) -> Dictionary:
+    for ladder in _ladders:
+        var half_w := float(ladder["w"]) * 0.5 + LADDER_ENTRY_X_PAD
+        if absf(position.x - float(ladder["x"])) > half_w:
+            continue
+        var top_center := float(ladder["top_y"]) - PLAYER_HALF_HEIGHT
+        var bottom_center := float(ladder["bottom_y"]) - PLAYER_HALF_HEIGHT
+        if position.y < top_center - LADDER_ENTRY_Y_PAD or position.y > bottom_center + LADDER_ENTRY_Y_PAD:
+            continue
+        return ladder.duplicate(true)
+    return {}
+
+func pit_below_x(x: float) -> bool:
+    for pit in _pits:
+        if x >= float(pit["x"]) and x <= float(pit["x"]) + float(pit["w"]):
+            return true
+    return false
+
+func _draw() -> void:
+    _draw_pits()
+    _draw_ladders()
+
+func _draw_pits() -> void:
+    for pit in _pits:
+        var x := float(pit["x"])
+        var width := float(pit["w"])
+        var void_color := Color(0.025, 0.03, 0.032, 0.98)
+        var rim_color := Color(0.50, 0.37, 0.20, 0.94)
+        var accent_color := Color(0.92, 0.62, 0.22, 0.72)
+        if _theme == "harbor_dusk":
+            void_color = Color(0.018, 0.085, 0.11, 0.97)
+            rim_color = Color(0.38, 0.68, 0.72, 0.92)
+            accent_color = Color(0.68, 0.90, 0.92, 0.72)
+        elif _theme == "alpine_night":
+            void_color = Color(0.025, 0.045, 0.062, 0.99)
+            rim_color = Color(0.70, 0.80, 0.82, 0.92)
+            accent_color = Color(0.88, 0.95, 0.96, 0.76)
+        elif _theme == "jungle_storm":
+            void_color = Color(0.024, 0.060, 0.035, 0.99)
+            rim_color = Color(0.45, 0.54, 0.25, 0.94)
+            accent_color = Color(0.68, 0.72, 0.34, 0.68)
+
+        # Collision stays rectangular for predictable arcade movement, while the
+        # mouth is deliberately irregular so the hazard reads as authored
+        # terrain rather than a black rectangle cut out of the floor.
+        var rim_points := PackedVector2Array()
+        var rim_notches: Array[float] = [-3.0, 4.0, 0.0, 6.0, -1.0]
+        var teeth: int = maxi(4, int(round(width / 30.0)))
+        for point_index in range(teeth + 1):
+            var phase: float = float(point_index) / float(teeth)
+            var notch: float = rim_notches[point_index % rim_notches.size()]
+            rim_points.append(Vector2(x + width * phase, _floor_y + notch))
+
+        var mouth := PackedVector2Array()
+        for rim_point in rim_points:
+            mouth.append(rim_point)
+        mouth.append(Vector2(x + width + 4.0, _world_size.y + 4.0))
+        mouth.append(Vector2(x - 4.0, _world_size.y + 4.0))
+        draw_colored_polygon(mouth, void_color)
+        draw_polyline(rim_points, rim_color, 4.0, true)
+        draw_line(Vector2(x - 2.0, _floor_y + 5.0), Vector2(x - 2.0, _world_size.y), Color(rim_color.r, rim_color.g, rim_color.b, 0.42), 3.0)
+        draw_line(Vector2(x + width + 2.0, _floor_y + 5.0), Vector2(x + width + 2.0, _world_size.y), Color(rim_color.r, rim_color.g, rim_color.b, 0.42), 3.0)
+
+        if _theme == "harbor_dusk":
+            # Water glints make the gap immediately legible as a dock hazard.
+            for wave_index in range(3):
+                var wave_y: float = _floor_y + 22.0 + float(wave_index) * 19.0
+                var inset: float = 10.0 + float(wave_index % 2) * 9.0
+                draw_line(
+                    Vector2(x + inset, wave_y),
+                    Vector2(x + width - inset - 6.0, wave_y + 2.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.34 - float(wave_index) * 0.07),
+                    2.0,
+                )
+        elif _theme == "alpine_night":
+            # Ice/rock facets sell a crevasse without changing its hit geometry.
+            for shard_index in range(4):
+                var shard_x: float = x + 12.0 + float(shard_index) * maxf(24.0, (width - 24.0) / 4.0)
+                var shard_dx: float = -10.0 if shard_index % 2 == 0 else 8.0
+                draw_line(
+                    Vector2(shard_x, _floor_y + 5.0),
+                    Vector2(shard_x + shard_dx, _floor_y + 42.0 + float(shard_index % 3) * 8.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.36),
+                    2.0,
+                )
+        elif _theme == "jungle_storm":
+            # Hanging roots and faint mist distinguish the ravine from flat void.
+            for root_index in range(4):
+                var root_x: float = x + 10.0 + float(root_index) * maxf(22.0, (width - 20.0) / 4.0)
+                var root_len: float = 24.0 + float((root_index * 13) % 26)
+                var root_dx: float = -5.0 if root_index % 2 == 0 else 5.0
+                draw_line(
+                    Vector2(root_x, _floor_y + 2.0),
+                    Vector2(root_x + root_dx, _floor_y + root_len),
+                    Color(rim_color.r, rim_color.g, rim_color.b, 0.46),
+                    2.0,
+                )
+            draw_line(
+                Vector2(x + 14.0, _floor_y + 54.0),
+                Vector2(x + width - 16.0, _floor_y + 50.0),
+                Color(0.62, 0.72, 0.56, 0.12),
+                5.0,
+            )
+        else:
+            # Industrial shell craters/trenches get broken hazard-metal cues.
+            for marker_index in range(0, maxi(1, int(width / 42.0))):
+                var marker_x: float = x + 10.0 + float(marker_index) * 42.0
+                draw_line(
+                    Vector2(marker_x, _floor_y + 1.0),
+                    Vector2(minf(marker_x + 20.0, x + width - 5.0), _floor_y + 7.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.50),
+                    3.0,
+                )
+
+func _draw_ladders() -> void:
+    for ladder in _ladders:
+        var x := float(ladder["x"])
+        var top_y := float(ladder["top_y"])
+        var bottom_y := float(ladder["bottom_y"])
+        var width := float(ladder["w"])
+        var left := x - width * 0.5
+        var right := x + width * 0.5
+        var rail := Color(0.50, 0.45, 0.31, 0.96)
+        var rung := Color(0.72, 0.62, 0.39, 0.92)
+        if _theme == "harbor_dusk":
+            rail = Color(0.36, 0.55, 0.59, 0.96)
+            rung = Color(0.55, 0.72, 0.74, 0.92)
+        elif _theme == "alpine_night":
+            rail = Color(0.58, 0.63, 0.64, 0.96)
+            rung = Color(0.76, 0.80, 0.81, 0.92)
+        elif _theme == "jungle_storm":
+            rail = Color(0.38, 0.34, 0.21, 0.98)
+            rung = Color(0.62, 0.52, 0.28, 0.94)
+        draw_line(Vector2(left, top_y - 12.0), Vector2(left, bottom_y), rail, 5.0)
+        draw_line(Vector2(right, top_y - 12.0), Vector2(right, bottom_y), rail, 5.0)
+        var rung_y := top_y + 8.0
+        while rung_y < bottom_y - 8.0:
+            draw_line(Vector2(left + 2.0, rung_y), Vector2(right - 2.0, rung_y), rung, 3.0)
+            rung_y += 24.0

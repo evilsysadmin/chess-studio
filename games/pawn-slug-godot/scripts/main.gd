@@ -171,8 +171,12 @@ func _ready() -> void:
     if not _load_stage_manifest(selected_stage):
         push_error("Pawn Slug stage manifest failed; using minimal safe fallback")
     _build_stage_geometry()
+    var traversal_manager = get_node_or_null("TraversalManager")
+    if traversal_manager != null and traversal_manager.has_method("configure_stage"):
+        traversal_manager.configure_stage(_stage_manifest)
     if player.has_method("configure_stage"):
         player.configure_stage(_stage_start_x, _checkpoints)
+    _apply_visual_capture_probe()
     if camera != null:
         camera.limit_right = int(_world_size.x)
         camera.limit_bottom = int(_world_size.y)
@@ -209,6 +213,23 @@ func _selected_stage_id() -> String:
         if candidate in STAGE_CATALOG:
             return candidate
     return DEFAULT_STAGE_ID
+
+func _apply_visual_capture_probe() -> void:
+    # CI's Playwright harness injects this JS-only global before Godot boots.
+    # Normal production pages never define it, so this cannot become a URL
+    # teleport or alter regular gameplay.
+    if not OS.has_feature("web"):
+        return
+    var probe = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
+        true,
+    )
+    if typeof(probe) not in [TYPE_INT, TYPE_FLOAT]:
+        return
+    var target_x := clampf(float(probe), _stage_start_x, _world_size.x - 96.0)
+    player.global_position.x = target_x
+    player.velocity = Vector2.ZERO
+    player.reset_physics_interpolation()
 
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()

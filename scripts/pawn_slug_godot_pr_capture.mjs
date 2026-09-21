@@ -27,6 +27,16 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
+  const params = new URLSearchParams(window.location.search);
+  const stage = params.get('stage') || '';
+  const traversalProbes = {
+    industrial_front_v1: 1900,
+    harbor_raid_v1: 3860,
+    alpine_fortress_v1: 4200,
+    jungle_relay_v1: 3820,
+  };
+  window.__pawnSlugVisualProbeX =
+    params.get('visualProbe') === '1' ? traversalProbes[stage] ?? null : null;
   window.addEventListener('message', (event) => {
     const data = event.data;
     if (data?.source === 'pawn-slug-godot' && data?.type === 'ready') {
@@ -35,14 +45,16 @@ await page.addInitScript(() => {
   });
 });
 
-function urlForStage(stageId) {
+function urlForStage(stageId, { visualProbe = false } = {}) {
   const url = new URL(indexUrl);
   url.searchParams.set('stage', stageId);
+  if (visualProbe) url.searchParams.set('visualProbe', '1');
+  else url.searchParams.delete('visualProbe');
   return url.toString();
 }
 
-async function loadStage(stageId) {
-  const url = urlForStage(stageId);
+async function loadStage(stageId, options = {}) {
+  const url = urlForStage(stageId, options);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
   await page.waitForSelector('canvas', { state: 'visible', timeout: 45_000 });
   await page.waitForFunction(() => window.__pawnSlugCaptureReady === true, null, { timeout: 45_000 });
@@ -127,6 +139,20 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
+// Capture one representative traversal sector where the new industrial
+// ladder, pit mouth and stepping-route platforms share the same viewport.
+// This is a real Godot runtime frame; the probe only chooses the starting X.
+const traversalProbe = await loadStage(detailedStage, { visualProbe: true });
+const traversalProbePath = `${outputDir}/stage-${detailedStage}-traversal.png`;
+await page.screenshot({ path: traversalProbePath, fullPage: false });
+stageOverviews.push({
+  stageId: detailedStage,
+  variant: 'traversal',
+  url: traversalProbe.url,
+  canvas: traversalProbe.canvas,
+  path: traversalProbePath,
+});
+
 // Every shipped stage gets a first-screen visual proof. This keeps scenery,
 // parallax and map-authored props reviewable without multiplying the expensive
 // movement-frame sequence four times.
@@ -134,7 +160,18 @@ for (const stageId of stageIds.slice(1)) {
   const stage = await loadStage(stageId);
   const path = `${outputDir}/stage-${stageId}.png`;
   await page.screenshot({ path, fullPage: false });
-  stageOverviews.push({ stageId, url: stage.url, canvas: stage.canvas, path });
+  stageOverviews.push({ stageId, variant: 'overview', url: stage.url, canvas: stage.canvas, path });
+
+  const traversal = await loadStage(stageId, { visualProbe: true });
+  const traversalPath = `${outputDir}/stage-${stageId}-traversal.png`;
+  await page.screenshot({ path: traversalPath, fullPage: false });
+  stageOverviews.push({
+    stageId,
+    variant: 'traversal',
+    url: traversal.url,
+    canvas: traversal.canvas,
+    path: traversalPath,
+  });
 }
 
 await writeFile(
