@@ -40,6 +40,18 @@ const SOLDIER_ADVANCE_MULTIPLIER := 1.30
 const SOLDIER_CREEP_MULTIPLIER := 0.62
 const SOLDIER_BACKPEDAL_MULTIPLIER := 0.76
 const SOLDIER_ROAM_LIMIT := 540.0
+const ENEMY_TRAVERSAL_GRAVITY := 1180.0
+const ENEMY_TRAVERSAL_JUMP_SPEED := 500.0
+const ENEMY_TRAVERSAL_PIT_JUMP_SPEED := 610.0
+const ENEMY_TRAVERSAL_LOOKAHEAD := 74.0
+const ENEMY_TRAVERSAL_MAX_CLIMB_HEIGHT := 118.0
+const ENEMY_TRAVERSAL_LADDER_THRESHOLD := 64.0
+const ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE := 520.0
+const ENEMY_TRAVERSAL_LADDER_SNAP_X := 11.0
+const ENEMY_TRAVERSAL_LADDER_SPEED := 155.0
+const ENEMY_TRAVERSAL_LADDER_EXIT_NUDGE := 20.0
+const ENEMY_TRAVERSAL_TERRAIN_AIR_SPEED_SCALE := 1.65
+const ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE := 5.0
 const KNIGHT_SPRINT_MULTIPLIER := 1.45
 const KNIGHT_GRAVITY := 880.0
 const KNIGHT_LEAP_SPEED := 300.0
@@ -647,6 +659,10 @@ func _enemy_from_spawn(spawn: Dictionary, variant: int, id_prefix: String) -> Di
         "y": spawn_y,
         "vy": 0.0,
         "on_ground": true,
+        "traversal_mode": "ground",
+        "traversal_ladder": {},
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
         "hp": int(stats["hp"]),
         "max_hp": int(stats["hp"]),
         "weapon": weapon,
@@ -1751,46 +1767,89 @@ func _update_enemies(delta: float) -> void:
             var speed := float(stats["speed"])
             var standoff := _enemy_weapon_standoff(enemy, stats)
             if type == "knight":
-                var move_direction := 1.0 if distance_x > 0.0 else -1.0
-                var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
-                if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
-                    knight_speed_scale = KNIGHT_SPRINT_MULTIPLIER
-                elif abs_distance > standoff:
-                    knight_speed_scale = 1.0
-                var knight_speed := speed * knight_speed_scale
-                var previous_x := float(enemy["x"])
-                enemy["x"] = clampf(
-                    previous_x + move_direction * knight_speed * delta,
-                    maxf(0.0, float(enemy["spawn_x"]) - 360.0),
-                    minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
-                )
-                if not is_equal_approx(previous_x, float(enemy["x"])):
-                    movement_speed_scale = knight_speed_scale
-                if (
-                    float(enemy["leap_cooldown"]) <= 0.0
-                    and abs_distance < KNIGHT_LEAP_RANGE
-                    and bool(enemy["on_ground"])
-                ):
-                    enemy["vy"] = -KNIGHT_LEAP_SPEED
-                    enemy["on_ground"] = false
-                    enemy["leap_cooldown"] = randf_range(KNIGHT_LEAP_COOLDOWN_MIN, KNIGHT_LEAP_COOLDOWN_MAX)
+                var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta)
+                if ladder_scale >= 0.0:
+                    movement_speed_scale = ladder_scale
+                else:
+                    var move_direction := 1.0 if distance_x > 0.0 else -1.0
+                    var knight_speed_scale := KNIGHT_NEAR_SPEED_SCALE
+                    if abs_distance > standoff + SOLDIER_SPRINT_MARGIN:
+                        knight_speed_scale = KNIGHT_SPRINT_MULTIPLIER
+                    elif abs_distance > standoff:
+                        knight_speed_scale = 1.0
+                    if not bool(enemy.get("on_ground", true)):
+                        move_direction = float(enemy.get("air_direction", move_direction))
+                        knight_speed_scale = maxf(
+                            knight_speed_scale,
+                            float(enemy.get("air_speed_scale", 1.0)),
+                        )
+                    elif _enemy_try_auto_jump(enemy, move_direction):
+                        knight_speed_scale = maxf(
+                            knight_speed_scale,
+                            float(enemy.get("air_speed_scale", 1.0)),
+                        )
+                    var knight_speed := speed * knight_speed_scale
+                    var previous_x := float(enemy["x"])
+                    enemy["x"] = clampf(
+                        previous_x + move_direction * knight_speed * delta,
+                        maxf(0.0, float(enemy["spawn_x"]) - 360.0),
+                        minf(_world_size.x, float(enemy["spawn_x"]) + 360.0),
+                    )
+                    if not is_equal_approx(previous_x, float(enemy["x"])):
+                        movement_speed_scale = knight_speed_scale
+                    if (
+                        float(enemy["leap_cooldown"]) <= 0.0
+                        and abs_distance < KNIGHT_LEAP_RANGE
+                        and bool(enemy["on_ground"])
+                        and String(enemy.get("traversal_mode", "ground")) == "ground"
+                    ):
+                        _begin_enemy_jump(
+                            enemy,
+                            move_direction,
+                            KNIGHT_LEAP_SPEED,
+                            maxf(1.15, knight_speed_scale),
+                        )
+                        enemy["leap_cooldown"] = randf_range(
+                            KNIGHT_LEAP_COOLDOWN_MIN,
+                            KNIGHT_LEAP_COOLDOWN_MAX,
+                        )
             elif speed > 0.0:
-                movement_speed_scale = _update_soldier_movement(enemy, stats, standoff, distance_x, abs_distance, delta)
+                movement_speed_scale = _update_soldier_movement(
+                    enemy,
+                    stats,
+                    standoff,
+                    distance_x,
+                    abs_distance,
+                    delta,
+                )
 
-        if type == "knight":
-            _update_knight_vertical(enemy, delta)
+        if _enemy_is_traversal_mobile(type):
+            _update_enemy_vertical(enemy, delta)
 
         _sync_enemy_visual(enemy, movement_speed_scale)
         enemy["cooldown"] = maxf(0.0, float(enemy["cooldown"]) - delta)
-        if can_act and float(enemy["cooldown"]) <= 0.0:
+        if (
+            can_act
+            and float(enemy["cooldown"]) <= 0.0
+            and String(enemy.get("traversal_mode", "ground")) != "ladder"
+        ):
             _try_enemy_fire(enemy)
             enemy["cooldown"] = _enemy_fire_cooldown(String(enemy["weapon"]))
         enemies[index] = enemy
+
+func _enemy_is_traversal_mobile(type: String) -> bool:
+    if type in ["rook", "bishop"]:
+        return false
+    return float(ENEMY_TYPES.get(type, {}).get("speed", 0.0)) > 0.0
 
 func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: float, distance_x: float, abs_distance: float, delta: float) -> float:
     var speed := float(stats["speed"])
     if speed <= 0.0:
         return 0.0
+
+    var ladder_scale := _update_enemy_ladder_movement(enemy, stats, delta)
+    if ladder_scale >= 0.0:
+        return ladder_scale
 
     var toward_player := 1.0 if distance_x > 0.0 else -1.0
     var move_direction := 0.0
@@ -1812,6 +1871,12 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         # Too close: create firing room while keeping the visual facing Matthias.
         move_direction = -toward_player
         speed_scale = SOLDIER_BACKPEDAL_MULTIPLIER
+    elif absf(_player_foot_y() - float(enemy.get("y", _floor_y))) > ENEMY_TRAVERSAL_LADDER_THRESHOLD:
+        # Vertical separation must not freeze a soldier directly below/above
+        # Matthias. Keep searching laterally for a route instead of becoming a
+        # firing-range tancredo.
+        move_direction = toward_player
+        speed_scale = SOLDIER_CREEP_MULTIPLIER
     else:
         return 0.0
 
@@ -1821,6 +1886,12 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         and is_equal_approx(move_direction, toward_player)
     ):
         speed_scale *= SUPPRESSION_ASSAULT_SPEED_MULTIPLIER
+
+    if not bool(enemy.get("on_ground", true)):
+        move_direction = float(enemy.get("air_direction", move_direction))
+        speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
+    elif _enemy_try_auto_jump(enemy, move_direction):
+        speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
 
     var previous_x := float(enemy["x"])
     enemy["x"] = clampf(
@@ -1832,56 +1903,311 @@ func _update_soldier_movement(enemy: Dictionary, stats: Dictionary, standoff: fl
         return 0.0
     return speed_scale
 
+func _player_foot_y() -> float:
+    return float(player.global_position.y) + PLAYER_STANDING_HEIGHT * 0.5
 
-func _update_knight_vertical(enemy: Dictionary, delta: float) -> void:
+func _update_enemy_ladder_movement(enemy: Dictionary, stats: Dictionary, delta: float) -> float:
+    if String(enemy.get("traversal_mode", "ground")) == "ladder":
+        return _climb_enemy_ladder(enemy, delta)
+
+    if not bool(enemy.get("on_ground", true)):
+        return -1.0
+
+    var ladder := _enemy_route_ladder_toward(enemy, _player_foot_y())
+    if ladder.is_empty():
+        return -1.0
+
+    var ladder_x := float(ladder["x"])
+    var dx := ladder_x - float(enemy["x"])
+    if absf(dx) <= ENEMY_TRAVERSAL_LADDER_SNAP_X:
+        enemy["x"] = ladder_x
+        enemy["traversal_mode"] = "ladder"
+        enemy["traversal_ladder"] = ladder.duplicate(true)
+        enemy["vy"] = 0.0
+        enemy["on_ground"] = false
+        return 1.0
+
+    var direction := signf(dx)
+    var speed_scale := 1.10
+    if _enemy_try_auto_jump(enemy, direction):
+        speed_scale = maxf(speed_scale, float(enemy.get("air_speed_scale", 1.0)))
+    var speed := float(stats["speed"]) * speed_scale
+    var roam := SOLDIER_ROAM_LIMIT + 120.0
+    enemy["x"] = clampf(
+        float(enemy["x"]) + direction * speed * delta,
+        maxf(0.0, float(enemy["spawn_x"]) - roam),
+        minf(_world_size.x, float(enemy["spawn_x"]) + roam),
+    )
+    return speed_scale
+
+func _enemy_route_ladder_toward(enemy: Dictionary, target_foot_y: float) -> Dictionary:
+    var current_y := float(enemy.get("y", _floor_y))
+    var current_x := float(enemy.get("x", 0.0))
+    var going_up := target_foot_y < current_y - ENEMY_TRAVERSAL_LADDER_THRESHOLD
+    var going_down := target_foot_y > current_y + ENEMY_TRAVERSAL_LADDER_THRESHOLD
+    if not going_up and not going_down:
+        return {}
+
+    var best: Dictionary = {}
+    var best_score := INF
+    var raw_ladders = _stage_manifest.get("ladders", [])
+    if typeof(raw_ladders) != TYPE_ARRAY:
+        return {}
+
+    for raw in raw_ladders:
+        if typeof(raw) != TYPE_DICTIONARY:
+            continue
+        var ladder := Dictionary(raw)
+        var ladder_x := float(ladder.get("x", -1.0))
+        var top_y := float(ladder.get("top_y", -1.0))
+        var bottom_y := float(ladder.get("bottom_y", -1.0))
+        if ladder_x < 0.0 or top_y < 0.0 or bottom_y <= top_y:
+            continue
+        var x_distance := absf(ladder_x - current_x)
+        if x_distance > ENEMY_TRAVERSAL_LADDER_APPROACH_RANGE:
+            continue
+
+        var target_y := top_y if going_up else bottom_y
+        if going_up:
+            if absf(current_y - bottom_y) > 46.0:
+                continue
+            if top_y >= current_y - ENEMY_TRAVERSAL_LADDER_THRESHOLD:
+                continue
+        else:
+            if absf(current_y - top_y) > 46.0:
+                continue
+            if bottom_y <= current_y + ENEMY_TRAVERSAL_LADDER_THRESHOLD:
+                continue
+
+        var score := x_distance + absf(target_y - target_foot_y) * 0.35
+        if score >= best_score:
+            continue
+        best_score = score
+        best = ladder.duplicate(true)
+        best["_target_y"] = target_y
+        best["_ascending"] = going_up
+    return best
+
+func _climb_enemy_ladder(enemy: Dictionary, delta: float) -> float:
+    var ladder_variant = enemy.get("traversal_ladder", {})
+    if typeof(ladder_variant) != TYPE_DICTIONARY:
+        enemy["traversal_mode"] = "ground"
+        enemy["on_ground"] = true
+        return 0.0
+    var ladder := Dictionary(ladder_variant)
+    if ladder.is_empty():
+        enemy["traversal_mode"] = "ground"
+        enemy["on_ground"] = true
+        return 0.0
+
+    var ladder_x := float(ladder.get("x", float(enemy["x"])))
+    var target_y := float(ladder.get("_target_y", float(enemy.get("y", _floor_y))))
+    enemy["x"] = move_toward(float(enemy["x"]), ladder_x, ENEMY_TRAVERSAL_LADDER_SPEED * delta)
+    enemy["y"] = move_toward(
+        float(enemy.get("y", _floor_y)),
+        target_y,
+        ENEMY_TRAVERSAL_LADDER_SPEED * delta,
+    )
+    enemy["vy"] = 0.0
+    enemy["on_ground"] = false
+
+    if absf(float(enemy["y"]) - target_y) > 1.0:
+        return 1.0
+
+    enemy["y"] = target_y
+    enemy["vy"] = 0.0
+    enemy["on_ground"] = true
+    enemy["traversal_mode"] = "ground"
+    enemy["air_speed_scale"] = 1.0
+    enemy["air_direction"] = 0.0
+    if bool(ladder.get("_ascending", false)):
+        enemy["x"] = clampf(
+            ladder_x + signf(float(ladder.get("exit_dir", 1.0))) * ENEMY_TRAVERSAL_LADDER_EXIT_NUDGE,
+            0.0,
+            _world_size.x,
+        )
+    enemy["traversal_ladder"] = {}
+    return 1.0
+
+func _enemy_try_auto_jump(enemy: Dictionary, direction: float) -> bool:
+    if is_zero_approx(direction):
+        return false
+    if not bool(enemy.get("on_ground", true)):
+        return false
+    if String(enemy.get("traversal_mode", "ground")) == "ladder":
+        return false
+
+    if not _enemy_pit_ahead(enemy, direction).is_empty():
+        _begin_enemy_jump(
+            enemy,
+            direction,
+            ENEMY_TRAVERSAL_PIT_JUMP_SPEED,
+            ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE,
+        )
+        return true
+
+    if not _enemy_jump_blocker_ahead(enemy, direction).is_empty():
+        _begin_enemy_jump(
+            enemy,
+            direction,
+            ENEMY_TRAVERSAL_JUMP_SPEED,
+            ENEMY_TRAVERSAL_TERRAIN_AIR_SPEED_SCALE,
+        )
+        return true
+    return false
+
+func _begin_enemy_jump(enemy: Dictionary, direction: float, jump_speed: float, air_speed_scale: float) -> void:
+    enemy["vy"] = -absf(jump_speed)
+    enemy["on_ground"] = false
+    enemy["traversal_mode"] = "jump"
+    enemy["air_direction"] = signf(direction)
+    enemy["air_speed_scale"] = maxf(1.0, air_speed_scale)
+
+func _enemy_jump_blocker_ahead(enemy: Dictionary, direction: float) -> Dictionary:
+    var world_x := float(enemy.get("x", 0.0))
+    var foot_y := float(enemy.get("y", _floor_y))
+    var type := String(enemy.get("type", "pawn"))
+    var stats: Dictionary = ENEMY_TYPES.get(type, ENEMY_TYPES["pawn"])
+    var body_height := float(stats.get("height", 76.0))
+    var body_width := float(stats.get("width", 48.0))
+    var half_width := body_width * 0.5
+    var body_top := foot_y - body_height + 8.0
+    var nearest: Dictionary = {}
+    var nearest_distance := ENEMY_TRAVERSAL_LOOKAHEAD + 1.0
+
+    var surfaces: Array[Rect2] = []
+    surfaces.append_array(_obstacles)
+    surfaces.append_array(_platforms)
+    surfaces.append_array(_dynamic_platform_rects())
+    surfaces.append_array(_destructible_geometry_rects())
+
+    for rect in surfaces:
+        var rise := foot_y - rect.position.y
+        if rise < 8.0 or rise > ENEMY_TRAVERSAL_MAX_CLIMB_HEIGHT:
+            continue
+        if rect.end.y < body_top:
+            continue
+        var near_edge := rect.position.x if direction > 0.0 else rect.end.x
+        var distance := (near_edge - world_x) * direction - half_width
+        if distance < -half_width or distance > ENEMY_TRAVERSAL_LOOKAHEAD:
+            continue
+        if distance >= nearest_distance:
+            continue
+        nearest_distance = distance
+        nearest = {"rect": rect, "distance": distance, "rise": rise}
+    return nearest
+
+func _enemy_pit_ahead(enemy: Dictionary, direction: float) -> Dictionary:
+    if absf(float(enemy.get("y", _floor_y)) - _floor_y) > 4.0:
+        return {}
+    var world_x := float(enemy.get("x", 0.0))
+    var raw_pits = _stage_manifest.get("pits", [])
+    if typeof(raw_pits) != TYPE_ARRAY:
+        return {}
+    for raw in raw_pits:
+        if typeof(raw) != TYPE_DICTIONARY:
+            continue
+        var pit := Dictionary(raw)
+        var pit_x := float(pit.get("x", -1.0))
+        var width := float(pit.get("w", 0.0))
+        if pit_x < 0.0 or width <= 0.0:
+            continue
+        var edge := pit_x if direction > 0.0 else pit_x + width
+        var distance := (edge - world_x) * direction
+        if distance >= 0.0 and distance <= ENEMY_TRAVERSAL_LOOKAHEAD:
+            return pit.duplicate(true)
+    return {}
+
+func _enemy_pit_below_x(world_x: float) -> bool:
+    var raw_pits = _stage_manifest.get("pits", [])
+    if typeof(raw_pits) != TYPE_ARRAY:
+        return false
+    for raw in raw_pits:
+        if typeof(raw) != TYPE_DICTIONARY:
+            continue
+        var pit := Dictionary(raw)
+        var pit_x := float(pit.get("x", -1.0))
+        var width := float(pit.get("w", 0.0))
+        if pit_x >= 0.0 and width > 0.0 and world_x >= pit_x and world_x <= pit_x + width:
+            return true
+    return false
+
+func _update_enemy_vertical(enemy: Dictionary, delta: float) -> void:
+    if String(enemy.get("traversal_mode", "ground")) == "ladder":
+        return
+
     var foot_y := float(enemy.get("y", _floor_y))
     var velocity_y := float(enemy.get("vy", 0.0))
     var on_ground := bool(enemy.get("on_ground", true))
     var world_x := float(enemy["x"])
 
-    if on_ground and foot_y < _floor_y - 1.0 and not _knight_has_support(world_x, foot_y):
+    if on_ground and not _enemy_has_support(world_x, foot_y):
         on_ground = false
+        enemy["traversal_mode"] = "jump"
 
     if not on_ground:
         var previous_y := foot_y
-        velocity_y += KNIGHT_GRAVITY * delta
+        var gravity := KNIGHT_GRAVITY if String(enemy.get("type", "")) == "knight" else ENEMY_TRAVERSAL_GRAVITY
+        velocity_y += gravity * delta
         foot_y += velocity_y * delta
         if velocity_y >= 0.0:
-            var landing_y := _knight_landing_y(world_x, previous_y, foot_y)
+            var landing_y := _enemy_landing_y(world_x, previous_y, foot_y)
             if landing_y >= 0.0:
                 foot_y = landing_y
                 velocity_y = 0.0
                 on_ground = true
+                enemy["traversal_mode"] = "ground"
+                enemy["air_speed_scale"] = 1.0
+                enemy["air_direction"] = 0.0
+
+    if foot_y > _world_size.y + 100.0:
+        enemy["hp"] = 0
+        on_ground = false
 
     enemy["y"] = foot_y
     enemy["vy"] = velocity_y
     enemy["on_ground"] = on_ground
 
-func _knight_has_support(world_x: float, foot_y: float) -> bool:
-    if is_equal_approx(foot_y, _floor_y):
+func _enemy_has_support(world_x: float, foot_y: float) -> bool:
+    if absf(foot_y - _floor_y) <= 2.0 and not _enemy_pit_below_x(world_x):
         return true
-    for platform in _platforms + _dynamic_platform_rects():
+    var surfaces: Array[Rect2] = []
+    surfaces.append_array(_platforms)
+    surfaces.append_array(_dynamic_platform_rects())
+    surfaces.append_array(_obstacles)
+    surfaces.append_array(_destructible_geometry_rects())
+    for surface in surfaces:
         if (
-            absf(foot_y - platform.position.y) <= 2.0
-            and world_x >= platform.position.x
-            and world_x <= platform.position.x + platform.size.x
+            absf(foot_y - surface.position.y) <= 2.0
+            and world_x >= surface.position.x
+            and world_x <= surface.end.x
         ):
             return true
     return false
 
-func _knight_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
+func _enemy_landing_y(world_x: float, previous_y: float, next_y: float) -> float:
     var landing_y := -1.0
-    for platform in _platforms + _dynamic_platform_rects():
-        var top := platform.position.y
+    var surfaces: Array[Rect2] = []
+    surfaces.append_array(_platforms)
+    surfaces.append_array(_dynamic_platform_rects())
+    surfaces.append_array(_obstacles)
+    surfaces.append_array(_destructible_geometry_rects())
+    for surface in surfaces:
+        var top := surface.position.y
         if (
-            world_x >= platform.position.x
-            and world_x <= platform.position.x + platform.size.x
+            world_x >= surface.position.x
+            and world_x <= surface.end.x
             and previous_y <= top
             and next_y >= top
         ):
             if landing_y < 0.0 or top < landing_y:
                 landing_y = top
-    if previous_y <= _floor_y and next_y >= _floor_y and (landing_y < 0.0 or _floor_y < landing_y):
+    if (
+        previous_y <= _floor_y
+        and next_y >= _floor_y
+        and not _enemy_pit_below_x(world_x)
+        and (landing_y < 0.0 or _floor_y < landing_y)
+    ):
         landing_y = _floor_y
     return landing_y
 
