@@ -721,6 +721,15 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             route_snapshot=route_snapshot,
             planner_snapshot=planner_snapshot,
         )
+        if (
+            current_area["contentVersion"] != run["contentVersion"]
+            or current_area["manifestRevision"] != run["manifestRevision"]
+        ):
+            raise HTTPException(
+                409,
+                "La revisión de contenido de esta run ya no está disponible.",
+            )
+
         target_map_id = _safe_map_id(body.current_map_id)
         if (
             target_map_id != run["currentMapId"]
