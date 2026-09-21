@@ -188,6 +188,30 @@ export function homeBlenderFireFramePlan({
   return { enabled: true, intervalMs: Math.min(250, Math.max(baseIntervalMs, cost * 3)) };
 }
 
+// The exported flame materials are dark orange *lit* surfaces with an almost zero
+// emissive term, so the hearth point light sitting on top of them floods the
+// panels, and AgX tone mapping then desaturates any bright value to pink-white.
+// A flame is a light source: kill the diffuse response, give it its own orange or
+// amber emission, and keep it out of tone mapping so it stays a saturated flame.
+export const HOME_BLENDER_FLAME_LOOK = Object.freeze({
+  flame: Object.freeze({ emissive: 0xff4a08, intensity: 1 }),
+  hot: Object.freeze({ emissive: 0xff9a1e, intensity: 1 }),
+  candle: Object.freeze({ emissive: 0xffa030, intensity: 1 }),
+});
+
+export function applyFlameLook(material, kind) {
+  const look = HOME_BLENDER_FLAME_LOOK[kind];
+  if (!look || !material) return false;
+  material.color?.setRGB?.(0.015, 0.004, 0);
+  material.emissive?.setHex?.(look.emissive);
+  if ('emissiveIntensity' in material) material.emissiveIntensity = look.intensity;
+  if ('roughness' in material) material.roughness = 1;
+  if ('metalness' in material) material.metalness = 0;
+  material.toneMapped = false;
+  material.needsUpdate = true;
+  return true;
+}
+
 function prepareRuntimeFireRig(root) {
   const nodes = [];
   root?.traverse?.((object) => {
@@ -201,6 +225,10 @@ function prepareRuntimeFireRig(root) {
       object.material = object.material.map((material) => material?.clone?.() || material);
     } else if (object.material?.clone) {
       object.material = object.material.clone();
+    }
+
+    for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
+      if (kind !== 'ember') applyFlameLook(material, kind);
     }
 
     const materials = (Array.isArray(object.material) ? object.material : [object.material])

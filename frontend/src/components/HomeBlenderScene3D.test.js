@@ -7,6 +7,8 @@ import {
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
   homeBlenderIsSoftwareRenderer,
+  applyFlameLook,
+  HOME_BLENDER_FLAME_LOOK,
   HOME_BLENDER_FIRE_MAX_RENDER_MS,
   HOME_BLENDER_FIRE_MIN_SAMPLES,
   HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS,
@@ -307,6 +309,41 @@ describe('HomeBlenderScene3D live flame animation', () => {
       ]) {
         expect(homeBlenderIsSoftwareRenderer(name)).toBe(false);
       }
+    });
+  });
+
+  describe('flame look', () => {
+    const lit = () => new THREE.MeshStandardMaterial({ color: 0x571a05, roughness: 0.18, metalness: 0.1, emissive: 0x050100, emissiveIntensity: 1 });
+
+    it('removes the diffuse response so the hearth light cannot wash the flame out', () => {
+      for (const kind of ['flame', 'hot', 'candle']) {
+        const material = lit();
+        expect(applyFlameLook(material, kind)).toBe(true);
+        expect(Math.max(material.color.r, material.color.g, material.color.b)).toBeLessThan(0.05);
+        expect(material.metalness).toBe(0);
+        expect(material.roughness).toBe(1);
+        // Tone mapping would desaturate the flame toward pink-white.
+        expect(material.toneMapped).toBe(false);
+      }
+    });
+
+    it('gives every flame kind its own orange-to-amber emission, never white', () => {
+      for (const kind of ['flame', 'hot', 'candle']) {
+        const material = lit();
+        applyFlameLook(material, kind);
+        expect(material.emissive.r).toBeGreaterThan(material.emissive.g);
+        expect(material.emissive.g).toBeGreaterThan(material.emissive.b);
+        expect(material.emissive.b).toBeLessThan(0.35);
+        expect(material.emissiveIntensity).toBe(HOME_BLENDER_FLAME_LOOK[kind].intensity);
+      }
+      const outer = lit(); applyFlameLook(outer, 'flame');
+      const core = lit(); applyFlameLook(core, 'hot');
+      expect(core.emissive.g).toBeGreaterThan(outer.emissive.g);
+    });
+
+    it('leaves unknown kinds and missing materials alone', () => {
+      expect(applyFlameLook(lit(), 'ember')).toBe(false);
+      expect(applyFlameLook(null, 'flame')).toBe(false);
     });
   });
 });
