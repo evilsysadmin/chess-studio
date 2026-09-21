@@ -107,11 +107,8 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     'home': (
         LaneCommand(
             'regression-journeys.spec.js',
-            ('--grep', HOME_GREP, '--workers=1', '--retries=0', '--timeout=75000'),
-        ),
-        LaneCommand(
-            'mobile-final-interactions.spec.js',
-            ('--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--timeout=45000'),
+            ('--grep', f'{HOME_GREP}|{HOME_MOBILE_GREP}', '--workers=2', '--retries=0', '--timeout=75000'),
+            ('mobile-final-interactions.spec.js',),
         ),
     ),
     'smoke': (
@@ -181,10 +178,9 @@ def self_test() -> None:
     assert LANE_COMMANDS['tournament'][0].grep == TOURNAMENT_GREP
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
-    assert [command.spec for command in LANE_COMMANDS['home']] == [
-        'regression-journeys.spec.js', 'mobile-final-interactions.spec.js'
-    ]
-    assert LANE_COMMANDS['home'][0].grep == HOME_GREP
+    assert [command.spec for command in LANE_COMMANDS['home']] == ['regression-journeys.spec.js']
+    assert LANE_COMMANDS['home'][0].additional_specs == ('mobile-final-interactions.spec.js',)
+    assert LANE_COMMANDS['home'][0].grep == f'{HOME_GREP}|{HOME_MOBILE_GREP}'
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'mobile-final-interactions.spec.js'
@@ -227,8 +223,10 @@ def self_test() -> None:
     calls.clear()
     run_lane('home', fake_runner)
     assert calls == [
-        ([PLAYWRIGHT, 'test', 'regression-journeys.spec.js', '--grep', HOME_GREP, '--workers=1', '--retries=0', '--timeout=75000'], E2E_DIR, True),
-        ([PLAYWRIGHT, 'test', 'mobile-final-interactions.spec.js', '--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--timeout=45000'], E2E_DIR, True),
+        ([
+            PLAYWRIGHT, 'test', 'regression-journeys.spec.js', 'mobile-final-interactions.spec.js',
+            '--grep', f'{HOME_GREP}|{HOME_MOBILE_GREP}', '--workers=2', '--retries=0', '--timeout=75000',
+        ], E2E_DIR, True),
     ]
 
     try:
