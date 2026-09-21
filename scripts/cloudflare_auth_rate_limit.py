@@ -30,6 +30,10 @@ PERIOD_SECONDS = 10
 MITIGATION_SECONDS = 10
 
 
+class RulesetPermissionUnavailable(RuntimeError):
+    pass
+
+
 def required(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -73,6 +77,12 @@ def error_messages(body: object) -> set[str]:
         for item in rows
         if isinstance(item, dict)
     }
+
+
+def ruleset_permission_unavailable(status: int, body: object) -> bool:
+    if status != 403:
+        return False
+    return any("authentication error" in message.lower() for message in error_messages(body))
 
 
 def result_or_die(
@@ -157,6 +167,10 @@ def entrypoint(zone_id: str) -> dict | None:
     status, body = request_json("GET", f"/zones/{zone_id}/rulesets/phases/{PHASE}/entrypoint")
     if status == 404:
         return None
+    if ruleset_permission_unavailable(status, body):
+        raise RulesetPermissionUnavailable(
+            "CLOUDFLARE_API_TOKEN no tiene permiso para leer/escribir Zone WAF Rulesets"
+        )
     result = result_or_die(status, body, context="Leer ruleset de rate limiting")
     if not isinstance(result, dict) or not result.get("id"):
         raise SystemExit("Cloudflare devolvió un ruleset de rate limiting inesperado")
@@ -261,6 +275,15 @@ def self_test() -> None:
     broken = {**actual, "ratelimit": {**actual["ratelimit"], "period": 60}}
     assert not rule_matches(broken)
     assert managed_rules([actual, {"ref": "unrelated-rule"}]) == [actual]
+    assert ruleset_permission_unavailable(
+        403, {"errors": [{"code": 10000, "message": "Authentication error"}]}
+    )
+    assert not ruleset_permission_unavailable(
+        403, {"errors": [{"message": "different forbidden reason"}]}
+    )
+    assert not ruleset_permission_unavailable(
+        500, {"errors": [{"message": "Authentication error"}]}
+    )
     print("Cloudflare auth rate-limit self-test: OK")
 
 
@@ -270,8 +293,15 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         self_test()
-    else:
+        return 0
+    try:
         reconcile()
+    except RulesetPermissionUnavailable as exc:
+        print(
+            "::warning title=Cloudflare auth edge guard pending permission::"
+            f"{exc}. El deploy continúa; SlowAPI sigue limitando auth en origen."
+        )
+        print("CLOUDFLARE_AUTH_RATE_LIMIT_UNAVAILABLE reason=waf_permission")
     return 0
 
 
