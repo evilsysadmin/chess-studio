@@ -1244,12 +1244,13 @@ def add_gothic_canon_v2(static, mats):
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
     cz = 6.28
-    # Compact the chandelier so it fits the actual screen-space gap between the
-    # crest and campaign display. The previous full-size fixture simply moved
-    # its overlap from the crest to the painting.
-    chandelier_x = 2.05
+    # Keep the chandelier centered inside the *actual* free bay between the
+    # crest and campaign display. The previous compact pass still left almost
+    # no negative space beside the crest, so reduce the radial footprint and
+    # nudge the fixture right while preserving its six-candle identity.
+    chandelier_x = 2.20
     chandelier_y = 2.85
-    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.60, 0.036, mats["brass"], static)
+    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.52, 0.034, mats["brass"], static)
     cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.13, 0.20, mats["brass_dark"], static, vertices=24)
     # Three slim suspension stays make the fixture feel physically hung rather
     # than floating. They converge on the same short central chain so the added
@@ -1257,8 +1258,8 @@ def add_gothic_canon_v2(static, mats):
     suspension_apex = Vector((chandelier_x, chandelier_y, 6.71))
     for stay_index, angle in enumerate((math.pi / 2, math.pi / 2 + math.tau / 3, math.pi / 2 + 2 * math.tau / 3)):
         stay_start = Vector((
-            chandelier_x + math.cos(angle) * 0.49,
-            chandelier_y + math.sin(angle) * 0.38,
+            chandelier_x + math.cos(angle) * 0.43,
+            chandelier_y + math.sin(angle) * 0.33,
             cz + 0.03,
         ))
         stay_direction = suspension_apex - stay_start
@@ -1276,8 +1277,8 @@ def add_gothic_canon_v2(static, mats):
     candle_offsets = (0.00, 0.035, -0.025, 0.018, -0.018, 0.028)
     for index in range(6):
         angle = index * math.tau / 6.0
-        x = chandelier_x + math.cos(angle) * 0.49
-        y = chandelier_y + math.sin(angle) * 0.38
+        x = chandelier_x + math.cos(angle) * 0.43
+        y = chandelier_y + math.sin(angle) * 0.33
         candle_z = cz + 0.20 + candle_offsets[index]
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, candle_z),
                  0.046, 0.27, mats["ivory"], static, vertices=16)
