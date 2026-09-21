@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "generation": "v1",
+  "status": "authoring",
+  "policy": {
+    "legacy": "reference-and-rollback-only",
+    "promotion": "fail-closed-after-sprite-forge-and-runtime-review",
+    "runtime_version_label": "v1"
+  },
+  "banks": [
+    {
+      "id": "matthias-pistol-v1",
+      "actor": "matthias",
+      "weapon": "pistol",
+      "strategy": "integrated",
+      "status": "authoring",
+      "notes": "Body, hands and weapon authored together."
+    },
+    {
+      "id": "matthias-machinegun-v1",
+      "actor": "matthias",
+      "weapon": "machinegun",
+      "strategy": "integrated",
+      "status": "authoring",
+      "notes": "Body, hands and weapon authored together."
+    },
+    {
+      "id": "matthias-shotgun-v1",
+      "actor": "matthias",
+      "weapon": "shotgun",
+      "strategy": "integrated",
+      "status": "authoring",
+      "notes": "Body, hands and weapon authored together."
+    },
+    {
+      "id": "matthias-panzerfaust-v1",
+      "actor": "matthias",
+      "weapon": "panzerfaust",
+      "strategy": "integrated",
+      "status": "authoring",
+      "notes": "Body, hands and weapon authored together."
+    },
+    {
+      "id": "enemy-pawn-body-v1",
+      "actor": "enemy-pawn",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-knight-body-v1",
+      "actor": "enemy-knight",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-rook-body-v1",
+      "actor": "enemy-rook",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-queen-body-v1",
+      "actor": "enemy-queen",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-grenadier-body-v1",
+      "actor": "enemy-grenadier",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-scout-body-v1",
+      "actor": "enemy-scout",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-commando-body-v1",
+      "actor": "enemy-commando",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-shield-body-v1",
+      "actor": "enemy-shield",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "status": "authoring",
+      "notes": "Weapon-neutral body; every authored frame requires hand/weapon/muzzle sockets."
+    },
+    {
+      "id": "enemy-weapons-v1",
+      "actor": "enemy-weapons",
+      "weapon": "shared",
+      "strategy": "weapon-layer",
+      "status": "authoring",
+      "weapons": [
+        "pistol",
+        "machinegun",
+        "shotgun",
+        "panzerfaust"
+      ],
+      "notes": "Shared enemy weapons only; placement is driven by per-body-frame sockets."
+    },
+    {
+      "id": "boss-panzer-rook-v1",
+      "actor": "boss-panzer-rook",
+      "weapon": "panzerfaust",
+      "strategy": "integrated",
+      "status": "authoring",
+      "notes": "Boss silhouette is authored as one integrated bank."
+    }
+  ]
+}
