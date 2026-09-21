@@ -52,6 +52,8 @@ const ENEMY_TRAVERSAL_LADDER_SPEED := 155.0
 const ENEMY_TRAVERSAL_LADDER_EXIT_NUDGE := 20.0
 const ENEMY_TRAVERSAL_TERRAIN_AIR_SPEED_SCALE := 1.65
 const ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE := 5.0
+const ENEMY_TRAVERSAL_TERRAIN_MIN_AIR_SPEED := 150.0
+const ENEMY_TRAVERSAL_PIT_MIN_AIR_SPEED := 285.0
 const KNIGHT_SPRINT_MULTIPLIER := 1.45
 const KNIGHT_GRAVITY := 880.0
 const KNIGHT_LEAP_SPEED := 300.0
@@ -2042,7 +2044,11 @@ func _enemy_try_auto_jump(enemy: Dictionary, direction: float) -> bool:
             enemy,
             direction,
             ENEMY_TRAVERSAL_PIT_JUMP_SPEED,
-            ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE,
+            _enemy_air_speed_scale(
+                enemy,
+                ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE,
+                ENEMY_TRAVERSAL_PIT_MIN_AIR_SPEED,
+            ),
         )
         return true
 
@@ -2051,10 +2057,20 @@ func _enemy_try_auto_jump(enemy: Dictionary, direction: float) -> bool:
             enemy,
             direction,
             ENEMY_TRAVERSAL_JUMP_SPEED,
-            ENEMY_TRAVERSAL_TERRAIN_AIR_SPEED_SCALE,
+            _enemy_air_speed_scale(
+                enemy,
+                ENEMY_TRAVERSAL_TERRAIN_AIR_SPEED_SCALE,
+                ENEMY_TRAVERSAL_TERRAIN_MIN_AIR_SPEED,
+            ),
         )
         return true
     return false
+
+func _enemy_air_speed_scale(enemy: Dictionary, floor_scale: float, min_world_speed: float) -> float:
+    var type := String(enemy.get("type", "pawn"))
+    var stats: Dictionary = ENEMY_TYPES.get(type, ENEMY_TYPES["pawn"])
+    var base_speed := maxf(1.0, float(stats.get("speed", 1.0)))
+    return maxf(floor_scale, min_world_speed / base_speed)
 
 func _begin_enemy_jump(enemy: Dictionary, direction: float, jump_speed: float, air_speed_scale: float) -> void:
     enemy["vy"] = -absf(jump_speed)
