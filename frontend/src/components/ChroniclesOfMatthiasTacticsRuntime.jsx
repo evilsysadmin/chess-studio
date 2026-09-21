@@ -41,6 +41,7 @@ import {
 } from '../chronicles/chroniclesProgressionFeedback.js';
 import { chroniclesTacticsLocationLabel } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesPauseMenu from './ChroniclesPauseMenu.jsx';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasProgression.css';
@@ -81,7 +82,6 @@ function createActionState(progression) {
 }
 
 export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = null }) {
-  useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
@@ -97,6 +97,15 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [progressionFeedback, setProgressionFeedback] = useState('');
+  const [pauseOpen, setPauseOpen] = useState(false);
+
+  useEscapeToClose(
+    () => setPauseOpen(true),
+    {
+      disabled: pauseOpen,
+      contextMenuAction: 'ignore',
+    },
+  );
 
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
   const selectedAbility = useMemo(
@@ -113,7 +122,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   const canAttack = targetOptions.length > 0;
   const targetIntel = targetOptions[0] || null;
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
-  const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
+  const canAct = !pauseOpen
+    && state.turnPhase !== 'enemy'
+    && state.phase !== 'defeated'
+    && state.phase !== 'escaped';
   const battlefieldInteraction = useMemo(
     () => chroniclesBattlefieldInteraction(state, selectedMemberId),
     [selectedMemberId, state],
@@ -321,6 +333,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (pauseOpen) return;
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
         if (member) {
@@ -354,7 +367,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
+  }, [attackEnemy, moveParty, pauseOpen, selectMember, useClassAbility, useContextualAction]);
 
   return (
     <div
@@ -366,6 +379,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
       data-map={state.mapId}
       data-phase={state.phase}
       data-turn-phase={state.turnPhase || 'party'}
+      data-paused={pauseOpen ? 'true' : 'false'}
     >
       <header className="chronicles-tactics__head">
         <div>
@@ -457,6 +471,13 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
           onLearnSkill={learnSkill}
         />
       </div>
+
+      {pauseOpen ? (
+        <ChroniclesPauseMenu
+          onResume={() => setPauseOpen(false)}
+          onExit={onExit}
+        />
+      ) : null}
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName} · {inCombat ? `Combate por turnos · ronda ${state.round || 1}` : 'Exploración libre'}</span>
