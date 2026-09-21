@@ -9,7 +9,7 @@ inputs:
   restore-frontend-deps:
     description: Whether to restore frontend/node_modules in addition to the E2E runtime.
     required: false
-    default: 'true'
+    default: 'false'
   build-frontend:
     description: Whether to build the production frontend after restoring dependencies.
     required: false
