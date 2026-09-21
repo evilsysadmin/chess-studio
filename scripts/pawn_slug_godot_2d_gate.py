@@ -375,12 +375,18 @@ REQUIRED_COMBAT_FAIRNESS = (
     "MAX_HOSTILE_PROJECTILES",
     "MAX_HOSTILE_EXPLOSIVES",
     "HOSTILE_FIRE_GAP",
+    "ENEMY_INTENTIONAL_MISS_CHANCE",
+    "ENEMY_MISS_ANGLE_MIN",
+    "ENEMY_MISS_ANGLE_MAX",
     "_world_x_is_combat_visible",
     "_can_spawn_hostile_shot",
     "BOSS_SHELL_WINDUP",
     "checkpoint_changed",
     '_notify_parent("checkpoint")',
     "Consume the projectile before damage signals can mutate the whole",
+)
+FORBIDDEN_COMBAT_FAIRNESS = (
+    "return 0.11",
 )
 REQUIRED_BOSS_TELEGRAPH = (
     "set_shell_telegraph",
@@ -523,6 +529,10 @@ def validate() -> None:
     validate_contract(RUNTIME_SMOKE, "tests/player_runtime_smoke.gd", REQUIRED_RUNTIME_SMOKE, violations)
     validate_contract(COMBAT_AUDIO, "combat_audio.gd", REQUIRED_AUDIO, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FAIRNESS, violations)
+    main_text = MAIN.read_text(encoding="utf-8")
+    for token in FORBIDDEN_COMBAT_FAIRNESS:
+        if token in main_text:
+            violations.append(f"main.gd reintrodujo cadencia hostil demasiado agresiva: {token}")
     validate_contract(MAIN, "main.gd", REQUIRED_ENEMY_AI, violations)
     validate_contract(BOSS, "boss_visual.gd", REQUIRED_BOSS_TELEGRAPH, violations)
     validate_contract(TOUCH, "touch_controls.gd", REQUIRED_TOUCH, violations)
@@ -563,6 +573,8 @@ def self_test() -> None:
     assert "grab_focus" in REQUIRED_PAUSE_MENU
     assert "_draw_projectile" in REQUIRED_COMBAT_FX
     assert "_draw_muzzle_flashes" in REQUIRED_COMBAT_FX
+    assert "ENEMY_INTENTIONAL_MISS_CHANCE" in REQUIRED_COMBAT_FAIRNESS
+    assert "return 0.11" in FORBIDDEN_COMBAT_FAIRNESS
     assert "_prefers_reduced_motion" in REQUIRED_FEEL
     assert "AudioStreamWAV" in REQUIRED_AUDIO
     assert "_make_ambient_loop" in REQUIRED_AUDIO
