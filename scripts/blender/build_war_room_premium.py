@@ -1088,8 +1088,8 @@ def add_gothic_canon_v2(static, mats):
          mats["stone_dark"], static, bevel=0.095)
     cube("WR_CANON_right_fireplace_opening", (rx, 5.86, 1.55), (0.74, 0.12, 0.62),
          mats["charcoal"], static, bevel=0.042)
-    cube("WR_CANON_right_fireplace_mantel", (rx, 5.78, 3.05), (1.42, 0.56, 0.11),
-         mats["stone"], static, bevel=0.068)
+    cube("WR_CANON_right_fireplace_mantel", (rx, 5.78, 3.05), (1.32, 0.52, 0.10),
+         mats["stone"], static, bevel=0.062)
     cube("WR_CANON_right_fireplace_hearth", (rx, 5.38, 0.70), (1.18, 0.67, 0.09),
          mats["stone_dark"], static, bevel=0.065)
     for side in (-1, 1):
@@ -1113,11 +1113,11 @@ def add_gothic_canon_v2(static, mats):
     )):
         sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
                mats["fire"], static, scale=(sx, 0.34, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 150.0,
-          (1.0, 0.19, 0.035), static, radius=1.00)
+    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 118.0,
+          (1.0, 0.19, 0.035), static, radius=0.92)
     anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
-    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
-         mats["stone_light"], static, bevel=0.038)
+    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.17), (1.38, 0.55, 0.045),
+         mats["stone"], static, bevel=0.034)
     cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
          mats["charcoal"], static, bevel=0.022)
     cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
