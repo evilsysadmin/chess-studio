@@ -7,6 +7,10 @@ on:
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
+      - docs/pawnslug-sprites.md
+      - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
@@ -21,6 +25,10 @@ on:
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
+      - docs/pawnslug-sprites.md
+      - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
@@ -116,6 +124,11 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
           python3 scripts/art/validate_pawn_slug_initial_enemy_v4.py
+      - name: Sprite Forge fail-closed contract
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/art/sprite_forge.py scripts/art/test_sprite_forge.py
+          python3 scripts/art/test_sprite_forge.py
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded
