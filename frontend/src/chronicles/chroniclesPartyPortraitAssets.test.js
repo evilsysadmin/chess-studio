@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MATTHIAS_BASE_AVATAR } from '../matthiasVisuals.js';
 import {
   CHRONICLES_PARTY_PORTRAITS,
   chroniclesPartyPortraitUrl,
@@ -17,9 +18,8 @@ describe('Chronicles canonical party portraits', () => {
     }
   });
 
-  it('falls back to Matthias only for unknown non-party ids', () => {
-    expect(chroniclesPartyPortraitUrl('missing')).toBe(
-      chroniclesPartyPortraitUrl('matthias'),
-    );
+  it('uses the shared canonical pawn avatar for Matthias and unknown ids', () => {
+    expect(chroniclesPartyPortraitUrl('matthias')).toBe(MATTHIAS_BASE_AVATAR);
+    expect(chroniclesPartyPortraitUrl('missing')).toBe(MATTHIAS_BASE_AVATAR);
   });
 });
