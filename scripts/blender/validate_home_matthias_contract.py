@@ -13,6 +13,7 @@ if SCRIPT_DIR not in sys.path:
 
 from home_matthias_contract import (  # noqa: E402
     BODY_HEIGHT_TO_BASE_WIDTH,
+    BITE_PROP_FACE_CLEARANCE_MIN,
     BRASS_MIN_METALLIC,
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
@@ -226,6 +227,13 @@ def main():
     left_mouth = world_y_rotation_degrees(objects["Mouth.L"])
     right_mouth = world_y_rotation_degrees(objects["Mouth.R"])
     assert left_mouth < -8 and right_mouth > 8, (left_mouth, right_mouth)
+
+    sandwich_top = world_z_bounds(objects["RoutineSandwichBread"])[1]
+    mouth_bottom = min(world_z_bounds(objects["Mouth.L"])[0], world_z_bounds(objects["Mouth.R"])[0])
+    assert mouth_bottom - sandwich_top >= BITE_PROP_FACE_CLEARANCE_MIN, (
+        f"bite prop obscures canonical mouth: sandwich_top={sandwich_top:.3f}, "
+        f"mouth_bottom={mouth_bottom:.3f}"
+    )
 
     for name in ("Eye.L", "Eye.R"):
         eye = objects[name]

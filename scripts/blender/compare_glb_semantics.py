@@ -139,6 +139,10 @@ def _accessor_payload(
 def semantic_document(document: dict, binary: bytes) -> dict:
     """Return a document with every accessor reference replaced by its data."""
     result = copy.deepcopy(document)
+    # Blender patch releases bump this provenance string even when the exported
+    # scene is semantically identical. Keep the glTF version contract below,
+    # but do not mistake exporter metadata for runtime geometry.
+    result.get("asset", {}).pop("generator", None)
     cache: dict[tuple[int, bool], dict] = {}
 
     def payload(index: int, *, triangles: bool = False) -> dict:
@@ -177,6 +181,14 @@ def semantic_document(document: dict, binary: bytes) -> dict:
         for sampler in animation.get("samplers", []):
             sampler["input"] = payload(sampler["input"])
             sampler["output"] = payload(sampler["output"])
+
+    # glTF defines omitted TRS properties as these identity transforms. Blender
+    # 5.2.40 started serializing a near-identity scale on a few nodes that
+    # 5.2.39 omitted, so materialize the spec defaults before numeric comparison.
+    for node in result.get("nodes", []):
+        node.setdefault("translation", [0.0, 0.0, 0.0])
+        node.setdefault("rotation", [0.0, 0.0, 0.0, 1.0])
+        node.setdefault("scale", [1.0, 1.0, 1.0])
 
     # No Home Matthias asset embeds images. Fail explicitly if a future asset
     # introduces another bufferView consumer that this comparator must learn.
@@ -266,6 +278,31 @@ def self_test() -> None:
     assert_equivalent(
         semantic_document(shared, position),
         semantic_document(duplicated, position + position),
+        FLOAT_TOLERANCE,
+    )
+
+    generator_39 = copy.deepcopy(shared)
+    generator_39["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.39"}
+    generator_40 = copy.deepcopy(shared)
+    generator_40["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.40"}
+    assert_equivalent(
+        semantic_document(generator_39, position),
+        semantic_document(generator_40, position),
+        FLOAT_TOLERANCE,
+    )
+
+    omitted_transform = copy.deepcopy(shared)
+    omitted_transform["nodes"] = [{"name": "default-transform"}]
+    explicit_transform = copy.deepcopy(shared)
+    explicit_transform["nodes"] = [{
+        "name": "default-transform",
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0 - (FLOAT_TOLERANCE / 2), 1.0, 1.0],
+    }]
+    assert_equivalent(
+        semantic_document(omitted_transform, position),
+        semantic_document(explicit_transform, position),
         FLOAT_TOLERANCE,
     )
     print("GLB semantic comparator self-test OK")
