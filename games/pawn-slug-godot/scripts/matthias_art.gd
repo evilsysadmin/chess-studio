@@ -14,10 +14,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. Each cell is consumed directly as an AtlasTexture region: no runtime
 # rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v22"
+const STRICT_RUNTIME_GENERATION := "v23"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-7192d24b6df75b88.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
 }
@@ -27,7 +27,7 @@ const FULL_ATLAS_URLS := {
 # run already present in the full bank remains authoritative.
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/machinegun/v22-8f32a167a5d4f161.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-5d173e717875da0c.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
 }
@@ -35,6 +35,15 @@ const RUN12_ATLAS_COLUMNS := 12
 const RUN12_ATLAS_CELL_SIZE := 416
 const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
 const RUN12_FPS := 24.0
+const RUN_OVERLAY_COLUMNS := {
+    "pistol": 12,
+    "machinegun": 13,
+    "shotgun": 12,
+    "panzerfaust": 12,
+}
+const V9_ACTION_FRAME_COUNT_OVERRIDES := {
+    "machinegun": {"hurt": 6},
+}
 const WEAPON_BOOTSTRAP_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
 const BOOTSTRAP_RETRY_LIMIT := 2
 
@@ -787,7 +796,7 @@ func _on_bootstrap_atlas_loaded(
 
     var accepted := false
     if layout == "full-v9":
-        var frames := _build_v9_frames(image)
+        var frames := _build_v9_frames(image, weapon_id)
         if frames != null:
             _full_frames_by_weapon[weapon_id] = frames
             _full_body_y_by_weapon[weapon_id] = V9_BODY_Y
@@ -867,10 +876,9 @@ func _install_or_request_weapon() -> void:
     if not full_url.is_empty():
         if _atlas_request == null:
             _request_atlas(_weapon, full_url, "full-v9")
-        # Keep the canvas hidden at boot, or keep the previously rendered weapon
-        # during a pickup switch, while the canonical strict atlas is in flight.
-        # Fallback art is reserved for a real download/decode failure in
-        # _on_atlas_loaded(), so it never flashes for a healthy R2 request.
+        # Bootstrap normally has every bank in memory before body_ready(). If a
+        # CDN failure leaves one missing, set_weapon() hides the old bank rather
+        # than showing the previously selected weapon during this request.
         return
 
     if _weapon == "pistol":
@@ -977,7 +985,7 @@ func _on_atlas_loaded(result: int, response_code: int, _headers: PackedStringArr
 
     var frames: SpriteFrames
     if requested_layout == "full-v9":
-        frames = _build_v9_frames(image)
+        frames = _build_v9_frames(image, requested_weapon)
         if frames == null:
             if _request_full_fallback(requested_weapon):
                 return
@@ -1306,7 +1314,9 @@ func _repair_distorted_shoot_frames(image: Image, weapon_id: String) -> Image:
 
 
 func _append_run12_frames(weapon_id: String, image: Image) -> bool:
-    if image.get_size() != RUN12_ATLAS_SIZE or not _full_frames_by_weapon.has(weapon_id):
+    var columns := int(RUN_OVERLAY_COLUMNS.get(weapon_id, RUN12_ATLAS_COLUMNS))
+    var expected_size := Vector2i(columns * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
+    if image.get_size() != expected_size or not _full_frames_by_weapon.has(weapon_id):
         return false
     var frames: SpriteFrames = _full_frames_by_weapon[weapon_id]
     var atlas_texture := ImageTexture.create_from_image(image)
@@ -1315,7 +1325,7 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
     frames.add_animation("run")
     frames.set_animation_loop("run", true)
     frames.set_animation_speed("run", RUN12_FPS)
-    for frame_index in range(RUN12_ATLAS_COLUMNS):
+    for frame_index in range(columns):
         var texture := AtlasTexture.new()
         texture.atlas = atlas_texture
         texture.region = Rect2(
@@ -1325,7 +1335,7 @@ func _append_run12_frames(weapon_id: String, image: Image) -> bool:
             RUN12_ATLAS_CELL_SIZE,
         )
         frames.add_frame("run", texture)
-    return frames.get_frame_count("run") == RUN12_ATLAS_COLUMNS
+    return frames.get_frame_count("run") == columns
 
 func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
     if weapon_id != "pistol" or image.get_size() != V10_ATLAS_SIZE:
@@ -1371,7 +1381,7 @@ func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
             frames.add_frame(action, texture)
     return true
 
-func _build_v9_frames(image: Image) -> SpriteFrames:
+func _build_v9_frames(image: Image, weapon_id: String = "") -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:
         push_error(
             "Strict Matthias runtime atlas has invalid dimensions: %s, expected %s"
@@ -1388,7 +1398,14 @@ func _build_v9_frames(image: Image) -> SpriteFrames:
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
         var row := int(spec["row"])
-        for frame_index in range(V9_ATLAS_COLUMNS):
+        var weapon_overrides_value = V9_ACTION_FRAME_COUNT_OVERRIDES.get(weapon_id, {})
+        var weapon_overrides: Dictionary = (
+            weapon_overrides_value
+            if typeof(weapon_overrides_value) == TYPE_DICTIONARY
+            else {}
+        )
+        var frame_count := int(weapon_overrides.get(action, V9_ATLAS_COLUMNS))
+        for frame_index in range(frame_count):
             var rect := Rect2i(
                 frame_index * V9_ATLAS_CELL_SIZE,
                 row * V9_ATLAS_CELL_SIZE,
