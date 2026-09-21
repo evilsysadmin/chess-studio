@@ -321,6 +321,48 @@ func _run() -> void:
         }) == EnemyUtilityAI.INTENT_HOLD,
         "sin percepción ni memoria el enemigo no rastrea telepáticamente",
     )
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": true,
+            "visible": true,
+            "distance": 265.0,
+            "standoff": 260.0,
+            "vertical_gap": 0.0,
+            "vertical_threshold": 64.0,
+            "blocker_ahead": false,
+            "pit_ahead": false,
+            "ladder_route": false,
+            "grenade_evade": 0.0,
+            "role": "support",
+            "enemy_type": "pawn",
+            "pressure_slot_available": false,
+            "retreat_ratio": 0.64,
+            "comfort_margin": 24.0,
+            "advance_margin": 80.0,
+        }) == EnemyUtilityAI.INTENT_HOLD,
+        "support sin hueco de presión mantiene su carril en vez de sumarse al pelotón de tiro",
+    )
+    _expect(
+        EnemyUtilityAI.choose_intent({
+            "target_known": true,
+            "visible": true,
+            "distance": 265.0,
+            "standoff": 260.0,
+            "vertical_gap": 0.0,
+            "vertical_threshold": 64.0,
+            "blocker_ahead": false,
+            "pit_ahead": false,
+            "ladder_route": false,
+            "grenade_evade": 0.0,
+            "role": "assaulter",
+            "enemy_type": "commando",
+            "pressure_slot_available": false,
+            "retreat_ratio": 0.64,
+            "comfort_margin": 24.0,
+            "advance_margin": 80.0,
+        }) == EnemyUtilityAI.INTENT_ADVANCE,
+        "assaulter sin hueco de presión reposiciona/avanza en vez de disparar a coro",
+    )
 
     _expect(
         EnemyUtilityAI.decision_interval_for("scout", "assaulter")
@@ -463,6 +505,49 @@ func _run() -> void:
     )
     enemy_probe._enemy_suppression_remaining = 0.0
     enemy_probe._enemy_suppression_origin_x = -INF
+
+    enemy_probe.enemies = [
+        {
+            "id": "pressure-a",
+            "type": "pawn",
+            "x": 300.0,
+            "hp": 34,
+            "alerted": true,
+            "ai_visible": true,
+            "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
+        },
+        {
+            "id": "pressure-b",
+            "type": "commando",
+            "x": 360.0,
+            "hp": 78,
+            "alerted": true,
+            "ai_visible": true,
+            "ai_intent": EnemyUtilityAI.INTENT_SHOOT,
+        },
+        {
+            "id": "pressure-c",
+            "type": "scout",
+            "x": 420.0,
+            "hp": 46,
+            "alerted": true,
+            "ai_visible": true,
+            "ai_intent": EnemyUtilityAI.INTENT_ADVANCE,
+        },
+    ]
+    _expect(
+        enemy_probe._enemy_pressure_shooter_count() == enemy_probe.MAX_ENEMY_PRESSURE_SHOOTERS,
+        "pressure budget cuenta sólo tiradores móviles visibles comprometidos",
+    )
+    _expect(
+        not enemy_probe._enemy_pressure_slot_available(enemy_probe.enemies[2]),
+        "tercer móvil visible no recibe otro slot de tiro cuando el budget está lleno",
+    )
+    _expect(
+        enemy_probe._enemy_pressure_slot_available(enemy_probe.enemies[0]),
+        "un tirador ya comprometido puede conservar su propio slot al reevaluar",
+    )
+    enemy_probe.enemies.clear()
 
     # Hearing probe: noise should carry its source position into short memory,
     # not merely flip alerted=true and not reveal Matthias' later hidden X.
