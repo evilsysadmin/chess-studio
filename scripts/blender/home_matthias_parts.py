@@ -215,11 +215,11 @@ def build_character():
     cap_top=loft_ellipse('Classic cap top',[(.408,.292,1.811,.080,-.036),(.431,.300,1.830,.098,-.047),(.454,.309,1.850,.120,-.059),(.460,.312,1.869,.140,-.070),(.450,.306,1.884,.153,-.078),(.428,.294,1.895,.160,-.084)],navy,124,.008)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.327,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.334,1.705),.027,.034,.008,leather,36,.002)
-    mouth_l=box('Mouth.L',(-.047,-.342,1.252),(.059,.005,.007),black,(0,math.radians(-18),0),.002); mouth_r=box('Mouth.R',(.047,-.342,1.252),(.059,.005,.007),black,(0,math.radians(18),0),.002)
+    mouth_l=box('Mouth.L',(-.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(-9),0),.003); mouth_r=box('Mouth.R',(.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(9),0),.003)
     head += [
-        sphere('Head',(0,-.012,1.345),(.350,.330,.340),ivory,96),
-        front_ellipse('Eye.L',(-.108,-.345,1.382),.024,.040,.010,black,40,.002), front_ellipse('Eye.R',(.108,-.345,1.382),.024,.040,.010,black,40,.002),
-        box('Brow.L',(-.108,-.356,1.452),(.082,.009,.021),black,(0,math.radians(29),0),.004), box('Brow.R',(.108,-.356,1.452),(.082,.009,.021),black,(0,math.radians(-29),0),.004),
+        sphere('Head',(0,-.012,1.345),(.340,.325,.352),ivory,96),
+        front_ellipse('Eye.L',(-.104,-.345,1.376),.026,.048,.010,black,40,.002), front_ellipse('Eye.R',(.104,-.345,1.376),.026,.048,.010,black,40,.002),
+        box('Brow.L',(-.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(24),0),.004), box('Brow.R',(.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(-24),0),.004),
         cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.004,1.615),.364,.082,.84,cap_red,(math.radians(-2),0,0),116,.010), elliptic_cyl('Classic cap brass line',(0,-.010,1.573),.360,.013,.84,brass,(math.radians(-2),0,0),116,.003), visor, cap_badge,cap_badge_inset,
         box('Classic cap badge wing.L',(-.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(-12),math.radians(12)),.003), box('Classic cap badge wing.R',(.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(12),math.radians(-12)),.003),
     ]
