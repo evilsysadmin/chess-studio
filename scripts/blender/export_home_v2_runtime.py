@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import struct
 import sys
 from pathlib import Path
 
@@ -159,6 +161,38 @@ def select_runtime_geometry() -> int:
     return count
 
 
+MESH_COMPRESSION_EXTENSION = "EXT_meshopt_compression"
+
+
+def meshopt_export_kwargs() -> dict:
+    """Ask the glTF exporter for Meshopt compression when this Blender supports it.
+
+    The Home runtime GLB is dominated by vertex data, and Meshopt shrinks that to
+    roughly a third (the War Room shell goes 9.8 -> 3.4 MB). The runtime loader
+    decodes it with MeshoptDecoder and still reads uncompressed files, so a Blender
+    without the library (a distro build) simply exports the uncompressed GLB.
+    """
+    properties = set(bpy.ops.export_scene.gltf.get_rna_type().properties.keys())
+    required = {"export_meshopt_compression_enable", "export_meshopt_extension"}
+    if not required <= properties:
+        return {}
+    return {
+        "export_meshopt_compression_enable": True,
+        "export_meshopt_extension": MESH_COMPRESSION_EXTENSION,
+    }
+
+
+def glb_extensions_used(path: Path) -> set:
+    raw = Path(path).read_bytes()
+    if len(raw) < 20 or raw[:4] != b"glTF":
+        raise SystemExit(f"invalid GLB header: {path}")
+    chunk_length, chunk_type = struct.unpack_from("<II", raw, 12)
+    if chunk_type != 0x4E4F534A:
+        raise SystemExit(f"GLB JSON chunk missing: {path}")
+    document = json.loads(raw[20:20 + chunk_length].decode("utf-8").rstrip("\x00 \t\r\n"))
+    return set(document.get("extensionsUsed", []))
+
+
 def main() -> None:
     args = parse_args()
     root = Path.cwd()
@@ -194,9 +228,17 @@ def main() -> None:
         export_lights=False,
         export_animations=False,
         export_materials="EXPORT",
+        **meshopt_export_kwargs(),
     )
     if not glb_path.is_file() or glb_path.stat().st_size < 100_000:
         raise SystemExit(f"Home runtime GLB missing or unexpectedly small: {glb_path}")
+
+    meshopt = MESH_COMPRESSION_EXTENSION in glb_extensions_used(glb_path)
+    if os.environ.get("HOME_RUNTIME_REQUIRE_MESHOPT") == "1" and not meshopt:
+        raise SystemExit(
+            f"Home runtime GLB was exported without {MESH_COMPRESSION_EXTENSION}; "
+            "the CI Blender must support Meshopt"
+        )
 
     metadata = {
         "contract": RUNTIME_CONTRACT,
@@ -216,6 +258,7 @@ def main() -> None:
         "architecture_meshes_after": architecture_meshes_after,
         "materials": len(bpy.data.materials),
         "bytes": glb_path.stat().st_size,
+        "meshopt": meshopt,
     }
     (out_dir / "home-v2-runtime.json").write_text(
         json.dumps(metadata, indent=2) + "\n",

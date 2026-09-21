@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import {
@@ -669,6 +670,8 @@ export default function HomeBlenderScene3D({
     loadTimer = window.setTimeout(() => failToFallback(), 20_000);
 
     const loader = new GLTFLoader();
+    // The runtime scene is published Meshopt-compressed; uncompressed files still load.
+    loader.setMeshoptDecoder(MeshoptDecoder);
     void loadHomeCastleR2Scene({
       logicalId: HOME_BLENDER_RUNTIME_LOGICAL_ID,
       loader,
