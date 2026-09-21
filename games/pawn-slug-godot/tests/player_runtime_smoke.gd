@@ -194,7 +194,7 @@ func _run() -> void:
     if ladder_target.size.x > 0.0:
         player.start_ladder_climb_probe(ladder_target)
         _expect(player.is_ladder_climbing_probe(), "ladder activa estado de subida real")
-        var ladder_start_y := player.position.y
+        var ladder_start_y: float = float(player.position.y)
         player.update_ladder_climb_probe(0.20, -1.0)
         _expect(player.position.y < ladder_start_y, "ladder mueve a Matthias verticalmente hacia arriba")
         player.position.y = 29.0
@@ -202,7 +202,7 @@ func _run() -> void:
         _expect(not player.is_ladder_climbing_probe(), "ladder libera a Matthias al alcanzar la plataforma superior")
         _expect(absf(player.position.y - 27.0) <= 0.1, "salida superior conserva los pies sobre la plataforma")
 
-    var lives_before_pit := player.lives
+    var lives_before_pit: int = int(player.lives)
     player.trigger_fall_death_probe()
     _expect(player.dead, "caer a un pozo profundo inicia muerte real")
     _expect(player.lives == maxi(0, lives_before_pit - 1), "pozo consume exactamente una vida")
