@@ -286,6 +286,26 @@
       "visual": {
         "sandbags": 5
       }
+    },
+    {
+      "x": 1975,
+      "y": 402,
+      "w": 120,
+      "h": 20,
+      "kind": "root_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "ravine_bypass"
+    },
+    {
+      "x": 2115,
+      "y": 342,
+      "w": 112,
+      "h": 20,
+      "kind": "ruin_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "ravine_bypass"
     }
   ],
   "obstacles": [
@@ -951,7 +971,7 @@
       "scale": 1.2
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "ladders": [
     {
       "x": 1552,
