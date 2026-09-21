@@ -45,6 +45,8 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
+          # The runtime loader decodes Meshopt; refuse to publish an uncompressed scene.
+          HOME_RUNTIME_REQUIRE_MESHOPT: '1'
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-v2-runtime
