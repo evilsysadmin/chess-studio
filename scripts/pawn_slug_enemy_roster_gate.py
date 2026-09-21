@@ -150,6 +150,14 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         ("pickup", float(item.get("x", -1))) for item in (stage.get("pickups") or [])
         if isinstance(item, dict)
     ]
+    forbidden_pit_points += [
+        ("dressing", float(item.get("x", -1))) for item in dressing
+        if isinstance(item, dict)
+    ]
+    forbidden_pit_points += [
+        ("story prop", float(item.get("x", -1))) for item in story_props
+        if isinstance(item, dict)
+    ]
     for index, pit in enumerate(pits):
         if not isinstance(pit, dict):
             errors.append(f"{stage_name}: pits[{index}] must be an object")
