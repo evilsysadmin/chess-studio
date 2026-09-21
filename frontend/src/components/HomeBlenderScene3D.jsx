@@ -149,8 +149,8 @@ export function rebaseFlameToPivot(object) {
 // the fire stays a small share of the thread, and stop it (leaving the authored
 // still frame) on hardware that cannot afford it.
 export const HOME_BLENDER_FIRE_MIN_SAMPLES = 6;
-export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 45;
-export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 45;
+export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 24;
+export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 28;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
 
 export function homeBlenderFireFramePlan({
@@ -176,6 +176,7 @@ function prepareRuntimeFireRig(root) {
     if (!object?.isMesh) return;
     const kind = homeBlenderFireKind(object.name);
     if (!kind) return;
+    object.castShadow = false;
     if (kind === 'flame' || kind === 'hot') rebaseFlameToPivot(object);
 
     if (Array.isArray(object.material)) {
@@ -418,6 +419,9 @@ export default function HomeBlenderScene3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = initialPolicy.lod === 'full';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // The room is static and only emissive flames move, so the shadow map is
+    // computed once instead of re-rasterising every mesh on each animated frame.
+    renderer.shadowMap.autoUpdate = false;
     renderer.toneMapping = THREE.AgXToneMapping;
     renderer.toneMappingExposure = EXPOSURE[ambient] || EXPOSURE.day;
     renderer.setClearColor(0x000000, 0);
@@ -571,6 +575,7 @@ export default function HomeBlenderScene3D({
       scene.add(model);
       resize();
       applyRuntimeFireMotion(fireRig, 0);
+      renderer.shadowMap.needsUpdate = true;
       renderFrame();
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');

@@ -239,10 +239,10 @@ describe('HomeBlenderScene3D live flame animation', () => {
     });
 
     it('stretches the interval so the fire never takes more than about a third of the thread', () => {
-      const plan = homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 30, samples: 30 });
+      const plan = homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 20, samples: 30 });
       expect(plan.enabled).toBe(true);
-      expect(plan.intervalMs).toBe(90);
-      expect(plan.intervalMs).toBeGreaterThanOrEqual(30 * 3);
+      expect(plan.intervalMs).toBe(60);
+      expect(plan.intervalMs).toBeGreaterThanOrEqual(20 * 3);
     });
 
     it('caps the stretched interval', () => {
@@ -265,7 +265,7 @@ describe('HomeBlenderScene3D live flame animation', () => {
         samples: 30,
       });
       expect(starved.enabled).toBe(false);
-      for (const frameGapMs of [16.7, 20, 33.4, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
+      for (const frameGapMs of [8, 16.7, 20, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
         expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
           .toBe(true);
       }
