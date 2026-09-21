@@ -22,7 +22,7 @@ async function startQuickGame2D(page) {
   await expect(dialog).toBeVisible();
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
   const twoD = renderer.getByRole('button', { name: '2D', exact: true });
-  await twoD.click();
+  if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();
   await expect(twoD).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
