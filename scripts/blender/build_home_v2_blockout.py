@@ -116,10 +116,15 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         )
         return max(0.0, min(1.0, value))
     if profile == "wood":
-        warp = (coarse - 0.5) * 1.35 + math.sin(v * math.tau * 2.0) * 0.08
-        grain = 0.5 + 0.5 * math.sin((u * 18.0 + warp) * math.tau)
-        pores = 0.5 + 0.5 * math.sin((u * 43.0 + medium * 1.8) * math.tau)
-        return max(0.0, min(1.0, grain * 0.48 + pores * 0.13 + coarse * 0.24 + fine * 0.15))
+        # A single sine repeated 18 times reads as a zebra stripe on the small
+        # panels and legs of the table. Real grain is uneven: two unrelated
+        # frequencies, both bent by low-frequency noise, so no two growth rings
+        # are the same width, and most of the variation comes from soft noise.
+        warp = (coarse - 0.5) * 1.6 + math.sin(v * math.tau * 2.0) * 0.08
+        rings = 0.5 + 0.5 * math.sin((u * 11.0 + warp) * math.tau)
+        fibres = 0.5 + 0.5 * math.sin((u * 27.0 + medium * 2.4 + coarse * 1.1) * math.tau)
+        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.30 + (fibres - 0.5) * 0.16
+                            + (coarse - 0.5) * 0.30 + (fine - 0.5) * 0.14))
     if profile == "leather":
         pores = 0.5 + 0.5 * math.sin((u * 29.0 + medium * 2.3) * math.tau)
         cross = 0.5 + 0.5 * math.sin((v * 31.0 + fine * 2.0) * math.tau + 0.8)
@@ -160,7 +165,7 @@ def _packed_surface_images(
     low, high = {
         "stone": (0.88, 1.08),
         "floor_stone": (0.68, 1.10),
-        "wood": (0.78, 1.20),
+        "wood": (0.86, 1.12),
         "metal": (0.79, 1.15),
         "textile": (0.78, 1.18),
         "leather": (0.70, 1.24),
@@ -180,7 +185,7 @@ def _packed_surface_images(
     normal_strength = {
         "stone": 2.5,
         "floor_stone": 4.0,
-        "wood": 2.2,
+        "wood": 1.3,
         "metal": 2.0,
         "textile": 2.8,
         "leather": 2.4,
