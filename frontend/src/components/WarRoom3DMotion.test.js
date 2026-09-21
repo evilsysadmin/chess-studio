@@ -287,6 +287,37 @@ describe('WarRoom3DMotion', () => {
     expect(calls).toEqual([['ratio', 0.9], ['size', 1000, 700, false]]);
   });
 
+  it('keeps v2 on full visual cadence even when the shared renderer has seen slow frames', () => {
+    const state = {
+      scene: { userData: { warRoomRenderedVariant: 'v2' } },
+      lastAnimationFrameAt: 70,
+      lastAnimationPaintAt: 84,
+      slowFrameCount: 3,
+      coarsePointer: false,
+      renderLite: false,
+      renderScale: 1.2,
+      adaptiveQualityReduced: true,
+      renderer: {
+        setPixelRatio: () => {},
+        setSize: () => {},
+        shadowMap: { enabled: false, autoUpdate: false, needsUpdate: false },
+        domElement: { dataset: {
+          board3dAdaptiveQuality: 'reduced',
+          board3dAnimationCadence: 'adaptive-30fps',
+          board3dAdaptiveReason: 'slow-move-frames',
+        } },
+      },
+    };
+
+    const plan = applyWarRoomMoveFrameBudget(state, { now: 100, devicePixelRatio: 2 });
+    expect(plan).toEqual({ reduced: false, paintIntervalMs: 0, shouldPaint: true });
+    expect(state.adaptiveQualityReduced).toBe(false);
+    expect(state.renderer.shadowMap.enabled).toBe(true);
+    expect(state.renderer.domElement.dataset.board3dAdaptiveQuality).toBe('full');
+    expect(state.renderer.domElement.dataset.board3dAnimationCadence).toBe('full-raf');
+    expect(state.renderer.domElement.dataset.board3dAdaptiveReason).toBeUndefined();
+  });
+
   it('spends shadow-map budget slowly while idle and restores the tight cadence during motion', () => {
     expect(shadowRefreshInterval()).toBe(360);
     expect(shadowRefreshInterval({ coarsePointer: true })).toBe(540);

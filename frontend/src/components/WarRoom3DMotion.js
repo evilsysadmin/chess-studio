@@ -54,6 +54,23 @@ export function applyWarRoomMoveFrameBudget(state, {
     }
   }
 
+  if (state.scene?.userData?.warRoomRenderedVariant === 'v2') {
+    if (state.adaptiveQualityReduced) {
+      state.adaptiveQualityReduced = false;
+      state.renderer.shadowMap.enabled = !state.renderLite;
+      state.renderer.shadowMap.needsUpdate = !state.renderLite;
+      state.renderer.domElement.dataset.board3dAdaptiveQuality = 'full';
+      state.renderer.domElement.dataset.board3dAnimationCadence = 'full-raf';
+      delete state.renderer.domElement.dataset.board3dAdaptiveReason;
+    }
+    return warRoomAdaptiveMovePlan({
+      slowFrameCount: 0,
+      reduced: false,
+      now: frameNow,
+      lastPaintAt: state.lastAnimationPaintAt,
+    });
+  }
+
   const plan = warRoomAdaptiveMovePlan({
     slowFrameCount: state.slowFrameCount,
     reduced: state.adaptiveQualityReduced,
