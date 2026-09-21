@@ -251,13 +251,87 @@ func _run() -> void:
         var right_shape := right_floor.get_node("CollisionShape2D") as CollisionShape2D
         _expect(absf(left_shape.shape.size.x - 420.0) <= EPSILON, "segmento izquierdo termina al borde del pozo")
         _expect(absf(right_shape.shape.size.x - 260.0) <= EPSILON, "segmento derecho empieza tras el pozo")
+    # Enemy traversal probe: mobile enemies should read authored geometry
+    # instead of freezing below platforms or phasing through crates/pits.
+    var enemy_probe = MainRuntime.new()
+    enemy_probe._floor_y = 610.0
+    enemy_probe._world_size = Vector2(1280.0, 720.0)
+    enemy_probe._obstacles = [Rect2(200.0, 550.0, 60.0, 60.0)]
+    enemy_probe._platforms = [Rect2(420.0, 520.0, 190.0, 24.0)]
+    enemy_probe._stage_manifest = {
+        "ladders": [
+            {"x": 320.0, "top_y": 456.0, "bottom_y": 610.0, "w": 30.0, "exit_dir": 1.0},
+        ],
+        "pits": [
+            {"x": 700.0, "w": 180.0, "kind": "test_pit"},
+        ],
+    }
+
+    var crate_enemy := {
+        "type": "pawn",
+        "x": 145.0,
+        "spawn_x": 145.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "hp": 34,
+    }
+    _expect(
+        enemy_probe._enemy_try_auto_jump(crate_enemy, 1.0),
+        "enemigo móvil salta una caja/plataforma baja que corta su avance",
+    )
+    _expect(float(crate_enemy["vy"]) < 0.0, "salto enemigo aplica velocidad vertical ascendente")
+    _expect(not bool(crate_enemy["on_ground"]), "salto enemigo abandona estado de suelo")
+
+    var ladder_enemy := {
+        "type": "commando",
+        "x": 250.0,
+        "spawn_x": 250.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+    }
+    var route_ladder := enemy_probe._enemy_route_ladder_toward(ladder_enemy, 456.0)
+    _expect(not route_ladder.is_empty(), "enemigo móvil encuentra escalera que conecta su nivel con Matthias")
+    if not route_ladder.is_empty():
+        _expect(absf(float(route_ladder["x"]) - 320.0) <= EPSILON, "routing enemigo conserva la escalera authored")
+
+    var pit_enemy := {
+        "type": "scout",
+        "x": 640.0,
+        "spawn_x": 640.0,
+        "y": 610.0,
+        "vy": 0.0,
+        "on_ground": true,
+        "traversal_mode": "ground",
+        "air_direction": 0.0,
+        "air_speed_scale": 1.0,
+        "hp": 46,
+    }
+    _expect(not enemy_probe._enemy_pit_ahead(pit_enemy, 1.0).is_empty(), "enemigo detecta un hueco antes de pisarlo")
+    _expect(enemy_probe._enemy_try_auto_jump(pit_enemy, 1.0), "enemigo salta el hueco en vez de quedarse clavado")
+    _expect(
+        float(pit_enemy["air_speed_scale"]) >= enemy_probe.ENEMY_TRAVERSAL_PIT_AIR_SPEED_SCALE,
+        "salto de hueco conserva impulso arcade suficiente",
+    )
+
+    var landing_y := enemy_probe._enemy_landing_y(230.0, 530.0, 570.0)
+    _expect(absf(landing_y - 550.0) <= EPSILON, "enemigo puede aterrizar/trepar sobre una caja")
+    _expect(not enemy_probe._enemy_pit_below_x(650.0), "suelo normal sigue siendo soporte enemigo")
+    _expect(enemy_probe._enemy_pit_below_x(760.0), "hueco authored elimina soporte enemigo")
+    enemy_probe.free()
+
     traversal_host.queue_free()
 
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + ladders + pits + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + ladders + pits + enemy traversal + safe respawn")
         quit(0)
         return
-    print("FAILED Pawn Slug Godot runtime mechanics smoke · %d fallo(s)" % _failures.size())
+    print("FAILED Pawn Slug Godot runtime mechanics smoke · enemy traversal included · %d fallo(s)" % _failures.size())
     quit(1)
