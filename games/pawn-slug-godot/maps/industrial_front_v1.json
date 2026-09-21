@@ -300,6 +300,66 @@
         "rail": true,
         "lamp": true
       }
+    },
+    {
+      "x": 760,
+      "y": 330,
+      "w": 116,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "route": "ladder",
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
+      "x": 2760,
+      "y": 346,
+      "w": 130,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "route": "ladder",
+      "visual": {
+        "rail": true
+      }
+    }
+  ],
+  "ladders": [
+    {
+      "id": "service-ladder-west",
+      "x": 564,
+      "y": 342,
+      "w": 42,
+      "h": 268,
+      "style": "steel"
+    },
+    {
+      "id": "service-ladder-east",
+      "x": 3748,
+      "y": 326,
+      "w": 42,
+      "h": 284,
+      "style": "steel"
+    },
+    {
+      "id": "relay-ladder",
+      "x": 2802,
+      "y": 346,
+      "w": 42,
+      "h": 264,
+      "style": "steel"
+    }
+  ],
+  "pits": [
+    {
+      "id": "factory-trench",
+      "x": 1580,
+      "w": 100,
+      "kind": "trench"
     }
   ],
   "obstacles": [
@@ -691,7 +751,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "dressing": [
     {
       "kind": "crate",
