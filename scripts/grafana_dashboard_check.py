@@ -82,6 +82,7 @@ def main() -> int:
         'chess-studio-oci-backend-staging-stdout',
         'Raw logs · texto/regex',
         'auth_login_failed : auth_login_failed',
+        'auth_ip_ban_activated : auth_ip_ban_activated',
         '401 login · bot forensics',
         'username_attempted',
         'password_fingerprint',
