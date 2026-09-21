@@ -6,7 +6,6 @@ on:
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
-      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -37,7 +36,6 @@ on:
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
-      - 'games/pawn-slug-godot/art/matthias-v23-machinegun-source.png'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v22.py'
@@ -85,6 +83,7 @@ env:
   SHOTGUN_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png'
   PANZERFAUST_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png'
   MACHINEGUN_V22_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png'
+  MACHINEGUN_V23_SOURCE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/source-v23/machinegun/matthias-v23-machinegun-source-9ba9f7fd29c1cf86.png'
 
 jobs:
   build-strict-v17-machinegun:
@@ -743,11 +742,13 @@ jobs:
             scripts/art/pack_pawn_slug_machinegun_v23.py \
             scripts/art/validate_pawn_slug_machinegun_v23.py
 
-      - name: Download strict-v22 SMG baseline + canonical pistol alignment
+      - name: Download dedicated SMG source + strict-v22 baseline + pistol alignment
         run: |
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v23'
           mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$MACHINEGUN_V23_SOURCE_URL" --output "$ROOT/source-v23.png"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
             "$MACHINEGUN_V22_URL" --output "$ROOT/baseline-v22.png"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
@@ -758,7 +759,7 @@ jobs:
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v23'
           python3 scripts/art/pack_pawn_slug_machinegun_v23.py \
-            --source games/pawn-slug-godot/art/matthias-v23-machinegun-source.png \
+            --source "$ROOT/source-v23.png" \
             --baseline "$ROOT/baseline-v22.png" \
             --pistol "$ROOT/pistol-v21.png" \
             --output "$ROOT/machinegun-v23.png" \
@@ -805,7 +806,7 @@ jobs:
             --script res://tests/matthias_machinegun_v23_smoke.gd -- \
             "$ROOT/machinegun-v23.png" "$ROOT/machinegun-run13-v23.png" "$ROOT/manifest.json"
 
-      - name: Publish temporary source + immutable strict-v23 SMG assets to R2
+      - name: Publish immutable strict-v23 SMG assets to R2
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -813,9 +814,6 @@ jobs:
         run: |
           set -euo pipefail
           ROOT='/tmp/pawn-slug-godot-strict-v23'
-          python3 -S scripts/r2_asset_publish.py publish games/pawn-slug-godot/art/matthias-v23-machinegun-source.png \
-            --logical-id 'pawnSlug.godot.matthias.machinegun.sourceV23' \
-            --prefix 'pawn-slug-godot/matthias/source-v23/machinegun' | tee "$ROOT/publish-source.txt"
           python3 -S scripts/r2_asset_publish.py publish "$ROOT/machinegun-v23.png" \
             --logical-id 'pawnSlug.godot.matthias.machinegun.strictV23' \
             --prefix 'pawn-slug-godot/matthias/strict-v23/machinegun' | tee "$ROOT/publish-atlas.txt"
@@ -833,7 +831,6 @@ jobs:
             /tmp/pawn-slug-godot-strict-v23/manifest.json
             /tmp/pawn-slug-godot-strict-v23/health.json
             /tmp/pawn-slug-godot-strict-v23/review/
-            /tmp/pawn-slug-godot-strict-v23/publish-source.txt
             /tmp/pawn-slug-godot-strict-v23/publish-atlas.txt
             /tmp/pawn-slug-godot-strict-v23/publish-run13.txt
           if-no-files-found: warn
