@@ -266,13 +266,12 @@ def _micro_detail(profile: str, size: int, seed: int) -> "np.ndarray":
         b = _np_noise(size, seed + 659, 61)
         pebble = np.abs(a - b) - 0.17
         crease = _np_fbm(size, seed + 661, 9, 3) - 0.5
-        return pebble * 0.20 + crease * 0.07
+        return pebble * 0.14 + crease * 0.05
     if profile == "textile":
-        threads_u = np.sin((np.arange(size) / size * 88.0 + _np_noise(size, seed + 673, 8, 1)[0] * 0.9) * math.tau)
-        threads_v = np.sin((np.arange(size) / size * 84.0) * math.tau + 0.6)
-        weave = threads_u[None, :] * threads_v[:, None]
-        fuzz = _np_fbm(size, seed + 677, 56, 2) - 0.5
-        return weave * 0.11 + fuzz * 0.10
+        # The macro profile already weaves ~30 threads across the tile. A second,
+        # unrelated thread frequency here beats against it and shows up as diagonal
+        # moire on large cloth (benches, sofa, rug), so only add unstructured fuzz.
+        return (_np_fbm(size, seed + 677, 56, 2) - 0.5) * 0.10
     if profile == "metal":
         scratches = np.clip(_np_noise(size, seed + 683, 3, size // 2) - 0.62, 0.0, None) * 1.6
         hairline = _np_noise(size, seed + 691, 5, size) - 0.5
