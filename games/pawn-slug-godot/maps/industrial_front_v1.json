@@ -1,6 +1,6 @@
 {
   "id": "industrial_front_v1",
-  "version": 1,
+  "version": 2,
   "theme": "night_front",
   "world": {
     "width": 5200,
@@ -691,7 +691,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 3,
+  "visual_revision": 4,
   "dressing": [
     {
       "kind": "crate",
@@ -873,6 +873,36 @@
       "y": 608,
       "count": 18,
       "spacing": 83
+    }
+  ],
+  "ladders": [
+    {
+      "x": 1822,
+      "top_y": 280,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "service_ladder"
+    },
+    {
+      "x": 3032,
+      "top_y": 390,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "access_ladder"
+    }
+  ],
+  "pits": [
+    {
+      "x": 2100,
+      "w": 210,
+      "kind": "shell_crater"
+    },
+    {
+      "x": 3790,
+      "w": 190,
+      "kind": "bombed_trench"
     }
   ]
 }
