@@ -93,7 +93,8 @@ export function homeBlenderFireMotion({
       scaleZ: 1 - body * 0.030,
       lean: fireNoise(seconds, 2.6, seed + 503) * 0.050 + gust * 0.015,
       emission: 0.95 + flick * 0.045,
-      light: 1,
+      // A candle or torch flame throws a light that wavers with it.
+      light: 0.90 + body * 0.09 + drift * 0.07,
     };
   }
   if (kind === 'ember') {
@@ -279,7 +280,8 @@ function applyRuntimeFireMotion(nodes, timeMs) {
     }
   }
   // Each hearth throws its own light, driven by the mean of its own flames.
-  const factor = ({ sum, count }) => THREE.MathUtils.clamp(1 + (count ? sum / count : 0) * 1.6, 0.86, 1.10);
+  // The mean of ~10 independent flames cancels most of its own swing, so amplify what is left.
+  const factor = ({ sum, count }) => THREE.MathUtils.clamp(1 + (count ? sum / count : 0) * 3.4, 0.80, 1.18);
   return { left: factor(light.left), right: factor(light.right) };
 }
 
@@ -407,6 +409,12 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
   return {
+    torches: torches.map((light, index) => ({
+      light,
+      base: light.intensity,
+      // A stable phase per torch, so the four never flicker in step.
+      phase: stableFirePhase(`home_torch_light_${index}`),
+    })),
     leftHearth,
     rightHearth,
     leftHearthBase: leftHearth.intensity,
@@ -603,6 +611,10 @@ export default function HomeBlenderScene3D({
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
+        for (const torch of runtimeLights.torches) {
+          torch.light.intensity = torch.base
+            * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle' }).light;
+        }
         const startedAt = performance.now();
         renderFrame();
         const cost = performance.now() - startedAt;

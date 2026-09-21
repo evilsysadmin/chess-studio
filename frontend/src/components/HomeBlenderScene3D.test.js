@@ -104,7 +104,7 @@ describe('HomeBlenderScene3D live flame animation', () => {
         expect(Math.abs(motion.lean)).toBeLessThan(0.09);
         expect(motion.emission).toBeGreaterThan(0.84);
         expect(motion.emission).toBeLessThan(1.10);
-        expect(motion.light).toBeGreaterThan(0.84);
+        expect(motion.light).toBeGreaterThan(0.72);
         expect(motion.light).toBeLessThan(1.12);
       }
     }
@@ -344,6 +344,45 @@ describe('HomeBlenderScene3D live flame animation', () => {
     it('leaves unknown kinds and missing materials alone', () => {
       expect(applyFlameLook(lit(), 'ember')).toBe(false);
       expect(applyFlameLook(null, 'flame')).toBe(false);
+    });
+  });
+
+  describe('torch light flicker', () => {
+    it('makes a candle or torch light waver within a restrained band', () => {
+      let min = Infinity;
+      let max = -Infinity;
+      for (let timeMs = 0; timeMs < 60000; timeMs += 42) {
+        const { light } = homeBlenderFireMotion({ timeMs, phase: 1.7, kind: 'candle' });
+        min = Math.min(min, light);
+        max = Math.max(max, light);
+      }
+      expect(min).toBeGreaterThan(0.72);
+      expect(max).toBeLessThan(1.08);
+      // It must visibly move, not sit near a constant.
+      expect(max - min).toBeGreaterThan(0.12);
+    });
+
+    it('does not flicker two torches in step', () => {
+      let agree = 0;
+      let total = 0;
+      for (let timeMs = 0; timeMs < 60000; timeMs += 250) {
+        const a = homeBlenderFireMotion({ timeMs, phase: 0.6, kind: 'candle' }).light - 0.90;
+        const b = homeBlenderFireMotion({ timeMs, phase: 3.9, kind: 'candle' }).light - 0.90;
+        if (Math.sign(a) === Math.sign(b)) agree += 1;
+        total += 1;
+      }
+      // Independent noise agrees about half the time, never always.
+      expect(agree / total).toBeLessThan(0.8);
+      expect(agree / total).toBeGreaterThan(0.2);
+    });
+
+    it('is smooth from one rendered frame to the next', () => {
+      let previous = homeBlenderFireMotion({ timeMs: 0, phase: 2.2, kind: 'candle' }).light;
+      for (let timeMs = 42; timeMs < 8000; timeMs += 42) {
+        const current = homeBlenderFireMotion({ timeMs, phase: 2.2, kind: 'candle' }).light;
+        expect(Math.abs(current - previous)).toBeLessThan(0.05);
+        previous = current;
+      }
     });
   });
 });
