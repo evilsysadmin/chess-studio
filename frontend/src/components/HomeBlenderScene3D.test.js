@@ -6,6 +6,9 @@ import {
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
+  homeBlenderTimeOfDayLook,
+  applyHomeBlenderMoonVisibility,
+  HOME_BLENDER_TIME_OF_DAY,
   homeBlenderIsSoftwareRenderer,
   applyFlameLook,
   HOME_BLENDER_FLAME_LOOK,
@@ -392,6 +395,43 @@ describe('HomeBlenderScene3D live flame animation', () => {
         expect(Math.abs(current - previous)).toBeLessThan(0.05);
         previous = current;
       }
+    });
+  });
+
+  describe('time of day look', () => {
+    const channel = (hex, shift) => (hex >> shift) & 0xff;
+
+    it('has a look for every period and falls back to day', () => {
+      for (const period of ['dawn', 'day', 'dusk', 'night']) {
+        expect(HOME_BLENDER_TIME_OF_DAY[period]).toBeTruthy();
+        expect(homeBlenderTimeOfDayLook(period)).toBe(HOME_BLENDER_TIME_OF_DAY[period]);
+      }
+      expect(homeBlenderTimeOfDayLook('midnight')).toBe(HOME_BLENDER_TIME_OF_DAY.day);
+      expect(homeBlenderTimeOfDayLook(undefined)).toBe(HOME_BLENDER_TIME_OF_DAY.day);
+    });
+
+    it('makes the sun/moon key cool at night and warm-bright at noon', () => {
+      const night = homeBlenderTimeOfDayLook('night').key;
+      const day = homeBlenderTimeOfDayLook('day').key;
+      expect(channel(night.color, 0)).toBeGreaterThan(channel(night.color, 16));
+      expect(channel(day.color, 16)).toBeGreaterThan(channel(day.color, 0));
+      expect(night.scale).toBeLessThan(day.scale);
+    });
+
+    it('gives the window fill more daylight at noon than at night', () => {
+      expect(homeBlenderTimeOfDayLook('day').fill.scale)
+        .toBeGreaterThan(homeBlenderTimeOfDayLook('dusk').fill.scale);
+    });
+
+    it('only shows the moon when the sky is not full daylight', () => {
+      const moon = { name: 'HOME_PROP_window_moon', visible: true };
+      const mare = { name: 'HOME_PROP_window_moon_mare_2', visible: true };
+      const other = { name: 'HOME_PROP_table_top', visible: true };
+      const root = { traverse: (fn) => [moon, mare, other].forEach(fn) };
+      expect(applyHomeBlenderMoonVisibility(root, 'day')).toBe(2);
+      expect([moon.visible, mare.visible, other.visible]).toEqual([false, false, true]);
+      applyHomeBlenderMoonVisibility(root, 'night');
+      expect([moon.visible, mare.visible, other.visible]).toEqual([true, true, true]);
     });
   });
 });

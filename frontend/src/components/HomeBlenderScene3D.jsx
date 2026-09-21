@@ -24,6 +24,61 @@ const EXPOSURE = Object.freeze({
   night: 1.32,
 });
 
+// The room used to look the same at every hour (only the exposure moved, by 8%).
+// Each period now tints and rebalances the daylight-side lights: the warm key that
+// stands for the sun/moon, the cool fill that comes from the tall window on the
+// right, the sky colour of the hemisphere and the ambient wash. Values multiply the
+// authored intensities, and the fires are untouched, so the room keeps its hearth
+// glow at night and simply gets more daylight at noon. The moon disc only shows when
+// there is a night-ish sky.
+export const HOME_BLENDER_TIME_OF_DAY = Object.freeze({
+  dawn: Object.freeze({
+    ambient: Object.freeze({ color: 0xb08a78, scale: 1.0 }),
+    hemi: Object.freeze({ color: 0x9aa6c8, scale: 1.05 }),
+    key: Object.freeze({ color: 0xffb48e, scale: 0.95 }),
+    fill: Object.freeze({ color: 0xc79aa8, scale: 1.3 }),
+    moon: true,
+  }),
+  day: Object.freeze({
+    ambient: Object.freeze({ color: 0xa89684, scale: 1.15 }),
+    hemi: Object.freeze({ color: 0xa9c0e0, scale: 1.3 }),
+    key: Object.freeze({ color: 0xffdcb0, scale: 1.12 }),
+    fill: Object.freeze({ color: 0x8fb2e6, scale: 1.7 }),
+    moon: false,
+  }),
+  dusk: Object.freeze({
+    ambient: Object.freeze({ color: 0x9b7460, scale: 0.95 }),
+    hemi: Object.freeze({ color: 0x8a7ea8, scale: 1.0 }),
+    key: Object.freeze({ color: 0xff9a5c, scale: 0.95 }),
+    fill: Object.freeze({ color: 0x8a6a96, scale: 1.3 }),
+    moon: true,
+  }),
+  night: Object.freeze({
+    ambient: Object.freeze({ color: 0x707a9b, scale: 0.9 }),
+    hemi: Object.freeze({ color: 0x4a5f96, scale: 1.0 }),
+    key: Object.freeze({ color: 0x9fb2e0, scale: 0.7 }),
+    fill: Object.freeze({ color: 0x5a7ec4, scale: 1.5 }),
+    moon: true,
+  }),
+});
+
+export function homeBlenderTimeOfDayLook(ambient = 'day') {
+  return HOME_BLENDER_TIME_OF_DAY[ambient] || HOME_BLENDER_TIME_OF_DAY.day;
+}
+
+const HOME_BLENDER_MOON_NAME = /window_moon/i;
+
+export function applyHomeBlenderMoonVisibility(root, ambient = 'day') {
+  const visible = homeBlenderTimeOfDayLook(ambient).moon;
+  let touched = 0;
+  root?.traverse?.((object) => {
+    if (!HOME_BLENDER_MOON_NAME.test(String(object.name || ''))) return;
+    object.visible = visible;
+    touched += 1;
+  });
+  return touched;
+}
+
 function stableFirePhase(name = '') {
   let hash = 2166136261;
   for (let index = 0; index < name.length; index += 1) {
@@ -358,7 +413,7 @@ const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
 const HOME_BLENDER_LITE_EXPOSURE_BOOST = 1.75;
 const HOME_BLENDER_LITE_AMBIENT_BOOST = 2.6;
 
-function addRuntimeLights(scene, shadowsEnabled = true) {
+function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -400,6 +455,16 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   // lights; the runtime had none, so the dark steel read as a black silhouette.
   // A narrow, soft-edged cool spot aimed at the suit lets its plates catch a
   // highlight without spilling onto the board, whose colours must stay honest.
+  const look = homeBlenderTimeOfDayLook(ambientPeriod);
+  ambient.color.setHex(look.ambient.color);
+  ambient.intensity *= look.ambient.scale;
+  hemi.color.setHex(look.hemi.color);
+  hemi.intensity *= look.hemi.scale;
+  key.color.setHex(look.key.color);
+  key.intensity *= look.key.scale;
+  fill.color.setHex(look.fill.color);
+  fill.intensity *= look.fill.scale;
+
   const armour = new THREE.SpotLight(0xb9c6da, 26, 6, 0.36, 0.75, 2);
   armour.position.set(1.4, 3.6, -3.4);
   armour.target.position.set(1.5, 2.2, -5.7);
@@ -605,7 +670,7 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full');
+    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -760,6 +825,7 @@ export default function HomeBlenderScene3D({
       }
       model = root;
       prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
+      applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
       scene.add(model);
       resize();
