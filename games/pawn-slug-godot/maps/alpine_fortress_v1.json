@@ -354,6 +354,12 @@
   ],
   "pits": [
     {
+      "id": "west-crevasse",
+      "x": 2270,
+      "w": 84,
+      "kind": "crevasse"
+    },
+    {
       "id": "ice-crevasse",
       "x": 3460,
       "w": 100,
@@ -901,5 +907,5 @@
       "y": 606
     }
   ],
-  "visual_revision": 3
+  "visual_revision": 4
 }
