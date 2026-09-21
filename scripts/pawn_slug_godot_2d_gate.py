@@ -61,6 +61,13 @@ REQUIRED_MATTHIAS = (
     "_ensure_v10_locomotion",
     '"locomotion-v10"',
     'STRICT_RUNTIME_GENERATION := "v22"',
+    "WEAPON_BOOTSTRAP_ORDER",
+    "_begin_atlas_bootstrap",
+    "_begin_run12_bootstrap",
+    "_start_bootstrap_request",
+    "_bootstrap_complete",
+    "return _body_ready and _bootstrap_complete",
+    "never keep rendering the previously selected weapon",
     "V9_ATLAS_COLUMNS := 8",
     "V9_ATLAS_ROWS := 18",
     "V9_ATLAS_CELL_SIZE := 416",
@@ -550,6 +557,9 @@ def self_test() -> None:
     assert "SpriteFrames" in REQUIRED_MATTHIAS
     assert "V9_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "V9_ATLAS_ROWS := 18" in REQUIRED_MATTHIAS
+    assert "WEAPON_BOOTSTRAP_ORDER" in REQUIRED_MATTHIAS
+    assert "_begin_atlas_bootstrap" in REQUIRED_MATTHIAS
+    assert "return _body_ready and _bootstrap_complete" in REQUIRED_MATTHIAS
     assert "V9_ATLAS_CELL_SIZE := 416" in REQUIRED_MATTHIAS
     assert "RUN12_ATLAS_COLUMNS := 12" in REQUIRED_MATTHIAS
     assert "_append_run12_frames" in REQUIRED_MATTHIAS

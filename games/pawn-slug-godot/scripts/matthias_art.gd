@@ -35,6 +35,8 @@ const RUN12_ATLAS_COLUMNS := 12
 const RUN12_ATLAS_CELL_SIZE := 416
 const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
 const RUN12_FPS := 24.0
+const WEAPON_BOOTSTRAP_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
+const BOOTSTRAP_RETRY_LIMIT := 2
 
 # v10 remains an experimental candidate only. Runtime now uses the coherent
 # strict-v17 tactical bank; v10 stays disabled because its mixed silhouettes
@@ -371,14 +373,20 @@ var _master_request: HTTPRequest
 var _atlas_request: HTTPRequest
 var _atlas_request_weapon := ""
 var _atlas_request_layout := ""
+var _bootstrap_requests: Array[HTTPRequest] = []
+var _bootstrap_full_pending := 0
+var _bootstrap_run_pending := 0
+var _bootstrap_full_failures: Array[String] = []
+var _bootstrap_run_failures: Array[String] = []
+var _bootstrap_complete := false
 
 func _ready() -> void:
     _build_nodes()
-    _install_or_request_weapon()
+    _begin_atlas_bootstrap()
     queue_redraw()
 
 func body_ready() -> bool:
-    return _body_ready
+    return _body_ready and _bootstrap_complete
 
 func current_weapon() -> String:
     return _weapon
@@ -411,6 +419,13 @@ func set_weapon(kind: String) -> void:
     _weapon = next
     _one_shot_action = ""
     _hold_one_shot = false
+    # Normal gameplay should never reach this path because every weapon bank is
+    # prefetched before body_ready(). If a CDN/bootstrap failure leaves a bank
+    # missing, never keep rendering the previously selected weapon.
+    if not _full_frames_by_weapon.has(_weapon):
+        _body_ready = false
+        _rendered_weapon = ""
+        _body.visible = false
     _install_or_request_weapon()
     queue_redraw()
 
@@ -667,6 +682,181 @@ func _build_nodes() -> void:
     _flash.color = Color("ffd36a")
     _flash.visible = false
     _muzzle.add_child(_flash)
+
+
+func _begin_atlas_bootstrap() -> void:
+    if _bootstrap_complete:
+        _install_or_request_weapon()
+        return
+    _body_ready = false
+    _rendered_weapon = ""
+    _body.visible = false
+    _bootstrap_full_failures.clear()
+    _bootstrap_run_failures.clear()
+
+    var missing_full: Array[String] = []
+    for weapon_id in WEAPON_BOOTSTRAP_ORDER:
+        if not _full_frames_by_weapon.has(weapon_id) or not _v9_ready_by_weapon.has(weapon_id):
+            missing_full.append(weapon_id)
+
+    if missing_full.is_empty():
+        _begin_run12_bootstrap()
+        return
+
+    _bootstrap_full_pending = missing_full.size()
+    for weapon_id in missing_full:
+        _start_bootstrap_request(
+            weapon_id,
+            String(FULL_ATLAS_URLS.get(weapon_id, "")),
+            "full-v9",
+            0,
+        )
+
+func _begin_run12_bootstrap() -> void:
+    var missing_run: Array[String] = []
+    for weapon_id in WEAPON_BOOTSTRAP_ORDER:
+        if (
+            _full_frames_by_weapon.has(weapon_id)
+            and _v9_ready_by_weapon.has(weapon_id)
+            and not _run12_ready_by_weapon.has(weapon_id)
+        ):
+            missing_run.append(weapon_id)
+
+    if missing_run.is_empty():
+        _finish_atlas_bootstrap()
+        return
+
+    _bootstrap_run_pending = missing_run.size()
+    for weapon_id in missing_run:
+        _start_bootstrap_request(
+            weapon_id,
+            String(RUN12_ATLAS_URLS.get(weapon_id, "")),
+            "run12-v22",
+            0,
+        )
+
+func _start_bootstrap_request(
+    weapon_id: String,
+    url: String,
+    layout: String,
+    attempt: int,
+) -> void:
+    if url.is_empty():
+        _settle_bootstrap_request(weapon_id, layout, false)
+        return
+    var request := HTTPRequest.new()
+    request.name = "Bootstrap_%s_%s_%d" % [weapon_id, layout, attempt]
+    add_child(request)
+    _bootstrap_requests.append(request)
+    request.request_completed.connect(
+        _on_bootstrap_atlas_loaded.bind(weapon_id, layout, attempt, request)
+    )
+    if request.request(url) != OK:
+        _dispose_bootstrap_request(request)
+        _retry_or_settle_bootstrap(weapon_id, url, layout, attempt)
+
+func _on_bootstrap_atlas_loaded(
+    result: int,
+    response_code: int,
+    _headers: PackedStringArray,
+    bytes: PackedByteArray,
+    weapon_id: String,
+    layout: String,
+    attempt: int,
+    request: HTTPRequest,
+) -> void:
+    _dispose_bootstrap_request(request)
+    if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+        var url := String(
+            FULL_ATLAS_URLS.get(weapon_id, "")
+            if layout == "full-v9"
+            else RUN12_ATLAS_URLS.get(weapon_id, "")
+        )
+        _retry_or_settle_bootstrap(weapon_id, url, layout, attempt)
+        return
+
+    var image := _decode_raster(bytes)
+    if image == null:
+        var url := String(
+            FULL_ATLAS_URLS.get(weapon_id, "")
+            if layout == "full-v9"
+            else RUN12_ATLAS_URLS.get(weapon_id, "")
+        )
+        _retry_or_settle_bootstrap(weapon_id, url, layout, attempt)
+        return
+
+    var accepted := false
+    if layout == "full-v9":
+        var frames := _build_v9_frames(image)
+        if frames != null:
+            _full_frames_by_weapon[weapon_id] = frames
+            _full_body_y_by_weapon[weapon_id] = V9_BODY_Y
+            _full_muzzle_by_weapon[weapon_id] = {}
+            _v9_ready_by_weapon[weapon_id] = true
+            _directional_ready_by_weapon[weapon_id] = true
+            accepted = true
+    elif layout == "run12-v22":
+        accepted = _append_run12_frames(weapon_id, image)
+        if accepted:
+            _run12_ready_by_weapon[weapon_id] = true
+
+    if accepted:
+        _settle_bootstrap_request(weapon_id, layout, true)
+        return
+
+    var retry_url := String(
+        FULL_ATLAS_URLS.get(weapon_id, "")
+        if layout == "full-v9"
+        else RUN12_ATLAS_URLS.get(weapon_id, "")
+    )
+    _retry_or_settle_bootstrap(weapon_id, retry_url, layout, attempt)
+
+func _retry_or_settle_bootstrap(
+    weapon_id: String,
+    url: String,
+    layout: String,
+    attempt: int,
+) -> void:
+    if attempt < BOOTSTRAP_RETRY_LIMIT:
+        call_deferred("_start_bootstrap_request", weapon_id, url, layout, attempt + 1)
+        return
+    _settle_bootstrap_request(weapon_id, layout, false)
+
+func _settle_bootstrap_request(weapon_id: String, layout: String, accepted: bool) -> void:
+    if layout == "full-v9":
+        if not accepted and not _bootstrap_full_failures.has(weapon_id):
+            _bootstrap_full_failures.append(weapon_id)
+        _bootstrap_full_pending = maxi(0, _bootstrap_full_pending - 1)
+        if _bootstrap_full_pending == 0:
+            _begin_run12_bootstrap()
+        return
+
+    if layout == "run12-v22":
+        if not accepted and not _bootstrap_run_failures.has(weapon_id):
+            _bootstrap_run_failures.append(weapon_id)
+        _bootstrap_run_pending = maxi(0, _bootstrap_run_pending - 1)
+        if _bootstrap_run_pending == 0:
+            _finish_atlas_bootstrap()
+
+func _dispose_bootstrap_request(request: HTTPRequest) -> void:
+    _bootstrap_requests.erase(request)
+    if is_instance_valid(request):
+        request.queue_free()
+
+func _finish_atlas_bootstrap() -> void:
+    _bootstrap_complete = true
+    if not _bootstrap_full_failures.is_empty():
+        push_warning(
+            "Matthias bootstrap missing full banks: %s"
+            % [", ".join(_bootstrap_full_failures)]
+        )
+    if not _bootstrap_run_failures.is_empty():
+        push_warning(
+            "Matthias bootstrap missing optional run12 overlays: %s"
+            % [", ".join(_bootstrap_run_failures)]
+        )
+    _install_or_request_weapon()
+    queue_redraw()
 
 func _install_or_request_weapon() -> void:
     if _full_frames_by_weapon.has(_weapon):
