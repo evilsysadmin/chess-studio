@@ -34,6 +34,12 @@ def main():
   im=run.crop((col*CELL,0,(col+1)*CELL,CELL)); bb=im.getchannel('A').getbbox(); rhs.append(dig(im)); rfeet.append(bb[3] if bb else None)
  if len(set(rhs))!=13: errors.append(f'run13 distinct={len(set(rhs))}')
  if set(rfeet)!={382}: errors.append(f'run13 feet={sorted(set(rfeet))}')
+ if man.get('actions')!=['idle','walk','run','jump','fall','land','crouch','crouch_walk','shoot','shoot_up','shoot_down','shoot_diag_up','shoot_diag_up_alt','shoot_diag_down','shoot_crouch','reload','hurt','die']: errors.append('manifest actions')
+ counts=man.get('frame_counts',{})
+ if int(counts.get('hurt',0))!=6: errors.append('manifest hurt count')
+ for action in man.get('actions',[]):
+  if action!='hurt' and int(counts.get(action,0))!=8: errors.append(f'manifest count {action}')
+ if man.get('run13',{}).get('frames')!=13: errors.append('manifest run13 frames')
  if man.get('atlas_sha256')!=hashlib.sha256(a.atlas.read_bytes()).hexdigest(): errors.append('atlas hash')
  if man.get('run13_sha256')!=hashlib.sha256(a.run13.read_bytes()).hexdigest(): errors.append('run13 hash')
  rep={'ok':not errors,'errors':errors,'summary':{'rows_distinct':distinct,'run13_distinct':len(set(rhs)),'regen_footline':{str(r):sorted(set(feet[r])) for r in REGEN},'retained_unchanged':not retained,'dirty':dirty,'guard':len(guard)}}; a.report.parent.mkdir(parents=True,exist_ok=True); a.report.write_text(json.dumps(rep,indent=2)+'\n'); print(json.dumps(rep['summary']))
