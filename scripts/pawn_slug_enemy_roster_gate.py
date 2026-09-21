@@ -18,7 +18,12 @@ MIN_GAP = 55.0
 DENSITY_WINDOW = 600.0
 MAX_IN_WINDOW = 6
 MIN_PLATFORMS = 15
+MIN_LADDERS = 2
+MIN_PITS = 1
 MIN_OBSTACLES = 6
+ALLOWED_LADDER_STYLES = {"steel", "rope", "wood"}
+MIN_PIT_WIDTH = 72.0
+MAX_PIT_WIDTH = 180.0
 ALLOWED_OBSTACLE_KINDS = {"barrels", "barricade", "bollards", "bunker_block", "cargo_crates", "container_stack", "crate", "crate_stack", "fallen_log", "rockfall", "root_mass", "sandbags", "stone_ruin"}
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
@@ -100,15 +105,62 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         errors.append(f"{stage_name}: start_x outside world")
 
     platforms = stage.get("platforms") or []
+    ladders = stage.get("ladders") or []
+    pits = stage.get("pits") or []
     obstacles = stage.get("obstacles") or []
     dressing = stage.get("dressing") or []
     story_props = stage.get("story_props") or []
     if len(platforms) < MIN_PLATFORMS:
         errors.append(f"{stage_name}: platform count {len(platforms)} < {MIN_PLATFORMS}")
+    if len(ladders) < MIN_LADDERS:
+        errors.append(f"{stage_name}: ladder count {len(ladders)} < {MIN_LADDERS}")
+    if len(pits) < MIN_PITS:
+        errors.append(f"{stage_name}: pit count {len(pits)} < {MIN_PITS}")
     if len(obstacles) < MIN_OBSTACLES:
         errors.append(f"{stage_name}: obstacle count {len(obstacles)} < {MIN_OBSTACLES}")
     errors += _rect_errors(stage_name, "platforms", platforms, width, height)
+    errors += _rect_errors(stage_name, "ladders", ladders, width, height)
     errors += _rect_errors(stage_name, "obstacles", obstacles, width, height)
+
+    for index, ladder in enumerate(ladders):
+        if not isinstance(ladder, dict):
+            continue
+        style = str(ladder.get("style", "steel"))
+        ladder_w = float(ladder.get("w", 0))
+        ladder_y = float(ladder.get("y", 0))
+        ladder_h = float(ladder.get("h", 0))
+        if style not in ALLOWED_LADDER_STYLES:
+            errors.append(f"{stage_name}: ladders[{index}] has unsupported style {style!r}")
+        if not 24.0 <= ladder_w <= 72.0:
+            errors.append(f"{stage_name}: ladders[{index}] width {ladder_w:g} outside 24..72")
+        if abs((ladder_y + ladder_h) - floor_y) > 4.0:
+            errors.append(f"{stage_name}: ladders[{index}] must reach the authored floor")
+
+    pit_ranges: list[tuple[float, float]] = []
+    previous_pit_end = -1.0
+    for index, pit in enumerate(pits):
+        if not isinstance(pit, dict):
+            errors.append(f"{stage_name}: pits[{index}] must be an object")
+            continue
+        try:
+            pit_x = float(pit["x"])
+            pit_w = float(pit["w"])
+        except Exception:
+            errors.append(f"{stage_name}: pits[{index}] has invalid x/w")
+            continue
+        pit_end = pit_x + pit_w
+        if pit_x < 0 or pit_end > width:
+            errors.append(f"{stage_name}: pits[{index}] escapes horizontal world bounds")
+        if not MIN_PIT_WIDTH <= pit_w <= MAX_PIT_WIDTH:
+            errors.append(
+                f"{stage_name}: pits[{index}] width {pit_w:g} outside "
+                f"{MIN_PIT_WIDTH:g}..{MAX_PIT_WIDTH:g}"
+            )
+        if pit_x < previous_pit_end:
+            errors.append(f"{stage_name}: pits must be ordered and non-overlapping")
+        previous_pit_end = max(previous_pit_end, pit_end)
+        pit_ranges.append((pit_x, pit_end))
+
     for index, obstacle in enumerate(obstacles):
         if not isinstance(obstacle, dict):
             continue
@@ -242,6 +294,13 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         errors.append(f"{stage_name}: platform vertical variety too low")
 
     checkpoints = [float(x) for x in (stage.get("checkpoints") or [])]
+    for checkpoint in checkpoints:
+        for pit_x, pit_end in pit_ranges:
+            if pit_x - 55.0 <= checkpoint <= pit_end + 55.0:
+                errors.append(
+                    f"{stage_name}: checkpoint {checkpoint:g} is too close to pit "
+                    f"{pit_x:g}..{pit_end:g}"
+                )
     if not checkpoints:
         errors.append(f"{stage_name}: checkpoints missing")
     elif checkpoints != sorted(checkpoints):
@@ -503,6 +562,11 @@ def self_test() -> None:
             {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
             {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
         ],
+        "ladders": [
+            {"id": "ladder-a", "x": 950, "y": 345, "w": 42, "h": 265, "style": "steel"},
+            {"id": "ladder-b", "x": 3400, "y": 340, "w": 42, "h": 270, "style": "steel"},
+        ],
+        "pits": [{"id": "test-pit", "x": 4200, "w": 100, "kind": "trench"}],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60, "kind": "crate"} for i in range(7)],
         "dressing": [{"kind": "crate", "x": 220 + i * 420, "y": 607, "size": 30} for i in range(10)],
         "story_props": [{"kind": "front_wreck", "x": 260 + i * 760, "y": 608} for i in range(5)],
