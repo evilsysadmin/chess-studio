@@ -427,7 +427,8 @@ func _run() -> void:
     # Hearing probe: noise should carry its source position into short memory,
     # not merely flip alerted=true and not reveal Matthias' later hidden X.
     pursuit_target.position = Vector2(340.0, 568.0)
-    enemy_probe.enemies = [{
+    enemy_probe.enemies.clear()
+    enemy_probe.enemies.append({
         "id": "heard-pawn",
         "type": "pawn",
         "x": 700.0,
@@ -438,7 +439,7 @@ func _run() -> void:
         "reaction": 0.0,
         "idle_pose": "",
         "ai_memory_remaining": 0.0,
-    }]
+    })
     enemy_probe._alert_enemies(600.0, 900.0)
     var heard_enemy: Dictionary = enemy_probe.enemies[0]
     _expect(bool(heard_enemy["alerted"]), "ruido alerta al enemigo dentro del radio")
@@ -449,34 +450,33 @@ func _run() -> void:
 
     # Alarm propagation shares last-known intel. An ally must not receive the
     # player's current hidden position just because another enemy raised alarm.
-    enemy_probe.enemies = [
-        {
-            "id": "alarm-source",
-            "type": "rook",
-            "x": 700.0,
-            "spawn_x": 700.0,
-            "y": 610.0,
-            "hp": 112,
-            "alerted": true,
-            "reaction": 0.0,
-            "idle_pose": "guard",
-            "ai_memory_remaining": 0.8,
-            "ai_last_target_x": 590.0,
-            "ai_last_target_foot_y": 610.0,
-        },
-        {
-            "id": "alarm-ally",
-            "type": "pawn",
-            "x": 760.0,
-            "spawn_x": 760.0,
-            "y": 610.0,
-            "hp": 34,
-            "alerted": false,
-            "reaction": 0.0,
-            "idle_pose": "",
-            "ai_memory_remaining": 0.0,
-        },
-    ]
+    enemy_probe.enemies.clear()
+    enemy_probe.enemies.append({
+        "id": "alarm-source",
+        "type": "rook",
+        "x": 700.0,
+        "spawn_x": 700.0,
+        "y": 610.0,
+        "hp": 112,
+        "alerted": true,
+        "reaction": 0.0,
+        "idle_pose": "guard",
+        "ai_memory_remaining": 0.8,
+        "ai_last_target_x": 590.0,
+        "ai_last_target_foot_y": 610.0,
+    })
+    enemy_probe.enemies.append({
+        "id": "alarm-ally",
+        "type": "pawn",
+        "x": 760.0,
+        "spawn_x": 760.0,
+        "y": 610.0,
+        "hp": 34,
+        "alerted": false,
+        "reaction": 0.0,
+        "idle_pose": "",
+        "ai_memory_remaining": 0.0,
+    })
     pursuit_target.position = Vector2(1000.0, 568.0)
     enemy_probe._raise_enemy_alarm(0, 200.0)
     var alarm_ally: Dictionary = enemy_probe.enemies[1]
