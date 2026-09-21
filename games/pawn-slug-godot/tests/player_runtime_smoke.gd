@@ -168,6 +168,26 @@ func _run() -> void:
         player.start_ledge_climb_probe(target)
         _expect(player.is_climbing_probe(), "el segundo toque puede iniciar el estado de escalada")
 
+    # Ladder traversal probe: authored ladder zones are real movement geometry,
+    # not painted scenery. Up input must snap Matthias to the ladder and move him.
+    player.force_crouching(false)
+    player.position = Vector2(530.0, 140.0)
+    player.velocity = Vector2.ZERO
+    var ladder_rect := Rect2(510.0, 40.0, 40.0, 160.0)
+    player.configure_traversal_probe([ladder_rect], 360.0)
+    player.position = Vector2(530.0, 140.0)
+    var ladder_before_y := player.position.y
+    _expect(
+        player.ladder_near_player_probe().size == ladder_rect.size,
+        "escalera detecta zona de agarre real",
+    )
+    _expect(
+        player.update_ladder_state_probe(-1.0, 0.10),
+        "input vertical entra en estado de escalera",
+    )
+    _expect(player.is_ladder_climbing_probe(), "estado de escalera queda activo durante el ascenso")
+    _expect(player.position.y < ladder_before_y, "subir escalera reduce Y con movimiento físico")
+
     # Reproduce the old checkpoint failure: y=137 intersects this platform.
     # Safe respawn must raycast its real top (118) and place the 84px standing
     # body above it, rather than restoring the fixed ground Y inside geometry.
@@ -201,12 +221,38 @@ func _run() -> void:
         _expect(one_way_shape.one_way_collision_margin >= 4.0, "plataforma one-way conserva margen estable")
     geometry_probe._map_geometry_root.free()
     geometry_probe._map_geometry_root = null
+
+    # Pit probe: the floor is physically segmented around authored pits. A point
+    # below floor_y inside the hole must remain empty while normal ground is solid.
+    geometry_probe._world_size = Vector2(800.0, 720.0)
+    geometry_probe._floor_y = 200.0
+    geometry_probe._floor_depth = 40.0
+    geometry_probe._platforms.clear()
+    geometry_probe._platform_specs.clear()
+    geometry_probe._obstacles.clear()
+    geometry_probe._pits = [Rect2(260.0, 200.0, 100.0, 40.0)]
+    geometry_probe._build_stage_geometry()
+    _expect(
+        not geometry_probe._point_hits_stage_geometry(Vector2(300.0, 215.0)),
+        "pozo elimina el suelo físico invisible",
+    )
+    _expect(
+        geometry_probe._point_hits_stage_geometry(Vector2(180.0, 215.0)),
+        "suelo fuera del pozo sigue siendo sólido",
+    )
+    _expect(
+        geometry_probe._map_geometry_root.get_node_or_null("Floor_00") != null
+        and geometry_probe._map_geometry_root.get_node_or_null("Floor_01") != null,
+        "pozo parte el suelo en dos cuerpos físicos",
+    )
+    geometry_probe._map_geometry_root.free()
+    geometry_probe._map_geometry_root = null
     geometry_probe.free()
 
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge/ladder climb + pits + safe respawn")
         quit(0)
         return
     print("FAILED Pawn Slug Godot runtime mechanics smoke · %d fallo(s)" % _failures.size())
