@@ -90,16 +90,16 @@ describe('Chronicles Tactics architecture depth', () => {
     const scene = fixture();
     const cutawayFaces = chroniclesTacticsCutawayWallCells(scene);
 
-    expect(cutawayFaces).toHaveLength(2);
+    expect(cutawayFaces).toHaveLength(3);
 
     const root = installChroniclesTacticsArchitectureArt(scene, { coarsePointer: false });
     const finish = root.getObjectByName('chronicles-tactics-cutaway-finish-instances');
 
-    expect(root.userData.chroniclesArchitectureCutawayFaceCount).toBe(2);
+    expect(root.userData.chroniclesArchitectureCutawayFaceCount).toBe(3);
     expect(root.userData.chroniclesArchitectureCutawayProfile).toBe(CHRONICLES_TACTICS_CUTAWAY_STYLE.profile);
     expect(finish).toBeTruthy();
     expect(finish.count).toBe(
-      2 * CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE
+      3 * CHRONICLES_TACTICS_CUTAWAY_BLOCKS_PER_FACE
       + CHRONICLES_TACTICS_CUTAWAY_CAP_BLOCKS_PER_WALL,
     );
     expect(finish.material.map?.isTexture).toBe(true);
