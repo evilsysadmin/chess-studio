@@ -119,7 +119,7 @@ function validateRunBootstrap(payload, requestedMapId) {
   });
 }
 
-export async function chroniclesBootstrapTacticsWorld({
+export async function chroniclesBootstrapWorld({
   mapId = null,
   budgetMs = CHRONICLES_BOOTSTRAP_BUDGET_MS,
   signal,
@@ -195,3 +195,7 @@ export async function chroniclesBootstrapTacticsWorld({
   const map = chroniclesMapById(resolved.currentMapId);
   return Object.freeze({ ...resolved, map });
 }
+
+// Backwards-compatible alias while callers migrate from the old Tactics-specific name.
+// The bootstrap already installs the complete authoritative Chronicles world bundle.
+export const chroniclesBootstrapTacticsWorld = chroniclesBootstrapWorld;
