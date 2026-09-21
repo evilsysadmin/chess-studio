@@ -8,7 +8,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 from sprite_forge import (
     GeometryContract,
@@ -34,23 +34,23 @@ SOURCES = {
         {"box": (890, 120, 990, 260), "guide": "idle", "matte": "grabcut"},
     ],
     "shoot": [
-        {"box": (100, 573, 191, 687), "guide": "aim", "matte": "polygon"},
-        {"box": (200, 573, 291, 687), "guide": "aim", "matte": "polygon"},
+        {"box": (100, 573, 191, 687), "guide": "aim", "matte": "grabcut"},
+        {"box": (200, 573, 291, 687), "guide": "aim", "matte": "grabcut"},
     ],
     "walk": [
-        {"box": (90, 276, 179, 403), "guide": "walk", "matte": "polygon"},
-        {"box": (192, 276, 281, 403), "guide": "walk", "matte": "polygon"},
-        {"box": (296, 276, 382, 403), "guide": "walk", "matte": "polygon"},
-        {"box": (397, 276, 482, 403), "guide": "walk", "matte": "polygon"},
+        {"box": (90, 276, 179, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (192, 276, 281, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (296, 276, 382, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (397, 276, 482, 403), "guide": "walk", "matte": "grabcut"},
     ],
     "run": [
-        {"box": (78, 419, 170, 546), "guide": "run", "matte": "polygon"},
-        {"box": (181, 419, 275, 546), "guide": "run", "matte": "polygon"},
-        {"box": (287, 419, 379, 546), "guide": "run", "matte": "polygon"},
-        {"box": (388, 419, 480, 546), "guide": "run", "matte": "polygon"},
+        {"box": (78, 419, 170, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (181, 419, 275, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (287, 419, 379, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (388, 419, 480, 546), "guide": "run", "matte": "grabcut"},
     ],
     "crouch": [
-        {"box": (774, 755, 881, 883), "guide": "crouch", "matte": "polygon"},
+        {"box": (774, 755, 881, 883), "guide": "crouch", "matte": "grabcut"},
     ],
     "reload": [
         {"box": (85, 700, 195, 840), "guide": "reload", "matte": "grabcut"},
@@ -121,24 +121,6 @@ def _clean_transparent_rgb_array(rgba: np.ndarray) -> np.ndarray:
     return rgba
 
 
-def _polygon_matte(source: Image.Image, box: tuple[int, int, int, int], guide_name: str) -> Image.Image:
-    crop = source.crop(box).convert("RGBA")
-    width, height = crop.size
-    mask = Image.new("L", crop.size, 0)
-    points = [
-        (
-            round(x * (width - 1) / 100),
-            round(y * (height - 1) / 100),
-        )
-        for x, y in GUIDES[guide_name]
-    ]
-    ImageDraw.Draw(mask).polygon(points, fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(0.6))
-    crop.putalpha(mask)
-    pixels = np.array(crop)
-    return Image.fromarray(_clean_transparent_rgb_array(pixels), "RGBA")
-
-
 def _grabcut_matte(source: Image.Image, box: tuple[int, int, int, int], guide_name: str) -> Image.Image:
     crop = np.array(source.crop(box).convert("RGBA"))
     rgb = crop[:, :, :3]
@@ -202,12 +184,9 @@ def _matte(
     guide_name: str,
     mode: str,
 ) -> Image.Image:
-    if mode == "polygon":
-        return _polygon_matte(source, box, guide_name)
-    if mode == "grabcut":
-        return _grabcut_matte(source, box, guide_name)
-    raise SystemExit(f"unknown matte mode: {mode}")
-
+    if mode != "grabcut":
+        raise SystemExit(f"unsupported canonical matte mode: {mode}")
+    return _grabcut_matte(source, box, guide_name)
 
 def _review(frames: list[tuple[str, int, Image.Image]], output: Path) -> None:
     columns = 4
