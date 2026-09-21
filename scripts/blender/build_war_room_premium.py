@@ -1052,8 +1052,10 @@ def add_gothic_canon_v2(static, mats):
              (0.24, 0.110, 0.10), mats["stone"], static, bevel=0.040)
 
     # Keep one ceremonial banner on the left. The right banner was mostly hidden
-    # behind the campaign panel and physically occupied the same wall bay.
-    for index, x in enumerate((-6.55,)):
+    # behind the campaign panel and physically occupied the same wall bay. Shift
+    # the survivor into the outer bay so its cloth and heraldry no longer tuck
+    # behind the left lancet in the gameplay projection.
+    for index, x in enumerate((-6.92,)):
         draped_banner(f"WR_CANON_banner_{index}", (x, 6.48, 4.78), -1 if x < 0 else 1, burgundy, static)
         cube(f"WR_CANON_banner_rod_{index}", (x, 6.38, 6.22), (0.72, 0.045, 0.045),
              mats["brass_dark"], static, bevel=0.018)
