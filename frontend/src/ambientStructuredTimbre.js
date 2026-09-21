@@ -35,6 +35,8 @@ const STRUCTURED_TIMBRES = Object.freeze({
   marimba: timbre({ filterQ:0.38, bodyHz:780, bodyGainDb:1.1, detuneSpread:0.08 }),
   warmMarimba: timbre({ filterQ:0.34, bodyHz:720, bodyGainDb:1.4, detuneSpread:0.08 }),
   singingBowl: timbre({ filterQ:0.32, bodyHz:980, bodyGainDb:0.9, detuneSpread:0.07, tremoloScale:0.62 }),
+  harpsichord: timbre({ filterQ:0.44, bodyHz:1320, bodyGainDb:0.8, edgeHz:4300, edgeGainDb:-1.2, detuneSpread:0.05 }),
+  glass: timbre({ filterQ:0.30, bodyHz:1480, bodyGainDb:0.7, edgeHz:5200, edgeGainDb:-0.8, detuneSpread:0.05, tremoloScale:0.54 }),
 
   organ: timbre({ filterQ:0.28, bodyHz:520, bodyGainDb:2.3, edgeHz:2100, edgeGainDb:-3.4, detuneSpread:0.07 }),
   organbass: timbre({ filterQ:0.26, bodyHz:150, bodyGainDb:1.8, edgeHz:900, edgeGainDb:-3.8, detuneSpread:0.05 }),
@@ -56,6 +58,13 @@ const STRUCTURED_TIMBRES = Object.freeze({
   breathFlute: timbre({ filterQ:0.30, edgeHz:2700, edgeGainDb:-1.8, detuneSpread:0.06, tremoloScale:0.60 }),
   cedarFlute: timbre({ filterQ:0.28, edgeHz:2400, edgeGainDb:-2.0, detuneSpread:0.06, tremoloScale:0.58 }),
   bandoneon: timbre({ filterQ:0.42, bodyHz:680, bodyGainDb:1.0, edgeHz:2600, edgeGainDb:-2.0, detuneSpread:0.12 }),
+  oudJazz: timbre({ filterQ:0.36, bodyHz:520, bodyGainDb:2.2, edgeHz:2100, edgeGainDb:-2.4, detuneSpread:0.08 }),
+  qanun: timbre({ filterQ:0.38, bodyHz:980, bodyGainDb:1.4, edgeHz:3600, edgeGainDb:-1.4, detuneSpread:0.06 }),
+  buzuq: timbre({ filterQ:0.38, bodyHz:680, bodyGainDb:1.8, edgeHz:2900, edgeGainDb:-2.0, detuneSpread:0.07 }),
+
+  tremolo: timbre({ filterQ:0.38, bodyHz:820, bodyGainDb:1.2, edgeHz:2600, edgeGainDb:-1.8, detuneSpread:0.12, tremoloScale:0.72 }),
+  tropicalPluck: timbre({ filterQ:0.46, bodyHz:980, bodyGainDb:1.0, edgeHz:3800, edgeGainDb:-1.0, detuneSpread:0.12 }),
+  vocalAir: timbre({ filterQ:0.32, bodyHz:760, bodyGainDb:0.8, edgeHz:2400, edgeGainDb:-1.4, detuneSpread:0.10, tremoloScale:0.55 }),
 
   pad: timbre({ filterQ:0.32, detuneSpread:0.52, coherentPartials:false }),
   widePad: timbre({ filterQ:0.38, detuneSpread:0.92, coherentPartials:false, tremoloScale:0.72 }),
