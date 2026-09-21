@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { clearCombatSession, hasCombatSession, hasCombatSessionMarker, loadCombatSession, saveCombatSession } from './combatSession.js';
 import { CPU_DELAY_MS } from './combatControllerSupport.js';
-import { buildCombatBattleState } from './combatBattleState.js';
 
 export function loadCombatSessionBootstrap(combatSessionId, loader = loadCombatSession) {
   return loader(combatSessionId) || null;
@@ -40,67 +39,41 @@ export function useCombatSessionPersistence({
   combatSessionId,
   onPersistenceState,
   restoredSession,
-  activityGameIdRef,
   phase,
-  fen,
-  registry,
-  humanColor,
-  combatLog,
-  uiLogRef,
-  autoLevelUpEnabled,
-  bossPhase,
-  localChess,
-  focusRef,
-  positionCountsRef,
-  bossHpRef,
-  battleStartRosterRef,
-  battleParticipantsRef,
-  unitBattleStatsRef,
+  currentTurn,
+  readBattleState,
   setBusy,
   runCpuTurn,
 }) {
-  function saveBattleSnapshot(snapshot) {
+  function persistBattleSession(overrides = {}) {
     onPersistenceState?.('saving');
-    const persisted = saveCombatSession(combatSessionId, snapshot);
+    const persisted = saveCombatSession(combatSessionId, readBattleState(overrides));
     onPersistenceState?.(persisted ? 'saved' : 'error');
     return persisted;
-  }
-
-  function persistBattleSession({
-    nextFen = fen,
-    nextRegistry = registry,
-    nextCombatLog = combatLog,
-    nextBossHp = bossHpRef.current,
-    nextBossPhase = bossPhase,
-  } = {}) {
-    return saveBattleSnapshot(buildCombatBattleState({
-      fen: nextFen,
-      registry: nextRegistry,
-      humanColor,
-      combatLog: nextCombatLog,
-      uiLog: uiLogRef?.current || [],
-      autoLevelUpEnabled,
-      focus: focusRef.current,
-      positionCounts: positionCountsRef.current.entries(),
-      bossHp: nextBossHp,
-      bossPhase: nextBossPhase,
-      battleStartRoster: battleStartRosterRef.current,
-      battleParticipants: battleParticipantsRef.current,
-      unitBattleStats: unitBattleStatsRef.current,
-      activityGameId: activityGameIdRef.current,
-    }));
   }
 
   useEffect(() => {
     if (!shouldPersistCombatSession({ phase, hasSnapshot: hasCombatSession(combatSessionId) })) return;
     persistBattleSession();
-  }, [phase, fen, registry, combatLog, bossPhase, humanColor, autoLevelUpEnabled, combatSessionId]);
+  }, [phase, combatSessionId, readBattleState]);
 
   useEffect(() => {
-    if (!shouldResumeCombatCpu({ restoredSession, phase, turn: localChess.turn(), humanColor })) return undefined;
+    const restoredHumanColor = restoredSession?.humanColor;
+    if (!shouldResumeCombatCpu({
+      restoredSession,
+      phase,
+      turn: currentTurn,
+      humanColor: restoredHumanColor,
+    })) return undefined;
+
     setBusy(true);
     const timer = window.setTimeout(
-      () => runCpuTurn(fen, registry, humanColor, combatLog),
+      () => runCpuTurn(
+        restoredSession.fen,
+        restoredSession.registry,
+        restoredHumanColor,
+        restoredSession.combatLog || [],
+      ),
       Math.min(350, CPU_DELAY_MS),
     );
     return () => window.clearTimeout(timer);
@@ -112,5 +85,5 @@ export function useCombatSessionPersistence({
     clearCombatSession(combatSessionId);
   }
 
-  return { saveBattleSnapshot, persistBattleSession, clearBattleSession };
+  return { persistBattleSession, clearBattleSession };
 }
