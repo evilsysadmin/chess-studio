@@ -142,7 +142,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: pawn-slug-enemy-socket-v1-\${{ github.event.pull_request.number }}
+          name: pawn-slug-enemy-socket-v1-${{ github.event.pull_request.number }}
           path: /tmp/pawn-slug-v1-slice/
           if-no-files-found: error
           retention-days: 7
