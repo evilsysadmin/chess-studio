@@ -161,6 +161,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: \
+            'numpy==2.3.5' 'opencv-python-headless==4.13.0.92'
           master="$RUNNER_TEMP/matthias-canonical-master-v1.png"
           curl -fL --retry 3 \
             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png" \
