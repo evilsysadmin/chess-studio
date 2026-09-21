@@ -640,12 +640,16 @@ export async function openMoreGameModes(page) {
       try {
         await trigger.click({ timeout: 5_000 });
       } catch (error) {
+        // A hosted runner can time out immediately after dispatching the click.
+        // Re-check state before retrying or a second activation would close the
+        // drawer that the first click actually opened.
+        if (await trigger.getAttribute('aria-expanded') === 'true') return illustrated;
         if (await closeBlockingPvpLobby()) {
           await trigger.click();
-        } else {
+        } else if (await trigger.getAttribute('aria-expanded') !== 'true') {
           await trigger.evaluate((node) => node.click());
-          await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
         }
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
       }
     }
     return illustrated;
