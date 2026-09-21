@@ -110,6 +110,22 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   expect(contract.hasUse).toBe(true);
   expect(contract.hasClassSkill).toBe(true);
   expect(contract.hasWait).toBe(false);
+
+  // Required lane also owns the in-game pause contract: right-click must be
+  // inert, while ESC pauses and blocks tactical input until resumed.
+  const heading = page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true });
+  await heading.click({ button: 'right' });
+  await expect(page.getByRole('dialog', { name: 'Pausa', exact: true })).toHaveCount(0);
+
+  await page.keyboard.press('Escape');
+  const pause = page.getByRole('dialog', { name: 'Pausa', exact: true });
+  await expect(pause).toBeVisible();
+  await expect(mode).toHaveAttribute('data-paused', 'true');
+  await expect(moveNorth).toBeDisabled();
+
+  await page.keyboard.press('Escape');
+  await expect(pause).toHaveCount(0);
+  await expect(mode).toHaveAttribute('data-paused', 'false');
 });
 
 test('Chronicles Tactics · ESC abre pausa, sonido persiste y clic derecho nunca sale del juego', async ({ page }) => {
