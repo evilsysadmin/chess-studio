@@ -148,14 +148,15 @@ await page.keyboard.up('ArrowDown');
 const smgStage = await loadStage(detailedStage);
 await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
 await page.keyboard.down('ArrowRight');
+await page.waitForTimeout(850);
 let smgPickedUp = await page.evaluate(() => (
   Array.isArray(window.__pawnSlugCaptureEvents)
   && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
 ));
-for (let step = 0; step < 36 && !smgPickedUp; step += 1) {
+for (let step = 0; step < 18 && !smgPickedUp; step += 1) {
   await page.keyboard.press('z');
-  if (step === 14 || step === 27) await page.keyboard.press('x');
-  await page.waitForTimeout(120);
+  if (step === 7 || step === 13) await page.keyboard.press('x');
+  await page.waitForTimeout(240);
   smgPickedUp = await page.evaluate(() => (
     Array.isArray(window.__pawnSlugCaptureEvents)
     && window.__pawnSlugCaptureEvents.includes('weapon-pickup')
