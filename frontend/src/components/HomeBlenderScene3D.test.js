@@ -12,6 +12,7 @@ import {
   HOME_BLENDER_FIRE_MAX_RENDER_MS,
   HOME_BLENDER_FIRE_MIN_SAMPLES,
   HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS,
+  HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
   homeBlenderPolicyNeedsFallback,
   homeBlenderRuntimePolicy,
 } from './HomeBlenderScene3D.jsx';
@@ -255,7 +256,7 @@ describe('HomeBlenderScene3D live flame animation', () => {
         samples: 30,
       });
       expect(plan.enabled).toBe(true);
-      expect(plan.intervalMs).toBeLessThanOrEqual(250);
+      expect(plan.intervalMs).toBeLessThanOrEqual(HOME_BLENDER_FIRE_MAX_INTERVAL_MS);
     });
 
     it('turns the fire off when animation frames arrive late even if render calls look cheap', () => {
@@ -271,6 +272,14 @@ describe('HomeBlenderScene3D live flame animation', () => {
       for (const frameGapMs of [8, 16.7, 20, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
         expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
           .toBe(true);
+      }
+    });
+
+    it('slows the fire down instead of stopping it on a modest desktop CPU', () => {
+      for (const renderCostMs of [30, 45, 60]) {
+        const plan = homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs, frameGapMs: 20, samples: 30 });
+        expect(plan.enabled).toBe(true);
+        expect(plan.intervalMs).toBeGreaterThanOrEqual(renderCostMs * 3);
       }
     });
 
