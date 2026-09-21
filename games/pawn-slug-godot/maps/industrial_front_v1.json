@@ -300,6 +300,26 @@
         "rail": true,
         "lamp": true
       }
+    },
+    {
+      "x": 2180,
+      "y": 392,
+      "w": 118,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
+      "x": 2318,
+      "y": 338,
+      "w": 112,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "pit_bypass"
     }
   ],
   "obstacles": [
@@ -691,7 +711,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 4,
+  "visual_revision": 5,
   "dressing": [
     {
       "kind": "crate",
