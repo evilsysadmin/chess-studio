@@ -250,7 +250,30 @@ func _draw_pits() -> void:
         )
         draw_line(Vector2(x, _floor_y - 2.0), Vector2(x, _floor_y + 22.0), rim_color, 4.0)
         draw_line(Vector2(x + width, _floor_y - 2.0), Vector2(x + width, _floor_y + 22.0), rim_color, 4.0)
-        if _theme == "harbor_dusk":
+        if _theme == "night_front":
+            # Industrial trenches read as retained service channels: inset steel
+            # walls, cross-bracing and small hazard lips instead of a flat void.
+            var inner_left := x + 10.0
+            var inner_right := x + width - 10.0
+            draw_line(Vector2(inner_left, _floor_y + 8.0), Vector2(inner_left, _world_size.y - 2.0), Color("30393e"), 5.0)
+            draw_line(Vector2(inner_right, _floor_y + 8.0), Vector2(inner_right, _world_size.y - 2.0), Color("30393e"), 5.0)
+            for brace_y in [26.0, 54.0, 82.0]:
+                if _floor_y + brace_y >= _world_size.y:
+                    continue
+                draw_line(
+                    Vector2(inner_left + 2.0, _floor_y + brace_y),
+                    Vector2(inner_right - 2.0, _floor_y + brace_y + 15.0),
+                    Color(0.46, 0.39, 0.27, 0.28),
+                    3.0,
+                )
+            for side_x in [x + 3.0, x + width - 11.0]:
+                draw_line(
+                    Vector2(side_x, _floor_y + 2.0),
+                    Vector2(side_x + 8.0, _floor_y + 10.0),
+                    Color(0.82, 0.62, 0.20, 0.62),
+                    3.0,
+                )
+        elif _theme == "harbor_dusk":
             for offset in [30.0, 45.0, 61.0]:
                 draw_line(
                     Vector2(x + 8.0, _floor_y + offset),
