@@ -37,12 +37,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated"):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"'):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []
@@ -63,6 +63,11 @@ def main() -> int:
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
+    logs_raw = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
+    for token in ("Biggest offenders · 401/403", 'status=~\\\"401|403\\\"', "client_ip"):
+        if token not in logs_raw:
+            fail(f"logs dashboard perdió ranking 401/403: {token}")
+
     explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
     explorer_variables = {str(row.get("name") or "") for row in ((explorer_data.get("templating") or {}).get("list") or [])}
     required_explorer_variables = {"selector", "event", "status", "method", "route", "path", "release", "request_id", "trace_id", "text"}
@@ -84,6 +89,8 @@ def main() -> int:
         'auth_login_failed : auth_login_failed',
         'auth_ip_ban_activated : auth_ip_ban_activated',
         '401 login · bot forensics',
+        'Biggest offenders · 401/403',
+        'status=~\\\"401|403\\\"',
         'username_attempted',
         'password_fingerprint',
         'password_length',
