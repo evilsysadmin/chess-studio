@@ -320,6 +320,107 @@
       "material": "wood",
       "one_way": true,
       "route": "pit_bypass"
+    },
+    {
+      "x": 260,
+      "y": 545,
+      "w": 110,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 338,
+      "y": 480,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 790,
+      "y": 370,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "wood",
+      "one_way": true
+    },
+    {
+      "x": 1470,
+      "y": 455,
+      "w": 104,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "concrete",
+      "one_way": true
+    },
+    {
+      "x": 1572,
+      "y": 392,
+      "w": 92,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 2455,
+      "y": 368,
+      "w": 96,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 2712,
+      "y": 382,
+      "w": 100,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "wood",
+      "one_way": true
+    },
+    {
+      "x": 3200,
+      "y": 320,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 3450,
+      "y": 362,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 3920,
+      "y": 342,
+      "w": 86,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
+      "x": 4008,
+      "y": 294,
+      "w": 86,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "pit_bypass"
     }
   ],
   "obstacles": [
@@ -711,7 +812,7 @@
       "lead": 90
     }
   ],
-  "visual_revision": 5,
+  "visual_revision": 6,
   "dressing": [
     {
       "kind": "crate",
@@ -911,6 +1012,38 @@
       "w": 30,
       "exit_dir": 1,
       "kind": "access_ladder"
+    },
+    {
+      "x": 720,
+      "top_y": 456,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "access_ladder"
+    },
+    {
+      "x": 1200,
+      "top_y": 476,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": -1,
+      "kind": "service_ladder"
+    },
+    {
+      "x": 3390,
+      "top_y": 452,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": 1,
+      "kind": "access_ladder"
+    },
+    {
+      "x": 3740,
+      "top_y": 326,
+      "bottom_y": 610,
+      "w": 30,
+      "exit_dir": -1,
+      "kind": "service_ladder"
     }
   ],
   "pits": [
