@@ -8,6 +8,7 @@ import auth_ip_guard as guard
 
 def setup_function():
     guard._memory.clear()
+    guard._blocked_cache.clear()
 
 
 def test_ip_key_is_normalized_keyed_and_does_not_store_ip():
@@ -67,3 +68,42 @@ def test_memory_guard_blocks_without_success_reset(monkeypatch):
 
     assert asyncio.run(guard.retry_after(identity)) > 0
     assert identity in guard._memory
+
+
+def test_active_mongo_ban_is_cached_per_process(monkeypatch):
+    blocked_until = datetime.now(timezone.utc) + timedelta(seconds=90)
+
+    class FakeCollection:
+        def __init__(self):
+            self.find_calls = 0
+
+        async def find_one(self, *_args, **_kwargs):
+            self.find_calls += 1
+            return {"blocked_until": blocked_until}
+
+    collection = FakeCollection()
+
+    async def fake_collection():
+        return collection
+
+    async def no_index(_collection):
+        return None
+
+    monkeypatch.setattr(guard, "_get_collection", fake_collection)
+    monkeypatch.setattr(guard, "_ensure_index", no_index)
+
+    identity = guard.ip_key("203.0.113.44", "secret")
+    assert asyncio.run(guard.retry_after(identity)) > 0
+    assert asyncio.run(guard.retry_after(identity)) > 0
+    assert collection.find_calls == 1
+
+
+def test_active_block_cache_is_bounded():
+    now = datetime.now(timezone.utc)
+    for offset in range(guard.BLOCK_CACHE_LIMIT + 50):
+        guard._remember_active_block(
+            f"ip-{offset}",
+            {"blocked_until": now + timedelta(minutes=5)},
+        )
+
+    assert len(guard._blocked_cache) == guard.BLOCK_CACHE_LIMIT

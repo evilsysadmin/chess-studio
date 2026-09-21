@@ -19,8 +19,10 @@ FAILURE_LIMIT = 10
 BLOCK_SECONDS = 15 * 60
 RETENTION_SECONDS = 24 * 60 * 60
 CAS_ATTEMPTS = 8
+BLOCK_CACHE_LIMIT = 4096
 
 _memory: dict[str, dict[str, Any]] = {}
+_blocked_cache: dict[str, datetime] = {}
 _index_ready = False
 
 
@@ -121,7 +123,39 @@ async def _ensure_index(col) -> None:
     _index_ready = True
 
 
+def _cached_retry_after(identity: str, *, now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    blocked_until = _blocked_cache.get(identity)
+    if blocked_until is None:
+        return 0
+    if blocked_until <= now:
+        _blocked_cache.pop(identity, None)
+        return 0
+    return max(1, int(math.ceil((blocked_until - now).total_seconds())))
+
+
+def _remember_active_block(identity: str, doc: dict[str, Any] | None) -> None:
+    blocked_until = _as_utc((doc or {}).get("blocked_until"))
+    now = datetime.now(timezone.utc)
+    if blocked_until is None or blocked_until <= now:
+        _blocked_cache.pop(identity, None)
+        return
+
+    _blocked_cache[identity] = blocked_until
+    if len(_blocked_cache) <= BLOCK_CACHE_LIMIT:
+        return
+
+    # Dicts preserve insertion order. Evicting the oldest cache entry is O(1)
+    # and safe: Mongo remains authoritative if that IP appears again.
+    while len(_blocked_cache) > BLOCK_CACHE_LIMIT:
+        _blocked_cache.pop(next(iter(_blocked_cache)))
+
+
 async def retry_after(identity: str) -> int:
+    cached = _cached_retry_after(identity)
+    if cached:
+        return cached
+
     col = await _get_collection()
     if col is not None:
         await _ensure_index(col)
@@ -131,10 +165,15 @@ async def retry_after(identity: str) -> int:
             raise PersistentStorageUnavailable(
                 "No se pudo consultar el guard de IP de auth."
             ) from exc
-        return retry_after_seconds(doc)
+        value = retry_after_seconds(doc)
+        if value:
+            _remember_active_block(identity, doc)
+        return value
 
     doc = _memory.get(identity)
     value = retry_after_seconds(doc)
+    if value:
+        _remember_active_block(identity, doc)
     if value == 0 and doc is not None:
         blocked_until = _as_utc(doc.get("blocked_until"))
         updated_at = _as_utc(doc.get("updated_at"))
@@ -154,7 +193,10 @@ async def record_failure(identity: str) -> int:
     if col is None:
         next_state = state_after_failure(_memory.get(identity))
         _memory[identity] = next_state
-        return retry_after_seconds(next_state)
+        retry = retry_after_seconds(next_state)
+        if retry:
+            _remember_active_block(identity, next_state)
+        return retry
 
     await _ensure_index(col)
     for _attempt in range(CAS_ATTEMPTS):
@@ -173,7 +215,10 @@ async def record_failure(identity: str) -> int:
                     "_guard_version": 1,
                     **next_state,
                 })
-                return retry_after_seconds(next_state)
+                retry = retry_after_seconds(next_state)
+                if retry:
+                    _remember_active_block(identity, next_state)
+                return retry
             except DuplicateKeyError:
                 continue
             except PyMongoError as exc:
@@ -203,7 +248,10 @@ async def record_failure(identity: str) -> int:
                 "No se pudo registrar el fallo de IP de auth."
             ) from exc
         if result.matched_count == 1:
-            return retry_after_seconds(next_state)
+            retry = retry_after_seconds(next_state)
+            if retry:
+                _remember_active_block(identity, next_state)
+            return retry
 
     raise PersistentStorageUnavailable(
         "Demasiada contención al actualizar el guard de IP de auth."
