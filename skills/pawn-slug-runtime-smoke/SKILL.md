@@ -17,6 +17,19 @@ No debe convertirse en un bot que tenga que ganar una sección del nivel, sobrev
 
 Godot headless y tests de gameplay poseen reglas más profundas como estados/acciones deterministas; el navegador posee integración Web/lifecycle/input real.
 
+## Lo que el smoke NO demuestra
+
+Un smoke web verde **no acredita calidad visual del sprite**. En particular, no demuestra que:
+
+- una pistola no parezca dos armas;
+- el agarre a dos manos sea anatómicamente legible;
+- `idle`, `run+fire`, direccionales o `hurt` usen el frame correcto;
+- no haya jitter, cambios de escala o siluetas incoherentes entre animaciones.
+
+Esas propiedades pertenecen a `skills/godot-spritesheets/SKILL.md` y a sus artifacts visuales pose-a-pose.
+
+Cuando una PR cambia sprites runtime, el visual capture debe incluir close-ups de las animaciones modificadas y de cualquier pose con una regresión visual conocida. El smoke funcional puede seguir verde aunque esas capturas deban provocar un `REJECT` humano.
+
 ## Input real y physics ticks
 
 Godot consulta muchas acciones durante physics ticks. Un `keyboard.press()` de Playwright puede hacer keydown+keyup entre dos ticks y ser invisible para el juego.

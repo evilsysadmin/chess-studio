@@ -3,14 +3,19 @@ name: Pawn Slug · Godot strict Matthias v17
 on:
   pull_request:
     paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v21.py'
+      - 'scripts/art/build_pawn_slug_pose_review.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v20.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v18.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v21.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v20.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v18.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v17.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v17.py'
       - 'scripts/art/build_pawn_slug_v17_review.py'
       - 'games/pawn-slug-godot/tests/matthias_strict_v17_atlas_smoke.gd'
+      - 'games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png'
+      - 'games/pawn-slug-godot/art/matthias-v21-worksheet.json'
       - 'games/pawn-slug-godot/art/matthias-v20-pistol-source.png'
       - 'games/pawn-slug-godot/art/matthias-v20-worksheet.json'
       - 'games/pawn-slug-godot/art/matthias-v17-worksheet.json'
@@ -18,14 +23,19 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/art/pack_pawn_slug_godot_strict_v21.py'
+      - 'scripts/art/build_pawn_slug_pose_review.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v20.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v18.py'
+      - 'scripts/art/validate_pawn_slug_godot_atlas_v21.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v20.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v18.py'
       - 'scripts/art/pack_pawn_slug_godot_strict_v17.py'
       - 'scripts/art/validate_pawn_slug_godot_atlas_v17.py'
       - 'scripts/art/build_pawn_slug_v17_review.py'
       - 'games/pawn-slug-godot/tests/matthias_strict_v17_atlas_smoke.gd'
+      - 'games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png'
+      - 'games/pawn-slug-godot/art/matthias-v21-worksheet.json'
       - 'games/pawn-slug-godot/art/matthias-v20-pistol-source.png'
       - 'games/pawn-slug-godot/art/matthias-v20-worksheet.json'
       - 'games/pawn-slug-godot/art/matthias-v17-worksheet.json'
@@ -47,6 +57,7 @@ env:
   BASELINE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/machinegun/v16-32227acfdc2e0cff.png'
   PISTOL_SOURCE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/pistol/v16-670506b5307a1756.png'
   PISTOL_V19_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v19/pistol/v19-0b8781557495b922.png'
+  PISTOL_V20_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v20/pistol/v20-2b12fd13f4f73f74.png'
 
 jobs:
   build-strict-v17-machinegun:
@@ -429,6 +440,116 @@ jobs:
             /tmp/pawn-slug-godot-strict-v20/pistol/health.json
             /tmp/pawn-slug-godot-strict-v20/pistol/review.png
             /tmp/pawn-slug-godot-strict-v20/pistol/publish.txt
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
+
+
+  build-strict-v21-p99:
+    name: Build + gate strict-v21 · full P99 bank
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install deterministic 2D sprite toolchain
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Tool sanity
+        run: |
+          set -euo pipefail
+          python3 scripts/art/pack_pawn_slug_godot_strict_v21.py --self-test
+          python3 -m py_compile \
+            scripts/art/pack_pawn_slug_godot_strict_v21.py \
+            scripts/art/validate_pawn_slug_godot_atlas_v21.py \
+            scripts/art/build_pawn_slug_pose_review.py
+
+      - name: Download strict-v20 runtime baseline
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v21/pistol'
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 \
+            "$PISTOL_V20_URL" --output "$ROOT/baseline-v20.png"
+
+      - name: Rebuild + gate all 18 P99 poses
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v21/pistol'
+          python3 scripts/art/pack_pawn_slug_godot_strict_v21.py \
+            --source games/pawn-slug-godot/art/matthias-v21-pistol-full-source.png \
+            --output "$ROOT/v21.png" \
+            --manifest "$ROOT/manifest.json"
+          python3 scripts/art/validate_pawn_slug_godot_atlas_v21.py \
+            --atlas "$ROOT/v21.png" \
+            --manifest "$ROOT/manifest.json" \
+            --report "$ROOT/health.json"
+          python3 scripts/art/build_pawn_slug_v17_review.py \
+            --baseline "$ROOT/baseline-v20.png" \
+            --atlas "$ROOT/v21.png" \
+            --output "$ROOT/review-v20-v21.png"
+          python3 scripts/art/build_pawn_slug_pose_review.py \
+            --atlas "$ROOT/v21.png" \
+            --output-dir "$ROOT/poses"
+          test "$(sha256sum "$ROOT/v21.png" | awk '{print $1}')" = "24640d861efc30873c2b858f14a61dfc1ac0879dfc87a1c3dcf8af4092b78db3"
+
+      - name: Restore pinned Godot editor
+        uses: actions/cache@v6
+        with:
+          path: .godot-ci/${{ env.GODOT_VERSION }}
+          key: pawn-slug-strict-godot-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+
+      - name: Consume candidate in real Godot SpriteFrames
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v21/pistol'
+          .godot-ci/$GODOT_VERSION/godot --headless --path games/pawn-slug-godot \
+            --script res://tests/matthias_strict_v17_atlas_smoke.gd -- \
+            "$ROOT/v21.png" "$ROOT/manifest.json"
+
+      - name: Publish immutable strict-v21 P99 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-godot-strict-v21/pistol'
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$ROOT/v21.png" \
+            --logical-id 'pawnSlug.godot.matthias.pistol.strictV21' \
+            --prefix 'pawn-slug-godot/matthias/strict-v21/pistol' \
+            | tee "$ROOT/publish.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-godot-strict-v21-p99-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-godot-strict-v21/pistol/v21.png
+            /tmp/pawn-slug-godot-strict-v21/pistol/manifest.json
+            /tmp/pawn-slug-godot-strict-v21/pistol/health.json
+            /tmp/pawn-slug-godot-strict-v21/pistol/review-v20-v21.png
+            /tmp/pawn-slug-godot-strict-v21/pistol/poses/
+            /tmp/pawn-slug-godot-strict-v21/pistol/publish.txt
           if-no-files-found: warn
           retention-days: 14
           compression-level: 0
