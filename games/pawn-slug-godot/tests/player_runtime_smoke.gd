@@ -183,10 +183,49 @@ func _run() -> void:
     _expect(absf(safe_respawn.y - 75.0) <= 0.1, "respawn se apoya sobre la cara superior real de la plataforma")
     _expect(player.respawn_position_is_clear_probe(safe_respawn), "respawn final queda libre de geometría")
 
-    # Stage geometry probe: optional canopy/catwalk platforms may be crossed
-    # from below while still supporting Matthias/enemies from above.
+    # Ladder traversal is authored in stage data. Matthias can acquire a ladder
+    # from the floor, climb vertically without gravity, and exit cleanly onto
+    # the top surface instead of needing a fake teleport.
+    var ladder_spec := {"x": 430.0, "y": 70.0, "w": 42.0, "h": 130.0}
+    player.configure_traversal_probe([ladder_spec], 320.0)
+    player.position = Vector2(451.0, 157.0)
+    var ladder_target := player.find_ladder_candidate_probe()
+    _expect(ladder_target.size.x > 0.0, "ladder detecta a Matthias en su carril de entrada")
+    if ladder_target.size.x > 0.0:
+        player.start_ladder_climb_probe(ladder_target)
+        _expect(player.is_ladder_climbing_probe(), "ladder activa estado de subida real")
+        var ladder_start_y := player.position.y
+        player.update_ladder_climb_probe(0.20, -1.0)
+        _expect(player.position.y < ladder_start_y, "ladder mueve a Matthias verticalmente hacia arriba")
+        player.position.y = 29.0
+        player.update_ladder_climb_probe(0.02, -1.0)
+        _expect(not player.is_ladder_climbing_probe(), "ladder libera a Matthias al alcanzar la plataforma superior")
+        _expect(absf(player.position.y - 27.0) <= 0.1, "salida superior conserva los pies sobre la plataforma")
+
+    var lives_before_pit := player.lives
+    player.trigger_fall_death_probe()
+    _expect(player.dead, "caer a un pozo profundo inicia muerte real")
+    _expect(player.lives == maxi(0, lives_before_pit - 1), "pozo consume exactamente una vida")
+
+    # Stage geometry probe: pits split the floor into real collision segments;
+    # optional canopy/catwalk platforms remain one-way from below.
     var geometry_probe = MainRuntime.new()
     geometry_probe._map_geometry_root = Node2D.new()
+    geometry_probe._world_size = Vector2(600.0, 240.0)
+    geometry_probe._floor_y = 200.0
+    geometry_probe._floor_depth = 40.0
+    geometry_probe._pit_specs = [{"x": 220.0, "w": 100.0}]
+    geometry_probe._build_floor_bodies()
+    _expect(geometry_probe._map_geometry_root.has_node("Floor_00"), "pit conserva suelo físico a su izquierda")
+    _expect(geometry_probe._map_geometry_root.has_node("Floor_01"), "pit conserva suelo físico a su derecha")
+    var left_floor := geometry_probe._map_geometry_root.get_node("Floor_00/CollisionShape2D") as CollisionShape2D
+    var right_floor := geometry_probe._map_geometry_root.get_node("Floor_01/CollisionShape2D") as CollisionShape2D
+    if left_floor != null and left_floor.shape is RectangleShape2D:
+        _expect(absf((left_floor.shape as RectangleShape2D).size.x - 220.0) <= EPSILON, "pozo corta la losa izquierda en su borde real")
+    if right_floor != null and right_floor.shape is RectangleShape2D:
+        _expect(absf((right_floor.shape as RectangleShape2D).size.x - 280.0) <= EPSILON, "pozo reanuda la losa tras el hueco")
+
+    geometry_probe._add_stage_body(
     geometry_probe._add_stage_body(
         Rect2(0.0, 0.0, 160.0, 24.0),
         "OneWayProbe",
@@ -206,7 +245,7 @@ func _run() -> void:
     world.queue_free()
     await process_frame
     if _failures.is_empty():
-        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge climb + safe respawn")
+        print("OK Pawn Slug Godot runtime mechanics smoke · crouch + 8-way aim + ledge/ladder climb + pits + safe respawn")
         quit(0)
         return
     print("FAILED Pawn Slug Godot runtime mechanics smoke · %d fallo(s)" % _failures.size())
