@@ -134,11 +134,8 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         ),
     ),
     'learning-golden+learning-observation': (
-        LaneCommand(
-            'learning-golden-path.spec.js',
-            ('--workers=2', '--retries=0'),
-            ('learning-second-observation.spec.js',),
-        ),
+        LaneCommand('learning-golden-path.spec.js', ('--workers=1', '--retries=0')),
+        LaneCommand('learning-second-observation.spec.js', ('--workers=1', '--retries=0')),
     ),
 }
 
@@ -223,10 +220,8 @@ def self_test() -> None:
     calls.clear()
     run_lane('learning-golden+learning-observation', fake_runner)
     assert calls == [
-        ([
-            PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', 'learning-second-observation.spec.js',
-            '--workers=2', '--retries=0',
-        ], E2E_DIR, True)
+        ([PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', '--workers=1', '--retries=0'], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'learning-second-observation.spec.js', '--workers=1', '--retries=0'], E2E_DIR, True),
     ]
     calls.clear()
     run_lane('home', fake_runner)
