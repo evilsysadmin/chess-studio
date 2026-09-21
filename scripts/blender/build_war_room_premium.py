@@ -1507,6 +1507,11 @@ def validate():
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
         raise RuntimeError(f"missing War Room contract objects: {missing}")
+    retired_overlap_props = sorted(
+        obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_bookshelf_")
+    )
+    if retired_overlap_props:
+        raise RuntimeError(f"retired rear-wall bookshelf returned: {retired_overlap_props}")
     roles = {}
     for obj in scene.objects:
         role = obj.get("war_room_role")
