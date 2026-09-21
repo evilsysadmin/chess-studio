@@ -17,7 +17,7 @@ Este skill define cómo iterar la Home 3D desde Blender hasta el runtime real. L
 5. exportar el GLB runtime;
 6. publicar el binario inmutable en R2;
 7. promover el logical ID sólo cuando ese objeto haya sido validado;
-8. cargar la aplicación real con GPU cuando sea posible;
+8. cargar la aplicación real con GPU cuando sea posible (comandos y trampas en `skills/local-gpu-rendering/SKILL.md`);
 9. generar PNG runtime desktop y móvil si cambia encuadre/composición;
 10. corregir diferencias antes de cerrar.
 
