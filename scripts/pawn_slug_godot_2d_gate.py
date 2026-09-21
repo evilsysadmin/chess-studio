@@ -179,10 +179,14 @@ FORBIDDEN_MATTHIAS = (
 REQUIRED_ENVIRONMENT = (
     "_draw_ground",
     "_draw_platforms",
+    "_draw_ladders",
+    "_draw_pits",
     "_draw_obstacles",
     "_draw_foreground_props",
     "_draw_foreground_story_props",
     "_platform_specs",
+    "_ladder_specs",
+    "_pit_specs",
     '"wood"',
     '"stone"',
     '"concrete"',
@@ -288,6 +292,11 @@ REQUIRED_PLAYER_MOBILITY = (
     "_find_ledge_climb_target",
     "_start_ledge_climb",
     "_update_ledge_climb",
+    "LADDER_SPEED",
+    "_ladder_axis",
+    "_update_ladder_state",
+    "is_ladder_climbing",
+    "_kill_y",
     "LEDGE_DOUBLE_TAP_WINDOW",
     "LEDGE_CLIMB_DURATION",
     "combat_hitbox_rect",
@@ -304,6 +313,9 @@ REQUIRED_RUNTIME_PROBE = (
     "find_ledge_climb_target_probe",
     "start_ledge_climb_probe",
     "is_climbing_probe",
+    "ladder_near_player_probe",
+    "update_ladder_state_probe",
+    "is_ladder_climbing_probe",
     "quantize_aim_probe",
 )
 REQUIRED_RUNTIME_SMOKE = (
@@ -312,6 +324,10 @@ REQUIRED_RUNTIME_SMOKE = (
     "aim 8-way",
     "ledge climb detecta una cornisa alcanzable",
     "el segundo toque puede iniciar el estado de escalada",
+    "escalera detecta zona de agarre real",
+    "subir escalera reduce Y con movimiento físico",
+    "pozo elimina el suelo físico invisible",
+    "pozo parte el suelo en dos cuerpos físicos",
     "checkpoint legacy de prueba está realmente bloqueado",
     "respawn final queda libre de geometría",
 )
@@ -325,6 +341,8 @@ REQUIRED_CONTEXTUAL_MOVEMENT_HINT = (
     "W/UP + FIRE arriba",
     "A/D + W/UP + FIRE diagonal",
     "S/DOWN + MOVER",
+    "sube o baja por la escalera",
+    "salva el hueco",
 )
 REQUIRED_HUD_MOVEMENT_HINT = (
     'name = "MovementHintPanel"',
