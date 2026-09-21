@@ -1071,33 +1071,10 @@ def add_gothic_canon_v2(static, mats):
                       (0.14, 0.026, 0.055), mats["brass"], static, bevel=0.04)
         muzzle.rotation_euler.y = -0.16
 
-    # Narrow archive tower between the ceremonial hearth and the command desk.
-    # Earlier passes used a full-width bookcase here, which physically intersected
-    # the fireplace surround and visually crushed the desk. Keep real book depth,
-    # but make the furniture fit the available bay instead of relying on overlap.
-    bx, by = -2.32, 6.16
-    cube("WR_CANON_bookshelf_back", (bx, 6.63, 2.52), (0.34, 0.12, 1.95),
-         mats["walnut_dark"], static, bevel=0.035)
-    for side in (-1, 1):
-        cube(f"WR_CANON_bookshelf_post_{side}", (bx + side * 0.39, by, 2.52),
-             (0.07, 0.48, 2.10), mats["frame_wood"], static, bevel=0.038)
-    for level, z in enumerate((0.62, 1.30, 1.98, 2.66, 3.34, 4.02)):
-        cube(f"WR_CANON_bookshelf_shelf_{level}", (bx, by, z), (0.38, 0.50, 0.060),
-             mats["frame_wood"], static, bevel=0.024)
-        if level < 5:
-            for book in range(2):
-                px = bx - 0.18 + book * 0.36
-                height = 0.40 + ((book + level) % 3) * 0.055
-                depth_offset = (0.0, -0.025, 0.015, 0.0, -0.018)[(book + level) % 5]
-                lean = (0.0, -0.075, 0.055, 0.0, -0.045)[(book + level * 2) % 5]
-                book_obj = cube(
-                    f"WR_CANON_book_{level}_{book}",
-                    (px, 5.72 + depth_offset, z + 0.10 + height / 2),
-                    (0.080, 0.19, height / 2),
-                    mats["book_a"] if (book + level) % 2 else mats["book_b"],
-                    static, bevel=0.016,
-                )
-                book_obj.rotation_euler.y = lean
+    # Keep this bay intentionally open. The full bookcase intersected the left
+    # fireplace, while the narrow replacement read like a ladder wedged between
+    # two larger pieces of furniture. Negative space gives the ceremonial hearth
+    # and command desk their own silhouettes; books remain on the desk/dispatch.
 
     # Right-hand fireplace: the approved mock is asymmetric but balanced by two
     # warm hearths. The side window remains visible farther right as the cold key.
@@ -1264,21 +1241,21 @@ def add_gothic_canon_v2(static, mats):
     # Chandelier over the board. Keep it high enough to never occlude legal
     # destinations, but large enough to own the upper centre of the composition.
     cz = 6.28
-    # Pull the chandelier out of the heraldic crest's screen-space silhouette.
-    # It still hangs over the room, but now occupies the quiet bay between crest
-    # and campaign display instead of tangling with the central emblem.
-    chandelier_x = 2.70
+    # Compact the chandelier so it fits the actual screen-space gap between the
+    # crest and campaign display. The previous full-size fixture simply moved
+    # its overlap from the crest to the painting.
+    chandelier_x = 2.05
     chandelier_y = 2.85
-    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.86, 0.044, mats["brass"], static)
-    cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.16, 0.23, mats["brass_dark"], static, vertices=28)
+    torus("WR_CANON_chandelier_ring", (chandelier_x, chandelier_y, cz), 0.60, 0.036, mats["brass"], static)
+    cylinder("WR_CANON_chandelier_hub", (chandelier_x, chandelier_y, cz), 0.13, 0.20, mats["brass_dark"], static, vertices=24)
     # Three slim suspension stays make the fixture feel physically hung rather
     # than floating. They converge on the same short central chain so the added
     # structure stays legible without creating a cage above the board.
     suspension_apex = Vector((chandelier_x, chandelier_y, 6.71))
     for stay_index, angle in enumerate((math.pi / 2, math.pi / 2 + math.tau / 3, math.pi / 2 + 2 * math.tau / 3)):
         stay_start = Vector((
-            chandelier_x + math.cos(angle) * 0.70,
-            chandelier_y + math.sin(angle) * 0.54,
+            chandelier_x + math.cos(angle) * 0.49,
+            chandelier_y + math.sin(angle) * 0.38,
             cz + 0.03,
         ))
         stay_direction = suspension_apex - stay_start
@@ -1292,27 +1269,27 @@ def add_gothic_canon_v2(static, mats):
             vertices=12,
         )
         stay.rotation_euler = stay_direction.to_track_quat("Z", "Y").to_euler()
-    cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.84), 0.030, 0.26, mats["brass_dark"], static, vertices=16)
+    cylinder("WR_CANON_chandelier_chain", (chandelier_x, chandelier_y, 6.84), 0.026, 0.26, mats["brass_dark"], static, vertices=14)
     candle_offsets = (0.00, 0.035, -0.025, 0.018, -0.018, 0.028)
     for index in range(6):
         angle = index * math.tau / 6.0
-        x = chandelier_x + math.cos(angle) * 0.70
-        y = chandelier_y + math.sin(angle) * 0.54
+        x = chandelier_x + math.cos(angle) * 0.49
+        y = chandelier_y + math.sin(angle) * 0.38
         candle_z = cz + 0.20 + candle_offsets[index]
         cylinder(f"WR_CANON_chandelier_candle_{index}", (x, y, candle_z),
-                 0.054, 0.31, mats["ivory"], static, vertices=18)
-        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, candle_z + 0.19), 0.076,
-               mats["fire_core"], static, scale=(0.44, 0.44, 1.10))
+                 0.046, 0.27, mats["ivory"], static, vertices=16)
+        sphere(f"WR_CANON_chandelier_flame_{index}", (x, y, candle_z + 0.17), 0.064,
+               mats["fire_core"], static, scale=(0.42, 0.42, 1.08))
         # short radial arm from hub; cylinders are aligned to Z by default.
         midpoint = Vector((chandelier_x + (x - chandelier_x) * 0.50, chandelier_y + (y - chandelier_y) * 0.50, cz))
         endpoint = Vector((x, y, cz))
         origin = Vector((chandelier_x, chandelier_y, cz))
         direction = endpoint - origin
-        arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.030,
-                       direction.length, mats["brass_dark"], static, vertices=14)
+        arm = cylinder(f"WR_CANON_chandelier_arm_{index}", midpoint, 0.024,
+                       direction.length, mats["brass_dark"], static, vertices=12)
         arm.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
-    light("WR_CANON_chandelier_light", "POINT", (chandelier_x, chandelier_y, 6.04), 126.0,
-          (1.0, 0.48, 0.18), static, radius=1.9)
+    light("WR_CANON_chandelier_light", "POINT", (chandelier_x, chandelier_y, 6.04), 94.0,
+          (1.0, 0.48, 0.18), static, radius=1.45)
     anchor("WR_ANCHOR_chandelier_practical", (chandelier_x, chandelier_y, 5.96), static)
 
     # Burgundy heraldic drape on the camera-facing table edge.
@@ -1522,7 +1499,7 @@ def validate():
         "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
         "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
-        "WR_CANON_bookshelf_back", "WR_CANON_table_drape",
+        "WR_CANON_table_drape",
         "WR_CANON_arch_left_curve_-1_0", "WR_CANON_campaign_canvas",
         "WR_CANON_masonry_course_2",
         "WR_CANON_fireplace_block_left_lintel_0", "WR_CANON_fireplace_block_right_lintel_0",
