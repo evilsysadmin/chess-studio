@@ -23,6 +23,7 @@ from slowapi.util import get_remote_address
 
 import profile_store as pstore
 import users_store as ustore
+import auth_login_guard
 import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
@@ -591,6 +592,15 @@ async def register(body: RegisterRequest, request: Request):
 @limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
+    identity = auth_login_guard.identity_key(username, JWT_SECRET)
+    retry_after = await auth_login_guard.retry_after(identity)
+    if retry_after:
+        raise HTTPException(
+            429,
+            "Demasiados intentos de acceso. Reintenta más tarde.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = await ustore.get_user(username)
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
@@ -611,7 +621,15 @@ async def login(body: LoginRequest, request: Request):
             user_agent=request.headers.get("user-agent"),
             client_release=_client_release(request),
         )
+        retry_after = await auth_login_guard.record_failure(identity)
+        if retry_after:
+            raise HTTPException(
+                429,
+                "Demasiados intentos de acceso. Reintenta más tarde.",
+                headers={"Retry-After": str(retry_after)},
+            )
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
+    await auth_login_guard.clear(identity)
     request.state.username = username
     await _touch_activity_best_effort(username, force=True, request=request)
     return {"token": create_token(username), "username": username}
