@@ -35,6 +35,8 @@ import {
   chroniclesForecastMoves,
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
+import { createChroniclesCheckpointWriter } from '../chronicles/chroniclesCheckpointWriter.js';
+import { chroniclesHydrateRunState } from '../chronicles/chroniclesRunCheckpoint.js';
 import {
   chroniclesProgressionFeedback,
   chroniclesProgressionFeedbackLabel,
@@ -70,24 +72,31 @@ function chroniclesBattlefieldInteraction(state, memberId) {
   };
 }
 
-function createActionState(progression) {
-  return applyChroniclesProgressionToTacticsState({
-    ...createChroniclesState(null, progression.characterBuild),
+function createActionState(progression, authoritativeRun = null) {
+  const base = applyChroniclesProgressionToTacticsState({
+    ...createChroniclesState(authoritativeRun?.currentMapId || null, progression.characterBuild),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
   }, progression);
+  return authoritativeRun ? chroniclesHydrateRunState(base, authoritativeRun) : base;
 }
 
-export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = null }) {
+export default function ChroniclesOfMatthiasTactics({
+  authoritativeRun = null,
+  onCheckpointConflict = null,
+  onExit,
+  onRestartRun = null,
+}) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [state, setState] = useState(() => createActionState(progression));
+  const [state, setState] = useState(() => createActionState(progression, authoritativeRun));
   const stateRef = useRef(state);
+  const checkpointWriterRef = useRef(null);
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
   const lastAttackAtRef = useRef(0);
@@ -97,6 +106,24 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [progressionFeedback, setProgressionFeedback] = useState('');
+
+  useEffect(() => {
+    if (!authoritativeRun) return undefined;
+    const writer = createChroniclesCheckpointWriter({
+      runId: authoritativeRun.runId,
+      worldVersion: authoritativeRun.worldVersion,
+      initialState: stateRef.current,
+      onConflict: onCheckpointConflict,
+      onError: (error) => {
+        console.warn('Chronicles Tactics checkpoint deferred after transport failure', error);
+      },
+    });
+    checkpointWriterRef.current = writer;
+    return () => {
+      writer.dispose();
+      if (checkpointWriterRef.current === writer) checkpointWriterRef.current = null;
+    };
+  }, [authoritativeRun, onCheckpointConflict]);
 
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
   const selectedAbility = useMemo(
@@ -168,6 +195,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
 
     stateRef.current = next;
     setState(next);
+    checkpointWriterRef.current?.offer(next);
     if (next.phase === 'escaped' || next.phase === 'defeated') finishChroniclesTacticsRun(runId);
     return true;
   }, [runId]);

@@ -13,6 +13,8 @@ import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapWorld,
 } from '../chronicles/chroniclesGameBootstrap.js';
+import { createChroniclesCheckpointWriter } from '../chronicles/chroniclesCheckpointWriter.js';
+import { chroniclesHydrateRunState } from '../chronicles/chroniclesRunCheckpoint.js';
 import {
   ensureChroniclesRun,
   finishChroniclesRun,
@@ -97,6 +99,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const staleRunRecoveryAttemptedRef = useRef(false);
   const activeRunIdRef = useRef(null);
+  const checkpointWriterRef = useRef(null);
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -110,6 +113,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [selectedMemberId]);
 
   const exitChronicles = useCallback(() => {
+    checkpointWriterRef.current?.dispose();
+    checkpointWriterRef.current = null;
     if (activeRunIdRef.current) {
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
       activeRunIdRef.current = null;
@@ -123,6 +128,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
+    checkpointWriterRef.current?.dispose();
+    checkpointWriterRef.current = null;
     stateRef.current = null;
     staleRunRecoveryAttemptedRef.current = false;
     setProgression(saved);
@@ -136,6 +143,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [progression]);
 
   const retryBootstrap = useCallback(() => {
+    checkpointWriterRef.current?.dispose();
+    checkpointWriterRef.current = null;
     staleRunRecoveryAttemptedRef.current = false;
     stateRef.current = null;
     setState(null);
@@ -151,6 +160,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const next = chroniclesReduce(current, action);
     stateRef.current = next;
     setState(next);
+    checkpointWriterRef.current?.offer(next);
 
     const bark = chroniclesPartyBark(current, next);
     if (bark) {
@@ -182,6 +192,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const restart = useCallback(() => {
+    checkpointWriterRef.current?.dispose();
+    checkpointWriterRef.current = null;
     if (activeRunIdRef.current) {
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
       activeRunIdRef.current = null;
@@ -217,9 +229,29 @@ export default function ChroniclesOfMatthias({ onExit }) {
     activeRunIdRef.current = operationId;
 
     chroniclesBootstrapWorld({ signal: controller.signal, operationId })
-      .then(() => {
+      .then((world) => {
         if (!active) return;
-        const next = createChroniclesState(null, progression.characterBuild);
+        const next = chroniclesHydrateRunState(
+          createChroniclesState(world.currentMapId, progression.characterBuild),
+          world,
+        );
+        checkpointWriterRef.current?.dispose();
+        checkpointWriterRef.current = createChroniclesCheckpointWriter({
+          runId: world.runId,
+          worldVersion: world.worldVersion,
+          initialState: next,
+          onConflict: () => {
+            if (!active) return;
+            checkpointWriterRef.current?.dispose();
+            checkpointWriterRef.current = null;
+            setReady(false);
+            setBootstrapError(null);
+            setBootstrapRevision((revision) => revision + 1);
+          },
+          onError: (error) => {
+            console.warn('Chronicles checkpoint deferred after transport failure', error);
+          },
+        });
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
@@ -248,6 +280,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => {
       active = false;
       controller.abort();
+      checkpointWriterRef.current?.dispose();
+      checkpointWriterRef.current = null;
       chroniclesClearRuntimeMapDefinitions();
     };
   }, [bootstrapRevision, characterSetupDone, progression.characterBuild]);

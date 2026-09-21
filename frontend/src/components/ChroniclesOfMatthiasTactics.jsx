@@ -61,6 +61,7 @@ function BootstrapFailure({ error, onRetry, onExit }) {
 
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [ready, setReady] = useState(false);
+  const [bootstrapWorld, setBootstrapWorld] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
@@ -84,6 +85,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     const saved = saveChroniclesProgression(selected.progression);
     setProgression(saved);
     setReady(false);
+    setBootstrapWorld(null);
     setBootstrapError(null);
     setCharacterSetupDone(true);
     setBootstrapRevision((revision) => revision + 1);
@@ -92,6 +94,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const retryBootstrap = useCallback(() => {
     staleRunRecoveryAttemptedRef.current = false;
     setReady(false);
+    setBootstrapWorld(null);
     setBootstrapError(null);
     setBootstrapRevision((revision) => revision + 1);
   }, []);
@@ -109,9 +112,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     const operationId = ensureChroniclesTacticsRun();
     activeRunIdRef.current = operationId;
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
-      .then(() => {
+      .then((world) => {
         if (!active) return;
         staleRunRecoveryAttemptedRef.current = false;
+        setBootstrapWorld(world);
         setBootstrapError(null);
         setReady(true);
       })
@@ -127,6 +131,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           return;
         }
         setReady(false);
+        setBootstrapWorld(null);
         setBootstrapError(error);
       });
 
@@ -151,12 +156,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   if (bootstrapError) {
     return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={exitChronicles} />;
   }
-  if (!ready) return <BootstrapStatus />;
+  if (!ready || !bootstrapWorld) return <BootstrapStatus />;
 
   return (
     <Suspense fallback={<BootstrapStatus />}>
       <ChroniclesOfMatthiasTacticsRuntime
         key={bootstrapRevision}
+        authoritativeRun={bootstrapWorld}
+        onCheckpointConflict={retryBootstrap}
         onExit={exitChronicles}
         onRestartRun={restartExpedition}
       />

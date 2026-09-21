@@ -56,6 +56,7 @@ async function chroniclesE2ERunPayload({
     manifestRevision: area.manifestRevision,
     status: 'active',
     worldVersion: 0,
+    worldFlags: {},
     consumedContentIds: [],
     claimedRewards: [],
     area,
@@ -217,6 +218,39 @@ export async function mockApi(page, {
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);
+    }
+
+    const chroniclesCheckpointMatch = path.match(/\/chronicles\/runs\/([^/]+)\/checkpoint$/);
+    if (chroniclesCheckpointMatch && method === 'PUT') {
+      const runId = decodeURIComponent(chroniclesCheckpointMatch[1]);
+      const storedEntry = [...chroniclesRuns.entries()].find(([, run]) => run.runId === runId);
+      if (!storedEntry) return json({ detail: 'Run de Chronicles no encontrada' }, 404);
+      const [operationKey, current] = storedEntry;
+      const body = route.request().postDataJSON?.() ?? {};
+      if (Number(body.expectedWorldVersion) !== Number(current.worldVersion)) {
+        return json({ detail: 'Chronicles E2E worldVersion conflict' }, 409);
+      }
+      const targetArea = current.areas.find((entry) => entry.mapId === body.currentMapId);
+      if (!targetArea) return json({ detail: 'Chronicles E2E target map missing' }, 409);
+      const updated = {
+        ...current,
+        currentMapId: targetArea.mapId,
+        contentVersion: targetArea.contentVersion,
+        manifestRevision: targetArea.manifestRevision,
+        area: targetArea,
+        worldVersion: Number(current.worldVersion) + 1,
+        worldFlags: body.worldFlags && typeof body.worldFlags === 'object' ? { ...body.worldFlags } : {},
+        consumedContentIds: [...new Set([
+          ...(current.consumedContentIds || []),
+          ...(Array.isArray(body.consumedContentIds) ? body.consumedContentIds : []),
+        ])],
+        claimedRewards: [...new Set([
+          ...(current.claimedRewards || []),
+          ...(Array.isArray(body.claimedRewards) ? body.claimedRewards : []),
+        ])],
+      };
+      chroniclesRuns.set(operationKey, updated);
+      return json(updated);
     }
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
