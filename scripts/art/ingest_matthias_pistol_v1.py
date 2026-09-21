@@ -6,7 +6,9 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+import cv2
+import numpy as np
+from PIL import Image, ImageDraw
 
 from sprite_forge import (
     GeometryContract,
@@ -20,26 +22,45 @@ MASTER_SHA256 = "9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5
 MASTER_SIZE = (1536, 1024)
 CANVAS = 416
 
-# Seed poses deliberately come only from the immutable approved v1 master.
-# Rear views, labels, portrait art and legacy runtime atlases are excluded.
+# Only front-facing, weapon-integrated poses from the immutable approved v1
+# master. Rear views, labels, portrait art and legacy runtime atlases are excluded.
+# "polygon" is used where the silhouette is already cleanly isolated; "grabcut"
+# is reserved for darker upright poses where clothing and background are close.
 SOURCES = {
+    "idle": [
+        {"box": (90, 120, 190, 260), "guide": "idle", "matte": "grabcut"},
+        {"box": (190, 120, 290, 260), "guide": "idle", "matte": "grabcut"},
+        {"box": (290, 120, 390, 260), "guide": "idle", "matte": "grabcut"},
+        {"box": (890, 120, 990, 260), "guide": "idle", "matte": "grabcut"},
+    ],
     "shoot": [
-        {"box": (100, 573, 191, 687), "guide": "aim"},
+        {"box": (100, 573, 191, 687), "guide": "aim", "matte": "grabcut"},
+        {"box": (200, 573, 291, 687), "guide": "aim", "matte": "grabcut"},
     ],
     "walk": [
-        {"box": (90, 276, 179, 403), "guide": "walk"},
-        {"box": (192, 276, 281, 403), "guide": "walk"},
-        {"box": (296, 276, 382, 403), "guide": "walk"},
-        {"box": (397, 276, 482, 403), "guide": "walk"},
+        {"box": (90, 276, 179, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (192, 276, 281, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (296, 276, 382, 403), "guide": "walk", "matte": "grabcut"},
+        {"box": (397, 276, 482, 403), "guide": "walk", "matte": "grabcut"},
     ],
     "run": [
-        {"box": (78, 419, 170, 546), "guide": "run"},
-        {"box": (181, 419, 275, 546), "guide": "run"},
-        {"box": (287, 419, 379, 546), "guide": "run"},
-        {"box": (388, 419, 480, 546), "guide": "run"},
+        {"box": (78, 419, 170, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (181, 419, 275, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (287, 419, 379, 546), "guide": "run", "matte": "grabcut"},
+        {"box": (388, 419, 480, 546), "guide": "run", "matte": "grabcut"},
     ],
     "crouch": [
-        {"box": (774, 755, 881, 883), "guide": "crouch"},
+        {"box": (774, 755, 881, 883), "guide": "crouch", "matte": "grabcut"},
+    ],
+    "reload": [
+        {"box": (85, 700, 195, 840), "guide": "reload", "matte": "grabcut"},
+        {"box": (195, 700, 305, 840), "guide": "reload", "matte": "grabcut"},
+        {"box": (305, 700, 415, 840), "guide": "reload", "matte": "grabcut"},
+        {"box": (415, 700, 525, 840), "guide": "reload", "matte": "grabcut"},
+        {"box": (525, 700, 650, 840), "guide": "reload", "matte": "grabcut"},
+    ],
+    "hurt": [
+        {"box": (1005, 735, 1155, 905), "guide": "hurt", "matte": "grabcut"},
     ],
 }
 
@@ -48,6 +69,9 @@ GUIDES = {
     "walk": [(24,20),(35,12),(54,4),(72,1),(84,2),(88,6),(85,18),(85,21),(89,26),(81,29),(79,37),(72,42),(67,45),(69,49),(68,54),(80,58),(81,63),(74,66),(68,65),(62,71),(73,78),(76,84),(85,85),(88,89),(77,95),(67,98),(63,94),(58,85),(50,79),(43,75),(35,82),(25,87),(23,92),(22,98),(15,100),(10,98),(6,90),(4,85),(6,80),(17,73),(24,68),(18,64),(16,60),(17,50),(22,45),(29,42),(36,40),(31,36),(30,28)],
     "run": [(23,22),(35,12),(57,3),(76,2),(84,6),(84,17),(88,25),(83,28),(79,38),(69,44),(73,49),(80,53),(82,60),(76,64),(66,63),(62,70),(69,75),(71,80),(84,84),(89,90),(77,98),(69,99),(64,94),(55,86),(45,81),(39,79),(26,84),(19,85),(18,94),(12,96),(8,93),(5,83),(7,76),(18,73),(26,65),(20,64),(16,59),(18,49),(26,44),(34,42),(33,35),(31,28)],
     "crouch": [(19,20),(35,10),(52,4),(64,3),(74,5),(78,11),(75,22),(76,26),(70,29),(69,40),(92,44),(97,48),(96,53),(79,54),(76,61),(70,65),(60,66),(60,76),(69,79),(70,86),(72,91),(78,94),(78,98),(56,98),(49,94),(39,96),(31,98),(8,97),(7,92),(11,86),(8,80),(10,68),(12,57),(19,50),(26,47),(23,40),(22,33)],
+    "idle": [(17,18),(30,7),(50,1),(68,3),(76,9),(74,22),(78,28),(70,34),(70,44),(78,52),(76,62),(70,67),(67,78),(72,88),(80,94),(76,99),(58,99),(52,90),(48,80),(42,80),(36,90),(30,99),(14,98),(12,92),(18,84),(22,72),(14,68),(10,58),(12,48),(20,42),(26,38),(22,30)],
+    "reload": [(15,18),(30,7),(50,1),(68,3),(76,9),(74,22),(78,28),(70,34),(70,43),(88,48),(96,55),(94,62),(76,64),(69,70),(66,80),(72,89),(80,95),(76,99),(58,99),(51,90),(46,80),(40,82),(34,92),(28,99),(14,98),(12,92),(18,84),(20,72),(12,68),(8,58),(10,48),(19,42),(25,38),(21,30)],
+    "hurt": [(8,5),(75,5),(88,20),(88,88),(72,94),(15,94),(5,82),(5,20)],
 }
 
 GEOMETRY = GeometryContract(
@@ -74,31 +98,95 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _matte(source: Image.Image, box: tuple[int, int, int, int], guide_name: str) -> Image.Image:
-    crop = source.crop(box).convert("RGBA")
-    width, height = crop.size
-    mask = Image.new("L", crop.size, 0)
-    points = [
-        (
-            round(x * (width - 1) / 100),
-            round(y * (height - 1) / 100),
-        )
-        for x, y in GUIDES[guide_name]
-    ]
-    ImageDraw.Draw(mask).polygon(points, fill=255)
-    # Fixed sub-pixel feathering avoids a jagged polygon edge without inventing
-    # silhouette pixels outside the authored guide.
-    mask = mask.filter(ImageFilter.GaussianBlur(0.6))
-    crop.putalpha(mask)
+def _guide_mask(size: tuple[int, int], guide_name: str) -> np.ndarray:
+    width, height = size
+    points = np.array(
+        [
+            (
+                round(x * (width - 1) / 100),
+                round(y * (height - 1) / 100),
+            )
+            for x, y in GUIDES[guide_name]
+        ],
+        np.int32,
+    )
+    mask = np.zeros((height, width), np.uint8)
+    cv2.fillPoly(mask, [points], 255)
+    return mask
 
-    pixels = crop.load()
-    for y in range(height):
-        for x in range(width):
-            r, g, b, a = pixels[x, y]
-            if a == 0 and (r or g or b):
-                pixels[x, y] = (0, 0, 0, 0)
-    return crop
 
+def _clean_transparent_rgb_array(rgba: np.ndarray) -> np.ndarray:
+    rgba = rgba.copy()
+    rgba[rgba[:, :, 3] == 0, :3] = 0
+    return rgba
+
+
+def _grabcut_matte(source: Image.Image, box: tuple[int, int, int, int], guide_name: str) -> Image.Image:
+    crop = np.array(source.crop(box).convert("RGBA"))
+    rgb = crop[:, :, :3]
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    height, width = rgb.shape[:2]
+
+    guide = _guide_mask((width, height), guide_name)
+    outer = cv2.dilate(guide, np.ones((3, 3), np.uint8))
+
+    border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]], axis=0)
+    background = np.median(border, axis=0)
+    distance = np.linalg.norm(
+        rgb.astype(np.float32) - background.astype(np.float32),
+        axis=2,
+    )
+    luminance = rgb.mean(axis=2)
+
+    mask = np.full((height, width), cv2.GC_BGD, np.uint8)
+    mask[outer > 0] = cv2.GC_PR_FGD
+    definite_foreground = (guide > 0) & ((distance > 38.0) | (luminance > 70.0))
+    mask[definite_foreground] = cv2.GC_FGD
+    likely_background = (outer > 0) & (distance < 12.0) & (luminance < 55.0)
+    mask[likely_background] = cv2.GC_PR_BGD
+
+    cv2.setRNGSeed(0)
+    cv2.grabCut(
+        bgr,
+        mask,
+        None,
+        np.zeros((1, 65)),
+        np.zeros((1, 65)),
+        8,
+        cv2.GC_INIT_WITH_MASK,
+    )
+    alpha = np.where(
+        (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD),
+        255,
+        0,
+    ).astype(np.uint8)
+    alpha = np.where(outer > 0, alpha, 0).astype(np.uint8)
+
+    # Keep only the dominant connected silhouette. For these integrated upright
+    # poses a detached blob is background dirt, never a valid gameplay element.
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(
+        (alpha > 0).astype(np.uint8),
+        8,
+    )
+    if count <= 1:
+        raise SystemExit(f"{guide_name} grabcut produced no foreground")
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    largest = 1 + int(np.argmax(areas))
+    alpha = np.where(labels == largest, 255, 0).astype(np.uint8)
+
+    crop[:, :, 3] = alpha
+    return Image.fromarray(_clean_transparent_rgb_array(crop), "RGBA")
+
+
+def _matte(
+    source: Image.Image,
+    box: tuple[int, int, int, int],
+    guide_name: str,
+    mode: str,
+) -> Image.Image:
+    if mode != "grabcut":
+        raise SystemExit(f"unsupported canonical matte mode: {mode}")
+    return _grabcut_matte(source, box, guide_name)
 
 def _review(frames: list[tuple[str, int, Image.Image]], output: Path) -> None:
     columns = 4
@@ -133,7 +221,12 @@ def ingest(master: Path, output_dir: Path) -> dict:
     records: list[dict] = []
     for action, specs in SOURCES.items():
         for index, spec in enumerate(specs):
-            raw = _matte(source, tuple(spec["box"]), str(spec["guide"]))
+            raw = _matte(
+                source,
+                tuple(spec["box"]),
+                str(spec["guide"]),
+                str(spec["matte"]),
+            )
             raw_result = lint_frame(raw, LINT)
             if not raw_result.ok:
                 raise SystemExit(
@@ -157,6 +250,7 @@ def ingest(master: Path, output_dir: Path) -> dict:
                     "action": action,
                     "frame": index,
                     "source_box": list(spec["box"]),
+                    "matte": spec["matte"],
                     "raw_sha256": sha256(raw_path),
                     "normalized_sha256": sha256(normalized_path),
                     "body_bbox": list(metrics.body_bbox),
@@ -179,7 +273,8 @@ def ingest(master: Path, output_dir: Path) -> dict:
         "frames": records,
         "limitations": [
             "seed only; not an accepted Sprite Forge bank",
-            "missing full idle/jump/fall/land/directional/crouch-walk/reload/hurt/die coverage",
+            "missing jump/fall/land/directional/crouch-walk/death coverage",
+            "death is intentionally excluded until action-specific geometry exists",
             "no runtime promotion in this step",
         ],
     }

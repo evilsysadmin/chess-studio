@@ -322,7 +322,10 @@ def normalize_frame(
         max(1, round(crop.width * scale)),
         max(1, round(crop.height * scale)),
     )
-    scaled = crop.resize(scaled_size, Image.Resampling.LANCZOS)
+    # LANCZOS rings around hard alpha silhouettes and can create detached
+    # low-alpha islands that did not exist in the authored source. BICUBIC keeps
+    # anti-aliased edges without manufacturing orphan components.
+    scaled = crop.resize(scaled_size, Image.Resampling.BICUBIC)
 
     body_left = (body.bbox[0] - fx0) * scale
     body_right = (body.bbox[2] - fx0) * scale
