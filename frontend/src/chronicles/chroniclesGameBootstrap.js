@@ -8,6 +8,7 @@ import {
   chroniclesSetRuntimeEntryMapId,
 } from './chroniclesMapCatalog.js';
 import { chroniclesCreateRun } from './chroniclesRunClient.js';
+import { chroniclesCheckpointFlagKeys } from './chroniclesRunCheckpoint.js';
 
 export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 5000;
 
@@ -85,9 +86,11 @@ function normalizeRunLedger(value, label) {
 function normalizeRunWorldFlags(value) {
   if (value == null) return {};
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid-world-flags');
+  const allowed = new Set(chroniclesCheckpointFlagKeys());
   const entries = Object.entries(value);
   if (entries.some(([key, flag]) => (
     !key
+    || !allowed.has(key)
     || (flag !== null && !['boolean', 'number', 'string'].includes(typeof flag))
   ))) {
     throw new Error('invalid-world-flags');

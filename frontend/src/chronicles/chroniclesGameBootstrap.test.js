@@ -255,4 +255,18 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
 
     expect(chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID).title).toBe('Cripta de las Ocho Casillas');
   });
+
+  it('rejects persisted world flags that are not authored by a shipped manifest', async () => {
+    const payload = remoteRun();
+    payload.worldFlags = { totallyInventedRuntimeFlag: true };
+
+    await expect(chroniclesBootstrapWorld({
+      createRun: vi.fn().mockResolvedValue(payload),
+      budgetMs: 250,
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'invalid-world-flags',
+    });
+  });
+
 });

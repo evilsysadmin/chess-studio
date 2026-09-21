@@ -15,14 +15,14 @@ function authoredSetKeys(map) {
     .map((effect) => effect.key);
 }
 
-function checkpointFlagKeys() {
-  return chroniclesMapIds().flatMap((mapId) => {
+export function chroniclesCheckpointFlagKeys() {
+  return [...new Set(chroniclesMapIds().flatMap((mapId) => {
     const map = chroniclesMapById(mapId);
     return [
       ...Object.keys(map.initialFlags || {}),
       ...authoredSetKeys(map),
     ];
-  });
+  }))];
 }
 
 function durableFlagValue(value) {
@@ -37,8 +37,7 @@ function normalizedLedger(values) {
 export function chroniclesWorldFlagsForCheckpoint(state) {
   const source = state && typeof state === 'object' ? state : {};
   return Object.fromEntries(
-    checkpointFlagKeys()
-      .filter((key, index, keys) => keys.indexOf(key) === index)
+    chroniclesCheckpointFlagKeys()
       .filter((key) => Object.prototype.hasOwnProperty.call(source, key))
       .filter((key) => durableFlagValue(source[key]))
       .map((key) => [key, source[key]]),

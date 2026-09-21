@@ -100,6 +100,33 @@ def _normalize_checkpoint_ids(values: list[str], *, label: str) -> list[str]:
     return normalized
 
 
+@lru_cache(maxsize=1)
+def chronicles_world_flag_keys() -> frozenset[str]:
+    keys: set[str] = set()
+    for map_id in chronicles_shipped_map_ids():
+        manifest, _revision = load_chronicles_manifest(map_id)
+        keys.update(
+            key
+            for key in (manifest.get("initialFlags") or {})
+            if isinstance(key, str) and key
+        )
+        effects: list[dict[str, Any]] = []
+        for group in _CONTENT_GROUPS:
+            for entry in manifest.get(group, []) or []:
+                effects.extend(((entry.get("action") or {}).get("effects") or []))
+        for enemy in manifest.get("enemies", []) or []:
+            effects.extend(((enemy.get("onDefeat") or {}).get("effects") or []))
+        keys.update(
+            effect["key"]
+            for effect in effects
+            if isinstance(effect, dict)
+            and effect.get("type") == "set"
+            and isinstance(effect.get("key"), str)
+            and effect.get("key")
+        )
+    return frozenset(keys)
+
+
 def _normalize_checkpoint_flags(flags: dict[str, Any]) -> dict[str, Any]:
     if len(flags) > 128 or len(_canonical_bytes(flags)) > 16_384:
         raise HTTPException(400, "El checkpoint contiene demasiados flags.")
@@ -107,6 +134,8 @@ def _normalize_checkpoint_flags(flags: dict[str, Any]) -> dict[str, Any]:
     for key, value in flags.items():
         if not isinstance(key, str) or not key or len(key) > 96:
             raise HTTPException(400, "El checkpoint contiene una clave de flag inválida.")
+        if key not in chronicles_world_flag_keys():
+            raise HTTPException(400, f"El flag {key} no está autorizado por los manifests de Chronicles.")
         if value is not None and not isinstance(value, (bool, int, str)):
             raise HTTPException(400, f"El flag {key} usa un valor no persistible.")
         if isinstance(value, str) and len(value) > 256:

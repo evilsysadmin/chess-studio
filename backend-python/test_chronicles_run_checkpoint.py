@@ -150,3 +150,19 @@ def test_checkpoint_bounds_client_owned_payload(monkeypatch):
     )
 
     assert response.status_code == 400
+
+
+def test_checkpoint_rejects_unauthored_world_flags(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    response = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        flags={"totallyInventedRuntimeFlag": True},
+    )
+
+    assert response.status_code == 400
+    assert "no está autorizado" in response.json()["detail"]
