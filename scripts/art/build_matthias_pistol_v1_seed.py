@@ -13,6 +13,7 @@ from sprite_forge import TemporalContract, build_bank, validate_sequence
 CELL = 416
 PART = "core"
 ACTIONS = (
+    ("idle", 3, 6.0, True),
     ("walk", 4, 12.0, True),
     ("run", 4, 16.0, True),
     ("shoot", 1, 18.0, False),
@@ -148,7 +149,6 @@ def build(frames_root: Path, output_dir: Path) -> dict:
         "status": "validated-seed-not-accepted",
         "coverage": [action for action, *_ in ACTIONS],
         "missing_for_full_bank": [
-            "idle",
             "jump",
             "fall",
             "land",
