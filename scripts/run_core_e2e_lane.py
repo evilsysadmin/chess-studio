@@ -181,7 +181,6 @@ def self_test() -> None:
     assert [command.spec for command in LANE_COMMANDS['home']] == ['regression-journeys.spec.js']
     assert LANE_COMMANDS['home'][0].additional_specs == ('mobile-final-interactions.spec.js',)
     assert LANE_COMMANDS['home'][0].grep == f'{HOME_GREP}|{HOME_MOBILE_GREP}'
-    assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'mobile-final-interactions.spec.js'
     ]
