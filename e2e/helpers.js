@@ -640,9 +640,16 @@ export async function openMoreGameModes(page) {
       try {
         await trigger.click({ timeout: 5_000 });
       } catch (error) {
-        if (!(await closeBlockingPvpLobby())) throw error;
-        await trigger.click();
+        await closeBlockingPvpLobby();
+        const actionable = await trigger.isVisible().catch(() => false)
+          && !(await trigger.isDisabled().catch(() => true));
+        if (!actionable) throw error;
+        // The illustrated Home trigger has a long-lived ambient animation.
+        // For navigation helpers, a visible+enabled control is actionable even
+        // when Playwright never observes a fully static bounding box.
+        await trigger.click({ force: true, timeout: 5_000 });
       }
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
     }
     return illustrated;
   }
