@@ -40,14 +40,22 @@ function deterministicNoise(x, y, salt = 0) {
   return value - Math.floor(value);
 }
 
+export function chroniclesTacticsExposedWallSides(
+  x,
+  y,
+  scenePlan = chroniclesIsometricScenePlan(),
+) {
+  return Object.freeze(SIDES.filter((side) => (scenePlan?.wallFaces || []).some((face) => (
+    face.x === x && face.y === y && face.side === side.key
+  ))));
+}
+
 export function chroniclesTacticsExposedWallSide(
   x,
   y,
   scenePlan = chroniclesIsometricScenePlan(),
 ) {
-  return SIDES.find((side) => (scenePlan?.wallFaces || []).some((face) => (
-    face.x === x && face.y === y && face.side === side.key
-  ))) || null;
+  return chroniclesTacticsExposedWallSides(x, y, scenePlan)[0] || null;
 }
 
 export function chroniclesTacticsArchitectureWallCells(
@@ -62,8 +70,9 @@ export function chroniclesTacticsArchitectureWallCells(
     if (height && height < 1.8) return;
     const x = Number(match[1]);
     const y = Number(match[2]);
-    const side = chroniclesTacticsExposedWallSide(x, y, scenePlan);
-    if (side) cells.push({ x, y, side, wall: object });
+    chroniclesTacticsExposedWallSides(x, y, scenePlan).forEach((side) => {
+      cells.push({ x, y, side, wall: object });
+    });
   });
   return cells;
 }
