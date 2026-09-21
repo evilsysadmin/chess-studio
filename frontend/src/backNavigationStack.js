@@ -35,6 +35,12 @@ export function createBackNavigationStack() {
       const entry = entries.length ? entries[entries.length - 1] : null;
       if (!entry) return false;
 
+      if (event?.type === 'contextmenu' && entry.contextMenuAction === 'ignore') {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+        return true;
+      }
+
       if (event?.type === 'contextmenu') event.preventDefault?.();
       event?.stopPropagation?.();
       entry.callbackRef?.current?.();
