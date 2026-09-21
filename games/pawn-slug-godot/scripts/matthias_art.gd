@@ -739,7 +739,7 @@ func _begin_background_atlas_warmup() -> void:
 func _start_next_background_full_bank() -> void:
     _background_full_inflight_weapon = ""
     while not _background_full_queue.is_empty():
-        var weapon_id := _background_full_queue.pop_front()
+        var weapon_id: String = _background_full_queue.pop_front()
         if _full_frames_by_weapon.has(weapon_id) and _v9_ready_by_weapon.has(weapon_id):
             continue
         _background_full_inflight_weapon = weapon_id
