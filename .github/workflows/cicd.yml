@@ -357,7 +357,7 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v7
-        uses: ./.github/actions/setup-browser-e2e
+      - uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           restore-frontend-deps: 'false'
