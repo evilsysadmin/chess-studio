@@ -11,25 +11,19 @@ const CAPTURES = [
 async function openVisualMoreModes(page) {
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
   await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
 
-  // Keep the first attempt bounded but long enough for the illustrated Home
-  // entrance motion to settle; known blockers still avoid the full 30 s burn.
-  try {
-    await trigger.click({ timeout: 5_000 });
-  } catch (error) {
-    // Playwright can time out after the click itself has already landed while it
-    // waits for unrelated scheduled navigation work. Accept the interaction if
-    // Home has in fact opened the tools panel instead of throwing away a valid
-    // desktop visual capture.
-    const tools = page.locator('#illustrated-home-tools');
-    if (await tools.isVisible().catch(() => false)) return;
-
-    const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
-    if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
+  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+  if (await pvpLobby.isVisible().catch(() => false)) {
     await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
     await expect(pvpLobby).toBeHidden();
-    await trigger.click();
   }
+
+  // This visual producer owns Chronicles, not Home trigger actionability.
+  // Native click reaches the real React handler without waiting on the
+  // long-lived dungeon-trigger animation to become geometrically static.
+  await trigger.evaluate((button) => button.click());
+  await expect(page.locator('#illustrated-home-tools')).toBeVisible({ timeout: 5_000 });
 }
 
 async function openChronicles(page, captureLabel) {
