@@ -35,6 +35,7 @@ static func score_intents(context: Dictionary) -> Dictionary:
     var ladder_route := bool(context.get("ladder_route", false))
     var grenade_evade := not is_zero_approx(float(context.get("grenade_evade", 0.0)))
     var role := String(context.get("role", ""))
+    var enemy_type := String(context.get("enemy_type", "pawn"))
 
     if grenade_evade:
         scores[INTENT_EVADE] = 100.0
@@ -63,6 +64,30 @@ static func score_intents(context: Dictionary) -> Dictionary:
         scores[INTENT_SHOOT] = 72.0
         if role == "support":
             scores[INTENT_SHOOT] += 5.0
+
+    match enemy_type:
+        "scout":
+            scores[INTENT_ADVANCE] += 12.0
+            scores[INTENT_TRAVERSE] += 8.0
+            scores[INTENT_SHOOT] -= 4.0
+        "commando":
+            scores[INTENT_ADVANCE] += 8.0
+            scores[INTENT_TRAVERSE] += 10.0
+        "shield":
+            scores[INTENT_ADVANCE] += 14.0
+            scores[INTENT_TRAVERSE] += 5.0
+            scores[INTENT_RETREAT] -= 18.0
+        "grenadier":
+            scores[INTENT_RETREAT] += 12.0
+            scores[INTENT_SHOOT] += 6.0
+            scores[INTENT_ADVANCE] -= 8.0
+        "queen":
+            scores[INTENT_SHOOT] += 4.0
+            scores[INTENT_TRAVERSE] += 6.0
+        "knight":
+            scores[INTENT_ADVANCE] += 10.0
+            scores[INTENT_TRAVERSE] += 12.0
+            scores[INTENT_RETREAT] -= 6.0
 
     if not visible:
         scores[INTENT_HOLD] = 12.0

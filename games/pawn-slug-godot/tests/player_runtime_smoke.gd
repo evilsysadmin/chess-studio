@@ -322,6 +322,85 @@ func _run() -> void:
         "sin percepción ni memoria el enemigo no rastrea telepáticamente",
     )
 
+    var scout_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": true,
+        "distance": 430.0,
+        "standoff": 260.0,
+        "vertical_gap": 0.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": false,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "scout",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    var grenadier_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": true,
+        "distance": 430.0,
+        "standoff": 260.0,
+        "vertical_gap": 0.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": false,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "grenadier",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    _expect(
+        float(scout_scores[EnemyUtilityAI.INTENT_ADVANCE])
+            > float(grenadier_scores[EnemyUtilityAI.INTENT_ADVANCE]),
+        "scout puntúa avance por encima de grenadier sin duplicar su cerebro",
+    )
+    var commando_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": false,
+        "distance": 240.0,
+        "standoff": 260.0,
+        "vertical_gap": 90.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": true,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "commando",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    var pawn_scores := EnemyUtilityAI.score_intents({
+        "target_known": true,
+        "visible": false,
+        "distance": 240.0,
+        "standoff": 260.0,
+        "vertical_gap": 90.0,
+        "vertical_threshold": 64.0,
+        "blocker_ahead": false,
+        "pit_ahead": false,
+        "ladder_route": true,
+        "grenade_evade": 0.0,
+        "role": "assaulter",
+        "enemy_type": "pawn",
+        "retreat_ratio": 0.64,
+        "comfort_margin": 24.0,
+        "advance_margin": 80.0,
+    })
+    _expect(
+        float(commando_scores[EnemyUtilityAI.INTENT_TRAVERSE])
+            > float(pawn_scores[EnemyUtilityAI.INTENT_TRAVERSE]),
+        "commando favorece traversal más que pawn sobre la misma policy",
+    )
+
     # Enemy traversal probe: mobile enemies should read authored geometry
     # instead of freezing below platforms or phasing through crates/pits.
     var enemy_probe = MainRuntime.new()
@@ -344,6 +423,69 @@ func _run() -> void:
     pursuit_target.position = Vector2(340.0, 568.0)
     enemy_probe.add_child(pursuit_target)
     enemy_probe.player = pursuit_target
+
+    # Hearing probe: noise should carry its source position into short memory,
+    # not merely flip alerted=true and not reveal Matthias' later hidden X.
+    pursuit_target.position = Vector2(340.0, 568.0)
+    enemy_probe.enemies.clear()
+    enemy_probe.enemies.append({
+        "id": "heard-pawn",
+        "type": "pawn",
+        "x": 700.0,
+        "spawn_x": 700.0,
+        "y": 610.0,
+        "hp": 34,
+        "alerted": false,
+        "reaction": 0.0,
+        "idle_pose": "",
+        "ai_memory_remaining": 0.0,
+    })
+    enemy_probe._alert_enemies(600.0, 900.0)
+    var heard_enemy: Dictionary = enemy_probe.enemies[0]
+    _expect(bool(heard_enemy["alerted"]), "ruido alerta al enemigo dentro del radio")
+    _expect(
+        absf(float(heard_enemy["ai_last_target_x"]) - 600.0) <= EPSILON,
+        "memoria auditiva apunta al origen del ruido y no a la X real de Matthias",
+    )
+
+    # Alarm propagation shares last-known intel. An ally must not receive the
+    # player's current hidden position just because another enemy raised alarm.
+    enemy_probe.enemies.clear()
+    enemy_probe.enemies.append({
+        "id": "alarm-source",
+        "type": "rook",
+        "x": 700.0,
+        "spawn_x": 700.0,
+        "y": 610.0,
+        "hp": 112,
+        "alerted": true,
+        "reaction": 0.0,
+        "idle_pose": "guard",
+        "ai_memory_remaining": 0.8,
+        "ai_last_target_x": 590.0,
+        "ai_last_target_foot_y": 610.0,
+    })
+    enemy_probe.enemies.append({
+        "id": "alarm-ally",
+        "type": "pawn",
+        "x": 760.0,
+        "spawn_x": 760.0,
+        "y": 610.0,
+        "hp": 34,
+        "alerted": false,
+        "reaction": 0.0,
+        "idle_pose": "",
+        "ai_memory_remaining": 0.0,
+    })
+    pursuit_target.position = Vector2(1000.0, 568.0)
+    enemy_probe._raise_enemy_alarm(0, 200.0)
+    var alarm_ally: Dictionary = enemy_probe.enemies[1]
+    _expect(
+        absf(float(alarm_ally["ai_last_target_x"]) - 590.0) <= EPSILON,
+        "alarma comparte la última posición conocida sin telepatía de escuadra",
+    )
+    enemy_probe.enemies.clear()
+    pursuit_target.position = Vector2(340.0, 568.0)
 
     # Low-cover ballistics probe: a standing-height normal round may skim the
     # top of a small crate, while low shots and explosives still hit geometry.
