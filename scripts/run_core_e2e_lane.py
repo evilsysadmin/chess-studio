@@ -135,7 +135,7 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     'learning-golden+learning-observation': (
         LaneCommand(
             'learning-golden-path.spec.js',
-            ('--workers=2', '--retries=0'),
+            ('--workers=1', '--retries=0'),
             ('learning-second-observation.spec.js',),
         ),
     ),
@@ -221,7 +221,7 @@ def self_test() -> None:
     assert calls == [
         ([
             PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', 'learning-second-observation.spec.js',
-            '--workers=2', '--retries=0',
+            '--workers=1', '--retries=0',
         ], E2E_DIR, True)
     ]
     calls.clear()
