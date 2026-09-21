@@ -596,13 +596,13 @@ def self_test() -> None:
             for i in range(18)
         ] + [
             {"x": 900, "y": 430, "w": 150, "h": 24, "material": "metal", "route": "climb"},
-            {"x": 980, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
+            {"x": 980, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb", "one_way": True},
             {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
-            {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
+            {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb", "one_way": True},
         ],
         "ladders": [
-            {"id": "ladder-a", "x": 950, "y": 345, "w": 42, "h": 265, "style": "steel"},
-            {"id": "ladder-b", "x": 3400, "y": 340, "w": 42, "h": 270, "style": "steel"},
+            {"id": "ladder-a", "x": 1000, "y": 345, "w": 42, "h": 265, "style": "steel"},
+            {"id": "ladder-b", "x": 1230, "y": 345, "w": 42, "h": 265, "style": "steel"},
         ],
         "pits": [{"id": "test-pit", "x": 4200, "w": 100, "kind": "trench"}],
         "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60, "kind": "crate"} for i in range(7)],
