@@ -45,6 +45,10 @@ const LEDGE_SCAN_DOWN := 88.0
 const LEDGE_TARGET_INSET := 10.0
 const LEDGE_CLIMB_DURATION := 0.34
 const LEDGE_CLIMB_ARC_HEIGHT := 16.0
+const LADDER_CLIMB_SPEED := 210.0
+const LADDER_SNAP_SPEED := 620.0
+const LADDER_ENTRY_MARGIN := 18.0
+const LADDER_EXIT_MARGIN := 12.0
 const MAX_HP := 3
 const STARTING_LIVES := 3
 const STARTING_GRENADES := 4
@@ -130,6 +134,10 @@ var _climbing := false
 var _climb_elapsed := 0.0
 var _climb_from := Vector2.ZERO
 var _climb_target := Vector2.ZERO
+var _ladder_rects: Array[Rect2] = []
+var _ladder_active := false
+var _active_ladder := Rect2()
+var _fall_death_y := 816.0
 var _fire_was_pressed := false
 var _grenade_was_pressed := false
 var _art
@@ -161,13 +169,27 @@ func _ready() -> void:
 func visual_ready() -> bool:
     return _art != null and _art.body_ready()
 
-func configure_stage(start_x: float, checkpoints: Array) -> void:
+func configure_stage(start_x: float, checkpoints: Array, ladders: Array = [], fall_death_y: float = 816.0) -> void:
     _checkpoint_xs.clear()
     for value in checkpoints:
         _checkpoint_xs.append(float(value))
     if _checkpoint_xs.is_empty():
         _checkpoint_xs.assign(DEFAULT_CHECKPOINT_X)
     _checkpoint_xs.sort()
+    _ladder_rects.clear()
+    for entry in ladders:
+        if typeof(entry) != TYPE_DICTIONARY:
+            continue
+        var spec: Dictionary = entry
+        var rect := Rect2(
+            float(spec.get("x", 0.0)),
+            float(spec.get("y", 0.0)),
+            float(spec.get("w", 0.0)),
+            float(spec.get("h", 0.0)),
+        )
+        if rect.size.x > 0.0 and rect.size.y > 0.0:
+            _ladder_rects.append(rect)
+    _fall_death_y = maxf(720.0, fall_death_y)
     global_position.x = start_x
     reset_physics_interpolation()
     _spawn_position = global_position
@@ -185,9 +207,20 @@ func _physics_process(delta: float) -> void:
     if dead:
         _update_dead_state(delta)
         return
+    if _ladder_active:
+        _update_ladder_climb(delta, _ladder_axis())
+        return
     if _climbing:
         _update_ledge_climb(delta)
         return
+
+    var ladder_axis := _ladder_axis()
+    if absf(ladder_axis) > 0.10:
+        var ladder := _find_ladder_candidate()
+        if ladder.size.x > 0.0 and ladder.size.y > 0.0:
+            _start_ladder_climb(ladder)
+            _update_ladder_climb(delta, ladder_axis)
+            return
 
     _ledge_tap_remaining = maxf(0.0, _ledge_tap_remaining - delta)
     var was_on_floor := is_on_floor()
@@ -240,6 +273,9 @@ func _physics_process(delta: float) -> void:
 
     var landing_speed := maxf(0.0, velocity.y)
     move_and_slide()
+    if global_position.y > _fall_death_y:
+        _trigger_fall_death()
+        return
     _update_crouch_state()
     _update_checkpoint()
     if is_on_floor() and _respawn_position_is_clear(global_position):
@@ -465,6 +501,8 @@ func _begin_death() -> void:
     hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
     _climbing = false
+    _ladder_active = false
+    _active_ladder = Rect2()
     _ledge_tap_remaining = 0.0
     if _art != null:
         _art.set_climb_state(false, 0.0)
@@ -524,6 +562,8 @@ func _respawn() -> void:
     _jump_buffer_remaining = 0.0
     _ledge_tap_remaining = 0.0
     _climbing = false
+    _ladder_active = false
+    _active_ladder = Rect2()
     _climb_elapsed = 0.0
     _jump_was_pressed = false
     _fire_was_pressed = false
@@ -666,6 +706,92 @@ func _find_ledge_climb_target() -> Dictionary:
         "ledge": top_position,
     }
 
+func _find_ladder_candidate() -> Rect2:
+    var half_height := STANDING_HITBOX_SIZE.y * 0.5
+    for ladder in _ladder_rects:
+        var left := ladder.position.x - LADDER_ENTRY_MARGIN
+        var right := ladder.end.x + LADDER_ENTRY_MARGIN
+        var top_center := ladder.position.y - half_height - 1.0
+        var bottom_center := ladder.end.y - half_height - 1.0
+        if (
+            global_position.x >= left
+            and global_position.x <= right
+            and global_position.y >= top_center - LADDER_EXIT_MARGIN
+            and global_position.y <= bottom_center + LADDER_EXIT_MARGIN
+        ):
+            return ladder
+    return Rect2()
+
+func _start_ladder_climb(ladder: Rect2) -> void:
+    if dead or is_game_over:
+        return
+    _set_crouching(false, true)
+    _ladder_active = true
+    _active_ladder = ladder
+    _jump_buffer_remaining = 0.0
+    _coyote_remaining = 0.0
+    velocity = Vector2.ZERO
+    if _art != null:
+        _art.set_climb_state(true, 0.0)
+
+func _stop_ladder_climb() -> void:
+    _ladder_active = false
+    _active_ladder = Rect2()
+    velocity = Vector2.ZERO
+    if _art != null:
+        _art.set_climb_state(false, 0.0)
+
+func _update_ladder_climb(delta: float, climb_axis: float) -> void:
+    if not _ladder_active:
+        return
+    if dead or is_game_over:
+        _stop_ladder_climb()
+        return
+    if absf(_movement_axis()) > 0.70 and absf(climb_axis) <= 0.10:
+        _stop_ladder_climb()
+        return
+
+    var half_height := STANDING_HITBOX_SIZE.y * 0.5
+    var top_center := _active_ladder.position.y - half_height - 1.0
+    var bottom_center := _active_ladder.end.y - half_height - 1.0
+    var ladder_center_x := _active_ladder.get_center().x
+    global_position.x = move_toward(global_position.x, ladder_center_x, LADDER_SNAP_SPEED * delta)
+    if absf(climb_axis) > 0.10:
+        global_position.y += climb_axis * LADDER_CLIMB_SPEED * delta
+
+    if climb_axis < -0.10 and global_position.y <= top_center:
+        global_position.y = top_center
+        _stop_ladder_climb()
+        return
+    if climb_axis > 0.10 and global_position.y >= bottom_center:
+        global_position.y = bottom_center
+        _stop_ladder_climb()
+        return
+
+    global_position.y = clampf(global_position.y, top_center, bottom_center)
+    velocity = Vector2.ZERO
+    var span := maxf(1.0, bottom_center - top_center)
+    var climb_progress := clampf((bottom_center - global_position.y) / span, 0.0, 1.0)
+    if _art != null:
+        _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+        _art.set_aim_direction(Vector2(facing, 0.0))
+        _art.set_climb_state(true, climb_progress)
+        _art.update_visual(delta, 0.0, false, false, false, 0.0, facing, false)
+    queue_redraw()
+
+func is_ladder_climbing() -> bool:
+    return _ladder_active
+
+func _trigger_fall_death() -> void:
+    if dead or is_game_over:
+        return
+    hp = 0
+    invuln_remaining = 0.0
+    hurt_visual_remaining = HURT_VISUAL_SECONDS
+    hurt.emit(hp, MAX_HP)
+    _stop_ladder_climb()
+    _begin_death()
+
 func _start_ledge_climb(target: Vector2) -> void:
     if dead or is_game_over:
         return
@@ -775,6 +901,33 @@ func _find_safe_respawn_position(preferred: Vector2) -> Vector2:
         if _respawn_position_is_clear(spawn_candidate):
             return spawn_candidate
     return _spawn_position
+
+func _ladder_axis() -> float:
+    var vertical := 0.0
+    if _touch_controls != null:
+        if _touch_controls.has_method("jump_pressed") and bool(_touch_controls.jump_pressed()):
+            vertical -= 1.0
+        if _touch_controls.has_method("crouch_pressed") and bool(_touch_controls.crouch_pressed()):
+            vertical += 1.0
+        if _touch_controls.has_method("aim_vector"):
+            var touch_aim: Vector2 = _touch_controls.aim_vector()
+            if absf(touch_aim.y) > 0.55:
+                vertical = signf(touch_aim.y)
+    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+        vertical -= 1.0
+    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+        vertical += 1.0
+    var joypads := Input.get_connected_joypads()
+    if not joypads.is_empty():
+        var joypad := joypads[0]
+        var stick_y := Input.get_joy_axis(joypad, JOY_AXIS_LEFT_Y)
+        if absf(stick_y) > 0.55:
+            vertical = stick_y
+        elif Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_UP):
+            vertical -= 1.0
+        elif Input.is_joy_button_pressed(joypad, JOY_BUTTON_DPAD_DOWN):
+            vertical += 1.0
+    return clampf(vertical, -1.0, 1.0)
 
 func _aim_vertical_axis() -> float:
     if _touch_controls != null and _touch_controls.has_method("aim_vector"):
