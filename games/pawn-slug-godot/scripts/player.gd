@@ -217,7 +217,7 @@ func _physics_process(delta: float) -> void:
     var ladder_axis := _ladder_axis()
     if absf(ladder_axis) > 0.10:
         var ladder := _find_ladder_candidate()
-        if ladder.size.x > 0.0 and ladder.size.y > 0.0:
+        if _can_enter_ladder(ladder, ladder_axis):
             _start_ladder_climb(ladder)
             _update_ladder_climb(delta, ladder_axis)
             return
@@ -721,6 +721,17 @@ func _find_ladder_candidate() -> Rect2:
         ):
             return ladder
     return Rect2()
+
+func _can_enter_ladder(ladder: Rect2, climb_axis: float) -> bool:
+    if ladder.size.x <= 0.0 or ladder.size.y <= 0.0:
+        return false
+    if climb_axis > 0.10:
+        var bottom_center := ladder.end.y - STANDING_HITBOX_SIZE.y * 0.5 - 1.0
+        # At the foot of a ladder DOWN must keep its normal crouch meaning.
+        # Descending remains available from the top or while already climbing.
+        if absf(global_position.y - bottom_center) <= LADDER_EXIT_MARGIN + 2.0:
+            return false
+    return true
 
 func _start_ladder_climb(ladder: Rect2) -> void:
     if dead or is_game_over:
