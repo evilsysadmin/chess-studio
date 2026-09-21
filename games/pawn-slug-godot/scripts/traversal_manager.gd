@@ -155,27 +155,88 @@ func _draw_pits() -> void:
     for pit in _pits:
         var x := float(pit["x"])
         var width := float(pit["w"])
-        var mouth := Rect2(Vector2(x, _floor_y - 3.0), Vector2(width, _world_size.y - _floor_y + 6.0))
         var void_color := Color(0.025, 0.03, 0.032, 0.98)
-        var rim_color := Color(0.32, 0.28, 0.21, 0.86)
+        var rim_color := Color(0.50, 0.37, 0.20, 0.94)
+        var accent_color := Color(0.92, 0.62, 0.22, 0.72)
         if _theme == "harbor_dusk":
-            void_color = Color(0.025, 0.11, 0.14, 0.96)
-            rim_color = Color(0.24, 0.48, 0.54, 0.82)
+            void_color = Color(0.018, 0.085, 0.11, 0.97)
+            rim_color = Color(0.38, 0.68, 0.72, 0.92)
+            accent_color = Color(0.68, 0.90, 0.92, 0.72)
         elif _theme == "alpine_night":
-            void_color = Color(0.035, 0.055, 0.07, 0.99)
-            rim_color = Color(0.58, 0.66, 0.68, 0.78)
+            void_color = Color(0.025, 0.045, 0.062, 0.99)
+            rim_color = Color(0.70, 0.80, 0.82, 0.92)
+            accent_color = Color(0.88, 0.95, 0.96, 0.76)
         elif _theme == "jungle_storm":
-            void_color = Color(0.035, 0.075, 0.045, 0.98)
-            rim_color = Color(0.34, 0.42, 0.24, 0.82)
-        draw_rect(mouth, void_color, true)
-        draw_line(Vector2(x, _floor_y), Vector2(x + width, _floor_y), rim_color, 4.0)
-        for notch in range(int(x) + 18, int(x + width) - 10, 34):
+            void_color = Color(0.024, 0.060, 0.035, 0.99)
+            rim_color = Color(0.45, 0.54, 0.25, 0.94)
+            accent_color = Color(0.68, 0.72, 0.34, 0.68)
+
+        # Collision stays rectangular for predictable arcade movement, while the
+        # mouth is deliberately irregular so the hazard reads as authored
+        # terrain rather than a black rectangle cut out of the floor.
+        var rim_points := PackedVector2Array()
+        var teeth := maxi(4, int(round(width / 30.0)))
+        for point_index in range(teeth + 1):
+            var phase := float(point_index) / float(teeth)
+            var notch := [-3.0, 4.0, 0.0, 6.0, -1.0][point_index % 5]
+            rim_points.append(Vector2(x + width * phase, _floor_y + notch))
+
+        var mouth := PackedVector2Array(rim_points)
+        mouth.append(Vector2(x + width + 4.0, _world_size.y + 4.0))
+        mouth.append(Vector2(x - 4.0, _world_size.y + 4.0))
+        draw_colored_polygon(mouth, void_color)
+        draw_polyline(rim_points, rim_color, 4.0, true)
+        draw_line(Vector2(x - 2.0, _floor_y + 5.0), Vector2(x - 2.0, _world_size.y), Color(rim_color.r, rim_color.g, rim_color.b, 0.42), 3.0)
+        draw_line(Vector2(x + width + 2.0, _floor_y + 5.0), Vector2(x + width + 2.0, _world_size.y), Color(rim_color.r, rim_color.g, rim_color.b, 0.42), 3.0)
+
+        if _theme == "harbor_dusk":
+            # Water glints make the gap immediately legible as a dock hazard.
+            for wave_index in range(3):
+                var wave_y := _floor_y + 22.0 + float(wave_index) * 19.0
+                var inset := 10.0 + float(wave_index % 2) * 9.0
+                draw_line(
+                    Vector2(x + inset, wave_y),
+                    Vector2(x + width - inset - 6.0, wave_y + 2.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.34 - float(wave_index) * 0.07),
+                    2.0,
+                )
+        elif _theme == "alpine_night":
+            # Ice/rock facets sell a crevasse without changing its hit geometry.
+            for shard_index in range(4):
+                var shard_x := x + 12.0 + float(shard_index) * maxf(24.0, (width - 24.0) / 4.0)
+                draw_line(
+                    Vector2(shard_x, _floor_y + 5.0),
+                    Vector2(shard_x + (-10.0 if shard_index % 2 == 0 else 8.0), _floor_y + 42.0 + float(shard_index % 3) * 8.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.36),
+                    2.0,
+                )
+        elif _theme == "jungle_storm":
+            # Hanging roots and faint mist distinguish the ravine from flat void.
+            for root_index in range(4):
+                var root_x := x + 10.0 + float(root_index) * maxf(22.0, (width - 20.0) / 4.0)
+                var root_len := 24.0 + float((root_index * 13) % 26)
+                draw_line(
+                    Vector2(root_x, _floor_y + 2.0),
+                    Vector2(root_x + (-5.0 if root_index % 2 == 0 else 5.0), _floor_y + root_len),
+                    Color(rim_color.r, rim_color.g, rim_color.b, 0.46),
+                    2.0,
+                )
             draw_line(
-                Vector2(float(notch), _floor_y - 1.0),
-                Vector2(float(notch) + 9.0, _floor_y + 8.0),
-                Color(rim_color.r, rim_color.g, rim_color.b, 0.46),
-                2.0
+                Vector2(x + 14.0, _floor_y + 54.0),
+                Vector2(x + width - 16.0, _floor_y + 50.0),
+                Color(0.62, 0.72, 0.56, 0.12),
+                5.0,
             )
+        else:
+            # Industrial shell craters/trenches get broken hazard-metal cues.
+            for marker_index in range(0, maxi(1, int(width / 42.0))):
+                var marker_x := x + 10.0 + float(marker_index) * 42.0
+                draw_line(
+                    Vector2(marker_x, _floor_y + 1.0),
+                    Vector2(minf(marker_x + 20.0, x + width - 5.0), _floor_y + 7.0),
+                    Color(accent_color.r, accent_color.g, accent_color.b, 0.50),
+                    3.0,
+                )
 
 func _draw_ladders() -> void:
     for ladder in _ladders:
