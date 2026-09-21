@@ -86,13 +86,13 @@ runs:
       uses: actions/cache@v6
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ inputs.browser-scope }}-${{ runner.os }}-${{ runner.arch }}-v2-${{ hashFiles('e2e/package-lock.json') }}
+        key: playwright-${{ inputs.browser-scope }}-${{ runner.os }}-${{ runner.arch }}-v3-${{ hashFiles('e2e/package-lock.json') }}
 
     - name: Install Chromium on browser-cache miss
       if: inputs.browser-scope == 'chromium' && steps.browser-cache.outputs.cache-hit != 'true'
       working-directory: e2e
       shell: bash
-      run: ./node_modules/.bin/playwright install chromium
+      run: ./node_modules/.bin/playwright install --only-shell chromium
 
     - name: Ensure full browser runtime
       if: inputs.browser-scope == 'all'
@@ -111,14 +111,25 @@ runs:
         const fs = require('node:fs');
         const { chromium, firefox, webkit } = require('playwright');
         const scope = process.env.BROWSER_SCOPE;
-        const browsers = scope === 'all' ? { chromium, firefox, webkit } : { chromium };
-        for (const [name, browser] of Object.entries(browsers)) {
-          const executable = browser.executablePath();
-          if (!executable || !fs.existsSync(executable)) {
-            console.error(`Playwright ${name} executable missing: ${executable || '<empty>'}`);
+        if (scope === 'chromium') {
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            await browser.close();
+            console.log('Playwright chromium headless shell ready.');
+          })().catch((error) => {
+            console.error(error);
             process.exit(1);
+          });
+        } else {
+          const browsers = { chromium, firefox, webkit };
+          for (const [name, browser] of Object.entries(browsers)) {
+            const executable = browser.executablePath();
+            if (!executable || !fs.existsSync(executable)) {
+              console.error(`Playwright ${name} executable missing: ${executable || '<empty>'}`);
+              process.exit(1);
+            }
+            console.log(`Playwright ${name} ready: ${executable}`);
           }
-          console.log(`Playwright ${name} ready: ${executable}`);
         }
         NODE
 
