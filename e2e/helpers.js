@@ -637,19 +637,13 @@ export async function openMoreGameModes(page) {
       };
 
       await closeBlockingPvpLobby();
-      try {
-        await trigger.click({ timeout: 5_000 });
-      } catch (error) {
-        await closeBlockingPvpLobby();
-        const actionable = await trigger.isVisible().catch(() => false)
-          && !(await trigger.isDisabled().catch(() => true));
-        if (!actionable) throw error;
-        // The illustrated Home trigger has a long-lived ambient animation.
-        // Dispatch the native DOM click after Playwright's actionability check
-        // times out; this exercises the real React click handler without
-        // requiring a perfectly static bounding box.
-        await trigger.evaluate((button) => button.click());
-      }
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toBeEnabled();
+      // This helper navigates to the mode under test; it does not own the Home
+      // trigger's animation/actionability contract. Native click reaches the
+      // real React handler without burning five seconds waiting for a long-lived
+      // animated bounding box to become perfectly static.
+      await trigger.evaluate((button) => button.click());
       await expect(page.locator('#illustrated-home-tools')).toBeVisible({ timeout: 5_000 });
     }
     return illustrated;
