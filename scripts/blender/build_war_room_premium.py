@@ -948,18 +948,25 @@ def add_gothic_canon_v2(static, mats):
         "WR_MAT_canon_burgundy_dark", (0.128, 0.009, 0.016, 1),
         rough=0.91, sheen=0.25, texture="fabric", scale=42, bump=0.055,
     )
+    # Runtime parity pass: the app's practical lighting is darker and more
+    # contrasty than the Blender hero render, so the crest needs a slightly
+    # broader, less mirror-like gold response to keep the horse legible without
+    # adding another light source.
     heraldic_brass = material(
-        "WR_MAT_canon_heraldic_brass", (0.72, 0.38, 0.085, 1),
-        metal=0.94, rough=0.20, coat=0.22, texture="metal", scale=22, bump=0.028,
+        "WR_MAT_canon_heraldic_brass", (0.88, 0.52, 0.13, 1),
+        metal=0.84, rough=0.30, coat=0.16, texture="metal", scale=22, bump=0.024,
     )
     horse_relief = static.objects.get("WR_CREST_horse_relief")
     if horse_relief is not None and horse_relief.data.materials:
         horse_relief.data.materials[0] = heraldic_brass
+    crest_ring = static.objects.get("WR_CREST_ring")
+    if crest_ring is not None and crest_ring.data.materials:
+        crest_ring.data.materials[0] = heraldic_brass
     crest_shield = static.objects.get("WR_CREST_shield")
     if crest_shield is not None and crest_shield.data.materials:
-        # Darken only the shield field so the brass horse gains separation
-        # without another lamp or a self-lit heraldic material.
-        crest_shield.data.materials[0] = mats["wall_recess"]
+        # Keep a dark field behind the horse, but use charcoal rather than the
+        # deepest wall recess so the runtime does not crush both layers to black.
+        crest_shield.data.materials[0] = mats["charcoal"]
 
     # The single surviving ceremonial suit sits in a deliberately dark corner.
     # Keep the plate itself subdued, but lift a handful of existing trim pieces
