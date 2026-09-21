@@ -18,12 +18,14 @@ from sprite_forge import (
 CELL = 416
 PART = "core"
 ACTIONS = (
+    ("idle", 4, 8.0, True),
+    ("shoot", 2, 18.0, False),
     ("walk", 4, 12.0, True),
     ("run", 4, 16.0, True),
-    ("shoot", 1, 18.0, False),
     ("crouch", 1, 8.0, True),
+    ("reload", 5, 12.0, False),
+    ("hurt", 1, 14.0, False),
 )
-
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -101,7 +103,7 @@ def _write_contract(path: Path) -> dict:
         "weapon": "pistol",
         "composition": "integrated",
         "cell": {"width": CELL, "height": CELL},
-        "parts": {PART: {"columns": 4, "rows": len(ACTIONS)}},
+        "parts": {PART: {"columns": max(count for _, count, _, _ in ACTIONS), "rows": len(ACTIONS)}},
         "animations": animations,
     }
     path.write_text(
@@ -112,16 +114,17 @@ def _write_contract(path: Path) -> dict:
 
 
 def _review(atlas: Image.Image, output: Path) -> None:
+    columns = max(count for _, count, _, _ in ACTIONS)
     tile_w = 300
     tile_h = 300
     sheet = Image.new(
         "RGBA",
-        (4 * tile_w, len(ACTIONS) * tile_h),
+        (columns * tile_w, len(ACTIONS) * tile_h),
         (17, 19, 23, 255),
     )
     draw = ImageDraw.Draw(sheet)
     for row, (action, count, _fps, _loop) in enumerate(ACTIONS):
-        for column in range(4):
+        for column in range(columns):
             x = column * tile_w
             y = row * tile_h
             if column < count:
@@ -164,7 +167,6 @@ def build(frames_root: Path, output_dir: Path) -> dict:
         "status": "validated-seed-not-accepted",
         "coverage": [action for action, *_ in ACTIONS],
         "missing_for_full_bank": [
-            "idle",
             "jump",
             "fall",
             "land",
@@ -175,8 +177,6 @@ def build(frames_root: Path, output_dir: Path) -> dict:
             "shoot_diag_up_alt",
             "shoot_diag_down",
             "shoot_crouch",
-            "reload",
-            "hurt",
             "die",
         ],
         "temporal": temporal,
