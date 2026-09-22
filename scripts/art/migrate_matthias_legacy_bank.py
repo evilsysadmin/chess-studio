@@ -22,7 +22,7 @@ DEFAULT_CELL = 416
 DEFAULT_COLS = 8
 DEFAULT_ROW_COUNT = 18
 DEFAULT_TARGET_ROWS = (2, 6)  # run, crouch
-DEATH_ROW = 17
+ROTATING_POSE_ROWS = {16, 17}  # hurt, die: height is not a stable scale proxy
 ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
@@ -306,10 +306,10 @@ def migrate(
 
         source_median_height = float(statistics.median(source_heights))
         source_median_span = float(statistics.median(source_spans))
-        scale_metric = "span" if row == DEATH_ROW else "height"
+        scale_metric = "span" if row in ROTATING_POSE_ROWS else "height"
         row_scale = (
             target_span / source_median_span
-            if row == DEATH_ROW
+            if row in ROTATING_POSE_ROWS
             else target_height / source_median_height
         )
         if not MIN_SCALE <= row_scale <= MAX_SCALE:
@@ -387,7 +387,7 @@ def migrate(
             )
 
         output_median_height = float(statistics.median(output_heights))
-        if row != DEATH_ROW and abs(output_median_height - target_height) > 3.0:
+        if row not in ROTATING_POSE_ROWS and abs(output_median_height - target_height) > 3.0:
             raise GeometryError(
                 f"row-median-height:{row}:{output_median_height:.2f}!="
                 f"{target_height:.2f}"
