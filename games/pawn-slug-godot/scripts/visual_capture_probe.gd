@@ -92,11 +92,25 @@ static func publish_metrics(player: Node) -> void:
     var scale_x := absf(body.global_scale.x)
     var scale_y := absf(body.global_scale.y)
     var core_height := (core_max_y - core_min_y + 1) if core_max_y >= core_min_y else 0
+    var velocity: Vector2 = player.get("velocity")
+    var crouching := bool(player.get("_crouching"))
+    var logical_action := "idle"
+    if crouching:
+        logical_action = "crouch"
+    elif absf(velocity.x) >= 237.6:
+        # Player MOVE_SPEED 330 * RUN_ENTER_SPEED_RATIO 0.72. Keep this probe
+        # independent from MatthiasArt's internal animation bookkeeping: the
+        # texture below is still the exact frame Godot renders.
+        logical_action = "run"
+    elif absf(velocity.x) > 26.4:
+        logical_action = "walk"
     var metrics := {
         "request_id": request_id,
         "weapon": String(player.get("weapon")),
-        "action": animation,
+        "action": logical_action,
         "animation": animation,
+        "velocity_x": float(velocity.x),
+        "velocity_y": float(velocity.y),
         "frame": frame_index,
         "texture_width": width,
         "texture_height": height,
