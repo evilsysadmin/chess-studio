@@ -76,7 +76,8 @@ async function withPawnSlugCapturePage(browser, capture, callback) {
     await dismissMatthiasSpeech(page);
     const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
     await expect(direct).toBeVisible({ timeout: 20_000 });
-    await direct.click();
+    await direct.focus();
+    await page.keyboard.press('Enter');
     return await callback(page);
   } finally {
     await context.close();
@@ -116,11 +117,11 @@ async function captureHealth(page, label) {
       label: captureLabel,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
-      arcadeZone: rect('.lab-arcade-zone'),
-      pawnSlug: rect('.lab-arcade-launch.is-pawnslug'),
-      trailblazer: rect('.lab-arcade-launch.is-trailblazer'),
-      tacticalDeck: rect('.experiments-tactical-deck'),
-      genericCardsInsideArcade: document.querySelectorAll('.lab-arcade-zone .experiments-card').length,
+      arcadeZone: rect('.lab-workshop-wing--hangar'),
+      pawnSlug: rect('.lab-workshop-portal--pawnslug-godot'),
+      trailblazer: rect('.lab-workshop-portal--trailblazer'),
+      tacticalDeck: rect('.lab-workshop-wing--ops'),
+      genericCardsInsideArcade: document.querySelectorAll('.lab-workshop-wing--hangar .experiments-card').length,
     };
   }, label);
 }
@@ -234,15 +235,15 @@ if (scopeEnabled('landing')) {
     const captures = [];
     for (const capture of CAPTURES) {
       await withCapturePage(browser, capture, async (page) => {
-        const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
-        const arcade = page.locator('.lab-arcade-zone');
-        const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
-        const trailblazer = arcade.getByRole('button', { name: /Pawn Trailblazer/ });
+        const chronicles = page.locator('.lab-workshop-portal--chronicles');
+        const arcade = page.locator('.lab-workshop-wing--hangar');
+        const pawnSlug = page.locator('.lab-workshop-portal--pawnslug-godot');
+        const trailblazer = page.locator('.lab-workshop-portal--trailblazer');
         await expect(chronicles).toBeVisible();
         await expect(arcade).toBeVisible();
         await expect(pawnSlug).toBeVisible();
         await expect(trailblazer).toBeVisible();
-        await expect(page.locator('.experiments-tactical-deck').first()).toBeVisible();
+        await expect(page.locator('.lab-workshop-wing--ops')).toBeVisible();
         await expect(arcade.locator('.experiments-card')).toHaveCount(0);
 
         const health = await captureHealth(page, capture.label);
