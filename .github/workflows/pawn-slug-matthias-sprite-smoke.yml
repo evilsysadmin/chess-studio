@@ -7,7 +7,7 @@ on:
       - games/pawn-slug-godot/scripts/enemy_visual.gd
       - games/pawn-slug-godot/art/enemies-v2-worksheet.json
       - scripts/art/export_matthias_sprite_smoke.py
-      - scripts/art/repair_matthias_machinegun_idle.py
+      - scripts/art/validate_matthias_sprite_continuity.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
       - scripts/pawn_slug_sprite_smoke_scope.py
@@ -19,11 +19,6 @@ on:
       - scripts/art/test_pawn_slug_enemy_queen_v2.py
       - scripts/art/derive_pawn_slug_enemy_scout_v2.py
       - scripts/art/test_pawn_slug_enemy_scout_v2.py
-      - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
-  push:
-    branches: [main]
-    paths:
-      - scripts/art/repair_matthias_machinegun_idle.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
@@ -123,6 +118,16 @@ jobs:
             --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
             --output-dir /tmp/pawn-slug-sprite-smoke/matthias
 
+      - name: Validate Matthias canonical continuity
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/art/validate_matthias_sprite_continuity.py --self-test
+          python3 scripts/art/validate_matthias_sprite_continuity.py \
+            --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
+            --sprite-smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
+            --output /tmp/pawn-slug-sprite-smoke/matthias/continuity-health.json
+
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'
         run: |
@@ -158,108 +163,3 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-
-  repair-machinegun-idle:
-    name: Candidate · Matthias SMG continuity repair
-    if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    env:
-      OUT: /tmp/pawn-slug-machinegun-idle-repair
-      PISTOL_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png
-      MACHINEGUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/machinegun/full/candidate-full-1346bf6b3e465e64.png
-      PISTOL_RUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png
-      MACHINEGUN_RUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-26dc07c9be4f285f.png
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install pinned Pillow
-        run: |
-          python3 -m pip install --disable-pip-version-check --no-deps \
-            --only-binary=:all: 'Pillow==12.3.0'
-      - name: Self-test SMG continuity repair compiler
-        run: python3 scripts/art/repair_matthias_machinegun_idle.py --self-test
-      - name: Build deterministic machinegun continuity candidates
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$OUT"
-          curl -fL --retry 3 "$PISTOL_URL" -o "$OUT/pistol-reference.png"
-          curl -fL --retry 3 "$MACHINEGUN_URL" -o "$OUT/machinegun-current.png"
-          curl -fL --retry 3 "$PISTOL_RUN_URL" -o "$OUT/pistol-run12-reference.png"
-          curl -fL --retry 3 "$MACHINEGUN_RUN_URL" -o "$OUT/machinegun-run13-current.png"
-          python3 scripts/art/repair_matthias_machinegun_idle.py \
-            --source "$OUT/machinegun-current.png" \
-            --reference "$OUT/pistol-reference.png" \
-            --output "$OUT/machinegun-idle-repaired.png" \
-            --report "$OUT/repair-health.json" \
-            --preview "$OUT/repair-preview.png" \
-            --run-source "$OUT/machinegun-run13-current.png" \
-            --run-reference "$OUT/pistol-run12-reference.png" \
-            --run-output "$OUT/machinegun-run13-repaired.png" \
-            --run-report "$OUT/run13-repair-health.json" \
-            --run-preview "$OUT/run13-repair-preview.png"
-          sha256sum \
-            "$OUT/machinegun-idle-repaired.png" \
-            "$OUT/machinegun-run13-repaired.png" \
-            | tee "$OUT/sha256.txt"
-      - name: Upload machinegun continuity repair evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pawn-slug-machinegun-continuity-repair-${{ github.sha }}
-          path: /tmp/pawn-slug-machinegun-idle-repair/
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-      - name: Publish repaired machinegun continuity assets to R2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          manifest="$OUT/r2-manifest.json"
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$OUT/machinegun-idle-repaired.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.fullContinuityRepair \
-            --prefix pawn-slug-godot/matthias/continuity-repair/machinegun/full \
-            --manifest "$manifest"
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$OUT/machinegun-run13-repaired.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.runContinuityRepair \
-            --prefix pawn-slug-godot/matthias/continuity-repair/machinegun/run13 \
-            --manifest "$manifest"
-          cat "$manifest" >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify published repaired machinegun continuity assets
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          set -euo pipefail
-          manifest="$OUT/r2-manifest.json"
-          for logical in \
-            pawnSlug.godot.matthias.machinegun.fullContinuityRepair \
-            pawnSlug.godot.matthias.machinegun.runContinuityRepair; do
-            readarray -t asset < <(python3 - "$manifest" "$logical" <<'PY'
-          import json, sys
-          data = json.load(open(sys.argv[1], encoding="utf-8"))
-          item = data["assets"][sys.argv[2]]
-          print(item["url"])
-          print(item["sha256"])
-          PY
-            )
-            url="${asset[0]}"
-            expected="${asset[1]}"
-            verified=false
-            for attempt in 1 2 3 4 5; do
-              if curl --fail --silent --show-error --location --max-time 20 "$url" -o "$OUT/published.png"; then
-                actual="$(sha256sum "$OUT/published.png" | awk '{print $1}')"
-                [[ "$actual" == "$expected" ]]
-                echo "Published repaired machinegun asset verified: $url"
-                verified=true
-                break
-              fi
-              sleep 3
-            done
-            [[ "$verified" == true ]]
-          done

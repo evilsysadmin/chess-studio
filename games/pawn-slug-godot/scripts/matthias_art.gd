@@ -14,10 +14,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases use an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. The weapon banks are pre-normalized to the pistol-family canonical body
 # scale; Godot consumes them directly with no runtime rescale or repack.
-const STRICT_RUNTIME_GENERATION := "canonical-scale-v1"
+const STRICT_RUNTIME_GENERATION := "canonical-continuity-v2"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/machinegun/full/candidate-full-1346bf6b3e465e64.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-repair/machinegun/full/machinegun-idle-repaired-b815a81d1a459ed9.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png",
 }
@@ -27,7 +27,7 @@ const FULL_ATLAS_URLS := {
 # run already present in the full bank remains authoritative.
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-26dc07c9be4f285f.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-repair/machinegun/run13/machinegun-run13-repaired-f37fd16c29eb44db.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/run12/candidate-run12-e90510cd4fba3827.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/run12/candidate-run12-6ea25f1bdac27f35.png",
 }
