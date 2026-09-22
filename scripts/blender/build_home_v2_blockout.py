@@ -2752,13 +2752,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     bg.inputs["Strength"].default_value = 0.024
 
     materials = {
-        "stone": material("HOME_MAT_stone", (0.055, 0.049, 0.043, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8, texture_profile="stone"),
-        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.060, 0.057, 0.053, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8, texture_profile="stone"),
-        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.073, 0.068, 0.061, 1), roughness=0.91, bump_scale=5.6, bump_strength=0.28, variation=0.20, variation_scale=3.9, texture_profile="stone"),
-        "arch_stone": material("HOME_MAT_arch_stone", (0.092, 0.079, 0.065, 1), roughness=0.89, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
-        "stair_stone": material("HOME_MAT_stair_stone", (0.066, 0.059, 0.052, 1), roughness=0.90, bump_scale=5.2, bump_strength=0.25, variation=0.20, variation_scale=4.2, texture_profile="stone"),
-        "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
-        "floor_stone": material("HOME_MAT_floor_stone", (0.095, 0.108, 0.150, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
+        # Teutonic-castle pass: the whole stone family used to sit in the same
+        # narrow warm-brown band as the wood/leather props, which read as one
+        # flat tone. Push each slot toward the masonry it actually represents
+        # (pale ashlar / warm brick accent / sandstone arch / damp dungeon
+        # grey) so walls, arches and stairs read as distinct materials again.
+        # First pass here (0.05-0.09 -> 0.06-0.13) was real but invisible: AgX
+        # "Medium High Contrast" (see build_scene's view_settings.look) plus
+        # the -0.20 exposure and this room's low ambient (0.024) crush small
+        # linear albedo deltas in shadow almost completely. Went noticeably
+        # bolder so the difference actually survives that pipeline.
+        "stone": material("HOME_MAT_stone", (0.160, 0.160, 0.170, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8, texture_profile="stone"),
+        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.130, 0.110, 0.095, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8, texture_profile="stone"),
+        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.190, 0.090, 0.060, 1), roughness=0.89, bump_scale=5.6, bump_strength=0.30, variation=0.22, variation_scale=3.9, texture_profile="stone"),
+        "arch_stone": material("HOME_MAT_arch_stone", (0.220, 0.190, 0.140, 1), roughness=0.87, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
+        "stair_stone": material("HOME_MAT_stair_stone", (0.075, 0.085, 0.075, 1), roughness=0.92, bump_scale=5.2, bump_strength=0.26, variation=0.20, variation_scale=4.2, texture_profile="stone"),
+        "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.025, 0.025, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
+        "floor_stone": material("HOME_MAT_floor_stone", (0.085, 0.098, 0.145, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         # A waxed, well-kept oak read (lower roughness, richer grain contrast)
         # instead of the flatter dark plank the table used to share with wall wood.
