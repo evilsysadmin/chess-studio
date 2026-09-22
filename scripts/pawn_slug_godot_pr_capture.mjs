@@ -30,6 +30,7 @@ await page.addInitScript(() => {
   window.__pawnSlugCaptureEvents = [];
   window.__pawnSlugVisualMetricsRequest = 0;
   window.__pawnSlugVisualMetrics = null;
+  window.__pawnSlugVisualProbePose = '';
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -85,6 +86,9 @@ async function capture(label) {
 }
 
 async function collectVisualMetrics(expectedWeapon, expectedAction = '') {
+  await page.evaluate((pose) => {
+    window.__pawnSlugVisualProbePose = pose || '';
+  }, expectedAction);
   const deadline = Date.now() + 10_000;
   let lastMetrics = null;
   while (Date.now() < deadline) {
@@ -232,24 +236,18 @@ for (let weaponIndex = 0; weaponIndex < parityWeapons.length; weaponIndex += 1) 
   });
   await parityStage.canvasLocator.click({ position: { x: parityStage.canvas.width / 2, y: parityStage.canvas.height / 2 } });
   await page.waitForTimeout(180);
+
+  const idle = await collectVisualMetrics(weapon, 'idle');
   await capture(`${prefix}-parity-${weapon}-idle`);
   await captureDetailedCloseup(`${prefix}-parity-${weapon}-idle`, parityStage.canvas);
-  const idle = await collectVisualMetrics(weapon, 'idle');
 
-  await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(360);
+  const run = await collectVisualMetrics(weapon, 'run');
   await capture(`${prefix}-parity-${weapon}-run`);
   await captureDetailedCloseup(`${prefix}-parity-${weapon}-run`, parityStage.canvas);
-  const run = await collectVisualMetrics(weapon, 'run');
-  await page.keyboard.up('ArrowRight');
-  await page.waitForTimeout(180);
 
-  await page.keyboard.down('ArrowDown');
-  await page.waitForTimeout(180);
+  const crouch = await collectVisualMetrics(weapon, 'crouch');
   await capture(`${prefix}-parity-${weapon}-crouch`);
   await captureDetailedCloseup(`${prefix}-parity-${weapon}-crouch`, parityStage.canvas);
-  const crouch = await collectVisualMetrics(weapon, 'crouch');
-  await page.keyboard.up('ArrowDown');
 
   weaponParityMetrics[weapon] = { idle, run, crouch };
 }
