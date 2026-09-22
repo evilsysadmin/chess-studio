@@ -8,7 +8,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 - `Chronicles` = **Chronicles of Matthias**.
 - `Tactics` = **Chronicles of Matthias Tactics**.
-- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender.
+- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room actual sigue siendo baseline de rollback hasta que War Room v2 esté validada visualmente, en móvil, rendimiento y runtime.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
