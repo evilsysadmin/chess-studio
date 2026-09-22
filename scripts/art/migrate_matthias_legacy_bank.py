@@ -73,7 +73,10 @@ def row_reference_profile(
     )
 
 
-def clean_legacy_detached_noise(\n    image: Image.Image,\n    allow_opaque_detached: bool = False,\n) -> tuple[Image.Image, list[dict]]:
+def clean_legacy_detached_noise(
+    image: Image.Image,
+    allow_opaque_detached: bool = False,
+) -> tuple[Image.Image, list[dict]]:
     rgba = image.convert("RGBA")
     alpha = rgba.getchannel("A")
     width, height = rgba.size
@@ -200,7 +203,9 @@ def place_legacy_frame(
 
     out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
     out.alpha_composite(scaled, (dest_x, dest_y))
-    out, removed_post_noise = clean_legacy_detached_noise(\n        out, allow_opaque_detached=allow_opaque_detached\n    )
+    out, removed_post_noise = clean_legacy_detached_noise(
+        out, allow_opaque_detached=allow_opaque_detached
+    )
 
     post = lint_frame(out, lint_config)
     if not post.ok:
@@ -264,7 +269,9 @@ def migrate(
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
             try:
-                cell, removed_noise = clean_legacy_detached_noise(\n                    cell, allow_opaque_detached=allow_opaque_detached\n                )
+                cell, removed_noise = clean_legacy_detached_noise(
+                    cell, allow_opaque_detached=allow_opaque_detached
+                )
             except GeometryError as exc:
                 raise GeometryError(f"frame:{row}:{col}:{exc}") from exc
             raw_lint = lint_frame(cell, lint)
