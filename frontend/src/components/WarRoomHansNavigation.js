@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v10-side-sofa-keepout';
 export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.55;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;

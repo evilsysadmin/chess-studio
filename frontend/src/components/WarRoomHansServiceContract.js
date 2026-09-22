@@ -1,5 +1,3 @@
-export const WAR_ROOM_HANS_SERVICE_CONTRACT_VERSION = 'hans-service-contract-v2-dialogue-spec';
-
 export const HANS_ESPRESSO_LINE = 'Su espresso, señor.';
 export const MATTHIAS_ESPRESSO_LINE = 'Danke, Hans. Déjamelo por ahí.';
 
