@@ -4,6 +4,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
 
 ## Enrutado obligatorio
 
+- Resiliencia/fallbacks: `docs/operations/resilience-degraded-mode.md`.
 - Home/Blender: `skills/home-blender/SKILL.md`, `docs/home-castle-life-minimal.md`, `docs/VISUAL_LANGUAGE.md`.
 - War Room: `docs/operations/war-room-blender-pipeline.md`, `docs/operations/war-room-parity.md`, `docs/operations/war-room-visual-freeze.md`.
 - Chronicles/Tactics: `docs/operations/chronicles-tactics.md`.
