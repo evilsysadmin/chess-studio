@@ -60,14 +60,6 @@ GATES = (
         }),
     ),
     Gate(
-        workflow="pawn-slug-godot-strict-atlas.yml",
-        label="Pawn Slug Godot strict Matthias atlas",
-        exact_paths=frozenset({
-            "scripts/art/pack_pawn_slug_godot_strict_v6.py",
-            ".github/workflows/pawn-slug-godot-strict-atlas.yml",
-        }),
-    ),
-    Gate(
         workflow="pawn-slug-enemy-blender-art.yml",
         label="Pawn Slug enemy art",
         exact_paths=frozenset({
@@ -150,9 +142,6 @@ def self_test() -> None:
     # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender
     # helper files must not summon an art-generation gate.
     assert classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"]) == []
-    assert [gate.workflow for gate in classify(["scripts/art/pack_pawn_slug_godot_strict_v6.py"])] == [
-        "pawn-slug-godot-strict-atlas.yml"
-    ]
     assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"])] == [
         "pawn-slug-enemy-blender-art.yml"
     ]
@@ -177,7 +166,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS no despierta Blender; ocho lanes path-aware")
+    print("blender-required-scope self-test OK · CSS no despierta Blender; siete lanes path-aware")
 
 
 def main() -> int:
