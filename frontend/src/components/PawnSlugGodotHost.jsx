@@ -28,7 +28,7 @@ export default function PawnSlugGodotHost({ onExit }) {
   const victoryAdvancedRef = useRef(false);
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [runtime, setRuntime] = useState({
-    url: stageRuntimeUrl(LOCAL_GODOT_BOOTSTRAP_URL, stageIdRef.current),
+    url: '',
     source: 'resolving',
     release: '',
   });
@@ -106,15 +106,17 @@ export default function PawnSlugGodotHost({ onExit }) {
           <span className={runtimeReady ? 'is-ready' : ''} aria-hidden="true" />
           {runtimeStatus}
         </div>
-        <iframe
-          key={runtime.url}
-          ref={iframeRef}
-          className="pawn-slug-godot-host__frame"
-          src={runtime.url}
-          title="Pawn Slug Godot"
-          allow="autoplay; fullscreen; gamepad"
-          allowFullScreen
-        />
+        {runtime.url && (
+          <iframe
+            key={runtime.url}
+            ref={iframeRef}
+            className="pawn-slug-godot-host__frame"
+            src={runtime.url}
+            title="Pawn Slug Godot"
+            allow="autoplay; fullscreen; gamepad"
+            allowFullScreen
+          />
+        )}
       </div>
     </div>
   );

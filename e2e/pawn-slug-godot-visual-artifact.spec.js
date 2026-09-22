@@ -42,9 +42,9 @@ async function openPawnSlug(page) {
   await direct.focus();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  await expect(page.locator('.pawn-slug-godot-host')).toBeVisible();
   const frame = page.locator('iframe[title="Pawn Slug Godot"]');
-  await expect(frame).toBeVisible();
+  await expect(frame).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 35_000 });
   const canvas = page.frameLocator('iframe[title="Pawn Slug Godot"]').locator('canvas');
   await expect(canvas).toBeVisible({ timeout: 15_000 });
