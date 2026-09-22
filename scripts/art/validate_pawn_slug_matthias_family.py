@@ -487,6 +487,14 @@ def self_test() -> None:
         top = EXPECTED_FOOT - height
         array = np.array(image)
         array[top:EXPECTED_FOOT, left:left + width] = (80, 90, 100, 255)
+        face_w = max(10, round(38 * scale))
+        face_h = max(8, round(22 * scale))
+        face_left = 190 - face_w // 2
+        face_top = top + max(12, round(48 * scale))
+        array[
+            face_top:face_top + face_h,
+            face_left:face_left + face_w,
+        ] = (220, 132, 82, 255)
         if footer:
             array[400:405, 195:210] = (255, 255, 255, 255)
         return Image.fromarray(array, "RGBA")
