@@ -7,15 +7,10 @@ probe="$root/infra/oci/probe"
 staging="$root/infra/oci/staging"
 bootstrap_key="chess-studio/bootstrap/terraform.tfstate"
 staging_key="chess-studio/staging/terraform.tfstate"
-vault_iam_targets=(
-  -target=oci_identity_policy.staging_runtime_config
-  -target=data.oci_core_images.arm64_ubuntu
-)
-
 die() { echo "OCI staging lifecycle: FAIL · $*" >&2; exit 1; }
 
 valid_operation() {
-  case "${1:-}" in probe|bootstrap|plan|apply|vault-iam|destroy) return 0 ;; *) return 1 ;; esac
+  case "${1:-}" in probe|bootstrap|plan|apply|destroy) return 0 ;; *) return 1 ;; esac
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
@@ -273,11 +268,6 @@ run_staging() {
   prepare_staging "$namespace" "$compartment"
   plan="${RUNNER_TEMP:-/tmp}/oci-staging.tfplan"
   case "$operation" in
-    vault-iam)
-      terraform -chdir="$staging" plan -no-color "${vault_iam_targets[@]}" -out="$plan"
-      require_current_main
-      terraform -chdir="$staging" apply -no-color -auto-approve "$plan"
-      ;;
     plan)
       terraform -chdir="$staging" plan -no-color -out="$plan"
       ;;
@@ -297,9 +287,7 @@ run_staging() {
 }
 
 self_test() {
-  for op in probe bootstrap plan apply vault-iam destroy; do valid_operation "$op" || exit 1; done
-  [[ "${vault_iam_targets[*]}" == *"-target=oci_identity_policy.staging_runtime_config"* ]] || exit 1
-  [[ "${vault_iam_targets[*]}" == *"-target=data.oci_core_images.arm64_ubuntu"* ]] || exit 1
+  for op in probe bootstrap plan apply destroy; do valid_operation "$op" || exit 1; done
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
@@ -318,7 +306,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 fi
 
 operation="${1:-}"
-valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply, vault-iam or destroy"
+valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply or destroy"
 [[ -n "${OCI_REGION:-}" ]] || export OCI_REGION="eu-frankfurt-1"
 [[ -n "${OCI_TFSTATE_BUCKET:-}" ]] || export OCI_TFSTATE_BUCKET="chess-studio-tfstate"
 validate_backend_value "$OCI_REGION"

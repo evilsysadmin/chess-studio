@@ -40,7 +40,6 @@ INVENTORY = {
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
     'oci-staging-service.yml': 'infra-staging-service-control',
     'oci-staging-tunnel.yml': 'infra-staging-edge',
-    'oci-vault-cutover-once.yml': 'infra-staging-migration',
     'observability-live.yml': 'observability',
     'pawn-slug-enemy-commando-v2.yml': 'visual-staging-evidence',
     'pawn-slug-enemy-cast-v2.yml': 'visual-staging-evidence',
