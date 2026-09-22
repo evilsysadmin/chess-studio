@@ -175,7 +175,7 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
       - name: Self-test idle repair compiler
-        run: python3 -S scripts/art/repair_matthias_machinegun_idle.py --self-test
+        run: python3 scripts/art/repair_matthias_machinegun_idle.py --self-test
       - name: Build deterministic machinegun idle candidate
         shell: bash
         run: |
@@ -183,7 +183,7 @@ jobs:
           mkdir -p "$OUT"
           curl -fL --retry 3 "$PISTOL_URL" -o "$OUT/pistol-reference.png"
           curl -fL --retry 3 "$MACHINEGUN_URL" -o "$OUT/machinegun-current.png"
-          python3 -S scripts/art/repair_matthias_machinegun_idle.py \
+          python3 scripts/art/repair_matthias_machinegun_idle.py \
             --source "$OUT/machinegun-current.png" \
             --reference "$OUT/pistol-reference.png" \
             --output "$OUT/machinegun-idle-repaired.png" \
