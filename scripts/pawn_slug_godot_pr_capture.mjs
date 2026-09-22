@@ -290,7 +290,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 7,
+    schema: 8,
     detailedStage,
     stageOverviews,
     captures,
