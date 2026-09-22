@@ -43,6 +43,26 @@ static func publish_metrics(player: Node) -> void:
         return
     _metrics_request_seen = request_id
 
+    var art := player.get_node_or_null("MatthiasArt")
+    var requested_pose_value = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbePose === 'string' ? window.__pawnSlugVisualProbePose : ''",
+        true,
+    )
+    var requested_pose := String(requested_pose_value)
+    if art != null and requested_pose in ["idle", "run", "crouch"]:
+        art.set_combat_state(0.0, 0.0, false, 0.0)
+        art.set_aim_direction(Vector2.RIGHT)
+        art.update_visual(
+            0.0,
+            1.0 if requested_pose == "run" else 0.0,
+            true,
+            requested_pose == "crouch",
+            false,
+            0.0,
+            1.0,
+            false,
+        )
+
     var body := player.get_node_or_null("MatthiasArt/FacingRoot/FxRoot/CanonicalBody") as AnimatedSprite2D
     if body == null or body.sprite_frames == null or not body.visible:
         return
@@ -93,17 +113,7 @@ static func publish_metrics(player: Node) -> void:
     var scale_y := absf(body.global_scale.y)
     var core_height := (core_max_y - core_min_y + 1) if core_max_y >= core_min_y else 0
     var velocity: Vector2 = player.get("velocity")
-    var crouching := bool(player.get("_crouching"))
-    var logical_action := "idle"
-    if crouching:
-        logical_action = "crouch"
-    elif absf(velocity.x) >= 237.6:
-        # Player MOVE_SPEED 330 * RUN_ENTER_SPEED_RATIO 0.72. Keep this probe
-        # independent from MatthiasArt's internal animation bookkeeping: the
-        # texture below is still the exact frame Godot renders.
-        logical_action = "run"
-    elif absf(velocity.x) > 26.4:
-        logical_action = "walk"
+    var logical_action := requested_pose if requested_pose in ["idle", "run", "crouch"] else String(body.animation)
     var metrics := {
         "request_id": request_id,
         "weapon": String(player.get("weapon")),
