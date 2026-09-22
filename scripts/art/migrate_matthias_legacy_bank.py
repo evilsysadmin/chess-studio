@@ -295,7 +295,26 @@ def assert_grid_case(grid: Grid, rows: tuple[int, ...]) -> None:
 def self_test() -> None:
     assert_grid_case(Grid(DEFAULT_CELL, DEFAULT_COLS, DEFAULT_ROW_COUNT), DEFAULT_TARGET_ROWS)
     assert_grid_case(Grid(DEFAULT_CELL, 12, 1), (0,))
-    print("OK legacy bank canonical-scale self-test: full atlas + run strip")
+
+    fringe = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+    fringe_draw = ImageDraw.Draw(fringe)
+    fringe_draw.rectangle((30, 20, 60, 80), fill=(180, 120, 80, 255))
+    fringe_draw.rectangle((20, 70, 23, 70), fill=(0, 0, 0, 12))
+    cleaned, removed = clean_legacy_detached_noise(fringe)
+    assert len(removed) == 1
+    assert removed[0]["area"] == 4
+    assert lint_frame(cleaned, LintConfig(edge_guard_px=0)).ok
+
+    opaque = fringe.copy()
+    ImageDraw.Draw(opaque).rectangle((72, 40, 75, 40), fill=(255, 220, 120, 32))
+    try:
+        clean_legacy_detached_noise(opaque)
+    except GeometryError as exc:
+        assert "detached-opaque" in str(exc)
+    else:
+        raise AssertionError("opaque detached content must fail closed")
+
+    print("OK legacy bank canonical-scale self-test: full atlas + run strip + alpha-noise policy")
 
 
 def parse_rows(value: str) -> tuple[int, ...]:
