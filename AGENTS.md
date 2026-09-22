@@ -55,6 +55,14 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`.github/workflows/README.md`](.github/workflows/README.md) — documentación de workflows.
 - [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) — native automerge y cadena de entrega.
 
+### AGENTS por subsistema
+
+- [`backend-python/AGENTS.md`](backend-python/AGENTS.md) — autoridad backend, persistencia, retries, API y privacidad.
+- [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) — arquitectura frontend y enrutado por Home, War Room, Chronicles, Combat y Pawn Slug.
+- [`games/pawn-slug-godot/AGENTS.md`](games/pawn-slug-godot/AGENTS.md) — ownership Godot, runtime 2D y aceptación de sprites.
+- [`scripts/art/AGENTS.md`](scripts/art/AGENTS.md) — disciplina fail-closed y determinista del pipeline 2D.
+- [`scripts/blender/AGENTS.md`](scripts/blender/AGENTS.md) — builders reproducibles, artifacts, GPU local, runtime y R2.
+
 ### Skills / contratos operativos
 
 - [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md) — generación, normalización, validación y entrega de spritesheets 2D compatibles con Godot.
