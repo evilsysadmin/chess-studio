@@ -79,11 +79,11 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png",
+    "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png",
     "/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-34b7a35793047e39.png",
+    "/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-26dc07c9be4f285f.png",
     "/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
     "RUN12_ATLAS_COLUMNS := 12",
@@ -578,7 +578,7 @@ def self_test() -> None:
     assert '"machinegun": 13' in REQUIRED_MATTHIAS
     assert '"machinegun": {"hurt": 6}' in REQUIRED_MATTHIAS
     assert "_ensure_run12_locomotion" in REQUIRED_MATTHIAS
-    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png" in REQUIRED_MATTHIAS
+    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
