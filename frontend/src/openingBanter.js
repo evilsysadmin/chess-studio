@@ -1,3 +1,4 @@
+import { finiteNumber } from './numberUtils.js';
 import { startMemoryComment } from './cpuMemory.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 
@@ -7,11 +8,6 @@ const RECENT_RESULT_TTL_MS = 30_000;
 const MAX_RECENT_RESULTS = 16;
 const pendingByGame = new Map();
 const recentByGame = new Map();
-
-function finiteNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 function cleanString(value, max = 96) {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -51,14 +47,14 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
     },
   };
 
-  const games = Math.max(0, finiteNumber(record.games));
+  const games = Math.max(0, finiteNumber(record.games, 0));
   if (games > 0) {
     facts.rivalry = {
       games,
-      wins: Math.max(0, finiteNumber(record.wins)),
-      draws: Math.max(0, finiteNumber(record.draws)),
-      losses: Math.max(0, finiteNumber(record.losses)),
-      current_streak: finiteNumber(record.currentStreak),
+      wins: Math.max(0, finiteNumber(record.wins, 0)),
+      draws: Math.max(0, finiteNumber(record.draws, 0)),
+      losses: Math.max(0, finiteNumber(record.losses, 0)),
+      current_streak: finiteNumber(record.currentStreak, 0),
     };
   }
 
@@ -69,12 +65,12 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
     facts.last_game = {
       outcome: cleanString(last.outcome, 16),
       difficulty: Number.isFinite(Number(last.difficulty)) ? Number(last.difficulty) : null,
-      half_moves: Math.max(0, finiteNumber(last.moves)),
+      half_moves: Math.max(0, finiteNumber(last.moves, 0)),
     };
   }
 
   const repeatedIncidents = Object.entries(record.incidents && typeof record.incidents === 'object' ? record.incidents : {})
-    .map(([key, count]) => ({ key: cleanString(key, 60), count: Math.max(0, finiteNumber(count)) }))
+    .map(([key, count]) => ({ key: cleanString(key, 60), count: Math.max(0, finiteNumber(count, 0)) }))
     .filter((row) => row.key?.startsWith('human:') && row.count >= 2)
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
     .slice(0, 3);
