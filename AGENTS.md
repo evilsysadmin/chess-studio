@@ -92,6 +92,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Operaciones y runtime
 
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
+- [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
