@@ -157,6 +157,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return None
     if "chesscom" in lower:
         return set()
+    if ".test." in name or ".spec." in name:
+        return set()
     if _is_noncanonical_admin_surface(path):
         return set()
 
@@ -418,6 +420,14 @@ def self_test() -> None:
         "frontend/src/components/HomeCastle3D.jsx",
     ])
     assert mixed_admin_home.capture_groups == "home"
+
+    for frontend_test in (
+        "frontend/src/gameSessionDescriptor.test.js",
+        "frontend/src/spectatorSessionRunner.test.js",
+        "frontend/src/components/AnyVisualOwner.test.jsx",
+    ):
+        test_scope = classify([frontend_test])
+        assert test_scope.capture_groups == "none"
 
     for nonvisual_path in sorted(NONVISUAL_FRONTEND_PATHS):
         nonvisual = classify([nonvisual_path])
