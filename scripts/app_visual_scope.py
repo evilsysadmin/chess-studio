@@ -100,12 +100,13 @@ def _surface_groups(path: str) -> set[str] | None:
         ".github/workflows/war-room-blender-art.yml",
     }:
         return {"warroom"}
+    if lower in {
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+    }:
+        return set()
     if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"experiments"}
@@ -437,9 +438,11 @@ def self_test() -> None:
     assert not career_with_manifest.hans and not career_with_manifest.chesscom
 
     visual_scope = classify(["scripts/app_visual_scope.py"])
-    assert visual_scope.capture_groups == "experiments"
-    assert visual_scope.experiments_scope == "chronicles"
+    assert visual_scope.capture_groups == "none"
     assert not visual_scope.hans and not visual_scope.chesscom
+    producer_scope = classify(["scripts/app_visual_producer_scope.py"])
+    assert producer_scope.capture_groups == "none"
+    assert not producer_scope.hans and not producer_scope.chesscom
     assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     global_css = classify(["frontend/src/App.css"])
