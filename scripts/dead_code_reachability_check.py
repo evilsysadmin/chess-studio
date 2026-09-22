@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend" / "src"
 BACKEND = ROOT / "backend-python"
+SCRIPTS = ROOT / "scripts"
 JS_EXTS = (".js", ".jsx", ".mjs")
 IMPORT_RE = re.compile(r"(?:(?:import|export)\s+(?:[^'\"]*?\s+from\s+)?|import\s*\()\s*['\"]([^'\"]+)['\"]")
 CSS_IMPORT_RE = re.compile(r"@import\s+(?:url\(\s*)?['\"]?([^'\")\s;]+)")
@@ -160,22 +161,146 @@ def backend_unreachable() -> tuple[int, list[Path]]:
     return len(seen), sorted(files - seen)
 
 
+
+def _has_python_main_guard(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        test = node.test
+        if not isinstance(test, ast.Compare) or len(test.ops) != 1 or len(test.comparators) != 1:
+            continue
+        left = test.left
+        right = test.comparators[0]
+        if (
+            isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(test.ops[0], ast.Eq)
+            and isinstance(right, ast.Constant)
+            and right.value == "__main__"
+        ):
+            return True
+    return False
+
+
+def _script_python_imports(source: Path) -> set[str]:
+    try:
+        tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+    except (SyntaxError, UnicodeDecodeError):
+        return set()
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+    return imported
+
+
+def script_python_helper_unreferenced() -> list[Path]:
+    """High-confidence orphan helpers under scripts/.
+
+    CLI-like files with an explicit __main__ guard are intentional entrypoints and
+    are not judged here. A helper is reported only when no Python import resolves
+    to it and no repository wiring/documentation mentions its path or basename.
+    """
+    script_files = sorted(p.resolve() for p in SCRIPTS.rglob("*.py") if p.is_file())
+    parsed: dict[Path, ast.AST] = {}
+    for path in script_files:
+        try:
+            parsed[path] = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+
+    candidates = [
+        path
+        for path, tree in parsed.items()
+        if path.name != "__init__.py" and not _has_python_main_guard(tree)
+    ]
+    if not candidates:
+        return []
+
+    all_python = sorted(
+        p.resolve()
+        for p in ROOT.rglob("*.py")
+        if p.is_file() and ".venv" not in p.parts and "node_modules" not in p.parts
+    )
+    imports_by_source = {path: _script_python_imports(path) for path in all_python}
+
+    text_suffixes = {
+        ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg",
+        ".sh", ".mjs", ".js", ".jsx", ".gd", ".tf", ".hcl", ".py",
+    }
+    wiring_files = [
+        p.resolve()
+        for p in ROOT.rglob("*")
+        if p.is_file()
+        and ".git" not in p.parts
+        and "node_modules" not in p.parts
+        and ".venv" not in p.parts
+        and (p.name == "Makefile" or p.suffix.lower() in text_suffixes)
+    ]
+    wiring_text: dict[Path, str] = {}
+    for path in wiring_files:
+        try:
+            wiring_text[path] = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+
+    by_stem: dict[str, list[Path]] = {}
+    for path in script_files:
+        by_stem.setdefault(path.stem, []).append(path)
+
+    dead: list[Path] = []
+    for candidate in candidates:
+        rel = candidate.relative_to(ROOT).as_posix()
+        script_rel = candidate.relative_to(SCRIPTS).with_suffix("").as_posix().replace("/", ".")
+        full_module = "scripts." + script_rel
+        aliases = {full_module, script_rel}
+        if len(by_stem.get(candidate.stem, [])) == 1:
+            aliases.add(candidate.stem)
+
+        imported = any(
+            source != candidate and any(
+                module == alias or module.startswith(alias + ".")
+                for module in modules
+                for alias in aliases
+            )
+            for source, modules in imports_by_source.items()
+        )
+        if imported:
+            continue
+
+        explicit_tokens = {rel, candidate.name, full_module, script_rel}
+        mentioned = any(
+            source != candidate and any(token in text for token in explicit_tokens)
+            for source, text in wiring_text.items()
+        )
+        if mentioned:
+            continue
+        dead.append(candidate)
+    return dead
+
+
 def main() -> int:
     front_seen, front_dead = frontend_unreachable()
     css_seen, css_dead = css_unreachable(front_seen)
     back_seen, back_dead = backend_unreachable()
-    if front_dead or css_dead or back_dead:
+    script_dead = script_python_helper_unreferenced()
+    if front_dead or css_dead or back_dead or script_dead:
         for path in front_dead:
             print(f"ERROR dead-code gate: frontend productivo inalcanzable: {path.relative_to(ROOT)}")
         for path in css_dead:
             print(f"ERROR dead-code gate: CSS productivo inalcanzable: {path.relative_to(ROOT)}")
         for path in back_dead:
             print(f"ERROR dead-code gate: backend productivo inalcanzable: {path.relative_to(ROOT)}")
+        for path in script_dead:
+            print(f"ERROR dead-code gate: helper Python sin entrypoint/consumidor: {path.relative_to(ROOT)}")
         return 1
     print(
         "dead-code-reachability OK · "
         f"frontend {len(front_seen)} alcanzables · CSS {css_seen} alcanzables · "
-        f"backend {back_seen} alcanzables · 0 módulos/hojas huérfanos"
+        f"backend {back_seen} alcanzables · scripts Python 0 helpers huérfanos · "
+        "0 módulos/hojas huérfanos"
     )
     return 0
 
