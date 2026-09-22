@@ -7,6 +7,7 @@ const LAB_MODE_ALIASES = new Map([
 ]);
 export const LAB_MODE_SESSION_KEY = 'chess-study-lab-mode-v1';
 let pendingLabMode = null;
+const labLaunchSubscribers = new Set();
 
 function normalizeLabMode(mode, allowedModes) {
   const normalizedMode = LAB_MODE_ALIASES.get(mode) || mode;
@@ -30,10 +31,23 @@ export function clearRememberedLabMode() {
 
 export function requestLabLaunch(mode) {
   pendingLabMode = normalizeLabMode(mode, LAB_LAUNCH_MODES);
+  if (!pendingLabMode || labLaunchSubscribers.size === 0) return pendingLabMode;
+
+  const launchMode = pendingLabMode;
+  pendingLabMode = null;
+  for (const subscriber of [...labLaunchSubscribers]) subscriber(launchMode);
+  return launchMode;
 }
 
 export function consumeLabLaunch() {
   const mode = pendingLabMode;
   pendingLabMode = null;
   return mode;
+}
+
+
+export function subscribeLabLaunch(subscriber) {
+  if (typeof subscriber !== 'function') return () => {};
+  labLaunchSubscribers.add(subscriber);
+  return () => labLaunchSubscribers.delete(subscriber);
 }
