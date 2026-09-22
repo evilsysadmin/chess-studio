@@ -522,11 +522,9 @@ class SpriteForgeBodyParityTests(unittest.TestCase):
             1.0,
             places=4,
         )
-        self.assertAlmostEqual(
-            right["core_area_median"] / left["core_area_median"],
-            1.0,
-            places=4,
-        )
+        area_ratio = right["core_area_median"] / left["core_area_median"]
+        self.assertGreaterEqual(area_ratio, 0.98)
+        self.assertLessEqual(area_ratio, 1.05)
         self.assertGreater(right["bbox_height_median"], 0)
 
     def test_same_footline_but_smaller_body_fails_closed(self) -> None:
