@@ -7,7 +7,6 @@ import {
 } from './safeStorage.js';
 import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
-export const HOME_PLAY_NUDGE_IDLE_MS = 5 * 60 * 1000;
 export const HOME_PLAY_NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 export const HOME_PLAY_NUDGE_SESSION_KEY = 'chess-study-home-play-nudge-shown-v1';
 export const HOME_PLAY_NUDGE_LAST_AT_KEY = 'chess-study-home-play-nudge-last-at-v1';
