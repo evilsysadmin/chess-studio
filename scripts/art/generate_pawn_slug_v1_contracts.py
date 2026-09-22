@@ -26,6 +26,9 @@ ACTIONS = [
     ("die", 8, 10.0, False),
 ]
 
+MATTHIAS_BODY_BANK = "matthias-body-v1"
+MATTHIAS_WEAPON_BANK = "matthias-weapons-v1"
+
 ENEMY_ACTIONS = [
     ("idle", 8, 6.0, True),
     ("run", 8, 10.0, True),
@@ -51,31 +54,47 @@ def empty_sockets(count: int) -> list[dict]:
 
 
 def contract_for(bank: dict) -> dict:
+    bank_id = bank["id"]
     strategy = bank["strategy"]
     actor = bank["actor"]
     weapon = bank["weapon"]
+
     if strategy == "weapon-layer":
+        weapon_names = bank.get("weapons", [])
+        if not isinstance(weapon_names, list) or not weapon_names:
+            raise ValueError(f"{bank_id}: weapon-layer requires a non-empty weapons list")
+        if any(not isinstance(name, str) or not name for name in weapon_names):
+            raise ValueError(f"{bank_id}: weapon-layer names must be non-empty strings")
+        if len(weapon_names) != len(set(weapon_names)):
+            raise ValueError(f"{bank_id}: duplicate weapon-layer names")
+        is_matthias = bank_id == MATTHIAS_WEAPON_BANK
+        cell = {"width": 416, "height": 256} if is_matthias else {"width": 256, "height": 128}
         return {
             "schema": 1,
             "quality_contract": "sprite-forge-v1",
             "actor": actor,
             "weapon": weapon,
             "composition": strategy,
-            "cell": {"width": 256, "height": 128},
-            "parts": {"main": {"columns": 4, "rows": 1}},
+            "cell": cell,
+            "parts": {"main": {"columns": len(weapon_names), "rows": 1}},
             "animations": [{
                 "name": "weapons",
                 "part": "main",
                 "row": 0,
                 "fps": 1,
                 "loop": False,
-                "authored_frames": 4,
-                "slots": [0, 1, 2, 3],
+                "authored_frames": len(weapon_names),
+                "slots": list(range(len(weapon_names))),
             }],
         }
 
-    actions = ENEMY_ACTIONS if strategy == "socketed-body" else ACTIONS
-    cell = {"width": 320, "height": 416} if strategy == "socketed-body" else {"width": 416, "height": 416}
+    is_matthias_body = bank_id == MATTHIAS_BODY_BANK
+    if strategy == "socketed-body":
+        actions = ACTIONS if is_matthias_body else ENEMY_ACTIONS
+        cell = {"width": 416, "height": 416} if is_matthias_body else {"width": 320, "height": 416}
+    else:
+        actions = ACTIONS
+        cell = {"width": 416, "height": 416}
     animations = []
     for row, (name, frames, fps, loop) in enumerate(actions):
         item = {
@@ -111,11 +130,67 @@ def contract_for(bank: dict) -> dict:
     }
 
 
+def self_test() -> None:
+    body = contract_for({
+        "id": MATTHIAS_BODY_BANK,
+        "actor": "matthias",
+        "weapon": "none",
+        "strategy": "socketed-body",
+    })
+    assert body["composition"] == "socketed-body"
+    assert body["cell"] == {"width": 416, "height": 416}
+    assert len(body["animations"]) == len(ACTIONS) == 18
+    assert all(len(item["sockets"]) == 8 for item in body["animations"])
+
+    weapons = contract_for({
+        "id": MATTHIAS_WEAPON_BANK,
+        "actor": "matthias",
+        "weapon": "shared",
+        "strategy": "weapon-layer",
+        "weapons": ["pistol", "machinegun", "shotgun", "panzerfaust"],
+    })
+    assert weapons["cell"] == {"width": 416, "height": 256}
+    assert weapons["parts"]["main"]["columns"] == 4
+    assert weapons["animations"][0]["authored_frames"] == 4
+
+    enemy = contract_for({
+        "id": "enemy-pawn-body-v1",
+        "actor": "enemy-pawn",
+        "weapon": "none",
+        "strategy": "socketed-body",
+    })
+    assert enemy["cell"] == {"width": 320, "height": 416}
+    assert len(enemy["animations"]) == len(ENEMY_ACTIONS) == 5
+
+    try:
+        contract_for({
+            "id": "broken-weapons",
+            "actor": "broken",
+            "weapon": "shared",
+            "strategy": "weapon-layer",
+            "weapons": [],
+        })
+    except ValueError as exc:
+        assert "non-empty weapons list" in str(exc)
+    else:
+        raise AssertionError("empty weapon layer must fail closed")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("catalog", type=Path)
-    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("catalog", type=Path, nargs="?")
+    parser.add_argument("output_dir", type=Path, nargs="?")
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+
+    if args.self_test:
+        self_test()
+        print("Pawn Slug v1 contract generator self-test: OK")
+        return 0
+
+    if args.catalog is None or args.output_dir is None:
+        parser.error("catalog and output_dir are required unless --self-test is used")
+
     catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for bank in catalog["banks"]:
