@@ -45,8 +45,10 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
     var image := texture.get_image()
     if image == null or image.is_empty():
         return {}
+    image.convert(Image.FORMAT_RGBA8)
     var width := image.get_width()
     var height := image.get_height()
+    var bytes := image.get_data()
     var min_x := width
     var min_y := height
     var max_x := -1
@@ -59,9 +61,12 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
     var core_min_y := height
     var core_max_y := -1
     var core_area := 0
+    var alpha_cutoff := int(round(0.10 * 255.0))
     for y in range(height):
+        var row_offset := y * width * 4
         for x in range(width):
-            if image.get_pixel(x, y).a <= 0.10:
+            var alpha := int(bytes[row_offset + x * 4 + 3])
+            if alpha <= alpha_cutoff:
                 continue
             alpha_area += 1
             min_x = mini(min_x, x)
