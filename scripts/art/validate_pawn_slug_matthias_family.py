@@ -43,6 +43,13 @@ BODY_AREA_MEDIAN_RATIO_MAX = 1.28
 BODY_AREA_FRAME_RATIO_MIN = 0.58
 BODY_AREA_FRAME_RATIO_MAX = 1.55
 
+REAR_BODY_MEDIAN_RATIO_MIN = 0.85
+REAR_BODY_MEDIAN_RATIO_MAX = 1.22
+REAR_BODY_FRAME_RATIO_MIN = 0.65
+REAR_BODY_FRAME_RATIO_MAX = 1.48
+MAIN_HEIGHT_RATIO_MIN = 0.95
+MAIN_HEIGHT_RATIO_MAX = 1.05
+
 # Upper envelope catches "same outer height, smaller Matthias": a hat/weapon can
 # keep the total bbox canonical while head/body mass shrinks.
 UPPER_X0 = 100
@@ -158,6 +165,48 @@ def body_area(image: Image.Image) -> int:
     return int(body.sum())
 
 
+def skin_center(image: Image.Image) -> tuple[float, float] | None:
+    rgba = np.array(image.convert("RGBA"))
+    r, g, b, alpha = [rgba[..., index] for index in range(4)]
+    mask = (
+        (alpha > 80)
+        & (r > 120)
+        & (g > 55)
+        & (b < 170)
+        & (r > g * 1.06)
+        & ((r.astype(np.int16) - g.astype(np.int16)) > 10)
+    )
+    yy, xx = np.indices(mask.shape)
+    mask &= (yy > 140) & (yy < 330) & (xx > 70) & (xx < 300)
+    ys, xs = np.where(mask)
+    if len(xs) < 20:
+        return None
+    return float(np.median(xs)), float(np.median(ys))
+
+
+def rear_body_area(image: Image.Image) -> int | None:
+    face = skin_center(image)
+    if face is None:
+        return None
+    face_x, face_y = face
+    alpha = alpha_mask(image)
+    x0 = max(0, int(round(face_x - 85)))
+    x1 = min(CELL, int(round(face_x + 18)))
+    y0 = max(0, int(round(face_y + 8)))
+    y1 = min(CELL, EXPECTED_FOOT + 1)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return int(alpha[y0:y1, x0:x1].sum())
+
+
+def main_component_height(image: Image.Image) -> int | None:
+    components = connected_components(image)
+    if not components:
+        return None
+    _x0, y0, _x1, y1 = components[0]["bbox"]
+    return int(y1 - y0)
+
+
 def core_metrics(image: Image.Image) -> dict | None:
     mask = alpha_mask(image)[:, CORE_X0:CORE_X1]
     box = bbox_from_mask(mask)
@@ -263,6 +312,8 @@ def validate_family(atlases: dict[str, Image.Image]) -> dict:
             for row, action in PARITY_ROWS.items():
                 core_ratios: list[float] = []
                 body_ratios: list[float] = []
+                rear_body_ratios: list[float] = []
+                height_ratios: list[float] = []
                 upper_width_ratios: list[float] = []
                 upper_area_ratios: list[float] = []
                 for col in range(COLS):
@@ -287,6 +338,22 @@ def validate_family(atlases: dict[str, Image.Image]) -> dict:
                     ref_body_area = body_area(reference)
                     candidate_body_area = body_area(candidate)
                     body_ratios.append(ratio(candidate_body_area, ref_body_area))
+                    ref_rear = rear_body_area(reference)
+                    candidate_rear = rear_body_area(candidate)
+                    ref_height = main_component_height(reference)
+                    candidate_height = main_component_height(candidate)
+                    if (
+                        ref_rear is None
+                        or candidate_rear is None
+                        or ref_height is None
+                        or candidate_height is None
+                    ):
+                        errors.append(
+                            f"{weapon}:{action}:{col}: missing body anchor metrics"
+                        )
+                        continue
+                    rear_body_ratios.append(ratio(candidate_rear, ref_rear))
+                    height_ratios.append(ratio(candidate_height, ref_height))
                     upper_width_ratios.append(
                         ratio(candidate_upper["width"], ref_upper["width"])
                     )
@@ -298,29 +365,35 @@ def validate_family(atlases: dict[str, Image.Image]) -> dict:
                     continue
                 core_median = statistics.median(core_ratios)
                 body_median = statistics.median(body_ratios)
+                rear_median = statistics.median(rear_body_ratios)
+                height_median = statistics.median(height_ratios)
                 width_median = statistics.median(upper_width_ratios)
                 area_median = statistics.median(upper_area_ratios)
                 report["parity"][action] = {
-                    "core_area_median_ratio": round(core_median, 4),
-                    "core_area_min_ratio": round(min(core_ratios), 4),
-                    "core_area_max_ratio": round(max(core_ratios), 4),
-                    "body_area_median_ratio": round(body_median, 4),
-                    "body_area_min_ratio": round(min(body_ratios), 4),
-                    "body_area_max_ratio": round(max(body_ratios), 4),
+                    "core_area_diagnostic_ratio": round(core_median, 4),
+                    "body_color_diagnostic_ratio": round(body_median, 4),
+                    "rear_body_median_ratio": round(rear_median, 4),
+                    "rear_body_min_ratio": round(min(rear_body_ratios), 4),
+                    "rear_body_max_ratio": round(max(rear_body_ratios), 4),
+                    "main_height_median_ratio": round(height_median, 4),
                     "upper_width_median_ratio": round(width_median, 4),
                     "upper_area_diagnostic_ratio": round(area_median, 4),
                 }
-                if not BODY_AREA_MEDIAN_RATIO_MIN <= body_median <= BODY_AREA_MEDIAN_RATIO_MAX:
+                if not REAR_BODY_MEDIAN_RATIO_MIN <= rear_median <= REAR_BODY_MEDIAN_RATIO_MAX:
                     errors.append(
-                        f"{weapon}:{action}: body area median ratio={body_median:.4f}"
+                        f"{weapon}:{action}: rear body median ratio={rear_median:.4f}"
                     )
                 if (
-                    min(body_ratios) < BODY_AREA_FRAME_RATIO_MIN
-                    or max(body_ratios) > BODY_AREA_FRAME_RATIO_MAX
+                    min(rear_body_ratios) < REAR_BODY_FRAME_RATIO_MIN
+                    or max(rear_body_ratios) > REAR_BODY_FRAME_RATIO_MAX
                 ):
                     errors.append(
-                        f"{weapon}:{action}: body area frame range="
-                        f"{min(body_ratios):.4f}..{max(body_ratios):.4f}"
+                        f"{weapon}:{action}: rear body frame range="
+                        f"{min(rear_body_ratios):.4f}..{max(rear_body_ratios):.4f}"
+                    )
+                if not MAIN_HEIGHT_RATIO_MIN <= height_median <= MAIN_HEIGHT_RATIO_MAX:
+                    errors.append(
+                        f"{weapon}:{action}: main height ratio={height_median:.4f}"
                     )
                 if not UPPER_WIDTH_RATIO_MIN <= width_median <= UPPER_WIDTH_RATIO_MAX:
                     errors.append(
@@ -328,15 +401,18 @@ def validate_family(atlases: dict[str, Image.Image]) -> dict:
                     )
 
             idle_values = [
-                body_area(frame(atlas, 0, col))
+                rear_body_area(frame(atlas, 0, col))
                 for col in range(COLS)
             ]
-            idle_spread = max(idle_values) / min(idle_values)
-            report["idle_body_max_min_ratio"] = round(idle_spread, 4)
-            if idle_spread > IDLE_BODY_MAX_MIN_RATIO:
-                errors.append(
-                    f"{weapon}:idle body jitter={idle_spread:.4f}"
-                )
+            if any(value is None for value in idle_values):
+                errors.append(f"{weapon}:idle missing rear-body anchors")
+            else:
+                idle_spread = max(idle_values) / min(idle_values)
+                report["idle_body_max_min_ratio"] = round(idle_spread, 4)
+                if idle_spread > IDLE_BODY_MAX_MIN_RATIO:
+                    errors.append(
+                        f"{weapon}:idle body jitter={idle_spread:.4f}"
+                    )
 
         if report["footline_errors"]:
             errors.append(
@@ -374,9 +450,21 @@ def validate_family(atlases: dict[str, Image.Image]) -> dict:
                 BODY_AREA_MEDIAN_RATIO_MIN,
                 BODY_AREA_MEDIAN_RATIO_MAX,
             ],
-            "body_area_frame_ratio": [
-                BODY_AREA_FRAME_RATIO_MIN,
-                BODY_AREA_FRAME_RATIO_MAX,
+            "body_color_ratio_diagnostic_only": [
+                BODY_AREA_MEDIAN_RATIO_MIN,
+                BODY_AREA_MEDIAN_RATIO_MAX,
+            ],
+            "rear_body_median_ratio": [
+                REAR_BODY_MEDIAN_RATIO_MIN,
+                REAR_BODY_MEDIAN_RATIO_MAX,
+            ],
+            "rear_body_frame_ratio": [
+                REAR_BODY_FRAME_RATIO_MIN,
+                REAR_BODY_FRAME_RATIO_MAX,
+            ],
+            "main_height_ratio": [
+                MAIN_HEIGHT_RATIO_MIN,
+                MAIN_HEIGHT_RATIO_MAX,
             ],
             "upper_area_ratio_diagnostic_only": [
                 UPPER_AREA_RATIO_MIN,
@@ -410,6 +498,9 @@ def self_test() -> None:
         < CORE_MEDIAN_RATIO_MIN
     )
     assert ratio(body_area(small), body_area(reference)) < BODY_AREA_MEDIAN_RATIO_MIN
+    assert rear_body_area(reference) is not None
+    assert rear_body_area(small) is not None
+    assert ratio(rear_body_area(small), rear_body_area(reference)) < REAR_BODY_MEDIAN_RATIO_MIN
     assert not detached_violations(reference, 0)
     assert detached_violations(synthetic(1.0, footer=True), 0)
 
