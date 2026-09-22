@@ -113,7 +113,7 @@ func _try_claim_loose_ball() -> void:
 	var best_distance := 31.0
 	for team in teams:
 		for player in team:
-			var distance := player.global_position.distance_to(ball.global_position)
+			var distance: float = player.global_position.distance_to(ball.global_position)
 			if distance < best_distance:
 				best_distance = distance
 				best = player
