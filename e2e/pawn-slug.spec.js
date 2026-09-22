@@ -73,6 +73,18 @@ async function requestGodotExit(page) {
   });
 }
 
+test('Pawn Slug · Home abre Godot directamente sin pasar por el Hub', async ({ page }) => {
+  await authenticate(page);
+
+  const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
+  await expect(direct).toBeVisible();
+  await direct.focus();
+  await page.keyboard.press('Enter');
+
+  await expectGodotHost(page);
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
+});
+
 test('Pawn Slug · el hub expone únicamente la puerta Godot y permite volver', async ({ page }) => {
   await authenticate(page);
   await openExperiments(page);

@@ -25,6 +25,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/usecombatbattlesnapshotfactory.js",
     "frontend/src/spectatorsessionrunner.js",
     "frontend/src/gamesessiondescriptor.js",
+    "frontend/src/lablaunchintent.js",
 }
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -92,10 +93,12 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"}:
+    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/quality_scope.py"}:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower == "frontend/src/components/labscreen.jsx":
+        return {"experiments"}
     if lower in {
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
@@ -198,13 +201,15 @@ def _experiment_parts(path: str) -> set[str]:
     ):
         return {"chronicles"}
     if name == "experiments-visual-artifact.spec.js":
-        return set(EXPERIMENT_ORDER)
+        return {"landing", "pawnslug"}
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
         return {"chronicles"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
+    if lower == "frontend/src/components/labscreen.jsx":
+        return {"landing", "pawnslug"}
     if "experiment" in lower:
         return set(EXPERIMENT_ORDER)
     return set(EXPERIMENT_ORDER)
@@ -317,6 +322,25 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    lab_visual = classify([
+        "frontend/src/components/LabScreen.jsx",
+        "frontend/src/labLaunchIntent.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ])
+    assert lab_visual.capture_groups == "experiments"
+    assert lab_visual.experiments_scope == "landing,pawnslug"
+    lab = classify([
+        "frontend/src/components/LabScreen.jsx",
+        "frontend/src/labLaunchIntent.js",
+    ])
+    assert lab.capture_groups == "experiments"
+    assert lab.experiments_scope == "landing,pawnslug"
+    lab_launch = classify(["frontend/src/labLaunchIntent.js"])
+    assert lab_launch.capture_groups == "none"
+    assert not lab_launch.hans and not lab_launch.chesscom
+    quality_scope = classify(["scripts/quality_scope.py"])
+    assert quality_scope.capture_groups == "none"
+    assert not quality_scope.hans and not quality_scope.chesscom
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
     assert chronicles_visual.experiments_scope == "chronicles"
