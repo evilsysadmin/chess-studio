@@ -17,7 +17,7 @@ BUDGETS = {
     "backend-python/game_api.py": 391,
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
     "backend-python/matthias_memory_store.py": 1264,
-    "backend-python/narrative_cloudflare.py": 1039,
+    "backend-python/narrative_cloudflare.py": 1038,
     # Audio remains productively reachable but is again large enough to deserve a ratchet.
     "frontend/src/sound.js": 2359,
     "frontend/src/ambientCatalog.js": 2046,
