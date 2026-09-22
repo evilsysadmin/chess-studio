@@ -59,7 +59,3 @@ function hash32(value) {
 export function campaignBossForSeed(seed) {
   return CAMPAIGN_BOSSES[hash32(seed) % CAMPAIGN_BOSSES.length];
 }
-
-export function campaignBossById(id) {
-  return BOSS_BY_ID[id] || null;
-}
