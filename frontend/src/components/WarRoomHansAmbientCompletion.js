@@ -7,7 +7,6 @@ import {
   markWarRoomHansCompletedForGame,
 } from './WarRoomHansPerGame.js';
 
-export const WAR_ROOM_HANS_AMBIENT_COMPLETION_VERSION = 'hans-ambient-completion-v1-effect-terminal';
 
 const AMBIENT_EVENTS = new Set(WAR_ROOM_HANS_EVENTS.filter((eventName) => eventName !== 'fire'));
 const DELIVERY_ARTIFACTS = Object.freeze({

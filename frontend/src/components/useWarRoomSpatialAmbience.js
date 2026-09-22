@@ -9,7 +9,6 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v9-no-interior-noise-floor';
 export const WAR_ROOM_WEATHER_IDLE_GAIN = 0;
 export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
 export const WAR_ROOM_WEATHER_WINDOW_INSET_X = 0.3;
