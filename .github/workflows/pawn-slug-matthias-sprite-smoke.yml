@@ -8,6 +8,7 @@ on:
       - games/pawn-slug-godot/art/enemies-v2-worksheet.json
       - scripts/art/export_matthias_sprite_smoke.py
       - scripts/art/validate_matthias_sprite_continuity.py
+      - scripts/art/repair_matthias_runtime_motion.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
       - scripts/pawn_slug_sprite_smoke_scope.py
@@ -52,8 +53,6 @@ jobs:
       - name: Checkout tested commit
         uses: actions/checkout@v7
         with:
-          # PRs use GitHub's synthetic merge so the classifier sees the complete
-          # contribution against the tested base. Staging keeps the deployed SHA.
           ref: ${{ github.event_name == 'workflow_run' && env.DEPLOY_SHA || github.sha }}
           fetch-depth: 2
 
@@ -160,6 +159,50 @@ jobs:
         with:
           name: pawn-slug-sprite-smoke-${{ env.DEPLOY_SHA }}
           path: /tmp/pawn-slug-sprite-smoke/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  repair-matthias-motion:
+    name: Candidate · Matthias runtime motion repair
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      OUT: /tmp/pawn-slug-matthias-motion-repair
+      PISTOL_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png
+      MACHINEGUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-repair/machinegun/full/machinegun-idle-repaired-b815a81d1a459ed9.png
+      SHOTGUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png
+      PANZERFAUST_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+      - name: Build deterministic motion repair candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          curl -fL --retry 3 "$PISTOL_URL" -o "$OUT/pistol.png"
+          curl -fL --retry 3 "$MACHINEGUN_URL" -o "$OUT/machinegun.png"
+          curl -fL --retry 3 "$SHOTGUN_URL" -o "$OUT/shotgun.png"
+          curl -fL --retry 3 "$PANZERFAUST_URL" -o "$OUT/panzerfaust.png"
+          python3 scripts/art/repair_matthias_runtime_motion.py --self-test
+          python3 scripts/art/repair_matthias_runtime_motion.py \
+            --pistol "$OUT/pistol.png" \
+            --machinegun "$OUT/machinegun.png" \
+            --shotgun "$OUT/shotgun.png" \
+            --panzerfaust "$OUT/panzerfaust.png" \
+            --output-dir "$OUT"
+          sha256sum "$OUT"/*-full-motion-repaired.png | tee "$OUT/sha256.txt"
+      - name: Upload Matthias motion repair evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-matthias-motion-repair-${{ github.sha }}
+          path: /tmp/pawn-slug-matthias-motion-repair/
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
