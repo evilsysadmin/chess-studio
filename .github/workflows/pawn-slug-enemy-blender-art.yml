@@ -1,10 +1,8 @@
-name: Pawn Slug · Enemy Blender canonical art
+name: Pawn Slug · Enemy candidate art (manual Blender)
 
+# Authoring aid only. Runtime acceptance is owned by Sprite Forge + Godot.
+# Keep this manual so Blender candidate generation never becomes a second PR gate.
 on:
-  pull_request:
-    paths:
-      - 'scripts/blender/render_pawn_slug_enemy_sheets_v1.py'
-      - '.github/workflows/pawn-slug-enemy-blender-art.yml'
   workflow_dispatch:
 
 permissions:
