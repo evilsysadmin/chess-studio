@@ -232,28 +232,44 @@ jobs:
             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png" \
             -o "$root/panzerfaust/source-run12.png"
 
+          pids=()
           python3 scripts/art/migrate_matthias_legacy_bank.py \
             --source "$root/machinegun/source-full.png" \
             --reference "$root/reference/pistol-full.png" \
             --rows "$rows" --allow-opaque-detached \
             --output "$root/machinegun/candidate-full.png" \
-            --report "$root/machinegun/full-health.json"
+            --report "$root/machinegun/full-health.json" &
+          pids+=($!)
           for weapon in shotgun panzerfaust; do
             python3 scripts/art/migrate_matthias_legacy_bank.py \
               --source "$root/$weapon/source-full.png" \
               --reference "$root/reference/pistol-full.png" \
               --rows "$rows" \
               --output "$root/$weapon/candidate-full.png" \
-              --report "$root/$weapon/full-health.json"
+              --report "$root/$weapon/full-health.json" &
+            pids+=($!)
           done
+          failed=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || failed=1
+          done
+          [[ "$failed" -eq 0 ]]
+
+          pids=()
           for weapon in shotgun panzerfaust; do
             python3 scripts/art/migrate_matthias_legacy_bank.py \
               --source "$root/$weapon/source-run12.png" \
               --reference "$root/reference/pistol-run12.png" \
               --columns 12 --row-count 1 --rows 0 \
               --output "$root/$weapon/candidate-run12.png" \
-              --report "$root/$weapon/run12-health.json"
+              --report "$root/$weapon/run12-health.json" &
+            pids+=($!)
           done
+          failed=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || failed=1
+          done
+          [[ "$failed" -eq 0 ]]
           sha256sum \
             "$root/machinegun/candidate-full.png" \
             "$root/shotgun/candidate-full.png" "$root/shotgun/candidate-run12.png" \
