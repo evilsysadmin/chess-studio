@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
-const healthPath = process.argv[2] || '/tmp/pawn-slug-visual/runtime-visual-health.json';
+const reportOnly = process.argv.includes('--report-only');
+const healthPath = process.argv.find((arg) => !arg.startsWith('--') && arg !== process.argv[0] && arg !== process.argv[1]) || '/tmp/pawn-slug-visual/runtime-visual-health.json';
 const payload = JSON.parse(await readFile(healthPath, 'utf8'));
 const weapons = payload.weaponParityMetrics || {};
 const expectedWeapons = ['pistol', 'machinegun', 'shotgun', 'panzerfaust'];
@@ -113,4 +114,4 @@ for (const pose of poses) {
 report.ok = errors.length === 0;
 report.errors = errors;
 console.log(JSON.stringify(report, null, 2));
-if (errors.length) process.exit(1);
+if (errors.length && !reportOnly) process.exit(1);
