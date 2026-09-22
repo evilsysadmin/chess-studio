@@ -1,7 +1,7 @@
 import {
   CHRONICLES_DIRECTIONS,
   chroniclesEnemyIsActive,
-  chroniclesEnemyPosition,
+  chroniclesRuntimeEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 import { chroniclesEnemyRenderRoster } from './chroniclesEnemyRenderRoster.js';
@@ -34,18 +34,13 @@ function formationBasis(directionIndex) {
   });
 }
 
-function runtimeEnemyPosition(state, enemy) {
-  const runtime = state?.enemyPositions?.[enemy.id];
-  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
-  return chroniclesEnemyPosition(state, enemy);
-}
 
 function occupiedCells(state) {
   const occupied = new Set();
 
   chroniclesEnemyRenderRoster(state).forEach(({ definition }) => {
     const active = chroniclesEnemyIsActive(state, definition) && Number(state?.[definition.hpKey] || 0) > 0;
-    if (active) occupied.add(cellKey(runtimeEnemyPosition(state, definition)));
+    if (active) occupied.add(cellKey(chroniclesRuntimeEnemyPosition(state, definition)));
   });
 
   chroniclesContentVisualStates(state).forEach((entry) => {
