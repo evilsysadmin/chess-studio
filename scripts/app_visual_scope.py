@@ -339,7 +339,7 @@ def self_test() -> None:
         "frontend/src/labLaunchIntent.js",
     ])
     assert lab.capture_groups == "experiments"
-    assert lab.experiments_scope == "landing,chronicles,pawnslug"
+    assert lab.experiments_scope == "landing,pawnslug"
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
     assert chronicles_visual.experiments_scope == "chronicles"
