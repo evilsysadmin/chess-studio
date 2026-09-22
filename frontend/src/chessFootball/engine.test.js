@@ -12,10 +12,13 @@ describe('Chess Football simulation core', () => {
     expect(new Set(pairings)).toHaveLength(30);
   });
 
-  it('replays the same match exactly from the same seed', () => {
+  it('replays a known seeded match exactly', () => {
     const season = createSeason('repeatable');
     const [home, away] = season.clubs;
-    expect(simulateMatch(home, away, 'same')).toEqual(simulateMatch(home, away, 'same'));
+    const match = simulateMatch(home, away, 'same');
+    expect(match.homeGoals).toBe(1);
+    expect(match.awayGoals).toBe(3);
+    expect(match.events).toHaveLength(4);
   });
 
   it('advances one round without mutating the previous state', () => {
