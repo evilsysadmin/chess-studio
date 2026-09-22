@@ -40,6 +40,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
+| Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Matthias / memoria episódica / apariciones de sesión | [`docs/experiments/matthias-episodic-memory.md`](docs/experiments/matthias-episodic-memory.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -92,6 +93,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Operaciones y runtime
 
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
+- [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
