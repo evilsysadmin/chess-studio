@@ -176,6 +176,7 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - Auto-K3s tras cada `Deploy to staging` → retirado; lifecycle experimental no forma parte del release canónico.
 - Operaciones K3s/staging2 dentro de `oci-staging-service.yml` → retiradas del front-door; el experimento queda preservado únicamente como tooling/lab fuera de la operación normal.
 - `oci-vault-cutover-once.yml` + `oci_vault_cutover.py` → retirados tras acreditar CURRENT Vault; bootstrap/sync/validate normales permanecen en el service control.
+- `staging-pages-fast.yml` → retirado; duplicaba checkout/build/deploy/verify de Pages. El único owner de Pages staging vuelve a ser `staging-deploy.yml`, que ya despliega frontend en paralelo con backend/Worker dentro de cada generación coherente.
 - Mutex único para cualquier `oci-staging-service` → retirado; sólo las operaciones mutantes compiten con deploy/Terraform.
 - `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
 - `codeql.yml` → absorbido por `coverage.yml` como señal periódica; conserva cadence semanal y permisos `security-events` limitados al job CodeQL.
