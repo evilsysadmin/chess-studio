@@ -23,10 +23,14 @@ MAX_REMOVABLE_DETACHED_AREA = 1024
 SAFE_MARGIN = 4
 MIN_REPAIR_SCALE = 0.92
 MAX_REPAIR_SCALE = 1.12
+MIN_IDLE_X_SCALE = 0.90
+MAX_IDLE_X_SCALE = 1.16
 RUN_SOURCE_COLS = 13
 RUN_REFERENCE_COLS = 12
-MIN_RUN_SCALE = 0.85
-MAX_RUN_SCALE = 1.15
+MIN_RUN_X_SCALE = 0.85
+MAX_RUN_X_SCALE = 1.15
+MIN_RUN_Y_SCALE = 0.95
+MAX_RUN_Y_SCALE = 1.05
 
 
 def parse_args() -> argparse.Namespace:
@@ -185,24 +189,32 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
             )
 
         sx0, sy0, sx1, sy1 = primary["bbox"]
+        source_width = sx1 - sx0
         source_height = sy1 - sy0
         reference_component = reference_components[col]
         rx0, ry0, rx1, ry1 = reference_component["bbox"]
+        target_width = rx1 - rx0
         target_height = ry1 - ry0
-        if source_height <= 0 or target_height <= 0:
-            raise ValueError(f"machinegun idle c{col}: invalid body height")
+        if min(source_width, source_height, target_width, target_height) <= 0:
+            raise ValueError(f"machinegun idle c{col}: invalid body geometry")
 
         isolated = isolated_main(source_cell, primary)
         crop = isolated.crop(primary["bbox"])
-        scale = target_height / source_height
-        if not MIN_REPAIR_SCALE <= scale <= MAX_REPAIR_SCALE:
+        scale_x = target_width / source_width
+        scale_y = target_height / source_height
+        if not MIN_IDLE_X_SCALE <= scale_x <= MAX_IDLE_X_SCALE:
             raise ValueError(
-                f"machinegun idle c{col}: repair scale {scale:.4f} outside "
+                f"machinegun idle c{col}: x scale {scale_x:.4f} outside "
+                f"[{MIN_IDLE_X_SCALE:.2f}, {MAX_IDLE_X_SCALE:.2f}]"
+            )
+        if not MIN_REPAIR_SCALE <= scale_y <= MAX_REPAIR_SCALE:
+            raise ValueError(
+                f"machinegun idle c{col}: y scale {scale_y:.4f} outside "
                 f"[{MIN_REPAIR_SCALE:.2f}, {MAX_REPAIR_SCALE:.2f}]"
             )
         scaled_size = (
-            max(1, round(crop.width * scale)),
-            max(1, round(crop.height * scale)),
+            max(1, round(crop.width * scale_x)),
+            max(1, round(crop.height * scale_y)),
         )
         scaled = (
             crop.resize(scaled_size, Image.Resampling.BILINEAR)
@@ -210,8 +222,10 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
             else crop
         )
 
-        dest_x = round(target_center - scaled.width / 2.0)
-        dest_y = round(target_foot - scaled.height)
+        target_frame_center = (rx0 + rx1) / 2.0
+        target_frame_foot = float(ry1)
+        dest_x = round(target_frame_center - scaled.width / 2.0)
+        dest_y = round(target_frame_foot - scaled.height)
         if (
             dest_x < SAFE_MARGIN
             or dest_y < SAFE_MARGIN
@@ -231,16 +245,22 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
                 f"machinegun idle c{col}: repair did not collapse to one component"
             )
         repaired_bbox = repaired_components[0]["bbox"]
+        repaired_width = repaired_bbox[2] - repaired_bbox[0]
         repaired_height = repaired_bbox[3] - repaired_bbox[1]
+        if abs(repaired_width - target_width) > 1:
+            raise ValueError(
+                f"machinegun idle c{col}: repaired width {repaired_width} "
+                f"!= target {target_width}"
+            )
         if abs(repaired_height - target_height) > 1:
             raise ValueError(
                 f"machinegun idle c{col}: repaired height {repaired_height} "
                 f"!= target {target_height}"
             )
-        if abs(repaired_bbox[3] - target_foot) > 1:
+        if abs(repaired_bbox[3] - target_frame_foot) > 1:
             raise ValueError(
                 f"machinegun idle c{col}: repaired foot {repaired_bbox[3]} "
-                f"!= target {target_foot}"
+                f"!= target {target_frame_foot}"
             )
 
         output.paste(repaired, (col * CELL, IDLE_ROW * CELL))
@@ -248,12 +268,15 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
             {
                 "column": col,
                 "sourceMainBbox": list(primary["bbox"]),
+                "sourceMainWidth": source_width,
                 "sourceMainHeight": source_height,
                 "targetReferenceBbox": list(reference_component["bbox"]),
+                "targetWidth": target_width,
                 "targetHeight": target_height,
-                "scale": round(scale, 6),
-                "targetCenterX": target_center,
-                "targetFootY": target_foot,
+                "scaleX": round(scale_x, 6),
+                "scaleY": round(scale_y, 6),
+                "targetCenterX": target_frame_center,
+                "targetFootY": target_frame_foot,
                 "outputMainBbox": list(repaired_bbox),
                 "removedDetached": [
                     {"area": int(item["area"]), "bbox": list(item["bbox"])}
@@ -332,21 +355,37 @@ def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image
         for col in range(RUN_REFERENCE_COLS)
     ]
 
+    source_widths = [
+        component["bbox"][2] - component["bbox"][0]
+        for component in source_components
+    ]
     source_heights = [
         component["bbox"][3] - component["bbox"][1]
         for component in source_components
+    ]
+    reference_widths = [
+        component["bbox"][2] - component["bbox"][0]
+        for component in reference_components
     ]
     reference_heights = [
         component["bbox"][3] - component["bbox"][1]
         for component in reference_components
     ]
+    source_median_width = float(statistics.median(source_widths))
     source_median_height = float(statistics.median(source_heights))
+    target_median_width = float(statistics.median(reference_widths))
     target_median_height = float(statistics.median(reference_heights))
-    scale = target_median_height / source_median_height
-    if not MIN_RUN_SCALE <= scale <= MAX_RUN_SCALE:
+    scale_x = target_median_width / source_median_width
+    scale_y = target_median_height / source_median_height
+    if not MIN_RUN_X_SCALE <= scale_x <= MAX_RUN_X_SCALE:
         raise ValueError(
-            f"machinegun run13 row scale {scale:.4f} outside "
-            f"[{MIN_RUN_SCALE:.2f}, {MAX_RUN_SCALE:.2f}]"
+            f"machinegun run13 x scale {scale_x:.4f} outside "
+            f"[{MIN_RUN_X_SCALE:.2f}, {MAX_RUN_X_SCALE:.2f}]"
+        )
+    if not MIN_RUN_Y_SCALE <= scale_y <= MAX_RUN_Y_SCALE:
+        raise ValueError(
+            f"machinegun run13 y scale {scale_y:.4f} outside "
+            f"[{MIN_RUN_Y_SCALE:.2f}, {MAX_RUN_Y_SCALE:.2f}]"
         )
 
     target_center = float(statistics.median(
@@ -368,8 +407,8 @@ def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image
             raise ValueError(f"machinegun run13 c{col}: empty foreground")
         crop = source_cell.crop(bbox)
         scaled_size = (
-            max(1, round(crop.width * scale)),
-            max(1, round(crop.height * scale)),
+            max(1, round(crop.width * scale_x)),
+            max(1, round(crop.height * scale_y)),
         )
         scaled = (
             crop.resize(scaled_size, Image.Resampling.BILINEAR)
@@ -379,8 +418,8 @@ def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image
 
         fx0, fy0, _, _ = bbox
         px0, _, px1, py1 = primary["bbox"]
-        primary_center_in_crop = (((px0 + px1) / 2.0) - fx0) * scale
-        primary_foot_in_crop = (py1 - fy0) * scale
+        primary_center_in_crop = (((px0 + px1) / 2.0) - fx0) * scale_x
+        primary_foot_in_crop = (py1 - fy0) * scale_y
         dest_x = round(target_center - primary_center_in_crop)
         dest_y = round(target_foot - primary_foot_in_crop)
         placed_bbox = (
@@ -420,11 +459,21 @@ def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image
             }
         )
 
+    output_widths = [
+        frame["outputMainBbox"][2] - frame["outputMainBbox"][0]
+        for frame in frames
+    ]
     output_heights = [
         frame["outputMainBbox"][3] - frame["outputMainBbox"][1]
         for frame in frames
     ]
+    output_median_width = float(statistics.median(output_widths))
     output_median_height = float(statistics.median(output_heights))
+    if abs(output_median_width - target_median_width) > 1.0:
+        raise ValueError(
+            f"machinegun run13 median width {output_median_width} "
+            f"!= pistol target {target_median_width}"
+        )
     if abs(output_median_height - target_median_height) > 1.0:
         raise ValueError(
             f"machinegun run13 median height {output_median_height} "
@@ -436,9 +485,13 @@ def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image
         "scope": "pawn-slug-matthias-machinegun-run13-reference-repair",
         "sourceColumns": RUN_SOURCE_COLS,
         "referenceColumns": RUN_REFERENCE_COLS,
-        "uniformScale": round(scale, 6),
+        "uniformScaleX": round(scale_x, 6),
+        "uniformScaleY": round(scale_y, 6),
+        "sourceMedianWidth": source_median_width,
         "sourceMedianHeight": source_median_height,
+        "targetMedianWidth": target_median_width,
         "targetMedianHeight": target_median_height,
+        "outputMedianWidth": output_median_width,
         "outputMedianHeight": output_median_height,
         "targetCenterX": target_center,
         "targetFootY": target_foot,
@@ -504,7 +557,8 @@ def self_test() -> None:
 
     repaired_run, run_report = repair_run_strip(run_source, run_reference)
     assert RUN_SOURCE_COLS == len(run_report["frames"])
-    assert 1.05 < run_report["uniformScale"] < 1.15
+    assert 1.05 < run_report["uniformScaleX"] < 1.15
+    assert 1.05 < run_report["uniformScaleY"] < 1.15
     assert abs(
         run_report["outputMedianHeight"] - run_report["targetMedianHeight"]
     ) <= 1.0
@@ -571,7 +625,8 @@ def main() -> int:
                 "runOutput": str(cfg.run_output),
                 "runPreview": str(cfg.run_preview),
                 "runRepairedFrames": len(run_report["frames"]),
-                "runUniformScale": run_report["uniformScale"],
+                "runUniformScaleX": run_report["uniformScaleX"],
+                "runUniformScaleY": run_report["uniformScaleY"],
             }
         )
     )
