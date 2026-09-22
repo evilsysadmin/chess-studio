@@ -449,7 +449,9 @@ def self_test() -> None:
         opaque,
         allow_opaque_detached=True,
     )
-    assert removed == []
+    assert len(removed) == 1
+    assert removed[0]["area"] == 4
+    assert preserved.getpixel((20, 70))[3] == 0
     assert preserved.getpixel((72, 40))[3] == 32
 
     print("OK legacy bank canonical-scale self-test: full atlas + run strip + alpha-noise policy")
