@@ -26,6 +26,18 @@
       "material": "wood"
     },
     {
+      "x": 520,
+      "y": 330,
+      "w": 132,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "wood",
+      "one_way": true,
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
       "x": 650,
       "y": 458,
       "w": 150,
@@ -50,11 +62,41 @@
       "material": "stone"
     },
     {
+      "x": 1210,
+      "y": 306,
+      "w": 138,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "stone",
+      "one_way": true,
+      "visual": {
+        "sandbags": 5
+      }
+    },
+    {
       "x": 1390,
       "y": 446,
       "w": 170,
       "h": 24,
       "kind": "wood_bridge",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
+      "x": 1470,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_bridge",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
+      "x": 1570,
+      "y": 275,
+      "w": 155,
+      "h": 24,
+      "kind": "canopy_perch",
       "material": "wood",
       "route": "climb"
     },
@@ -67,12 +109,41 @@
       "material": "wood"
     },
     {
+      "x": 1700,
+      "y": 330,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_bridge",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
       "x": 1910,
       "y": 492,
       "w": 180,
       "h": 24,
       "kind": "ruin_ledge",
       "material": "stone"
+    },
+    {
+      "x": 1975,
+      "y": 402,
+      "w": 120,
+      "h": 20,
+      "kind": "root_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "ravine_bypass"
+    },
+    {
+      "x": 2115,
+      "y": 342,
+      "w": 112,
+      "h": 20,
+      "kind": "ruin_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "ravine_bypass"
     },
     {
       "x": 2160,
@@ -115,6 +186,18 @@
       "material": "stone"
     },
     {
+      "x": 3330,
+      "y": 308,
+      "w": 140,
+      "h": 20,
+      "kind": "relay_perch",
+      "material": "stone",
+      "one_way": true,
+      "visual": {
+        "lamp": true
+      }
+    },
+    {
       "x": 3410,
       "y": 438,
       "w": 150,
@@ -141,56 +224,6 @@
       "route": "canopy_assault"
     },
     {
-      "x": 4230,
-      "y": 472,
-      "w": 170,
-      "h": 24,
-      "kind": "ruin_ledge",
-      "material": "stone"
-    },
-    {
-      "x": 4460,
-      "y": 520,
-      "w": 190,
-      "h": 24,
-      "kind": "low_bridge",
-      "material": "wood"
-    },
-    {
-      "x": 4720,
-      "y": 392,
-      "w": 230,
-      "h": 24,
-      "kind": "canopy_walk",
-      "material": "wood"
-    },
-    {
-      "x": 5020,
-      "y": 454,
-      "w": 210,
-      "h": 24,
-      "kind": "ruin_ledge",
-      "material": "stone"
-    },
-    {
-      "x": 1470,
-      "y": 360,
-      "w": 145,
-      "h": 24,
-      "kind": "climb_bridge",
-      "material": "wood",
-      "route": "climb"
-    },
-    {
-      "x": 1570,
-      "y": 275,
-      "w": 155,
-      "h": 24,
-      "kind": "canopy_perch",
-      "material": "wood",
-      "route": "climb"
-    },
-    {
       "x": 4040,
       "y": 318,
       "w": 145,
@@ -209,6 +242,14 @@
       "material": "wood",
       "route": "canopy_assault",
       "one_way": true
+    },
+    {
+      "x": 4230,
+      "y": 472,
+      "w": 170,
+      "h": 24,
+      "kind": "ruin_ledge",
+      "material": "stone"
     },
     {
       "x": 4300,
@@ -231,40 +272,20 @@
       "one_way": true
     },
     {
-      "x": 520,
-      "y": 330,
-      "w": 132,
-      "h": 20,
-      "kind": "relay_perch",
-      "material": "wood",
-      "one_way": true,
-      "visual": {
-        "lamp": true
-      }
+      "x": 4460,
+      "y": 520,
+      "w": 190,
+      "h": 24,
+      "kind": "low_bridge",
+      "material": "wood"
     },
     {
-      "x": 1210,
-      "y": 306,
-      "w": 138,
-      "h": 20,
-      "kind": "relay_perch",
-      "material": "stone",
-      "one_way": true,
-      "visual": {
-        "sandbags": 5
-      }
-    },
-    {
-      "x": 3330,
-      "y": 308,
-      "w": 140,
-      "h": 20,
-      "kind": "relay_perch",
-      "material": "stone",
-      "one_way": true,
-      "visual": {
-        "lamp": true
-      }
+      "x": 4720,
+      "y": 392,
+      "w": 230,
+      "h": 24,
+      "kind": "canopy_walk",
+      "material": "wood"
     },
     {
       "x": 4860,
@@ -279,24 +300,12 @@
       }
     },
     {
-      "x": 1975,
-      "y": 402,
-      "w": 120,
-      "h": 20,
-      "kind": "root_step",
-      "material": "wood",
-      "one_way": true,
-      "route": "ravine_bypass"
-    },
-    {
-      "x": 2115,
-      "y": 342,
-      "w": 112,
-      "h": 20,
-      "kind": "ruin_step",
-      "material": "stone",
-      "one_way": true,
-      "route": "ravine_bypass"
+      "x": 5020,
+      "y": 454,
+      "w": 210,
+      "h": 24,
+      "kind": "ruin_ledge",
+      "material": "stone"
     }
   ],
   "obstacles": [

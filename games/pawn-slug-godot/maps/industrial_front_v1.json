@@ -18,6 +18,24 @@
   ],
   "platforms": [
     {
+      "x": 260,
+      "y": 545,
+      "w": 110,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
+      "x": 338,
+      "y": 480,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
       "x": 420,
       "y": 520,
       "w": 190,
@@ -49,6 +67,15 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 790,
+      "y": 370,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "wood",
+      "one_way": true
     },
     {
       "x": 900,
@@ -95,6 +122,24 @@
       }
     },
     {
+      "x": 1470,
+      "y": 455,
+      "w": 104,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "concrete",
+      "one_way": true
+    },
+    {
+      "x": 1572,
+      "y": 392,
+      "w": 92,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
       "x": 1660,
       "y": 446,
       "w": 160,
@@ -102,6 +147,18 @@
       "kind": "catwalk",
       "material": "concrete",
       "route": "climb"
+    },
+    {
+      "x": 1740,
+      "y": 360,
+      "w": 90,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "metal",
+      "route": "climb",
+      "visual": {
+        "rail": true
+      }
     },
     {
       "x": 1840,
@@ -129,6 +186,15 @@
       }
     },
     {
+      "x": 1970,
+      "y": 330,
+      "w": 155,
+      "h": 24,
+      "kind": "climb_catwalk",
+      "material": "wood",
+      "route": "climb"
+    },
+    {
       "x": 2130,
       "y": 488,
       "w": 180,
@@ -140,12 +206,41 @@
       }
     },
     {
+      "x": 2180,
+      "y": 392,
+      "w": 118,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
+      "x": 2318,
+      "y": 338,
+      "w": 112,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
       "x": 2380,
       "y": 430,
       "w": 140,
       "h": 24,
       "kind": "catwalk",
       "material": "wood"
+    },
+    {
+      "x": 2455,
+      "y": 368,
+      "w": 96,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true
     },
     {
       "x": 2580,
@@ -158,6 +253,15 @@
         "lamp": true,
         "sandbags": 5
       }
+    },
+    {
+      "x": 2712,
+      "y": 382,
+      "w": 100,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "wood",
+      "one_way": true
     },
     {
       "x": 2870,
@@ -180,6 +284,15 @@
       }
     },
     {
+      "x": 3200,
+      "y": 320,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
+    },
+    {
       "x": 3330,
       "y": 452,
       "w": 150,
@@ -189,6 +302,15 @@
       "visual": {
         "rail": true
       }
+    },
+    {
+      "x": 3450,
+      "y": 362,
+      "w": 96,
+      "h": 20,
+      "kind": "service_ledge",
+      "material": "metal",
+      "one_way": true
     },
     {
       "x": 3510,
@@ -224,6 +346,26 @@
         "rail": true,
         "lamp": true
       }
+    },
+    {
+      "x": 3920,
+      "y": 342,
+      "w": 86,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "pit_bypass"
+    },
+    {
+      "x": 4008,
+      "y": 294,
+      "w": 86,
+      "h": 20,
+      "kind": "broken_service_step",
+      "material": "wood",
+      "one_way": true,
+      "route": "pit_bypass"
     },
     {
       "x": 4110,
@@ -279,127 +421,6 @@
         "rail": true,
         "lamp": true
       }
-    },
-    {
-      "x": 2180,
-      "y": 392,
-      "w": 118,
-      "h": 20,
-      "kind": "broken_service_step",
-      "material": "metal",
-      "one_way": true,
-      "route": "pit_bypass"
-    },
-    {
-      "x": 2318,
-      "y": 338,
-      "w": 112,
-      "h": 20,
-      "kind": "broken_service_step",
-      "material": "wood",
-      "one_way": true,
-      "route": "pit_bypass"
-    },
-    {
-      "x": 260,
-      "y": 545,
-      "w": 110,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 338,
-      "y": 480,
-      "w": 96,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 790,
-      "y": 370,
-      "w": 96,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "wood",
-      "one_way": true
-    },
-    {
-      "x": 1470,
-      "y": 455,
-      "w": 104,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "concrete",
-      "one_way": true
-    },
-    {
-      "x": 1572,
-      "y": 392,
-      "w": 92,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 2455,
-      "y": 368,
-      "w": 96,
-      "h": 20,
-      "kind": "broken_service_step",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 2712,
-      "y": 382,
-      "w": 100,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "wood",
-      "one_way": true
-    },
-    {
-      "x": 3200,
-      "y": 320,
-      "w": 96,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 3450,
-      "y": 362,
-      "w": 96,
-      "h": 20,
-      "kind": "service_ledge",
-      "material": "metal",
-      "one_way": true
-    },
-    {
-      "x": 3920,
-      "y": 342,
-      "w": 86,
-      "h": 20,
-      "kind": "broken_service_step",
-      "material": "metal",
-      "one_way": true,
-      "route": "pit_bypass"
-    },
-    {
-      "x": 4008,
-      "y": 294,
-      "w": 86,
-      "h": 20,
-      "kind": "broken_service_step",
-      "material": "wood",
-      "one_way": true,
-      "route": "pit_bypass"
     }
   ],
   "obstacles": [
