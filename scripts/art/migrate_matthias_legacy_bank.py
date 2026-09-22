@@ -22,6 +22,7 @@ DEFAULT_CELL = 416
 DEFAULT_COLS = 8
 DEFAULT_ROW_COUNT = 18
 DEFAULT_TARGET_ROWS = (2, 6)  # run, crouch
+DEATH_ROW = 17
 ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
@@ -55,19 +56,23 @@ def row_reference_profile(
     atlas: Image.Image,
     grid: Grid,
     row: int,
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, float]:
     heights: list[float] = []
+    spans: list[float] = []
     centers: list[float] = []
     feet: list[float] = []
     for col in range(grid.columns):
         metrics = geometry_metrics(crop_cell(atlas, grid, row, col), ALPHA_THRESHOLD)
         if metrics is None:
             raise GeometryError(f"reference-empty:{row}:{col}")
+        left, top, right, bottom = metrics.body_bbox
         heights.append(float(metrics.body_height))
+        spans.append(float(max(right - left, bottom - top)))
         centers.append(float(metrics.body_center_x))
         feet.append(float(metrics.foot_y))
     return (
         float(statistics.median(heights)),
+        float(statistics.median(spans)),
         float(statistics.median(centers)),
         float(statistics.median(feet)),
     )
@@ -260,12 +265,13 @@ def migrate(
     for row in target_rows:
         if row < 0 or row >= grid.rows:
             raise GeometryError(f"row-out-of-range:{row}")
-        target_height, target_center_x, target_foot_y = row_reference_profile(
+        target_height, target_span, target_center_x, target_foot_y = row_reference_profile(
             reference, grid, row
         )
 
         prepared: list[tuple[Image.Image, list[dict], object]] = []
         source_heights: list[float] = []
+        source_spans: list[float] = []
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
             try:
@@ -292,17 +298,28 @@ def migrate(
                 raise GeometryError(f"source-empty:{row}:{col}")
             prepared.append((cell, removed_noise, metrics))
             source_heights.append(float(metrics.body_height))
+            left, top, right, bottom = metrics.body_bbox
+            source_spans.append(float(max(right - left, bottom - top)))
 
         source_median_height = float(statistics.median(source_heights))
-        row_scale = target_height / source_median_height
+        source_median_span = float(statistics.median(source_spans))
+        scale_metric = "span" if row == DEATH_ROW else "height"
+        row_scale = (
+            target_span / source_median_span
+            if row == DEATH_ROW
+            else target_height / source_median_height
+        )
         if not MIN_SCALE <= row_scale <= MAX_SCALE:
             raise GeometryError(
                 f"row-scale-out-of-range:{row}:{row_scale:.4f}"
             )
 
         row_report: dict[str, object] = {
+            "scale_metric": scale_metric,
             "target_height": target_height,
+            "target_span": target_span,
             "source_median_height": source_median_height,
+            "source_median_span": source_median_span,
             "scale": round(row_scale, 6),
             "resampling": "bilinear",
             "target_center_x": target_center_x,
@@ -367,7 +384,7 @@ def migrate(
             )
 
         output_median_height = float(statistics.median(output_heights))
-        if abs(output_median_height - target_height) > 3.0:
+        if row != DEATH_ROW and abs(output_median_height - target_height) > 3.0:
             raise GeometryError(
                 f"row-median-height:{row}:{output_median_height:.2f}!="
                 f"{target_height:.2f}"
