@@ -128,6 +128,32 @@ Diagnostics ───────── manual/read-only, sin bloquear deploys
 
 `workflow_dispatch` en `cicd.yml` queda como escape hatch manual, no como parte del camino normal de entrega. El fallback directo tampoco es el camino normal: existe para que un commit administrativo excepcional no deje staging esperando a que otra PR "arrastre" el HEAD.
 
+## Objetivo de simplificación de staging OCI
+
+Una vez que el camino OCI de staging esté acreditado extremo a extremo, simplificarlo significa **menos estados y menos pasos redundantes**, no menos garantías.
+
+Objetivo:
+- una generación = un SHA exacto y una única identidad de release;
+- una sola ruta normal de mutación backend para staging;
+- probes/readiness agrupados por propósito, sin repetir la misma comprobación en varias capas;
+- fast-path corto cuando runtime/infra ya están sanos;
+- fallback/control-plane sólo cuando una precondición real falla;
+- pasos idempotentes y reentrantes donde sea posible;
+- observabilidad suficiente para saber qué fase falló sin descargar logs enormes;
+- superseded generations salen antes de mutar o acreditar;
+- diagnósticos read-only no compiten con el mutex de mutación;
+- rollback sigue siendo explícito y probado.
+
+Antes de cambiar `cancel-in-progress: false` en una mutación remota ya iniciada:
+1. demostrar que cada paso interrumpible deja estado consistente o tiene cleanup/reconcile idempotente;
+2. demostrar backward compatibility entre frontend/backend durante el solapamiento de generaciones;
+3. demostrar que una cancelación no puede dejar el host sin la última generación sana;
+4. mantener exact-SHA y supersession como defensa incluso después de habilitar cancelación.
+
+Se puede cancelar agresivamente trabajo previo **read-only o pre-mutation**. No confundir eso con abortar a mitad un deploy/terraform/runtime-sync que ya ha cambiado estado remoto.
+
+Métrica de éxito de la simplificación: menos tiempo y menos branching en el camino normal, con igual o mejor capacidad de responder: qué SHA está servido, qué fase falló, qué se mutó y cómo volver al último estado sano.
+
 ## Fósiles retirados / límites fijados
 
 - `auto-merge.yml` → retirado; sustituido por GitHub native auto-merge.
