@@ -8,6 +8,7 @@ const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
 const SetpieceVisual := preload("res://scripts/setpiece_visual.gd")
 const StageGeometryPolicy := preload("res://scripts/stage_geometry_policy.gd")
+const EnemyCombatTuning := preload("res://scripts/enemy_combat_tuning.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
 const STAGE_CATALOG := ["industrial_front_v1", "harbor_raid_v1", "alpine_fortress_v1", "jungle_relay_v1"]
 const VIEW_SIZE := Vector2(1280.0, 720.0)
@@ -93,11 +94,7 @@ const BISHOP_SUPPRESSION_TELEGRAPH := 0.46
 const BISHOP_SUPPRESSION_RANGE := 760.0
 const BISHOP_SUPPRESSION_SHOTS := 3
 const BISHOP_SUPPRESSION_INTERVAL := 0.14
-const BISHOP_SUPPRESSION_LANES := [
-    {"height": 50.0, "speed": 668.0},
-    {"height": 134.0, "speed": 652.0},
-    {"height": 86.0, "speed": 676.0},
-]
+const BISHOP_SUPPRESSION_LANES := EnemyCombatTuning.BISHOP_SUPPRESSION_LANES
 const PLAYER_STANDING_HEIGHT := 84.0
 const PLAYER_CROUCH_HEIGHT := 48.0
 const LOW_COVER_MAX_HEIGHT := 64.0
@@ -105,23 +102,8 @@ const LOW_COVER_PROJECTILE_CLEARANCE := 16.0
 const PLATFORM_ONE_WAY_MARGIN := 7.0
 const MOVEMENT_HINT_LOOKAHEAD := 180.0
 const MOVEMENT_HINT_TRAIL := 36.0
-const ENEMY_TYPES := {
-    "pawn": {"hp": 34, "speed": 54.0, "width": 45.0, "height": 73.0, "standoff": 270.0},
-    "knight": {"hp": 62, "speed": 92.0, "width": 57.0, "height": 80.0, "standoff": 225.0},
-    "rook": {"hp": 112, "speed": 0.0, "width": 68.0, "height": 90.0, "standoff": 420.0},
-    "bishop": {"hp": 310, "speed": 42.0, "width": 90.0, "height": 128.0, "standoff": 430.0},
-    "queen": {"hp": 156, "speed": 74.0, "width": 62.0, "height": 96.0, "standoff": 345.0},
-    "grenadier": {"hp": 82, "speed": 50.0, "width": 54.0, "height": 82.0, "standoff": 470.0},
-    "scout": {"hp": 46, "speed": 84.0, "width": 48.0, "height": 76.0, "standoff": 245.0},
-    "commando": {"hp": 78, "speed": 76.0, "width": 58.0, "height": 84.0, "standoff": 300.0},
-    "shield": {"hp": 168, "speed": 32.0, "width": 72.0, "height": 94.0, "standoff": 255.0},
-}
-const ENEMY_FIRE_PROFILES := {
-    "pistol": {"range": 720.0, "min_range": 0.0, "cooldown_min": 1.55, "cooldown_max": 2.25, "speed": 500.0, "pellets": 1, "spread": 0.085, "explosive": false},
-    "machinegun": {"range": 840.0, "min_range": 0.0, "cooldown_min": 1.35, "cooldown_max": 1.95, "speed": 560.0, "pellets": 1, "spread": 0.105, "explosive": false},
-    "shotgun": {"range": 545.0, "min_range": 0.0, "cooldown_min": 1.85, "cooldown_max": 2.50, "speed": 470.0, "pellets": 5, "spread": 0.20, "explosive": false},
-    "panzerfaust": {"range": 1200.0, "min_range": 290.0, "cooldown_min": 2.50, "cooldown_max": 3.35, "speed": 390.0, "pellets": 1, "spread": 0.035, "explosive": true},
-}
+const ENEMY_TYPES := EnemyCombatTuning.ENEMY_TYPES
+const ENEMY_FIRE_PROFILES := EnemyCombatTuning.ENEMY_FIRE_PROFILES
 
 var _stage_id := DEFAULT_STAGE_ID
 var _stage_manifest: Dictionary = {}
