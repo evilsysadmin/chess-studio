@@ -92,6 +92,8 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
+    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"}:
+        return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
     if lower in {
@@ -426,6 +428,10 @@ def self_test() -> None:
         "frontend/src/components/WarRoom3D.jsx",
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
+
+    for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"):
+        gate_scope = classify([nonvisual_gate])
+        assert gate_scope.capture_groups == "none"
 
     css_manifest = classify(["scripts/css_architecture_manifest.json"])
     assert css_manifest.capture_groups == "none"
