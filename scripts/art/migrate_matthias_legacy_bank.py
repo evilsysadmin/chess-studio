@@ -73,7 +73,7 @@ def row_reference_profile(
     )
 
 
-def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[dict]]:
+def clean_legacy_detached_noise(\n    image: Image.Image,\n    allow_opaque_detached: bool = False,\n) -> tuple[Image.Image, list[dict]]:
     rgba = image.convert("RGBA")
     alpha = rgba.getchannel("A")
     width, height = rgba.size
@@ -119,6 +119,8 @@ def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[d
         ys = [y for _, y in pixels]
         bbox = (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
         if max_alpha > LEGACY_NOISE_MAX_ALPHA:
+            if allow_opaque_detached:
+                continue
             raise GeometryError(
                 f"detached-opaque:area={len(pixels)}:bbox={bbox}:max-alpha={max_alpha}"
             )
@@ -145,6 +147,7 @@ def place_legacy_frame(
     image: Image.Image,
     contract: PlacementContract,
     lint_config: LintConfig,
+    allow_opaque_detached: bool = False,
 ) -> tuple[Image.Image, list[dict]]:
     raw = image.convert("RGBA")
     lint = lint_frame(raw, lint_config)
@@ -197,7 +200,7 @@ def place_legacy_frame(
 
     out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
     out.alpha_composite(scaled, (dest_x, dest_y))
-    out, removed_post_noise = clean_legacy_detached_noise(out)
+    out, removed_post_noise = clean_legacy_detached_noise(\n        out, allow_opaque_detached=allow_opaque_detached\n    )
 
     post = lint_frame(out, lint_config)
     if not post.ok:
@@ -221,6 +224,7 @@ def migrate(
     reference: Image.Image,
     grid: Grid,
     target_rows: tuple[int, ...],
+    allow_opaque_detached: bool = False,
 ) -> tuple[Image.Image, dict]:
     source = source.convert("RGBA")
     reference = reference.convert("RGBA")
@@ -238,12 +242,13 @@ def migrate(
             "rows": grid.rows,
         },
         "rows": {},
+        "allow_opaque_detached": allow_opaque_detached,
     }
     lint = LintConfig(
         alpha_threshold=ALPHA_THRESHOLD,
         edge_guard_px=2,
         min_detached_area=4,
-        allowed_detached_components=0,
+        allowed_detached_components=8 if allow_opaque_detached else 0,
         reject_hidden_rgb=True,
     )
 
@@ -259,7 +264,7 @@ def migrate(
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
             try:
-                cell, removed_noise = clean_legacy_detached_noise(cell)
+                cell, removed_noise = clean_legacy_detached_noise(\n                    cell, allow_opaque_detached=allow_opaque_detached\n                )
             except GeometryError as exc:
                 raise GeometryError(f"frame:{row}:{col}:{exc}") from exc
             raw_lint = lint_frame(cell, lint)
@@ -313,6 +318,7 @@ def migrate(
                         center_tolerance_px=3.0,
                     ),
                     lint,
+                    allow_opaque_detached=allow_opaque_detached,
                 )
             except GeometryError as exc:
                 raise GeometryError(
@@ -432,6 +438,13 @@ def self_test() -> None:
     else:
         raise AssertionError("opaque detached content must fail closed")
 
+    preserved, removed = clean_legacy_detached_noise(
+        opaque,
+        allow_opaque_detached=True,
+    )
+    assert removed == []
+    assert preserved.getpixel((72, 40))[3] == 32
+
     print("OK legacy bank canonical-scale self-test: full atlas + run strip + alpha-noise policy")
 
 
@@ -452,6 +465,7 @@ def main() -> int:
     parser.add_argument("--cell", type=int, default=DEFAULT_CELL)
     parser.add_argument("--columns", type=int, default=DEFAULT_COLS)
     parser.add_argument("--row-count", type=int, default=DEFAULT_ROW_COUNT)
+    parser.add_argument("--allow-opaque-detached", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -471,6 +485,7 @@ def main() -> int:
         Image.open(args.reference),
         grid,
         tuple(args.rows),
+        allow_opaque_detached=args.allow_opaque_detached,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
