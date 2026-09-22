@@ -9,6 +9,7 @@ Lee según el área:
 - persistencia/restore de partidas: `docs/operations/game-state-recovery.md`;
 - Chronicles/Tactics: `docs/operations/chronicles-tactics.md`;
 - OCI/runtime/secrets: `docs/operations/oci-backend-migration.md`, `docs/operations/oci-secret-lifecycle.md` y `skills/oci-release-observability/SKILL.md`.
+- presencia/Admin: `docs/operations/presence-admin.md`.
 
 ## Invariantes
 
