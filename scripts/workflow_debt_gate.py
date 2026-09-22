@@ -46,8 +46,6 @@ INVENTORY = {
     'pawn-slug-enemy-cast-v2.yml': 'visual-staging-evidence',
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
     'pawn-slug-enemy-shield-v2.yml': 'visual-staging-evidence',
-    'pawn-slug-godot-strict-v16.yml': 'art-generation',
-    'pawn-slug-godot-strict-v17.yml': 'art-generation',
     'pawn-slug-matthias-sprite-smoke.yml': 'visual-staging-evidence',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
