@@ -1,4 +1,3 @@
-export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v5-carpet-edge-fallback-static-target-policy';
 
 export const WAR_ROOM_HANS_CHORE_EVENTS = Object.freeze([
   'dust-armor',
