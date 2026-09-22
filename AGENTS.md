@@ -41,6 +41,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
+| Espectador / CPU-vs-CPU | [`docs/operations/spectator.md`](docs/operations/spectator.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
 | Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -91,6 +92,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
 - [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md)
 - [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
+- [`docs/operations/spectator.md`](docs/operations/spectator.md)
 - [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md)
 - [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md)
 - [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md)
