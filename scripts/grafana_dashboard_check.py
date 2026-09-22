@@ -37,12 +37,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated"):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"'):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []
@@ -63,6 +63,19 @@ def main() -> int:
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
+    logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
+    logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
+    if "Biggest offenders · 401/403" not in logs_titles:
+        fail("logs dashboard perdió ranking 401/403")
+    logs_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for panel in (logs_data.get("panels") or [])
+        for target in (panel.get("targets") or [])
+    )
+    for token in ('status=~"401|403"', "client_ip"):
+        if token not in logs_exprs:
+            fail(f"logs dashboard perdió ranking 401/403: {token}")
+
     explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
     explorer_variables = {str(row.get("name") or "") for row in ((explorer_data.get("templating") or {}).get("list") or [])}
     required_explorer_variables = {"selector", "event", "status", "method", "route", "path", "release", "request_id", "trace_id", "text"}
@@ -74,6 +87,12 @@ def main() -> int:
         for panel in (explorer_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
+    explorer_titles = {str(row.get("title") or "") for row in (explorer_data.get("panels") or [])}
+    if "Biggest offenders · 401/403" not in explorer_titles:
+        fail("log explorer perdió ranking 401/403")
+    for token in ('status=~"401|403"', "client_ip"):
+        if token not in explorer_exprs:
+            fail(f"log explorer perdió query de offenders: {token}")
     explorer_raw = (INFRA / "dashboards" / "chess-studio-log-explorer.json").read_text(encoding="utf-8")
     for token in (
         'production OCI stdout : {service_name=',
