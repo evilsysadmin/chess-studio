@@ -22,10 +22,14 @@ DEFAULT_CELL = 416
 DEFAULT_COLS = 8
 DEFAULT_ROW_COUNT = 18
 DEFAULT_TARGET_ROWS = (2, 6)  # run, crouch
+ROTATING_POSE_ROWS = {16, 17}  # hurt, die: height is not a stable scale proxy
 ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
-MAX_SCALE = 1.25
+# Legacy weapon banks contain real body-scale regressions down to ~0.62x canon.
+# Allow recovery up to ~1.61x while placement still fails closed on clipping,
+# footline drift and center drift.
+MAX_SCALE = 1.70
 LEGACY_NOISE_MAX_ALPHA = 24  # <10% opacity; runtime perceptual QA starts above ~0.10 alpha.
 
 
@@ -55,25 +59,32 @@ def row_reference_profile(
     atlas: Image.Image,
     grid: Grid,
     row: int,
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, float]:
     heights: list[float] = []
+    spans: list[float] = []
     centers: list[float] = []
     feet: list[float] = []
     for col in range(grid.columns):
         metrics = geometry_metrics(crop_cell(atlas, grid, row, col), ALPHA_THRESHOLD)
         if metrics is None:
             raise GeometryError(f"reference-empty:{row}:{col}")
+        left, top, right, bottom = metrics.body_bbox
         heights.append(float(metrics.body_height))
+        spans.append(float(max(right - left, bottom - top)))
         centers.append(float(metrics.body_center_x))
         feet.append(float(metrics.foot_y))
     return (
         float(statistics.median(heights)),
+        float(statistics.median(spans)),
         float(statistics.median(centers)),
         float(statistics.median(feet)),
     )
 
 
-def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[dict]]:
+def clean_legacy_detached_noise(
+    image: Image.Image,
+    allow_opaque_detached: bool = False,
+) -> tuple[Image.Image, list[dict]]:
     rgba = image.convert("RGBA")
     alpha = rgba.getchannel("A")
     width, height = rgba.size
@@ -119,6 +130,8 @@ def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[d
         ys = [y for _, y in pixels]
         bbox = (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
         if max_alpha > LEGACY_NOISE_MAX_ALPHA:
+            if allow_opaque_detached:
+                continue
             raise GeometryError(
                 f"detached-opaque:area={len(pixels)}:bbox={bbox}:max-alpha={max_alpha}"
             )
@@ -145,6 +158,7 @@ def place_legacy_frame(
     image: Image.Image,
     contract: PlacementContract,
     lint_config: LintConfig,
+    allow_opaque_detached: bool = False,
 ) -> tuple[Image.Image, list[dict]]:
     raw = image.convert("RGBA")
     lint = lint_frame(raw, lint_config)
@@ -197,7 +211,9 @@ def place_legacy_frame(
 
     out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
     out.alpha_composite(scaled, (dest_x, dest_y))
-    out, removed_post_noise = clean_legacy_detached_noise(out)
+    out, removed_post_noise = clean_legacy_detached_noise(
+        out, allow_opaque_detached=allow_opaque_detached
+    )
 
     post = lint_frame(out, lint_config)
     if not post.ok:
@@ -221,6 +237,7 @@ def migrate(
     reference: Image.Image,
     grid: Grid,
     target_rows: tuple[int, ...],
+    allow_opaque_detached: bool = False,
 ) -> tuple[Image.Image, dict]:
     source = source.convert("RGBA")
     reference = reference.convert("RGBA")
@@ -238,28 +255,32 @@ def migrate(
             "rows": grid.rows,
         },
         "rows": {},
+        "allow_opaque_detached": allow_opaque_detached,
     }
     lint = LintConfig(
         alpha_threshold=ALPHA_THRESHOLD,
         edge_guard_px=2,
         min_detached_area=4,
-        allowed_detached_components=0,
+        allowed_detached_components=8 if allow_opaque_detached else 0,
         reject_hidden_rgb=True,
     )
 
     for row in target_rows:
         if row < 0 or row >= grid.rows:
             raise GeometryError(f"row-out-of-range:{row}")
-        target_height, target_center_x, target_foot_y = row_reference_profile(
+        target_height, target_span, target_center_x, target_foot_y = row_reference_profile(
             reference, grid, row
         )
 
         prepared: list[tuple[Image.Image, list[dict], object]] = []
         source_heights: list[float] = []
+        source_spans: list[float] = []
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
             try:
-                cell, removed_noise = clean_legacy_detached_noise(cell)
+                cell, removed_noise = clean_legacy_detached_noise(
+                    cell, allow_opaque_detached=allow_opaque_detached
+                )
             except GeometryError as exc:
                 raise GeometryError(f"frame:{row}:{col}:{exc}") from exc
             raw_lint = lint_frame(cell, lint)
@@ -280,17 +301,28 @@ def migrate(
                 raise GeometryError(f"source-empty:{row}:{col}")
             prepared.append((cell, removed_noise, metrics))
             source_heights.append(float(metrics.body_height))
+            left, top, right, bottom = metrics.body_bbox
+            source_spans.append(float(max(right - left, bottom - top)))
 
         source_median_height = float(statistics.median(source_heights))
-        row_scale = target_height / source_median_height
+        source_median_span = float(statistics.median(source_spans))
+        scale_metric = "span" if row in ROTATING_POSE_ROWS else "height"
+        row_scale = (
+            target_span / source_median_span
+            if row in ROTATING_POSE_ROWS
+            else target_height / source_median_height
+        )
         if not MIN_SCALE <= row_scale <= MAX_SCALE:
             raise GeometryError(
                 f"row-scale-out-of-range:{row}:{row_scale:.4f}"
             )
 
         row_report: dict[str, object] = {
+            "scale_metric": scale_metric,
             "target_height": target_height,
+            "target_span": target_span,
             "source_median_height": source_median_height,
+            "source_median_span": source_median_span,
             "scale": round(row_scale, 6),
             "resampling": "bilinear",
             "target_center_x": target_center_x,
@@ -313,6 +345,7 @@ def migrate(
                         center_tolerance_px=3.0,
                     ),
                     lint,
+                    allow_opaque_detached=allow_opaque_detached,
                 )
             except GeometryError as exc:
                 raise GeometryError(
@@ -354,7 +387,7 @@ def migrate(
             )
 
         output_median_height = float(statistics.median(output_heights))
-        if abs(output_median_height - target_height) > 3.0:
+        if row not in ROTATING_POSE_ROWS and abs(output_median_height - target_height) > 3.0:
             raise GeometryError(
                 f"row-median-height:{row}:{output_median_height:.2f}!="
                 f"{target_height:.2f}"
@@ -432,6 +465,15 @@ def self_test() -> None:
     else:
         raise AssertionError("opaque detached content must fail closed")
 
+    preserved, removed = clean_legacy_detached_noise(
+        opaque,
+        allow_opaque_detached=True,
+    )
+    assert len(removed) == 1
+    assert removed[0]["area"] == 4
+    assert preserved.getpixel((20, 70))[3] == 0
+    assert preserved.getpixel((72, 40))[3] == 32
+
     print("OK legacy bank canonical-scale self-test: full atlas + run strip + alpha-noise policy")
 
 
@@ -452,6 +494,7 @@ def main() -> int:
     parser.add_argument("--cell", type=int, default=DEFAULT_CELL)
     parser.add_argument("--columns", type=int, default=DEFAULT_COLS)
     parser.add_argument("--row-count", type=int, default=DEFAULT_ROW_COUNT)
+    parser.add_argument("--allow-opaque-detached", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -471,6 +514,7 @@ def main() -> int:
         Image.open(args.reference),
         grid,
         tuple(args.rows),
+        allow_opaque_detached=args.allow_opaque_detached,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
