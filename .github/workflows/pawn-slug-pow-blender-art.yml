@@ -1,10 +1,8 @@
-name: Pawn Slug · POW Blender canonical art
+name: Pawn Slug · POW candidate art (manual Blender)
 
+# Authoring aid only. Runtime acceptance is owned by Sprite Forge + Godot.
+# Keep this manual so Blender candidate generation never becomes a second PR gate.
 on:
-  pull_request:
-    paths:
-      - 'scripts/blender/build_pawn_slug_pows_v2.py'
-      - '.github/workflows/pawn-slug-pow-blender-art.yml'
   workflow_dispatch:
 
 permissions:
