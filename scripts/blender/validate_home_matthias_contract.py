@@ -18,10 +18,12 @@ from home_matthias_contract import (  # noqa: E402
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
     CANONICAL_REFERENCE_SHA256,
+    CAP_TOP_LATERAL_OFFSET,
     CAP_TOP_MIN_REAR_OFFSET,
     CAP_TOP_MIN_VERTICAL_SEPARATION,
     CAP_TOP_TO_CROWN_WIDTH,
     CAP_TO_HEAD_WIDTH,
+    CAP_VISOR_BROW_CLEARANCE,
     CAP_VISOR_TO_HEAD_WIDTH,
     CHEST_CREST_HEIGHT_TO_HEAD_WIDTH,
     CHEST_CREST_WIDTH_TO_HEAD_WIDTH,
@@ -199,6 +201,21 @@ def main():
     assert cap_top_center.z - cap_center.z >= CAP_TOP_MIN_VERTICAL_SEPARATION, (
         cap_center.z,
         cap_top_center.z,
+    )
+    assert_range(
+        "cap top lateral lean",
+        cap_top_center.x - cap_center.x,
+        CAP_TOP_LATERAL_OFFSET,
+    )
+    brow_top = max(
+        world_z_bounds(objects["Brow.L"])[1],
+        world_z_bounds(objects["Brow.R"])[1],
+    )
+    visor_bottom = world_z_bounds(visor)[0]
+    assert_range(
+        "visor/brow clearance",
+        visor_bottom - brow_top,
+        CAP_VISOR_BROW_CLEARANCE,
     )
 
     assert_range(
