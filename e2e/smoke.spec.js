@@ -72,10 +72,9 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   // Arm the failures only after the game is fully mounted. Supplying GET
   // failures to mockApi up front lets an eager post-create reconciliation
   // consume them before reload, turning this restoration contract into a race.
-  let remainingRestoreFailures = 2;
+  let failRestoreGets = true;
   await page.route('http://localhost:4000/api/games/*', async (route) => {
-    if (route.request().method() === 'GET' && remainingRestoreFailures > 0) {
-      remainingRestoreFailures -= 1;
+    if (route.request().method() === 'GET' && failRestoreGets) {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',
@@ -89,6 +88,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await page.reload();
   await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reintentar recuperación', exact: true })).toBeVisible();
+  failRestoreGets = false;
   await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 
