@@ -9,6 +9,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
 - Chronicles/Tactics: `docs/operations/chronicles-tactics.md`.
 - Pawn Slug host/runtime: `skills/pawn-slug-runtime-smoke/SKILL.md`.
 - Assets R2: `docs/visual-assets-r2-flow.md`.
+- Presencia/Admin: `docs/operations/presence-admin.md`.
 
 ## Arquitectura
 
