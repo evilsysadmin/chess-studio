@@ -18,7 +18,7 @@ from home_matthias_contract import (  # noqa: E402
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
     CANONICAL_REFERENCE_SHA256,
-    CAP_TOP_LATERAL_OFFSET,
+    CAP_CROWN_TILT_DEGREES,
     CAP_TOP_MIN_REAR_OFFSET,
     CAP_TOP_MIN_VERTICAL_SEPARATION,
     CAP_TOP_TO_CROWN_WIDTH,
@@ -203,9 +203,9 @@ def main():
         cap_top_center.z,
     )
     assert_range(
-        "cap top lateral lean",
-        cap_top_center.x - cap_center.x,
-        CAP_TOP_LATERAL_OFFSET,
+        "cap crown visible tilt",
+        abs(world_y_rotation_degrees(cap)),
+        CAP_CROWN_TILT_DEGREES,
     )
     brow_top = max(
         world_z_bounds(objects["Brow.L"])[1],

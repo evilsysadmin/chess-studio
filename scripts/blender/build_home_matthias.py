@@ -53,7 +53,7 @@ def add_face_anchor(rig):
     bpy.context.collection.objects.link(anchor)
     anchor.empty_display_type = 'PLAIN_AXES'
     anchor.empty_display_size = .025
-    anchor.location = (0, -.455, 1.330)
+    anchor.location = (0, -.465, 1.260)
     anchor['runtime_role'] = 'matthias-face-direction-anchor'
 
     world = anchor.matrix_world.copy()
