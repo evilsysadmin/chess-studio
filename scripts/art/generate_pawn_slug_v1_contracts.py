@@ -90,12 +90,29 @@ def contract_for(bank: dict) -> dict:
         if strategy == "socketed-body":
             item["sockets"] = empty_sockets(frames)
         animations.append(item)
+    body_parity = (
+        {
+            "family": "matthias-v1",
+            "reference_weapon": "pistol",
+            "animations": ["idle", "run", "crouch"],
+            "core_x_min_ratio": 0.34,
+            "core_x_max_ratio": 0.64,
+            "min_core_height_ratio": 0.95,
+            "max_core_height_ratio": 1.05,
+            "min_core_area_ratio": 0.88,
+            "max_core_area_ratio": 1.18,
+            "max_spread_extra": 0.04,
+        }
+        if actor == "matthias" and strategy == "integrated"
+        else None
+    )
     return {
         "schema": 1,
         "quality_contract": "sprite-forge-v1",
         "actor": actor,
         "weapon": weapon,
         "composition": strategy,
+        "body_parity": body_parity,
         "socket_quality": ({
             "min_hand_separation_px": 6.0,
             "max_hand_separation_px": 72.0,
