@@ -23,6 +23,7 @@ INVENTORY = {
     'billing-cost-export.yml': 'observability',
     'branch-housekeeping.yml': 'housekeeping',
     'chronicles-party-blender-art.yml': 'art-generation',
+    'chess-football-godot.yml': 'game-runtime-experimental',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',
