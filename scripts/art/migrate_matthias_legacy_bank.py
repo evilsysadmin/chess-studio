@@ -124,19 +124,25 @@ def migrate(
                 raise GeometryError(
                     f"scale-out-of-range:{row}:{col}:{scale:.4f}"
                 )
-            placed = place_frame_fixed_scale(
-                cell,
-                PlacementContract(
-                    canvas_size=(grid.cell, grid.cell),
-                    scale=scale,
-                    body_center_x=target_center_x,
-                    foot_y=target_foot_y,
-                    safe_margin_px=SAFE_MARGIN,
-                    foot_tolerance_px=2.0,
-                    center_tolerance_px=3.0,
-                ),
-                lint,
-            )
+            try:
+                placed = place_frame_fixed_scale(
+                    cell,
+                    PlacementContract(
+                        canvas_size=(grid.cell, grid.cell),
+                        scale=scale,
+                        body_center_x=target_center_x,
+                        foot_y=target_foot_y,
+                        safe_margin_px=SAFE_MARGIN,
+                        foot_tolerance_px=2.0,
+                        center_tolerance_px=3.0,
+                    ),
+                    lint,
+                )
+            except GeometryError as exc:
+                raise GeometryError(
+                    f"frame:{row}:{col}:source-height={metrics.body_height}:"
+                    f"scale={scale:.4f}:{exc}"
+                ) from exc
             post = geometry_metrics(placed, ALPHA_THRESHOLD)
             if post is None:
                 raise GeometryError(f"post-empty:{row}:{col}")
