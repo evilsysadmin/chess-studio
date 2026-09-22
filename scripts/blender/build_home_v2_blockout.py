@@ -187,6 +187,20 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         cross = 0.5 + 0.5 * math.sin((v * 9.0 + u * 3.0) * math.tau)
         return max(0.0, min(1.0, 0.40 + rib ** 6 * 0.30 + (coarse - 0.5) * 0.32
                             + (cross - 0.5) * 0.06 + (fine - 0.5) * 0.08))
+    if profile == "globe":
+        # A large-scale, threshold-edged blob pattern reads as embossed continents on
+        # an antique study globe (the material stays a single hue; only the relief
+        # varies), rather than generic mottled noise.
+        coarse_lat = _value_noise(u, v * 0.55, seed + 601, 5)
+        mid = _value_noise(u, v * 0.6, seed + 613, 9)
+        continents = coarse_lat * 0.62 + mid * 0.38
+        land = 1.0 if continents > 0.52 else 0.0
+        edge_soften = _value_noise(u, v, seed + 641, 23)
+        coast = abs(continents - 0.52) < 0.035
+        if coast:
+            land = 0.5 + (edge_soften - 0.5) * 0.6
+        value = 0.22 + land * 0.62 + (fine - 0.5) * 0.08
+        return max(0.0, min(1.0, value))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
         brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
@@ -335,6 +349,7 @@ def _packed_surface_arrays(
         "paper": (0.88, 1.12),
         "wax": (0.90, 1.10),
         "leaf": (0.74, 1.24),
+        "globe": (0.72, 1.22),
     }.get(profile, (0.82, 1.14))
     rough_span = {
         "stone": 0.07,
@@ -346,6 +361,7 @@ def _packed_surface_arrays(
         "paper": 0.055,
         "wax": 0.045,
         "leaf": 0.09,
+        "globe": 0.05,
     }.get(profile, 0.10)
     normal_strength = {
         "stone": 2.5,
@@ -357,6 +373,7 @@ def _packed_surface_arrays(
         "paper": 1.15,
         "wax": 0.85,
         "leaf": 1.8,
+        "globe": 2.2,
     }.get(profile, 2.5) * (size / base_size)
 
     factor = low + (high - low) * heights
@@ -414,6 +431,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "leather": 128,
         "metal": 128,
         "leaf": 128,
+        "globe": 144,
     }.get(profile, 96)
     # Normal maps are ~3/4 of the texture bytes, so resolution is spent only on
     # the surfaces that dominate the frame. Dark decals, soot and small props keep
@@ -922,6 +940,14 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03,
     mesh = bpy.data.meshes.new(f"{name}_mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
+    # flat_panel builds its mesh from raw vertex/face lists, which ships with no UV
+    # layer at all. An image texture with no UV data (not even a poor one) samples a
+    # single texel for the whole surface, so every flat_panel object with a packed
+    # texture_profile material (banners, armor overlay plates, the table drape) rendered
+    # as one flat colour no matter how good the texture looked in isolation. A simple
+    # planar UV from the panel's own X/Z plane (world-scale metres per repeat, matching
+    # WORLD_UV_TILE_M) is enough since these are near-planar silhouettes.
+    _planar_uv_from_xz(mesh, tile=1.6)
     obj = bpy.data.objects.new(name, mesh)
     obj.location = (ox, oy, oz)
     bpy.context.collection.objects.link(obj)
@@ -931,6 +957,14 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03,
         configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
+
+
+def _planar_uv_from_xz(mesh, *, tile: float) -> None:
+    layer = mesh.uv_layers.new(name="UVMap")
+    for polygon in mesh.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
+            layer.data[loop_index].uv = (vertex.co.x / tile, vertex.co.z / tile)
 
 
 def draped_banner_panel(
@@ -988,6 +1022,22 @@ def draped_banner_panel(
     mesh = bpy.data.meshes.new(f"{name}_mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
+    # Same missing-UV gap as flat_panel: without it the cloth texture collapses to one
+    # flat colour. The banner already has a natural (row, col) grid, so map it directly
+    # instead of a generic planar projection.
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    tile = 1.3
+    for row in range(vertical_segments):
+        for col in range(horizontal_segments):
+            a = row * cols + col
+            b = a + 1
+            c = a + cols
+            d = c + 1
+            face_index = row * horizontal_segments + col
+            loop_start = mesh.polygons[face_index].loop_start
+            for offset, vertex_index in enumerate((a, c, d, b)):
+                vx, vy, vz = vertices[vertex_index]
+                uv_layer.data[loop_start + offset].uv = (vx / tile, vz / tile)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     apply_material(obj, mat)
@@ -2482,6 +2532,31 @@ def add_stairs(materials):
     sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.16, 0.16, 0.16), materials["stone_dark"])
 
     steps = 11
+
+    def step_center(index):
+        tt = index / (steps - 1)
+        return 5.28 + 2.45 * tt, 1.45 - 2.28 * tt, 0.68 - 1.58 * tt
+
+    # The treads were isolated boxes: each one sits only ~0.008 above the next tread's
+    # top, a gap that vanishes at the tread's own edges (rounded off by the bevel) but
+    # opens into a real gap between consecutive treads everywhere else, letting the
+    # Dungeon firelight below leak straight through the flight in a grazing camera view.
+    # A generously oversized bridging mass between every pair of consecutive tread
+    # centres (axis-aligned, deliberately overshooting rather than fitted tight) closes
+    # that gap without needing to model an exact sloped stringer.
+    for i in range(steps - 1):
+        x0, y0, z0 = step_center(i)
+        x1, y1, z1 = step_center(i + 1)
+        bridge_top = z0 - 0.075 + 0.03
+        bridge_bottom = z1 - 0.075 - 0.22
+        cube(
+            f"HOME_ARCH_dungeon_step_bridge_{i}",
+            ((x0 + x1) / 2.0, (y0 + y1) / 2.0, (bridge_top + bridge_bottom) / 2.0),
+            (0.62, 0.50, (bridge_top - bridge_bottom) / 2.0),
+            stone,
+            bevel=0.02,
+        )
+
     for i in range(steps):
         t = i / (steps - 1)
         x = 5.28 + 2.45 * t
@@ -2718,12 +2793,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
             "HOME_MAT_globe",
-            (0.028, 0.050, 0.044, 1),
-            roughness=0.86,
-            variation=0.18,
-            variation_scale=3.4,
-            bump_scale=10.0,
-            bump_strength=0.038,
+            (0.115, 0.185, 0.155, 1),
+            roughness=0.78,
+            texture_profile="globe",
         ),
         "plant": material("HOME_MAT_plant", (0.085, 0.200, 0.055, 1), roughness=0.82, texture_profile="leaf"),
         "ceramic": material("HOME_MAT_ceramic", (0.42, 0.37, 0.30, 1), roughness=0.68, bump_scale=7.0, bump_strength=0.035, variation=0.08, variation_scale=4.4),

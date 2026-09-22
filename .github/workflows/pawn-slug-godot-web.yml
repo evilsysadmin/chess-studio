@@ -202,32 +202,6 @@ jobs:
           tmp="$(mktemp -d)"
           python3 scripts/art/generate_pawn_slug_v1_contracts.py games/pawn-slug-godot/art/sprite-forge-v1/catalog.json "$tmp/contracts"
           test "$(find "$tmp/contracts" -type f -name '*.json' | wc -l)" -eq 14
-      - name: Build canonical-scale legacy migration candidates
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          root="$RUNNER_TEMP/pawn-slug-legacy-scale-candidates"
-          mkdir -p "$root/reference" "$root/shotgun" "$root/panzerfaust"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png"             -o "$root/reference/pistol-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png"             -o "$root/reference/pistol-run12.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png"             -o "$root/shotgun/source-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png"             -o "$root/shotgun/source-run12.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png"             -o "$root/panzerfaust/source-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png"             -o "$root/panzerfaust/source-run12.png"
-
-          for weapon in shotgun panzerfaust; do
-            python3 scripts/art/migrate_matthias_legacy_bank.py               --source "$root/$weapon/source-full.png"               --reference "$root/reference/pistol-full.png"               --rows 2,6               --output "$root/$weapon/candidate-full.png"               --report "$root/$weapon/full-health.json"
-            python3 scripts/art/migrate_matthias_legacy_bank.py               --source "$root/$weapon/source-run12.png"               --reference "$root/reference/pistol-run12.png"               --columns 12 --row-count 1 --rows 0               --output "$root/$weapon/candidate-run12.png"               --report "$root/$weapon/run12-health.json"
-          done
-      - name: Upload canonical-scale migration candidates
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v7
-        with:
-          name: pawn-slug-legacy-scale-candidates-${{ github.event.pull_request.number }}
-          path: ${{ runner.temp }}/pawn-slug-legacy-scale-candidates/
-          if-no-files-found: error
-          retention-days: 7
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded
