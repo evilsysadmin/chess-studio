@@ -6,7 +6,7 @@ El objetivo no es conseguir que un generador produzca arte perfecto a la primera
 
 ## 1. Autoridad y límites
 
-- Pawn Slug runtime art es 2D puro. No usar Blender para generar sprites runtime.
+- Pawn Slug runtime art es 2D puro. No usar Blender para generar sprites runtime. Los generadores Blender históricos pueden conservarse únicamente como herramientas manuales de referencia/candidatos; no son gates requeridos, no publican runtime y no participan en la aceptación.
 - El master/worksheet aprobado conserva la autoridad visual. La generación no rediseña un personaje ya aceptado.
 - El source autoritativo de authoring es atómico por frame: `actor/weapon/animation/frame.png`.
 - Un spritesheet, contact sheet o worksheet generado por IA es material de entrada o revisión; nunca source runtime directo.
@@ -159,7 +159,7 @@ Los banks necesarios de Matthias se preparan al bootstrap de Pawn Slug; cambiar 
 
 ## 12. CI y publicación
 
-CI verifica; no hace authoring creativo.
+CI verifica; no hace authoring creativo. En particular, CI no ejecuta generadores Blender de Pawn Slug: cualquier salida externa entra como candidato 2D y sólo Sprite Forge + Godot puede convertirla en runtime aceptado.
 
 En PR:
 
