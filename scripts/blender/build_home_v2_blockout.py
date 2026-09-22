@@ -922,6 +922,14 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03,
     mesh = bpy.data.meshes.new(f"{name}_mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
+    # flat_panel builds its mesh from raw vertex/face lists, which ships with no UV
+    # layer at all. An image texture with no UV data (not even a poor one) samples a
+    # single texel for the whole surface, so every flat_panel object with a packed
+    # texture_profile material (banners, armor overlay plates, the table drape) rendered
+    # as one flat colour no matter how good the texture looked in isolation. A simple
+    # planar UV from the panel's own X/Z plane (world-scale metres per repeat, matching
+    # WORLD_UV_TILE_M) is enough since these are near-planar silhouettes.
+    _planar_uv_from_xz(mesh, tile=1.6)
     obj = bpy.data.objects.new(name, mesh)
     obj.location = (ox, oy, oz)
     bpy.context.collection.objects.link(obj)
@@ -931,6 +939,14 @@ def flat_panel(name: str, points_xz, y: float, depth: float, mat, *, bevel=0.03,
         configure_soft_edge_modifier(modifier, name)
     apply_material(obj, mat)
     return obj
+
+
+def _planar_uv_from_xz(mesh, *, tile: float) -> None:
+    layer = mesh.uv_layers.new(name="UVMap")
+    for polygon in mesh.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
+            layer.data[loop_index].uv = (vertex.co.x / tile, vertex.co.z / tile)
 
 
 def draped_banner_panel(
@@ -988,6 +1004,22 @@ def draped_banner_panel(
     mesh = bpy.data.meshes.new(f"{name}_mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
+    # Same missing-UV gap as flat_panel: without it the cloth texture collapses to one
+    # flat colour. The banner already has a natural (row, col) grid, so map it directly
+    # instead of a generic planar projection.
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    tile = 1.3
+    for row in range(vertical_segments):
+        for col in range(horizontal_segments):
+            a = row * cols + col
+            b = a + 1
+            c = a + cols
+            d = c + 1
+            face_index = row * horizontal_segments + col
+            loop_start = mesh.polygons[face_index].loop_start
+            for offset, vertex_index in enumerate((a, c, d, b)):
+                vx, vy, vz = vertices[vertex_index]
+                uv_layer.data[loop_start + offset].uv = (vx / tile, vz / tile)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     apply_material(obj, mat)
