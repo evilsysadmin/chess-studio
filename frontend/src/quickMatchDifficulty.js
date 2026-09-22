@@ -1,5 +1,6 @@
 import { loadGameActivity } from './gameActivity.js';
 import { loadCleanGameRecords } from './cleanGames.js';
+import { clampNumber } from './numberUtils.js';
 import {
   PROVISIONAL_GAMES,
   cpuRatingForDifficulty,
@@ -18,14 +19,10 @@ const QUICK_MATCH_MIN_QUALITY_GAMES = 2;
 const QUICK_MATCH_MAX_QUALITY_BOOST_ELO = 10;
 const QUICK_MATCH_MAX_QUALITY_RELIEF_ELO = -15;
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
 export function provisionalQuickMatchLeadElo(games = PROVISIONAL_GAMES) {
   const count = Number(games);
   if (!Number.isFinite(count) || count >= PROVISIONAL_GAMES) return QUICK_MATCH_TARGET_LEAD_ELO;
-  const progress = clamp(count / PROVISIONAL_GAMES, 0, 1);
+  const progress = clampNumber(count / PROVISIONAL_GAMES, 0, 1);
   return Math.round(
     QUICK_MATCH_PROVISIONAL_START_LEAD_ELO
       + ((QUICK_MATCH_TARGET_LEAD_ELO - QUICK_MATCH_PROVISIONAL_START_LEAD_ELO) * progress),
@@ -103,7 +100,7 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   else if (lossStreak >= 4) adjustment -= 15;
   else if (lossStreak >= 3) adjustment -= 10;
 
-  return clamp(adjustment, QUICK_MATCH_MAX_FORM_RELIEF_ELO, QUICK_MATCH_MAX_FORM_BOOST_ELO);
+  return clampNumber(adjustment, QUICK_MATCH_MAX_FORM_RELIEF_ELO, QUICK_MATCH_MAX_FORM_BOOST_ELO);
 }
 
 
@@ -161,8 +158,8 @@ export function quickMatchTargetLeadElo(activity = [], games = PROVISIONAL_GAMES
     + quickMatchRecentFormAdjustment(activity, games, nowMs)
     + quickMatchQualityAdjustment(activity, games, qualityRecords, nowMs);
   return provisional
-    ? clamp(adjusted, -75, QUICK_MATCH_TARGET_LEAD_ELO)
-    : clamp(adjusted, 0, QUICK_MATCH_TARGET_LEAD_ELO + QUICK_MATCH_MAX_FORM_BOOST_ELO);
+    ? clampNumber(adjusted, -75, QUICK_MATCH_TARGET_LEAD_ELO)
+    : clampNumber(adjusted, 0, QUICK_MATCH_TARGET_LEAD_ELO + QUICK_MATCH_MAX_FORM_BOOST_ELO);
 }
 
 function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
@@ -173,7 +170,7 @@ function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
       && Number.isFinite(Number(row?.difficulty))
       && eventIsFresh(row, nowMs),
   );
-  return event ? clamp(Math.round(Number(event.difficulty)), 0, 100) : null;
+  return event ? clampNumber(Math.round(Number(event.difficulty)), 0, 100) : null;
 }
 
 export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now()) {
@@ -205,7 +202,7 @@ export function quickMatchRecalibration(previousDifficulty, rating, activity = n
   const rawRating = Number(rating);
   if (!Number.isFinite(rawPrevious) || !Number.isFinite(rawRating)) return null;
 
-  const previous = clamp(Math.round(rawPrevious), 0, 100);
+  const previous = clampNumber(Math.round(rawPrevious), 0, 100);
   const playerRating = rawRating;
   const nextDifficulty = difficultyForQuickMatchRating(playerRating, activity, games, qualityRecords, nowMs);
   if (nextDifficulty === previous) return null;
