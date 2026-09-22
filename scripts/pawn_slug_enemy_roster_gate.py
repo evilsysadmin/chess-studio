@@ -10,6 +10,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MAIN = ROOT / "games/pawn-slug-godot/scripts/main.gd"
+TUNING = ROOT / "games/pawn-slug-godot/scripts/enemy_combat_tuning.gd"
 MAP_ROOT = ROOT / "games/pawn-slug-godot/maps"
 
 MIN_ENEMIES = 28
@@ -61,6 +62,18 @@ def parse_stats(text: str) -> dict[str, dict[str, float]]:
     if not stats:
         raise GateError("enemy type stats are empty")
     return stats
+
+
+def validate_tuning_wiring(main_text: str) -> None:
+    required = (
+        'const EnemyCombatTuning := preload("res://scripts/enemy_combat_tuning.gd")',
+        'const ENEMY_TYPES := EnemyCombatTuning.ENEMY_TYPES',
+        'const ENEMY_FIRE_PROFILES := EnemyCombatTuning.ENEMY_FIRE_PROFILES',
+        'const BISHOP_SUPPRESSION_LANES := EnemyCombatTuning.BISHOP_SUPPRESSION_LANES',
+    )
+    missing = [marker for marker in required if marker not in main_text]
+    if missing:
+        raise GateError("enemy combat tuning wiring missing: " + ", ".join(missing))
 
 def load_stage(path: pathlib.Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -590,7 +603,9 @@ def self_test() -> None:
     stage["enemies"][15]["idle_reaction"] = 1.0
     stage["enemies"][6]["y"] = 345
     stage["enemies"][6]["route"] = "climb"
-    stats = parse_stats(MAIN.read_text(encoding="utf-8"))
+    main_text = MAIN.read_text(encoding="utf-8")
+    validate_tuning_wiring(main_text)
+    stats = parse_stats(TUNING.read_text(encoding="utf-8"))
     assert not validate_stage(stage, stats, "self-test")
     crowded = json.loads(json.dumps(stage))
     crowded["enemies"][1]["x"] = 650
@@ -605,7 +620,9 @@ def main() -> int:
         if len(sys.argv) > 1 and sys.argv[1] == "self-test":
             self_test()
             return 0
-        stats = parse_stats(MAIN.read_text(encoding="utf-8"))
+        main_text = MAIN.read_text(encoding="utf-8")
+        validate_tuning_wiring(main_text)
+        stats = parse_stats(TUNING.read_text(encoding="utf-8"))
         paths = sorted(MAP_ROOT.glob("*.json"))
         if not paths:
             raise GateError("no Pawn Slug stage manifests found")
