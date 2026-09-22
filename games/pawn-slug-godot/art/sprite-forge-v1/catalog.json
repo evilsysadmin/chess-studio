@@ -4,7 +4,8 @@
   "policy": {
     "legacy": "reference-and-rollback-only",
     "promotion": "fail-closed-after-sprite-forge-and-runtime-review",
-    "runtime_version_label": "v1"
+    "runtime_version_label": "v1",
+    "matthias_authority": "canonical-body-plus-weapon-layer"
   },
   "banks": [
     {
@@ -12,28 +13,48 @@
       "actor": "matthias",
       "weapon": "pistol",
       "strategy": "integrated",
-      "notes": "Body, hands and weapon authored together."
+      "notes": "Migration/reference integrated bank only. Canonical authoring target is matthias-body-v1 + matthias-weapons-v1; this bank cannot define actor scale independently."
     },
     {
       "id": "matthias-machinegun-v1",
       "actor": "matthias",
       "weapon": "machinegun",
       "strategy": "integrated",
-      "notes": "Body, hands and weapon authored together."
+      "notes": "Migration/reference integrated bank only. Canonical authoring target is matthias-body-v1 + matthias-weapons-v1; this bank cannot define actor scale independently."
     },
     {
       "id": "matthias-shotgun-v1",
       "actor": "matthias",
       "weapon": "shotgun",
       "strategy": "integrated",
-      "notes": "Body, hands and weapon authored together."
+      "notes": "Migration/reference integrated bank only. Canonical authoring target is matthias-body-v1 + matthias-weapons-v1; this bank cannot define actor scale independently."
     },
     {
       "id": "matthias-panzerfaust-v1",
       "actor": "matthias",
       "weapon": "panzerfaust",
       "strategy": "integrated",
-      "notes": "Body, hands and weapon authored together."
+      "notes": "Migration/reference integrated bank only. Canonical authoring target is matthias-body-v1 + matthias-weapons-v1; this bank cannot define actor scale independently."
+    },
+    {
+      "id": "matthias-body-v1",
+      "actor": "matthias",
+      "weapon": "none",
+      "strategy": "socketed-body",
+      "notes": "Single canonical Matthias body for every loadout. Full 18-action bank; per-frame sockets own hand, weapon and muzzle placement."
+    },
+    {
+      "id": "matthias-weapons-v1",
+      "actor": "matthias",
+      "weapon": "shared",
+      "strategy": "weapon-layer",
+      "weapons": [
+        "pistol",
+        "machinegun",
+        "shotgun",
+        "panzerfaust"
+      ],
+      "notes": "Shared weapon-only layers. Weapon footprint may never alter Matthias body scale; placement comes from matthias-body-v1 sockets."
     },
     {
       "id": "enemy-pawn-body-v1",
