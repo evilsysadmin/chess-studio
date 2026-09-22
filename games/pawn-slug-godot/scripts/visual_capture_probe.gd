@@ -29,19 +29,9 @@ static func apply(player: Node, stage_start_x: float, world_width: float) -> voi
     player.velocity = Vector2.ZERO
     player.reset_physics_interpolation()
 
-static func _median(values: Array[float]) -> float:
-    if values.is_empty():
-        return 0.0
-    var ordered := values.duplicate()
-    ordered.sort()
-    var middle := ordered.size() / 2
-    if ordered.size() % 2 == 1:
-        return float(ordered[middle])
-    return (float(ordered[middle - 1]) + float(ordered[middle])) * 0.5
-
 static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float) -> Dictionary:
     if texture == null:
-        return {}
+        return {"error": "missing-texture"}
     var image := texture.get_image()
     if image == null or image.is_empty():
         return {"error": "empty-image"}
@@ -52,6 +42,7 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
     image.convert(Image.FORMAT_RGBA8)
     if image.get_format() != Image.FORMAT_RGBA8:
         return {"error": "rgba8-convert-failed"}
+
     var width := image.get_width()
     var height := image.get_height()
     var bytes := image.get_data()
@@ -61,6 +52,7 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
             "buffer_size": bytes.size(),
             "expected_size": width * height * 4,
         }
+
     var min_x := width
     var min_y := height
     var max_x := -1
@@ -74,6 +66,7 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
     var core_max_y := -1
     var core_area := 0
     var alpha_cutoff := int(round(0.10 * 255.0))
+
     for y in range(height):
         var row_offset := y * width * 4
         for x in range(width):
@@ -89,8 +82,9 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
                 core_area += 1
                 core_min_y = mini(core_min_y, y)
                 core_max_y = maxi(core_max_y, y)
+
     if max_x < min_x or max_y < min_y:
-        return {}
+        return {"error": "empty-alpha"}
     var core_height := (core_max_y - core_min_y + 1) if core_max_y >= core_min_y else 0
     return {
         "bbox_width": max_x - min_x + 1,
@@ -101,56 +95,6 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
         "world_bbox_width": float(max_x - min_x + 1) * scale_x,
         "world_bbox_height": float(max_y - min_y + 1) * scale_y,
         "world_core_height": float(core_height) * scale_y,
-    }
-
-static func _animation_profile(body: AnimatedSprite2D, animation: String) -> Dictionary:
-    if body == null or body.sprite_frames == null or not body.sprite_frames.has_animation(animation):
-        return {}
-    var count := body.sprite_frames.get_frame_count(animation)
-    if count <= 0:
-        return {}
-    var scale_x := absf(body.global_scale.x)
-    var scale_y := absf(body.global_scale.y)
-    var bbox_heights: Array[float] = []
-    var core_heights: Array[float] = []
-    var core_areas: Array[float] = []
-    var world_core_heights: Array[float] = []
-    for frame_index in range(count):
-        var texture := body.sprite_frames.get_frame_texture(animation, frame_index)
-        var metrics := _measure_texture(texture, scale_x, scale_y)
-        if metrics.has("error"):
-            return {
-                "error": String(metrics["error"]),
-                "frame": frame_index,
-            }
-        if metrics.is_empty():
-            continue
-        bbox_heights.append(float(metrics["bbox_height"]))
-        core_heights.append(float(metrics["core_height"]))
-        core_areas.append(float(metrics["core_area"]))
-        world_core_heights.append(float(metrics["world_core_height"]))
-    if core_heights.is_empty():
-        return {}
-    core_heights.sort()
-    core_areas.sort()
-    bbox_heights.sort()
-    world_core_heights.sort()
-    return {
-        "frames": count,
-        "bbox_height_median": _median(bbox_heights),
-        "bbox_height_min": bbox_heights[0],
-        "bbox_height_max": bbox_heights[-1],
-        "core_height_median": _median(core_heights),
-        "core_height_min": core_heights[0],
-        "core_height_max": core_heights[-1],
-        "core_area_median": _median(core_areas),
-        "core_area_min": core_areas[0],
-        "core_area_max": core_areas[-1],
-        "world_core_height_median": _median(world_core_heights),
-        "world_core_height_min": world_core_heights[0],
-        "world_core_height_max": world_core_heights[-1],
-        "body_scale_x": scale_x,
-        "body_scale_y": scale_y,
     }
 
 static func publish_metrics(player: Node) -> void:
@@ -191,50 +135,38 @@ static func publish_metrics(player: Node) -> void:
     if body == null or body.sprite_frames == null or not body.visible:
         return
     var animation := String(body.animation)
-    var frame_index := int(body.frame)
     if animation.is_empty() or not body.sprite_frames.has_animation(animation):
         return
-    if frame_index < 0 or frame_index >= body.sprite_frames.get_frame_count(animation):
+
+    var frame_count := body.sprite_frames.get_frame_count(animation)
+    var requested_frame_value = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeFrame === 'number' ? window.__pawnSlugVisualProbeFrame : -1",
+        true,
+    )
+    var requested_frame := int(requested_frame_value) if typeof(requested_frame_value) in [TYPE_INT, TYPE_FLOAT] else -1
+    if requested_frame >= 0:
+        body.pause()
+        body.frame = clampi(requested_frame, 0, frame_count - 1)
+
+    var frame_index := int(body.frame)
+    if frame_index < 0 or frame_index >= frame_count:
         return
+
     var scale_x := absf(body.global_scale.x)
     var scale_y := absf(body.global_scale.y)
-    var current := _measure_texture(
+    var metrics := _measure_texture(
         body.sprite_frames.get_frame_texture(animation, frame_index),
         scale_x,
         scale_y,
     )
-    if current.has("error"):
-        current["request_id"] = request_id
-        current["weapon"] = String(player.get("weapon"))
-        current["action"] = requested_pose
-        JavaScriptBridge.eval("window.__pawnSlugVisualMetrics = " + JSON.stringify(current) + ";")
-        return
-    if current.is_empty():
-        return
-
-    var profile := _animation_profile(body, animation)
-    if profile.has("error"):
-        profile["request_id"] = request_id
-        profile["weapon"] = String(player.get("weapon"))
-        profile["action"] = requested_pose
-        JavaScriptBridge.eval("window.__pawnSlugVisualMetrics = " + JSON.stringify(profile) + ";")
-        return
-
-    var velocity: Vector2 = player.get("velocity")
-    var logical_action := requested_pose if requested_pose in ["idle", "run", "crouch"] else animation
-    var metrics := current.duplicate(true)
-    metrics.merge({
-        "request_id": request_id,
-        "weapon": String(player.get("weapon")),
-        "action": logical_action,
-        "animation": animation,
-        "velocity_x": float(velocity.x),
-        "velocity_y": float(velocity.y),
-        "frame": frame_index,
-        "body_scale_x": scale_x,
-        "body_scale_y": scale_y,
-        "animation_profile": profile,
-        "player_x": float(player.global_position.x),
-        "player_y": float(player.global_position.y),
-    }, true)
+    metrics["request_id"] = request_id
+    metrics["weapon"] = String(player.get("weapon"))
+    metrics["action"] = requested_pose if requested_pose in ["idle", "run", "crouch"] else animation
+    metrics["animation"] = animation
+    metrics["frame"] = frame_index
+    metrics["frame_count"] = frame_count
+    metrics["body_scale_x"] = scale_x
+    metrics["body_scale_y"] = scale_y
+    metrics["player_x"] = float(player.global_position.x)
+    metrics["player_y"] = float(player.global_position.y)
     JavaScriptBridge.eval("window.__pawnSlugVisualMetrics = " + JSON.stringify(metrics) + ";")
