@@ -172,15 +172,31 @@ def lower_body_anchor(sprite: Image.Image) -> tuple[float, float]:
     return float(xs[len(xs) // 2]), float(max_y)
 
 
-def weapon_scale(grid: list[list[Image.Image]]) -> float:
-    idle_heights = [sprite.height for sprite in grid[0]]
+def canonical_weapon_scale(
+    idle_heights: list[int],
+    largest_extent: int,
+) -> float:
+    """Resolve actor scale without ever shrinking Matthias to fit a weapon."""
     idle_height = float(statistics.median(idle_heights))
     scale = TARGET_IDLE_HEIGHT / idle_height
-    largest = max(max(sprite.width, sprite.height) for row in grid for sprite in row)
-    scale = min(scale, MAX_CONTENT / float(largest))
     if not (1.5 <= scale <= 2.6):
-        raise SystemExit(f"implausible v9 weapon scale: {scale:.3f}")
+        raise SystemExit(f"implausible v9 canonical actor scale: {scale:.3f}")
+
+    required_extent = float(largest_extent) * scale
+    if required_extent > MAX_CONTENT:
+        raise SystemExit(
+            "integrated weapon footprint exceeds the safe cell at canonical "
+            f"actor scale: required={required_extent:.1f}px max={MAX_CONTENT}px "
+            f"scale={scale:.4f}. Refusing to shrink Matthias. Split the weapon "
+            "into a socketed/weapon-layer composition or use a larger cell contract."
+        )
     return scale
+
+
+def weapon_scale(grid: list[list[Image.Image]]) -> float:
+    idle_heights = [sprite.height for sprite in grid[0]]
+    largest = max(max(sprite.width, sprite.height) for row in grid for sprite in row)
+    return canonical_weapon_scale(idle_heights, largest)
 
 
 
@@ -447,6 +463,15 @@ def self_test() -> None:
     assert len(ROW_NAMES) == ROWS
     assert OUT_SIZE == (2496, 7488)
     assert AIM_UP_DELTA == 50.0 and AIM_DOWN_DELTA == 50.0
+    assert abs(canonical_weapon_scale([115] * COLS, 190) - 2.0) < 1e-9
+    try:
+        canonical_weapon_scale([115] * COLS, 220)
+    except SystemExit as exc:
+        message = str(exc)
+        assert "Refusing to shrink Matthias" in message
+        assert "socketed/weapon-layer" in message
+    else:
+        raise AssertionError("oversized integrated weapon must fail closed")
     sample = Image.new("RGBA", SRC_SIZE, (0, 0, 0, 0))
     for row in range(ROWS):
         for col in range(COLS):
