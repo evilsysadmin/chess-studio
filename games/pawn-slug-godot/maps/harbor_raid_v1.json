@@ -109,17 +109,6 @@
       "route": "climb"
     },
     {
-      "x": 2960,
-      "y": 372,
-      "w": 190,
-      "h": 24,
-      "kind": "crane_walk",
-      "material": "metal",
-      "visual": {
-        "rail": true
-      }
-    },
-    {
       "x": 3230,
       "y": 500,
       "w": 170,
@@ -265,7 +254,7 @@
     },
     {
       "x": 520,
-      "y": 344,
+      "y": 352,
       "w": 132,
       "h": 20,
       "kind": "service_ledge",
