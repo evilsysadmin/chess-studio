@@ -28,6 +28,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - Tras merge, comprobar los workflows posteriores relevantes (main admission, staging/deploy, smoke checks) antes de cerrar la iteración.
 - Mantener las llamadas a GitHub pequeñas y dirigidas: metadata, checks, SHA, commit/PR. Evitar diffs enormes, lecturas repetidas y blobs pesados cuando el trabajo pueda hacerse sobre artefactos locales/cacheados.
 - Si el conector GitHub/git no aparece inicialmente, **redescubrirlo antes de declarar el repositorio inaccesible**. No sustituir de entrada el flujo normal por fetches web, clones repetidos o llamadas grandes.
+- Si GitHub/conector empieza a colgarse, degradarse o encadenar llamadas lentas, **dejar de insistir con lecturas remotas**: trabajar sobre el checkout y artefactos ya disponibles localmente, conservar lo ya leído y volver a GitHub sólo para las escrituras, metadata/checks y commit/PR mínimos imprescindibles.
+- En ese modo degradado, evitar relecturas de archivos grandes, búsquedas amplias y sondeos repetitivos; si falta una pieza concreta, hacer una única lectura pequeña y dirigida. Si no hay checkout local utilizable, no simularlo: limitarse a la llamada remota mínima necesaria.
 
 ## Enrutado por tarea
 
