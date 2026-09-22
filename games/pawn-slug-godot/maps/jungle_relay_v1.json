@@ -191,15 +191,6 @@
       "route": "climb"
     },
     {
-      "x": 1700,
-      "y": 360,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_bridge",
-      "material": "wood",
-      "route": "climb"
-    },
-    {
       "x": 4040,
       "y": 318,
       "w": 145,

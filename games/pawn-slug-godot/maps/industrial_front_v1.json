@@ -104,18 +104,6 @@
       "route": "climb"
     },
     {
-      "x": 1740,
-      "y": 360,
-      "w": 145,
-      "h": 24,
-      "kind": "climb_catwalk",
-      "material": "metal",
-      "route": "climb",
-      "visual": {
-        "rail": true
-      }
-    },
-    {
       "x": 1840,
       "y": 280,
       "w": 150,
@@ -139,15 +127,6 @@
         "rail": true,
         "lamp": true
       }
-    },
-    {
-      "x": 1970,
-      "y": 360,
-      "w": 155,
-      "h": 24,
-      "kind": "climb_catwalk",
-      "material": "wood",
-      "route": "climb"
     },
     {
       "x": 2130,

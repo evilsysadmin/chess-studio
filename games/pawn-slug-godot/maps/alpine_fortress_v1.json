@@ -234,15 +234,6 @@
       "route": "climb"
     },
     {
-      "x": 1840,
-      "y": 360,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_ledge",
-      "material": "concrete",
-      "route": "climb"
-    },
-    {
       "x": 4100,
       "y": 246,
       "w": 190,
@@ -321,6 +312,16 @@
       "material": "metal",
       "one_way": true,
       "route": "crevasse_bypass"
+    },
+    {
+      "x": 5055,
+      "y": 505,
+      "w": 110,
+      "h": 20,
+      "kind": "fortress_access_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "fortress_ridge"
     }
   ],
   "obstacles": [
