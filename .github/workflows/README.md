@@ -180,6 +180,7 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - `staging-pages-fast.yml` → retirado; duplicaba checkout/build/deploy/verify de Pages. El único owner de Pages staging vuelve a ser `staging-deploy.yml`, que ya despliega frontend en paralelo con backend/Worker dentro de cada generación coherente.
 - Mutex único para cualquier `oci-staging-service` → retirado; sólo las operaciones mutantes compiten con deploy/Terraform.
 - `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
+- Regeneración/publicación canonical-scale de Matthias dentro de `pawn-slug-godot-web.yml` → retirada del hot path tras #3762; el runtime ya fija assets R2 inmutables revisados. Sprite Forge, Godot headless y evidencia visual siguen siendo gates activos.
 - `codeql.yml` → absorbido por `coverage.yml` como señal periódica; conserva cadence semanal y permisos `security-events` limitados al job CodeQL.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
