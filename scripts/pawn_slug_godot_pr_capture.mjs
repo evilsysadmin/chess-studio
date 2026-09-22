@@ -110,6 +110,11 @@ async function collectVisualMetrics(expectedWeapon, expectedAction = '') {
       continue;
     }
     lastMetrics = await page.evaluate(() => window.__pawnSlugVisualMetrics);
+    if (lastMetrics?.error) {
+      throw new Error(
+        `Pawn Slug visual probe failed for weapon=${expectedWeapon || '*'} action=${expectedAction || '*'}: ${JSON.stringify(lastMetrics)}`,
+      );
+    }
     const weaponMatches = !expectedWeapon || String(lastMetrics?.weapon || '') === expectedWeapon;
     const actionMatches = !expectedAction || String(lastMetrics?.action || '') === expectedAction;
     if (weaponMatches && actionMatches) return lastMetrics;
