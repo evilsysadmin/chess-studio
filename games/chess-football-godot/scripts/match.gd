@@ -11,6 +11,7 @@ var score := [0, 0]
 var match_seconds: float = 0.0
 var camera: Camera2D
 var last_goal_text: String = ""
+var human_tackle_cooldown: float = 0.0
 
 func _ready() -> void:
 	_spawn_match()
@@ -24,9 +25,11 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	match_seconds += delta
+	human_tackle_cooldown = maxf(0.0, human_tackle_cooldown - delta)
 	_handle_human()
 	_update_ai(delta)
 	ball.tick_ball(delta)
+	_try_keeper_save()
 	_try_claim_loose_ball()
 	_check_goal()
 	_update_camera(delta)
@@ -37,6 +40,8 @@ func _handle_human() -> void:
 	controlled.move_human(direction, Input.is_action_pressed("sprint"))
 	if Input.is_action_just_pressed("change_player"):
 		_select_player(_best_switch_candidate())
+	if Input.is_action_just_pressed("tackle_ball"):
+		_try_human_tackle()
 	if Input.is_action_just_pressed("pass_ball") and ball.carrier == controlled:
 		_pass_from(controlled, direction)
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
@@ -51,6 +56,18 @@ func _update_ai(delta: float) -> void:
 				continue
 			var target: Vector2 = player.home_position
 			var intensity := 0.64
+			if player.role == "keeper":
+				target = _keeper_target(player.team_id)
+				if ball.carrier == null and _ball_in_keeper_zone(player.team_id):
+					if player.global_position.distance_to(ball.global_position) < 170.0:
+						target = ball.global_position
+						intensity = 1.0
+				player.move_ai(delta, target, intensity)
+				if ball.carrier == player and team_id == 1:
+					var outlet := _best_teammate_ahead(player)
+					if outlet != null:
+						ball.release(outlet.global_position - player.global_position, 500.0)
+				continue
 			if ball.carrier == null:
 				if player == _nearest_player_to_ball(team_id):
 					target = ball.global_position
@@ -105,6 +122,49 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 func _best_teammate_ahead(player: Footballer) -> Footballer:
 	var direction := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
 	return _best_pass_target(player, direction)
+
+func _try_human_tackle() -> void:
+	if human_tackle_cooldown > 0.0:
+		return
+	if ball.carrier == null or ball.carrier.team_id == controlled.team_id:
+		return
+	if controlled.global_position.distance_to(ball.carrier.global_position) > 48.0:
+		return
+	human_tackle_cooldown = 0.55
+	ball.attach_to(controlled)
+
+func _keeper_target(team_id: int) -> Vector2:
+	var pitch := ChessFootballMath.PITCH_RECT
+	var x := pitch.position.x + 42.0 if team_id == 0 else pitch.end.x - 42.0
+	var center_y := pitch.get_center().y
+	var y := clampf(
+		ball.global_position.y,
+		center_y - ChessFootballMath.GOAL_HALF_HEIGHT * 0.82,
+		center_y + ChessFootballMath.GOAL_HALF_HEIGHT * 0.82
+	)
+	return Vector2(x, y)
+
+func _ball_in_keeper_zone(team_id: int) -> bool:
+	var pitch := ChessFootballMath.PITCH_RECT
+	var center_y := pitch.get_center().y
+	if absf(ball.global_position.y - center_y) > ChessFootballMath.GOAL_HALF_HEIGHT + 95.0:
+		return false
+	var depth := ball.global_position.x - pitch.position.x if team_id == 0 else pitch.end.x - ball.global_position.x
+	return depth >= -24.0 and depth <= 250.0
+
+func _try_keeper_save() -> void:
+	if ball.carrier != null:
+		return
+	for team_id in range(2):
+		var keeper: Footballer = teams[team_id][0]
+		if keeper.role != "keeper" or not _ball_in_keeper_zone(team_id):
+			continue
+		if keeper.global_position.distance_to(ball.global_position) > 34.0:
+			continue
+		ball.attach_to(keeper)
+		if team_id == 0:
+			_select_player(keeper)
+		return
 
 func _try_claim_loose_ball() -> void:
 	if ball.carrier != null or ball.velocity.length() > 560.0:
@@ -210,6 +270,6 @@ func _draw() -> void:
 	draw_rect(Rect2(pitch.end.x, goal_top, 24.0, goal_height), Color(1, 1, 1, 0.7), false, 3.0)
 	var font := ThemeDB.fallback_font
 	draw_string(font, camera.global_position + Vector2(-570, -300), "FC Matthias %d - %d Real Enroque" % [score[0], score[1]], HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
-	draw_string(font, camera.global_position + Vector2(-570, -268), "WASD · Shift sprint · Space pass · Enter shoot · Tab change", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1,1,1,0.8))
+	draw_string(font, camera.global_position + Vector2(-570, -268), "WASD · Shift sprint · Space pass · Enter shoot · X tackle · Tab change", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1,1,1,0.8))
 	if not last_goal_text.is_empty():
 		draw_string(font, camera.global_position + Vector2(-85, -210), last_goal_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1.0, 0.84, 0.28))
