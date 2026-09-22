@@ -792,9 +792,31 @@ def _validate_bank_contract(data: object) -> dict:
     if data.get("schema") != 1:
         raise BankContractError("contract schema must be 1")
 
-    for key in ("quality_contract", "actor", "weapon"):
+    for key in ("quality_contract", "actor"):
         if not isinstance(data.get(key), str) or not data[key].strip():
             raise BankContractError(f"{key} must be a non-empty string")
+
+    raw_domain = data.get("domain")
+    raw_variant = data.get("variant")
+    weapon = data.get("weapon")
+    legacy_identity = raw_domain is None and raw_variant is None
+
+    if legacy_identity:
+        if not isinstance(weapon, str) or not weapon.strip():
+            raise BankContractError("weapon must be a non-empty string")
+        domain = "pawn-slug"
+        variant = weapon
+    else:
+        if not isinstance(raw_domain, str) or not raw_domain.strip():
+            raise BankContractError("domain must be a non-empty string")
+        if not isinstance(raw_variant, str) or not raw_variant.strip():
+            raise BankContractError("variant must be a non-empty string")
+        if weapon is not None and (
+            not isinstance(weapon, str) or not weapon.strip()
+        ):
+            raise BankContractError("weapon must be a non-empty string when present")
+        domain = raw_domain.strip()
+        variant = raw_variant.strip()
 
     composition = data.get("composition", "integrated")
     if composition not in {"integrated", "socketed-body", "weapon-layer"}:
@@ -1030,7 +1052,10 @@ def _validate_bank_contract(data: object) -> dict:
         "schema": 1,
         "quality_contract": data["quality_contract"],
         "actor": data["actor"],
-        "weapon": data["weapon"],
+        "domain": domain,
+        "variant": variant,
+        "weapon": weapon,
+        "legacy_identity": legacy_identity,
         "composition": composition,
         "socket_quality": asdict(socket_quality),
         "cell": {"width": width, "height": height},
@@ -1149,12 +1174,10 @@ def build_bank(
             "rows": part["rows"],
         }
 
-    manifest = {
+    common_manifest = {
         "schema": 1,
-        "kind": "pawn-slug-sprite-forge-bank",
         "quality_contract": contract["quality_contract"],
         "actor": contract["actor"],
-        "weapon": contract["weapon"],
         "composition": contract["composition"],
         "socket_quality": contract["socket_quality"],
         "cell": contract["cell"],
@@ -1162,6 +1185,21 @@ def build_bank(
         "parts": manifest_parts,
         "animations": manifest_animations,
     }
+    if contract["legacy_identity"]:
+        manifest = {
+            **common_manifest,
+            "kind": "pawn-slug-sprite-forge-bank",
+            "weapon": contract["weapon"],
+        }
+    else:
+        manifest = {
+            **common_manifest,
+            "kind": f"{contract['domain']}-sprite-forge-bank",
+            "domain": contract["domain"],
+            "variant": contract["variant"],
+        }
+        if contract["weapon"] is not None:
+            manifest["weapon"] = contract["weapon"]
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
@@ -1175,7 +1213,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
-        description="Pawn Slug Sprite Forge fail-closed compiler"
+        description="Sprite Forge fail-closed compiler"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -1199,17 +1237,19 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     if args.command == "build":
         manifest = build_bank(args.contract, args.frames_root, args.output_dir)
-        print(json.dumps(
-            {
-                "actor": manifest["actor"],
-                "weapon": manifest["weapon"],
-                "parts": {
-                    name: value["sha256"]
-                    for name, value in manifest["parts"].items()
-                },
+        summary = {
+            "actor": manifest["actor"],
+            "parts": {
+                name: value["sha256"]
+                for name, value in manifest["parts"].items()
             },
-            sort_keys=True,
-        ))
+        }
+        if "domain" in manifest:
+            summary["domain"] = manifest["domain"]
+            summary["variant"] = manifest["variant"]
+        if "weapon" in manifest:
+            summary["weapon"] = manifest["weapon"]
+        print(json.dumps(summary, sort_keys=True))
         return 0
 
     config = LintConfig(
