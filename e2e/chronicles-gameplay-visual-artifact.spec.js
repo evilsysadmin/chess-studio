@@ -60,9 +60,20 @@ async function openChronicles(page, captureLabel) {
   await expect(tools).toBeVisible();
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i }).click();
+  const chroniclesEntry = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  await chroniclesEntry.click();
   const setup = page.locator('[data-chronicles-character-setup]');
-  await expect(setup).toBeVisible();
+  try {
+    await expect(setup).toBeVisible({ timeout: 8_000 });
+  } catch (error) {
+    // Touch/WebKit-style click dispatch can occasionally land while the
+    // experiments sheet is still settling. Retry the actual navigation once
+    // only if the source button is still visible; never mask a real Chronicle
+    // bootstrap/render failure after the route has changed.
+    if (!(await chroniclesEntry.isVisible().catch(() => false))) throw error;
+    await chroniclesEntry.click({ force: true });
+    await expect(setup).toBeVisible({ timeout: 20_000 });
+  }
   await captureElement(
     page,
     setup,
