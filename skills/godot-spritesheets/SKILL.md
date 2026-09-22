@@ -1,3 +1,5 @@
+Contrato transversal de aceptación visual: `docs/operations/visual-evidence.md`.
+
 # Godot 2D spritesheets — canonical skill
 
 Este documento es el contrato operativo para **generar, completar, normalizar, validar e integrar sprites y spritesheets 2D de Pawn Slug en Godot**.
