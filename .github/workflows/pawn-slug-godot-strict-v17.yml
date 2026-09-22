@@ -810,8 +810,8 @@ jobs:
             --pistol "$ROOT/pistol-v21.png" \
             --manifest "$ROOT/manifest.json" \
             --report "$ROOT/health.json"
-          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" != "c54d056006d165c2653ee36c765442825be5225858daa5b79da75ff9f5670fce"
-          test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" != "34b7a35793047e39591fa74014dd8a703aae886e5ea40fbc70c7446870d3a8ee"
+          test "$(sha256sum "$ROOT/machinegun-v23.png" | awk '{print $1}')" = "3044afd6af84a6cfba57621763aedc44cbc99bc9775124dc1b34477a4bc8f30a"
+          test "$(sha256sum "$ROOT/machinegun-run13-v23.png" | awk '{print $1}')" = "26dc07c9be4f285f07a2a68f1f5357f739e8a95bf96ddfa23a8caac75e9808b3"
 
       - name: Restore pinned Godot editor
         uses: actions/cache@v6
