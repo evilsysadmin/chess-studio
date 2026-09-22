@@ -3,12 +3,6 @@ export const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 1
 export const CAMPAIGN_INTEL_BASE_COSTS = Object.freeze([3, 5, 7]);
 export const CAMPAIGN_MISSION_BONUS_CAP = 9;
 
-export const COMBAT_CAMPAIGN_ECONOMY = Object.freeze({
-  startingSupplies: CAMPAIGN_STARTING_CREDITS,
-  baseRewards: BATTLE_CREDIT_REWARD,
-  intelBaseCosts: CAMPAIGN_INTEL_BASE_COSTS,
-  missionBonusCap: CAMPAIGN_MISSION_BONUS_CAP,
-});
 
 export function fullIntelCost({ cipher = false } = {}) {
   return CAMPAIGN_INTEL_BASE_COSTS.reduce((sum, cost) => sum + Math.max(1, cost - (cipher ? 2 : 0)), 0);
