@@ -1,3 +1,5 @@
+Contrato transversal de aceptación visual: `docs/operations/visual-evidence.md`.
+
 # Home Blender — skill de iteración y entrega
 
 Este skill define cómo iterar la Home 3D desde Blender hasta el runtime real. La Home no se acepta por un render aislado: el contrato completo es **Blender → GLB → R2 → manifest → aplicación → PNG runtime**.
