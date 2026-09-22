@@ -26,7 +26,10 @@ DEATH_ROW = 17
 ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
-MAX_SCALE = 1.25
+# Legacy weapon banks contain real body-scale regressions down to ~0.62x canon.
+# Allow recovery up to ~1.61x while placement still fails closed on clipping,
+# footline drift and center drift.
+MAX_SCALE = 1.70
 LEGACY_NOISE_MAX_ALPHA = 24  # <10% opacity; runtime perceptual QA starts above ~0.10 alpha.
 
 
