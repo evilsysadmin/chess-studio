@@ -87,6 +87,22 @@ def inventory_drift(root: Path, inventory: dict[str, str] = INVENTORY) -> tuple[
     return sorted(actual - expected), sorted(expected - actual)
 
 
+def retired_workflow_errors(root: Path) -> list[str]:
+    errors: list[str] = []
+    prefix = 'pawn-slug-godot-strict-v'
+    suffix = '.yml'
+    for name in sorted(workflow_names(root)):
+        if not (name.startswith(prefix) and name.endswith(suffix)):
+            continue
+        version = name[len(prefix):-len(suffix)]
+        if version.isdigit():
+            errors.append(
+                f'{name}: Pawn Slug strict-vNN workflows are retired; '
+                'use Sprite Forge + pawn-slug-godot-web.yml'
+            )
+    return errors
+
+
 def budget_rows(root: Path, budgets: tuple[Budget, ...] = BUDGETS) -> list[tuple[Budget, int]]:
     rows: list[tuple[Budget, int]] = []
     for budget in budgets:
@@ -153,6 +169,15 @@ def self_test() -> None:
         (workflow_dir / 'rogue.yml').write_text('name: rogue\n', encoding='utf-8')
         assert inventory_drift(root, inventory) == (['rogue.yml'], [])
         (workflow_dir / 'rogue.yml').unlink()
+
+        retired = workflow_dir / 'pawn-slug-godot-strict-v24.yml'
+        retired.write_text('name: retired\n', encoding='utf-8')
+        retired_errors = retired_workflow_errors(root)
+        assert retired_errors == [
+            'pawn-slug-godot-strict-v24.yml: Pawn Slug strict-vNN workflows are retired; '
+            'use Sprite Forge + pawn-slug-godot-web.yml'
+        ]
+        retired.unlink()
         (workflow_dir / 'b.yml').unlink()
         assert inventory_drift(root, inventory) == ([], ['b.yml'])
 
@@ -191,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
             fh.write(report)
 
     errors: list[str] = []
+    errors.extend(retired_workflow_errors(root))
     if unknown:
         errors.append(
             'Unowned workflows: ' + ', '.join(unknown) +
