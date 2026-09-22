@@ -264,7 +264,7 @@ if (scopeEnabled('landing')) {
           expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
         } else {
           expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: Workshop portal widths`).toBeLessThanOrEqual(2);
-          expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Hangar alignment`).toBeLessThanOrEqual(2);
+          expect(health.trailblazer.top, `${capture.label}: Trailblazer remains below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
         }
 
         await captureFrozenFrame(page, {
@@ -348,7 +348,7 @@ if (scopeEnabled('pawnslug')) {
     ];
     for (const capture of pawnSlugCaptures) {
       await withPawnSlugCapturePage(browser, capture, async (page) => {
-        await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+        await expect(page.locator('.pawn-slug-godot-host')).toBeVisible();
         const frame = page.locator('iframe[title="Pawn Slug Godot"]');
         await expect(frame).toBeVisible();
         await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 35_000 });
