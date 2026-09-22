@@ -146,7 +146,7 @@ export default function LabScreen({ onExit, onStart }){
               <span>Plataformas y exploración; el movimiento se abre, los ataques siguen siendo de peón.</span>
               <b>Vorwärts</b>
             </button>
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter" data-glyph="⚽" onClick={()=>setLabMode('chess-football')}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={()=>setLabMode('chess-football')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'manager')}</small>
               <strong>Chess Football</strong>
               <span>Fútbol normal, gestión y temporadas. El ajedrez pone los personajes; las reglas se quedan en el vestuario.</span>
