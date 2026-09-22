@@ -26,6 +26,7 @@ from sprite_forge import (
     validate_sequence,
     validate_socket_sequence,
     build_bank,
+    load_bank_contract,
 )
 
 
@@ -564,6 +565,57 @@ class SpriteForgeCompilerTests(unittest.TestCase):
             self.assertEqual(hurt["authored_frames"], 2)
             self.assertEqual(hurt["stored_frames"], 4)
             self.assertEqual(hurt["slots"], [0, 1, 1, 1])
+
+    def test_legacy_manifest_identity_remains_byte_shape_compatible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            manifest = build_bank(contract, frames, root / "out")
+            self.assertEqual(manifest["kind"], "pawn-slug-sprite-forge-bank")
+            self.assertEqual(manifest["weapon"], "testgun")
+            self.assertNotIn("domain", manifest)
+            self.assertNotIn("variant", manifest)
+
+    def test_generic_domain_contract_uses_variant_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            data = json.loads(contract.read_text(encoding="utf-8"))
+            data.pop("weapon")
+            data["domain"] = "chess-football"
+            data["variant"] = "four-direction-poc"
+            contract.write_text(
+                json.dumps(data, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            manifest = build_bank(contract, frames, root / "out")
+            self.assertEqual(manifest["kind"], "sprite-forge-bank")
+            self.assertEqual(manifest["domain"], "chess-football")
+            self.assertEqual(manifest["variant"], "four-direction-poc")
+            self.assertNotIn("weapon", manifest)
+
+    def test_generic_identity_requires_variant_or_legacy_weapon(self) -> None:
+        from sprite_forge import _validate_bank_contract
+        data = self._contract()
+        data.pop("weapon")
+        with self.assertRaisesRegex(BankContractError, "variant or legacy weapon"):
+            _validate_bank_contract(data)
+
+    def test_repository_football_contract_loads_as_generic_domain(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        contract = load_bank_contract(
+            root
+            / "games"
+            / "chess-football-godot"
+            / "art"
+            / "sprite-forge-v1"
+            / "pawn-field-player.contract.json"
+        )
+        self.assertEqual(contract["domain"], "chess-football")
+        self.assertEqual(contract["actor"], "pawn-field-player")
+        self.assertEqual(contract["variant"], "four-direction-poc")
+        self.assertEqual(len(contract["animations"]), 20)
+        self.assertFalse(contract["legacy_identity"])
 
     def test_bad_slot_reference_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
