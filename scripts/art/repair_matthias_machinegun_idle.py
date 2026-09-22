@@ -23,6 +23,10 @@ MAX_REMOVABLE_DETACHED_AREA = 1024
 SAFE_MARGIN = 4
 MIN_REPAIR_SCALE = 0.92
 MAX_REPAIR_SCALE = 1.12
+RUN_SOURCE_COLS = 13
+RUN_REFERENCE_COLS = 12
+MIN_RUN_SCALE = 0.85
+MAX_RUN_SCALE = 1.15
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,6 +36,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--preview", type=Path)
+    parser.add_argument("--run-source", type=Path)
+    parser.add_argument("--run-reference", type=Path)
+    parser.add_argument("--run-output", type=Path)
+    parser.add_argument("--run-report", type=Path)
+    parser.add_argument("--run-preview", type=Path)
     parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
 
@@ -268,6 +277,174 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
     }
 
 
+
+def foreground_bbox(image: Image.Image) -> tuple[int, int, int, int] | None:
+    alpha = image.convert("RGBA").getchannel("A")
+    mask = alpha.point(lambda value: 255 if value >= ALPHA_THRESHOLD else 0)
+    return mask.getbbox()
+
+
+def render_run_preview(
+    reference: Image.Image,
+    source: Image.Image,
+    output: Image.Image,
+    path: Path,
+) -> None:
+    width = CELL * RUN_SOURCE_COLS
+    layers: list[tuple[str, Image.Image]] = []
+    for label, strip in (
+        ("PISTOL RUN REFERENCE", reference),
+        ("MACHINEGUN RUN13 CURRENT", source),
+        ("MACHINEGUN RUN13 REPAIRED", output),
+    ):
+        padded = Image.new("RGBA", (width, CELL), (0, 0, 0, 0))
+        padded.alpha_composite(strip, (0, 0))
+        bg = checkerboard(padded.size)
+        bg.alpha_composite(padded)
+        layers.append((label, bg.convert("RGB")))
+
+    preview = Image.new("RGB", (width, CELL * len(layers)), (255, 255, 255))
+    draw = ImageDraw.Draw(preview)
+    for index, (label, image) in enumerate(layers):
+        y = index * CELL
+        preview.paste(image, (0, y))
+        draw.text((8, y + 8), label, fill=(220, 35, 35))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    preview.save(path, "PNG", optimize=True)
+
+
+def repair_run_strip(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, dict]:
+    source_expected = (CELL * RUN_SOURCE_COLS, CELL)
+    reference_expected = (CELL * RUN_REFERENCE_COLS, CELL)
+    if source.size != source_expected or reference.size != reference_expected:
+        raise ValueError(
+            "strict run-strip geometry required: "
+            f"source={source_expected}, reference={reference_expected}; "
+            f"got source={source.size}, reference={reference.size}"
+        )
+
+    source_components = [
+        main_component(cell(source, 0, col), f"machinegun run13 c{col}")
+        for col in range(RUN_SOURCE_COLS)
+    ]
+    reference_components = [
+        main_component(cell(reference, 0, col), f"pistol run12 c{col}")
+        for col in range(RUN_REFERENCE_COLS)
+    ]
+
+    source_heights = [
+        component["bbox"][3] - component["bbox"][1]
+        for component in source_components
+    ]
+    reference_heights = [
+        component["bbox"][3] - component["bbox"][1]
+        for component in reference_components
+    ]
+    source_median_height = float(statistics.median(source_heights))
+    target_median_height = float(statistics.median(reference_heights))
+    scale = target_median_height / source_median_height
+    if not MIN_RUN_SCALE <= scale <= MAX_RUN_SCALE:
+        raise ValueError(
+            f"machinegun run13 row scale {scale:.4f} outside "
+            f"[{MIN_RUN_SCALE:.2f}, {MAX_RUN_SCALE:.2f}]"
+        )
+
+    target_center = float(statistics.median(
+        [
+            (component["bbox"][0] + component["bbox"][2]) / 2.0
+            for component in reference_components
+        ]
+    ))
+    target_foot = float(statistics.median(
+        [component["bbox"][3] for component in reference_components]
+    ))
+
+    output = Image.new("RGBA", source.size, (0, 0, 0, 0))
+    frames: list[dict] = []
+    for col, primary in enumerate(source_components):
+        source_cell = cell(source, 0, col)
+        bbox = foreground_bbox(source_cell)
+        if bbox is None:
+            raise ValueError(f"machinegun run13 c{col}: empty foreground")
+        crop = source_cell.crop(bbox)
+        scaled_size = (
+            max(1, round(crop.width * scale)),
+            max(1, round(crop.height * scale)),
+        )
+        scaled = (
+            crop.resize(scaled_size, Image.Resampling.BILINEAR)
+            if scaled_size != crop.size
+            else crop
+        )
+
+        fx0, fy0, _, _ = bbox
+        px0, _, px1, py1 = primary["bbox"]
+        primary_center_in_crop = (((px0 + px1) / 2.0) - fx0) * scale
+        primary_foot_in_crop = (py1 - fy0) * scale
+        dest_x = round(target_center - primary_center_in_crop)
+        dest_y = round(target_foot - primary_foot_in_crop)
+        placed_bbox = (
+            dest_x,
+            dest_y,
+            dest_x + scaled.width,
+            dest_y + scaled.height,
+        )
+        if (
+            placed_bbox[0] < SAFE_MARGIN
+            or placed_bbox[1] < SAFE_MARGIN
+            or placed_bbox[2] > CELL - SAFE_MARGIN
+            or placed_bbox[3] > CELL - SAFE_MARGIN
+        ):
+            raise ValueError(
+                f"machinegun run13 c{col}: repaired frame would clip: {placed_bbox}"
+            )
+
+        repaired = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+        repaired.alpha_composite(scaled, (dest_x, dest_y))
+        repaired_primary = main_component(repaired, f"machinegun repaired run13 c{col}")
+        repaired_foot = repaired_primary["bbox"][3]
+        if abs(repaired_foot - target_foot) > 1:
+            raise ValueError(
+                f"machinegun run13 c{col}: repaired foot {repaired_foot} "
+                f"!= target {target_foot}"
+            )
+        output.alpha_composite(repaired, (col * CELL, 0))
+        frames.append(
+            {
+                "column": col,
+                "sourceMainBbox": list(primary["bbox"]),
+                "sourceMainHeight": primary["bbox"][3] - primary["bbox"][1],
+                "sourceComponentCount": len(components(source_cell)),
+                "outputMainBbox": list(repaired_primary["bbox"]),
+                "outputComponentCount": len(components(repaired)),
+            }
+        )
+
+    output_heights = [
+        frame["outputMainBbox"][3] - frame["outputMainBbox"][1]
+        for frame in frames
+    ]
+    output_median_height = float(statistics.median(output_heights))
+    if abs(output_median_height - target_median_height) > 1.0:
+        raise ValueError(
+            f"machinegun run13 median height {output_median_height} "
+            f"!= pistol target {target_median_height}"
+        )
+
+    return output, {
+        "schema": 1,
+        "scope": "pawn-slug-matthias-machinegun-run13-reference-repair",
+        "sourceColumns": RUN_SOURCE_COLS,
+        "referenceColumns": RUN_REFERENCE_COLS,
+        "uniformScale": round(scale, 6),
+        "sourceMedianHeight": source_median_height,
+        "targetMedianHeight": target_median_height,
+        "outputMedianHeight": output_median_height,
+        "targetCenterX": target_center,
+        "targetFootY": target_foot,
+        "frames": frames,
+    }
+
 def self_test() -> None:
     atlas_size = (CELL * COLS, CELL * ROWS)
     source = Image.new("RGBA", atlas_size, (0, 0, 0, 0))
@@ -303,7 +480,39 @@ def self_test() -> None:
         )
         assert len(components(cell(output, 0, col))) == 1
 
-    print("Matthias machinegun idle reference repair self-test: OK")
+    run_reference = Image.new(
+        "RGBA", (CELL * RUN_REFERENCE_COLS, CELL), (0, 0, 0, 0)
+    )
+    run_source = Image.new(
+        "RGBA", (CELL * RUN_SOURCE_COLS, CELL), (0, 0, 0, 0)
+    )
+    for col in range(RUN_REFERENCE_COLS):
+        ref = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+        ImageDraw.Draw(ref).rectangle(
+            (145, 162, 275, 381), fill=(20, 20, 20, 255)
+        )
+        run_reference.alpha_composite(ref, (col * CELL, 0))
+    for col in range(RUN_SOURCE_COLS):
+        src = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+        ImageDraw.Draw(src).rectangle(
+            (150, 182, 270, 381), fill=(30, 30, 30, 255)
+        )
+        ImageDraw.Draw(src).rectangle(
+            (275, 245, 315, 258), fill=(90, 90, 90, 255)
+        )
+        run_source.alpha_composite(src, (col * CELL, 0))
+
+    repaired_run, run_report = repair_run_strip(run_source, run_reference)
+    assert RUN_SOURCE_COLS == len(run_report["frames"])
+    assert 1.05 < run_report["uniformScale"] < 1.15
+    assert abs(
+        run_report["outputMedianHeight"] - run_report["targetMedianHeight"]
+    ) <= 1.0
+    for col in range(RUN_SOURCE_COLS):
+        assert len(components(cell(run_source, 0, col))) == 2
+        assert len(components(cell(repaired_run, 0, col))) == 2
+
+    print("Matthias machinegun idle + run13 reference repair self-test: OK")
 
 
 def main() -> int:
@@ -320,6 +529,11 @@ def main() -> int:
             ("--output", cfg.output),
             ("--report", cfg.report),
             ("--preview", cfg.preview),
+            ("--run-source", cfg.run_source),
+            ("--run-reference", cfg.run_reference),
+            ("--run-output", cfg.run_output),
+            ("--run-report", cfg.run_report),
+            ("--run-preview", cfg.run_preview),
         )
         if value is None
     ]
@@ -329,12 +543,21 @@ def main() -> int:
     source = Image.open(cfg.source).convert("RGBA")
     reference = Image.open(cfg.reference).convert("RGBA")
     output, report = repair(source, reference)
+    run_source = Image.open(cfg.run_source).convert("RGBA")
+    run_reference = Image.open(cfg.run_reference).convert("RGBA")
+    run_output, run_report = repair_run_strip(run_source, run_reference)
 
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
+    cfg.run_output.parent.mkdir(parents=True, exist_ok=True)
+    cfg.run_report.parent.mkdir(parents=True, exist_ok=True)
+    cfg.run_preview.parent.mkdir(parents=True, exist_ok=True)
     cfg.report.parent.mkdir(parents=True, exist_ok=True)
     output.save(cfg.output, "PNG", optimize=True)
     cfg.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     render_preview(reference, source, output, cfg.preview)
+    run_output.save(cfg.run_output, "PNG", optimize=True)
+    cfg.run_report.write_text(json.dumps(run_report, indent=2) + "\n", encoding="utf-8")
+    render_run_preview(run_reference, run_source, run_output, cfg.run_preview)
 
     print(
         json.dumps(
@@ -345,6 +568,10 @@ def main() -> int:
                 "removedDetachedComponents": sum(
                     len(frame["removedDetached"]) for frame in report["frames"]
                 ),
+                "runOutput": str(cfg.run_output),
+                "runPreview": str(cfg.run_preview),
+                "runRepairedFrames": len(run_report["frames"]),
+                "runUniformScale": run_report["uniformScale"],
             }
         )
     )

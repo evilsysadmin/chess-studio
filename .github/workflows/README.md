@@ -78,7 +78,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | --- | --- |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
-| `pawn-slug-matthias-sprite-smoke.yml` | Evidencia PNG de sprites runtime Pawn Slug. En PR separa Matthias/enemigos por ownership; tras staging omite deploys sin superficie sprite; manual conserva smoke completo. Temporalmente genera también el candidato determinista de reparación `machinegun/idle`; sólo `push` a `main` lo publica en R2. |
+| `pawn-slug-matthias-sprite-smoke.yml` | Evidencia PNG de sprites runtime Pawn Slug. En PR separa Matthias/enemigos por ownership; tras staging omite deploys sin superficie sprite; manual conserva smoke completo. Temporalmente genera candidatos deterministas de continuidad SMG para `idle` + `run13`; sólo `push` a `main` los publica en R2. |
 
 ## Observabilidad y operación
 
