@@ -11,10 +11,12 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from sprite_forge import (
+    FixedScaleContract,
     GeometryContract,
     LintConfig,
     geometry_metrics,
     lint_frame,
+    normalize_fixed_scale_frame,
     normalize_frame,
 )
 
@@ -57,10 +59,14 @@ SOURCES = {
         {"box": (195, 700, 305, 840), "guide": "reload", "matte": "grabcut"},
         {"box": (305, 700, 415, 840), "guide": "reload", "matte": "grabcut"},
         {"box": (415, 700, 525, 840), "guide": "reload", "matte": "grabcut"},
-        {"box": (525, 700, 650, 840), "guide": "reload", "matte": "grabcut"},
     ],
     "hurt": [
         {"box": (1005, 735, 1155, 905), "guide": "hurt", "matte": "grabcut"},
+    ],
+    "die": [
+        {"box": (185, 850, 325, 1010), "guide": "death", "matte": "grabcut"},
+        {"box": (435, 850, 590, 1010), "guide": "death", "matte": "grabcut"},
+        {"box": (560, 850, 710, 1010), "guide": "death", "matte": "grabcut"},
     ],
 }
 
@@ -72,9 +78,10 @@ GUIDES = {
     "idle": [(17,18),(30,7),(50,1),(68,3),(76,9),(74,22),(78,28),(70,34),(70,44),(78,52),(76,62),(70,67),(67,78),(72,88),(80,94),(76,99),(58,99),(52,90),(48,80),(42,80),(36,90),(30,99),(14,98),(12,92),(18,84),(22,72),(14,68),(10,58),(12,48),(20,42),(26,38),(22,30)],
     "reload": [(15,18),(30,7),(50,1),(68,3),(76,9),(74,22),(78,28),(70,34),(70,43),(88,48),(96,55),(94,62),(76,64),(69,70),(66,80),(72,89),(80,95),(76,99),(58,99),(51,90),(46,80),(40,82),(34,92),(28,99),(14,98),(12,92),(18,84),(20,72),(12,68),(8,58),(10,48),(19,42),(25,38),(21,30)],
     "hurt": [(8,5),(75,5),(88,20),(88,88),(72,94),(15,94),(5,82),(5,20)],
+    "death": [(2,38),(10,25),(25,18),(42,15),(55,20),(68,28),(78,35),(92,38),(98,48),(96,62),(88,68),(75,70),(65,80),(52,88),(38,87),(25,82),(10,78),(3,68)],
 }
 
-GEOMETRY = GeometryContract(
+UPRIGHT_GEOMETRY = GeometryContract(
     canvas_size=(CANVAS, CANVAS),
     body_height=300,
     body_center_x=208.0,
@@ -85,6 +92,14 @@ GEOMETRY = GeometryContract(
     height_tolerance_px=3.0,
     centroid_tolerance_px=38.0,
 )
+DEATH_GEOMETRY = FixedScaleContract(
+    canvas_size=(CANVAS, CANVAS),
+    scale=2.5,
+    center_x=208.0,
+    foot_y=382.0,
+    safe_margin_px=10,
+)
+
 LINT = LintConfig(
     alpha_threshold=8,
     edge_guard_px=0,
@@ -233,7 +248,11 @@ def ingest(master: Path, output_dir: Path) -> dict:
                     f"{action}/{index:03d} raw lint failed: {','.join(raw_result.errors)}"
                 )
 
-            normalized = normalize_frame(raw, GEOMETRY, LINT)
+            normalized = (
+                normalize_fixed_scale_frame(raw, DEATH_GEOMETRY, LINT)
+                if action == "die"
+                else normalize_frame(raw, UPRIGHT_GEOMETRY, LINT)
+            )
             raw_path = raw_root / action / f"{index:03d}.png"
             normalized_path = normalized_root / action / f"{index:03d}.png"
             raw_path.parent.mkdir(parents=True, exist_ok=True)
@@ -273,8 +292,8 @@ def ingest(master: Path, output_dir: Path) -> dict:
         "frames": records,
         "limitations": [
             "seed only; not an accepted Sprite Forge bank",
-            "missing jump/fall/land/directional/crouch-walk/death coverage",
-            "death is intentionally excluded until action-specific geometry exists",
+            "missing jump/fall/land/directional/crouch-walk coverage",
+            "die uses canonical fixed-scale placement instead of upright height normalization",
             "no runtime promotion in this step",
         ],
     }
