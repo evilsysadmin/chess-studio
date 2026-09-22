@@ -28,7 +28,7 @@ El empaquetado normaliza orden, timestamps, UID/GID y modos para que los mismos 
 
 ## Publicación privada e idempotente
 
-La publicación de assets **no es un side effect de mergear a `main`**. `OCI readiness` queda limitado a validación. Cuando se invoca explícitamente `OCI staging · service control → k3s-start`, esa única operación toma el mutex de mutaciones y, antes de arrancar K3s, ejecuta:
+La publicación de assets **no es un side effect de mergear a `main`**. `OCI readiness` queda limitado a validación. Cuando se invoca explícitamente `OCI staging lab → k3s-start`, la operación de laboratorio toma el mutex de mutaciones y, antes de arrancar K3s, ejecuta:
 
 ```text
 scripts/oci_k3s_bundle_publish.py reconcile
@@ -70,12 +70,12 @@ Así la operación explícita demuestra `Git -> Object Storage privado -> A1 -> 
 
 ## Secuencia
 
-`workflow_dispatch k3s-start -> OCI Object Storage privado reconcile -> A1 install verificado -> guarded K3s start -> status -> Docker fallback smoke`.
+`workflow_dispatch OCI staging lab / k3s-start -> OCI Object Storage privado reconcile -> A1 install verificado -> guarded K3s start -> status -> Compose canónico smoke`.
 
-Con K3s ya activo, el backend shadow se itera exclusivamente mediante el mismo front-door manual:
+Con K3s ya activo, el backend shadow se itera exclusivamente mediante el mismo workflow de laboratorio:
 
 `k3s-staging2-deploy <SHA exacto> -> staging2 status/diagnóstico -> k3s-staging2-rollback`.
 
 Estas operaciones usan el namespace privado `chess-studio-staging2`, mantienen `ClusterIP` + port-forward loopback para la acreditación y no forman parte del release canónico. `deploy` y `rollback` comparten el mutex de mutaciones OCI; `status` es observación read-only. El workflow automático shadow retirado no se resucita.
 
-Tras demostrar deploy/rollback repetible y smoke estable, el siguiente escalón sigue siendo Flux reconciliando workloads y, después, Headlamp mediante Cloudflare Tunnel/Access. Hasta entonces, el runtime Docker actual continúa intacto como fallback.
+K3s/Flux/Headlamp permanecen en HOLD experimental: no son un escalón obligatorio del producto ni del release. Sólo se reevalúan como arquitectura real cuando exista una necesidad demostrada de infraestructura de pago, HA/multinodo, scheduling/autoscaling o una complejidad operativa que Compose ya no resuelva. El runtime Compose actual sigue siendo canónico.

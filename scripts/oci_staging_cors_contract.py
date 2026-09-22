@@ -204,12 +204,14 @@ assert "group: oci-staging-cloudflare-tunnel" not in tunnel_control, (
 # Infrastructure has one production-grade apply path. The lab remains useful for
 # observation/bootstrap/destruction, but must not bypass post-apply agent and
 # reserved-egress convergence owned by the dedicated infrastructure workflow.
-assert "options: [probe, plan, bootstrap, destroy]" in infra_lab, (
+assert "options: [probe, plan, bootstrap, destroy," in infra_lab, (
+    "OCI lab must retain the Terraform observation/bootstrap/destruction operations"
+)
+assert "apply" not in infra_lab.split("options:", 1)[1].split("\n", 1)[0], (
     "OCI lab must not expose a second bare Terraform apply path"
 )
-assert "options: [probe, plan, apply" not in infra_lab, (
-    "OCI lab must not reintroduce apply alongside the canonical infrastructure workflow"
-)
+for operation in ("k3s-start", "k3s-status", "k3s-rollback", "k3s-staging2-deploy", "k3s-staging2-status", "k3s-staging2-rollback"):
+    assert operation in infra_lab, f"missing explicit K3s lab operation: {operation}"
 assert "run: make -C infra/oci apply" in infra_apply, (
     "dedicated OCI infrastructure workflow must own Terraform apply"
 )
