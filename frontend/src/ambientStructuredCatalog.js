@@ -1,6 +1,9 @@
-// Pure structured-theme data. Kept separate from the legacy Al-Ándalus generator
-// so catalog editing does not inflate the runtime catalog facade.
-export const STRUCTURED_AMBIENT_THEMES = {
+// Pure structured-theme data. The source catalog historically grew through
+// several Object.assign blocks; keep those blocks byte-for-byte in structure
+// while moving them out of the ambient catalog facade.
+export const STRUCTURED_AMBIENT_THEMES = {};
+
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   nocturne: {
     id: 'nocturne', engine: 'structured', label: 'Nocturno de piezas blancas',
     description: 'Piano amortiguado y bajo de arco; lento, íntimo y sin batería.',
@@ -937,7 +940,7 @@ export const STRUCTURED_AMBIENT_THEMES = {
 // Bloque menos contemplativo: costa andalusí (oud + guitarra)
 // y chill-jazz luminoso con vibráfono/Rhodes. Inspiración de atmósfera, no
 // melodías ajenas: material original generado por este motor.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   andalusianCoast: {
     id: 'andalusianCoast', engine: 'structured', label: 'Costa andalusí · tarde clara',
     description: 'Oud y guitarra española imaginaria sobre bajo caminante y percusión ligera; cálido, melódico y con más paso que los temas de madrugada.',
@@ -1010,7 +1013,7 @@ Object.assign(AMBIENT_THEMES, {
 // Segundo bloque de estilos: deliberadamente no mediterráneo.
 // Aquí no cambiamos sólo el timbre: cambian métrica implícita, densidad,
 // función del bajo y presencia/ausencia de percusión para ampliar el catálogo.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   zugzwangWaltz: {
     id: 'zugzwangWaltz', engine: 'structured', label: 'Vals del zugzwang',
     description: 'Piano de salón en tres, cello y silencios incómodos: elegante hasta que toca mover.',
@@ -1070,7 +1073,7 @@ Object.assign(AMBIENT_THEMES, {
 // Expansión transversal del catálogo: SPA/zen, rock ambiental y
 // clásica/cámara. Son composiciones originales del motor Web Audio; no se
 // samplean ni reproducen obras externas.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   mistSpa: {
     id: 'mistSpa', genre: 'SPA / Zen', engine: 'structured', label: 'SPA · niebla de cedro',
     description: 'Flauta respirada, cuencos y colchones largos; casi sin pulso, pensada para calcular sin que el cerebro pida vacaciones.',
@@ -1152,7 +1155,7 @@ Object.assign(AMBIENT_THEMES, {
 
 // Dos familias adicionales para ampliar contraste real: lo-fi/chill
 // y synthwave. Siguen siendo composiciones originales del motor Web Audio.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   lofiRainTape: {
     id:'lofiRainTape', genre:'Lo-Fi / Chill', engine:'structured', label:'Lo-fi · lluvia en cassette',
     description:'Piano de fieltro, Rhodes gastado, contrabajo y brushes; cálido, ligeramente polvoriento y muy poco interesado en impresionar a nadie.',
@@ -1194,7 +1197,7 @@ Object.assign(AMBIENT_THEMES, {
 
 // Cuatro familias con contraste de arreglo, no sólo de preset.
 // Nada de campanillas/pajaritos: todos los leads viven en registros medios o graves.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   concreteRain: {
     id:'concreteRain', genre:'Trip-Hop / Downtempo', engine:'structured', label:'Trip-hop · lluvia sobre hormigón',
     description:'Rhodes oscuro, trompeta apagada y bajo profundo sobre un beat lento y seco; ciudad mojada, cero prisa.',
@@ -1278,7 +1281,7 @@ Object.assign(AMBIENT_THEMES, {
 // Priorizan líneas cantables y contramelodía sobre textura/ruido. Las pistas
 // experimentales retiradas más abajo se conservan internamente para no romper
 // sesiones antiguas, pero dejan de entrar en selector y radio aleatoria.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   beirutHarbor2340: {
     id:'beirutHarbor2340', genre:'Jazz / Mediterráneo', engine:'structured', label:'Beirut · puerto 23:40',
     description:'Buzuq y clarinete se contestan sobre Rhodes y contrabajo; nocturna, melódica y con pulso contenido.',
@@ -1362,7 +1365,7 @@ Object.assign(AMBIENT_THEMES, {
 });
 
 // Energía tiene repertorio propio: no es un alias de Rock ni «todo aleatorio».
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   neonSiege: {
     id:'neonSiege', genre:'Energía', engine:'structured', label:'Synth metal · asedio de neón',
     description:'Thrash digital rápido: doble bombo seco, caja corta y riff cortante. El tema más veloz de Energía.',
@@ -1434,7 +1437,7 @@ Object.assign(AMBIENT_THEMES, {
 
 // dm46p · familias acústicas/electrónicas con identidad explícita. El objetivo
 // es que cambiar de emisora cambie de banda, no sólo de progresión armónica.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   midnightSatin: {
     id:'midnightSatin', genre:'Smooth Jazz', engine:'structured', label:'Smooth jazz · satén de medianoche',
     description:'Guitarra jazz de caja, Rhodes, saxo apagado y contrabajo. Redonda, elegante y sin dientes de sierra.',
@@ -1481,7 +1484,7 @@ Object.assign(AMBIENT_THEMES, {
 
 // dm46zey · pequeño pack de escenas nuevas: rellenan huecos del catálogo sin
 // cargar samples externos. Siguen siendo composiciones originales WebAudio.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   pawnMarshal: {
     id:'pawnMarshal', genre:'Ecléctica', engine:'structured', label:'Marcha del peón ilustrado',
     description:'Caja seca, metales contenidos y piano marcial con una ceja levantada. Muy Matthias.',
@@ -1532,7 +1535,7 @@ Object.assign(AMBIENT_THEMES, {
 // Una pieza escaparate para la nueva plantilla de cámara. El ostinato conserva
 // un motivo reconocible entre secciones, mientras piano, bajos y cuerdas largas
 // cambian de función hasta una reprise final más grande.
-Object.assign(AMBIENT_THEMES, {
+Object.assign(STRUCTURED_AMBIENT_THEMES, {
   clockworkOverture: {
     id:'clockworkOverture', genre:'Clásica', engine:'structured', label:'Obertura del reloj',
     description:'Orquesta de cámara con spiccato real, cello rítmico, piano de fieltro y un motivo que crece hasta la reprise. Elegante, tensa y con gancho.',
@@ -1574,4 +1577,4 @@ Object.assign(AMBIENT_THEMES, {
       },
     ],
   },
-};
+});
