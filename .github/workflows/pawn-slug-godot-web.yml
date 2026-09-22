@@ -22,6 +22,7 @@ on:
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
+      - scripts/pawn_slug_godot_visual_scope.py
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -48,6 +49,7 @@ on:
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
+      - scripts/pawn_slug_godot_visual_scope.py
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -75,6 +77,7 @@ jobs:
     timeout-minutes: 8
     outputs:
       export_required: ${{ steps.classify.outputs.export_required }}
+      pr_visual_required: ${{ steps.classify.outputs.pr_visual_required }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -212,13 +215,26 @@ jobs:
           grep -q '_notify_parent("ready")' games/pawn-slug-godot/scripts/main.gd
           grep -q '_notify_parent("exit")' games/pawn-slug-godot/scripts/main.gd
           grep -Fq "frame-src 'self' https://assets.chess-studio.shadowops.dpdns.org" scripts/apply_frontend_csp.mjs
+      - name: Pawn Slug visual CI scope self-test
+        run: python3 -S scripts/pawn_slug_godot_visual_scope.py --self-test
       - name: Classify export surface
         id: classify
         shell: bash
         run: |
           set -euo pipefail
           export_required=false
-          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+          pr_visual_required=false
+
+          if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+            if git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+              changed="$(git diff --name-only HEAD^1 HEAD)"
+              printf 'Changed files:\n%s\n' "$changed"
+              pr_visual_required="$(printf '%s\n' "$changed" | python3 -S scripts/pawn_slug_godot_visual_scope.py)"
+            else
+              # Fail conservative: if the merge parent is unavailable, capture.
+              pr_visual_required=true
+            fi
+          elif [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
             export_required=true
           elif [[ "$GITHUB_EVENT_NAME" == 'push' ]]; then
             if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
@@ -231,8 +247,11 @@ jobs:
               export_required=true
             fi
           fi
+
           echo "export_required=$export_required" >> "$GITHUB_OUTPUT"
+          echo "pr_visual_required=$pr_visual_required" >> "$GITHUB_OUTPUT"
           echo "Pawn Slug Godot export required: $export_required" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pawn Slug PR full visual capture required: $pr_visual_required" >> "$GITHUB_STEP_SUMMARY"
 
   build_publish:
     name: Export + publish · Pawn Slug Godot Web
@@ -377,7 +396,7 @@ jobs:
 
   pr_visual_capture:
     name: PR visual evidence · Pawn Slug Godot
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.validate.outputs.pr_visual_required == 'true'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
