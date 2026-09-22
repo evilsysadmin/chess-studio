@@ -368,6 +368,9 @@ session-continuity-check:
 safe-storage-check:
 	node scripts/safe_storage_gate.mjs
 
+docs-index-check:
+	python3 -S scripts/agents_markdown_index_check.py
+
 chess-rules-check:
 	node scripts/chess_rules_gate.mjs
 
@@ -416,7 +419,7 @@ test-parity-check:
 render-staging-check:
 	python3 -S scripts/render_staging_bootstrap_smoke.py
 
-static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
+static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check docs-index-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
 	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
