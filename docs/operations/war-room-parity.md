@@ -43,6 +43,24 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Abandono / salida | **GATE** | `war-room-ephemeral-cleanup.spec.js`: abandona desde War Room con selección + inspect activos, confirma vuelta única a Home, exige desmontaje total de shell/canvas 3D y eliminación del snapshot de sesión activa sin ErrorBoundary. | Mantener al tocar salida, snapshot activo o lifecycle del renderer. |
 | Reduced motion | **GATE** | `mobile-war-room-lifecycle.spec.js` corre War Room con `reducedMotion: reduce`, conserva selección durante rotaciones/background y ejecuta una jugada real; `war-room-undo-rewind.spec.js` además juega, deshace, recarga y cruza a 2D bajo la misma media feature. | Mantener al añadir nuevos FX/microanimaciones de War Room. |
 | Fallback 3D → 2D por WebGL | **GATE** | `war-room-webgl-fallback.spec.js` cubre tanto arranque sin WebGL como `webglcontextlost` en mitad de partida; en ambos casos aparece el tablero 2D, desaparece el canvas 3D y e2→e4 sigue produciendo exactamente una mutación sin ErrorBoundary. | Mantener al tocar lifecycle/context recovery/fallback. |
+| Onboarding inicial guiado por Matthias | **PENDIENTE** | Contrato fijado: Matthias guía selección de una pieza, muestra destinos legales reales y acompaña una o dos interacciones; es skippable, reabrible desde ayuda y equivalente con mouse/touch/teclado. | Añadir E2E first-run + replay desde Help verificando que los destinos vienen del estado legal compartido y que el estado tutorial se limpia al cerrar/completar. |
+
+## Onboarding first-run de War Room
+
+Matthias es el guía diegético del primer contacto con War Room. No usar una voz genérica de sistema ni una capa tutorial desconectada del mundo.
+
+Contrato:
+
+- en la primera entrada significativa, Matthias pide seleccionar/tocar una pieza real;
+- al seleccionarla, el tablero muestra **los destinos legales que ya calcula el estado compartido**; el tutorial nunca inventa legalidad ni mantiene una lista paralela;
+- Matthias reacciona a esa selección y guía una o dos interacciones simples, suficientes para enseñar seleccionar → leer destinos → mover;
+- funciona con mouse, touch y teclado/focus; no diseñar un recorrido que sólo exista con hover;
+- puede omitirse inmediatamente y debe poder relanzarse más tarde desde Ayuda/tutoriales;
+- completar u omitir limpia overlays/highlights/estado efímero del tutorial sin tocar FEN, clocks, selección persistida o una partida en curso;
+- reduced-motion conserva claridad sin depender de animaciones decorativas;
+- el copy usa el tono establecido de Matthias: breve, elegante y algo socarrón; la enseñanza prima sobre el chiste.
+
+El onboarding es presentación/interaction coaching, no un segundo motor de reglas. Cualquier movimiento guiado atraviesa la misma ruta real que una jugada normal.
 
 ## Frontera de arquitectura
 
