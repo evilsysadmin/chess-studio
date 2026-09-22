@@ -135,12 +135,13 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   // coupling this staging smoke to Home's pointer hit-map/stacking context.
   await direct.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible({ timeout: 20_000 });
 
+  // Pawn Slug now mounts as a fullscreen runtime without a route heading.
+  // The live smoke must wait on the runtime contract itself, not removed chrome.
   const host = page.locator('.pawn-slug-godot-host');
   const iframe = page.locator('iframe[title="Pawn Slug Godot"]');
-  await expect(host).toBeVisible();
-  await expect(iframe).toBeVisible();
+  await expect(host).toBeVisible({ timeout: 20_000 });
+  await expect(iframe).toBeVisible({ timeout: 20_000 });
   await expect(host).toHaveAttribute('data-runtime-ready', 'true', { timeout: 30_000 });
   await expect(page.locator('.pawn-slug-godot-host__header')).toHaveCount(0);
 
