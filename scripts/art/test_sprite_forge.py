@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 
 from sprite_forge import (
     BankContractError,
+    FixedScaleContract,
     GeometryContract,
     GeometryError,
     LintConfig,
@@ -19,6 +20,7 @@ from sprite_forge import (
     geometry_metrics,
     lint_frame,
     normalize_frame,
+    normalize_fixed_scale_frame,
     place_frame_fixed_scale,
     validate_geometry,
     validate_sequence,
@@ -280,6 +282,56 @@ class SpriteForgeFixedScalePlacementTests(unittest.TestCase):
         )
         self.assertTrue(lint.ok, lint.errors)
         self.assertEqual(len(lint.components), 1)
+
+
+class SpriteForgeFixedScaleTests(unittest.TestCase):
+    def test_fixed_scale_preserves_pose_ratio_and_footline(self) -> None:
+        source = Image.new("RGBA", (80, 60), (0, 0, 0, 0))
+        ImageDraw.Draw(source).rectangle(
+            (10, 20, 69, 49),
+            fill=(180, 120, 80, 255),
+        )
+        out = normalize_fixed_scale_frame(
+            source,
+            FixedScaleContract(
+                canvas_size=(240, 180),
+                scale=2.0,
+                center_x=120.0,
+                foot_y=160.0,
+                safe_margin_px=8,
+            ),
+            LintConfig(edge_guard_px=0),
+        )
+        bbox = out.getchannel("A").getbbox()
+        self.assertIsNotNone(bbox)
+        assert bbox is not None
+        self.assertAlmostEqual(bbox[2] - bbox[0], 120, delta=3)
+        self.assertAlmostEqual(bbox[3] - bbox[1], 60, delta=3)
+        self.assertAlmostEqual(bbox[3], 160, delta=2)
+        post = lint_frame(out, LintConfig(edge_guard_px=0))
+        self.assertTrue(
+            post.ok,
+            f"fixed-scale output must remain one clean silhouette: {post.errors}",
+        )
+
+    def test_fixed_scale_refuses_clipping(self) -> None:
+        source = Image.new("RGBA", (100, 60), (0, 0, 0, 0))
+        ImageDraw.Draw(source).rectangle(
+            (5, 10, 94, 49),
+            fill=(180, 120, 80, 255),
+        )
+        with self.assertRaisesRegex(GeometryError, "would-clip-fixed"):
+            normalize_fixed_scale_frame(
+                source,
+                FixedScaleContract(
+                    canvas_size=(180, 180),
+                    scale=2.0,
+                    center_x=90.0,
+                    foot_y=160.0,
+                    safe_margin_px=8,
+                ),
+                LintConfig(edge_guard_px=0),
+            )
 
 
 class SpriteForgeTemporalTests(unittest.TestCase):
