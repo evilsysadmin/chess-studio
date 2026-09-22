@@ -164,67 +164,24 @@ assert "/usr/local/sbin/chess-studio-k3s-staging2 status" in sudoers
 assert "/usr/local/sbin/chess-studio-k3s-staging2 rollback" in sudoers
 assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS, CHESS_STUDIO_K3S_STAGING2" in sudoers
 
-# K3s lifecycle is an explicit experimental control-plane operation, not a side
-# effect of a successful application release. The explicit start owns its own
-# idempotent bundle reconcile/install prerequisites under the mutation mutex.
+# K3s/Flux remains reproducible experiment tooling, but HOLD means the normal
+# OCI service front-door and Compose release path cannot expose or invoke it.
 assert "workflow_dispatch:" in service
 assert "workflow_run:" not in service
-assert "workflows: [Deploy to staging]" not in service
-assert "github.event.workflow_run" not in service
-assert "auto_admission" not in service
-assert "git ls-remote origin refs/heads/main" not in service
 assert "ref: ${{ github.sha }}" in service
-assert "'oci-staging-mutations'" in service
-publish_command = "python3 scripts/oci_k3s_bundle_publish.py reconcile"
-install_command = "python3 scripts/oci_k3s_bundle_probe.py install"
-start_command = "python3 scripts/oci_k3s_control.py start"
-assert "Reconcile K3s bootstrap assets before explicit start" in service
-assert publish_command in service and install_command in service and start_command in service
-assert service.index(publish_command) < service.index(install_command) < service.index(start_command), (
-    "explicit K3s start must reconcile and install exact assets before lifecycle start"
-)
-assert "Start or ensure guarded single-node K3s" in service
-assert "python3 scripts/oci_k3s_control.py rollback" in service
-assert "Read K3s status and resource snapshot" in service
-assert "python3 scripts/oci_k3s_status.py" in service
-assert "inputs.operation == 'k3s-status'" in service
-assert "Deploy exact backend into isolated K3s staging2" in service
-assert 'python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_REF"' in service
-assert "Roll back isolated K3s staging2 backend" in service
-assert "python3 scripts/oci_k3s_staging2.py rollback" in service
-assert "Read isolated K3s staging2 status" in service
-assert "python3 scripts/oci_k3s_staging2.py status" in service
-assert "Prove Docker staging survived K3s lifecycle change" in service
-assert 'EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}' in service
-assert '--sha "$EXPECTED_SHA"' in service
+for forbidden in (
+    "k3s-start",
+    "k3s-status",
+    "k3s-rollback",
+    "k3s-staging2-deploy",
+    "k3s-staging2-status",
+    "k3s-staging2-rollback",
+    "oci_k3s_bundle_publish.py",
+    "oci_k3s_bundle_probe.py",
+    "oci_k3s_control.py",
+    "oci_k3s_status.py",
+    "oci_k3s_staging2.py",
+):
+    assert forbidden not in service, f"K3s HOLD leaked into canonical OCI service control: {forbidden}"
 
-concurrency_block = service.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
-assert '"k3s-staging2-deploy"' in concurrency_block
-assert '"k3s-staging2-rollback"' in concurrency_block
-assert '"k3s-staging2-status"' not in concurrency_block
-
-manual_only_fragments = (
-    "inputs.operation == 'mongo-target-diagnose'",
-    "inputs.operation == 'runtime-sync'",
-    "inputs.operation == 'vault-bootstrap'",
-    "inputs.operation == 'vault-validate-pending'",
-    "inputs.operation == 'reboot-agent'",
-    "inputs.operation == 'backend-diagnose'",
-    "inputs.operation == 'mongo-network-diagnose'",
-    "inputs.operation == 'reserved-egress'",
-    "inputs.operation == 'k3s-start'",
-    "inputs.operation == 'k3s-status'",
-    "inputs.operation == 'k3s-rollback'",
-    "inputs.operation == 'k3s-staging2-deploy'",
-    "inputs.operation == 'k3s-staging2-status'",
-    "inputs.operation == 'k3s-staging2-rollback'",
-    "inputs.operation == 'deploy' || inputs.operation == 'bringup'",
-)
-for fragment in manual_only_fragments:
-    matching = [line.strip() for line in service.splitlines() if fragment in line and line.lstrip().startswith("if:")]
-    assert matching, f"missing manual-only service condition: {fragment}"
-    assert all("github.event_name == 'workflow_dispatch'" in line for line in matching), (
-        f"non-dispatch events must never authorize manual service operation: {fragment}"
-    )
-
-print("OCI K3s readiness + explicit asset reconcile + guarded manual lifecycle + read-only status contract: OK")
+print("OCI K3s readiness: lab tooling intact; canonical Compose service path stays K3s-free")

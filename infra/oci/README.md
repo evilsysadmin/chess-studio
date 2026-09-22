@@ -1,6 +1,6 @@
 # OCI staging/lab
 
-**OCI es el backend canónico de staging. Producción sigue en Render salvo promoción explícita mediante el selector versionado de producción; K3s y el laboratorio Terraform continúan siendo experimentales/reversibles.**
+**OCI es el backend canónico de staging. La A1 Always Free usa Docker/Compose como runtime canónico. Producción sigue en Render salvo promoción explícita mediante el selector versionado de producción; K3s/Flux queda en HOLD experimental y reversible.**
 
 La infraestructura OCI se divide deliberadamente por responsabilidad:
 
@@ -12,7 +12,7 @@ La infraestructura OCI se divide deliberadamente por responsabilidad:
 
 ## Primer encendido desde GitHub Actions
 
-La consola OCI se usa una vez para crear la API signing key. Para provisioning/recovery del laboratorio se usa `.github/workflows/oci-staging-lab.yml`; el release normal de aplicación llega por la cadena `Main · admission` → `Deploy to staging`, que consume el runtime OCI ya instalado.
+La consola OCI se usa una vez para crear la API signing key. Para provisioning/recovery del laboratorio se usa `.github/workflows/oci-staging-lab.yml`; el release normal de aplicación llega por la cadena `Main · admission` → `Deploy to staging`, que consume el runtime Docker/Compose ya instalado.
 
 Secrets de repositorio obligatorios:
 
@@ -98,11 +98,13 @@ El workflow obtiene el Object Storage namespace mediante el provider Terraform y
 - backend OCI usa locking nativo; no se desactiva con `-lock=false`.
 - el state bootstrap conserva lineage y conjunto de recursos al migrarse.
 - cambios IaC puros ejecutan OCI readiness pero no despiertan Trivy/Docker/Compose.
-- futuras capas K3s/GitOps no pueden introducir builders A1 temporales, Custom Images facturables ni otros recursos OCI fuera del presupuesto zero-cost sin cambiar explícitamente este contrato.
+- K3s/Flux no forma parte del runtime necesario ni del recovery ordinario mientras una sola A1 cubra la carga; se conserva sólo como experimento HOLD.
+- reevaluar Kubernetes únicamente ante requisitos demostrados de HA/multinodo, scheduling, autoscaling o topología de servicios que Compose ya no resuelva.
+- cualquier experimento K3s/GitOps futuro no puede introducir builders A1 temporales, Custom Images facturables ni otros recursos OCI fuera del presupuesto zero-cost sin cambiar explícitamente este contrato.
 
 ## Estado operativo actual
 
-OCI ya sirve el backend canónico de staging. El release normal **no** ejecuta Terraform ni depende de Render staging: despliega/reconcilia el runtime instalado sobre el SHA acreditado.
+OCI ya sirve el backend canónico de staging. El release normal **no** ejecuta Terraform ni depende de Render staging: despliega/reconcilia el runtime Docker/Compose instalado sobre el SHA acreditado. K3s/Flux no participa en esta ruta.
 
 Los antiguos drills de shadow siguen siendo requisitos útiles de disaster recovery y cambios de infraestructura:
 

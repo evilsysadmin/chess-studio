@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-17.
+Última auditoría: 2026-09-22.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -64,12 +64,12 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | --- | --- |
 | `oci-readiness.yml` | Validación OCI path-aware para PR: contratos, runtime bundle y ARM64 sólo cuando cambia la imagen backend/su smoke o la propia lane ARM64. `workflow_dispatch` añade validaciones Terraform estáticas. **No muta staging ni publica K3s al mergear.** |
 | `oci-staging-deploy.yml` | `terraform apply` manual y exacto sobre `main`, seguido por convergencia del agente OCI y egress reservado. Es el único apply de infraestructura production-grade de OCI staging. |
-| `oci-staging-service.yml` | Front-door manual para diagnóstico y operaciones del host/runtime. `deploy`, `runtime-sync`, `vault-bootstrap`, K3s lifecycle, egress y recuperación toman el mutex de mutación; diagnósticos, validaciones y `k3s-status` son observación y no bloquean releases. |
+| `oci-staging-service.yml` | Front-door manual para diagnóstico y operaciones del runtime Docker/Compose de la A1. `deploy`, `runtime-sync`, `vault-bootstrap`, egress y recuperación toman el mutex de mutación; diagnósticos y validaciones read-only no bloquean releases. |
 | `oci-vault-cutover-once.yml` | Migración one-shot y auto-disparada sólo al añadirse: si CURRENT Vault aún no sirve, bootstrap idempotente desde Render, validación y materialización en la A1. Se retira tras acreditar el primer cutover. |
 | `oci-staging-lab.yml` | Laboratorio manual Terraform limitado a `probe`, `plan`, `bootstrap` y `destroy`; no ofrece un segundo `apply` desnudo. |
 | `oci-staging-tunnel.yml` | Reconciliación manual del túnel/DNS de staging, serializada sólo porque sí muta control-plane. |
 
-K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
+Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en **HOLD experimental**: sus scripts y manifests pueden conservarse como laboratorio reproducible, pero no se exponen desde el front-door operativo, no participan en release/recovery ordinario y no deben condicionar staging ni producción. Sólo se reevalúa Kubernetes si aparecen requisitos reales de HA/multinodo, scheduling, autoscaling o una topología de servicios que Compose ya no resuelva.
 
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. `oci-vault-cutover-once.yml` se conserva sólo como migración one-shot mientras siga siendo necesario para el estado histórico del cutover. Render producción permanece independiente y no forma parte de esta retirada.
 
@@ -135,7 +135,7 @@ Fuera de la línea de release:
 OCI infra apply ────── manual
 OCI runtime/Vault ─── manual para rotaciones; fallback de deploy reconcilia CURRENT Vault + Git
 OCI tunnel ────────── manual
-K3s lifecycle ─────── manual/experimental
+K3s/Flux lab ───────── HOLD experimental, fuera del front-door
 Diagnostics ───────── manual/read-only, sin bloquear deploys
 ```
 
@@ -173,8 +173,9 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - `main-delivery-handoff.yml` → retirado; el merge nativo produce el `push` normal a `main` y no necesita redispatch.
 - `matthias-visual.yml` → absorbido primero por `e2e-full.yml`; sus gates PR path-aware viven ahora en `cicd.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
-- Publicación K3s automática desde `oci-readiness.yml` → retirada; assets se reconcilian en el `k3s-start` explícito.
+- Publicación K3s automática desde `oci-readiness.yml` → retirada.
 - Auto-K3s tras cada `Deploy to staging` → retirado; lifecycle experimental no forma parte del release canónico.
+- Operaciones K3s/staging2 dentro de `oci-staging-service.yml` → retiradas del front-door; el experimento queda preservado únicamente como tooling/lab fuera de la operación normal.
 - Mutex único para cualquier `oci-staging-service` → retirado; sólo las operaciones mutantes compiten con deploy/Terraform.
 - `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
 - `codeql.yml` → absorbido por `coverage.yml` como señal periódica; conserva cadence semanal y permisos `security-events` limitados al job CodeQL.
