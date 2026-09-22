@@ -1,7 +1,7 @@
 import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
-  chroniclesEnemyPosition,
+  chroniclesRuntimeEnemyPosition as chroniclesCoreRuntimeEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
@@ -27,9 +27,7 @@ function walkable(state, position) {
 }
 
 export function chroniclesRuntimeEnemyPosition(state, enemy) {
-  const runtime = state?.enemyPositions?.[enemy.id];
-  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
-  return chroniclesEnemyPosition(state, enemy);
+  return chroniclesCoreRuntimeEnemyPosition(state, enemy);
 }
 
 function occupiedByEnemy(state, position, ignoredEnemyId) {
