@@ -1,3 +1,5 @@
+Contrato transversal de rendimiento: `docs/operations/runtime-performance.md`.
+
 # Frontend — scoped AGENTS
 
 Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
