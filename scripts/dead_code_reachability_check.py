@@ -35,6 +35,48 @@ DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 REQUIRE_RE = re.compile(r"\brequire\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 UVICORN_ENTRY_RE = re.compile(r"\buvicorn\s+([A-Za-z_][A-Za-z0-9_]*):[A-Za-z_][A-Za-z0-9_]*")
 FRONTEND_EXCLUDES = {"test-setup.js"}
+FRONTEND_DEAD_EXPORT_BASELINE = {
+    "frontend/src/ambientIdentityContrasts.js::IDENTITY_CONTRAST_IDS",
+    "frontend/src/ambientRadioMatthiasRecompositions.js::RADIO_MATTHIAS_MELODIC_REWRITE_IDS",
+    "frontend/src/chesscomEnvironmentArtV4.js::CHESSCOM_ENVIRONMENT_ART_V4",
+    "frontend/src/chesscomMaterialArtV7.js::CHESSCOM_MATERIAL_ART_V7",
+    "frontend/src/chesscomOverlayArtV6.js::CHESSCOM_OVERLAY_ART_V6",
+    "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapEnemyById",
+    "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapInteractable",
+    "frontend/src/chroniclesOfMatthias.js::chroniclesEnemyAlive",
+    "frontend/src/chroniclesOfMatthias.js::chroniclesFrontCell",
+    "frontend/src/chroniclesOfMatthiasProgression.js::resetChroniclesCharacterBuild",
+    "frontend/src/chroniclesOfMatthiasTactics.js::CHRONICLES_TACTICS_WORLD",
+    "frontend/src/chroniclesOfMatthiasTactics.js::chroniclesTacticsWait",
+    "frontend/src/combatBosses.js::campaignBossById",
+    "frontend/src/combatEconomy.js::unequipEquipment",
+    "frontend/src/combatEconomyBalance.js::COMBAT_CAMPAIGN_ECONOMY",
+    "frontend/src/combatFlowMachine.js::assertCombatFlowInvariant",
+    "frontend/src/components/Icons.jsx::IconBookmark",
+    "frontend/src/components/Icons.jsx::IconBulb",
+    "frontend/src/components/Icons.jsx::IconEye",
+    "frontend/src/components/Icons.jsx::IconPawn",
+    "frontend/src/components/Icons.jsx::IconPuzzle",
+    "frontend/src/components/WarRoomCampaignArt.js::WAR_ROOM_CAMPAIGN_ART_KEYS",
+    "frontend/src/components/WarRoomHansActor.js::acquireWarRoomHansRoutine",
+    "frontend/src/components/WarRoomHansActor.js::releaseWarRoomHansRoutine",
+    "frontend/src/components/WarRoomHansActor.js::warRoomHansRoutineAvailable",
+    "frontend/src/components/WarRoomHansAmbientCompletion.js::WAR_ROOM_HANS_AMBIENT_COMPLETION_VERSION",
+    "frontend/src/components/WarRoomHansChoreContract.js::WAR_ROOM_HANS_CHORE_CONTRACT_VERSION",
+    "frontend/src/components/WarRoomHansEventContract.js::WAR_ROOM_HANS_EVENT_VERSION",
+    "frontend/src/components/WarRoomHansNavigation.js::WAR_ROOM_HANS_NAVIGATION_VERSION",
+    "frontend/src/components/WarRoomHansServiceContract.js::WAR_ROOM_HANS_SERVICE_CONTRACT_VERSION",
+    "frontend/src/components/useWarRoomSpatialAmbience.js::WAR_ROOM_SPATIAL_AMBIENCE_VERSION",
+    "frontend/src/historyNavigation.js::requestHistoryGameOpen",
+    "frontend/src/homePlayNudge.js::HOME_PLAY_NUDGE_IDLE_MS",
+    "frontend/src/matthiasDailyQuestions.js::MATTHIAS_DAILY_QUESTION_KINDS",
+    "frontend/src/matthiasSchool.js::applySchoolLineStep",
+    "frontend/src/matthiasVisuals.js::matthiasContextAvatar",
+    "frontend/src/pawnTrailblazerSprites.js::trailSprite",
+    "frontend/src/puzzleStateMachine.js::assertPuzzleInvariant",
+    "frontend/src/puzzleTacticalQuality.js::bestShallowTacticalScore",
+    "frontend/src/puzzleTacticalQuality.js::tacticalScoreForFirstMove",
+}
 
 
 def strip_resource_query(spec: str) -> str:
@@ -416,16 +458,31 @@ def script_python_helper_unreferenced() -> list[Path]:
 def main() -> int:
     front_seen, front_dead = frontend_unreachable()
     dead_exports = frontend_dead_exports(front_seen)
+    dead_export_keys = {
+        f"{path.relative_to(ROOT).as_posix()}::{name}"
+        for path, name in dead_exports
+    }
+    unexpected_dead_exports = sorted(dead_export_keys - FRONTEND_DEAD_EXPORT_BASELINE)
+    stale_dead_export_baseline = sorted(FRONTEND_DEAD_EXPORT_BASELINE - dead_export_keys)
     css_seen, css_dead = css_unreachable(front_seen)
     back_seen, back_dead = backend_unreachable()
     script_dead = script_python_helper_unreferenced()
-    if front_dead or dead_exports or css_dead or back_dead or script_dead:
+    if (
+        front_dead
+        or unexpected_dead_exports
+        or stale_dead_export_baseline
+        or css_dead
+        or back_dead
+        or script_dead
+    ):
         for path in front_dead:
             print(f"ERROR dead-code gate: frontend productivo inalcanzable: {path.relative_to(ROOT)}")
-        for path, name in dead_exports:
+        for key in unexpected_dead_exports:
+            print(f"ERROR dead-code gate: export frontend muerto nuevo: {key}")
+        for key in stale_dead_export_baseline:
             print(
-                f"ERROR dead-code gate: export frontend sin consumidor/uso: "
-                f"{path.relative_to(ROOT)}::{name}"
+                f"ERROR dead-code gate: baseline de export muerto ya retirada; "
+                f"borra la entrada del ratchet: {key}"
             )
         for path in css_dead:
             print(f"ERROR dead-code gate: CSS productivo inalcanzable: {path.relative_to(ROOT)}")
@@ -436,7 +493,8 @@ def main() -> int:
         return 1
     print(
         "dead-code-reachability OK · "
-        f"frontend {len(front_seen)} alcanzables · 0 exports muertos de alta confianza · "
+        f"frontend {len(front_seen)} alcanzables · "
+        f"dead-export baseline {len(FRONTEND_DEAD_EXPORT_BASELINE)} exacta · "
         f"CSS {css_seen} alcanzables · backend {back_seen} alcanzables · "
         f"scripts Python 0 helpers huérfanos · 0 módulos/hojas huérfanos"
     )
