@@ -117,7 +117,8 @@
       "material": "metal",
       "visual": {
         "rail": true
-      }
+      },
+      "route": "climb"
     },
     {
       "x": 3230,
