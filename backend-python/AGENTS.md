@@ -4,6 +4,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `backend-python/
 
 ## Antes de tocar código
 
+- Resiliencia/fallbacks: `docs/operations/resilience-degraded-mode.md`.
 Lee según el área:
 
 - persistencia/restore de partidas: `docs/operations/game-state-recovery.md`;
