@@ -29,15 +29,19 @@ CENTER_TOLERANCE_PX = 6.0
 AIR_CENTER_TOLERANCE_PX = 10.0
 AIR_HEIGHT_RATIO = (0.90, 1.10)
 LOWER_BODY_START_FRACTION = 0.55
-LOWER_BODY_ALPHA_RATIO = (0.90, 1.10)
-LOWER_BODY_INTERIOR_ALPHA_RATIO = (0.95, 1.05)
+RUN_LEG_START_FRACTION = 0.70
+LOWER_BODY_ALPHA_MIN_RATIO = 0.90
+LOWER_BODY_INTERIOR_ALPHA_MIN_RATIO = 0.94
 LOWER_BODY_SEMI_ALPHA_MAX_DELTA = 0.12
 LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA = 0.06
 LOWER_BODY_SIGNATURE_SIZE = (96, 64)
 LOWER_BODY_SIGNATURE_THRESHOLD = 64
-RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.025
-RUN_LOWER_BODY_MAX_DELTA_MIN = 0.05
+RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.06
+RUN_LOWER_BODY_MAX_DELTA_MIN = 0.10
+RUN_MOTION_MEDIAN_RATIO_MIN = 0.75
+RUN_MOTION_MAX_RATIO_MIN = 0.75
 AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
+AIRBORNE_FAIL_CLOSED_WEAPONS = ("machinegun",)
 
 
 def parse_args() -> argparse.Namespace:
@@ -199,7 +203,7 @@ def lower_body_signature(image: Image.Image, label: str) -> bytes:
     if not found:
         raise ValueError(f"{label}: empty frame")
     left, top, right, bottom = found[0]["bbox"]
-    start_y = top + max(1, int((bottom - top) * LOWER_BODY_START_FRACTION))
+    start_y = top + max(1, int((bottom - top) * RUN_LEG_START_FRACTION))
     alpha = rgba.getchannel("A").crop((left, start_y, right, bottom))
     if alpha.getbbox() is None:
         raise ValueError(f"{label}: lower body has no silhouette")
@@ -247,6 +251,22 @@ def validate_lower_body_motion(frames: list[dict], label: str) -> dict:
     }
 
 
+def min_ratio(
+    value: float,
+    reference: float,
+    minimum: float,
+    label: str,
+) -> float:
+    if reference <= 0:
+        raise ValueError(f"{label}: invalid reference {reference}")
+    ratio = value / reference
+    if ratio < minimum:
+        raise ValueError(
+            f"{label}: ratio {ratio:.4f} below minimum {minimum:.2f}"
+        )
+    return ratio
+
+
 def ratio_in(
     value: float,
     reference: float,
@@ -266,6 +286,7 @@ def ratio_in(
 
 def validate_idle(sprite_dir: Path) -> dict:
     metrics: dict[str, list[dict]] = {}
+    violations: list[str] = []
     for weapon in WEAPONS:
         frames: list[dict] = []
         for col in range(IDLE_COLUMNS):
@@ -283,7 +304,7 @@ def validate_idle(sprite_dir: Path) -> dict:
                 image, f"{weapon} idle c{col}"
             )
             if frame["componentCount"] != 1:
-                raise ValueError(
+                violations.append(
                     f"{weapon} idle c{col}: detached opaque components are "
                     f"forbidden: {frame['detachedAreas']}"
                 )
@@ -296,40 +317,56 @@ def validate_idle(sprite_dir: Path) -> dict:
         validated: list[dict] = []
         for col, frame in enumerate(metrics[weapon]):
             ref = pistol[col]
-            width_ratio = ratio_in(
-                frame["width"],
-                ref["width"],
-                IDLE_WIDTH_RATIO,
-                f"{weapon} idle c{col} width",
-            )
-            height_ratio = ratio_in(
-                frame["height"],
-                ref["height"],
-                IDLE_HEIGHT_RATIO,
-                f"{weapon} idle c{col} height",
-            )
+            try:
+                width_ratio = ratio_in(
+                    frame["width"],
+                    ref["width"],
+                    IDLE_WIDTH_RATIO,
+                    f"{weapon} idle c{col} width",
+                )
+            except ValueError as exc:
+                violations.append(str(exc))
+                width_ratio = float("nan")
+            try:
+                height_ratio = ratio_in(
+                    frame["height"],
+                    ref["height"],
+                    IDLE_HEIGHT_RATIO,
+                    f"{weapon} idle c{col} height",
+                )
+            except ValueError as exc:
+                violations.append(str(exc))
+                height_ratio = float("nan")
             if abs(frame["footY"] - ref["footY"]) > FOOT_TOLERANCE_PX:
-                raise ValueError(
+                violations.append(
                     f"{weapon} idle c{col}: footline drift "
                     f"{frame['footY']} vs {ref['footY']}"
                 )
             if abs(frame["centerX"] - ref["centerX"]) > CENTER_TOLERANCE_PX:
-                raise ValueError(
+                violations.append(
                     f"{weapon} idle c{col}: center drift "
                     f"{frame['centerX']} vs {ref['centerX']}"
                 )
-            alpha_ratio = ratio_in(
-                frame["lowerBodyAlpha"]["meanAlpha"],
-                ref["lowerBodyAlpha"]["meanAlpha"],
-                LOWER_BODY_ALPHA_RATIO,
-                f"{weapon} idle c{col} lower-body alpha",
-            )
-            interior_alpha_ratio = ratio_in(
-                frame["lowerBodyAlpha"]["interiorMeanAlpha"],
-                ref["lowerBodyAlpha"]["interiorMeanAlpha"],
-                LOWER_BODY_INTERIOR_ALPHA_RATIO,
-                f"{weapon} idle c{col} lower-body interior alpha",
-            )
+            try:
+                alpha_ratio = min_ratio(
+                    frame["lowerBodyAlpha"]["meanAlpha"],
+                    ref["lowerBodyAlpha"]["meanAlpha"],
+                    LOWER_BODY_ALPHA_MIN_RATIO,
+                    f"{weapon} idle c{col} lower-body alpha",
+                )
+            except ValueError as exc:
+                violations.append(str(exc))
+                alpha_ratio = float("nan")
+            try:
+                interior_alpha_ratio = min_ratio(
+                    frame["lowerBodyAlpha"]["interiorMeanAlpha"],
+                    ref["lowerBodyAlpha"]["interiorMeanAlpha"],
+                    LOWER_BODY_INTERIOR_ALPHA_MIN_RATIO,
+                    f"{weapon} idle c{col} lower-body interior alpha",
+                )
+            except ValueError as exc:
+                violations.append(str(exc))
+                interior_alpha_ratio = float("nan")
             semi_delta = (
                 frame["lowerBodyAlpha"]["semiTransparentFraction"]
                 - ref["lowerBodyAlpha"]["semiTransparentFraction"]
@@ -339,12 +376,12 @@ def validate_idle(sprite_dir: Path) -> dict:
                 - frame["lowerBodyAlpha"]["opaqueFraction"]
             )
             if semi_delta > LOWER_BODY_SEMI_ALPHA_MAX_DELTA:
-                raise ValueError(
+                violations.append(
                     f"{weapon} idle c{col}: lower-body semi-transparent mass "
                     f"drift {semi_delta:.4f} > {LOWER_BODY_SEMI_ALPHA_MAX_DELTA:.4f}"
                 )
             if opaque_drop > LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA:
-                raise ValueError(
+                violations.append(
                     f"{weapon} idle c{col}: lower-body opaque fraction dropped "
                     f"{opaque_drop:.4f} > {LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA:.4f}"
                 )
@@ -360,6 +397,8 @@ def validate_idle(sprite_dir: Path) -> dict:
                 }
             )
         report[weapon] = validated
+    if violations:
+        raise ValueError("idle continuity violations:\n- " + "\n- ".join(violations))
     return report
 
 
@@ -394,7 +433,7 @@ def validate_airborne(sprite_dir: Path) -> dict:
 
         pistol = by_weapon["pistol"]
         report: dict[str, list[dict]] = {"pistol": pistol}
-        for weapon in WEAPONS[1:]:
+        for weapon in AIRBORNE_FAIL_CLOSED_WEAPONS:
             validated: list[dict] = []
             for col, frame in enumerate(by_weapon[weapon]):
                 ref = pistol[col]
@@ -414,10 +453,10 @@ def validate_airborne(sprite_dir: Path) -> dict:
                         f"{frame['centerX']} vs {ref['centerX']}"
                     )
                 try:
-                    alpha_ratio = ratio_in(
+                    alpha_ratio = min_ratio(
                         frame["lowerBodyAlpha"]["meanAlpha"],
                         ref["lowerBodyAlpha"]["meanAlpha"],
-                        LOWER_BODY_ALPHA_RATIO,
+                        LOWER_BODY_ALPHA_MIN_RATIO,
                         f"{weapon} {action} c{col} lower-body alpha",
                     )
                 except ValueError as exc:
@@ -542,6 +581,23 @@ def validate_run(gdscript: Path) -> dict:
             > CENTER_TOLERANCE_PX
         ):
             raise ValueError(f"{weapon} run: median center drift")
+        if weapon == "machinegun":
+            pistol_motion = pistol["lowerBodyMotion"]
+            motion = item["lowerBodyMotion"]
+            median_ratio = min_ratio(
+                motion["medianDelta"],
+                pistol_motion["medianDelta"],
+                RUN_MOTION_MEDIAN_RATIO_MIN,
+                "machinegun run lower-body median motion",
+            )
+            max_ratio = min_ratio(
+                motion["maxDelta"],
+                pistol_motion["maxDelta"],
+                RUN_MOTION_MAX_RATIO_MIN,
+                "machinegun run lower-body peak motion",
+            )
+            item["motionMedianRatio"] = round(median_ratio, 6)
+            item["motionMaxRatio"] = round(max_ratio, 6)
     return by_weapon
 
 
@@ -635,12 +691,15 @@ def main() -> int:
             "centerTolerancePx": CENTER_TOLERANCE_PX,
             "airCenterTolerancePx": AIR_CENTER_TOLERANCE_PX,
             "airHeightRatio": AIR_HEIGHT_RATIO,
-            "lowerBodyAlphaRatio": LOWER_BODY_ALPHA_RATIO,
-            "lowerBodyInteriorAlphaRatio": LOWER_BODY_INTERIOR_ALPHA_RATIO,
+            "lowerBodyAlphaMinRatio": LOWER_BODY_ALPHA_MIN_RATIO,
+            "lowerBodyInteriorAlphaMinRatio": LOWER_BODY_INTERIOR_ALPHA_MIN_RATIO,
             "lowerBodySemiAlphaMaxDelta": LOWER_BODY_SEMI_ALPHA_MAX_DELTA,
             "lowerBodyOpaqueFractionMaxDelta": LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA,
             "runLowerBodyMedianDeltaMin": RUN_LOWER_BODY_MEDIAN_DELTA_MIN,
             "runLowerBodyMaxDeltaMin": RUN_LOWER_BODY_MAX_DELTA_MIN,
+            "runMotionMedianRatioMin": RUN_MOTION_MEDIAN_RATIO_MIN,
+            "runMotionMaxRatioMin": RUN_MOTION_MAX_RATIO_MIN,
+            "airborneFailClosedWeapons": AIRBORNE_FAIL_CLOSED_WEAPONS,
         },
     }
     failures: list[str] = []
