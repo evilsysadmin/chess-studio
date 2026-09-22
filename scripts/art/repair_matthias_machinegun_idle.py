@@ -21,6 +21,8 @@ IDLE_ROW = 0
 ALPHA_THRESHOLD = 8
 MAX_REMOVABLE_DETACHED_AREA = 1024
 SAFE_MARGIN = 4
+MIN_REPAIR_SCALE = 0.92
+MAX_REPAIR_SCALE = 1.12
 
 
 def parse_args() -> argparse.Namespace:
@@ -184,6 +186,11 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
         isolated = isolated_main(source_cell, primary)
         crop = isolated.crop(primary["bbox"])
         scale = target_height / source_height
+        if not MIN_REPAIR_SCALE <= scale <= MAX_REPAIR_SCALE:
+            raise ValueError(
+                f"machinegun idle c{col}: repair scale {scale:.4f} outside "
+                f"[{MIN_REPAIR_SCALE:.2f}, {MAX_REPAIR_SCALE:.2f}]"
+            )
         scaled_size = (
             max(1, round(crop.width * scale)),
             max(1, round(crop.height * scale)),
@@ -246,8 +253,13 @@ def repair(source: Image.Image, reference: Image.Image) -> tuple[Image.Image, di
             }
         )
 
+    untouched_box = (0, CELL, CELL * COLS, CELL * ROWS)
+    if output.crop(untouched_box).tobytes() != source.crop(untouched_box).tobytes():
+        raise ValueError("repair modified rows outside machinegun idle")
+
     return output, {
         "schema": 1,
+        "untouchedRowsPixelIdentical": True,
         "scope": "pawn-slug-matthias-machinegun-idle-reference-repair",
         "row": IDLE_ROW,
         "targetCenterX": target_center,
@@ -281,6 +293,7 @@ def self_test() -> None:
     output, report = repair(source, reference)
     assert len(report["frames"]) == COLS
     assert report["frames"][0]["removedDetached"]
+    assert report["untouchedRowsPixelIdentical"] is True
     for col, frame in enumerate(report["frames"]):
         repaired = main_component(cell(output, 0, col), f"self-test c{col}")
         target = main_component(cell(reference, 0, col), f"self-test reference c{col}")
