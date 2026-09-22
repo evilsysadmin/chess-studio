@@ -82,7 +82,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v6
         with:
           name: pawn-slug-matthias-scale-assets-${{ github.run_number }}
           path: ${{ runner.temp }}/pawn-slug-matthias-scale-assets
