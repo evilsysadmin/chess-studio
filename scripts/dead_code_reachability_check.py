@@ -180,6 +180,25 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
                 if target is not None:
                     opaque_targets.add(target)
 
+    text_consumer_suffixes = {
+        ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini",
+        ".cfg", ".sh", ".gd", ".tscn", ".tres", ".html", ".css",
+    }
+    auxiliary_text: dict[Path, str] = {}
+    for source in ROOT.rglob("*"):
+        if (
+            not source.is_file()
+            or source.suffix.lower() not in text_consumer_suffixes
+            or ".git" in source.parts
+            or "node_modules" in source.parts
+            or ".venv" in source.parts
+        ):
+            continue
+        try:
+            auxiliary_text[source.resolve()] = source.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+
     dead: list[tuple[Path, str]] = []
     for path, names in candidates.items():
         if path in opaque_targets:
@@ -187,6 +206,11 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
         text = module_text[path]
         for name in sorted(names):
             if name in named_consumers[path]:
+                continue
+            # Static gates/build tools sometimes consume a source contract by
+            # identifier text rather than a JS import. Treat any auxiliary
+            # repository reference as a consumer rather than deleting through it.
+            if any(_js_identifier_occurrences(other, name) > 0 for other in auxiliary_text.values()):
                 continue
             # One occurrence is the declaration itself. Any second textual use
             # (including conservative comments/strings) suppresses the finding.
