@@ -74,10 +74,14 @@ async function withPawnSlugCapturePage(browser, capture, callback) {
     });
     await login(page);
     await dismissMatthiasSpeech(page);
-    const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
-    await expect(direct).toBeVisible({ timeout: 20_000 });
-    await direct.focus();
-    await page.keyboard.press('Enter');
+    await openMoreGameModes(page);
+    const tools = page.locator('#illustrated-home-tools');
+    await expect(tools).toBeVisible();
+    await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+    await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+    const portal = page.locator('.lab-workshop-portal--pawnslug-godot');
+    await expect(portal).toBeVisible({ timeout: 20_000 });
+    await portal.click();
     return await callback(page);
   } finally {
     await context.close();
@@ -259,8 +263,8 @@ if (scopeEnabled('landing')) {
           expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
           expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
         } else {
-          expect(health.pawnSlug.width, `${capture.label}: Pawn Slug remains the primary operation`).toBeGreaterThan(health.trailblazer.width * 1.5);
-          expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Arcade alignment`).toBeLessThanOrEqual(2);
+          expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: Workshop portal widths`).toBeLessThanOrEqual(2);
+          expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Hangar alignment`).toBeLessThanOrEqual(2);
         }
 
         await captureFrozenFrame(page, {
