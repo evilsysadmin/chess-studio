@@ -353,17 +353,6 @@ export function nextHumanSchoolStep(lesson, fromIndex = 0) {
   return null;
 }
 
-export function applySchoolLineStep(fen, step) {
-  try {
-    const board = new Chess(fen);
-    const move = board.move({ from: step.from, to: step.to, promotion: 'q' });
-    if (!move) return { ok: false, fen, reason: 'illegal' };
-    return { ok: true, fen: board.fen(), san: move.san };
-  } catch {
-    return { ok: false, fen, reason: 'illegal' };
-  }
-}
-
 export function validateMatthiasSchoolMove(lesson, from, to, { fen = lesson?.fen, lineIndex = 0 } = {}) {
   if (!lesson || !from || !to || !fen) return { ok: false, reason: 'missing' };
   const expected = nextHumanSchoolStep(lesson, lineIndex);
