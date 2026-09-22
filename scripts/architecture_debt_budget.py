@@ -18,6 +18,17 @@ BUDGETS = {
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
     "backend-python/matthias_memory_store.py": 1264,
     "backend-python/narrative_cloudflare.py": 1039,
+    # Audio remains productively reachable but is again large enough to deserve a ratchet.
+    "frontend/src/sound.js": 2458,
+    "frontend/src/ambientCatalog.js": 2046,
+    "frontend/src/ambientProfilesLegacy.js": 630,
+    # Mode/render hotspots not covered by the original orchestration budget.
+    "frontend/src/components/RoguelikeScreen.jsx": 982,
+    "frontend/src/components/CombatDeploymentView.jsx": 928,
+    "frontend/src/chroniclesOfMatthiasIsometric.js": 1103,
+    # Godot runtime hotspots: keep behavior stable while responsibilities are extracted.
+    "games/pawn-slug-godot/scripts/main.gd": 3136,
+    "games/pawn-slug-godot/scripts/matthias_art.gd": 2146,
 }
 
 failures = []
