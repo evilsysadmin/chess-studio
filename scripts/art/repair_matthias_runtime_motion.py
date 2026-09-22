@@ -22,7 +22,8 @@ COLS = 8
 ROWS = 18
 SIZE = (CELL * COLS, CELL * ROWS)
 ALPHA_THRESHOLD = 8
-MAX_REMOVABLE_DETACHED_AREA = 8
+MAX_SEAM_FRAGMENT_AREA = 64
+SEAM_TOLERANCE_PX = 8
 LOWER_SPLIT_FRACTION = 0.62
 LOWER_SIGNATURE_FRACTION = 0.70
 SIGNATURE_SIZE = (96, 64)
@@ -119,25 +120,34 @@ def isolate_primary(image: Image.Image, label: str) -> tuple[Image.Image, dict]:
     return isolated, component
 
 
-def remove_tiny_detached(image: Image.Image, label: str) -> Image.Image:
+def remove_seam_detached(
+    image: Image.Image,
+    label: str,
+    split_y: int,
+) -> Image.Image:
     rgba = image.convert("RGBA").copy()
     found = components(rgba)
     if not found:
         raise ValueError(f"{label}: empty frame")
-    removable = found[1:]
-    too_large = [
-        item for item in removable
-        if int(item["area"]) > MAX_REMOVABLE_DETACHED_AREA
-    ]
-    if too_large:
-        raise ValueError(
-            f"{label}: detached components too large to clean safely: "
-            f"{[int(item['area']) for item in too_large]}"
-        )
     pixels = rgba.load()
-    for item in removable:
+    rejected = []
+    for item in found[1:]:
+        area = int(item["area"])
+        _x0, y0, _x1, y1 = item["bbox"]
+        seam_fragment = (
+            area <= MAX_SEAM_FRAGMENT_AREA
+            and y0 < split_y
+            and split_y - SEAM_TOLERANCE_PX <= y1 <= split_y
+        )
+        if not seam_fragment:
+            rejected.append({"area": area, "bbox": item["bbox"]})
+            continue
         for x, y in item["points"]:
             pixels[x, y] = (0, 0, 0, 0)
+    if rejected:
+        raise ValueError(
+            f"{label}: detached components outside safe splice seam: {rejected}"
+        )
     return rgba
 
 
@@ -198,7 +208,7 @@ def transplant_lower_body(source: Image.Image, reference: Image.Image, label: st
     output = source.convert("RGBA").copy()
     output.paste((0, 0, 0, 0), (0, split_y, CELL, CELL))
     output.alpha_composite(reference.crop((0, split_y, CELL, CELL)), (0, split_y))
-    return remove_tiny_detached(output, label)
+    return remove_seam_detached(output, label, split_y)
 
 
 def lower_signature(image: Image.Image, label: str) -> bytes:
@@ -402,9 +412,16 @@ def self_test() -> None:
     repaired = transplant_lower_body(normalized, ref, "self-test")
     assert geometry(repaired, "self-test")["componentCount"] == 1
     noisy = repaired.copy()
-    noisy.putpixel((10, 10), (255, 255, 255, 255))
-    cleaned = remove_tiny_detached(noisy, "tiny-detached self-test")
-    assert geometry(cleaned, "tiny-detached self-test")["componentCount"] == 1
+    split_y = primary(ref, "self-test reference")["bbox"][1] + int(
+        (
+            primary(ref, "self-test reference")["bbox"][3]
+            - primary(ref, "self-test reference")["bbox"][1]
+        )
+        * LOWER_SPLIT_FRACTION
+    )
+    noisy.putpixel((10, split_y - 1), (255, 255, 255, 255))
+    cleaned = remove_seam_detached(noisy, "seam-detached self-test", split_y)
+    assert geometry(cleaned, "seam-detached self-test")["componentCount"] == 1
     assert geometry(repaired, "self-test")["footY"] == geometry(ref, "ref")["footY"]
 
     frames = []
