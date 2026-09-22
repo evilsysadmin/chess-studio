@@ -15,6 +15,7 @@ import './LabWorkshopHotfix.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
+const ChessFootball = lazy(() => import('./ChessFootball.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
@@ -50,7 +51,7 @@ export default function LabScreen({ onExit, onStart }){
     else clearRememberedLabMode();
   }, [labMode]);
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='chess-football' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -83,6 +84,7 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chess-football') return <Suspense fallback={<LabModeFallback />}><ChessFootball onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
@@ -143,6 +145,12 @@ export default function LabScreen({ onExit, onStart }){
               <strong>Pawn Trailblazer</strong>
               <span>Plataformas y exploración; el movimiento se abre, los ataques siguen siendo de peón.</span>
               <b>Vorwärts</b>
+            </button>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter" data-glyph="⚽" onClick={()=>setLabMode('chess-football')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'manager')}</small>
+              <strong>Chess Football</strong>
+              <span>Fútbol normal, gestión y temporadas. El ajedrez pone los personajes; las reglas se quedan en el vestuario.</span>
+              <b>Jugar la jornada</b>
             </button>
           </div>
         </section>
