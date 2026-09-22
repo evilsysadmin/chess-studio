@@ -227,7 +227,10 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
         ".cfg", ".sh", ".gd", ".tscn", ".tres", ".html", ".css",
     }
     auxiliary_text: dict[Path, str] = {}
+    self_path = Path(__file__).resolve()
     for source in ROOT.rglob("*"):
+        if source.resolve() == self_path:
+            continue
         if (
             not source.is_file()
             or source.suffix.lower() not in text_consumer_suffixes
