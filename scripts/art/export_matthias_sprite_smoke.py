@@ -29,6 +29,15 @@ V9_NAME_RE = re.compile(r"_godot_strict_6x18_416_v9(?:-[0-9a-f]{16})?\.png$", re
 STRICT_8X18_NAME_RE = re.compile(r"_godot_strict_8x18_416_v(?:11|12)(?:-[0-9a-f]{16})?\.png$", re.I)
 STRICT_8X18_SIZE = (416 * 8, 416 * 18)
 REQUIRED_WEAPONS = {"pistol", "machinegun", "shotgun", "panzerfaust"}
+CRITICAL_ACTION_ROWS = (
+    ("idle", 0),
+    ("run", 2),
+    ("jump", 3),
+    ("fall", 4),
+    ("land", 5),
+    ("crouch", 6),
+)
+REVIEW_LABEL_HEIGHT = 28
 URL_RE = re.compile(r'^\s*"(?P<weapon>[a-z0-9_-]+)"\s*:\s*"(?P<url>https?://[^"]+\.png)"\s*,?\s*$', re.I)
 
 
@@ -146,6 +155,67 @@ def checkerboard(size: tuple[int, int], tile: int = 16) -> Image.Image:
     return image
 
 
+def save_critical_motion_review(
+    weapon: str,
+    atlas: Image.Image,
+    out_root: Path,
+    *,
+    cell: int,
+    cols: int,
+    rows: int,
+) -> str:
+    available = [(action, row) for action, row in CRITICAL_ACTION_ROWS if row < rows]
+    width = cols * cell
+    board = Image.new(
+        "RGBA",
+        (width, len(available) * (cell + REVIEW_LABEL_HEIGHT)),
+        (22, 24, 28, 255),
+    )
+    draw = ImageDraw.Draw(board)
+    for index, (action, row) in enumerate(available):
+        y = index * (cell + REVIEW_LABEL_HEIGHT)
+        draw.text((8, y + 7), action.upper(), fill=(238, 238, 238, 255))
+        strip = atlas.crop((0, row * cell, width, (row + 1) * cell))
+        bg = checkerboard(strip.size)
+        bg.alpha_composite(strip)
+        board.alpha_composite(bg, (0, y + REVIEW_LABEL_HEIGHT))
+    path = out_root / weapon / f"matthias_{weapon}_critical_motion.png"
+    board.save(path, "PNG", optimize=True)
+    return str(path.relative_to(out_root))
+
+
+def save_idle_alpha_proof(
+    weapon: str,
+    atlas: Image.Image,
+    out_root: Path,
+    *,
+    cell: int,
+    cols: int,
+) -> str:
+    width = cols * cell
+    idle = atlas.crop((0, 0, width, cell))
+    board = Image.new(
+        "RGBA",
+        (width, 2 * (cell + REVIEW_LABEL_HEIGHT)),
+        (22, 24, 28, 255),
+    )
+    draw = ImageDraw.Draw(board)
+    for index, (label, background) in enumerate(
+        (
+            ("IDLE · LIGHT BACKGROUND", (242, 242, 242, 255)),
+            ("IDLE · DARK BACKGROUND", (18, 20, 24, 255)),
+        )
+    ):
+        y = index * (cell + REVIEW_LABEL_HEIGHT)
+        draw.text((8, y + 7), label, fill=(238, 238, 238, 255))
+        layer = Image.new("RGBA", idle.size, background)
+        layer.alpha_composite(idle)
+        board.alpha_composite(layer, (0, y + REVIEW_LABEL_HEIGHT))
+    path = out_root / weapon / f"matthias_{weapon}_idle_alpha_proof.png"
+    board.save(path, "PNG", optimize=True)
+    return str(path.relative_to(out_root))
+
+
 def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: int, rows: int) -> dict:
     atlas = Image.open(source).convert("RGBA")
     if V9_NAME_RE.search(source.name):
@@ -205,6 +275,21 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
 
     contact_path = weapon_dir / f"matthias_{weapon}_contact_sheet.png"
     contact.save(contact_path, "PNG", optimize=True)
+    critical_motion = save_critical_motion_review(
+        weapon,
+        atlas,
+        out_root,
+        cell=cell,
+        cols=cols,
+        rows=rows,
+    )
+    idle_alpha_proof = save_idle_alpha_proof(
+        weapon,
+        atlas,
+        out_root,
+        cell=cell,
+        cols=cols,
+    )
     return {
         "weapon": weapon,
         "source": source.name,
@@ -216,6 +301,8 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
         "emptyFrames": empty,
         "edgeTouches": edge_touches,
         "contactSheet": str(contact_path.relative_to(out_root)),
+        "criticalMotion": critical_motion,
+        "idleAlphaProof": idle_alpha_proof,
         "frames": frames,
     }
 
@@ -264,7 +351,7 @@ def main() -> None:
             ))
     overview = compose_overview(reports, cfg.output_dir)
     summary = {
-        "schema": 2,
+        "schema": 3,
         "scope": "pawn-slug-godot-matthias-sprite-smoke",
         "overview": overview,
         "atlases": reports,
