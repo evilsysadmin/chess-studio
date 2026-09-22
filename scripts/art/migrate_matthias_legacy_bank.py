@@ -14,6 +14,7 @@ from sprite_forge import (
     LintConfig,
     PlacementContract,
     geometry_metrics,
+    lint_frame,
     place_frame_fixed_scale,
 )
 
@@ -116,6 +117,19 @@ def migrate(
         }
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
+            raw_lint = lint_frame(cell, lint)
+            if not raw_lint.ok:
+                detached = [
+                    {
+                        "area": component.area,
+                        "bbox": component.bbox,
+                        "centroid": tuple(round(value, 2) for value in component.centroid),
+                    }
+                    for component in raw_lint.detached_components
+                ]
+                raise GeometryError(
+                    f"frame:{row}:{col}:raw-lint={raw_lint.errors}:detached={detached}"
+                )
             metrics = geometry_metrics(cell, ALPHA_THRESHOLD)
             if metrics is None:
                 raise GeometryError(f"source-empty:{row}:{col}")
