@@ -85,6 +85,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 ### R2 / assets
 
+- [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md) — especificación canónica de authoring, QA, runtime y promoción de sprites 2D de Pawn Slug.
 - [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md)
 - [`docs/r2-assets.md`](docs/r2-assets.md)
 - [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md)
