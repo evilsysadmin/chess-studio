@@ -116,11 +116,12 @@ async function captureHealth(page, label) {
       label: captureLabel,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
-      arcadeZone: rect('.lab-arcade-zone'),
-      pawnSlug: rect('.lab-arcade-launch.is-pawnslug'),
-      trailblazer: rect('.lab-arcade-launch.is-trailblazer'),
-      tacticalDeck: rect('.experiments-tactical-deck'),
-      genericCardsInsideArcade: document.querySelectorAll('.lab-arcade-zone .experiments-card').length,
+      workshop: rect('.lab-workshop'),
+      pawnSlug: rect('.lab-workshop-portal--pawnslug-godot'),
+      trailblazer: rect('.lab-workshop-portal--trailblazer'),
+      football: rect('.lab-workshop-portal--football'),
+      tacticalDeck: rect('.lab-workshop-map-table'),
+      genericCardsInsideWorkshop: document.querySelectorAll('.lab-workshop .experiments-card').length,
     };
   }, label);
 }
@@ -235,32 +236,28 @@ if (scopeEnabled('landing')) {
     for (const capture of CAPTURES) {
       await withCapturePage(browser, capture, async (page) => {
         const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
-        const arcade = page.locator('.lab-arcade-zone');
-        const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
-        const trailblazer = arcade.getByRole('button', { name: /Pawn Trailblazer/ });
+        const workshop = page.locator('.lab-workshop');
+        const pawnSlug = page.locator('.lab-workshop-portal--pawnslug-godot');
+        const trailblazer = page.locator('.lab-workshop-portal--trailblazer');
+        const football = page.locator('.lab-workshop-portal--football');
         await expect(chronicles).toBeVisible();
-        await expect(arcade).toBeVisible();
+        await expect(workshop).toBeVisible();
         await expect(pawnSlug).toBeVisible();
         await expect(trailblazer).toBeVisible();
-        await expect(page.locator('.experiments-tactical-deck').first()).toBeVisible();
-        await expect(arcade.locator('.experiments-card')).toHaveCount(0);
+        await expect(football).toBeVisible();
+        await expect(page.locator('.lab-workshop-map-table')).toBeVisible();
+        await expect(workshop.locator('.experiments-card')).toHaveCount(0);
 
         const health = await captureHealth(page, capture.label);
         captures.push(health);
         expect(health.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
-        expect(health.genericCardsInsideArcade, `${capture.label}: Arcade regressed to generic cards`).toBe(0);
+        expect(health.genericCardsInsideWorkshop, `${capture.label}: workshop regressed to generic cards`).toBe(0);
         expect(health.pawnSlug?.width || 0, `${capture.label}: Pawn Slug visible width`).toBeGreaterThan(0);
         expect(health.trailblazer?.width || 0, `${capture.label}: Trailblazer visible width`).toBeGreaterThan(0);
-
-        if (capture.hasTouch) {
-          expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
-          expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: stacked Arcade widths`).toBeLessThanOrEqual(2);
-          expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
-          expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
-        } else {
-          expect(health.pawnSlug.width, `${capture.label}: Pawn Slug remains the primary operation`).toBeGreaterThan(health.trailblazer.width * 1.5);
-          expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Arcade alignment`).toBeLessThanOrEqual(2);
-        }
+        expect(health.football?.width || 0, `${capture.label}: Chess Football visible width`).toBeGreaterThan(0);
+        expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
+        expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
+        expect(health.football.height, `${capture.label}: Chess Football touch target`).toBeGreaterThanOrEqual(44);
 
         await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
