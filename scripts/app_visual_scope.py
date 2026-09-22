@@ -97,6 +97,11 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
     if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/lablaunchintent.js",
+    }:
+        return {"experiments"}
+    if lower in {
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
         ".github/workflows/war-room-blender-art.yml",
@@ -317,6 +322,12 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    lab = classify([
+        "frontend/src/components/LabScreen.jsx",
+        "frontend/src/labLaunchIntent.js",
+    ])
+    assert lab.capture_groups == "experiments"
+    assert lab.experiments_scope == "landing,chronicles,pawnslug"
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
     assert chronicles_visual.experiments_scope == "chronicles"
