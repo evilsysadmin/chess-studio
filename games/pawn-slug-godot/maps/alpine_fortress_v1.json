@@ -70,18 +70,6 @@
       "route": "climb"
     },
     {
-      "x": 1760,
-      "y": 350,
-      "w": 210,
-      "h": 24,
-      "kind": "cliff",
-      "material": "concrete",
-      "visual": {
-        "rail": true,
-        "lamp": true
-      }
-    },
-    {
       "x": 2040,
       "y": 420,
       "w": 160,
@@ -196,7 +184,7 @@
     },
     {
       "x": 5130,
-      "y": 390,
+      "y": 402,
       "w": 250,
       "h": 24,
       "kind": "fortress_walk",

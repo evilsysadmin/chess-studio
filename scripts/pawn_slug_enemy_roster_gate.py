@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import json
+import math
 import pathlib
 import re
 import sys
@@ -19,6 +20,11 @@ DENSITY_WINDOW = 600.0
 MAX_IN_WINDOW = 6
 MIN_PLATFORMS = 15
 MIN_OBSTACLES = 6
+PLAYER_MOVE_SPEED = 330.0
+PLAYER_JUMP_SPEED = 610.0
+PLAYER_GRAVITY = 1550.0
+TRAVERSAL_HORIZONTAL_SAFETY = 0.90
+PLATFORM_LADDER_X_TOLERANCE = 42.0
 ALLOWED_OBSTACLE_KINDS = {"barrels", "barricade", "bollards", "bunker_block", "cargo_crates", "container_stack", "crate", "crate_stack", "fallen_log", "rockfall", "root_mass", "sandbags", "stone_ruin"}
 REQUIRED_BASE_TYPES = {"pawn", "knight", "rook", "bishop"}
 REQUIRED_VARIANTS = {"scout", "shield", "grenadier", "commando", "queen"}
@@ -85,6 +91,132 @@ def _rect_errors(stage_name: str, label: str, rects: list[dict], width: float, h
             errors.append(f"{stage_name}: {label}[{index}] escapes vertical world bounds")
     return errors
 
+def _platform_interval_gap(a: dict, b: dict) -> float:
+    a_start = float(a["x"])
+    a_end = a_start + float(a["w"])
+    b_start = float(b["x"])
+    b_end = b_start + float(b["w"])
+    if a_end < b_start:
+        return b_start - a_end
+    if b_end < a_start:
+        return a_start - b_end
+    return 0.0
+
+
+def _max_safe_jump_dx(source_y: float, target_y: float) -> float | None:
+    # Mirrors player.gd ballistic constants, then keeps 10% horizontal headroom
+    # so authored traversal never depends on a frame-perfect edge jump.
+    delta_y = target_y - source_y
+    discriminant = PLAYER_JUMP_SPEED ** 2 + 2.0 * PLAYER_GRAVITY * delta_y
+    if discriminant < 0.0:
+        return None
+    flight_time = (PLAYER_JUMP_SPEED + math.sqrt(discriminant)) / PLAYER_GRAVITY
+    return PLAYER_MOVE_SPEED * flight_time * TRAVERSAL_HORIZONTAL_SAFETY
+
+
+def _platform_traversal_errors(
+    stage_name: str,
+    platforms: list[dict],
+    floor_y: float,
+    ladders: list[dict],
+) -> list[str]:
+    errors: list[str] = []
+    valid: list[tuple[int, dict]] = []
+    for index, platform in enumerate(platforms):
+        if not isinstance(platform, dict):
+            continue
+        try:
+            float(platform["x"]); float(platform["y"])
+            float(platform["w"]); float(platform["h"])
+        except Exception:
+            continue
+        valid.append((index, platform))
+
+    # Physical platform rectangles must never occupy the same space. Besides
+    # ugly rendering, overlapping one-way bodies create ambiguous landings.
+    for pos, (left_index, left) in enumerate(valid):
+        left_x = float(left["x"]); left_y = float(left["y"])
+        left_w = float(left["w"]); left_h = float(left["h"])
+        for right_index, right in valid[pos + 1:]:
+            right_x = float(right["x"]); right_y = float(right["y"])
+            right_w = float(right["w"]); right_h = float(right["h"])
+            overlap_x = min(left_x + left_w, right_x + right_w) - max(left_x, right_x)
+            overlap_y = min(left_y + left_h, right_y + right_h) - max(left_y, right_y)
+            if overlap_x > 0.0 and overlap_y > 0.0:
+                errors.append(
+                    f"{stage_name}: platforms[{left_index}] and [{right_index}] intersect "
+                    f"by {overlap_x:.0f}x{overlap_y:.0f}px"
+                )
+
+    reachable: set[int] = set()
+    by_index = {index: platform for index, platform in valid}
+
+    # The normal floor is a valid launch surface everywhere outside pits. This
+    # is intentionally permissive around pits; the gate is for impossible
+    # authored islands, not for demanding a single prescribed route.
+    for index, platform in valid:
+        if _max_safe_jump_dx(floor_y, float(platform["y"])) is not None:
+            reachable.add(index)
+
+    # A ladder is an authored traversal guarantee. Mark its supported top
+    # platform reachable before propagating jump connections.
+    for ladder in ladders:
+        if not isinstance(ladder, dict):
+            continue
+        try:
+            ladder_x = float(ladder["x"])
+            top_y = float(ladder["top_y"])
+        except Exception:
+            continue
+        for index, platform in valid:
+            px = float(platform["x"])
+            py = float(platform["y"])
+            pw = float(platform["w"])
+            if (
+                abs(py - top_y) <= 2.0
+                and px - PLATFORM_LADDER_X_TOLERANCE
+                <= ladder_x
+                <= px + pw + PLATFORM_LADDER_X_TOLERANCE
+            ):
+                reachable.add(index)
+
+    changed = True
+    while changed:
+        changed = False
+        for target_index, target in valid:
+            if target_index in reachable:
+                continue
+            for source_index in tuple(reachable):
+                source = by_index.get(source_index)
+                if source is None:
+                    continue
+                max_dx = _max_safe_jump_dx(float(source["y"]), float(target["y"]))
+                if max_dx is None:
+                    continue
+                if _platform_interval_gap(source, target) <= max_dx:
+                    reachable.add(target_index)
+                    changed = True
+                    break
+
+    unreachable = [
+        (
+            index,
+            str(platform.get("kind", "platform")),
+            float(platform["x"]),
+            float(platform["y"]),
+        )
+        for index, platform in valid
+        if index not in reachable
+    ]
+    if unreachable:
+        summary = ", ".join(
+            f"[{index}] {kind}@({x:.0f},{y:.0f})"
+            for index, kind, x, y in unreachable
+        )
+        errors.append(f"{stage_name}: unreachable platform geometry: {summary}")
+    return errors
+
+
 def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: str) -> list[str]:
     errors: list[str] = []
     world = stage.get("world") or {}
@@ -112,6 +244,7 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
 
     pits = stage.get("pits") or []
     ladders = stage.get("ladders") or []
+    errors += _platform_traversal_errors(stage_name, platforms, floor_y, ladders)
     for index, pit in enumerate(pits):
         if not isinstance(pit, dict):
             errors.append(f"{stage_name}: pits[{index}] must be an object")
@@ -542,12 +675,12 @@ def self_test() -> None:
         "world": {"width": 5200, "height": 720, "floor_y": 610, "start_x": 110},
         "checkpoints": [110, 1480, 2980, 4140],
         "pits": [{"x": 1500, "w": 120, "kind": "test_pit"}],
-        "ladders": [{"x": 938, "top_y": 430, "bottom_y": 610, "w": 30, "exit_dir": 1}],
+        "ladders": [{"x": 938, "top_y": 445, "bottom_y": 610, "w": 30, "exit_dir": 1}],
         "platforms": [
             {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood"}
             for i in range(18)
         ] + [
-            {"x": 900, "y": 430, "w": 150, "h": 24, "material": "metal", "route": "climb"},
+            {"x": 900, "y": 445, "w": 150, "h": 24, "material": "metal", "route": "climb"},
             {"x": 980, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
             {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
             {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
@@ -598,6 +731,15 @@ def self_test() -> None:
     suicide_ladder = json.loads(json.dumps(stage))
     suicide_ladder["ladders"][0]["x"] = 1540
     assert any("ends on floor inside a pit" in e for e in validate_stage(suicide_ladder, stats, "self-test"))
+    overlapping = json.loads(json.dumps(stage))
+    overlapping["platforms"][1]["x"] = overlapping["platforms"][0]["x"] + 20
+    overlapping["platforms"][1]["y"] = overlapping["platforms"][0]["y"] + 4
+    assert any("intersect" in e for e in validate_stage(overlapping, stats, "self-test"))
+    unreachable = json.loads(json.dumps(stage))
+    unreachable["platforms"].append(
+        {"x": 4200, "y": 120, "w": 120, "h": 24, "material": "metal"}
+    )
+    assert any("unreachable platform geometry" in e for e in validate_stage(unreachable, stats, "self-test"))
     print("OK Pawn Slug stage manifest gate self-test")
 
 def main() -> int:

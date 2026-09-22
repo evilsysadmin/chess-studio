@@ -129,18 +129,6 @@
       }
     },
     {
-      "x": 1840,
-      "y": 366,
-      "w": 220,
-      "h": 24,
-      "kind": "high_catwalk",
-      "material": "metal",
-      "visual": {
-        "rail": true,
-        "lamp": true
-      }
-    },
-    {
       "x": 1970,
       "y": 360,
       "w": 155,
