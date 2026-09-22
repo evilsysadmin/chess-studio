@@ -232,7 +232,13 @@ jobs:
             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png" \
             -o "$root/panzerfaust/source-run12.png"
 
-          for weapon in machinegun shotgun panzerfaust; do
+          python3 scripts/art/migrate_matthias_legacy_bank.py \
+            --source "$root/machinegun/source-full.png" \
+            --reference "$root/reference/pistol-full.png" \
+            --rows "$rows" --allow-opaque-detached \
+            --output "$root/machinegun/candidate-full.png" \
+            --report "$root/machinegun/full-health.json"
+          for weapon in shotgun panzerfaust; do
             python3 scripts/art/migrate_matthias_legacy_bank.py \
               --source "$root/$weapon/source-full.png" \
               --reference "$root/reference/pistol-full.png" \
