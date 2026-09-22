@@ -49,7 +49,7 @@ func _update_ai(delta: float) -> void:
 		for player in teams[team_id]:
 			if player == controlled:
 				continue
-			var target := player.home_position
+			var target: Vector2 = player.home_position
 			var intensity := 0.64
 			if ball.carrier == null:
 				if player == _nearest_player_to_ball(team_id):
@@ -93,8 +93,8 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 	for teammate in teams[player.team_id]:
 		if teammate == player:
 			continue
-		var delta := teammate.global_position - player.global_position
-		var distance := maxf(delta.length(), 1.0)
+		var delta: Vector2 = teammate.global_position - player.global_position
+		var distance: float = maxf(delta.length(), 1.0)
 		var alignment := wanted.dot(delta / distance)
 		var score_value := alignment * 800.0 - distance * 0.35
 		if score_value > best_score:
@@ -131,7 +131,7 @@ func _nearest_player_to_ball(team_id: int) -> Footballer:
 	var best: Footballer = teams[team_id][0]
 	var best_distance := INF
 	for player in teams[team_id]:
-		var distance := player.global_position.distance_squared_to(ball.global_position)
+		var distance: float = player.global_position.distance_squared_to(ball.global_position)
 		if distance < best_distance:
 			best_distance = distance
 			best = player
@@ -179,7 +179,7 @@ func _spawn_match() -> void:
 	var lane_y := [500.0, 300.0, 500.0, 700.0, 500.0]
 	for team_id in range(2):
 		for index in range(TEAM_SIZE):
-			var x := ChessFootballMath.PITCH_RECT.position.x + left_x[index]
+			var x: float = ChessFootballMath.PITCH_RECT.position.x + float(left_x[index])
 			if team_id == 1:
 				x = ChessFootballMath.PITCH_RECT.end.x - left_x[index]
 			var position := Vector2(x, ChessFootballMath.PITCH_RECT.position.y + lane_y[index] * 0.82)
