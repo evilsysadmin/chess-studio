@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Terraform operation
+        description: Lab operation
         type: choice
-        options: [probe, plan, bootstrap, destroy]
+        options: [probe, plan, bootstrap, destroy, k3s-start, k3s-status, k3s-rollback, k3s-staging2-deploy, k3s-staging2-status, k3s-staging2-rollback]
         default: probe
         required: true
       availability_domain:
@@ -18,6 +18,10 @@ on:
         type: boolean
         default: false
         required: false
+      repo_ref:
+        description: Immutable 40-character SHA for K3s staging2 deploy; defaults to workflow SHA
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -28,6 +32,7 @@ concurrency:
 
 jobs:
   terraform:
+    if: ${{ !startsWith(inputs.operation, 'k3s-') }}
     name: OCI staging · ${{ inputs.operation }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -55,3 +60,65 @@ jobs:
           terraform_wrapper: false
       - name: Terraform lifecycle
         run: make -C infra/oci '${{ inputs.operation }}'
+
+
+  k3s:
+    if: ${{ startsWith(inputs.operation, 'k3s-') }}
+    name: OCI K3s lab · ${{ inputs.operation }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+      - name: Validate selected K3s lab contract
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: python3 -S scripts/oci_service_contracts.py "$OPERATION"
+      - name: Reconcile K3s bootstrap assets
+        if: inputs.operation == 'k3s-start'
+        run: |
+          python3 scripts/oci_k3s_bundle_publish.py reconcile
+          python3 scripts/oci_k3s_bundle_probe.py install
+      - name: Start guarded single-node K3s
+        if: inputs.operation == 'k3s-start'
+        run: python3 scripts/oci_k3s_control.py start
+      - name: Roll back K3s to inert state
+        if: inputs.operation == 'k3s-rollback'
+        run: python3 scripts/oci_k3s_control.py rollback
+      - name: Read K3s status
+        if: inputs.operation == 'k3s-start' || inputs.operation == 'k3s-status' || inputs.operation == 'k3s-rollback'
+        run: python3 scripts/oci_k3s_status.py
+      - name: Deploy exact backend into isolated K3s staging2
+        if: inputs.operation == 'k3s-staging2-deploy'
+        env:
+          SHADOW_REF: ${{ inputs.repo_ref || github.sha }}
+        run: python3 scripts/oci_k3s_staging2.py deploy --repo-ref "$SHADOW_REF"
+      - name: Roll back isolated K3s staging2 backend
+        if: inputs.operation == 'k3s-staging2-rollback'
+        run: python3 scripts/oci_k3s_staging2.py rollback
+      - name: Read isolated K3s staging2 status
+        if: inputs.operation == 'k3s-staging2-deploy' || inputs.operation == 'k3s-staging2-status' || inputs.operation == 'k3s-staging2-rollback'
+        run: python3 scripts/oci_k3s_staging2.py status
+      - name: Prove canonical Compose staging survived K3s lifecycle change
+        if: inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback'
+        env:
+          EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}
+          STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+        run: >-
+          python3 scripts/verify_backend_staging.py
+          --api-url "$STAGING_API_URL"
+          --sha "$EXPECTED_SHA"
+          --attempts 20
+          --interval 2
