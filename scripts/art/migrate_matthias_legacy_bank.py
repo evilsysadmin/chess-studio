@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
+from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -16,27 +17,48 @@ from sprite_forge import (
     place_frame_fixed_scale,
 )
 
-CELL = 416
-COLS = 8
-ROWS = 18
-ATLAS_SIZE = (CELL * COLS, CELL * ROWS)
-DEFAULT_ROWS = (2, 6)  # run, crouch
+DEFAULT_CELL = 416
+DEFAULT_COLS = 8
+DEFAULT_ROW_COUNT = 18
+DEFAULT_TARGET_ROWS = (2, 6)  # run, crouch
 ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
 MAX_SCALE = 1.25
 
 
-def crop_cell(atlas: Image.Image, row: int, col: int) -> Image.Image:
-    return atlas.crop((col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL))
+@dataclass(frozen=True)
+class Grid:
+    cell: int
+    columns: int
+    rows: int
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return (self.cell * self.columns, self.cell * self.rows)
 
 
-def row_reference_profile(atlas: Image.Image, row: int) -> tuple[float, float, float]:
+def crop_cell(atlas: Image.Image, grid: Grid, row: int, col: int) -> Image.Image:
+    return atlas.crop(
+        (
+            col * grid.cell,
+            row * grid.cell,
+            (col + 1) * grid.cell,
+            (row + 1) * grid.cell,
+        )
+    )
+
+
+def row_reference_profile(
+    atlas: Image.Image,
+    grid: Grid,
+    row: int,
+) -> tuple[float, float, float]:
     heights: list[float] = []
     centers: list[float] = []
     feet: list[float] = []
-    for col in range(COLS):
-        metrics = geometry_metrics(crop_cell(atlas, row, col), ALPHA_THRESHOLD)
+    for col in range(grid.columns):
+        metrics = geometry_metrics(crop_cell(atlas, grid, row, col), ALPHA_THRESHOLD)
         if metrics is None:
             raise GeometryError(f"reference-empty:{row}:{col}")
         heights.append(float(metrics.body_height))
@@ -49,16 +71,29 @@ def row_reference_profile(atlas: Image.Image, row: int) -> tuple[float, float, f
     )
 
 
-def migrate(source: Image.Image, reference: Image.Image, rows: tuple[int, ...]) -> tuple[Image.Image, dict]:
+def migrate(
+    source: Image.Image,
+    reference: Image.Image,
+    grid: Grid,
+    target_rows: tuple[int, ...],
+) -> tuple[Image.Image, dict]:
     source = source.convert("RGBA")
     reference = reference.convert("RGBA")
-    if source.size != ATLAS_SIZE:
-        raise GeometryError(f"source-size:{source.size}!={ATLAS_SIZE}")
-    if reference.size != ATLAS_SIZE:
-        raise GeometryError(f"reference-size:{reference.size}!={ATLAS_SIZE}")
+    if source.size != grid.size:
+        raise GeometryError(f"source-size:{source.size}!={grid.size}")
+    if reference.size != grid.size:
+        raise GeometryError(f"reference-size:{reference.size}!={grid.size}")
 
     out = source.copy()
-    report: dict[str, object] = {"rows": {}, "ok": True}
+    report: dict[str, object] = {
+        "ok": True,
+        "grid": {
+            "cell": grid.cell,
+            "columns": grid.columns,
+            "rows": grid.rows,
+        },
+        "rows": {},
+    }
     lint = LintConfig(
         alpha_threshold=ALPHA_THRESHOLD,
         edge_guard_px=2,
@@ -67,18 +102,20 @@ def migrate(source: Image.Image, reference: Image.Image, rows: tuple[int, ...]) 
         reject_hidden_rgb=True,
     )
 
-    for row in rows:
-        if row < 0 or row >= ROWS:
+    for row in target_rows:
+        if row < 0 or row >= grid.rows:
             raise GeometryError(f"row-out-of-range:{row}")
-        target_height, target_center_x, target_foot_y = row_reference_profile(reference, row)
+        target_height, target_center_x, target_foot_y = row_reference_profile(
+            reference, grid, row
+        )
         row_report: dict[str, object] = {
             "target_height": target_height,
             "target_center_x": target_center_x,
             "target_foot_y": target_foot_y,
             "frames": [],
         }
-        for col in range(COLS):
-            cell = crop_cell(source, row, col)
+        for col in range(grid.columns):
+            cell = crop_cell(source, grid, row, col)
             metrics = geometry_metrics(cell, ALPHA_THRESHOLD)
             if metrics is None:
                 raise GeometryError(f"source-empty:{row}:{col}")
@@ -90,7 +127,7 @@ def migrate(source: Image.Image, reference: Image.Image, rows: tuple[int, ...]) 
             placed = place_frame_fixed_scale(
                 cell,
                 PlacementContract(
-                    canvas_size=(CELL, CELL),
+                    canvas_size=(grid.cell, grid.cell),
                     scale=scale,
                     body_center_x=target_center_x,
                     foot_y=target_foot_y,
@@ -107,11 +144,15 @@ def migrate(source: Image.Image, reference: Image.Image, rows: tuple[int, ...]) 
                 raise GeometryError(
                     f"post-height:{row}:{col}:{post.body_height}!={target_height:.2f}"
                 )
-            out.paste(
-                (0, 0, 0, 0),
-                (col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL),
+
+            box = (
+                col * grid.cell,
+                row * grid.cell,
+                (col + 1) * grid.cell,
+                (row + 1) * grid.cell,
             )
-            out.alpha_composite(placed, (col * CELL, row * CELL))
+            out.paste((0, 0, 0, 0), box)
+            out.alpha_composite(placed, (box[0], box[1]))
             row_report["frames"].append(
                 {
                     "frame": col,
@@ -127,37 +168,45 @@ def migrate(source: Image.Image, reference: Image.Image, rows: tuple[int, ...]) 
     return out, report
 
 
-def self_test() -> None:
-    source = Image.new("RGBA", ATLAS_SIZE, (0, 0, 0, 0))
-    reference = Image.new("RGBA", ATLAS_SIZE, (0, 0, 0, 0))
-    for row in range(ROWS):
-        for col in range(COLS):
-            x = col * CELL
-            y = row * CELL
-            src = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-            ref = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-            src_h = 180 if row in DEFAULT_ROWS else 220
-            ref_h = 220
+def synthetic_atlas(grid: Grid, target_height: int, source_height: int) -> tuple[Image.Image, Image.Image]:
+    source = Image.new("RGBA", grid.size, (0, 0, 0, 0))
+    reference = Image.new("RGBA", grid.size, (0, 0, 0, 0))
+    foot_y = grid.cell - 34
+    for row in range(grid.rows):
+        for col in range(grid.columns):
+            x = col * grid.cell
+            y = row * grid.cell
+            src = Image.new("RGBA", (grid.cell, grid.cell), (0, 0, 0, 0))
+            ref = Image.new("RGBA", (grid.cell, grid.cell), (0, 0, 0, 0))
             ImageDraw.Draw(src).rectangle(
-                (164, 382 - src_h, 251, 381),
+                (grid.cell // 2 - 44, foot_y - source_height, grid.cell // 2 + 43, foot_y - 1),
                 fill=(180, 120, 80, 255),
             )
             ImageDraw.Draw(ref).rectangle(
-                (154, 382 - ref_h, 261, 381),
+                (grid.cell // 2 - 54, foot_y - target_height, grid.cell // 2 + 53, foot_y - 1),
                 fill=(180, 120, 80, 255),
             )
             source.alpha_composite(src, (x, y))
             reference.alpha_composite(ref, (x, y))
+    return source, reference
 
-    migrated, report = migrate(source, reference, DEFAULT_ROWS)
-    for row in DEFAULT_ROWS:
-        for col in range(COLS):
-            metrics = geometry_metrics(crop_cell(migrated, row, col), ALPHA_THRESHOLD)
+
+def assert_grid_case(grid: Grid, rows: tuple[int, ...]) -> None:
+    source, reference = synthetic_atlas(grid, target_height=220, source_height=180)
+    migrated, report = migrate(source, reference, grid, rows)
+    for row in rows:
+        for col in range(grid.columns):
+            metrics = geometry_metrics(crop_cell(migrated, grid, row, col), ALPHA_THRESHOLD)
             assert metrics is not None
             assert abs(metrics.body_height - 220) <= 3
-            assert abs(metrics.foot_y - 382.0) <= 2
+            assert abs(metrics.foot_y - (grid.cell - 34)) <= 2
     assert report["ok"] is True
-    print("OK legacy bank canonical-scale self-test")
+
+
+def self_test() -> None:
+    assert_grid_case(Grid(DEFAULT_CELL, DEFAULT_COLS, DEFAULT_ROW_COUNT), DEFAULT_TARGET_ROWS)
+    assert_grid_case(Grid(DEFAULT_CELL, 12, 1), (0,))
+    print("OK legacy bank canonical-scale self-test: full atlas + run strip")
 
 
 def parse_rows(value: str) -> tuple[int, ...]:
@@ -173,7 +222,10 @@ def main() -> int:
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--report", type=Path)
-    parser.add_argument("--rows", type=parse_rows, default=DEFAULT_ROWS)
+    parser.add_argument("--rows", type=parse_rows, default=DEFAULT_TARGET_ROWS)
+    parser.add_argument("--cell", type=int, default=DEFAULT_CELL)
+    parser.add_argument("--columns", type=int, default=DEFAULT_COLS)
+    parser.add_argument("--row-count", type=int, default=DEFAULT_ROW_COUNT)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -184,10 +236,14 @@ def main() -> int:
     required = [args.source, args.reference, args.output, args.report]
     if any(value is None for value in required):
         parser.error("--source, --reference, --output and --report are required")
+    if args.cell <= 0 or args.columns <= 0 or args.row_count <= 0:
+        parser.error("--cell, --columns and --row-count must be positive")
 
+    grid = Grid(args.cell, args.columns, args.row_count)
     migrated, report = migrate(
         Image.open(args.source),
         Image.open(args.reference),
+        grid,
         tuple(args.rows),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
