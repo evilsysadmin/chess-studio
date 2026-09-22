@@ -792,9 +792,22 @@ def _validate_bank_contract(data: object) -> dict:
     if data.get("schema") != 1:
         raise BankContractError("contract schema must be 1")
 
-    for key in ("quality_contract", "actor", "weapon"):
+    for key in ("quality_contract", "actor"):
         if not isinstance(data.get(key), str) or not data[key].strip():
             raise BankContractError(f"{key} must be a non-empty string")
+
+    legacy_identity = "domain" not in data and "variant" not in data
+    domain = data.get("domain", "pawn-slug")
+    if not isinstance(domain, str) or not domain.strip():
+        raise BankContractError("domain must be a non-empty string")
+
+    weapon = data.get("weapon")
+    if weapon is not None and (not isinstance(weapon, str) or not weapon.strip()):
+        raise BankContractError("weapon must be a non-empty string when provided")
+
+    variant = data.get("variant", weapon)
+    if not isinstance(variant, str) or not variant.strip():
+        raise BankContractError("variant or legacy weapon must be a non-empty string")
 
     composition = data.get("composition", "integrated")
     if composition not in {"integrated", "socketed-body", "weapon-layer"}:
@@ -1029,8 +1042,11 @@ def _validate_bank_contract(data: object) -> dict:
     return {
         "schema": 1,
         "quality_contract": data["quality_contract"],
+        "domain": domain.strip(),
         "actor": data["actor"],
-        "weapon": data["weapon"],
+        "variant": variant.strip(),
+        "weapon": weapon.strip() if isinstance(weapon, str) else None,
+        "legacy_identity": legacy_identity,
         "composition": composition,
         "socket_quality": asdict(socket_quality),
         "cell": {"width": width, "height": height},
@@ -1149,19 +1165,35 @@ def build_bank(
             "rows": part["rows"],
         }
 
-    manifest = {
-        "schema": 1,
-        "kind": "pawn-slug-sprite-forge-bank",
-        "quality_contract": contract["quality_contract"],
-        "actor": contract["actor"],
-        "weapon": contract["weapon"],
-        "composition": contract["composition"],
-        "socket_quality": contract["socket_quality"],
-        "cell": contract["cell"],
-        "contract_sha256": _sha256_file(contract_path),
-        "parts": manifest_parts,
-        "animations": manifest_animations,
-    }
+    if contract["legacy_identity"]:
+        manifest = {
+            "schema": 1,
+            "kind": "pawn-slug-sprite-forge-bank",
+            "quality_contract": contract["quality_contract"],
+            "actor": contract["actor"],
+            "weapon": contract["weapon"],
+            "composition": contract["composition"],
+            "socket_quality": contract["socket_quality"],
+            "cell": contract["cell"],
+            "contract_sha256": _sha256_file(contract_path),
+            "parts": manifest_parts,
+            "animations": manifest_animations,
+        }
+    else:
+        manifest = {
+            "schema": 1,
+            "kind": "sprite-forge-bank",
+            "quality_contract": contract["quality_contract"],
+            "domain": contract["domain"],
+            "actor": contract["actor"],
+            "variant": contract["variant"],
+            "composition": contract["composition"],
+            "socket_quality": contract["socket_quality"],
+            "cell": contract["cell"],
+            "contract_sha256": _sha256_file(contract_path),
+            "parts": manifest_parts,
+            "animations": manifest_animations,
+        }
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
@@ -1175,7 +1207,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
-        description="Pawn Slug Sprite Forge fail-closed compiler"
+        description="Sprite Forge fail-closed compiler"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
