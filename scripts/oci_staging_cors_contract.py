@@ -16,12 +16,6 @@ service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").r
 tunnel_control = (ROOT / ".github" / "workflows" / "oci-staging-tunnel.yml").read_text(encoding="utf-8")
 infra_apply = (ROOT / ".github" / "workflows" / "oci-staging-deploy.yml").read_text(encoding="utf-8")
 infra_lab = (ROOT / ".github" / "workflows" / "oci-staging-lab.yml").read_text(encoding="utf-8")
-k3s_root = (ROOT / "scripts" / "oci_k3s_assets_root.py").read_text(encoding="utf-8")
-k3s_provision = (ROOT / "scripts" / "oci_k3s_capability_provision.sh").read_text(encoding="utf-8")
-k3s_sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(encoding="utf-8")
-k3s_service_prepare = (ROOT / "scripts" / "oci_k3s_service_prepare.py").read_text(encoding="utf-8")
-k3s_config = (ROOT / "infra" / "oci" / "k3s" / "config.yaml").read_text(encoding="utf-8")
-k3s_unit = (ROOT / "infra" / "oci" / "k3s" / "k3s.service").read_text(encoding="utf-8")
 signal_controller = (ROOT / "scripts" / "oci_staging_signal_controller.sh").read_text(encoding="utf-8")
 signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.service").read_text(encoding="utf-8")
 signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
@@ -166,13 +160,21 @@ for operation in mutating_operations:
     assert f'"{operation}"' in concurrency_block, f"missing mutation lock classification: {operation}"
 for operation in read_only_operations:
     assert f'"{operation}"' not in concurrency_block, f"read-only operation must not take mutation lock: {operation}"
-for operation in ("k3s-start", "k3s-rollback", "k3s-status"):
-    assert f'"{operation}"' not in service_control, (
-        f"K3s lab operation leaked back into canonical OCI service control: {operation}"
-    )
 assert "group: oci-staging-service-control" not in service_control, (
     "OCI service control must not use a private mutation mutex that can race staging mutations"
 )
+
+for retired_operation in (
+    "k3s-start",
+    "k3s-status",
+    "k3s-rollback",
+    "k3s-staging2-deploy",
+    "k3s-staging2-status",
+    "k3s-staging2-rollback",
+):
+    assert retired_operation not in service_control, (
+        f"K3s HOLD operation leaked back into canonical service control: {retired_operation}"
+    )
 
 # Service smoke is an observation, not another readiness controller. Bringup
 # may tolerate it and the immutable deploy owns bounded registration readiness;
@@ -221,58 +223,18 @@ assert "group: oci-staging-mutations" in infra_apply and "group: oci-staging-mut
     "all OCI infrastructure operations must share the staging mutation mutex"
 )
 
-# K3s asset installation remains a narrow host capability. It pins the current
-# verified air-gap bundle and may only materialize exact assets; lifecycle
-# privilege lives in a separate literal-command wrapper covered independently.
-ast.parse(k3s_root)
-assert '/bin/bash "$k3s_capability_provision"' in deploy
-assert "OCI_K3S_ASSET_CAPABILITY_READY" in k3s_provision
-assert "visudo -cf" in k3s_provision
-assert "EXPECTED_BUNDLE_SHA256 = \"db0972ea4c9439e238e777f26d579ae29865f22f05f70c9a01989cc772611256\"" in k3s_root
-assert "EXPECTED_BUNDLE_SIZE = 240779539" in k3s_root
-assert "os.O_NOFOLLOW" in k3s_root and 'info.st_uid != sudo_uid' in k3s_root
-assert "CHESS_STUDIO_K3S_ASSETS = /usr/local/sbin/chess-studio-k3s-assets /tmp/chess-studio-k3s-bundle.tar.gz" in k3s_sudoers
-assert "CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME, CHESS_STUDIO_K3S_ASSETS" in k3s_sudoers
-for forbidden in ("systemctl", "k3s server", "k3s agent", "curl ", "wget "):
-    assert forbidden not in k3s_root, f"K3s asset capability must not contain {forbidden!r}"
-
-# Service preparation is a second inert phase. It can write only the reviewed
-# base config + systemd unit while the cluster is unarmed. The unit itself has a
-# deliberate start-approval fuse. Once armed/active, normal application deploys
-# must become verification-only and may not silently stop or rewrite K3s.
-ast.parse(k3s_service_prepare)
-assert 'python3 -S "$k3s_service_prepare"' in deploy
-assert 'write-kubeconfig-mode: "0600"' in k3s_config
-assert "  - traefik" in k3s_config and "  - servicelb" in k3s_config
-assert "cluster-init" not in k3s_config
-assert "ExecStart=/usr/local/bin/k3s server" in k3s_unit
-assert "ExecStartPre=/usr/bin/test -f /var/lib/chess-studio/K3S_START_APPROVED" in k3s_unit
-assert "WantedBy=multi-user.target" in k3s_unit
-assert "cluster-init" not in k3s_unit
-assert '["systemctl", "daemon-reload"]' in k3s_service_prepare
-assert '["systemctl", "start"' not in k3s_service_prepare
-assert '["systemctl", "enable"' not in k3s_service_prepare
-assert "OCI_K3S_SERVICE_PREPARED" in k3s_service_prepare
-assert "OCI_K3S_SERVICE_ARMED_UNCHANGED" in k3s_service_prepare
-assert "START_APPROVAL.exists()" in k3s_service_prepare
-assert "INTEGRITY_CACHE_SCHEMA = 1" in k3s_service_prepare
-assert "K3S_AIRGAP_INTEGRITY_V1.json" in k3s_service_prepare
-assert "OCI_K3S_ASSET_INTEGRITY_REUSED" in k3s_service_prepare
-assert "OCI_K3S_ASSET_INTEGRITY_REFRESHED" in k3s_service_prepare
-for required in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_uid", "st_gid"):
-    assert required in k3s_service_prepare, f"K3s integrity cache must invalidate on {required}"
-assert "os.O_NOFOLLOW" in k3s_service_prepare
-assert "info.st_uid != 0" in k3s_service_prepare and "info.st_gid != 0" in k3s_service_prepare
-assert "_sha256_with_fingerprint" in k3s_service_prepare
-
-# Successful K3s reconciliation stays compact so OCI Run Command does not lose
-# the deploy tail, while failures retain the complete child diagnostic output.
-assert "run_k3s_reconcile_steps" in deploy
-assert '{ /bin/bash "$k3s_capability_provision" && python3 -S "$k3s_service_prepare"; }' in deploy
-assert 'cat "$log" >&2' in deploy
-assert "OCI_K3S_ASSET_INTEGRITY_REUSED" in deploy
-assert "OCI_K3S_ASSET_INTEGRITY_REFRESHED" in deploy
-assert 'printf "integrity=%s,service=%s"' in deploy
+# K3s/Flux is HOLD experiment tooling. Canonical Docker/Compose deploys must not
+# validate, install, prepare or reconcile K3s assets as a release side effect.
+for forbidden in (
+    "oci_k3s_capability_provision",
+    "oci_k3s_service_prepare",
+    "reconcile_k3s_contract",
+    "run_k3s_reconcile_steps",
+    "K3S_START_APPROVED",
+):
+    assert forbidden not in deploy, f"canonical Compose deploy must not depend on K3s: {forbidden}"
+assert "phase_done k3s" not in deploy
+assert " k3s=%s" not in deploy
 
 # Healthy public routing of the exact new SHA is sufficient to reuse the
 # existing tunnel. Any probe failure must retain the full connector self-heal.
@@ -283,9 +245,9 @@ assert 'tunnel_action="restarted"' in deploy
 
 # Deploy timing markers are observational only: they expose where time is spent
 # without weakening or bypassing any readiness/integrity gate.
-for phase in ("checkout", "preflight", "k3s", "image_pull", "recreate", "readiness", "tunnel", "total"):
+for phase in ("checkout", "preflight", "image_pull", "recreate", "readiness", "tunnel", "total"):
     assert f"phase_done {phase}" in deploy
-assert "OCI_DEPLOY_TIMINGS target=%s phases=%s k3s=%s,contract=%s tunnel=%s" in deploy
+assert "OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s" in deploy
 assert 'if [[ "$target" == staging ]]; then' in deploy
 assert 'tunnel_action="local-only"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha' in deploy
@@ -296,8 +258,6 @@ assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1' in deploy
 assert 'cat "$compose_log" >&2' in deploy
-assert 'k3s_contract_action="reused"' in deploy
-assert 'k3s_contract_action="refreshed"' in deploy
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
 assert 'docker pull --quiet "$target_image"' in deploy
 
