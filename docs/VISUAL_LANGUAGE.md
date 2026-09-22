@@ -91,6 +91,26 @@ War Room es la referencia de profundidad visual del producto.
 
 Admin, Así juegas, autopsias y datos pueden ser más sobrios. Coherencia no significa convertir tablas en salones medievales: se heredan color, tipografía, bordes, jerarquía y materiales, no decorado literal.
 
+
+## Tutoriales y mecánicas no estándar
+
+El ajedrez estándar no necesita una enciclopedia antes de jugar. Las mecánicas que Chess Studio añade o rompe deliberadamente sí deben poder explicarse dentro del producto.
+
+Contrato:
+
+- todo modo/mecánica no estándar con reglas propias debe tener ayuda contextual suficiente para entender **qué cambia respecto al ajedrez normal**;
+- el first-run debe ser corto y skippable; enseñar primero la interacción/decisión necesaria ahora y dejar profundidad secundaria para pasos posteriores o ayuda reabrible;
+- el tutorial siempre puede volver a abrirse desde la superficie relevante mediante un control de ayuda claro;
+- progreso/seen pertenece al perfil del usuario; no debe cruzar cuentas ni depender sólo del estado React del momento;
+- no marcar como visto por el mero hecho de montar una pantalla si el usuario no tuvo oportunidad real de verlo/omitirlo según el contrato de esa superficie;
+- mouse, touch y teclado/focus deben poder completar o abandonar la guía;
+- `prefers-reduced-motion` no puede ocultar la enseñanza: sustituye movimiento decorativo por señal estática;
+- la guía usa reglas/estado reales. No inventa destinos legales, porcentajes, recompensas, intel, debilidades ni consecuencias para simplificar la demo;
+- cuando una superficie ya tiene guía diegética canónica —por ejemplo Matthias en el onboarding de War Room— mantener esa identidad en vez de superponer una voz genérica contradictoria.
+
+El botón `?`/ayuda es progressive disclosure, no una excusa para esconder una mecánica imposible de descubrir. La UI base debe seguir mostrando la decisión principal y sus consecuencias críticas.
+
+
 ## Checklist para una nueva visual
 
 Antes de mergear:
