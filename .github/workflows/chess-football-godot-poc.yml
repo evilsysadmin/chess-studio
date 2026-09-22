@@ -4,11 +4,17 @@ on:
   pull_request:
     paths:
       - games/chess-football-godot/**
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
+      - scripts/art/sprite_forge_contract.schema.json
       - .github/workflows/chess-football-godot-poc.yml
   push:
     branches: [main]
     paths:
       - games/chess-football-godot/**
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
+      - scripts/art/sprite_forge_contract.schema.json
       - .github/workflows/chess-football-godot-poc.yml
   workflow_dispatch:
 
@@ -51,6 +57,10 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
+      - name: Validate shared Sprite Forge contracts
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps --only-binary=:all: 'Pillow==12.3.0'
+          python3 scripts/art/test_sprite_forge.py
       - name: Parse project
         shell: bash
         run: |
