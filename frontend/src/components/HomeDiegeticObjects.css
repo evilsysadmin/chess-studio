@@ -1,6 +1,8 @@
 /* Primary diegetic navigation for the canonical Great Hall.
- * The scene object is the visual control; copy appears only as confirmation,
- * except the JUGAR / CONTINUAR title, which is always visible.
+ * The scene object is the visual control; icon/chevron affordances dim once
+ * the physical prop is ready, but the JUGAR / CONTINUAR, COMBAT CHESS and
+ * TORNEOS titles and detail copy stay always visible instead of waiting for
+ * hover confirmation.
  * Touch layouts keep the existing explicit labels because hover cannot carry
  * discoverability there. */
 
@@ -56,6 +58,17 @@
      * icon, detail and arrow still yield to the prop until it is engaged. */
     :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
       .illustrated-home__destination--play.is-diegetic-object > strong {
+      opacity: 1;
+      transform: none;
+      text-shadow: 0 2px 5px #080401, 0 0 14px #d38a2a99;
+    }
+
+    /* COMBAT CHESS and TORNEOS need to stay legible without a hover pass too,
+     * so their title and detail copy skip the hover-reveal treatment. Only
+     * the icon/arrow affordances still yield to the physical prop. */
+    :where(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready))
+      :is(.illustrated-home__destination--combat, .illustrated-home__destination--tournament).is-diegetic-object
+      > :is(strong, span) {
       opacity: 1;
       transform: none;
       text-shadow: 0 2px 5px #080401, 0 0 14px #d38a2a99;
