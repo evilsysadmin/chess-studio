@@ -125,6 +125,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/css_architecture_manifest.json",
             "scripts/async_resilience_gate.mjs",
             "scripts/chess_rules_gate.mjs",
+            "scripts/quality_scope.py",
         }:
             return set()
         return None
@@ -139,10 +140,9 @@ def classify_path(path: str) -> set[str] | None:
     if name == "experimentalthreerenderer.js":
         return set(CHRONICLES_SHARED)
 
-    if lower in {
-        "frontend/src/components/labscreen.jsx",
-        "frontend/src/lablaunchintent.js",
-    }:
+    if lower == "frontend/src/lablaunchintent.js":
+        return set()
+    if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
 
     if "chronicles" in lower:
@@ -214,7 +214,8 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
-    assert classify(["frontend/src/labLaunchIntent.js"]) == "experiments-hub"
+    assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
+    assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"

@@ -25,6 +25,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/usecombatbattlesnapshotfactory.js",
     "frontend/src/spectatorsessionrunner.js",
     "frontend/src/gamesessiondescriptor.js",
+    "frontend/src/lablaunchintent.js",
 }
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -92,14 +93,11 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"}:
+    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/quality_scope.py"}:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
-    if lower in {
-        "frontend/src/components/labscreen.jsx",
-        "frontend/src/lablaunchintent.js",
-    }:
+    if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments"}
     if lower in {
         "scripts/blender/build_war_room_premium.py",
@@ -210,10 +208,7 @@ def _experiment_parts(path: str) -> set[str]:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
-    if lower in {
-        "frontend/src/components/labscreen.jsx",
-        "frontend/src/lablaunchintent.js",
-    }:
+    if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
     if "experiment" in lower:
         return set(EXPERIMENT_ORDER)
@@ -340,6 +335,12 @@ def self_test() -> None:
     ])
     assert lab.capture_groups == "experiments"
     assert lab.experiments_scope == "landing,pawnslug"
+    lab_launch = classify(["frontend/src/labLaunchIntent.js"])
+    assert lab_launch.capture_groups == "none"
+    assert not lab_launch.hans and not lab_launch.chesscom
+    quality_scope = classify(["scripts/quality_scope.py"])
+    assert quality_scope.capture_groups == "none"
+    assert not quality_scope.hans and not quality_scope.chesscom
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
     assert chronicles_visual.experiments_scope == "chronicles"
