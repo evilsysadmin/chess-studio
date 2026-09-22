@@ -41,14 +41,19 @@ assert(AMBIENT_THEME_OPTIONS.length > 0, 'el catálogo musical seleccionable est
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 const catalogSource = readFileSync(new URL('../frontend/src/ambientCatalog.js', import.meta.url), 'utf8');
-const assignMarker = 'Object.assign(AMBIENT_THEMES, {';
+const structuredCatalogSource = readFileSync(new URL('../frontend/src/ambientStructuredCatalog.js', import.meta.url), 'utf8');
 const baseCatalogStart = catalogSource.indexOf('export const AMBIENT_THEMES = {');
-const structuredCatalogStart = catalogSource.indexOf(assignMarker);
-const structuredCatalogEnd = catalogSource.indexOf('\n});', structuredCatalogStart);
-assert(baseCatalogStart >= 0 && structuredCatalogStart > baseCatalogStart && structuredCatalogEnd > structuredCatalogStart, 'estructura de ambientCatalog.js no reconocible');
+const structuredCatalogMerge = catalogSource.indexOf('Object.assign(AMBIENT_THEMES, STRUCTURED_AMBIENT_THEMES);');
+const structuredAssignMarker = 'Object.assign(STRUCTURED_AMBIENT_THEMES, {';
+assert(
+  baseCatalogStart >= 0 &&
+  structuredCatalogMerge > baseCatalogStart &&
+  structuredCatalogSource.includes(structuredAssignMarker),
+  'estructura del catálogo ambiental dividido no reconocible',
+);
 const topLevelThemeIds = (source) => [...source.matchAll(/^  ([A-Za-z_$][A-Za-z0-9_$]*):\s*\{/gm)].map((match) => match[1]);
-const baseThemeIds = topLevelThemeIds(catalogSource.slice(baseCatalogStart, structuredCatalogStart));
-const structuredThemeIds = topLevelThemeIds(catalogSource.slice(structuredCatalogStart, structuredCatalogEnd));
+const baseThemeIds = topLevelThemeIds(catalogSource.slice(baseCatalogStart, structuredCatalogMerge));
+const structuredThemeIds = topLevelThemeIds(structuredCatalogSource);
 const overwrittenThemeIds = baseThemeIds.filter((id) => structuredThemeIds.includes(id));
 assert(overwrittenThemeIds.length === 0, `hay definiciones musicales base pisadas después: ${overwrittenThemeIds.join(', ')}`);
 
