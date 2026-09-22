@@ -12,6 +12,7 @@ on:
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
       - 'scripts/blender/validate_home_matthias_contract.py'
+      - 'scripts/blender/validate_home_matthias_actions.py'
       - 'scripts/blender/compare_glb_semantics.py'
       - 'frontend/art-source/matthias-home-canonical-reference.webp'
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
@@ -63,6 +64,9 @@ jobs:
           blender --background \
             /tmp/home-matthias-art/matthias-home-canonical.blend \
             --python scripts/blender/validate_home_matthias_contract.py
+          blender --background \
+            /tmp/home-matthias-art/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_actions.py
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
@@ -104,6 +108,9 @@ jobs:
           blender --background \
             frontend/art-source/matthias-home-canonical.blend \
             --python scripts/blender/validate_home_matthias_contract.py
+          blender --background \
+            frontend/art-source/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_actions.py
 
       - name: Verify checked-in runtime GLB matches regenerated semantics
         run: |
