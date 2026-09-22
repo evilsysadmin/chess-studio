@@ -14,6 +14,8 @@ import sys
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
 MATTHIAS_CHRONICLES_CONSUMER = "frontend/src/chroniclesOfMatthiasIsometric.js"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
+MATTHIAS_REFERENCE = "frontend/art-source/matthias-home-canonical-reference.webp"
+MATTHIAS_REFERENCE_META = "frontend/art-source/matthias-home-canonical-reference.txt"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
 PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
@@ -27,6 +29,8 @@ def _is_matthias_canonical_owner(path: str) -> bool:
     return (
         lower == MATTHIAS_MODEL
         or lower == MATTHIAS_BLEND
+        or lower == MATTHIAS_REFERENCE
+        or lower == MATTHIAS_REFERENCE_META
         or lower == "scripts/blender/build_home_matthias.py"
         or lower.startswith("scripts/blender/home_matthias_")
     )
@@ -94,6 +98,8 @@ def self_test() -> None:
         "scripts/blender/build_home_matthias.py",
         "scripts/blender/home_matthias_parts.py",
         "scripts/blender/home_matthias_animations.py",
+        MATTHIAS_REFERENCE,
+        MATTHIAS_REFERENCE_META,
     ]
     assert normalize(matthias_sources) == [MATTHIAS_MODEL, MATTHIAS_CHRONICLES_CONSUMER]
     assert normalize(["frontend/src/App.css", *matthias_sources]) == [
