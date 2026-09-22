@@ -28,6 +28,8 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
   window.__pawnSlugCaptureEvents = [];
+  window.__pawnSlugVisualMetricsRequest = 0;
+  window.__pawnSlugVisualMetrics = null;
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -80,6 +82,26 @@ async function capture(label) {
   const path = `${outputDir}/${label}.png`;
   await page.screenshot({ path, fullPage: false });
   captures.push({ label, path, kind: 'overview' });
+}
+
+async function collectVisualMetrics(expectedWeapon, expectedAction = '') {
+  const requestId = await page.evaluate(() => {
+    window.__pawnSlugVisualMetrics = null;
+    window.__pawnSlugVisualMetricsRequest = Number(window.__pawnSlugVisualMetricsRequest || 0) + 1;
+    return window.__pawnSlugVisualMetricsRequest;
+  });
+  await page.waitForFunction(
+    ({ requestId, expectedWeapon, expectedAction }) => {
+      const metrics = window.__pawnSlugVisualMetrics;
+      if (!metrics || Number(metrics.request_id) !== requestId) return false;
+      if (expectedWeapon && String(metrics.weapon || '') !== expectedWeapon) return false;
+      if (expectedAction && String(metrics.action || '') !== expectedAction) return false;
+      return true;
+    },
+    { requestId, expectedWeapon, expectedAction },
+    { timeout: 10_000 },
+  );
+  return page.evaluate(() => window.__pawnSlugVisualMetrics);
 }
 
 async function captureDetailedCloseup(label, canvas) {
@@ -184,6 +206,42 @@ await page.waitForTimeout(120);
 await capture('54-smg-idle');
 await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
 
+// Standardized all-weapon parity pass. Each load starts from the same stage,
+// camera and player position. We sample idle, settled run and crouch using the
+// exact texture/frame Godot is rendering, so body-scale drift cannot hide behind
+// a matching atlas bbox or footline.
+const weaponParityMetrics = {};
+const parityWeapons = ['pistol', 'machinegun', 'shotgun', 'panzerfaust'];
+for (let weaponIndex = 0; weaponIndex < parityWeapons.length; weaponIndex += 1) {
+  const weapon = parityWeapons[weaponIndex];
+  const prefix = String(60 + weaponIndex * 10).padStart(2, '0');
+  const parityStage = await loadStage(detailedStage, {
+    weaponProbe: weapon === 'pistol' ? '' : weapon,
+  });
+  await parityStage.canvasLocator.click({ position: { x: parityStage.canvas.width / 2, y: parityStage.canvas.height / 2 } });
+  await page.waitForTimeout(180);
+  await capture(`${prefix}-parity-${weapon}-idle`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-idle`, parityStage.canvas);
+  const idle = await collectVisualMetrics(weapon, 'idle');
+
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(360);
+  await capture(`${prefix}-parity-${weapon}-run`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-run`, parityStage.canvas);
+  const run = await collectVisualMetrics(weapon, 'run');
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(180);
+
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(180);
+  await capture(`${prefix}-parity-${weapon}-crouch`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-crouch`, parityStage.canvas);
+  const crouch = await collectVisualMetrics(weapon, 'crouch');
+  await page.keyboard.up('ArrowDown');
+
+  weaponParityMetrics[weapon] = { idle, run, crouch };
+}
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -222,10 +280,11 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 6,
+    schema: 7,
     detailedStage,
     stageOverviews,
     captures,
+    weaponParityMetrics,
   }, null, 2)}\n`,
   'utf8',
 );
