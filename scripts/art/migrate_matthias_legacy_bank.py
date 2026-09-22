@@ -16,7 +16,6 @@ from sprite_forge import (
     PlacementContract,
     geometry_metrics,
     lint_frame,
-    place_frame_fixed_scale,
 )
 
 DEFAULT_CELL = 416
@@ -136,6 +135,87 @@ def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[d
     return cleaned, removed
 
 
+def _foreground_bbox(image: Image.Image, alpha_threshold: int) -> tuple[int, int, int, int] | None:
+    alpha = image.convert("RGBA").getchannel("A")
+    mask = alpha.point(lambda value: 255 if value >= alpha_threshold else 0)
+    return mask.getbbox()
+
+
+def place_legacy_frame(
+    image: Image.Image,
+    contract: PlacementContract,
+    lint_config: LintConfig,
+) -> tuple[Image.Image, list[dict]]:
+    raw = image.convert("RGBA")
+    lint = lint_frame(raw, lint_config)
+    if not lint.ok or lint.main_component is None:
+        raise GeometryError("raw-lint:" + ",".join(lint.errors))
+    if contract.scale <= 0:
+        raise GeometryError("invalid-scale")
+
+    foreground = _foreground_bbox(raw, lint_config.alpha_threshold)
+    if foreground is None:
+        raise GeometryError("empty-frame")
+    fx0, fy0, _, _ = foreground
+    crop = raw.crop(foreground)
+    scaled_size = (
+        max(1, round(crop.width * contract.scale)),
+        max(1, round(crop.height * contract.scale)),
+    )
+    # Legacy v16/v22 atlases already contain antialiased/ringing edges. For
+    # enlargement, BILINEAR avoids the extra lobes BICUBIC can manufacture.
+    # This exception exists only in the migration compiler; accepted Sprite
+    # Forge sources continue through the normal fail-closed placement path.
+    scaled = crop.resize(scaled_size, Image.Resampling.BILINEAR)
+
+    body = lint.main_component
+    body_left = (body.bbox[0] - fx0) * contract.scale
+    body_right = (body.bbox[2] - fx0) * contract.scale
+    body_bottom = (body.bbox[3] - fy0) * contract.scale
+    body_center_in_crop = (body_left + body_right) / 2.0
+
+    dest_x = round(contract.body_center_x - body_center_in_crop)
+    dest_y = round(contract.foot_y - body_bottom)
+    placed_bbox = (
+        dest_x,
+        dest_y,
+        dest_x + scaled.width,
+        dest_y + scaled.height,
+    )
+    margin = max(0, contract.safe_margin_px)
+    canvas_w, canvas_h = contract.canvas_size
+    if (
+        placed_bbox[0] < margin
+        or placed_bbox[1] < margin
+        or placed_bbox[2] > canvas_w - margin
+        or placed_bbox[3] > canvas_h - margin
+    ):
+        raise GeometryError(
+            f"would-clip:{placed_bbox} outside "
+            f"canvas={contract.canvas_size} margin={margin}"
+        )
+
+    out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
+    out.alpha_composite(scaled, (dest_x, dest_y))
+    out, removed_post_noise = clean_legacy_detached_noise(out)
+
+    post = lint_frame(out, lint_config)
+    if not post.ok:
+        raise GeometryError("post-lint:" + ",".join(post.errors))
+    metrics = geometry_metrics(out, lint_config.alpha_threshold)
+    if metrics is None:
+        raise GeometryError("post-empty")
+    if abs(metrics.foot_y - contract.foot_y) > contract.foot_tolerance_px:
+        raise GeometryError(
+            f"foot:{metrics.foot_y:.2f}!={contract.foot_y:.2f}"
+        )
+    if abs(metrics.body_center_x - contract.body_center_x) > contract.center_tolerance_px:
+        raise GeometryError(
+            f"center:{metrics.body_center_x:.2f}!={contract.body_center_x:.2f}"
+        )
+    return out, removed_post_noise
+
+
 def migrate(
     source: Image.Image,
     reference: Image.Image,
@@ -212,6 +292,7 @@ def migrate(
             "target_height": target_height,
             "source_median_height": source_median_height,
             "scale": round(row_scale, 6),
+            "resampling": "bilinear",
             "target_center_x": target_center_x,
             "target_foot_y": target_foot_y,
             "frames": [],
@@ -220,7 +301,7 @@ def migrate(
 
         for col, (cell, removed_noise, metrics) in enumerate(prepared):
             try:
-                placed = place_frame_fixed_scale(
+                placed, removed_post_noise = place_legacy_frame(
                     cell,
                     PlacementContract(
                         canvas_size=(grid.cell, grid.cell),
@@ -265,7 +346,10 @@ def migrate(
                     "output_height": post.body_height,
                     "foot_y": post.foot_y,
                     "center_x": post.body_center_x,
-                    "removed_legacy_noise": removed_noise,
+                    "removed_legacy_noise": {
+                        "raw": removed_noise,
+                        "post_resample": removed_post_noise,
+                    },
                 }
             )
 
