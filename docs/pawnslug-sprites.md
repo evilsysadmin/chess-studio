@@ -55,6 +55,8 @@ Si las señales proponen transformaciones incompatibles, el frame falla. Nunca e
 
 **La escala corporal del actor es un invariante canónico entre armas/loadouts.** Cambiar de pistola a SMG, shotgun o panzerfaust puede cambiar el footprint del arma, el agarre y la pose, pero no puede convertir a Matthias en una variante grande o pequeña. Altura corporal percibida, distancia cara-pies, pivote y footline deben mantenerse dentro de la tolerancia del canon común. Normalizar cada arma contra sí misma y aceptar escalas distintas es una regresión y debe fallar cerrado.
 
+**El footprint del arma nunca puede reducir la escala del actor.** Si un sprite integrado no cabe en la celda/safe envelope usando la escala corporal canónica, el build falla. Las salidas válidas son separar cuerpo y arma mediante sockets/weapon layer o adoptar deliberadamente un contrato de celda mayor y revalidarlo; nunca aplicar un `min(scale, fit_weapon)`, auto-fit o rescale runtime que convierta al personaje en una versión pequeña.
+
 Antes de componer, calcular el bbox transformado y exigir que quepa dentro del safe envelope. El normalizador no puede recortar botas, casco, arma o FX sin fallar.
 
 ## 5. QA geométrica
