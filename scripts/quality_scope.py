@@ -119,6 +119,9 @@ TRAILBLAZER_RE = re.compile(
     r"^frontend/src/assets/pawnTrailblazer/"
 )
 MATTHIAS_HOME_RE = re.compile(r"^frontend/src/components/MatthiasPremiumHome3D\.js$")
+LAB_SCREEN_PATH = "frontend/src/components/LabScreen.jsx"
+LAB_LAUNCH_INTENT_PATH = "frontend/src/labLaunchIntent.js"
+VISUAL_ARTIFACT_E2E_RE = re.compile(r"^e2e/.*visual-artifact\.spec\.js$")
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
@@ -239,6 +242,16 @@ def classify(paths: Iterable[str]) -> Scope:
             if path == PACKAGE_METADATA_PATH:
                 _enable_core_e2e(scope, ("app-boot",))
                 continue
+            if path == LAB_LAUNCH_INTENT_PATH:
+                scope.run_pawn_slug_e2e = True
+                _enable_core_e2e(scope, ("app-boot",))
+                continue
+            if path == LAB_SCREEN_PATH:
+                scope.run_pawn_slug_e2e = True
+                scope.run_chesscom_e2e = True
+                scope.run_trailblazer_e2e = True
+                _enable_core_e2e(scope, ("app-boot",))
+                continue
 
             targeted = False
             for pattern, field_name in (
@@ -279,6 +292,8 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
 
         if path.startswith("e2e/"):
+            if VISUAL_ARTIFACT_E2E_RE.search(path):
+                continue
             if path in E2E_SHARED:
                 _enable_core_e2e(scope)
                 for field_name in TARGETED_E2E.values():
@@ -384,6 +399,21 @@ def self_test() -> None:
     _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_security=True)
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
+    _expect_core(
+        [LAB_LAUNCH_INTENT_PATH],
+        lanes=("app-boot",),
+        run_frontend=True,
+        run_pawn_slug_e2e=True,
+    )
+    _expect_core(
+        [LAB_SCREEN_PATH],
+        lanes=("app-boot",),
+        run_frontend=True,
+        run_pawn_slug_e2e=True,
+        run_chesscom_e2e=True,
+        run_trailblazer_e2e=True,
+    )
+    _expect(["e2e/experiments-visual-artifact.spec.js"])
     _expect(["games/pawn-slug-godot/scripts/player.gd"], run_pawn_slug_godot=True)
     _expect(["scripts/pawn_slug_godot_2d_gate.py"], run_pawn_slug_godot=True)
     _expect(["scripts/pawn_slug_enemy_roster_gate.py"], run_pawn_slug_godot=True)

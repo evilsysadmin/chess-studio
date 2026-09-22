@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode } from '../labLaunchIntent.js';
+import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
@@ -33,7 +33,10 @@ function LabModeFallback() {
 
 export default function LabScreen({ onExit, onStart }){
   const initial = initialState();
-  const [labMode,setLabMode]=useState(() => consumeLabLaunch() || loadRememberedLabMode() || 'hub');
+  // Render must only peek at the one-shot intent. React.StrictMode invokes
+  // state initializers twice in development; destructive consumption here would
+  // lose Home -> Pawn Slug before the committed LabScreen mount.
+  const [labMode,setLabMode]=useState(() => loadLabLaunch() || loadRememberedLabMode() || 'hub');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
   const [turn,setTurn]=useState(initial.turn);
@@ -49,6 +52,14 @@ export default function LabScreen({ onExit, onStart }){
     if (labMode === 'pawnslug-godot' || remembered === labMode) rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
+
+  useEffect(() => {
+    acknowledgeLabLaunch(labMode);
+  }, []);
+
+  useEffect(() => subscribeLabLaunch((mode) => {
+    setLabMode(mode);
+  }), []);
 
   const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
