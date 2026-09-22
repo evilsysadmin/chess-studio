@@ -11,15 +11,15 @@ extends Node2D
 const MASTER_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
 const MASTER_SIZE := Vector2i(1536, 1024)
 const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
-# Strict Godot runtime atlases: v13 is an exact 8 x 18 grid of 416 x 416 RGBA
-# cells. Each cell is consumed directly as an AtlasTexture region: no runtime
-# rescale or repack step is allowed at runtime.
-const STRICT_RUNTIME_GENERATION := "v23"
+# Strict Godot runtime atlases use an exact 8 x 18 grid of 416 x 416 RGBA
+# cells. The weapon banks are pre-normalized to the pistol-family canonical body
+# scale; Godot consumes them directly with no runtime rescale or repack.
+const STRICT_RUNTIME_GENERATION := "canonical-scale-v1"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/machinegun/full/candidate-full-1346bf6b3e465e64.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png",
 }
 
 # v22 keeps the stable 18x8 full banks and overlays only the run cycle with
@@ -28,8 +28,8 @@ const FULL_ATLAS_URLS := {
 const RUN12_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
     "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-26dc07c9be4f285f.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/run12/candidate-run12-e90510cd4fba3827.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/run12/candidate-run12-6ea25f1bdac27f35.png",
 }
 const RUN12_ATLAS_COLUMNS := 12
 const RUN12_ATLAS_CELL_SIZE := 416
