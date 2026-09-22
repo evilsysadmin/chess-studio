@@ -145,44 +145,81 @@ for (let frame = 0; frame < 4; frame += 1) {
 }
 await page.keyboard.up('ArrowDown');
 
-// Dedicated SMG render/switch proof. The local PR capture uses a JS-only
-// visual probe rather than depending on combat traversal. Staging E2E remains
-// responsible for proving the real pickup path and weapon-pickup event.
-const smgStage = await loadStage(detailedStage, { weaponProbe: 'machinegun' });
-const smgProbeSelected = await page.evaluate(() => (
-  Array.isArray(window.__pawnSlugCaptureEvents)
-  && window.__pawnSlugCaptureEvents.includes('weapon-changed')
-));
-if (!smgProbeSelected) {
-  throw new Error('Pawn Slug SMG visual probe did not emit weapon-changed');
-}
-await smgStage.canvasLocator.click({ position: { x: smgStage.canvas.width / 2, y: smgStage.canvas.height / 2 } });
-await capture('50-smg-selected-immediate');
-await captureDetailedCloseup('50-smg-selected-immediate', smgStage.canvas);
-await page.waitForTimeout(100);
-await capture('51-smg-selected-after-100ms');
-await captureDetailedCloseup('51-smg-selected-after-100ms', smgStage.canvas);
+// Weapon-family render/switch proof. Every shipped Matthias loadout gets the
+// same runtime treatment; no weapon is allowed to hide behind a sheet-only gate.
+const weaponProfiles = [
+  { id: 'machinegun', runFrames: 13 },
+  { id: 'shotgun', runFrames: 12 },
+  { id: 'panzerfaust', runFrames: 12 },
+];
+const weaponCaptures = [];
 
-await page.keyboard.down('ArrowRight');
-for (let frame = 0; frame < 13; frame += 1) {
-  const label = `52-smg-run-${String(frame).padStart(2, '0')}`;
-  await capture(label);
-  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
-  await page.waitForTimeout(48);
-}
+for (const profile of weaponProfiles) {
+  const weaponStage = await loadStage(detailedStage, { weaponProbe: profile.id });
+  const selected = await page.evaluate(() => (
+    Array.isArray(window.__pawnSlugCaptureEvents)
+    && window.__pawnSlugCaptureEvents.includes('weapon-changed')
+  ));
+  if (!selected) {
+    throw new Error(`Pawn Slug ${profile.id} visual probe did not emit weapon-changed`);
+  }
 
-await page.keyboard.down('z');
-for (let frame = 0; frame < 13; frame += 1) {
-  const label = `53-smg-run-fire-${String(frame).padStart(2, '0')}`;
-  await capture(label);
-  if ([0, 4, 8, 12].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
-  await page.waitForTimeout(55);
+  await weaponStage.canvasLocator.click({
+    position: {
+      x: weaponStage.canvas.width / 2,
+      y: weaponStage.canvas.height / 2,
+    },
+  });
+
+  const base = `weapon-${profile.id}`;
+  await capture(`${base}-selected-immediate`);
+  await captureDetailedCloseup(`${base}-selected-immediate`, weaponStage.canvas);
+  await page.waitForTimeout(100);
+  await capture(`${base}-idle`);
+  await captureDetailedCloseup(`${base}-idle`, weaponStage.canvas);
+
+  await page.keyboard.down('ArrowRight');
+  for (let frame = 0; frame < profile.runFrames; frame += 1) {
+    const label = `${base}-run-${String(frame).padStart(2, '0')}`;
+    await capture(label);
+    if ([0, Math.floor(profile.runFrames / 2), profile.runFrames - 1].includes(frame)) {
+      await captureDetailedCloseup(label, weaponStage.canvas);
+    }
+    await page.waitForTimeout(48);
+  }
+
+  await page.keyboard.down('z');
+  for (let frame = 0; frame < 6; frame += 1) {
+    const label = `${base}-run-fire-${String(frame).padStart(2, '0')}`;
+    await capture(label);
+    if ([0, 3, 5].includes(frame)) {
+      await captureDetailedCloseup(label, weaponStage.canvas);
+    }
+    await page.waitForTimeout(55);
+  }
+  await page.keyboard.up('z');
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(120);
+
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(160);
+  for (let frame = 0; frame < 4; frame += 1) {
+    const label = `${base}-crouch-${String(frame).padStart(2, '0')}`;
+    await capture(label);
+    if ([0, 3].includes(frame)) {
+      await captureDetailedCloseup(label, weaponStage.canvas);
+    }
+    await page.waitForTimeout(90);
+  }
+  await page.keyboard.up('ArrowDown');
+
+  weaponCaptures.push({
+    weapon: profile.id,
+    runFrames: profile.runFrames,
+    immediate: `${base}-selected-immediate`,
+    idle: `${base}-idle`,
+  });
 }
-await page.keyboard.up('z');
-await page.keyboard.up('ArrowRight');
-await page.waitForTimeout(120);
-await capture('54-smg-idle');
-await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
 
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
@@ -222,10 +259,11 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 6,
+    schema: 7,
     detailedStage,
     stageOverviews,
     captures,
+    weaponCaptures,
   }, null, 2)}\n`,
   'utf8',
 );
