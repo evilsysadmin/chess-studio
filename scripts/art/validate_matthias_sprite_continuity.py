@@ -38,8 +38,10 @@ LOWER_BODY_SIGNATURE_SIZE = (96, 64)
 LOWER_BODY_SIGNATURE_THRESHOLD = 64
 RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.06
 RUN_LOWER_BODY_MAX_DELTA_MIN = 0.10
-RUN_MOTION_MEDIAN_RATIO_MIN = 0.75
-RUN_MOTION_MAX_RATIO_MIN = 0.75
+RUN_RUNTIME_MEDIAN_DELTA_MIN = 0.10
+RUN_RUNTIME_MAX_DELTA_MIN = 0.18
+RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN = 0.85
+RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN = 0.80
 AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
 AIRBORNE_FAIL_CLOSED_WEAPONS = ("machinegun",)
 
@@ -210,7 +212,7 @@ def lower_body_signature(image: Image.Image, label: str) -> bytes:
     normalized = alpha.resize(LOWER_BODY_SIGNATURE_SIZE, Image.Resampling.NEAREST)
     return bytes(
         1 if int(value) >= LOWER_BODY_SIGNATURE_THRESHOLD else 0
-        for value in normalized.getdata()
+        for value in normalized.get_flattened_data()
     )
 
 
@@ -502,7 +504,29 @@ def acquire(url: str, temp_dir: Path, label: str) -> Path:
     raise ValueError(f"{label}: failed to download {url}: {last_error}")
 
 
-def validate_run(gdscript: Path) -> dict:
+def exported_run_motion(sprite_dir: Path, weapon: str) -> dict:
+    frames: list[dict] = []
+    for col in range(IDLE_COLUMNS):
+        path = (
+            sprite_dir
+            / weapon
+            / "frames"
+            / f"matthias_{weapon}_r02_c{col:02d}.png"
+        )
+        if not path.is_file():
+            raise ValueError(f"missing exported full-bank run frame: {path}")
+        image = Image.open(path).convert("RGBA")
+        frames.append(
+            {
+                "_lowerBodySignature": lower_body_signature(
+                    image, f"{weapon} full-bank run c{col}"
+                )
+            }
+        )
+    return validate_lower_body_motion(frames, f"{weapon} full-bank run")
+
+
+def validate_run(gdscript: Path, sprite_dir: Path) -> dict:
     text = gdscript.read_text(encoding="utf-8")
     urls = parse_string_dict(text, "RUN12_ATLAS_URLS")
     columns = parse_int_dict(text, "RUN_OVERLAY_COLUMNS")
@@ -553,7 +577,46 @@ def validate_run(gdscript: Path) -> dict:
                 ),
             }
 
+    full_motion = {
+        weapon: exported_run_motion(sprite_dir, weapon)
+        for weapon in WEAPONS
+    }
+
     pistol = by_weapon["pistol"]
+    for weapon in WEAPONS:
+        item = by_weapon[weapon]
+        motion = item["lowerBodyMotion"]
+        reference_motion = full_motion[weapon]
+        item["fullBankLowerBodyMotion"] = reference_motion
+        if motion["medianDelta"] < RUN_RUNTIME_MEDIAN_DELTA_MIN:
+            raise ValueError(
+                f"{weapon} runtime run: median lower-body delta "
+                f"{motion['medianDelta']:.4f} < {RUN_RUNTIME_MEDIAN_DELTA_MIN:.4f}"
+            )
+        if motion["maxDelta"] < RUN_RUNTIME_MAX_DELTA_MIN:
+            raise ValueError(
+                f"{weapon} runtime run: peak lower-body delta "
+                f"{motion['maxDelta']:.4f} < {RUN_RUNTIME_MAX_DELTA_MIN:.4f}"
+            )
+        item["overlayVsFullMedianMotionRatio"] = round(
+            min_ratio(
+                motion["medianDelta"],
+                reference_motion["medianDelta"],
+                RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN,
+                f"{weapon} run overlay/full median motion",
+            ),
+            6,
+        )
+        item["overlayVsFullMaxMotionRatio"] = round(
+            min_ratio(
+                motion["maxDelta"],
+                reference_motion["maxDelta"],
+                RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN,
+                f"{weapon} run overlay/full peak motion",
+            ),
+            6,
+        )
+
     for weapon in WEAPONS[1:]:
         item = by_weapon[weapon]
         item["widthRatio"] = round(
@@ -581,23 +644,6 @@ def validate_run(gdscript: Path) -> dict:
             > CENTER_TOLERANCE_PX
         ):
             raise ValueError(f"{weapon} run: median center drift")
-        if weapon == "machinegun":
-            pistol_motion = pistol["lowerBodyMotion"]
-            motion = item["lowerBodyMotion"]
-            median_ratio = min_ratio(
-                motion["medianDelta"],
-                pistol_motion["medianDelta"],
-                RUN_MOTION_MEDIAN_RATIO_MIN,
-                "machinegun run lower-body median motion",
-            )
-            max_ratio = min_ratio(
-                motion["maxDelta"],
-                pistol_motion["maxDelta"],
-                RUN_MOTION_MAX_RATIO_MIN,
-                "machinegun run lower-body peak motion",
-            )
-            item["motionMedianRatio"] = round(median_ratio, 6)
-            item["motionMaxRatio"] = round(max_ratio, 6)
     return by_weapon
 
 
@@ -697,8 +743,10 @@ def main() -> int:
             "lowerBodyOpaqueFractionMaxDelta": LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA,
             "runLowerBodyMedianDeltaMin": RUN_LOWER_BODY_MEDIAN_DELTA_MIN,
             "runLowerBodyMaxDeltaMin": RUN_LOWER_BODY_MAX_DELTA_MIN,
-            "runMotionMedianRatioMin": RUN_MOTION_MEDIAN_RATIO_MIN,
-            "runMotionMaxRatioMin": RUN_MOTION_MAX_RATIO_MIN,
+            "runRuntimeMedianDeltaMin": RUN_RUNTIME_MEDIAN_DELTA_MIN,
+            "runRuntimeMaxDeltaMin": RUN_RUNTIME_MAX_DELTA_MIN,
+            "runOverlayVsFullMedianRatioMin": RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN,
+            "runOverlayVsFullMaxRatioMin": RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN,
             "airborneFailClosedWeapons": AIRBORNE_FAIL_CLOSED_WEAPONS,
         },
     }
@@ -706,7 +754,7 @@ def main() -> int:
     for label, check in (
         ("idle", lambda: validate_idle(cfg.sprite_smoke_dir)),
         ("airborne", lambda: validate_airborne(cfg.sprite_smoke_dir)),
-        ("run", lambda: validate_run(cfg.gdscript)),
+        ("run", lambda: validate_run(cfg.gdscript, cfg.sprite_smoke_dir)),
     ):
         try:
             report[label] = check()
