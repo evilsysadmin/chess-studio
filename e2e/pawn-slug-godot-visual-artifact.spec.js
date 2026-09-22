@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -35,12 +35,17 @@ async function openPawnSlug(page) {
   await login(page);
   await dismissHomeOverlays(page);
 
-  const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
-  await expect(direct).toBeVisible({ timeout: 20_000 });
-  await expect(direct).toBeEnabled({ timeout: 20_000 });
-  // This proof owns the Pawn Slug host, not Home pointer geometry. Dispatch the
-  // enabled button action directly so Home animation/focus churn cannot steal Enter.
-  await direct.evaluate((node) => node.click());
+  // This visual proof owns Pawn Slug itself, not the Home direct-launch route.
+  // Enter through the Experiments hub; home-pawn-slug-direct.spec.js owns the
+  // independent contract that Home can bypass that hub.
+  await openMoreGameModes(page);
+  const tools = page.locator('#illustrated-home-tools');
+  await expect(tools).toBeVisible();
+  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  const portal = page.getByRole('button').filter({ hasText: 'PAWN SLUG GODOT' });
+  await expect(portal).toBeVisible({ timeout: 20_000 });
+  await portal.click();
 
   await expect(page.locator('.pawn-slug-godot-host')).toBeVisible({ timeout: 20_000 });
   const frame = page.locator('iframe[title="Pawn Slug Godot"]');
