@@ -65,7 +65,14 @@ INVENTORY = {
 
 RETIRED_WORKFLOW_PATTERNS = (
     (
-        re.compile(r'^pawn-slug-godot-strict-v\d+\.yml    Budget('.github/workflows/production-promote.yml', 34516),
+        re.compile(r'^pawn-slug-godot-strict-v\d+\.yml$'),
+        'Pawn Slug strict-vNN workflows are retired; use Sprite Forge + pawn-slug-godot-web.yml',
+    ),
+)
+
+
+BUDGETS = (
+    Budget('.github/workflows/production-promote.yml', 34516),
     Budget('.github/workflows/cicd.yml', 19454),
     Budget('.github/workflows/staging-deploy.yml', 25880),
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
