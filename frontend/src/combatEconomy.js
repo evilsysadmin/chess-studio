@@ -177,11 +177,6 @@ export function buyEquipment(rosterState, itemId, unitKey) {
   };
 }
 
-export function unequipEquipment(rosterState, unitKey) {
-  const piece = rosterState?.pieces?.[unitKey];
-  if (!piece?.equipmentId) return rosterState;
-  return { ...rosterState, pieces: { ...rosterState.pieces, [unitKey]: { ...piece, equipmentId: null } } };
-}
 
 export function marketRotationKey(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
