@@ -68,3 +68,34 @@ Si el doctor devuelve `1`, el rollback no se considera válido aunque Mongo haya
 - No usar una respuesta serializada de `/api/games/{id}` como sustituto del documento raw: el doctor espera los campos persistidos (`owner`, `moves`, `difficulty`, `humanColor`, etc.).
 - Un historial no vacío sin `lastMove` se admite como posible legacy con warning; un `lastMove` que contradice el replay es error.
 - La herramienta no “arregla” automáticamente una partida dañada. Ante corrupción, preservar export, identificar causa y decidir explícitamente entre restore conocido o descartar el savegame.
+
+## 4. Sesión activa en frontend: snapshot de continuidad, no segunda autoridad
+
+Para partidas normales y de torneo, **Mongo/backend sigue siendo la autoridad del estado de juego**. El snapshot local de sesión activa existe para continuidad UX: recordar qué partida/contexto había que recuperar tras F5, deploy, ErrorBoundary o vuelta a una vista activa.
+
+Contrato:
+
+- persistir un sobre local válido con game id y el contexto necesario para reconstruir la experiencia (modo/learning, contrato especial, serie, control de tiempo/clock y contexto compatible cuando aplique);
+- marcar una sesión como `Guardado` sólo cuando el contrato de persistencia exigido haya tenido éxito; un write local bloqueado/cuota no se disfraza de snapshot válido;
+- al restaurar normal/torneo, usar el snapshot/ids para localizar la partida y reconciliar contra el backend autoritativo; no tratar una copia local del tablero como una base de datos alternativa;
+- respuestas tardías de una restauración anterior se descartan/cancelan; un cambio de target/session no puede ser sobrescrito por el fetch viejo;
+- rutas de recovery deben ofrecer reintento cuando la autoridad remota está temporalmente indisponible; no saltar silenciosamente a Home y perder la continuidad aparente de una partida que puede seguir existiendo;
+- errores terminales/ownership se tratan de forma deliberada y distinta de errores transitorios; no borrar snapshots por cualquier fallo de red;
+- una actualización/deploy no fuerza reload destructivo mientras hay una partida de tablero activa si la política actual permite diferirlo.
+
+Combat/Roguelike puede tener snapshots locales propios de campaña/batalla para su dominio específico. Eso no autoriza a reutilizar esos snapshots como autoridad de ajedrez estándar.
+
+## 5. Reconnect offline → online
+
+Reconnect es reconciliación, no repetición ciega.
+
+- No ejecutar dos reconciliaciones simultáneas para el mismo target.
+- Si existe una mutación de jugada pendiente, esperar a que termine antes de reconciliar; no competir con el POST ni emitir una segunda jugada.
+- Una respuesta remota tardía de una generación/target anterior se descarta.
+- No reemplazar estado local más avanzado por una foto remota con historial más corto.
+- Una nueva transición offline→online puede abrir un nuevo intento después de haber cerrado/cancelado el anterior.
+- Mantener clocks/contexto de sesión coherentes durante la reconciliación; reconnect no es una nueva partida.
+- F5, 2D↔3D y reconnect deben converger en la misma partida autoritativa sin duplicar mutaciones.
+
+Los tests de continuidad y network-race forman parte del contrato. Si se mueve esta lógica entre hooks/módulos, mover también los guards/gates en vez de dejar checks que inspeccionen un dueño obsoleto.
+
