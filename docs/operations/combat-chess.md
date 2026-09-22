@@ -1,5 +1,7 @@
 # Combat Chess — contrato de dominio
 
+Este dominio sigue también [`architecture-ownership.md`](architecture-ownership.md): Combat posee sus reglas persistentes; renderers y pantallas sólo las proyectan.
+
 Combat Chess es el modo roguelike/táctico con ejército persistente. Sus reglas especiales son deliberadas y quedan aisladas del ajedrez estándar.
 
 ## Identidad persistente de unidad
