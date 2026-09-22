@@ -107,14 +107,16 @@ test('Pawn Slug Godot · evidencia visual desktop + portrait + landscape', async
       expect(snapshot.frame?.width || 0, `${capture.label}: iframe visible`).toBeGreaterThan(0);
 
       if (capture.label === 'android-390x844') {
-        const ratio = (snapshot.frame?.height || 0) / Math.max(1, snapshot.frame?.width || 1);
-        expect(ratio, 'portrait host stays compact 16:9 before rotation').toBeGreaterThan(0.52);
-        expect(ratio, 'portrait host stays compact 16:9 before rotation').toBeLessThan(0.60);
+        expect(snapshot.frame.left, 'portrait iframe left edge').toBeGreaterThanOrEqual(-1);
+        expect(snapshot.frame.right, 'portrait iframe right edge').toBeLessThanOrEqual(391);
+        expect(snapshot.frame.width, 'portrait iframe fills viewport width').toBeGreaterThanOrEqual(388);
+        expect(snapshot.frame.height, 'portrait iframe fills viewport height').toBeGreaterThanOrEqual(842);
       }
 
       if (capture.label === 'android-landscape-844x390') {
         expect(snapshot.frame.left, 'landscape iframe left edge').toBeGreaterThanOrEqual(-1);
         expect(snapshot.frame.right, 'landscape iframe right edge').toBeLessThanOrEqual(845);
+        expect(snapshot.frame.width, 'landscape iframe fills viewport width').toBeGreaterThanOrEqual(842);
         expect(snapshot.frame.height, 'landscape iframe fills viewport height').toBeGreaterThanOrEqual(388);
       }
 
