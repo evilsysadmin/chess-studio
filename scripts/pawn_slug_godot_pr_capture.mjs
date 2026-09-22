@@ -28,6 +28,10 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 await page.addInitScript(() => {
   window.__pawnSlugCaptureReady = false;
   window.__pawnSlugCaptureEvents = [];
+  window.__pawnSlugVisualMetricsRequest = 0;
+  window.__pawnSlugVisualMetrics = null;
+  window.__pawnSlugVisualProbePose = '';
+  window.__pawnSlugVisualProbeFrame = -1;
   const params = new URLSearchParams(window.location.search);
   const stage = params.get('stage') || '';
   const traversalProbes = {
@@ -80,6 +84,98 @@ async function capture(label) {
   const path = `${outputDir}/${label}.png`;
   await page.screenshot({ path, fullPage: false });
   captures.push({ label, path, kind: 'overview' });
+}
+
+async function collectVisualMetrics(expectedWeapon, expectedAction = '', frameIndex = -1) {
+  await page.evaluate(({ pose, frameIndex }) => {
+    window.__pawnSlugVisualProbePose = pose || '';
+    window.__pawnSlugVisualProbeFrame = Number.isFinite(frameIndex) ? frameIndex : -1;
+  }, { pose: expectedAction, frameIndex });
+  const deadline = Date.now() + 10_000;
+  let lastMetrics = null;
+  while (Date.now() < deadline) {
+    const requestId = await page.evaluate(() => {
+      window.__pawnSlugVisualMetrics = null;
+      window.__pawnSlugVisualMetricsRequest = Number(window.__pawnSlugVisualMetricsRequest || 0) + 1;
+      return window.__pawnSlugVisualMetricsRequest;
+    });
+    try {
+      await page.waitForFunction(
+        (requestId) => {
+          const metrics = window.__pawnSlugVisualMetrics;
+          return metrics && Number(metrics.request_id) === requestId;
+        },
+        requestId,
+        { timeout: 1_000 },
+      );
+    } catch {
+      continue;
+    }
+    lastMetrics = await page.evaluate(() => window.__pawnSlugVisualMetrics);
+    if (lastMetrics?.error) {
+      throw new Error(
+        `Pawn Slug visual probe failed for weapon=${expectedWeapon || '*'} action=${expectedAction || '*'}: ${JSON.stringify(lastMetrics)}`,
+      );
+    }
+    const weaponMatches = !expectedWeapon || String(lastMetrics?.weapon || '') === expectedWeapon;
+    const actionMatches = !expectedAction || String(lastMetrics?.action || '') === expectedAction;
+    const frameMatches = frameIndex < 0 || Number(lastMetrics?.frame) === frameIndex;
+    if (weaponMatches && actionMatches && frameMatches) return lastMetrics;
+    await page.waitForTimeout(40);
+  }
+  throw new Error(
+    `Pawn Slug visual metrics did not settle to weapon=${expectedWeapon || '*'} action=${expectedAction || '*'}; last=${JSON.stringify(lastMetrics)}`,
+  );
+}
+
+function median(values) {
+  const ordered = [...values].map(Number).sort((a, b) => a - b);
+  if (ordered.length === 0) return 0;
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2
+    ? ordered[middle]
+    : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
+async function collectAnimationProfile(expectedWeapon, expectedAction) {
+  const first = await collectVisualMetrics(expectedWeapon, expectedAction, 0);
+  const frameCount = Number(first.frame_count || 0);
+  if (!Number.isInteger(frameCount) || frameCount <= 0 || frameCount > 32) {
+    throw new Error(
+      `Pawn Slug visual probe reported invalid frame_count for ${expectedWeapon}/${expectedAction}: ${JSON.stringify(first)}`,
+    );
+  }
+  const samples = [first];
+  for (let frameIndex = 1; frameIndex < frameCount; frameIndex += 1) {
+    samples.push(await collectVisualMetrics(expectedWeapon, expectedAction, frameIndex));
+  }
+
+  const values = (key) => samples.map((sample) => Number(sample[key]));
+  const coreHeights = values('core_height').sort((a, b) => a - b);
+  const bboxHeights = values('bbox_height').sort((a, b) => a - b);
+  const coreAreas = values('core_area').sort((a, b) => a - b);
+  const worldCoreHeights = values('world_core_height').sort((a, b) => a - b);
+
+  return {
+    ...first,
+    animation_profile: {
+      frames: frameCount,
+      bbox_height_median: median(bboxHeights),
+      bbox_height_min: bboxHeights[0],
+      bbox_height_max: bboxHeights.at(-1),
+      core_height_median: median(coreHeights),
+      core_height_min: coreHeights[0],
+      core_height_max: coreHeights.at(-1),
+      core_area_median: median(coreAreas),
+      core_area_min: coreAreas[0],
+      core_area_max: coreAreas.at(-1),
+      world_core_height_median: median(worldCoreHeights),
+      world_core_height_min: worldCoreHeights[0],
+      world_core_height_max: worldCoreHeights.at(-1),
+      body_scale_x: Number(first.body_scale_x),
+      body_scale_y: Number(first.body_scale_y),
+    },
+  };
 }
 
 async function captureDetailedCloseup(label, canvas) {
@@ -184,6 +280,36 @@ await page.waitForTimeout(120);
 await capture('54-smg-idle');
 await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
 
+// Standardized all-weapon parity pass. Each load starts from the same stage,
+// camera and player position. We sample idle, settled run and crouch using the
+// exact texture/frame Godot is rendering, so body-scale drift cannot hide behind
+// a matching atlas bbox or footline.
+const weaponParityMetrics = {};
+const parityWeapons = ['pistol', 'machinegun', 'shotgun', 'panzerfaust'];
+for (let weaponIndex = 0; weaponIndex < parityWeapons.length; weaponIndex += 1) {
+  const weapon = parityWeapons[weaponIndex];
+  const prefix = String(60 + weaponIndex * 10).padStart(2, '0');
+  const parityStage = await loadStage(detailedStage, {
+    weaponProbe: weapon === 'pistol' ? '' : weapon,
+  });
+  await parityStage.canvasLocator.click({ position: { x: parityStage.canvas.width / 2, y: parityStage.canvas.height / 2 } });
+  await page.waitForTimeout(180);
+
+  const idle = await collectAnimationProfile(weapon, 'idle');
+  await capture(`${prefix}-parity-${weapon}-idle`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-idle`, parityStage.canvas);
+
+  const run = await collectAnimationProfile(weapon, 'run');
+  await capture(`${prefix}-parity-${weapon}-run`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-run`, parityStage.canvas);
+
+  const crouch = await collectAnimationProfile(weapon, 'crouch');
+  await capture(`${prefix}-parity-${weapon}-crouch`);
+  await captureDetailedCloseup(`${prefix}-parity-${weapon}-crouch`, parityStage.canvas);
+
+  weaponParityMetrics[weapon] = { idle, run, crouch };
+}
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -222,10 +348,11 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 6,
+    schema: 8,
     detailedStage,
     stageOverviews,
     captures,
+    weaponParityMetrics,
   }, null, 2)}\n`,
   'utf8',
 );

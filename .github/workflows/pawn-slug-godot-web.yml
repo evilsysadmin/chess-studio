@@ -22,6 +22,7 @@ on:
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
+      - scripts/validate_pawn_slug_runtime_visual_health.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -48,6 +49,7 @@ on:
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
+      - scripts/validate_pawn_slug_runtime_visual_health.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - .github/workflows/cicd.yml
       - Makefile
@@ -451,6 +453,7 @@ jobs:
             sleep 1
           done
           PAWN_SLUG_GODOT_INDEX_URL="http://127.0.0.1:4179/index.html?stage=industrial_front_v1"             node scripts/pawn_slug_godot_pr_capture.mjs
+          node scripts/validate_pawn_slug_runtime_visual_health.mjs --report-only /tmp/pawn-slug-visual/runtime-visual-health.json
       - name: Upload Pawn Slug runtime visual evidence
         if: always()
         uses: actions/upload-artifact@v7
