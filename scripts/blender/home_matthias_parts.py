@@ -87,6 +87,32 @@ def front_ellipse(name, loc, rx, rz, depth, material, segments=40, bevel=.002):
     return front_prism(name, loc, points, depth, material, bevel)
 
 
+def front_curve(name, loc, width, drop, radius, material):
+    """Build the canonical thin frown as real curved Blender geometry."""
+    curve = bpy.data.curves.new(name + 'Curve', 'CURVE')
+    curve.dimensions = '3D'
+    curve.resolution_u = 18
+    curve.bevel_depth = radius
+    curve.bevel_resolution = 4
+    spline = curve.splines.new('BEZIER')
+    spline.bezier_points.add(2)
+    for point, co in zip(
+        spline.bezier_points,
+        ((-width * .5, 0, -drop), (0, 0, 0), (width * .5, 0, -drop)),
+    ):
+        point.co = co
+        point.handle_left_type = 'AUTO'
+        point.handle_right_type = 'AUTO'
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
+    obj.location = loc
+    curve.materials.append(material)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.convert(target='MESH')
+    return obj
+
+
 def iron_cross_points(size):
     s = size
     return [
@@ -191,10 +217,10 @@ def build_rig():
 
 
 def build_character():
-    ivory=mat('classic warm ivory',(.58,.48,.34),.50,.02); ivory_hi=mat('classic ivory highlight',(.76,.64,.46),.40,.02)
+    ivory=mat('classic warm ivory',(.60,.49,.35),.50,.02); ivory_hi=mat('classic ivory highlight',(.78,.66,.48),.40,.02)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.20,.26); navy_soft=mat('classic navy cloth',(.006,.008,.012),.30,.14)
     leather=mat('classic black leather',(.006,.004,.003),.30,.18); brass=mat('classic aged brass',(.50,.27,.055),.20,.93); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.38,.06); black=mat('classic brow eye mouth',(.0015,.002,.003),.48); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.32,.55); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v17'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v18'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='home-3d-pawn-approved-2026-09-23'; rig['canonical_reference_sha256']='0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
@@ -215,7 +241,7 @@ def build_character():
     cap_top=loft_ellipse('Classic cap top',[(.408,.292,1.811,.080,-.036),(.431,.300,1.830,.098,-.047),(.454,.309,1.850,.120,-.059),(.460,.312,1.869,.140,-.070),(.450,.306,1.884,.153,-.078),(.428,.294,1.895,.160,-.084)],navy,124,.008)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.327,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.334,1.705),.027,.034,.008,leather,36,.002)
-    mouth_l=box('Mouth.L',(-.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(-9),0),.003); mouth_r=box('Mouth.R',(.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(9),0),.003)
+    mouth=front_curve('Mouth',(0,-.350,1.248),.170,.018,.008,black)
     head += [
         sphere('Head',(0,-.012,1.345),(.340,.325,.352),ivory,96),
         front_ellipse('Eye.L',(-.104,-.345,1.376),.026,.048,.010,black,40,.002), front_ellipse('Eye.R',(.104,-.345,1.376),.026,.048,.010,black,40,.002),
@@ -242,7 +268,7 @@ def build_character():
     for obj in root: parent_bone(obj,rig,'root')
     for obj in spine: parent_bone(obj,rig,'spine')
     for obj in head: parent_bone(obj,rig,'head')
-    for obj in (mouth_l,mouth_r): parent_bone(obj,rig,'face_mouth')
+    parent_bone(mouth,rig,'face_mouth')
     parent_bone(upper_l,rig,'upper_arm.L'); parent_bone(upper_r,rig,'upper_arm.R')
     for obj in (fore_l,cuff_l,hand_l): parent_bone(obj,rig,'forearm.L')
     for obj in (fore_r,cuff_r,hand_r): parent_bone(obj,rig,'forearm.R')

@@ -95,6 +95,20 @@ jobs:
           assert image.size == (560, 700), image.size
           extrema = image.getextrema()
           assert max(channel[1] for channel in extrema) > 40, extrema
+
+          # Make the visual review fail-closed operationally: every run publishes
+          # the approved canonical target beside the Blender output, plus a single
+          # side-by-side PNG that is quick to inspect before promotion.
+          import sys
+          sys.path.insert(0, 'scripts/blender')
+          from home_matthias_contract import CANONICAL_REFERENCE_FILE
+          reference = Image.open(CANONICAL_REFERENCE_FILE).convert('RGB')
+          reference.thumbnail((360, 620))
+          sheet = Image.new('RGB', (940, 700), (8, 10, 14))
+          sheet.paste(reference, ((380 - reference.width) // 2, (700 - reference.height) // 2))
+          sheet.paste(image, (380, 0))
+          sheet.save(root / 'matthias-home-canonical-review-sheet.png')
+          reference.save(root / 'matthias-home-approved-reference.png')
           PY
 
       - name: Validate checked-in editable blend contract

@@ -12,6 +12,8 @@ const FRONT_GEOMETRY_NAMES = Object.freeze([
   'Eye.R',
   'Brow.L',
   'Brow.R',
+  'Mouth',
+  // Keep legacy names while an already-published pre-v18 GLB can still be cached.
   'Mouth.L',
   'Mouth.R',
   'Classic cap badge',

@@ -31,9 +31,17 @@ from home_matthias_contract import (  # noqa: E402
     FORBIDDEN_NAME_TOKENS,
     HEAD_TO_BASE_WIDTH,
     HEAD_TO_BODY_HEIGHT,
+    IVORY_HEAD_BLUE,
+    IVORY_HEAD_CHROMA,
+    IVORY_HEAD_GREEN,
     IVORY_HEAD_MIN_LUMA,
+    IVORY_HEAD_RED,
+    IVORY_HEAD_WARMTH,
     MAX_BROW_TILT_DEGREES,
     MIN_BROW_TILT_DEGREES,
+    MOUTH_EYE_VERTICAL_GAP_TO_HEAD_HEIGHT,
+    MOUTH_TO_HEAD_WIDTH,
+    FACE_SYMMETRY_TOLERANCE,
     REQUIRED_ACTIONS,
     REQUIRED_OBJECTS,
     REST_ARM_MIN_Y,
@@ -54,8 +62,13 @@ def material_bsdf(obj):
     return bsdf
 
 
-def base_luma(obj):
+def base_color(obj):
     color = material_bsdf(obj).inputs["Base Color"].default_value
+    return tuple(float(color[index]) for index in range(3))
+
+
+def base_luma(obj):
+    color = base_color(obj)
     return 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]
 
 
@@ -197,6 +210,12 @@ def main():
     assert base_luma(body) <= DARK_BODY_MAX_LUMA, base_luma(body)
     assert base_luma(tunic) <= DARK_BODY_MAX_LUMA, base_luma(tunic)
     assert base_luma(head) >= IVORY_HEAD_MIN_LUMA, base_luma(head)
+    head_rgb = base_color(head)
+    assert_range("ivory head red", head_rgb[0], IVORY_HEAD_RED)
+    assert_range("ivory head green", head_rgb[1], IVORY_HEAD_GREEN)
+    assert_range("ivory head blue", head_rgb[2], IVORY_HEAD_BLUE)
+    assert_range("ivory head warmth", head_rgb[0] - head_rgb[2], IVORY_HEAD_WARMTH)
+    assert_range("ivory head chroma", max(head_rgb) - min(head_rgb), IVORY_HEAD_CHROMA)
     assert metallic(objects["Classic plinth brass edge"]) >= BRASS_MIN_METALLIC
 
     light_body_offenders = []
@@ -224,12 +243,27 @@ def main():
     assert MIN_BROW_TILT_DEGREES <= abs(right_brow) <= MAX_BROW_TILT_DEGREES, right_brow
     assert left_brow * right_brow < 0, (left_brow, right_brow)
 
-    left_mouth = world_y_rotation_degrees(objects["Mouth.L"])
-    right_mouth = world_y_rotation_degrees(objects["Mouth.R"])
-    assert left_mouth < -8 and right_mouth > 8, (left_mouth, right_mouth)
+    mouth = objects["Mouth"]
+    assert_range("mouth/head width", world_width(mouth) / head_width, MOUTH_TO_HEAD_WIDTH)
+    left_eye_center = world_center(objects["Eye.L"])
+    right_eye_center = world_center(objects["Eye.R"])
+    mouth_center = world_center(mouth)
+    eye_center_z = (left_eye_center.z + right_eye_center.z) * .5
+    assert_range(
+        "eye/mouth vertical gap",
+        (eye_center_z - mouth_center.z) / head_height,
+        MOUTH_EYE_VERTICAL_GAP_TO_HEAD_HEIGHT,
+    )
+    symmetry_limit = head_width * FACE_SYMMETRY_TOLERANCE
+    assert abs(left_eye_center.x + right_eye_center.x) <= symmetry_limit, (
+        left_eye_center.x,
+        right_eye_center.x,
+    )
+    assert abs(world_center(objects["Brow.L"]).x + world_center(objects["Brow.R"]).x) <= symmetry_limit
+    assert abs(mouth_center.x) <= symmetry_limit, mouth_center.x
 
     sandwich_top = world_z_bounds(objects["RoutineSandwichBread"])[1]
-    mouth_bottom = min(world_z_bounds(objects["Mouth.L"])[0], world_z_bounds(objects["Mouth.R"])[0])
+    mouth_bottom = world_z_bounds(mouth)[0]
     assert mouth_bottom - sandwich_top >= BITE_PROP_FACE_CLEARANCE_MIN, (
         f"bite prop obscures canonical mouth: sandwich_top={sandwich_top:.3f}, "
         f"mouth_bottom={mouth_bottom:.3f}"

@@ -6,9 +6,9 @@ Home-specific; the shared Blender setup remains product-agnostic.
 """
 
 CANONICAL_IDENTITY = "stern-no-moustache-pawn"
-CANONICAL_REFERENCE = "classic-pawn-first-avatar"
+CANONICAL_REFERENCE = "home-3d-pawn-approved-2026-09-23"
 CANONICAL_REFERENCE_FILE = "frontend/art-source/matthias-home-canonical-reference.webp"
-CANONICAL_REFERENCE_SHA256 = "beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975"
+CANONICAL_REFERENCE_SHA256 = "0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707"
 CANONICAL_POSE_LANGUAGE = "permanently-stern"
 
 REQUIRED_ACTIONS = {
@@ -36,8 +36,7 @@ REQUIRED_OBJECTS = {
     "Eye.R",
     "Brow.L",
     "Brow.R",
-    "Mouth.L",
-    "Mouth.R",
+    "Mouth",
     "Classic chest cross brass",
     "Classic chest cross inset",
     "RoutineBook",
@@ -82,6 +81,11 @@ CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.42, 0.52)
 
 DARK_BODY_MAX_LUMA = 0.10
 IVORY_HEAD_MIN_LUMA = 0.42
+IVORY_HEAD_RED = (0.56, 0.66)
+IVORY_HEAD_GREEN = (0.44, 0.56)
+IVORY_HEAD_BLUE = (0.29, 0.41)
+IVORY_HEAD_WARMTH = (0.20, 0.30)
+IVORY_HEAD_CHROMA = (0.18, 0.30)
 BRASS_MIN_METALLIC = 0.55
 REST_ARM_MIN_Y = 0.10
 BITE_PROP_FACE_CLEARANCE_MIN = 0.025
@@ -89,4 +93,7 @@ BITE_PROP_FACE_CLEARANCE_MIN = 0.025
 MIN_BROW_TILT_DEGREES = 22.0
 MAX_BROW_TILT_DEGREES = 40.0
 EYE_TO_HEAD_WIDTH = (0.055, 0.095)
-EYE_VERTICALITY = (1.25, 1.80)
+EYE_VERTICALITY = (1.25, 1.90)
+MOUTH_TO_HEAD_WIDTH = (0.22, 0.29)
+MOUTH_EYE_VERTICAL_GAP_TO_HEAD_HEIGHT = (0.16, 0.25)
+FACE_SYMMETRY_TOLERANCE = 0.018
