@@ -81,12 +81,13 @@ def classify_path(path: str) -> set[str] | None:
     lower = path.lower().replace("\\", "/")
     name = Path(lower).name
 
+    if lower in {
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+    }:
+        return set()
     if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"chronicles-tactics"}
@@ -193,8 +194,8 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
-    assert classify(["scripts/app_visual_scope.py"]) == "chronicles-tactics"
-    assert classify(["scripts/app_visual_producer_scope.py"]) == "chronicles-tactics"
+    assert classify(["scripts/app_visual_scope.py"]) == "none"
+    assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "chronicles-tactics"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"

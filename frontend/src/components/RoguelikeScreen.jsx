@@ -97,15 +97,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [bestFloor, setBestFloor] = useState(() => loadBestFloor());
   const [towerCompleted, setTowerCompleted] = useState(() => loadTowerCompleted());
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
-  const [, setCombatSessionActive] = useState(() => {
-    if (campaign.active && campaign.phase === 'fighting' && campaign.selectedNodeId) {
-      return hasCombatSession(`campaign:${campaign.seed}:${campaign.selectedNodeId}`);
-    }
-    if (run.inRun && run.phase === 'fighting') {
-      return hasCombatSession(`run:${run.seed}:${run.floor}`);
-    }
-    return false;
-  });
+
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
   const [battleDebrief, setBattleDebrief] = useState(() => {
@@ -177,10 +169,9 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     return true;
   }
 
-  // `combatSessionActive` es útil para forzar un render al arrancar/terminar,
-  // pero NO es la fuente de verdad de una batalla `fighting`: puede quedar
-  // desfasado tras HMR/remounts. La sesión persistida decide si la batalla
-  // realmente puede reanudarse.
+  // Una batalla `fighting` se considera reanudable únicamente si existe su
+  // sesión Combat persistida. No mantenemos un espejo React de esa verdad:
+  // campaign/run ya provocan los renders necesarios y el snapshot decide recovery.
   const campaignCombatSessionId = campaign.active && campaign.selectedNodeId
     ? `campaign:${campaign.seed}:${campaign.selectedNodeId}`
     : null;
@@ -240,7 +231,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleStartCampaign() {
     clearCombatDebriefSession();
-    setCombatSessionActive(false);
     setBattleDebrief(null);
     setCampaign(startCampaign());
     if (!loadMechanicTutorialProgress()?.['combat-campaign']?.seen) setShowCampaignTutorial(true);
@@ -260,7 +250,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     // una derrota. A continuación nace una operación nueva con seed nueva.
     endCampaign(campaign, 'restarted');
     setCampaignArchive(loadCampaignArchive());
-    setCombatSessionActive(false);
     clearCombatDebriefSession();
     setBattleDebrief(null);
     setCampaignEndResult(null);
@@ -271,7 +260,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleCampaignNodeSelect(nodeId) {
     clearCombatDebriefSession();
     setBattleDebrief(null);
-    setCombatSessionActive(false);
     setCampaign((current) => selectCampaignNode(current, nodeId));
   }
 
@@ -286,7 +274,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleCampaignBattleStarted(meta = {}) {
     if (campaignCombatSessionId) clearCombatDebriefSession(campaignCombatSessionId);
     setBattleDebrief(null);
-    setCombatSessionActive(true);
     if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: 'campaign' }, difficulty: meta.difficulty });
     setCampaign((current) => markCampaignBattleStarted(current));
   }
@@ -296,7 +283,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       ? resumeInterruptedCampaign(entry)
       : recoverInterruptedCampaign(campaign);
     if (!recovered?.active) return;
-    setCombatSessionActive(false);
     clearCombatDebriefSession();
     setBattleDebrief(null);
     setCampaign(recovered);
@@ -309,7 +295,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     const result = endCampaign(campaignToFinish, reason);
     setCampaignBestStage(loadCampaignBestStage());
     setTowerCompleted(loadTowerCompleted());
-    setCombatSessionActive(false);
     setCampaign(loadCampaign());
     setCampaignEndResult(result);
     setCampaignArchive(loadCampaignArchive());
@@ -318,7 +303,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleCampaignBattleResult(outcome, debrief = null, meta = {}) {
     if (debrief && campaignCombatSessionId && ['win', 'retired'].includes(outcome)) saveCombatDebriefSession(campaignCombatSessionId, debrief);
     setBattleDebrief(debrief);
-    setCombatSessionActive(false);
     if (meta.gameId) recordGameActivity({
       gameId: meta.gameId,
       state: outcome === 'retired' ? 'cancelled' : 'finished',
@@ -437,7 +421,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleStartRun() {
     clearCombatDebriefSession();
-    setCombatSessionActive(false);
     setBattleDebrief(null);
     setRun(startNewRun());
     setEndResult(null);
@@ -450,7 +433,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     const updatedBest = loadBestFloor();
     setBestFloor(updatedBest);
     setTowerCompleted(loadTowerCompleted());
-    setCombatSessionActive(false);
     setRun(loadRun());
     setEndResult({ type, reached, newBest: reached > previousBest });
   }
@@ -458,13 +440,11 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleBattleStarted(meta = {}) {
     if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
     setBattleDebrief(null);
-    setCombatSessionActive(true);
     if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: run.mode }, difficulty: meta.difficulty });
     setRun((current) => markBattleStarted(current));
   }
 
   function handleRecoverInterruptedRun() {
-    setCombatSessionActive(false);
     setBattleDebrief(null);
     setEndResult(null);
     setRun((current) => recoverInterruptedRun(current));
@@ -473,7 +453,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleBattleResult(outcome, debrief = null, meta = {}) {
     if (debrief && runCombatSessionId && outcome === 'win') saveCombatDebriefSession(runCombatSessionId, debrief);
     setBattleDebrief(debrief);
-    setCombatSessionActive(false);
     if (meta.gameId) recordGameActivity({
       gameId: meta.gameId,
       state: outcome === 'retired' ? 'cancelled' : 'finished',
@@ -504,7 +483,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleContinue() {
     if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
     setBattleDebrief(null);
-    setCombatSessionActive(false);
     setRun(advanceFloor(run));
     setEndResult(null);
   }
@@ -512,7 +490,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleContinueEndless() {
     if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
     setBattleDebrief(null);
-    setCombatSessionActive(false);
     setRun(continueIntoEndless(run));
     setEndResult(null);
   }
