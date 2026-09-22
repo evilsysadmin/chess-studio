@@ -44,11 +44,23 @@ static func _measure_texture(texture: Texture2D, scale_x: float, scale_y: float)
         return {}
     var image := texture.get_image()
     if image == null or image.is_empty():
-        return {}
+        return {"error": "empty-image"}
+    if image.is_compressed():
+        var decompress_result := image.decompress()
+        if decompress_result != OK:
+            return {"error": "decompress-failed:%s" % decompress_result}
     image.convert(Image.FORMAT_RGBA8)
+    if image.get_format() != Image.FORMAT_RGBA8:
+        return {"error": "rgba8-convert-failed"}
     var width := image.get_width()
     var height := image.get_height()
     var bytes := image.get_data()
+    if bytes.size() != width * height * 4:
+        return {
+            "error": "unexpected-rgba-buffer",
+            "buffer_size": bytes.size(),
+            "expected_size": width * height * 4,
+        }
     var min_x := width
     var min_y := height
     var max_x := -1
@@ -106,6 +118,11 @@ static func _animation_profile(body: AnimatedSprite2D, animation: String) -> Dic
     for frame_index in range(count):
         var texture := body.sprite_frames.get_frame_texture(animation, frame_index)
         var metrics := _measure_texture(texture, scale_x, scale_y)
+        if metrics.has("error"):
+            return {
+                "error": String(metrics["error"]),
+                "frame": frame_index,
+            }
         if metrics.is_empty():
             continue
         bbox_heights.append(float(metrics["bbox_height"]))
@@ -186,7 +203,21 @@ static func publish_metrics(player: Node) -> void:
         scale_x,
         scale_y,
     )
+    if current.has("error"):
+        current["request_id"] = request_id
+        current["weapon"] = String(player.get("weapon"))
+        current["action"] = requested_pose
+        JavaScriptBridge.eval("window.__pawnSlugVisualMetrics = " + JSON.stringify(current) + ";")
+        return
     if current.is_empty():
+        return
+
+    var profile := _animation_profile(body, animation)
+    if profile.has("error"):
+        profile["request_id"] = request_id
+        profile["weapon"] = String(player.get("weapon"))
+        profile["action"] = requested_pose
+        JavaScriptBridge.eval("window.__pawnSlugVisualMetrics = " + JSON.stringify(profile) + ";")
         return
 
     var velocity: Vector2 = player.get("velocity")
@@ -202,7 +233,7 @@ static func publish_metrics(player: Node) -> void:
         "frame": frame_index,
         "body_scale_x": scale_x,
         "body_scale_y": scale_y,
-        "animation_profile": _animation_profile(body, animation),
+        "animation_profile": profile,
         "player_x": float(player.global_position.x),
         "player_y": float(player.global_position.y),
     }, true)
