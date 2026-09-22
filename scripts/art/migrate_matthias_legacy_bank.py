@@ -27,7 +27,7 @@ ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
 MAX_SCALE = 1.25
-LEGACY_NOISE_MAX_ALPHA = 16
+LEGACY_NOISE_MAX_ALPHA = 24  # <10% opacity; runtime perceptual QA starts above ~0.10 alpha.
 
 
 @dataclass(frozen=True)
@@ -299,7 +299,7 @@ def self_test() -> None:
     fringe = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
     fringe_draw = ImageDraw.Draw(fringe)
     fringe_draw.rectangle((30, 20, 60, 80), fill=(180, 120, 80, 255))
-    fringe_draw.rectangle((20, 70, 23, 70), fill=(0, 0, 0, 12))
+    fringe_draw.rectangle((20, 70, 23, 70), fill=(0, 0, 0, 24))
     cleaned, removed = clean_legacy_detached_noise(fringe)
     assert len(removed) == 1
     assert removed[0]["area"] == 4
