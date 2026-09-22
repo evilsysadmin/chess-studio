@@ -20,7 +20,7 @@ BUDGETS = {
     "backend-python/narrative_cloudflare.py": 1038,
     # Audio remains productively reachable but is again large enough to deserve a ratchet.
     "frontend/src/sound.js": 2216,
-    "frontend/src/ambientCatalog.js": 1751,
+    "frontend/src/ambientCatalog.js": 183,
     "frontend/src/ambientProfilesLegacy.js": 630,
     # Mode/render hotspots not covered by the original orchestration budget.
     "frontend/src/components/RoguelikeScreen.jsx": 982,
