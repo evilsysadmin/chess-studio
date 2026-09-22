@@ -21,7 +21,7 @@ Lee siempre:
 
 Un cambio de sprites no termina con slicing correcto. Requiere gates offline, Godot headless y captura runtime real. Revisa todas las armas afectadas y, como mínimo, idle, locomoción, run+fire, direccionales, crouch, hurt/die y transiciones relevantes.
 
-El `0..7`/texto debajo del sprite, componentes huérfanos, armas duplicadas, jitter, escalas divergentes, halos y recortes son regresiones fail-closed.
+El `0..7`/texto debajo del sprite, componentes huérfanos, armas duplicadas, jitter, escalas divergentes, halos, recortes, miembros/cuerpo semitransparentes y locomoción con las piernas congeladas son regresiones fail-closed. Una secuencia `run` no se acepta sólo porque sus PNG tengan hashes distintos: debe existir movimiento temporal real de la mitad inferior del cuerpo.
 
 ## Enemigos
 

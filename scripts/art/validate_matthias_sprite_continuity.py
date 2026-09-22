@@ -26,6 +26,16 @@ RUN_WIDTH_RATIO = (0.96, 1.20)
 RUN_HEIGHT_RATIO = (0.96, 1.05)
 FOOT_TOLERANCE_PX = 1.0
 CENTER_TOLERANCE_PX = 6.0
+AIR_CENTER_TOLERANCE_PX = 10.0
+AIR_HEIGHT_RATIO = (0.90, 1.10)
+LOWER_BODY_START_FRACTION = 0.55
+LOWER_BODY_ALPHA_RATIO = (0.90, 1.10)
+LOWER_BODY_SEMI_ALPHA_MAX_DELTA = 0.12
+LOWER_BODY_SIGNATURE_SIZE = (96, 64)
+LOWER_BODY_SIGNATURE_THRESHOLD = 64
+RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.025
+RUN_LOWER_BODY_MAX_DELTA_MIN = 0.05
+AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
 
 
 def parse_args() -> argparse.Namespace:
@@ -139,6 +149,85 @@ def frame_metrics(image: Image.Image, label: str) -> dict:
     }
 
 
+def lower_body_alpha_metrics(image: Image.Image, label: str) -> dict:
+    rgba = image.convert("RGBA")
+    found = components(rgba)
+    if not found:
+        raise ValueError(f"{label}: empty frame")
+    left, top, right, bottom = found[0]["bbox"]
+    start_y = top + max(1, int((bottom - top) * LOWER_BODY_START_FRACTION))
+    alpha = rgba.getchannel("A")
+    values = [
+        int(alpha.getpixel((x, y)))
+        for y in range(start_y, bottom)
+        for x in range(left, right)
+        if alpha.getpixel((x, y)) >= ALPHA_THRESHOLD
+    ]
+    if not values:
+        raise ValueError(f"{label}: lower body has no opaque mass")
+    semi = sum(value < 200 for value in values) / len(values)
+    opaque = sum(value >= 224 for value in values) / len(values)
+    return {
+        "meanAlpha": sum(values) / len(values),
+        "semiTransparentFraction": semi,
+        "opaqueFraction": opaque,
+    }
+
+
+def lower_body_signature(image: Image.Image, label: str) -> bytes:
+    rgba = image.convert("RGBA")
+    found = components(rgba)
+    if not found:
+        raise ValueError(f"{label}: empty frame")
+    left, top, right, bottom = found[0]["bbox"]
+    start_y = top + max(1, int((bottom - top) * LOWER_BODY_START_FRACTION))
+    alpha = rgba.getchannel("A").crop((left, start_y, right, bottom))
+    if alpha.getbbox() is None:
+        raise ValueError(f"{label}: lower body has no silhouette")
+    normalized = alpha.resize(LOWER_BODY_SIGNATURE_SIZE, Image.Resampling.NEAREST)
+    return bytes(
+        1 if int(value) >= LOWER_BODY_SIGNATURE_THRESHOLD else 0
+        for value in normalized.getdata()
+    )
+
+
+def signature_delta(left: bytes, right: bytes) -> float:
+    if len(left) != len(right):
+        raise ValueError("lower-body signatures have different sizes")
+    union = sum(1 for a, b in zip(left, right) if a or b)
+    if union == 0:
+        return 0.0
+    changed = sum(1 for a, b in zip(left, right) if a != b)
+    return changed / union
+
+
+def validate_lower_body_motion(frames: list[dict], label: str) -> dict:
+    signatures = [frame["_lowerBodySignature"] for frame in frames]
+    if len(signatures) < 2:
+        raise ValueError(f"{label}: not enough frames for locomotion QA")
+    deltas = [
+        signature_delta(signatures[index], signatures[(index + 1) % len(signatures)])
+        for index in range(len(signatures))
+    ]
+    median_delta = float(statistics.median(deltas))
+    max_delta = float(max(deltas))
+    if median_delta < RUN_LOWER_BODY_MEDIAN_DELTA_MIN:
+        raise ValueError(
+            f"{label}: lower body is effectively frozen; median silhouette delta "
+            f"{median_delta:.4f} < {RUN_LOWER_BODY_MEDIAN_DELTA_MIN:.4f}"
+        )
+    if max_delta < RUN_LOWER_BODY_MAX_DELTA_MIN:
+        raise ValueError(
+            f"{label}: no meaningful stride phase; max silhouette delta "
+            f"{max_delta:.4f} < {RUN_LOWER_BODY_MAX_DELTA_MIN:.4f}"
+        )
+    return {
+        "medianDelta": round(median_delta, 6),
+        "maxDelta": round(max_delta, 6),
+        "deltas": [round(value, 6) for value in deltas],
+    }
+
+
 def ratio_in(
     value: float,
     reference: float,
@@ -169,7 +258,11 @@ def validate_idle(sprite_dir: Path) -> dict:
             )
             if not path.is_file():
                 raise ValueError(f"missing exported idle frame: {path}")
-            frame = frame_metrics(Image.open(path), f"{weapon} idle c{col}")
+            image = Image.open(path).convert("RGBA")
+            frame = frame_metrics(image, f"{weapon} idle c{col}")
+            frame["lowerBodyAlpha"] = lower_body_alpha_metrics(
+                image, f"{weapon} idle c{col}"
+            )
             if frame["componentCount"] != 1:
                 raise ValueError(
                     f"{weapon} idle c{col}: detached opaque components are "
@@ -206,15 +299,95 @@ def validate_idle(sprite_dir: Path) -> dict:
                     f"{weapon} idle c{col}: center drift "
                     f"{frame['centerX']} vs {ref['centerX']}"
                 )
+            alpha_ratio = ratio_in(
+                frame["lowerBodyAlpha"]["meanAlpha"],
+                ref["lowerBodyAlpha"]["meanAlpha"],
+                LOWER_BODY_ALPHA_RATIO,
+                f"{weapon} idle c{col} lower-body alpha",
+            )
+            semi_delta = (
+                frame["lowerBodyAlpha"]["semiTransparentFraction"]
+                - ref["lowerBodyAlpha"]["semiTransparentFraction"]
+            )
+            if semi_delta > LOWER_BODY_SEMI_ALPHA_MAX_DELTA:
+                raise ValueError(
+                    f"{weapon} idle c{col}: lower-body semi-transparent mass "
+                    f"drift {semi_delta:.4f} > {LOWER_BODY_SEMI_ALPHA_MAX_DELTA:.4f}"
+                )
             validated.append(
                 {
                     **frame,
                     "widthRatio": round(width_ratio, 6),
                     "heightRatio": round(height_ratio, 6),
+                    "lowerBodyAlphaRatio": round(alpha_ratio, 6),
+                    "lowerBodySemiAlphaDelta": round(semi_delta, 6),
                 }
             )
         report[weapon] = validated
     return report
+
+
+def validate_airborne(sprite_dir: Path) -> dict:
+    by_action: dict[str, dict[str, list[dict]]] = {}
+    for action, row in AIR_ACTION_ROWS.items():
+        by_weapon: dict[str, list[dict]] = {}
+        for weapon in WEAPONS:
+            frames: list[dict] = []
+            for col in range(IDLE_COLUMNS):
+                path = (
+                    sprite_dir
+                    / weapon
+                    / "frames"
+                    / f"matthias_{weapon}_r{row:02d}_c{col:02d}.png"
+                )
+                if not path.is_file():
+                    raise ValueError(f"missing exported {action} frame: {path}")
+                image = Image.open(path).convert("RGBA")
+                frame = frame_metrics(image, f"{weapon} {action} c{col}")
+                if frame["componentCount"] != 1:
+                    raise ValueError(
+                        f"{weapon} {action} c{col}: detached opaque components are "
+                        f"forbidden: {frame['detachedAreas']}"
+                    )
+                frame["lowerBodyAlpha"] = lower_body_alpha_metrics(
+                    image, f"{weapon} {action} c{col}"
+                )
+                frames.append(frame)
+            by_weapon[weapon] = frames
+
+        pistol = by_weapon["pistol"]
+        report: dict[str, list[dict]] = {"pistol": pistol}
+        for weapon in WEAPONS[1:]:
+            validated: list[dict] = []
+            for col, frame in enumerate(by_weapon[weapon]):
+                ref = pistol[col]
+                height_ratio = ratio_in(
+                    frame["height"],
+                    ref["height"],
+                    AIR_HEIGHT_RATIO,
+                    f"{weapon} {action} c{col} height",
+                )
+                if abs(frame["centerX"] - ref["centerX"]) > AIR_CENTER_TOLERANCE_PX:
+                    raise ValueError(
+                        f"{weapon} {action} c{col}: center drift "
+                        f"{frame['centerX']} vs {ref['centerX']}"
+                    )
+                alpha_ratio = ratio_in(
+                    frame["lowerBodyAlpha"]["meanAlpha"],
+                    ref["lowerBodyAlpha"]["meanAlpha"],
+                    LOWER_BODY_ALPHA_RATIO,
+                    f"{weapon} {action} c{col} lower-body alpha",
+                )
+                validated.append(
+                    {
+                        **frame,
+                        "heightRatio": round(height_ratio, 6),
+                        "lowerBodyAlphaRatio": round(alpha_ratio, 6),
+                    }
+                )
+            report[weapon] = validated
+        by_action[action] = report
+    return by_action
 
 
 def acquire(url: str, temp_dir: Path, label: str) -> Path:
@@ -263,6 +436,9 @@ def validate_run(gdscript: Path) -> dict:
             for col in range(cols):
                 image = atlas.crop((col * CELL, 0, (col + 1) * CELL, CELL))
                 frame = frame_metrics(image, f"{weapon} run c{col}")
+                frame["_lowerBodySignature"] = lower_body_signature(
+                    image, f"{weapon} run c{col}"
+                )
                 if frame["componentCount"] != 1:
                     raise ValueError(
                         f"{weapon} run c{col}: detached opaque components are "
@@ -270,9 +446,11 @@ def validate_run(gdscript: Path) -> dict:
                     )
                 frames.append(frame)
 
+            motion = validate_lower_body_motion(frames, f"{weapon} run")
             by_weapon[weapon] = {
                 "url": urls[weapon],
                 "columns": cols,
+                "lowerBodyMotion": motion,
                 "medianWidth": float(
                     statistics.median(frame["width"] for frame in frames)
                 ),
@@ -351,6 +529,38 @@ def self_test() -> None:
     metrics = frame_metrics(frame, "self-test")
     assert metrics["width"] == 16 and metrics["height"] == 22
     assert metrics["componentCount"] == 1
+    solid_alpha = lower_body_alpha_metrics(frame, "solid")
+
+    translucent = frame.copy()
+    for x in range(8, 24):
+        for y in range(18, 28):
+            translucent.putpixel((x, y), (255, 255, 255, 96))
+    translucent_alpha = lower_body_alpha_metrics(translucent, "translucent")
+    assert translucent_alpha["meanAlpha"] < solid_alpha["meanAlpha"]
+    assert (
+        translucent_alpha["semiTransparentFraction"]
+        > solid_alpha["semiTransparentFraction"]
+    )
+
+    moving = []
+    for offset in (0, 4, 8, 4):
+        image = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+        for x in range(14, 34):
+            for y in range(8, 30):
+                image.putpixel((x, y), (255, 255, 255, 255))
+        for x in range(10 + offset, 18 + offset):
+            for y in range(30, 44):
+                image.putpixel((x, y), (255, 255, 255, 255))
+        moving.append({"_lowerBodySignature": lower_body_signature(image, "moving")})
+    validate_lower_body_motion(moving, "moving self-test")
+
+    frozen = [moving[0], moving[0], moving[0], moving[0]]
+    try:
+        validate_lower_body_motion(frozen, "frozen self-test")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("frozen run lower body must fail")
     print("Matthias sprite continuity self-test: OK")
 
 
@@ -365,7 +575,7 @@ def main() -> int:
         )
 
     report = {
-        "schema": 1,
+        "schema": 2,
         "scope": "pawn-slug-matthias-runtime-continuity",
         "thresholds": {
             "idleWidthRatio": IDLE_WIDTH_RATIO,
@@ -374,8 +584,15 @@ def main() -> int:
             "runHeightRatio": RUN_HEIGHT_RATIO,
             "footTolerancePx": FOOT_TOLERANCE_PX,
             "centerTolerancePx": CENTER_TOLERANCE_PX,
+            "airCenterTolerancePx": AIR_CENTER_TOLERANCE_PX,
+            "airHeightRatio": AIR_HEIGHT_RATIO,
+            "lowerBodyAlphaRatio": LOWER_BODY_ALPHA_RATIO,
+            "lowerBodySemiAlphaMaxDelta": LOWER_BODY_SEMI_ALPHA_MAX_DELTA,
+            "runLowerBodyMedianDeltaMin": RUN_LOWER_BODY_MEDIAN_DELTA_MIN,
+            "runLowerBodyMaxDeltaMin": RUN_LOWER_BODY_MAX_DELTA_MIN,
         },
         "idle": validate_idle(cfg.sprite_smoke_dir),
+        "airborne": validate_airborne(cfg.sprite_smoke_dir),
         "run": validate_run(cfg.gdscript),
     }
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
@@ -384,8 +601,8 @@ def main() -> int:
         encoding="utf-8",
     )
     print(
-        "OK Matthias continuity gate: idle + run stay inside canonical "
-        "scale/placement envelope"
+        "OK Matthias continuity gate: idle opacity + airborne scale + run "
+        "lower-body motion stay inside canonical envelope"
     )
     return 0
 
