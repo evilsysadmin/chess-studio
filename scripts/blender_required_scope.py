@@ -41,6 +41,7 @@ GATES = (
             "scripts/blender/home_matthias_animations.py",
             "scripts/blender/home_matthias_contract.py",
             "scripts/blender/validate_home_matthias_contract.py",
+            "scripts/blender/validate_home_matthias_actions.py",
             "scripts/blender/compare_glb_semantics.py",
             "frontend/art-source/matthias-home-canonical-reference.webp",
             "frontend/art-source/matthias-home-canonical-reference.txt",
@@ -115,6 +116,9 @@ def self_test() -> None:
         "home-matthias-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/compare_glb_semantics.py"])] == [
+        "home-matthias-blender-art.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/validate_home_matthias_actions.py"])] == [
         "home-matthias-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify([".github/actions/setup-blender-canonical/action.yml"])] == [
