@@ -36,6 +36,19 @@ Preferir:
 
 Una mejora local no debe lavar el tablero, cambiar sus colores ni destruir la jerarquía global.
 
+## Shell global y overlays
+
+Home 3D no posee ni puede sustituir los overlays globales de la aplicación.
+
+- RetroPlayer, Usuarios online y cualquier overlay equivalente siguen perteneciendo al shell global y deben quedar visibles e interactivos por encima de Home.
+- Canvas, hotspots, hit-areas fullscreen, transforms, filters, masks, stacking contexts u `overflow` de Home no pueden ocultarlos, recortarlos ni interceptar sus eventos.
+- No arreglar solapes a base de subir `z-index` ad hoc hasta tapar otro control; la jerarquía escena < overlays globales debe ser explícita y estable.
+- Home no cambia montaje, visibilidad, posición, `pointer-events` o z-index de esos controles como efecto lateral de entrar/salir.
+- Teclado/foco no puede quedar secuestrado por la escena 3D ni por hotspots invisibles.
+- El contrato aplica igual a desktop y móvil.
+
+Cuando una iteración toque fullscreen/layout/stacking, la validación runtime debe abrir y operar los overlays reales —no basta con comprobar que existen en DOM— y revisar al menos un viewport desktop y uno móvil.
+
 ## GLTF / runtime traps
 
 Revisar explícitamente:
