@@ -35,6 +35,11 @@ import {
   chroniclesForecastMoves,
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
+import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
+import {
+  chroniclesApplyRunCheckpoint,
+  chroniclesRunCheckpointFingerprint,
+} from '../chronicles/chroniclesRunCheckpoint.js';
 import {
   chroniclesProgressionFeedback,
   chroniclesProgressionFeedbackLabel,
@@ -70,9 +75,12 @@ function chroniclesBattlefieldInteraction(state, memberId) {
   };
 }
 
-function createActionState(progression) {
+function createActionState(progression, authoritativeRun = null) {
   return applyChroniclesProgressionToTacticsState({
-    ...createChroniclesState(null, progression.characterBuild),
+    ...chroniclesApplyRunCheckpoint(
+      createChroniclesState(null, progression.characterBuild),
+      authoritativeRun,
+    ),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},
@@ -80,18 +88,21 @@ function createActionState(progression) {
   }, progression);
 }
 
-export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = null }) {
+export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, onExit, onRestartRun = null }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [state, setState] = useState(() => createActionState(progression));
+  const [state, setState] = useState(() => createActionState(progression, authoritativeRun));
   const stateRef = useRef(state);
+  const authoritativeRunRef = useRef(authoritativeRun);
+  const checkpointFingerprintRef = useRef(chroniclesRunCheckpointFingerprint(state));
+  const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
   const lastAttackAtRef = useRef(0);
-  const [runId, setRunId] = useState(() => ensureChroniclesTacticsRun());
+  const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [sheetRequest, setSheetRequest] = useState(null);
   const [rendererName, setRendererName] = useState('CARGANDO');
@@ -318,6 +329,30 @@ export default function ChroniclesOfMatthiasTactics({ onExit, onRestartRun = nul
   useEffect(() => {
     engineRef.current?.renderSceneModel(sceneModel);
   }, [sceneModel]);
+
+  useEffect(() => {
+    const fingerprint = chroniclesRunCheckpointFingerprint(state);
+    if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
+    checkpointFingerprintRef.current = fingerprint;
+    const snapshot = state;
+
+    checkpointQueueRef.current = checkpointQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const currentRun = authoritativeRunRef.current;
+        if (!currentRun?.runId) return;
+        const updated = await chroniclesCheckpointState(
+          currentRun.runId,
+          snapshot,
+          currentRun.worldVersion,
+        );
+        authoritativeRunRef.current = { ...currentRun, ...updated };
+      })
+      .catch((error) => {
+        console.error('Chronicles Tactics checkpoint failed', error);
+        if (error?.status === 409) setRendererError('La expedición cambió en otra sesión. Sal y vuelve a entrar para sincronizar.');
+      });
+  }, [state]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
