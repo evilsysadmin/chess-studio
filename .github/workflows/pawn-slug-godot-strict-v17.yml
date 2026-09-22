@@ -7,6 +7,7 @@ on:
       - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
+      - 'scripts/art/validate_pawn_slug_matthias_family.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
@@ -39,6 +40,7 @@ on:
       - 'scripts/art/validate_pawn_slug_godot_atlas_v22.py'
       - 'scripts/art/pack_pawn_slug_machinegun_v23.py'
       - 'scripts/art/validate_pawn_slug_machinegun_v23.py'
+      - 'scripts/art/validate_pawn_slug_matthias_family.py'
       - 'games/pawn-slug-godot/tests/matthias_machinegun_v23_smoke.gd'
       - 'scripts/art/pack_pawn_slug_machinegun_v22.py'
       - 'scripts/art/pack_pawn_slug_run12_v22.py'
@@ -87,6 +89,7 @@ env:
   SHOTGUN_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png'
   PANZERFAUST_V16_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png'
   MACHINEGUN_V22_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v22/machinegun/v22-1164a2ffc6d803f0.png'
+  MACHINEGUN_V23_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png'
   MACHINEGUN_V23_SOURCE_URL: 'https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/source-v23/machinegun/matthias-v23-machinegun-source-9ba9f7fd29c1cf86.png'
 
 jobs:
@@ -759,6 +762,52 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+
+  validate-matthias-family:
+    name: Family gate · Matthias perceptual parity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned perceptual sprite toolchain
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: \
+            'Pillow==12.3.0' 'numpy==2.3.5' 'opencv-python-headless==4.13.0.92'
+
+      - name: Download current runtime weapon family
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-matthias-family'
+          mkdir -p "$ROOT"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PISTOL_V21_URL" --output "$ROOT/pistol.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$MACHINEGUN_V23_URL" --output "$ROOT/machinegun.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$SHOTGUN_V16_URL" --output "$ROOT/shotgun.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 1 "$PANZERFAUST_V16_URL" --output "$ROOT/panzerfaust.png"
+
+      - name: Fail closed on family scale, footline and alpha debris
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT='/tmp/pawn-slug-matthias-family'
+          python3 -m py_compile scripts/art/validate_pawn_slug_matthias_family.py
+          python3 scripts/art/validate_pawn_slug_matthias_family.py --self-test
+          python3 scripts/art/validate_pawn_slug_matthias_family.py \
+            --pistol "$ROOT/pistol.png" \
+            --machinegun "$ROOT/machinegun.png" \
+            --shotgun "$ROOT/shotgun.png" \
+            --panzerfaust "$ROOT/panzerfaust.png" \
+            --report "$ROOT/health.json"
+
+      - name: Upload Matthias family health
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-matthias-family-${{ github.event.pull_request.number || github.sha }}
+          path: /tmp/pawn-slug-matthias-family/health.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   build-strict-v23-smg:
     name: Build + gate strict-v23 · dedicated SMG bank
