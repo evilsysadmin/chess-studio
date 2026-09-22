@@ -202,24 +202,106 @@ jobs:
           tmp="$(mktemp -d)"
           python3 scripts/art/generate_pawn_slug_v1_contracts.py games/pawn-slug-godot/art/sprite-forge-v1/catalog.json "$tmp/contracts"
           test "$(find "$tmp/contracts" -type f -name '*.json' | wc -l)" -eq 14
-      - name: Build canonical-scale legacy migration candidates
+      - name: Build canonical-scale Matthias migration candidates
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/pawn-slug-legacy-scale-candidates"
+          rows="$(seq -s, 0 17)"
+          mkdir -p "$root/reference" "$root/machinegun" "$root/shotgun" "$root/panzerfaust"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png" \
+            -o "$root/reference/pistol-full.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png" \
+            -o "$root/reference/pistol-run12.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png" \
+            -o "$root/machinegun/source-full.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png" \
+            -o "$root/shotgun/source-full.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png" \
+            -o "$root/shotgun/source-run12.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png" \
+            -o "$root/panzerfaust/source-full.png"
+          curl -fL --retry 3 \
+            "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png" \
+            -o "$root/panzerfaust/source-run12.png"
+
+          for weapon in machinegun shotgun panzerfaust; do
+            python3 scripts/art/migrate_matthias_legacy_bank.py \
+              --source "$root/$weapon/source-full.png" \
+              --reference "$root/reference/pistol-full.png" \
+              --rows "$rows" \
+              --output "$root/$weapon/candidate-full.png" \
+              --report "$root/$weapon/full-health.json"
+          done
+          for weapon in shotgun panzerfaust; do
+            python3 scripts/art/migrate_matthias_legacy_bank.py \
+              --source "$root/$weapon/source-run12.png" \
+              --reference "$root/reference/pistol-run12.png" \
+              --columns 12 --row-count 1 --rows 0 \
+              --output "$root/$weapon/candidate-run12.png" \
+              --report "$root/$weapon/run12-health.json"
+          done
+          sha256sum \
+            "$root/machinegun/candidate-full.png" \
+            "$root/shotgun/candidate-full.png" "$root/shotgun/candidate-run12.png" \
+            "$root/panzerfaust/candidate-full.png" "$root/panzerfaust/candidate-run12.png" \
+            | tee "$root/sha256.txt"
+      - name: Dry-run canonical-scale Matthias publication
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
           root="$RUNNER_TEMP/pawn-slug-legacy-scale-candidates"
-          mkdir -p "$root/reference" "$root/shotgun" "$root/panzerfaust"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png"             -o "$root/reference/pistol-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png"             -o "$root/reference/pistol-run12.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png"             -o "$root/shotgun/source-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png"             -o "$root/shotgun/source-run12.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png"             -o "$root/panzerfaust/source-full.png"
-          curl -fL --retry 3             "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png"             -o "$root/panzerfaust/source-run12.png"
-
+          manifest="$root/publish-manifest.json"
+          rm -f "$manifest"
+          python3 -S scripts/r2_asset_publish.py self-test
+          python3 -S scripts/r2_asset_publish.py publish "$root/machinegun/candidate-full.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.canonicalScale \
+            --prefix pawn-slug-godot/matthias/canonical-scale/machinegun/full \
+            --manifest "$manifest" --dry-run
           for weapon in shotgun panzerfaust; do
-            python3 scripts/art/migrate_matthias_legacy_bank.py               --source "$root/$weapon/source-full.png"               --reference "$root/reference/pistol-full.png"               --rows 2,6               --output "$root/$weapon/candidate-full.png"               --report "$root/$weapon/full-health.json"
-            python3 scripts/art/migrate_matthias_legacy_bank.py               --source "$root/$weapon/source-run12.png"               --reference "$root/reference/pistol-run12.png"               --columns 12 --row-count 1 --rows 0               --output "$root/$weapon/candidate-run12.png"               --report "$root/$weapon/run12-health.json"
+            python3 -S scripts/r2_asset_publish.py publish "$root/$weapon/candidate-full.png" \
+              --logical-id "pawnSlug.godot.matthias.$weapon.canonicalScale" \
+              --prefix "pawn-slug-godot/matthias/canonical-scale/$weapon/full" \
+              --manifest "$manifest" --dry-run
+            python3 -S scripts/r2_asset_publish.py publish "$root/$weapon/candidate-run12.png" \
+              --logical-id "pawnSlug.godot.matthias.$weapon.runCanonicalScale" \
+              --prefix "pawn-slug-godot/matthias/canonical-scale/$weapon/run12" \
+              --manifest "$manifest" --dry-run
           done
+      - name: Publish canonical-scale Matthias assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/pawn-slug-legacy-scale-candidates"
+          manifest="$root/published-manifest.json"
+          rm -f "$manifest"
+          python3 -S scripts/r2_asset_publish.py publish "$root/machinegun/candidate-full.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.canonicalScale \
+            --prefix pawn-slug-godot/matthias/canonical-scale/machinegun/full \
+            --manifest "$manifest"
+          for weapon in shotgun panzerfaust; do
+            python3 -S scripts/r2_asset_publish.py publish "$root/$weapon/candidate-full.png" \
+              --logical-id "pawnSlug.godot.matthias.$weapon.canonicalScale" \
+              --prefix "pawn-slug-godot/matthias/canonical-scale/$weapon/full" \
+              --manifest "$manifest"
+            python3 -S scripts/r2_asset_publish.py publish "$root/$weapon/candidate-run12.png" \
+              --logical-id "pawnSlug.godot.matthias.$weapon.runCanonicalScale" \
+              --prefix "pawn-slug-godot/matthias/canonical-scale/$weapon/run12" \
+              --manifest "$manifest"
+          done
+          cat "$manifest" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload canonical-scale migration candidates
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
