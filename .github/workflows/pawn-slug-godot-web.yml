@@ -196,9 +196,12 @@ jobs:
           python3 scripts/art/test_sprite_forge.py
           python3 scripts/art/sprite_forge_acceptance.py --self-test
           python3 scripts/art/sprite_forge_acceptance.py check
+          python3 scripts/art/generate_pawn_slug_v1_contracts.py --self-test
           tmp="$(mktemp -d)"
           python3 scripts/art/generate_pawn_slug_v1_contracts.py games/pawn-slug-godot/art/sprite-forge-v1/catalog.json "$tmp/contracts"
-          test "$(find "$tmp/contracts" -type f -name '*.json' | wc -l)" -eq 14
+          test "$(find "$tmp/contracts" -type f -name '*.json' | wc -l)" -eq 16
+          test -s "$tmp/contracts/matthias-body-v1.json"
+          test -s "$tmp/contracts/matthias-weapons-v1.json"
       - name: Godot runtime stays strictly 2D
         run: python3 -S scripts/pawn_slug_godot_2d_gate.py
       - name: Web export stays iframe-safe and single-threaded
