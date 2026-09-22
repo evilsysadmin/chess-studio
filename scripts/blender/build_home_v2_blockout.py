@@ -2482,6 +2482,31 @@ def add_stairs(materials):
     sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.16, 0.16, 0.16), materials["stone_dark"])
 
     steps = 11
+
+    def step_center(index):
+        tt = index / (steps - 1)
+        return 5.28 + 2.45 * tt, 1.45 - 2.28 * tt, 0.68 - 1.58 * tt
+
+    # The treads were isolated boxes: each one sits only ~0.008 above the next tread's
+    # top, a gap that vanishes at the tread's own edges (rounded off by the bevel) but
+    # opens into a real gap between consecutive treads everywhere else, letting the
+    # Dungeon firelight below leak straight through the flight in a grazing camera view.
+    # A generously oversized bridging mass between every pair of consecutive tread
+    # centres (axis-aligned, deliberately overshooting rather than fitted tight) closes
+    # that gap without needing to model an exact sloped stringer.
+    for i in range(steps - 1):
+        x0, y0, z0 = step_center(i)
+        x1, y1, z1 = step_center(i + 1)
+        bridge_top = z0 - 0.075 + 0.03
+        bridge_bottom = z1 - 0.075 - 0.22
+        cube(
+            f"HOME_ARCH_dungeon_step_bridge_{i}",
+            ((x0 + x1) / 2.0, (y0 + y1) / 2.0, (bridge_top + bridge_bottom) / 2.0),
+            (0.62, 0.50, (bridge_top - bridge_bottom) / 2.0),
+            stone,
+            bevel=0.02,
+        )
+
     for i in range(steps):
         t = i / (steps - 1)
         x = 5.28 + 2.45 * t
