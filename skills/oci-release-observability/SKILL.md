@@ -16,6 +16,18 @@ Antes de una operación OCI cara o un live-check asociado a un deploy:
 
 Cuando la acreditación inmutable de PR no puede reutilizarse con seguridad, Main admission debe ejecutar el gate completo sobre el **HEAD final exacto**; nunca relajar la prueba de parentesco/disjointness para ahorrar tiempo.
 
+## Cancelar trabajo stale sin cortar una mutación a medias
+
+`cancel-in-progress` no tiene una política única para todas las lanes.
+
+- Trabajo read-only, visual, observabilidad o publicación reemplazable puede cancelar ejecuciones anteriores cuando sólo interesa la generación más nueva.
+- Una operación que ya muta OCI/host —deploy backend, Terraform, runtime-sync, lifecycle K3s u otra operación bajo `oci-staging-mutations`— no se mata a mitad sólo porque apareció un SHA nuevo. Ese tipo de cancelación puede dejar servicios, ficheros o control-plane en estado parcial.
+- Las mutaciones se serializan. Tras adquirir el lock, la capa dueña vuelve a comprobar la generación esperada; si `main` ya avanzó, la ejecución antigua sale como **superseded** antes de continuar mutando.
+- Por tanto, “cancelar deploys stale” significa cancelar trabajo que sea seguro cancelar y **short-circuitar** generaciones obsoletas en la frontera de mutación; no significa enviar una cancelación asíncrona a una operación remota en curso.
+- Una generación antigua nunca puede usar el mutex para sobrescribir una más nueva: el anti-stale exact-SHA es obligatorio dentro de la capa que posee el lock.
+
+Si una futura operación puede demostrar atomicidad/rollback suficiente para ser cancelable en mitad de la mutación, puede tener otra política, pero debe documentarlo y probarlo explícitamente.
+
 ## Un solo dueño del anti-stale
 
 No dupliques `git ls-remote`/GitHub probes dentro de la A1 y en el orquestador.
