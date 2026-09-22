@@ -10,6 +10,7 @@ from dataclasses import dataclass
 MATTHIAS_PATHS = {
     "games/pawn-slug-godot/scripts/matthias_art.gd",
     "scripts/art/export_matthias_sprite_smoke.py",
+    "scripts/art/validate_matthias_sprite_continuity.py",
 }
 
 ENEMY_PATHS = {
@@ -83,6 +84,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     assert classify(["games/pawn-slug-godot/scripts/matthias_art.gd"]) == Scope(True, False)
     assert classify(["scripts/art/export_matthias_sprite_smoke.py"]) == Scope(True, False)
+    assert classify(["scripts/art/validate_matthias_sprite_continuity.py"]) == Scope(True, False)
     assert classify(["games/pawn-slug-godot/scripts/enemy_visual.gd"]) == Scope(False, True)
     assert classify(["scripts/art/derive_pawn_slug_enemy_queen_v2.py"]) == Scope(False, True)
     assert classify(["scripts/art/png_contract.py"]) == full_scope()
