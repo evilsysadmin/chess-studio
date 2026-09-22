@@ -2,9 +2,10 @@
 """High-confidence dead-module gate without installing project dependencies.
 
 Reports whole product modules and stylesheets that cannot be reached from the
-runtime entrypoints through static/dynamic relative imports. It intentionally
-does not try to guess unused functions or CSS selectors: those need semantic
-tools and would create noisy false positives in a static preflight.
+runtime entrypoints through static/dynamic relative imports. It also reports a
+narrow class of dead frontend exports when the symbol has no external named
+consumer, no internal reference and no opaque namespace/dynamic consumer.
+CSS selectors and ambiguous symbols remain outside this no-dependency gate.
 """
 from __future__ import annotations
 
@@ -19,6 +20,19 @@ SCRIPTS = ROOT / "scripts"
 JS_EXTS = (".js", ".jsx", ".mjs")
 IMPORT_RE = re.compile(r"(?:(?:import|export)\s+(?:[^'\"]*?\s+from\s+)?|import\s*\()\s*['\"]([^'\"]+)['\"]")
 CSS_IMPORT_RE = re.compile(r"@import\s+(?:url\(\s*)?['\"]?([^'\")\s;]+)")
+EXPORT_DECL_RE = re.compile(r"\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)")
+NAMED_FROM_RE = re.compile(
+    r"(?:import\s+(?:[A-Za-z_$][A-Za-z0-9_$]*\s*,\s*)?|export\s+)"
+    r"\{([^}]*)\}\s+from\s+['\"]([^'\"]+)['\"]",
+    re.DOTALL,
+)
+OPAQUE_FROM_RE = re.compile(
+    r"(?:import\s+\*\s+as\s+[A-Za-z_$][A-Za-z0-9_$]*|"
+    r"export\s+\*(?:\s+as\s+[A-Za-z_$][A-Za-z0-9_$]*)?)"
+    r"\s+from\s+['\"]([^'\"]+)['\"]"
+)
+DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
+REQUIRE_RE = re.compile(r"\brequire\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 UVICORN_ENTRY_RE = re.compile(r"\buvicorn\s+([A-Za-z_][A-Za-z0-9_]*):[A-Za-z_][A-Za-z0-9_]*")
 FRONTEND_EXCLUDES = {"test-setup.js"}
 
@@ -86,6 +100,100 @@ def frontend_unreachable() -> tuple[set[Path], list[Path]]:
             if target in files and target not in seen:
                 pending.append(target)
     return seen, sorted(files - seen)
+
+
+
+def _js_identifier_occurrences(text: str, name: str) -> int:
+    pattern = re.compile(
+        rf"(?<![A-Za-z0-9_$]){re.escape(name)}(?![A-Za-z0-9_$])"
+    )
+    return len(pattern.findall(text))
+
+
+def _named_imports(clause: str) -> set[str]:
+    names: set[str] = set()
+    for raw in clause.split(","):
+        token = re.sub(r"/\*.*?\*/", "", raw, flags=re.DOTALL).strip()
+        if token.startswith("type "):
+            token = token[5:].strip()
+        if not token:
+            continue
+        imported = re.split(r"\s+as\s+", token, maxsplit=1)[0].strip()
+        if imported and imported != "default":
+            names.add(imported)
+    return names
+
+
+def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
+    """Return only exports that are dead with high static confidence.
+
+    We inspect direct named export declarations in production-reachable modules.
+    Tests and repository scripts count as consumers, so a test/debug API is not
+    reported merely because production does not import it. Namespace imports,
+    export-star, require() and dynamic import() make the target opaque and opt
+    the whole module out rather than guessing property usage.
+    """
+    candidates: dict[Path, set[str]] = {}
+    module_text: dict[Path, str] = {}
+    for path in reachable_js:
+        text = path.read_text(encoding="utf-8")
+        names = set(EXPORT_DECL_RE.findall(text))
+        if names:
+            candidates[path] = names
+            module_text[path] = text
+    if not candidates:
+        return []
+
+    named_consumers: dict[Path, set[str]] = {path: set() for path in candidates}
+    opaque_targets: set[Path] = set()
+    consumer_exts = {".js", ".jsx", ".mjs", ".cjs"}
+    consumers = [
+        p.resolve()
+        for p in ROOT.rglob("*")
+        if p.is_file()
+        and p.suffix in consumer_exts
+        and ".git" not in p.parts
+        and "node_modules" not in p.parts
+    ]
+
+    def resolve_consumer_target(source: Path, spec: str) -> Path | None:
+        try:
+            target = resolve_js(source, spec)
+        except RuntimeError:
+            # Product-reachable imports are already validated by frontend_unreachable.
+            # Auxiliary scripts/tests may intentionally point at generated files.
+            return None
+        return target if target in candidates else None
+
+    for source in consumers:
+        try:
+            text = source.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for clause, spec in NAMED_FROM_RE.findall(text):
+            target = resolve_consumer_target(source, spec)
+            if target is not None:
+                named_consumers[target].update(_named_imports(clause))
+        for regex in (OPAQUE_FROM_RE, DYNAMIC_IMPORT_RE, REQUIRE_RE):
+            for spec in regex.findall(text):
+                target = resolve_consumer_target(source, spec)
+                if target is not None:
+                    opaque_targets.add(target)
+
+    dead: list[tuple[Path, str]] = []
+    for path, names in candidates.items():
+        if path in opaque_targets:
+            continue
+        text = module_text[path]
+        for name in sorted(names):
+            if name in named_consumers[path]:
+                continue
+            # One occurrence is the declaration itself. Any second textual use
+            # (including conservative comments/strings) suppresses the finding.
+            if _js_identifier_occurrences(text, name) == 1:
+                dead.append((path, name))
+    return sorted(dead, key=lambda item: (item[0].as_posix(), item[1]))
+
 
 
 def css_unreachable(reachable_js: set[Path]) -> tuple[int, list[Path]]:
@@ -283,12 +391,18 @@ def script_python_helper_unreferenced() -> list[Path]:
 
 def main() -> int:
     front_seen, front_dead = frontend_unreachable()
+    dead_exports = frontend_dead_exports(front_seen)
     css_seen, css_dead = css_unreachable(front_seen)
     back_seen, back_dead = backend_unreachable()
     script_dead = script_python_helper_unreferenced()
-    if front_dead or css_dead or back_dead or script_dead:
+    if front_dead or dead_exports or css_dead or back_dead or script_dead:
         for path in front_dead:
             print(f"ERROR dead-code gate: frontend productivo inalcanzable: {path.relative_to(ROOT)}")
+        for path, name in dead_exports:
+            print(
+                f"ERROR dead-code gate: export frontend sin consumidor/uso: "
+                f"{path.relative_to(ROOT)}::{name}"
+            )
         for path in css_dead:
             print(f"ERROR dead-code gate: CSS productivo inalcanzable: {path.relative_to(ROOT)}")
         for path in back_dead:
@@ -298,9 +412,9 @@ def main() -> int:
         return 1
     print(
         "dead-code-reachability OK · "
-        f"frontend {len(front_seen)} alcanzables · CSS {css_seen} alcanzables · "
-        f"backend {back_seen} alcanzables · scripts Python 0 helpers huérfanos · "
-        "0 módulos/hojas huérfanos"
+        f"frontend {len(front_seen)} alcanzables · 0 exports muertos de alta confianza · "
+        f"CSS {css_seen} alcanzables · backend {back_seen} alcanzables · "
+        f"scripts Python 0 helpers huérfanos · 0 módulos/hojas huérfanos"
     )
     return 0
 
