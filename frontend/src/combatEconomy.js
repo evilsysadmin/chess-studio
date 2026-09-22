@@ -177,12 +177,6 @@ export function buyEquipment(rosterState, itemId, unitKey) {
   };
 }
 
-export function unequipEquipment(rosterState, unitKey) {
-  const piece = rosterState?.pieces?.[unitKey];
-  if (!piece?.equipmentId) return rosterState;
-  return { ...rosterState, pieces: { ...rosterState.pieces, [unitKey]: { ...piece, equipmentId: null } } };
-}
-
 export function marketRotationKey(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
   return Number.isNaN(date.getTime()) ? '1970-01-01' : date.toISOString().slice(0, 10);
