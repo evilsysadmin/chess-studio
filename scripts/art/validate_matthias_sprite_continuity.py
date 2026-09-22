@@ -30,7 +30,9 @@ AIR_CENTER_TOLERANCE_PX = 10.0
 AIR_HEIGHT_RATIO = (0.90, 1.10)
 LOWER_BODY_START_FRACTION = 0.55
 LOWER_BODY_ALPHA_RATIO = (0.90, 1.10)
+LOWER_BODY_INTERIOR_ALPHA_RATIO = (0.95, 1.05)
 LOWER_BODY_SEMI_ALPHA_MAX_DELTA = 0.12
+LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA = 0.06
 LOWER_BODY_SIGNATURE_SIZE = (96, 64)
 LOWER_BODY_SIGNATURE_THRESHOLD = 64
 RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.025
@@ -167,8 +169,25 @@ def lower_body_alpha_metrics(image: Image.Image, label: str) -> dict:
         raise ValueError(f"{label}: lower body has no opaque mass")
     semi = sum(value < 200 for value in values) / len(values)
     opaque = sum(value >= 224 for value in values) / len(values)
+    pix = alpha.load()
+    interior_values = []
+    for y in range(start_y + 1, bottom - 1):
+        for x in range(left + 1, right - 1):
+            value = int(pix[x, y])
+            if value < ALPHA_THRESHOLD:
+                continue
+            if (
+                pix[x - 1, y] >= ALPHA_THRESHOLD
+                and pix[x + 1, y] >= ALPHA_THRESHOLD
+                and pix[x, y - 1] >= ALPHA_THRESHOLD
+                and pix[x, y + 1] >= ALPHA_THRESHOLD
+            ):
+                interior_values.append(value)
+    if not interior_values:
+        interior_values = values
     return {
         "meanAlpha": sum(values) / len(values),
+        "interiorMeanAlpha": sum(interior_values) / len(interior_values),
         "semiTransparentFraction": semi,
         "opaqueFraction": opaque,
     }
@@ -305,14 +324,29 @@ def validate_idle(sprite_dir: Path) -> dict:
                 LOWER_BODY_ALPHA_RATIO,
                 f"{weapon} idle c{col} lower-body alpha",
             )
+            interior_alpha_ratio = ratio_in(
+                frame["lowerBodyAlpha"]["interiorMeanAlpha"],
+                ref["lowerBodyAlpha"]["interiorMeanAlpha"],
+                LOWER_BODY_INTERIOR_ALPHA_RATIO,
+                f"{weapon} idle c{col} lower-body interior alpha",
+            )
             semi_delta = (
                 frame["lowerBodyAlpha"]["semiTransparentFraction"]
                 - ref["lowerBodyAlpha"]["semiTransparentFraction"]
+            )
+            opaque_drop = (
+                ref["lowerBodyAlpha"]["opaqueFraction"]
+                - frame["lowerBodyAlpha"]["opaqueFraction"]
             )
             if semi_delta > LOWER_BODY_SEMI_ALPHA_MAX_DELTA:
                 raise ValueError(
                     f"{weapon} idle c{col}: lower-body semi-transparent mass "
                     f"drift {semi_delta:.4f} > {LOWER_BODY_SEMI_ALPHA_MAX_DELTA:.4f}"
+                )
+            if opaque_drop > LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA:
+                raise ValueError(
+                    f"{weapon} idle c{col}: lower-body opaque fraction dropped "
+                    f"{opaque_drop:.4f} > {LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA:.4f}"
                 )
             validated.append(
                 {
@@ -320,7 +354,9 @@ def validate_idle(sprite_dir: Path) -> dict:
                     "widthRatio": round(width_ratio, 6),
                     "heightRatio": round(height_ratio, 6),
                     "lowerBodyAlphaRatio": round(alpha_ratio, 6),
+                    "lowerBodyInteriorAlphaRatio": round(interior_alpha_ratio, 6),
                     "lowerBodySemiAlphaDelta": round(semi_delta, 6),
+                    "lowerBodyOpaqueDrop": round(opaque_drop, 6),
                 }
             )
         report[weapon] = validated
@@ -329,6 +365,7 @@ def validate_idle(sprite_dir: Path) -> dict:
 
 def validate_airborne(sprite_dir: Path) -> dict:
     by_action: dict[str, dict[str, list[dict]]] = {}
+    violations: list[str] = []
     for action, row in AIR_ACTION_ROWS.items():
         by_weapon: dict[str, list[dict]] = {}
         for weapon in WEAPONS:
@@ -345,7 +382,7 @@ def validate_airborne(sprite_dir: Path) -> dict:
                 image = Image.open(path).convert("RGBA")
                 frame = frame_metrics(image, f"{weapon} {action} c{col}")
                 if frame["componentCount"] != 1:
-                    raise ValueError(
+                    violations.append(
                         f"{weapon} {action} c{col}: detached opaque components are "
                         f"forbidden: {frame['detachedAreas']}"
                     )
@@ -361,23 +398,31 @@ def validate_airborne(sprite_dir: Path) -> dict:
             validated: list[dict] = []
             for col, frame in enumerate(by_weapon[weapon]):
                 ref = pistol[col]
-                height_ratio = ratio_in(
-                    frame["height"],
-                    ref["height"],
-                    AIR_HEIGHT_RATIO,
-                    f"{weapon} {action} c{col} height",
-                )
+                try:
+                    height_ratio = ratio_in(
+                        frame["height"],
+                        ref["height"],
+                        AIR_HEIGHT_RATIO,
+                        f"{weapon} {action} c{col} height",
+                    )
+                except ValueError as exc:
+                    violations.append(str(exc))
+                    height_ratio = float("nan")
                 if abs(frame["centerX"] - ref["centerX"]) > AIR_CENTER_TOLERANCE_PX:
-                    raise ValueError(
+                    violations.append(
                         f"{weapon} {action} c{col}: center drift "
                         f"{frame['centerX']} vs {ref['centerX']}"
                     )
-                alpha_ratio = ratio_in(
-                    frame["lowerBodyAlpha"]["meanAlpha"],
-                    ref["lowerBodyAlpha"]["meanAlpha"],
-                    LOWER_BODY_ALPHA_RATIO,
-                    f"{weapon} {action} c{col} lower-body alpha",
-                )
+                try:
+                    alpha_ratio = ratio_in(
+                        frame["lowerBodyAlpha"]["meanAlpha"],
+                        ref["lowerBodyAlpha"]["meanAlpha"],
+                        LOWER_BODY_ALPHA_RATIO,
+                        f"{weapon} {action} c{col} lower-body alpha",
+                    )
+                except ValueError as exc:
+                    violations.append(str(exc))
+                    alpha_ratio = float("nan")
                 validated.append(
                     {
                         **frame,
@@ -387,6 +432,10 @@ def validate_airborne(sprite_dir: Path) -> dict:
                 )
             report[weapon] = validated
         by_action[action] = report
+    if violations:
+        raise ValueError(
+            "airborne continuity violations:\n- " + "\n- ".join(violations)
+        )
     return by_action
 
 
@@ -587,19 +636,33 @@ def main() -> int:
             "airCenterTolerancePx": AIR_CENTER_TOLERANCE_PX,
             "airHeightRatio": AIR_HEIGHT_RATIO,
             "lowerBodyAlphaRatio": LOWER_BODY_ALPHA_RATIO,
+            "lowerBodyInteriorAlphaRatio": LOWER_BODY_INTERIOR_ALPHA_RATIO,
             "lowerBodySemiAlphaMaxDelta": LOWER_BODY_SEMI_ALPHA_MAX_DELTA,
+            "lowerBodyOpaqueFractionMaxDelta": LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA,
             "runLowerBodyMedianDeltaMin": RUN_LOWER_BODY_MEDIAN_DELTA_MIN,
             "runLowerBodyMaxDeltaMin": RUN_LOWER_BODY_MAX_DELTA_MIN,
         },
-        "idle": validate_idle(cfg.sprite_smoke_dir),
-        "airborne": validate_airborne(cfg.sprite_smoke_dir),
-        "run": validate_run(cfg.gdscript),
     }
+    failures: list[str] = []
+    for label, check in (
+        ("idle", lambda: validate_idle(cfg.sprite_smoke_dir)),
+        ("airborne", lambda: validate_airborne(cfg.sprite_smoke_dir)),
+        ("run", lambda: validate_run(cfg.gdscript)),
+    ):
+        try:
+            report[label] = check()
+        except ValueError as exc:
+            failures.append(f"{label}: {exc}")
+            report[label] = {"ok": False, "error": str(exc)}
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
     cfg.output.write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+    if failures:
+        raise ValueError(
+            "Matthias continuity gate failed:\n- " + "\n- ".join(failures)
+        )
     print(
         "OK Matthias continuity gate: idle opacity + airborne scale + run "
         "lower-body motion stay inside canonical envelope"
