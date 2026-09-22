@@ -27,6 +27,30 @@ Missed mate, allowed mate, queen lost to pawn, major tactical blunder, brilliant
 - Home copy is rendered from known structured evidence, never from arbitrary stored labels or AI prose.
 - An episodic Home visit does **not** increase Matthias' appearance probability; it only changes what he says when the existing cadence already permits a visit.
 
+
+## Session presence vs persistent memory
+
+Do not confuse Matthias' persistent evidence-backed biography with his ephemeral appearance budget.
+
+Persistent memory:
+
+- belongs to the authenticated user and survives ordinary F5/session remounts;
+- contains only bounded structured evidence already allowed by this document;
+- is never reset merely because Matthias appeared or a browser document reloaded.
+
+Session narrative signals:
+
+- live in session-scoped storage/context and never become biography;
+- an **explicit authentication** opens a fresh narrative session, clears prior-session exposure context and queues the login greeting;
+- F5/remount inside the same authenticated session does **not** create a fresh login greeting;
+- consuming the greeting records a discovery exposure so another proactive Home appearance does not immediately fire from an independent budget;
+- proactive appearances across supported surfaces share the same bounded exposure budget for the session;
+- logout clears greeting/exposure/session context so it cannot leak to the next account;
+- a new explicit login in the same tab is still a new narrative session.
+
+Greeting/exposure state controls **whether Matthias appears now**. Episodic memory controls **what factual callbacks he is eligible to make**. Neither may fabricate incidents or silently mutate the other.
+
+
 ## Priority on Home
 Episodes never displace: active saved game, real return/reunion, active challenge, open coaching debt, or newly earned respect. After those priorities, an eligible episode may beat generic goals/legacy chatter because it is concrete continuity rather than another random quip.
 
