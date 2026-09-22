@@ -19,8 +19,6 @@ source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 otel_log_probe="$repo/scripts/otel_log_ingest_probe.py"
-k3s_capability_provision="$repo/scripts/oci_k3s_capability_provision.sh"
-k3s_service_prepare="$repo/scripts/oci_k3s_service_prepare.py"
 signal_controller_source="$repo/scripts/oci_staging_signal_controller.sh"
 signal_service_source="$repo/infra/oci/runtime/chess-studio-staging-signal.service"
 signal_timer_source="$repo/infra/oci/runtime/chess-studio-staging-signal.timer"
@@ -56,8 +54,6 @@ state_file="$state_dir/deployed.sha"
 observability_dir="$state_dir/observability"
 backend_log_link="$observability_dir/backend-json.log"
 deploy_watcher_enable_marker="$state_dir/DEPLOY_WATCH_ENABLED"
-k3s_contract_state_file="/var/lib/chess-studio/k3s-deploy-contract.sha256"
-k3s_start_approval="/var/lib/chess-studio/K3S_START_APPROVED"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
@@ -154,85 +150,6 @@ compose() {
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
   docker compose -p "$project" -f "$compose_file" "$@"
-}
-
-k3s_is_armed() {
-  local enabled
-  [[ -e "$k3s_start_approval" || -L "$k3s_start_approval" ]] && return 0
-  systemctl is-active --quiet k3s.service && return 0
-  enabled="$(systemctl is-enabled k3s.service 2>/dev/null || true)"
-  [[ "$enabled" =~ ^(enabled|enabled-runtime|linked|linked-runtime)$ ]]
-}
-
-k3s_contract_digest() {
-  local file
-  local files=(
-    "$repo/scripts/oci_k3s_capability_provision.sh"
-    "$repo/scripts/oci_k3s_assets_root.py"
-    "$repo/scripts/oci_k3s_control_root.py"
-    "$repo/scripts/oci_k3s_status_root.py"
-    "$repo/scripts/oci_k3s_staging2_root.py"
-    "$repo/scripts/oci_k3s_service_prepare.py"
-    "$repo/infra/oci/runtime/ocarun.sudoers"
-    "$repo/infra/oci/k3s/config.yaml"
-    "$repo/infra/oci/k3s/k3s.service"
-    "$repo/infra/oci/gitops/staging2/backend.yaml.tmpl"
-  )
-  for file in "${files[@]}"; do
-    [[ -f "$file" && ! -L "$file" ]] || {
-      echo "missing K3s deploy-contract input: $file" >&2
-      return 1
-    }
-  done
-  sha256sum "${files[@]}" | sha256sum | awk '{print $1}'
-}
-
-record_k3s_contract_digest() {
-  local digest="$1"
-  local tmp
-  tmp="$(mktemp "$state_dir/k3s-deploy-contract.sha256.XXXXXX")"
-  printf '%s\n' "$digest" >"$tmp"
-  chmod 0644 "$tmp"
-  mv -f "$tmp" "$k3s_contract_state_file"
-}
-
-run_k3s_reconcile_steps() {
-  local log rc
-  log="$(mktemp /tmp/chess-studio-k3s-reconcile.XXXXXX)"
-  set +e
-  { /bin/bash "$k3s_capability_provision" && python3 -S "$k3s_service_prepare"; } >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ "$rc" -ne 0 ]]; then
-    cat "$log" >&2
-    rm -f "$log"
-    return "$rc"
-  fi
-  k3s_success_summary="$(awk '
-    /^OCI_K3S_ASSET_INTEGRITY_REUSED / {integrity="reused"}
-    /^OCI_K3S_ASSET_INTEGRITY_REFRESHED / {integrity="refreshed"}
-    /^OCI_K3S_SERVICE_ARMED_UNCHANGED / {service="armed"}
-    /^OCI_K3S_SERVICE_PREPARED / {service="prepared"}
-    END {printf "integrity=%s,service=%s", integrity ? integrity : "unknown", service ? service : "unknown"}
-  ' "$log")"
-  rm -f "$log"
-}
-
-reconcile_k3s_contract() {
-  local digest cached=''
-  digest="$(k3s_contract_digest)"
-  if [[ -s "$k3s_contract_state_file" ]]; then
-    cached="$(tr -d '\r\n' < "$k3s_contract_state_file")"
-  fi
-
-  if ! k3s_is_armed && [[ "$cached" == "$digest" ]]; then
-    k3s_contract_action="reused"
-    return 0
-  fi
-
-  run_k3s_reconcile_steps
-  record_k3s_contract_digest "$digest"
-  k3s_contract_action="refreshed"
 }
 
 cors_attest() {
@@ -666,8 +583,6 @@ install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_ins
 
 if [[ "$target" == staging ]]; then
   [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
-  [[ -f "$k3s_capability_provision" && ! -L "$k3s_capability_provision" ]] || { echo "missing K3s capability provisioner in $sha" >&2; exit 66; }
-  [[ -f "$k3s_service_prepare" && ! -L "$k3s_service_prepare" ]] || { echo "missing K3s service preparer in $sha" >&2; exit 66; }
   [[ -f "$signal_controller_source" && ! -L "$signal_controller_source" ]] || { echo "missing staging signal controller in $sha" >&2; exit 66; }
   [[ -f "$signal_service_source" && ! -L "$signal_service_source" ]] || { echo "missing staging signal service in $sha" >&2; exit 66; }
   [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
@@ -678,15 +593,6 @@ if [[ "$target" == staging ]]; then
   /bin/bash "$tunnel_connector" --self-test >/dev/null
 fi
 phase_done preflight "$preflight_started_ms"
-k3s_started_ms="$(now_ms)"
-if [[ "$target" == staging ]]; then
-  reconcile_k3s_contract
-else
-  k3s_contract_action="skipped"
-  k3s_success_summary="integrity=skipped,service=skipped"
-fi
-phase_done k3s "$k3s_started_ms"
-
 # CI already built and published the exact linux/arm64 backend image. Pull that
 # immutable artifact before touching the serving container; do not invoke
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
@@ -736,7 +642,7 @@ for _ in $(seq 1 60); do
     fi
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
-    printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s k3s=%s,contract=%s tunnel=%s\n' "$target" "${deploy_phase_summary%,}" "${k3s_success_summary:-integrity=unknown,service=unknown}" "${k3s_contract_action:-unknown}" "$tunnel_action"
+    printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action"
     echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
     exit 0
   fi
