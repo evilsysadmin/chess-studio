@@ -189,6 +189,8 @@ La migración se hace por cortes pequeños y reversibles:
 
 Los scripts históricos pueden permanecer temporalmente como fixtures/migradores, pero dejan de ser autoridades paralelas.
 
+Durante la migración, `scripts/art/migrate_matthias_legacy_bank.py` puede reconstruir filas concretas de un atlas legacy contra los anchors canónicos de P99. El migrador calcula por fila la altura corporal mediana, centro corporal y footline del banco de referencia, reescala cada frame mediante las primitivas fail-closed de Sprite Forge y rechaza clipping, huérfanos alpha o escalas fuera de un rango razonable. Es una herramienta de transición; no introduce rescale/repack en runtime y debe retirarse cuando los cuatro bancos estén ya en el compiler único.
+
 ## 14. Gate de aceptación
 
 Un asset no se promociona si falta cualquiera de estas pruebas:
