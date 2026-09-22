@@ -9,6 +9,8 @@ on:
       - scripts/art/export_matthias_sprite_smoke.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
+      - scripts/pawn_slug_sprite_smoke_scope.py
+      - scripts/pr_merge_diff.py
       - scripts/art/pack_pawn_slug_enemy_v2.py
       - scripts/art/validate_pawn_slug_enemy_v2.py
       - scripts/art/test_pawn_slug_enemy_v2.py
@@ -46,28 +48,69 @@ jobs:
       DEPLOY_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
 
     steps:
-      - name: Checkout deployed commit
+      - name: Checkout tested commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          # PRs use GitHub's synthetic merge so the classifier sees the complete
+          # contribution against the tested base. Staging keeps the deployed SHA.
+          ref: ${{ github.event_name == 'workflow_run' && env.DEPLOY_SHA || github.sha }}
+          fetch-depth: 2
+
+      - name: Resolve sprite smoke scope
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          MERGE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/pawn_slug_sprite_smoke_scope.py --self-test
+          python3 -S scripts/pr_merge_diff.py --self-test
+
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+            python3 -S scripts/pawn_slug_sprite_smoke_scope.py --all --github-output "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$MERGE_SHA")"; then
+              echo '::warning::PR merge diff unavailable; sprite smoke fails closed to Matthias + enemies.'
+              python3 -S scripts/pawn_slug_sprite_smoke_scope.py --all --github-output "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            files="$(git diff --name-only HEAD^ HEAD)"
+          else
+            echo '::warning::No parent commit available; sprite smoke fails closed to Matthias + enemies.'
+            python3 -S scripts/pawn_slug_sprite_smoke_scope.py --all --github-output "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          printf 'Sprite smoke changed files:\n%s\n' "$files"
+          printf '%s\n' "$files" | python3 -S scripts/pawn_slug_sprite_smoke_scope.py --github-output "$GITHUB_OUTPUT"
 
       - name: Install Pillow
+        if: steps.scope.outputs.matthias == 'true' || steps.scope.outputs.enemy == 'true'
         run: |
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
 
       - name: Validate enemy worksheet intake contract
+        if: steps.scope.outputs.enemy == 'true'
         run: |
           set -euo pipefail
           python3 scripts/art/test_pawn_slug_enemy_v2.py
 
       - name: Test Queen v2 2D derivation
+        if: steps.scope.outputs.enemy == 'true'
         run: python3 scripts/art/test_pawn_slug_enemy_queen_v2.py
 
       - name: Test Scout v2 2D derivation
+        if: steps.scope.outputs.enemy == 'true'
         run: python3 scripts/art/test_pawn_slug_enemy_scout_v2.py
 
       - name: Export Matthias runtime sprites
+        if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
           python3 scripts/art/export_matthias_sprite_smoke.py \
@@ -75,6 +118,7 @@ jobs:
             --output-dir /tmp/pawn-slug-sprite-smoke/matthias
 
       - name: Export enemy runtime sprites
+        if: steps.scope.outputs.enemy == 'true'
         run: |
           set -euo pipefail
           python3 scripts/art/export_enemy_sprite_smoke.py \
@@ -82,19 +126,25 @@ jobs:
             --output-dir /tmp/pawn-slug-sprite-smoke/enemies
 
       - name: Build Queen v2 candidate review
+        if: steps.scope.outputs.enemy == 'true'
         run: |
           python3 scripts/art/derive_pawn_slug_enemy_queen_v2.py \
             --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
             --output-dir /tmp/pawn-slug-sprite-smoke/enemies/queen-v2
 
       - name: Build Scout v2 candidate review
+        if: steps.scope.outputs.enemy == 'true'
         run: |
           python3 scripts/art/derive_pawn_slug_enemy_scout_v2.py \
             --gdscript games/pawn-slug-godot/scripts/enemy_visual.gd \
             --output-dir /tmp/pawn-slug-sprite-smoke/enemies/scout-v2
 
+      - name: Sprite smoke skipped · unrelated staging/PR surface
+        if: steps.scope.outputs.matthias != 'true' && steps.scope.outputs.enemy != 'true'
+        run: echo 'No Matthias/enemy sprite owner changed; expensive sprite export skipped.'
+
       - name: Upload Pawn Slug sprite smoke evidence
-        if: always()
+        if: always() && (steps.scope.outputs.matthias == 'true' || steps.scope.outputs.enemy == 'true')
         uses: actions/upload-artifact@v7
         with:
           name: pawn-slug-sprite-smoke-${{ env.DEPLOY_SHA }}
