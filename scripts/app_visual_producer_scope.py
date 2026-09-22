@@ -59,6 +59,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
+        "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
@@ -219,6 +220,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
+    assert classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"]) == "experiments-hub"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
     assert classify(["scripts/async_resilience_gate.mjs"]) == "none"
