@@ -53,7 +53,6 @@ INVENTORY = {
     'render-production-guardrail.yml': 'delivery-guardrail',
     'staging-ai-worker.yml': 'delivery-accreditation',
     'staging-deploy.yml': 'delivery-staging',
-    'staging-pages-fast.yml': 'delivery-staging-frontend',
     'staging-pawn-slug-visual.yml': 'visual-staging-evidence',
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
