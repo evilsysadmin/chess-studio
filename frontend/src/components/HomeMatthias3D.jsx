@@ -30,6 +30,40 @@ const FRONT_GEOMETRY_SET = new Set(
 export function homeMatthiasIsFrontGeometryName(value = '') {
   return FRONT_GEOMETRY_SET.has(homeMatthiasCanonicalMeshName(value));
 }
+
+const CANONICAL_IDENTITY = 'stern-no-moustache-pawn';
+const CANONICAL_POSE_LANGUAGE = 'permanently-stern';
+const APPROVED_REFERENCE_SHA256 = new Set([
+  // pre-v19 canonical asset kept only for a cache-safe migration window
+  'beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975',
+  // 2026-09-23 approved 3D pawn canon
+  '0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707',
+]);
+
+export function homeMatthiasCanonicalMetadata(model) {
+  let metadata = null;
+  model?.traverse?.((node) => {
+    if (metadata || !node?.userData?.canonical_identity) return;
+    metadata = {
+      canonicalIdentity: String(node.userData.canonical_identity || ''),
+      canonicalReference: String(node.userData.canonical_reference || ''),
+      referenceSha256: String(node.userData.canonical_reference_sha256 || ''),
+      poseLanguage: String(node.userData.canonical_pose_language || ''),
+      assetVersion: String(node.userData.matthias_asset_version || ''),
+    };
+  });
+  return metadata;
+}
+
+export function homeMatthiasAcceptsCanonicalMetadata(metadata) {
+  return Boolean(
+    metadata
+    && metadata.canonicalIdentity === CANONICAL_IDENTITY
+    && metadata.poseLanguage === CANONICAL_POSE_LANGUAGE
+    && APPROVED_REFERENCE_SHA256.has(metadata.referenceSha256)
+    && /^home-blender-classic-v\d+$/.test(metadata.assetVersion),
+  );
+}
 const CLIP_BY_PROFILE = Object.freeze({
   idle: 'Idle',
   speak: 'Speak',
@@ -443,6 +477,17 @@ export default function HomeMatthias3D({
           return;
         }
         model = gltf.scene;
+        const metadata = homeMatthiasCanonicalMetadata(model);
+        if (!homeMatthiasAcceptsCanonicalMetadata(metadata)) {
+          disposeModel(model);
+          model = null;
+          canvas.dataset.matthiasIdentityContract = 'rejected';
+          setModelState('fallback');
+          return;
+        }
+        canvas.dataset.matthiasIdentityContract = 'verified';
+        canvas.dataset.matthiasAssetVersion = metadata.assetVersion;
+        canvas.dataset.matthiasReferenceSha256 = metadata.referenceSha256;
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);
         model.scale.setScalar(1.0);

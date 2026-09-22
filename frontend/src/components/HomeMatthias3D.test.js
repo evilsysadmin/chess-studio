@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  homeMatthiasAcceptsCanonicalMetadata,
   homeMatthiasCameraPose,
   homeMatthiasCanonicalFallbackDataUrl,
+  homeMatthiasCanonicalMetadata,
   homeMatthiasClipForProfile,
   homeMatthiasClipStartTime,
   homeMatthiasFrontDirectionFromPoints,
@@ -13,6 +15,49 @@ import {
 } from './HomeMatthias3D.jsx';
 
 describe('Home Matthias canonical Blender rig', () => {
+  it('accepts only Blender assets that prove a known canonical Matthias identity', () => {
+    const canonicalNode = {
+      userData: {
+        canonical_identity: 'stern-no-moustache-pawn',
+        canonical_reference: 'home-3d-pawn-approved-2026-09-23',
+        canonical_reference_sha256: '0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707',
+        canonical_pose_language: 'permanently-stern',
+        matthias_asset_version: 'home-blender-classic-v19',
+      },
+    };
+    const model = { traverse: (visit) => visit(canonicalNode) };
+    const metadata = homeMatthiasCanonicalMetadata(model);
+    expect(metadata).toMatchObject({
+      canonicalIdentity: 'stern-no-moustache-pawn',
+      poseLanguage: 'permanently-stern',
+      assetVersion: 'home-blender-classic-v19',
+    });
+    expect(homeMatthiasAcceptsCanonicalMetadata(metadata)).toBe(true);
+    expect(homeMatthiasAcceptsCanonicalMetadata({
+      ...metadata,
+      canonicalIdentity: 'generic-officer-pawn',
+    })).toBe(false);
+    expect(homeMatthiasAcceptsCanonicalMetadata({
+      ...metadata,
+      referenceSha256: 'deadbeef',
+    })).toBe(false);
+    expect(homeMatthiasAcceptsCanonicalMetadata({
+      ...metadata,
+      assetVersion: 'random-model-v1',
+    })).toBe(false);
+    expect(homeMatthiasCanonicalMetadata({ traverse: (visit) => visit({ userData: {} }) })).toBeNull();
+  });
+
+  it('keeps the previous approved hash during the explicit cache-safe migration window', () => {
+    expect(homeMatthiasAcceptsCanonicalMetadata({
+      canonicalIdentity: 'stern-no-moustache-pawn',
+      canonicalReference: 'classic-pawn-first-avatar',
+      referenceSha256: 'beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975',
+      poseLanguage: 'permanently-stern',
+      assetVersion: 'home-blender-classic-v17',
+    })).toBe(true);
+  });
+
   it('maps real Home activities onto distinct rig routines', () => {
     expect(homeMatthiasMotionProfile({ scene: 'moment-loss-dossier', activity: 'Revisando viejas heridas' })).toBe('dossier');
     expect(homeMatthiasMotionProfile({ scene: 'moment-book-doze-sleep', activity: 'Dormido sobre el manual' })).toBe('sleep');
