@@ -11,7 +11,7 @@ Lee siempre:
 
 ## Límites
 
-- Pawn Slug es 2D puro. Blender no forma parte de sprites runtime.
+- Pawn Slug es 2D puro. Las herramientas de authoring 3D no forman parte de sprites runtime.
 - Godot posee movimiento, combate, colisiones, spawn safety, selección de animación y projectile/muzzle origins. React sólo hospeda/orquesta el export.
 - La escala corporal canónica de Matthias es común a todas las armas. Un arma larga nunca puede encoger al actor para caber: si no cabe, el build falla.
 - Cambiar de arma debe ser un swap de recursos ya calentados; la carga foreground es sólo red de seguridad excepcional.
