@@ -85,23 +85,35 @@ async function capture(label) {
 }
 
 async function collectVisualMetrics(expectedWeapon, expectedAction = '') {
-  const requestId = await page.evaluate(() => {
-    window.__pawnSlugVisualMetrics = null;
-    window.__pawnSlugVisualMetricsRequest = Number(window.__pawnSlugVisualMetricsRequest || 0) + 1;
-    return window.__pawnSlugVisualMetricsRequest;
-  });
-  await page.waitForFunction(
-    ({ requestId, expectedWeapon, expectedAction }) => {
-      const metrics = window.__pawnSlugVisualMetrics;
-      if (!metrics || Number(metrics.request_id) !== requestId) return false;
-      if (expectedWeapon && String(metrics.weapon || '') !== expectedWeapon) return false;
-      if (expectedAction && String(metrics.action || '') !== expectedAction) return false;
-      return true;
-    },
-    { requestId, expectedWeapon, expectedAction },
-    { timeout: 10_000 },
+  const deadline = Date.now() + 10_000;
+  let lastMetrics = null;
+  while (Date.now() < deadline) {
+    const requestId = await page.evaluate(() => {
+      window.__pawnSlugVisualMetrics = null;
+      window.__pawnSlugVisualMetricsRequest = Number(window.__pawnSlugVisualMetricsRequest || 0) + 1;
+      return window.__pawnSlugVisualMetricsRequest;
+    });
+    try {
+      await page.waitForFunction(
+        (requestId) => {
+          const metrics = window.__pawnSlugVisualMetrics;
+          return metrics && Number(metrics.request_id) === requestId;
+        },
+        requestId,
+        { timeout: 1_000 },
+      );
+    } catch {
+      continue;
+    }
+    lastMetrics = await page.evaluate(() => window.__pawnSlugVisualMetrics);
+    const weaponMatches = !expectedWeapon || String(lastMetrics?.weapon || '') === expectedWeapon;
+    const actionMatches = !expectedAction || String(lastMetrics?.action || '') === expectedAction;
+    if (weaponMatches && actionMatches) return lastMetrics;
+    await page.waitForTimeout(40);
+  }
+  throw new Error(
+    `Pawn Slug visual metrics did not settle to weapon=${expectedWeapon || '*'} action=${expectedAction || '*'}; last=${JSON.stringify(lastMetrics)}`,
   );
-  return page.evaluate(() => window.__pawnSlugVisualMetrics);
 }
 
 async function captureDetailedCloseup(label, canvas) {
