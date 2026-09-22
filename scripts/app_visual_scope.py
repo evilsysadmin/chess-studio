@@ -92,6 +92,8 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
+    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"}:
+        return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
     if lower in {
@@ -154,6 +156,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         return None
     if "chesscom" in lower:
+        return set()
+    if ".test." in name or ".spec." in name:
         return set()
     if _is_noncanonical_admin_surface(path):
         return set()
@@ -417,6 +421,14 @@ def self_test() -> None:
     ])
     assert mixed_admin_home.capture_groups == "home"
 
+    for frontend_test in (
+        "frontend/src/gameSessionDescriptor.test.js",
+        "frontend/src/spectatorSessionRunner.test.js",
+        "frontend/src/components/AnyVisualOwner.test.jsx",
+    ):
+        test_scope = classify([frontend_test])
+        assert test_scope.capture_groups == "none"
+
     for nonvisual_path in sorted(NONVISUAL_FRONTEND_PATHS):
         nonvisual = classify([nonvisual_path])
         assert nonvisual.capture_groups == "none"
@@ -426,6 +438,10 @@ def self_test() -> None:
         "frontend/src/components/WarRoom3D.jsx",
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
+
+    for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"):
+        gate_scope = classify([nonvisual_gate])
+        assert gate_scope.capture_groups == "none"
 
     css_manifest = classify(["scripts/css_architecture_manifest.json"])
     assert css_manifest.capture_groups == "none"
