@@ -22,6 +22,19 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - `oci-staging-mutations` se reserva para operaciones que realmente mutan OCI/host. Diagnósticos y probes read-only no deben bloquear un deploy por compartir un mutex innecesario.
 - La concurrencia distingue **cancelable work** de **remote mutation**. Lanes read-only, visuales o de post-check pueden usar `cancel-in-progress: true` para matar trabajo stale. Un deploy/Terraform/runtime-sync que ya está mutando OCI/host se serializa con `cancel-in-progress: false`: abortarlo a mitad puede dejar estado parcial. La generación obsoleta se descarta mediante exact-SHA/supersession al adquirir el lock, antes de su siguiente mutación; no se deja sobrescribir una generación más nueva.
 
+## Path filters y blast radius
+
+Los `paths`/`paths-ignore` forman parte del contrato de calidad: deben representar la superficie que un gate realmente consume, no sólo el lenguaje del archivo cambiado.
+
+- Si un gate escanea un árbol completo, un Markdown dentro de ese árbol puede activar o incluso fallar el gate. Antes de añadir `paths-ignore: '**/*.md'`, estrechar el propio gate para que inspeccione sólo archivos semánticamente relevantes si ésa es la intención.
+- No ampliar una lane pesada a todo el repo por comodidad. War Room, Pawn Slug, Blender, OCI y visuales deben seguir siendo path-aware.
+- Tampoco ocultar un archivo de un workflow si ese archivo sí cambia el contrato que el workflow valida (por ejemplo manifests, AGENTS scoped consumidos por tooling, builders, test fixtures o contratos de runtime).
+- Un cambio docs-only que no puede alterar el runtime no debería provocar builds/export/render costosos una vez que el gate haya sido correctamente delimitado.
+- Cuando se cambia un path filter, añadir/actualizar un test de wiring o contract check que pruebe al menos un path que debe activar y otro que no.
+- Si una nueva clase de archivo empieza a ser leída por un gate, actualizar path filter y documentación en la misma PR.
+
+Lección operativa: no resolver falsos positivos de CI debilitando el gate a ciegas; primero decidir si el archivo pertenece realmente a su superficie semántica.
+
 ## Acciones reutilizables
 
 | Acción | Responsabilidad |
