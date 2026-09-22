@@ -21,7 +21,6 @@ const QUESTION_FACT_KEYS = Object.freeze({
   ]),
 });
 
-export const MATTHIAS_DAILY_QUESTION_KINDS = Object.freeze(Object.keys(QUESTION_FACT_KEYS));
 
 export function focusMatthiasDailyFacts(kind, facts = {}) {
   const allowed = QUESTION_FACT_KEYS[kind] || QUESTION_FACT_KEYS.improve;
