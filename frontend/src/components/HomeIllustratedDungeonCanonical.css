@@ -1,6 +1,8 @@
 /* Canonical Dungeon stair integration.
  * The approved Great Hall art now contains the real spiral stair. Desktop uses
  * the stair itself as the interactive surface; only the label/panel are UI.
+ * MAZMORRAS stays always-visible (not hover-revealed) so the destination is
+ * discoverable without a mouse pass, matching JUGAR/CONTINUAR.
  */
 
 @media (min-width: 1000px) {
@@ -57,8 +59,8 @@
     width: 14.4cqw;
     display: grid;
     gap: .34cqw;
-    opacity: 0;
-    transform: translateY(.35cqw);
+    opacity: 1;
+    transform: none;
     transition: opacity .18s ease, transform .22s ease;
     pointer-events: none;
   }
@@ -83,7 +85,7 @@
     bottom: 4.55cqw;
     color: #d5ad58;
     font: 700 max(16px, 1.05cqw)/1 Georgia, serif;
-    opacity: 0;
+    opacity: 1;
     transition: opacity .18s ease, transform .22s ease;
     pointer-events: none;
   }

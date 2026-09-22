@@ -14,6 +14,7 @@ Primer slice pequeño del backlog de Home vivo.
 ## Dirección canónica de interacción
 
 - Los hotspots/objetos interactivos de Home deben reaccionar al hover y al focus de forma diegética y breve: luz, glow, microdesplazamiento, parallax o una animación equivalente integrada en la escena. Un tooltip estático por sí solo no es suficiente cuando el propio objeto puede comunicar que es interactivo.
+- Excepción: JUGAR/CONTINUAR, COMBAT CHESS, TORNEOS y MAZMORRAS mantienen su título/detalle siempre visible (no ocultos hasta hover/focus), porque son los destinos primarios de Home y necesitan quedar legibles sin depender de una pasada de ratón. El resto del refuerzo diegético (halo, icono, chevron atenuados) sigue reservado al hover/focus/active.
 - La misma intención debe existir con teclado/focus. En touch, la acción no puede depender de un estado hover imposible; el primer tap/foco debe seguir dejando claro qué objeto se puede activar.
 - `prefers-reduced-motion` elimina el movimiento decorativo, pero conserva una señal visual accesible mediante luz, contraste o estado.
 - La Home principal se mantiene limpia. Los modos secundarios o de mayor profundidad se agrupan detrás de una transición diegética explícita hacia un **Dungeon/zona secundaria**.
