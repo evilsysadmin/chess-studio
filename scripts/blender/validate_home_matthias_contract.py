@@ -45,6 +45,8 @@ from home_matthias_contract import (  # noqa: E402
     REQUIRED_ACTIONS,
     REQUIRED_OBJECTS,
     REST_ARM_MIN_Y,
+    TUNIC_TO_HEAD_WIDTH,
+    NECK_TO_HEAD_WIDTH,
 )
 
 
@@ -176,6 +178,12 @@ def main():
     assert_range("cap/head width", cap_width / head_width, CAP_TO_HEAD_WIDTH)
     assert_range("total height/base width", total_height / base_width, BODY_HEIGHT_TO_BASE_WIDTH)
     assert_range("cap visor/head width", world_width(visor) / head_width, CAP_VISOR_TO_HEAD_WIDTH)
+    assert_range("tunic/head width", world_width(tunic) / head_width, TUNIC_TO_HEAD_WIDTH)
+    assert_range(
+        "neck/head width",
+        world_width(objects["Classic neck plinth"]) / head_width,
+        NECK_TO_HEAD_WIDTH,
+    )
 
     assert_range(
         "cap top/crown width",

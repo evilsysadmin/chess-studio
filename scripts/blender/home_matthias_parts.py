@@ -217,24 +217,24 @@ def build_rig():
 
 
 def build_character():
-    ivory=mat('classic warm ivory',(.60,.49,.35),.50,.02); ivory_hi=mat('classic ivory highlight',(.78,.66,.48),.40,.02)
+    ivory=mat('classic warm ivory',(.64,.53,.38),.50,.02); ivory_hi=mat('classic ivory highlight',(.80,.68,.50),.40,.02)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.20,.26); navy_soft=mat('classic navy cloth',(.006,.008,.012),.30,.14)
     leather=mat('classic black leather',(.006,.004,.003),.30,.18); brass=mat('classic aged brass',(.50,.27,.055),.20,.93); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.38,.06); black=mat('classic brow eye mouth',(.0015,.002,.003),.48); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.32,.55); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v18'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='home-3d-pawn-approved-2026-09-23'; rig['canonical_reference_sha256']='0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v19'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='home-3d-pawn-approved-2026-09-23'; rig['canonical_reference_sha256']='0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
         cyl('Classic plinth lower',(0,0,.060),.620,.120,navy,verts=132,bevel=.023), cyl('Classic plinth brass edge',(0,0,.126),.604,.014,brass,verts=128,bevel=.003),
         cyl('Classic plinth upper',(0,0,.180),.570,.082,navy,verts=128,bevel=.016), cyl('Classic plinth upper brass edge',(0,0,.222),.552,.012,brass,verts=124,bevel=.003), cyl('Classic plinth shoulder',(0,0,.258),.520,.048,navy,verts=124,bevel=.012),
-        revolve_profile('Classic lower pawn',[(.526,.250),(.516,.290),(.500,.332),(.476,.380),(.447,.430),(.418,.485),(.394,.542),(.378,.598),(.374,.650),(.383,.700),(.404,.750),(.435,.800),(.462,.845),(.472,.886),(.467,.925),(.452,.960),(.430,.995),(.402,1.025),(.372,1.048),(.344,1.064)],navy,136,.009),
+        revolve_profile('Classic lower pawn',[(.526,.250),(.516,.290),(.500,.332),(.476,.380),(.447,.430),(.418,.485),(.394,.542),(.378,.598),(.365,.650),(.355,.700),(.348,.750),(.342,.800),(.336,.845),(.330,.886),(.322,.925),(.314,.960),(.306,.995),(.298,1.025),(.290,1.048),(.282,1.064)],navy,136,.009),
         cyl('Classic lower brass line',(0,0,.350),.495,.014,brass,verts=116,bevel=.003), cyl('Classic service brass line',(0,0,.610),.395,.012,brass,verts=108,bevel=.003),
     ]
 
-    cross_brass=front_prism('Classic chest cross brass',(0,-.469,.850),iron_cross_points(.151),.014,brass,.006); cross_inset=front_prism('Classic chest cross inset',(0,-.479,.850),iron_cross_points(.120),.010,leather,.004)
+    cross_brass=front_prism('Classic chest cross brass',(0,-.349,.850),iron_cross_points(.145),.014,brass,.006); cross_inset=front_prism('Classic chest cross inset',(0,-.358,.850),iron_cross_points(.114),.010,leather,.004)
     spine += [
-        revolve_profile('Classic navy tunic',[(.382,.655),(.390,.710),(.410,.765),(.440,.815),(.468,.858),(.478,.895),(.474,.930),(.462,.965),(.442,.998),(.416,1.026),(.386,1.048),(.352,1.064)],navy_soft,120,.006),
-        cyl('Classic waist service ring',(0,0,.660),.395,.019,brass,verts=108,bevel=.004), cyl('Classic neck plinth',(0,0,1.082),.398,.066,collar_steel,verts=116,bevel=.011), cyl('Classic brass collar line',(0,0,1.119),.403,.013,brass,verts=116,bevel=.003),
-        box('Classic tunic piping.L',(-.298,-.376,.855),(.011,.006,.148),brass,(0,math.radians(-9),0),.004), box('Classic tunic piping.R',(.298,-.376,.855),(.011,.006,.148),brass,(0,math.radians(9),0),.004), cross_brass,cross_inset,
+        revolve_profile('Classic navy tunic',[(.360,.655),(.356,.710),(.352,.765),(.348,.815),(.342,.858),(.336,.895),(.330,.930),(.322,.965),(.314,.998),(.306,1.026),(.298,1.048),(.292,1.064)],navy_soft,120,.006),
+        cyl('Classic waist service ring',(0,0,.660),.376,.019,brass,verts=108,bevel=.004), cyl('Classic neck plinth',(0,0,1.082),.345,.050,navy,verts=116,bevel=.009), cyl('Classic brass collar line',(0,0,1.111),.350,.012,brass,verts=116,bevel=.003),
+        cross_brass,cross_inset,
     ]
 
     cap_crown=loft_ellipse('Classic cap crown',[(.350,.268,1.615,0.000,.016),(.360,.274,1.658,.004,.010),(.374,.281,1.701,.014,.002),(.392,.288,1.744,.030,-.010),(.407,.292,1.783,.050,-.024),(.414,.294,1.818,.068,-.038)],navy,120,.008)
@@ -255,10 +255,12 @@ def build_character():
     # separate hat and exposed the whole face.
     for cap_part in head:
         if cap_part.name.startswith('Classic cap'):
-            cap_part.location.z -= .09
+            cap_part.location.z -= .11
+            cap_part.scale.x *= .92
+            cap_part.scale.y *= .92
 
-    shoulder_l=(-.294,.218,.902); elbow_l=(-.338,.228,.802); wrist_l=(-.292,.212,.710); shoulder_r=(.294,.218,.902); elbow_r=(.338,.228,.802); wrist_r=(.292,.212,.710)
-    upper_l=cyl_between('Upper arm.L',shoulder_l,elbow_l,.032,navy,40,.008); upper_r=cyl_between('Upper arm.R',shoulder_r,elbow_r,.032,navy,40,.008); fore_l=cyl_between('Forearm.L',elbow_l,wrist_l,.027,navy_soft,40,.007); fore_r=cyl_between('Forearm.R',elbow_r,wrist_r,.027,navy_soft,40,.007); cuff_l=cyl('Cuff.L',wrist_l,.030,.016,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.030,.016,brass,verts=32,bevel=.003); hand_l=sphere('Hand.L',(-.290,.202,.698),(.021,.020,.024),ivory,24); hand_r=sphere('Hand.R',(.290,.202,.698),(.021,.020,.024),ivory,24)
+    shoulder_l=(-.218,.250,.902); elbow_l=(-.238,.260,.802); wrist_l=(-.204,.245,.710); shoulder_r=(.218,.250,.902); elbow_r=(.238,.260,.802); wrist_r=(.204,.245,.710)
+    upper_l=cyl_between('Upper arm.L',shoulder_l,elbow_l,.024,navy,40,.006); upper_r=cyl_between('Upper arm.R',shoulder_r,elbow_r,.024,navy,40,.006); fore_l=cyl_between('Forearm.L',elbow_l,wrist_l,.021,navy_soft,40,.006); fore_r=cyl_between('Forearm.R',elbow_r,wrist_r,.021,navy_soft,40,.006); cuff_l=cyl('Cuff.L',wrist_l,.024,.014,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.024,.014,brass,verts=32,bevel=.003); hand_l=sphere('Hand.L',(-.204,.238,.698),(.018,.017,.021),ivory,24); hand_r=sphere('Hand.R',(.204,.238,.698),(.018,.017,.021),ivory,24)
 
     book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
