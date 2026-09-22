@@ -43,6 +43,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
+| Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | CI, workflows, entrega y automerge | [`.github/workflows/README.md`](.github/workflows/README.md), [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) |
 | Contexto de producto y arranque local | [`README.md`](README.md) |
 | Historia antigua de releases | [`docs/archive/README-release-diary.md`](docs/archive/README-release-diary.md) |
@@ -89,6 +90,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
 - [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md)
+- [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
 - [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md)
 - [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md)
 - [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md)
