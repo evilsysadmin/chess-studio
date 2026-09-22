@@ -6,11 +6,13 @@ also keeps Matthias on the Godot AnimatedSprite2D/SpriteFrames path.
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
+STAGE_MAPS_DIR = GODOT_ROOT / "maps"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
@@ -523,6 +525,110 @@ def validate_contract(path: pathlib.Path, label: str, required: tuple[str, ...],
                 violations.append(f"{label} reintrodujo identidad visual legacy: {token}")
 
 
+
+def _stage_rect(entry: dict) -> tuple[float, float, float, float]:
+    return (
+        float(entry.get("x", 0.0)),
+        float(entry.get("y", 0.0)),
+        float(entry.get("w", 0.0)),
+        float(entry.get("h", 0.0)),
+    )
+
+
+def _rects_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
+
+
+def _horizontal_gap(a: dict, b: dict) -> float:
+    a0, a1 = float(a.get("x", 0.0)), float(a.get("x", 0.0)) + float(a.get("w", 0.0))
+    b0, b1 = float(b.get("x", 0.0)), float(b.get("x", 0.0)) + float(b.get("w", 0.0))
+    return max(0.0, max(a0, b0) - min(a1, b1))
+
+
+def validate_stage_geometry(violations: list[str]) -> None:
+    """Reject intersecting or physically orphaned authored platforms.
+
+    This is intentionally conservative and tied to player.gd's current movement envelope:
+    ~120 px vertical jump/ledge gain, with generous horizontal travel allowances.
+    Ladders are treated as explicit authored connectivity.
+    """
+    max_rise = 120.0
+    max_drop = 220.0
+    max_up_gap = 260.0
+    max_down_gap = 340.0
+
+    for path in sorted(STAGE_MAPS_DIR.glob("*.json")):
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            violations.append(f"{path.relative_to(ROOT)}: manifest inválido: {exc}")
+            continue
+
+        platforms = [p for p in manifest.get("platforms", []) if isinstance(p, dict)]
+        ladders = [l for l in manifest.get("ladders", []) if isinstance(l, dict)]
+        world = manifest.get("world", {}) if isinstance(manifest.get("world", {}), dict) else {}
+        floor_y = float(world.get("floor_y", 610.0))
+
+        for i, first in enumerate(platforms):
+            first_rect = _stage_rect(first)
+            if first_rect[2] <= 0.0 or first_rect[3] <= 0.0:
+                violations.append(f"{path.relative_to(ROOT)}: plataforma {i} tiene tamaño no positivo")
+                continue
+            for j in range(i + 1, len(platforms)):
+                second = platforms[j]
+                if _rects_overlap(first_rect, _stage_rect(second)):
+                    violations.append(
+                        f"{path.relative_to(ROOT)}: plataformas {i}/{j} se superponen "
+                        f"({first.get('kind', '?')} @ {first.get('x')},{first.get('y')} / "
+                        f"{second.get('kind', '?')} @ {second.get('x')},{second.get('y')})"
+                    )
+
+        reachable: set[int] = {
+            i for i, p in enumerate(platforms)
+            if 0.0 <= floor_y - float(p.get("y", floor_y)) <= max_rise
+        }
+
+        for i, p in enumerate(platforms):
+            if i in reachable:
+                continue
+            py = float(p.get("y", 0.0))
+            px0 = float(p.get("x", 0.0))
+            px1 = px0 + float(p.get("w", 0.0))
+            for ladder in ladders:
+                lx = float(ladder.get("x", 0.0)) + float(ladder.get("w", 0.0)) * 0.5
+                if (
+                    abs(float(ladder.get("top_y", py)) - py) <= 32.0
+                    and px0 - 48.0 <= lx <= px1 + 48.0
+                    and float(ladder.get("bottom_y", floor_y)) >= floor_y - 16.0
+                ):
+                    reachable.add(i)
+                    break
+
+        changed = True
+        while changed:
+            changed = False
+            for i, target in enumerate(platforms):
+                if i in reachable:
+                    continue
+                target_y = float(target.get("y", 0.0))
+                for source_index in tuple(reachable):
+                    source = platforms[source_index]
+                    rise = float(source.get("y", 0.0)) - target_y
+                    gap = _horizontal_gap(source, target)
+                    if (-max_drop <= rise <= max_rise and gap <= max_up_gap) or (rise < 0.0 and gap <= max_down_gap):
+                        reachable.add(i)
+                        changed = True
+                        break
+
+        for i, platform in enumerate(platforms):
+            if i not in reachable:
+                violations.append(
+                    f"{path.relative_to(ROOT)}: plataforma {i} inaccesible desde suelo/ruta "
+                    f"({platform.get('kind', '?')} @ {platform.get('x')},{platform.get('y')})"
+                )
+
 def validate() -> None:
     if not GODOT_ROOT.is_dir():
         raise GateError(f"No existe Pawn Slug Godot: {GODOT_ROOT}")
@@ -564,6 +670,8 @@ def validate() -> None:
     validate_contract(TOUCH, "touch_controls.gd", REQUIRED_TOUCH, violations)
     validate_contract(PLAYER, "player.gd", REQUIRED_MOBILE_PLAYER, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_MOBILE_PAUSE, violations)
+
+    validate_stage_geometry(violations)
 
     if violations:
         raise GateError("\n".join(violations))

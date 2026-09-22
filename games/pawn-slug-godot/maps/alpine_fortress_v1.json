@@ -26,6 +26,19 @@
       "material": "concrete"
     },
     {
+      "x": 500,
+      "y": 326,
+      "w": 136,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
       "x": 620,
       "y": 450,
       "w": 150,
@@ -53,6 +66,18 @@
       "material": "metal"
     },
     {
+      "x": 1160,
+      "y": 304,
+      "w": 132,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
+    },
+    {
       "x": 1270,
       "y": 520,
       "w": 190,
@@ -70,6 +95,24 @@
       "route": "climb"
     },
     {
+      "x": 1610,
+      "y": 360,
+      "w": 145,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "stone",
+      "route": "climb"
+    },
+    {
+      "x": 1710,
+      "y": 275,
+      "w": 155,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "stone",
+      "route": "climb"
+    },
+    {
       "x": 1760,
       "y": 350,
       "w": 210,
@@ -82,12 +125,41 @@
       }
     },
     {
+      "x": 1840,
+      "y": 320,
+      "w": 150,
+      "h": 24,
+      "kind": "climb_ledge",
+      "material": "concrete",
+      "route": "climb"
+    },
+    {
       "x": 2040,
       "y": 420,
       "w": 160,
       "h": 24,
       "kind": "ledge",
       "material": "concrete"
+    },
+    {
+      "x": 2105,
+      "y": 394,
+      "w": 118,
+      "h": 20,
+      "kind": "ice_step",
+      "material": "stone",
+      "one_way": true,
+      "route": "crevasse_bypass"
+    },
+    {
+      "x": 2240,
+      "y": 330,
+      "w": 106,
+      "h": 20,
+      "kind": "fortress_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "crevasse_bypass"
     },
     {
       "x": 2260,
@@ -133,6 +205,19 @@
       "material": "concrete"
     },
     {
+      "x": 3380,
+      "y": 310,
+      "w": 142,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "concrete",
+      "one_way": true,
+      "visual": {
+        "rail": true,
+        "lamp": true
+      }
+    },
+    {
       "x": 3550,
       "y": 400,
       "w": 210,
@@ -166,6 +251,16 @@
       "material": "concrete"
     },
     {
+      "x": 4100,
+      "y": 246,
+      "w": 190,
+      "h": 24,
+      "kind": "fortress_perch",
+      "material": "metal",
+      "route": "fortress_ridge",
+      "one_way": true
+    },
+    {
       "x": 4320,
       "y": 360,
       "w": 210,
@@ -195,6 +290,28 @@
       "material": "concrete"
     },
     {
+      "x": 4970,
+      "y": 300,
+      "w": 146,
+      "h": 20,
+      "kind": "fortress_service_ledge",
+      "material": "metal",
+      "one_way": true,
+      "visual": {
+        "rail": true
+      }
+    },
+    {
+      "x": 5055,
+      "y": 505,
+      "w": 110,
+      "h": 20,
+      "kind": "fortress_access_step",
+      "material": "metal",
+      "one_way": true,
+      "route": "fortress_ridge"
+    },
+    {
       "x": 5130,
       "y": 390,
       "w": 250,
@@ -214,113 +331,6 @@
       "h": 24,
       "kind": "ledge",
       "material": "stone"
-    },
-    {
-      "x": 1610,
-      "y": 360,
-      "w": 145,
-      "h": 24,
-      "kind": "climb_ledge",
-      "material": "stone",
-      "route": "climb"
-    },
-    {
-      "x": 1710,
-      "y": 275,
-      "w": 155,
-      "h": 24,
-      "kind": "climb_ledge",
-      "material": "stone",
-      "route": "climb"
-    },
-    {
-      "x": 1840,
-      "y": 360,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_ledge",
-      "material": "concrete",
-      "route": "climb"
-    },
-    {
-      "x": 4100,
-      "y": 246,
-      "w": 190,
-      "h": 24,
-      "kind": "fortress_perch",
-      "material": "metal",
-      "route": "fortress_ridge",
-      "one_way": true
-    },
-    {
-      "x": 500,
-      "y": 326,
-      "w": 136,
-      "h": 20,
-      "kind": "fortress_service_ledge",
-      "material": "metal",
-      "one_way": true,
-      "visual": {
-        "rail": true,
-        "lamp": true
-      }
-    },
-    {
-      "x": 1160,
-      "y": 304,
-      "w": 132,
-      "h": 20,
-      "kind": "fortress_service_ledge",
-      "material": "metal",
-      "one_way": true,
-      "visual": {
-        "rail": true
-      }
-    },
-    {
-      "x": 3380,
-      "y": 310,
-      "w": 142,
-      "h": 20,
-      "kind": "fortress_service_ledge",
-      "material": "concrete",
-      "one_way": true,
-      "visual": {
-        "rail": true,
-        "lamp": true
-      }
-    },
-    {
-      "x": 4970,
-      "y": 300,
-      "w": 146,
-      "h": 20,
-      "kind": "fortress_service_ledge",
-      "material": "metal",
-      "one_way": true,
-      "visual": {
-        "rail": true
-      }
-    },
-    {
-      "x": 2105,
-      "y": 394,
-      "w": 118,
-      "h": 20,
-      "kind": "ice_step",
-      "material": "stone",
-      "one_way": true,
-      "route": "crevasse_bypass"
-    },
-    {
-      "x": 2240,
-      "y": 330,
-      "w": 106,
-      "h": 20,
-      "kind": "fortress_step",
-      "material": "metal",
-      "one_way": true,
-      "route": "crevasse_bypass"
     }
   ],
   "obstacles": [
