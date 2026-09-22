@@ -9,6 +9,7 @@ const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
 const SetpieceVisual := preload("res://scripts/setpiece_visual.gd")
 const StageGeometryPolicy := preload("res://scripts/stage_geometry_policy.gd")
 const StageManifestLoader := preload("res://scripts/stage_manifest_loader.gd")
+const RuntimeBootstrap := preload("res://scripts/runtime_bootstrap.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
 const STAGE_CATALOG := ["industrial_front_v1", "harbor_raid_v1", "alpine_fortress_v1", "jungle_relay_v1"]
 const VIEW_SIZE := Vector2(1280.0, 720.0)
@@ -224,41 +225,14 @@ func _ready() -> void:
     queue_redraw()
 
 func _selected_stage_id() -> String:
-    if OS.has_feature("web"):
-        var selected = JavaScriptBridge.eval(
-            "(new URLSearchParams(window.location.search)).get('stage') || ''",
-            true,
-        )
-        var candidate := String(selected)
-        if candidate in STAGE_CATALOG:
-            return candidate
-    return DEFAULT_STAGE_ID
+    return RuntimeBootstrap.selected_stage_id(DEFAULT_STAGE_ID, STAGE_CATALOG)
 
 func _apply_visual_capture_probe() -> void:
-    # CI's Playwright harness injects these JS-only globals before Godot boots.
-    # Normal production pages never define them, so probes cannot alter regular
-    # gameplay or become public URL cheats.
-    if not OS.has_feature("web"):
-        return
-
-    var weapon_probe = JavaScriptBridge.eval(
-        "typeof window.__pawnSlugVisualProbeWeapon === 'string' ? window.__pawnSlugVisualProbeWeapon : ''",
-        true,
+    RuntimeBootstrap.apply_visual_capture_probe(
+        player,
+        _stage_start_x,
+        _world_size,
     )
-    var weapon_id := String(weapon_probe)
-    if weapon_id in ["machinegun", "shotgun", "panzerfaust"]:
-        player.grant_weapon(weapon_id)
-
-    var position_probe = JavaScriptBridge.eval(
-        "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
-        true,
-    )
-    if typeof(position_probe) not in [TYPE_INT, TYPE_FLOAT]:
-        return
-    var target_x := clampf(float(position_probe), _stage_start_x, _world_size.x - 96.0)
-    player.global_position.x = target_x
-    player.velocity = Vector2.ZERO
-    player.reset_physics_interpolation()
 
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()
