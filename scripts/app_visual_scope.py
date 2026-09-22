@@ -203,13 +203,18 @@ def _experiment_parts(path: str) -> set[str]:
     ):
         return {"chronicles"}
     if name == "experiments-visual-artifact.spec.js":
-        return set(EXPERIMENT_ORDER)
+        return {"landing", "pawnslug"}
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
         return {"chronicles"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
+    if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/lablaunchintent.js",
+    }:
+        return {"landing", "pawnslug"}
     if "experiment" in lower:
         return set(EXPERIMENT_ORDER)
     return set(EXPERIMENT_ORDER)
@@ -322,6 +327,13 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    lab_visual = classify([
+        "frontend/src/components/LabScreen.jsx",
+        "frontend/src/labLaunchIntent.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ])
+    assert lab_visual.capture_groups == "experiments"
+    assert lab_visual.experiments_scope == "landing,pawnslug"
     lab = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
