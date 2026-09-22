@@ -784,7 +784,9 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
         "king": (0.11, 0.06, 0.42, 0.11, 0.47),
     }
     r1, r2, depth, head, height = profiles[kind]
-    piece_scale = 1.06
+    # Scaled down to match the smaller board square (add_table_and_board);
+    # keep this proportional to `square` so pieces don't crowd their square.
+    piece_scale = 0.82
     r1 *= piece_scale
     r2 *= piece_scale
     depth *= piece_scale
@@ -1341,9 +1343,11 @@ def add_table_and_board(materials):
         cube(f"HOME_PROP_table_front_leg_capital_{side}", (leg_x, -0.40, 0.91), (0.28, 0.28, 0.11), wood, bevel=0.045)
         cylinder(f"HOME_PROP_table_front_leg_band_{side}", (leg_x, -0.40, 0.69), 0.22, 0.055, materials["gold"], vertices=18)
 
-    # The canonical board nearly fills the table width; the earlier blockout
-    # made it read like a travel set.
-    square = 0.54
+    # Earlier passes kept escalating this (0.31 -> 0.47 -> 0.50 -> 0.54) to
+    # avoid a "travel set" read, but that overshot: board+pieces ended up
+    # dominating the table with no room for lived-in props. Pull back to a
+    # size that still reads as a real board without eating the whole table.
+    square = 0.42
     board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
@@ -1390,7 +1394,7 @@ def add_table_and_board(materials):
         0.295,
         0.055,
         banner,
-        fold_depth=0.050,
+        fold_depth=0.075,
         horizontal_segments=20,
         vertical_segments=12,
     )
@@ -1537,6 +1541,76 @@ def add_table_and_board(materials):
         [(-2.02, 2.05, 1.36), (-2.02, 2.05, 1.55)],
         0.022,
         metal,
+    )
+
+    # Coffee pot + steaming mug: the right side of the table opened up once
+    # the board shrank (`square` above). Mirrors the candle/books cluster on
+    # the left without duplicating it.
+    ceramic = materials["ceramic"]
+    steam = materials["steam"]
+    top = table_z + 0.18
+    pot_x, pot_y = 2.55, 1.85
+    cylinder("HOME_PROP_table_pot_foot", (pot_x, pot_y, top + 0.035), 0.115, 0.035, materials["brass_dark"], vertices=22)
+    pot_body = cone(
+        "HOME_PROP_table_pot_body",
+        (pot_x, pot_y, top + 0.18),
+        0.105,
+        0.078,
+        0.22,
+        materials["brass_dark"],
+        vertices=22,
+    )
+    cylinder("HOME_PROP_table_pot_neck", (pot_x, pot_y, top + 0.315), 0.052, 0.025, metal, vertices=20)
+    cylinder("HOME_PROP_table_pot_lid", (pot_x, pot_y, top + 0.349), 0.060, 0.009, materials["brass_dark"], vertices=20)
+    sphere("HOME_PROP_table_pot_knob", (pot_x, pot_y, top + 0.378), (0.020, 0.020, 0.020), materials["gold"])
+    pot_spout = cone(
+        "HOME_PROP_table_pot_spout",
+        (pot_x - 0.14, pot_y, top + 0.24),
+        0.026,
+        0.009,
+        0.16,
+        materials["brass_dark"],
+        vertices=14,
+    )
+    pot_spout.rotation_euler[1] = math.radians(58.0)
+    curve_tube(
+        "HOME_PROP_table_pot_handle",
+        [(pot_x + 0.11, pot_y, top + 0.30), (pot_x + 0.20, pot_y, top + 0.22), (pot_x + 0.12, pot_y, top + 0.14)],
+        0.018,
+        metal,
+    )
+
+    mug_x, mug_y = 3.05, 1.55
+    cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.045), 0.062, 0.045, ceramic, vertices=24)
+    cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.094), 0.067, 0.004, ceramic, vertices=24)
+    cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.086), 0.054, 0.003, materials["dark"], vertices=24)
+    curve_tube(
+        "HOME_PROP_table_mug_handle",
+        [(mug_x + 0.062, mug_y, top + 0.075), (mug_x + 0.11, mug_y, top + 0.05), (mug_x + 0.062, mug_y, top + 0.025)],
+        0.014,
+        ceramic,
+    )
+    curve_tube(
+        "HOME_PROP_table_mug_steam_0",
+        [
+            (mug_x - 0.015, mug_y, top + 0.090),
+            (mug_x + 0.010, mug_y, top + 0.160),
+            (mug_x - 0.020, mug_y, top + 0.240),
+            (mug_x + 0.015, mug_y, top + 0.320),
+        ],
+        0.010,
+        steam,
+    )
+    curve_tube(
+        "HOME_PROP_table_mug_steam_1",
+        [
+            (mug_x + 0.020, mug_y + 0.01, top + 0.090),
+            (mug_x - 0.010, mug_y + 0.01, top + 0.150),
+            (mug_x + 0.025, mug_y + 0.01, top + 0.210),
+            (mug_x - 0.005, mug_y + 0.01, top + 0.270),
+        ],
+        0.008,
+        steam,
     )
 
     for side in (-1, 1):
@@ -2686,7 +2760,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "stone_dark": material("HOME_MAT_stone_dark", (0.022, 0.017, 0.014, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
         "floor_stone": material("HOME_MAT_floor_stone", (0.095, 0.108, 0.150, 1), roughness=0.93, bump_scale=8.2, bump_strength=0.18, variation=0.18, variation_scale=5.6, texture_profile="floor_stone"),
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
-        "table_wood": material("HOME_MAT_table_wood", (0.078, 0.026, 0.010, 1), roughness=0.66, bump_scale=5.0, bump_strength=0.13, variation=0.27, variation_scale=2.2, grain=True, texture_profile="wood"),
+        # A waxed, well-kept oak read (lower roughness, richer grain contrast)
+        # instead of the flatter dark plank the table used to share with wall wood.
+        "table_wood": material("HOME_MAT_table_wood", (0.098, 0.038, 0.016, 1), roughness=0.50, bump_scale=5.4, bump_strength=0.17, variation=0.34, variation_scale=2.0, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
@@ -2702,10 +2778,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "heraldry_gold": material(
             "HOME_MAT_heraldry_gold",
             (0.52, 0.27, 0.075, 1),
-            roughness=0.46,
-            metallic=0.40,
-            emission=(0.060, 0.022, 0.003, 1),
-            emission_strength=0.10,
+            roughness=0.40,
+            metallic=0.52,
+            emission=(0.075, 0.028, 0.004, 1),
+            emission_strength=0.16,
             texture_profile="metal",
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
@@ -2723,7 +2799,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "rug": material("HOME_MAT_rug", (0.155, 0.017, 0.022, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
         "rug_worn": material("HOME_MAT_rug_worn", (0.118, 0.016, 0.019, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
         "rug_thread": material("HOME_MAT_rug_thread", (0.26, 0.145, 0.040, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
-        "banner": material("HOME_MAT_banner", (0.135, 0.014, 0.020, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.045, variation=0.10, variation_scale=8.0, texture_profile="textile"),
+        # Richer weave contrast so the drape reads as a heraldic banner rather
+        # than a flat dark blob under the CONTINUAR label.
+        "banner": material("HOME_MAT_banner", (0.165, 0.018, 0.024, 1), roughness=0.80, bump_scale=20.0, bump_strength=0.075, variation=0.16, variation_scale=7.4, texture_profile="textile"),
+        "steam": material("HOME_MAT_steam", (0.62, 0.58, 0.52, 1), roughness=0.85, emission=(0.085, 0.078, 0.066, 1), emission_strength=0.05),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
             (0.056, 0.005, 0.007, 1),
