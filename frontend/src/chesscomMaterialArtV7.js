@@ -1,10 +1,3 @@
-export const CHESSCOM_MATERIAL_ART_V7 = Object.freeze({
-  identity:'material-art-v7',
-  surfaces:'weathered-industrial',
-  palette:'charcoal-brass-teal-rust',
-  microtexture:'procedural-subtle',
-});
-
 function setColor(B, target, hex) {
   if (!target) return;
   const next=B.Color3.FromHexString(hex);

@@ -1,10 +1,3 @@
-export const CHESSCOM_ENVIRONMENT_ART_V4 = Object.freeze({
-  identity:'environment-art-v4',
-  decals:'procedural-ground-decals',
-  dressing:'restrained-microprops',
-  lighting:'warm-cool-bounce-v2',
-});
-
 function decalTexture(B,scene,name,kind,disposables){
   const texture=new B.DynamicTexture(name,{width:128,height:128},scene,false);
   texture.hasAlpha=true;texture.wrapU=B.Texture.CLAMP_ADDRESSMODE;texture.wrapV=B.Texture.CLAMP_ADDRESSMODE;

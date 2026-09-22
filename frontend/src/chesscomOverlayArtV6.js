@@ -1,9 +1,3 @@
-export const CHESSCOM_OVERLAY_ART_V6 = Object.freeze({
-  identity:'tactical-overlay-v6',
-  palette:'muted-brass-teal-rust',
-  glow:'restrained-local-signal',
-});
-
 const OVERLAY_PROFILE = Object.freeze({
   reachable:Object.freeze({ diffuse:'#24383a', emissive:'#3f7072', alpha:.43 }),
   selected:Object.freeze({ diffuse:'#274548', emissive:'#679da1', alpha:.70 }),
