@@ -228,7 +228,7 @@ def script_python_helper_unreferenced() -> list[Path]:
 
     text_suffixes = {
         ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg",
-        ".sh", ".mjs", ".js", ".jsx", ".gd", ".tf", ".hcl",
+        ".sh", ".mjs", ".js", ".jsx", ".gd", ".tf", ".hcl", ".py",
     }
     wiring_files = [
         p.resolve()
