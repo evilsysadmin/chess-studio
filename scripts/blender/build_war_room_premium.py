@@ -109,7 +109,7 @@ def set_socket(bsdf, value, *names):
 
 
 def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
-             texture=None, scale=6.0, bump=0.0, emission=None, weather=False):
+             texture=None, scale=6.0, bump=0.0, emission=None, emission_strength=2.5, weather=False):
     if weather:
         # The weathering vertex colour averages a little below 1.0, so the
         # authored albedo is lifted by the same amount to keep overall exposure.
@@ -128,7 +128,7 @@ def material(name, rgba, *, metal=0.0, rough=0.5, coat=0.0, sheen=0.0,
     set_socket(bsdf, sheen, "Sheen Weight", "Sheen")
     if emission:
         set_socket(bsdf, emission, "Emission Color", "Emission")
-        set_socket(bsdf, 2.5, "Emission Strength")
+        set_socket(bsdf, emission_strength, "Emission Strength")
     if texture:
         tex = nodes.new("ShaderNodeTexCoord")
         mapping = nodes.new("ShaderNodeMapping")
@@ -616,7 +616,7 @@ def add_room(static, mats):
                       0.14, mats["fire_core"], static, scale=(sx, 0.28, sz))
         core.rotation_euler.y = tilt
 
-    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.78), 258.0, (1.0, 0.23, 0.048), static, radius=1.28)
+    light("WR_LIGHT_fireplace", "POINT", (-4.55, 5.15, 1.78), 258.0, (1.0, 0.23, 0.048), static, radius=1.55)
     anchor("WR_ANCHOR_fireplace_practical", (-4.55, 5.05, 1.92), static)
 
     # Back desk. Use the slightly lighter trim walnut on the structural
@@ -657,7 +657,12 @@ def add_room(static, mats):
     sphere("WR_DESK_lamp_shade_lip", (-0.72, 5.56, 2.84), 0.34,
            mats["brass_dark"], static, scale=(1.48, 0.68, 0.10))
     sphere("WR_DESK_lamp_shade", (-0.72, 5.56, 2.98), 0.34,
-           mats["green"], static, scale=(1.4, 0.65, 0.45))
+           mats["green_glow"], static, scale=(1.4, 0.65, 0.45))
+    # A banker's lamp with no bulb and no glow read as a cold, dead prop on an
+    # otherwise warm desk. A small warm point light under the shade and a soft
+    # emissive glaze on the glass make it a real light source.
+    light("WR_LIGHT_desk_lamp", "POINT", (-0.72, 5.50, 2.92), 26.0,
+          (1.0, 0.74, 0.42), static, radius=0.30)
     sphere("WR_DESK_lamp_finial", (-0.72, 5.56, 3.14), 0.055,
            mats["brass"], static, scale=(0.90, 0.72, 0.68))
 
@@ -1652,7 +1657,7 @@ def build():
         scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
         pass
-    scene.view_settings.exposure = -0.24
+    scene.view_settings.exposure = -0.18
 
     if scene.world is None:
         scene.world = bpy.data.worlds.new("WR_WORLD")
@@ -1692,6 +1697,7 @@ def build():
         "armor_dark": material("WR_MAT_armor_dark", (0.070, 0.064, 0.056, 1), metal=0.90, rough=0.45, coat=0.08, texture="metal", scale=22, bump=0.030),
         "charcoal": material("WR_MAT_charcoal", (0.008, 0.006, 0.004, 1), rough=0.98),
         "green": material("WR_MAT_green_glaze", (0.012, 0.12, 0.055, 1), rough=0.24, coat=0.62),
+        "green_glow": material("WR_MAT_green_glaze_lit", (0.012, 0.12, 0.055, 1), rough=0.22, coat=0.58, emission=(0.16, 0.30, 0.16, 1), emission_strength=0.55),
         "book_a": material("WR_MAT_book_burgundy", (0.14, 0.020, 0.016, 1), rough=0.74, sheen=0.10),
         "book_b": material("WR_MAT_book_green", (0.030, 0.090, 0.050, 1), rough=0.74, sheen=0.10),
         "picture_a": material("WR_MAT_picture_a", (0.020, 0.016, 0.014, 1), rough=0.82, texture="stone", scale=4.5, bump=0.022),
@@ -1712,7 +1718,7 @@ def build():
     weather_architecture()
     add_preview_board(dynamic, mats)
 
-    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 430.0, (1.0, 0.72, 0.44), static, size=5.8)
+    key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 455.0, (1.0, 0.70, 0.40), static, size=5.8)
     look_at(key, (0, 0.5, 1.1))
     fill = light("WR_LIGHT_fill", "AREA", (5.5, -3.2, 5.6), 165.0, (0.54, 0.58, 0.66), static, size=5.4)
     look_at(fill, (0.2, 0.2, 1.5))
@@ -1730,7 +1736,7 @@ def build():
                       (1.0, 0.58, 0.32), static, size=4.2)
     look_at(rear_left, (-4.5, 6.2, 3.35))
     rear_right = light("WR_LIGHT_rear_wash_right", "AREA", (5.8, 0.7, 5.4), 208.0,
-                       (0.72, 0.63, 0.54), static, size=4.0)
+                       (0.88, 0.66, 0.44), static, size=4.0)
     look_at(rear_right, (4.8, 6.2, 3.35))
 
     cam_data = bpy.data.cameras.new("WR_CAMERA_hero")
