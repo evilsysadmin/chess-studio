@@ -31,6 +31,7 @@ Repository automation and human/agent workflow deliberately complement each othe
 - Do not busy-wait on Actions. Once a Draft PR is functionally complete and CI is running, move to the next useful, naturally related slice. Up to five PRs may be rotated in one chat/work session before a mandatory review pass.
 - Before pushing the next PR, take a small checkpoint on the previous ones: metadata/check status only. Green required checks allow **Ready for review**; red checks require a targeted fix; pending remains Draft.
 - Enable/verify native auto-merge only after the PR is Ready for review.
+- GitHub GraphQL may reject `enablePullRequestAutoMerge` with `UNPROCESSABLE` when the PR is already `clean`/immediately mergeable. In that narrow case, after re-verifying the exact head SHA and all required checks green, merge immediately with an `expected_head_sha` guard instead of leaving a green PR stranded. This is a delivery fallback, not permission to bypass pending/red checks or merge a moved head.
 - After merge, inspect the relevant post-merge chain (Main admission, staging deployment/accreditation and any surface-specific smoke). A PR is not operationally finished merely because GitHub merged it.
 
 ### GitHub access discipline

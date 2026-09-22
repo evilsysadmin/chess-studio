@@ -45,6 +45,20 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Fallback 3D → 2D por WebGL | **GATE** | `war-room-webgl-fallback.spec.js` cubre tanto arranque sin WebGL como `webglcontextlost` en mitad de partida; en ambos casos aparece el tablero 2D, desaparece el canvas 3D y e2→e4 sigue produciendo exactamente una mutación sin ErrorBoundary. | Mantener al tocar lifecycle/context recovery/fallback. |
 | Onboarding inicial guiado por Matthias | **PENDIENTE** | Contrato fijado: Matthias guía selección de una pieza, muestra destinos legales reales y acompaña una o dos interacciones; es skippable, reabrible desde ayuda y equivalente con mouse/touch/teclado. | Añadir E2E first-run + replay desde Help verificando que los destinos vienen del estado legal compartido y que el estado tutorial se limpia al cerrar/completar. |
 
+## Ciclo de vida narrativo y efectos de una sola vez
+
+Los comentarios de Matthias, reacciones de espectadores y beats diegéticos de War Room son **efectos derivados de eventos reales**, no efectos de render.
+
+- Un hecho de partida debe tener una identidad estable suficiente para deduplicar (por ejemplo partida + ply/movimiento + tipo de incidente).
+- Rerenders, cambios 2D↔3D, remounts, F5, reconnect, rehidratación o polling no pueden volver a emitir un comentario ya consumido en la sesión live.
+- Una captura de dama, mate, blunder u otro incidente produce como máximo la reacción que corresponda a **ese** evento; no se vuelve a disparar porque el estado resultante siga conteniendo la misma condición.
+- Replay/autopsia puede tener su propio playback deliberado, pero no debe reutilizar accidentalmente el canal de efectos live.
+- Si CPU y espectadores pueden reaccionar al mismo incidente, la decisión CPU/espectadores/ambos/silencio se toma una vez por evento y se conserva; no se decide de nuevo en cada render.
+
+Los beats dependientes de la escena empiezan cuando la escena necesaria está realmente lista/visible, no cuando React montó el componente. Si Matthias debe advertir que el fuego está apagado y llamar a Hans, el reloj del beat comienza tras el readiness visual de War Room; un render lento, pestaña oculta o GLB tardío no puede consumir la entrada de Hans antes de que el usuario pueda verla.
+
+Las pruebas de regresión deben poder retrasar artificialmente el readiness/remount y demostrar que el beat ocurre una sola vez y en orden.
+
 ## Onboarding first-run de War Room
 
 Matthias es el guía diegético del primer contacto con War Room. No usar una voz genérica de sistema ni una capa tutorial desconectada del mundo.
