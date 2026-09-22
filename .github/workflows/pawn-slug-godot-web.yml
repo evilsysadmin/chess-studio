@@ -221,7 +221,7 @@ jobs:
             python3 scripts/art/migrate_matthias_legacy_bank.py               --source "$root/$weapon/source-run12.png"               --reference "$root/reference/pistol-run12.png"               --columns 12 --row-count 1 --rows 0               --output "$root/$weapon/candidate-run12.png"               --report "$root/$weapon/run12-health.json"
           done
       - name: Upload canonical-scale migration candidates
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: pawn-slug-legacy-scale-candidates-${{ github.event.pull_request.number }}
