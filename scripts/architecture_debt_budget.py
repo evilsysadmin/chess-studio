@@ -27,7 +27,7 @@ BUDGETS = {
     "frontend/src/components/CombatDeploymentView.jsx": 928,
     "frontend/src/chroniclesOfMatthiasIsometric.js": 1103,
     # Godot runtime hotspots: keep behavior stable while responsibilities are extracted.
-    "games/pawn-slug-godot/scripts/main.gd": 3136,
+    "games/pawn-slug-godot/scripts/main.gd": 3059,
     "games/pawn-slug-godot/scripts/matthias_art.gd": 2146,
 }
 
