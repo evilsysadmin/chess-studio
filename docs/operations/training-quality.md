@@ -1,5 +1,7 @@
 # Training, puzzles y “Así juegas” — contrato de calidad
 
+Este dominio sigue también [`architecture-ownership.md`](architecture-ownership.md): engine/quality gate posee la validez táctica; la UI sólo presenta resultados acreditados.
+
 Este contrato cubre puzzles curados, puzzles personales/generados, coaching “Así juegas” y CTAs de entrenamiento derivados de partidas reales.
 
 ## Principio
