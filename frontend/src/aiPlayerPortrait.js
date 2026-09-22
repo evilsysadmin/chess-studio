@@ -1,3 +1,4 @@
+import { finiteNumber } from './numberUtils.js';
 import {
   AI_NARRATIVE_MANUAL_COOLDOWN_MS,
   createAiNarrativeCache,
@@ -17,11 +18,6 @@ const playerPortraitCache = createAiNarrativeCache({
   manualRequestKind: 'portrait_manual',
   cooldownMs: AI_NARRATIVE_MANUAL_COOLDOWN_MS,
 });
-
-function finiteNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
 
 function nonNegativeInt(value) {
   const number = Number(value);
