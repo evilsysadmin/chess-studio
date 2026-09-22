@@ -101,6 +101,8 @@ Todos los frames de una misma familia deben tener:
 - orientación inequívoca;
 - arma consistente en forma, tamaño, mano y punto de agarre.
 
+El tamaño/longitud del arma **no participa en el cálculo de escala corporal**. Si un arma larga impide que el frame integrado quepa en el safe envelope a escala canónica, el frame se rechaza y se migra a body + weapon layer/socket (o a un contrato de celda mayor explícitamente aprobado). Nunca encoger a Matthias, ni en authoring ni en runtime, para hacer sitio al arma.
+
 ### 3.1. Jitter y desplazamiento
 
 La animación puede mover el cuerpo, pero el movimiento tiene que ser **intencional**. No confundir movimiento animado con jitter de alineación.
