@@ -173,12 +173,9 @@ def migrate(
         target_height, target_center_x, target_foot_y = row_reference_profile(
             reference, grid, row
         )
-        row_report: dict[str, object] = {
-            "target_height": target_height,
-            "target_center_x": target_center_x,
-            "target_foot_y": target_foot_y,
-            "frames": [],
-        }
+
+        prepared: list[tuple[Image.Image, list[dict], object]] = []
+        source_heights: list[float] = []
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
             try:
@@ -201,17 +198,33 @@ def migrate(
             metrics = geometry_metrics(cell, ALPHA_THRESHOLD)
             if metrics is None:
                 raise GeometryError(f"source-empty:{row}:{col}")
-            scale = target_height / float(metrics.body_height)
-            if not MIN_SCALE <= scale <= MAX_SCALE:
-                raise GeometryError(
-                    f"scale-out-of-range:{row}:{col}:{scale:.4f}"
-                )
+            prepared.append((cell, removed_noise, metrics))
+            source_heights.append(float(metrics.body_height))
+
+        source_median_height = float(statistics.median(source_heights))
+        row_scale = target_height / source_median_height
+        if not MIN_SCALE <= row_scale <= MAX_SCALE:
+            raise GeometryError(
+                f"row-scale-out-of-range:{row}:{row_scale:.4f}"
+            )
+
+        row_report: dict[str, object] = {
+            "target_height": target_height,
+            "source_median_height": source_median_height,
+            "scale": round(row_scale, 6),
+            "target_center_x": target_center_x,
+            "target_foot_y": target_foot_y,
+            "frames": [],
+        }
+        output_heights: list[float] = []
+
+        for col, (cell, removed_noise, metrics) in enumerate(prepared):
             try:
                 placed = place_frame_fixed_scale(
                     cell,
                     PlacementContract(
                         canvas_size=(grid.cell, grid.cell),
-                        scale=scale,
+                        scale=row_scale,
                         body_center_x=target_center_x,
                         foot_y=target_foot_y,
                         safe_margin_px=SAFE_MARGIN,
@@ -223,15 +236,18 @@ def migrate(
             except GeometryError as exc:
                 raise GeometryError(
                     f"frame:{row}:{col}:source-height={metrics.body_height}:"
-                    f"scale={scale:.4f}:{exc}"
+                    f"row-scale={row_scale:.4f}:{exc}"
                 ) from exc
             post = geometry_metrics(placed, ALPHA_THRESHOLD)
             if post is None:
                 raise GeometryError(f"post-empty:{row}:{col}")
-            if abs(float(post.body_height) - target_height) > 3.0:
+            expected_height = float(metrics.body_height) * row_scale
+            if abs(float(post.body_height) - expected_height) > 3.0:
                 raise GeometryError(
-                    f"post-height:{row}:{col}:{post.body_height}!={target_height:.2f}"
+                    f"post-height:{row}:{col}:{post.body_height}!="
+                    f"{expected_height:.2f}"
                 )
+            output_heights.append(float(post.body_height))
 
             box = (
                 col * grid.cell,
@@ -245,13 +261,21 @@ def migrate(
                 {
                     "frame": col,
                     "source_height": metrics.body_height,
-                    "scale": round(scale, 6),
+                    "scale": round(row_scale, 6),
                     "output_height": post.body_height,
                     "foot_y": post.foot_y,
                     "center_x": post.body_center_x,
                     "removed_legacy_noise": removed_noise,
                 }
             )
+
+        output_median_height = float(statistics.median(output_heights))
+        if abs(output_median_height - target_height) > 3.0:
+            raise GeometryError(
+                f"row-median-height:{row}:{output_median_height:.2f}!="
+                f"{target_height:.2f}"
+            )
+        row_report["output_median_height"] = output_median_height
         report["rows"][str(row)] = row_report
 
     return out, report
@@ -295,6 +319,16 @@ def assert_grid_case(grid: Grid, rows: tuple[int, ...]) -> None:
 def self_test() -> None:
     assert_grid_case(Grid(DEFAULT_CELL, DEFAULT_COLS, DEFAULT_ROW_COUNT), DEFAULT_TARGET_ROWS)
     assert_grid_case(Grid(DEFAULT_CELL, 12, 1), (0,))
+
+    probe_grid = Grid(DEFAULT_CELL, DEFAULT_COLS, 1)
+    probe_source, probe_reference = synthetic_atlas(
+        probe_grid,
+        target_height=220,
+        source_height=180,
+    )
+    _, probe_report = migrate(probe_source, probe_reference, probe_grid, (0,))
+    row_frames = probe_report["rows"]["0"]["frames"]
+    assert len({frame["scale"] for frame in row_frames}) == 1
 
     fringe = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
     fringe_draw = ImageDraw.Draw(fringe)
