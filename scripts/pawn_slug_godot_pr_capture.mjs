@@ -179,10 +179,16 @@ for (const profile of weaponProfiles) {
   await captureDetailedCloseup(`${base}-idle`, weaponStage.canvas);
 
   await page.keyboard.down('ArrowRight');
+  const runSamples = new Set([
+    0,
+    Math.floor(profile.runFrames / 4),
+    Math.floor(profile.runFrames / 2),
+    Math.floor((profile.runFrames * 3) / 4),
+    profile.runFrames - 1,
+  ]);
   for (let frame = 0; frame < profile.runFrames; frame += 1) {
-    const label = `${base}-run-${String(frame).padStart(2, '0')}`;
-    await capture(label);
-    if ([0, Math.floor(profile.runFrames / 2), profile.runFrames - 1].includes(frame)) {
+    if (runSamples.has(frame)) {
+      const label = `${base}-run-${String(frame).padStart(2, '0')}`;
       await captureDetailedCloseup(label, weaponStage.canvas);
     }
     await page.waitForTimeout(48);
@@ -190,9 +196,8 @@ for (const profile of weaponProfiles) {
 
   await page.keyboard.down('z');
   for (let frame = 0; frame < 6; frame += 1) {
-    const label = `${base}-run-fire-${String(frame).padStart(2, '0')}`;
-    await capture(label);
     if ([0, 3, 5].includes(frame)) {
+      const label = `${base}-run-fire-${String(frame).padStart(2, '0')}`;
       await captureDetailedCloseup(label, weaponStage.canvas);
     }
     await page.waitForTimeout(55);
@@ -204,9 +209,8 @@ for (const profile of weaponProfiles) {
   await page.keyboard.down('ArrowDown');
   await page.waitForTimeout(160);
   for (let frame = 0; frame < 4; frame += 1) {
-    const label = `${base}-crouch-${String(frame).padStart(2, '0')}`;
-    await capture(label);
     if ([0, 3].includes(frame)) {
+      const label = `${base}-crouch-${String(frame).padStart(2, '0')}`;
       await captureDetailedCloseup(label, weaponStage.canvas);
     }
     await page.waitForTimeout(90);
