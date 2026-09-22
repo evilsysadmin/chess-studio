@@ -112,7 +112,7 @@ def contract_for(bank: dict) -> dict:
         "actor": actor,
         "weapon": weapon,
         "composition": strategy,
-        "body_parity": body_parity,
+        **({"body_parity": body_parity} if body_parity is not None else {}),
         "socket_quality": ({
             "min_hand_separation_px": 6.0,
             "max_hand_separation_px": 72.0,
