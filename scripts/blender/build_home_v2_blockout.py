@@ -187,6 +187,20 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         cross = 0.5 + 0.5 * math.sin((v * 9.0 + u * 3.0) * math.tau)
         return max(0.0, min(1.0, 0.40 + rib ** 6 * 0.30 + (coarse - 0.5) * 0.32
                             + (cross - 0.5) * 0.06 + (fine - 0.5) * 0.08))
+    if profile == "globe":
+        # A large-scale, threshold-edged blob pattern reads as embossed continents on
+        # an antique study globe (the material stays a single hue; only the relief
+        # varies), rather than generic mottled noise.
+        coarse_lat = _value_noise(u, v * 0.55, seed + 601, 5)
+        mid = _value_noise(u, v * 0.6, seed + 613, 9)
+        continents = coarse_lat * 0.62 + mid * 0.38
+        land = 1.0 if continents > 0.52 else 0.0
+        edge_soften = _value_noise(u, v, seed + 641, 23)
+        coast = abs(continents - 0.52) < 0.035
+        if coast:
+            land = 0.5 + (edge_soften - 0.5) * 0.6
+        value = 0.22 + land * 0.62 + (fine - 0.5) * 0.08
+        return max(0.0, min(1.0, value))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
         brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
@@ -335,6 +349,7 @@ def _packed_surface_arrays(
         "paper": (0.88, 1.12),
         "wax": (0.90, 1.10),
         "leaf": (0.74, 1.24),
+        "globe": (0.72, 1.22),
     }.get(profile, (0.82, 1.14))
     rough_span = {
         "stone": 0.07,
@@ -346,6 +361,7 @@ def _packed_surface_arrays(
         "paper": 0.055,
         "wax": 0.045,
         "leaf": 0.09,
+        "globe": 0.05,
     }.get(profile, 0.10)
     normal_strength = {
         "stone": 2.5,
@@ -357,6 +373,7 @@ def _packed_surface_arrays(
         "paper": 1.15,
         "wax": 0.85,
         "leaf": 1.8,
+        "globe": 2.2,
     }.get(profile, 2.5) * (size / base_size)
 
     factor = low + (high - low) * heights
@@ -414,6 +431,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "leather": 128,
         "metal": 128,
         "leaf": 128,
+        "globe": 144,
     }.get(profile, 96)
     # Normal maps are ~3/4 of the texture bytes, so resolution is spent only on
     # the surfaces that dominate the frame. Dark decals, soot and small props keep
@@ -2775,12 +2793,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
             "HOME_MAT_globe",
-            (0.028, 0.050, 0.044, 1),
-            roughness=0.86,
-            variation=0.18,
-            variation_scale=3.4,
-            bump_scale=10.0,
-            bump_strength=0.038,
+            (0.115, 0.185, 0.155, 1),
+            roughness=0.78,
+            texture_profile="globe",
         ),
         "plant": material("HOME_MAT_plant", (0.085, 0.200, 0.055, 1), roughness=0.82, texture_profile="leaf"),
         "ceramic": material("HOME_MAT_ceramic", (0.42, 0.37, 0.30, 1), roughness=0.68, bump_scale=7.0, bump_strength=0.035, variation=0.08, variation_scale=4.4),
