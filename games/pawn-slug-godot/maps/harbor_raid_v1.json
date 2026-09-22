@@ -215,15 +215,6 @@
       "route": "climb"
     },
     {
-      "x": 2990,
-      "y": 365,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_dock",
-      "material": "wood",
-      "route": "climb"
-    },
-    {
       "x": 4060,
       "y": 318,
       "w": 165,

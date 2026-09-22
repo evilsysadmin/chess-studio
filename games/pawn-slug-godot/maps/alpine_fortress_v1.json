@@ -196,7 +196,7 @@
     },
     {
       "x": 5130,
-      "y": 390,
+      "y": 410,
       "w": 250,
       "h": 24,
       "kind": "fortress_walk",
@@ -231,15 +231,6 @@
       "h": 24,
       "kind": "climb_ledge",
       "material": "stone",
-      "route": "climb"
-    },
-    {
-      "x": 1840,
-      "y": 360,
-      "w": 150,
-      "h": 24,
-      "kind": "climb_ledge",
-      "material": "concrete",
       "route": "climb"
     },
     {
