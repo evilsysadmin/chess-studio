@@ -152,8 +152,6 @@ mutating_operations = (
     "production-runtime-bootstrap",
     "production-runtime-sync",
     "vault-bootstrap",
-    "k3s-start",
-    "k3s-rollback",
 )
 read_only_operations = (
     "diagnose",
@@ -163,12 +161,15 @@ read_only_operations = (
     "smoke",
     "vault-validate",
     "vault-validate-pending",
-    "k3s-status",
 )
 for operation in mutating_operations:
     assert f'"{operation}"' in concurrency_block, f"missing mutation lock classification: {operation}"
 for operation in read_only_operations:
     assert f'"{operation}"' not in concurrency_block, f"read-only operation must not take mutation lock: {operation}"
+for operation in ("k3s-start", "k3s-rollback", "k3s-status"):
+    assert f'"{operation}"' not in service_control, (
+        f"K3s lab operation leaked back into canonical OCI service control: {operation}"
+    )
 assert "group: oci-staging-service-control" not in service_control, (
     "OCI service control must not use a private mutation mutex that can race staging mutations"
 )
