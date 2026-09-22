@@ -154,7 +154,7 @@ export function matthiasMoodAvatar(mood = 'observant') {
   return MOOD_ASSETS[mood] || baseAvatar;
 }
 
-export function matthiasContextAvatar({ mood = 'observant', hour = new Date().getHours(), context = 'default' } = {}) {
+ = {}) {
   if (context === 'home' || context === 'briefing') return matthiasTimeVisual(hour).avatar;
   if (context === 'mood') return matthiasMoodAvatar(mood);
   return baseAvatar;

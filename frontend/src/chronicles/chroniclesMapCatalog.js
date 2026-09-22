@@ -326,16 +326,6 @@ export function chroniclesMapTileAt(mapOrState, x, y) {
   return map.grid[y]?.[x] || '#';
 }
 
-export function chroniclesMapEnemyById(mapOrState, enemyId) {
-  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
-  return map.enemies.find((enemy) => enemy.id === enemyId) || null;
-}
-
-export function chroniclesMapInteractable(mapOrState, id) {
-  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
-  return map.interactables.find((entry) => entry.id === id) || null;
-}
-
 export function chroniclesMapInitialEnemyState(mapId = DEFAULT_CHRONICLES_MAP_ID) {
   const map = chroniclesMapById(mapId);
   return map.enemies.reduce((state, enemy) => {
