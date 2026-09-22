@@ -220,7 +220,7 @@ def build_character():
     ivory=mat('classic warm ivory',(.64,.53,.38),.50,.02); ivory_hi=mat('classic ivory highlight',(.80,.68,.50),.40,.02)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.20,.26); navy_soft=mat('classic navy cloth',(.006,.008,.012),.30,.14)
     leather=mat('classic black leather',(.006,.004,.003),.30,.18); brass=mat('classic aged brass',(.50,.27,.055),.20,.93); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.38,.06); black=mat('classic brow eye mouth',(.0015,.002,.003),.48); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.32,.55); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v19'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='home-3d-pawn-approved-2026-09-23'; rig['canonical_reference_sha256']='0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v20'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='home-3d-pawn-approved-2026-09-23'; rig['canonical_reference_sha256']='0b5c32eaae136c1e4e6d85a253b606437599b06dd7a4d4d4d0d637a39ead5707'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
@@ -230,34 +230,24 @@ def build_character():
         cyl('Classic lower brass line',(0,0,.350),.495,.014,brass,verts=116,bevel=.003), cyl('Classic service brass line',(0,0,.610),.395,.012,brass,verts=108,bevel=.003),
     ]
 
-    cross_brass=front_prism('Classic chest cross brass',(0,-.349,.850),iron_cross_points(.145),.014,brass,.006); cross_inset=front_prism('Classic chest cross inset',(0,-.358,.850),iron_cross_points(.114),.010,leather,.004)
+    cross_brass=front_prism('Classic chest cross brass',(0,-.345,.850),iron_cross_points(.128),.014,brass,.006); cross_inset=front_prism('Classic chest cross inset',(0,-.354,.850),iron_cross_points(.100),.010,leather,.004)
     spine += [
-        revolve_profile('Classic navy tunic',[(.360,.655),(.356,.710),(.352,.765),(.348,.815),(.342,.858),(.336,.895),(.330,.930),(.322,.965),(.314,.998),(.306,1.026),(.298,1.048),(.292,1.064)],navy_soft,120,.006),
-        cyl('Classic waist service ring',(0,0,.660),.376,.019,brass,verts=108,bevel=.004), cyl('Classic neck plinth',(0,0,1.082),.345,.050,navy,verts=116,bevel=.009), cyl('Classic brass collar line',(0,0,1.111),.350,.012,brass,verts=116,bevel=.003),
+        revolve_profile('Classic navy tunic',[(.380,.655),(.370,.710),(.360,.765),(.350,.815),(.340,.858),(.330,.895),(.320,.930),(.310,.965),(.300,.998),(.292,1.026),(.284,1.048),(.276,1.064)],navy_soft,120,.006),
+        cyl('Classic waist service ring',(0,0,.660),.390,.019,brass,verts=108,bevel=.004), cyl('Classic neck plinth',(0,0,1.082),.330,.046,navy,verts=116,bevel=.009), cyl('Classic brass collar line',(0,0,1.108),.336,.011,brass,verts=116,bevel=.003),
         cross_brass,cross_inset,
     ]
 
-    cap_crown=loft_ellipse('Classic cap crown',[(.350,.268,1.615,0.000,.016),(.360,.274,1.658,.004,.010),(.374,.281,1.701,.014,.002),(.392,.288,1.744,.030,-.010),(.407,.292,1.783,.050,-.024),(.414,.294,1.818,.068,-.038)],navy,120,.008)
-    cap_top=loft_ellipse('Classic cap top',[(.408,.292,1.811,.080,-.036),(.431,.300,1.830,.098,-.047),(.454,.309,1.850,.120,-.059),(.460,.312,1.869,.140,-.070),(.450,.306,1.884,.153,-.078),(.428,.294,1.895,.160,-.084)],navy,124,.008)
-    visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
-    cap_badge=front_ellipse('Classic cap badge',(0,-.327,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.334,1.705),.027,.034,.008,leather,36,.002)
+    cap_crown=sphere('Classic cap crown',(0,.020,1.675),(.375,.270,.125),navy,80,(math.radians(-4),0,math.radians(-6)))
+    cap_top=sphere('Classic cap top',(-.018,.075,1.755),(.405,.285,.085),navy,88,(math.radians(-5),0,math.radians(-7)))
+    visor=crescent_visor('Classic cap visor',(0,-.020,1.605),leather,.274,.420,.170,.224,.024,10,48)
+    cap_badge=front_ellipse('Classic cap badge',(0,-.322,1.654),.043,.051,.009,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.329,1.654),.023,.029,.007,leather,36,.002)
     mouth=front_curve('Mouth',(0,-.350,1.248),.170,.018,.008,black)
     head += [
         sphere('Head',(0,-.012,1.345),(.340,.325,.352),ivory,96),
-        front_ellipse('Eye.L',(-.104,-.345,1.376),.026,.048,.010,black,40,.002), front_ellipse('Eye.R',(.104,-.345,1.376),.026,.048,.010,black,40,.002),
-        box('Brow.L',(-.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(24),0),.004), box('Brow.R',(.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(-24),0),.004),
-        cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.004,1.615),.364,.082,.84,cap_red,(math.radians(-2),0,0),116,.010), elliptic_cyl('Classic cap brass line',(0,-.010,1.573),.360,.013,.84,brass,(math.radians(-2),0,0),116,.003), visor, cap_badge,cap_badge_inset,
-        box('Classic cap badge wing.L',(-.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(-12),math.radians(12)),.003), box('Classic cap badge wing.R',(.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(12),math.radians(-12)),.003),
+        front_ellipse('Eye.L',(-.104,-.345,1.378),.021,.038,.010,black,40,.002), front_ellipse('Eye.R',(.104,-.345,1.378),.021,.038,.010,black,40,.002),
+        box('Brow.L',(-.106,-.356,1.438),(.074,.008,.013),black,(0,math.radians(22),0),.003), box('Brow.R',(.106,-.356,1.438),(.074,.008,.013),black,(0,math.radians(-22),0),.003),
+        cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.002,1.590),.350,.070,.84,cap_red,(math.radians(-4),0,math.radians(-6)),112,.009), elliptic_cyl('Classic cap brass line',(0,-.008,1.552),.346,.011,.84,brass,(math.radians(-4),0,math.radians(-6)),112,.003), visor, cap_badge,cap_badge_inset,
     ]
-
-    # The reference cap rests on the brow: the band crosses the forehead and the visor
-    # just clears the eyebrows. Sitting 9 cm higher it floated above the skull like a
-    # separate hat and exposed the whole face.
-    for cap_part in head:
-        if cap_part.name.startswith('Classic cap'):
-            cap_part.location.z -= .11
-            cap_part.scale.x *= .92
-            cap_part.scale.y *= .92
 
     shoulder_l=(-.218,.250,.902); elbow_l=(-.238,.260,.802); wrist_l=(-.204,.245,.710); shoulder_r=(.218,.250,.902); elbow_r=(.238,.260,.802); wrist_r=(.204,.245,.710)
     upper_l=cyl_between('Upper arm.L',shoulder_l,elbow_l,.024,navy,40,.006); upper_r=cyl_between('Upper arm.R',shoulder_r,elbow_r,.024,navy,40,.006); fore_l=cyl_between('Forearm.L',elbow_l,wrist_l,.021,navy_soft,40,.006); fore_r=cyl_between('Forearm.R',elbow_r,wrist_r,.021,navy_soft,40,.006); cuff_l=cyl('Cuff.L',wrist_l,.024,.014,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.024,.014,brass,verts=32,bevel=.003); hand_l=sphere('Hand.L',(-.204,.238,.698),(.018,.017,.021),ivory,24); hand_r=sphere('Hand.R',(.204,.238,.698),(.018,.017,.021),ivory,24)
