@@ -127,6 +127,7 @@ def _surface_groups(path: str) -> set[str] | None:
             return {"home"}
         if name in {
             "experiments-visual-artifact.spec.js",
+            "pawn-slug-godot-visual-artifact.spec.js",
             "chronicles-avatar-visual-artifact.spec.js",
             "chronicles-gameplay-visual-artifact.spec.js",
             "chronicles-tactics-visual-artifact.spec.js",
@@ -344,6 +345,11 @@ def self_test() -> None:
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
     assert hub.experiments_scope == "landing,chronicles,pawnslug"
     assert not hub.chronicles_avatar
+
+    pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])
+    assert pawn_visual.capture_groups == "experiments"
+    assert pawn_visual.experiments_scope == "pawnslug"
+    assert not pawn_visual.hans and not pawn_visual.chesscom
 
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
