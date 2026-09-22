@@ -45,7 +45,7 @@ def _source_label_components(arr):
  for component in components[1:]:
   x0,y0,x1,y1=component['bbox']; width=x1-x0; height=y1-y0; center=(x0+x1)/2.0
   if y0<SOURCE_LABEL_MIN_Y or y1<SOURCE_LABEL_MIN_BOTTOM: continue
-  if y0<body_bottom+1: continue
+  if y0<body_bottom: continue
   if component['area']>SOURCE_LABEL_MAX_AREA or width>SOURCE_LABEL_MAX_WIDTH or height>SOURCE_LABEL_MAX_HEIGHT: continue
   if abs(center-SOURCE_CELL/2.0)>SOURCE_LABEL_CENTER_TOLERANCE: continue
   hits.append(component)
