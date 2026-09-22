@@ -46,6 +46,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Matthias / memoria episódica / apariciones de sesión | [`docs/experiments/matthias-episodic-memory.md`](docs/experiments/matthias-episodic-memory.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Tutoriales de mecánicas/modos no estándar | [`docs/operations/tutorials.md`](docs/operations/tutorials.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
+| Resiliencia / modos degradados / fallbacks | [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md) |
+| Rendimiento runtime / GPU / degradación adaptativa | [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Espectador / CPU-vs-CPU | [`docs/operations/spectator.md`](docs/operations/spectator.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
@@ -103,6 +105,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
 - [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md)
 - [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
+- [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md)
+- [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md)
 - [`docs/operations/spectator.md`](docs/operations/spectator.md)
 - [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md)
 - [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md)
