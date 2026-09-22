@@ -6,6 +6,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/pawn_slug_stage_geometry_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
       - scripts/art/ingest_matthias_pistol_v1.py
@@ -32,6 +33,7 @@ on:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
       - scripts/pawn_slug_godot_2d_gate.py
+      - scripts/pawn_slug_stage_geometry_gate.py
       - scripts/art/validate_pawn_slug_initial_enemy_v4.py
       - scripts/art/build_enemy_socket_v1_slice.py
       - scripts/art/ingest_matthias_pistol_v1.py
@@ -79,6 +81,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
+      - name: Stage geometry · overlap + reachability
+        run: |
+          python3 -S scripts/pawn_slug_stage_geometry_gate.py --self-test
+          python3 -S scripts/pawn_slug_stage_geometry_gate.py
       - name: Restore pinned Godot editor for PR parse gate
         if: github.event_name == 'pull_request'
         uses: actions/cache@v6

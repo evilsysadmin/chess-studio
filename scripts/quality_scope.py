@@ -88,6 +88,7 @@ PAWN_SLUG_GODOT_PATHS = {
     ".github/workflows/cicd.yml",
     "scripts/pawn_slug_godot_bundle.py",
     "scripts/pawn_slug_godot_2d_gate.py",
+    "scripts/pawn_slug_stage_geometry_gate.py",
     "scripts/pawn_slug_enemy_roster_gate.py",
     "scripts/pawn_slug_godot_live_smoke.mjs",
     "scripts/apply_frontend_csp.mjs",
