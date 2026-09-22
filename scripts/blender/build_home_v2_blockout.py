@@ -1861,20 +1861,44 @@ def add_armor(materials):
 
     sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
     sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.31), (0.220, 0.120, 0.080), steel)
-    curve_tube(
-        "HOME_PROP_armor_left_arm",
-        [(x - 0.50, y, 2.29), (x - 0.67, y - 0.01, 2.00), (x - 0.61, y - 0.035, 1.65)],
-        0.070,
-        steel,
-    )
-    curve_tube(
-        "HOME_PROP_armor_right_arm",
-        [(x + 0.50, y - 0.01, 2.24), (x + 0.64, y - 0.03, 1.94), (x + 0.58, y - 0.055, 1.61)],
-        0.070,
-        steel,
-    )
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.035, 1.61), (0.090, 0.078, 0.092), steel)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.58, y - 0.055, 1.57), (0.090, 0.078, 0.092), steel)
+    # Ceremonial pose: elbows bend forward and in, both hands meet at the sword hilt in
+    # front of the belt instead of hanging at the sides. All coordinates below are in the
+    # same pre-transform space as the rest of add_armor: the caller's global rescale
+    # (0.78/0.92/1.14 about the pedestal) applies to these objects automatically because
+    # they share the HOME_PROP_armor_ prefix.
+    # The armour is viewed from -Y (camera side), and the chest/fauld/tasset flat
+    # panels sit at y in [5.47, 5.60] AFTER the global rescale, i.e. close to the front
+    # face. The hilt/hands must land in front of (smaller post-transform y than) those
+    # panels or they render fully hidden behind them, which is what happened first try.
+    hilt_x, hilt_y, hilt_z = x, y - 0.62, 1.90
+    for side in (-1, 1):
+        shoulder = (x + side * 0.50, y - 0.01, 2.32)
+        elbow = (x + side * 0.30, y - 0.42, 2.02)
+        wrist = (hilt_x + side * 0.075, hilt_y, hilt_z + 0.06)
+        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.062, steel)
+        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.088, 0.082, 0.078), steel)
+        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.052, steel)
+        curve_tube(f"HOME_PROP_armor_cuff_{side}", [
+            (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
+            (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
+        ], 0.062, materials["brass_dark"])
+        sphere(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.082, 0.070, 0.062), steel)
+
+    # Ceremonial two-handed sword, point down, hilt held at the belt.
+    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, hilt_z), 0.034, 0.20, materials["dark"], vertices=16)
+    for ring_z in (hilt_z - 0.075, hilt_z + 0.075):
+        cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.040, 0.012, brass, vertices=16)
+    sphere("HOME_PROP_armor_sword_pommel", (hilt_x, hilt_y, hilt_z - 0.14), (0.058, 0.058, 0.058), brass)
+    cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, hilt_z + 0.115), (0.230, 0.026, 0.024), brass, bevel=0.010)
+    for side in (-1, 1):
+        sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.245, hilt_y, hilt_z + 0.115), (0.040, 0.040, 0.040), brass)
+    blade_base_z, blade_tip_z = hilt_z + 0.15, 0.36
+    cube("HOME_PROP_armor_sword_blade", (hilt_x, hilt_y, (blade_base_z + blade_tip_z) / 2),
+         (0.052, 0.014, (blade_base_z - blade_tip_z) / 2), steel, bevel=0.006)
+    # cone() puts radius1 at the bottom (-Z) and radius2 at the top (+Z); the point
+    # must be the bottom (lowest z) so the blade tapers down to a tip, not up.
+    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.07), 0.001, 0.052, 0.14, steel, vertices=4)
+    tip.scale.y = 0.27
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
