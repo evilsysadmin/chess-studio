@@ -52,6 +52,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Web Storage / perfil / migraciones | [`docs/operations/client-storage.md`](docs/operations/client-storage.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | CI, workflows, entrega y automerge | [`.github/workflows/README.md`](.github/workflows/README.md), [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) |
+| Ownership de estado / arquitectura | [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md) |
 | Contexto de producto y arranque local | [`README.md`](README.md) |
 | Historia antigua de releases | [`docs/archive/README-release-diary.md`](docs/archive/README-release-diary.md) |
 
@@ -93,6 +94,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 ### Operaciones y runtime
 
+- [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
