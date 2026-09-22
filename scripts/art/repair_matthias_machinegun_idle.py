@@ -548,7 +548,7 @@ def self_test() -> None:
     for col in range(RUN_SOURCE_COLS):
         src = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
         ImageDraw.Draw(src).rectangle(
-            (150, 182, 270, 381), fill=(30, 30, 30, 255)
+            (150, 162, 270, 381), fill=(30, 30, 30, 255)
         )
         ImageDraw.Draw(src).rectangle(
             (275, 245, 315, 258), fill=(90, 90, 90, 255)
@@ -558,7 +558,7 @@ def self_test() -> None:
     repaired_run, run_report = repair_run_strip(run_source, run_reference)
     assert RUN_SOURCE_COLS == len(run_report["frames"])
     assert 1.05 < run_report["uniformScaleX"] < 1.15
-    assert 1.05 < run_report["uniformScaleY"] < 1.15
+    assert 0.99 < run_report["uniformScaleY"] < 1.01
     assert abs(
         run_report["outputMedianHeight"] - run_report["targetMedianHeight"]
     ) <= 1.0
