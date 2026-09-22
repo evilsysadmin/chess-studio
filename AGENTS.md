@@ -42,10 +42,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
-| Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Matthias / memoria episódica / apariciones de sesión | [`docs/experiments/matthias-episodic-memory.md`](docs/experiments/matthias-episodic-memory.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Tutoriales de mecánicas/modos no estándar | [`docs/operations/tutorials.md`](docs/operations/tutorials.md) |
-| Puzzles / Así juegas / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
 | Espectador / CPU-vs-CPU | [`docs/operations/spectator.md`](docs/operations/spectator.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
