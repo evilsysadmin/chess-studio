@@ -19,6 +19,29 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
 - Conserva protección contra respuestas async stale/canceladas, reconnect y F5.
 - Progressive disclosure manda: camino común simple; profundidad opcional detrás de acción explícita.
 
+
+## Ownership de estado y máquinas de flujo
+
+Antes de añadir persistencia, restore o una nueva copia de estado, consulta `scripts/state_ownership_contract.json`. Cada dominio durable declara **una sola authority**; recovery/fallback puede vivir en otra capa, pero no se convierte en una segunda autoridad.
+
+Reglas:
+
+- `activeGame` / `tournamentGame`: backend es autoridad; el active-session local sólo recupera contexto.
+- series, clocks, campaña/roster Combat, battle session, onboarding, puzzles, historial/rating y feature flags conservan el owner declarado en el contrato; si se cambia, actualizar contrato + tests/gates en la misma PR.
+- no añadir una segunda store “temporal” que luego empiece a ganar conflictos silenciosamente.
+- UI/components emiten eventos al owner; no reimplementan la transición en paralelo.
+
+Flujos con máquina explícita deben atravesarla:
+
+- active session/restore/reconnect → `activeSessionTransition`;
+- Combat battle → `combatFlowTransition`;
+- campaña → `campaignPhaseTransition`;
+- puzzles → `puzzleTransition`;
+- BO3/BO5 → helpers/invariantes de series.
+
+No saltar fases con `setState`/flags literales sólo porque el camino feliz funciona. Un refactor puede mover el dueño, pero debe mover también `scripts/state_resilience_check.mjs`, tests y gates que acreditan ese ownership.
+
+
 ## Invariantes de producto
 
 - Matthias es la identidad CPU/narrativa fija. Sus referencias a partidas, errores o rivalidad sólo pueden usar hechos realmente guardados.
