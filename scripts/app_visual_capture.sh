@@ -78,10 +78,10 @@ case "$mode" in
     fi
 
     playwright_experiments_scope="$experiments_scope"
-    if [[ "$experiments_scope" != "chronicles" ]] && has_group experiments && has_producer experiments-hub && has_experiment_scope chronicles; then
-      # The Experiments hub producer owns the room/portal proof, never the
-      # Chronicles gameplay renderer. When Chronicles is also selected, its
-      # dedicated producer owns that expensive software-WebGL evidence.
+    if [[ "$experiments_scope" != "chronicles" ]] && has_group experiments && has_producer experiments-hub && has_producer chronicles-gameplay && has_experiment_scope chronicles; then
+      # The dedicated Chronicles gameplay producer owns the canonical dungeon/
+      # portrait proof. Do not ask the legacy Experiments hub producer to render
+      # the same software-WebGL session again during broad/full visual sweeps.
       if [[ ",$experiments_scope," == *",all,"* ]]; then
         playwright_experiments_scope="landing,pawnslug"
       else
