@@ -41,6 +41,7 @@ import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, i
 import { createCombatRosterActions } from '../combatRosterActions.js';
 import { awardCombatCredits, battleCreditReward, buyEquipment, combatCreditSignalForAttempt, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
+import { useCombatBattleSnapshotFactory } from '../useCombatBattleSnapshotFactory.js';
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 import { isAbortError } from '../asyncControl.js';
 import { createCombatAsyncCoordinator } from '../combatAsyncCoordinator.js';
@@ -190,26 +191,17 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     cpuRetryContextRef.current = null;
   }, [fen, onError]);
 
+  const buildBattleSnapshot = useCombatBattleSnapshotFactory({ fen, registry, humanColor, combatLog, uiLogRef, autoLevelUpEnabled, bossPhase, focusRef, positionCountsRef, bossHpRef, battleStartRosterRef, battleParticipantsRef, unitBattleStatsRef, activityGameIdRef });
+
   const { saveBattleSnapshot, persistBattleSession, clearBattleSession } = useCombatSessionPersistence({
     combatSessionId,
     onPersistenceState,
     restoredSession,
     activityGameIdRef,
     phase,
-    fen,
-    registry,
+    snapshotFactory: buildBattleSnapshot,
     humanColor,
-    combatLog,
-    uiLogRef,
-    autoLevelUpEnabled,
-    bossPhase,
     localChess,
-    focusRef,
-    positionCountsRef,
-    bossHpRef,
-    battleStartRosterRef,
-    battleParticipantsRef,
-    unitBattleStatsRef,
     setBusy,
     runCpuTurn,
   });
