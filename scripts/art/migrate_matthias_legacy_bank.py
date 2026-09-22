@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +27,7 @@ ALPHA_THRESHOLD = 8
 SAFE_MARGIN = 6
 MIN_SCALE = 0.80
 MAX_SCALE = 1.25
+LEGACY_NOISE_MAX_ALPHA = 16
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,68 @@ def row_reference_profile(
         float(statistics.median(centers)),
         float(statistics.median(feet)),
     )
+
+
+def clean_legacy_detached_noise(image: Image.Image) -> tuple[Image.Image, list[dict]]:
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    width, height = rgba.size
+    alpha_px = alpha.load()
+    visited = bytearray(width * height)
+    components: list[list[tuple[int, int]]] = []
+
+    for y in range(height):
+        for x in range(width):
+            idx = y * width + x
+            if visited[idx] or alpha_px[x, y] < ALPHA_THRESHOLD:
+                continue
+            queue: deque[tuple[int, int]] = deque([(x, y)])
+            visited[idx] = 1
+            pixels: list[tuple[int, int]] = []
+            while queue:
+                px, py = queue.popleft()
+                pixels.append((px, py))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        if dx == 0 and dy == 0:
+                            continue
+                        nx, ny = px + dx, py + dy
+                        if not (0 <= nx < width and 0 <= ny < height):
+                            continue
+                        nidx = ny * width + nx
+                        if visited[nidx] or alpha_px[nx, ny] < ALPHA_THRESHOLD:
+                            continue
+                        visited[nidx] = 1
+                        queue.append((nx, ny))
+            components.append(pixels)
+
+    if not components:
+        return rgba, []
+    components.sort(key=len, reverse=True)
+    cleaned = rgba.copy()
+    cleaned_px = cleaned.load()
+    removed: list[dict] = []
+
+    for pixels in components[1:]:
+        max_alpha = max(alpha_px[x, y] for x, y in pixels)
+        xs = [x for x, _ in pixels]
+        ys = [y for _, y in pixels]
+        bbox = (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
+        if max_alpha > LEGACY_NOISE_MAX_ALPHA:
+            raise GeometryError(
+                f"detached-opaque:area={len(pixels)}:bbox={bbox}:max-alpha={max_alpha}"
+            )
+        for x, y in pixels:
+            cleaned_px[x, y] = (0, 0, 0, 0)
+        removed.append(
+            {
+                "area": len(pixels),
+                "bbox": bbox,
+                "max_alpha": max_alpha,
+            }
+        )
+
+    return cleaned, removed
 
 
 def migrate(
@@ -117,6 +181,10 @@ def migrate(
         }
         for col in range(grid.columns):
             cell = crop_cell(source, grid, row, col)
+            try:
+                cell, removed_noise = clean_legacy_detached_noise(cell)
+            except GeometryError as exc:
+                raise GeometryError(f"frame:{row}:{col}:{exc}") from exc
             raw_lint = lint_frame(cell, lint)
             if not raw_lint.ok:
                 detached = [
@@ -181,6 +249,7 @@ def migrate(
                     "output_height": post.body_height,
                     "foot_y": post.foot_y,
                     "center_x": post.body_center_x,
+                    "removed_legacy_noise": removed_noise,
                 }
             )
         report["rows"][str(row)] = row_report
