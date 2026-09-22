@@ -458,6 +458,74 @@ def normalize_frame(
 
 
 @dataclass(frozen=True)
+class FixedScaleContract:
+    canvas_size: tuple[int, int]
+    scale: float
+    center_x: float
+    foot_y: float
+    safe_margin_px: int = 8
+
+
+def normalize_fixed_scale_frame(
+    image: Image.Image,
+    contract: FixedScaleContract,
+    lint_config: LintConfig = LintConfig(),
+) -> Image.Image:
+    raw = image.convert("RGBA")
+    lint = lint_frame(raw, lint_config)
+    if not lint.ok:
+        raise GeometryError("raw-lint:" + ",".join(lint.errors))
+    if contract.scale <= 0:
+        raise GeometryError("invalid-fixed-scale")
+
+    foreground = _foreground_bbox(raw, lint_config.alpha_threshold)
+    if foreground is None:
+        raise GeometryError("empty-frame")
+    crop = raw.crop(foreground)
+    scaled = crop.resize(
+        (
+            max(1, round(crop.width * contract.scale)),
+            max(1, round(crop.height * contract.scale)),
+        ),
+        # BICUBIC preserves the connected alpha topology of thin horizontal
+        # poses. LANCZOS ringing can create many detached sub-pixel islands
+        # even when the authored source is one connected silhouette.
+        Image.Resampling.BICUBIC,
+    )
+    dest_x = round(contract.center_x - scaled.width / 2.0)
+    dest_y = round(contract.foot_y - scaled.height)
+    placed_bbox = (
+        dest_x,
+        dest_y,
+        dest_x + scaled.width,
+        dest_y + scaled.height,
+    )
+
+    margin = max(0, contract.safe_margin_px)
+    canvas_w, canvas_h = contract.canvas_size
+    if (
+        placed_bbox[0] < margin
+        or placed_bbox[1] < margin
+        or placed_bbox[2] > canvas_w - margin
+        or placed_bbox[3] > canvas_h - margin
+    ):
+        raise GeometryError(
+            f"would-clip-fixed:{placed_bbox} outside "
+            f"canvas={contract.canvas_size} margin={margin}"
+        )
+
+    out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
+    out.alpha_composite(scaled, (dest_x, dest_y))
+    out = _clean_transparent_rgb(out)
+    if _foreground_bbox(out, lint_config.alpha_threshold) is None:
+        raise GeometryError("empty-fixed-frame")
+    post_lint = lint_frame(out, lint_config)
+    if not post_lint.ok:
+        raise GeometryError("fixed-post-lint:" + ",".join(post_lint.errors))
+    return out
+
+
+@dataclass(frozen=True)
 class TemporalContract:
     expected_frames: int
     max_foot_delta_px: float = 6.0
