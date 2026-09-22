@@ -53,6 +53,8 @@ No usar una sola heurística como autoridad de escala o posición. La transforma
 
 Si las señales proponen transformaciones incompatibles, el frame falla. Nunca escoger silenciosamente la heurística que permita continuar.
 
+**La escala corporal del actor es un invariante canónico entre armas/loadouts.** Cambiar de pistola a SMG, shotgun o panzerfaust puede cambiar el footprint del arma, el agarre y la pose, pero no puede convertir a Matthias en una variante grande o pequeña. Altura corporal percibida, distancia cara-pies, pivote y footline deben mantenerse dentro de la tolerancia del canon común. Normalizar cada arma contra sí misma y aceptar escalas distintas es una regresión y debe fallar cerrado.
+
 Antes de componer, calcular el bbox transformado y exigir que quepa dentro del safe envelope. El normalizador no puede recortar botas, casco, arma o FX sin fallar.
 
 ## 5. QA geométrica
@@ -63,7 +65,7 @@ Por frame y por animación medir como mínimo:
 - centro de masa;
 - bbox y margen de seguridad;
 - altura/anchura percibida;
-- escala relativa al canon;
+- escala relativa al canon y paridad corporal entre armas/loadouts;
 - componentes conectados y distancia de huérfanos;
 - footprint de arma/manos cuando aplique.
 
