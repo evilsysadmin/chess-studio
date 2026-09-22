@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode } from '../labLaunchIntent.js';
+import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
@@ -49,6 +49,10 @@ export default function LabScreen({ onExit, onStart }){
     if (labMode === 'pawnslug-godot' || remembered === labMode) rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
+
+  useEffect(() => subscribeLabLaunch((mode) => {
+    setLabMode(mode);
+  }), []);
 
   const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
