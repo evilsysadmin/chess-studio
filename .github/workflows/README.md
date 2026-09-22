@@ -64,12 +64,12 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | --- | --- |
 | `oci-readiness.yml` | Validación OCI path-aware para PR: contratos, runtime bundle y ARM64 sólo cuando cambia la imagen backend/su smoke o la propia lane ARM64. `workflow_dispatch` añade validaciones Terraform estáticas. **No muta staging ni publica K3s al mergear.** |
 | `oci-staging-deploy.yml` | `terraform apply` manual y exacto sobre `main`, seguido por convergencia del agente OCI y egress reservado. Es el único apply de infraestructura production-grade de OCI staging. |
-| `oci-staging-service.yml` | Front-door manual para diagnóstico y operaciones del host/runtime. `deploy`, `runtime-sync`, `vault-bootstrap`, K3s lifecycle, egress y recuperación toman el mutex de mutación; diagnósticos, validaciones y `k3s-status` son observación y no bloquean releases. |
+| `oci-staging-service.yml` | Front-door manual para diagnóstico y operaciones del runtime Compose canónico. `deploy`, `runtime-sync`, `vault-bootstrap`, egress y recuperación toman el mutex de mutación; diagnósticos y validaciones son observación y no bloquean releases. |
 | `oci-vault-cutover-once.yml` | Migración one-shot y auto-disparada sólo al añadirse: si CURRENT Vault aún no sirve, bootstrap idempotente desde Render, validación y materialización en la A1. Se retira tras acreditar el primer cutover. |
-| `oci-staging-lab.yml` | Laboratorio manual Terraform limitado a `probe`, `plan`, `bootstrap` y `destroy`; no ofrece un segundo `apply` desnudo. |
+| `oci-staging-lab.yml` | Laboratorio manual para Terraform (`probe`, `plan`, `bootstrap`, `destroy`) y el experimento K3s/staging2. K3s vive aquí deliberadamente fuera del service-control y del release normal. |
 | `oci-staging-tunnel.yml` | Reconciliación manual del túnel/DNS de staging, serializada sólo porque sí muta control-plane. |
 
-K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. La operación explícita `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Docker de fallback sigue vivo.
+K3s sigue siendo experimental y reversible. El merge de código no lo inicia ni publica assets automáticamente. El experimento K3s se ejecuta únicamente desde `oci-staging-lab.yml`. `k3s-start` reconcilia idempotentemente el bundle privado, instala los assets exactos en la A1, ejecuta el guarded start, lee estado y acredita que el runtime Compose canónico sigue vivo.
 
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. `oci-vault-cutover-once.yml` se conserva sólo como migración one-shot mientras siga siendo necesario para el estado histórico del cutover. Render producción permanece independiente y no forma parte de esta retirada.
 
