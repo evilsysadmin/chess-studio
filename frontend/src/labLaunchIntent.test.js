@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode, requestLabLaunch } from './labLaunchIntent.js';
+import { clearRememberedLabMode, consumeLabLaunch, loadRememberedLabMode, rememberLabMode, requestLabLaunch, subscribeLabLaunch } from './labLaunchIntent.js';
 
 describe('labLaunchIntent', () => {
   beforeEach(() => sessionStorage.clear());
@@ -13,6 +13,17 @@ describe('labLaunchIntent', () => {
     requestLabLaunch('pawnslug-godot');
     expect(consumeLabLaunch()).toBe('pawnslug-godot');
     expect(consumeLabLaunch()).toBeNull();
+  });
+
+  it('delivers a direct launch immediately when LabScreen is already mounted', () => {
+    const launches = [];
+    const unsubscribe = subscribeLabLaunch((mode) => launches.push(mode));
+
+    expect(requestLabLaunch('pawnslug')).toBe('pawnslug-godot');
+    expect(launches).toEqual(['pawnslug-godot']);
+    expect(consumeLabLaunch()).toBeNull();
+
+    unsubscribe();
   });
 
   it('can remember Chronicles modes for refresh without widening one-shot launch requests', () => {
