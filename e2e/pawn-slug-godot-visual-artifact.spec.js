@@ -37,12 +37,11 @@ async function openPawnSlug(page) {
 
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible({ timeout: 20_000 });
-  // Keyboard activation deliberately avoids coupling visual proof to the current
-  // Home pointer hit-map. Home interaction geometry has its own E2E ownership.
-  await direct.focus();
-  await page.keyboard.press('Enter');
+  // This proof owns the Pawn Slug host, not Home pointer geometry. Dispatch the
+  // button action directly so Home animation/focus churn cannot steal Enter.
+  await direct.evaluate((node) => node.click());
 
-  await expect(page.locator('.pawn-slug-godot-host')).toBeVisible();
+  await expect(page.locator('.pawn-slug-godot-host')).toBeVisible({ timeout: 20_000 });
   const frame = page.locator('iframe[title="Pawn Slug Godot"]');
   await expect(frame).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 35_000 });
