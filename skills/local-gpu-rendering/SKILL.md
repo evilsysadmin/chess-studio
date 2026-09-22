@@ -1,3 +1,5 @@
+Contrato transversal de rendimiento: `docs/operations/runtime-performance.md`.
+
 # Render local con GPU — skill
 
 Regla: **en local, si hay GPU disponible, se usa de extremo a extremo** (Blender para renderizar y exportar, y Chromium/Playwright para probar la app real). **CI renderiza por software**, y eso es intencionado. No confundir las dos cosas: un resultado en software no demuestra cómo se ve en GPU, ni al revés.
