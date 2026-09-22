@@ -30,6 +30,13 @@ PRODUCER_ORDER = (
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
 WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
+WARROOM_VARIANT_CORE_FILES = {
+    "frontend/src/components/gamewarroomcommandcolumn.jsx",
+    "frontend/src/components/warroomscenevariant.js",
+    "frontend/src/components/warroomv2shell.js",
+    "frontend/src/components/warroomv3shell.js",
+    "frontend/src/components/warroomvariant.js",
+}
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
 CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
 PUBLIC_NONCANONICAL_PATHS = {
@@ -82,6 +89,8 @@ def classify_path(path: str) -> set[str] | None:
     lower = path.lower().replace("\\", "/")
     name = Path(lower).name
 
+    if lower.endswith(".md"):
+        return set()
     if lower in {
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
@@ -98,6 +107,9 @@ def classify_path(path: str) -> set[str] | None:
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
         ".github/workflows/war-room-blender-art.yml",
+        "scripts/blender/build_war_room_v3.py",
+        "scripts/blender/publish_war_room_v3.py",
+        ".github/workflows/war-room-v3-blender-art.yml",
     }:
         return {"warroom-core"}
 
@@ -124,8 +136,10 @@ def classify_path(path: str) -> set[str] | None:
         if lower in {
             "scripts/css_architecture_manifest.json",
             "scripts/async_resilience_gate.mjs",
+            "scripts/blender_required_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
+            "scripts/workflow_debt_gate.py",
         }:
             return set()
         return None
@@ -162,6 +176,9 @@ def classify_path(path: str) -> set[str] | None:
         return {"experiments-hub"}
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
+
+    if lower in WARROOM_VARIANT_CORE_FILES:
+        return {"warroom-core"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         if any(token in lower for token in ("board3d", "warroom3d", "gameboardview", "game3d")):
@@ -220,6 +237,15 @@ def self_test() -> None:
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
     assert classify([".github/workflows/war-room-blender-art.yml"]) == "warroom-core"
+    assert classify(["scripts/blender/build_war_room_v3.py"]) == "warroom-core"
+    assert classify(["scripts/blender/publish_war_room_v3.py"]) == "warroom-core"
+    assert classify([".github/workflows/war-room-v3-blender-art.yml"]) == "warroom-core"
+    assert classify(["docs/operations/war-room-blender-pipeline.md"]) == "none"
+    assert classify([".github/workflows/README.md"]) == "none"
+    assert classify(["scripts/blender_required_scope.py"]) == "none"
+    assert classify(["scripts/workflow_debt_gate.py"]) == "none"
+    for variant_core_file in WARROOM_VARIANT_CORE_FILES:
+        assert classify([variant_core_file]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"

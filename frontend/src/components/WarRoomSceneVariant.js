@@ -4,7 +4,7 @@ import { addMesh, buildWarRoom } from './Board3DScene.js';
 import { isWarRoomVariantSelectable, loadWarRoomVariant } from './WarRoomVariant.js';
 
 export function shouldShowClassicWarRoomShell({ selectable = false, variant = 'classic' } = {}) {
-  return !selectable || variant !== 'v2';
+  return !selectable || !['v2', 'v3'].includes(variant);
 }
 
 export function buildClassicWarRoomShell({
@@ -119,13 +119,15 @@ export function startWarRoomVariantScene({
   scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
   let cancelled = false;
-  let releaseV2 = null;
+  let releaseShell = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
       canvas.dataset.warRoomV2Status = status;
+      canvas.dataset.warRoomVariantStatus = status;
       if (renderedVariant) canvas.dataset.warRoomVariant = renderedVariant;
+      if (status !== 'fallback') delete canvas.dataset.warRoomVariantError;
     }
     onStatus?.(status);
   };
@@ -139,31 +141,37 @@ export function startWarRoomVariantScene({
     return () => {};
   }
 
-  // A persisted v2 session must not pay the construction cost of the procedural
+  // A persisted Blender-shell session must not pay the construction cost of the procedural
   // classic room. Only hide an already-built classic shell; build it lazily if
-  // the user switches back or if v2 loading actually fails.
+  // the user switches back or if the selected GLB fails to load.
   setClassicShellVisible(classicShellObjects, false);
   scene.userData ||= {};
-  scene.userData.warRoomRenderedVariant = 'v2-loading';
-  setStatus('loading', 'v2-loading');
+  scene.userData.warRoomRenderedVariant = `${variant}-loading`;
+  setStatus('loading', `${variant}-loading`);
   onPaint?.();
-  void import('./WarRoomV2Shell.js')
-    .then(({ installWarRoomV2Shell }) => installWarRoomV2Shell(scene, {
+  const installer = variant === 'v3'
+    ? import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell)
+    : import('./WarRoomV2Shell.js').then(({ installWarRoomV2Shell }) => installWarRoomV2Shell);
+  void installer
+    .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: renderLite,
       onRefine: onPaint,
     }))
     .then((release) => {
       if (cancelled) return release?.();
-      releaseV2 = release;
+      releaseShell = release;
       setClassicShellVisible(classicShellObjects, false);
       scene.userData ||= {};
-      scene.userData.warRoomRenderedVariant = 'v2';
-      setStatus('ready', 'v2');
+      scene.userData.warRoomRenderedVariant = variant;
+      setStatus('ready', variant);
       onPaint?.();
     })
-    .catch(() => {
+    .catch((error) => {
       if (cancelled) return;
+      if (canvas) {
+        canvas.dataset.warRoomVariantError = String(error?.message || error || 'unknown-shell-error').slice(0, 240);
+      }
       const fallbackClassicShell = ensureClassicShell?.() || classicShellObjects;
       setClassicShellVisible(fallbackClassicShell, true);
       scene.userData ||= {};
@@ -174,8 +182,8 @@ export function startWarRoomVariantScene({
 
   return () => {
     cancelled = true;
-    releaseV2?.();
-    releaseV2 = null;
+    releaseShell?.();
+    releaseShell = null;
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
   };

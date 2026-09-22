@@ -18,7 +18,7 @@ on:
       - e2e/*visual*.spec.js
       - e2e/browser-*-health.spec.js
       - scripts/*visual*
-      - scripts/**/build_war_room_premium.py
+      - scripts/blender/*war_room*.py
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
@@ -29,7 +29,7 @@ permissions: {contents: read}
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
