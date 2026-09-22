@@ -23,15 +23,12 @@ ACTIONS = (
     ("walk", 4, 12.0, True),
     ("run", 4, 16.0, True),
     ("crouch", 1, 8.0, True),
-    ("reload", 5, 12.0, False),
+    ("reload", 4, 12.0, False),
     ("hurt", 1, 14.0, False),
+    ("die", 3, 10.0, False),
 )
 
-TEMPORAL_WIDTH_LIMITS = {
-    # The authored reload returns from close-to-body manipulation to a fully
-    # extended ready pose on its final frame: 37 px of canonical width change.
-    "reload": 40.0,
-}
+TEMPORAL_WIDTH_LIMITS: dict[str, float] = {}
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -54,18 +51,29 @@ def _validate_temporal(root: Path) -> dict[str, dict]:
     results: dict[str, dict] = {}
     for action, count, _fps, loop in ACTIONS:
         frames = _load_frames(root, action, count)
-        temporal_contract = TemporalContract(
-            expected_frames=count,
-            max_foot_delta_px=3.0,
-            max_centroid_delta_px=18.0,
-            max_height_delta_px=4.0,
-            # Canonical v1 run seam measures 35 px between the two extreme
-            # stride silhouettes. Keep one pixel of deterministic headroom;
-            # larger width jumps remain a hard failure.
-            max_width_delta_px=TEMPORAL_WIDTH_LIMITS.get(action, 36.0),
-            max_area_ratio_delta=0.24,
-            loop=loop,
-        )
+        if action == "die":
+            temporal_contract = TemporalContract(
+                expected_frames=count,
+                max_foot_delta_px=1.0,
+                max_centroid_delta_px=10.0,
+                max_height_delta_px=32.0,
+                max_width_delta_px=40.0,
+                max_area_ratio_delta=0.15,
+                loop=False,
+            )
+        else:
+            temporal_contract = TemporalContract(
+                expected_frames=count,
+                max_foot_delta_px=3.0,
+                max_centroid_delta_px=18.0,
+                max_height_delta_px=4.0,
+                # Canonical v1 run seam measures 35 px between the two extreme
+                # stride silhouettes. Keep one pixel of deterministic headroom;
+                # larger width jumps remain a hard failure.
+                max_width_delta_px=TEMPORAL_WIDTH_LIMITS.get(action, 36.0),
+                max_area_ratio_delta=0.24,
+                loop=loop,
+            )
         result = validate_sequence(frames, temporal_contract)
         if not result.ok:
             widths = []
@@ -183,7 +191,6 @@ def build(frames_root: Path, output_dir: Path) -> dict:
             "shoot_diag_up_alt",
             "shoot_diag_down",
             "shoot_crouch",
-            "die",
         ],
         "temporal": temporal,
         "contract_sha256": sha256(contract_path),
