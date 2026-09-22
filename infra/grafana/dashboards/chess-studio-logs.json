@@ -591,6 +591,43 @@
         },
         "textMode": "auto"
       }
+    },
+    {
+      "id": 17,
+      "title": "Biggest offenders · 401/403",
+      "description": "Top client_ip por respuestas 401/403 en el rango seleccionado. client_ip está saneada y, cuando Cloudflare marca la petición, procede de CF-Connecting-IP; X-Forwarded-For no se usa como identidad de seguridad.",
+      "type": "bargauge",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 56,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(15, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403\" | client_ip != \"\" [$__range])))",
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{client_ip}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      }
     }
   ],
   "refresh": "30s",
@@ -629,6 +666,6 @@
   "timezone": "browser",
   "title": "Chess Studio · Logs accionables",
   "uid": "chess-studio-logs",
-  "version": 3,
+  "version": 4,
   "weekStart": "monday"
 }

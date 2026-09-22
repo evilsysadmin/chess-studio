@@ -5,10 +5,13 @@ const ATLAS_PATH := ROOT + "/bank/core.png"
 const MANIFEST_PATH := ROOT + "/bank/manifest.json"
 const CELL := 416
 const EXPECTED := {
+    "idle": 4,
+    "shoot": 2,
     "walk": 4,
     "run": 4,
-    "shoot": 1,
     "crouch": 1,
+    "reload": 5,
+    "hurt": 1,
 }
 
 func _fail(message: String) -> void:
@@ -20,7 +23,7 @@ func _initialize() -> void:
     if image.load(ATLAS_PATH) != OK:
         _fail("Godot failed to load Matthias pistol v1 seed atlas")
         return
-    if image.get_width() != CELL * 4 or image.get_height() != CELL * 4:
+    if image.get_width() != CELL * 5 or image.get_height() != CELL * 7:
         _fail("Matthias pistol v1 seed atlas dimensions drift")
         return
 
@@ -82,9 +85,9 @@ func _initialize() -> void:
                 return
             total += 1
 
-    if total != 10:
+    if total != 21:
         _fail("unexpected Matthias pistol v1 seed frame total")
         return
 
-    print("OK Matthias pistol v1 seed bank: 10 canonical frames loaded by Godot")
+    print("OK Matthias pistol v1 seed bank: 21 canonical frames loaded by Godot")
     quit(0)

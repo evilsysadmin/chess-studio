@@ -1691,19 +1691,52 @@ def add_bookshelf(materials):
             if gap_code in (0, 1):
                 continue
             bx = x - 1.15 + col * 0.285 + (_hash01(col, row, 901) - 0.5) * 0.040
-            h = 0.17 + _hash01(row, col, 907) * 0.105
-            w = 0.064 + _hash01(col, row, 911) * 0.026
+            # Real shelves mix thin pamphlets, ordinary volumes and thick folios; a
+            # single width/height band made every book the same brick.
+            kind = _hash01(col, row, 941)
+            if kind < 0.18:
+                h = 0.15 + _hash01(row, col, 907) * 0.06
+                w = 0.040 + _hash01(col, row, 911) * 0.016
+            elif kind > 0.80:
+                h = 0.24 + _hash01(row, col, 907) * 0.075
+                w = 0.092 + _hash01(col, row, 911) * 0.032
+            else:
+                h = 0.18 + _hash01(row, col, 907) * 0.085
+                w = 0.062 + _hash01(col, row, 911) * 0.028
+            depth = 0.062 + _hash01(row, col, 947) * 0.024
             by = y - 0.47 + (_hash01(row, col, 919) - 0.5) * 0.055
             bz = base_z + h
+            tone = book_colors[(row + col * 2) % len(book_colors)]
+            # A large bevel rounds the spine like a bound book instead of a box.
             book = cube(
                 f"HOME_PROP_book_{row}_{col}",
                 (bx, by, bz),
-                (w, 0.075, h),
-                book_colors[(row + col * 2) % len(book_colors)],
-                bevel=0.008,
+                (w, depth, h),
+                tone,
+                bevel=min(0.022, w * 0.42),
             )
-            book.rotation_euler[1] = math.radians((_hash01(col, row, 929) - 0.5) * 8.0)
+            lean = math.radians((_hash01(col, row, 929) - 0.5) * 9.0)
+            book.rotation_euler[1] = lean
             book.rotation_euler[2] = math.radians((_hash01(row, col, 937) - 0.5) * 2.2)
+            front_y = by - depth - 0.006
+            # Raised bands across the spine, a title label and a tail band.
+            for band_idx, frac in enumerate((0.20, 0.80)):
+                cube(
+                    f"HOME_PROP_book_rib_{row}_{col}_{band_idx}",
+                    (bx + math.sin(lean) * h * (frac - 0.5) * 2, front_y, base_z + h * 2 * frac),
+                    (w * 0.97, 0.008, 0.009),
+                    brass if kind > 0.30 else materials["dark"],
+                    bevel=0.003,
+                )
+            if kind > 0.22:
+                label_z = base_z + h * 1.22
+                cube(
+                    f"HOME_PROP_book_label_{row}_{col}",
+                    (bx + math.sin(lean) * h * 0.44, front_y - 0.002, label_z),
+                    (w * 0.62, 0.006, h * 0.14),
+                    materials["paper"] if (row + col) % 3 else materials["brass_dark"],
+                    bevel=0.002,
+                )
             if (row * 9 + col) % 7 == 0:
                 cube(
                     f"HOME_PROP_book_band_{row}_{col}",

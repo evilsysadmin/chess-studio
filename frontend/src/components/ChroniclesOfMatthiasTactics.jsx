@@ -71,6 +71,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
+  const [bootstrapWorld, setBootstrapWorld] = useState(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
   const staleRunRecoveryAttemptedRef = useRef(false);
@@ -100,6 +101,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const retryBootstrap = useCallback(() => {
     staleRunRecoveryAttemptedRef.current = false;
     setReady(false);
+    setBootstrapWorld(null);
     setBootstrapError(null);
     setBootstrapRevision((revision) => revision + 1);
   }, []);
@@ -123,8 +125,9 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     void loadChroniclesTacticsRenderer().catch(() => {});
 
     chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
-      .then(() => {
+      .then((world) => {
         if (!active) return;
+        setBootstrapWorld(world);
         staleRunRecoveryAttemptedRef.current = false;
         setBootstrapError(null);
         setReady(true);
@@ -171,6 +174,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     <Suspense fallback={<BootstrapStatus />}>
       <ChroniclesOfMatthiasTacticsRuntime
         key={bootstrapRevision}
+        authoritativeRun={bootstrapWorld}
         onExit={exitChronicles}
         onRestartRun={restartExpedition}
       />

@@ -167,6 +167,17 @@ def lint_frame(image: Image.Image, config: LintConfig = LintConfig()) -> LintRes
 
 
 @dataclass(frozen=True)
+class PlacementContract:
+    canvas_size: tuple[int, int]
+    scale: float
+    body_center_x: float
+    foot_y: float
+    safe_margin_px: int = 8
+    foot_tolerance_px: float = 2.0
+    center_tolerance_px: float = 3.0
+
+
+@dataclass(frozen=True)
 class GeometryContract:
     canvas_size: tuple[int, int]
     body_height: int
@@ -293,6 +304,84 @@ def _clean_transparent_rgb(image: Image.Image) -> Image.Image:
     return rgba
 
 
+def place_frame_fixed_scale(
+    image: Image.Image,
+    contract: PlacementContract,
+    lint_config: LintConfig = LintConfig(),
+) -> Image.Image:
+    """Place an authored pose at an explicit source-pixel scale.
+
+    Unlike normalize_frame(), this preserves the pose's canonical scale instead
+    of forcing a target body height. It is intended for horizontal/compact poses
+    such as death frames where height-based normalization would inflate width.
+    """
+    raw = image.convert("RGBA")
+    lint = lint_frame(raw, lint_config)
+    if not lint.ok or lint.main_component is None:
+        raise GeometryError("raw-lint:" + ",".join(lint.errors))
+    if contract.scale <= 0:
+        raise GeometryError("invalid-scale")
+
+    foreground = _foreground_bbox(raw, lint_config.alpha_threshold)
+    if foreground is None:
+        raise GeometryError("empty-frame")
+
+    fx0, fy0, _, _ = foreground
+    crop = raw.crop(foreground)
+    scaled_size = (
+        max(1, round(crop.width * contract.scale)),
+        max(1, round(crop.height * contract.scale)),
+    )
+    scaled = crop.resize(scaled_size, Image.Resampling.BICUBIC)
+
+    body = lint.main_component
+    body_left = (body.bbox[0] - fx0) * contract.scale
+    body_right = (body.bbox[2] - fx0) * contract.scale
+    body_bottom = (body.bbox[3] - fy0) * contract.scale
+    body_center_in_crop = (body_left + body_right) / 2.0
+
+    dest_x = round(contract.body_center_x - body_center_in_crop)
+    dest_y = round(contract.foot_y - body_bottom)
+
+    margin = max(0, contract.safe_margin_px)
+    canvas_w, canvas_h = contract.canvas_size
+    placed_bbox = (
+        dest_x,
+        dest_y,
+        dest_x + scaled.width,
+        dest_y + scaled.height,
+    )
+    if (
+        placed_bbox[0] < margin
+        or placed_bbox[1] < margin
+        or placed_bbox[2] > canvas_w - margin
+        or placed_bbox[3] > canvas_h - margin
+    ):
+        raise GeometryError(
+            f"would-clip:{placed_bbox} outside "
+            f"canvas={contract.canvas_size} margin={margin}"
+        )
+
+    out = Image.new("RGBA", contract.canvas_size, (0, 0, 0, 0))
+    out.alpha_composite(scaled, (dest_x, dest_y))
+    out = _clean_transparent_rgb(out)
+
+    post = lint_frame(out, lint_config)
+    if not post.ok:
+        raise GeometryError("post-lint:" + ",".join(post.errors))
+    metrics = geometry_metrics(out, lint_config.alpha_threshold)
+    if metrics is None:
+        raise GeometryError("empty-frame")
+    if abs(metrics.foot_y - contract.foot_y) > contract.foot_tolerance_px:
+        raise GeometryError(
+            f"foot:{metrics.foot_y:.2f}!={contract.foot_y:.2f}"
+        )
+    if abs(metrics.body_center_x - contract.body_center_x) > contract.center_tolerance_px:
+        raise GeometryError(
+            f"center:{metrics.body_center_x:.2f}!={contract.body_center_x:.2f}"
+        )
+    return out
+
 def normalize_frame(
     image: Image.Image,
     contract: GeometryContract,
@@ -322,7 +411,10 @@ def normalize_frame(
         max(1, round(crop.width * scale)),
         max(1, round(crop.height * scale)),
     )
-    scaled = crop.resize(scaled_size, Image.Resampling.LANCZOS)
+    # LANCZOS rings around hard alpha silhouettes and can create detached
+    # low-alpha islands that did not exist in the authored source. BICUBIC keeps
+    # anti-aliased edges without manufacturing orphan components.
+    scaled = crop.resize(scaled_size, Image.Resampling.BICUBIC)
 
     body_left = (body.bbox[0] - fx0) * scale
     body_right = (body.bbox[2] - fx0) * scale

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chroniclesApplyRunCheckpoint,
+  chroniclesRunCheckpointFingerprint,
   chroniclesRunCheckpointPayload,
   chroniclesWorldFlagsForCheckpoint,
 } from './chroniclesRunCheckpoint.js';
@@ -57,5 +59,36 @@ describe('Chronicles checkpoint projection', () => {
   it('rejects missing map identity or invalid CAS versions', () => {
     expect(() => chroniclesRunCheckpointPayload({}, 0)).toThrow(/current map/i);
     expect(() => chroniclesRunCheckpointPayload({ mapId: 'crypt-eight-squares' }, -1)).toThrow(/worldVersion/i);
+  });
+});
+
+
+describe('Chronicles run checkpoint recovery', () => {
+  it('reapplies durable flags and ledgers without replacing runtime-only state', () => {
+    const base = createChroniclesState('gallery-of-forks');
+    const recovered = chroniclesApplyRunCheckpoint(
+      { ...base, message: 'runtime-message' },
+      {
+        worldFlags: { galleryLeverPulled: true, cryptSigilAwake: true },
+        consumedContentIds: ['gallery-lever'],
+        claimedRewards: ['reward:gallery'],
+      },
+    );
+
+    expect(recovered.galleryLeverPulled).toBe(true);
+    expect(recovered.cryptSigilAwake).toBe(true);
+    expect(recovered.message).toBe('runtime-message');
+    expect(recovered.consumedContentIds).toEqual(['gallery-lever']);
+    expect(recovered.claimedRewards).toEqual(['reward:gallery']);
+  });
+
+  it('fingerprints only durable checkpoint state', () => {
+    const base = createChroniclesState('gallery-of-forks');
+    const left = chroniclesRunCheckpointFingerprint({ ...base, x: 1, y: 2, message: 'uno' });
+    const right = chroniclesRunCheckpointFingerprint({ ...base, x: 7, y: 8, message: 'dos' });
+    expect(left).toBe(right);
+
+    const changed = chroniclesRunCheckpointFingerprint({ ...base, galleryLeverPulled: true });
+    expect(changed).not.toBe(left);
   });
 });
