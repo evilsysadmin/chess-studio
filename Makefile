@@ -24,7 +24,7 @@ CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torne
 	frontend-install backend-install ensure-pip-audit python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -386,6 +386,10 @@ npm-audit-parser-check:
 architecture-debt-check:
 	python3 scripts/architecture_debt_budget.py
 
+workflow-debt-check:
+	python3 scripts/workflow_debt_gate.py --self-test
+	python3 scripts/workflow_debt_gate.py
+
 grafana-check:
 	$(PYTHON) scripts/grafana_dashboard_check.py
 
@@ -412,7 +416,7 @@ test-parity-check:
 render-staging-check:
 	python3 -S scripts/render_staging_bootstrap_smoke.py
 
-static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
+static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
 	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
