@@ -16,6 +16,7 @@ ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
 SETPIECES = GODOT_ROOT / "scripts/setpiece_visual.gd"
+STAGE_GEOMETRY_POLICY = GODOT_ROOT / "scripts/stage_geometry_policy.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
@@ -255,11 +256,18 @@ REQUIRED_SETPIECE_MAIN = (
     "_destructible_geometry_rects",
     "_damage_destructible_at",
     "_update_artillery_barrage",
-    "PICKUP_SPAWN_SIZE",
-    "_pickup_spawn_clear",
-    "_resolve_pickup_spawn",
     '"state": "idle"',
     '"state"] = "falling"',
+)
+
+REQUIRED_STAGE_GEOMETRY_POLICY = (
+    "PICKUP_SPAWN_SIZE",
+    "PICKUP_SPAWN_CLEARANCE",
+    "PICKUP_SPAWN_SEARCH_STEP",
+    "func rects_from_specs",
+    "func _pickup_spawn_clear",
+    "func resolve_pickup_spawn",
+    "Pickup spawn blocked near",
 )
 
 REQUIRED_PAUSE_MENU = (
@@ -533,6 +541,7 @@ def validate() -> None:
     validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)
     validate_contract(SETPIECES, "setpiece_visual.gd", REQUIRED_SETPIECE_VISUAL, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_SETPIECE_MAIN, violations)
+    validate_contract(STAGE_GEOMETRY_POLICY, "stage_geometry_policy.gd", REQUIRED_STAGE_GEOMETRY_POLICY, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_PARALLAX_MAIN, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
