@@ -42,7 +42,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
-| Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Matthias / memoria episódica / apariciones de sesión | [`docs/experiments/matthias-episodic-memory.md`](docs/experiments/matthias-episodic-memory.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Tutoriales de mecánicas/modos no estándar | [`docs/operations/tutorials.md`](docs/operations/tutorials.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
@@ -99,6 +99,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
+- [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
