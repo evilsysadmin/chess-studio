@@ -37,8 +37,9 @@ async function openPawnSlug(page) {
 
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible({ timeout: 20_000 });
+  await expect(direct).toBeEnabled({ timeout: 20_000 });
   // This proof owns the Pawn Slug host, not Home pointer geometry. Dispatch the
-  // button action directly so Home animation/focus churn cannot steal Enter.
+  // enabled button action directly so Home animation/focus churn cannot steal Enter.
   await direct.evaluate((node) => node.click());
 
   await expect(page.locator('.pawn-slug-godot-host')).toBeVisible({ timeout: 20_000 });
