@@ -83,7 +83,11 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
   if (payload.status !== 'active') throw new Error('inactive-run');
-  if (!payload.worldFlags || typeof payload.worldFlags !== 'object' || Array.isArray(payload.worldFlags)) {
+  // During rolling deploys the previous backend can still return the pre-checkpoint
+  // run shape, which did not expose worldFlags. Treat omission as the empty durable
+  // state, but keep rejecting explicit malformed values.
+  const worldFlags = payload.worldFlags === undefined ? {} : payload.worldFlags;
+  if (!worldFlags || typeof worldFlags !== 'object' || Array.isArray(worldFlags)) {
     throw new Error('invalid-world-flags');
   }
   if (!Array.isArray(payload.consumedContentIds) || !Array.isArray(payload.claimedRewards)) {
@@ -121,7 +125,7 @@ function validateRunBootstrap(payload, requestedMapId) {
     runId: payload.runId,
     currentMapId,
     worldVersion: payload.worldVersion,
-    worldFlags: Object.freeze({ ...payload.worldFlags }),
+    worldFlags: Object.freeze({ ...worldFlags }),
     consumedContentIds: Object.freeze([...payload.consumedContentIds]),
     claimedRewards: Object.freeze([...payload.claimedRewards]),
     runStatus: payload.status,
