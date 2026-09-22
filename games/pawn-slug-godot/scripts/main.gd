@@ -1,6 +1,7 @@
 extends Node2D
 
 const EnemyVisual := preload("res://scripts/enemy_visual.gd")
+const VisualCaptureProbe := preload("res://scripts/visual_capture_probe.gd")
 const EnemyUtilityAI := preload("res://scripts/enemy_utility_ai.gd")
 const BossVisual := preload("res://scripts/boss_visual.gd")
 const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
@@ -234,30 +235,7 @@ func _selected_stage_id() -> String:
     return DEFAULT_STAGE_ID
 
 func _apply_visual_capture_probe() -> void:
-    # CI's Playwright harness injects these JS-only globals before Godot boots.
-    # Normal production pages never define them, so probes cannot alter regular
-    # gameplay or become public URL cheats.
-    if not OS.has_feature("web"):
-        return
-
-    var weapon_probe = JavaScriptBridge.eval(
-        "typeof window.__pawnSlugVisualProbeWeapon === 'string' ? window.__pawnSlugVisualProbeWeapon : ''",
-        true,
-    )
-    var weapon_id := String(weapon_probe)
-    if weapon_id in ["machinegun", "shotgun", "panzerfaust"]:
-        player.grant_weapon(weapon_id)
-
-    var position_probe = JavaScriptBridge.eval(
-        "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
-        true,
-    )
-    if typeof(position_probe) not in [TYPE_INT, TYPE_FLOAT]:
-        return
-    var target_x := clampf(float(position_probe), _stage_start_x, _world_size.x - 96.0)
-    player.global_position.x = target_x
-    player.velocity = Vector2.ZERO
-    player.reset_physics_interpolation()
+    VisualCaptureProbe.apply(player, _stage_start_x, _world_size.x)
 
 func available_stage_ids() -> Array:
     return STAGE_CATALOG.duplicate()
@@ -460,6 +438,8 @@ func _process(delta: float) -> void:
             return
         _startup_ready_sent = true
         _notify_parent("ready")
+
+    VisualCaptureProbe.publish_metrics(player)
 
     if touch_controls != null and touch_controls.orientation_blocked():
         enemy_projectiles.clear()
