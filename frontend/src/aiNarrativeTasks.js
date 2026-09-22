@@ -1,8 +1,4 @@
-function finiteNumber(value, fallback = null) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
-
+import { finiteNumber } from './numberUtils.js';
 function cleanText(value, max = 120) {
   const text = String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
   return text ? text.slice(0, max) : null;

@@ -141,11 +141,11 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         # panels and legs of the table. Real grain is uneven: two unrelated
         # frequencies, both bent by low-frequency noise, so no two growth rings
         # are the same width, and most of the variation comes from soft noise.
-        warp = (coarse - 0.5) * 1.6 + math.sin(v * math.tau * 2.0) * 0.08
+        warp = (coarse - 0.5) * 0.8 + math.sin(v * math.tau * 2.0) * 0.05
         rings = 0.5 + 0.5 * math.sin((u * 11.0 + warp) * math.tau)
         fibres = 0.5 + 0.5 * math.sin((u * 27.0 + medium * 2.4 + coarse * 1.1) * math.tau)
-        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.30 + (fibres - 0.5) * 0.16
-                            + (coarse - 0.5) * 0.30 + (fine - 0.5) * 0.14))
+        return max(0.0, min(1.0, 0.5 + (rings - 0.5) * 0.13 + (fibres - 0.5) * 0.12
+                            + (coarse - 0.5) * 0.22 + (fine - 0.5) * 0.12))
     if profile == "leather":
         wrinkles = _value_noise(u, v, seed + 211, 7)
         pebble_a = _value_noise(u, v, seed + 223, 23)
@@ -178,6 +178,15 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         weave = (warp - 0.5) * (weft - 0.5) * 0.22
         value = 0.40 + coarse * 0.24 + medium * 0.16 + (warp + weft - 1.0) * 0.085 + weave + fine * 0.07
         return max(0.0, min(1.0, value))
+    if profile == "leaf":
+        # The leaves are flattened UV spheres seen face-on, so the meridians (lines of
+        # constant u) fan out from the centre like veins. Narrow raised ribs on those
+        # meridians, faint cross veins and slow tonal drift make a flat green blob
+        # read as a leaf.
+        rib = 0.5 + 0.5 * math.cos((u * 14.0 + (coarse - 0.5) * 0.30) * math.tau)
+        cross = 0.5 + 0.5 * math.sin((v * 9.0 + u * 3.0) * math.tau)
+        return max(0.0, min(1.0, 0.40 + rib ** 6 * 0.30 + (coarse - 0.5) * 0.32
+                            + (cross - 0.5) * 0.06 + (fine - 0.5) * 0.08))
     if profile == "metal":
         patina = _value_noise(u, v, seed + 119, 8)
         brushed_a = _value_noise(u * 0.55, v * 2.8, seed + 131, 19)
@@ -309,7 +318,7 @@ def _packed_surface_arrays(
     detail_gain = {
         "stone": 1.0,
         "floor_stone": 0.85,
-        "wood": 1.7,
+        "wood": 0.6,
         "metal": 1.0,
         "textile": 1.0,
         "leather": 1.0,
@@ -325,6 +334,7 @@ def _packed_surface_arrays(
         "leather": (0.70, 1.24),
         "paper": (0.88, 1.12),
         "wax": (0.90, 1.10),
+        "leaf": (0.74, 1.24),
     }.get(profile, (0.82, 1.14))
     rough_span = {
         "stone": 0.07,
@@ -335,6 +345,7 @@ def _packed_surface_arrays(
         "leather": 0.12,
         "paper": 0.055,
         "wax": 0.045,
+        "leaf": 0.09,
     }.get(profile, 0.10)
     normal_strength = {
         "stone": 2.5,
@@ -345,6 +356,7 @@ def _packed_surface_arrays(
         "leather": 2.4,
         "paper": 1.15,
         "wax": 0.85,
+        "leaf": 1.8,
     }.get(profile, 2.5) * (size / base_size)
 
     factor = low + (high - low) * heights
@@ -401,6 +413,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "textile": 128,
         "leather": 128,
         "metal": 128,
+        "leaf": 128,
     }.get(profile, 96)
     # Normal maps are ~3/4 of the texture bytes, so resolution is spent only on
     # the surfaces that dominate the frame. Dark decals, soot and small props keep
@@ -452,12 +465,13 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
     normal_map.inputs["Strength"].default_value = {
         "stone": 0.55,
         "floor_stone": 0.50,
-        "wood": 0.42,
+        "wood": 0.22,
         "metal": 0.36,
         "textile": 0.40,
         "leather": 0.38,
         "paper": 0.18,
         "wax": 0.12,
+        "leaf": 0.16,
     }.get(profile, 0.35)
     links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
     links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
@@ -567,6 +581,65 @@ def _vary_uvs_for_object(obj, mat) -> None:
         loop.uv.y = loop.uv.y * scale + offset_v
 
 
+# Metres of surface covered by one repeat of the packed texture. A default Blender
+# cube maps every face to a quarter-by-quarter window of the texture whatever its
+# size, so a table top a few metres wide showed ~64 px stretched over it (about
+# 14 px/m) and thin legs got the same window squashed. Wood and stone therefore get
+# world-scale UVs: the same texel density on every face, grain along the long side.
+WORLD_UV_TILE_M = {
+    "HOME_MAT_table_wood": 1.6,
+    "HOME_MAT_wood": 1.6,
+    "HOME_MAT_library_wood": 1.6,
+    "HOME_MAT_wood_wear": 1.6,
+    "HOME_MAT_stone": 1.6,
+    "HOME_MAT_back_wall_stone": 1.6,
+    "HOME_MAT_back_wall_stone_accent": 1.6,
+    "HOME_MAT_arch_stone": 1.6,
+    "HOME_MAT_stair_stone": 1.6,
+    "HOME_MAT_stone_dark": 1.6,
+}
+
+
+def _world_scale_cube_uvs(obj, tile: float) -> None:
+    mesh = obj.data
+    layer = mesh.uv_layers.active if getattr(mesh, "uv_layers", None) else None
+    if layer is None:
+        return
+    data = layer.data
+    for poly in mesh.polygons:
+        loops = list(poly.loop_indices)
+        if len(loops) != 4:
+            continue
+        us = [data[i].uv.x for i in loops]
+        vs = [data[i].uv.y for i in loops]
+        u0, u1, v0, v1 = min(us), max(us), min(vs), max(vs)
+        if u1 - u0 < 1e-6 or v1 - v0 < 1e-6:
+            continue
+
+        def corner(cu, cv):
+            return min(
+                loops,
+                key=lambda i: (data[i].uv.x - cu) ** 2 + (data[i].uv.y - cv) ** 2,
+            )
+
+        def position(loop_index):
+            return mesh.vertices[mesh.loops[loop_index].vertex_index].co
+
+        origin = position(corner(u0, v0))
+        along_u = (position(corner(u1, v0)) - origin).length
+        along_v = (position(corner(u0, v1)) - origin).length
+        for i in loops:
+            fu = (data[i].uv.x - u0) / (u1 - u0)
+            fv = (data[i].uv.y - v0) / (v1 - v0)
+            if along_u > along_v:
+                # Rings vary along u, so put the long side on v: grain runs the length.
+                data[i].uv.x = fv * along_v / tile
+                data[i].uv.y = fu * along_u / tile
+            else:
+                data[i].uv.x = fu * along_u / tile
+                data[i].uv.y = fv * along_v / tile
+
+
 def apply_material(obj, mat) -> None:
     if hasattr(obj.data, "materials"):
         obj.data.materials.append(mat)
@@ -624,6 +697,9 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
         modifier = obj.modifiers.new("Soft edges", "BEVEL")
         modifier.width = edge_width
         configure_soft_edge_modifier(modifier, name)
+    world_tile = WORLD_UV_TILE_M.get(getattr(mat, "name", ""))
+    if world_tile:
+        _world_scale_cube_uvs(obj, world_tile)
     apply_material(obj, mat)
     return obj
 
@@ -1615,19 +1691,52 @@ def add_bookshelf(materials):
             if gap_code in (0, 1):
                 continue
             bx = x - 1.15 + col * 0.285 + (_hash01(col, row, 901) - 0.5) * 0.040
-            h = 0.17 + _hash01(row, col, 907) * 0.105
-            w = 0.064 + _hash01(col, row, 911) * 0.026
+            # Real shelves mix thin pamphlets, ordinary volumes and thick folios; a
+            # single width/height band made every book the same brick.
+            kind = _hash01(col, row, 941)
+            if kind < 0.18:
+                h = 0.15 + _hash01(row, col, 907) * 0.06
+                w = 0.040 + _hash01(col, row, 911) * 0.016
+            elif kind > 0.80:
+                h = 0.24 + _hash01(row, col, 907) * 0.075
+                w = 0.092 + _hash01(col, row, 911) * 0.032
+            else:
+                h = 0.18 + _hash01(row, col, 907) * 0.085
+                w = 0.062 + _hash01(col, row, 911) * 0.028
+            depth = 0.062 + _hash01(row, col, 947) * 0.024
             by = y - 0.47 + (_hash01(row, col, 919) - 0.5) * 0.055
             bz = base_z + h
+            tone = book_colors[(row + col * 2) % len(book_colors)]
+            # A large bevel rounds the spine like a bound book instead of a box.
             book = cube(
                 f"HOME_PROP_book_{row}_{col}",
                 (bx, by, bz),
-                (w, 0.075, h),
-                book_colors[(row + col * 2) % len(book_colors)],
-                bevel=0.008,
+                (w, depth, h),
+                tone,
+                bevel=min(0.022, w * 0.42),
             )
-            book.rotation_euler[1] = math.radians((_hash01(col, row, 929) - 0.5) * 8.0)
+            lean = math.radians((_hash01(col, row, 929) - 0.5) * 9.0)
+            book.rotation_euler[1] = lean
             book.rotation_euler[2] = math.radians((_hash01(row, col, 937) - 0.5) * 2.2)
+            front_y = by - depth - 0.006
+            # Raised bands across the spine, a title label and a tail band.
+            for band_idx, frac in enumerate((0.20, 0.80)):
+                cube(
+                    f"HOME_PROP_book_rib_{row}_{col}_{band_idx}",
+                    (bx + math.sin(lean) * h * (frac - 0.5) * 2, front_y, base_z + h * 2 * frac),
+                    (w * 0.97, 0.008, 0.009),
+                    brass if kind > 0.30 else materials["dark"],
+                    bevel=0.003,
+                )
+            if kind > 0.22:
+                label_z = base_z + h * 1.22
+                cube(
+                    f"HOME_PROP_book_label_{row}_{col}",
+                    (bx + math.sin(lean) * h * 0.44, front_y - 0.002, label_z),
+                    (w * 0.62, 0.006, h * 0.14),
+                    materials["paper"] if (row + col) % 3 else materials["brass_dark"],
+                    bevel=0.002,
+                )
             if (row * 9 + col) % 7 == 0:
                 cube(
                     f"HOME_PROP_book_band_{row}_{col}",
@@ -1779,25 +1888,50 @@ def add_armor(materials):
         cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
-    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.50, 0.37, 0.72, steel, vertices=28)
+    # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
+    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.34, 0.48, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
     sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
     sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.31), (0.220, 0.120, 0.080), steel)
-    curve_tube(
-        "HOME_PROP_armor_left_arm",
-        [(x - 0.50, y, 2.29), (x - 0.67, y - 0.01, 2.00), (x - 0.61, y - 0.035, 1.65)],
-        0.070,
-        steel,
-    )
-    curve_tube(
-        "HOME_PROP_armor_right_arm",
-        [(x + 0.50, y - 0.01, 2.24), (x + 0.64, y - 0.03, 1.94), (x + 0.58, y - 0.055, 1.61)],
-        0.070,
-        steel,
-    )
-    sphere("HOME_PROP_armor_gauntlet_l", (x - 0.61, y - 0.035, 1.61), (0.090, 0.078, 0.092), steel)
-    sphere("HOME_PROP_armor_gauntlet_r", (x + 0.58, y - 0.055, 1.57), (0.090, 0.078, 0.092), steel)
+    # Ceremonial pose: elbows bend forward and in, both hands meet at the sword hilt in
+    # front of the belt instead of hanging at the sides. All coordinates below are in the
+    # same pre-transform space as the rest of add_armor: the caller's global rescale
+    # (0.78/0.92/1.14 about the pedestal) applies to these objects automatically because
+    # they share the HOME_PROP_armor_ prefix.
+    # The armour is viewed from -Y (camera side), and the chest/fauld/tasset flat
+    # panels sit at y in [5.47, 5.60] AFTER the global rescale, i.e. close to the front
+    # face. The hilt/hands must land in front of (smaller post-transform y than) those
+    # panels or they render fully hidden behind them, which is what happened first try.
+    hilt_x, hilt_y, hilt_z = x, y - 0.62, 1.90
+    for side in (-1, 1):
+        shoulder = (x + side * 0.50, y - 0.01, 2.32)
+        elbow = (x + side * 0.30, y - 0.42, 2.02)
+        wrist = (hilt_x + side * 0.075, hilt_y, hilt_z + 0.06)
+        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.062, steel)
+        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.088, 0.082, 0.078), steel)
+        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.052, steel)
+        curve_tube(f"HOME_PROP_armor_cuff_{side}", [
+            (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
+            (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
+        ], 0.062, materials["brass_dark"])
+        sphere(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.082, 0.070, 0.062), steel)
+
+    # Ceremonial two-handed sword, point down, hilt held at the belt.
+    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, hilt_z), 0.034, 0.20, materials["dark"], vertices=16)
+    for ring_z in (hilt_z - 0.075, hilt_z + 0.075):
+        cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.040, 0.012, brass, vertices=16)
+    sphere("HOME_PROP_armor_sword_pommel", (hilt_x, hilt_y, hilt_z - 0.14), (0.058, 0.058, 0.058), brass)
+    cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, hilt_z + 0.115), (0.230, 0.026, 0.024), brass, bevel=0.010)
+    for side in (-1, 1):
+        sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.245, hilt_y, hilt_z + 0.115), (0.040, 0.040, 0.040), brass)
+    blade_base_z, blade_tip_z = hilt_z + 0.15, 0.36
+    cube("HOME_PROP_armor_sword_blade", (hilt_x, hilt_y, (blade_base_z + blade_tip_z) / 2),
+         (0.052, 0.014, (blade_base_z - blade_tip_z) / 2), steel, bevel=0.006)
+    # cone() puts radius1 at the bottom (-Z) and radius2 at the top (+Z); the point
+    # must be the bottom (lowest z) so the blade tapers down to a tip, not up.
+    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.07), 0.001, 0.052, 0.14, steel, vertices=4)
+    tip.scale.y = 0.27
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head.
@@ -2511,8 +2645,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
-        "rug": material("HOME_MAT_rug", (0.086, 0.013, 0.012, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
-        "rug_worn": material("HOME_MAT_rug_worn", (0.064, 0.012, 0.011, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug": material("HOME_MAT_rug", (0.155, 0.017, 0.022, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
+        "rug_worn": material("HOME_MAT_rug_worn", (0.118, 0.016, 0.019, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
         "rug_thread": material("HOME_MAT_rug_thread", (0.26, 0.145, 0.040, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
         "banner": material("HOME_MAT_banner", (0.135, 0.014, 0.020, 1), roughness=0.90, bump_scale=20.0, bump_strength=0.045, variation=0.10, variation_scale=8.0, texture_profile="textile"),
         "wall_banner": material(
@@ -2591,7 +2725,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bump_scale=10.0,
             bump_strength=0.038,
         ),
-        "plant": material("HOME_MAT_plant", (0.035, 0.085, 0.026, 1), roughness=0.90),
+        "plant": material("HOME_MAT_plant", (0.085, 0.200, 0.055, 1), roughness=0.82, texture_profile="leaf"),
         "ceramic": material("HOME_MAT_ceramic", (0.42, 0.37, 0.30, 1), roughness=0.68, bump_scale=7.0, bump_strength=0.035, variation=0.08, variation_scale=4.4),
         "dark": material("HOME_MAT_dark", (0.018, 0.012, 0.01, 1), roughness=0.9),
         "window": material(
@@ -2618,6 +2752,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             roughness=0.72,
             emission=(0.18, 0.19, 0.17, 1),
             emission_strength=0.065,
+        ),
+        "moon_mare": material(
+            "HOME_MAT_moon_mare",
+            (0.27, 0.285, 0.285, 1),
+            roughness=0.86,
+            emission=(0.10, 0.11, 0.11, 1),
+            emission_strength=0.045,
         ),
         "fire": material(
             "HOME_MAT_fire",
@@ -3486,6 +3627,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         (0.27, 0.026, 0.27),
         materials["moon"],
     )
+    # A single pale disc reads as a plate on the wall. Darker maria (a few
+    # overlapping blotches, offset from the centre and slightly different in size)
+    # make it a moon; they sit just proud of the flattened sphere surface.
+    for idx, (dx, dz, rx, rz) in enumerate((
+        (-0.085, 0.070, 0.085, 0.060),
+        (0.060, 0.115, 0.055, 0.045),
+        (0.020, -0.040, 0.075, 0.090),
+        (0.115, -0.070, 0.045, 0.040),
+        (-0.110, -0.095, 0.040, 0.055),
+    )):
+        rho = math.hypot(dx, dz)
+        surface_y = 6.50 - 0.026 * math.sqrt(max(0.0, 1.0 - (rho / 0.27) ** 2))
+        sphere(
+            f"HOME_PROP_window_moon_mare_{idx}",
+            (7.02 + dx, surface_y + 0.001, 4.56 + dz),
+            (rx, 0.006, rz),
+            materials["moon_mare"],
+        )
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)

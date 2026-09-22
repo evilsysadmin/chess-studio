@@ -15,6 +15,18 @@ from pathlib import Path
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
 EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
 
+NONVISUAL_FRONTEND_PATHS = {
+    # Domain/session ownership with no canonical visual producer of its own.
+    # Keep this explicit: new generic frontend files still fail safe to full scope.
+    "frontend/src/components/roguelikescreen.jsx",
+    "frontend/src/components/spectatorscreen.jsx",
+    "frontend/src/components/usecombatcontroller.js",
+    "frontend/src/usecombatsessionpersistence.js",
+    "frontend/src/usecombatbattlesnapshotfactory.js",
+    "frontend/src/spectatorsessionrunner.js",
+    "frontend/src/gamesessiondescriptor.js",
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -80,18 +92,23 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower == "scripts/css_architecture_manifest.json":
         return set()
+    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"}:
+        return set()
+    if lower in NONVISUAL_FRONTEND_PATHS:
+        return set()
     if lower in {
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
         ".github/workflows/war-room-blender-art.yml",
     }:
         return {"warroom"}
+    if lower in {
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+    }:
+        return set()
     if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"experiments"}
@@ -110,6 +127,7 @@ def _surface_groups(path: str) -> set[str] | None:
             return {"home"}
         if name in {
             "experiments-visual-artifact.spec.js",
+            "pawn-slug-godot-visual-artifact.spec.js",
             "chronicles-avatar-visual-artifact.spec.js",
             "chronicles-gameplay-visual-artifact.spec.js",
             "chronicles-tactics-visual-artifact.spec.js",
@@ -139,6 +157,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         return None
     if "chesscom" in lower:
+        return set()
+    if ".test." in name or ".spec." in name:
         return set()
     if _is_noncanonical_admin_surface(path):
         return set()
@@ -326,6 +346,11 @@ def self_test() -> None:
     assert hub.experiments_scope == "landing,chronicles,pawnslug"
     assert not hub.chronicles_avatar
 
+    pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])
+    assert pawn_visual.capture_groups == "experiments"
+    assert pawn_visual.experiments_scope == "pawnslug"
+    assert not pawn_visual.hans and not pawn_visual.chesscom
+
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
@@ -402,6 +427,28 @@ def self_test() -> None:
     ])
     assert mixed_admin_home.capture_groups == "home"
 
+    for frontend_test in (
+        "frontend/src/gameSessionDescriptor.test.js",
+        "frontend/src/spectatorSessionRunner.test.js",
+        "frontend/src/components/AnyVisualOwner.test.jsx",
+    ):
+        test_scope = classify([frontend_test])
+        assert test_scope.capture_groups == "none"
+
+    for nonvisual_path in sorted(NONVISUAL_FRONTEND_PATHS):
+        nonvisual = classify([nonvisual_path])
+        assert nonvisual.capture_groups == "none"
+        assert not nonvisual.hans and not nonvisual.chesscom
+    mixed_nonvisual_warroom = classify([
+        "frontend/src/components/useCombatController.js",
+        "frontend/src/components/WarRoom3D.jsx",
+    ])
+    assert mixed_nonvisual_warroom.capture_groups == "warroom"
+
+    for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"):
+        gate_scope = classify([nonvisual_gate])
+        assert gate_scope.capture_groups == "none"
+
     css_manifest = classify(["scripts/css_architecture_manifest.json"])
     assert css_manifest.capture_groups == "none"
     assert not css_manifest.hans and not css_manifest.chesscom
@@ -413,9 +460,11 @@ def self_test() -> None:
     assert not career_with_manifest.hans and not career_with_manifest.chesscom
 
     visual_scope = classify(["scripts/app_visual_scope.py"])
-    assert visual_scope.capture_groups == "experiments"
-    assert visual_scope.experiments_scope == "chronicles"
+    assert visual_scope.capture_groups == "none"
     assert not visual_scope.hans and not visual_scope.chesscom
+    producer_scope = classify(["scripts/app_visual_producer_scope.py"])
+    assert producer_scope.capture_groups == "none"
+    assert not producer_scope.hans and not producer_scope.chesscom
     assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     global_css = classify(["frontend/src/App.css"])

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, login, mockApi, scheduleDomClick } from './helpers.js';
 
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 const PIECE_SKIN_KEY = 'chess-study-selected-skin';
@@ -16,9 +16,9 @@ async function openQuickMatch(page) {
 
 async function launchQuickMatch2D(page) {
   const { dialog, renderer } = await openQuickMatch(page);
-  await renderer.getByRole('button', { name: '2D', exact: true }).click();
+  await scheduleDomClick(renderer.getByRole('button', { name: '2D', exact: true }));
   await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await scheduleDomClick(dialog.getByRole('button', { name: 'Empezar partida', exact: true }));
 }
 
 async function expectLightweight2D(page) {
@@ -93,7 +93,7 @@ test('Partida rápida · un dispositivo limpio conserva War Room como camino pri
 
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBeNull();
   const { dialog } = await openQuickMatch(page);
-  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await scheduleDomClick(dialog.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
   await expect(page.locator('.game-layout-3d')).toBeVisible();
@@ -107,7 +107,7 @@ test('Partida rápida · vuelve a ofrecer 3D aunque el dispositivo recuerde una 
   await page.evaluate((key) => localStorage.setItem(key, '2d'), DEVICE_BOARD_RENDERER_KEY);
 
   const { dialog } = await openQuickMatch(page);
-  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await scheduleDomClick(dialog.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
   await expect(page.locator('.game-layout-3d')).toBeVisible();

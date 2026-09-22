@@ -43,6 +43,8 @@ REQUIRED_OBJECTS = {
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
+    "RoutineSandwichBread",
+    "RoutineSandwichFilling",
 }
 
 FORBIDDEN_NAME_TOKENS = (
@@ -82,6 +84,7 @@ DARK_BODY_MAX_LUMA = 0.10
 IVORY_HEAD_MIN_LUMA = 0.42
 BRASS_MIN_METALLIC = 0.55
 REST_ARM_MIN_Y = 0.10
+BITE_PROP_FACE_CLEARANCE_MIN = 0.025
 
 MIN_BROW_TILT_DEGREES = 22.0
 MAX_BROW_TILT_DEGREES = 40.0

@@ -24,6 +24,61 @@ const EXPOSURE = Object.freeze({
   night: 1.32,
 });
 
+// The room used to look the same at every hour (only the exposure moved, by 8%).
+// Each period now tints and rebalances the daylight-side lights: the warm key that
+// stands for the sun/moon, the cool fill that comes from the tall window on the
+// right, the sky colour of the hemisphere and the ambient wash. Values multiply the
+// authored intensities, and the fires are untouched, so the room keeps its hearth
+// glow at night and simply gets more daylight at noon. The moon disc only shows when
+// there is a night-ish sky.
+export const HOME_BLENDER_TIME_OF_DAY = Object.freeze({
+  dawn: Object.freeze({
+    ambient: Object.freeze({ color: 0xb08a78, scale: 1.0 }),
+    hemi: Object.freeze({ color: 0x9aa6c8, scale: 1.05 }),
+    key: Object.freeze({ color: 0xffb48e, scale: 0.95 }),
+    fill: Object.freeze({ color: 0xc79aa8, scale: 1.3 }),
+    moon: true,
+  }),
+  day: Object.freeze({
+    ambient: Object.freeze({ color: 0xa89684, scale: 1.15 }),
+    hemi: Object.freeze({ color: 0xa9c0e0, scale: 1.3 }),
+    key: Object.freeze({ color: 0xffdcb0, scale: 1.12 }),
+    fill: Object.freeze({ color: 0x8fb2e6, scale: 1.7 }),
+    moon: false,
+  }),
+  dusk: Object.freeze({
+    ambient: Object.freeze({ color: 0x9b7460, scale: 0.95 }),
+    hemi: Object.freeze({ color: 0x8a7ea8, scale: 1.0 }),
+    key: Object.freeze({ color: 0xff9a5c, scale: 0.95 }),
+    fill: Object.freeze({ color: 0x8a6a96, scale: 1.3 }),
+    moon: true,
+  }),
+  night: Object.freeze({
+    ambient: Object.freeze({ color: 0x707a9b, scale: 0.9 }),
+    hemi: Object.freeze({ color: 0x4a5f96, scale: 1.0 }),
+    key: Object.freeze({ color: 0x9fb2e0, scale: 0.7 }),
+    fill: Object.freeze({ color: 0x5a7ec4, scale: 1.5 }),
+    moon: true,
+  }),
+});
+
+export function homeBlenderTimeOfDayLook(ambient = 'day') {
+  return HOME_BLENDER_TIME_OF_DAY[ambient] || HOME_BLENDER_TIME_OF_DAY.day;
+}
+
+const HOME_BLENDER_MOON_NAME = /window_moon/i;
+
+export function applyHomeBlenderMoonVisibility(root, ambient = 'day') {
+  const visible = homeBlenderTimeOfDayLook(ambient).moon;
+  let touched = 0;
+  root?.traverse?.((object) => {
+    if (!HOME_BLENDER_MOON_NAME.test(String(object.name || ''))) return;
+    object.visible = visible;
+    touched += 1;
+  });
+  return touched;
+}
+
 function stableFirePhase(name = '') {
   let hash = 2166136261;
   for (let index = 0; index < name.length; index += 1) {
@@ -219,6 +274,59 @@ export function applyFlameLook(material, kind) {
   return true;
 }
 
+// Flat orange emission makes every flame a cut-out blob. Real flames are darker and
+// redder at the base and yellow-white at the tip, so the emission is graded along the
+// flame's own height (object-space y between the geometry bounds). The base value is
+// a multiplier on the authored orange and the tip a hot yellow scaled by the same
+// intensity, so the animated emissiveIntensity keeps driving the flicker.
+export const HOME_BLENDER_FLAME_GRADIENT = Object.freeze({
+  base: Object.freeze([0.95, 0.40, 0.28]),
+  tip: Object.freeze([1.0, 0.60, 0.10]),
+  from: 0.25,
+  to: 1.0,
+});
+
+export function flameHeightRange(geometry) {
+  if (!geometry) return null;
+  geometry.computeBoundingBox?.();
+  const box = geometry.boundingBox;
+  if (!box) return null;
+  const min = box.min.y;
+  const max = box.max.y;
+  return max - min > 1e-5 ? { min, max } : null;
+}
+
+export function applyFlameGradient(material, range) {
+  if (!material || !range) return false;
+  const { base, tip, from, to } = HOME_BLENDER_FLAME_GRADIENT;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uFlameMin = { value: range.min };
+    shader.uniforms.uFlameMax = { value: range.max };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vFlameY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlameY = position.y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying float vFlameY;\nuniform float uFlameMin;\nuniform float uFlameMax;',
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        float flameT = smoothstep(${from.toFixed(2)}, ${to.toFixed(2)},
+          clamp((vFlameY - uFlameMin) / max(uFlameMax - uFlameMin, 1e-4), 0.0, 1.0));
+        float flameGain = max(max(emissive.r, emissive.g), emissive.b);
+        totalEmissiveRadiance = mix(
+          totalEmissiveRadiance * vec3(${base.map((v) => v.toFixed(2)).join(',')}),
+          vec3(${tip.map((v) => v.toFixed(2)).join(',')}) * flameGain,
+          flameT);`,
+      );
+  };
+  material.customProgramCacheKey = () => 'home-flame-gradient';
+  material.needsUpdate = true;
+  return true;
+}
+
 function prepareRuntimeFireRig(root) {
   const nodes = [];
   root?.traverse?.((object) => {
@@ -236,6 +344,7 @@ function prepareRuntimeFireRig(root) {
 
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
       if (kind !== 'ember') applyFlameLook(material, kind);
+      if (kind !== 'ember') applyFlameGradient(material, flameHeightRange(object.geometry));
     }
 
     const materials = (Array.isArray(object.material) ? object.material : [object.material])
@@ -358,7 +467,53 @@ const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
 const HOME_BLENDER_LITE_EXPOSURE_BOOST = 1.75;
 const HOME_BLENDER_LITE_AMBIENT_BOOST = 2.6;
 
-function addRuntimeLights(scene, shadowsEnabled = true) {
+// Flames and candles were a bright shape with a hard edge and no halo, so they read
+// as stickers. Each practical light now carries a soft additive sprite (a radial
+// gradient, no post-processing pass) whose opacity follows the same flicker as the
+// light behind it. The ratio is clamped so a deep dip in the noise never blacks the
+// glow out and a spike never blows it out.
+export function homeBlenderGlowOpacity(base = 0, lightRatio = 1) {
+  const ratio = Math.min(1.4, Math.max(0.5, Number(lightRatio) || 0));
+  return Math.min(1, Math.max(0, Number(base) * ratio));
+}
+
+function createGlowTexture() {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.18, 'rgba(255,255,255,0.55)');
+  gradient.addColorStop(0.5, 'rgba(255,255,255,0.14)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createGlowSprite(texture, color, size, opacity, position) {
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    color,
+    transparent: true,
+    opacity,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.copy(position);
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
+function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -400,6 +555,16 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
   // lights; the runtime had none, so the dark steel read as a black silhouette.
   // A narrow, soft-edged cool spot aimed at the suit lets its plates catch a
   // highlight without spilling onto the board, whose colours must stay honest.
+  const look = homeBlenderTimeOfDayLook(ambientPeriod);
+  ambient.color.setHex(look.ambient.color);
+  ambient.intensity *= look.ambient.scale;
+  hemi.color.setHex(look.hemi.color);
+  hemi.intensity *= look.hemi.scale;
+  key.color.setHex(look.key.color);
+  key.intensity *= look.key.scale;
+  fill.color.setHex(look.fill.color);
+  fill.intensity *= look.fill.scale;
+
   const armour = new THREE.SpotLight(0xb9c6da, 26, 6, 0.36, 0.75, 2);
   armour.position.set(1.4, 3.6, -3.4);
   armour.target.position.set(1.5, 2.2, -5.7);
@@ -412,6 +577,7 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
     ? HOME_BLENDER_TORCH_X.map((x) => {
       const light = new THREE.PointLight(0xff8a3c, 7, 6, 2);
       light.position.set(x, 3.15, -5.5);
+      light.userData.glow = { size: 1.05, opacity: 0.5 };
       return light;
     })
     : [];
@@ -429,24 +595,49 @@ function addRuntimeLights(scene, shadowsEnabled = true) {
     // and the reading light at the library desk. Positions map Blender (x, y, z) to
     // three (x, z, -y). Kept modest: the chandelier hangs right over the board, whose
     // colours must stay honest.
-    for (const [color, intensity, distance, x, y, z] of [
-      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2],
-      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4],
-      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76],
+    for (const [color, intensity, distance, x, y, z, glowSize] of [
+      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2, 0],
+      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55],
+      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55],
       // The three candles on the Dungeon balustrade: they give the step treads (in
       // shadow otherwise) a raking warm light, one per flight of the stair.
-      [0xff7a30, 3.0, 3.2, 5.35, 1.40, -0.91],
-      [0xff7a30, 3.0, 3.2, 6.35, 0.75, -0.06],
-      [0xff7a30, 3.0, 3.2, 7.25, 0.16, 0.69],
+      [0xff7a30, 3.0, 3.2, 5.35, 1.40, -0.91, 0.5],
+      [0xff7a30, 3.0, 3.2, 6.35, 0.75, -0.06, 0.5],
+      [0xff7a30, 3.0, 3.2, 7.25, 0.16, 0.69, 0.5],
     ]) {
       const light = new THREE.PointLight(color, intensity, distance, 2);
       light.position.set(x, y, z);
+      if (glowSize) light.userData.glow = { size: glowSize, opacity: 0.5 };
       torches.push(light);
     }
   }
 
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
+
+  const glowTexture = createGlowTexture();
+  const glows = [];
+  if (glowTexture) {
+    for (const light of torches) {
+      const spec = light.userData.glow;
+      if (!spec) continue;
+      const sprite = createGlowSprite(glowTexture, light.color, spec.size, spec.opacity, light.position);
+      scene.add(sprite);
+      glows.push({ sprite, light, lightBase: light.intensity, base: spec.opacity, hearth: null });
+    }
+    for (const [hearth, side] of [[leftHearth, 'left'], [rightHearth, 'right']]) {
+      const sprite = createGlowSprite(glowTexture, hearth.color, 2.6, 0.30, hearth.position);
+      scene.add(sprite);
+      glows.push({ sprite, light: hearth, lightBase: hearth.intensity, base: 0.30, hearth: side });
+    }
+  }
+  const disposeGlows = () => {
+    for (const glow of glows) glow.sprite.material.dispose();
+    glowTexture?.dispose?.();
+  };
+
   return {
+    glows,
+    disposeGlows,
     torches: torches.map((light, index) => ({
       light,
       base: light.intensity,
@@ -605,7 +796,7 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full');
+    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -656,6 +847,12 @@ export default function HomeBlenderScene3D({
         for (const torch of runtimeLights.torches) {
           torch.light.intensity = torch.base
             * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle' }).light;
+        }
+        for (const glow of runtimeLights.glows) {
+          glow.sprite.material.opacity = homeBlenderGlowOpacity(
+            glow.base,
+            glow.light.intensity / (glow.lightBase || 1),
+          );
         }
         const startedAt = performance.now();
         renderFrame();
@@ -760,6 +957,7 @@ export default function HomeBlenderScene3D({
       }
       model = root;
       prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
+      applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
       scene.add(model);
       resize();
@@ -800,6 +998,7 @@ export default function HomeBlenderScene3D({
         scene.remove(model);
         disposeRuntimeScene(model);
       }
+      runtimeLights.disposeGlows?.();
       releaseEnvironment();
       renderer.dispose();
     };

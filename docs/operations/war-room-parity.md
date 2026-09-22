@@ -43,6 +43,38 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Abandono / salida | **GATE** | `war-room-ephemeral-cleanup.spec.js`: abandona desde War Room con selección + inspect activos, confirma vuelta única a Home, exige desmontaje total de shell/canvas 3D y eliminación del snapshot de sesión activa sin ErrorBoundary. | Mantener al tocar salida, snapshot activo o lifecycle del renderer. |
 | Reduced motion | **GATE** | `mobile-war-room-lifecycle.spec.js` corre War Room con `reducedMotion: reduce`, conserva selección durante rotaciones/background y ejecuta una jugada real; `war-room-undo-rewind.spec.js` además juega, deshace, recarga y cruza a 2D bajo la misma media feature. | Mantener al añadir nuevos FX/microanimaciones de War Room. |
 | Fallback 3D → 2D por WebGL | **GATE** | `war-room-webgl-fallback.spec.js` cubre tanto arranque sin WebGL como `webglcontextlost` en mitad de partida; en ambos casos aparece el tablero 2D, desaparece el canvas 3D y e2→e4 sigue produciendo exactamente una mutación sin ErrorBoundary. | Mantener al tocar lifecycle/context recovery/fallback. |
+| Onboarding inicial guiado por Matthias | **PENDIENTE** | Contrato fijado: Matthias guía selección de una pieza, muestra destinos legales reales y acompaña una o dos interacciones; es skippable, reabrible desde ayuda y equivalente con mouse/touch/teclado. | Añadir E2E first-run + replay desde Help verificando que los destinos vienen del estado legal compartido y que el estado tutorial se limpia al cerrar/completar. |
+
+## Ciclo de vida narrativo y efectos de una sola vez
+
+Los comentarios de Matthias, reacciones de espectadores y beats diegéticos de War Room son **efectos derivados de eventos reales**, no efectos de render.
+
+- Un hecho de partida debe tener una identidad estable suficiente para deduplicar (por ejemplo partida + ply/movimiento + tipo de incidente).
+- Rerenders, cambios 2D↔3D, remounts, F5, reconnect, rehidratación o polling no pueden volver a emitir un comentario ya consumido en la sesión live.
+- Una captura de dama, mate, blunder u otro incidente produce como máximo la reacción que corresponda a **ese** evento; no se vuelve a disparar porque el estado resultante siga conteniendo la misma condición.
+- Replay/autopsia puede tener su propio playback deliberado, pero no debe reutilizar accidentalmente el canal de efectos live.
+- Si CPU y espectadores pueden reaccionar al mismo incidente, la decisión CPU/espectadores/ambos/silencio se toma una vez por evento y se conserva; no se decide de nuevo en cada render.
+
+Los beats dependientes de la escena empiezan cuando la escena necesaria está realmente lista/visible, no cuando React montó el componente. Si Matthias debe advertir que el fuego está apagado y llamar a Hans, el reloj del beat comienza tras el readiness visual de War Room; un render lento, pestaña oculta o GLB tardío no puede consumir la entrada de Hans antes de que el usuario pueda verla.
+
+Las pruebas de regresión deben poder retrasar artificialmente el readiness/remount y demostrar que el beat ocurre una sola vez y en orden.
+
+## Onboarding first-run de War Room
+
+Matthias es el guía diegético del primer contacto con War Room. No usar una voz genérica de sistema ni una capa tutorial desconectada del mundo.
+
+Contrato:
+
+- en la primera entrada significativa, Matthias pide seleccionar/tocar una pieza real;
+- al seleccionarla, el tablero muestra **los destinos legales que ya calcula el estado compartido**; el tutorial nunca inventa legalidad ni mantiene una lista paralela;
+- Matthias reacciona a esa selección y guía una o dos interacciones simples, suficientes para enseñar seleccionar → leer destinos → mover;
+- funciona con mouse, touch y teclado/focus; no diseñar un recorrido que sólo exista con hover;
+- puede omitirse inmediatamente y debe poder relanzarse más tarde desde Ayuda/tutoriales;
+- completar u omitir limpia overlays/highlights/estado efímero del tutorial sin tocar FEN, clocks, selección persistida o una partida en curso;
+- reduced-motion conserva claridad sin depender de animaciones decorativas;
+- el copy usa el tono establecido de Matthias: breve, elegante y algo socarrón; la enseñanza prima sobre el chiste.
+
+El onboarding es presentación/interaction coaching, no un segundo motor de reglas. Cualquier movimiento guiado atraviesa la misma ruta real que una jugada normal.
 
 ## Frontera de arquitectura
 

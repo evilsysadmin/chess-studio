@@ -59,6 +59,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
+        "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
@@ -81,12 +82,13 @@ def classify_path(path: str) -> set[str] | None:
     lower = path.lower().replace("\\", "/")
     name = Path(lower).name
 
+    if lower in {
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+    }:
+        return set()
     if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"chronicles-tactics"}
@@ -119,7 +121,11 @@ def classify_path(path: str) -> set[str] | None:
         return None
 
     if not lower.startswith("frontend/src/"):
-        if lower in {"scripts/css_architecture_manifest.json"}:
+        if lower in {
+            "scripts/css_architecture_manifest.json",
+            "scripts/async_resilience_gate.mjs",
+            "scripts/chess_rules_gate.mjs",
+        }:
             return set()
         return None
 
@@ -193,8 +199,8 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
-    assert classify(["scripts/app_visual_scope.py"]) == "chronicles-tactics"
-    assert classify(["scripts/app_visual_producer_scope.py"]) == "chronicles-tactics"
+    assert classify(["scripts/app_visual_scope.py"]) == "none"
+    assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "chronicles-tactics"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
@@ -214,8 +220,11 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
+    assert classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"]) == "experiments-hub"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
+    assert classify(["scripts/async_resilience_gate.mjs"]) == "none"
+    assert classify(["scripts/chess_rules_gate.mjs"]) == "none"
     assert classify(["frontend/public/audio/theme.ogg"]) == "none"
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
     for public_meta in PUBLIC_NONCANONICAL_PATHS:

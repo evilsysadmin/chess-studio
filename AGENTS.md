@@ -8,7 +8,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 - `Chronicles` = **Chronicles of Matthias**.
 - `Tactics` = **Chronicles of Matthias Tactics**.
-- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender.
+- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room actual sigue siendo baseline de rollback hasta que War Room v2 esté validada visualmente, en móvil, rendimiento y runtime.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
@@ -33,16 +33,28 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 | Tarea | Documentos que hay que leer |
 | --- | --- |
-| Sprites, frames, atlases o animaciones de Pawn Slug/Godot | [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
-| Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |\n| Pawn Slug OST / synthwave / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
+| Sprites, frames, atlases o animaciones de Pawn Slug/Godot | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
+| Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
+| Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
+| Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
+| Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Matthias / memoria episódica / apariciones de sesión | [`docs/experiments/matthias-episodic-memory.md`](docs/experiments/matthias-episodic-memory.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Tutoriales de mecánicas/modos no estándar | [`docs/operations/tutorials.md`](docs/operations/tutorials.md) |
 | Recuperación/persistencia de partida | [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md) |
+| Resiliencia / modos degradados / fallbacks | [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md) |
+| Rendimiento runtime / GPU / degradación adaptativa | [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
+| Espectador / CPU-vs-CPU | [`docs/operations/spectator.md`](docs/operations/spectator.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
+| Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Web Storage / perfil / migraciones | [`docs/operations/client-storage.md`](docs/operations/client-storage.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | CI, workflows, entrega y automerge | [`.github/workflows/README.md`](.github/workflows/README.md), [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) |
+| Ownership de estado / arquitectura | [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md) |
 | Contexto de producto y arranque local | [`README.md`](README.md) |
 | Historia antigua de releases | [`docs/archive/README-release-diary.md`](docs/archive/README-release-diary.md) |
 
@@ -54,10 +66,19 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`.github/workflows/README.md`](.github/workflows/README.md) — documentación de workflows.
 - [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) — native automerge y cadena de entrega.
 
+### AGENTS por subsistema
+
+- [`backend-python/AGENTS.md`](backend-python/AGENTS.md) — autoridad backend, persistencia, retries, API y privacidad.
+- [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) — arquitectura frontend y enrutado por Home, War Room, Chronicles, Combat y Pawn Slug.
+- [`games/pawn-slug-godot/AGENTS.md`](games/pawn-slug-godot/AGENTS.md) — ownership Godot, runtime 2D y aceptación de sprites.
+- [`scripts/art/AGENTS.md`](scripts/art/AGENTS.md) — disciplina fail-closed y determinista del pipeline 2D.
+- [`scripts/blender/AGENTS.md`](scripts/blender/AGENTS.md) — builders reproducibles, artifacts, GPU local, runtime y R2.
+
 ### Skills / contratos operativos
 
 - [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md) — generación, normalización, validación y entrega de spritesheets 2D compatibles con Godot.
-- [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) — contrato del export Web, bridge, input real y smoke determinista de Pawn Slug.\n- [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) — composición, groove, mezcla, normalización y entrega de OST synthwave/rock de Pawn Slug.
+- [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) — contrato del export Web, bridge, input real y smoke determinista de Pawn Slug.
+- [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) — composición, groove, mezcla, normalización y entrega de OST synthwave/rock de Pawn Slug.
 - [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md) — iteración Home Blender → GLB → R2 → captura runtime.
 - [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) — en local, Blender y Chromium con GPU de extremo a extremo (CI renderiza por software); comandos verificados y trampas de servidores e2e viejos.
 - [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md) — exact-SHA staging, generaciones superseded y diagnóstico seguro de observabilidad.
@@ -75,16 +96,27 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 ### Operaciones y runtime
 
+- [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
+- [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
+- [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
+- [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
+- [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
+- [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
 - [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md)
+- [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
+- [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md)
+- [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md)
+- [`docs/operations/spectator.md`](docs/operations/spectator.md)
 - [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md)
 - [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md)
 - [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md)
 
 ### R2 / assets
 
+- [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md) — especificación canónica de authoring, QA, runtime y promoción de sprites 2D de Pawn Slug.
 - [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md)
 - [`docs/r2-assets.md`](docs/r2-assets.md)
 - [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md)

@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chess-studio.local/schemas/pawn-slug-sprite-forge-contract-v1.json",
+  "title": "Pawn Slug Sprite Forge bank contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "quality_contract",
+    "actor",
+    "weapon",
+    "cell",
+    "parts",
+    "animations",
+    "composition"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "quality_contract": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "weapon": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "parts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "properties": {
+          "columns": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "animations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "part",
+          "row",
+          "fps",
+          "loop",
+          "authored_frames",
+          "slots"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "part": {
+            "type": "string",
+            "minLength": 1
+          },
+          "row": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fps": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "loop": {
+            "type": "boolean"
+          },
+          "authored_frames": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "slots": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "source_dir": {
+            "type": "string",
+            "minLength": 1
+          },
+          "allowed_detached_components": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sockets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "weapon_anchor",
+                "rear_hand",
+                "front_hand",
+                "muzzle"
+              ],
+              "properties": {
+                "weapon_anchor": {
+                  "$ref": "#/$defs/point"
+                },
+                "rear_hand": {
+                  "$ref": "#/$defs/point"
+                },
+                "front_hand": {
+                  "$ref": "#/$defs/point"
+                },
+                "muzzle": {
+                  "$ref": "#/$defs/point"
+                },
+                "angle_degrees": {
+                  "type": "number"
+                },
+                "scale": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "z": {
+                  "type": "string",
+                  "enum": [
+                    "front",
+                    "back"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "composition": {
+      "type": "string",
+      "enum": [
+        "integrated",
+        "socketed-body",
+        "weapon-layer"
+      ]
+    },
+    "socket_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_hand_separation_px": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_hand_separation_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_hand_to_anchor_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "min_muzzle_forward_px": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_anchor_delta_px": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_angle_delta_degrees": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_scale_delta": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    }
+  }
+}

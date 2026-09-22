@@ -66,6 +66,7 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "worldVersion": int(row.get("worldVersion", 0)),
         "consumedContentIds": list(row.get("consumedContentIds") or []),
         "claimedRewards": list(row.get("claimedRewards") or []),
+        "worldFlags": deepcopy(row.get("worldFlags") or {}),
         "createdAt": row.get("createdAt"),
         "updatedAt": row.get("updatedAt"),
     }
@@ -100,6 +101,7 @@ async def create_or_replay_run(
         "worldVersion": 0,
         "consumedContentIds": [],
         "claimedRewards": [],
+        "worldFlags": {},
         "createdAt": now,
         "updatedAt": now,
         "createFingerprint": create_fingerprint,
@@ -160,6 +162,86 @@ async def replay_run_creation(
         return _public(row)
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo recuperar la creación de Chronicles.") from exc
+
+
+async def checkpoint_run(
+    *,
+    run_id: str,
+    owner: str,
+    expected_world_version: int,
+    map_id: str,
+    content_version: int,
+    manifest_revision: str,
+    world_flags: dict[str, Any],
+    consumed_content_ids: list[str],
+    claimed_rewards: list[str],
+) -> dict[str, Any] | None:
+    """Atomically persist one monotonic world checkpoint.
+
+    The compare-and-swap worldVersion prevents two tabs or stale reloads from
+    silently overwriting each other. Consumed content and claimed rewards are
+    monotonic sets: a later checkpoint may add entries but never resurrect them.
+    """
+    now = utcnow()
+    collection = await _collection()
+    if collection is None:
+        async with _memory_guard():
+            row = _memory_runs.get(run_id)
+            if row is None or row.get("owner") != owner:
+                return None
+            if int(row.get("worldVersion", 0)) != int(expected_world_version):
+                raise ValueError("world-version-conflict")
+
+            row["currentMapId"] = map_id
+            row["contentVersion"] = int(content_version)
+            row["manifestRevision"] = manifest_revision
+            row["worldFlags"] = deepcopy(world_flags)
+            row["consumedContentIds"] = list(dict.fromkeys([
+                *(row.get("consumedContentIds") or []),
+                *consumed_content_ids,
+            ]))
+            row["claimedRewards"] = list(dict.fromkeys([
+                *(row.get("claimedRewards") or []),
+                *claimed_rewards,
+            ]))
+            row["worldVersion"] = int(expected_world_version) + 1
+            row["updatedAt"] = now
+            return _public(row)
+
+    try:
+        update = {
+            "$set": {
+                "currentMapId": map_id,
+                "contentVersion": int(content_version),
+                "manifestRevision": manifest_revision,
+                "worldFlags": deepcopy(world_flags),
+                "updatedAt": now,
+            },
+            "$inc": {"worldVersion": 1},
+        }
+        if consumed_content_ids or claimed_rewards:
+            update["$addToSet"] = {}
+            if consumed_content_ids:
+                update["$addToSet"]["consumedContentIds"] = {"$each": consumed_content_ids}
+            if claimed_rewards:
+                update["$addToSet"]["claimedRewards"] = {"$each": claimed_rewards}
+
+        result = await collection.update_one(
+            {
+                "_id": run_id,
+                "owner": owner,
+                "worldVersion": int(expected_world_version),
+            },
+            update,
+        )
+        if int(result.modified_count) != 1:
+            existing = await collection.find_one({"_id": run_id, "owner": owner})
+            if existing is None:
+                return None
+            raise ValueError("world-version-conflict")
+        return _public(await collection.find_one({"_id": run_id, "owner": owner}))
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo guardar el checkpoint de Chronicles.") from exc
 
 
 async def get_run(run_id: str, owner: str) -> dict[str, Any] | None:

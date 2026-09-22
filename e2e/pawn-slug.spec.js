@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi, openMoreGameModes } from './helpers.js';
 
+test.use({ reducedMotion: 'reduce' });
+
 async function dismissHomeOverlays(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (await guide.isVisible().catch(() => false)) {

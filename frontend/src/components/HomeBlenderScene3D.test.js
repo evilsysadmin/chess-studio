@@ -6,6 +6,13 @@ import {
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
+  homeBlenderGlowOpacity,
+  flameHeightRange,
+  applyFlameGradient,
+  HOME_BLENDER_FLAME_GRADIENT,
+  homeBlenderTimeOfDayLook,
+  applyHomeBlenderMoonVisibility,
+  HOME_BLENDER_TIME_OF_DAY,
   homeBlenderIsSoftwareRenderer,
   applyFlameLook,
   HOME_BLENDER_FLAME_LOOK,
@@ -392,6 +399,95 @@ describe('HomeBlenderScene3D live flame animation', () => {
         expect(Math.abs(current - previous)).toBeLessThan(0.05);
         previous = current;
       }
+    });
+  });
+
+  describe('time of day look', () => {
+    const channel = (hex, shift) => (hex >> shift) & 0xff;
+
+    it('has a look for every period and falls back to day', () => {
+      for (const period of ['dawn', 'day', 'dusk', 'night']) {
+        expect(HOME_BLENDER_TIME_OF_DAY[period]).toBeTruthy();
+        expect(homeBlenderTimeOfDayLook(period)).toBe(HOME_BLENDER_TIME_OF_DAY[period]);
+      }
+      expect(homeBlenderTimeOfDayLook('midnight')).toBe(HOME_BLENDER_TIME_OF_DAY.day);
+      expect(homeBlenderTimeOfDayLook(undefined)).toBe(HOME_BLENDER_TIME_OF_DAY.day);
+    });
+
+    it('makes the sun/moon key cool at night and warm-bright at noon', () => {
+      const night = homeBlenderTimeOfDayLook('night').key;
+      const day = homeBlenderTimeOfDayLook('day').key;
+      expect(channel(night.color, 0)).toBeGreaterThan(channel(night.color, 16));
+      expect(channel(day.color, 16)).toBeGreaterThan(channel(day.color, 0));
+      expect(night.scale).toBeLessThan(day.scale);
+    });
+
+    it('gives the window fill more daylight at noon than at night', () => {
+      expect(homeBlenderTimeOfDayLook('day').fill.scale)
+        .toBeGreaterThan(homeBlenderTimeOfDayLook('dusk').fill.scale);
+    });
+
+    it('only shows the moon when the sky is not full daylight', () => {
+      const moon = { name: 'HOME_PROP_window_moon', visible: true };
+      const mare = { name: 'HOME_PROP_window_moon_mare_2', visible: true };
+      const other = { name: 'HOME_PROP_table_top', visible: true };
+      const root = { traverse: (fn) => [moon, mare, other].forEach(fn) };
+      expect(applyHomeBlenderMoonVisibility(root, 'day')).toBe(2);
+      expect([moon.visible, mare.visible, other.visible]).toEqual([false, false, true]);
+      applyHomeBlenderMoonVisibility(root, 'night');
+      expect([moon.visible, mare.visible, other.visible]).toEqual([true, true, true]);
+    });
+  });
+
+  describe('flame gradient', () => {
+    it('reads the vertical extent of a flame geometry', () => {
+      const geometry = {
+        computeBoundingBox() {},
+        boundingBox: { min: { y: 0.1 }, max: { y: 0.7 } },
+      };
+      expect(flameHeightRange(geometry)).toEqual({ min: 0.1, max: 0.7 });
+      expect(flameHeightRange(null)).toBeNull();
+      expect(flameHeightRange({ computeBoundingBox() {}, boundingBox: { min: { y: 1 }, max: { y: 1 } } })).toBeNull();
+    });
+
+    it('makes the tip hotter (more green) than the base', () => {
+      const { base, tip } = HOME_BLENDER_FLAME_GRADIENT;
+      expect(tip[1]).toBeGreaterThan(base[1] * 1.3);
+      expect(tip[2]).toBeLessThan(base[2]);
+    });
+
+    it('injects the gradient into the shader without dropping the emissive chunk', () => {
+      const material = { needsUpdate: false };
+      expect(applyFlameGradient(material, { min: 0, max: 1 })).toBe(true);
+      const shader = {
+        uniforms: {},
+        vertexShader: '#include <common>\n#include <begin_vertex>',
+        fragmentShader: '#include <common>\n#include <emissivemap_fragment>',
+      };
+      material.onBeforeCompile(shader);
+      expect(shader.uniforms.uFlameMin.value).toBe(0);
+      expect(shader.uniforms.uFlameMax.value).toBe(1);
+      expect(shader.vertexShader).toContain('vFlameY = position.y');
+      expect(shader.fragmentShader).toContain('#include <emissivemap_fragment>');
+      expect(shader.fragmentShader).toContain('totalEmissiveRadiance = mix(');
+      expect(material.customProgramCacheKey()).toBe('home-flame-gradient');
+      expect(applyFlameGradient(material, null)).toBe(false);
+    });
+  });
+
+  describe('flame glow', () => {
+    it('follows the light flicker but stays inside a sane band', () => {
+      expect(homeBlenderGlowOpacity(0.5, 1)).toBeCloseTo(0.5);
+      expect(homeBlenderGlowOpacity(0.5, 0.9)).toBeCloseTo(0.45);
+      expect(homeBlenderGlowOpacity(0.5, 0.1)).toBeCloseTo(0.25);
+      expect(homeBlenderGlowOpacity(0.5, 9)).toBeCloseTo(0.7);
+    });
+
+    it('never leaves 0..1 and tolerates bad input', () => {
+      expect(homeBlenderGlowOpacity(0.9, 1.4)).toBe(1);
+      expect(homeBlenderGlowOpacity(0, 1)).toBe(0);
+      expect(homeBlenderGlowOpacity(undefined, undefined)).toBe(0);
+      expect(homeBlenderGlowOpacity(0.5, Number.NaN)).toBeCloseTo(0.25);
     });
   });
 });

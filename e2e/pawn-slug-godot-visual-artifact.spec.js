@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -35,16 +35,21 @@ async function openPawnSlug(page) {
   await login(page);
   await dismissHomeOverlays(page);
 
-  const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
-  await expect(direct).toBeVisible({ timeout: 20_000 });
-  // Keyboard activation deliberately avoids coupling visual proof to the current
-  // Home pointer hit-map. Home interaction geometry has its own E2E ownership.
-  await direct.focus();
-  await page.keyboard.press('Enter');
+  // This visual proof owns Pawn Slug itself, not the Home direct-launch route.
+  // Enter through the Experiments hub; home-pawn-slug-direct.spec.js owns the
+  // independent contract that Home can bypass that hub.
+  await openMoreGameModes(page);
+  const tools = page.locator('#illustrated-home-tools');
+  await expect(tools).toBeVisible();
+  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  const portal = page.getByRole('button').filter({ hasText: 'PAWN SLUG GODOT' });
+  await expect(portal).toBeVisible({ timeout: 20_000 });
+  await portal.click();
 
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  await expect(page.locator('.pawn-slug-godot-host')).toBeVisible({ timeout: 20_000 });
   const frame = page.locator('iframe[title="Pawn Slug Godot"]');
-  await expect(frame).toBeVisible();
+  await expect(frame).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Godot listo', { exact: true })).toBeVisible({ timeout: 35_000 });
   const canvas = page.frameLocator('iframe[title="Pawn Slug Godot"]').locator('canvas');
   await expect(canvas).toBeVisible({ timeout: 15_000 });
@@ -102,14 +107,16 @@ test('Pawn Slug Godot · evidencia visual desktop + portrait + landscape', async
       expect(snapshot.frame?.width || 0, `${capture.label}: iframe visible`).toBeGreaterThan(0);
 
       if (capture.label === 'android-390x844') {
-        const ratio = (snapshot.frame?.height || 0) / Math.max(1, snapshot.frame?.width || 1);
-        expect(ratio, 'portrait host stays compact 16:9 before rotation').toBeGreaterThan(0.52);
-        expect(ratio, 'portrait host stays compact 16:9 before rotation').toBeLessThan(0.60);
+        expect(snapshot.frame.left, 'portrait iframe left edge').toBeGreaterThanOrEqual(-1);
+        expect(snapshot.frame.right, 'portrait iframe right edge').toBeLessThanOrEqual(391);
+        expect(snapshot.frame.width, 'portrait iframe fills viewport width').toBeGreaterThanOrEqual(388);
+        expect(snapshot.frame.height, 'portrait iframe fills viewport height').toBeGreaterThanOrEqual(842);
       }
 
       if (capture.label === 'android-landscape-844x390') {
         expect(snapshot.frame.left, 'landscape iframe left edge').toBeGreaterThanOrEqual(-1);
         expect(snapshot.frame.right, 'landscape iframe right edge').toBeLessThanOrEqual(845);
+        expect(snapshot.frame.width, 'landscape iframe fills viewport width').toBeGreaterThanOrEqual(842);
         expect(snapshot.frame.height, 'landscape iframe fills viewport height').toBeGreaterThanOrEqual(388);
       }
 

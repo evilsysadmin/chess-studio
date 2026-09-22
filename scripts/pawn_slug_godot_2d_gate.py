@@ -16,6 +16,7 @@ ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
 SETPIECES = GODOT_ROOT / "scripts/setpiece_visual.gd"
+STAGE_GEOMETRY_POLICY = GODOT_ROOT / "scripts/stage_geometry_policy.gd"
 PAUSE_MENU = GODOT_ROOT / "scripts/pause_menu.gd"
 MAIN = GODOT_ROOT / "scripts/main.gd"
 PLAYER = GODOT_ROOT / "scripts/player.gd"
@@ -79,11 +80,11 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png",
+    "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png",
     "/pawn-slug-godot/matthias/strict-v16/shotgun/v16-c2a67fc5a7f50926.png",
     "/pawn-slug-godot/matthias/strict-v16/panzerfaust/v16-80a0297d66e3dcf3.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
-    "/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-34b7a35793047e39.png",
+    "/pawn-slug-godot/matthias/run13-v23/machinegun/machinegun-run13-v23-26dc07c9be4f285f.png",
     "/pawn-slug-godot/matthias/run12-v22/shotgun/v22-8a75bce5f9cbd359.png",
     "/pawn-slug-godot/matthias/run12-v22/panzerfaust/v22-c791733b6240399f.png",
     "RUN12_ATLAS_COLUMNS := 12",
@@ -255,11 +256,18 @@ REQUIRED_SETPIECE_MAIN = (
     "_destructible_geometry_rects",
     "_damage_destructible_at",
     "_update_artillery_barrage",
-    "PICKUP_SPAWN_SIZE",
-    "_pickup_spawn_clear",
-    "_resolve_pickup_spawn",
     '"state": "idle"',
     '"state"] = "falling"',
+)
+
+REQUIRED_STAGE_GEOMETRY_POLICY = (
+    "PICKUP_SPAWN_SIZE",
+    "PICKUP_SPAWN_CLEARANCE",
+    "PICKUP_SPAWN_SEARCH_STEP",
+    "func rects_from_specs",
+    "func _pickup_spawn_clear",
+    "func resolve_pickup_spawn",
+    "Pickup spawn blocked near",
 )
 
 REQUIRED_PAUSE_MENU = (
@@ -533,6 +541,7 @@ def validate() -> None:
     validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)
     validate_contract(SETPIECES, "setpiece_visual.gd", REQUIRED_SETPIECE_VISUAL, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_SETPIECE_MAIN, violations)
+    validate_contract(STAGE_GEOMETRY_POLICY, "stage_geometry_policy.gd", REQUIRED_STAGE_GEOMETRY_POLICY, violations)
     validate_contract(PAUSE_MENU, "pause_menu.gd", REQUIRED_PAUSE_MENU, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_PARALLAX_MAIN, violations)
     validate_contract(MAIN, "main.gd", REQUIRED_COMBAT_FX, violations)
@@ -578,7 +587,7 @@ def self_test() -> None:
     assert '"machinegun": 13' in REQUIRED_MATTHIAS
     assert '"machinegun": {"hurt": 6}' in REQUIRED_MATTHIAS
     assert "_ensure_run12_locomotion" in REQUIRED_MATTHIAS
-    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-c54d056006d165c2.png" in REQUIRED_MATTHIAS
+    assert "/pawn-slug-godot/matthias/strict-v23/machinegun/machinegun-v23-3044afd6af84a6cf.png" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 11" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS

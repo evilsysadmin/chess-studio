@@ -2,9 +2,31 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem, removeS
 import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
+import { AMBIENT_PERCUSSION_FINISH, snareBodyFrequencies } from './ambientPercussionFinish.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
+import { structuredPartialDetune, structuredVoiceTimbre } from './ambientStructuredTimbre.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import { shouldPlayStructuredLead, shouldPlayStructuredSignature } from './ambientTiming.js';
+import { percussionHumanization } from './ambientPercussionHumanization.js';
+export { getPercussionHumanizationPreview } from './ambientPercussionHumanization.js';
+import {
+  structuredArrangement,
+  shouldPlayStructuredDrum,
+  structuredDrumAtStep,
+  structuredSignatureAtStep,
+} from './ambientStructuredArrangement.js';
+export { structuredPercussionPatternStep } from './ambientStructuredArrangement.js';
+import {
+  STRUCTURED_LONG_FORM_MS,
+  getAmbientThemeSoundProfile,
+  getAmbientTrackDurationMs,
+  getAmbientThemeVariationDurationMs,
+} from './ambientThemeProfile.js';
+export {
+  getAmbientThemeSoundProfile,
+  getAmbientTrackDurationMs,
+  getAmbientThemeVariationDurationMs,
+} from './ambientThemeProfile.js';
 import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
 import { midiToChessStudioFrequency, tuneStandardFrequency } from './musicTuning.js';
 import {
@@ -65,7 +87,6 @@ const DEFAULT_AMBIENT_THEME = 'andalus';
 // los finales como si fueran jingles publicitarios: termina el tema, respira,
 // y entra otro distinto.
 export const AMBIENT_INTER_TRACK_SILENCE_MS = 2400;
-const ANDALUS_TRACK_DURATION_MS = 240000;
 
 export function setMusicMuted(muted) {
   writeMusicMuted(muted);
@@ -232,67 +253,9 @@ export function selectAmbientRadioModeTheme(mode) {
 
 // Diagnóstico estable para tests/UI de desarrollo. No expone las partituras,
 // sólo los parámetros que hacen que cada familia tenga una identidad distinta.
-export function getAmbientThemeSoundProfile(themeId) {
-  const theme = AMBIENT_THEMES[themeId];
-  const feel = structuredFeel(theme);
-  if (!theme || theme.engine !== 'structured') return null;
-  return feel ? {
-    family: feel.family,
-    stepMs: theme.stepMs,
-    estimatedBpm: Math.round((60000 / (theme.stepMs * 4)) * 10) / 10,
-    preserveSectionOrder: !!feel.preserveSectionOrder,
-    swing: feel.swing || 0,
-    warmth: feel.warmth || 1,
-    groovePeriod: feel.percussion?.period || null,
-    percussionPeriod: feel.percussion?.period || null,
-    percussionKit: feel.percussion?.kit || 'legacy',
-    percussionPunch: feel.percussion?.punch || 1,
-    sidechainDepth: feel.percussion?.sidechainDepth || null,
-    sidechainReleaseMs: feel.percussion?.sidechainReleaseMs || null,
-    percussionHumanized: (feel.percussion?.kit || 'legacy') !== 'none',
-    percussionMicrotimingMs: (feel.percussion?.kit || 'legacy') === 'none' ? 0 : 12,
-    drumMode: feel.drumMode || 'dynamic',
-    signatureInstrument: feel.signature?.instrument || null,
-    signatureSteps: Object.keys(feel.signature?.motif || {}).length,
-    signatureRepeatPeriod: feel.signature?.repeatPeriod || null,
-    enabledLayers: Object.entries(feel.layers || {}).filter(([, enabled]) => enabled !== false).map(([name]) => name),
-    space: feel.space || 0,
-    leadInstrument: feel.leadInstrument || theme.leadInstrument,
-    counterInstrument: feel.counterInstrument || theme.counterInstrument || null,
-    chordInstrument: feel.chordInstrument || theme.chordInstrument,
-    bassInstrument: feel.bassInstrument || theme.bassInstrument,
-    masterTrim: Math.round(structuredMasterTrim(feel) * 1000) / 1000,
-    personalityFingerprint: structuredPersonalityFingerprint(theme, feel),
-  } : {
-    family: 'legacy-structured', stepMs: theme.stepMs, estimatedBpm: Math.round((60000 / (theme.stepMs * 4)) * 10) / 10, preserveSectionOrder: false, swing: 0, warmth: 1,
-    groovePeriod: null, percussionPeriod: null, percussionKit: 'legacy', percussionPunch: 1,
-    percussionHumanized: true, percussionMicrotimingMs: 6,
-    leadInstrument: theme.leadInstrument, counterInstrument: theme.counterInstrument || null,
-    chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
-    masterTrim: 1, personalityFingerprint: structuredPersonalityFingerprint(theme, null),
-  };
-}
-
 // Útil para tests y para futuras UIs: duración mínima antes de que un tema
 // estructurado vuelva al principio de su forma larga. Al-Ándalus es
 // estocástico y no tiene un bucle exacto equivalente.
-export function getAmbientThemeVariationDurationMs(themeId) {
-  const theme = AMBIENT_THEMES[themeId];
-  if (!theme || theme.engine !== 'structured') return null;
-  const sections = Math.max(1, theme.sections?.length || 1);
-  const steps = Math.max(1, theme.stepsPerSection || 32);
-  const cycleMs = sections * steps * theme.stepMs;
-  const span = Math.max(8, Math.ceil((theme.longFormMs || STRUCTURED_LONG_FORM_MS) / cycleMs));
-  return cycleMs * span;
-}
-
-// Duración de reproducción de una "pista" antes de pasar a otra. Los temas
-// estructurados usan su forma larga completa; Al-Ándalus es estocástico y no
-// tiene cierre natural, así que le damos una ventana de cuatro minutos.
-export function getAmbientTrackDurationMs(themeId) {
-  return getAmbientThemeVariationDurationMs(themeId) || ANDALUS_TRACK_DURATION_MS;
-}
-
 export function pickRandomAmbientThemeId(excludeId = null) {
   const allIds = ambientRadioThemeIds();
   const ids = allIds.length > 1 && excludeId
@@ -538,26 +501,47 @@ function getAmbientPercussionOutput(ctx) {
     // La percusión sintetizada tenía demasiado ataque medio/agudo y
     // poco peso. Un low-shelf suave antes del compresor conserva darbukas,
     // brushes y hats, pero deja sitio a un dum/kick que realmente empuje aire.
+    const finish = AMBIENT_PERCUSSION_FINISH;
     const lowShelf = ctx.createBiquadFilter();
     lowShelf.type = 'lowshelf';
-    lowShelf.frequency.value = 118;
-    lowShelf.gain.value = 3.2;
+    lowShelf.frequency.value = finish.lowShelfHz;
+    lowShelf.gain.value = finish.lowShelfDb;
 
     const compressor = ctx.createDynamicsCompressor();
     // Glue, no brick wall: dejamos pasar el ataque de kick/caja y comprimimos
     // la cola. La mezcla gana pegada real sin convertir todos los golpes en
     // el mismo bloque ni hacer bombear al backing.
-    compressor.threshold.value = -18;
-    compressor.knee.value = 18;
-    compressor.ratio.value = 2.2;
-    compressor.attack.value = 0.018;
-    compressor.release.value = 0.18;
+    compressor.threshold.value = finish.compressor.threshold;
+    compressor.knee.value = finish.compressor.knee;
+    compressor.ratio.value = finish.compressor.ratio;
+    compressor.attack.value = finish.compressor.attack;
+    compressor.release.value = finish.compressor.release;
 
     ambientPercussionBus = ctx.createGain();
-    ambientPercussionBus.gain.value = 1.03;
+    ambientPercussionBus.gain.value = finish.busGain;
     ambientPercussionBus.connect(lowShelf);
     lowShelf.connect(compressor);
     compressor.connect(getAmbientOutput(ctx));
+
+    // Una sola reflexión temprana, corta y filtrada: cohesiona el kit sin
+    // lavar transitorios ni crear una cola de reverb audible.
+    if (typeof ctx.createDelay === 'function') {
+      const roomDelay = ctx.createDelay(0.08);
+      const roomHighpass = ctx.createBiquadFilter();
+      const roomLowpass = ctx.createBiquadFilter();
+      const roomGain = ctx.createGain();
+      roomDelay.delayTime.value = finish.room.delayMs / 1000;
+      roomHighpass.type = 'highpass';
+      roomHighpass.frequency.value = finish.room.highpassHz;
+      roomLowpass.type = 'lowpass';
+      roomLowpass.frequency.value = finish.room.lowpassHz;
+      roomGain.gain.value = finish.room.gain;
+      ambientPercussionBus.connect(roomDelay);
+      roomDelay.connect(roomHighpass);
+      roomHighpass.connect(roomLowpass);
+      roomLowpass.connect(roomGain);
+      roomGain.connect(getAmbientOutput(ctx));
+    }
   }
   return ambientPercussionBus;
 }
@@ -633,20 +617,44 @@ function playPadNote(freq) {
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = freq;
-  const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
+  filter.type = 'lowpass';
+  filter.frequency.value = 1480;
+  filter.Q.value = 0.34;
+  const start = ctx.currentTime;
 
-  gainNode.gain.setValueAtTime(0, start);
-  gainNode.gain.linearRampToValueAtTime(0.02, start + PAD_ATTACK_S);
-  gainNode.gain.linearRampToValueAtTime(0, start + PAD_DURATION_S);
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.linearRampToValueAtTime(0.018, start + PAD_ATTACK_S);
+  gainNode.gain.setValueAtTime(0.014, start + Math.max(PAD_ATTACK_S + 0.04, PAD_DURATION_S * 0.68));
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + PAD_DURATION_S);
 
-  osc.connect(gainNode);
+  filter.connect(gainNode);
   gainNode.connect(getAmbientOutput(ctx));
-  osc.start(start);
-  osc.stop(start + PAD_DURATION_S + 0.05);
+
+  // The legacy Andalus bed used one naked sine: stable, clean and therefore
+  // unmistakably "keyboard preset". Keep the same harmony, but build a quiet
+  // dark ensemble from coherent partials with only sub-cent movement.
+  const oscillators = [
+    ['triangle', 1, 0.72, -0.35],
+    ['sine', 2.01, 0.18, 0.22],
+    ['sine', 0.5, 0.10, 0.08],
+  ].map(([type, ratio, mix, detune]) => {
+    const osc = ctx.createOscillator();
+    const mixGain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq * ratio;
+    osc.detune.value = detune;
+    mixGain.gain.value = mix;
+    osc.connect(mixGain);
+    mixGain.connect(filter);
+    return osc;
+  });
+
+  oscillators.forEach((osc) => {
+    osc.start(start);
+    osc.stop(start + PAD_DURATION_S + 0.05);
+  });
 }
 
 // Contrabajo: triangle (más cuerpo que sine, menos brillo que sawtooth)
@@ -746,7 +754,7 @@ function playGuitarPluck(freq) {
   filter.connect(gainNode);
   gainNode.connect(getAmbientOutput(ctx));
 
-  const detunesCents = [-6, 6]; // dos voces, una levemente grave y otra aguda
+  const detunesCents = [-1.8, 1.8]; // doble cuerda sutil: cuerpo sin chorus de teclado
   const oscs = detunesCents.map((cents) => {
     const osc = ctx.createOscillator();
     osc.type = 'sawtooth';
@@ -800,7 +808,8 @@ function playSax(freq) {
   const lfoGain = ctx.createGain();
   lfo.type = 'sine';
   lfo.frequency.value = 5.3; // Hz — vibrato natural, ni tembloroso ni imperceptible
-  lfoGain.gain.value = freq * 0.008; // profundidad chica y sutil
+  lfoGain.gain.setValueAtTime(freq * 0.0012, ctx.currentTime);
+  lfoGain.gain.linearRampToValueAtTime(freq * 0.0052, ctx.currentTime + 0.34); // el vibrato entra después del ataque
   lfo.connect(lfoGain);
   lfoGain.connect(osc.frequency);
 
@@ -1090,8 +1099,8 @@ function voicePreset(kind) {
     case 'harpsichord': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.13]], gain: 0.018, attack: 0.003, release: 0.48, cutoff: 3900 };
     case 'vibes': return { waves: [['sine', 1, 1], ['sine', 4, 0.16]], gain: 0.026, attack: 0.008, release: 2.35, cutoff: 5200, tremolo: 5.2 };
     case 'warmVibes': return { waves: [['sine', 1, 0.92], ['sine', 2.99, 0.11], ['sine', 4.03, 0.12], ['triangle', 0.5, 0.08]], gain: 0.022, attack: 0.012, release: 2.8, cutoff: 3850, tremolo: 4.6 };
-    case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
-    case 'rhodesWarm': return { waves: [['sine', 1, 1], ['triangle', 2, 0.16], ['sine', 0.5, 0.1]], gain: 0.020, attack: 0.028, release: 2.15, cutoff: 1950, tremolo: 3.1 };
+    case 'epiano': return { waves: [['triangle', 1, 0.72], ['sine', 1, 0.38], ['sine', 2.01, 0.16], ['sine', 3.98, 0.045]], gain: 0.019, attack: 0.016, release: 1.85, cutoff: 2250 };
+    case 'rhodesWarm': return { waves: [['sine', 1, 0.82], ['triangle', 1, 0.26], ['sine', 2.01, 0.14], ['sine', 3.97, 0.035], ['sine', 0.5, 0.08]], gain: 0.019, attack: 0.022, release: 2.45, cutoff: 1800, tremolo: 2.8 };
     case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
     case 'spiccatoCello': return { waves: [['triangle', 1, 0.82], ['sawtooth', 1, 0.18]], gain: 0.025, attack: 0.004, release: 0.62, cutoff: 1480 };
     case 'pizz': return { waves: [['triangle', 1, 1], ['sine', 2, 0.12]], gain: 0.026, attack: 0.004, release: 0.52, cutoff: 1700 };
@@ -1109,9 +1118,9 @@ function voicePreset(kind) {
     case 'powerPad': return { waves: [['sawtooth', 1, 0.25], ['sawtooth', 1.008, 0.21], ['triangle', 0.5, 0.32], ['sine', 2.01, 0.08]], gain: 0.012, attack: 0.18, release: 2.6, cutoff: 2050, tremolo: 2.2 };
     case 'stormPad': return { waves: [['triangle', 1, 0.54], ['sawtooth', 0.5, 0.20], ['sine', 2.01, 0.10]], gain: 0.012, attack: 0.16, release: 2.2, cutoff: 1320, tremolo: 3.4 };
     case 'synthbass': return { waves: [['square', 1, 0.55], ['triangle', 1, 1]], gain: 0.026, attack: 0.006, release: 0.42, cutoff: 640 };
-    case 'pad': return { waves: [['sine', 1, 1], ['triangle', 2, 0.08]], gain: 0.014, attack: 0.28, release: 2.9, cutoff: 1600 };
-    case 'organ': return { waves: [['sine', 1, 1], ['sine', 2, 0.28], ['sine', 3, 0.09]], gain: 0.014, attack: 0.22, release: 4.25, cutoff: 2100 };
-    case 'organbass': return { waves: [['sine', 1, 1], ['triangle', 0.5, 0.2]], gain: 0.022, attack: 0.18, release: 4.0, cutoff: 580 };
+    case 'pad': return { waves: [['triangle', 1, 0.58], ['sawtooth', 0.5, 0.12], ['sine', 2.01, 0.08], ['sine', 0.5, 0.16]], gain: 0.012, attack: 0.42, release: 3.4, cutoff: 1380 };
+    case 'organ': return { waves: [['sine', 1, 0.72], ['triangle', 0.5, 0.16], ['sine', 2.002, 0.18], ['sine', 3.01, 0.055], ['sine', 4.005, 0.025]], gain: 0.0125, attack: 0.34, release: 4.8, cutoff: 1750 };
+    case 'organbass': return { waves: [['triangle', 1, 0.68], ['sine', 1, 0.44], ['sine', 0.5, 0.22], ['sine', 2.01, 0.045]], gain: 0.019, attack: 0.12, release: 3.6, cutoff: 520 };
     case 'tremolo': return { waves: [['triangle', 1, 1], ['sawtooth', 1, 0.09]], gain: 0.019, attack: 0.02, release: 1.9, cutoff: 2100, tremolo: 7.0 };
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
@@ -1122,7 +1131,7 @@ function voicePreset(kind) {
     case 'vocalAir': return { waves: [['sine', 1, 0.88], ['triangle', 1, 0.16], ['sine', 2.01, 0.13], ['sine', 3.02, 0.04]], gain: 0.014, attack: 0.065, release: 1.7, cutoff: 2250, tremolo: 4.8 };
     case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
-    case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
+    case 'choir': return { waves: [['sine', 1, 0.72], ['triangle', 1, 0.28], ['sine', 0.5, 0.10], ['sine', 2.01, 0.10], ['sine', 3.03, 0.03]], gain: 0.012, attack: 0.46, release: 4.8, cutoff: 1420, tremolo: 3.7 };
     case 'pulse': return { waves: [['square', 1, 0.46], ['sine', 1, 0.54]], gain: 0.014, attack: 0.004, release: 0.24, cutoff: 1800 };
     // V15.3: timbres dedicados al jazz árabe nocturno. El ney prioriza aire y vibrato;
     // el oud estructurado es más seco y oscuro que la guitarra genérica.
@@ -1158,6 +1167,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
   const preset = voicePreset(kind);
+  const timbre = structuredVoiceTimbre(kind);
   const finish = tone?.finish || {};
   const freq = midiToFreq(midiNote);
   const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
@@ -1206,7 +1216,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   filter.type = 'lowpass';
   const finishBrightness = Math.max(0.68, Math.min(1.18, Number(finish.brightness) || 1));
   scheduleAmbientFilterSweep(filter.frequency, Math.max(260, preset.cutoff * (tone?.warmth || 1) * finishBrightness), start, attack, release);
-  filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
+  filter.Q.value = Number.isFinite(timbre.filterQ) ? timbre.filterQ : (kind === 'synth' || kind === 'arp' ? 1.4 : 0.55);
 
   const peak = preset.gain * volumeScale;
   gainNode.gain.setValueAtTime(0.0001, start);
@@ -1216,19 +1226,42 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   }
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
-  filter.connect(gainNode);
+  let timbreOutput = filter;
+  if (Number(timbre.bodyGainDb) !== 0 && Number(timbre.bodyHz) > 0) {
+    const body = ctx.createBiquadFilter();
+    body.type = 'peaking';
+    body.frequency.value = timbre.bodyHz;
+    body.Q.value = Number(timbre.bodyQ) || 0.72;
+    body.gain.value = timbre.bodyGainDb;
+    timbreOutput.connect(body);
+    timbreOutput = body;
+  }
+  if (Number(timbre.edgeGainDb) !== 0 && Number(timbre.edgeHz) > 0) {
+    const edge = ctx.createBiquadFilter();
+    edge.type = 'highshelf';
+    edge.frequency.value = timbre.edgeHz;
+    edge.gain.value = timbre.edgeGainDb;
+    timbreOutput.connect(edge);
+    timbreOutput = edge;
+  }
+  timbreOutput.connect(gainNode);
   const output = getAmbientStructuredMusicOutput(ctx);
-  connectFinishedAmbientVoice(ctx, gainNode, output, tone, { start, duration: release, tremolo: preset.tremolo });
+  connectFinishedAmbientVoice(ctx, gainNode, output, tone, {
+    start,
+    duration: release,
+    tremolo: (preset.tremolo || 0) * (Number(timbre.tremoloScale) || 1),
+  });
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
     const osc = ctx.createOscillator();
     const mixGain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq * ratio;
-    // Un desafinado microscópico evita que acordes de osciladores idénticos
-    // se conviertan en una onda clínica sin vida.
-    const drift = Math.max(0, Math.min(7, Number(finish.driftCents) || 0));
-    osc.detune.value = (index === 0 ? -2 : 2 + index) + (index % 2 === 0 ? -drift : drift);
+    // Acoustic partials must move as one instrument. The previous fixed
+    // -2/+3/+4 cent spread made pianos, reeds and especially organs beat like
+    // a cheap chorus preset. Synth families keep controlled width; acoustic
+    // families get only sub-cent, note-stable imperfection.
+    osc.detune.value = structuredPartialDetune(kind, midiNote, index, finish.driftCents);
     mixGain.gain.value = mix;
     osc.connect(mixGain);
     mixGain.connect(filter);
@@ -1281,6 +1314,23 @@ function playNoiseHit(kind, volume = 0.03, options = {}) {
   source.connect(filter);
   filter.connect(gain);
   connectPercussionWithPan(ctx, gain, pan);
+
+  if (kind === 'snare' && typeof ctx.createOscillator === 'function') {
+    const body = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    const bodyFreq = snareBodyFrequencies(tone);
+    const bodyDuration = AMBIENT_PERCUSSION_FINISH.snare.duration * decay;
+    body.type = 'sine';
+    body.frequency.setValueAtTime(bodyFreq.startHz, start);
+    body.frequency.exponentialRampToValueAtTime(bodyFreq.endHz, start + bodyDuration * 0.72);
+    bodyGain.gain.setValueAtTime(volume * AMBIENT_PERCUSSION_FINISH.snare.bodyGain, start);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration);
+    body.connect(bodyGain);
+    connectPercussionWithPan(ctx, bodyGain, pan * 0.35);
+    body.start(start);
+    body.stop(start + bodyDuration + 0.02);
+  }
+
   source.start(start);
 }
 
@@ -1337,71 +1387,6 @@ function playMetalHit() {
     osc.start(start);
     osc.stop(start + 0.36);
   });
-}
-
-function percussionHumanization(feel, localStep, code) {
-  const period = Math.max(1, feel?.percussion?.period || 16);
-  const pos = ((localStep % period) + period) % period;
-  const half = Math.floor(period / 2);
-  const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
-  const signed = (shift) => (((seed >>> shift) % 2001) / 1000) - 1;
-  const performance = feel?.percussion?.performance || {};
-  const anchorVariance = Math.max(0, Math.min(0.12, Number(performance.anchorVariance) || 0.035));
-  const secondaryVariance = Math.max(0.04, Math.min(0.32, Number(performance.secondaryVariance) || 0.18));
-  const phraseLift = Math.max(0, Math.min(0.18, Number(performance.phraseLift) || 0.08));
-  const stereoMotion = Math.max(0, Math.min(0.18, Number(performance.stereoMotion) || 0.08));
-
-  const isAnchor = code === 'K' || code === 'S' || code === 'A';
-  const isHat = code === 'H';
-  const isTexture = code === 'B';
-  const isFill = code === 'W' || code === 'M' || code === 'T';
-
-  let accent = (pos === 0 ? 1.18 : pos === half ? 1.08 : 1) * structuredMasterTrim(feel);
-  if (isHat) {
-    // Los hats respiran alrededor del backbeat: acento reconocible, pero no una
-    // fila de 16ths idénticos. No tocamos el reloj, sólo interpretación.
-    accent *= pos % 4 === 0 ? 0.90 : pos % 2 === 0 ? 0.82 : 0.74;
-  } else if (isTexture) {
-    accent *= 0.86;
-  } else if (isFill) {
-    accent *= 0.94;
-  }
-
-  // Anclas clavadas; vida alrededor. Kick/snare conservan el grid y una
-  // dinámica estrecha. Hats, brushes y fills reciben más timbre, panorama y
-  // velocidad, de forma determinista para que una misma canción mantenga su
-  // interpretación entre reproducciones.
-  const variance = isAnchor ? anchorVariance : secondaryVariance;
-  const microDynamics = 1 + (signed(5) * variance);
-  const phrasePhase = period <= 1 ? 0 : pos / (period - 1);
-  const lift = isAnchor ? 1 : 1 + (Math.max(0, phrasePhase - 0.55) / 0.45) * phraseLift;
-  const toneRange = isAnchor ? 0.14 : isHat ? 0.58 : isTexture ? 0.72 : 0.42;
-  const tone = signed(7) * toneRange;
-  const decayRange = isAnchor ? 0.04 : isHat ? 0.16 : isTexture ? 0.22 : 0.14;
-  const decay = 1 + (signed(9) * decayRange);
-  const panRange = isAnchor ? stereoMotion * 0.20 : stereoMotion;
-  const pan = signed(11) * panRange;
-
-  // No inventamos golpes fantasma duplicados: las B/W/M/T ya son las
-  // articulaciones secundarias escritas. La vida viene de dinámica, timbre,
-  // decay y panorama, no de añadir un segundo ataque que pueda sonar a flam.
-  const ghost = false;
-
-  return {
-    velocity: accent * microDynamics * lift * (feel?.percussion?.punch || 1),
-    delayMs: 0,
-    tone,
-    decay: Math.max(0.72, Math.min(1.28, decay)),
-    pan,
-    ghost,
-  };
-}
-
-export function getPercussionHumanizationPreview(themeId, localStep, code = 'K') {
-  const theme = AMBIENT_THEMES[themeId];
-  const feel = structuredFeel(theme);
-  if (!theme || theme.engine !== 'structured' || !feel?.percussion) return null;
-  return percussionHumanization(feel, Number(localStep) || 0, code);
 }
 
 function playBassDrum(volume = 0.04, options = {}) {
@@ -1864,144 +1849,6 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
 // determinista. La misma pieza respira, modula y cambia de registro durante
 // ~2 minutos antes de volver exactamente al mismo estado. Al-Ándalus no pasa
 // por este motor y conserva intacto su generador estocástico original.
-const STRUCTURED_LONG_FORM_MS = 120000;
-const STRUCTURED_HARMONY_PATH = [0, 0, 5, 5, 0, -2, -2, 0, 7, 7, 3, 0];
-
-function stableThemeSeed(id = '') {
-  let seed = 0;
-  for (let i = 0; i < id.length; i += 1) seed = ((seed * 31) + id.charCodeAt(i)) >>> 0;
-  return seed;
-}
-
-function structuredMasterTrim(feel) {
-  if (!feel) return 1;
-  const layers = feel.layers || {};
-  const mix = feel.mix || {};
-  const enabled = (name) => layers[name] !== false;
-  const lead = enabled('lead') ? (mix.lead ?? 1) : 0;
-  const counter = enabled('counter') ? (mix.counter ?? 0.4) * 0.72 : 0;
-  const chord = enabled('chords') ? (mix.chord ?? 1) * 0.92 : 0;
-  const bass = enabled('bass') ? (mix.bass ?? 1) * 0.88 : 0;
-  const drums = enabled('drums') && (feel.percussion?.kit || 'legacy') !== 'none'
-    ? Math.max(0.18, (feel.percussion?.punch || 1) * 0.58)
-    : 0;
-  const signature = enabled('signature') && feel.signature ? Math.min(0.34, (feel.signature.volume || 0.3) * 0.55) : 0;
-  const energy = Math.max(0.55, lead + counter + chord + bass + drums + signature);
-  // Compensación suave, no compresión: arreglos densos bajan algo y los
-  // camerísticos/SPA recuperan presencia. La horquilla evita matar la dinámica.
-  return Math.max(0.76, Math.min(1.12, Math.sqrt(2.05 / energy)));
-}
-
-function structuredPersonalityFingerprint(theme, feel) {
-  if (!theme || theme.engine !== 'structured') return null;
-  const sections = theme.sections || [];
-  let lead = 0; let counter = 0; let chords = 0; let bass = 0; let drums = 0;
-  let minNote = Infinity; let maxNote = -Infinity;
-  const includeNotes = (values) => {
-    Object.values(values || {}).forEach((value) => {
-      const notes = Array.isArray(value) ? value : [value];
-      notes.forEach((note) => {
-        if (!Number.isFinite(Number(note))) return;
-        minNote = Math.min(minNote, Number(note));
-        maxNote = Math.max(maxNote, Number(note));
-      });
-    });
-  };
-  sections.forEach((section) => {
-    lead += Object.keys(section.lead || {}).length;
-    counter += Object.keys(section.counter || {}).length;
-    chords += Object.keys(section.chords || {}).length;
-    bass += Object.keys(section.bass || {}).length;
-    drums += Object.keys(section.drums || {}).length;
-    includeNotes(section.lead); includeNotes(section.counter); includeNotes(section.chords); includeNotes(section.bass);
-  });
-  const range = Number.isFinite(minNote) && Number.isFinite(maxNote) ? Math.round((maxNote - minNote) * 10) / 10 : 0;
-  return [
-    feel?.family || 'legacy', theme.stepMs, theme.stepsPerSection || 32, sections.length,
-    feel?.leadInstrument || theme.leadInstrument || '-', feel?.counterInstrument || theme.counterInstrument || '-',
-    feel?.chordInstrument || theme.chordInstrument || '-', feel?.bassInstrument || theme.bassInstrument || '-',
-    feel?.percussion?.kit || 'legacy', lead, counter, chords, bass, drums, range,
-  ].join('|');
-}
-
-function structuredArrangement(theme, cycleIndex) {
-  const sections = Math.max(1, theme.sections?.length || 1);
-  const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
-  const cycleMs = Math.max(1, sections * stepsPerSection * theme.stepMs);
-  const span = Math.max(8, Math.ceil((theme.longFormMs || STRUCTURED_LONG_FORM_MS) / cycleMs));
-  const phase = cycleIndex % span;
-  const seed = stableThemeSeed(theme.id);
-  const feel = structuredFeel(theme);
-  const harmonyPath = feel?.harmonyPath || STRUCTURED_HARMONY_PATH;
-  const harmonicIndex = Math.floor((phase / span) * harmonyPath.length);
-  // Las escenas nuevas priorizan continuidad tonal: empiezan siempre en su
-  // centro escrito y modulan sólo siguiendo su propia ruta. Los temas legacy
-  // conservan el offset histórico derivado de la seed.
-  const pathOffset = feel ? 0 : (seed % 3);
-  const transpose = harmonyPath[(harmonicIndex + pathOffset) % harmonyPath.length];
-  const texture = (phase + (seed % 7)) % 9;
-
-  const masterTrim = structuredMasterTrim(feel);
-
-  return {
-    span,
-    transpose,
-    feel,
-    masterTrim,
-    // Cambios de registro puntuales, no una octava arriba cada dos vueltas.
-    leadOctave: texture === 3 ? 12 : texture === 7 ? -12 : 0,
-    leadVolume: (texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1) * (feel?.mix?.lead || 1) * masterTrim,
-    bassVolume: (texture === 4 ? 0.68 : 0.9) * (feel?.mix?.bass || 1) * masterTrim,
-    chordVolume: (texture === 5 ? 0.72 : 1) * (feel?.mix?.chord || 1) * masterTrim,
-    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : (feel?.counterGainScale || 0.4)) * (feel?.mix?.counter || 1) * masterTrim,
-    counterOctave: texture === 6 ? -12 : 0,
-    // Unas vueltas dejan respirar la melodía o la batería. La forma base
-    // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
-    leadMode: feel
-      ? (texture === 8 ? 'sparse' : 'full')
-      : (texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full'),
-    drumMode: feel?.drumMode || (feel
-      ? (texture === 6 ? 'sparse' : 'full')
-      : (texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full')),
-    sectionShift: feel?.preserveSectionOrder ? 0 : (sections > 1 ? Math.floor(phase / 2 + (seed % sections)) % sections : 0),
-  };
-}
-
-function shouldPlayStructuredDrum(mode, code) {
-  if (mode === 'none') return false;
-  // En las vueltas con menos batería quitamos sobre todo hats/ornamentos,
-  // pero conservamos los golpes que definen el pulso. Antes se filtraba por
-  // el número absoluto de step y eso podía destruir una métrica 6/8 o 7/8.
-  if (mode === 'sparse') return code !== 'H';
-  return true;
-}
-
-export function structuredPercussionPatternStep(globalStep, period) {
-  const safePeriod = Math.max(1, Math.floor(Number(period) || 1));
-  return ((Math.floor(Number(globalStep) || 0) % safePeriod) + safePeriod) % safePeriod;
-}
-
-function structuredDrumAtStep(section, feel, localStep, globalStep = localStep) {
-  if (!feel?.percussion) return section.drums?.[localStep] || null;
-  const { period, pattern } = feel.percussion;
-  if (!period || !pattern) return null;
-  // El groove continúa entre secciones aunque stepsPerSection no sea múltiplo
-  // del patrón. Reiniciarlo en cada sección desplazaba Beirut, Estambul y
-  // otras métricas respecto a bajo/melodía.
-  return pattern[structuredPercussionPatternStep(globalStep, period)] || null;
-}
-
-function structuredSignatureAtStep(feel, localStep, sectionIndex, cycleIndex) {
-  const signature = feel?.signature;
-  if (!signature?.motif) return null;
-  if (Array.isArray(signature.sections) && !signature.sections.includes(sectionIndex)) return null;
-  const every = Math.max(1, signature.everyCycles || 1);
-  if (cycleIndex % every !== 0) return null;
-  const motifStep = signature.repeatPeriod ? (localStep % signature.repeatPeriod) : localStep;
-  const note = signature.motif[motifStep];
-  return note == null ? null : { ...signature, note };
-}
-
 function startStructuredMusic(theme, startPositionMs = 0) {
   let step = Math.max(0, Math.floor((Number(startPositionMs) || 0) / Math.max(1, theme.stepMs)));
   let nextTickAtMs = transportNowMs();

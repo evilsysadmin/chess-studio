@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { AMBIENT_GENRE_ORDER } from './ambientCatalog.js';
 import {
+  GENRE_FINISH,
   GENRE_PRODUCTION,
   PERFORMANCE_FINISH,
   withAmbientPremiumProduction,
 } from './ambientPremiumProduction.js';
 
 describe('ambient premium production pass', () => {
-  it('defines a finishing target for every published radio genre', () => {
+  it('defines mix and timbre finishing targets for every published radio genre', () => {
     expect(Object.keys(GENRE_PRODUCTION)).toEqual(expect.arrayContaining(AMBIENT_GENRE_ORDER));
+    expect(Object.keys(GENRE_FINISH)).toEqual(expect.arrayContaining(AMBIENT_GENRE_ORDER));
+    for (const genre of AMBIENT_GENRE_ORDER) {
+      expect(GENRE_FINISH[genre]).toEqual(expect.objectContaining({
+        brightness: expect.any(Number),
+        reflectionScale: expect.any(Number),
+        stereoWidth: expect.any(Number),
+        driftCents: expect.any(Number),
+      }));
+    }
   });
 
   it('upgrades generic smooth-jazz instruments without erasing the written feel', () => {
@@ -40,12 +50,20 @@ describe('ambient premium production pass', () => {
     expect(premium.space).toBeGreaterThan(feel.space);
     expect(premium.space).toBeLessThan(0.2);
     expect(premium.production).toEqual(expect.objectContaining({
-      grade: 'premium-v1',
-      performance: 'articulation-v1',
+      grade: 'premium-v2',
+      performance: 'articulation-v2',
+      timbre: 'coherent-voice-v2',
       intent: 'warm-controlled',
     }));
     expect(Object.isFrozen(premium)).toBe(true);
     expect(Object.isFrozen(premium.mix)).toBe(true);
+    expect(Object.isFrozen(premium.finish)).toBe(true);
+    expect(premium.finish).toEqual(expect.objectContaining({
+      brightness: GENRE_FINISH['Smooth Jazz'].brightness,
+      reflectionScale: GENRE_FINISH['Smooth Jazz'].reflectionScale,
+      stereoWidth: GENRE_FINISH['Smooth Jazz'].stereoWidth,
+      driftCents: GENRE_FINISH['Smooth Jazz'].driftCents,
+    }));
   });
 
   it('warms generic trip-hop EP chords without replacing the noir rhythm section', () => {

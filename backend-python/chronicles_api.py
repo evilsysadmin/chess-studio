@@ -25,7 +25,6 @@ from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
     ChroniclesMapCodeError,
-    parse_chronicles_map_code,
 )
 from chronicles_map_generator import (
     ChroniclesMapGenerationError,
@@ -33,7 +32,6 @@ from chronicles_map_generator import (
 )
 from chronicles_manifest_procedural import proceduralize_chronicles_manifest
 from chronicles_map_planner import normalize_chronicles_planner_proposal
-from chronicles_planner_cloudflare import request_chronicles_planner_snapshot
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
     normalize_idempotency_key,
@@ -61,6 +59,16 @@ class CreateChroniclesRunRequest(BaseModel):
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
 
+class CheckpointChroniclesRunRequest(BaseModel):
+    expected_world_version: int = Field(alias="expectedWorldVersion", ge=0)
+    current_map_id: str = Field(alias="currentMapId", min_length=1, max_length=64)
+    world_flags: dict[str, Any] = Field(default_factory=dict, alias="worldFlags")
+    consumed_content_ids: list[str] = Field(default_factory=list, alias="consumedContentIds")
+    claimed_rewards: list[str] = Field(default_factory=list, alias="claimedRewards")
+
+    model_config = {"populate_by_name": True, "extra": "forbid"}
+
+
 class PreviewChroniclesMapCodeRequest(BaseModel):
     map_code: str = Field(
         alias="mapCode",
@@ -73,6 +81,54 @@ class PreviewChroniclesMapCodeRequest(BaseModel):
 
 def _canonical_bytes(payload: Any) -> bytes:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _normalize_checkpoint_ids(values: list[str], *, label: str) -> list[str]:
+    if len(values) > 512:
+        raise HTTPException(400, f"{label} contiene demasiados elementos.")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise HTTPException(400, f"{label} sólo admite IDs de texto.")
+        item = value.strip()
+        if not item or len(item) > 128:
+            raise HTTPException(400, f"{label} contiene un ID inválido.")
+        if item not in seen:
+            seen.add(item)
+            normalized.append(item)
+    return normalized
+
+
+def _normalize_checkpoint_flags(flags: dict[str, Any]) -> dict[str, Any]:
+    if len(flags) > 128 or len(_canonical_bytes(flags)) > 16_384:
+        raise HTTPException(400, "El checkpoint contiene demasiados flags.")
+    normalized: dict[str, Any] = {}
+    for key, value in flags.items():
+        if not isinstance(key, str) or not key or len(key) > 96:
+            raise HTTPException(400, "El checkpoint contiene una clave de flag inválida.")
+        if value is not None and not isinstance(value, (bool, int, str)):
+            raise HTTPException(400, f"El flag {key} usa un valor no persistible.")
+        if isinstance(value, str) and len(value) > 256:
+            raise HTTPException(400, f"El flag {key} es demasiado largo.")
+        normalized[key] = value
+    return normalized
+
+
+def _transition_targets(manifest: dict[str, Any]) -> set[str]:
+    effects: list[dict[str, Any]] = []
+    for group in _CONTENT_GROUPS:
+        for entry in manifest.get(group, []) or []:
+            effects.extend(((entry.get("action") or {}).get("effects") or []))
+    for enemy in manifest.get("enemies", []) or []:
+        effects.extend(((enemy.get("onDefeat") or {}).get("effects") or []))
+    return {
+        effect["mapId"]
+        for effect in effects
+        if isinstance(effect, dict)
+        and effect.get("type") == "transition-map"
+        and isinstance(effect.get("mapId"), str)
+    }
 
 
 def _walkable(grid: list[str], x: Any, y: Any, *, label: str) -> None:
@@ -506,71 +562,6 @@ def chronicles_area_envelope(
     }
 
 
-def _chronicles_planner_descriptors(
-    map_ids: tuple[str, ...] | list[str],
-    seed: int,
-    *,
-    route_snapshot: dict[str, Any] | None,
-) -> list[dict[str, Any]]:
-    descriptors: list[dict[str, Any]] = []
-    for map_id in map_ids:
-        local_area = chronicles_area_envelope(
-            map_id,
-            seed,
-            route_snapshot=route_snapshot,
-        )
-        recipe = parse_chronicles_map_code(local_area["mapCode"])
-        verbs = ",".join(recipe.verbs)
-        descriptors.append(
-            {
-                "map_id": map_id,
-                "theme": recipe.theme,
-                "current_verbs": verbs,
-                "difficulty": recipe.difficulty,
-                # Contract v1 may only select/reorder/subset authored verbs.
-                # Workers AI cannot invent a semantic mechanic here.
-                "allowed_verbs": verbs,
-            }
-        )
-    return descriptors
-
-
-def _normalize_remote_planner_snapshot(
-    raw_snapshot: dict[str, Any] | None,
-    *,
-    planner_descriptors: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if raw_snapshot is None:
-        return None
-    try:
-        snapshot = _normalize_planner_snapshot(raw_snapshot)
-    except ChroniclesManifestError:
-        return None
-    if snapshot is None:
-        return None
-
-    allowed_verbs_by_map = {
-        descriptor["map_id"]: {
-            verb.strip()
-            for verb in str(descriptor.get("allowed_verbs") or "").split(",")
-            if verb.strip()
-        }
-        for descriptor in planner_descriptors
-    }
-    if not set(snapshot["areas"]).issubset(allowed_verbs_by_map):
-        return None
-
-    for map_id, proposal in snapshot["areas"].items():
-        if proposal.get("source") != "workers-ai":
-            return None
-        proposed_verbs = proposal.get("verbs")
-        if proposed_verbs is not None and not set(proposed_verbs).issubset(
-            allowed_verbs_by_map[map_id]
-        ):
-            return None
-    return snapshot
-
-
 def _run_id(username: str, idempotency_key: str | None) -> str:
     if idempotency_key:
         return str(uuid.uuid5(CHRONICLES_RUN_NAMESPACE, f"{username}:{idempotency_key}"))
@@ -673,25 +664,15 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             if body.map_id is None:
                 route_snapshot = chronicles_route_snapshot_for_seed(seed)
                 selected_map_id = route_snapshot["mapIds"][0]
-                planner_map_ids = tuple(route_snapshot["mapIds"])
             else:
                 route_snapshot = None
                 selected_map_id = body.map_id
-                planner_map_ids = (selected_map_id,)
 
-            planner_descriptors = _chronicles_planner_descriptors(
-                planner_map_ids,
-                seed,
-                route_snapshot=route_snapshot,
-            )
-            raw_planner_snapshot = await request_chronicles_planner_snapshot(
-                planner_descriptors,
-                request_id=f"chronicles:{run_id}",
-            )
-            planner_snapshot = _normalize_remote_planner_snapshot(
-                raw_planner_snapshot,
-                planner_descriptors=planner_descriptors,
-            )
+            # Runtime bootstrap is deliberately deterministic and network-free beyond
+            # the run API itself. Workers AI planner proposals remain supported as
+            # persisted snapshots for older runs and authoring/offline tooling, but a
+            # fresh expedition never waits on remote AI before gameplay can mount.
+            planner_snapshot = None
 
             area = chronicles_area_envelope(
                 selected_map_id,
@@ -721,6 +702,82 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             if str(exc) == "idempotency-conflict":
                 raise HTTPException(409, "La misma Idempotency-Key se reutilizó con otra configuración de run.") from exc
             raise
+
+    @router.put("/runs/{run_id}/checkpoint")
+    async def checkpoint_run(
+        run_id: str,
+        body: CheckpointChroniclesRunRequest,
+        username: str = Depends(auth_dependency),
+    ):
+        run = await chronicles_run_store.get_run(run_id, username)
+        if run is None:
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+
+        route_snapshot = _normalize_route_snapshot(run.get("route"))
+        planner_snapshot = _normalize_planner_snapshot(run.get("plannerSnapshot"))
+        current_area = chronicles_area_envelope(
+            run["currentMapId"],
+            run["seed"],
+            route_snapshot=route_snapshot,
+            planner_snapshot=planner_snapshot,
+        )
+        if (
+            current_area["contentVersion"] != run["contentVersion"]
+            or current_area["manifestRevision"] != run["manifestRevision"]
+        ):
+            raise HTTPException(
+                409,
+                "La revisión de contenido de esta run ya no está disponible.",
+            )
+
+        target_map_id = _safe_map_id(body.current_map_id)
+        if (
+            target_map_id != run["currentMapId"]
+            and target_map_id not in _transition_targets(current_area["manifest"])
+        ):
+            raise HTTPException(409, "La transición solicitada no pertenece al mundo actual de la run.")
+
+        target_area = (
+            current_area
+            if target_map_id == run["currentMapId"]
+            else chronicles_area_envelope(
+                target_map_id,
+                run["seed"],
+                route_snapshot=route_snapshot,
+                planner_snapshot=planner_snapshot,
+            )
+        )
+        world_flags = _normalize_checkpoint_flags(body.world_flags)
+        consumed_content_ids = _normalize_checkpoint_ids(
+            body.consumed_content_ids,
+            label="consumedContentIds",
+        )
+        claimed_rewards = _normalize_checkpoint_ids(
+            body.claimed_rewards,
+            label="claimedRewards",
+        )
+        try:
+            updated = await chronicles_run_store.checkpoint_run(
+                run_id=run_id,
+                owner=username,
+                expected_world_version=body.expected_world_version,
+                map_id=target_map_id,
+                content_version=target_area["contentVersion"],
+                manifest_revision=target_area["manifestRevision"],
+                world_flags=world_flags,
+                consumed_content_ids=consumed_content_ids,
+                claimed_rewards=claimed_rewards,
+            )
+        except ValueError as exc:
+            if str(exc) == "world-version-conflict":
+                raise HTTPException(
+                    409,
+                    "La run cambió desde este cliente; recarga antes de guardar otro checkpoint.",
+                ) from exc
+            raise
+        if updated is None:
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+        return updated
 
     @router.get("/runs/{run_id}")
     async def get_run(run_id: str, username: str = Depends(auth_dependency)):

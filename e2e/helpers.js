@@ -426,6 +426,10 @@ export async function mockApi(page, {
 }
 
 export async function login(page) {
+  if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
+  }
   await page.goto('./');
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
@@ -440,6 +444,14 @@ export async function login(page) {
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }
 
+
+export async function scheduleDomClick(locator) {
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.evaluate((element) => {
+    setTimeout(() => element.click(), 0);
+  });
+}
 
 export function gameStatus(page) {
   return page.getByRole('status', { name: 'Estado de la partida' });

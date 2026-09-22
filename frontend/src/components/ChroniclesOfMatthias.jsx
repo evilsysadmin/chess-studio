@@ -9,6 +9,11 @@ import {
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
+import {
+  chroniclesApplyRunCheckpoint,
+  chroniclesRunCheckpointFingerprint,
+} from '../chronicles/chroniclesRunCheckpoint.js';
 import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapWorld,
@@ -50,6 +55,10 @@ const KEY_ACTIONS = Object.freeze({
 });
 
 const FIRST_PERSON_RUN_SCOPE = 'first-person';
+
+function loadChroniclesFirstPersonRenderer() {
+  return import('../chroniclesOfMatthiasThree.js');
+}
 
 function BootstrapStatus() {
   return (
@@ -97,6 +106,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const staleRunRecoveryAttemptedRef = useRef(false);
   const activeRunIdRef = useRef(null);
+  const authoritativeRunRef = useRef(null);
+  const checkpointFingerprintRef = useRef('');
+  const checkpointQueueRef = useRef(Promise.resolve());
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -216,10 +228,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
     activeRunIdRef.current = operationId;
 
+    // Overlap renderer chunk loading with the authoritative world bootstrap.
+    // Gameplay still stays fail-closed until the backend bundle validates.
+    void loadChroniclesFirstPersonRenderer().catch(() => {});
+
     chroniclesBootstrapWorld({ signal: controller.signal, operationId })
-      .then(() => {
+      .then((world) => {
         if (!active) return;
-        const next = createChroniclesState(null, progression.characterBuild);
+        const next = chroniclesApplyRunCheckpoint(
+          createChroniclesState(null, progression.characterBuild),
+          world,
+        );
+        authoritativeRunRef.current = world;
+        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
@@ -258,7 +279,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const host = hostRef.current;
     if (!ready || !stateRef.current || !host) return undefined;
 
-    void import('../chroniclesOfMatthiasThree.js')
+    void loadChroniclesFirstPersonRenderer()
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host);
@@ -280,6 +301,35 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [ready]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
+
+  useEffect(() => {
+    const run = authoritativeRunRef.current;
+    if (!ready || !state || !run?.runId) return;
+    const fingerprint = chroniclesRunCheckpointFingerprint(state);
+    if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
+    checkpointFingerprintRef.current = fingerprint;
+    const snapshot = state;
+
+    checkpointQueueRef.current = checkpointQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const currentRun = authoritativeRunRef.current;
+        if (!currentRun?.runId) return;
+        const updated = await chroniclesCheckpointState(
+          currentRun.runId,
+          snapshot,
+          currentRun.worldVersion,
+        );
+        authoritativeRunRef.current = { ...currentRun, ...updated };
+      })
+      .catch((error) => {
+        console.error('Chronicles checkpoint failed', error);
+        if (error?.status === 409) {
+          setReady(false);
+          setBootstrapError(error);
+        }
+      });
+  }, [ready, state]);
 
   useEffect(() => {
     if (!ready || !stateRef.current) return undefined;

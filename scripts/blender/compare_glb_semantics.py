@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Compare two GLB files for runtime-semantic equivalence.
 
-Blender's exporter can reorder triangle lists and introduce tiny float noise
-between otherwise identical renders, so byte equality is too strict for CI.
-This comparator keeps the contract strong: JSON structure must match,
-non-index integer accessors must match exactly, float accessors must match
-within a small absolute tolerance, and triangle index buffers may differ only
-by triangle ordering or cyclic rotation (winding is preserved).
+Blender's exporter can reorder triangle lists, reuse or duplicate identical
+accessors, and introduce tiny float noise between otherwise identical renders,
+so byte or raw JSON equality is too strict for CI. This comparator dereferences
+accessors while keeping the contract strong: scene structure must match,
+non-index integer values must match exactly, float values must match within a
+small absolute tolerance, and triangle lists may differ only by triangle order
+or cyclic rotation (winding is preserved).
 """
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import struct
@@ -20,7 +22,10 @@ from typing import Iterable
 JSON_CHUNK = 0x4E4F534A
 BIN_CHUNK = 0x004E4942
 TRIANGLES = 4
-FLOAT_TOLERANCE = 1e-6
+# Blender 5.2.x can recalculate otherwise identical split normals with roughly
+# 3e-5 absolute drift between clean software renders. 1e-4 remains far below a
+# visible mesh or animation change while keeping CI stable across runner CPUs.
+FLOAT_TOLERANCE = 1e-4
 
 _COMPONENTS = {
     5120: ("b", 1),
@@ -102,57 +107,204 @@ def triangle_signature(values: Iterable[int]) -> list[tuple[int, int, int]]:
     return sorted(triangles)
 
 
-def index_accessor_modes(document: dict) -> dict[int, set[int]]:
-    result: dict[int, set[int]] = {}
-    for mesh in document.get("meshes", []):
+def _accessor_payload(
+    document: dict,
+    binary: bytes,
+    index: int,
+    *,
+    triangles: bool = False,
+) -> dict:
+    """Dereference an accessor so exporter allocation order is not semantic.
+
+    Blender may either reuse or duplicate an identical accessor between two
+    exports.  The numeric accessor id and the backing buffer offsets therefore
+    are storage details, not runtime semantics.
+    """
+    accessor = document["accessors"][index]
+    metadata = {
+        key: value
+        for key, value in accessor.items()
+        if key not in {"bufferView", "byteOffset", "min", "max"}
+    }
+    rows = decode_accessor(document, binary, index)
+    if triangles:
+        values = [int(row[0]) for row in rows]
+        rows = triangle_signature(values)
+    return {
+        "metadata": metadata,
+        "rows": [list(row) for row in rows],
+    }
+
+
+def semantic_document(document: dict, binary: bytes) -> dict:
+    """Return a document with every accessor reference replaced by its data."""
+    result = copy.deepcopy(document)
+    # Blender patch releases bump this provenance string even when the exported
+    # scene is semantically identical. Keep the glTF version contract below,
+    # but do not mistake exporter metadata for runtime geometry.
+    result.get("asset", {}).pop("generator", None)
+    cache: dict[tuple[int, bool], dict] = {}
+
+    def payload(index: int, *, triangles: bool = False) -> dict:
+        key = (index, triangles)
+        if key not in cache:
+            cache[key] = _accessor_payload(
+                document,
+                binary,
+                index,
+                triangles=triangles,
+            )
+        return cache[key]
+
+    for mesh in result.get("meshes", []):
         for primitive in mesh.get("primitives", []):
-            if "indices" not in primitive:
-                continue
-            result.setdefault(primitive["indices"], set()).add(primitive.get("mode", TRIANGLES))
+            mode = primitive.get("mode", TRIANGLES)
+            if "indices" in primitive:
+                primitive["indices"] = payload(
+                    primitive["indices"],
+                    triangles=mode == TRIANGLES,
+                )
+            primitive["attributes"] = {
+                name: payload(index)
+                for name, index in primitive.get("attributes", {}).items()
+            }
+            primitive["targets"] = [
+                {name: payload(index) for name, index in target.items()}
+                for target in primitive.get("targets", [])
+            ]
+
+    for skin in result.get("skins", []):
+        if "inverseBindMatrices" in skin:
+            skin["inverseBindMatrices"] = payload(skin["inverseBindMatrices"])
+
+    for animation in result.get("animations", []):
+        for sampler in animation.get("samplers", []):
+            sampler["input"] = payload(sampler["input"])
+            sampler["output"] = payload(sampler["output"])
+
+    # glTF defines omitted TRS properties as these identity transforms. Blender
+    # 5.2.40 started serializing a near-identity scale on a few nodes that
+    # 5.2.39 omitted, so materialize the spec defaults before numeric comparison.
+    for node in result.get("nodes", []):
+        node.setdefault("translation", [0.0, 0.0, 0.0])
+        node.setdefault("rotation", [0.0, 0.0, 0.0, 1.0])
+        node.setdefault("scale", [1.0, 1.0, 1.0])
+
+    # No Home Matthias asset embeds images. Fail explicitly if a future asset
+    # introduces another bufferView consumer that this comparator must learn.
+    for image in result.get("images", []):
+        if "bufferView" in image:
+            raise ValueError("embedded image bufferViews are not supported")
+
+    result.pop("accessors", None)
+    result.pop("bufferViews", None)
+    result.pop("buffers", None)
     return result
+
+
+def assert_equivalent(left, right, tolerance: float, path: str = "$") -> None:
+    if isinstance(left, bool) or isinstance(right, bool):
+        if left is not right:
+            raise AssertionError(f"{path}: {left!r} != {right!r}")
+        return
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        if isinstance(left, float) or isinstance(right, float):
+            if not math.isclose(left, right, rel_tol=0.0, abs_tol=tolerance):
+                raise AssertionError(
+                    f"{path}: {left!r} != {right!r} (tol={tolerance})"
+                )
+        elif left != right:
+            raise AssertionError(f"{path}: {left!r} != {right!r}")
+        return
+    if type(left) is not type(right):
+        raise AssertionError(
+            f"{path}: type {type(left).__name__} != {type(right).__name__}"
+        )
+    if isinstance(left, dict):
+        if left.keys() != right.keys():
+            raise AssertionError(f"{path}: object keys differ")
+        for key in left:
+            assert_equivalent(left[key], right[key], tolerance, f"{path}.{key}")
+        return
+    if isinstance(left, list):
+        if len(left) != len(right):
+            raise AssertionError(f"{path}: length {len(left)} != {len(right)}")
+        for index, (left_value, right_value) in enumerate(zip(left, right)):
+            assert_equivalent(
+                left_value,
+                right_value,
+                tolerance,
+                f"{path}[{index}]",
+            )
+        return
+    if left != right:
+        raise AssertionError(f"{path}: {left!r} != {right!r}")
 
 
 def compare(left_path: Path, right_path: Path, tolerance: float = FLOAT_TOLERANCE) -> None:
     left_doc, left_bin = read_glb(left_path)
     right_doc, right_bin = read_glb(right_path)
-
-    if left_doc != right_doc:
-        raise AssertionError("GLB JSON structure differs")
-
-    index_modes = index_accessor_modes(left_doc)
-    for index, accessor in enumerate(left_doc.get("accessors", [])):
-        left_rows = decode_accessor(left_doc, left_bin, index)
-        right_rows = decode_accessor(right_doc, right_bin, index)
-
-        if index in index_modes:
-            modes = index_modes[index]
-            if modes != {TRIANGLES}:
-                if left_rows != right_rows:
-                    raise AssertionError(
-                        f"index accessor {index} differs for unsupported primitive modes {sorted(modes)}"
-                    )
-                continue
-            left_indices = [int(row[0]) for row in left_rows]
-            right_indices = [int(row[0]) for row in right_rows]
-            if triangle_signature(left_indices) != triangle_signature(right_indices):
-                raise AssertionError(f"triangle topology differs in index accessor {index}")
-            continue
-
-        if accessor["componentType"] == 5126:
-            for row_number, (left_row, right_row) in enumerate(zip(left_rows, right_rows)):
-                for component, (left_value, right_value) in enumerate(zip(left_row, right_row)):
-                    if not math.isclose(left_value, right_value, rel_tol=0.0, abs_tol=tolerance):
-                        raise AssertionError(
-                            f"float accessor {index} differs at row {row_number} component {component}: "
-                            f"{left_value!r} != {right_value!r} (tol={tolerance})"
-                        )
-        elif left_rows != right_rows:
-            raise AssertionError(f"integer accessor {index} differs")
+    assert_equivalent(
+        semantic_document(left_doc, left_bin),
+        semantic_document(right_doc, right_bin),
+        tolerance,
+    )
 
 
 def self_test() -> None:
     assert triangle_signature([0, 1, 2, 3, 4, 5]) == triangle_signature([4, 5, 3, 1, 2, 0])
     assert triangle_signature([0, 1, 2]) != triangle_signature([0, 2, 1])
+    assert_equivalent(1.0, 1.0 + (FLOAT_TOLERANCE / 2), FLOAT_TOLERANCE)
+
+    position = struct.pack("<fff", 1.0, 2.0, 3.0)
+    shared = {
+        "buffers": [{"byteLength": len(position)}],
+        "bufferViews": [{"buffer": 0, "byteLength": len(position)}],
+        "accessors": [{"bufferView": 0, "componentType": 5126, "count": 1, "type": "VEC3"}],
+        "meshes": [
+            {"primitives": [{"attributes": {"POSITION": 0}}]},
+            {"primitives": [{"attributes": {"POSITION": 0}}]},
+        ],
+    }
+    duplicated = copy.deepcopy(shared)
+    duplicated["buffers"] = [{"byteLength": len(position) * 2}]
+    duplicated["bufferViews"].append(
+        {"buffer": 0, "byteOffset": len(position), "byteLength": len(position)}
+    )
+    duplicated["accessors"].append(
+        {"bufferView": 1, "componentType": 5126, "count": 1, "type": "VEC3"}
+    )
+    duplicated["meshes"][1]["primitives"][0]["attributes"]["POSITION"] = 1
+    assert_equivalent(
+        semantic_document(shared, position),
+        semantic_document(duplicated, position + position),
+        FLOAT_TOLERANCE,
+    )
+
+    generator_39 = copy.deepcopy(shared)
+    generator_39["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.39"}
+    generator_40 = copy.deepcopy(shared)
+    generator_40["asset"] = {"version": "2.0", "generator": "Khronos glTF Blender I/O v5.2.40"}
+    assert_equivalent(
+        semantic_document(generator_39, position),
+        semantic_document(generator_40, position),
+        FLOAT_TOLERANCE,
+    )
+
+    omitted_transform = copy.deepcopy(shared)
+    omitted_transform["nodes"] = [{"name": "default-transform"}]
+    explicit_transform = copy.deepcopy(shared)
+    explicit_transform["nodes"] = [{
+        "name": "default-transform",
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0 - (FLOAT_TOLERANCE / 2), 1.0, 1.0],
+    }]
+    assert_equivalent(
+        semantic_document(omitted_transform, position),
+        semantic_document(explicit_transform, position),
+        FLOAT_TOLERANCE,
+    )
     print("GLB semantic comparator self-test OK")
 
 

@@ -7,13 +7,12 @@ const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const EnvironmentVisual := preload("res://scripts/environment_visual.gd")
 const ParallaxLayerVisual := preload("res://scripts/parallax_layer_visual.gd")
 const SetpieceVisual := preload("res://scripts/setpiece_visual.gd")
+const StageGeometryPolicy := preload("res://scripts/stage_geometry_policy.gd")
+const StageManifestLoader := preload("res://scripts/stage_manifest_loader.gd")
 const DEFAULT_STAGE_ID := "industrial_front_v1"
 const STAGE_CATALOG := ["industrial_front_v1", "harbor_raid_v1", "alpine_fortress_v1", "jungle_relay_v1"]
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const PICKUP_RADIUS_X := 44.0
-const PICKUP_SPAWN_SIZE := Vector2(56.0, 56.0)
-const PICKUP_SPAWN_CLEARANCE := 6.0
-const PICKUP_SPAWN_SEARCH_STEP := 48.0
 const ENEMY_AGGRO_RANGE := 1380.0
 const START_ZONE_END_X := 1150.0
 const START_ZONE_AGGRO_RANGE := 520.0
@@ -266,91 +265,36 @@ func available_stage_ids() -> Array:
 
 func _load_stage_manifest(stage_id: String) -> bool:
     _stage_id = stage_id
-    var path := "res://maps/%s.json" % stage_id
-    if not FileAccess.file_exists(path):
-        return false
-    var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-    if typeof(parsed) != TYPE_DICTIONARY:
+    var snapshot: Dictionary = StageManifestLoader.load_stage(stage_id)
+    if snapshot.is_empty():
         return false
 
-    _stage_manifest = parsed
-    var world: Dictionary = _stage_manifest.get("world", {})
-    _world_size = Vector2(float(world.get("width", 1280.0)), float(world.get("height", 720.0)))
-    _floor_y = float(world.get("floor_y", 610.0))
-    _floor_depth = float(world.get("floor_depth", 110.0))
-    _boundary_thickness = float(world.get("boundary_thickness", 40.0))
-    _stage_start_x = float(world.get("start_x", 110.0))
+    _stage_manifest = snapshot["manifest"]
+    _world_size = snapshot["world_size"]
+    _floor_y = float(snapshot["floor_y"])
+    _floor_depth = float(snapshot["floor_depth"])
+    _boundary_thickness = float(snapshot["boundary_thickness"])
+    _stage_start_x = float(snapshot["stage_start_x"])
+    _checkpoints = snapshot["checkpoints"]
 
-    _checkpoints = _stage_manifest.get("checkpoints", [_stage_start_x]).duplicate(true)
-    _platform_specs.clear()
-    for entry in _stage_manifest.get("platforms", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _platform_specs.append(Dictionary(entry).duplicate(true))
-    _platforms = _stage_rects(_platform_specs)
-    _obstacle_specs.clear()
-    for entry in _stage_manifest.get("obstacles", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _obstacle_specs.append(Dictionary(entry).duplicate(true))
-    _obstacles = _stage_rects(_obstacle_specs)
-    _dressing_specs.clear()
-    for entry in _stage_manifest.get("dressing", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _dressing_specs.append(Dictionary(entry).duplicate(true))
-    _story_prop_specs.clear()
-    for entry in _stage_manifest.get("story_props", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _story_prop_specs.append(Dictionary(entry).duplicate(true))
+    _platform_specs.assign(snapshot["platform_specs"])
+    _platforms.assign(snapshot["platforms"])
+    _obstacle_specs.assign(snapshot["obstacle_specs"])
+    _obstacles.assign(snapshot["obstacles"])
+    _dressing_specs.assign(snapshot["dressing_specs"])
+    _story_prop_specs.assign(snapshot["story_prop_specs"])
+    _enemy_spawns.assign(snapshot["enemy_spawns"])
+    _setpieces.assign(snapshot["setpieces"])
+    pickups.assign(snapshot["pickups"])
 
-    _enemy_spawns.clear()
-    for entry in _stage_manifest.get("enemies", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _enemy_spawns.append(Dictionary(entry).duplicate(true))
-
-    _setpieces.clear()
-    for entry in _stage_manifest.get("setpieces", []):
-        if typeof(entry) == TYPE_DICTIONARY:
-            _setpieces.append(Dictionary(entry).duplicate(true))
-
-    pickups.clear()
-    for entry in _stage_manifest.get("pickups", []):
-        if typeof(entry) != TYPE_DICTIONARY:
-            continue
-        var pickup := Dictionary(entry).duplicate(true)
-        var desired_pickup := Vector2(
-            float(pickup.get("x", _stage_start_x)),
-            float(pickup.get("y", _floor_y - 44.0)),
-        )
-        var safe_pickup := _resolve_pickup_spawn(desired_pickup)
-        pickup["x"] = safe_pickup.x
-        pickup["y"] = safe_pickup.y
-        pickup["taken"] = false
-        pickups.append(pickup)
-
-    var boss_spec: Dictionary = _stage_manifest.get("boss", {})
-    _boss_x = float(boss_spec.get("x", 4580.0))
-    _boss_hp = int(boss_spec.get("hp", 780))
-    _boss_size = Vector2(float(boss_spec.get("width", 190.0)), float(boss_spec.get("height", 150.0)))
-    _boss_trigger_x = float(boss_spec.get("trigger_x", _boss_x - 720.0))
-    _boss_arena_left = float(boss_spec.get("arena_left", _boss_x - 570.0))
-    _boss_arena_right = float(boss_spec.get("arena_right", _boss_x + 500.0))
-
-    var extraction_spec: Dictionary = _stage_manifest.get("extraction", {})
-    _extraction_x = float(extraction_spec.get("x", _world_size.x - 150.0))
+    _boss_x = float(snapshot["boss_x"])
+    _boss_hp = int(snapshot["boss_hp"])
+    _boss_size = snapshot["boss_size"]
+    _boss_trigger_x = float(snapshot["boss_trigger_x"])
+    _boss_arena_left = float(snapshot["boss_arena_left"])
+    _boss_arena_right = float(snapshot["boss_arena_right"])
+    _extraction_x = float(snapshot["extraction_x"])
     return true
-
-func _stage_rects(raw: Array) -> Array[Rect2]:
-    var result: Array[Rect2] = []
-    for entry in raw:
-        if typeof(entry) != TYPE_DICTIONARY:
-            continue
-        var item: Dictionary = entry
-        result.append(Rect2(
-            float(item.get("x", 0.0)),
-            float(item.get("y", 0.0)),
-            float(item.get("w", 0.0)),
-            float(item.get("h", 0.0)),
-        ))
-    return result
 
 func _build_stage_geometry() -> void:
     if _map_geometry_root != null:
@@ -444,73 +388,6 @@ func _player_projectile_clears_low_cover(point: Vector2, rect: Rect2) -> bool:
         return false
     var clearance := minf(LOW_COVER_PROJECTILE_CLEARANCE, rect.size.y * 0.34)
     return point.y <= rect.position.y + clearance
-
-func _pickup_spawn_rect(position: Vector2) -> Rect2:
-    return Rect2(position - PICKUP_SPAWN_SIZE * 0.5, PICKUP_SPAWN_SIZE)
-
-func _pickup_spawn_clear(position: Vector2) -> bool:
-    var rect := _pickup_spawn_rect(position)
-    if rect.position.x < 0.0 or rect.end.x > _world_size.x:
-        return false
-    if rect.position.y < 0.0 or rect.end.y >= _floor_y - 1.0:
-        return false
-    for obstacle in _obstacles:
-        if rect.intersects(obstacle.grow(PICKUP_SPAWN_CLEARANCE)):
-            return false
-    for platform in _platforms:
-        if rect.intersects(platform.grow(PICKUP_SPAWN_CLEARANCE)):
-            return false
-    return true
-
-func _resolve_pickup_spawn(desired: Vector2) -> Vector2:
-    if _pickup_spawn_clear(desired):
-        return desired
-
-    var desired_rect := _pickup_spawn_rect(desired)
-    var blockers: Array[Rect2] = []
-    blockers.append_array(_obstacles)
-    blockers.append_array(_platforms)
-    for blocker in blockers:
-        var expanded := blocker.grow(PICKUP_SPAWN_CLEARANCE)
-        if not desired_rect.intersects(expanded):
-            continue
-        var above := Vector2(
-            clampf(desired.x, PICKUP_SPAWN_SIZE.x * 0.5, _world_size.x - PICKUP_SPAWN_SIZE.x * 0.5),
-            blocker.position.y - PICKUP_SPAWN_SIZE.y * 0.5 - PICKUP_SPAWN_CLEARANCE,
-        )
-        if _pickup_spawn_clear(above):
-            return above
-
-    # If authored geometry changed around a pickup, search nearby instead of
-    # allowing the item to materialize inside a crate/platform.
-    for ring in range(1, 7):
-        var distance := PICKUP_SPAWN_SEARCH_STEP * float(ring)
-        var offsets := [
-            Vector2(-distance, 0.0),
-            Vector2(distance, 0.0),
-            Vector2(0.0, -distance),
-            Vector2(-distance, -distance),
-            Vector2(distance, -distance),
-        ]
-        for offset in offsets:
-            var candidate: Vector2 = desired + Vector2(offset)
-            candidate.x = clampf(
-                candidate.x,
-                PICKUP_SPAWN_SIZE.x * 0.5,
-                _world_size.x - PICKUP_SPAWN_SIZE.x * 0.5,
-            )
-            candidate.y = minf(
-                candidate.y,
-                _floor_y - PICKUP_SPAWN_SIZE.y * 0.5 - PICKUP_SPAWN_CLEARANCE,
-            )
-            if _pickup_spawn_clear(candidate):
-                return candidate
-
-    push_warning("Pickup spawn blocked near %s; keeping safest clamped fallback" % desired)
-    return Vector2(
-        clampf(desired.x, PICKUP_SPAWN_SIZE.x * 0.5, _world_size.x - PICKUP_SPAWN_SIZE.x * 0.5),
-        minf(desired.y, _floor_y - PICKUP_SPAWN_SIZE.y * 0.5 - PICKUP_SPAWN_CLEARANCE),
-    )
 
 func contextual_movement_hint(player_x: float) -> String:
     if player_x < 420.0:

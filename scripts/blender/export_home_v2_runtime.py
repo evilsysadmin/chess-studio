@@ -228,6 +228,10 @@ def main() -> None:
         export_lights=False,
         export_animations=False,
         export_materials="EXPORT",
+        # HOME_PROP_* keep their soft-edge bevel as a live modifier (only HOME_ARCH_*
+        # is baked by consolidation), and the exporter ignores modifiers by default,
+        # so every prop (table, sofa, benches, armour, shelves) shipped razor-edged.
+        export_apply=True,
         **meshopt_export_kwargs(),
     )
     if not glb_path.is_file() or glb_path.stat().st_size < 100_000:

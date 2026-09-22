@@ -825,6 +825,31 @@ No volver a:
 
 ---
 
+
+## 32. Radio ambiental por sesión autenticada
+
+La selección de tema es **estado de sesión**, no preferencia persistente del perfil.
+
+Contrato:
+
+- login/registro/reset con autenticación explícita abre una sesión musical nueva y marca la selección como fresca;
+- la primera selección de esa sesión elige un tema aleatorio del catálogo elegible;
+- el usuario puede cambiar manualmente de tema y esa elección se conserva durante la sesión actual;
+- F5/remount dentro de la misma sesión puede restaurar tema, estado play/pause y posición desde `sessionStorage`;
+- logout limpia tema/playback de sesión;
+- un nuevo login no hereda la pista de la cuenta/sesión anterior ni resucita la antigua clave persistente;
+- login/experiencia no autenticada no arranca la radio ni muestra el mini-player como si ya existiera una sesión de usuario.
+
+Cuando una pista termina y la radio sigue en reproducción, encadenar otra pista del catálogo tras la transición corta definida por el transporte y **excluir la pista que acaba de sonar** siempre que haya más de una opción. No convertir la continuidad de sesión en un loop accidental de una sola pieza.
+
+Separar claramente:
+
+- preferencias duraderas como volumen/mute/canales;
+- estado efímero de playback/tema/posición de la sesión autenticada.
+
+No volver a persistir el tema seleccionado en el perfil o `localStorage` como preferencia cross-login.
+
+
 ## 31. Regla de actualización
 
 Cuando una iteración produzca una mejora musical **claramente validada al oído**, actualizar este documento si la lección es reutilizable.
