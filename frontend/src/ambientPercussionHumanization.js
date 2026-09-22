@@ -1,6 +1,6 @@
 import { AMBIENT_THEMES } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
-import { stableThemeSeed } from './ambientStructuredArrangement.js';
+import { stableThemeSeed } from './ambientDeterminism.js';
 import { structuredMasterTrim } from './ambientThemeProfile.js';
 
 export function percussionHumanization(feel, localStep, code) {

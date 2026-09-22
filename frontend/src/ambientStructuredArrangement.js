@@ -1,13 +1,8 @@
 import { structuredFeel } from './ambientProfiles.js';
+import { stableThemeSeed } from './ambientDeterminism.js';
 import { STRUCTURED_LONG_FORM_MS, structuredMasterTrim } from './ambientThemeProfile.js';
 
 const STRUCTURED_HARMONY_PATH = [0, 0, 5, 5, 0, -2, -2, 0, 7, 7, 3, 0];
-
-export function stableThemeSeed(id = '') {
-  let seed = 0;
-  for (let i = 0; i < id.length; i += 1) seed = ((seed * 31) + id.charCodeAt(i)) >>> 0;
-  return seed;
-}
 
 export function structuredArrangement(theme, cycleIndex) {
   const sections = Math.max(1, theme.sections?.length || 1);
