@@ -149,11 +149,7 @@ export const AMBIENT_THEMES = {
 // cada tema usa un secuenciador estructurado y una familia tímbrica propia.
 // Son composiciones originales y deterministas por secciones; no MP3s, no
 // samples externos y, sobre todo, no once clones con bigote postizo.
-Object.assign(AMBIENT_THEMES, STRUCTURED_AMBIENT_THEMES);,36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'},
-      },
-    ],
-  },
-});
+Object.assign(AMBIENT_THEMES, STRUCTURED_AMBIENT_THEMES);
 
 export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
