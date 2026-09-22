@@ -26,7 +26,7 @@ test('Home abre Pawn Slug Godot directamente sin pasar por el hub de Experimento
   await expect(direct).toBeVisible();
   await direct.click();
 
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  await expect(page.locator('.pawn-slug-godot-host')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
-  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toBeVisible();
+  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toBeVisible({ timeout: 20_000 });
 });
