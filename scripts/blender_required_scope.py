@@ -60,22 +60,6 @@ GATES = (
         }),
     ),
     Gate(
-        workflow="pawn-slug-enemy-blender-art.yml",
-        label="Pawn Slug enemy art",
-        exact_paths=frozenset({
-            "scripts/blender/render_pawn_slug_enemy_sheets_v1.py",
-            ".github/workflows/pawn-slug-enemy-blender-art.yml",
-        }),
-    ),
-    Gate(
-        workflow="pawn-slug-pow-blender-art.yml",
-        label="Pawn Slug POW art",
-        exact_paths=frozenset({
-            "scripts/blender/build_pawn_slug_pows_v2.py",
-            ".github/workflows/pawn-slug-pow-blender-art.yml",
-        }),
-    ),
-    Gate(
         workflow="war-room-blender-art.yml",
         label="War Room premium art",
         exact_paths=frozenset({
@@ -142,12 +126,10 @@ def self_test() -> None:
     # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender
     # helper files must not summon an art-generation gate.
     assert classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"]) == []
-    assert [gate.workflow for gate in classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"])] == [
-        "pawn-slug-enemy-blender-art.yml"
-    ]
-    assert [gate.workflow for gate in classify(["scripts/blender/build_pawn_slug_pows_v2.py"])] == [
-        "pawn-slug-pow-blender-art.yml"
-    ]
+    # Pawn Slug runtime art is 2D-only. Legacy Blender generators remain
+    # optional candidate/reference tooling and must not summon required CI.
+    assert classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"]) == []
+    assert classify(["scripts/blender/build_pawn_slug_pows_v2.py"]) == []
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
         "war-room-blender-art.yml"
     ]
@@ -159,14 +141,14 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify([
         "scripts/blender/build_home_matthias.py",
         "scripts/blender/build_pawn_slug_pows_v2.py",
-    ])] == ["home-matthias-blender-art.yml", "pawn-slug-pow-blender-art.yml"]
+    ])] == ["home-matthias-blender-art.yml"]
     try:
         classify(["../outside"])
     except ValueError:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS no despierta Blender; siete lanes path-aware")
+    print("blender-required-scope self-test OK · CSS/Pawn Slug 2D no despiertan Blender; cinco lanes path-aware")
 
 
 def main() -> int:
