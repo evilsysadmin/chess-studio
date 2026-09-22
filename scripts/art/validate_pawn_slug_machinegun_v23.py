@@ -32,7 +32,7 @@ def footer_annotations(im):
  for component in components[1:]:
   x0,y0,x1,y1=component['bbox']; width=x1-x0; height=y1-y0
   if y0<FOOTER_Y_MIN or y1<FOOTER_BOTTOM_MIN: continue
-  if y0<main_bottom+1: continue
+  if y0<main_bottom: continue
   if component['area']>FOOTER_MAX_AREA or width>FOOTER_MAX_WIDTH or height>FOOTER_MAX_HEIGHT: continue
   hits.append(component)
  return hits
