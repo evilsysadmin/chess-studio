@@ -61,14 +61,15 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
   await page.mouse.click(point.x, point.y);
 }
 
-// These controls are setup only. Three.js/CSS can keep their boxes moving while
-// the scene settles, which makes Playwright actionability wait even though the
-// control is already visible and enabled. Invoke the same DOM click handler
-// directly here; the test's actual board interaction still uses real pointer input.
+// These controls are setup only. React may remount the command chrome while
+// CPU/renderer state settles, so avoid keeping a stale element between the
+// visibility check and the setup click. dispatchEvent re-resolves the locator
+// and still invokes the same click handler without actionability/stability waits.
+// The test's actual board interaction continues to use real pointer input.
 async function activateSetupControl(locator, timeout = WAR_ROOM_READY_TIMEOUT) {
   await expect(locator).toBeVisible({ timeout });
   await expect(locator).toBeEnabled();
-  await locator.evaluate((element) => element.click());
+  await locator.dispatchEvent('click', undefined, { timeout });
 }
 
 async function setRendererViaAppearance(page, renderer) {
