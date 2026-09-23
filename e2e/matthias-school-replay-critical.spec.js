@@ -96,10 +96,13 @@ test('Escuela de Matthias · una lección dominada se puede repetir de verdad', 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
 
+  const schoolBoard = page.locator('.matthias-school-board');
   const completeLesson = async () => {
     await page.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
     await page.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+    await expect(schoolBoard).toHaveAttribute('data-school-playback', 'moving');
     await expect(page.getByText(/Dos casillas y ningún tratado internacional roto/)).toBeVisible();
+    await expect(schoolBoard).toHaveAttribute('data-school-playback', 'idle');
   };
 
   await completeLesson();
