@@ -164,6 +164,7 @@ export function createWarRoomBlenderVariantShell({
   rootName,
   runtimeFinish,
   boardAnchorY = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
+  installRuntimeEffects,
 } = {}) {
   if (!variant || !runtimeModelUrl || !rootName || !runtimeFinish) {
     throw new TypeError('War Room Blender variant requires id, model URL, root name and finish');
@@ -180,6 +181,7 @@ export function createWarRoomBlenderVariantShell({
     rootName,
     runtimeFinish,
     boardAnchorY: options.boardAnchorY ?? boardAnchorY,
+    installRuntimeEffects: options.installRuntimeEffects ?? installRuntimeEffects,
   });
 
   return Object.freeze({ modelUrl, install });
@@ -196,6 +198,7 @@ export async function installWarRoomBlenderShell(
     rootName = `war-room-${variant}-blender-shell`,
     runtimeFinish = 'gltf-pbr-runtime',
     boardAnchorY = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
+    installRuntimeEffects,
   } = {},
 ) {
   if (!scene?.add) throw new Error(`War Room ${variant} requires a Three.js scene`);
@@ -259,6 +262,7 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
   root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
   root.userData.warRoomBlenderShadowCasterCount = 0;
+  const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
 
   const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
@@ -271,6 +275,7 @@ export async function installWarRoomBlenderShell(
 
   return () => {
     cancelShadowWarmup();
+    disposeRuntimeEffects();
     root.removeFromParent();
     disposeShell(root);
   };
