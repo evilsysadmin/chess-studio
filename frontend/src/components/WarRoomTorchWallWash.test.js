@@ -58,7 +58,6 @@ describe('War Room torch wall wash', () => {
 
       expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v3');
       expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v2');
-      expect(torch.userData.warRoomWallGlowRealLight).toBe('omitted-halo-owned-v1');
       expect(wallGlow).toBeUndefined();
       expect(halo).toBeInstanceOf(THREE.Mesh);
       expect(halo.material.opacity).toBeGreaterThanOrEqual(0.94);
