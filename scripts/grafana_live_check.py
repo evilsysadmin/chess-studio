@@ -525,7 +525,7 @@ def run_checks(
         {"query": oci_probe_query, "time": str(now)},
     )
     ok = _vector_positive(payload)
-    passed = _report(
+    _report(
         "oci_filelog_probe",
         ok,
         "Alloy filelog probe reached Loki"
@@ -535,7 +535,7 @@ def run_checks(
             if direct_probe_ok
             else "Alloy filelog probe missing and direct OTLP logs are also unavailable"
         ),
-    ) and passed
+    )
 
     oci_stdout_log_query = (
         'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
@@ -547,7 +547,7 @@ def run_checks(
         {"query": oci_stdout_log_query, "time": str(now)},
     )
     ok = _vector_positive(payload)
-    passed = _report(
+    _report(
         "oci_backend_stdout_logs",
         ok,
         "structured backend stdout reached Loki"
@@ -557,7 +557,7 @@ def run_checks(
             if direct_probe_ok
             else "backend stdout missing while the direct OTLP log path is also unavailable"
         ),
-    ) and passed
+    )
 
     oci_stdout_country_query = (
         'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
@@ -569,13 +569,13 @@ def run_checks(
         {"query": oci_stdout_country_query, "time": str(now)},
     )
     country_ok = _vector_positive(payload)
-    passed = _report(
+    _report(
         "oci_backend_stdout_country",
         country_ok,
         "staging stdout carries client_country on http_request"
         if country_ok
         else "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary",
-    ) and passed
+    )
 
     production_oci_stdout_log_query = (
         'sum(count_over_time({service_name="chess-studio-oci-backend-production-stdout"}'
@@ -587,13 +587,13 @@ def run_checks(
         {"query": production_oci_stdout_log_query, "time": str(now)},
     )
     production_oci_stdout_ok = _vector_positive(payload)
-    passed = _report(
+    _report(
         "oci_backend_production_stdout_logs",
         production_oci_stdout_ok,
         "production OCI backend stdout reached Loki"
         if production_oci_stdout_ok
         else "no structured production OCI backend stdout in Loki",
-    ) and passed
+    )
 
     log_explorer_default_query = (
         'sum(count_over_time({service_name="chess-studio-backend"}'
