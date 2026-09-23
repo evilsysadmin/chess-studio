@@ -1,4 +1,5 @@
 import {
+  CHRONICLES_ATTRIBUTE_DEFINITIONS,
   chroniclesAllowedAttributes,
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
@@ -9,7 +10,7 @@ import {
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const DEFAULT_LIMIT = 3;
 
-export const CHRONICLES_RUN_REWARD_DEFINITIONS = Object.freeze([
+const CHRONICLES_RUN_REWARD_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'field-dressing',
     kind: 'run-effect',
@@ -77,7 +78,7 @@ function legalAttributeCandidates(progression) {
         kind: 'attribute',
         memberId,
         attributeKey,
-        label: `${attributeKey.toUpperCase()} · ${memberId}`,
+        label: CHRONICLES_ATTRIBUTE_DEFINITIONS[attributeKey]?.label || attributeKey,
         description: 'Invierte un punto de atributo disponible en este héroe.',
         action: Object.freeze({ type: 'spend-attribute', memberId, attributeKey }),
       }));
