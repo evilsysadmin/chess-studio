@@ -350,12 +350,12 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
     await v2WarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
-    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'ready', { timeout: 30_000 });
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
     await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
     await variantUtilityMenu.click();
     await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
-    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'idle');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'idle');
     await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
 
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();

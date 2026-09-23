@@ -40,14 +40,10 @@ describe('War Room staging variant', () => {
     expect(loadWarRoomVariant(options)).toBe('v3');
   });
 
-  it('supports the generic variants flag while retaining the v2 flag as a compatibility alias', () => {
+  it('supports the generic variants flag outside canonical staging', () => {
     const location = { hostname: 'chess-studio.shadowops.dpdns.org' };
     expect(isWarRoomVariantSelectable({
       env: { VITE_WAR_ROOM_VARIANTS_ENABLE: 'true' },
-      location,
-    })).toBe(true);
-    expect(isWarRoomVariantSelectable({
-      env: { VITE_WAR_ROOM_V2_ENABLE: '1' },
       location,
     })).toBe(true);
   });
@@ -62,11 +58,10 @@ describe('War Room staging variant', () => {
     expect(isClassicWarRoomVariant({ selectable: false, variant: 'v3' })).toBe(true);
   });
 
-  it('owns generic and compatibility DOM diagnostics in the variant layer', () => {
+  it('owns generic DOM diagnostics in the variant layer', () => {
     expect(warRoomVariantDomData('v3', 'loading')).toEqual({
       'data-board3d-variant': 'v3',
       'data-board3d-variant-status': 'loading',
-      'data-board3d-v2-status': 'loading',
     });
   });
 
