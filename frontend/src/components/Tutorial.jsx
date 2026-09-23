@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './TutorialRoute.css';
 import './MatthiasClassRoom.css';
 import './MatthiasClassRoomFocus.css';
+import './MatthiasClassRoomExplanation.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
