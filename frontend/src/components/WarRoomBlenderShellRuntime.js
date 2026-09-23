@@ -16,7 +16,7 @@ export function warRoomBlenderModelUrl({
 }
 
 export function configureWarRoomBlenderLoader(loader) {
-  if (!loader?.setMeshoptDecoder) throw new TypeError('War Room v2 loader requires Meshopt support');
+  if (!loader?.setMeshoptDecoder) throw new TypeError('War Room Blender loader requires Meshopt support');
   loader.setMeshoptDecoder(MeshoptDecoder);
   return loader;
 }
