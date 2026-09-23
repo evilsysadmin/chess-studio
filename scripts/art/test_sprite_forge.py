@@ -28,6 +28,7 @@ from sprite_forge import (
     build_bank,
     audit_sprite_batch,
     repair_sprite_parity,
+    repair_matthias_hurt_batch,
 )
 
 
@@ -964,6 +965,341 @@ class SpriteForgeBatchLabTests(unittest.TestCase):
                     columns=self.COLUMNS,
                     cell_size=self.CELL,
                     max_auto_scale_delta=0.12,
+                )
+
+
+class SpriteForgeHurtBatchTests(unittest.TestCase):
+    ACTIONS = ["jump", "hurt"]
+    WEAPONS = ["pistol", "machinegun", "shotgun", "panzerfaust"]
+    CELL = 64
+    COLUMNS = 8
+    FOOT_Y = 58
+
+    def _frame(
+        self,
+        *,
+        height: int,
+        weapon: str,
+        column: int,
+        damaged_cap: bool = False,
+    ) -> Image.Image:
+        image = Image.new(
+            "RGBA",
+            (self.CELL, self.CELL),
+            (0, 0, 0, 0),
+        )
+        draw = ImageDraw.Draw(image)
+        top = self.FOOT_Y - height
+        # Broad connected weapon/body envelope keeps the authored bbox stable
+        # while the machinegun cap repair fills only transparent head pixels.
+        draw.rectangle(
+            (10, 34, 52, 39),
+            fill=(80, 72, 58, 255),
+        )
+        draw.rectangle(
+            (24, top, 39, self.FOOT_Y - 1),
+            fill=(72, 62, 52, 255),
+        )
+        draw.rectangle(
+            (25, max(top, 20), 38, 30),
+            fill=(176, 128, 92, 255),
+        )
+        if weapon == "machinegun":
+            if not damaged_cap:
+                draw.rectangle(
+                    (15, 18, 43, 24),
+                    fill=(34, 34, 38, 255),
+                )
+                draw.rectangle(
+                    (27, 20, 31, 22),
+                    fill=(150, 88, 28, 255),
+                )
+            else:
+                # Keep a narrow authored head core so alignment remains
+                # measurable while most cap alpha is missing.
+                draw.rectangle(
+                    (25, 18, 38, 24),
+                    fill=(34, 34, 38, 255),
+                )
+        return image
+
+    def _write_frame(
+        self,
+        root: Path,
+        weapon: str,
+        row: int,
+        column: int,
+        image: Image.Image,
+    ) -> None:
+        directory = root / weapon / "frames"
+        directory.mkdir(parents=True, exist_ok=True)
+        image.save(
+            directory
+            / (
+                f"matthias_{weapon}_"
+                f"r{row:02d}_c{column:02d}.png"
+            ),
+            "PNG",
+        )
+
+    def _build_fixture(
+        self,
+        root: Path,
+        *,
+        bad_panzer_source: bool = False,
+    ) -> None:
+        hurt_heights = {
+            "pistol": [42] * 8,
+            "machinegun": [42] * 8,
+            "shotgun": [42, 41, 40, 20, 19, 18, 18, 18],
+            "panzerfaust": [
+                40,
+                38,
+                20 if bad_panzer_source else 36,
+                20,
+                19,
+                18,
+                18,
+                18,
+            ],
+        }
+        for weapon in self.WEAPONS:
+            for column in range(self.COLUMNS):
+                jump = self._frame(
+                    height=38,
+                    weapon=weapon,
+                    column=column,
+                )
+                self._write_frame(
+                    root,
+                    weapon,
+                    0,
+                    column,
+                    jump,
+                )
+                hurt = self._frame(
+                    height=hurt_heights[weapon][column],
+                    weapon=weapon,
+                    column=column,
+                    damaged_cap=(
+                        weapon == "machinegun"
+                        and column != 3
+                    ),
+                )
+                self._write_frame(
+                    root,
+                    weapon,
+                    1,
+                    column,
+                    hurt,
+                )
+
+    def _shotgun_base_atlas(
+        self,
+        root: Path,
+        path: Path,
+    ) -> Image.Image:
+        atlas = Image.new(
+            "RGBA",
+            (
+                self.COLUMNS * self.CELL,
+                len(self.ACTIONS) * self.CELL,
+            ),
+            (0, 0, 0, 0),
+        )
+        for row in range(len(self.ACTIONS)):
+            for column in range(self.COLUMNS):
+                frame = Image.open(
+                    root
+                    / "shotgun"
+                    / "frames"
+                    / (
+                        "matthias_shotgun_"
+                        f"r{row:02d}_c{column:02d}.png"
+                    )
+                ).convert("RGBA")
+                atlas.alpha_composite(
+                    frame,
+                    (
+                        column * self.CELL,
+                        row * self.CELL,
+                    ),
+                )
+        # Marker stands in for the already-reviewed jump parity candidate.
+        ImageDraw.Draw(atlas).rectangle(
+            (2, 2, 5, 5),
+            fill=(255, 20, 20, 255),
+        )
+        atlas.save(path, "PNG")
+        return atlas
+
+    def test_hurt_batch_repairs_semantics_and_preserves_shotgun_base(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_fixture(root)
+            base_path = root / "shotgun-base.png"
+            shotgun_base = self._shotgun_base_atlas(
+                root,
+                base_path,
+            )
+            output = root / "out"
+
+            source_mg = Image.open(
+                root
+                / "machinegun"
+                / "frames"
+                / "matthias_machinegun_r01_c00.png"
+            ).convert("RGBA")
+            source_mg_alpha = sum(
+                1
+                for value in source_mg.getchannel(
+                    "A"
+                ).get_flattened_data()
+                if value > 8
+            )
+
+            report = repair_matthias_hurt_batch(
+                root,
+                output,
+                actor="matthias",
+                actions=self.ACTIONS,
+                base_atlas_paths={
+                    "shotgun": base_path,
+                },
+                columns=self.COLUMNS,
+                cell_size=self.CELL,
+            )
+
+            mg = Image.open(
+                output / "machinegun-hurt-standing-v1.png"
+            ).convert("RGBA")
+            repaired_mg = mg.crop(
+                (0, self.CELL, self.CELL, self.CELL * 2)
+            )
+            repaired_mg_alpha = sum(
+                1
+                for value in repaired_mg.getchannel(
+                    "A"
+                ).get_flattened_data()
+                if value > 8
+            )
+            self.assertGreater(
+                repaired_mg_alpha,
+                source_mg_alpha,
+            )
+            self.assertEqual(
+                geometry_metrics(repaired_mg).foot_y,
+                self.FOOT_Y,
+            )
+            self.assertGreater(
+                report["weapons"]["machinegun"]["frames"][0][
+                    "addedPixels"
+                ],
+                0,
+            )
+            self.assertEqual(
+                report["weapons"]["machinegun"]["frames"][3][
+                    "addedPixels"
+                ],
+                0,
+            )
+
+            shotgun = Image.open(
+                output / "shotgun-stabilized-v1.png"
+            ).convert("RGBA")
+            self.assertEqual(
+                shotgun.crop(
+                    (
+                        0,
+                        0,
+                        self.COLUMNS * self.CELL,
+                        self.CELL,
+                    )
+                ).tobytes(),
+                shotgun_base.crop(
+                    (
+                        0,
+                        0,
+                        self.COLUMNS * self.CELL,
+                        self.CELL,
+                    )
+                ).tobytes(),
+            )
+            self.assertEqual(
+                shotgun.getpixel((3, 3)),
+                (255, 20, 20, 255),
+            )
+
+            expected_slots = [0, 1, 2, 2, 1, 0, 0, 0]
+            for weapon, filename in (
+                ("shotgun", "shotgun-stabilized-v1.png"),
+                (
+                    "panzerfaust",
+                    "panzerfaust-hurt-standing-v1.png",
+                ),
+            ):
+                atlas = Image.open(
+                    output / filename
+                ).convert("RGBA")
+                for column, source_column in enumerate(
+                    expected_slots
+                ):
+                    stored = atlas.crop(
+                        (
+                            column * self.CELL,
+                            self.CELL,
+                            (column + 1) * self.CELL,
+                            self.CELL * 2,
+                        )
+                    )
+                    source = (
+                        shotgun_base.crop(
+                            (
+                                source_column * self.CELL,
+                                self.CELL,
+                                (source_column + 1)
+                                * self.CELL,
+                                self.CELL * 2,
+                            )
+                        )
+                        if weapon == "shotgun"
+                        else Image.open(
+                            root
+                            / weapon
+                            / "frames"
+                            / (
+                                f"matthias_{weapon}_"
+                                f"r01_c{source_column:02d}.png"
+                            )
+                        ).convert("RGBA")
+                    )
+                    self.assertEqual(
+                        stored.tobytes(),
+                        source.tobytes(),
+                    )
+
+    def test_hurt_batch_fails_closed_when_source_flitch_is_not_standing(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_fixture(
+                root,
+                bad_panzer_source=True,
+            )
+            with self.assertRaisesRegex(
+                GeometryError,
+                "panzerfaust-hurt-needs-authored-source",
+            ):
+                repair_matthias_hurt_batch(
+                    root,
+                    root / "out",
+                    actor="matthias",
+                    actions=self.ACTIONS,
+                    columns=self.COLUMNS,
+                    cell_size=self.CELL,
                 )
 
 
