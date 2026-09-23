@@ -60,6 +60,10 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
     },
   });
   await login(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
+    localStorage.removeItem('chess-study-class-room-variant-v1');
+  });
 
   const train = page.locator('.illustrated-home__destination--train');
   await expect(train).toBeVisible();
@@ -70,7 +74,19 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
   await expect(page.locator('.global-music-dock')).toBeHidden();
   await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
+  const school3d = shell.locator('[data-board3d-war-room="true"]');
+  await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
   await capture(page, 'school');
+  await shell.getByText('Recursos', { exact: true }).click();
+  const v2Scene = shell.getByRole('button', { name: 'War Room v2', exact: true });
+  if (await v2Scene.isVisible().catch(() => false)) {
+    await v2Scene.click();
+    await expect(school3d).toHaveAttribute('data-board3d-variant', 'v2');
+    await expect(school3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
+    await shell.getByText('Recursos', { exact: true }).click();
+    await shell.getByRole('button', { name: 'War Room v1', exact: true }).click();
+    await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
+  }
   await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
