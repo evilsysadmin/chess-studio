@@ -198,8 +198,8 @@ for (const width of [360, 390, 430]) {
     for (const control of [focus, abandon, utility]) {
       const rect = await control.boundingBox();
       expect(rect).not.toBeNull();
-      expect(rect.width).toBeGreaterThanOrEqual(40);
-      expect(rect.height).toBeGreaterThanOrEqual(40);
+      expect(rect.width).toBeGreaterThanOrEqual(44);
+      expect(rect.height).toBeGreaterThanOrEqual(44);
     }
 
     await utility.click();
@@ -207,8 +207,8 @@ for (const width of [360, 390, 430]) {
     await expect(appearance).toBeVisible();
     const appearanceRect = await appearance.boundingBox();
     expect(appearanceRect).not.toBeNull();
-    expect(appearanceRect.width).toBeGreaterThanOrEqual(40);
-    expect(appearanceRect.height).toBeGreaterThanOrEqual(40);
+    expect(appearanceRect.width).toBeGreaterThanOrEqual(44);
+    expect(appearanceRect.height).toBeGreaterThanOrEqual(44);
     await utility.click();
     await expect(appearance).toBeHidden();
 
@@ -219,8 +219,8 @@ for (const width of [360, 390, 430]) {
     await expect(exit).toBeVisible();
     const exitRect = await exit.boundingBox();
     expect(exitRect).not.toBeNull();
-    expect(exitRect.width).toBeGreaterThanOrEqual(40);
-    expect(exitRect.height).toBeGreaterThanOrEqual(40);
+    expect(exitRect.width).toBeGreaterThanOrEqual(44);
+    expect(exitRect.height).toBeGreaterThanOrEqual(44);
     await exit.click();
     await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'false');
   });
