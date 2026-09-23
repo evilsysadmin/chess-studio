@@ -873,6 +873,43 @@ class SpriteForgeBatchLabTests(unittest.TestCase):
                 "needs-authored-source",
             )
 
+    def test_batch_audit_reports_crouch_transition_snap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            actions = ["crouch", "crouch_walk"]
+            for row, action in enumerate(actions):
+                heights = [30, 30] if action == "crouch" else [18, 18]
+                for column, height in enumerate(heights):
+                    self._write_frame(
+                        root,
+                        "pistol",
+                        row,
+                        column,
+                        height,
+                    )
+
+            result = audit_sprite_batch(
+                root,
+                actor="matthias",
+                weapons=["pistol"],
+                actions=actions,
+                canon_weapons=["pistol"],
+                parity_actions=set(),
+                columns=self.COLUMNS,
+            )
+
+            crouch = result["temporal"]["crouch"]["weapons"]["pistol"]
+            walk = result["temporal"]["crouch_walk"]["weapons"]["pistol"]
+            transition = result["temporal"]["crouchToCrouchWalk"]["weapons"]["pistol"]
+            self.assertEqual(crouch["status"], "pass")
+            self.assertEqual(walk["status"], "pass")
+            self.assertEqual(transition["status"], "review")
+            self.assertIn("heightSnapRatio", transition["reasons"])
+            self.assertEqual(
+                transition["sourcePair"],
+                ["crouch:c0", "crouch_walk:c0"],
+            )
+
     def test_batch_audit_reports_reload_die_temporal_risk(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
