@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addWarRoomMesh as addMesh } from './WarRoomThreePrimitives.js';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import {
   installWarRoomHansSceneRoutine,
@@ -22,17 +23,6 @@ function physical(color, options = {}) {
     emissive: options.emissive ?? 0x000000,
     emissiveIntensity: options.emissiveIntensity ?? 0,
   });
-}
-
-function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name = '') {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  if (name) mesh.name = name;
-  group.add(mesh);
-  return mesh;
 }
 
 function addBox(group, size, material, position, name = '', rotation = [0, 0, 0]) {
