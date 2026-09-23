@@ -122,10 +122,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [selectedMemberId]);
 
   const exitChronicles = useCallback(() => {
-    if (activeRunIdRef.current) {
-      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
-      activeRunIdRef.current = null;
-    }
+    // Leaving the renderer is not the end of the expedition. Keep the shared
+    // run alive so Tactics can resume the same authoritative world.
+    activeRunIdRef.current = null;
     onExit?.();
   }, [onExit]);
 

@@ -78,10 +78,9 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const activeRunIdRef = useRef(null);
 
   const exitChronicles = useCallback(() => {
-    if (activeRunIdRef.current) {
-      finishChroniclesTacticsRun(activeRunIdRef.current);
-      activeRunIdRef.current = null;
-    }
+    // Leaving Tactics is a view change, not an expedition boundary. Preserve
+    // the canonical run so first-person Chronicles resumes the same world.
+    activeRunIdRef.current = null;
     onExit?.();
   }, [onExit]);
 
@@ -107,6 +106,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   }, []);
 
   const restartExpedition = useCallback(() => {
+    if (activeRunIdRef.current) {
+      finishChroniclesTacticsRun(activeRunIdRef.current);
+      activeRunIdRef.current = null;
+    }
     retryBootstrap();
   }, [retryBootstrap]);
 
