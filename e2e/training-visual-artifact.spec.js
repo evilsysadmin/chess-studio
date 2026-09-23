@@ -51,7 +51,7 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas y Mi progreso', async ({ page }) => {
+test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles y Mi progreso', async ({ page }) => {
   test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
@@ -122,6 +122,16 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
 
   await openings.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.locator('.illustrated-home')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+  await page.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
+  const puzzles = page.locator('.puzzle-screen');
+  await expect(puzzles).toBeVisible();
+  await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
+  await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
+  await puzzles.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+
   await page.evaluate(() => {
     localStorage.setItem('chess-study-career', JSON.stringify({
       byTimeControl: {

@@ -44,6 +44,13 @@ WARROOM_VARIANT_CORE_FILES = {
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
 CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
+TRAINING_VISUAL_SURFACES = {
+    "frontend/src/components/puzzlescreen.jsx",
+    "frontend/src/components/puzzlemobilepolish.css",
+    "frontend/src/components/tournamentscreen.jsx",
+    "frontend/src/components/tournamentmobilepolish.css",
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -163,6 +170,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
+    if lower in TRAINING_VISUAL_SURFACES:
+        return {"training"}
 
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
@@ -236,6 +245,12 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
+    assert classify([
+        "frontend/src/components/PuzzleScreen.jsx",
+        "frontend/src/components/PuzzleMobilePolish.css",
+        "frontend/src/components/TournamentScreen.jsx",
+        "frontend/src/components/TournamentMobilePolish.css",
+    ]) == "training"
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"

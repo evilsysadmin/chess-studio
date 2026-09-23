@@ -213,6 +213,46 @@ test('Home móvil · JUGAR/CONTINUAR es la acción primaria autoexplicativa y t�
   expect(metrics.detailDisplay).not.toBe('none');
 });
 
+test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al tablero', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  const toolsToggle = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await toolsToggle.click();
+  const tools = page.getByRole('navigation', { name: 'Más modos y herramientas' });
+  await tools.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
+
+  await expect(page.locator('.puzzle-screen')).toBeVisible();
+  const tabs = page.locator('.puzzle-source-picker button');
+  await expect(tabs).toHaveCount(3);
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+
+    const tabMetrics = await tabs.evaluateAll((nodes) => nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { top: rect.top, height: rect.height };
+    }));
+    expect(tabMetrics.every((metric) => metric.height >= 44)).toBe(true);
+    expect(Math.max(...tabMetrics.map((metric) => metric.top)) - Math.min(...tabMetrics.map((metric) => metric.top))).toBeLessThanOrEqual(2);
+
+    const pickerBox = await page.locator('.puzzle-source-picker').boundingBox();
+    expect(pickerBox).not.toBeNull();
+    expect(pickerBox.height).toBeLessThanOrEqual(64);
+
+    const actions = page.locator('.puzzle-board-column .game-controls > button:visible');
+    await expect(actions).toHaveCount(2);
+    for (let index = 0; index < 2; index += 1) {
+      const box = await actions.nth(index).boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.height).toBeGreaterThanOrEqual(48);
+    }
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+});
+
 test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
