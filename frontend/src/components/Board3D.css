@@ -330,19 +330,12 @@
   .board3d-customize { right: .4rem; bottom: .4rem; }
 }
 
-/* En desktop la War Room debe caber entera en una sola pantalla. La cámara 3D
-   ya adapta su encuadre al rectángulo disponible, así que priorizamos altura
-   de viewport sobre mantener un aspect-ratio rígido heredado del tablero 2D. */
+/* Desktop keeps stack/rail overflow constrained here. Shell height and aspect
+   belong to WarRoomSharedViewport.css, the final desktop viewport owner. */
 @media (min-width: 1081px) {
   .game-screen .game-board-stack.game-board-stack-3d {
     align-self: start;
     height: auto;
-  }
-
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    min-height: 0;
-    height: clamp(460px, calc(100dvh - 19rem), 640px);
-    aspect-ratio: auto;
   }
 
   .game-screen .game-side-column.game-side-column-3d {
@@ -363,20 +356,9 @@
     padding: .58rem;
   }
 
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(430px, calc(100dvh - 19rem), 590px);
-  }
-
   .game-3d-command-column { gap: .42rem; }
   .game-screen .game-side-column.game-side-column-3d { gap: .42rem; }
 }
-
-@media (min-width: 1081px) and (max-height: 780px) {
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(390px, calc(100dvh - 18.4rem), 480px);
-  }
-}
-
 
 
 /* War Room 3D kinetics: the board moves, the camera only breathes. */
