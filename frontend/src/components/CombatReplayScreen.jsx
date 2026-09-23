@@ -9,7 +9,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
-import { buildCombatReplayPositions } from '../combatReplay.js';
+import { buildCombatReplayTimeline } from '../replayTimeline.js';
 
 // A diferencia de ReplayScreen, acá NO se reconstruyen las posiciones
 // jugando el registro con chess.js — el `log` de una batalla ya trae el FEN
@@ -22,8 +22,10 @@ import { buildCombatReplayPositions } from '../combatReplay.js';
 // por eso se indexa el FEN guardado directamente, en vez de rejugar nada.
 export default function CombatReplayScreen({ record, initialStep, pinnedReport, onExit }) {
   useEscapeToClose(onExit);
-  const replay = useMemo(() => buildCombatReplayPositions(record.log), [record]);
-  const positions = replay.positions;
+  const timeline = useMemo(() => buildCombatReplayTimeline(record), [record]);
+  const positions = timeline.frames;
+  const log = timeline.events;
+  const replay = timeline.metadata;
   const [step, setStep] = useState(initialStep ?? positions.length - 1);
   const [report, setReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(true);
@@ -35,7 +37,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
     setReport(null);
     setAnalyzeError(null);
     setAnalyzing(true);
-    analyzeCombatLog(record.log, record.humanColor, api, { signal: controller.signal })
+    analyzeCombatLog(log, record.humanColor, api, { signal: controller.signal })
       .then((result) => { if (!cancelled) setReport(result); })
       .catch((e) => { if (!cancelled && e?.name !== 'AbortError') setAnalyzeError(e.message); })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
@@ -63,8 +65,8 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
   // (ver combatHistory.js), así que si hubo un fallo bien al principio, la
   // secuencia puede no calzar con ninguna apertura conocida — no revienta,
   // simplemente no reconoce nada en ese caso.
-  const opening = identifyOpening(record.log.slice(0, step).map((m) => m.san));
-  const entryAtStep = step > 0 ? record.log[step - 1] : null;
+  const opening = identifyOpening(log.slice(0, step).map((m) => m.san));
+  const entryAtStep = step > 0 ? log[step - 1] : null;
   const entryIndexAtStep = step > 0 ? step - 1 : null;
   const wasHumanMove = entryAtStep?.by === 'human';
   const reportAtStep = entryIndexAtStep !== null ? reportByIndex.get(entryIndexAtStep) : null;
@@ -125,7 +127,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
           <p className="hint-text replay-key-hint">← → del teclado también navegan</p>
 
           <div className="replay-current-move">
-            <span className="eyebrow">Jugada {step} de {record.log.length}</span>
+            <span className="eyebrow">Jugada {step} de {log.length}</span>
             <h2>{entryAtStep ? formatLongMove(entryAtStep) : 'Posición inicial'}</h2>
             {entryAtStep && (
               <p className="hint-text">
@@ -154,8 +156,8 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
           <h3>Registro de la batalla</h3>
           {opening && <p className="opening-tag">{opening}</p>}
           <div className="notation-list">
-            {record.log.length === 0 && <p className="notation-empty">Esta batalla no tiene jugadas.</p>}
-            {record.log.map((entry, i) => {
+            {log.length === 0 && <p className="notation-empty">Esta batalla no tiene jugadas.</p>}
+            {log.map((entry, i) => {
               const entryReport = reportByIndex.get(i);
               return (
                 <button
