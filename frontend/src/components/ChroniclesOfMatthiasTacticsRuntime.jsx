@@ -76,16 +76,17 @@ function chroniclesBattlefieldInteraction(state, memberId) {
 }
 
 function createActionState(progression, authoritativeRun = null) {
-  return applyChroniclesProgressionToTacticsState({
-    ...chroniclesApplyRunCheckpoint(
-      createChroniclesState(null, progression.characterBuild),
-      authoritativeRun,
-    ),
+  const progressed = applyChroniclesProgressionToTacticsState({
+    ...createChroniclesState(null, progression.characterBuild),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
   }, progression);
+  return {
+    ...chroniclesApplyRunCheckpoint(progressed, authoritativeRun),
+    enemyTurnEvents: [],
+  };
 }
 
 export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, onExit, onRestartRun = null }) {
