@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addWarRoomMesh as addMesh } from './WarRoomThreePrimitives.js';
 import { createWarRoomCampaignTexture } from './WarRoomCampaignArt.js';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
@@ -89,17 +90,6 @@ function physical(color, options = {}) {
     depthWrite: options.depthWrite ?? true,
     map: options.map ?? null,
   });
-}
-
-function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name = '') {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  if (name) mesh.name = name;
-  group.add(mesh);
-  return mesh;
 }
 
 function addBox(group, size, material, position, name = '') {
