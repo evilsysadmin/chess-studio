@@ -329,7 +329,6 @@
   }
 
   .game-3d-matthias-card { grid-area: portrait; }
-  .game-3d-warroom-status { grid-area: status; }
   .game-3d-command-column blockquote { display: none; }
 
   .game-screen .game-side-column.game-side-column-3d {
@@ -358,7 +357,6 @@
     grid-template-columns: 82px minmax(0, 1fr);
   }
 
-  .game-3d-warroom-status { display: none; }
   .game-3d-warroom-message > span { font-size: .47rem; }
 
   .board3d-main-shell { aspect-ratio: .96 / 1; }
