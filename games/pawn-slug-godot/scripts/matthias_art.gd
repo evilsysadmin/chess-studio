@@ -16,10 +16,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases use an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. The weapon banks are pre-normalized to the pistol-family canonical body
 # scale; Godot consumes them directly with no runtime rescale or repack.
-const STRICT_RUNTIME_GENERATION := "canonical-continuity-v2"
+const STRICT_RUNTIME_GENERATION := "canonical-continuity-v3"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-v3/machinegun/full/machinegun-continuity-v3-832ef84b8606accc.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-v4/machinegun/full/machinegun-continuity-v4-e7d280e7917a9082.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png",
 }
