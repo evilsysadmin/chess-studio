@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addWarRoomMesh as addMesh } from './WarRoomThreePrimitives.js';
 
 function seededNoise(x, y, seed) {
   const value = Math.sin((x * 17.173 + y * 41.927 + seed * 73.119) * 0.83) * 43758.5453;
@@ -75,17 +76,6 @@ function physical(color, options = {}) {
     depthWrite: options.depthWrite ?? true,
     side: options.side ?? THREE.FrontSide,
   });
-}
-
-function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name = '') {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  if (name) mesh.name = name;
-  group.add(mesh);
-  return mesh;
 }
 
 function addBox(group, size, material, position, name = '', rotation = [0, 0, 0]) {
