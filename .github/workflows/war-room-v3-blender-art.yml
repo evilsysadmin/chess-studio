@@ -92,12 +92,16 @@ jobs:
           assert image.size == (1600, 900), image.size
           assert max(channel[1] for channel in image.getextrema()) > 80
           data = json.loads(manifest.read_text())
-          assert data['contract'] == 'war-room-cartographers-v3'
+          assert data['contract'] == 'war-room-celestial-observatory-v3'
           assert data['board_anchor']['name'] == 'WR_ANCHOR_board_origin'
           assert len(data['objects']) >= 190, len(data['objects'])
           source_names = {row['name'] for row in data['objects']}
-          assert 'WR3_ARCH_lancet_left' in source_names
-          assert 'WR3_MAP_ARCHIVE_body' in source_names
+          assert 'WR3_OBS_celestial_window' in source_names
+          assert 'WR3_OBS_table_drum' in source_names
+          assert 'WR3_OBS_stove_body' in source_names
+          assert 'WR3_OBS_drafting_top' in source_names
+          assert not any(name.startswith('WR_ARCH_') for name in source_names)
+          assert not any(name.startswith('WR_CANON_') for name in source_names)
           PY
 
       - name: Publish War Room v3 shell
