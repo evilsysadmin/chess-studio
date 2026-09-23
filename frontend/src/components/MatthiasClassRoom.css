@@ -409,3 +409,140 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Class Room focus mode
+   The curriculum is navigation, not the lesson. Keep it one click away while
+   the default surface remains board + Matthias. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  min-height: 42px;
+  padding: .36rem .48rem .36rem .64rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 22%, var(--ui-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-panel) 95%, transparent);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: .48rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar span {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--brass) 74%, var(--parchment));
+  font-size: .64rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--parchment);
+  font-size: .76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar button {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: .3rem .55rem;
+  font-size: .68rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-course-strip,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-lessons {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-stage {
+  grid-template-columns: minmax(560px, var(--classroom-board-max)) minmax(286px, 340px);
+  justify-content: center;
+}
+
+@media (max-width: 860px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar {
+    align-items: center;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar > div {
+    display: grid;
+    gap: .08rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar {
+    padding: .32rem .38rem .32rem .48rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar strong {
+    max-width: 42vw;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar button {
+    font-size: .63rem;
+  }
+}
+
+
+/* Artifact review: on a 390x844 classroom the board must enter the first
+   viewport. The teacher stays present in the compact hero; the detailed coach
+   follows the board instead of pushing it below the fold. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-progress {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
+    display: none;
+  }
+
+  .app-shell:has(.matthias-school-shell[data-school-section="school"]) {
+    padding:
+      max(.4rem, env(safe-area-inset-top))
+      max(.5rem, env(safe-area-inset-right))
+      max(.65rem, env(safe-area-inset-bottom))
+      max(.5rem, env(safe-area-inset-left));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero {
+    grid-template-columns: 66px minmax(0, 1fr);
+    min-height: 82px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero > img {
+    width: 62px;
+    height: 76px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-coach {
+    order: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-board .board3d-main-shell {
+    height: clamp(400px, 115vw, 500px);
+    min-height: 400px;
+  }
+}
