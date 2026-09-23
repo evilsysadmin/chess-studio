@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   configureWarRoomBlenderLoader,
+  createWarRoomBlenderVariantShell,
   scheduleWarRoomAfterFirstPaint,
   warRoomBlenderEnvMapIntensity,
   warRoomBlenderFabricSurfaceProfile,
@@ -14,6 +15,21 @@ import {
 } from './WarRoomBlenderShellRuntime.js';
 
 describe('War Room shared Blender runtime', () => {
+  it('builds thin variant manifests from one shared shell factory', () => {
+    expect(() => createWarRoomBlenderVariantShell()).toThrow(/requires id, model URL, root name and finish/i);
+    const variant = createWarRoomBlenderVariantShell({
+      variant: 'v9',
+      runtimeModelUrl: 'https://assets.example.test/v9.glb',
+      rootName: 'war-room-v9-shell',
+      runtimeFinish: 'test-finish-v1',
+    });
+
+    expect(variant.modelUrl({ buildSha: 'abc 123' }))
+      .toBe('https://assets.example.test/v9.glb?build=abc%20123');
+    expect(Object.isFrozen(variant)).toBe(true);
+    expect(typeof variant.install).toBe('function');
+  });
+
   it('registers the bundled Meshopt decoder on the shared GLTF loader', () => {
     let decoder = null;
     const loader = {
