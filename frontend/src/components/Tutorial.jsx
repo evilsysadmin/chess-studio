@@ -271,7 +271,6 @@ export default function Tutorial({ onExit }) {
       ) : (
         <>
           <header className="matthias-school-hero">
-            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
             <div>
               <span className="section-label">CLASS ROOM · ESCUELA DE MATTHIAS</span>
               <h1>El tablero habla primero.</h1>
