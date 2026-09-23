@@ -74,7 +74,6 @@ function addTeutonicMasonry(group, { wallZ, towardBoard }) {
   const masonry = new THREE.Group();
   masonry.name = 'war-room-teutonic-masonry';
   masonry.userData.warRoomWallFinish = 'smoked-rhenish-ashlar-v2';
-  masonry.userData.warRoomRetiredMortarJointsOmitted = 78;
   const stone = physical(0x373633, { roughness: 0.94, clearcoat: 0.012, specularIntensity: 0.11 });
   const stoneLift = physical(0x4a4843, { roughness: 0.9, clearcoat: 0.018, specularIntensity: 0.14 });
   const grout = physical(0x1c1b19, { roughness: 0.99, clearcoat: 0, specularIntensity: 0.03 });
