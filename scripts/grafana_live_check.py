@@ -439,6 +439,41 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
+    def _loki_count(query: str) -> float | None:
+        data = api.get_json(
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+            {"query": query, "time": str(now)},
+        )
+        rows = _vector_metric_rows(data)
+        return sum(float(row["value"]) for row in rows) if rows else None
+
+    staging_log_diagnostics = {
+        "otlp_http_request": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" [{lookback_seconds}s]))'
+        ),
+        "otlp_http_request_ip": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" | client_ip != "" [{lookback_seconds}s]))'
+        ),
+        "otlp_http_request_country": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" | client_country != "" [{lookback_seconds}s]))'
+        ),
+        "stdout_http_request_raw": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}'
+            f' |= "\\"event\\":\\"http_request\\"" [{lookback_seconds}s]))'
+        ),
+        "stdout_country_raw": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}'
+            f' |= "\\"client_country\\":" [{lookback_seconds}s]))'
+        ),
+    }
+    print(json.dumps({
+        "check": "staging_log_pipeline_diagnostic",
+        **staging_log_diagnostics,
+    }, separators=(",", ":"), sort_keys=True))
+
     loki_inventory_query = (
         f'sum by (service_name) (count_over_time({{service_name=~"chess-studio.*"}}[{lookback_seconds}s]))'
     )
