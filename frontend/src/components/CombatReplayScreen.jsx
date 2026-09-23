@@ -6,8 +6,8 @@ import { analyzeCombatLog } from '../gameReport.js';
 import { COMBAT_REPLAY_OK_VERDICT } from '../factualLanguage.js';
 import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
+import ReplayTimelineControls from './ReplayTimelineControls.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { buildCombatReplayTimeline } from '../replayTimeline.js';
 
@@ -57,8 +57,6 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
   function goTo(i) {
     setStep(Math.max(0, Math.min(positions.length - 1, i)));
   }
-
-  useArrowKeyNav(() => goTo(step - 1), () => goTo(step + 1));
 
   const fen = positions[step];
   // Best-effort: el log de combate solo guarda los ataques que conectaron
@@ -118,13 +116,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
             mistakeMove={mistakeMove}
             orientation={record.humanColor === 'b' ? 'black' : 'white'}
           />
-          <div className="game-controls">
-            <button className="secondary-btn" onClick={() => goTo(0)} disabled={step === 0}>⏮ Inicio</button>
-            <button className="secondary-btn" onClick={() => goTo(step - 1)} disabled={step === 0}>← Anterior</button>
-            <button className="secondary-btn" onClick={() => goTo(step + 1)} disabled={step === positions.length - 1}>Siguiente →</button>
-            <button className="secondary-btn" onClick={() => goTo(positions.length - 1)} disabled={step === positions.length - 1}>Final ⏭</button>
-          </div>
-          <p className="hint-text replay-key-hint">← → del teclado también navegan</p>
+          <ReplayTimelineControls step={step} frameCount={positions.length} onStepChange={goTo} />
 
           <div className="replay-current-move">
             <span className="eyebrow">Jugada {step} de {log.length}</span>
