@@ -158,6 +158,33 @@ function disposeShell(root) {
   geometries.forEach((geometry) => geometry.dispose?.());
 }
 
+export function createWarRoomBlenderVariantShell({
+  variant,
+  runtimeModelUrl,
+  rootName,
+  runtimeFinish,
+  boardAnchorY = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
+} = {}) {
+  if (!variant || !runtimeModelUrl || !rootName || !runtimeFinish) {
+    throw new TypeError('War Room Blender variant requires id, model URL, root name and finish');
+  }
+
+  const modelUrl = ({ buildSha = import.meta.env.VITE_BUILD_SHA, baseUrl = runtimeModelUrl } = {}) => (
+    warRoomBlenderModelUrl({ buildSha, baseUrl })
+  );
+
+  const install = (scene, options = {}) => installWarRoomBlenderShell(scene, {
+    ...options,
+    url: options.url || modelUrl(),
+    variant,
+    rootName,
+    runtimeFinish,
+    boardAnchorY: options.boardAnchorY ?? boardAnchorY,
+  });
+
+  return Object.freeze({ modelUrl, install });
+}
+
 export async function installWarRoomBlenderShell(
   scene,
   {
