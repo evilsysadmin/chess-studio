@@ -77,16 +77,18 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
   await capture(page, 'school');
-  await shell.getByText('Recursos', { exact: true }).click();
+  const resources = shell.getByText('Recursos', { exact: true });
+  await resources.click();
   const v2Scene = shell.getByRole('button', { name: 'War Room v2', exact: true });
   if (await v2Scene.isVisible().catch(() => false)) {
     await v2Scene.click();
     await expect(school3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(school3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
-    await shell.getByText('Recursos', { exact: true }).click();
     await shell.getByRole('button', { name: 'War Room v1', exact: true }).click();
     await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
   }
+  await resources.click();
   await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
