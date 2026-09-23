@@ -1,0 +1,697 @@
+{
+  "schema": 1,
+  "id": "matthias-runtime-authoring",
+  "version": 1,
+  "format_note": "JSON syntax intentionally used inside .yaml; JSON is valid YAML 1.2 and keeps CI stdlib-only.",
+  "runtime": {
+    "actor": "matthias",
+    "stored_frames_per_action": 8,
+    "cell_size": 416,
+    "body_measure_band_x_ratio": [
+      0.3,
+      0.64
+    ],
+    "lower_body_crop_ratio": 0.46
+  },
+  "reference_priority": [
+    "canonical_actor_identity",
+    "canonical_weapon_identity",
+    "approved_action_family",
+    "previous_accepted_frame_for_continuity_only",
+    "text_prompt"
+  ],
+  "actor": {
+    "description": "Compact stylized commando with dark beret, dark tactical uniform, scarf/cloth over the lower face, small visible eyes and restrained military silhouette.",
+    "must": [
+      "Preserve Matthias's established identity, outfit language, palette family, proportions and compact silhouette.",
+      "Keep anatomical/body scale invariant across weapons and actions.",
+      "Allow apparent sprite height to change only because the pose changes; never resize Matthias to fake pose height.",
+      "Keep anatomy coherent and readable at gameplay scale.",
+      "Keep structural body regions opaque unless the approved reference explicitly proves otherwise."
+    ],
+    "never": [
+      "Redesign Matthias.",
+      "Uniformly scale the whole character to satisfy an action pose.",
+      "Shrink Matthias to fit a larger weapon.",
+      "Add duplicate limbs, ghost limbs, detached accidental alpha components or semitransparent structural body parts.",
+      "Turn the asset into illustration art, concept art, a worksheet or a spritesheet."
+    ]
+  },
+  "output": {
+    "must": [
+      "Return exactly one isolated full-body Matthias candidate sprite.",
+      "RGBA PNG with transparent background.",
+      "Exactly one Matthias and exactly one requested weapon.",
+      "Full body visible with no clipping.",
+      "No text, labels, numbers, UI, frame border, floor plane, scenery, contact sheet or spritesheet."
+    ],
+    "state": "quarantined"
+  },
+  "weapons": {
+    "pistol": {
+      "description": "Canonical compact sidearm; light two-hand or one-hand handling as proven by reference.",
+      "must": [
+        "Preserve the exact canonical pistol silhouette, dimensions, palette and grip relationship.",
+        "Keep a light, agile handling posture without changing Matthias's body scale."
+      ],
+      "never": [
+        "Enlarge the pistol into an SMG-like silhouette.",
+        "Change Matthias's scale because the pistol is compact."
+      ]
+    },
+    "machinegun": {
+      "description": "Canonical machinegun; heavier two-hand handling than pistol.",
+      "must": [
+        "Preserve the exact canonical machinegun silhouette, dimensions, palette and grip relationship.",
+        "Let the larger weapon affect grip, shoulder position and brace without changing Matthias's body scale."
+      ],
+      "never": [
+        "Shrink Matthias to fit the weapon.",
+        "Redesign or simplify the machinegun."
+      ]
+    },
+    "shotgun": {
+      "description": "Canonical long shotgun with deliberate two-hand support.",
+      "must": [
+        "Preserve the exact canonical shotgun length, thickness, stock/body proportions, palette and grip arrangement.",
+        "Use a stronger forward-hand support while preserving Matthias's canonical body scale."
+      ],
+      "never": [
+        "Shorten or enlarge the shotgun to make the pose easier.",
+        "Shrink Matthias to fit the shotgun."
+      ]
+    },
+    "panzerfaust": {
+      "description": "Canonical large heavy launcher with restrained military handling.",
+      "must": [
+        "Preserve the exact canonical launcher silhouette, dimensions, palette and support points.",
+        "Adapt posture naturally to the launcher weight while keeping Matthias's body scale invariant."
+      ],
+      "never": [
+        "Shrink Matthias to fit the launcher.",
+        "Invent launcher components or change its loading geometry."
+      ]
+    }
+  },
+  "actions": {
+    "idle": {
+      "row": 0,
+      "loop": true,
+      "semantic": "Stable neutral combat-ready standing pose.",
+      "phase_labels": [
+        "ready_a",
+        "breath_in",
+        "settle_a",
+        "ready_b",
+        "breath_out",
+        "settle_b",
+        "ready_c",
+        "loop_close"
+      ],
+      "must": [
+        "Remain grounded and upright without rigid stiffness.",
+        "Keep only subtle body motion and a stable footline."
+      ],
+      "never": [
+        "Read as walking, running, crouching, airborne, firing recoil or hit reaction."
+      ],
+      "audit": {
+        "mode": "reference",
+        "enforcement": "review"
+      }
+    },
+    "walk": {
+      "row": 1,
+      "loop": true,
+      "semantic": "Controlled grounded locomotion with real alternating leg motion.",
+      "phase_labels": [
+        "contact",
+        "down",
+        "passing",
+        "up",
+        "opposite_contact",
+        "opposite_down",
+        "opposite_passing",
+        "loop_close"
+      ],
+      "must": [
+        "Show a real step cycle in the lower body.",
+        "Read slower and less committed than run."
+      ],
+      "never": [
+        "Idle with a moving weapon.",
+        "Frozen-leg sliding.",
+        "Run-length stride."
+      ],
+      "audit": {
+        "mode": "lower_body_motion",
+        "enforcement": "hard",
+        "min_max_pair_difference": 0.035
+      }
+    },
+    "run": {
+      "row": 2,
+      "loop": true,
+      "semantic": "Fast committed grounded locomotion.",
+      "phase_labels": [
+        "contact",
+        "compression",
+        "drive",
+        "flight",
+        "opposite_contact",
+        "opposite_compression",
+        "opposite_drive",
+        "loop_close"
+      ],
+      "must": [
+        "Show clear running stride and stronger locomotion energy than walk.",
+        "Show real lower-body motion."
+      ],
+      "never": [
+        "Walk renamed as run.",
+        "Frozen legs.",
+        "Standing torso translated horizontally."
+      ],
+      "audit": {
+        "mode": "lower_body_motion",
+        "enforcement": "hard",
+        "min_max_pair_difference": 0.045
+      }
+    },
+    "jump": {
+      "row": 3,
+      "loop": false,
+      "semantic": "Ascending airborne body configuration.",
+      "phase_labels": [
+        "takeoff",
+        "rise_early",
+        "rise",
+        "rise_peak",
+        "apex_approach",
+        "apex",
+        "apex_hold",
+        "handoff_to_fall"
+      ],
+      "must": [
+        "Read as takeoff/rising motion through limb configuration.",
+        "Remain visibly distinct from fall and land."
+      ],
+      "never": [
+        "Idle floating in air.",
+        "Falling posture.",
+        "Landing compression."
+      ],
+      "audit": {
+        "mode": "pair_distinctness",
+        "compare_to": "fall",
+        "enforcement": "review",
+        "min_shape_difference": 0.045
+      }
+    },
+    "fall": {
+      "row": 4,
+      "loop": true,
+      "semantic": "Descending airborne body configuration.",
+      "phase_labels": [
+        "descent_start",
+        "descent",
+        "descent_open",
+        "descent_brace",
+        "descent_repeat_a",
+        "descent_repeat_b",
+        "descent_repeat_c",
+        "loop_close"
+      ],
+      "must": [
+        "Read as descending and remain distinct from jump.",
+        "Avoid a standing pose merely suspended in the air."
+      ],
+      "never": [
+        "Copy jump.",
+        "Read as landing contact or standing idle."
+      ],
+      "audit": {
+        "mode": "pair_distinctness",
+        "compare_to": "jump",
+        "enforcement": "review",
+        "min_shape_difference": 0.045
+      }
+    },
+    "land": {
+      "row": 5,
+      "loop": false,
+      "semantic": "Ground impact absorption followed by recovery.",
+      "phase_labels": [
+        "contact",
+        "compression",
+        "compression_peak",
+        "rebound",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "must": [
+        "Show knee/hip compression appropriate to impact.",
+        "Recover toward a standing locomotion state."
+      ],
+      "never": [
+        "Read as idle.",
+        "Remain in a permanent full crouch.",
+        "Read as airborne."
+      ],
+      "audit": {
+        "mode": "temporal",
+        "enforcement": "review",
+        "max_height_step_ratio": 0.24,
+        "max_foot_step_ratio": 0.1
+      }
+    },
+    "crouch": {
+      "row": 6,
+      "loop": true,
+      "semantic": "Stationary low combat stance with genuinely reduced body height.",
+      "phase_labels": [
+        "lowered_ready",
+        "settle",
+        "breath_a",
+        "steady",
+        "breath_b",
+        "steady_b",
+        "ready_close",
+        "loop_close"
+      ],
+      "must": [
+        "Remain visibly and measurably lower than idle.",
+        "Lower head, shoulders, hips and torso through bent/compressed legs.",
+        "Keep feet grounded on the standing footline envelope.",
+        "Preserve Matthias's anatomical scale; the height reduction must come from pose."
+      ],
+      "never": [
+        "Near-standing pose.",
+        "Uniform whole-character downscale.",
+        "Straight-legged standing pose labelled crouch."
+      ],
+      "audit": {
+        "mode": "crouch_vs_idle",
+        "enforcement": "hard",
+        "max_body_height_ratio_vs_idle": 0.86,
+        "min_body_top_drop_ratio_vs_idle": 0.1,
+        "max_body_footline_delta_ratio_vs_idle": 0.055,
+        "max_internal_height_step_ratio": 0.1,
+        "max_internal_foot_step_ratio": 0.055
+      }
+    },
+    "crouch_walk": {
+      "row": 7,
+      "loop": true,
+      "semantic": "Grounded locomotion while staying inside the approved crouch-height envelope.",
+      "phase_labels": [
+        "contact",
+        "down",
+        "passing",
+        "up",
+        "opposite_contact",
+        "opposite_down",
+        "opposite_passing",
+        "loop_close"
+      ],
+      "must": [
+        "Maintain true crouch height throughout the cycle.",
+        "Show real crouched lower-body locomotion."
+      ],
+      "never": [
+        "Rise toward idle height.",
+        "Static crouch translated sideways.",
+        "Frozen legs."
+      ],
+      "audit": {
+        "mode": "crouch_walk",
+        "enforcement": "hard",
+        "min_height_ratio_vs_crouch": 0.9,
+        "max_height_ratio_vs_crouch": 1.1,
+        "max_footline_delta_ratio_vs_crouch": 0.06,
+        "min_max_pair_difference": 0.03,
+        "max_internal_height_step_ratio": 0.12,
+        "max_internal_foot_step_ratio": 0.06
+      }
+    },
+    "shoot": {
+      "row": 8,
+      "loop": false,
+      "semantic": "Active roughly horizontal firing pose.",
+      "phase_labels": [
+        "pre_fire",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": 0,
+      "must": [
+        "Align barrel axis and hand placement with horizontal fire.",
+        "Read as an active firing moment rather than neutral weapon carry."
+      ],
+      "never": [
+        "Neutral idle hold.",
+        "Weapon detached from gripping hands."
+      ],
+      "audit": {
+        "mode": "visual_aim",
+        "enforcement": "review"
+      }
+    },
+    "shoot_up": {
+      "row": 9,
+      "loop": false,
+      "semantic": "Active upward firing pose.",
+      "phase_labels": [
+        "aim_up",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": -90,
+      "must": [
+        "Weapon and arms clearly aim upward.",
+        "Remain distinct from horizontal fire."
+      ],
+      "never": [
+        "Horizontal barrel disguised by body lean."
+      ],
+      "audit": {
+        "mode": "visual_aim",
+        "enforcement": "review"
+      }
+    },
+    "shoot_down": {
+      "row": 10,
+      "loop": false,
+      "semantic": "Active downward firing pose.",
+      "phase_labels": [
+        "aim_down",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": 90,
+      "must": [
+        "Weapon and arms clearly aim downward.",
+        "Remain distinct from crouch and horizontal fire."
+      ],
+      "never": [
+        "Horizontal barrel with only head/torso tilted."
+      ],
+      "audit": {
+        "mode": "visual_aim",
+        "enforcement": "review"
+      }
+    },
+    "shoot_diag_up": {
+      "row": 11,
+      "loop": false,
+      "semantic": "Active diagonal-up firing pose.",
+      "phase_labels": [
+        "aim_diag_up",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": -45,
+      "must": [
+        "Weapon axis, arms and upper body clearly support diagonal-up fire."
+      ],
+      "never": [
+        "Horizontal or pure vertical aim."
+      ],
+      "audit": {
+        "mode": "visual_aim",
+        "enforcement": "review"
+      }
+    },
+    "shoot_diag_up_alt": {
+      "row": 12,
+      "loop": false,
+      "semantic": "Alternate but clearly valid diagonal-up firing pose.",
+      "phase_labels": [
+        "alternate_aim",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": -45,
+      "must": [
+        "Keep diagonal-up aim semantics.",
+        "Remain observably distinct from the primary diagonal-up pose without changing actor or weapon identity."
+      ],
+      "never": [
+        "Byte-different but visually identical copy of shoot_diag_up."
+      ],
+      "audit": {
+        "mode": "pair_distinctness",
+        "compare_to": "shoot_diag_up",
+        "enforcement": "review",
+        "min_shape_difference": 0.025
+      }
+    },
+    "shoot_diag_down": {
+      "row": 13,
+      "loop": false,
+      "semantic": "Active diagonal-down firing pose.",
+      "phase_labels": [
+        "aim_diag_down",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "ready",
+        "handoff"
+      ],
+      "aim_degrees": 45,
+      "must": [
+        "Weapon axis, arms and upper body clearly support diagonal-down fire."
+      ],
+      "never": [
+        "Horizontal or pure vertical aim."
+      ],
+      "audit": {
+        "mode": "visual_aim",
+        "enforcement": "review"
+      }
+    },
+    "shoot_crouch": {
+      "row": 14,
+      "loop": false,
+      "semantic": "Horizontal firing while preserving true crouch geometry.",
+      "phase_labels": [
+        "crouched_aim",
+        "ignition",
+        "recoil",
+        "recoil_peak",
+        "recover",
+        "near_ready",
+        "crouched_ready",
+        "handoff"
+      ],
+      "aim_degrees": 0,
+      "inherits": [
+        "crouch",
+        "shoot"
+      ],
+      "must": [
+        "Remain inside the approved crouch height envelope while firing."
+      ],
+      "never": [
+        "Rise toward standing height because of recoil."
+      ],
+      "audit": {
+        "mode": "crouch_family",
+        "enforcement": "hard",
+        "min_height_ratio_vs_crouch": 0.9,
+        "max_height_ratio_vs_crouch": 1.12,
+        "max_footline_delta_ratio_vs_crouch": 0.065
+      }
+    },
+    "reload": {
+      "row": 15,
+      "loop": false,
+      "semantic": "Approved reload interaction for the exact canonical weapon.",
+      "phase_labels": [
+        "leave_ready",
+        "reach",
+        "manipulate",
+        "manipulate_peak",
+        "reseat",
+        "return",
+        "near_ready",
+        "ready"
+      ],
+      "must": [
+        "Hands interact meaningfully with the weapon.",
+        "Visibly differ from idle and firing.",
+        "Follow the weapon reference rather than inventing a loading mechanism."
+      ],
+      "never": [
+        "Invent new weapon components.",
+        "Redesign the loading mechanism."
+      ],
+      "audit": {
+        "mode": "temporal",
+        "enforcement": "review",
+        "max_height_step_ratio": 0.18,
+        "max_foot_step_ratio": 0.08
+      }
+    },
+    "hurt": {
+      "row": 16,
+      "loop": false,
+      "semantic": "Brief survivable hit reaction: impact, peak recoil, recovery.",
+      "phase_labels": [
+        "impact_onset",
+        "impact",
+        "recoil_rising",
+        "recoil_peak",
+        "recovery_start",
+        "recovery",
+        "near_ready",
+        "recovered"
+      ],
+      "must": [
+        "Show a clear short impact reaction and temporary imbalance.",
+        "Recover instead of becoming a corpse."
+      ],
+      "never": [
+        "Collapse into death.",
+        "Static idle.",
+        "Long frozen tail of identical poses."
+      ],
+      "audit": {
+        "mode": "temporal_motion",
+        "enforcement": "hard",
+        "max_height_step_ratio": 0.2,
+        "max_foot_step_ratio": 0.1,
+        "min_distinct_frame_count": 3,
+        "max_trailing_near_duplicate_frames": 2
+      }
+    },
+    "die": {
+      "row": 17,
+      "loop": false,
+      "semantic": "Irreversible loss of control and collapse ending in a settled final pose.",
+      "phase_labels": [
+        "hit",
+        "destabilize",
+        "lose_balance",
+        "collapse_start",
+        "falling",
+        "ground_contact",
+        "settle",
+        "final"
+      ],
+      "must": [
+        "Progress from failure through increasing imbalance into collapse and final settled state.",
+        "Remain distinct from hurt."
+      ],
+      "never": [
+        "Recover to standing.",
+        "Behave like a hurt loop.",
+        "Teleport between poses.",
+        "Repeat a final corpse through most of the sequence."
+      ],
+      "audit": {
+        "mode": "temporal_motion",
+        "enforcement": "hard",
+        "max_height_step_ratio": 0.35,
+        "max_foot_step_ratio": 0.18,
+        "min_distinct_frame_count": 4,
+        "max_trailing_near_duplicate_frames": 2
+      }
+    },
+    "move_fire": {
+      "row": null,
+      "loop": false,
+      "semantic": "Real locomotion and active firing in the same moment when a bank provides this authored action.",
+      "phase_labels": [
+        "move_aim",
+        "move_ignition",
+        "move_recoil",
+        "move_drive",
+        "move_recover",
+        "move_ready",
+        "move_handoff",
+        "end"
+      ],
+      "inherits": [
+        "run",
+        "shoot"
+      ],
+      "must": [
+        "Keep lower-body locomotion real while upper body clearly fires."
+      ],
+      "never": [
+        "Static firing pose sliding across ground.",
+        "Run pose with no firing semantics."
+      ],
+      "audit": {
+        "mode": "optional_runtime_action",
+        "enforcement": "review"
+      }
+    }
+  },
+  "prompt_rules": {
+    "previous_frame": [
+      "Use the previous accepted frame only for continuity of identity, scale, palette, lighting and weapon design.",
+      "Do not copy the previous pose; visibly advance to the requested action phase."
+    ],
+    "loop": [
+      "This action loops; the complete sequence must support a natural final-to-first transition.",
+      "Do not make the last authored phase a terminal pose."
+    ],
+    "weapon_occlusion": [
+      "Natural overlap with hands, torso or shoulder is allowed.",
+      "Do not erase essential anatomy, create duplicate hands, pass hands through impossible weapon regions or detach the weapon from the grip."
+    ]
+  },
+  "references": {
+    "required": [
+      "identity",
+      "weapon"
+    ],
+    "preferred": [
+      "actionGolden",
+      "previousFrame"
+    ],
+    "rules": [
+      "identity and weapon references are mandatory for production candidate generation",
+      "actionGolden is preferred when an approved action-family reference exists",
+      "previousFrame is continuity-only and must never freeze motion"
+    ]
+  },
+  "generation": {
+    "candidate_count": 1,
+    "transparent_background": true,
+    "single_isolated_frame": true,
+    "candidate_state": "quarantined",
+    "note": "Authoring caller must request one transparent candidate image; acceptance never trusts generator intent."
+  }
+}
