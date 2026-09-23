@@ -609,15 +609,18 @@ export async function installWarRoomV2Shell(
     coarsePointer = false,
     url = warRoomV2ModelUrl(),
     onRefine,
+    variant = 'v2',
+    rootName = `war-room-${variant}-blender-shell`,
+    runtimeFinish = 'gltf-pbr-cinematic-gothic-v11',
   } = {},
 ) {
-  if (!scene?.add) throw new Error('War Room v2 requires a Three.js scene');
+  if (!scene?.add) throw new Error(`War Room ${variant} requires a Three.js scene`);
   const loader = configureWarRoomV2Loader(new GLTFLoader());
   const gltf = await loader.loadAsync(url);
   const root = gltf?.scene;
-  if (!root) throw new Error('War Room v2 GLB has no scene');
+  if (!root) throw new Error(`War Room ${variant} GLB has no scene`);
 
-  root.name = 'war-room-v2-blender-shell';
+  root.name = rootName;
   // Blender exports Z-up to glTF Y-up. Its preview board top is Y=1.12 after
   // conversion, while the live Three board uses Y=0 as its tactical datum.
   root.position.set(0, -WAR_ROOM_V2_BOARD_ANCHOR_Y, 0);
@@ -656,8 +659,8 @@ export async function installWarRoomV2Shell(
     });
   });
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
-  root.userData.warRoomVariant = 'v2';
-  root.userData.warRoomRuntimeFinish = 'gltf-pbr-cinematic-gothic-v11';
+  root.userData.warRoomVariant = variant;
+  root.userData.warRoomRuntimeFinish = runtimeFinish;
   root.userData.warRoomV2PracticalLights = practicalLights;
   root.userData.warRoomV2RuntimeStoneMaterials = runtimeStoneMaterials;
   root.userData.warRoomV2RuntimeStoneTextures = Object.keys(runtimeStoneTextures).length;

@@ -24,7 +24,7 @@ describe('War Room staging variant', () => {
     expect(loadWarRoomVariant(options)).toBe('classic');
   });
 
-  it('enables the selector on canonical staging and persists v2 safely', () => {
+  it('enables the selector on canonical staging and persists Blender variants safely', () => {
     const options = {
       env: { VITE_API_URL: 'https://api-staging.chess-studio.shadowops.dpdns.org/api' },
       location: { hostname: 'staging.chess-studio.shadowops.dpdns.org' },
@@ -32,6 +32,20 @@ describe('War Room staging variant', () => {
     expect(isWarRoomVariantSelectable(options)).toBe(true);
     expect(saveWarRoomVariant('v2', options)).toBe('v2');
     expect(loadWarRoomVariant(options)).toBe('v2');
+    expect(saveWarRoomVariant('v3', options)).toBe('v3');
+    expect(loadWarRoomVariant(options)).toBe('v3');
+  });
+
+  it('supports the generic variants flag while retaining the v2 flag as a compatibility alias', () => {
+    const location = { hostname: 'chess-studio.shadowops.dpdns.org' };
+    expect(isWarRoomVariantSelectable({
+      env: { VITE_WAR_ROOM_VARIANTS_ENABLE: 'true' },
+      location,
+    })).toBe(true);
+    expect(isWarRoomVariantSelectable({
+      env: { VITE_WAR_ROOM_V2_ENABLE: '1' },
+      location,
+    })).toBe(true);
   });
 
   it('normalizes unknown variants back to the classic room', () => {

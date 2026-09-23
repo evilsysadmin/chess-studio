@@ -70,6 +70,17 @@ GATES = (
             ".github/workflows/war-room-blender-art.yml",
         }),
     ),
+    Gate(
+        workflow="war-room-v3-blender-art.yml",
+        label="War Room v3 art",
+        exact_paths=frozenset({
+            "scripts/blender/build_war_room_premium.py",
+            "scripts/blender/build_war_room_v3.py",
+            "scripts/blender/configure_eevee_premium.py",
+            "scripts/blender/publish_war_room_v3.py",
+            ".github/workflows/war-room-v3-blender-art.yml",
+        }),
+    ),
 )
 
 
@@ -135,12 +146,17 @@ def self_test() -> None:
     assert classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"]) == []
     assert classify(["scripts/blender/build_pawn_slug_pows_v2.py"]) == []
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
-        "war-room-blender-art.yml"
+        "war-room-blender-art.yml",
+        "war-room-v3-blender-art.yml",
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_v3.py"])] == [
+        "war-room-v3-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/configure_eevee_premium.py"])] == [
         "home-matthias-blender-art.yml",
         "chronicles-party-blender-art.yml",
         "war-room-blender-art.yml",
+        "war-room-v3-blender-art.yml",
     ]
     assert [gate.workflow for gate in classify([
         "scripts/blender/build_home_matthias.py",
@@ -152,7 +168,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS/Pawn Slug 2D no despiertan Blender; cinco lanes path-aware")
+    print("blender-required-scope self-test OK · CSS/Pawn Slug 2D no despiertan Blender; seis lanes path-aware")
 
 
 def main() -> int:

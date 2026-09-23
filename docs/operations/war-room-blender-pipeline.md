@@ -1,8 +1,16 @@
 # War Room premium · Blender pipeline
 
-War Room v2 uses a deterministic Blender generator for the static room shell. It regenerates an editable `.blend`, runtime `.glb`, review PNG and JSON manifest from source code, keeping large generated blobs out of normal Git history.
+War Room v2 and v3 use deterministic Blender generators for their static room shells. Each regenerates an editable `.blend`, runtime `.glb`, review PNG and JSON manifest from source code, keeping large generated blobs out of normal Git history.
 
-The War Room v1 remains the rollback baseline until v2 has passed visual, mobile, performance and real-runtime validation. v2 work must not irreversibly delete or entangle that rollback lane.
+The War Room v1 remains the rollback baseline until the Blender variants have passed visual, mobile, performance and real-runtime validation. Variant work must not irreversibly delete or entangle that rollback lane. The in-game scene selector exposes v1, v2 and v3 as separate rooms and persists only their stable IDs (`classic`, `v2`, `v3`).
+
+## Variant ownership
+
+- `build_war_room_premium.py` owns the v2 room.
+- `build_war_room_v3.py` owns the v3 Cartographer's Chamber and may reuse the v2 structural foundation, while retaining an independent art contract, publisher, R2 prefix and Blender gate.
+- v3 has one fireplace. The opposite bay belongs to the campaign-map archive; a second hearth or its practical-light anchor is a regression.
+- v3 differentiates itself through warmer limestone, walnut, oxblood and bottle-green materials, cooler window contrast and smoother hero curves on the lancet arch and globe.
+- Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 
 ## Ownership boundary
 
@@ -75,7 +83,7 @@ Do not trade legibility for frame rate without evidence; measure draw/paint cade
 
 ## Acceptance
 
-A v2 visual iteration is accepted only when:
+A v2 or v3 visual iteration is accepted only when:
 
 - deterministic Blender generation succeeds;
 - Blender PNG has been visually reviewed;

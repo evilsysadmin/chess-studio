@@ -49,6 +49,7 @@ class Scope:
     experiment_parts: tuple[str, ...] = ()
     chronicles_avatar: bool = False
     warroom_revision_required: bool = False
+    warroom_v3_revision_required: bool = False
 
     @property
     def capture_groups(self) -> str:
@@ -91,9 +92,17 @@ def _surface_groups(path: str) -> set[str] | None:
     lower = path.lower()
     name = Path(lower).name
 
+    if lower.endswith(".md"):
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-    if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/quality_scope.py"}:
+    if lower in {
+        "scripts/async_resilience_gate.mjs",
+        "scripts/blender_required_scope.py",
+        "scripts/chess_rules_gate.mjs",
+        "scripts/quality_scope.py",
+        "scripts/workflow_debt_gate.py",
+    }:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
@@ -103,6 +112,9 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
         ".github/workflows/war-room-blender-art.yml",
+        "scripts/blender/build_war_room_v3.py",
+        "scripts/blender/publish_war_room_v3.py",
+        ".github/workflows/war-room-v3-blender-art.yml",
     }:
         return {"warroom"}
     if lower in {
@@ -235,9 +247,22 @@ WAR_ROOM_V2_REVISION_OWNERS = {
     ".github/workflows/war-room-blender-art.yml",
 }
 
+WAR_ROOM_V3_REVISION_OWNERS = {
+    # V3 currently composes the proven board/camera foundation from the v2
+    # generator, so a foundation change must republish and recapture both rooms.
+    "scripts/blender/build_war_room_premium.py",
+    "scripts/blender/build_war_room_v3.py",
+    "scripts/blender/publish_war_room_v3.py",
+    ".github/workflows/war-room-v3-blender-art.yml",
+}
+
 
 def _needs_warroom_revision(path: str) -> bool:
     return path.lower().replace("\\", "/") in WAR_ROOM_V2_REVISION_OWNERS
+
+
+def _needs_warroom_v3_revision(path: str) -> bool:
+    return path.lower().replace("\\", "/") in WAR_ROOM_V3_REVISION_OWNERS
 
 
 def _needs_chronicles_avatar(path: str) -> bool:
@@ -266,6 +291,7 @@ def classify(paths: list[str]) -> Scope:
     chesscom = False
     chronicles_avatar = False
     warroom_revision_required = any(_needs_warroom_revision(path) for path in cleaned)
+    warroom_v3_revision_required = any(_needs_warroom_v3_revision(path) for path in cleaned)
 
     for path in cleaned:
         lower = path.lower()
@@ -284,6 +310,7 @@ def classify(paths: list[str]) -> Scope:
                 experiment_parts=fallback.experiment_parts,
                 chronicles_avatar=fallback.chronicles_avatar,
                 warroom_revision_required=warroom_revision_required,
+                warroom_v3_revision_required=warroom_v3_revision_required,
             )
         groups.update(surface)
         if "experiments" in surface:
@@ -301,6 +328,7 @@ def classify(paths: list[str]) -> Scope:
         experiment_parts=ordered_experiments,
         chronicles_avatar=chronicles_avatar,
         warroom_revision_required=warroom_revision_required,
+        warroom_v3_revision_required=warroom_v3_revision_required,
     )
 
 
@@ -313,6 +341,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
         "hans": str(scope.hans).lower(),
         "chesscom": str(scope.chesscom).lower(),
         "warroom_revision_required": str(scope.warroom_revision_required).lower(),
+        "warroom_v3_revision_required": str(scope.warroom_v3_revision_required).lower(),
     }
     with open(output_path, "a", encoding="utf-8") as handle:
         for key, value in values.items():
@@ -384,6 +413,18 @@ def self_test() -> None:
     assert blender_warroom.warroom_revision_required
     assert blender_publish.warroom_revision_required
     assert blender_workflow.warroom_revision_required
+    assert classify(["docs/operations/war-room-blender-pipeline.md"]).capture_groups == "none"
+    assert classify([".github/workflows/README.md"]).capture_groups == "none"
+    assert classify(["scripts/blender_required_scope.py"]).capture_groups == "none"
+    assert classify(["scripts/workflow_debt_gate.py"]).capture_groups == "none"
+    blender_v3 = classify(["scripts/blender/build_war_room_v3.py"])
+    blender_v3_publish = classify(["scripts/blender/publish_war_room_v3.py"])
+    blender_v3_workflow = classify([".github/workflows/war-room-v3-blender-art.yml"])
+    assert blender_v3.capture_groups == "warroom" and blender_v3.warroom_v3_revision_required
+    assert blender_v3_publish.capture_groups == "warroom" and blender_v3_publish.warroom_v3_revision_required
+    assert blender_v3_workflow.capture_groups == "warroom" and blender_v3_workflow.warroom_v3_revision_required
+    assert not blender_v3.warroom_revision_required
+    assert blender_warroom.warroom_v3_revision_required
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
@@ -522,6 +563,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"hans={str(scope.hans).lower()}")
         print(f"chesscom={str(scope.chesscom).lower()}")
         print(f"warroom_revision_required={str(scope.warroom_revision_required).lower()}")
+        print(f"warroom_v3_revision_required={str(scope.warroom_v3_revision_required).lower()}")
     return 0
 
 

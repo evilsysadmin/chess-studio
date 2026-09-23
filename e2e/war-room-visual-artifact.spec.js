@@ -12,6 +12,9 @@ const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
 const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
+const WAR_ROOM_V3_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
+const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
 
 function expectedWarRoomV2Revision() {
   return String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '').trim();
@@ -41,6 +44,43 @@ async function installWarRoomV2RevisionRoute(page) {
   if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
 
   await page.route('**/war-room/v2/runtime/current.glb*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'model/gltf-binary',
+      body,
+      headers: { 'cache-control': 'no-store' },
+    });
+  });
+}
+
+function expectedWarRoomV3Revision() {
+  return String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION || '').trim();
+}
+
+async function installWarRoomV3RevisionRoute(page) {
+  const expected = expectedWarRoomV3Revision();
+  if (!expected) return;
+  const deadline = Date.now() + 180_000;
+  const revisionUrl = WAR_ROOM_V3_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
+  let body = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: { 'cache-control': 'no-cache' },
+        timeout: 10_000,
+      });
+      if (response.ok()) {
+        body = await response.body();
+        break;
+      }
+    } catch {
+      // Blender may still be publishing; keep polling to the bounded deadline.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+  if (!body) throw new Error('War Room v3 revision GLB timeout: ' + expected);
+
+  await page.route('**/war-room/v3/runtime/current.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
@@ -101,6 +141,33 @@ const CAPTURE_PROFILES = Object.freeze([
     portraitContract: false,
     landscapeContract: false,
     variant: 'v2',
+  }),
+  Object.freeze({
+    label: 'war-room-v3-android-390x844',
+    title: 'War Room v3 Android portrait',
+    viewport: Object.freeze({ width: 390, height: 844 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+    variant: 'v3',
+  }),
+  Object.freeze({
+    label: 'war-room-v3-android-landscape-844x390',
+    title: 'War Room v3 Android landscape',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+    variant: 'v3',
+  }),
+  Object.freeze({
+    label: 'war-room-v3-desktop-1440x900',
+    title: 'War Room v3 desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+    landscapeContract: false,
+    variant: 'v3',
   }),
 ]);
 
@@ -262,6 +329,7 @@ async function captureWarRoomHealth(page, label) {
       .slice(0, 18);
 
     const root = document.documentElement;
+    const canvas = document.querySelector('canvas.board3d-main-canvas');
     const board = box('[data-board3d-war-room="true"]');
     const hud = box('.game-3d-matthias-card');
     const human = box('.game-board-stack-3d .game-player-rail.is-human');
@@ -291,6 +359,9 @@ async function captureWarRoomHealth(page, label) {
       hardwareConcurrency: navigator.hardwareConcurrency,
       touchPoints: navigator.maxTouchPoints,
       coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+      renderer: canvas?.dataset.board3dRenderer || null,
+      rendererClass: canvas?.dataset.board3dRendererClass || null,
+      renderPath: canvas?.dataset.board3dRenderPath || null,
       horizontalOverflowPx: Math.max(0, root.scrollWidth - viewport.width),
       verticalOverflowPx: Math.max(0, root.scrollHeight - viewport.height),
       overflowOffenders,
@@ -321,6 +392,9 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   if (variant === 'v2') {
     await installWarRoomV2RevisionRoute(page);
   }
+  if (variant === 'v3') {
+    await installWarRoomV3RevisionRoute(page);
+  }
   await page.addInitScript(({ key, value }) => {
     window.localStorage.setItem(key, value);
   }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: variant });
@@ -332,6 +406,10 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
     },
   });
   await login(page);
+  expect(
+    await page.evaluate((key) => window.localStorage.getItem(key), WAR_ROOM_VARIANT_STORAGE_KEY),
+    'requested War Room variant must survive application bootstrap',
+  ).toBe(variant);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -354,7 +432,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
     await expect(tutorial).toBeHidden();
   }
 
-  if (variant !== 'v2') {
+  if (!['v2', 'v3'].includes(variant)) {
     // The cat is classic-shell decor; keep that canary there without making
     // the Blender v2 proof depend on hidden legacy geometry.
     await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
@@ -402,11 +480,18 @@ for (const profile of CAPTURE_PROFILES) {
 
     const browser = await chromium.launch({
       headless: true,
-      args: [
-        '--use-gl=angle',
-        '--use-angle=swiftshader',
-        '--enable-unsafe-swiftshader',
-      ],
+      args: LOCAL_GPU_CAPTURE
+        ? [
+          '--use-gl=angle',
+          '--use-angle=gl',
+          '--ignore-gpu-blocklist',
+          '--enable-gpu-rasterization',
+        ]
+        : [
+          '--use-gl=angle',
+          '--use-angle=swiftshader',
+          '--enable-unsafe-swiftshader',
+        ],
     });
 
     const context = await browser.newContext({
@@ -422,12 +507,34 @@ for (const profile of CAPTURE_PROFILES) {
 
     const page = await context.newPage();
     try {
-      await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
-      if (profile.variant === 'v2') {
+      const board3d = await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
+      if (LOCAL_GPU_CAPTURE) {
+        const canvas = page.locator('.board3d-main-canvas');
+        await expect(canvas).toHaveAttribute('data-board3d-renderer', /.+/);
+        await expect(canvas).not.toHaveAttribute(
+          'data-board3d-renderer',
+          /swiftshader|llvmpipe|software/i,
+        );
+      }
+      if (['v2', 'v3'].includes(profile.variant)) {
+        await expect(board3d).toHaveAttribute('data-board3d-variant', profile.variant);
+        expect(
+          await page.locator('.board3d-main-canvas').getAttribute('data-war-room-variant-error'),
+          `${profile.variant} shell must load without falling back to classic`,
+        ).toBeNull();
         await expect(page.locator('.board3d-main-canvas'))
-          .toHaveAttribute('data-war-room-variant', 'v2', { timeout: 30_000 });
+          .toHaveAttribute('data-war-room-variant', profile.variant, { timeout: 30_000 });
         await expect(page.locator('.board3d-main-canvas'))
-          .toHaveAttribute('data-war-room-v2-status', 'ready', { timeout: 30_000 });
+          .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
+      }
+      if (profile.variant === 'v3') {
+        const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+        await variantMenu.click();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v1', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v2', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true }))
+          .toHaveAttribute('aria-checked', 'true');
+        await variantMenu.click();
       }
 
       if (profile.portraitContract) {

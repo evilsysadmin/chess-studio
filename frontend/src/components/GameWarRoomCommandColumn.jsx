@@ -2,6 +2,7 @@ import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import useWarRoomVariant from './useWarRoomVariant.js';
+import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -156,32 +157,22 @@ export function WarRoomUtilityMenu({
           <>
             <span className="game-3d-utility-separator" role="separator" />
             <span className="game-3d-utility-section-label" aria-hidden="true">Escena</span>
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-label="War Room"
-              aria-checked={warRoomVariant === 'classic'}
-              className={warRoomVariant === 'classic' ? 'is-selected' : ''}
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                setWarRoomVariant('classic');
-              }}
-            >
-              War Room
-            </button>
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-label="War Room v2"
-              aria-checked={warRoomVariant === 'v2'}
-              className={warRoomVariant === 'v2' ? 'is-selected' : ''}
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                setWarRoomVariant('v2');
-              }}
-            >
-              War Room v2
-            </button>
+            {WAR_ROOM_VARIANTS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="menuitemradio"
+                aria-label={label}
+                aria-checked={warRoomVariant === id}
+                className={warRoomVariant === id ? 'is-selected' : ''}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  setWarRoomVariant(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </>
         )}
         {showZen && typeof controls.onToggleZen === 'function' && (

@@ -57,6 +57,7 @@ INVENTORY = {
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
     'war-room-blender-art.yml': 'art-generation',
+    'war-room-v3-blender-art.yml': 'art-generation',
 }
 
 BUDGETS = (
