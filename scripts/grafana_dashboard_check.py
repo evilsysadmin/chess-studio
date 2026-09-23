@@ -66,6 +66,16 @@ def main() -> int:
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
     logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
+    logs_raw = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
+    for token in (
+        'production : {service_name=\\"chess-studio-backend\\"}',
+        'staging : {service_name=\\"chess-studio-oci-backend-staging-stdout\\"}',
+        '{service_name=~\\"chess-studio-(backend|oci-backend-staging-stdout)\\"}',
+    ):
+        if token not in logs_raw:
+            fail(f"logs dashboard no usa fuentes canónicas por entorno: {token}")
+    if 'staging OCI stdout :' in logs_raw or 'chess-studio-backend-staging\\"}' in logs_raw:
+        fail("logs dashboard vuelve a exponer staging por tubería en vez de entorno lógico")
     logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
     for required_logs_title in ("Biggest offenders · 401/403", "IPs únicas · tráfico aceptado por país"):
         if required_logs_title not in logs_titles:
@@ -535,9 +545,17 @@ def main() -> int:
     if '${selector:raw}' not in infra_logs:
         fail("dashboard logs debe interpolar selector LogQL con ${selector:raw}")
 
-    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
+    for token in (
+        'chess-studio-backend',
+        'chess-studio-oci-backend-staging-stdout',
+        '"type": "custom"',
+        '"label": "Entorno"',
+        'production : {service_name=',
+        'staging : {service_name=',
+        'chess-studio-(backend|oci-backend-staging-stdout)',
+    ):
         if token not in infra_logs:
-            fail(f"Loki debe permitir separar producción/staging: {token}")
+            fail(f"Loki debe usar fuentes canónicas por entorno: {token}")
 
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
