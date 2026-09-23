@@ -968,7 +968,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
 
-        {view === 'tutorial' && <Tutorial onExit={goBack} />}
+        {view === 'tutorial' && <Tutorial onExit={goBack} onOpenPuzzles={openPuzzleMode} />}
         {view === 'openings' && <OpeningsScreen onExit={goBack} />}
 
         {view === 'dailyChallenges' && (
