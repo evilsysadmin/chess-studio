@@ -144,16 +144,55 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   return room;
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide) {
+export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = false, viewportWidth = Number.POSITIVE_INFINITY } = {}) {
+  const safeAspect = Math.max(0.35, Number(aspect) || 1);
+  const safeWidth = Math.max(0, Number(viewportWidth) || 0);
+  const phone = Boolean(coarsePointer) && safeWidth <= 820;
+  const compact = safeAspect < 1.12;
+
+  if (phone || compact) {
+    return Object.freeze({
+      version: 'classroom-overhead-v1',
+      mode: 'classroom-portrait',
+      halfSpan: 4.72,
+      padding: 1.0,
+      minDistance: 12.6,
+      maxDistance: 22.5,
+      targetY: 0.34,
+      targetZ: 0.16,
+      cameraY: 10.2,
+      cameraZ: 8.6,
+    });
+  }
+
+  return Object.freeze({
+    version: 'classroom-overhead-v1',
+    mode: 'classroom-desktop',
+    halfSpan: 4.58,
+    padding: 0.99,
+    minDistance: 11.8,
+    maxDistance: 24.0,
+    targetY: 0.3,
+    targetZ: 0.12,
+    cameraY: 10.6,
+    cameraZ: 8.15,
+  });
+}
+
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const viewportWidth = typeof window !== 'undefined'
     ? Number(window.innerWidth) || width
     : width;
-  const mobileProfile = getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
-  const profile = mobileProfile || getCameraFramingProfile(aspect);
-  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile) });
+  const mobileProfile = requestedProfile === 'classroom'
+    ? null
+    : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
+  const profile = requestedProfile === 'classroom'
+    ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : mobileProfile || getCameraFramingProfile(aspect);
+  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
@@ -162,7 +201,7 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
   // cap with a long lens zooms/crops instead of moving the camera back, which
   // defeats the whole perspective-parity fix. Mobile retains its calibrated
   // cap; desktop gets enough travel for the near-orthographic lens.
-  const maxDistance = mobileProfile ? profile.maxDistance : 88;
+  const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
   const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
@@ -172,7 +211,7 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
   camera.lookAt(target);
   camera.userData.basePosition = camera.position.clone();
   camera.userData.baseTarget = target.clone();
-  camera.userData.framingProfile = mobileProfile?.version || 'standard';
+  camera.userData.framingProfile = profile?.version || mobileProfile?.version || 'standard';
   camera.userData.cameraFov = camera.fov;
   camera.userData.cameraDistance = distance;
   camera.updateProjectionMatrix();
