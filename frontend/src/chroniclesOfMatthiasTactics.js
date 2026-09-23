@@ -31,19 +31,6 @@ const MOVE_GLYPHS = Object.freeze({
   west: '←',
 });
 
-export function chroniclesTacticsWorld(state = null) {
-  const map = chroniclesMapForState(state);
-  const lever = map.interactables.find((entry) => entry.kind === 'lever') || null;
-  const runeCore = map.treasures.find((entry) => entry.id === 'rune-core')
-    || map.interactables.find((entry) => entry.id === 'rune-core')
-    || null;
-  return { lever, runeCore };
-}
-
-// Compatibility snapshot for the current single-map renderer. Runtime tactics
-// logic resolves the world from state so future maps do not inherit these cells.
-export const CHRONICLES_TACTICS_WORLD = Object.freeze(chroniclesTacticsWorld());
-
 const CLASS_PROFILES = Object.freeze({
   matthias: Object.freeze({
     className: 'Espadachín',
