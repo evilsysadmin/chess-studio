@@ -183,7 +183,7 @@ function appendJournal(state, entry) {
 
 function rewardEnemyDefeat(state, enemy, attacker) {
   const rewarded = chroniclesApplyContentEffects(state, enemy.onDefeat?.effects, {
-    refillClassAbilities: refillAbilityCharges,
+    refillClassAbilities: chroniclesTacticsRefillAbilityCharges,
   });
 
   return appendJournal(rewarded, {
@@ -233,7 +233,7 @@ function consumeAbilityCharge(state, memberId) {
   };
 }
 
-function refillAbilityCharges(state) {
+export function chroniclesTacticsRefillAbilityCharges(state) {
   const classAbilityCharges = { ...(state.classAbilityCharges || {}) };
   state.party.forEach((member) => {
     classAbilityCharges[member.id] = maxAbilityCharges(state, member.id);
@@ -253,7 +253,7 @@ function triggerTrapAtCurrentCell(state) {
   if (!definition) return state;
   return chroniclesApplyContentAction(state, definition.action, {
     appendJournal,
-    refillClassAbilities: refillAbilityCharges,
+    refillClassAbilities: chroniclesTacticsRefillAbilityCharges,
   });
 }
 
@@ -292,7 +292,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
 
   return chroniclesApplyContentAction({ ...state, turns }, definition.action, {
     appendJournal,
-    refillClassAbilities: refillAbilityCharges,
+    refillClassAbilities: chroniclesTacticsRefillAbilityCharges,
   });
 }
 

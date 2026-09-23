@@ -4,8 +4,10 @@ import {
   chroniclesHeroProgress,
   chroniclesSkillsForMember,
   normalizeChroniclesProgression,
+  spendChroniclesAttributePoint,
   unlockChroniclesSkill,
 } from '../chroniclesOfMatthiasProgression.js';
+import { chroniclesApplyContentEffects } from './chroniclesContentRuntime.js';
 
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const DEFAULT_LIMIT = 3;
@@ -153,4 +155,75 @@ export function chroniclesRewardDraft({
     ...choice,
     choiceId: chroniclesRewardClaimId(safeMilestone, choice.id),
   })));
+}
+
+
+export function chroniclesApplyRewardChoice({
+  seed,
+  milestoneId,
+  state,
+  progression,
+  choiceId,
+  refillClassAbilities = null,
+} = {}) {
+  const currentState = state && typeof state === 'object' ? state : {};
+  const currentProgression = normalizeChroniclesProgression(progression);
+  const draft = chroniclesRewardDraft({
+    seed,
+    milestoneId,
+    progression: currentProgression,
+    claimedRewards: currentState.claimedRewards,
+  });
+  const choice = draft.find((candidate) => candidate.choiceId === choiceId) || null;
+  if (!choice) {
+    return {
+      applied: false,
+      state: currentState,
+      progression: currentProgression,
+      choice: null,
+    };
+  }
+
+  let nextState = currentState;
+  let nextProgression = currentProgression;
+
+  if (choice.kind === 'skill') {
+    const result = unlockChroniclesSkill(currentProgression, choice.memberId, choice.skillId);
+    if (!result.unlocked) {
+      return { applied: false, state: currentState, progression: currentProgression, choice };
+    }
+    nextProgression = result.progression;
+  } else if (choice.kind === 'attribute') {
+    const result = spendChroniclesAttributePoint(
+      currentProgression,
+      choice.memberId,
+      choice.attributeKey,
+    );
+    if (!result.spent) {
+      return { applied: false, state: currentState, progression: currentProgression, choice };
+    }
+    nextProgression = result.progression;
+  } else if (choice.kind === 'run-effect') {
+    nextState = chroniclesApplyContentEffects(currentState, choice.effects, {
+      refillClassAbilities,
+    });
+    if (nextState === currentState) {
+      return { applied: false, state: currentState, progression: currentProgression, choice };
+    }
+  } else {
+    return { applied: false, state: currentState, progression: currentProgression, choice };
+  }
+
+  const claimedRewards = Array.isArray(nextState.claimedRewards) ? nextState.claimedRewards : [];
+  nextState = {
+    ...nextState,
+    claimedRewards: [...new Set([...claimedRewards, choice.choiceId])],
+  };
+
+  return {
+    applied: true,
+    state: nextState,
+    progression: nextProgression,
+    choice,
+  };
 }
