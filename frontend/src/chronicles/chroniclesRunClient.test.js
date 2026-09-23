@@ -93,6 +93,8 @@ describe('Chronicles run transport', () => {
       currentMapId: 'gallery-of-forks',
       worldFlags: {
         galleryLeverPulled: true,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 99,
       },
       consumedContentIds: [],
       claimedRewards: [],
