@@ -19,6 +19,7 @@ import {
   nextHumanSchoolStep,
   schoolLineForLesson,
   schoolLessonsForCourse,
+  schoolBoardGuideMove,
 } from '../matthiasSchool.js';
 
 function initialCoachText(lesson) {
@@ -49,6 +50,7 @@ export default function Tutorial({ onExit }) {
   const [lineIndex, setLineIndex] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [attemptEpoch, setAttemptEpoch] = useState(0);
+  const [hintActive, setHintActive] = useState(false);
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
@@ -64,6 +66,7 @@ export default function Tutorial({ onExit }) {
   const lessonUnlocked = isSchoolLessonUnlocked(schoolProgress, lesson.id) || lessonComplete;
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
+  const boardGuideMove = useMemo(() => schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive]);
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
   const totalHumanMoves = humanMoveCount(lesson);
   const runComplete = lineIndex >= line.length;
@@ -79,6 +82,7 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setLineIndex(0);
     setMistakes(0);
+    setHintActive(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
@@ -100,6 +104,7 @@ export default function Tutorial({ onExit }) {
     const nextMistakes = mistakes + 1;
     setMistakes(nextMistakes);
     setSelected(null);
+    setHintActive(false);
     if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
       setCoach({ tone: 'retry', text: `Suspendido. ${text} Has agotado el margen del examen. Repite cuando quieras; prefiero eso a promocionarte por lástima.` });
       return;
@@ -111,6 +116,7 @@ export default function Tutorial({ onExit }) {
     setPracticeFen(lesson.fen);
     setSelected(null);
     setLineIndex(0);
+    setHintActive(false);
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
     if (!keepCoach) {
@@ -124,6 +130,7 @@ export default function Tutorial({ onExit }) {
   function finishLesson(finalFen) {
     setPracticeFen(finalFen);
     setSelected(null);
+    setHintActive(false);
     setLineIndex(line.length);
     setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
     setCoach({ tone: 'success', text: lesson.success });
@@ -162,6 +169,7 @@ export default function Tutorial({ onExit }) {
     setPracticeFen(board.fen());
     setLineIndex(cursor);
     setSelected(null);
+    setHintActive(false);
     const next = nextHumanSchoolStep(lesson, cursor);
     const done = line.slice(0, cursor).filter((step) => !step.auto).length;
     setCoach({
@@ -186,7 +194,7 @@ export default function Tutorial({ onExit }) {
         return;
       }
       setSelected(square);
-      setCoach({ tone: 'neutral', text: `${square} seleccionado. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
+      setCoach({ tone: 'neutral', text: `${square} seleccionado. Las casillas iluminadas son sus destinos legales. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
       return;
     }
 
@@ -327,10 +335,10 @@ export default function Tutorial({ onExit }) {
                 data-school-attempt={attemptEpoch}
                 data-school-renderer={schoolRenderer}
               >
-                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
+                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} hintMove={boardGuideMove} />
                 <div className="matthias-school-board-actions">
                   <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
+                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
                 </div>
               </div>
 
