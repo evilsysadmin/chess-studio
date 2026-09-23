@@ -50,11 +50,15 @@ def components(image: Image.Image) -> list[list[tuple[int, int]]]:
         group = [start]
         while queue:
             x, y = queue.popleft()
-            for point in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-                if point in opaque:
-                    opaque.remove(point)
-                    queue.append(point)
-                    group.append(point)
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    point = (x + dx, y + dy)
+                    if point in opaque:
+                        opaque.remove(point)
+                        queue.append(point)
+                        group.append(point)
         found.append(group)
     return sorted(found, key=len, reverse=True)
 
