@@ -9,6 +9,12 @@ export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
 }
 
+function setClassicShellVisible(objects, visible) {
+  for (const object of objects || []) {
+    if (object) object.visible = visible;
+  }
+}
+
 export function startWarRoomVariantScene({
   scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
