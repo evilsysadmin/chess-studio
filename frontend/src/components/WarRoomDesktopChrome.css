@@ -55,8 +55,7 @@
     pointer-events: auto;
   }
 
-  .game-screen .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-3d-turn-pill {
     position: absolute !important;
     z-index: 42;
     top: .72rem;
@@ -285,8 +284,7 @@
 }
 
 @media (min-width: 1081px) and (max-width: 1260px) {
-  .game-screen .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-3d-turn-pill {
     left: calc((100% - 210px) / 2);
     max-width: min(32rem, calc(100% - 246px));
   }
