@@ -171,7 +171,7 @@ def main() -> int:
         "Auth identity blocks · 15 min",
         "Presión de tráfico · requests/s vs baseline 1 h",
         "Biggest auth offenders · failed logins",
-        "Top países · auth offenders",
+        "IPs ofensivas únicas · por país",
         "Auth forensics reciente · sin contraseñas",
     }
     missing_security_titles = sorted(required_security_titles - security_titles)
@@ -197,6 +197,7 @@ def main() -> int:
         'user_agent!="chess-studio-staging-smoke-cleanup/2"',
         'username_attempted!~"ci_smoke_[0-9a-f]{16}"',
         'client_country',
+        'count by (client_country) (sum by (client_country, client_ip)',
     ):
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")
