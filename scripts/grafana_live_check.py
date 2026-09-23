@@ -524,6 +524,24 @@ def run_checks(
         ),
     ) and passed
 
+    oci_stdout_country_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
+        ' | json | __error__="" | event="http_request" | client_country != ""'
+        f' [{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": oci_stdout_country_query, "time": str(now)},
+    )
+    country_ok = _vector_positive(payload)
+    passed = _report(
+        "oci_backend_stdout_country",
+        country_ok,
+        "staging stdout carries client_country on http_request"
+        if country_ok
+        else "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary",
+    ) and passed
+
     production_oci_stdout_log_query = (
         'sum(count_over_time({service_name="chess-studio-oci-backend-production-stdout"}'
         ' | json | __error__="" | event="http_request"'

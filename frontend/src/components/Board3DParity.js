@@ -19,6 +19,8 @@ function safeSquareClass(squareClassName, square) {
 
 function classHighlightKind(className) {
   if (!className) return null;
+  if (/classroom-danger/i.test(className)) return 'schoolDanger';
+  if (/classroom-focus/i.test(className)) return 'schoolFocus';
   if (/arena-terrain-blocked|terrain-blocked|\bblocked\b/i.test(className)) return 'terrain';
   if (/mercenary/i.test(className)) return 'mercenary';
   if (/deployment-square-drop-hover|deployment-square-valid/i.test(className)) return 'deployment';

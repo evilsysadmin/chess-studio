@@ -122,6 +122,21 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(check).toMatchObject({ kind: 'check', color: BOARD3D_HIGHLIGHT_COLORS.check });
   });
 
+
+  it('keeps classroom focus and danger visually distinct from ordinary hints', () => {
+    const focus = board3DHighlightStyle({
+      square: 'e2',
+      hintMove: { parityHighlights: { e2: 'schoolFocus' } },
+    });
+    const danger = board3DHighlightStyle({
+      square: 'f3',
+      hintMove: { parityHighlights: { f3: 'schoolDanger' } },
+    });
+    expect(focus).toMatchObject({ kind: 'schoolFocus', color: BOARD3D_HIGHLIGHT_COLORS.schoolFocus });
+    expect(danger).toMatchObject({ kind: 'schoolDanger', color: BOARD3D_HIGHLIGHT_COLORS.schoolDanger });
+    expect(focus.color).not.toBe(danger.color);
+  });
+
   it('keeps last move and hint visually quieter than an active selection', () => {
     const lastMove = board3DHighlightStyle({ square: 'e4', lastMove: { from: 'e2', to: 'e4' } });
     const hint = board3DHighlightStyle({ square: 'f3', hintMove: { from: 'g1', to: 'f3' } });

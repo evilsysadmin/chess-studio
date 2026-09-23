@@ -38,12 +38,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "IPs únicas · tráfico aceptado por país"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"'):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"', 'status=~"2..|3.."', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []
@@ -66,17 +66,28 @@ def main() -> int:
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
     logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
+    logs_raw = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
+    for token in (
+        'production : {service_name=\\"chess-studio-backend\\"}',
+        'staging : {service_name=\\"chess-studio-oci-backend-staging-stdout\\"}',
+        '{service_name=~\\"chess-studio-(backend|oci-backend-staging-stdout)\\"}',
+    ):
+        if token not in logs_raw:
+            fail(f"logs dashboard no usa fuentes canónicas por entorno: {token}")
+    if 'staging OCI stdout :' in logs_raw or 'chess-studio-backend-staging\\"}' in logs_raw:
+        fail("logs dashboard vuelve a exponer staging por tubería en vez de entorno lógico")
     logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
-    if "Biggest offenders · 401/403" not in logs_titles:
-        fail("logs dashboard perdió ranking 401/403")
+    for required_logs_title in ("Biggest offenders · 401/403", "IPs únicas · tráfico aceptado por país"):
+        if required_logs_title not in logs_titles:
+            fail(f"logs dashboard perdió panel: {required_logs_title}")
     logs_exprs = "\n".join(
         str(target.get("expr") or "")
         for panel in (logs_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
-    for token in ('status=~"401|403"', "client_ip"):
+    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'username!~"ci_smoke_[0-9a-f]{16}"', 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in logs_exprs:
-            fail(f"logs dashboard perdió ranking 401/403: {token}")
+            fail(f"logs dashboard perdió señal accionable: {token}")
 
     explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
     explorer_variables = {str(row.get("name") or "") for row in ((explorer_data.get("templating") or {}).get("list") or [])}
@@ -534,9 +545,17 @@ def main() -> int:
     if '${selector:raw}' not in infra_logs:
         fail("dashboard logs debe interpolar selector LogQL con ${selector:raw}")
 
-    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
+    for token in (
+        'chess-studio-backend',
+        'chess-studio-oci-backend-staging-stdout',
+        '"type": "custom"',
+        '"label": "Entorno"',
+        'production : {service_name=',
+        'staging : {service_name=',
+        'chess-studio-(backend|oci-backend-staging-stdout)',
+    ):
         if token not in infra_logs:
-            fail(f"Loki debe permitir separar producción/staging: {token}")
+            fail(f"Loki debe usar fuentes canónicas por entorno: {token}")
 
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")

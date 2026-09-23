@@ -10,6 +10,7 @@ on:
       - scripts/art/validate_matthias_sprite_continuity.py
       - scripts/art/repair_matthias_machinegun_continuity.py
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
+      - scripts/art/repair_matthias_pose_semantics_v1.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
@@ -33,6 +34,7 @@ on:
     paths:
       - scripts/art/repair_matthias_machinegun_continuity.py
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
+      - scripts/art/repair_matthias_pose_semantics_v1.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
@@ -156,15 +158,27 @@ jobs:
             --sprite-smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
             --output /tmp/pawn-slug-sprite-smoke/matthias/continuity-health.json
 
+      - name: Build Matthias pose semantics v1 candidate
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          python3 scripts/art/repair_matthias_pose_semantics_v1.py --self-test
+          python3 scripts/art/repair_matthias_pose_semantics_v1.py \
+            /tmp/pawn-slug-sprite-smoke/matthias \
+            "$CAND"
+          cat "$CAND/matthias-pose-semantics-v1-manifest.json" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Audit Matthias semantic pose contract
         if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
-          OUT=/tmp/pawn-slug-sprite-smoke/matthias/semantic-contract
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          OUT="$CAND/semantic-contract"
           mkdir -p "$OUT"
           status=0
           python3 scripts/art/matthias_prompt_contract.py audit-smoke \
-            --smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
+            --smoke-dir "$CAND" \
             --output "$OUT/matthias-semantic-audit.json" \
             --review-png "$OUT/matthias-semantic-review.png" \
             --summary-output "$OUT/matthias-semantic-summary.md" \
@@ -208,10 +222,11 @@ jobs:
         if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
-          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          LAB="$CAND/sprite-lab"
           mkdir -p "$LAB"
           python3 scripts/art/sprite_forge.py audit-batch \
-            /tmp/pawn-slug-sprite-smoke/matthias \
+            "$CAND" \
             "$LAB/batch-audit.json" \
             --actor matthias \
             --weapons pistol,machinegun,shotgun,panzerfaust \
@@ -248,36 +263,7 @@ jobs:
                       )
           PY
 
-      - name: Build Matthias SMG hurt alpha v2 candidate
-        if: steps.scope.outputs.matthias == 'true'
-        run: |
-          set -euo pipefail
-          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          mkdir -p "$LAB"
-          python3 scripts/art/sprite_forge.py repair-machinegun-hurt-alpha \
-            /tmp/pawn-slug-sprite-smoke/matthias \
-            "$LAB" \
-            --actor matthias \
-            --columns 8 \
-            --cell-size 416 \
-            --min-coverage 0.985
-
-      - name: Sanitize Matthias SMG hurt alpha v3 candidate
-        if: steps.scope.outputs.matthias == 'true'
-        run: |
-          set -euo pipefail
-          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py --self-test
-          python3 scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py \
-            /tmp/pawn-slug-sprite-smoke/matthias \
-            "$LAB/machinegun-hurt-alpha-v2.png" \
-            "$LAB" \
-            --columns 8 \
-            --cell-size 416 \
-            --min-coverage 0.985 \
-            --max-detached-area 128
-
-      - name: Publish Matthias SMG hurt alpha v3 to R2
+      - name: Publish Matthias pose semantics v1 atlases to R2
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -287,36 +273,44 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/machinegun-hurt-alpha-v3.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.hurtAlphaV3 \
-            --prefix pawn-slug-godot/matthias/hurt-alpha-v3/machinegun/full \
-            --manifest "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json"
-          cat "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          PUB="$CAND/publish"
+          mkdir -p "$PUB"
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            python3 -S scripts/r2_asset_publish.py publish \
+              "$CAND/atlases/matthias-${weapon}-pose-semantics-v1.png" \
+              --logical-id "pawnSlug.godot.matthias.${weapon}.poseSemanticsV1" \
+              --prefix "pawn-slug-godot/matthias/pose-semantics-v1/${weapon}/full" \
+              --manifest "$PUB/${weapon}.json"
+            cat "$PUB/${weapon}.json" >> "$GITHUB_STEP_SUMMARY"
+          done
 
-      - name: Verify published Matthias SMG hurt alpha v3
+      - name: Verify published Matthias pose semantics v1 atlases
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
           steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
-          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          readarray -t asset < <(python3 - "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json" <<'PY'
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          PUB="$CAND/publish"
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            readarray -t asset < <(python3 - "$PUB/${weapon}.json" "$weapon" <<'PY'
           import json
           import sys
-          data = json.load(open(sys.argv[1], encoding="utf-8"))
-          item = data["assets"]["pawnSlug.godot.matthias.machinegun.hurtAlphaV3"]
+          path, weapon = sys.argv[1:3]
+          data = json.load(open(path, encoding="utf-8"))
+          item = data["assets"][f"pawnSlug.godot.matthias.{weapon}.poseSemanticsV1"]
           print(item["url"])
           print(item["sha256"])
           PY
-          )
-          curl --fail --silent --show-error --location --max-time 20 \
-            "${asset[0]}" -o "$LAB/published-machinegun-hurt-alpha-v3.png"
-          actual="$(sha256sum "$LAB/published-machinegun-hurt-alpha-v3.png" | awk '{print $1}')"
-          test "$actual" = "${asset[1]}"
-          echo "Published Matthias SMG hurt alpha v3 verified: ${asset[0]}"
+            )
+            curl --fail --silent --show-error --location --max-time 20 \
+              "${asset[0]}" -o "$PUB/${weapon}-published.png"
+            actual="$(sha256sum "$PUB/${weapon}-published.png" | awk '{print $1}')"
+            test "$actual" = "${asset[1]}"
+            echo "Verified ${weapon}: ${asset[0]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
 
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'

@@ -21,7 +21,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Acción primero.** Usa **Entorno** para cambiar entre producción, staging o ambos sin duplicar dashboards. Los 404 nuevos incluyen `request_path` normalizado para encontrar llamadas rotas sin guardar IDs ni query strings. Usa `request_id` para correlacionar un fallo con el traceback del backend."
+        "content": "**Acción primero.** Usa **Entorno** para cambiar entre producción y staging sin mezclar tuberías duplicadas: producción usa el backend Render canónico y staging usa el stdout OCI capturado por Alloy. Los 404 incluyen `request_path` normalizado y `request_id` permite correlacionar con backend."
       }
     },
     {
@@ -628,6 +628,52 @@
         "orientation": "horizontal",
         "showUnfilled": true
       }
+    },
+    {
+      "id": 18,
+      "title": "IPs únicas · tráfico aceptado por país",
+      "type": "barchart",
+      "description": "IPs cliente distintas con respuestas 2xx/3xx, agrupadas por país. Excluye smokes/CI y probes operativos; una IP no equivale necesariamente a una persona.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"2..|3..\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
+          "legendFormat": "{{client_country}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      }
     }
   ],
   "refresh": "30s",
@@ -645,7 +691,7 @@
         "name": "selector",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
         "current": {
           "text": "production",
           "value": "{service_name=\"chess-studio-backend\"}"
@@ -653,7 +699,7 @@
         "hide": 0,
         "skipUrlSync": false,
         "includeAll": true,
-        "allValue": "{service_name=~\"chess-studio-(backend(-staging)?|oci-backend-(production|staging)-stdout)\"}",
+        "allValue": "{service_name=~\"chess-studio-(backend|oci-backend-staging-stdout)\"}",
         "multi": false
       }
     ]
