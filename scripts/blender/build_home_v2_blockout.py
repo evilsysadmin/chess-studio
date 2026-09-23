@@ -672,6 +672,7 @@ PREMIUM_BEVEL_PREFIXES = (
     "HOME_PROP_library_",
     "HOME_PROP_left_sofa_",
     "HOME_PROP_bench_",
+    "HOME_PROP_chair_",
     "HOME_PROP_globe_",
     "HOME_PROP_sideboard_",
     "HOME_PROP_pedestal_",
@@ -1282,6 +1283,50 @@ def configure_cinematic_compositor(scene) -> None:
         scene.render.use_compositing = True
 
 
+def add_castle_chair(name, cx, cy, side, materials):
+    """Carved high-back chair of a Teutonic hall, back towards the wall side (+side*x)."""
+    wood = materials["table_wood"]
+    dark_wood = materials["library_wood"]
+    brass = materials["brass"]
+    dark = materials["dark"]
+    velvet = materials["bench_velvet"]
+
+    def px(du):
+        return cx + side * du
+
+    # Seat frame + tufted crimson cushion with a nailhead edge.
+    cube(f"{name}_seat_frame", (cx, cy, 0.72), (0.35, 0.36, 0.05), wood, bevel=0.030)
+    cube(f"{name}_seat_cushion", (px(-0.01), cy, 0.80), (0.31, 0.32, 0.055), velvet, bevel=0.045)
+    for nail in range(6):
+        sphere(f"{name}_nail_{nail}", (px(-0.318), cy - 0.27 + nail * 0.108, 0.775), (0.014, 0.014, 0.014), materials["gold"])
+    # Turned front legs, square carved back posts that rise into the backrest.
+    for ly in (-0.31, 0.31):
+        cylinder(f"{name}_leg_front_{ly}", (px(-0.30), cy + ly, 0.335), 0.036, 0.67, wood, vertices=14)
+        sphere(f"{name}_leg_bulb_{ly}", (px(-0.30), cy + ly, 0.44), (0.055, 0.055, 0.060), wood)
+        cylinder(f"{name}_leg_foot_{ly}", (px(-0.30), cy + ly, 0.03), 0.052, 0.06, brass, vertices=14)
+        cube(f"{name}_post_back_{ly}", (px(0.30), cy + ly, 1.04), (0.040, 0.040, 1.04), wood, bevel=0.016)
+        cone(f"{name}_finial_{ly}", (px(0.30), cy + ly, 2.15), 0.055, 0.004, 0.16, brass, vertices=12)
+        sphere(f"{name}_finial_ball_{ly}", (px(0.30), cy + ly, 2.06), (0.050, 0.050, 0.050), brass)
+        cube(f"{name}_rail_side_{ly}", (cx, cy + ly, 0.26), (0.30, 0.020, 0.022), wood, bevel=0.008)
+    cube(f"{name}_rail_front", (px(-0.30), cy, 0.26), (0.020, 0.31, 0.022), wood, bevel=0.008)
+    cube(f"{name}_rail_back", (px(0.30), cy, 0.26), (0.020, 0.31, 0.022), wood, bevel=0.008)
+    # Backrest: padded panel in a carved frame, gothic crest with a central spire.
+    cube(f"{name}_back_panel", (px(0.285), cy, 1.42), (0.022, 0.255, 0.44), velvet, bevel=0.020)
+    cube(f"{name}_back_rail_low", (px(0.30), cy, 0.94), (0.040, 0.31, 0.035), wood, bevel=0.014)
+    cube(f"{name}_back_rail_high", (px(0.30), cy, 1.92), (0.045, 0.32, 0.045), wood, bevel=0.016)
+    for spar in (-0.15, 0.0, 0.15):
+        cube(f"{name}_back_spar_{spar}", (px(0.31), cy + spar, 1.42), (0.018, 0.012, 0.44), dark_wood, bevel=0.005)
+    cone(f"{name}_crest_spire", (px(0.30), cy, 2.08), 0.11, 0.012, 0.26, wood, vertices=4).rotation_euler[2] = math.radians(45)
+    sphere(f"{name}_crest_boss", (px(0.245), cy, 1.42), (0.030, 0.030, 0.030), materials["gold"])
+    for nail in range(5):
+        sphere(f"{name}_back_nail_{nail}", (px(0.262), cy - 0.23 + nail * 0.115, 1.88 - 0.0), (0.012, 0.012, 0.012), materials["gold"])
+    # Arms with carved supports.
+    for ay in (-0.36, 0.36):
+        cube(f"{name}_arm_{ay}", (cx + side * 0.0, cy + ay, 1.16), (0.30, 0.028, 0.026), wood, bevel=0.012)
+        cube(f"{name}_arm_support_{ay}", (px(-0.27), cy + ay, 0.95), (0.026, 0.026, 0.20), wood, bevel=0.010)
+        sphere(f"{name}_arm_knob_{ay}", (px(-0.32), cy + ay, 1.18), (0.045, 0.040, 0.040), brass)
+
+
 def add_table_and_board(materials):
     wood = materials["table_wood"]
     dark = materials["board_dark"]
@@ -1313,30 +1358,6 @@ def add_table_and_board(materials):
             cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
             cylinder(f"HOME_PROP_table_leg_foot_{x}_{y}", (x, y, 0.14), 0.22, 0.12, wood, vertices=20)
     for side in (-1, 1):
-        panel_x = side * 2.58
-        cube(f"HOME_PROP_table_front_panel_{side}", (panel_x, -0.70, 0.76), (0.48, 0.055, 0.30), materials["wood"], bevel=0.055)
-        cube(
-            f"HOME_PROP_table_front_panel_inset_{side}",
-            (panel_x, -0.765, 0.76),
-            (0.37, 0.014, 0.205),
-            materials["dark"],
-            bevel=0.032,
-        )
-        cube(
-            f"HOME_PROP_table_front_panel_trim_top_{side}",
-            (panel_x, -0.784, 0.985),
-            (0.39, 0.010, 0.018),
-            materials["brass_dark"],
-            bevel=0.008,
-        )
-        cube(
-            f"HOME_PROP_table_front_panel_trim_bottom_{side}",
-            (panel_x, -0.784, 0.535),
-            (0.39, 0.010, 0.018),
-            materials["brass_dark"],
-            bevel=0.008,
-        )
-        sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.80, 0.77), (0.082, 0.022, 0.082), materials["gold"])
         leg_x = side * 3.12
         cube(f"HOME_PROP_table_front_leg_plinth_{side}", (leg_x, -0.40, 0.24), (0.26, 0.28, 0.18), wood, bevel=0.045)
         cube(f"HOME_PROP_table_front_leg_shaft_{side}", (leg_x, -0.40, 0.58), (0.18, 0.20, 0.28), wood, bevel=0.05)
@@ -1614,38 +1635,8 @@ def add_table_and_board(materials):
     )
 
     for side in (-1, 1):
-        x = side * 4.18
-        cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
-        bench_cushion = cube(
-            f"HOME_PROP_bench_cushion_{side}",
-            (
-                x + (0.012 if side > 0 else -0.018),
-                0.98 + (0.018 if side > 0 else -0.010),
-                0.742 + (0.012 if side > 0 else -0.004),
-            ),
-            (
-                0.685 + (0.008 if side > 0 else -0.006),
-                1.545 + (0.012 if side < 0 else -0.010),
-                0.195 + (0.008 if side > 0 else 0.0),
-            ),
-            materials["bench_velvet"],
-            bevel=0.12,
-        )
-        bench_cushion.rotation_euler[2] = math.radians(0.55 * side)
-        for by in (0.08, 2.32):
-            for dx in (-0.40, 0.40):
-                bx = x + dx
-                cube(f"HOME_PROP_bench_leg_{side}_{dx}_{by}", (bx, by, 0.26), (0.10, 0.10, 0.26), wood, bevel=0.03)
-                cylinder(f"HOME_PROP_bench_foot_{side}_{dx}_{by}", (bx, by, 0.05), 0.12, 0.10, materials["dark"], vertices=16)
-        for tuft in (-0.72, 0.0, 0.72):
-            sphere(f"HOME_PROP_bench_tuft_{side}_{tuft}", (x, 1.2 + tuft, 0.91), (0.07, 0.035, 0.035), materials["dark"])
-        for stud, sy in enumerate((-0.88, -0.48, -0.08, 0.32, 0.72, 1.12, 1.52)):
-            sphere(
-                f"HOME_PROP_bench_front_button_{side}_{stud}",
-                (x - side * 0.70, 0.80 + sy, 0.72),
-                (0.027, 0.027, 0.027),
-                materials["gold"],
-            )
+        for chair_idx, chair_y in enumerate((0.42, 1.68)):
+            add_castle_chair(f"HOME_PROP_chair_{side}_{chair_idx}", side * 4.14, chair_y, side, materials)
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
@@ -1780,6 +1771,77 @@ def add_fireplace(name: str, x: float, materials):
     add_point_light(f"HOME_LIGHT_{name}", (x, 5.40, 0.90), 340, (1.0, 0.24, 0.045), radius=0.90)
 
 
+def shelf_z_of(row: int, shelf_tops) -> float:
+    return shelf_tops[row]
+
+
+def _tilt_about_y(objs, pivot, angle: float) -> None:
+    """Lean a finished multi-part prop about its base pivot (rotation about Y)."""
+    if abs(angle) < 1e-5:
+        return
+    px, py, pz = pivot
+    cos_a, sin_a = math.cos(angle), math.sin(angle)
+    for obj in objs:
+        dx = obj.location.x - px
+        dz = obj.location.z - pz
+        obj.location.x = px + dx * cos_a + dz * sin_a
+        obj.location.z = pz - dx * sin_a + dz * cos_a
+        obj.rotation_euler[1] += angle
+
+
+def add_antique_tome(name, base, half, cover, materials, lean, *, thick, slim, seed):
+    """Upright bound volume, spine towards -Y. base=(x, y, shelf_top), half=(w, d, h)."""
+    bx, by, bz0 = base
+    w, d, h = half
+    bz = bz0 + h
+    brass_dark = materials["brass_dark"]
+    gilt = materials["gold"]
+    parts = []
+    # Paper block: recessed from the spine so the top edge shows real page depth.
+    parts.append(cube(f"{name}_pages", (bx, by + d * 0.05, bz), (w * 0.86, d * 0.93, h * 0.93), materials["paper"], bevel=0.004))
+    board = 0.011 + (0.004 if thick else 0.0)
+    for side, tag in ((-1, "l"), (1, "r")):
+        parts.append(cube(f"{name}_board_{tag}", (bx + side * (w - board), by + d * 0.02, bz), (board, d, h), cover, bevel=0.004))
+    spine_half = 0.016 if not slim else 0.012
+    parts.append(cube(f"{name}_spine", (bx, by - d + spine_half, bz), (w, spine_half, h), cover, bevel=min(0.014, w * 0.45)))
+    front = by - d - 0.002
+    band_count = 1 if slim else (5 if thick else 4)
+    fracs = [0.10 + 0.80 * (i / (band_count - 1)) for i in range(band_count)] if band_count > 1 else [0.18]
+    for i, frac in enumerate(fracs):
+        parts.append(cube(
+            f"{name}_band_{i}",
+            (bx, front - 0.004, bz0 + 2 * h * frac),
+            (w * 1.01, 0.008, 0.007 if not thick else 0.010),
+            brass_dark if (seed + i) % 3 else gilt,
+            bevel=0.003,
+        ))
+    if not slim and band_count >= 4:
+        # Gilt title panel between the two upper bands.
+        panel_z = bz0 + 2 * h * (fracs[-1] + fracs[-2]) * 0.5
+        panel_h = max(0.018, 2 * h * (fracs[-1] - fracs[-2]) * 0.30)
+        parts.append(cube(f"{name}_title", (bx, front - 0.005, panel_z), (w * 0.68, 0.006, panel_h), materials["dark"], bevel=0.002))
+        parts.append(cube(f"{name}_title_gilt", (bx, front - 0.010, panel_z), (w * 0.50, 0.003, panel_h * 0.30), gilt, bevel=0.001))
+    _tilt_about_y(parts, (bx, by, bz0), lean)
+
+
+def add_lying_tome(name, center, half, cover, materials, yaw):
+    """Folio lying flat, spine towards -Y. half=(w, d, t)."""
+    cx, cy, cz = center
+    w, d, t = half
+    parts = []
+    parts.append(cube(f"{name}_pages", (cx, cy + d * 0.04, cz), (w * 0.94, d * 0.94, t * 0.80), materials["paper"], bevel=0.004))
+    for side, tag in ((-1, "b"), (1, "t")):
+        parts.append(cube(f"{name}_board_{tag}", (cx, cy, cz + side * (t - 0.011)), (w, d, 0.011), cover, bevel=0.004))
+    parts.append(cube(f"{name}_spine", (cx, cy - d + 0.014, cz), (w, 0.014, t), cover, bevel=0.012))
+    for i, fx in enumerate((-0.55, -0.18, 0.18, 0.55)):
+        parts.append(cube(f"{name}_band_{i}", (cx + fx * w, cy - d - 0.004, cz), (0.010, 0.008, t * 1.01), materials["brass_dark"], bevel=0.003))
+    for obj in parts:
+        dx, dy = obj.location.x - cx, obj.location.y - cy
+        obj.location.x = cx + dx * math.cos(yaw) - dy * math.sin(yaw)
+        obj.location.y = cy + dx * math.sin(yaw) + dy * math.cos(yaw)
+        obj.rotation_euler[2] += yaw
+
+
 def add_bookshelf(materials):
     wood = materials["library_wood"]
     brass = materials["brass"]
@@ -1802,87 +1864,80 @@ def add_bookshelf(materials):
     for side in (-1, 1):
         cube(f"HOME_PROP_library_door_{side}", (x + side * 0.72, y - 0.64, 0.46), (0.62, 0.035, 0.32), wood, bevel=0.035)
         sphere(f"HOME_PROP_library_handle_{side}", (x + side * 0.16, y - 0.69, 0.46), (0.035, 0.018, 0.035), brass)
-    # Keep the silhouette dense, but make the shelves feel accumulated over time
-    # rather than generated from a nine-column grid. Heights grow from the shelf
-    # top so every book remains physically seated; deterministic gaps, lean and
-    # protrusion break the repeated CG rhythm without visual clutter.
-    book_colors = (materials["book_red"], materials["book_green"], materials["book_brown"], materials["book_olive"])
+    # Antique war treatises and chess compendia: every volume is a real tome
+    # (two thick boards, a paper block that shows on the top edge, a rounded
+    # spine with raised bands and a gilt title panel) packed shoulder to
+    # shoulder along the shelf. A single tinted box per book read as a sticker.
     shelf_tops = (0.55, 1.25, 1.95, 2.65, 3.35, 4.05)
+    tome_tones = (
+        materials["book_red"], materials["book_brown"], materials["book_green"],
+        materials["book_black"], materials["book_oxblood"], materials["book_olive"],
+        materials["book_tobacco"], materials["book_vellum"],
+    )
+    # Lying stacks sit directly on a shelf board; standing books keep clear of them.
+    lying_stacks = {1: (x - 0.86, 0.34), 3: (x - 0.06, 0.30), 5: (x - 0.38, 0.28)}
+    armillary_rows = {3, 4}
     for row, shelf_z in enumerate(shelf_tops):
         base_z = shelf_z + 0.086
-        for col in range(9):
-            gap_code = (row * 11 + col * 7) % 23
-            if gap_code in (0, 1):
-                continue
-            bx = x - 1.15 + col * 0.285 + (_hash01(col, row, 901) - 0.5) * 0.040
-            # Real shelves mix thin pamphlets, ordinary volumes and thick folios; a
-            # single width/height band made every book the same brick.
-            kind = _hash01(col, row, 941)
-            if kind < 0.18:
-                h = 0.15 + _hash01(row, col, 907) * 0.06
-                w = 0.040 + _hash01(col, row, 911) * 0.016
-            elif kind > 0.80:
-                h = 0.24 + _hash01(row, col, 907) * 0.075
-                w = 0.092 + _hash01(col, row, 911) * 0.032
+        cursor = x - 1.20
+        idx = 0
+        while cursor < x + 1.14:
+            roll = _hash01(idx, row, 941)
+            if roll < 0.20:
+                hw = 0.048 + _hash01(row, idx, 911) * 0.018
+                hh = 0.170 + _hash01(row, idx, 907) * 0.050
+            elif roll > 0.72:
+                hw = 0.135 + _hash01(row, idx, 911) * 0.055
+                hh = 0.215 + _hash01(row, idx, 907) * 0.045
             else:
-                h = 0.18 + _hash01(row, col, 907) * 0.085
-                w = 0.062 + _hash01(col, row, 911) * 0.028
-            depth = 0.062 + _hash01(row, col, 947) * 0.024
-            by = y - 0.47 + (_hash01(row, col, 919) - 0.5) * 0.055
-            bz = base_z + h
-            tone = book_colors[(row + col * 2) % len(book_colors)]
-            # A large bevel rounds the spine like a bound book instead of a box.
-            book = cube(
-                f"HOME_PROP_book_{row}_{col}",
-                (bx, by, bz),
-                (w, depth, h),
-                tone,
-                bevel=min(0.022, w * 0.42),
+                hw = 0.082 + _hash01(row, idx, 911) * 0.040
+                hh = 0.185 + _hash01(row, idx, 907) * 0.060
+            bx = cursor + hw
+            idx += 1
+            if bx + hw > x + 1.20:
+                break
+            cursor = bx + hw + 0.004
+            stack = lying_stacks.get(row)
+            if stack and abs(bx - stack[0]) < stack[1] + hw:
+                continue
+            if row in armillary_rows and x + 0.34 < bx < x + 1.10:
+                continue
+            if row == 3 and x - 1.00 < bx < x - 0.38:
+                continue
+            gap = _hash01(row, idx, 953)
+            leaning = gap > 0.93
+            if gap < 0.05:
+                cursor += 0.04 + _hash01(idx, row, 957) * 0.08
+            depth = 0.092 + _hash01(row, idx, 947) * 0.032
+            by = y - 0.548 + depth + max(0.0, _hash01(row, idx, 919) - 0.55) * 0.05
+            lean = math.radians(
+                (7.0 + _hash01(idx, row, 929) * 4.0) * (1 if _hash01(idx, row, 931) > 0.5 else -1)
+                if leaning else (_hash01(idx, row, 929) - 0.5) * 3.0
             )
-            lean = math.radians((_hash01(col, row, 929) - 0.5) * 9.0)
-            book.rotation_euler[1] = lean
-            book.rotation_euler[2] = math.radians((_hash01(row, col, 937) - 0.5) * 2.2)
-            front_y = by - depth - 0.006
-            # Raised bands across the spine, a title label and a tail band.
-            for band_idx, frac in enumerate((0.20, 0.80)):
-                cube(
-                    f"HOME_PROP_book_rib_{row}_{col}_{band_idx}",
-                    (bx + math.sin(lean) * h * (frac - 0.5) * 2, front_y, base_z + h * 2 * frac),
-                    (w * 0.97, 0.008, 0.009),
-                    brass if kind > 0.30 else materials["dark"],
-                    bevel=0.003,
-                )
-            if kind > 0.22:
-                label_z = base_z + h * 1.22
-                cube(
-                    f"HOME_PROP_book_label_{row}_{col}",
-                    (bx + math.sin(lean) * h * 0.44, front_y - 0.002, label_z),
-                    (w * 0.62, 0.006, h * 0.14),
-                    materials["paper"] if (row + col) % 3 else materials["brass_dark"],
-                    bevel=0.002,
-                )
-            if (row * 9 + col) % 7 == 0:
-                cube(
-                    f"HOME_PROP_book_band_{row}_{col}",
-                    (bx, by - 0.082, bz + h * 0.42),
-                    (w * 0.94, 0.010, 0.012),
-                    brass,
-                    bevel=0.004,
-                )
+            add_antique_tome(
+                f"HOME_PROP_book_{row}_{idx}",
+                (bx, by, base_z),
+                (hw, depth, hh),
+                tome_tones[int(_hash01(idx, row, 971) * len(tome_tones)) % len(tome_tones)],
+                materials,
+                lean,
+                thick=roll > 0.72,
+                slim=roll < 0.20,
+                seed=row * 31 + idx,
+            )
+            if leaning:
+                cursor += 0.09
 
-    # Break the shelf grid with a few deliberate horizontal stacks and bookends.
-    for idx, (sx, sz, width, tone) in enumerate((
-        (x - 0.86, 1.84, 0.34, materials["book_brown"]),
-        (x + 0.14, 3.22, 0.30, materials["book_green"]),
-        (x - 0.38, 4.54, 0.28, materials["book_red"]),
-    )):
-        for layer in range(2):
-            cube(
-                f"HOME_PROP_library_horizontal_book_{idx}_{layer}",
-                (sx + 0.035 * layer, y - 0.55, sz + 0.045 * layer),
-                (width, 0.085, 0.026),
-                tone if layer == 0 else materials["book_olive"],
-                bevel=0.010,
+    for row, (sx, half_w) in lying_stacks.items():
+        for layer in range(3):
+            lw = half_w * (1.0 - 0.10 * layer) - (0.02 if layer == 2 else 0.0)
+            add_lying_tome(
+                f"HOME_PROP_library_horizontal_book_{row}_{layer}",
+                (sx + (_hash01(layer, row, 977) - 0.5) * 0.06, y - 0.46, shelf_z_of(row, shelf_tops) + 0.086 + 0.056 + layer * 0.108),
+                (lw, 0.115, 0.050),
+                tome_tones[(row + layer * 3) % len(tome_tones)],
+                materials,
+                math.radians((_hash01(layer, row, 983) - 0.5) * 7.0),
             )
     for idx, (bx, bz) in enumerate(((x - 1.28, 2.18), (x + 1.26, 3.54))):
         cube(
@@ -2061,27 +2116,30 @@ def add_armor(materials):
     # the same layered-plate-plus-trim technique as the table banner border,
     # reused here for the shield the armour was missing entirely.
     heraldry = materials["heraldry_gold"]
-    shield_x, shield_y, shield_z = wrists[-1][0] - 0.06, wrists[-1][1] - 0.03, wrists[-1][2] - 0.10
-    cube("HOME_PROP_armor_shield_back", (shield_x, shield_y + 0.018, shield_z), (0.205, 0.022, 0.285), materials["brass_dark"], bevel=0.03)
-    cube("HOME_PROP_armor_shield_face", (shield_x, shield_y, shield_z), (0.180, 0.020, 0.260), steel, bevel=0.028)
+    shield_x, shield_y, shield_z = wrists[-1][0] - 0.06, wrists[-1][1] - 0.03, wrists[-1][2] - 0.16
+    # Heater shield: rectangular upper field plus a pyramid point, gold-banded
+    # cross and a blazon, like the painted statue reference.
+    cube("HOME_PROP_armor_shield_back", (shield_x, shield_y + 0.024, shield_z + 0.16), (0.250, 0.020, 0.155), materials["brass_dark"], bevel=0.030)
+    cube("HOME_PROP_armor_shield_face", (shield_x, shield_y, shield_z + 0.16), (0.232, 0.022, 0.150), materials["steel"], bevel=0.026)
+    point_back = cone("HOME_PROP_armor_shield_point_back", (shield_x, shield_y + 0.024, shield_z - 0.135), 0.250, 0.001, 0.320, materials["brass_dark"], vertices=4)
+    point_back.scale.y = 0.020 / 0.250
+    point = cone("HOME_PROP_armor_shield_point", (shield_x, shield_y, shield_z - 0.135), 0.232, 0.001, 0.310, materials["steel"], vertices=4)
+    point.scale.y = 0.022 / 0.232
+    outline = [
+        (-0.238, 0.312), (0.238, 0.312), (0.238, 0.012), (0.0, -0.300), (-0.238, 0.012), (-0.238, 0.312),
+    ]
     curve_tube(
         "HOME_PROP_armor_shield_rim",
-        [
-            (shield_x, shield_y - 0.021, shield_z + 0.260),
-            (shield_x - 0.180, shield_y - 0.021, shield_z + 0.130),
-            (shield_x - 0.180, shield_y - 0.021, shield_z - 0.130),
-            (shield_x, shield_y - 0.021, shield_z - 0.260),
-            (shield_x + 0.180, shield_y - 0.021, shield_z - 0.130),
-            (shield_x + 0.180, shield_y - 0.021, shield_z + 0.130),
-            (shield_x, shield_y - 0.021, shield_z + 0.260),
-        ],
+        [(shield_x + ox, shield_y - 0.026, shield_z + oz) for ox, oz in outline],
         0.016,
         heraldry,
     )
-    for rivet_idx, (rx, rz) in enumerate(((-0.130, 0.180), (0.130, 0.180), (-0.130, -0.180), (0.130, -0.180))):
-        sphere(f"HOME_PROP_armor_shield_rivet_{rivet_idx}", (shield_x + rx, shield_y - 0.022, shield_z + rz), (0.018, 0.012, 0.018), heraldry)
-    cube("HOME_PROP_armor_shield_cross_v", (shield_x, shield_y - 0.023, shield_z), (0.024, 0.010, 0.150), heraldry, bevel=0.008)
-    cube("HOME_PROP_armor_shield_cross_h", (shield_x, shield_y - 0.023, shield_z + 0.030), (0.110, 0.010, 0.024), heraldry, bevel=0.008)
+    cube("HOME_PROP_armor_shield_cross_v", (shield_x, shield_y - 0.028, shield_z + 0.03), (0.030, 0.010, 0.275), heraldry, bevel=0.008)
+    cube("HOME_PROP_armor_shield_cross_h", (shield_x, shield_y - 0.028, shield_z + 0.18), (0.225, 0.010, 0.030), heraldry, bevel=0.008)
+    cube("HOME_PROP_armor_shield_blazon", (shield_x + 0.11, shield_y - 0.032, shield_z + 0.255), (0.070, 0.008, 0.052), heraldry, bevel=0.010)
+    cube("HOME_PROP_armor_shield_blazon_field", (shield_x + 0.11, shield_y - 0.036, shield_z + 0.255), (0.052, 0.006, 0.036), materials["velvet_dark"], bevel=0.008)
+    for rivet_idx, (rx, rz) in enumerate(((-0.180, 0.180), (0.180, 0.100), (-0.180, 0.100), (0.0, -0.140), (0.0, 0.260))):
+        sphere(f"HOME_PROP_armor_shield_rivet_{rivet_idx}", (shield_x + rx, shield_y - 0.032, shield_z + rz), (0.018, 0.012, 0.018), brass)
 
     # Sword held low in the right hand, point down toward the pedestal --
     # a resting guard stance instead of a two-handed ceremonial clasp.
@@ -2110,12 +2168,16 @@ def add_armor(materials):
     # plate because it has flat faces and edges; a sphere never will no
     # matter how much trim is glued onto it, so the head is a bevelled box.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    cube("HOME_PROP_armor_helmet", (x, y, 2.85), (0.235, 0.215, 0.295), steel, bevel=0.05)
-    cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.205, 0.040, 0.042), dark, bevel=0.012)
-    for slot, sx in enumerate((-0.11, -0.055, 0.0, 0.055, 0.11)):
-        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.308, 2.82), (0.012, 0.008, 0.018), dark, bevel=0.004)
-    cube("HOME_PROP_armor_brow", (x, y - 0.282, 2.94), (0.22, 0.032, 0.026), materials["brass_dark"], bevel=0.012)
-    sphere("HOME_PROP_armor_helmet_crest", (x, y + 0.01, 3.12), (0.075, 0.060, 0.095), steel)
+    heraldry_helm = materials["heraldry_gold"]
+    cylinder("HOME_PROP_armor_helmet", (x, y, 2.82), 0.225, 0.56, steel, vertices=28)
+    sphere("HOME_PROP_armor_helmet_crest", (x, y, 3.10), (0.225, 0.225, 0.135), steel)
+    # Crusader great-helm: horizontal eye slit, gold cross straps, breathing holes.
+    cube("HOME_PROP_armor_visor", (x, y - 0.222, 2.86), (0.165, 0.020, 0.024), dark, bevel=0.008)
+    cube("HOME_PROP_armor_brow", (x, y - 0.232, 2.86), (0.026, 0.012, 0.300), heraldry_helm, bevel=0.008)
+    cube("HOME_PROP_armor_visor_edge", (x, y - 0.232, 2.92), (0.215, 0.012, 0.026), heraldry_helm, bevel=0.008)
+    for slot, (sx, sz) in enumerate(((-0.11, 2.70), (-0.11, 2.64), (-0.11, 2.58), (0.11, 2.70), (0.11, 2.64), (0.11, 2.58))):
+        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.226, sz), (0.020, 0.010, 0.008), dark, bevel=0.003)
+    cylinder("HOME_PROP_armor_helmet_rim", (x, y, 2.55), 0.238, 0.032, heraldry_helm, vertices=28)
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.56), 0.245, 0.105, brass, vertices=28)
     cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), materials["brass_dark"], bevel=0.006)
@@ -2848,9 +2910,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
-            (0.190, 0.202, 0.225, 1),
-            roughness=0.54,
-            metallic=0.68,
+            (0.330, 0.350, 0.390, 1),
+            roughness=0.38,
+            metallic=0.82,
             variation=0.10,
             variation_scale=5.4,
         texture_profile="metal"),
@@ -2898,6 +2960,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "book_brown": material("HOME_MAT_book_brown", (0.235, 0.098, 0.038, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
         "book_red": material("HOME_MAT_book_red", (0.290, 0.030, 0.028, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
         "book_olive": material("HOME_MAT_book_olive", (0.190, 0.160, 0.048, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
+        "book_black": material("HOME_MAT_book_black", (0.030, 0.024, 0.022, 1), roughness=0.82, bump_scale=5.0, bump_strength=0.16, variation=0.30, variation_scale=3.0, texture_profile="leather"),
+        "book_oxblood": material("HOME_MAT_book_oxblood", (0.135, 0.014, 0.020, 1), roughness=0.82, bump_scale=5.0, bump_strength=0.16, variation=0.30, variation_scale=3.0, texture_profile="leather"),
+        "book_tobacco": material("HOME_MAT_book_tobacco", (0.115, 0.058, 0.026, 1), roughness=0.82, bump_scale=5.0, bump_strength=0.16, variation=0.30, variation_scale=3.0, texture_profile="leather"),
+        "book_vellum": material("HOME_MAT_book_vellum", (0.40, 0.31, 0.19, 1), roughness=0.82, bump_scale=5.0, bump_strength=0.16, variation=0.30, variation_scale=3.0, texture_profile="leather"),
         "piece_light": material(
             "HOME_MAT_piece_light",
             (0.38, 0.30, 0.22, 1),
@@ -3917,6 +3983,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["armor_steel"],
         bevel=0.040,
     )
+    chest_outline = [(1.24, 2.78), (1.86, 2.78), (1.82, 2.43), (1.70, 2.12), (1.55, 1.96), (1.40, 2.12), (1.28, 2.43), (1.24, 2.78)]
+    curve_tube(
+        "HOME_PROP_armor_chest_trim",
+        [(1.55 + (px_ - 1.55) * 0.90, 5.478, pz_) for px_, pz_ in chest_outline],
+        0.010,
+        materials["heraldry_gold"],
+    )
+    cube("HOME_PROP_armor_chest_band", (1.55, 5.476, 2.36), (0.020, 0.010, 0.40), materials["heraldry_gold"], bevel=0.006)
+    cube("HOME_PROP_armor_chest_band_h", (1.55, 5.476, 2.50), (0.27, 0.010, 0.018), materials["heraldry_gold"], bevel=0.006)
     # Two narrow fauld lames instead of the old bright three-bar robot belt.
     for idx, (z, half_w) in enumerate(((1.92, 0.30), (1.82, 0.325))):
         cube(
