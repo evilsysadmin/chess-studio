@@ -51,6 +51,7 @@ export default function Tutorial({ onExit }) {
   const [mistakes, setMistakes] = useState(0);
   const [attemptEpoch, setAttemptEpoch] = useState(0);
   const [hintActive, setHintActive] = useState(false);
+  const [curriculumOpen, setCurriculumOpen] = useState(false);
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
@@ -83,6 +84,7 @@ export default function Tutorial({ onExit }) {
     setLineIndex(0);
     setMistakes(0);
     setHintActive(false);
+    setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
@@ -224,7 +226,7 @@ export default function Tutorial({ onExit }) {
   const courseSummary = matthiasSchoolCourseSummary(lesson.courseId, schoolProgress);
 
   return (
-    <div className="tutorial-shell matthias-school-shell" data-school-section={section}>
+    <div className="tutorial-shell matthias-school-shell" data-school-section={section} data-school-curriculum={curriculumOpen ? 'open' : 'closed'}>
       <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
         ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
       </button>
@@ -282,7 +284,23 @@ export default function Tutorial({ onExit }) {
             </div>
           </header>
 
-          <div className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
+          <div className="matthias-school-focusbar">
+            <div>
+              <span>${courseSummary.course?.label || ''}</span>
+              <strong>${lesson.title}</strong>
+            </div>
+            <button
+              type="button"
+              className="secondary-btn"
+              aria-expanded={curriculumOpen}
+              aria-controls="matthias-school-curriculum"
+              onClick={() => setCurriculumOpen((open) => !open)}
+            >
+              {curriculumOpen ? 'Cerrar plan de estudios' : 'Plan de estudios'}
+            </button>
+          </div>
+
+          <div id="matthias-school-curriculum" className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
             {MATTHIAS_SCHOOL_COURSES.map((course) => {
               const summary = matthiasSchoolCourseSummary(course.id, schoolProgress);
               return (
