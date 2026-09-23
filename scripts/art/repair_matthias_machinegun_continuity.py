@@ -2,8 +2,9 @@
 """Deterministic Matthias SMG idle/airborne continuity repair.
 
 Never invents poses. It reuses the existing 8x18 SMG atlas, normalizes only
-idle/jump/fall/land against homologous canonical pistol geometry, drops only
-bounded detached technical components, and preserves every other row bytewise.
+idle/jump/fall/land against homologous canonical pistol geometry, restores the
+idle lower-body silhouette from the same-frame pistol canon, drops only bounded
+detached technical components, and preserves every other row bytewise.
 """
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ MIN_IDLE_Y_SCALE = 0.92
 MAX_IDLE_Y_SCALE = 1.12
 MIN_AIRBORNE_SCALE = 0.75
 MAX_AIRBORNE_SCALE = 1.35
+IDLE_CANONICAL_LOWER_BODY_START_FRACTION = 0.64
 
 
 def parse_args() -> argparse.Namespace:
