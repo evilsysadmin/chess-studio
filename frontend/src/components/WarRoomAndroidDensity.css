@@ -35,8 +35,8 @@
     pointer-events: auto;
   }
 
-  /* Portrait does not need a second Matthias portrait next to a full 3D room.
-     Spend those pixels on his name + CPU level, which carries more information. */
+  /* Compact War Room already identifies Matthias textually. Spend the avatar
+     pixels on the live turn signal and one-tap actions instead. */
   .game-screen .game-layout-3d .game-3d-turn-pill-avatar,
   .game-screen .game-layout-3d .game-3d-turn-pill-divider {
     display: none !important;
@@ -59,16 +59,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: .64rem;
-  }
-
-  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: color-mix(in srgb, var(--studio-muted) 82%, var(--cream));
-    font-size: .52rem;
   }
 
   .game-screen .game-layout-3d .game-3d-turn-pill-light {
@@ -221,10 +211,6 @@
     grid-template-columns: minmax(0, 1fr) 7px max-content 56px 32px !important;
     gap: .22rem;
     padding: .2rem .28rem !important;
-  }
-
-  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span {
-    font-size: .49rem;
   }
 
   .game-screen .game-layout-3d .game-3d-compact-actions {
