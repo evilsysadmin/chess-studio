@@ -548,3 +548,37 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     min-height: 400px;
   }
 }
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker {
+  display: grid;
+  gap: .35rem;
+  margin-top: .22rem;
+  padding-top: .4rem;
+  border-top: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker > span {
+  color: color-mix(in srgb, var(--brass) 72%, var(--parchment));
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .24rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker button {
+  min-width: 0;
+  padding-inline: .38rem;
+  text-align: center;
+  font-size: .62rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker button.active {
+  background: color-mix(in srgb, var(--brass) 18%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--brass) 46%, transparent);
+}
