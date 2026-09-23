@@ -195,7 +195,11 @@ def classify_path(path: str) -> set[str] | None:
         return {"warroom-core"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
-        if any(token in lower for token in ("board3d", "warroom3d", "gameboardview", "game3d")):
+        # Class Room renders through Board3D too. Shared Board3D changes must
+        # therefore produce both training proof and the existing War Room proof.
+        if "board3d" in lower:
+            return {"training", *WARROOM_RENDERER_SHARED}
+        if any(token in lower for token in ("warroom3d", "gameboardview", "game3d")):
             return set(WARROOM_RENDERER_SHARED)
         if "armor" in lower or "armour" in lower:
             return {"warroom-armor"}
@@ -269,7 +273,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
-    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training,warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/Board3DScene.js"]) == "training,warroom-core,warroom-hans"
     assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core,warroom-hans"
     assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core,warroom-hans"
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
