@@ -328,7 +328,6 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
   torch.userData.warRoomTorchFire = 'hearth-bright-v3';
   torch.userData.warRoomTorchLighting = 'gallery-spill-v2';
-  torch.userData.warRoomWallGlowRealLight = 'omitted-halo-owned-v1';
 
   const iron = physical(GALLERY.iron, {
     metalness: 0.64,
@@ -497,7 +496,6 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
   group.userData.warRoomMilitaryGallerySideCanvases = 2;
   group.userData.warRoomMilitaryGalleryTorches = 2;
-  group.userData.warRoomRetiredTorchWallGlowLightsOmitted = 2;
   group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v4';
