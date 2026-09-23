@@ -45,7 +45,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Security** correlaciona señales objetivas de Chess Studio y Cloudflare. Los smokes firmados de staging (`staging-smoke-cleanup` y `staging-browser-smoke`) se excluyen por defecto; el namespace técnico legacy `ci_smoke_<16hex>` también queda fuera de los rankings/forensics auth y sigue disponible en Log Explorer. Un pico **no se etiqueta automáticamente como ataque**: correlaciona bans, 401/403/429, WAF, presión de tráfico, IP y país. Los rankings de IP y país usan el mismo stream `auth_login_failed` y respetan `Entorno backend`."
+        "content": "**Security** correlaciona señales objetivas de Chess Studio y Cloudflare. Los smokes firmados de staging (`staging-smoke-cleanup` y `staging-browser-smoke`) se excluyen por defecto; el namespace técnico legacy `ci_smoke_<16hex>` también queda fuera de los rankings/forensics auth y sigue disponible en Log Explorer. Un pico **no se etiqueta automáticamente como ataque**: correlaciona bans, 401/403/429, WAF, presión de tráfico, IP y país. El ranking por IP muestra quién insiste más; `IPs ofensivas únicas · por país` deduplica primero por `(client_country, client_ip)` para contar cuántas IPs distintas atacan desde cada país. Ambos usan `auth_login_failed` y respetan `Entorno backend`."
       }
     },
     {
@@ -591,9 +591,9 @@
     },
     {
       "id": 11,
-      "type": "bargauge",
-      "title": "Top países · auth offenders",
-      "description": "Países de origen de fallos reales de login, usando client_country del mismo stream que el ranking de IPs. Respeta el entorno backend y excluye CI/smokes.",
+      "type": "barchart",
+      "title": "IPs ofensivas únicas · por país",
+      "description": "Número de client_ip distintas con fallos reales de login, agrupadas por client_country en el rango seleccionado. Respeta Entorno backend y excluye CI/smokes.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -611,9 +611,16 @@
         "overrides": []
       },
       "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "showUnfilled": true
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
@@ -621,7 +628,8 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(12, sum by (client_country) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_country != \"\" [$__range])))",
+          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
+          "instant": true,
           "legendFormat": "{{client_country}}",
           "refId": "A",
           "queryType": "instant"
