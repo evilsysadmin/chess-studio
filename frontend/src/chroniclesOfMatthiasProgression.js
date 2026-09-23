@@ -556,19 +556,23 @@ export function chroniclesTacticsModifiers(progression, memberId) {
   };
 }
 
+function effectiveTacticsModifiers(progression, member) {
+  const progressionModifiers = chroniclesTacticsModifiers(progression, member.id);
+  const creatorModifiers = member.characterBuild?.creatorModifiers || {};
+  return {
+    ...progressionModifiers,
+    attackDamageBonus: progressionModifiers.attackDamageBonus + nonNegativeInteger(creatorModifiers.attackDamageBonus),
+    reachBonus: progressionModifiers.reachBonus + nonNegativeInteger(creatorModifiers.reachBonus),
+    abilityPotencyBonus: progressionModifiers.abilityPotencyBonus + nonNegativeInteger(creatorModifiers.abilityPotencyBonus),
+    abilityCharges: progressionModifiers.abilityCharges + nonNegativeInteger(creatorModifiers.abilityChargesBonus),
+  };
+}
+
 export function applyChroniclesProgressionToTacticsState(state, progression) {
   const classAbilityCharges = {};
   const rpgModifiers = {};
   const party = (state.party || []).map((member) => {
-    const progressionModifiers = chroniclesTacticsModifiers(progression, member.id);
-    const creatorModifiers = member.characterBuild?.creatorModifiers || {};
-    const modifiers = {
-      ...progressionModifiers,
-      attackDamageBonus: progressionModifiers.attackDamageBonus + nonNegativeInteger(creatorModifiers.attackDamageBonus),
-      reachBonus: progressionModifiers.reachBonus + nonNegativeInteger(creatorModifiers.reachBonus),
-      abilityPotencyBonus: progressionModifiers.abilityPotencyBonus + nonNegativeInteger(creatorModifiers.abilityPotencyBonus),
-      abilityCharges: progressionModifiers.abilityCharges + nonNegativeInteger(creatorModifiers.abilityChargesBonus),
-    };
+    const modifiers = effectiveTacticsModifiers(progression, member);
     rpgModifiers[member.id] = modifiers;
     classAbilityCharges[member.id] = modifiers.abilityCharges;
     const baseMaxHp = Math.max(1, nonNegativeInteger(member.maxHp, 1));
@@ -578,6 +582,37 @@ export function applyChroniclesProgressionToTacticsState(state, progression) {
       ...member,
       maxHp,
       hp: Math.min(maxHp, baseHp + modifiers.bonusMaxHp),
+    };
+  });
+  return {
+    ...state,
+    party,
+    classAbilityCharges,
+    rpgModifiers,
+  };
+}
+
+export function reconcileChroniclesProgressionInTacticsState(state, progression) {
+  if (!state || typeof state !== 'object') return state;
+  const rpgModifiers = {};
+  const classAbilityCharges = { ...(state.classAbilityCharges || {}) };
+  const party = (state.party || []).map((member) => {
+    const previousModifiers = state.rpgModifiers?.[member.id] || {};
+    const modifiers = effectiveTacticsModifiers(progression, member);
+    rpgModifiers[member.id] = modifiers;
+
+    const previousMaxCharges = Math.max(0, nonNegativeInteger(previousModifiers.abilityCharges));
+    const currentCharges = Math.max(0, nonNegativeInteger(classAbilityCharges[member.id]));
+    const spentCharges = Math.max(0, previousMaxCharges - Math.min(previousMaxCharges, currentCharges));
+    classAbilityCharges[member.id] = Math.max(0, modifiers.abilityCharges - spentCharges);
+
+    const previousBonusMaxHp = Math.max(0, nonNegativeInteger(previousModifiers.bonusMaxHp));
+    const nextBonusMaxHp = Math.max(0, nonNegativeInteger(modifiers.bonusMaxHp));
+    const maxHp = Math.max(1, nonNegativeInteger(member.maxHp, 1) - previousBonusMaxHp + nextBonusMaxHp);
+    return {
+      ...member,
+      maxHp,
+      hp: Math.min(maxHp, Math.max(0, nonNegativeInteger(member.hp))),
     };
   });
   return {

@@ -6,6 +6,7 @@ import {
 import {
   applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
+  reconcileChroniclesProgressionInTacticsState,
   beginChroniclesTacticsRun,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
@@ -235,21 +236,26 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
     commitState(resolved, { actorMemberId: memberId, actionKind: 'use' });
   }, [commitState]);
 
+  const applyLiveProgression = useCallback((nextProgression) => {
+    const saved = saveChroniclesProgression(nextProgression);
+    progressionRef.current = saved;
+    setProgression(saved);
+    const reconciled = reconcileChroniclesProgressionInTacticsState(stateRef.current, saved);
+    stateRef.current = reconciled;
+    setState(reconciled);
+  }, []);
+
   const allocateAttribute = useCallback((memberId, attributeKey) => {
     const result = spendChroniclesAttributePoint(progressionRef.current, memberId, attributeKey);
     if (!result.spent) return;
-    const saved = saveChroniclesProgression(result.progression);
-    progressionRef.current = saved;
-    setProgression(saved);
-  }, []);
+    applyLiveProgression(result.progression);
+  }, [applyLiveProgression]);
 
   const learnSkill = useCallback((memberId, skillId) => {
     const result = unlockChroniclesSkill(progressionRef.current, memberId, skillId);
     if (!result.unlocked) return;
-    const saved = saveChroniclesProgression(result.progression);
-    progressionRef.current = saved;
-    setProgression(saved);
-  }, []);
+    applyLiveProgression(result.progression);
+  }, [applyLiveProgression]);
 
   const selectMember = useCallback((memberId) => {
     selectedMemberRef.current = memberId;
