@@ -1,5 +1,7 @@
 extends Node2D
 
+const MatthiasMotion := preload("res://scripts/matthias_motion.gd")
+
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
 # The strict-v7 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
@@ -1450,54 +1452,7 @@ func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
     return true
 
 func _select_v9_run_source_row(image: Image, weapon_id: String) -> int:
-    var run_row := int(V9_ACTIONS["run"]["row"])
-    var walk_row := int(V9_ACTIONS["walk"]["row"])
-    var run_score := _v9_lower_body_motion_score(image, run_row)
-    var walk_score := _v9_lower_body_motion_score(image, walk_row)
-    if (
-        walk_score > run_score + RUN_LEG_MOTION_MIN_DIFF
-        and (
-            walk_score > run_score * RUN_LEG_MOTION_RELATIVE_GAIN
-            or run_score < RUN_LEG_MOTION_MIN_SCORE
-        )
-    ):
-        push_warning(
-            "Matthias %s run row has weak lower-body motion (%.3f vs walk %.3f); using authored walk stride at run cadence"
-            % [weapon_id, run_score, walk_score]
-        )
-        return walk_row
-    return run_row
-
-
-func _v9_lower_body_motion_score(image: Image, row: int) -> float:
-    var changed := 0
-    var sampled := 0
-    var y_start := int(round(float(V9_ATLAS_CELL_SIZE) * 0.55))
-    var y_end := V9_ATLAS_CELL_SIZE - 12
-    var x_start := 18
-    var x_end := V9_ATLAS_CELL_SIZE - 18
-    for frame_index in range(1, V9_ATLAS_COLUMNS):
-        var previous_x := (frame_index - 1) * V9_ATLAS_CELL_SIZE
-        var current_x := frame_index * V9_ATLAS_CELL_SIZE
-        var base_y := row * V9_ATLAS_CELL_SIZE
-        for local_y in range(y_start, y_end, RUN_LEG_MOTION_SAMPLE_STEP):
-            for local_x in range(x_start, x_end, RUN_LEG_MOTION_SAMPLE_STEP):
-                var previous := image.get_pixel(previous_x + local_x, base_y + local_y)
-                var current := image.get_pixel(current_x + local_x, base_y + local_y)
-                if maxf(previous.a, current.a) <= 0.10:
-                    continue
-                var pixel_diff := (
-                    absf(previous.r - current.r)
-                    + absf(previous.g - current.g)
-                    + absf(previous.b - current.b)
-                    + absf(previous.a - current.a)
-                )
-                if pixel_diff >= RUN_LEG_PIXEL_DIFF:
-                    changed += 1
-                sampled += 1
-    if sampled <= 0:
-        return 0.0
-    return float(changed) / float(sampled)
+    return MatthiasMotion.select_run_source_row(image, weapon_id, int(V9_ACTIONS["run"]["row"]), int(V9_ACTIONS["walk"]["row"]), V9_ATLAS_CELL_SIZE, V9_ATLAS_COLUMNS, V9_ATLAS_COLUMNS, RUN_LEG_MOTION_SAMPLE_STEP, RUN_LEG_PIXEL_DIFF, RUN_LEG_MOTION_MIN_DIFF, RUN_LEG_MOTION_RELATIVE_GAIN, RUN_LEG_MOTION_MIN_SCORE)
 
 
 func _build_v9_frames(image: Image, weapon_id: String = "") -> SpriteFrames:
@@ -1722,56 +1677,8 @@ func _cell_has_visible_pixels(image: Image, row: int, column: int) -> bool:
     return image.get_region(rect).get_used_rect().size != Vector2i.ZERO
 
 func _select_run_source_row(image: Image) -> int:
-    var run_spec: Dictionary = FULL_ACTIONS["run"]
-    var walk_spec: Dictionary = FULL_ACTIONS["walk"]
-    var run_row := int(run_spec["row"])
-    var walk_row := int(walk_spec["row"])
-    var run_score := _lower_body_motion_score(image, run_row, int(run_spec["count"]))
-    var walk_score := _lower_body_motion_score(image, walk_row, int(walk_spec["count"]))
-    if (
-        walk_score > run_score + RUN_LEG_MOTION_MIN_DIFF
-        and (
-            walk_score > run_score * RUN_LEG_MOTION_RELATIVE_GAIN
-            or run_score < RUN_LEG_MOTION_MIN_SCORE
-        )
-    ):
-        push_warning(
-            "Strict run row has weak lower-body motion; using authored walk stride for running"
-        )
-        return walk_row
-    return run_row
+    return MatthiasMotion.select_run_source_row(image, "legacy", int(FULL_ACTIONS["run"]["row"]), int(FULL_ACTIONS["walk"]["row"]), FULL_ATLAS_CELL_SIZE, int(FULL_ACTIONS["run"]["count"]), int(FULL_ACTIONS["walk"]["count"]), RUN_LEG_MOTION_SAMPLE_STEP, RUN_LEG_PIXEL_DIFF, RUN_LEG_MOTION_MIN_DIFF, RUN_LEG_MOTION_RELATIVE_GAIN, RUN_LEG_MOTION_MIN_SCORE)
 
-func _lower_body_motion_score(image: Image, row: int, frame_count: int) -> float:
-    if frame_count <= 1:
-        return 0.0
-    var changed := 0
-    var sampled := 0
-    var y_start := int(round(float(FULL_ATLAS_CELL_SIZE) * 0.55))
-    var y_end := FULL_ATLAS_CELL_SIZE - 12
-    var x_start := 18
-    var x_end := FULL_ATLAS_CELL_SIZE - 18
-    for frame_index in range(1, frame_count):
-        var previous_x := (frame_index - 1) * FULL_ATLAS_CELL_SIZE
-        var current_x := frame_index * FULL_ATLAS_CELL_SIZE
-        var base_y := row * FULL_ATLAS_CELL_SIZE
-        for local_y in range(y_start, y_end, RUN_LEG_MOTION_SAMPLE_STEP):
-            for local_x in range(x_start, x_end, RUN_LEG_MOTION_SAMPLE_STEP):
-                var previous := image.get_pixel(previous_x + local_x, base_y + local_y)
-                var current := image.get_pixel(current_x + local_x, base_y + local_y)
-                if maxf(previous.a, current.a) <= 0.10:
-                    continue
-                var pixel_diff := (
-                    absf(previous.r - current.r)
-                    + absf(previous.g - current.g)
-                    + absf(previous.b - current.b)
-                    + absf(previous.a - current.a)
-                )
-                if pixel_diff >= RUN_LEG_PIXEL_DIFF:
-                    changed += 1
-                sampled += 1
-    if sampled <= 0:
-        return 0.0
-    return float(changed) / float(sampled)
 
 func _build_legacy_pistol_frames(image: Image) -> SpriteFrames:
     if image.get_size() != Vector2i(768, 960):

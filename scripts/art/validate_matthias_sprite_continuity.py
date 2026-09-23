@@ -561,11 +561,6 @@ def _runtime_run_row(
         frame["_lowerBodySignature"] = lower_body_signature(
             image, f"{weapon} {label} c{col}"
         )
-        if frame["componentCount"] != 1:
-            raise ValueError(
-                f"{weapon} {label} c{col}: detached opaque components are "
-                f"forbidden: {frame['detachedAreas']}"
-            )
         images.append(image)
         frames.append(frame)
     return images, frames
@@ -593,6 +588,14 @@ def validate_run(gdscript: Path, sprite_dir: Path) -> dict:
             )
         )
         selected = walk_frames if use_walk else run_frames
+        selected_source = "walk" if use_walk else "run"
+        for col, frame in enumerate(selected):
+            if frame["componentCount"] != 1:
+                raise ValueError(
+                    f"{weapon} selected runtime {selected_source} c{col}: "
+                    f"detached opaque components are forbidden: "
+                    f"{frame['detachedAreas']}"
+                )
         motion = validate_lower_body_motion(
             selected, f"{weapon} selected runtime run"
         )
@@ -604,7 +607,7 @@ def validate_run(gdscript: Path, sprite_dir: Path) -> dict:
             )
         by_weapon[weapon] = {
             "selectedRow": 1 if use_walk else 2,
-            "selectedSource": "walk" if use_walk else "run",
+            "selectedSource": selected_source,
             "walkRawMotionScore": round(walk_score, 6),
             "runRawMotionScore": round(run_score, 6),
             "lowerBodyMotion": motion,
