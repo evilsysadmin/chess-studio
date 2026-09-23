@@ -20,11 +20,11 @@ No Helm controller, notification controller, image automation controller, source
 
 `versions.env` is the source of truth for the Flux CLI version, Linux amd64/ARM64 archive checksums, exact controller list, namespace and resource admission thresholds.
 
-Changes to this dormant seam are validated by the protected static preflight: `scripts/workflow_static_contracts.py` runs the Flux contract and admission self-test before any conditional OCI/Terraform work. The seam is deliberately **not** wired into `oci-readiness.yml`, so changing pins, documentation or pure admission logic does not trigger the ARM64 backend smoke or any K3s publication path.
+Changes to this dormant seam are validated by the path-scoped `OCI staging lab` workflow. Flux contract/admission/export checks run only when the HOLD seam itself changes; the seam remains deliberately **not** wired into `oci-readiness.yml`, so unrelated product PRs and canonical Compose readiness do not pay for dormant lab tooling.
 
 ## Protected export contract
 
-The protected static preflight also invokes `scripts/oci_flux_export.py --ci-if-required`. It stays offline and exits immediately for unrelated/local runs, but on a pull request that changes the Flux seam it:
+The path-scoped lab contract also invokes `scripts/oci_flux_export.py --ci-if-required`. It stays offline and exits immediately for unrelated/local runs, but on a pull request that changes the Flux seam it:
 
 - downloads the pinned Flux CLI archive for the runner architecture and verifies the pinned SHA-256 before extraction;
 - runs `flux install --export` for exactly `source-controller,kustomize-controller` in `flux-system`;

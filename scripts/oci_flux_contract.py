@@ -10,16 +10,15 @@ VERSIONS = ROOT / "infra/oci/gitops/flux/versions.env"
 README = ROOT / "infra/oci/gitops/flux/README.md"
 ADMISSION = ROOT / "scripts/oci_flux_admission.py"
 EXPORT = ROOT / "scripts/oci_flux_export.py"
-STATIC_CONTRACTS = ROOT / "scripts/workflow_static_contracts.py"
+LAB_WORKFLOW = ROOT / ".github/workflows/oci-staging-lab.yml"
 
 versions = VERSIONS.read_text(encoding="utf-8")
 readme = README.read_text(encoding="utf-8")
 admission = ADMISSION.read_text(encoding="utf-8")
 export = EXPORT.read_text(encoding="utf-8")
-static_contracts = STATIC_CONTRACTS.read_text(encoding="utf-8")
+lab_workflow = LAB_WORKFLOW.read_text(encoding="utf-8")
 ast.parse(admission)
 ast.parse(export)
-ast.parse(static_contracts)
 
 expected = {
     "FLUX_VERSION": "v2.9.5",
@@ -40,17 +39,19 @@ for raw in versions.splitlines():
     parsed[key] = value
 assert parsed == expected, f"Flux seam pin drifted: {parsed!r}"
 
-# Protected preflight owns both the always-offline checks and the conditional
+# The HOLD lab workflow owns both the offline checks and the conditional
 # checksum-verified export contract for Flux-seam PRs.
 for marker in (
+    "'infra/oci/gitops/flux/**'",
+    "'scripts/oci_flux_*'",
     "scripts/oci_flux_contract.py",
     "scripts/oci_flux_admission.py",
     "scripts/oci_flux_export.py",
     "--self-test",
     "--ci-if-required",
-    "run_flux_seam_contracts",
+    "OCI HOLD labs · contracts",
 ):
-    assert marker in static_contracts, f"Flux static wiring lost marker: {marker}"
+    assert marker in lab_workflow, f"Flux lab wiring lost marker: {marker}"
 
 # The admission helper is pure/read-only. It can consume the existing K3s
 # status marker, but cannot acquire cluster, host or OCI mutation primitives.
@@ -105,7 +106,7 @@ for marker in (
     "kustomize-controller",
     "Docker/systemd staging remains the fallback",
     "explicit activation PR",
-    "protected static preflight",
+    "OCI staging lab",
     "not** wired into `oci-readiness.yml`",
     "Protected export contract",
     "never mutates the A1 host",
