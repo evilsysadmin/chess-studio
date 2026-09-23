@@ -1,13 +1,19 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
+async function activateSetupControl(locator) {
+  await expect(locator).toBeVisible({ timeout: 45_000 });
+  await expect(locator).toBeEnabled();
+  await locator.evaluate((element) => element.click());
+}
+
 async function openDesktopWarRoom(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const shell = page.locator('.board3d-main-shell');

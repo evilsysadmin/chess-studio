@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { sameBoardSurfaceProps } from './GameBoardView.jsx';
+import { sameBoardSurfaceProps } from './WarRoomBoardSurface.jsx';
 
 function props(overrides = {}) {
   return {
@@ -27,7 +27,7 @@ function props(overrides = {}) {
   };
 }
 
-describe('GameBoardView board surface memo contract', () => {
+describe('WarRoom board surface memo contract', () => {
   it('ignora arrays recreados de objetivos si su contenido no cambia', () => {
     const first = props();
     const second = props({
@@ -47,5 +47,11 @@ describe('GameBoardView board surface memo contract', () => {
     expect(sameBoardSurfaceProps(first, props({ ...stable, fen: 'fen-b' }))).toBe(false);
     expect(sameBoardSurfaceProps(first, props({ ...stable, legalTargets: [{ to: 'e3', san: 'e3' }] }))).toBe(false);
     expect(sameBoardSurfaceProps(first, { ...props(stable), isThreeD: true })).toBe(false);
+  });
+
+  it('rerenderiza si cambia el fallback visible del surface 3D', () => {
+    const first = { ...props(), isThreeD: true, loadingLabel: 'Preparando sala 3D…', loadingClassName: 'hint-text' };
+    const second = { ...first, loadingLabel: 'Abriendo la sala…' };
+    expect(sameBoardSurfaceProps(first, second)).toBe(false);
   });
 });

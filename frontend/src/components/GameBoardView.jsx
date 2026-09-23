@@ -1,10 +1,10 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import Board from './Board.jsx';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import GameCommandDeck from './GameCommandDeck.jsx';
 import GamePlayerRail from './GamePlayerRail.jsx';
 import GameSideColumn from './GameSideColumn.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
+import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
@@ -27,49 +27,6 @@ import { formatLongMove } from '../notation.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import './Matthias3DBubbleAnchor.css';
 
-const Board3D = lazy(() => import('./Board3D.jsx'));
-
-function sameLegalTargets(a = [], b = []) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  return a.every((target, index) => target?.to === b[index]?.to && target?.san === b[index]?.san);
-}
-
-export function sameBoardSurfaceProps(previous, next) {
-  if (previous.isThreeD !== next.isThreeD) return false;
-  const a = previous.boardProps;
-  const b = next.boardProps;
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return a.gameId === b.gameId
-    && a.fen === b.fen
-    && a.onSquareClick === b.onSquareClick
-    && a.selectedSquare === b.selectedSquare
-    && sameLegalTargets(a.legalTargets, b.legalTargets)
-    && a.lastMove === b.lastMove
-    && a.animate === b.animate
-    && a.hintMove === b.hintMove
-    && a.checkSquare === b.checkSquare
-    && a.gameOver === b.gameOver
-    && a.turnState === b.turnState
-    && a.orientation === b.orientation
-    && a.showCoordinates === b.showCoordinates
-    && a.matthiasKingColor === b.matthiasKingColor
-    && a.onCustomize === b.onCustomize
-    && a.hansFireplaceIteration === b.hansFireplaceIteration
-    && a.hansFireCallEnabled === b.hansFireCallEnabled;
-}
-
-const StableBoardSurface = memo(function StableBoardSurface({ isThreeD, boardProps }) {
-  if (isThreeD) {
-    return (
-      <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
-        <Board3D {...boardProps} />
-      </Suspense>
-    );
-  }
-  return <Board {...boardProps} />;
-}, sameBoardSurfaceProps);
 
 export default function GameBoardView({
   game,
@@ -239,7 +196,7 @@ export default function GameBoardView({
 
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
-                <StableBoardSurface isThreeD boardProps={boardProps} />
+                <WarRoomBoardSurface isThreeD boardProps={boardProps} />
                 {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}
@@ -254,7 +211,7 @@ export default function GameBoardView({
                   </aside>
                 )}
               </div>
-            ) : <StableBoardSurface isThreeD={false} boardProps={boardProps} />}
+            ) : <WarRoomBoardSurface isThreeD={false} boardProps={boardProps} />}
 
             <Matthias3DOpeningBanter
               gameId={game.id}
