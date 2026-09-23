@@ -55,6 +55,7 @@ def main() -> int:
         "chess-studio-log-explorer.json": "chess-studio-log-explorer",
         "chess-studio-traces.json": "chess-studio-traces",
         "chess-studio-edge.json": "chess-studio-edge",
+        "chess-studio-security.json": "chess-studio-security",
         "chess-studio-oci-host.json": "chess-studio-oci-host",
     }
     for filename, uid in required_dashboards.items():
@@ -102,6 +103,7 @@ def main() -> int:
         'Raw logs · texto/regex',
         'auth_login_failed : auth_login_failed',
         'auth_ip_ban_activated : auth_ip_ban_activated',
+        'auth_login_identity_ban_activated : auth_login_identity_ban_activated',
         '401 login · bot forensics',
         'username_attempted',
         'password_fingerprint',
@@ -159,6 +161,43 @@ def main() -> int:
     ):
         if token not in edge_dash:
             fail(f"dashboard Edge no cubre {token}")
+
+    security_path = INFRA / "dashboards" / "chess-studio-security.json"
+    security_raw = security_path.read_text(encoding="utf-8")
+    security_data = load_json(security_path)
+    security_titles = {str(row.get("title") or "") for row in (security_data.get("panels") or [])}
+    required_security_titles = {
+        "Auth IP bans · 15 min",
+        "Auth identity blocks · 15 min",
+        "Presión de tráfico · requests/s vs baseline 1 h",
+        "Biggest offenders · 401/403/429",
+        "Auth forensics reciente · sin contraseñas",
+    }
+    missing_security_titles = sorted(required_security_titles - security_titles)
+    if missing_security_titles:
+        fail(f"dashboard Security perdió paneles: {', '.join(missing_security_titles)}")
+    security_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for panel in (security_data.get("panels") or [])
+        for target in (panel.get("targets") or [])
+    )
+    for token in (
+        '${metrics_datasource_uid}',
+        '${logs_datasource_uid}',
+        '${selector:raw}',
+        'auth_ip_ban_activated',
+        'auth_login_identity_ban_activated',
+        'auth_login_failed',
+        'status=~"401|403|429"',
+        'cloudflare_zone_firewall_events_total',
+        'cloudflare_zone_colocation_requests_total',
+        'cloudflare_zone_requests_status_country_host_total',
+        'client_ip',
+    ):
+        if token not in security_raw and token not in security_exprs:
+            fail(f"dashboard Security no cubre {token}")
+    if '{{.password}}' in security_raw:
+        fail("dashboard Security no debe renderizar contraseñas")
 
     if (INFRA / "terraform").exists():
         fail("Grafana dashboards no deben volver a Terraform/state/import/apply; usa scripts/grafana_publish.py")
@@ -268,6 +307,7 @@ def main() -> int:
         '/api/dashboards/uid/',
         'chess-studio-oci-host.json',
         'chess-studio-log-explorer.json',
+        'chess-studio-security.json',
         'runtime_variables = {"backend_service", "selector", "environment"}',
         '"overwrite": True',
         'urllib.request',        'stdlib only',
@@ -521,7 +561,7 @@ def main() -> int:
         if token not in oci_deploy:
             fail(f"deploy OCI perdió observabilidad fail-open: {token}")
 
-    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · API publisher 4 dashboards · OTLP + Cloudflare edge")
+    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · API publisher {len(required_dashboards)} dashboards · OTLP + Cloudflare edge/security")
     return 0
 
 
