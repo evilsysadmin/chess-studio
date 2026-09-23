@@ -247,17 +247,6 @@ function addFireplaceInterior(group, towardBoard) {
   return 4;
 }
 
-function alignLightingTargets(group, { wallZ, towardBoard }) {
-  for (const [targetName, side] of [
-    ['war-room-museum-side-target-left', -1],
-    ['war-room-museum-side-target-right', 1],
-  ]) {
-    const target = group.getObjectByName?.(targetName);
-    if (!target) continue;
-    target.position.set(side * 6.05, 2.58, wallZ + towardBoard * 2.7);
-  }
-}
-
 export function applyWarRoomCompositionPolish(group, {
   wallZ,
   towardBoard,
@@ -266,7 +255,6 @@ export function applyWarRoomCompositionPolish(group, {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
   if (group.userData.warRoomCompositionPolishVersion === 'v10') return 0;
 
-  alignLightingTargets(group, { wallZ, towardBoard });
   const paintingCount = installGalleryLandscapes(group);
   const fireplaceMeshCount = addFireplaceInterior(group, towardBoard);
 
