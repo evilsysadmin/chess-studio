@@ -353,6 +353,12 @@ export function nextHumanSchoolStep(lesson, fromIndex = 0) {
   return null;
 }
 
+export function schoolBoardGuideMove(lesson, expected, { hintActive = false } = {}) {
+  if (!lesson || lesson.exam || !expected?.from) return null;
+  if (hintActive && expected.to) return { from: expected.from, to: expected.to };
+  return { from: expected.from };
+}
+
 export function validateMatthiasSchoolMove(lesson, from, to, { fen = lesson?.fen, lineIndex = 0 } = {}) {
   if (!lesson || !from || !to || !fen) return { ok: false, reason: 'missing' };
   const expected = nextHumanSchoolStep(lesson, lineIndex);

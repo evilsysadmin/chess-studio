@@ -12,6 +12,27 @@ const BASIC_LESSONS_BEFORE_EXAM = [
   'castle-short',
 ];
 
+
+test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es sólo texto', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  const board = page.locator('.matthias-school-board');
+  const origin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
+  const target = board.getByRole('button', { name: /^Casilla e4, vacía/ });
+
+  await expect(origin).toHaveClass(/hint-move/);
+  await expect(target).not.toHaveClass(/hint-move/);
+
+  await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
+  await expect(target).toHaveClass(/hint-move/);
+  await expect(page.getByRole('status')).toContainText('Te lo marco en el tablero');
+
+  await origin.click();
+  await expect(target).toHaveClass(/legal-move/);
+});
+
 test('Escuela de Matthias · una lección dominada se puede repetir de verdad', async ({ page }) => {
   await mockApi(page);
   await login(page);
