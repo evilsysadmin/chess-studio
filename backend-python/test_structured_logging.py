@@ -98,7 +98,7 @@ def test_structured_http_log_reports_whether_trace_was_sampled(monkeypatch, capl
 
 def test_failed_login_forensics_never_logs_password_and_correlates_reuse(caplog):
     logger = logging.getLogger("test.chess.structured.auth")
-    caplog.set_level(logging.WARNING, logger=logger.name)
+    caplog.set_level(logging.INFO, logger=logger.name)
     secret = "bot-password-NEVER-LOG-THIS"
 
     emit_auth_login_failed(
