@@ -1065,7 +1065,7 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
                 "pistol",
                 2,
                 column,
-                36,
+                48,
             )
             self._write_body(
                 root,
@@ -1077,8 +1077,8 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
                 donor_cap=column == 3,
             )
 
-        shotgun_heights = (36, 35, 34, 14, 13, 12, 12, 12)
-        panzer_heights = (34, 32, 30, 14, 13, 12, 12, 12)
+        shotgun_heights = (48, 47, 46, 14, 13, 12, 12, 12)
+        panzer_heights = (46, 44, 42, 14, 13, 12, 12, 12)
         for column, height in enumerate(shotgun_heights):
             self._write_body(
                 root,
