@@ -211,6 +211,11 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("training")
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         groups.add("warroom")
+    # Class Room intentionally reuses the shared Board3D renderer. Any Board3D
+    # visual change therefore owns both the War Room and training screenshots;
+    # otherwise a camera/highlight regression can pass while the School is cropped.
+    if "board3d" in lower:
+        groups.add("training")
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         groups.add("home")
     if "matthias" in lower and "school" not in lower and "chronicles" not in lower:
@@ -461,8 +466,10 @@ def self_test() -> None:
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
     board3d_core = classify(["frontend/src/components/Board3DCore.jsx"])
-    assert board3d_core.capture_groups == "warroom" and not board3d_core.hans
+    assert board3d_core.capture_groups == "training,warroom" and not board3d_core.hans
     assert not board3d_core.warroom_revision_required
+    board3d_scene = classify(["frontend/src/components/Board3DScene.js"])
+    assert board3d_scene.capture_groups == "training,warroom" and not board3d_scene.hans
     game_board = classify(["frontend/src/components/GameBoardView.jsx"])
     assert game_board.capture_groups == "warroom" and game_board.hans
     ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
