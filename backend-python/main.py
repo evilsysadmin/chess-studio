@@ -696,8 +696,7 @@ async def login(body: LoginRequest, request: Request):
     user = await ustore.get_user(username)
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
-        client_ip, peer_ip, x_forwarded_for = _request_network_log_fields(request)
-        _, client_country = _client_network(request)
+        client_ip, client_country, peer_ip, x_forwarded_for = _request_network_log_fields(request)
         emit_auth_login_failed(
             access_logger,
             request_id=_request_id(request),
