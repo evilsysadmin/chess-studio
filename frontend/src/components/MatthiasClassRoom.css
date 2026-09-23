@@ -117,10 +117,13 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
 
 
-/* Courses are navigation, not content. Keep them readable but stop letting five
-   cards compete with the lesson itself. */
+/* Courses are navigation, not content. Keep the complete journey in one
+   horizontal rail so curriculum depth never steals vertical board space. */
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
   gap: .34rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip button {
@@ -352,7 +355,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
     overflow-x: auto;
-    grid-template-columns: repeat(5, minmax(128px, 1fr));
+    grid-template-columns: repeat(7, minmax(128px, 1fr));
     scrollbar-width: thin;
   }
 
@@ -384,7 +387,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
-    grid-template-columns: repeat(5, minmax(112px, 1fr));
+    grid-template-columns: repeat(7, minmax(112px, 1fr));
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons {
