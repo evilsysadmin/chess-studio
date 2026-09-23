@@ -149,6 +149,10 @@
   font-size: .58rem;
 }
 
+.game-layout-3d .board-column {
+  position: relative;
+}
+
 /* Footer real de la mesa: identidad del jugador + acciones en una sola línea.
    Recupera una fila completa para el tablero en desktop. */
 @media (min-width: 821px) {
