@@ -7,7 +7,6 @@ import {
 describe('War Room v2 runtime asset URL', () => {
   it('versions the stable runtime current.glb alias with the frontend build SHA', () => {
     expect(WAR_ROOM_V2_RUNTIME_MODEL_URL).toContain('/war-room/v2/runtime/current.glb');
-    expect(WAR_ROOM_V2_RUNTIME_MODEL_URL).toBe(WAR_ROOM_V2_RUNTIME_MODEL_URL);
     expect(warRoomV2ModelUrl({ buildSha: 'abc123' }))
       .toBe(`${WAR_ROOM_V2_RUNTIME_MODEL_URL}?build=abc123`);
   });
@@ -22,5 +21,4 @@ describe('War Room v2 runtime asset URL', () => {
   it('falls back to the bare alias only when no build SHA exists', () => {
     expect(warRoomV2ModelUrl({ buildSha: '' })).toBe(WAR_ROOM_V2_RUNTIME_MODEL_URL);
   });
-});
 });
