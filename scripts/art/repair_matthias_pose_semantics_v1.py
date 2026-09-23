@@ -35,6 +35,7 @@ UPPER_SPLIT_Y = 305
 CROUCH_TARGET_HEIGHT_RATIO = 0.83
 LEG_BOX = (95, 310, 285, CELL)
 ALT_FEET_BOX = (95, 335, 285, CELL)
+HURT_RECOVERY_BOX = (70, 280, 350, CELL)
 
 
 def sha256(path: Path) -> str:
@@ -87,11 +88,11 @@ def idle_target_top(root: Path, weapon: str) -> int:
 def lower_upper_without_scale(image: Image.Image, target_top: int) -> Image.Image:
     rgba = image.convert("RGBA")
     box = body_bbox(rgba)
+    if box[1] >= target_top:
+        return rgba.copy()
     dy = max(0, target_top - box[1])
     out = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
-    # Legs and grounded footline stay exactly where authored.
     out.alpha_composite(rgba.crop((0, UPPER_SPLIT_Y, CELL, CELL)), (0, UPPER_SPLIT_Y))
-    # Head, torso, hands and weapon move down rigidly: no X/Y rescale.
     out.alpha_composite(rgba.crop((0, 0, CELL, UPPER_SPLIT_Y)), (0, dy))
     return out
 
@@ -150,7 +151,6 @@ def repair(source: Path, output: Path) -> dict:
     copy_bank(source, output)
     changed: set[tuple[str, int, int]] = set()
 
-    # True crouch family: rigid upper-body translation, grounded lower half untouched.
     for weapon in WEAPONS:
         target_top = idle_target_top(source, weapon)
         for row in CROUCH_ROWS:
@@ -159,29 +159,30 @@ def repair(source: Path, output: Path) -> dict:
                 save_png(lower_upper_without_scale(Image.open(p).convert("RGBA"), target_top), p)
                 changed.add((weapon, row, c))
 
-    # Panzerfaust original crouch-walk legs are almost frozen. Reuse only the
-    # already-authored pistol leg cycle after both rows use the same crouch geometry.
     for c in range(COLUMNS):
         target = frame_path(output, "panzerfaust", 7, c)
         donor = frame_path(output, "pistol", 7, c)
         save_png(transplant_box(Image.open(target), Image.open(donor), LEG_BOX), target)
         changed.add(("panzerfaust", 7, c))
 
-    # Frozen hurt tails resolve into this weapon's own normal ready stance.
-    for weapon in ("machinegun", "shotgun", "panzerfaust"):
+    machinegun_hurt_base = Image.open(frame_path(output, "machinegun", HURT_ROW, 5)).convert("RGBA")
+    for hurt_c, idle_c in ((6, 1), (7, 0)):
+        target = frame_path(output, "machinegun", HURT_ROW, hurt_c)
+        donor = Image.open(frame_path(output, "machinegun", IDLE_ROW, idle_c)).convert("RGBA")
+        save_png(transplant_box(machinegun_hurt_base, donor, HURT_RECOVERY_BOX), target)
+        changed.add(("machinegun", HURT_ROW, hurt_c))
+
+    for weapon in ("shotgun", "panzerfaust"):
         for hurt_c, idle_c in ((6, 1), (7, 0)):
             shutil.copy2(frame_path(output, weapon, IDLE_ROW, idle_c), frame_path(output, weapon, HURT_ROW, hurt_c))
             changed.add((weapon, HURT_ROW, hurt_c))
 
-    # Alt diagonal-up was a visual clone. Change only feet/base stance while
-    # keeping the panzerfaust, hands, torso and aim untouched.
     for c in range(COLUMNS):
         target = frame_path(output, "panzerfaust", PANZER_ALT_ROW, c)
         donor = frame_path(output, "panzerfaust", IDLE_ROW, c)
         save_png(transplant_box(Image.open(target), Image.open(donor), ALT_FEET_BOX), target)
         changed.add(("panzerfaust", PANZER_ALT_ROW, c))
 
-    # Prove every unlisted frame survived byte-for-byte.
     for weapon in WEAPONS:
         for row in range(ROWS):
             for c in range(COLUMNS):
@@ -217,7 +218,6 @@ def repair(source: Path, output: Path) -> dict:
 
 
 def self_test() -> None:
-    # Focused invariant: translation must preserve dimensions and never rescale pixels.
     im = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     d.rectangle((130, 150, 260, 304), fill=(10, 20, 30, 255))
@@ -225,7 +225,6 @@ def self_test() -> None:
     out = lower_upper_without_scale(im, 190)
     if out.size != im.size:
         raise AssertionError("canvas changed")
-    # A known upper pixel moves rigidly by dy=40, retaining exact RGBA.
     if out.getpixel((150, 190)) != im.getpixel((150, 150)):
         raise AssertionError("upper-body translation is not pixel-preserving")
 

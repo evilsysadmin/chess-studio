@@ -169,6 +169,16 @@ jobs:
             "$CAND"
           cat "$CAND/matthias-pose-semantics-v1-manifest.json" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Validate Matthias candidate continuity
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
+          python3 scripts/art/validate_matthias_sprite_continuity.py \
+            --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
+            --sprite-smoke-dir "$CAND" \
+            --output "$CAND/continuity-health.json"
+
       - name: Audit Matthias semantic pose contract
         if: steps.scope.outputs.matthias == 'true'
         run: |
