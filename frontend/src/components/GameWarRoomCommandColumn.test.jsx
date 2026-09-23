@@ -32,7 +32,7 @@ describe('GameWarRoomCommandColumn', () => {
     );
 
     expect(html).toContain('data-matthias-war-room-presence="king-piece"');
-    expect(html).toContain('game-3d-turn-pill game-3d-matthias-card is-green');
+    expect(html).toContain('game-3d-turn-pill is-green');
     expect(html).toContain('aria-label="Estado de la partida"');
     expect(html).not.toContain('game-3d-human-id');
     expect(html).not.toContain('game-3d-turn-pill-versus');
@@ -68,9 +68,9 @@ describe('GameWarRoomCommandColumn', () => {
       />,
     );
 
-    expect(cpuHtml).toContain('game-3d-turn-pill game-3d-matthias-card is-red');
+    expect(cpuHtml).toContain('game-3d-turn-pill is-red');
     expect(cpuHtml).toContain('Matthias juega');
-    expect(busyHtml).toContain('game-3d-turn-pill game-3d-matthias-card is-amber');
+    expect(busyHtml).toContain('game-3d-turn-pill is-amber');
     expect(busyHtml).toContain('Pensando…');
   });
 
