@@ -107,14 +107,6 @@
     box-sizing: border-box;
   }
 
-  /* The old full Matthias card is intentionally retired in this compact layout,
-   * but the new identity/turn pill reuses its legacy class for compatibility.
-   * Never hide the pill when the deferred War Room CSS finishes loading. */
-  .game-screen .game-3d-matthias-card:not(.game-3d-turn-pill),
-  .game-screen .game-3d-command-column blockquote {
-    display: none;
-  }
-
   /* At 821–920px compactViewport is false, so the desktop matchup/state wrappers
    * are mounted even though this is still a coarse-pointer phone landscape.
    * Keep those wrappers and stack them inside the narrow commander track instead
