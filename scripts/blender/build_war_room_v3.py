@@ -308,7 +308,9 @@ def build_single_stove(static, palette):
         base.cube(f"WR3_OBS_stove_leg_{side}", (x + side * 0.55, y, 0.43),
                   (0.10, 0.18, 0.26), palette["iron"], static, bevel=0.07)
 
-    face_angle = math.radians(32)
+    # Aim the door/fire at the tactical centre rather than merely canting the
+    # flame silhouette: from the stove this is a visible ~56-degree turn.
+    face_angle = math.atan2(-x, y)
     face = Vector((math.sin(face_angle), -math.cos(face_angle), 0.0))
     tangent = Vector((math.cos(face_angle), math.sin(face_angle), 0.0))
     door_center = Vector((x, y, 1.58)) + face * 0.86
