@@ -6,6 +6,7 @@ import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
+import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
@@ -63,6 +64,7 @@ export default function Tutorial({ onExit }) {
   const [playbackActive, setPlaybackActive] = useState(false);
   const animationSeqRef = useRef(0);
   const playbackTokenRef = useRef(0);
+  const playbackAbortRef = useRef(null);
   const classRoomVariantSelectable = isClassRoomVariantSelectable();
   const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
@@ -77,10 +79,13 @@ export default function Tutorial({ onExit }) {
 
   useEffect(() => () => {
     playbackTokenRef.current += 1;
+    playbackAbortRef.current?.abort();
   }, []);
 
   function cancelPlayback() {
     playbackTokenRef.current += 1;
+    playbackAbortRef.current?.abort();
+    playbackAbortRef.current = null;
     setPlaybackActive(false);
     setBoardAnimation(null);
   }
@@ -185,6 +190,9 @@ export default function Tutorial({ onExit }) {
 
     const token = playbackTokenRef.current + 1;
     playbackTokenRef.current = token;
+    playbackAbortRef.current?.abort();
+    const controller = new AbortController();
+    playbackAbortRef.current = controller;
     setPlaybackActive(true);
     setSelected(null);
     setHintActive(false);
@@ -193,20 +201,26 @@ export default function Tutorial({ onExit }) {
     const reducedMotion = typeof window !== 'undefined'
       && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
 
-    for (const frame of playback.frames) {
-      if (playbackTokenRef.current !== token) return;
-      setPracticeFen(frame.fen);
-      animationSeqRef.current += 1;
-      setBoardAnimation({
-        ...frame.animate,
-        seq: animationSeqRef.current,
-      });
-      const delay = schoolPlaybackDelay({ reducedMotion, auto: frame.auto });
-      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-      else await Promise.resolve();
+    try {
+      for (const frame of playback.frames) {
+        if (playbackTokenRef.current !== token || controller.signal.aborted) return;
+        setPracticeFen(frame.fen);
+        animationSeqRef.current += 1;
+        setBoardAnimation({
+          ...frame.animate,
+          seq: animationSeqRef.current,
+        });
+        const delay = schoolPlaybackDelay({ reducedMotion, auto: frame.auto });
+        await abortableDelay(delay, controller.signal);
+      }
+    } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+      throw error;
+    } finally {
+      if (playbackAbortRef.current === controller) playbackAbortRef.current = null;
     }
 
-    if (playbackTokenRef.current !== token) return;
+    if (playbackTokenRef.current !== token || controller.signal.aborted) return;
     setPlaybackActive(false);
     setLineIndex(playback.cursor);
 
