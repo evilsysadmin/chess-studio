@@ -93,6 +93,14 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (!Array.isArray(payload.consumedContentIds) || !Array.isArray(payload.claimedRewards)) {
     throw new Error('invalid-world-ledgers');
   }
+  const inventory = payload.inventory === undefined ? {} : payload.inventory;
+  const quests = payload.quests === undefined ? {} : payload.quests;
+  if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)) {
+    throw new Error('invalid-run-inventory');
+  }
+  if (!quests || typeof quests !== 'object' || Array.isArray(quests)) {
+    throw new Error('invalid-run-quests');
+  }
 
   const area = chroniclesValidateAreaEnvelope(payload.area, currentMapId, payload.seed);
   if (payload.contentVersion !== area.contentVersion) throw new Error('run-version-mismatch');
@@ -126,6 +134,8 @@ function validateRunBootstrap(payload, requestedMapId) {
     currentMapId,
     worldVersion: payload.worldVersion,
     worldFlags: Object.freeze({ ...worldFlags }),
+    inventory: Object.freeze({ ...inventory }),
+    quests: Object.freeze({ ...quests }),
     consumedContentIds: Object.freeze([...payload.consumedContentIds]),
     claimedRewards: Object.freeze([...payload.claimedRewards]),
     runStatus: payload.status,

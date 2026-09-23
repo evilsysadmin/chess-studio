@@ -63,6 +63,8 @@ class CheckpointChroniclesRunRequest(BaseModel):
     expected_world_version: int = Field(alias="expectedWorldVersion", ge=0)
     current_map_id: str = Field(alias="currentMapId", min_length=1, max_length=64)
     world_flags: dict[str, Any] = Field(default_factory=dict, alias="worldFlags")
+    inventory: dict[str, Any] = Field(default_factory=dict)
+    quests: dict[str, Any] = Field(default_factory=dict)
     consumed_content_ids: list[str] = Field(default_factory=list, alias="consumedContentIds")
     claimed_rewards: list[str] = Field(default_factory=list, alias="claimedRewards")
 
@@ -112,6 +114,72 @@ def _normalize_checkpoint_flags(flags: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, str) and len(value) > 256:
             raise HTTPException(400, f"El flag {key} es demasiado largo.")
         normalized[key] = value
+    return normalized
+
+
+def _normalize_checkpoint_inventory(inventory: dict[str, Any]) -> dict[str, Any]:
+    if len(inventory) > 64 or len(_canonical_bytes(inventory)) > 16_384:
+        raise HTTPException(400, "El checkpoint contiene demasiado inventario.")
+    normalized: dict[str, Any] = {}
+    for item_id, item in inventory.items():
+        if not isinstance(item_id, str) or not item_id or len(item_id) > 96:
+            raise HTTPException(400, "El inventario contiene un ID inválido.")
+        if not isinstance(item, dict):
+            raise HTTPException(400, f"El objeto {item_id} usa un formato inválido.")
+        quantity = item.get("quantity")
+        if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity < 1 or quantity > 9999:
+            raise HTTPException(400, f"El objeto {item_id} tiene una cantidad inválida.")
+        name = item.get("name", item_id)
+        description = item.get("description", "")
+        if not isinstance(name, str) or not name or len(name) > 160:
+            raise HTTPException(400, f"El objeto {item_id} tiene un nombre inválido.")
+        if not isinstance(description, str) or len(description) > 1024:
+            raise HTTPException(400, f"El objeto {item_id} tiene una descripción inválida.")
+        normalized[item_id] = {
+            "id": item_id,
+            "name": name,
+            "description": description,
+            "quantity": quantity,
+        }
+    return normalized
+
+
+def _normalize_checkpoint_quests(quests: dict[str, Any]) -> dict[str, Any]:
+    if len(quests) > 64 or len(_canonical_bytes(quests)) > 32_768:
+        raise HTTPException(400, "El checkpoint contiene demasiadas quests.")
+    normalized: dict[str, Any] = {}
+    for quest_id, quest in quests.items():
+        if not isinstance(quest_id, str) or not quest_id or len(quest_id) > 96:
+            raise HTTPException(400, "Las quests contienen un ID inválido.")
+        if not isinstance(quest, dict):
+            raise HTTPException(400, f"La quest {quest_id} usa un formato inválido.")
+        status = quest.get("status")
+        if status not in {"active", "completed"}:
+            raise HTTPException(400, f"La quest {quest_id} tiene un estado inválido.")
+        title = quest.get("title", quest_id)
+        description = quest.get("description", "")
+        objective = quest.get("objective", "")
+        order = quest.get("order", 0)
+        if not isinstance(title, str) or not title or len(title) > 200:
+            raise HTTPException(400, f"La quest {quest_id} tiene un título inválido.")
+        if not isinstance(description, str) or len(description) > 2048:
+            raise HTTPException(400, f"La quest {quest_id} tiene una descripción inválida.")
+        if not isinstance(objective, str) or len(objective) > 1024:
+            raise HTTPException(400, f"La quest {quest_id} tiene un objetivo inválido.")
+        if (
+            not isinstance(order, (int, float))
+            or isinstance(order, bool)
+            or abs(float(order)) > 1_000_000
+        ):
+            raise HTTPException(400, f"La quest {quest_id} tiene un orden inválido.")
+        normalized[quest_id] = {
+            "id": quest_id,
+            "title": title,
+            "description": description,
+            "objective": objective,
+            "order": order,
+            "status": status,
+        }
     return normalized
 
 
@@ -748,6 +816,8 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
+        inventory = _normalize_checkpoint_inventory(body.inventory)
+        quests = _normalize_checkpoint_quests(body.quests)
         consumed_content_ids = _normalize_checkpoint_ids(
             body.consumed_content_ids,
             label="consumedContentIds",
@@ -765,6 +835,8 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 content_version=target_area["contentVersion"],
                 manifest_revision=target_area["manifestRevision"],
                 world_flags=world_flags,
+                inventory=inventory,
+                quests=quests,
                 consumed_content_ids=consumed_content_ids,
                 claimed_rewards=claimed_rewards,
             )

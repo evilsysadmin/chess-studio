@@ -38,7 +38,18 @@ def _create_run(client):
     return response.json()
 
 
-def _checkpoint(client, run_id, *, version, map_id="crypt-eight-squares", consumed=None, rewards=None, flags=None):
+def _checkpoint(
+    client,
+    run_id,
+    *,
+    version,
+    map_id="crypt-eight-squares",
+    consumed=None,
+    rewards=None,
+    flags=None,
+    inventory=None,
+    quests=None,
+):
     return client.put(
         f"/api/chronicles/runs/{run_id}/checkpoint",
         headers={"Authorization": "Bearer test-token"},
@@ -46,6 +57,8 @@ def _checkpoint(client, run_id, *, version, map_id="crypt-eight-squares", consum
             "expectedWorldVersion": version,
             "currentMapId": map_id,
             "worldFlags": flags or {},
+            "inventory": inventory or {},
+            "quests": quests or {},
             "consumedContentIds": consumed or [],
             "claimedRewards": rewards or [],
         },
@@ -81,6 +94,66 @@ def test_checkpoint_persists_world_state_and_increments_version(monkeypatch):
     assert stored.status_code == 200
     assert stored.json()["worldVersion"] == 1
     assert stored.json()["worldFlags"]["cryptLeverPulled"] is True
+
+
+def test_checkpoint_persists_and_replaces_mutable_inventory_and_quests(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    first = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        inventory={
+            "charred-key": {
+                "id": "charred-key",
+                "name": "Llave carbonizada",
+                "description": "Todavía abre algo.",
+                "quantity": 2,
+            }
+        },
+        quests={
+            "blind-king-key": {
+                "id": "blind-king-key",
+                "title": "La llave del rey ciego",
+                "description": "Una deuda pendiente.",
+                "objective": "Lleva la llave a la capilla.",
+                "order": 3,
+                "status": "active",
+            }
+        },
+    )
+    assert first.status_code == 200
+    assert first.json()["inventory"]["charred-key"]["quantity"] == 2
+    assert first.json()["quests"]["blind-king-key"]["status"] == "active"
+
+    second = _checkpoint(
+        client,
+        run["runId"],
+        version=1,
+        inventory={
+            "charred-key": {
+                "id": "charred-key",
+                "name": "Llave carbonizada",
+                "description": "Todavía abre algo.",
+                "quantity": 1,
+            }
+        },
+        quests={
+            "blind-king-key": {
+                "id": "blind-king-key",
+                "title": "La llave del rey ciego",
+                "description": "Una deuda pendiente.",
+                "objective": "Lleva la llave a la capilla.",
+                "order": 3,
+                "status": "completed",
+            }
+        },
+    )
+    assert second.status_code == 200
+    assert second.json()["inventory"]["charred-key"]["quantity"] == 1
+    assert second.json()["quests"]["blind-king-key"]["status"] == "completed"
 
 
 def test_checkpoint_is_compare_and_swap_and_never_unconsumes(monkeypatch):
@@ -150,3 +223,25 @@ def test_checkpoint_bounds_client_owned_payload(monkeypatch):
     )
 
     assert response.status_code == 400
+
+
+def test_checkpoint_rejects_malformed_inventory_and_quests(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    bad_inventory = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        inventory={"charred-key": {"quantity": 0}},
+    )
+    assert bad_inventory.status_code == 400
+
+    bad_quest = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        quests={"blind-king-key": {"status": "mystery"}},
+    )
+    assert bad_quest.status_code == 400

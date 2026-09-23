@@ -145,6 +145,51 @@ describe('Chronicles run checkpoint recovery', () => {
     expect(recovered.message).not.toBe('runtime-only narration');
   });
 
+  it('round-trips inventory and quest state across F5/re-entry', () => {
+    const base = createChroniclesState('gallery-of-forks');
+    const snapshot = {
+      ...base,
+      inventory: {
+        'charred-key': {
+          id: 'charred-key',
+          name: 'Llave carbonizada',
+          description: 'Abre algo que probablemente no debería abrirse.',
+          quantity: 2,
+        },
+      },
+      quests: {
+        'blind-king-key': {
+          id: 'blind-king-key',
+          title: 'La llave del rey ciego',
+          description: 'Una deuda incómodamente literal.',
+          objective: 'Lleva la llave a la capilla.',
+          order: 3,
+          status: 'active',
+        },
+      },
+    };
+    const payload = chroniclesRunCheckpointPayload(snapshot, 2);
+    const recovered = chroniclesApplyRunCheckpoint(createChroniclesState(base.mapId), {
+      worldFlags: payload.worldFlags,
+      inventory: payload.inventory,
+      quests: payload.quests,
+      consumedContentIds: payload.consumedContentIds,
+      claimedRewards: payload.claimedRewards,
+    });
+
+    expect(recovered.inventory).toEqual(snapshot.inventory);
+    expect(recovered.quests).toEqual(snapshot.quests);
+    expect(chroniclesRunCheckpointFingerprint(snapshot)).not.toBe(
+      chroniclesRunCheckpointFingerprint({
+        ...snapshot,
+        inventory: {
+          ...snapshot.inventory,
+          'charred-key': { ...snapshot.inventory['charred-key'], quantity: 1 },
+        },
+      }),
+    );
+  });
+
   it('keeps old checkpoints compatible when no runtime namespace is present', () => {
     const base = createChroniclesState('gallery-of-forks');
     const recovered = chroniclesApplyRunCheckpoint(

@@ -38,6 +38,42 @@ function normalizedLedger(values) {
   return [...new Set(values.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))];
 }
 
+function normalizedInventory(inventory) {
+  if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)) return {};
+  return Object.fromEntries(
+    Object.entries(inventory)
+      .filter(([itemId, item]) => typeof itemId === 'string' && itemId && item && typeof item === 'object' && !Array.isArray(item))
+      .map(([itemId, item]) => {
+        const quantity = integerOrNull(Number(item.quantity), 1, 9999);
+        if (quantity === null) return null;
+        return [itemId, {
+          id: itemId,
+          name: typeof item.name === 'string' ? item.name : itemId,
+          description: typeof item.description === 'string' ? item.description : '',
+          quantity,
+        }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function normalizedQuests(quests) {
+  if (!quests || typeof quests !== 'object' || Array.isArray(quests)) return {};
+  return Object.fromEntries(
+    Object.entries(quests)
+      .filter(([questId, quest]) => typeof questId === 'string' && questId && quest && typeof quest === 'object' && !Array.isArray(quest))
+      .filter(([, quest]) => quest.status === 'active' || quest.status === 'completed')
+      .map(([questId, quest]) => [questId, {
+        id: questId,
+        title: typeof quest.title === 'string' ? quest.title : questId,
+        description: typeof quest.description === 'string' ? quest.description : '',
+        objective: typeof quest.objective === 'string' ? quest.objective : '',
+        order: Number.isFinite(Number(quest.order)) ? Number(quest.order) : 0,
+        status: quest.status,
+      }]),
+  );
+}
+
 function runtimeKey(...parts) {
   return `${RUNTIME_PREFIX}${parts.join('.')}`;
 }
@@ -187,6 +223,8 @@ export function chroniclesRunCheckpointPayload(state, worldVersion) {
     expectedWorldVersion: worldVersion,
     currentMapId: state.mapId,
     worldFlags: chroniclesWorldFlagsForCheckpoint(state),
+    inventory: normalizedInventory(state.inventory),
+    quests: normalizedQuests(state.quests),
     consumedContentIds: normalizedLedger(state.consumedContentIds),
     claimedRewards: normalizedLedger(state.claimedRewards),
   });
@@ -198,6 +236,8 @@ export function chroniclesApplyRunCheckpoint(state, run) {
   const durable = {
     ...state,
     ...authoredWorldFlags(worldFlags),
+    ...(run.inventory === undefined ? {} : { inventory: normalizedInventory(run.inventory) }),
+    ...(run.quests === undefined ? {} : { quests: normalizedQuests(run.quests) }),
     consumedContentIds: normalizedLedger(run.consumedContentIds),
     claimedRewards: normalizedLedger(run.claimedRewards),
   };
@@ -210,6 +250,8 @@ export function chroniclesRunCheckpointFingerprint(state) {
   return JSON.stringify({
     currentMapId: payload.currentMapId,
     worldFlags: payload.worldFlags,
+    inventory: payload.inventory,
+    quests: payload.quests,
     consumedContentIds: payload.consumedContentIds,
     claimedRewards: payload.claimedRewards,
   });
