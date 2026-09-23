@@ -83,12 +83,9 @@ function Board3DCanvas({
   onPieceMouseEnter,
   onPieceMouseLeave,
   turnState = null,
-  themeOverride = null,
-  hansDiagnosticsMarkerRef = null,
-  hansDiagnosticsRequested = false,
-  hansFireCallEnabled = false,
-  cameraProfile = 'tactical',
-  warRoomVariantOverride = null,
+  themeOverride = null, hansDiagnosticsMarkerRef = null,
+  hansDiagnosticsRequested = false, hansFireCallEnabled = false,
+  cameraProfile = 'tactical', warRoomVariantOverride = null,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
