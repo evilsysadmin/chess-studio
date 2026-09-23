@@ -36,6 +36,7 @@ import {
   chroniclesForecastMoves,
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
+import { chroniclesRewardDraft } from '../chronicles/chroniclesRewardDraft.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -138,6 +139,15 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
     }),
     [battlefieldInteraction, selectedMemberId, state],
   );
+  const rewardDraft = useMemo(() => {
+    if (state.phase !== 'escaped') return [];
+    return chroniclesRewardDraft({
+      seed: Number(authoritativeRun?.seed),
+      milestoneId: `${state.mapId}:escaped`,
+      progression,
+      claimedRewards: state.claimedRewards,
+    });
+  }, [authoritativeRun?.seed, progression, state.claimedRewards, state.mapId, state.phase]);
   const forecastView = useMemo(() => {
     if (!canAct) return {};
     return Object.fromEntries(
@@ -407,6 +417,8 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
       data-engagement={inCombat ? 'combat' : 'exploration'}
       data-map={state.mapId}
       data-phase={state.phase}
+      data-reward-draft-ready={rewardDraft.length > 0 ? 'true' : 'false'}
+      data-reward-draft-count={rewardDraft.length}
       data-turn-phase={state.turnPhase || 'party'}
     >
       <header className="chronicles-tactics__head">
