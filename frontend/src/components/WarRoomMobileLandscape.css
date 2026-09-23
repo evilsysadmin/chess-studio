@@ -188,10 +188,6 @@
    * layout. Hide the desktop Zen/Abandon row so it cannot increase document
    * height; restore the menu to normal grid flow so the pill itself stays
    * inside its 148–188px track. */
-  .game-screen .game-3d-command-column > .game-3d-quick-actions {
-    display: none !important;
-  }
-
   .game-screen .game-layout-3d .game-3d-utility-menu {
     grid-area: menu;
     position: relative !important;
