@@ -29,6 +29,7 @@ from sprite_forge import (
     audit_sprite_batch,
     repair_sprite_parity,
     repair_matthias_stabilization_batch,
+    repair_matthias_machinegun_hurt_alpha_v2,
 )
 
 
@@ -1223,6 +1224,81 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
                 "needs-authored-source:panzerfaust:hurt",
             ):
                 self._run(root, output)
+
+
+    def test_machinegun_hurt_alpha_v2_fills_clean_donor_support(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "frames"
+            output = Path(tmp) / "out"
+            self._build_fixture(root)
+            self._write_body(
+                root,
+                "machinegun",
+                2,
+                4,
+                36,
+                cap_hole=True,
+                donor_cap=True,
+            )
+
+            report = repair_matthias_machinegun_hurt_alpha_v2(
+                root,
+                output,
+                actions=self.ACTIONS,
+                columns=self.COLUMNS,
+                cell_size=self.CELL,
+                donor_column=4,
+                dx=(0,) * self.COLUMNS,
+                patch=self.CAP_PATCH,
+                max_rgb_mean=165.0,
+                min_coverage=0.99,
+            )
+
+            self.assertTrue(report["untouchedRowsPixelIdentical"])
+            self.assertEqual(report["donorColumn"], 4)
+            self.assertEqual(len(report["frames"]), self.COLUMNS)
+            self.assertTrue(
+                all(
+                    frame["afterCoverage"] >= 0.99
+                    for frame in report["frames"]
+                )
+            )
+            self.assertLess(report["frames"][0]["beforeCoverage"], 0.99)
+            self.assertGreater(report["frames"][0]["addedPixels"], 0)
+
+            atlas = Image.open(
+                output / "machinegun-hurt-alpha-v2.png"
+            ).convert("RGBA")
+            source = Image.open(
+                self._path(root, "machinegun", 2, 0)
+            ).convert("RGBA")
+            repaired = atlas.crop(
+                (
+                    0,
+                    self.CELL * 2,
+                    self.CELL,
+                    self.CELL * 3,
+                )
+            )
+            added = 0
+            for before, after in zip(
+                source.getdata(),
+                repaired.getdata(),
+            ):
+                if before[3] != 0:
+                    self.assertEqual(after, before)
+                elif after[3] != 0:
+                    added += 1
+            self.assertGreater(added, 0)
+            self.assertTrue(
+                (output / "machinegun-hurt-alpha-v2-review.png").is_file()
+            )
+            self.assertTrue(
+                (output / "machinegun-hurt-alpha-v2-proof.png").is_file()
+            )
+            self.assertTrue(
+                (output / "machinegun-hurt-alpha-v2-health.json").is_file()
+            )
 
 
 if __name__ == "__main__":

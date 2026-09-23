@@ -1632,6 +1632,67 @@ def _render_batch_review(
     _save_png_deterministic(board, output)
 
 
+def _render_alpha_background_proof(
+    candidate: Image.Image,
+    *,
+    row: int,
+    weapon: str,
+    action: str,
+    columns: int,
+    cell_size: int,
+    output: Path,
+) -> None:
+    strip_box = (
+        0,
+        row * cell_size,
+        columns * cell_size,
+        (row + 1) * cell_size,
+    )
+    strip = candidate.crop(strip_box)
+    label_height = 28
+    review_scale = 0.5
+    panels: list[Image.Image] = []
+    for label, color in (
+        ("LIGHT", (242, 242, 242, 255)),
+        ("DARK", (28, 30, 34, 255)),
+    ):
+        background = Image.new("RGBA", strip.size, color)
+        background.alpha_composite(strip)
+        reduced = background.resize(
+            (
+                round(background.width * review_scale),
+                round(background.height * review_scale),
+            ),
+            Image.Resampling.NEAREST,
+        )
+        panel = Image.new(
+            "RGBA",
+            (reduced.width, reduced.height + label_height),
+            (18, 20, 24, 255),
+        )
+        ImageDraw.Draw(panel).text(
+            (8, 7),
+            f"{weapon.upper()} {action.upper()} ALPHA · {label}",
+            fill=(240, 240, 240, 255),
+        )
+        panel.alpha_composite(reduced, (0, label_height))
+        panels.append(panel)
+
+    board = Image.new(
+        "RGBA",
+        (
+            max(panel.width for panel in panels),
+            sum(panel.height for panel in panels),
+        ),
+        (12, 14, 18, 255),
+    )
+    y = 0
+    for panel in panels:
+        board.alpha_composite(panel, (0, y))
+        y += panel.height
+    _save_png_deterministic(board, output)
+
+
 def repair_sprite_parity(
     frames_root: Path,
     *,
@@ -1786,6 +1847,12 @@ MATTHIAS_MACHINEGUN_HURT_DX = (-2, 7, 4, 0, -2, -18, -18, -18)
 MATTHIAS_MACHINEGUN_HURT_PATCH = (90, 116, 279, 210)
 MATTHIAS_MACHINEGUN_HURT_MAX_RGB_MEAN = 165.0
 
+MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_DONOR_COLUMN = 4
+MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_DX = (0, 13, 6, 2, 0, -17, -17, -17)
+MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_PATCH = (80, 110, 305, 220)
+MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_MAX_RGB_MEAN = 165.0
+MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_MIN_COVERAGE = 0.985
+
 
 def _fill_transparent_from_shifted_patch(
     target: Image.Image,
@@ -1859,6 +1926,243 @@ def _prove_untouched_batch_rows(
         )
         if current.crop(bounds).tobytes() != candidate.crop(bounds).tobytes():
             raise GeometryError(f"untouched-row-drift:{row}")
+
+
+def _dark_patch_support(
+    image: Image.Image,
+    *,
+    patch: tuple[int, int, int, int],
+    max_rgb_mean: float,
+    alpha_threshold: int,
+) -> list[tuple[int, int]]:
+    source = image.convert("RGBA")
+    pixels = source.load()
+    x0, y0, x1, y1 = patch
+    if not (
+        0 <= x0 < x1 <= source.width
+        and 0 <= y0 < y1 <= source.height
+    ):
+        raise GeometryError("invalid-dark-support-patch")
+    support: list[tuple[int, int]] = []
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            r, g, b, a = pixels[x, y]
+            if a < alpha_threshold:
+                continue
+            if (r + g + b) / 3.0 > max_rgb_mean:
+                continue
+            support.append((x, y))
+    if not support:
+        raise GeometryError("empty-dark-support-patch")
+    return support
+
+
+def _translated_support_coverage(
+    target: Image.Image,
+    support: list[tuple[int, int]],
+    *,
+    dx: int,
+    alpha_threshold: int,
+) -> float:
+    alpha = target.convert("RGBA").getchannel("A")
+    total = 0
+    covered = 0
+    for x, y in support:
+        target_x = x + dx
+        if target_x < 0 or target_x >= alpha.width:
+            continue
+        total += 1
+        if alpha.getpixel((target_x, y)) >= alpha_threshold:
+            covered += 1
+    if total <= 0:
+        raise GeometryError("empty-translated-dark-support")
+    return covered / total
+
+
+def repair_matthias_machinegun_hurt_alpha_v2(
+    frames_root: Path,
+    output_dir: Path,
+    *,
+    actor: str = "matthias",
+    actions: tuple[str, ...] = DEFAULT_MATTHIAS_ACTIONS,
+    columns: int = 8,
+    cell_size: int = 416,
+    donor_column: int = MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_DONOR_COLUMN,
+    dx: tuple[int, ...] = MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_DX,
+    patch: tuple[int, int, int, int] = MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_PATCH,
+    max_rgb_mean: float = MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_MAX_RGB_MEAN,
+    min_coverage: float = MATTHIAS_MACHINEGUN_HURT_ALPHA_V2_MIN_COVERAGE,
+    alpha_threshold: int = 8,
+) -> dict:
+    if "hurt" not in actions:
+        raise BankContractError("machinegun hurt alpha repair requires hurt action")
+    if columns != len(dx):
+        raise BankContractError("machinegun hurt alpha dx count must match columns")
+    if donor_column < 0 or donor_column >= columns:
+        raise BankContractError("machinegun hurt alpha donor outside batch")
+    if not 0.0 < min_coverage <= 1.0:
+        raise BankContractError("machinegun hurt alpha min coverage must be in (0,1]")
+
+    hurt_row = actions.index("hurt")
+    rows = len(actions)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    frames = [
+        _load_batch_frame(
+            frames_root,
+            actor,
+            "machinegun",
+            hurt_row,
+            column,
+        )
+        for column in range(columns)
+    ]
+    donor = frames[donor_column]
+    support = _dark_patch_support(
+        donor,
+        patch=patch,
+        max_rgb_mean=max_rgb_mean,
+        alpha_threshold=alpha_threshold,
+    )
+    current_atlas = _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon="machinegun",
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements={},
+    )
+
+    replacements: dict[tuple[int, int], Image.Image] = {}
+    health: list[dict] = []
+    for column, current in enumerate(frames):
+        before_metrics = batch_frame_metrics(current, alpha_threshold)
+        before_coverage = _translated_support_coverage(
+            current,
+            support,
+            dx=dx[column],
+            alpha_threshold=alpha_threshold,
+        )
+        if column == donor_column:
+            repaired = current.copy()
+            added = 0
+            changed_bbox = None
+        else:
+            repaired, added, changed_bbox = _fill_transparent_from_shifted_patch(
+                current,
+                donor,
+                dx=dx[column],
+                patch=patch,
+                max_rgb_mean=max_rgb_mean,
+            )
+
+        before_pixels = current.load()
+        after_pixels = repaired.load()
+        for y in range(current.height):
+            for x in range(current.width):
+                if (
+                    before_pixels[x, y][3] != 0
+                    and before_pixels[x, y] != after_pixels[x, y]
+                ):
+                    raise GeometryError(
+                        f"machinegun-hurt-alpha-v2-overwrite:c{column}:{x},{y}"
+                    )
+
+        after_metrics = batch_frame_metrics(repaired, alpha_threshold)
+        if (
+            after_metrics.height != before_metrics.height
+            or after_metrics.foot_y != before_metrics.foot_y
+        ):
+            raise GeometryError(
+                f"machinegun-hurt-alpha-v2-geometry-drift:c{column}"
+            )
+        after_coverage = _translated_support_coverage(
+            repaired,
+            support,
+            dx=dx[column],
+            alpha_threshold=alpha_threshold,
+        )
+        if after_coverage < min_coverage:
+            raise GeometryError(
+                "machinegun-hurt-alpha-v2-coverage:"
+                f"c{column}:{after_coverage:.6f}<"
+                f"{min_coverage:.6f}"
+            )
+        replacements[(hurt_row, column)] = repaired
+        health.append(
+            {
+                "column": column,
+                "dx": dx[column],
+                "addedPixels": added,
+                "changedBbox": changed_bbox,
+                "beforeCoverage": round(before_coverage, 6),
+                "afterCoverage": round(after_coverage, 6),
+                "donorColumn": donor_column,
+            }
+        )
+
+    candidate = _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon="machinegun",
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements=replacements,
+    )
+    _prove_untouched_batch_rows(
+        current_atlas,
+        candidate,
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        changed_rows={hurt_row},
+    )
+
+    atlas_path = output_dir / "machinegun-hurt-alpha-v2.png"
+    review_path = output_dir / "machinegun-hurt-alpha-v2-review.png"
+    proof_path = output_dir / "machinegun-hurt-alpha-v2-proof.png"
+    health_path = output_dir / "machinegun-hurt-alpha-v2-health.json"
+    _save_png_deterministic(candidate, atlas_path)
+    _render_batch_review(
+        current_atlas,
+        candidate,
+        row=hurt_row,
+        weapon="machinegun",
+        action="hurt",
+        columns=columns,
+        cell_size=cell_size,
+        output=review_path,
+    )
+    _render_alpha_background_proof(
+        candidate,
+        row=hurt_row,
+        weapon="machinegun",
+        action="hurt",
+        columns=columns,
+        cell_size=cell_size,
+        output=proof_path,
+    )
+
+    report = {
+        "schema": 1,
+        "kind": "matthias-machinegun-hurt-alpha-v2",
+        "actor": actor,
+        "hurtRow": hurt_row,
+        "donorColumn": donor_column,
+        "dx": list(dx),
+        "patch": list(patch),
+        "maxRgbMean": max_rgb_mean,
+        "minCoverage": min_coverage,
+        "untouchedRowsPixelIdentical": True,
+        "frames": health,
+        "sha256": _sha256_file(atlas_path),
+    }
+    health_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return report
 
 
 def repair_matthias_stabilization_batch(
@@ -2233,7 +2537,7 @@ def repair_matthias_stabilization_batch(
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
-    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity", "repair-hurt-batch"}:
+    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity", "repair-hurt-batch", "repair-machinegun-hurt-alpha"}:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
@@ -2338,6 +2642,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.80,
     )
+    repair_hurt_alpha = sub.add_parser(
+        "repair-machinegun-hurt-alpha",
+        help="build Matthias SMG hurt alpha v2 without changing opaque pose pixels",
+    )
+    repair_hurt_alpha.add_argument("frames_root", type=Path)
+    repair_hurt_alpha.add_argument("output_dir", type=Path)
+    repair_hurt_alpha.add_argument("--actor", default="matthias")
+    repair_hurt_alpha.add_argument("--columns", type=int, default=8)
+    repair_hurt_alpha.add_argument("--cell-size", type=int, default=416)
+    repair_hurt_alpha.add_argument(
+        "--min-coverage",
+        type=float,
+        default=0.985,
+    )
+
     return parser.parse_args(raw)
 
 
@@ -2361,6 +2680,27 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
         print(args.report)
+        return 0
+
+    if args.command == "repair-machinegun-hurt-alpha":
+        report = repair_matthias_machinegun_hurt_alpha_v2(
+            args.frames_root,
+            args.output_dir,
+            actor=args.actor,
+            columns=args.columns,
+            cell_size=args.cell_size,
+            min_coverage=args.min_coverage,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "sha256": report["sha256"],
+                    "minCoverage": report["minCoverage"],
+                },
+                sort_keys=True,
+            )
+        )
         return 0
 
     if args.command == "repair-hurt-batch":
