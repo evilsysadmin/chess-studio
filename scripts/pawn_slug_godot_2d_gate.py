@@ -14,6 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 GODOT_ROOT = ROOT / "games/pawn-slug-godot"
 STAGE_MAPS_DIR = GODOT_ROOT / "maps"
 MATTHIAS = GODOT_ROOT / "scripts/matthias_art.gd"
+MATTHIAS_MOTION = GODOT_ROOT / "scripts/matthias_motion.gd"
 ENEMIES = GODOT_ROOT / "scripts/enemy_visual.gd"
 ENVIRONMENT = GODOT_ROOT / "scripts/environment_visual.gd"
 PARALLAX = GODOT_ROOT / "scripts/parallax_layer_visual.gd"
@@ -82,7 +83,7 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "/pawn-slug-godot/matthias/continuity-repair/machinegun/full/machinegun-idle-repaired-b815a81d1a459ed9.png",
+    "/pawn-slug-godot/matthias/continuity-v3/machinegun/full/machinegun-continuity-v3-832ef84b8606accc.png",
     "/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png",
     "/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
@@ -190,6 +191,13 @@ REQUIRED_MATTHIAS = (
     "_apply_climb_visual",
 
 )
+REQUIRED_MATTHIAS_MOTION = (
+    "extends RefCounted",
+    "static func select_run_source_row",
+    "static func motion_score",
+    "using authored walk stride at run cadence",
+)
+
 FORBIDDEN_MATTHIAS = (
     "MOTION_ATLAS_URL",
     "PISTOL_SHOOT_URL",
@@ -642,6 +650,7 @@ def validate() -> None:
                 violations.append(f"{path.relative_to(ROOT)}: token prohibido {token!r}")
 
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
+    validate_contract(MATTHIAS_MOTION, "matthias_motion.gd", REQUIRED_MATTHIAS_MOTION, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
     validate_contract(PARALLAX, "parallax_layer_visual.gd", REQUIRED_PARALLAX, violations)

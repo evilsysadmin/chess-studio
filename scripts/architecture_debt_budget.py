@@ -28,7 +28,7 @@ BUDGETS = {
     "frontend/src/chroniclesOfMatthiasIsometric.js": 1103,
     # Godot runtime hotspots: keep behavior stable while responsibilities are extracted.
     "games/pawn-slug-godot/scripts/main.gd": 2987,
-    "games/pawn-slug-godot/scripts/matthias_art.gd": 2146,
+    "games/pawn-slug-godot/scripts/matthias_art.gd": 2117,
 }
 
 failures = []

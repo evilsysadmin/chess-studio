@@ -34,6 +34,7 @@ Debe fallar ante:
 - texto, numeración, etiquetas o decoración de worksheet;
 - componentes opacos huérfanos no permitidos por la animación;
 - armas, manos, extremidades o volúmenes duplicados;
+- regiones corporales estructurales con alpha degradada o semitransparencia inesperada (por ejemplo piernas/botas fantasma);
 - frames vacíos o inesperadamente duplicados.
 
 El incidente conocido de numeración `0..7` bajo Matthias durante la carrera debe existir como fixture permanente: una secuencia con dígitos opacos desconectados debe ser rechazada antes de normalización.
@@ -81,7 +82,10 @@ Una animación es una serie, no una colección de PNG independientes. Analizar c
 - duplicados accidentales;
 - discontinuidades excesivas;
 - drift o teleport de arma/manos;
+- locomoción cuyos frames cambian en torso/arma pero mantienen la mitad inferior prácticamente congelada;
 - cambios de iluminación o perspectiva que rompan continuidad.
+
+En `walk`, `run` y `crouch_walk`, hashes distintos no acreditan movimiento: debe existir variación temporal medible en piernas/pies tras normalizar posición/escala. Si la secuencia se desliza con las piernas congeladas, falla cerrado.
 
 Los perfiles varían por animación: `idle` debe ser muy estable; `hurt` o `die` permiten cambios mayores.
 
@@ -153,7 +157,7 @@ Tras los gates offline:
 
 `accepted frames -> deterministic build -> PNG/manifest gates -> Godot headless -> SpriteFrames/AtlasTexture -> runtime capture -> visual review`
 
-Una validación de slicing no sustituye captura real. Revisar al menos idle, locomoción, run+fire, jump/fall, crouch, hurt, die y transiciones/armas afectadas.
+Una validación de slicing no sustituye captura real. Revisar al menos idle, locomoción, run+fire, jump/fall/land, crouch, hurt, die y transiciones/armas afectadas. Las regresiones conocidas de escala en salto/caída, alpha corporal y superposición de arma deben aparecer explícitamente en los artifacts de la PR cuando el banco afectado sea Matthias/SMG.
 
 Los banks necesarios de Matthias se preparan al bootstrap de Pawn Slug; cambiar de arma en gameplay debe ser un swap de recursos ya listos, no una descarga/decode/repack.
 

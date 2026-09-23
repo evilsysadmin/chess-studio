@@ -1,5 +1,7 @@
 extends Node2D
 
+const MatthiasMotion := preload("res://scripts/matthias_motion.gd")
+
 # Pawn Slug Matthias stays 2D. Godot owns the animation runtime: authored raster
 # sheets are sliced into SpriteFrames and AnimatedSprite2D plays them directly.
 # The strict-v7 contract is an exact 8 x 11 sheet (idle/walk/run/jump/fall/land/
@@ -17,7 +19,7 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 const STRICT_RUNTIME_GENERATION := "canonical-continuity-v2"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-repair/machinegun/full/machinegun-idle-repaired-b815a81d1a459ed9.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/continuity-v3/machinegun/full/machinegun-continuity-v3-832ef84b8606accc.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/shotgun/full/candidate-full-7f5e348f01e8dc87.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/panzerfaust/full/candidate-full-b9a3dd54769403f0.png",
 }
@@ -35,6 +37,11 @@ const RUN12_ATLAS_COLUMNS := 12
 const RUN12_ATLAS_CELL_SIZE := 416
 const RUN12_ATLAS_SIZE := Vector2i(RUN12_ATLAS_COLUMNS * RUN12_ATLAS_CELL_SIZE, RUN12_ATLAS_CELL_SIZE)
 const RUN12_FPS := 24.0
+# These high-phase overlays remain review candidates only. In runtime they blur
+# the leg cycle at game scale and can make Matthias look as if he is sliding.
+# Full-bank locomotion stays authoritative until a future overlay proves a
+# stronger lower-body stride in the same runtime capture gate.
+const RUN12_RUNTIME_PROMOTION_ENABLED := false
 const RUN_OVERLAY_COLUMNS := {
     "pistol": 12,
     "machinegun": 13,
@@ -755,6 +762,9 @@ func _start_next_background_full_bank() -> void:
     _begin_run12_bootstrap()
 
 func _begin_run12_bootstrap() -> void:
+    if not RUN12_RUNTIME_PROMOTION_ENABLED:
+        _finish_atlas_bootstrap()
+        return
     var missing_run: Array[String] = []
     for weapon_id in WEAPON_BOOTSTRAP_ORDER:
         if (
@@ -953,6 +963,8 @@ func _install_or_request_weapon() -> void:
     _ensure_master()
 
 func _ensure_run12_locomotion(weapon_id: String) -> void:
+    if not RUN12_RUNTIME_PROMOTION_ENABLED:
+        return
     if _run12_ready_by_weapon.has(weapon_id):
         return
     if _atlas_request != null or not _v9_ready_by_weapon.has(weapon_id):
@@ -1439,6 +1451,10 @@ func _append_v10_locomotion_frames(weapon_id: String, image: Image) -> bool:
             frames.add_frame(action, texture)
     return true
 
+func _select_v9_run_source_row(image: Image, weapon_id: String) -> int:
+    return MatthiasMotion.select_run_source_row(image, weapon_id, int(V9_ACTIONS["run"]["row"]), int(V9_ACTIONS["walk"]["row"]), V9_ATLAS_CELL_SIZE, V9_ATLAS_COLUMNS, V9_ATLAS_COLUMNS, RUN_LEG_MOTION_SAMPLE_STEP, RUN_LEG_PIXEL_DIFF, RUN_LEG_MOTION_MIN_DIFF, RUN_LEG_MOTION_RELATIVE_GAIN, RUN_LEG_MOTION_MIN_SCORE)
+
+
 func _build_v9_frames(image: Image, weapon_id: String = "") -> SpriteFrames:
     if image.get_size() != V9_ATLAS_SIZE:
         push_error(
@@ -1456,6 +1472,8 @@ func _build_v9_frames(image: Image, weapon_id: String = "") -> SpriteFrames:
         frames.set_animation_loop(action, bool(spec["loop"]))
         frames.set_animation_speed(action, float(spec["fps"]))
         var row := int(spec["row"])
+        if action == "run":
+            row = _select_v9_run_source_row(image, weapon_id)
         var weapon_overrides_value = V9_ACTION_FRAME_COUNT_OVERRIDES.get(weapon_id, {})
         var weapon_overrides: Dictionary = (
             weapon_overrides_value
@@ -1659,56 +1677,8 @@ func _cell_has_visible_pixels(image: Image, row: int, column: int) -> bool:
     return image.get_region(rect).get_used_rect().size != Vector2i.ZERO
 
 func _select_run_source_row(image: Image) -> int:
-    var run_spec: Dictionary = FULL_ACTIONS["run"]
-    var walk_spec: Dictionary = FULL_ACTIONS["walk"]
-    var run_row := int(run_spec["row"])
-    var walk_row := int(walk_spec["row"])
-    var run_score := _lower_body_motion_score(image, run_row, int(run_spec["count"]))
-    var walk_score := _lower_body_motion_score(image, walk_row, int(walk_spec["count"]))
-    if (
-        walk_score > run_score + RUN_LEG_MOTION_MIN_DIFF
-        and (
-            walk_score > run_score * RUN_LEG_MOTION_RELATIVE_GAIN
-            or run_score < RUN_LEG_MOTION_MIN_SCORE
-        )
-    ):
-        push_warning(
-            "Strict run row has weak lower-body motion; using authored walk stride for running"
-        )
-        return walk_row
-    return run_row
+    return MatthiasMotion.select_run_source_row(image, "legacy", int(FULL_ACTIONS["run"]["row"]), int(FULL_ACTIONS["walk"]["row"]), FULL_ATLAS_CELL_SIZE, int(FULL_ACTIONS["run"]["count"]), int(FULL_ACTIONS["walk"]["count"]), RUN_LEG_MOTION_SAMPLE_STEP, RUN_LEG_PIXEL_DIFF, RUN_LEG_MOTION_MIN_DIFF, RUN_LEG_MOTION_RELATIVE_GAIN, RUN_LEG_MOTION_MIN_SCORE)
 
-func _lower_body_motion_score(image: Image, row: int, frame_count: int) -> float:
-    if frame_count <= 1:
-        return 0.0
-    var changed := 0
-    var sampled := 0
-    var y_start := int(round(float(FULL_ATLAS_CELL_SIZE) * 0.55))
-    var y_end := FULL_ATLAS_CELL_SIZE - 12
-    var x_start := 18
-    var x_end := FULL_ATLAS_CELL_SIZE - 18
-    for frame_index in range(1, frame_count):
-        var previous_x := (frame_index - 1) * FULL_ATLAS_CELL_SIZE
-        var current_x := frame_index * FULL_ATLAS_CELL_SIZE
-        var base_y := row * FULL_ATLAS_CELL_SIZE
-        for local_y in range(y_start, y_end, RUN_LEG_MOTION_SAMPLE_STEP):
-            for local_x in range(x_start, x_end, RUN_LEG_MOTION_SAMPLE_STEP):
-                var previous := image.get_pixel(previous_x + local_x, base_y + local_y)
-                var current := image.get_pixel(current_x + local_x, base_y + local_y)
-                if maxf(previous.a, current.a) <= 0.10:
-                    continue
-                var pixel_diff := (
-                    absf(previous.r - current.r)
-                    + absf(previous.g - current.g)
-                    + absf(previous.b - current.b)
-                    + absf(previous.a - current.a)
-                )
-                if pixel_diff >= RUN_LEG_PIXEL_DIFF:
-                    changed += 1
-                sampled += 1
-    if sampled <= 0:
-        return 0.0
-    return float(changed) / float(sampled)
 
 func _build_legacy_pistol_frames(image: Image) -> SpriteFrames:
     if image.get_size() != Vector2i(768, 960):
@@ -1845,6 +1815,7 @@ func _install_frames(frames: SpriteFrames, authored_full: bool) -> void:
     if (
         authored_full
         and v9_ready
+        and RUN12_RUNTIME_PROMOTION_ENABLED
         and _bootstrap_complete
         and not _run12_ready_by_weapon.has(_rendered_weapon)
     ):

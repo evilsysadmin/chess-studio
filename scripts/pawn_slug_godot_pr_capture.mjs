@@ -184,6 +184,24 @@ await page.waitForTimeout(120);
 await capture('54-smg-idle');
 await captureDetailedCloseup('54-smg-idle', smgStage.canvas);
 
+// Exercise the exact SMG jump/fall/land transition that has regressed before.
+// Keep horizontal motion active so a body-scale jump, frozen legs or a weapon
+// overlap is visible against the same moving silhouette used in real play.
+await page.keyboard.down('ArrowRight');
+await page.keyboard.down('Space');
+await page.waitForTimeout(220);
+await page.keyboard.up('Space');
+for (let frame = 0; frame < 16; frame += 1) {
+  const label = `55-smg-jump-fall-${String(frame).padStart(2, '0')}`;
+  await capture(label);
+  if ([0, 3, 7, 11, 15].includes(frame)) await captureDetailedCloseup(label, smgStage.canvas);
+  await page.waitForTimeout(55);
+}
+await page.keyboard.up('ArrowRight');
+await page.waitForTimeout(180);
+await capture('56-smg-landed');
+await captureDetailedCloseup('56-smg-landed', smgStage.canvas);
+
 // Capture one representative traversal sector where the new industrial
 // ladder, pit mouth and stepping-route platforms share the same viewport.
 // This is a real Godot runtime frame; the probe only chooses the starting X.
@@ -222,7 +240,7 @@ for (const stageId of stageIds.slice(1)) {
 await writeFile(
   `${outputDir}/runtime-visual-health.json`,
   `${JSON.stringify({
-    schema: 6,
+    schema: 7,
     detailedStage,
     stageOverviews,
     captures,
