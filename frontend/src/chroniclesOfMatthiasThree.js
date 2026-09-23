@@ -5,11 +5,10 @@ import {
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
 import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
-import { buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
-import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
-import { buildSpectralBishop, buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
+import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
+import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 4;
@@ -113,18 +112,17 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   sigil.receiveShadow = true;
   scene.add(sigil);
 
-  const enemyModels = {
-    'corrupted-pawn': buildCorruptedPawn({ coarsePointer }),
-    'gate-jailer': buildGateJailer({ coarsePointer }),
-    'spectral-bishop': buildSpectralBishop({ coarsePointer }),
-    'scavenger-knight': buildScavengerKnight({ coarsePointer }),
-  };
+  const enemyModels = {};
   enemyDefinitions.forEach((enemyDefinition) => {
-    const enemy = enemyModels[enemyDefinition.id];
+    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer });
+    const enemy = visual?.model;
     if (!enemy) return;
+    enemyModels[enemyDefinition.id] = enemy;
     const enemyCell = worldForCell(enemyDefinition.x, enemyDefinition.y);
     enemy.position.set(enemyCell.x, 0, enemyCell.z);
-    enemy.scale.setScalar(enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08);
+    const authoredScale = Number(enemyDefinition.visualScale);
+    const legacyScale = enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08;
+    enemy.scale.setScalar(Number.isFinite(authoredScale) ? authoredScale : legacyScale);
     enemy.rotation.y = enemyDefinition.id === 'gate-jailer' ? 0 : Math.PI;
     enemy.userData.chroniclesBaseYaw = enemy.rotation.y;
     enemy.userData.chroniclesBaseScale = enemy.scale.x;
