@@ -1,9 +1,0 @@
-/* The 3D king is Matthias in this room, so do not repeat his portrait again in
-   the chat chrome either. Keep the identity text and voice tools. */
-.game-3d-command-column .game-chat-matthias-avatar {
-  display: none;
-}
-
-.game-3d-command-column .game-chat-title-block.game-chat-matthias {
-  grid-template-columns: minmax(0, 1fr) !important;
-}

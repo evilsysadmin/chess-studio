@@ -98,7 +98,6 @@
     overflow: hidden;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span,
   .game-screen .game-layout-3d .game-3d-turn-pill-identity > strong {
     overflow: hidden;
     text-overflow: ellipsis;
