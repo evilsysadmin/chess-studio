@@ -132,6 +132,8 @@ const V9_ACTIONS := {
     "shoot_up": {"row": 9, "fps": 20.0, "loop": false},
     "shoot_down": {"row": 10, "fps": 20.0, "loop": false},
     "shoot_diag_up": {"row": 11, "fps": 20.0, "loop": false},
+    # Reserved authored row. Runtime currently has no distinct semantic state
+    # for this alternate upward diagonal; keep it unreachable until one is defined.
     "shoot_diag_up_alt": {"row": 12, "fps": 20.0, "loop": false},
     "shoot_diag_down": {"row": 13, "fps": 20.0, "loop": false},
     "shoot_crouch": {"row": 14, "fps": 20.0, "loop": false},
