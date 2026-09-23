@@ -873,6 +873,40 @@ class SpriteForgeBatchLabTests(unittest.TestCase):
                 "needs-authored-source",
             )
 
+    def test_batch_audit_reports_reload_die_temporal_risk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            actions = ["reload", "die"]
+            for row, action in enumerate(actions):
+                heights = [30, 31] if action == "reload" else [30, 12]
+                for column, height in enumerate(heights):
+                    self._write_frame(
+                        root,
+                        "pistol",
+                        row,
+                        column,
+                        height,
+                    )
+
+            result = audit_sprite_batch(
+                root,
+                actor="matthias",
+                weapons=["pistol"],
+                actions=actions,
+                canon_weapons=["pistol"],
+                parity_actions=set(),
+                columns=self.COLUMNS,
+            )
+
+            self.assertEqual(
+                result["temporal"]["reload"]["weapons"]["pistol"]["status"],
+                "pass",
+            )
+            die = result["temporal"]["die"]["weapons"]["pistol"]
+            self.assertEqual(die["status"], "review")
+            self.assertIn("maxHeightStepRatio", die["reasons"])
+            self.assertEqual(die["maxHeightStepPair"], [0, 1])
+
     def test_parity_repair_preserves_unmodified_rows_and_footline(
         self,
     ) -> None:
