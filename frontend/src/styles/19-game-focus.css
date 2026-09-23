@@ -171,7 +171,7 @@
     z-index: 210;
     top: max(.55rem, env(safe-area-inset-top));
     right: max(.55rem, env(safe-area-inset-right));
-    min-height: 42px;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     padding: .48rem .72rem;
