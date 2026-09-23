@@ -136,21 +136,6 @@
     display: contents;
   }
 
-  .game-screen .game-3d-command-column {
-    grid-area: commander;
-    align-self: start;
-    min-height: 0;
-    box-sizing: border-box;
-    padding: .42rem;
-    border: 1px solid rgba(134,119,96,.34);
-    border-radius: 14px;
-    background:
-      linear-gradient(180deg, rgba(39,36,32,.95), rgba(15,15,15,.98)),
-      repeating-linear-gradient(0deg, transparent 0 42px, rgba(153,137,111,.035) 43px 44px);
-    box-shadow: inset 0 1px rgba(255,255,255,.035), inset 0 -42px 72px rgba(0,0,0,.22);
-    grid-template-rows: auto auto auto auto auto;
-  }
-
   .game-screen .game-3d-matthias-card,
   .game-screen .game-side-column-3d .game-side-music,
   .game-screen .game-side-column-3d .game-notation-disclosure,

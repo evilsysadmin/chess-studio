@@ -66,6 +66,16 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
     <div className="menu tournament-panel tournament-friendly">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
 
+      {lastResult && (
+        <div className={`tournament-result ${lastResult.leveledUp ? 'level-up' : ''}`}>
+          {lastResult.outcome === 'win' && <p>Última partida: victoria · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'draw' && <p>Última partida: tablas · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'loss' && <p>Última partida: derrota · puedes reintentar</p>}
+          {Number.isFinite(lastResult.eloDelta) && <p>Rating {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
+          {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
+        </div>
+      )}
+
       <div className="menu-section tournament-next-card friendly-primary-zone">
         <div className="combat-heading-row"><span className="eyebrow">Torneo · Nivel {level}</span><MechanicTutorialHelp tutorialId="tournament" /></div>
         <span className="level-heading-wrap">
@@ -89,23 +99,13 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
         </button>
       </div>
 
-      {lastResult && (
-        <div className={`tournament-result ${lastResult.leveledUp ? 'level-up' : ''}`}>
-          {lastResult.outcome === 'win' && <p>Última partida: victoria · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'draw' && <p>Última partida: tablas · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'loss' && <p>Última partida: derrota · puedes reintentar</p>}
-          {Number.isFinite(lastResult.eloDelta) && <p>Rating {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
-          {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
-        </div>
-      )}
-
       <details className="friendly-disclosure tournament-more">
         <summary>Ver progreso, recompensas y opciones</summary>
         <div className="friendly-disclosure-body friendly-stack">
           <section className="friendly-subsection">
             <h3>Tu torneo</h3>
             <p className="hint-text">
-              {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos para pistas
+              {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · saldo para pistas: {tournament.points} puntos
             </p>
             {(tournament.winStreak > 0 || tournament.bestWinStreak > 0) && (
               <p className="hint-text">Racha actual: <b>{tournament.winStreak || 0}</b> · mejor: <b>{tournament.bestWinStreak || 0}</b></p>
@@ -149,7 +149,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
           <details className="friendly-subdisclosure danger-disclosure">
             <summary>Opciones del torneo</summary>
             <div className="friendly-disclosure-body danger-action-zone">
-              <div><b>Reiniciar el torneo</b><small>Se perderán los puntos y el nivel de torneo actuales.</small></div>
+              <div><b>Reiniciar el torneo</b><small>Se perderán el nivel, la XP de torneo y el saldo para pistas actuales.</small></div>
               <button className="danger-btn" onClick={onReset}>Reiniciar progreso</button>
             </div>
           </details>

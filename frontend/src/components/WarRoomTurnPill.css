@@ -97,32 +97,11 @@
   color: var(--cream);
 }
 
-@media (max-width: 820px) {
-  .game-3d-turn-pill {
-    width: 100%;
-    max-width: none;
-    min-height: 36px;
-    padding: .32rem .5rem;
-    gap: .36rem;
-  }
-
-  .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    min-height: 36px !important;
-  }
-
-  .game-3d-turn-pill-avatar {
-    width: 21px;
-    height: 21px;
-    flex-basis: 21px;
-  }
-
-  .game-3d-turn-pill-identity,
-  .game-3d-turn-pill-label {
-    font-size: .63rem;
-  }
-
-  .game-3d-turn-pill-identity strong {
-    font-size: .68rem;
+/* Compact layouts dissolve desktop-only matchup wrappers into the pill. */
+@media (max-width: 1080px) {
+  .game-3d-matchup,
+  .game-3d-turn-state {
+    display: contents;
   }
 }
 
@@ -137,6 +116,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .game-3d-turn-pill {
+    transition: none !important;
+  }
+
   .game-3d-turn-pill-light {
     box-shadow: none;
   }

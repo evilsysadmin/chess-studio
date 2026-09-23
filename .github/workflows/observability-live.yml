@@ -2,10 +2,15 @@ name: Observability · Grafana live
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/grafana_live_check.py"
+      - ".github/workflows/observability-live.yml"
   schedule:
     - cron: '41 * * * *'
   workflow_run:
-    workflows: ["Deploy to staging"]
+    workflows: ["Deploy to staging", "Observability · Grafana dashboards"]
     types: [completed]
 
 permissions:
@@ -32,7 +37,7 @@ jobs:
       GRAFANA_SLO_MAX_P95_MS: ${{ vars.GRAFANA_SLO_MAX_P95_MS || '3000' }}
       GRAFANA_SLO_MAX_HOST_RAM_PERCENT: ${{ vars.GRAFANA_SLO_MAX_HOST_RAM_PERCENT || '90' }}
       GRAFANA_SLO_MIN_REQUESTS_15M: ${{ vars.GRAFANA_SLO_MIN_REQUESTS_15M || '20' }}
-      EXPECTED_STAGING_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+      EXPECTED_STAGING_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy to staging' && github.event.workflow_run.head_sha || '' }}
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
     steps:
       - uses: actions/checkout@v7
@@ -42,7 +47,7 @@ jobs:
         run: python3 -S scripts/grafana_live_check.py --self-test
       - name: Confirm deploy generation is still live
         id: generation
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy to staging'
         shell: bash
         run: |
           set -euo pipefail
@@ -63,7 +68,7 @@ jobs:
             echo "::notice title=Observability deploy superseded::$EXPECTED_STAGING_SHA is not the live staging backend generation; Grafana live check skipped."
           fi
       - name: Warm production + staging telemetry
-        if: github.event_name != 'workflow_run' || steps.generation.outputs.live == 'true'
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Deploy to staging' || steps.generation.outputs.live == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -76,7 +81,7 @@ jobs:
           done
           sleep 12
       - name: Query Grafana from the read side
-        if: github.event_name != 'workflow_run' || steps.generation.outputs.live == 'true'
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Deploy to staging' || steps.generation.outputs.live == 'true'
         run: python3 -S scripts/grafana_live_check.py
       - name: Summary
         if: always()
@@ -87,8 +92,8 @@ jobs:
             echo
             echo '- OCI staging host metrics + scoped backend stdout logs: queried from Grafana'
             echo '- Alloy self-telemetry + deterministic filelog probe distinguish transport from backend capture failures'
-            echo "- Deploy-triggered checks pin telemetry to: `${EXPECTED_STAGING_SHA:-scheduled/current}`"
-            echo "- Superseded deploy trigger queried: `${{ steps.generation.outputs.live || 'n/a' }}`"
+            echo "- Deploy-triggered checks pin telemetry to: ${EXPECTED_STAGING_SHA:-scheduled/current}"
+            echo "- Superseded deploy trigger queried: ${{ steps.generation.outputs.live || 'n/a' }}"
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"

@@ -32,6 +32,22 @@ describe('Board3D parity adapter', () => {
     });
   });
 
+
+  it('preserves classroom focus and danger semantics in 3D', () => {
+    const highlights = buildBoard3DParityHighlights({
+      squareClassName: (square) => {
+        if (square === 'e2') return 'classroom-focus';
+        if (square === 'f3') return 'classroom-danger';
+        return '';
+      },
+    });
+
+    expect(highlights).toMatchObject({
+      e2: 'schoolFocus',
+      f3: 'schoolDanger',
+    });
+  });
+
   it('keeps the normal engine hint while attaching parity metadata', () => {
     const hint = buildBoard3DParityHintMove({
       hintMove: { from: 'g1', to: 'f3' },

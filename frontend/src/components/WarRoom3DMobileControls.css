@@ -34,58 +34,17 @@
     min-height: 0;
   }
 
-  /* Put the actual game actions before the board. Nonessential controls stay
-     available elsewhere, but the first-screen row is deliberately tiny. */
+  /* Keep the board first in the compact stack; the command deck stays mounted
+     only as an action owner and is hidden by the later Android density layer. */
   .game-screen .game-board-stack.game-board-stack-3d {
     display: flex;
     flex-direction: column;
     gap: .3rem;
   }
 
-  .game-board-stack-3d > .game-command-deck {
-    order: -4;
-    width: 100%;
-    margin: 0;
-  }
-
   .game-board-stack-3d > .board3d-main-shell,
   .game-board-stack-3d > .board3d-fallback {
     order: -3;
-  }
-
-  .game-board-stack-3d .game-controls {
-    width: 100%;
-    margin: 0;
-    padding: .18rem !important;
-    border-radius: 10px;
-  }
-
-  .game-board-stack-3d .game-controls-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .24rem;
-  }
-
-  .game-board-stack-3d .game-controls-actions > :not(.game-mobile-focus-toggle):not(.game-abandon-btn) {
-    display: none !important;
-  }
-
-  .game-board-stack-3d .game-mobile-focus-toggle,
-  .game-board-stack-3d .game-abandon-btn {
-    width: 100%;
-    height: 40px;
-    min-height: 40px !important;
-    margin: 0;
-    padding: .34rem .46rem !important;
-    justify-content: center;
-    font-size: .72rem;
-    line-height: 1;
-  }
-
-  .game-board-stack-3d .game-mobile-focus-toggle:focus-visible,
-  .game-board-stack-3d .game-abandon-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--brass) 78%, #fff 22%);
-    outline-offset: 2px;
   }
 
   /* The human identity remains readable but stops behaving like a second card
@@ -171,13 +130,6 @@
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     aspect-ratio: 1.16 / 1;
-  }
-
-  .game-board-stack-3d .game-mobile-focus-toggle,
-  .game-board-stack-3d .game-abandon-btn {
-    height: 38px;
-    min-height: 38px !important;
-    font-size: .68rem;
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {

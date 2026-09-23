@@ -13,6 +13,7 @@ import { loadCleanGameRecords } from '../cleanGames.js';
 import { loadRivalry } from '../rivalry.js';
 import { buildPlayerModel } from '../playerModel.js';
 import './InsightsWorkspace.css';
+import './InsightsMobilePolish.css';
 import '../styles/04-career-dossier.css';
 
 const DIAGNOSIS_VIEWS = [

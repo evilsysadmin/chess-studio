@@ -51,7 +51,8 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas y Mi progreso', async ({ page }) => {
+test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles, Torneo y Mi progreso', async ({ page }) => {
+  test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -121,6 +122,24 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
 
   await openings.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.locator('.illustrated-home')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+  await page.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
+  const puzzles = page.locator('.puzzle-screen');
+  await expect(puzzles).toBeVisible();
+  await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
+  await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
+  await puzzles.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+
+  await page.locator('.illustrated-home__destination--tournament').click();
+  const tournament = page.locator('.tournament-panel');
+  await expect(tournament).toBeVisible();
+  await expect(tournament.getByRole('button', { name: 'Jugar siguiente partida', exact: true })).toBeVisible();
+  await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
+  await tournament.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+
   await page.evaluate(() => {
     localStorage.setItem('chess-study-career', JSON.stringify({
       byTimeControl: {
@@ -133,6 +152,10 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
   await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');

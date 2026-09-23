@@ -439,6 +439,41 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_staging_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
+    def _loki_count(query: str) -> float | None:
+        data = api.get_json(
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+            {"query": query, "time": str(now)},
+        )
+        rows = _vector_metric_rows(data)
+        return sum(float(row["value"]) for row in rows) if rows else None
+
+    staging_log_diagnostics = {
+        "otlp_http_request": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" [{lookback_seconds}s]))'
+        ),
+        "otlp_http_request_ip": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" | client_ip != "" [{lookback_seconds}s]))'
+        ),
+        "otlp_http_request_country": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f' | json | __error__="" | event="http_request" | client_country != "" [{lookback_seconds}s]))'
+        ),
+        "stdout_http_request_raw": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}'
+            f' |= "\\"event\\":\\"http_request\\"" [{lookback_seconds}s]))'
+        ),
+        "stdout_country_raw": _loki_count(
+            f'sum(count_over_time({{service_name="chess-studio-oci-backend-staging-stdout"}}'
+            f' |= "\\"client_country\\":" [{lookback_seconds}s]))'
+        ),
+    }
+    print(json.dumps({
+        "check": "staging_log_pipeline_diagnostic",
+        **staging_log_diagnostics,
+    }, separators=(",", ":"), sort_keys=True))
+
     loki_inventory_query = (
         f'sum by (service_name) (count_over_time({{service_name=~"chess-studio.*"}}[{lookback_seconds}s]))'
     )
@@ -522,6 +557,24 @@ def run_checks(
             if direct_probe_ok
             else "backend stdout missing while the direct OTLP log path is also unavailable"
         ),
+    ) and passed
+
+    oci_stdout_country_query = (
+        'sum(count_over_time({service_name="chess-studio-oci-backend-staging-stdout"}'
+        ' | json | __error__="" | event="http_request" | client_country != ""'
+        f' [{lookback_seconds}s]))'
+    )
+    payload = api.get_json(
+        f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+        {"query": oci_stdout_country_query, "time": str(now)},
+    )
+    country_ok = _vector_positive(payload)
+    passed = _report(
+        "oci_backend_stdout_country",
+        country_ok,
+        "staging stdout carries client_country on http_request"
+        if country_ok
+        else "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary",
     ) and passed
 
     production_oci_stdout_log_query = (
