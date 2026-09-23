@@ -109,7 +109,7 @@ export default function QuickMatchModal({
           </details>
         )}
 
-        {autoDifficulty && <button type="button" className="text-action adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
+        {autoDifficulty && <button type="button" className="secondary-btn adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
 
         {!autoDifficulty && handicap && (
           <p className="hint-text friendly-inline-note">
@@ -129,7 +129,7 @@ export default function QuickMatchModal({
         </button>
 
         {onOpenPvp && (
-          <button type="button" className="text-action quick-match-pvp-link" onClick={onOpenPvp} disabled={loading}>
+          <button type="button" className="secondary-btn quick-match-pvp-link" onClick={onOpenPvp} disabled={loading}>
             Jugar contra una persona · 1 vs 1
           </button>
         )}
