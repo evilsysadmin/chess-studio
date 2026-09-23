@@ -199,10 +199,7 @@
   min-width: 0;
 }
 
-.game-3d-matthias-card,
-.game-3d-warroom-message,
-.game-3d-warroom-status,
-.game-3d-warroom-controls {
+.game-3d-matthias-card {
   border: 1px solid color-mix(in srgb, var(--studio-line) 70%, rgba(145,94,39,.5));
   border-radius: 12px;
   background:
@@ -215,124 +212,11 @@
   border-color: rgba(177,132,52,.5);
 }
 
-.game-3d-matthias-portrait-wrap {
-  position: relative;
-  aspect-ratio: 1.08 / 1;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 48% 28%, rgba(225,203,145,.19), transparent 46%),
-    radial-gradient(circle at 22% 70%, rgba(55,92,70,.12), transparent 42%),
-    #090d14;
-}
-
-.game-3d-matthias-portrait {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  object-position: 50% 42%;
-  filter: saturate(.98) brightness(1.08) contrast(1.03) drop-shadow(0 12px 18px rgba(0,0,0,.32));
-}
-
-.game-3d-matthias-portrait-wrap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, transparent 58%, rgba(7,10,15,.92));
-}
-
-.game-3d-matthias-rank {
-  position: absolute;
-  z-index: 2;
-  right: .55rem;
-  bottom: .5rem;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(211,169,77,.56);
-  border-radius: 50%;
-  background: rgba(11,13,17,.88);
-  color: var(--brass);
-  box-shadow: 0 0 18px rgba(201,162,39,.16);
-}
-
-.game-3d-matthias-copy {
-  display: grid;
-  gap: .16rem;
-  padding: .72rem .8rem .84rem;
-}
-
-.game-3d-matthias-copy > span,
-.game-3d-warroom-message > span,
-.game-3d-warroom-status > span {
-  color: var(--brass-dim);
-  font: 700 .52rem/1.2 var(--font-mono);
-  letter-spacing: .11em;
-}
-
-.game-3d-matthias-copy h2 {
-  margin: .08rem 0 0;
-  color: var(--parchment);
-  font: 700 1.28rem/1.05 var(--font-display);
-}
-
 .game-3d-matthias-copy p,
-.game-3d-matthias-copy small {
-  margin: 0;
-  color: var(--parchment-dim);
-  font-size: .68rem;
-}
 
 .game-3d-warroom-message,
 .game-3d-warroom-status {
   padding: .76rem .8rem;
-}
-
-.game-3d-warroom-message {
-  min-height: 116px;
-  border-left-color: color-mix(in srgb, var(--brass) 72%, var(--studio-line));
-  background:
-    linear-gradient(90deg, rgba(116,79,31,.07), transparent 58%),
-    linear-gradient(145deg, rgba(20,26,37,.96), rgba(8,12,18,.93));
-}
-
-.game-3d-warroom-message p {
-  margin: .42rem 0 0;
-  color: var(--parchment);
-  font: .74rem/1.5 var(--font-body);
-}
-
-.game-3d-warroom-status strong {
-  display: block;
-  margin-top: .3rem;
-  color: var(--parchment);
-  font-size: .73rem;
-  line-height: 1.35;
-}
-
-.game-3d-warroom-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .38rem;
-  padding: .48rem;
-}
-
-.game-3d-warroom-controls .secondary-btn {
-  min-height: 38px;
-  padding: .45rem .5rem;
-  font-size: .67rem;
-}
-
-.game-3d-warroom-controls .secondary-btn.is-selected {
-  border-color: var(--brass);
-  color: var(--brass);
-  background: rgba(201,162,39,.08);
-}
-
-.game-3d-warroom-controls .secondary-btn:last-child:nth-child(3) {
-  grid-column: 1 / -1;
 }
 
 .game-3d-command-column blockquote {
@@ -445,16 +329,7 @@
   }
 
   .game-3d-matthias-card { grid-area: portrait; }
-  .game-3d-matthias-portrait-wrap { aspect-ratio: 1 / 1; }
-  .game-3d-matthias-copy { padding: .42rem; }
-  .game-3d-matthias-copy > span,
-  .game-3d-matthias-copy p,
-  .game-3d-matthias-copy small,
-  .game-3d-matthias-card .game-3d-matthias-rank { display: none; }
-  .game-3d-matthias-copy h2 { font-size: .8rem; text-align: center; }
-  .game-3d-warroom-message { grid-area: message; min-height: 0; }
   .game-3d-warroom-status { grid-area: status; }
-  .game-3d-warroom-controls { grid-area: controls; }
   .game-3d-command-column blockquote { display: none; }
 
   .game-screen .game-side-column.game-side-column-3d {
@@ -484,10 +359,6 @@
   }
 
   .game-3d-warroom-status { display: none; }
-  .game-3d-warroom-controls { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .game-3d-warroom-controls .secondary-btn:last-child:nth-child(3) { grid-column: auto; }
-  .game-3d-warroom-message { padding: .55rem .6rem; }
-  .game-3d-warroom-message p { font-size: .66rem; line-height: 1.4; }
   .game-3d-warroom-message > span { font-size: .47rem; }
 
   .board3d-main-shell { aspect-ratio: .96 / 1; }
@@ -533,17 +404,9 @@
   }
 
   .game-3d-command-column { gap: .42rem; }
-  .game-3d-matthias-portrait-wrap { aspect-ratio: 1.42 / 1; }
-  .game-3d-matthias-copy { padding: .46rem .62rem .54rem; }
-  .game-3d-matthias-copy h2 { font-size: 1.04rem; }
   .game-3d-matthias-copy p,
-  .game-3d-matthias-copy small { font-size: .62rem; }
   .game-3d-warroom-message,
   .game-3d-warroom-status { padding: .54rem .62rem; }
-  .game-3d-warroom-message { min-height: 0; }
-  .game-3d-warroom-message p { margin-top: .28rem; font-size: .68rem; line-height: 1.35; }
-  .game-3d-warroom-controls { gap: .28rem; padding: .34rem; }
-  .game-3d-warroom-controls .secondary-btn { min-height: 34px; padding: .34rem .4rem; }
   .game-3d-command-column blockquote { padding: .22rem .5rem; font-size: .62rem; line-height: 1.3; }
   .game-screen .game-side-column.game-side-column-3d { gap: .42rem; }
 }
@@ -552,15 +415,10 @@
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: clamp(390px, calc(100dvh - 18.4rem), 480px);
   }
-
-  .game-3d-matthias-portrait-wrap { aspect-ratio: 1.58 / 1; }
-  .game-3d-matthias-copy small { display: none; }
   .game-3d-command-column blockquote { display: none; }
-  .game-3d-warroom-status strong { font-size: .68rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-3d-matthias-portrait { filter: saturate(.98) brightness(1.08) contrast(1.03); }
 }
 
 
