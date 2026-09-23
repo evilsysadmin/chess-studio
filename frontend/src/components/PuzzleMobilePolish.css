@@ -1,0 +1,83 @@
+/* Mobile puzzle loop: keep the board close, controls thumb-safe, and source
+ * switching compact. This deliberately overrides the layered legacy puzzle
+ * rules without changing puzzle state or desktop composition. */
+@media (max-width: 620px) {
+  .tutorial-shell.puzzle-screen {
+    gap: .6rem;
+  }
+
+  .puzzle-screen > .back-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .puzzle-screen .puzzle-source-picker.friendly-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    gap: .32rem;
+    padding: .25rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: .25rem;
+    scrollbar-width: none;
+  }
+
+  .puzzle-screen .puzzle-source-picker.friendly-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .puzzle-screen .puzzle-source-picker > button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    min-height: 44px;
+    padding: .52rem .72rem;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    touch-action: manipulation;
+  }
+
+  .puzzle-training-workspace {
+    gap: .65rem;
+  }
+
+  .puzzle-board-column {
+    gap: .45rem;
+  }
+
+  .puzzle-board-column .game-controls {
+    display: flex;
+    width: 100%;
+    gap: .4rem;
+  }
+
+  .puzzle-board-column .game-controls > button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding: .62rem .55rem;
+    touch-action: manipulation;
+  }
+
+  .puzzle-board-column .game-controls > .primary-btn {
+    flex-grow: 1.15;
+  }
+
+  .puzzle-coach-panel > :not(.puzzle-coach-chrome) {
+    margin-left: .75rem;
+    margin-right: .75rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .puzzle-screen .puzzle-source-picker > button {
+    font-size: .82rem;
+  }
+
+  .puzzle-board-column .game-controls > button {
+    font-size: .86rem;
+  }
+}
