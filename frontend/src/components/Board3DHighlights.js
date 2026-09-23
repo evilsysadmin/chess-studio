@@ -19,6 +19,8 @@ export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
   veteran: 0xb58a38,
   xp: 0x3f8d67,
   special: 0x4b8a8d,
+  schoolFocus: 0x4a8498,
+  schoolDanger: 0xb84a3a,
   technique: 0x755fc4,
   legal: 0x245f9f,
   capture: 0x96462e,
@@ -34,6 +36,8 @@ const PARITY_STYLE = Object.freeze({
   veteran: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.veteran, opacity: 0.42, scale: 0.86 }),
   xp: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.xp, opacity: 0.44, scale: 0.84 }),
   special: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.special, opacity: 0.5, scale: 0.88 }),
+  schoolFocus: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.schoolFocus, opacity: 0.5, scale: 0.86 }),
+  schoolDanger: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.schoolDanger, opacity: 0.66, scale: 0.9 }),
 });
 
 function legalMeta(value) {
