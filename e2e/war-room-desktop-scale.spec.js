@@ -4,7 +4,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 async function activateSetupControl(locator) {
   await expect(locator).toBeVisible({ timeout: 45_000 });
   await expect(locator).toBeEnabled();
-  await locator.evaluate((element) => element.click());
+  await locator.dispatchEvent('click', undefined, { timeout: 45_000 });
 }
 
 async function openDesktopWarRoom(page) {
