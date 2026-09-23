@@ -29,22 +29,9 @@
     aspect-ratio: 1.13 / 1;
   }
 
-  /* Matthias becomes a compact identity rail instead of a full command post. */
   .game-3d-command-column {
     display: block;
     min-height: 0;
-  }
-
-  .game-3d-matthias-card {
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
-    align-items: center;
-    min-height: 58px;
-    overflow: hidden;
-  }
-
-  .game-3d-command-column blockquote {
-    display: none !important;
   }
 
   /* Put the actual game actions before the board. Nonessential controls stay
@@ -184,11 +171,6 @@
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     aspect-ratio: 1.16 / 1;
-  }
-
-  .game-3d-matthias-card {
-    grid-template-columns: 50px minmax(0, 1fr);
-    min-height: 50px;
   }
 
   .game-board-stack-3d .game-mobile-focus-toggle,
