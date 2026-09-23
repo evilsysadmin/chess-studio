@@ -121,18 +121,6 @@
   text-wrap: balance;
 }
 
-/* El retrato conserva enfado, miradas y reacciones a capturas, pero no adopta
-   una pose de discurso por speechText: evita que parezcan dos Matthias hablando
-   simultáneamente. */
-.game-layout-3d .game-3d-matthias-portrait-wrap.is-speaking .game-3d-matthias-character,
-.game-layout-3d .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-character {
-  animation: none !important;
-}
-
-.game-layout-3d .game-3d-matthias-portrait-wrap.is-ordering::before {
-  display: none;
-}
-
 /* The bottom human rail already has the global state; in 3D, repeating TU TURNO
    inside the rail wastes height. Active state + the top pill make ownership clear. */
 .game-board-stack-3d .game-player-rail.is-human .game-player-turn {
