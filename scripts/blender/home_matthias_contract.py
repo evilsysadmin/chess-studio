@@ -68,6 +68,8 @@ HEAD_TO_BASE_WIDTH = (0.64, 0.68)
 HEAD_TO_BODY_HEIGHT = (0.46, 0.51)
 CAP_TO_HEAD_WIDTH = (1.06, 1.14)
 BODY_HEIGHT_TO_BASE_WIDTH = (1.40, 1.60)
+PAWN_BODY_FLARE = (1.42, 1.55)
+TUNIC_FLARE = (1.10, 1.22)
 
 # Broad, tilted, curved officer cap; never a flat beret or cylindrical kepi.
 CAP_TOP_TO_CROWN_WIDTH = (0.92, 0.98)
