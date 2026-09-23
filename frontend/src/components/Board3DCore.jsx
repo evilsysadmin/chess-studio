@@ -31,6 +31,7 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
+import { normalizeWarRoomVariant, warRoomVariantDomData as buildWarRoomVariantDomData } from './WarRoomVariant.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
@@ -89,6 +90,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false,
   hansFireCallEnabled = false,
   cameraProfile = 'tactical',
+  warRoomVariantOverride = null,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -108,7 +110,11 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
-  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, domData: warRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
+  const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
+  const warRoomVariant = warRoomVariantOverride ? normalizeWarRoomVariant(warRoomVariantOverride) : globalWarRoomVariant;
+  const warRoomVariantDomData = warRoomVariantOverride
+    ? buildWarRoomVariantDomData(warRoomVariant, warRoomVariantStatus)
+    : globalWarRoomVariantDomData;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const classroomCamera = cameraProfile === 'classroom';
   const playAriaLabel = classroomCamera
