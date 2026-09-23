@@ -6,8 +6,6 @@ import {
 
 export const WAR_ROOM_V3_RUNTIME_MODEL_URL =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb';
-export const WAR_ROOM_V3_STAGING_MODEL_URL = WAR_ROOM_V3_RUNTIME_MODEL_URL;
-export const WAR_ROOM_V3_BOARD_ANCHOR_Y = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y;
 
 export function warRoomV3ModelUrl({
   buildSha = import.meta.env.VITE_BUILD_SHA,
@@ -23,6 +21,6 @@ export function installWarRoomV3Shell(scene, options = {}) {
     variant: 'v3',
     rootName: 'war-room-v3-celestial-observatory-shell',
     runtimeFinish: 'gltf-pbr-celestial-observatory-v1',
-    boardAnchorY: options.boardAnchorY ?? WAR_ROOM_V3_BOARD_ANCHOR_Y,
+    boardAnchorY: options.boardAnchorY ?? WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
   });
 }
