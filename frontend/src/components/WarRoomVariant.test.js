@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
   WAR_ROOM_VARIANT_STORAGE_KEY,
+  WAR_ROOM_VARIANTS,
+  isClassicWarRoomVariant,
   isWarRoomVariantSelectable,
   loadWarRoomVariant,
   normalizeWarRoomVariant,
   saveWarRoomVariant,
+  warRoomVariantDefinition,
 } from './WarRoomVariant.js';
 
 describe('War Room staging variant', () => {
@@ -48,7 +51,18 @@ describe('War Room staging variant', () => {
     })).toBe(true);
   });
 
+  it('keeps shell ownership in the same registry used by the selector', () => {
+    expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3']);
+    expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
+    expect(warRoomVariantDefinition('v2').shell).toBe('blender');
+    expect(warRoomVariantDefinition('v3').shell).toBe('blender');
+    expect(isClassicWarRoomVariant({ selectable: true, variant: 'classic' })).toBe(true);
+    expect(isClassicWarRoomVariant({ selectable: true, variant: 'v2' })).toBe(false);
+    expect(isClassicWarRoomVariant({ selectable: false, variant: 'v3' })).toBe(true);
+  });
+
   it('normalizes unknown variants back to the classic room', () => {
     expect(normalizeWarRoomVariant('war-room-3000')).toBe('classic');
+    expect(warRoomVariantDefinition('war-room-3000').id).toBe('classic');
   });
 });
