@@ -206,6 +206,12 @@ def repair_idle(
             scale_y=scale_y,
             label=f"machinegun idle c{col}",
         )
+        repaired, repaired_main, canonical_start_y = transplant_idle_lower_body(
+            repaired,
+            cell(reference, IDLE_ROW, col),
+            target,
+            f"machinegun idle c{col}",
+        )
         output.paste(repaired, (col * CELL, IDLE_ROW * CELL))
         reports.append(
             {
@@ -216,6 +222,7 @@ def repair_idle(
                 "scaleX": round(scale_x, 6),
                 "scaleY": round(scale_y, 6),
                 "outputMainBbox": list(repaired_main["bbox"]),
+                "canonicalLowerBodyStartY": canonical_start_y,
                 "removedDetached": [
                     {"area": int(item["area"]), "bbox": list(item["bbox"])}
                     for item in detached
@@ -318,8 +325,9 @@ def repair(
             raise ValueError(f"repair modified untouched row {row}")
     return output, {
         "schema": 1,
-        "scope": "pawn-slug-matthias-machinegun-continuity-v3",
+        "scope": "pawn-slug-matthias-machinegun-continuity-v4",
         "repairedRows": list(REPAIRED_ROWS),
+        "idleCanonicalLowerBodyStartFraction": IDLE_CANONICAL_LOWER_BODY_START_FRACTION,
         "untouchedRowsPixelIdentical": True,
         "idleFrames": idle_frames,
         "airborneFrames": airborne_frames,
@@ -462,7 +470,7 @@ def self_test() -> None:
                 target["bbox"][0] + target["bbox"][2]
             ) / 2.0
             assert abs(repaired_center - target_center) <= 1
-    print("Matthias SMG continuity v3 self-test: OK")
+    print("Matthias SMG continuity v4 self-test: OK")
 
 
 def main() -> int:
