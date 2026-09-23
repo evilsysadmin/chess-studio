@@ -445,7 +445,7 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   await page.reload();
   await expect(page.getByText('CLASS ROOM', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
-  await expect(page.getByLabel(/0 de 5 cursos aprobados; 1 de .* lecciones completadas/i)).toBeVisible();
+  await expect(page.getByLabel(/0 de 7 cursos aprobados; 1 de .* lecciones completadas/i)).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']?.completed)).toBe(true);
 });
 
