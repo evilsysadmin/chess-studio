@@ -1208,19 +1208,59 @@ def batch_frame_metrics(
     image: Image.Image,
     alpha_threshold: int = 8,
 ) -> BatchFrameMetrics:
-    components = connected_components(image, alpha_threshold)
-    if not components:
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    mask = alpha.point(
+        lambda value: 255 if value >= alpha_threshold else 0
+    )
+    bbox = mask.getbbox()
+    if bbox is None:
         raise GeometryError("empty-frame")
-    body = components[0]
-    left, top, right, bottom = body.bbox
+
+    left, top, right, bottom = bbox
+    histogram = mask.histogram()
+    alpha_pixels = histogram[255]
+    if alpha_pixels <= 0:
+        raise GeometryError("empty-frame")
+
+    # BOX projections keep the expensive work inside Pillow. Their values are
+    # proportional to occupied pixels per column/row, so the weighted means
+    # provide a stable centroid without a Python per-pixel flood fill.
+    x_projection = list(
+        mask.resize(
+            (mask.width, 1),
+            Image.Resampling.BOX,
+        ).get_flattened_data()
+    )
+    y_projection = list(
+        mask.resize(
+            (1, mask.height),
+            Image.Resampling.BOX,
+        ).get_flattened_data()
+    )
+    x_mass = sum(x_projection)
+    y_mass = sum(y_projection)
+    centroid_x = (
+        sum(index * value for index, value in enumerate(x_projection))
+        / x_mass
+        if x_mass
+        else (left + right) / 2.0
+    )
+    centroid_y = (
+        sum(index * value for index, value in enumerate(y_projection))
+        / y_mass
+        if y_mass
+        else (top + bottom) / 2.0
+    )
+
     return BatchFrameMetrics(
-        bbox=body.bbox,
+        bbox=bbox,
         width=right - left,
         height=bottom - top,
         foot_y=bottom,
-        alpha_pixels=body.area,
-        centroid_x=body.centroid[0],
-        centroid_y=body.centroid[1],
+        alpha_pixels=alpha_pixels,
+        centroid_x=centroid_x,
+        centroid_y=centroid_y,
     )
 
 
@@ -1417,7 +1457,23 @@ def _normalize_batch_frame_y(
     metrics = batch_frame_metrics(rgba, alpha_threshold)
     if foreground is None:
         raise GeometryError("empty-frame")
-    if foreground != metrics.bbox:
+
+    # Component topology is intentionally checked only for frames that will be
+    # mutated. The full-batch audit stays cheap; the repair path stays strict.
+    lint = lint_frame(
+        rgba,
+        LintConfig(
+            alpha_threshold=alpha_threshold,
+            edge_guard_px=0,
+            min_detached_area=1,
+            allowed_detached_components=0,
+        ),
+    )
+    if not lint.ok or lint.main_component is None:
+        raise GeometryError(
+            "repair-lint:" + ",".join(lint.errors)
+        )
+    if foreground != lint.main_component.bbox:
         raise GeometryError(
             "detached-content-not-safe-for-y-normalization"
         )
