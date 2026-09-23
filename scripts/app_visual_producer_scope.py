@@ -39,6 +39,7 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomblendermaterials.js",
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
+    "frontend/src/components/warroomv3fire.js",
     "frontend/src/components/warroomvariant.js",
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
