@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderFireKind,
+  homeBlenderSteamMotion,
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
@@ -489,5 +490,43 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect(homeBlenderGlowOpacity(undefined, undefined)).toBe(0);
       expect(homeBlenderGlowOpacity(0.5, Number.NaN)).toBeCloseTo(0.25);
     });
+  });
+});
+
+describe('HomeBlenderScene3D table candelabra and coffee steam', () => {
+  it('drives every candelabra flame as an animated candle and the mug wisps as steam', () => {
+    for (const idx of [0, 1, 2, 3, 4]) {
+      expect(homeBlenderFireKind(`HOME_PROP_table_candelabra_candle_flame_${idx}`)).toBe('candle');
+      expect(homeBlenderFireKind(`HOME_PROP_table_mug_steam_${idx}`)).toBe('steam');
+    }
+    expect(homeBlenderFireKind('HOME_PROP_table_candelabra_candle_3')).toBeNull();
+    expect(homeBlenderFireKind('HOME_PROP_table_mug_body')).toBeNull();
+  });
+
+  it('loops steam wisps: fades in and out at the cup, rises, swells and stays bounded', () => {
+    const height = 0.4;
+    let peak = 0;
+    for (let ms = 0; ms <= 12000; ms += 250) {
+      const motion = homeBlenderSteamMotion({ timeMs: ms, phase: 1.3, height });
+      expect(motion.opacity).toBeGreaterThanOrEqual(0);
+      expect(motion.opacity).toBeLessThanOrEqual(0.62 + 1e-9);
+      expect(motion.rise).toBeGreaterThanOrEqual(0);
+      expect(motion.rise).toBeLessThanOrEqual(height * 0.85 + 1e-9);
+      expect(motion.scaleXZ).toBeGreaterThanOrEqual(0.75);
+      expect(motion.scaleXZ).toBeLessThanOrEqual(1.7 + 1e-9);
+      peak = Math.max(peak, motion.opacity);
+    }
+    expect(peak).toBeGreaterThan(0.4);
+    // A wisp is invisible when it is born at the rim.
+    const born = homeBlenderSteamMotion({ timeMs: 0, phase: 0, height });
+    expect(born.progress).toBe(0);
+    expect(born.opacity).toBe(0);
+  });
+
+  it('keeps wisps out of phase and deterministic', () => {
+    const a = homeBlenderSteamMotion({ timeMs: 3000, phase: 0.4 });
+    const b = homeBlenderSteamMotion({ timeMs: 3000, phase: 3.9 });
+    expect(a.progress).not.toBeCloseTo(b.progress, 2);
+    expect(homeBlenderSteamMotion({ timeMs: 3000, phase: 0.4 })).toEqual(a);
   });
 });
