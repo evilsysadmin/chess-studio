@@ -606,3 +606,56 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     outline-offset: -4px;
   }
 }
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .48rem .58rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 30%, var(--ui-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-panel) 92%, #10161c 8%);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: .48rem;
+  flex-wrap: wrap;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation span {
+  color: color-mix(in srgb, var(--brass) 78%, var(--parchment));
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation strong {
+  color: var(--parchment);
+  font-size: .78rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation small {
+  color: color-mix(in srgb, var(--parchment) 60%, transparent);
+  font-size: .64rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation .primary-btn {
+  min-height: 34px;
+  padding: .38rem .58rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-recommendation .primary-btn {
+    width: 100%;
+  }
+}
