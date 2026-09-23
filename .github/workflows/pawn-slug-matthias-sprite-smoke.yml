@@ -167,7 +167,7 @@ jobs:
             --review-png "$OUT/matthias-semantic-review.png" \
             --summary-output "$OUT/matthias-semantic-summary.md" \
             --fail-on-hard || status=$?
-          cat "$OUT/matthias-semantic-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$OUT/matthias-semantic-summary.md" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "$status"
 
       - name: Audit Matthias batch parity with Sprite Forge
