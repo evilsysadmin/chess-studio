@@ -181,28 +181,12 @@
     left: 19% !important;
     width: 62% !important;
     min-height: 60px !important;
-    gap: 3px !important;
-    border-color: rgba(236, 186, 88, .34) !important;
-    background: linear-gradient(180deg, rgba(68, 35, 14, .84), rgba(25, 12, 7, .76)) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 225, 164, .08),
-      0 9px 22px rgba(0, 0, 0, .22) !important;
+    border-color: rgba(236, 186, 88, .28) !important;
+    background: linear-gradient(180deg, rgba(61, 31, 13, .78), rgba(25, 12, 7, .70)) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .18) !important;
   }
-
-  /* On a phone the main action must explain itself without opening another
-     layer. Secondary room descriptions stay hidden; JUGAR/CONTINUAR keeps the
-     one short line that tells the player what happens next. */
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play > span {
     display: block !important;
-    max-width: 28ch !important;
-    color: rgba(238, 218, 178, .90) !important;
-    font: 600 clamp(9px, 2.35vw, 11px)/1.1 Arial, sans-serif !important;
-    letter-spacing: .01em;
-  }
-
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--history {
@@ -282,16 +266,6 @@
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
     left: 16% !important;
     width: 68% !important;
-  }
-}
-
-@media (max-width: 520px) and (hover: none) and (pointer: coarse) {
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination:active {
-    filter: brightness(1.10);
-  }
-
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play:active {
-    transform: scale(.985);
   }
 }
 
