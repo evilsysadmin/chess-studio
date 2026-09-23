@@ -975,7 +975,7 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
     CELL = 64
     COLUMNS = 8
     FOOT = 56
-    HURT_SLOTS = (0, 1, 2, 2, 1, 0, 0, 0)
+    HURT_SLOTS = (0, 1, 2, 2, 1, 0, 1, 0)
     CAP_PATCH = (18, 8, 42, 20)
 
     def _path(
@@ -1111,6 +1111,25 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
             machinegun_max_rgb_mean=165.0,
         )
 
+    def test_batch_rejects_frozen_hurt_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(
+                BankContractError,
+                r"cannot end with 3\+ identical frames",
+            ):
+                repair_matthias_stabilization_batch(
+                    Path(tmp) / "frames",
+                    Path(tmp) / "out",
+                    actions=self.ACTIONS,
+                    columns=self.COLUMNS,
+                    cell_size=self.CELL,
+                    hurt_slots=(0, 1, 2, 2, 1, 0, 0, 0),
+                    machinegun_donor_column=3,
+                    machinegun_dx=(0,) * self.COLUMNS,
+                    machinegun_patch=self.CAP_PATCH,
+                    machinegun_max_rgb_mean=165.0,
+                )
+
     def test_batch_repairs_hurt_without_touching_unrelated_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "frames"
@@ -1161,8 +1180,8 @@ class SpriteForgeMatthiasStabilizationTests(unittest.TestCase):
                         source.tobytes(),
                     )
 
-            # The broken shotgun/panzer prone tail is now deliberate holds of
-            # the three authored standing-flinch poses.
+            # The broken shotgun/panzer prone tail now uses only the three
+            # authored standing-flinch poses, with a short recovery cadence.
             for weapon, atlas in (
                 ("shotgun", shotgun),
                 ("panzerfaust", panzer),
