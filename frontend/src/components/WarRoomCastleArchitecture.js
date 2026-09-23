@@ -15,13 +15,6 @@ const CASTLE = Object.freeze({
   leather: 0x321816,
 });
 
-const TABLE_PROP_NAMES = Object.freeze([
-  'war-table-field-folio',
-  'war-table-map-pencil',
-  'war-table-command-chronometer',
-  'matthias-command-relic',
-]);
-
 const WARM_FIRE_STATES = new WeakMap();
 
 function material(color, options = {}) {
@@ -394,17 +387,6 @@ function sceneRoot(object) {
   return current;
 }
 
-function retireWarTableClutter(root) {
-  if (!root || root.userData?.warRoomTableClutterRetired) return;
-  for (const name of TABLE_PROP_NAMES) {
-    const object = root.getObjectByName?.(name);
-    if (!object) continue;
-    object.visible = false;
-    object.userData.relocatedToRoomDecor = true;
-  }
-  root.userData.warRoomTableClutterRetired = true;
-}
-
 function ensureWarmBounceLight(fireplace, coarsePointer) {
   let bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
   if (bounce) return bounce;
@@ -535,7 +517,6 @@ function attachSceneDriver(layer, coarsePointer) {
   let root = null;
   driver.onBeforeRender = () => {
     root ||= sceneRoot(driver);
-    retireWarTableClutter(root);
     animateWarmFire(root, coarsePointer);
   };
 }
