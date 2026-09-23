@@ -60,6 +60,15 @@ export function loadWarRoomVariantInstaller(value) {
   return definition.loadInstaller();
 }
 
+export function warRoomVariantDomData(variant, status) {
+  return {
+    'data-board3d-variant': normalizeWarRoomVariant(variant),
+    'data-board3d-variant-status': status,
+    // Transitional alias for staging/live probes that predate generic variants.
+    'data-board3d-v2-status': status,
+  };
+}
+
 export function loadWarRoomVariant(options = {}) {
   if (!isWarRoomVariantSelectable(options)) return 'classic';
   return normalizeWarRoomVariant(getStorageItem(STORAGE_LOCAL, WAR_ROOM_VARIANT_STORAGE_KEY));
