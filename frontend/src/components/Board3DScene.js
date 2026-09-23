@@ -152,12 +152,12 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
 
   if (phone || compact) {
     return Object.freeze({
-      version: 'classroom-overhead-v1',
+      version: 'classroom-overhead-v2',
       mode: 'classroom-portrait',
-      halfSpan: 4.72,
-      padding: 1.0,
-      minDistance: 12.6,
-      maxDistance: 22.5,
+      halfSpan: 5.02,
+      padding: 1.02,
+      minDistance: 13.0,
+      maxDistance: 25.5,
       targetY: 0.34,
       targetZ: 0.16,
       cameraY: 10.2,
@@ -166,12 +166,12 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   }
 
   return Object.freeze({
-    version: 'classroom-overhead-v1',
+    version: 'classroom-overhead-v2',
     mode: 'classroom-desktop',
-    halfSpan: 4.58,
-    padding: 0.99,
-    minDistance: 11.8,
-    maxDistance: 24.0,
+    halfSpan: 4.98,
+    padding: 1.02,
+    minDistance: 12.2,
+    maxDistance: 27.0,
     targetY: 0.3,
     targetZ: 0.12,
     cameraY: 10.6,
