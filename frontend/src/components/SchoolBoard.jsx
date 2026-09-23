@@ -6,5 +6,5 @@ export function getSchoolBoardRenderer() {
 }
 
 export default function SchoolBoard(props) {
-  return <PreferredBoard {...props} cameraProfile="classroom" />;
+  return <PreferredBoard {...props} cameraProfile="classroom" warRoomVariantOverride={props.warRoomVariantOverride || 'classic'} />;
 }
