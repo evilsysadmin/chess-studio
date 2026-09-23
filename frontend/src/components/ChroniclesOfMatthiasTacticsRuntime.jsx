@@ -38,6 +38,10 @@ import {
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
 import {
+  chroniclesDifficultyBand,
+  chroniclesRunDepth,
+} from '../chronicles/chroniclesDifficultyPolicy.js';
+import {
   chroniclesApplyRewardChoice,
   chroniclesRewardDraft,
 } from '../chronicles/chroniclesRewardDraft.js';
@@ -152,6 +156,11 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
       claimedRewards: state.claimedRewards,
     });
   }, [authoritativeRun?.seed, progression, state.claimedRewards, state.mapId, state.phase]);
+  const difficultyBand = useMemo(() => chroniclesDifficultyBand({
+    progression,
+    deployedMemberIds: state.party?.map((member) => member.id),
+    depth: chroniclesRunDepth(authoritativeRun, state.mapId),
+  }), [authoritativeRun, progression, state.mapId, state.party]);
   const forecastView = useMemo(() => {
     if (!canAct) return {};
     return Object.fromEntries(
@@ -450,6 +459,9 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
       data-camera="isometric-behind-party"
       data-combat="turn-based"
       data-engagement={inCombat ? 'combat' : 'exploration'}
+      data-difficulty-target={difficultyBand.targetLevel}
+      data-difficulty-min={difficultyBand.minLevel}
+      data-difficulty-max={difficultyBand.maxLevel}
       data-map={state.mapId}
       data-phase={state.phase}
       data-reward-draft-ready={rewardDraft.length > 0 ? 'true' : 'false'}
