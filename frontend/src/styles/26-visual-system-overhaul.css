@@ -58,36 +58,6 @@ body {
 }
 :where(.primary-btn, .secondary-btn):disabled { opacity: .48; cursor: not-allowed; filter: saturate(.72); transform: none; box-shadow: none; }
 
-.text-action {
-  min-height: var(--ui-control-h);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
-  padding: .45rem .15rem;
-  border: 0;
-  background: transparent;
-  color: var(--brass);
-  font: inherit;
-  font-weight: 700;
-  line-height: 1.2;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--brass) 58%, transparent);
-  text-underline-offset: .2em;
-  transition: color .15s ease, text-decoration-color .15s ease, opacity .15s ease;
-}
-.text-action:not(:disabled):hover,
-.text-action:not(:disabled):focus-visible {
-  color: color-mix(in srgb, var(--brass) 82%, #fff 18%);
-  text-decoration-color: currentColor;
-}
-.text-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--brass) 72%, #fff 12%);
-  outline-offset: 2px;
-}
-.text-action:disabled { opacity: .48; cursor: not-allowed; }
-
 :where(input, select, textarea) {
   accent-color: var(--brass);
 }
