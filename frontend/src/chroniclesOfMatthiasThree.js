@@ -1,16 +1,14 @@
 import * as THREE from 'three';
 import {
   CHRONICLES_DIRECTIONS,
-  CHRONICLES_ENEMIES,
-  CHRONICLES_MAP,
   chroniclesEnemyIsActive,
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
-import { buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
+import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
-import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
-import { buildSpectralBishop, buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
+import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
+import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 4;
@@ -69,7 +67,9 @@ function createTorchFlameGeometry(coarsePointer) {
   return new THREE.LatheGeometry(profile, coarsePointer ? 10 : 18);
 }
 
-function createDungeonScene(scene, { coarsePointer = false } = {}) {
+function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } = {}) {
+  const grid = scenePlan?.grid || [];
+  const enemyDefinitions = scenePlan?.enemies || [];
   const stone = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
@@ -85,7 +85,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   scene.add(ceiling);
 
   const wallGeometry = new THREE.BoxGeometry(CELL, 3.6, CELL);
-  CHRONICLES_MAP.forEach((row, y) => {
+  grid.forEach((row, y) => {
     [...row].forEach((tile, x) => {
       if (tile !== '#') return;
       const wall = new THREE.Mesh(wallGeometry, stone);
@@ -112,18 +112,17 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   sigil.receiveShadow = true;
   scene.add(sigil);
 
-  const enemyModels = {
-    'corrupted-pawn': buildCorruptedPawn({ coarsePointer }),
-    'gate-jailer': buildGateJailer({ coarsePointer }),
-    'spectral-bishop': buildSpectralBishop({ coarsePointer }),
-    'scavenger-knight': buildScavengerKnight({ coarsePointer }),
-  };
-  CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
-    const enemy = enemyModels[enemyDefinition.id];
+  const enemyModels = {};
+  enemyDefinitions.forEach((enemyDefinition) => {
+    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer });
+    const enemy = visual?.model;
     if (!enemy) return;
+    enemyModels[enemyDefinition.id] = enemy;
     const enemyCell = worldForCell(enemyDefinition.x, enemyDefinition.y);
     enemy.position.set(enemyCell.x, 0, enemyCell.z);
-    enemy.scale.setScalar(enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08);
+    const authoredScale = Number(enemyDefinition.visualScale);
+    const legacyScale = enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08;
+    enemy.scale.setScalar(Number.isFinite(authoredScale) ? authoredScale : legacyScale);
     enemy.rotation.y = enemyDefinition.id === 'gate-jailer' ? 0 : Math.PI;
     enemy.userData.chroniclesBaseYaw = enemy.rotation.y;
     enemy.userData.chroniclesBaseScale = enemy.scale.x;
@@ -230,7 +229,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     torches.push({ root, flame, flameCore, light, baseIntensity, flameScale, phase: index * 1.7 });
   });
 
-  return { enemies: enemyModels, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
+  return { enemies: enemyModels, enemyDefinitions, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
 }
 
 function disposeObject(root) {
@@ -274,7 +273,7 @@ function createCombatFx(camera) {
   return { group, slash, ring, slashMaterial, ringMaterial };
 }
 
-export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
+export function createChroniclesOfMatthiasGame(host, { onReady, initialState = null } = {}) {
   if (!host) throw new Error('Chronicles of Matthias requires a host element');
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -291,7 +290,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const dungeon = createDungeonScene(scene, { coarsePointer: coarse });
+  const scenePlan = chroniclesFirstPersonScenePlan(initialState);
+  const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const dressing = buildChroniclesDungeonDressing({ coarsePointer: coarse });
   const atmosphere = buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion });
   scene.add(dressing, atmosphere);
@@ -323,7 +323,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   function syncState(state) {
     const now = clock.getElapsedTime();
     const previousState = latestState;
-    CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
+    dungeon.enemyDefinitions.forEach((enemyDefinition) => {
       const previousHp = previousState?.[enemyDefinition.hpKey];
       const nextHp = state[enemyDefinition.hpKey];
       if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
@@ -332,7 +332,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
     desiredPosition = worldForCell(state.x, state.y);
     const direction = CHRONICLES_DIRECTIONS[state.direction];
     desiredYaw = Math.atan2(-direction.dx, -direction.dy);
-    CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
+    dungeon.enemyDefinitions.forEach((enemyDefinition) => {
       const enemy = dungeon.enemies[enemyDefinition.id];
       if (!enemy) return;
       const active = chroniclesEnemyIsActive(state, enemyDefinition);
@@ -427,7 +427,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         );
         torch.flameCore.position.y = 0.18 + Math.sin(time * 9.4 + torch.phase) * 0.008;
       });
-      CHRONICLES_ENEMIES.forEach((enemyDefinition, index) => {
+      dungeon.enemyDefinitions.forEach((enemyDefinition, index) => {
         const enemy = dungeon.enemies[enemyDefinition.id];
         if (!enemy) return;
         const active = latestState ? chroniclesEnemyIsActive(latestState, enemyDefinition) : enemyDefinition.activation === 'always';

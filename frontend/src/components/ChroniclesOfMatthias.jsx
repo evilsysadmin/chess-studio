@@ -281,7 +281,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     void loadChroniclesFirstPersonRenderer()
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
-        engine = createChroniclesOfMatthiasGame(host);
+        engine = createChroniclesOfMatthiasGame(host, { initialState: stateRef.current });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
       })
@@ -297,7 +297,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [ready]);
+  }, [ready, state?.mapId]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
