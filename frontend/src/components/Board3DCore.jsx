@@ -107,12 +107,7 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
-  const {
-    selectable: warRoomVariantSelectable,
-    variant: warRoomVariant,
-    status: warRoomVariantStatus,
-    setStatus: setWarRoomVariantStatus,
-  } = useWarRoomVariant();
+  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, domData: warRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -1183,9 +1178,7 @@ function Board3DCanvas({
     <div
       className="board3d-main-shell"
       data-board3d-war-room="true"
-      data-board3d-variant={warRoomVariant}
-      data-board3d-variant-status={warRoomVariantStatus}
-      data-board3d-v2-status={warRoomVariantStatus}
+      {...warRoomVariantDomData}
       data-board3d-scene="premium"
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
