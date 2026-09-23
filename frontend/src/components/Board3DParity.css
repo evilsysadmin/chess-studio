@@ -74,7 +74,7 @@
 }
 
 .game-screen .board-live-row.is-3d-warroom :where(
-  .game-3d-matthias-card,
+  .game-3d-turn-pill,
   .game-side-column-3d .game-side-music,
   .game-side-column-3d .game-notation-disclosure,
   .game-side-column-3d .game-chat
@@ -82,6 +82,6 @@
   border-color: rgba(205, 201, 192, .07);
 }
 
-.game-screen .board-live-row.is-3d-warroom .game-3d-matthias-card {
+.game-screen .board-live-row.is-3d-warroom .game-3d-turn-pill {
   border-color: rgba(205, 201, 192, .095);
 }

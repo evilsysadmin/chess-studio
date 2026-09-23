@@ -136,7 +136,7 @@
     display: contents;
   }
 
-  .game-screen .game-3d-matthias-card,
+  .game-screen .game-3d-turn-pill,
   .game-screen .game-side-column-3d .game-side-music,
   .game-screen .game-side-column-3d .game-notation-disclosure,
   .game-screen .game-side-column-3d .game-chat {
@@ -253,7 +253,7 @@
 }
 
 .game-screen :where(
-  .game-3d-matthias-card,
+  .game-3d-turn-pill,
   .game-side-column-3d .game-side-music,
   .game-side-column-3d .game-notation-disclosure,
   .game-side-column-3d .game-chat
@@ -267,7 +267,7 @@
     0 10px 24px rgba(0,0,0,.18);
 }
 
-.game-screen .game-3d-matthias-card {
+.game-screen .game-3d-turn-pill {
   border-color: color-mix(in srgb, var(--war-room-brass) 44%, rgba(255,255,255,.06));
 }
 
