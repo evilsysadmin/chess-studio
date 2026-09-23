@@ -547,15 +547,15 @@ def main() -> int:
 
     for token in (
         'chess-studio-backend',
-        'chess-studio-oci-backend-staging-stdout',
+        'chess-studio-backend-staging',
         '"type": "custom"',
         '"label": "Entorno"',
         'production : {service_name=',
         'staging : {service_name=',
-        'chess-studio-(backend|oci-backend-staging-stdout)',
+        'chess-studio-backend(-staging)?',
     ):
         if token not in infra_logs:
-            fail(f"Loki debe usar fuentes canónicas por entorno: {token}")
+            fail(f"Loki debe usar OTLP directo por entorno: {token}")
 
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
