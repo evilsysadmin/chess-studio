@@ -15,19 +15,6 @@ from workflow_debt_gate import budget_errors, budget_rows, inventory_drift, self
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_flux_seam_contracts(root: Path = ROOT) -> None:
-    """Validate the dormant Flux seam; network export runs only for matching CI PR diffs."""
-    for args in (
-        ["scripts/oci_flux_contract.py"],
-        ["scripts/oci_flux_admission.py", "--self-test"],
-        ["scripts/oci_flux_export.py", "--self-test"],
-        ["scripts/oci_flux_export.py", "--ci-if-required"],
-    ):
-        subprocess.run([sys.executable, "-S", *args], cwd=root, check=True)
-    print("OCI dormant Flux seam contracts OK")
-
-
-
 def validate_main_admission_fallback(root: Path = ROOT) -> None:
     """Keep the expensive exact-HEAD fallback wired without fossil pytest readers."""
     workflow = (root / ".github" / "workflows" / "main-admission.yml").read_text(encoding="utf-8")
@@ -98,7 +85,6 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     if errors:
         raise SystemExit('Workflow static contracts failed:\n- ' + '\n- '.join(errors))
 
-    run_flux_seam_contracts(root)
     run_oci_required_contracts(root)
     print(
         'workflow-static-contracts OK · lineage + promotion + staging identity + workflow inventory/ratchets'

@@ -28,9 +28,11 @@ on:
       - 'backend-python/Dockerfile'
       - 'infra/oci/k3s/**'
       - 'infra/oci/gitops/staging2/**'
+      - 'infra/oci/gitops/flux/**'
       - 'infra/oci/runtime/ocarun.sudoers'
       - 'scripts/oci_k3s_*'
       - 'scripts/oci_k3s_readiness_contract.py'
+      - 'scripts/oci_flux_*'
       - '.github/workflows/oci-staging-lab.yml'
       - 'Makefile'
 
@@ -42,16 +44,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  k3s-contract:
+  hold-contracts:
     if: github.event_name == 'pull_request'
-    name: OCI K3s lab · contract
+    name: OCI HOLD labs · contracts
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Validate dormant K3s lab contract
+      - name: Validate dormant K3s/Flux lab contracts
         run: |
           python3 scripts/oci_k3s_readiness_contract.py
           python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
+          python3 -S scripts/oci_flux_contract.py
+          python3 -S scripts/oci_flux_admission.py --self-test
+          python3 -S scripts/oci_flux_export.py --self-test
+          python3 -S scripts/oci_flux_export.py --ci-if-required
 
   terraform:
     if: ${{ github.event_name == 'workflow_dispatch' && !startsWith(inputs.operation, 'k3s-') }}
