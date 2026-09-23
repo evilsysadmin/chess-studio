@@ -452,21 +452,19 @@ jobs:
         with:
           version: '2.185.2'
           python-version: '3.13'
-      - name: Load staging smoke secrets
-        shell: bash
+      - name: Load ephemeral staging invite code from OCI runtime
         run: |
           python3 - <<'PY'
           import os,sys
           sys.path.insert(0,'scripts')
           import oci
-          from oci_runtime_bundle import read_private_runtime_value as read
-          pairs=(('STAGING_INVITE_CODE','INVITE_CODE'),('STAGING_SYNTHETIC_SECRET','CHESS_AI_SHARED_SECRET'))
-          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as h:
-              for env,key in pairs:
-                  value=read(oci,key)
-                  if not value: raise SystemExit(f'{key} falta en OCI')
-                  print(f'::add-mask::{value}')
-                  h.write(f'{env}={value}\n')
+          from oci_runtime_bundle import read_private_runtime_value
+          invite=read_private_runtime_value(oci, 'INVITE_CODE')
+          sec=read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET')
+          if not invite or not sec: raise SystemExit('missing staging smoke secret')
+          h=open(os.environ['GITHUB_ENV'],'a')
+          for k,v in (('STAGING_INVITE_CODE',invite),('STAGING_SYNTHETIC_SECRET',sec)):
+              print(f'::add-mask::{v}');h.write(f'{k}={v}\n')
           PY
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'
