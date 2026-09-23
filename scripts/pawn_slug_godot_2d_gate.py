@@ -659,15 +659,16 @@ def validate_matthias_muzzle_action_contract(
     text: str,
     violations: list[str],
 ) -> None:
-    expected = {
+    active = {
         "shoot",
         "shoot_up",
         "shoot_down",
         "shoot_diag_up",
-        "shoot_diag_up_alt",
         "shoot_diag_down",
         "shoot_crouch",
     }
+    reserved = {"shoot_diag_up_alt"}
+    expected = active | reserved
     action_keys = {
         key
         for key in _const_dictionary_keys(text, "V9_ACTIONS")
@@ -689,6 +690,30 @@ def validate_matthias_muzzle_action_contract(
         violations.append(
             "matthias_art.gd muzzle aim map does not match shoot actions: "
             f"missing={missing_aim}, unexpected={unexpected_aim}"
+        )
+
+    selector_match = re.search(
+        r"func _shoot_action_for_state\(.*?\n(?=func )",
+        text,
+        flags=re.DOTALL,
+    )
+    selector = selector_match.group(0) if selector_match else ""
+    missing_runtime = sorted(
+        action for action in active if f'"{action}"' not in selector
+    )
+    accidentally_live = sorted(
+        action for action in reserved if f'return "{action}"' in selector
+    )
+    if missing_runtime:
+        violations.append(
+            "matthias_art.gd runtime shoot selector misses active actions: "
+            + ",".join(missing_runtime)
+        )
+    if accidentally_live:
+        violations.append(
+            "matthias_art.gd reserved shoot actions became runtime-reachable "
+            "without an authored contract: "
+            + ",".join(accidentally_live)
         )
 
 
@@ -782,6 +807,41 @@ const V9_MUZZLE_ACTION_AIM := {
         muzzle_violations,
     )
     assert any("missing=['shoot_diag_up_alt']" in item for item in muzzle_violations)
+
+    runtime_selector = synthetic_actions + """
+func _shoot_action_for_state() -> String:
+    if true:
+        return "shoot"
+    if true:
+        return "shoot_up"
+    if true:
+        return "shoot_down"
+    if true:
+        return "shoot_diag_up"
+    if true:
+        return "shoot_diag_down"
+    return "shoot_crouch"
+
+func next_func() -> void:
+    pass
+"""
+    muzzle_violations = []
+    validate_matthias_muzzle_action_contract(
+        runtime_selector,
+        muzzle_violations,
+    )
+    assert muzzle_violations == []
+
+    accidentally_live_alt = runtime_selector.replace(
+        '    return "shoot_crouch"\n',
+        '    if true:\n        return "shoot_diag_up_alt"\n    return "shoot_crouch"\n',
+    )
+    muzzle_violations = []
+    validate_matthias_muzzle_action_contract(
+        accidentally_live_alt,
+        muzzle_violations,
+    )
+    assert any("reserved shoot actions became runtime-reachable" in item for item in muzzle_violations)
 
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
