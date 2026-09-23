@@ -4,6 +4,13 @@ import './MatthiasClassRoom.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
+import {
+  advanceSchoolCoachContext,
+  schoolCoachHintMessage,
+  schoolCoachMissMessage,
+  schoolCoachSelectionMessage,
+  schoolCoachStepMessage,
+} from './SchoolCoach.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
@@ -55,6 +62,7 @@ export default function Tutorial({ onExit }) {
   const [attemptEpoch, setAttemptEpoch] = useState(0);
   const [hintActive, setHintActive] = useState(false);
   const [dangerSquares, setDangerSquares] = useState([]);
+  const [coachContext, setCoachContext] = useState({ kind: null, count: 0 });
   const [curriculumOpen, setCurriculumOpen] = useState(false);
   const classRoomVariantSelectable = isClassRoomVariantSelectable();
   const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
@@ -92,6 +100,7 @@ export default function Tutorial({ onExit }) {
     setMistakes(0);
     setHintActive(false);
     setDangerSquares([]);
+    setCoachContext({ kind: null, count: 0 });
     setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
@@ -109,10 +118,20 @@ export default function Tutorial({ onExit }) {
     }
   }, [selected, practiceFen, examFailed, runComplete]);
 
-  function recordMiss(text, { danger = [] } = {}) {
+  function recordMiss(kind, { danger = [], square = null, selectedSquare = selected } = {}) {
     setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
     const nextMistakes = mistakes + 1;
+    const nextContext = advanceSchoolCoachContext(coachContext, kind);
+    const text = schoolCoachMissMessage({
+      lesson,
+      kind,
+      square,
+      selected: selectedSquare,
+      expected,
+      repeatCount: nextContext.count,
+    });
     setMistakes(nextMistakes);
+    setCoachContext(nextContext);
     setSelected(null);
     setHintActive(false);
     setDangerSquares(danger);
@@ -129,6 +148,7 @@ export default function Tutorial({ onExit }) {
     setLineIndex(0);
     setHintActive(false);
     setDangerSquares([]);
+    setCoachContext({ kind: null, count: 0 });
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
     if (!keepCoach) {
@@ -144,6 +164,7 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setHintActive(false);
     setDangerSquares([]);
+    setCoachContext({ kind: 'complete', count: 1 });
     setLineIndex(line.length);
     setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
     setCoach({ tone: 'success', text: lesson.success });
@@ -156,7 +177,7 @@ export default function Tutorial({ onExit }) {
       const move = board.move({ from, to, promotion: 'q' });
       if (!move) throw new Error('illegal');
     } catch {
-      recordMiss('La jugada dejó de ser legal al aplicarla. Reiniciamos antes de acusar al continuo espacio-tiempo.');
+      recordMiss('internal-illegal', { selectedSquare: from });
       resetLesson({ keepCoach: true, clearFailure: false });
       return;
     }
@@ -186,9 +207,16 @@ export default function Tutorial({ onExit }) {
     setDangerSquares([]);
     const next = nextHumanSchoolStep(lesson, cursor);
     const done = line.slice(0, cursor).filter((step) => !step.auto).length;
+    setCoachContext({ kind: 'correct-step', count: 1 });
     setCoach({
       tone: 'neutral',
-      text: `${autoReplies ? 'Bien. El rival ha respondido. ' : 'Bien. '}${next?.note || `Sigue con la secuencia: movimiento ${done + 1} de ${totalHumanMoves}.`} No improvises una ópera todavía.`,
+      text: schoolCoachStepMessage({
+        autoReplies,
+        note: next?.note,
+        mistakes,
+        nextStep: done + 1,
+        totalMoves: totalHumanMoves,
+      }),
     });
   }
 
@@ -200,16 +228,25 @@ export default function Tutorial({ onExit }) {
 
     if (!selected) {
       if (!piece) {
-        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Busca la pieza que debe iniciar este paso.`, { danger: [square] });
+        recordMiss('empty-square', { danger: [square], square });
         return;
       }
       if (square !== expected.from) {
-        recordMiss(`Esa pieza existe, sí. Pero la secuencia pide empezar este paso desde ${expected.from}. Mira la posición, no mi paciencia.`, { danger: [square] });
+        recordMiss('wrong-piece', { danger: [square], square });
         return;
       }
       setSelected(square);
       setDangerSquares([]);
-      setCoach({ tone: 'neutral', text: `${square} seleccionado. Las casillas iluminadas son sus destinos legales. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
+      setCoachContext({ kind: 'correct-selection', count: 1 });
+      setCoach({
+        tone: 'neutral',
+        text: schoolCoachSelectionMessage({
+          square,
+          mistakes,
+          step: completedHumanMoves + 1,
+          totalMoves: totalHumanMoves,
+        }),
+      });
       return;
     }
 
@@ -221,12 +258,12 @@ export default function Tutorial({ onExit }) {
 
     const target = legalTargets.find((move) => move.to === square);
     if (!target) {
-      recordMiss(`La pieza no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`, { danger: [square] });
+      recordMiss('illegal-target', { danger: [square], square, selectedSquare: selected });
       return;
     }
 
     if (selected !== expected.from || square !== expected.to) {
-      recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`, { danger: [square] });
+      recordMiss('off-objective', { danger: [square], square, selectedSquare: selected });
       return;
     }
 
@@ -383,7 +420,7 @@ export default function Tutorial({ onExit }) {
                 <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} teachingLayers={teachingLayers} warRoomVariantOverride={classRoomVariant} />
                 <div className="matthias-school-board-actions">
                   <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setDangerSquares([]); setCoachContext({ kind: 'hint', count: 1 }); setHintActive(true); setCoach({ tone: 'hint', text: schoolCoachHintMessage(lesson) }); }}>Dame una pista</button>}
                 </div>
               </div>
 
