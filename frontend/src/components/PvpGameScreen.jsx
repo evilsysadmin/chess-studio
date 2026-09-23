@@ -1,6 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PromotionModal from './PromotionModal.jsx';
 import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
+import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { checkedKingSquare } from '../boardState.js';
@@ -22,8 +23,6 @@ import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import './WarRoomCompositionPolish.css';
 import './WarRoomMobileLandscape.css';
 import './PvpGameScreen.css';
-
-const Board3D = lazy(() => import('./Board3D.jsx'));
 
 function resultCopy(result, endReason) {
   if (endReason === 'disconnect') {
@@ -310,26 +309,29 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
               <div className="game-board-3d-stage pvp-war-room__stage">
-                <Suspense fallback={<div className="pvp-war-room__loading">Abriendo la sala…</div>}>
-                  <Board3D
-                    gameId={`pvp-${match.id}`}
-                    fen={match.fen}
-                    onSquareClick={onSquareClick}
-                    selectedSquare={selected}
-                    legalTargets={legalTargets}
-                    lastMove={lastMove}
-                    animate={pendingAnim}
-                    hintMove={null}
-                    checkSquare={checkSquare}
-                    gameOver={match.status !== 'active'}
-                    turnState={busy || !connectionLive ? 'thinking' : match.yourTurn ? 'human' : 'cpu'}
-                    orientation={orientation}
-                    showCoordinates={showCoordinates}
-                    matthiasKingColor={null}
-                    hansFireplaceIteration={false}
-                    hansFireCallEnabled={false}
-                  />
-                </Suspense>
+                <WarRoomBoardSurface
+                  isThreeD
+                  loadingLabel="Abriendo la sala…"
+                  loadingClassName="pvp-war-room__loading"
+                  boardProps={{
+                    gameId: `pvp-${match.id}`,
+                    fen: match.fen,
+                    onSquareClick,
+                    selectedSquare: selected,
+                    legalTargets,
+                    lastMove,
+                    animate: pendingAnim,
+                    hintMove: null,
+                    checkSquare,
+                    gameOver: match.status !== 'active',
+                    turnState: busy || !connectionLive ? 'thinking' : match.yourTurn ? 'human' : 'cpu',
+                    orientation,
+                    showCoordinates,
+                    matthiasKingColor: null,
+                    hansFireplaceIteration: false,
+                    hansFireCallEnabled: false,
+                  }}
+                />
 
                 <aside className={`pvp-war-room__duel-pill is-${tone}`} aria-label="Estado del duelo">
                   <span className="pvp-war-room__opponent-mark" aria-hidden="true">♟</span>
