@@ -37,7 +37,6 @@ import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-
 const BOARD3D_PLAY_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
 const BOARD3D_INSPECT_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Inspección activa. Usa flechas para mover la cámara, Inicio para centrarla y Escape para volver a jugar.';
 const BOARD3D_INSPECT_SHORTCUTS = 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape';
