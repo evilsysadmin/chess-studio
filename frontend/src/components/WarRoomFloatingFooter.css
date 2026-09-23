@@ -37,7 +37,6 @@
   .game-screen .game-3d-command-column {
     grid-area: status !important;
     z-index: 30 !important;
-    position: relative;
     align-self: start;
     justify-self: stretch;
     display: block;
@@ -55,38 +54,8 @@
     pointer-events: auto;
   }
 
-  .game-screen .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 30px !important;
-    grid-template-areas:
-      'match menu'
-      'state menu';
-    align-items: center !important;
-    justify-content: stretch;
-    gap: .22rem .32rem;
-    width: 100%;
-    max-width: none;
-    min-height: 48px !important;
-    padding: .38rem .38rem .38rem .46rem;
-    border-radius: 11px;
-    pointer-events: auto;
-  }
-
   .game-3d-matchup {
-    grid-area: match;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: .26rem;
     white-space: nowrap;
-  }
-
-  .game-screen .game-3d-turn-pill-avatar {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-    border-radius: 6px;
   }
 
   .game-screen .game-3d-turn-pill-identity {
@@ -100,22 +69,6 @@
   .game-screen .game-3d-turn-pill-identity strong {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: .61rem;
-  }
-
-  .game-3d-turn-state {
-    grid-area: state;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: .28rem;
-  }
-
-  .game-screen .game-3d-turn-pill-light {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 7px;
   }
 
   .game-screen .game-3d-turn-pill-label {
@@ -123,17 +76,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: .54rem;
-    font-weight: 760;
   }
 
   .game-3d-utility-menu {
-    grid-area: menu;
     position: relative;
     align-self: center;
-    justify-self: end;
-    width: 30px;
-    height: 30px;
     pointer-events: auto;
   }
 
@@ -271,17 +218,12 @@
   .game-3d-turn-state {
     display: contents;
   }
-
 }
 
-/* Cinematic desktop correction.
- * Kept after the base footer/rail rules so this preserves the former import
- * order of WarRoomFloatingFooter.css followed by WarRoomCinematicHud.css. */
+/* Canonical cinematic desktop placement.
+ * The command column remains the action owner, while the visible turn pill is
+ * removed from rail flow and centered over the board region. */
 @media (min-width: 1081px) {
-  .game-screen .board-live-row.is-3d-warroom {
-    position: relative;
-  }
-
   /* The command column remains the action owner, but its visible turn pill is
      removed from rail flow and centered over the board region. */
   .game-screen .game-3d-command-column {
