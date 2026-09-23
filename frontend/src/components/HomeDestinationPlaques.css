@@ -1,0 +1,106 @@
+/* Diegetic destination plaques (desktop, fine pointer).
+ *
+ * The destination labels used to be bare text floating over a busy scene, so
+ * they read as a caption instead of a control and lost contrast over books,
+ * fire and armour. Each one now sits on a small wood-and-brass plaque, like a
+ * nameplate screwed to the hall. The button keeps its canonical hit box and
+ * the label copy keeps its position; only the ::before plate is drawn behind
+ * the existing text, sized to that text (measured at a 1877px stage; every
+ * dimension is in cqw so it scales with the stage).
+ *
+ * JUGAR / CONTINUAR is excluded on purpose: it is embossed on the table
+ * banner and stays the single primary call to action.
+ * Touch layouts (< 1000px or coarse pointer) keep their explicit labels. */
+
+@media (min-width: 1000px) and (pointer: fine) {
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play) {
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .illustrated-home .illustrated-home__destination--tournament { --plaque-left: 2.9cqw; --plaque-top: 5.75cqw; --plaque-w: 8.9cqw; --plaque-h: 3.5cqw; }
+  .illustrated-home .illustrated-home__destination--train { --plaque-left: 1.15cqw; --plaque-top: 4.37cqw; --plaque-w: 8.4cqw; --plaque-h: 3.5cqw; }
+  .illustrated-home .illustrated-home__destination--combat { --plaque-left: 1.89cqw; --plaque-top: 7.35cqw; --plaque-w: 11.2cqw; --plaque-h: 3.5cqw; }
+  .illustrated-home .illustrated-home__destination--daily { --plaque-left: 0.93cqw; --plaque-top: 4.37cqw; --plaque-w: 11.8cqw; --plaque-h: 3.5cqw; }
+  .illustrated-home .illustrated-home__destination--history { --plaque-left: -.5cqw; --plaque-top: 2.56cqw; --plaque-w: 6.7cqw; --plaque-h: 4.4cqw; }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play)::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: auto;
+    /* The px cushion keeps the copy off the border where its font-size hits the
+     * px floor of the max(px, cqw) sizing on narrower desktop windows. */
+    left: calc(var(--plaque-left) - 7px);
+    top: calc(var(--plaque-top) - 4px);
+    width: calc(var(--plaque-w) + 14px);
+    height: calc(var(--plaque-h) + 8px);
+    box-sizing: border-box;
+    border: 1px solid rgba(218, 166, 78, .58);
+    border-radius: .32cqw;
+    opacity: .94;
+    pointer-events: none;
+    filter: none;
+    transform: none;
+    background:
+      radial-gradient(circle at .42cqw .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at calc(100% - .42cqw) .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at .42cqw calc(100% - .42cqw), #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at calc(100% - .42cqw) calc(100% - .42cqw), #e9bd6c 0 .13cqw, transparent .16cqw),
+      linear-gradient(180deg, rgba(66, 39, 19, .90), rgba(27, 15, 8, .94));
+    box-shadow:
+      inset 0 .1cqw 0 rgba(255, 226, 160, .20),
+      inset 0 0 0 .2cqw rgba(0, 0, 0, .34),
+      0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+    transition: border-color .18s ease, box-shadow .22s ease, opacity .18s ease;
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play):is(:hover, :focus-visible, .is-active)::before {
+    opacity: 1;
+    border-color: rgba(255, 213, 138, .95);
+    box-shadow:
+      inset 0 .1cqw 0 rgba(255, 236, 190, .34),
+      inset 0 0 0 .2cqw rgba(0, 0, 0, .28),
+      0 0 1.5cqw rgba(255, 165, 55, .50),
+      0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play) > strong {
+    color: #f7e0a6;
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play) > span {
+    color: #dfcaa2;
+  }
+
+  /* MAZMORRAS is a separate control (not a destination button) but reads as
+   * part of the same set, so it gets the same nameplate behind its copy. */
+  .illustrated-home__dungeon-copy {
+    box-sizing: border-box;
+    width: max-content;
+    padding: .55cqw .95cqw .6cqw;
+    border: 1px solid rgba(218, 166, 78, .58);
+    border-radius: .32cqw;
+    background:
+      radial-gradient(circle at .42cqw .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at calc(100% - .42cqw) .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at .42cqw calc(100% - .42cqw), #e9bd6c 0 .13cqw, transparent .16cqw),
+      radial-gradient(circle at calc(100% - .42cqw) calc(100% - .42cqw), #e9bd6c 0 .13cqw, transparent .16cqw),
+      linear-gradient(180deg, rgba(66, 39, 19, .90), rgba(27, 15, 8, .94));
+    box-shadow:
+      inset 0 .1cqw 0 rgba(255, 226, 160, .20),
+      inset 0 0 0 .2cqw rgba(0, 0, 0, .34),
+      0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+    transition: border-color .18s ease, box-shadow .22s ease;
+  }
+
+  .illustrated-home__dungeon-trigger:is(:hover, :focus-visible) .illustrated-home__dungeon-copy,
+  .illustrated-home__utilities.is-open .illustrated-home__dungeon-copy {
+    border-color: rgba(255, 213, 138, .95);
+    box-shadow:
+      inset 0 .1cqw 0 rgba(255, 236, 190, .34),
+      inset 0 0 0 .2cqw rgba(0, 0, 0, .28),
+      0 0 1.5cqw rgba(255, 165, 55, .50),
+      0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+  }
+}
