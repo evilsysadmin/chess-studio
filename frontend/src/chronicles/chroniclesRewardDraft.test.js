@@ -56,6 +56,25 @@ describe('Chronicles seeded reward drafts', () => {
     });
   });
 
+  it('allows exactly one claimed choice per milestone', () => {
+    const progression = levelTwoWithSkillPoint();
+    const first = chroniclesRewardDraft({
+      seed: 417,
+      milestoneId: 'gallery-cleared',
+      progression,
+    });
+    expect(first.length).toBeGreaterThan(0);
+
+    const afterClaim = chroniclesRewardDraft({
+      seed: 417,
+      milestoneId: 'gallery-cleared',
+      progression,
+      claimedRewards: [first[1].choiceId],
+    });
+
+    expect(afterClaim).toEqual([]);
+  });
+
   it('does not continuously repeat choices already claimed in earlier milestones', () => {
     const progression = levelTwoWithSkillPoint();
     const first = chroniclesRewardDraft({
