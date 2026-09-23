@@ -120,6 +120,29 @@ def find_zone_id() -> str:
     return str(matches[0]["id"])
 
 
+def ensure_ip_geolocation(zone_id: str) -> str:
+    """Ensure Cloudflare adds CF-IPCountry for requests to this zone."""
+    path = f"/zones/{zone_id}/settings/ip_geolocation"
+    status, body = request_json("GET", path)
+    if status in {401, 403}:
+        print("AVISO: IP Geolocation no comprobado; el token necesita Zone Settings Read/Write.")
+        return "permission-missing"
+    setting = result_or_die(status, body, context="Leer IP Geolocation")
+    if isinstance(setting, dict) and str(setting.get("value") or "").lower() == "on":
+        return "existing"
+    if isinstance(setting, dict) and setting.get("editable") is False:
+        print("AVISO: IP Geolocation está desactivado y Cloudflare lo marca como no editable.")
+        return "not-editable"
+    patch_status, patch_body = request_json("PATCH", path, {"value": "on"})
+    if patch_status in {401, 403}:
+        print("AVISO: IP Geolocation no activado; el token necesita Zone Settings Write.")
+        return "permission-missing"
+    updated = result_or_die(patch_status, patch_body, context="Activar IP Geolocation")
+    if not isinstance(updated, dict) or str(updated.get("value") or "").lower() != "on":
+        raise SystemExit("Cloudflare no confirmó IP Geolocation=on")
+    return "enabled"
+
+
 def ensure_pages_project() -> str:
     project_path = f"/accounts/{account_id()}/pages/projects/{PAGES_PROJECT}"
     status, body = request_json("GET", project_path)
@@ -359,6 +382,7 @@ def self_test() -> None:
     assert PAGES_HOSTNAME != PAGES_TARGET
     assert DOMAIN_ACTIVE_TIMEOUT_S >= 300
     assert 1 <= DOMAIN_ACTIVE_POLL_S <= 30
+    assert "/settings/ip_geolocation" in ensure_ip_geolocation.__code__.co_consts
     print("cloudflare_production_pages self-test OK")
 
 
@@ -394,6 +418,7 @@ def main() -> None:
     )
 
     zone_id = find_zone_id()
+    ip_geolocation = ensure_ip_geolocation(zone_id)
     domain = ensure_pages_domain()
     dns = ensure_pages_cname(zone_id)
     domain_status = wait_pages_domain_active()
@@ -416,11 +441,13 @@ def main() -> None:
         dns=dns,
         domain_status=domain_status,
         analytics=analytics,
+        ip_geolocation=ip_geolocation,
     )
     print(
         "Cloudflare Pages production activado: "
         f"project={project}, domain={domain}, DNS={dns}, "
-        f"domain_status={domain_status}, Web Analytics={analytics}"
+        f"domain_status={domain_status}, Web Analytics={analytics}, "
+        f"IP Geolocation={ip_geolocation}"
     )
 
 
