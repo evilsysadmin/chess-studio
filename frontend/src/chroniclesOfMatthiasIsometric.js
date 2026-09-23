@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {
-  chroniclesProjectSceneModel,
   chroniclesSceneWorldObjectState,
   chroniclesValidateSceneModel,
 } from './chronicles/chroniclesSceneModel.js';
@@ -1081,23 +1080,3 @@ export function createChroniclesIsometricRenderer(host, {
   };
 }
 
-export function createChroniclesIsometricGame(host, {
-  initialState = null,
-  ...rendererOptions
-} = {}) {
-  const initialSceneModel = initialState ? chroniclesProjectSceneModel(initialState) : null;
-  const renderer = createChroniclesIsometricRenderer(host, {
-    ...rendererOptions,
-    initialSceneModel,
-  });
-
-  return {
-    ...renderer,
-    renderState(state, selectedMemberId = 'matthias', interaction = null) {
-      return renderer.renderSceneModel(chroniclesProjectSceneModel(state, {
-        selectedMemberId,
-        interaction,
-      }));
-    },
-  };
-}
