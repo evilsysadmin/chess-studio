@@ -91,6 +91,7 @@ export default function Tutorial({ onExit }) {
     setLineIndex(0);
     setMistakes(0);
     setHintActive(false);
+    setDangerSquares([]);
     setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
@@ -127,7 +128,6 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setLineIndex(0);
     setHintActive(false);
-    setDangerSquares([]);
     setDangerSquares([]);
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
