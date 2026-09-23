@@ -62,7 +62,6 @@ function addPainting(group, x, y, z, towardBoard, index) {
   frame.name = `war-room-premium-painting-${index}`;
   frame.userData.warRoomPaintingFinish = 'campaign-canvas-shell-v1';
   frame.userData.warRoomPaintingLayering = 'canvas-behind-frame-v1';
-  frame.userData.warRoomTransientPainterlyArtRetired = true;
   frame.position.set(x, y, z);
 
   addBox(frame, [2.48, 1.86, 0.08], frameDark, [0, 0, 0], 'war-room-premium-frame-back');
