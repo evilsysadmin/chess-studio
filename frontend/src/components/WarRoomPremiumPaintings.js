@@ -148,6 +148,5 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   installWarRoomArmorGuardPose(group, { towardBoard, coarsePointer });
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
-  group.userData.warRoomTransientPainterlyTexturesRetired = 2;
   return 2;
 }
