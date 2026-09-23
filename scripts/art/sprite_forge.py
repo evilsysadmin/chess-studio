@@ -1841,7 +1841,7 @@ def repair_sprite_parity(
 
 
 
-MATTHIAS_HURT_STANDING_SLOTS = (0, 1, 2, 2, 1, 0, 0, 0)
+MATTHIAS_HURT_STANDING_SLOTS = (0, 1, 2, 2, 1, 0, 1, 0)
 MATTHIAS_MACHINEGUN_HURT_DONOR_COLUMN = 3
 MATTHIAS_MACHINEGUN_HURT_DX = (-2, 7, 4, 0, -2, -18, -18, -18)
 MATTHIAS_MACHINEGUN_HURT_PATCH = (90, 116, 279, 210)
@@ -2187,6 +2187,17 @@ def repair_matthias_stabilization_batch(
         raise BankContractError("stabilization batch requires jump and hurt actions")
     if columns != len(hurt_slots) or columns != len(machinegun_dx):
         raise BankContractError("stabilization slot/dx count must match columns")
+    if len(set(hurt_slots)) < 3:
+        raise BankContractError("stabilization hurt slots require three standing poses")
+    trailing_hold = 1
+    for index in range(len(hurt_slots) - 2, -1, -1):
+        if hurt_slots[index] != hurt_slots[-1]:
+            break
+        trailing_hold += 1
+    if trailing_hold >= 3:
+        raise BankContractError(
+            "stabilization hurt slots cannot end with 3+ identical frames"
+        )
     if machinegun_donor_column < 0 or machinegun_donor_column >= columns:
         raise BankContractError("machinegun hurt donor column outside batch")
     if not 0.0 < min_standing_height_ratio <= 1.0:
@@ -2286,8 +2297,8 @@ def repair_matthias_stabilization_batch(
     )
 
     # Shotgun: preserve the reviewed safe jump parity normalization and replace
-    # the broken prone tail of hurt with deliberate holds of its three standing
-    # flinch poses.
+    # the broken prone tail of hurt with a short three-pose recovery cadence.
+    # Never finish with a long static hold: runtime hurt is a fast one-shot.
     shotgun_replacements: dict[tuple[int, int], Image.Image] = {}
     shotgun_jump_health: list[dict] = []
     for column in range(columns):
