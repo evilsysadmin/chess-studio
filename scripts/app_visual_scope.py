@@ -91,6 +91,8 @@ def _surface_groups(path: str) -> set[str] | None:
     lower = path.lower()
     name = Path(lower).name
 
+    if lower.endswith(".md"):
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower in {"scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/quality_scope.py"}:
@@ -114,6 +116,13 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
         "e2e/png-pixels.js",
+        # The manifest fans out across every domain (Home, Pawn Slug sprites,
+        # Chronicles...), so it can't be mapped to one group by path alone,
+        # and a promotion-only change to it doesn't add new visual code --
+        # whatever object it now points at was already validated by the
+        # dedicated gate that ran before promoting (see
+        # home-blender-v2-runtime.yml's gate/promote jobs).
+        "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
     if (
