@@ -191,8 +191,6 @@ def main() -> int:
         'status=~"401|403|429"',
         '${backend_service:raw}',
         'chess_studio_http_server_requests_total',
-        'cloudflare_zone_firewall_events_total',
-        'cloudflare_zone_colocation_requests_total',
         'client_ip',
         'synthetic_source!~"staging-(smoke-cleanup|browser-smoke)"',
         'user_agent!="chess-studio-staging-smoke-cleanup/2"',
