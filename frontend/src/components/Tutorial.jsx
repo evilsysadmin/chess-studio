@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import './TutorialRoute.css';
+import './MatthiasClassRoom.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import ChessGlossary from './ChessGlossary.jsx';
@@ -215,7 +216,7 @@ export default function Tutorial({ onExit }) {
   const courseSummary = matthiasSchoolCourseSummary(lesson.courseId, schoolProgress);
 
   return (
-    <div className="tutorial-shell matthias-school-shell">
+    <div className="tutorial-shell matthias-school-shell" data-school-section={section}>
       <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
         ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
       </button>
@@ -262,9 +263,9 @@ export default function Tutorial({ onExit }) {
           <header className="matthias-school-hero">
             <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
             <div>
-              <span className="section-label">ESCUELA DE MATTHIAS · 5 CURSOS · HANDS-ON</span>
-              <h1>Aprende jugando. Aprueba demostrando.</h1>
-              <p>Básico, Básico-medio, Medio, Medio-avanzado y Avanzado. Cada curso termina en un examen práctico: sin aprobarlo, no asciendes. Yo pongo la posición; tú haces el trabajo.</p>
+              <span className="section-label">CLASS ROOM · ESCUELA DE MATTHIAS</span>
+              <h1>El tablero habla primero.</h1>
+              <p>Yo pongo la posición y señalo lo imprescindible. Tú demuestras que lo has entendido sobre el tablero.</p>
             </div>
             <div className="matthias-school-progress" aria-label={`${schoolSummary.passedCourses} de ${schoolSummary.totalCourses} cursos aprobados; ${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}>
               <strong>{schoolSummary.passedCourses}/{schoolSummary.totalCourses}</strong>
