@@ -183,6 +183,38 @@ test('Home · la experiencia canónica no cambia con el viewport', async ({ page
   }
 });
 
+test('Home móvil · JUGAR/CONTINUAR es la acción primaria autoexplicativa y táctil', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  const play = page.locator('.illustrated-home__destination--play');
+  const detail = play.locator('span');
+
+  await expect(play).toBeVisible();
+  await expect(play.locator('strong')).toHaveText('JUGAR');
+  await expect(detail).toHaveText('Partida rápida o privada');
+  await expect(detail).toBeVisible();
+
+  const metrics = await play.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const detailNode = node.querySelector('span');
+    const style = getComputedStyle(node);
+    return {
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: window.innerWidth,
+      touchAction: style.touchAction,
+      detailDisplay: detailNode ? getComputedStyle(detailNode).display : 'none',
+    };
+  });
+
+  expect(metrics.width).toBeGreaterThanOrEqual(metrics.viewportWidth * .60);
+  expect(metrics.height).toBeGreaterThanOrEqual(60);
+  expect(metrics.touchAction).toBe('manipulation');
+  expect(metrics.detailDisplay).not.toBe('none');
+});
+
 test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
