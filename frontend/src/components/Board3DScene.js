@@ -201,7 +201,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   // cap with a long lens zooms/crops instead of moving the camera back, which
   // defeats the whole perspective-parity fix. Mobile retains its calibrated
   // cap; desktop gets enough travel for the near-orthographic lens.
-  const maxDistance = mobileProfile ? profile.maxDistance : 88;
+  const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
   const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
