@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addWarRoomMesh as addMesh } from './WarRoomThreePrimitives.js';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v28';
@@ -14,17 +15,6 @@ function physical(color, options = {}) {
     sheenRoughness: options.sheenRoughness ?? 0.62,
     sheenColor: new THREE.Color(options.sheenColor ?? color),
   });
-}
-
-function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name = '') {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  if (name) mesh.name = name;
-  group.add(mesh);
-  return mesh;
 }
 
 function addBox(group, size, material, position, name = '', rotation = [0, 0, 0]) {
