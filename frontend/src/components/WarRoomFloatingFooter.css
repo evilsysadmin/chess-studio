@@ -272,11 +272,6 @@
     display: contents;
   }
 
-  .game-3d-cpu-level {
-    white-space: nowrap;
-    font-size: .58rem;
-    color: color-mix(in srgb, var(--cream) 68%, var(--studio-muted));
-  }
 }
 
 /* Cinematic desktop correction.
@@ -347,14 +342,6 @@
   .game-screen .game-3d-turn-pill-label {
     font-size: .62rem;
     font-weight: 790;
-  }
-
-  .game-screen .game-3d-cpu-level {
-    order: -1;
-    margin: 0;
-    color: color-mix(in srgb, var(--cream) 72%, var(--studio-muted));
-    font-size: .56rem;
-    white-space: nowrap;
   }
 
   .game-screen .game-3d-utility-menu {
