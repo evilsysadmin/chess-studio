@@ -17,7 +17,7 @@ import {
   renewChroniclesRun,
 } from './chronicles/chroniclesRunIdentity.js';
 
-export { CHRONICLES_TACTICS_RUN_STORAGE_KEY } from './chronicles/chroniclesRunIdentity.js';
+export { CHRONICLES_RUN_STORAGE_KEY, CHRONICLES_TACTICS_RUN_STORAGE_KEY } from './chronicles/chroniclesRunIdentity.js';
 
 export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progression-v1';
 export const CHRONICLES_PROGRESSION_VERSION = 1;
