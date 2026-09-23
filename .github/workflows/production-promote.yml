@@ -2,8 +2,10 @@ name: Production · promote
 
 on:
   schedule:
-    # GitHub cron is UTC. One of these is 08:00 Europe/Madrid across CET/CEST.
-    - cron: '0 6,7 * * *'
+    # GitHub cron is UTC. Separate slots preserve which 08:00 Madrid candidate fired
+    # even when GitHub queues the scheduled run for hours before starting a runner.
+    - cron: '0 6 * * *'
+    - cron: '0 7 * * *'
   push:
     branches: [main]
     paths:
@@ -52,6 +54,8 @@ jobs:
       - name: Admit Madrid release window
         id: window
         shell: bash
+        env:
+          SCHEDULE_EXPR: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
@@ -65,11 +69,18 @@ jobs:
             echo '::notice title=Production target switch::DEPLOY_TARGET cambió en main; ejecutando el mismo release train sobre el último SHA acreditado.'
             exit 0
           fi
-          if [[ "$(TZ=Europe/Madrid date +%H)" == 08 ]]; then
+          madrid_offset="$(TZ=Europe/Madrid date +%z)"
+          case "$madrid_offset" in
+            +0200) expected_schedule='0 6 * * *' ;;
+            +0100) expected_schedule='0 7 * * *' ;;
+            *) echo "::error::Offset Europe/Madrid inesperado: $madrid_offset"; exit 1 ;;
+          esac
+          if [[ "$SCHEDULE_EXPR" == "$expected_schedule" ]]; then
             echo 'should_run=true' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Scheduled release admitted::Slot $SCHEDULE_EXPR corresponde a las 08:00 Europe/Madrid; el retraso del runner no invalida la promoción."
           else
             echo 'should_run=false' >> "$GITHUB_OUTPUT"
-            echo "::notice title=Companion cron skipped::Fuera de las 08:00 Europe/Madrid ($(TZ=Europe/Madrid date '+%F %T %Z'))."
+            echo "::notice title=Companion cron skipped::Slot $SCHEDULE_EXPR no corresponde a las 08:00 Europe/Madrid con offset $madrid_offset."
           fi
 
   gate:
