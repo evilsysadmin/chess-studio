@@ -189,7 +189,7 @@ function rewardEnemyDefeat(state, enemy, attacker) {
   return appendJournal(rewarded, {
     id: `tactics-${enemy.id}-falls`,
     title: `${enemy.name} cae`,
-    body: `${attacker.name} firma la baja durante la incursión táctica. La cripta registra la protesta y sigue operativa.`,
+    body: `${attacker.name} firma la baja durante la incursión táctica. El parte de combate registra la protesta y sigue adelante.`,
     sigil: '†',
   });
 }
@@ -484,7 +484,7 @@ export function chroniclesTacticsWait(state, memberId) {
   const next = {
     ...state,
     turns: Number(state.turns || 0) + 1,
-    message: `${member?.name || 'La compañía'} mantiene posición. La cripta aprovecha la cortesía.`,
+    message: `${member?.name || 'La compañía'} mantiene posición. El enemigo aprovecha la cortesía.`,
   };
   return chroniclesTacticsFinishTurn(next);
 }

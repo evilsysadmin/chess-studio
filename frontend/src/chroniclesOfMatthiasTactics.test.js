@@ -11,6 +11,7 @@ import {
   chroniclesTacticsProfile,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
+  chroniclesTacticsWait,
 } from './chroniclesOfMatthiasTactics.js';
 
 function tacticsState(overrides = {}) {
@@ -208,6 +209,23 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
       enemyId: 'corrupted-pawn',
     }));
     expect(afterEnemy.message).toMatch(/Hildegard usa embestida de torre/i);
+  });
+
+  it('keeps generic tactical narration independent from the active map family', () => {
+    const waiting = chroniclesTacticsWait(tacticsState(), 'matthias');
+    expect(waiting.message).not.toMatch(/cripta/i);
+
+    const killState = tacticsState({
+      x: 5,
+      y: 5,
+      sigilAwake: true,
+      spectralBishopHp: 1,
+    });
+    const killed = chroniclesTacticsAttack(killState, 'knight', 'spectral-bishop');
+    const defeatEntry = killed.journal.find((entry) => entry.id === 'tactics-spectral-bishop-falls');
+
+    expect(defeatEntry?.body).toBeTruthy();
+    expect(defeatEntry.body).not.toMatch(/cripta/i);
   });
 
   it('keeps Chronicles rewards when a ranged tactical kill matters to progression', () => {
