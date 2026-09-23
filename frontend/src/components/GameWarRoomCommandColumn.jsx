@@ -75,6 +75,8 @@ export function WarRoomUtilityMenu({
   showRendererToggle = true,
   showAppearance = true,
   showZen = true,
+  immersive = false,
+  onToggleImmersive,
 }) {
   const {
     selectable: warRoomVariantSelectable,
@@ -89,6 +91,7 @@ export function WarRoomUtilityMenu({
     || hasUndo
     || (compactViewport && showRendererToggle)
     || hasAppearance
+    || typeof onToggleImmersive === 'function'
     || warRoomVariantSelectable
     || (showZen && typeof controls.onToggleZen === 'function');
 
@@ -152,6 +155,19 @@ export function WarRoomUtilityMenu({
             Apariencia
           </button>
         )}
+        {typeof onToggleImmersive === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            aria-pressed={immersive}
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              onToggleImmersive();
+            }}
+          >
+            {immersive ? 'Salir de inmersión' : 'Modo inmersión'}
+          </button>
+        )}
         {warRoomVariantSelectable && (
           <>
             <span className="game-3d-utility-separator" role="separator" />
@@ -209,7 +225,7 @@ export function WarRoomUtilityMenu({
   );
 }
 
-function CompactWarRoomPill({ game, signal, board, controls, zenMode }) {
+function CompactWarRoomPill({ game, signal, board, controls, zenMode, immersive, onToggleImmersive }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -261,6 +277,8 @@ function CompactWarRoomPill({ game, signal, board, controls, zenMode }) {
           controls={controls}
           zenMode={zenMode}
           compactViewport
+          immersive={immersive}
+          onToggleImmersive={onToggleImmersive}
         />
       </div>
     </aside>
@@ -274,6 +292,8 @@ export default function GameWarRoomCommandColumn({
   zenMode = false,
   controls = {},
   compactViewport = false,
+  immersive = false,
+  onToggleImmersive,
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
@@ -288,6 +308,8 @@ export default function GameWarRoomCommandColumn({
         board={board}
         controls={controls}
         zenMode={zenMode}
+        immersive={immersive}
+        onToggleImmersive={onToggleImmersive}
       />
     );
   }
@@ -317,12 +339,24 @@ export default function GameWarRoomCommandColumn({
           </strong>
         </span>
 
+        <button
+          type="button"
+          className="game-3d-immersive-toggle"
+          aria-label={immersive ? 'Salir del modo inmersión' : 'Entrar en modo inmersión'}
+          title={immersive ? 'Salir del modo inmersión' : 'Modo inmersión'}
+          aria-pressed={immersive}
+          onClick={onToggleImmersive}
+        >
+          <span aria-hidden="true">⛶</span>
+        </button>
         <WarRoomGuideHelp />
         <WarRoomUtilityMenu
           game={game}
           board={board}
           controls={controls}
           zenMode={zenMode}
+          immersive={immersive}
+          onToggleImmersive={onToggleImmersive}
         />
       </div>
     </aside>

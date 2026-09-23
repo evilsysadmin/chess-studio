@@ -116,6 +116,16 @@ const CAPTURE_PROFILES = Object.freeze([
     variant: 'classic',
   }),
   Object.freeze({
+    label: 'war-room-immersive-desktop-1440x900',
+    title: 'Immersive desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+    landscapeContract: false,
+    immersive: true,
+    variant: 'classic',
+  }),
+  Object.freeze({
     label: 'war-room-v2-android-390x844',
     title: 'War Room v2 Android portrait',
     viewport: Object.freeze({ width: 390, height: 844 }),
@@ -377,6 +387,7 @@ async function captureWarRoomHealth(page, label) {
       music,
       notation,
       legacyCommandDeck,
+      immersive: document.body.classList.contains('war-room-immersive-active'),
       quickActions: { focus, abandon, overflow },
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
@@ -464,6 +475,15 @@ function expectPortraitHealth(health) {
   expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
 }
 
+function expectImmersiveHealth(health) {
+  expect(health.immersive, 'immersive body state must be active').toBe(true);
+  expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
+  expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
+  expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
+  expect(health.gameLayout?.height, 'immersive shell must span the viewport height').toBeGreaterThanOrEqual(health.viewport.height - 2);
+  expect(health.boardViewportFill, 'immersive scene should dominate viewport height').toBeGreaterThanOrEqual(0.82);
+}
+
 function expectLandscapeHealth(health) {
   expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
@@ -537,6 +557,18 @@ for (const profile of CAPTURE_PROFILES) {
         await variantMenu.click();
       }
 
+      if (profile.immersive) {
+        const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
+        await expect(enterImmersive).toBeVisible();
+        await enterImmersive.click();
+        await expect(page.locator('.game-layout-immersive')).toBeVisible();
+        await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        await page.keyboard.press('Escape');
+        await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
+        await expect(page.locator('.game-layout-immersive')).toBeVisible();
+      }
+
       if (profile.portraitContract) {
         await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
@@ -562,6 +594,7 @@ for (const profile of CAPTURE_PROFILES) {
       }
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
+      if (profile.immersive) expectImmersiveHealth(health);
 
       await freezeVisualFrame(page);
       await captureViewportPng(
