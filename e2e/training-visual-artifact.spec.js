@@ -73,11 +73,13 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  await shell.getByRole('button', { name: 'Glosario' }).click();
+  await shell.getByText('Recursos', { exact: true }).click();
+  await shell.getByRole('button', { name: 'Glosario', exact: true }).click();
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
-  await shell.getByRole('button', { name: 'Modos especiales' }).click();
+  await shell.getByText('Recursos', { exact: true }).click();
+  await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
   await settle(page);
   await assertSpecialModesDensity(shell);
