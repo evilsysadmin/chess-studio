@@ -9,6 +9,7 @@ on:
       - scripts/art/export_matthias_sprite_smoke.py
       - scripts/art/validate_matthias_sprite_continuity.py
       - scripts/art/repair_matthias_machinegun_continuity.py
+      - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/export_enemy_sprite_smoke.py
@@ -27,6 +28,7 @@ on:
     branches: [main]
     paths:
       - scripts/art/repair_matthias_machinegun_continuity.py
+      - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
@@ -170,7 +172,22 @@ jobs:
             --cell-size 416 \
             --min-coverage 0.985
 
-      - name: Publish Matthias SMG hurt alpha v2 to R2
+      - name: Sanitize Matthias SMG hurt alpha v3 candidate
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          python3 scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py --self-test
+          python3 scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py \
+            /tmp/pawn-slug-sprite-smoke/matthias \
+            "$LAB/machinegun-hurt-alpha-v2.png" \
+            "$LAB" \
+            --columns 8 \
+            --cell-size 416 \
+            --min-coverage 0.985 \
+            --max-detached-area 128
+
+      - name: Publish Matthias SMG hurt alpha v3 to R2
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -182,13 +199,13 @@ jobs:
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
           python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/machinegun-hurt-alpha-v2.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.hurtAlphaV2 \
-            --prefix pawn-slug-godot/matthias/hurt-alpha-v2/machinegun/full \
-            --manifest "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json"
-          cat "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
+            "$LAB/machinegun-hurt-alpha-v3.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.hurtAlphaV3 \
+            --prefix pawn-slug-godot/matthias/hurt-alpha-v3/machinegun/full \
+            --manifest "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json"
+          cat "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify published Matthias SMG hurt alpha v2
+      - name: Verify published Matthias SMG hurt alpha v3
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -196,20 +213,20 @@ jobs:
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          readarray -t asset < <(python3 - "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json" <<'PY'
+          readarray -t asset < <(python3 - "$LAB/machinegun-hurt-alpha-v3-r2-manifest.json" <<'PY'
           import json
           import sys
           data = json.load(open(sys.argv[1], encoding="utf-8"))
-          item = data["assets"]["pawnSlug.godot.matthias.machinegun.hurtAlphaV2"]
+          item = data["assets"]["pawnSlug.godot.matthias.machinegun.hurtAlphaV3"]
           print(item["url"])
           print(item["sha256"])
           PY
           )
           curl --fail --silent --show-error --location --max-time 20 \
-            "${asset[0]}" -o "$LAB/published-machinegun-hurt-alpha-v2.png"
-          actual="$(sha256sum "$LAB/published-machinegun-hurt-alpha-v2.png" | awk '{print $1}')"
+            "${asset[0]}" -o "$LAB/published-machinegun-hurt-alpha-v3.png"
+          actual="$(sha256sum "$LAB/published-machinegun-hurt-alpha-v3.png" | awk '{print $1}')"
           test "$actual" = "${asset[1]}"
-          echo "Published Matthias SMG hurt alpha v2 verified: ${asset[0]}"
+          echo "Published Matthias SMG hurt alpha v3 verified: ${asset[0]}"
 
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'
