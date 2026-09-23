@@ -97,6 +97,14 @@
   color: var(--cream);
 }
 
+/* Compact layouts dissolve desktop-only matchup wrappers into the pill. */
+@media (max-width: 1080px) {
+  .game-3d-matchup,
+  .game-3d-turn-state {
+    display: contents;
+  }
+}
+
 @media (max-width: 820px) {
   .game-3d-turn-pill {
     width: 100%;
@@ -137,6 +145,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .game-3d-turn-pill {
+    transition: none !important;
+  }
+
   .game-3d-turn-pill-light {
     box-shadow: none;
   }
