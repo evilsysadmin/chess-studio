@@ -31,15 +31,13 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
-import { normalizeWarRoomVariant, warRoomVariantDomData as buildWarRoomVariantDomData } from './WarRoomVariant.js';
+import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-const BOARD3D_PLAY_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
-const BOARD3D_INSPECT_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Inspección activa. Usa flechas para mover la cámara, Inicio para centrarla y Escape para volver a jugar.';
 const BOARD3D_INSPECT_SHORTCUTS = 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape';
 const INSPECT_YAW_LIMIT = 0.14;
 const INSPECT_PITCH_MIN = -0.08;
@@ -111,18 +109,9 @@ function Board3DCanvas({
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
-  const warRoomVariant = warRoomVariantOverride ? normalizeWarRoomVariant(warRoomVariantOverride) : globalWarRoomVariant;
-  const warRoomVariantDomData = warRoomVariantOverride
-    ? buildWarRoomVariantDomData(warRoomVariant, warRoomVariantStatus)
-    : globalWarRoomVariantDomData;
+  const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
+  const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
-  const classroomCamera = cameraProfile === 'classroom';
-  const playAriaLabel = classroomCamera
-    ? 'Tablero de ajedrez 3D en Class Room. Cámara docente fija y cercana. Usa flechas y Enter para jugar con teclado.'
-    : BOARD3D_PLAY_ARIA_LABEL;
-  const inspectAriaLabel = classroomCamera
-    ? 'Tablero de ajedrez 3D en Class Room. Inspección activa. Usa flechas para mover la cámara, Inicio para centrarla y Escape para volver a jugar.'
-    : BOARD3D_INSPECT_ARIA_LABEL;
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
   const terrainSquares = useMemo(() => board3DTerrainSquares(hintMove), [hintMove]);
@@ -1197,7 +1186,7 @@ function Board3DCanvas({
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
       data-board3d-interaction-fx="brass-ember-v1"
-      data-board3d-camera={classroomCamera ? 'classroom-overhead' : 'fixed-tactical'}
+      data-board3d-camera={presentation.cameraData}
       data-board3d-theme={effectiveThemeId}
       data-board3d-turn={turnState || ''}
       data-board3d-technique-target-count={techniqueTargetCount}
@@ -1210,7 +1199,7 @@ function Board3DCanvas({
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <div className="board3d-fixed-camera-note" aria-hidden="true">{classroomCamera ? 'CLASS ROOM' : 'SALA DE GUERRA'} · {inspectMode ? 'INSPECCIÓN' : classroomCamera ? 'CÁMARA DOCENTE' : 'CÁMARA TÁCTICA'}</div>
+      <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {inspectMode ? 'INSPECCIÓN' : presentation.cameraLabel}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
