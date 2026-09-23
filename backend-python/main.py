@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import os
 import time
@@ -61,6 +62,9 @@ INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
 NEW_PASSWORD_MIN_LENGTH = 8
+_STAGING_SYNTHETIC_SECRET = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
+_STAGING_SMOKE_SYNTHETIC_SOURCE = "staging-smoke-cleanup"
+_STAGING_SMOKE_USER_RE = re.compile(r"^ci_smoke_[0-9a-f]{16}$")
 
 
 def _trust_cloudflare_client_ip() -> bool:
@@ -105,6 +109,28 @@ def _request_id(request: Request) -> str:
 
 def _client_release(request: Request) -> str | None:
     return sanitize_client_release(request.headers.get("x-client-release"))
+
+
+def _staging_smoke_signature(identity: str, secret: str) -> str:
+    message = (
+        f"chess-studio:synthetic:{_STAGING_SMOKE_SYNTHETIC_SOURCE}\x00{identity}"
+    ).encode("utf-8")
+    return hmac.new(str(secret or "").encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def _trusted_staging_smoke_request(request: Request) -> tuple[str, str] | None:
+    """Trust only a staging-only HMAC marker bound to one ephemeral smoke identity."""
+    if ENVIRONMENT not in _CLOUDFLARE_TUNNEL_ENVIRONMENTS or not _STAGING_SYNTHETIC_SECRET:
+        return None
+    source = (request.headers.get("x-chess-synthetic-source") or "").strip()
+    identity = (request.headers.get("x-chess-synthetic-identity") or "").strip().lower()
+    signature = (request.headers.get("x-chess-synthetic-signature") or "").strip().lower()
+    if source != _STAGING_SMOKE_SYNTHETIC_SOURCE or not _STAGING_SMOKE_USER_RE.fullmatch(identity):
+        return None
+    expected = _staging_smoke_signature(identity, _STAGING_SYNTHETIC_SECRET)
+    if not signature or not hmac.compare_digest(signature, expected):
+        return None
+    return source, identity
 
 
 def _request_username(request: Request) -> str:
@@ -205,7 +231,10 @@ async def log_request_with_user(request: Request, call_next):
     inflight = request_enter()
     status_code = 500
     raised = False
-    auth_ip_identity = _auth_ip_guard_identity(request)
+    trusted_synthetic = _trusted_staging_smoke_request(request)
+    if trusted_synthetic:
+        request.state.synthetic_source, request.state.synthetic_identity = trusted_synthetic
+    auth_ip_identity = None if trusted_synthetic else _auth_ip_guard_identity(request)
     try:
         if auth_ip_identity:
             try:
@@ -262,6 +291,7 @@ async def log_request_with_user(request: Request, call_next):
             client_ip=client_ip,
             peer_ip=peer_ip,
             x_forwarded_for=x_forwarded_for,
+            synthetic_source=getattr(request.state, "synthetic_source", None),
         )
         # El detalle técnico completo queda en el traceback del servidor; al
         # cliente sólo vuelve una referencia segura para correlacionarlo.
@@ -297,6 +327,7 @@ async def log_request_with_user(request: Request, call_next):
                 client_ip=client_ip,
                 peer_ip=peer_ip,
                 x_forwarded_for=x_forwarded_for,
+                synthetic_source=getattr(request.state, "synthetic_source", None),
             )
 
 
@@ -634,14 +665,26 @@ async def register(body: RegisterRequest, request: Request):
 @limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
+    synthetic_source = getattr(request.state, "synthetic_source", None)
+    synthetic_identity = getattr(request.state, "synthetic_identity", None)
+    trusted_synthetic = (
+        synthetic_source == _STAGING_SMOKE_SYNTHETIC_SOURCE
+        and synthetic_identity == username
+    )
+    if synthetic_source and not trusted_synthetic:
+        request.state.synthetic_source = None
+        request.state.synthetic_identity = None
+        synthetic_source = None
+
     identity = auth_login_guard.identity_key(username, JWT_SECRET)
-    retry_after = await auth_login_guard.retry_after(identity)
-    if retry_after:
-        raise HTTPException(
-            429,
-            "Demasiados intentos de acceso. Reintenta más tarde.",
-            headers={"Retry-After": str(retry_after)},
-        )
+    if not trusted_synthetic:
+        retry_after = await auth_login_guard.retry_after(identity)
+        if retry_after:
+            raise HTTPException(
+                429,
+                "Demasiados intentos de acceso. Reintenta más tarde.",
+                headers={"Retry-After": str(retry_after)},
+            )
 
     user = await ustore.get_user(username)
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
@@ -662,15 +705,22 @@ async def login(body: LoginRequest, request: Request):
             client_country=client_country,
             user_agent=request.headers.get("user-agent"),
             client_release=_client_release(request),
+            synthetic_source=synthetic_source if trusted_synthetic else None,
         )
-        retry_after = await auth_login_guard.record_failure(identity)
-        if retry_after:
-            raise HTTPException(
-                429,
-                "Demasiados intentos de acceso. Reintenta más tarde.",
-                headers={"Retry-After": str(retry_after)},
-            )
-        raise HTTPException(401, "Usuario o contraseña incorrectos.")
+        failure_reason = "bad_password" if user else "unknown_user"
+        if not trusted_synthetic:
+            retry_after = await auth_login_guard.record_failure(identity)
+            if retry_after:
+                raise HTTPException(
+                    429,
+                    "Demasiados intentos de acceso. Reintenta más tarde.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+        raise HTTPException(
+            401,
+            "Usuario o contraseña incorrectos.",
+            headers={"X-Chess-Auth-Failure": failure_reason} if trusted_synthetic else None,
+        )
     await auth_login_guard.clear(identity)
     request.state.username = username
     await _touch_activity_best_effort(username, force=True, request=request)

@@ -74,11 +74,13 @@ def test_structured_http_log_sanitizes_network_origin_fields(caplog):
         client_ip="203.0.113.42",
         peer_ip="10.0.0.7",
         x_forwarded_for=["203.0.113.42", "198.51.100.3", "basura"],
+        synthetic_source="staging-smoke-cleanup",
     )
     payload = json.loads(caplog.records[-1].getMessage())
     assert payload["client_ip"] == "203.0.113.42"
     assert payload["peer_ip"] == "10.0.0.7"
     assert payload["x_forwarded_for"] == ["203.0.113.42", "198.51.100.3"]
+    assert payload["synthetic_source"] == "staging-smoke-cleanup"
 
 
 def test_structured_http_log_reports_whether_trace_was_sampled(monkeypatch, caplog):
@@ -96,7 +98,7 @@ def test_structured_http_log_reports_whether_trace_was_sampled(monkeypatch, capl
 
 def test_failed_login_forensics_never_logs_password_and_correlates_reuse(caplog):
     logger = logging.getLogger("test.chess.structured.auth")
-    caplog.set_level(logging.WARNING, logger=logger.name)
+    caplog.set_level(logging.INFO, logger=logger.name)
     secret = "bot-password-NEVER-LOG-THIS"
 
     emit_auth_login_failed(
@@ -113,7 +115,9 @@ def test_failed_login_forensics_never_logs_password_and_correlates_reuse(caplog)
         client_country="es",
         user_agent="evilbot/1.0\r\nX-Injected: yes",
         client_release="v-test",
+        synthetic_source="staging-smoke-cleanup",
     )
+    first_level = caplog.records[-1].levelno
     first_raw = caplog.records[-1].getMessage()
     first = json.loads(first_raw)
 
@@ -143,6 +147,8 @@ def test_failed_login_forensics_never_logs_password_and_correlates_reuse(caplog)
     assert first["x_forwarded_for"] == ["203.0.113.8"]
     assert first["client_country"] == "ES"
     assert first["user_agent"] == "evilbot/1.0 X-Injected: yes"
+    assert first["synthetic_source"] == "staging-smoke-cleanup"
+    assert first_level == logging.INFO
     assert second["failure_reason"] == "bad_password"
     assert second["account_exists"] is True
 

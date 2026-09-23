@@ -193,6 +193,7 @@ def main() -> int:
         'cloudflare_zone_colocation_requests_total',
         'cloudflare_zone_requests_status_country_host_total',
         'client_ip',
+        'synthetic_source!="staging-smoke-cleanup"',
     ):
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")

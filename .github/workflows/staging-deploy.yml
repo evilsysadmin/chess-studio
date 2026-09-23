@@ -453,21 +453,18 @@ jobs:
           version: '2.185.2'
           python-version: '3.13'
       - name: Load ephemeral staging invite code from OCI runtime
-        shell: bash
         run: |
-          set -euo pipefail
           python3 - <<'PY'
-          import os
-          import sys
-          sys.path.insert(0, 'scripts')
+          import os,sys
+          sys.path.insert(0,'scripts')
           import oci
           from oci_runtime_bundle import read_private_runtime_value
-          invite = read_private_runtime_value(oci, 'INVITE_CODE')
-          if not invite:
-              raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
-          print(f'::add-mask::{invite}')
-          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
-              handle.write(f'STAGING_INVITE_CODE={invite}\n')
+          invite=read_private_runtime_value(oci, 'INVITE_CODE')
+          sec=read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET')
+          if not invite or not sec: raise SystemExit('missing staging smoke secret')
+          h=open(os.environ['GITHUB_ENV'],'a')
+          for k,v in (('STAGING_INVITE_CODE',invite),('STAGING_SYNTHETIC_SECRET',sec)):
+              print(f'::add-mask::{v}');h.write(f'{k}={v}\n')
           PY
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'

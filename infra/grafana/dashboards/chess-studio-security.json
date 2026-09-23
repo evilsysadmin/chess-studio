@@ -45,7 +45,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Security** correlaciona señales objetivas ya observadas por Chess Studio y Cloudflare. Un pico **no se etiqueta automáticamente como ataque**: mira bans de auth, 401/403/429, acciones WAF, presión de tráfico, país y logs antes de concluir. Las IP de aplicación usan `CF-Connecting-IP` cuando la petición llega autenticada desde Cloudflare; `X-Forwarded-For` no se usa como identidad de seguridad."
+        "content": "**Security** correlaciona señales objetivas ya observadas por Chess Studio y Cloudflare. Los probes sintéticos firmados de staging (`staging-smoke-cleanup`) se excluyen por defecto y siguen visibles en Log Explorer. Un pico **no se etiqueta automáticamente como ataque**: mira bans de auth, 401/403/429, acciones WAF, presión de tráfico, país y logs antes de concluir. Las IP de aplicación usan `CF-Connecting-IP` cuando la petición llega autenticada desde Cloudflare; `X-Forwarded-For` no se usa como identidad de seguridad."
       }
     },
     {
@@ -240,7 +240,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403|429\" [15m]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!=\"staging-smoke-cleanup\" | status=~\"401|403|429\" [15m]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -455,7 +455,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" [$__interval]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!=\"staging-smoke-cleanup\" [$__interval]))",
           "legendFormat": "login failures",
           "refId": "A",
           "queryType": "range"
@@ -523,7 +523,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"401\" [$__interval]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!=\"staging-smoke-cleanup\" | status=\"401\" [$__interval]))",
           "legendFormat": "401",
           "refId": "A",
           "queryType": "range"
@@ -533,7 +533,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"403\" [$__interval]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!=\"staging-smoke-cleanup\" | status=\"403\" [$__interval]))",
           "legendFormat": "403",
           "refId": "B",
           "queryType": "range"
@@ -543,7 +543,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"429\" [$__interval]))",
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!=\"staging-smoke-cleanup\" | status=\"429\" [$__interval]))",
           "legendFormat": "429",
           "refId": "C",
           "queryType": "range"
@@ -582,7 +582,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(15, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403|429\" | client_ip != \"\" [$__range])))",
+          "expr": "topk(15, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!=\"staging-smoke-cleanup\" | status=~\"401|403|429\" | client_ip != \"\" [$__range])))",
           "legendFormat": "{{client_ip}}",
           "refId": "A",
           "queryType": "instant"
@@ -649,7 +649,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\"",
+          "expr": "${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!=\"staging-smoke-cleanup\"",
           "refId": "A",
           "queryType": "range"
         }
