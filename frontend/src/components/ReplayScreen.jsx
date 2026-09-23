@@ -10,7 +10,7 @@ import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
-import { replayFenPositions } from '../chessRules.js';
+import { buildStandardReplayTimeline } from '../replayTimeline.js';
 import { historyMoveNumber, historyMoverColor } from '../historyTimeline.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { getToken } from '../auth.js';
@@ -52,9 +52,11 @@ function outcomeToPgnResult(outcome, humanColor) {
 
 export default function ReplayScreen({ record, initialStep, pinnedReport, crimeMode = false, movieMode = false, onPlayFromHere, onExit }) {
   useEscapeToClose(onExit);
-  const replay = useMemo(() => replayFenPositions(record.moves, record.initialFen), [record]);
-  const positions = replay.positions;
-  const pairs = useMemo(() => toPairs(record.moves, record.initialFen), [record]);
+  const timeline = useMemo(() => buildStandardReplayTimeline(record), [record]);
+  const positions = timeline.frames;
+  const moves = timeline.events;
+  const replay = timeline.metadata;
+  const pairs = useMemo(() => toPairs(moves, record.initialFen), [moves, record.initialFen]);
   const [step, setStep] = useState(initialStep ?? positions.length - 1);
   const [report, setReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(true);
@@ -73,7 +75,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     setReport(null);
     setAnalyzeError(null);
     setAnalyzing(true);
-    analyzeGame(record.moves, record.humanColor, api, { signal: controller.signal, initialFen: record.initialFen })
+    analyzeGame(moves, record.humanColor, api, { signal: controller.signal, initialFen: record.initialFen })
       .then((result) => { if (!cancelled) setReport(result); })
       .catch((e) => { if (!cancelled && e?.name !== 'AbortError') setAnalyzeError(e.message); })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
@@ -140,13 +142,13 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     const result = outcomeToPgnResult(record.outcome, record.humanColor);
     const white = record.humanColor === 'w' ? 'Jugador' : `${CPU_IDENTITY.name} (CPU, nivel ${record.difficulty})`;
     const black = record.humanColor === 'b' ? 'Jugador' : `${CPU_IDENTITY.name} (CPU, nivel ${record.difficulty})`;
-    const pgn = toPGN(record.moves, { white, black, result, date: record.date });
+    const pgn = toPGN(moves, { white, black, result, date: record.date });
     downloadPGN(pgn, `partida-${record.date.slice(0, 10)}.pgn`);
   }
 
   const fen = positions[step];
-  const opening = identifyOpening(record.moves.slice(0, step).map((m) => m.san));
-  const moveAtStep = step > 0 ? record.moves[step - 1] : null;
+  const opening = identifyOpening(moves.slice(0, step).map((m) => m.san));
+  const moveAtStep = step > 0 ? moves[step - 1] : null;
   const moveIndexAtStep = step > 0 ? step - 1 : null;
   const moverColor = step > 0 ? historyMoverColor(step - 1, record.initialFen) : null;
   const wasHumanMove = moveAtStep && moverColor === record.humanColor;
@@ -274,7 +276,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
           )}
 
           <div className="replay-current-move">
-            <span className="eyebrow">Jugada {step} de {record.moves.length}</span>
+            <span className="eyebrow">Jugada {step} de {moves.length}</span>
             <h2>{moveAtStep ? formatLongMove(moveAtStep) : 'Posición inicial'}</h2>
             {moveAtStep && (
               <p className="hint-text">
