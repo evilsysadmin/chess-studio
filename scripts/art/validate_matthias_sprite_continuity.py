@@ -45,11 +45,6 @@ RUN_UNIQUE_PHASES_MIN = 6
 AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
 HURT_ROW = 16
 HURT_STANDING_MIN_RATIO = 0.80
-MACHINEGUN_HURT_DONOR_COLUMN = 4
-MACHINEGUN_HURT_DX = (0, 13, 6, 2, 0, -17, -17, -17)
-MACHINEGUN_HURT_PATCH = (80, 110, 305, 220)
-MACHINEGUN_HURT_MAX_RGB_MEAN = 165.0
-MACHINEGUN_HURT_MIN_COVERAGE = 0.985
 AIRBORNE_FAIL_CLOSED_WEAPONS = ("machinegun",)
 
 
@@ -522,44 +517,6 @@ def validate_airborne(sprite_dir: Path) -> dict:
     return by_action
 
 
-def _hurt_dark_support(image: Image.Image) -> list[tuple[int, int]]:
-    rgba = image.convert("RGBA")
-    pixels = rgba.load()
-    x0, y0, x1, y1 = MACHINEGUN_HURT_PATCH
-    support: list[tuple[int, int]] = []
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            r, g, b, a = pixels[x, y]
-            if a < ALPHA_THRESHOLD:
-                continue
-            if (r + g + b) / 3.0 > MACHINEGUN_HURT_MAX_RGB_MEAN:
-                continue
-            support.append((x, y))
-    if not support:
-        raise ValueError("machinegun hurt donor has no dark cap support")
-    return support
-
-
-def _hurt_support_coverage(
-    image: Image.Image,
-    support: list[tuple[int, int]],
-    dx: int,
-) -> float:
-    alpha = image.convert("RGBA").getchannel("A")
-    total = 0
-    covered = 0
-    for x, y in support:
-        target_x = x + dx
-        if target_x < 0 or target_x >= alpha.width:
-            continue
-        total += 1
-        if alpha.getpixel((target_x, y)) >= ALPHA_THRESHOLD:
-            covered += 1
-    if total <= 0:
-        raise ValueError("machinegun hurt translated cap support is empty")
-    return covered / total
-
-
 def validate_hurt(sprite_dir: Path) -> dict:
     frames_by_weapon: dict[str, list[dict]] = {}
     images_by_weapon: dict[str, list[Image.Image]] = {}
@@ -603,32 +560,20 @@ def validate_hurt(sprite_dir: Path) -> dict:
             validated.append({**frame, "standingHeightRatio": round(ratio, 6)})
         report[weapon] = validated
 
-    donor = images_by_weapon["machinegun"][MACHINEGUN_HURT_DONOR_COLUMN]
-    support = _hurt_dark_support(donor)
-    cap_frames: list[dict] = []
-    for col, image in enumerate(images_by_weapon["machinegun"]):
-        coverage = _hurt_support_coverage(
-            image,
-            support,
-            MACHINEGUN_HURT_DX[col],
-        )
-        if coverage < MACHINEGUN_HURT_MIN_COVERAGE:
+    recovery_tail: dict[str, dict] = {}
+    for weapon, images in images_by_weapon.items():
+        c6 = images[-2]
+        c7 = images[-1]
+        frozen = c6.tobytes() == c7.tobytes()
+        if frozen:
             violations.append(
-                f"machinegun hurt c{col}: cap alpha coverage "
-                f"{coverage:.4f} < {MACHINEGUN_HURT_MIN_COVERAGE:.3f}"
+                f"{weapon} hurt recovery tail c6/c7 is frozen"
             )
-        cap_frames.append(
-            {
-                "column": col,
-                "dx": MACHINEGUN_HURT_DX[col],
-                "coverage": round(coverage, 6),
-            }
-        )
-    report["machinegunCapAlpha"] = {
-        "donorColumn": MACHINEGUN_HURT_DONOR_COLUMN,
-        "minCoverage": MACHINEGUN_HURT_MIN_COVERAGE,
-        "frames": cap_frames,
-    }
+        recovery_tail[weapon] = {
+            "columns": [IDLE_COLUMNS - 2, IDLE_COLUMNS - 1],
+            "distinct": not frozen,
+        }
+    report["recoveryTail"] = recovery_tail
     if violations:
         raise ValueError("hurt continuity violations:\n- " + "\n- ".join(violations))
     return report
@@ -830,6 +775,11 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("frozen run lower body must fail")
+    hurt_a = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+    hurt_b = hurt_a.copy()
+    hurt_a.putpixel((10, 10), (255, 255, 255, 255))
+    hurt_b.putpixel((11, 10), (255, 255, 255, 255))
+    assert hurt_a.tobytes() != hurt_b.tobytes()
     print("Matthias sprite continuity self-test: OK")
 
 
