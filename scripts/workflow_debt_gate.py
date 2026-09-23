@@ -46,6 +46,7 @@ INVENTORY = {
     'pawn-slug-godot-web.yml': 'game-runtime-delivery',
     'pawn-slug-enemy-shield-v2.yml': 'visual-staging-evidence',
     'pawn-slug-matthias-sprite-smoke.yml': 'visual-staging-evidence',
+    'pawn-slug-pistol-crouch-candidate.yml': 'visual-staging-evidence',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
     'production-target-smoke.yml': 'delivery-observability',
