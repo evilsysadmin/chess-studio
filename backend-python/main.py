@@ -26,6 +26,7 @@ import profile_store as pstore
 import users_store as ustore
 import auth_login_guard
 import auth_ip_guard
+import ip_geolocation
 import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
@@ -164,7 +165,7 @@ def _client_network(request: Request) -> tuple[str | None, str | None]:
     de Cloudflare usamos la dirección resuelta por ASGI (útil en local/Render).
     Guardamos un único valor por cuenta; nunca construimos historial de IPs.
     """
-    cloudflare_request = bool((request.headers.get("cf-ray") or "").strip())
+    cloudflare_request = bool((request.headers.get("cf-ray") or "").strip()) or _trust_cloudflare_client_ip()
     raw_ip = (request.headers.get("cf-connecting-ip") or "").strip() if cloudflare_request else ""
     if not raw_ip and request.client:
         raw_ip = str(request.client.host or "").strip()
@@ -320,6 +321,19 @@ async def log_request_with_user(request: Request, call_next):
         )
         schedule_history_flush()
         if not raised:
+            request_username = _request_username(request)
+            log_country = client_country or ip_geolocation.cached_country_code(client_ip)
+            path = request.url.path
+            if (
+                not log_country
+                and not trusted_synthetic
+                and request_username != "-"
+                and request.method.upper() != "OPTIONS"
+                and 200 <= int(status_code or 0) < 400
+                and path not in {"/api/ready", "/api/health", "/api/release"}
+                and not path.startswith("/api/internal/")
+            ):
+                ip_geolocation.schedule_country_resolution(client_ip)
             emit_http_event(
                 access_logger,
                 request_id=request_id,
@@ -328,12 +342,12 @@ async def log_request_with_user(request: Request, call_next):
                 status_code=status_code,
                 duration_ms=elapsed_ms,
                 client_release=client_release,
-                username=_request_username(request),
+                username=request_username,
                 request_path=request.url.path if status_code == 404 or route_pattern == "unmatched" else None,
                 client_ip=client_ip,
                 peer_ip=peer_ip,
                 x_forwarded_for=x_forwarded_for,
-                client_country=client_country,
+                client_country=log_country,
                 synthetic_source=getattr(request.state, "synthetic_source", None),
             )
 

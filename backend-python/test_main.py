@@ -2187,6 +2187,19 @@ def test_activity_heartbeat_records_last_cloudflare_network_without_history():
     assert user["last_client_ip"] == "203.0.113.42"
     assert user["last_client_country"] == "DE"
 
+
+def test_activity_heartbeat_trusts_cloudflare_headers_inside_closed_tunnel(monkeypatch):
+    monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "true")
+    response = client.post(
+        "/api/auth/activity",
+        headers={"CF-Connecting-IP": "8.8.8.8", "CF-IPCountry": "ES"},
+        json={"activity": "Menú principal", "foreground": True},
+    )
+    assert response.status_code == 204
+    user = asyncio.run(ustore.get_user("testuser"))
+    assert user["last_client_ip"] == "8.8.8.8"
+    assert user["last_client_country"] == "ES"
+
 def test_admin_can_force_player_portrait_without_exposing_target_name_to_ai(monkeypatch):
     import admin_api
 

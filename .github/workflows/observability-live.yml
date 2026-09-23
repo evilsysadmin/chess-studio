@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: chess-studio-observability-live
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -96,8 +96,8 @@ jobs:
             echo "- Superseded deploy trigger queried: ${{ steps.generation.outputs.live || 'n/a' }}"
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
-            echo "- Guardrail 5xx: ≤ `${GRAFANA_SLO_MAX_5XX_PERCENT}%` over 15m when sample ≥ `${GRAFANA_SLO_MIN_REQUESTS_15M}`"
-            echo "- Guardrail p95: ≤ `${GRAFANA_SLO_MAX_P95_MS}ms` over 15m when sample is sufficient"
-            echo "- Guardrail OCI RAM: ≤ `${GRAFANA_SLO_MAX_HOST_RAM_PERCENT}%`"
-            echo "- Lookback telemetry: `${GRAFANA_LIVE_LOOKBACK}`"
+            echo "- Guardrail 5xx: ≤ '${GRAFANA_SLO_MAX_5XX_PERCENT}%' over 15m when sample ≥ '${GRAFANA_SLO_MIN_REQUESTS_15M}'"
+            echo "- Guardrail p95: ≤ '${GRAFANA_SLO_MAX_P95_MS}ms' over 15m when sample is sufficient"
+            echo "- Guardrail OCI RAM: ≤ '${GRAFANA_SLO_MAX_HOST_RAM_PERCENT}%'"
+            echo "- Lookback telemetry: '${GRAFANA_LIVE_LOOKBACK}'"
           } >> "$GITHUB_STEP_SUMMARY"
