@@ -4,7 +4,8 @@
 V3 keeps only the live-board anchor and canonical camera from the v2 generator.
 Its authored room is rebuilt from an empty static collection: a curved tower
 apse, circular command table, celestial window, single cast-iron stove,
-drafting station and suspended armillary replace v2's rectangular hall.
+brass telescope, tower entry and suspended armillary replace v2's rectangular
+hall.
 """
 from __future__ import annotations
 
@@ -265,12 +266,13 @@ def build_single_stove(static, palette):
     door.rotation_euler.x = math.pi / 2
     base.torus("WR3_OBS_stove_door_ring", (x, y - 0.93, 1.58), 0.63, 0.055,
                palette["brass"], static, rotation=(math.pi / 2, 0, 0))
-    base.sphere("WR3_OBS_stove_flame_body", (x, y - 0.99, 1.45),
-                0.27, palette["fire"], static, scale=(1.48, 0.22, 0.48))
+    flame_body = base.sphere("WR3_OBS_stove_flame_body", (x + 0.10, y - 0.99, 1.45),
+                             0.27, palette["fire"], static, scale=(1.48, 0.22, 0.48))
+    flame_body.rotation_euler.y = math.radians(11)
     for index, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.18, 0.02, 0.48, 1.02, -0.16),
-        (0.02, 0.13, 0.42, 1.22, 0.07),
-        (0.22, -0.01, 0.36, 0.82, 0.19),
+        (-0.12, 0.02, 0.48, 1.02, 0.05),
+        (0.08, 0.13, 0.42, 1.22, 0.20),
+        (0.30, -0.01, 0.36, 0.82, 0.34),
     )):
         tongue = base.sphere(f"WR3_OBS_stove_flame_{index}",
                              (x + dx, y - 1.005, 1.52 + dz),
@@ -288,47 +290,92 @@ def build_single_stove(static, palette):
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 1.05, 1.76), static)
 
 
-def build_drafting_station(static, palette):
-    """An angled charting desk gives the right bay a functional silhouette."""
-    x, y = 5.35, 5.18
-    top = base.cube("WR3_OBS_drafting_top", (x, y, 2.18), (1.78, 0.74, 0.105),
-                    palette["walnut"], static, bevel=0.11)
-    top.rotation_euler.z = -0.18
-    map_sheet = base.cube("WR3_OBS_drafting_map", (x - 0.10, y - 0.05, 2.31),
-                          (1.43, 0.56, 0.018), palette["ivory"], static, bevel=0.035)
-    map_sheet.rotation_euler.z = -0.18
+def build_observatory_telescope(static, palette):
+    """A single legible instrument replaces the former desk-and-scroll clutter."""
+    hub = Vector((4.82, 4.26, 1.48))
+    base.sphere("WR3_OBS_telescope_mount", hub, 0.28, palette["brass_dark"], static,
+                scale=(1.12, 1.12, 0.92))
+    base.cylinder("WR3_OBS_telescope_mount_ring", hub, 0.43, 0.10,
+                  palette["copper"], static, vertices=48)
+
+    tripod_feet = ((3.96, 3.42, 0.16), (5.83, 3.52, 0.16), (5.02, 5.12, 0.16))
+    for index, foot in enumerate(tripod_feet):
+        cylinder_between(f"WR3_OBS_telescope_tripod_{index}", hub, foot, 0.085,
+                         palette["brass_dark"], static, vertices=28)
+        base.cylinder(f"WR3_OBS_telescope_foot_{index}", foot, 0.19, 0.075,
+                      palette["walnut_dark"], static, vertices=36)
+
+    axis_start = Vector((4.02, 3.92, 2.18))
+    axis_end = Vector((5.78, 5.18, 3.36))
+    axis = (axis_end - axis_start).normalized()
+    cylinder_between("WR3_OBS_telescope_tube", axis_start, axis_end, 0.245,
+                     palette["brass"], static, vertices=56)
+    cylinder_between("WR3_OBS_telescope_patina", axis_start + axis * 0.40,
+                     axis_end - axis * 0.43, 0.262, palette["teal"], static, vertices=56)
+    cylinder_between("WR3_OBS_telescope_front_collar", axis_end - axis * 0.18,
+                     axis_end + axis * 0.08, 0.315, palette["copper"], static, vertices=56)
+    cylinder_between("WR3_OBS_telescope_lens", axis_end + axis * 0.081,
+                     axis_end + axis * 0.105, 0.255, palette["night"], static, vertices=56)
+    cylinder_between("WR3_OBS_telescope_eyepiece", axis_start - axis * 0.34,
+                     axis_start + axis * 0.02, 0.115, palette["brass_dark"], static, vertices=40)
+    cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.05,
+                     axis_start + axis * 0.08, 0.285, palette["copper"], static, vertices=48)
+
+    yoke_left = hub + Vector((-0.44, 0.0, 0.35))
+    yoke_right = hub + Vector((0.44, 0.0, 0.35))
+    cylinder_between("WR3_OBS_telescope_yoke", yoke_left, yoke_right, 0.10,
+                     palette["brass"], static, vertices=32)
+    for side, point in (("left", yoke_left), ("right", yoke_right)):
+        base.sphere(f"WR3_OBS_telescope_yoke_cap_{side}", point, 0.16,
+                    palette["copper"], static)
+
+
+def build_tower_entry(static, palette):
+    """A sealed observatory door makes the room read as an inhabitable place."""
+    theta = math.radians(68)
+    radial = Vector((math.sin(theta), math.cos(theta), 0.0))
+    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    wall = Vector((8.72 * radial.x, -0.72 + 8.72 * radial.y, 0.0))
+    center = wall - radial * 0.27
+    angle = math.atan2(tangent.y, tangent.x)
+
+    door = base.cube("WR3_OBS_entry_door", (center.x, center.y, 2.16),
+                     (0.88, 0.11, 1.88), palette["teal"], static, bevel=0.14)
+    door.rotation_euler.z = angle
+    inset = base.cube("WR3_OBS_entry_door_inset", (center.x - radial.x * 0.12,
+                                                    center.y - radial.y * 0.12, 2.16),
+                      (0.68, 0.035, 1.62), palette["walnut_dark"], static, bevel=0.12)
+    inset.rotation_euler.z = angle
+
     for side in (-1, 1):
-        leg_x = x + side * 1.42
-        base.cube(f"WR3_OBS_drafting_leg_{side}", (leg_x, y + side * -0.26, 1.22),
-                  (0.14, 0.18, 0.86), palette["walnut_dark"], static, bevel=0.07)
-        roll = base.cylinder(f"WR3_OBS_drafting_roll_{side}",
-                             (x + side * 1.23, y - 0.18, 2.42), 0.075, 0.90,
-                             palette["ivory"], static, vertices=40)
-        roll.rotation_euler.y = math.pi / 2
-    base.cube("WR3_OBS_drafting_crossbar", (x, y + 0.10, 1.22),
-              (1.48, 0.10, 0.10), palette["copper"], static, bevel=0.045)
+        point = center + tangent * (side * 1.02)
+        jamb = base.cube(f"WR3_OBS_entry_jamb_{side}", (point.x, point.y, 2.16),
+                         (0.105, 0.20, 2.03), palette["copper"], static, bevel=0.055)
+        jamb.rotation_euler.z = angle
+    for name, z in (("lintel", 4.18), ("threshold", 0.14)):
+        rail = base.cube(f"WR3_OBS_entry_{name}", (center.x, center.y, z),
+                         (1.12, 0.20, 0.11), palette["copper"], static, bevel=0.055)
+        rail.rotation_euler.z = angle
 
-    carousel_x, carousel_y = 7.08, 3.65
-    base.cylinder("WR3_OBS_map_carousel_post", (carousel_x, carousel_y, 1.48), 0.10, 2.15,
-                  palette["brass_dark"], static, vertices=32)
-    base.cylinder("WR3_OBS_map_carousel_foot", (carousel_x, carousel_y, 0.38), 0.48, 0.12,
-                  palette["walnut_dark"], static, vertices=48)
-    for index in range(6):
-        angle = index * math.tau / 6.0
-        px = carousel_x + math.cos(angle) * 0.36
-        py = carousel_y + math.sin(angle) * 0.36
-        base.cylinder(f"WR3_OBS_map_tube_{index}", (px, py, 1.62), 0.10, 1.65,
-                      palette["leather"] if index % 2 else palette["green_leather"],
-                      static, vertices=36)
-        base.cylinder(f"WR3_OBS_map_tube_cap_{index}", (px, py, 2.48), 0.115, 0.055,
-                      palette["brass"], static, vertices=36)
+    front = Vector((center.x, center.y, 2.16)) - radial * 0.17
+    glass_start = front - radial * 0.035 + Vector((0, 0, 0.78))
+    glass_end = front + radial * 0.035 + Vector((0, 0, 0.78))
+    cylinder_between("WR3_OBS_entry_porthole", glass_start, glass_end, 0.34,
+                     palette["night"], static, vertices=56)
+    ring = base.torus("WR3_OBS_entry_porthole_ring", glass_start, 0.39, 0.055,
+                      palette["brass"], static)
+    ring.rotation_euler = radial.to_track_quat("Z", "Y").to_euler()
 
-    for index, (dx, dy, angle) in enumerate((
-        (-0.72, 0.12, 0.18), (-0.18, -0.08, -0.24), (0.42, 0.16, 0.32), (0.88, -0.12, -0.10),
-    )):
-        mark = base.cube(f"WR3_OBS_map_route_{index}", (x + dx, y + dy - 0.08, 2.345),
-                         (0.28, 0.018, 0.010), palette["brass_dark"], static, bevel=0.009)
-        mark.rotation_euler.z = angle - 0.18
+    handle_center = front - tangent * 0.48 + Vector((0, 0, -0.30))
+    base.sphere("WR3_OBS_entry_handle_hub", handle_center, 0.105,
+                palette["brass_dark"], static)
+    cylinder_between("WR3_OBS_entry_handle", handle_center,
+                     handle_center + tangent * 0.34, 0.045,
+                     palette["brass"], static, vertices=28)
+    for side in (-1, 1):
+        fastener = front + tangent * (side * 0.63) + Vector((0, 0, -1.38))
+        base.sphere(f"WR3_OBS_entry_fastener_{side}", fastener, 0.050,
+                    palette["brass"], static, scale=(1.0, 0.34, 1.0))
 
 
 def build_armillary_light(static, palette):
@@ -352,7 +399,7 @@ def build_armillary_light(static, palette):
 def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
-    scene["war_room_visual_canon"] = "celestial-observatory-2026-09-23-v1"
+    scene["war_room_visual_canon"] = "celestial-observatory-2026-09-23-v2"
     scene.view_settings.exposure = 0.20
 
     key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 520.0,
@@ -385,7 +432,8 @@ def apply_v3_identity():
     build_celestial_window(static, palette)
     build_round_command_table(static, palette)
     build_single_stove(static, palette)
-    build_drafting_station(static, palette)
+    build_observatory_telescope(static, palette)
+    build_tower_entry(static, palette)
     build_armillary_light(static, palette)
     build_lighting(static)
     bake_v3_weather()
@@ -406,7 +454,8 @@ def validate_v3():
         "WR3_OBS_table_drum",
         "WR3_OBS_celestial_window",
         "WR3_OBS_stove_body",
-        "WR3_OBS_drafting_top",
+        "WR3_OBS_telescope_tube",
+        "WR3_OBS_entry_door",
         "WR3_OBS_armillary_ring_0",
     }
     missing = sorted(required - names)
@@ -414,7 +463,8 @@ def validate_v3():
         raise RuntimeError(f"War Room v3 contract objects missing: {missing}")
     forbidden_prefixes = (
         "WR_ARCH_", "WR_TABLE_", "WR_FIREPLACE_", "WR_DESK_", "WR_CREST_",
-        "WR_WINDOW_", "WR_CANON_", "WR_ANCHOR_right_fireplace_practical",
+        "WR_WINDOW_", "WR_CANON_", "WR3_OBS_drafting_", "WR3_OBS_map_",
+        "WR_ANCHOR_right_fireplace_practical",
     )
     forbidden = sorted(name for name in names if name.startswith(forbidden_prefixes))
     if forbidden:
