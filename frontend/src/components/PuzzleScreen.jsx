@@ -86,6 +86,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }).trainingDebt, [personalPuzzles, initialFilter]);
   const currentPersonalMastered = source === 'personal' && isPersonalPuzzleMastered(puzzle);
   const offerAiGeneration = source === 'personal' && shouldOfferAiPersonalPuzzleGeneration({ ...personalStats, active: filteredPersonalActiveCount, total: filteredPersonalTotalCount });
+  const personalSourceLabel = initialFilter?.label
+    ? `Tus errores · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)`
+    : initialFilter?.opening
+      ? `Tus errores · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)`
+      : `Tus errores (${filteredPersonalActiveCount} pendientes)`;
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
   const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
   const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
@@ -418,11 +423,15 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     <div className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}>
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
-        <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
-        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
-          {initialFilter?.label ? `Tus errores · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)` : initialFilter?.opening ? `Tus errores · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)` : `Tus errores (${filteredPersonalActiveCount} pendientes)`}
+        <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>
+          <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
         </button>
-        <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
+        <button aria-label={personalSourceLabel} className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
+          <span className="puzzle-source-label-full">{personalSourceLabel}</span><span className="puzzle-source-label-compact" aria-hidden="true">Tus errores{filteredPersonalActiveCount > 0 ? ` · ${filteredPersonalActiveCount}` : ''}</span>
+        </button>
+        <button aria-label="Desafío diario" className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>
+          <span className="puzzle-source-label-full">Desafío diario</span><span className="puzzle-source-label-compact" aria-hidden="true">Diario</span>
+        </button>
       </div>}
       {personalSourceFallback && (
         <p className="personal-puzzle-empty-notice friendly-inline-note" role="status">
