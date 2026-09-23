@@ -17,14 +17,9 @@ on:
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
       - '.github/workflows/home-matthias-blender-art.yml'
   workflow_dispatch:
-  push:
-    branches:
-      - 'fix/home-matthias-canonical-3d-gates'
-    paths:
-      - '.github/workflows/home-matthias-blender-art.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: home-matthias-blender-${{ github.event.pull_request.number || github.ref }}
@@ -115,22 +110,6 @@ jobs:
           sheet.save(root / 'matthias-home-canonical-review-sheet.png')
           reference.save(root / 'matthias-home-approved-reference.png')
           PY
-
-      - name: One-shot materialize regenerated canonical binaries
-        if: github.event_name == 'push'
-        run: |
-          set -euo pipefail
-          cp /tmp/home-matthias-art/matthias-home-canonical.blend frontend/art-source/matthias-home-canonical.blend
-          cp /tmp/home-matthias-art/matthias-home-canonical.glb frontend/public/models/matthias-home-canonical.glb
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb
-          if git diff --cached --quiet; then
-            echo 'Canonical binaries already materialized.'
-          else
-            git commit -m 'art(home): materialize canonical Matthias binaries'
-            git push origin HEAD:${GITHUB_REF_NAME}
-          fi
 
       - name: Validate checked-in editable blend contract
         run: |
