@@ -671,7 +671,7 @@ PREMIUM_BEVEL_PREFIXES = (
     "HOME_PROP_bookshelf_",
     "HOME_PROP_library_",
     "HOME_PROP_left_sofa_",
-    "HOME_PROP_bench_",
+    "HOME_PROP_chair_",
     "HOME_PROP_globe_",
     "HOME_PROP_sideboard_",
     "HOME_PROP_pedestal_",
@@ -1600,39 +1600,117 @@ def add_table_and_board(materials):
         steam,
     )
 
+    # Two high-backed Teutonic castle chairs instead of the long velvet
+    # benches: a single seat per side, facing the camera (-Y), with a tall
+    # pointed-cap back echoing the room's Gothic-arch language rather than a
+    # flat rectangular slab.
+    chair_wood = wood
+    chair_velvet = materials["bench_velvet"]
+    chair_trim = materials["gold"]
+    chair_dark = materials["dark"]
     for side in (-1, 1):
-        x = side * 4.18
-        cube(f"HOME_PROP_bench_frame_{side}", (x, 0.98, 0.50), (0.72, 1.62, 0.12), wood, bevel=0.045)
-        bench_cushion = cube(
-            f"HOME_PROP_bench_cushion_{side}",
-            (
-                x + (0.012 if side > 0 else -0.018),
-                0.98 + (0.018 if side > 0 else -0.010),
-                0.742 + (0.012 if side > 0 else -0.004),
-            ),
-            (
-                0.685 + (0.008 if side > 0 else -0.006),
-                1.545 + (0.012 if side < 0 else -0.010),
-                0.195 + (0.008 if side > 0 else 0.0),
-            ),
-            materials["bench_velvet"],
-            bevel=0.12,
-        )
-        bench_cushion.rotation_euler[2] = math.radians(0.55 * side)
-        for by in (0.08, 2.32):
-            for dx in (-0.40, 0.40):
-                bx = x + dx
-                cube(f"HOME_PROP_bench_leg_{side}_{dx}_{by}", (bx, by, 0.26), (0.10, 0.10, 0.26), wood, bevel=0.03)
-                cylinder(f"HOME_PROP_bench_foot_{side}_{dx}_{by}", (bx, by, 0.05), 0.12, 0.10, materials["dark"], vertices=16)
-        for tuft in (-0.72, 0.0, 0.72):
-            sphere(f"HOME_PROP_bench_tuft_{side}_{tuft}", (x, 1.2 + tuft, 0.91), (0.07, 0.035, 0.035), materials["dark"])
-        for stud, sy in enumerate((-0.88, -0.48, -0.08, 0.32, 0.72, 1.12, 1.52)):
-            sphere(
-                f"HOME_PROP_bench_front_button_{side}_{stud}",
-                (x - side * 0.70, 0.80 + sy, 0.72),
-                (0.027, 0.027, 0.027),
-                materials["gold"],
+        cx = side * 4.18
+        cy = 1.05
+        seat_top = 0.74
+        half = 0.30
+        leg_positions = {
+            "fl": (cx - half * 0.82, cy - half * 0.82),
+            "fr": (cx + half * 0.82, cy - half * 0.82),
+            "bl": (cx - half * 0.82, cy + half * 0.82),
+            "br": (cx + half * 0.82, cy + half * 0.82),
+        }
+        for tag, (lx, ly) in leg_positions.items():
+            cube(
+                f"HOME_PROP_chair_leg_{side}_{tag}",
+                (lx, ly, (seat_top - 0.05) / 2),
+                (0.042, 0.042, (seat_top - 0.05) / 2),
+                chair_wood,
+                bevel=0.014,
             )
+            cylinder(f"HOME_PROP_chair_foot_{side}_{tag}", (lx, ly, 0.035), 0.052, 0.035, chair_dark, vertices=12)
+
+        cube(f"HOME_PROP_chair_seat_frame_{side}", (cx, cy, seat_top - 0.01), (half, half, 0.035), chair_wood, bevel=0.02)
+        cube(
+            f"HOME_PROP_chair_cushion_{side}",
+            (cx, cy, seat_top + 0.05),
+            (half * 0.90, half * 0.90, 0.035),
+            chair_velvet,
+            bevel=0.03,
+        )
+        for stud_idx, (sx, sy) in enumerate((
+            (-half * 0.88, -half * 0.88), (half * 0.88, -half * 0.88),
+            (-half * 0.88, half * 0.88), (half * 0.88, half * 0.88),
+        )):
+            sphere(
+                f"HOME_PROP_chair_seat_stud_{side}_{stud_idx}",
+                (cx + sx, cy + sy, seat_top + 0.005),
+                (0.016, 0.016, 0.016),
+                chair_trim,
+            )
+
+        # Back posts rise from the rear legs; the panel and cap sit between them.
+        back_y = cy + half * 0.82
+        back_top = 1.66
+        for arm_side in (-1, 1):
+            post_x = cx + arm_side * half * 0.82
+            cube(
+                f"HOME_PROP_chair_backpost_{side}_{arm_side}",
+                (post_x, back_y, (seat_top + back_top) / 2),
+                (0.042, 0.042, (back_top - seat_top) / 2),
+                chair_wood,
+                bevel=0.014,
+            )
+            sphere(
+                f"HOME_PROP_chair_post_finial_{side}_{arm_side}",
+                (post_x, back_y, back_top + 0.03),
+                (0.052, 0.052, 0.052),
+                chair_trim,
+            )
+            # Armrest bridges the front leg to the back post at elbow height.
+            arm_z = seat_top + 0.18
+            curve_tube(
+                f"HOME_PROP_chair_arm_{side}_{arm_side}",
+                [
+                    (post_x, cy - half * 0.82, arm_z - 0.015),
+                    (post_x, cy, arm_z + 0.01),
+                    (post_x, back_y - 0.05, arm_z),
+                ],
+                0.028,
+                chair_wood,
+            )
+            sphere(
+                f"HOME_PROP_chair_arm_finial_{side}_{arm_side}",
+                (post_x, cy - half * 0.82 - 0.015, arm_z - 0.015),
+                (0.040, 0.040, 0.040),
+                chair_trim,
+            )
+
+        panel_bottom = seat_top + 0.14
+        panel_top = back_top - 0.10
+        cube(
+            f"HOME_PROP_chair_backpanel_{side}",
+            (cx, back_y, (panel_bottom + panel_top) / 2),
+            (half * 0.62, 0.032, (panel_top - panel_bottom) / 2),
+            chair_dark,
+            bevel=0.018,
+        )
+        cube(
+            f"HOME_PROP_chair_backpanel_trim_{side}",
+            (cx, back_y - 0.030, (panel_bottom + panel_top) / 2),
+            (half * 0.50, 0.010, (panel_top - panel_bottom) / 2 - 0.02),
+            chair_trim,
+            bevel=0.006,
+        )
+        # A bevelled box rotated 45 degrees reads as a pointed Gothic finial
+        # capping the back, the same trick the library's crown finials use.
+        cap = cube(
+            f"HOME_PROP_chair_cap_{side}",
+            (cx, back_y, back_top + 0.09),
+            (0.095, 0.075, 0.075),
+            chair_wood,
+            bevel=0.012,
+        )
+        cap.rotation_euler[2] = math.radians(45.0)
 
     piece_light = materials["piece_light"]
     piece_dark = materials["piece_dark"]
