@@ -21,6 +21,7 @@ import { chessFromFen } from '../chessRules.js';
 import PromotionModal from './PromotionModal.jsx';
 import { PUZZLE_STATE, puzzleTransition } from '../puzzleStateMachine.js';
 import { reportStateInvariant } from '../stateMachine.js';
+import './PuzzleMobilePolish.css';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Error de tu partida' };
 const RECENT_CURATED_LIMIT = 5;
