@@ -1,0 +1,43 @@
+/* Interactive "Por qué funciona" demo.
+   The demo borrows the teaching board but never masquerades as the live attempt. */
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board[data-school-explanation="demo"] {
+  border-color: color-mix(in srgb, #5f9fb0 58%, var(--ui-border));
+  box-shadow:
+    0 22px 56px rgba(0,0,0,.22),
+    inset 0 1px rgba(255,255,255,.035),
+    0 0 0 1px rgba(95,159,176,.16);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions.is-explanation {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: center;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback.is-explain {
+  border-color: color-mix(in srgb, #5f9fb0 44%, var(--ui-border));
+  background:
+    linear-gradient(145deg, rgba(95,159,176,.10), rgba(0,0,0,.12));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback.is-explain::before {
+  border-color: color-mix(in srgb, #5f9fb0 40%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-panel) 88%, #10202a 12%);
+}
+
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions.is-explanation {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions.is-explanation button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board[data-school-explanation="demo"] {
+    scroll-behavior: auto;
+  }
+}
