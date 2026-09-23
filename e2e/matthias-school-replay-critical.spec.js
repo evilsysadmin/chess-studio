@@ -46,6 +46,11 @@ test('Escuela de Matthias · modo tablero ocupa el viewport y Escape sólo lo co
   await expect(page.getByRole('button', { name: 'Salir del modo tablero', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
 
+  const desktopBoardRatio = await page.locator('.matthias-school-board').evaluate((node) => (
+    node.getBoundingClientRect().width / window.innerWidth
+  ));
+  expect(desktopBoardRatio).toBeGreaterThan(0.55);
+
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
