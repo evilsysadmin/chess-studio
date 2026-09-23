@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v28';
-const NOOP_RENDER_HOOK = () => {};
-
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -364,14 +362,6 @@ function placeFurniture(root, { wallZ, towardBoard }) {
   const sofaOffset = 12.55;
   let changed = 0;
 
-  for (const name of ['war-room-side-console-left', 'war-room-side-console-right']) {
-    const table = root.getObjectByName?.(name);
-    if (!table) continue;
-    table.visible = false;
-    table.userData.warRoomFurniturePlacement = 'retired-duplicate-side-table-v28';
-    changed += 1;
-  }
-
   const desk = root.getObjectByName?.('command-cabinet');
   if (desk) {
     ensureTeutonicDeskArt(desk, towardBoard);
@@ -428,82 +418,20 @@ function placeFurniture(root, { wallZ, towardBoard }) {
   root.userData.warRoomApprovedMockArmorOffset = armorOffset;
   root.userData.warRoomApprovedMockSofaOffset = sofaOffset;
   root.userData.warRoomApprovedMockArmorSofaGap = sofaOffset - armorOffset;
-  root.userData.warRoomApprovedMockSideTablesRetired = true;
   return changed + 1;
-}
-
-const WALL_CLUTTER_NAMES = new Set([
-  'war-room-armor-alcove-left',
-  'war-room-armor-alcove-right',
-  'war-room-gallery-picture-rail',
-  'war-room-gallery-picture-rail-brass-line',
-  'war-room-hammerbeam-side-tie',
-  'war-room-hammerbeam-corbel',
-  'war-room-hammerbeam-brace',
-  'war-room-armor-alcove-pointed-arch',
-]);
-
-function retireWallClutter(root) {
-  let retired = 0;
-  root.traverse?.((object) => {
-    if (!WALL_CLUTTER_NAMES.has(object?.name)) return;
-    if (object.visible !== false) retired += 1;
-    object.visible = false;
-    object.userData.warRoomApprovedMockWall = 'clean-panel-v28';
-  });
-  root.userData.warRoomApprovedMockWallClutterRetired = retired;
-  root.userData.warRoomApprovedMockWallStyle = 'plain-dark-castle-panel-v28';
-  return retired;
-}
-
-function isCurtainPelmet(object) {
-  if (!object?.isMesh || object.geometry?.type !== 'SphereGeometry') return false;
-  const material = Array.isArray(object.material) ? object.material[0] : object.material;
-  const velvetLike = (material?.roughness ?? 0) >= 0.75 && (material?.sheen ?? 0) >= 0.3;
-  return velvetLike
-    && object.scale.x >= 1.25
-    && object.scale.y <= 0.5
-    && object.scale.z <= 0.5;
 }
 
 function straightenCurtains(root) {
   let folds = 0;
-  let pelmets = 0;
   root.traverse?.((object) => {
-    if (object?.name?.includes?.('war-room-velvet-curtain-fold')) {
-      object.rotation.z = 0;
-      object.userData.warRoomCurtainProfile = 'straight-drop-v28';
-      folds += 1;
-      return;
-    }
-    if (!isCurtainPelmet(object)) return;
-    object.visible = false;
-    object.userData.warRoomCurtainPelmet = 'retired-v28';
-    pelmets += 1;
+    if (!object?.name?.includes?.('war-room-velvet-curtain-fold')) return;
+    object.rotation.z = 0;
+    object.userData.warRoomCurtainProfile = 'straight-drop-v28';
+    folds += 1;
   });
   root.userData.warRoomApprovedMockCurtainFolds = folds;
-  root.userData.warRoomApprovedMockCurtainPelmetsRetired = pelmets;
   root.userData.warRoomApprovedMockCurtainStyle = 'straight-no-upper-doubling-v28';
-  return folds + pelmets;
-}
-
-function retireLegacyLayoutDrivers(root) {
-  let retired = 0;
-  const retiredDrivers = [];
-  root.traverse?.((object) => {
-    if (object?.userData?.warRoomFinalRefinementDriver !== true) return;
-    if (object.userData.warRoomApprovedMockLayoutDriverRetired === WAR_ROOM_APPROVED_MOCK_VERSION) return;
-
-    object.onBeforeRender = NOOP_RENDER_HOOK;
-    object.userData.warRoomApprovedMockLayoutDriverRetired = WAR_ROOM_APPROVED_MOCK_VERSION;
-    object.userData.warRoomApprovedMockLayoutDriverRetirement = 'marker-owned-one-shot-v28';
-    retiredDrivers.push(object.name || object.type || 'unnamed');
-    retired += 1;
-  });
-
-  root.userData.warRoomLegacyLayoutDriversRetired = retiredDrivers;
-  root.userData.warRoomLegacyLayoutDriverRetirementVersion = WAR_ROOM_APPROVED_MOCK_VERSION;
-  return retired;
+  return folds;
 }
 
 export function applyWarRoomApprovedMockContract(root, {
@@ -512,12 +440,11 @@ export function applyWarRoomApprovedMockContract(root, {
   coarsePointer = false,
 } = {}) {
   if (!root || coarsePointer || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  const retiredDrivers = retireLegacyLayoutDrivers(root);
   const furniture = placeFurniture(root, { wallZ, towardBoard });
-  const walls = retireWallClutter(root);
   const curtains = straightenCurtains(root);
+  root.userData.warRoomApprovedMockWallStyle = 'plain-dark-castle-panel-v28';
   root.userData.warRoomApprovedMockVersion = WAR_ROOM_APPROVED_MOCK_VERSION;
-  return retiredDrivers + furniture + walls + curtains;
+  return furniture + curtains;
 }
 
 export function installWarRoomApprovedMockContract(group, options = {}) {
@@ -538,6 +465,6 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
 
   markerDriver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   group.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-marker-driver-retirement-v7';
+  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-layout-v8';
   return 1;
 }
