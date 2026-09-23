@@ -16,7 +16,7 @@ import {
   warRoomV2LeatherSurfaceProfile,
 } from './WarRoomV2Shell.js';
 import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
-import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
+import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 
 describe('War Room v2 runtime asset URL', () => {
   it('registers the bundled Meshopt decoder on the v2 GLTF loader', () => {
@@ -60,6 +60,29 @@ describe('War Room v2 runtime asset URL', () => {
     expect(controller.ensure()).toEqual([shell]);
     expect(controller.isBuilt()).toBe(true);
     expect(builds).toBe(1);
+  });
+
+  it('keeps the classic shell visible through the shared scene controller', () => {
+    const shell = { visible: false };
+    const scene = { userData: {} };
+    const statuses = [];
+    const controller = {
+      current: () => [shell],
+      ensure: () => [shell],
+    };
+
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: controller,
+      variant: 'classic',
+      selectable: true,
+      onStatus: (status) => statuses.push(status),
+    });
+
+    expect(shell.visible).toBe(true);
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+    expect(statuses).toEqual(['idle']);
+    expect(typeof release).toBe('function');
   });
 
   it('keeps classic eager behavior when the classic variant is actually active', () => {
