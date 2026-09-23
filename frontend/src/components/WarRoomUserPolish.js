@@ -60,30 +60,12 @@ function finishFireplace(group, towardBoard) {
   return 1;
 }
 
-function retireWallMonograms(group) {
-  let changed = 0;
-  const retiredNames = new Set([
-    'war-room-hammerbeam-brace',
-    'war-room-armor-alcove-pointed-arch',
-  ]);
-  group.traverse?.((object) => {
-    if (!retiredNames.has(object?.name)) return;
-    object.visible = false;
-    object.userData.warRoomBraceStyle = 'retired-no-monogram-v24';
-    changed += 1;
-  });
-  group.userData.warRoomDiagonalMonogramsRetired = changed;
-  group.userData.warRoomMonogramFree = true;
-  return changed;
-}
-
 function applyFinalPass(group, options) {
   const fireplaceCount = finishFireplace(group, options.towardBoard);
   const galleryCount = finishGalleryCanvases(group);
-  const braceCount = retireWallMonograms(group);
   group.userData.warRoomUserPolishVersion = WAR_ROOM_USER_POLISH_VERSION;
   group.userData.warRoomUserPolishLayoutWritesRetired = true;
-  return fireplaceCount + galleryCount + braceCount;
+  return fireplaceCount + galleryCount;
 }
 
 function registerUserPolishFinalizer(group, options) {
