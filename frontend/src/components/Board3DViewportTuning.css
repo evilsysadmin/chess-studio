@@ -123,7 +123,6 @@
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(590px, calc(100dvh - 7rem), 880px);
     box-shadow:
       inset 0 0 68px rgba(0,0,0,.2),
       0 16px 34px rgba(0,0,0,.18);
@@ -187,19 +186,6 @@
      microtexture: contrast supplies depth, not a blanket brightness penalty. */
   .game-screen .game-board-stack-3d .board3d-main-canvas {
     filter: saturate(1.035) contrast(1.058) brightness(.955);
-  }
-}
-
-/* Short desktop screens keep the conservative vertical cap. */
-@media (min-width: 1081px) and (max-height: 900px) {
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(520px, calc(100dvh - 11rem), 735px);
-  }
-}
-
-@media (min-width: 1081px) and (max-height: 780px) {
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(470px, calc(100dvh - 9.6rem), 620px);
   }
 }
 
