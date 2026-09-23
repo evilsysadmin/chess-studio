@@ -31,13 +31,13 @@
     display: none !important;
   }
 
-  /* The base desktop grid reserves status clearance above the quiet right rail.
-     The cinematic override below floats the visible pill over the board while
-     preserving the first 2.5rem for the relocated Feedback/account actions. */
+  /* The desktop grid reserves status clearance above the quiet right rail.
+     The visible pill itself floats over the board while the command column
+     preserves the first 2.5rem for relocated Feedback/account actions. */
   .game-screen .game-3d-command-column {
     grid-area: status !important;
     z-index: 30 !important;
-    position: relative;
+    position: static !important;
     align-self: start;
     justify-self: stretch;
     display: block;
@@ -57,36 +57,25 @@
 
   .game-screen .game-3d-turn-pill,
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 30px !important;
-    grid-template-areas:
-      'match menu'
-      'state menu';
+    position: absolute !important;
+    z-index: 42;
+    top: .72rem;
+    left: calc((100% - 220px) / 2);
+    display: flex !important;
     align-items: center !important;
-    justify-content: stretch;
-    gap: .22rem .32rem;
-    width: 100%;
-    max-width: none;
-    min-height: 48px !important;
-    padding: .38rem .38rem .38rem .46rem;
-    border-radius: 11px;
+    justify-content: center;
+    gap: .38rem;
+    width: max-content;
+    max-width: min(34rem, calc(100% - 260px));
+    min-height: 34px !important;
+    padding: .31rem .58rem;
+    border-radius: 999px;
+    transform: translateX(-50%);
     pointer-events: auto;
   }
 
-  .game-3d-matchup {
-    grid-area: match;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: .26rem;
+  .game-screen .game-3d-matchup {
     white-space: nowrap;
-  }
-
-  .game-screen .game-3d-turn-pill-avatar {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-    border-radius: 6px;
   }
 
   .game-screen .game-3d-turn-pill-identity {
@@ -101,21 +90,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: .61rem;
-  }
-
-  .game-3d-turn-state {
-    grid-area: state;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: .28rem;
-  }
-
-  .game-screen .game-3d-turn-pill-light {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 7px;
   }
 
   .game-screen .game-3d-turn-pill-label {
@@ -123,29 +97,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: .54rem;
-    font-weight: 760;
   }
 
   .game-3d-utility-menu {
-    grid-area: menu;
     position: relative;
     align-self: center;
-    justify-self: end;
-    width: 30px;
-    height: 30px;
     pointer-events: auto;
   }
 
   .game-3d-utility-menu > summary {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
     box-sizing: border-box;
     border: 1px solid rgba(190, 164, 109, .2);
-    border-radius: 8px;
-    background: rgba(5, 9, 14, .62);
     color: color-mix(in srgb, var(--cream) 82%, var(--brass));
     cursor: pointer;
     list-style: none;
@@ -274,39 +238,9 @@
 
 }
 
-/* Cinematic desktop correction.
- * Kept after the base footer/rail rules so this preserves the former import
- * order of WarRoomFloatingFooter.css followed by WarRoomCinematicHud.css. */
+/* Canonical desktop pill details. The former cinematic override has been
+   folded into the primary desktop rules above so there is one owner per value. */
 @media (min-width: 1081px) {
-  .game-screen .board-live-row.is-3d-warroom {
-    position: relative;
-  }
-
-  /* The command column remains the action owner, but its visible turn pill is
-     removed from rail flow and centered over the board region. */
-  .game-screen .game-3d-command-column {
-    position: static !important;
-  }
-
-  .game-screen .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    position: absolute !important;
-    z-index: 42;
-    top: .72rem;
-    left: calc((100% - 220px) / 2);
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center;
-    gap: .38rem;
-    width: max-content;
-    max-width: min(34rem, calc(100% - 260px));
-    min-height: 34px !important;
-    padding: .31rem .58rem;
-    border-radius: 999px;
-    transform: translateX(-50%);
-    pointer-events: auto;
-  }
-
   .game-screen .game-3d-matchup,
   .game-screen .game-3d-turn-state {
     display: flex;
