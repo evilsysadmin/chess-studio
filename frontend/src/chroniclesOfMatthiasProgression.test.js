@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_PROGRESSION_STORAGE_KEY,
+  CHRONICLES_RUN_STORAGE_KEY,
   CHRONICLES_TACTICS_RUN_STORAGE_KEY,
   applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
@@ -265,7 +266,7 @@ describe('Chronicles Tactics · progression', () => {
     const current = ensureChroniclesTacticsRun();
     expect(current).not.toBe('legacy-crypt-run');
 
-    const stored = JSON.parse(localStorage.getItem(CHRONICLES_TACTICS_RUN_STORAGE_KEY));
+    const stored = JSON.parse(localStorage.getItem(CHRONICLES_RUN_STORAGE_KEY));
     expect(stored.id).toBe(current);
     expect(stored.owner).toBe('alice');
     expect(stored.ended).toBe(false);
@@ -300,7 +301,7 @@ describe('Chronicles Tactics · progression', () => {
     const bobRun = ensureChroniclesTacticsRun();
     expect(bobRun).not.toBe(aliceRun);
 
-    const stored = JSON.parse(localStorage.getItem(CHRONICLES_TACTICS_RUN_STORAGE_KEY));
+    const stored = JSON.parse(localStorage.getItem(CHRONICLES_RUN_STORAGE_KEY));
     expect(stored.owner).toBe('bob');
   });
 });
