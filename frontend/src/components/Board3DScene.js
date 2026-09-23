@@ -144,6 +144,10 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   return room;
 }
 
+// Class Room is a teaching surface: every framing profile must keep all 64
+// squares and the complete physical board frame visible with a small margin.
+// Preserve the current teaching angle; validate any tighter crop with the
+// canonical Training desktop + mobile PNG artifacts.
 export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = false, viewportWidth = Number.POSITIVE_INFINITY } = {}) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const safeWidth = Math.max(0, Number(viewportWidth) || 0);
