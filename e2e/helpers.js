@@ -3,6 +3,15 @@ import { readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
+// Setup-only controls may be remounted while renderer/CPU state settles.
+// Re-resolve the locator for the DOM event instead of holding a stale element
+// through Playwright actionability/stability waits.
+export async function activateSetupControl(locator, timeout = 45_000) {
+  await expect(locator).toBeVisible({ timeout });
+  await expect(locator).toBeEnabled();
+  await locator.dispatchEvent('click', undefined, { timeout });
+}
+
 const CHRONICLES_E2E_MAP_IDS = Object.freeze([
   'ash-vault',
   'black-glass-chapel',
