@@ -202,6 +202,11 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("training")
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         groups.add("warroom")
+    # Class Room intentionally reuses the shared Board3D renderer. Any Board3D
+    # visual change therefore owns both the War Room and training screenshots;
+    # otherwise a camera/highlight regression can pass while the School is cropped.
+    if "board3d" in lower:
+        groups.add("training")
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         groups.add("home")
     if "matthias" in lower and "school" not in lower and "chronicles" not in lower:
