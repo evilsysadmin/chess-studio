@@ -5,6 +5,7 @@ import {
   loadWarRoomVariant,
   normalizeWarRoomVariant,
   saveWarRoomVariant,
+  warRoomVariantDomData,
 } from './WarRoomVariant.js';
 
 export default function useWarRoomVariant() {
@@ -28,5 +29,5 @@ export default function useWarRoomVariant() {
     return normalized;
   };
 
-  return { selectable, variant, status, setVariant, setStatus };
+  return { selectable, variant, status, domData: warRoomVariantDomData(variant, status), setVariant, setStatus };
 }
