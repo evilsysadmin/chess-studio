@@ -1871,33 +1871,27 @@ def add_antique_tome(name, base, half, cover, materials, lean, *, thick, slim, s
     bz = bz0 + h
     brass_dark = materials["brass_dark"]
     gilt = materials["gold"]
-    parts = []
-    # Paper block: recessed from the spine so the top edge shows real page depth.
-    parts.append(cube(f"{name}_pages", (bx, by + d * 0.05, bz), (w * 0.86, d * 0.93, h * 0.93), materials["paper"], bevel=0.004))
-    board = 0.011 + (0.004 if thick else 0.0)
-    for side, tag in ((-1, "l"), (1, "r")):
-        parts.append(cube(f"{name}_board_{tag}", (bx + side * (w - board), by + d * 0.02, bz), (board, d, h), cover, bevel=0.004))
-    spine_half = 0.024 if not slim else 0.018
-    parts.append(cube(f"{name}_spine", (bx, by - d + spine_half, bz), (w, spine_half, h), cover, bevel=min(0.014, w * 0.45)))
+    parts = [cube(name, (bx, by, bz), (w, d, h), cover, bevel=min(0.014, w * 0.45))]
     front = by - d - 0.002
-    band_count = 1 if slim else (5 if thick else 4)
-    fracs = [0.10 + 0.80 * (i / (band_count - 1)) for i in range(band_count)] if band_count > 1 else [0.18]
+    if thick:
+        # Fat folio: the paper block shows at the back edge and top like a real tome.
+        parts.append(cube(f"{name}_pages", (bx, by + d * 0.94, bz), (w * 0.86, d * 0.10, h * 0.94), materials["paper"], bevel=0.004))
+    fracs = (0.86,) if slim else ((0.08, 0.36, 0.64, 0.92) if thick else (0.10, 0.50, 0.90))
     for i, frac in enumerate(fracs):
         parts.append(cube(
             f"{name}_band_{i}",
-            (bx, front - 0.006, bz0 + 2 * h * frac),
-            (w * 1.03, 0.013, 0.010 if not thick else 0.014),
+            (bx, front - 0.005, bz0 + 2 * h * frac),
+            (w * 1.04, 0.012, 0.010 if not thick else 0.014),
             brass_dark if (seed + i) % 3 else gilt,
             bevel=0.003,
         ))
-    for cap, cap_z in (('head', bz0 + 2 * h - 0.012), ('tail', bz0 + 0.012)):
-        parts.append(cube(f"{name}_cap_{cap}", (bx, front - 0.004, cap_z), (w * 1.02, 0.011, 0.008), brass_dark, bevel=0.003))
-    if not slim and band_count >= 4:
-        # Gilt title panel between the two upper bands.
+    if not slim:
+        # Title panel between the two upper bands; gilt inlay on the folios.
         panel_z = bz0 + 2 * h * (fracs[-1] + fracs[-2]) * 0.5
-        panel_h = max(0.018, 2 * h * (fracs[-1] - fracs[-2]) * 0.30)
-        parts.append(cube(f"{name}_title", (bx, front - 0.007, panel_z), (w * 0.72, 0.008, panel_h), materials["dark"], bevel=0.002))
-        parts.append(cube(f"{name}_title_gilt", (bx, front - 0.014, panel_z), (w * 0.52, 0.004, panel_h * 0.32), gilt, bevel=0.001))
+        panel_h = max(0.020, 2 * h * (fracs[-1] - fracs[-2]) * 0.32)
+        parts.append(cube(f"{name}_title", (bx, front - 0.007, panel_z), (w * 0.74, 0.007, panel_h), materials["dark"], bevel=0.002))
+        if thick:
+            parts.append(cube(f"{name}_title_gilt", (bx, front - 0.012, panel_z), (w * 0.50, 0.004, panel_h * 0.32), gilt, bevel=0.001))
     _tilt_about_y(parts, (bx, by, bz0), lean)
 
 
@@ -1960,15 +1954,14 @@ def add_bookshelf(materials):
         while cursor < x + 1.18:
             roll = _hash01(idx, row, 941)
             if roll < 0.20:
-                hw = 0.048 + _hash01(row, idx, 911) * 0.018
-                hh = 0.170 + _hash01(row, idx, 907) * 0.050
+                hw = 0.024 + _hash01(row, idx, 911) * 0.010
+                hh = 0.190 + _hash01(row, idx, 907) * 0.050
             elif roll > 0.72:
-                hw = 0.135 + _hash01(row, idx, 911) * 0.055
+                hw = 0.060 + _hash01(row, idx, 911) * 0.024
                 hh = 0.215 + _hash01(row, idx, 907) * 0.045
             else:
-                hw = 0.082 + _hash01(row, idx, 911) * 0.040
-                hh = 0.185 + _hash01(row, idx, 907) * 0.060
-            hh = min(hh * 1.10, 0.262)
+                hw = 0.034 + _hash01(row, idx, 911) * 0.020
+                hh = 0.200 + _hash01(row, idx, 907) * 0.050
             bx = cursor + hw
             idx += 1
             if bx + hw > x + 1.22:
@@ -1985,7 +1978,7 @@ def add_bookshelf(materials):
             by = y - 0.548 + depth + max(0.0, _hash01(row, idx, 919) - 0.55) * 0.05
             lean = math.radians(
                 (7.0 + _hash01(idx, row, 929) * 4.0) * (1 if _hash01(idx, row, 931) > 0.5 else -1)
-                if leaning else (_hash01(idx, row, 929) - 0.5) * 1.2
+                if leaning else 0.0
             )
             add_antique_tome(
                 f"HOME_PROP_book_{row}_{idx}",
@@ -2121,24 +2114,25 @@ def add_armor(materials):
     # Humanoid stance: two distinct greaves instead of the old single pawn-like
     # cylinder, plus pelvis, tapered cuirass and articulated limbs.
     for side in (-1, 1):
-        lx = x + side * 0.19
+        lx = x + side * 0.20
         cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
-        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.15, 0.11, 0.70, steel, vertices=24)
-        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.135, 0.095, 0.090), steel)
-        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.15, 0.19, 0.48, steel, vertices=24)
+        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.17, 0.12, 0.70, steel, vertices=24)
+        sphere(f"HOME_PROP_armor_calf_{side}", (lx, y + 0.02, 1.08), (0.165, 0.150, 0.230), steel)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.165, 0.125, 0.115), steel)
+        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.21, 0.26, 0.48, steel, vertices=24)
 
-    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
+    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.40, 0.26, 0.18), steel, bevel=0.08)
     # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
-    cone("HOME_PROP_armor_cuirass", (x, y, 1.98), 0.30, 0.40, 0.42, steel, vertices=28)
-    chest = sphere("HOME_PROP_armor_chest_barrel", (x, y - 0.01, 2.32), (0.44, 0.27, 0.34), steel)
+    cone("HOME_PROP_armor_cuirass", (x, y, 1.98), 0.26, 0.40, 0.42, steel, vertices=28)
+    chest = sphere("HOME_PROP_armor_chest_barrel", (x, y - 0.01, 2.32), (0.52, 0.30, 0.37), steel)
     for idx, lame_z in enumerate((2.02, 2.10)):
-        cylinder(f"HOME_PROP_armor_waist_lame_{idx}", (x, y - 0.01, lame_z), 0.33 + idx * 0.02, 0.030, materials["brass_dark"], vertices=28)
-    cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
+        cylinder(f"HOME_PROP_armor_waist_lame_{idx}", (x, y - 0.01, lame_z), 0.31 + idx * 0.03, 0.030, materials["brass_dark"], vertices=28)
+    cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.36, 0.25, 0.07), brass, bevel=0.03)
 
     # Flattened plate pauldrons instead of round balls: a sphere silhouette is
     # the single biggest "toy soldier" tell a shoulder can have.
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.34), (0.215, 0.165, 0.125), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.34), (0.215, 0.165, 0.125), steel)
+    sphere("HOME_PROP_armor_shoulder_l", (x - 0.58, y - 0.010, 2.36), (0.250, 0.190, 0.160), steel)
+    sphere("HOME_PROP_armor_shoulder_r", (x + 0.58, y - 0.022, 2.36), (0.250, 0.190, 0.160), steel)
     # Heraldic stance: shield up in the left hand, sword held low and
     # point-down in the right -- the reference silhouette this armour is
     # meant to read as -- instead of both hands clasped on one hilt at the
@@ -2150,8 +2144,8 @@ def add_armor(materials):
     # panels sit at y in [5.47, 5.60] AFTER the global rescale, i.e. close to the front
     # face. Hands/props must land in front of (smaller post-transform y than) those
     # panels or they render fully hidden behind them, which is what happened first try.
-    shoulders = {-1: (x - 0.50, y - 0.010, 2.32), 1: (x + 0.50, y - 0.022, 2.32)}
-    elbows = {-1: (x - 0.40, y - 0.38, 1.98), 1: (x + 0.34, y - 0.34, 2.08)}
+    shoulders = {-1: (x - 0.58, y - 0.010, 2.32), 1: (x + 0.58, y - 0.022, 2.32)}
+    elbows = {-1: (x - 0.48, y - 0.38, 1.98), 1: (x + 0.42, y - 0.34, 2.08)}
     # Left wrist holds the shield up near chest height; right wrist holds the
     # sword hilt around waist height, matching a relaxed heraldic guard
     # stance. Kept higher than hip height on purpose: the table in front of
@@ -2159,21 +2153,23 @@ def add_armor(materials):
     # waist height from the camera, so a lower hilt just hid the blade
     # entirely behind the table instead of showing it "resting near the
     # ground".
-    wrists = {-1: (x - 0.40, y - 0.60, 2.00), 1: (x + 0.42, y - 0.55, 1.92)}
+    wrists = {-1: (x - 0.46, y - 0.60, 2.00), 1: (x + 0.48, y - 0.55, 1.92)}
     for side in (-1, 1):
         shoulder = shoulders[side]
         elbow = elbows[side]
         wrist = wrists[side]
-        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.078, steel)
+        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.100, steel)
+        sphere(f"HOME_PROP_armor_bicep_{side}", ((shoulder[0] + elbow[0]) / 2, (shoulder[1] + elbow[1]) / 2 - 0.02, (shoulder[2] + elbow[2]) / 2 + 0.03), (0.125, 0.120, 0.170), steel)
         # Flattened elbow cops and boxy gauntlets read as plate; the previous
         # spheres read as ball-and-socket action-figure joints.
         cube(f"HOME_PROP_armor_couter_{side}", elbow, (0.078, 0.072, 0.055), steel, bevel=0.022)
-        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.064, steel)
+        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.080, steel)
+        sphere(f"HOME_PROP_armor_forearm_bulge_{side}", (elbow[0] * 0.66 + wrist[0] * 0.34, elbow[1] * 0.66 + wrist[1] * 0.34, elbow[2] * 0.66 + wrist[2] * 0.34), (0.095, 0.095, 0.130), steel)
         curve_tube(f"HOME_PROP_armor_cuff_{side}", [
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
         ], 0.062, materials["brass_dark"])
-        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.072, 0.062, 0.058), steel, bevel=0.020)
+        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.092, 0.080, 0.075), steel, bevel=0.024)
 
     # Heater shield in the left hand: brass backing plate behind a slightly
     # smaller steel face, a gold rim, corner rivets and a plain cross boss --
@@ -2231,20 +2227,21 @@ def add_armor(materials):
     # of armour silhouette than a round pawn head. A great-helm reads as
     # plate because it has flat faces and edges; a sphere never will no
     # matter how much trim is glued onto it, so the head is a bevelled box.
-    cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
+    cylinder("HOME_PROP_armor_neck", (x, y, 2.60), 0.17, 0.22, dark, vertices=20)
     heraldry_helm = materials["armor_gold"]
-    cylinder("HOME_PROP_armor_helmet", (x, y, 2.82), 0.225, 0.56, steel, vertices=28)
-    sphere("HOME_PROP_armor_helmet_crest", (x, y, 3.10), (0.225, 0.225, 0.135), steel)
-    # Crusader great-helm: horizontal eye slit, gold cross straps, breathing holes.
-    cube("HOME_PROP_armor_visor", (x, y - 0.222, 2.86), (0.165, 0.020, 0.024), dark, bevel=0.008)
-    cube("HOME_PROP_armor_brow", (x, y - 0.232, 2.86), (0.026, 0.012, 0.300), heraldry_helm, bevel=0.008)
-    cube("HOME_PROP_armor_visor_edge", (x, y - 0.232, 2.92), (0.215, 0.012, 0.026), heraldry_helm, bevel=0.008)
-    for slot, (sx, sz) in enumerate(((-0.11, 2.70), (-0.11, 2.64), (-0.11, 2.58), (0.11, 2.70), (0.11, 2.64), (0.11, 2.58))):
-        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.226, sz), (0.020, 0.010, 0.008), dark, bevel=0.003)
-    cylinder("HOME_PROP_armor_helmet_rim", (x, y, 2.55), 0.238, 0.032, heraldry_helm, vertices=28)
+    # Round humanoid armet: a skull dome, a muzzle-and-chin face guard, a dark eye
+    # slit and a gold comb. Radii are pre-rescale; the caller's 0.78 / 0.92 / 1.14
+    # squeeze is compensated here so the head still reads round, not oval.
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.87), (0.300, 0.255, 0.235), steel)
+    sphere("HOME_PROP_armor_visor", (x, y - 0.115, 2.71), (0.190, 0.120, 0.120), steel)
+    cube("HOME_PROP_armor_brow", (x, y - 0.238, 2.895), (0.190, 0.030, 0.020), dark, bevel=0.008)
+    cube("HOME_PROP_armor_helmet_crest", (x, y + 0.02, 3.10), (0.020, 0.200, 0.032), heraldry_helm, bevel=0.010)
+    cube("HOME_PROP_armor_visor_edge", (x, y - 0.238, 2.735), (0.014, 0.012, 0.095), heraldry_helm, bevel=0.005)
+    for slot, (sx, sz) in enumerate(((-0.11, 2.74), (-0.11, 2.68), (-0.11, 2.62), (0.11, 2.74), (0.11, 2.68), (0.11, 2.62))):
+        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.222, sz), (0.022, 0.010, 0.008), dark, bevel=0.003)
+    cylinder("HOME_PROP_armor_helmet_rim", (x, y, 2.63), 0.235, 0.030, heraldry_helm, vertices=28)
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
-    cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.56), 0.245, 0.105, steel, vertices=28)
-    cube("HOME_PROP_armor_visor_edge", (x, y - 0.318, 2.845), (0.255, 0.012, 0.020), materials["brass_dark"], bevel=0.006)
+    cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.58), 0.29, 0.105, steel, vertices=28)
 
     helmet_angle = math.radians(-1.4)
     helmet_parts = [
@@ -2267,8 +2264,8 @@ def add_armor(materials):
     for side in (-1, 1):
         cube(
             f"HOME_PROP_armor_pauldron_ridge_{side}",
-            (x + side * 0.50, y - 0.055, 2.39),
-            (0.215, 0.045, 0.042),
+            (x + side * 0.58, y - 0.060, 2.44),
+            (0.250, 0.050, 0.045),
             brass,
             bevel=0.020,
         )
@@ -4055,23 +4052,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # curve (post-transform space: the chest is an ellipsoid centred at
     # (1.55, 5.83, 2.61) with semi-axes 0.343 x 0.248 x 0.388).
     def chest_surface_y(dx, dz):
-        inside = max(0.0, 1.0 - (dz / 0.388) ** 2 - (dx / 0.343) ** 2)
-        return 5.83 - 0.248 * math.sqrt(inside) - 0.014
+        inside = max(0.0, 1.0 - (dz / 0.422) ** 2 - (dx / 0.406) ** 2)
+        return 5.83 - 0.276 * math.sqrt(inside) - 0.014
 
     curve_tube(
         "HOME_PROP_armor_chest_cross_v",
-        [(1.55, chest_surface_y(0.0, dz), 2.611 + dz) for dz in (-0.30, -0.15, 0.0, 0.15, 0.30)],
+        [(1.55, chest_surface_y(0.0, dz), 2.611 + dz) for dz in (-0.34, -0.17, 0.0, 0.17, 0.34)],
         0.013,
         materials["armor_gold"],
     )
     curve_tube(
         "HOME_PROP_armor_chest_cross_h",
-        [(1.55 + dx, chest_surface_y(dx, 0.10), 2.711) for dx in (-0.30, -0.15, 0.0, 0.15, 0.30)],
+        [(1.55 + dx, chest_surface_y(dx, 0.10), 2.711) for dx in (-0.34, -0.17, 0.0, 0.17, 0.34)],
         0.013,
         materials["armor_gold"],
     )
     # Two narrow fauld lames instead of the old bright three-bar robot belt.
-    for idx, (z, half_w) in enumerate(((1.92, 0.30), (1.82, 0.325))):
+    for idx, (z, half_w) in enumerate(((1.92, 0.36), (1.82, 0.385))):
         cube(
             f"HOME_PROP_armor_fauld_{idx}",
             (1.55, 5.47, z),
@@ -4130,7 +4127,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bevel=0.020,
         )
 
-        cx = 1.55 + side * 0.145
+        cx = 1.55 + side * 0.156
 
         tx = 1.55 + side * 0.205
         armor_panel(
