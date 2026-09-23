@@ -162,12 +162,22 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      contents: write
+      contents: read
     steps:
+      # main requires a PR + passing status checks (repository rule), so this
+      # can't push straight to main -- and it can't use the default
+      # GITHUB_TOKEN to open that PR either: GitHub suppresses downstream
+      # workflow runs (including the required status checks themselves) for
+      # anything a workflow does with its own GITHUB_TOKEN, specifically to
+      # prevent recursive triggering. A PAT from a real account doesn't have
+      # that restriction, so the PR it opens runs checks normally and can
+      # carry real auto-merge.
       - uses: actions/checkout@v7
         with:
           ref: main
+          token: ${{ secrets.CI_PR_BOT_PAT }}
       - name: Promote the gated hash
+        id: promote
         run: |
           set -euo pipefail
           python3 scripts/promote_home_scene_runtime.py \
@@ -175,15 +185,22 @@ jobs:
             --sha256 '${{ needs.build.outputs.sha256 }}' \
             --bytes '${{ needs.build.outputs.bytes }}' \
             --content-type '${{ needs.build.outputs.contentType }}'
-      - name: Commit and push the promotion
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open the promotion PR
+        if: steps.promote.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CI_PR_BOT_PAT }}
         run: |
           set -euo pipefail
-          if git diff --quiet; then
-            echo "Nothing to promote (manifest already up to date)."
-            exit 0
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          short_hash="$(echo '${{ needs.build.outputs.sha256 }}' | cut -c1-8)"
+          branch="chore/auto-promote-home-scene-runtime-${short_hash}"
+          git checkout -b "$branch"
           cat > /tmp/promote-commit-message.txt <<EOF
           chore(home): auto-promote runtime scene to ${{ needs.build.outputs.key }}
 
@@ -194,13 +211,9 @@ jobs:
           EOF
           git add frontend/src/assets/r2-assets-manifest.json frontend/src/components/HomeCastle3DR2Asset.test.js
           git commit -F /tmp/promote-commit-message.txt
-          for attempt in 1 2 3 4 5; do
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            git fetch origin main
-            git rebase origin/main
-            sleep 3
-          done
-          echo "::error::Could not push the promotion commit after retries"
-          exit 1
+          git push origin "$branch" --force-with-lease
+          pr_url="$(gh pr create --base main --head "$branch" \
+            --title "chore(home): auto-promote runtime scene to ${short_hash}" \
+            --body-file /tmp/promote-commit-message.txt)"
+          echo "Opened $pr_url"
+          gh pr merge "$branch" --auto --squash
