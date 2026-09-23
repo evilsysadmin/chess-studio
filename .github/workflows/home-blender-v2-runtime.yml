@@ -34,6 +34,13 @@ jobs:
     name: Build · Home Blender runtime GLB
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    outputs:
+      published: ${{ steps.entry.outputs.published }}
+      key: ${{ steps.entry.outputs.key }}
+      sha256: ${{ steps.entry.outputs.sha256 }}
+      bytes: ${{ steps.entry.outputs.bytes }}
+      url: ${{ steps.entry.outputs.url }}
+      contentType: ${{ steps.entry.outputs.contentType }}
     steps:
       - uses: actions/checkout@v7
       - name: Reject broken exporter syntax before Blender setup
@@ -92,6 +99,19 @@ jobs:
             --logical-id home.scene.runtime \
             --prefix home/scene/canonical
           python3 -S scripts/r2_asset_publish.py check-manifest
+      - name: Expose the published entry for the gate/promote jobs
+        if: github.event_name != 'pull_request'
+        id: entry
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          manifest = json.load(open("frontend/src/assets/r2-assets-manifest.json"))
+          entry = manifest["assets"]["home.scene.runtime"]
+          print("published=true")
+          for key in ("key", "sha256", "bytes", "url", "contentType"):
+              print(f"{key}={entry[key]}")
+          PY
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -102,3 +122,85 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  gate:
+    name: Gate · Home runtime regression check
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.published == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+      - name: Fetch the just-published runtime GLB
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --max-time 30 \
+            '${{ needs.build.outputs.url }}' -o /tmp/home-v2-runtime-candidate.glb
+          test "$(sha256sum /tmp/home-v2-runtime-candidate.glb | awk '{print $1}')" = '${{ needs.build.outputs.sha256 }}'
+      - name: Run the runtime health gate
+        working-directory: e2e
+        env:
+          HOME_RUNTIME_GATE_GLB: /tmp/home-v2-runtime-candidate.glb
+        run: ./node_modules/.bin/playwright test home-scene-runtime-gate.spec.js
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: home-scene-runtime-gate-failure-${{ github.run_number }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  promote:
+    name: Promote · Home runtime manifest
+    needs: [build, gate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.published == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Promote the gated hash
+        run: |
+          set -euo pipefail
+          python3 scripts/promote_home_scene_runtime.py \
+            --key '${{ needs.build.outputs.key }}' \
+            --sha256 '${{ needs.build.outputs.sha256 }}' \
+            --bytes '${{ needs.build.outputs.bytes }}' \
+            --content-type '${{ needs.build.outputs.contentType }}'
+      - name: Commit and push the promotion
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Nothing to promote (manifest already up to date)."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cat > /tmp/promote-commit-message.txt <<EOF
+          chore(home): auto-promote runtime scene to ${{ needs.build.outputs.key }}
+
+          Published by this workflow (run ${{ github.run_id }}) from commit ${{ github.sha }}.
+          Gated by "Gate · Home runtime regression check" before promotion: the
+          scene mounted (compositor=blender-runtime), no page errors, and no
+          large missing-texture regions in the freshly published GLB.
+          EOF
+          git add frontend/src/assets/r2-assets-manifest.json frontend/src/components/HomeCastle3DR2Asset.test.js
+          git commit -F /tmp/promote-commit-message.txt
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+            sleep 3
+          done
+          echo "::error::Could not push the promotion commit after retries"
+          exit 1
