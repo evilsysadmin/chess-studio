@@ -49,6 +49,8 @@ test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es s�
   const wrong = board.getByRole('button', { name: /^Casilla a3, vacía/ });
   await wrong.click();
   await expect(wrong).toHaveClass(/classroom-danger/);
+  await wrong.click();
+  await expect(page.getByRole('status')).toContainText('Otra casilla vacía');
 
   await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
   await expect(wrong).not.toHaveClass(/classroom-danger/);
@@ -57,6 +59,7 @@ test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es s�
 
   await origin.click();
   await expect(target).toHaveClass(/legal-move/);
+  await expect(page.getByRole('status')).toContainText('Ahora sí');
 });
 
 test('Escuela de Matthias · una lección dominada se puede repetir de verdad', async ({ page }) => {
@@ -101,12 +104,14 @@ test('Escuela de Matthias · suspender un examen reinicia un intento real y perm
   await expect(schoolBoard).toHaveAttribute('data-school-renderer', '2d');
 
   const wrongSquare = page.getByRole('button', { name: /^Casilla a1, vacía/ });
+  const status = page.getByRole('status');
   await wrongSquare.click();
+  await expect(status).not.toContainText('f7');
+  await expect(status).not.toContainText('g7');
   await wrongSquare.click();
   await wrongSquare.click();
 
   const retry = page.getByRole('button', { name: 'Reintentar examen', exact: true });
-  const status = page.getByRole('status');
   await expect(retry).toBeVisible();
   await expect(status).toContainText('Suspendido');
   await retry.click();
