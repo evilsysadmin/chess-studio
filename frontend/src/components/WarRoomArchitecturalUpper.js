@@ -2,7 +2,6 @@ import * as THREE from 'three';
 
 const UPPER_ARCHITECTURE_VERSION = 'open-ceiling-v9-canonical';
 const UPPER_ARCHITECTURE_MESH_BUDGET = 0;
-const RETIRED_MESHES_OMITTED = 19;
 
 export function installWarRoomArchitecturalUpper(group, {
   wallZ,
@@ -21,7 +20,6 @@ export function installWarRoomArchitecturalUpper(group, {
   layer.userData.warRoomUpperArchitecture = UPPER_ARCHITECTURE_VERSION;
   layer.userData.warRoomUpperArchitectureMeshBudget = UPPER_ARCHITECTURE_MESH_BUDGET;
   layer.userData.warRoomUpperArchitectureZone = 'open-ceiling-camera-clear';
-  layer.userData.warRoomRetiredUpperMeshesOmitted = RETIRED_MESHES_OMITTED;
   layer.userData.warRoomCeilingBeamsRemoved = true;
   layer.userData.warRoomMonogramFree = true;
 
@@ -29,7 +27,6 @@ export function installWarRoomArchitecturalUpper(group, {
   group.userData.warRoomUpperArchitecture = UPPER_ARCHITECTURE_VERSION;
   group.userData.warRoomUpperArchitectureMeshBudget = UPPER_ARCHITECTURE_MESH_BUDGET;
   group.userData.warRoomUpperArchitectureMaxOffsetFromWall = 0;
-  group.userData.warRoomRetiredUpperMeshesOmitted = RETIRED_MESHES_OMITTED;
   group.userData.warRoomCeilingBeamsRemoved = true;
   group.userData.warRoomMonogramFree = true;
   return 0;

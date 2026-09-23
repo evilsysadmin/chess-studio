@@ -48,8 +48,6 @@ describe('War Room architectural depth', () => {
     expect(added).toBe(8);
     expect(group.userData.warRoomArchitecturalDepth).toBe('v7-canonical-gallery');
     expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(8);
-    expect(group.userData.warRoomRetiredArchitectureOmitted).toBe(true);
-    expect(group.userData.warRoomRetiredArchitectureMeshCount).toBe(16);
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(meshCount(group)).toBe(8);
 

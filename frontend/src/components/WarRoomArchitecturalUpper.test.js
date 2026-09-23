@@ -50,7 +50,6 @@ describe('War Room architectural upper framing', () => {
     expect(added).toBe(0);
     expect(group.userData.warRoomUpperArchitecture).toBe('open-ceiling-v9-canonical');
     expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(0);
-    expect(group.userData.warRoomRetiredUpperMeshesOmitted).toBe(19);
     expect(group.userData.warRoomUpperArchitectureMaxOffsetFromWall).toBe(0);
     expect(group.userData.warRoomCeilingBeamsRemoved).toBe(true);
     expect(group.userData.warRoomMonogramFree).toBe(true);
