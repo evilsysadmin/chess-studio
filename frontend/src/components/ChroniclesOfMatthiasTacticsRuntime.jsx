@@ -23,6 +23,7 @@ import {
   chroniclesTacticsLegalMoves,
   chroniclesTacticsMove,
   chroniclesTacticsProfile,
+  chroniclesTacticsRefillAbilityCharges,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
 } from '../chroniclesOfMatthiasTactics.js';
@@ -36,7 +37,10 @@ import {
   chroniclesForecastMoves,
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
-import { chroniclesRewardDraft } from '../chronicles/chroniclesRewardDraft.js';
+import {
+  chroniclesApplyRewardChoice,
+  chroniclesRewardDraft,
+} from '../chronicles/chroniclesRewardDraft.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -191,7 +195,7 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
 
     stateRef.current = next;
     setState(next);
-    if (next.phase === 'escaped' || next.phase === 'defeated') finishChroniclesTacticsRun(runId);
+    if (next.phase === 'defeated') finishChroniclesTacticsRun(runId);
     return true;
   }, [runId]);
 
@@ -254,6 +258,37 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
     stateRef.current = reconciled;
     setState(reconciled);
   }, []);
+
+  const chooseReward = useCallback((choiceId) => {
+    const current = stateRef.current;
+    const result = chroniclesApplyRewardChoice({
+      seed: Number(authoritativeRun?.seed),
+      milestoneId: `${current.mapId}:escaped`,
+      state: current,
+      progression: progressionRef.current,
+      choiceId,
+      refillClassAbilities: chroniclesTacticsRefillAbilityCharges,
+    });
+    if (!result.applied) return;
+
+    let nextState = result.state;
+    if (result.progression !== progressionRef.current) {
+      const saved = saveChroniclesProgression(result.progression);
+      progressionRef.current = saved;
+      setProgression(saved);
+      nextState = reconcileChroniclesProgressionInTacticsState(nextState, saved);
+    }
+
+    stateRef.current = nextState;
+    setState(nextState);
+    setProgressionFeedback(`RECOMPENSA · ${result.choice.label}`);
+  }, [authoritativeRun?.seed]);
+
+  useEffect(() => {
+    if (state.phase === 'escaped' && rewardDraft.length === 0) {
+      finishChroniclesTacticsRun(runId);
+    }
+  }, [rewardDraft.length, runId, state.phase]);
 
   const allocateAttribute = useCallback((memberId, attributeKey) => {
     const result = spendChroniclesAttributePoint(progressionRef.current, memberId, attributeKey);
@@ -470,6 +505,26 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
                 <strong data-chronicles-progression-feedback="true">{progressionFeedback}</strong>
               ) : null}
             </div>
+            {rewardDraft.length > 0 ? (
+              <section className="chronicles-tactics__reward" aria-label="Recompensa de extracción">
+                <span>EXTRACCIÓN · UNA ELECCIÓN</span>
+                <strong>Elige qué se lleva la compañía</strong>
+                <small>Una sola recompensa. Lo demás vuelve a la oscuridad con una eficiencia administrativa envidiable.</small>
+                <div>
+                  {rewardDraft.map((choice) => (
+                    <button
+                      key={choice.choiceId}
+                      type="button"
+                      data-reward-kind={choice.kind}
+                      onClick={() => chooseReward(choice.choiceId)}
+                    >
+                      <b>{choice.label}</b>
+                      <small>{choice.description}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {rendererError && <div className="chronicles-tactics__error" role="alert">{rendererError}</div>}
           </div>
 
