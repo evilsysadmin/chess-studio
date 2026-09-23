@@ -74,12 +74,14 @@ def test_structured_http_log_sanitizes_network_origin_fields(caplog):
         client_ip="203.0.113.42",
         peer_ip="10.0.0.7",
         x_forwarded_for=["203.0.113.42", "198.51.100.3", "basura"],
+        client_country="es",
         synthetic_source="staging-smoke-cleanup",
     )
     payload = json.loads(caplog.records[-1].getMessage())
     assert payload["client_ip"] == "203.0.113.42"
     assert payload["peer_ip"] == "10.0.0.7"
     assert payload["x_forwarded_for"] == ["203.0.113.42", "198.51.100.3"]
+    assert payload["client_country"] == "ES"
     assert payload["synthetic_source"] == "staging-smoke-cleanup"
 
 
@@ -172,3 +174,20 @@ def test_failed_login_fingerprint_changes_for_different_password(caplog):
         fingerprints.append(payload["password_fingerprint"])
 
     assert fingerprints[0] != fingerprints[1]
+
+
+def test_structured_http_log_rejects_unknown_country_codes(caplog):
+    logger = logging.getLogger("test.chess.structured.country")
+    caplog.set_level(logging.INFO, logger=logger.name)
+    emit_http_event(
+        logger,
+        request_id="req-country",
+        method="GET",
+        route="/api/profile",
+        status_code=200,
+        duration_ms=1.0,
+        client_ip="203.0.113.9",
+        client_country="T1",
+    )
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert "client_country" not in payload

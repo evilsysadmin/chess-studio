@@ -628,6 +628,52 @@
         "orientation": "horizontal",
         "showUnfilled": true
       }
+    },
+    {
+      "id": 18,
+      "title": "IPs únicas · tráfico aceptado por país",
+      "type": "barchart",
+      "description": "IPs cliente distintas con respuestas 2xx/3xx, agrupadas por país. Excluye smokes/CI y probes operativos; una IP no equivale necesariamente a una persona.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"2..|3..\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
+          "legendFormat": "{{client_country}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      }
     }
   ],
   "refresh": "30s",
