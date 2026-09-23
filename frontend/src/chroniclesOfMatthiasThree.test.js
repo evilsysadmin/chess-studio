@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
-import { CHRONICLES_TORCH_PLACEMENTS, chroniclesTorchTransform } from './chroniclesOfMatthiasThree.js';
+import {
+  CHRONICLES_TORCH_PLACEMENTS,
+  chroniclesEnemyFacingYaw,
+  chroniclesTorchTransform,
+} from './chroniclesOfMatthiasThree.js';
 
 const NEIGHBOR = Object.freeze({
   north: [0, -1],
@@ -34,5 +38,11 @@ describe('Chronicles of Matthias dungeon photography', () => {
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {
     expect(() => chroniclesTorchTransform(1, 1, 'ceiling')).toThrow(/torch wall side/);
+  });
+
+  it('faces a blocking fantasy enemy toward the party instead of presenting its side profile', () => {
+    expect(chroniclesEnemyFacingYaw({ x: 3, y: 5 }, { x: 2, y: 5 })).toBeCloseTo(-Math.PI / 2);
+    expect(chroniclesEnemyFacingYaw({ x: 3, y: 3 }, { x: 3, y: 5 })).toBeCloseTo(0);
+    expect(chroniclesEnemyFacingYaw({ x: 3, y: 3 }, { x: 3, y: 1 })).toBeCloseTo(Math.PI);
   });
 });
