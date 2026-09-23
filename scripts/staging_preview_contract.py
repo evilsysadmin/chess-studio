@@ -333,7 +333,11 @@ def main() -> int:
     # that reuses the same accreditation/gates instead of inventing a second deploy path.
     for needle, label in (
         ("schedule:", "production daily schedule"),
-        ("- cron: '0 6,7 * * *'", "production CET/CEST UTC pair"),
+        ("- cron: '0 6 * * *'", "production CEST UTC slot"),
+        ("- cron: '0 7 * * *'", "production CET UTC slot"),
+        ("SCHEDULE_EXPR: ${{ github.event.schedule }}", "production scheduled-slot provenance"),
+        ("expected_schedule='0 6 * * *'", "production delayed CEST admission"),
+        ("expected_schedule='0 7 * * *'", "production delayed CET admission"),
         ("Release train · 08:00 Europe/Madrid", "production Madrid release window"),
         ("workflow_dispatch:", "production manual hotfix path"),
         ("push:", "production target-switch push path"),
