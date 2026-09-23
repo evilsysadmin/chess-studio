@@ -33,6 +33,31 @@ test('Escuela de Matthias · la lección manda y el plan de estudios queda bajo 
   await expect(page.getByRole('button', { name: 'Cerrar plan de estudios', exact: true })).toBeVisible();
 });
 
+
+test('Escuela de Matthias · modo tablero ocupa el viewport y Escape sólo lo contrae', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  const shell = page.locator('.matthias-school-shell');
+  await page.getByRole('button', { name: 'Expandir tablero', exact: true }).click();
+
+  await expect(shell).toHaveAttribute('data-school-focus', 'board');
+  await expect(page.getByRole('button', { name: 'Salir del modo tablero', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await expect(page.locator('.matthias-school-board')).toBeVisible();
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
+  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+  await expect(page.locator('.illustrated-home')).toHaveCount(0);
+});
+
 test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es sólo texto', async ({ page }) => {
   await mockApi(page);
   await login(page);
