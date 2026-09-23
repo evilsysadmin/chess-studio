@@ -36,12 +36,12 @@ LOWER_BODY_SEMI_ALPHA_MAX_DELTA = 0.12
 LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA = 0.06
 LOWER_BODY_SIGNATURE_SIZE = (96, 64)
 LOWER_BODY_SIGNATURE_THRESHOLD = 64
-RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.06
-RUN_LOWER_BODY_MAX_DELTA_MIN = 0.10
-RUN_RUNTIME_MEDIAN_DELTA_MIN = 0.10
-RUN_RUNTIME_MAX_DELTA_MIN = 0.18
-RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN = 0.85
-RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN = 0.80
+RUN_LOWER_BODY_MEDIAN_DELTA_MIN = 0.07
+RUN_LOWER_BODY_MAX_DELTA_MIN = 0.15
+RUN_SOURCE_MIN_DIFF = 0.025
+RUN_SOURCE_RELATIVE_GAIN = 1.08
+RUN_SOURCE_MIN_SCORE = 0.045
+RUN_UNIQUE_PHASES_MIN = 6
 AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
 AIRBORNE_FAIL_CLOSED_WEAPONS = ("machinegun",)
 
@@ -251,6 +251,41 @@ def validate_lower_body_motion(frames: list[dict], label: str) -> dict:
         "maxDelta": round(max_delta, 6),
         "deltas": [round(value, 6) for value in deltas],
     }
+
+
+def unique_lower_body_phases(frames: list[dict], threshold: float = 0.04) -> int:
+    representatives: list[bytes] = []
+    for frame in frames:
+        signature = frame["_lowerBodySignature"]
+        if all(signature_delta(signature, known) >= threshold for known in representatives):
+            representatives.append(signature)
+    return len(representatives)
+
+
+def raw_lower_body_motion_score(images: list[Image.Image]) -> float:
+    if len(images) <= 1:
+        return 0.0
+    changed = 0
+    sampled = 0
+    y_start = int(round(CELL * 0.55))
+    y_end = CELL - 12
+    x_start = 18
+    x_end = CELL - 18
+    step = 6
+    for index in range(1, len(images)):
+        previous = images[index - 1].convert("RGBA")
+        current = images[index].convert("RGBA")
+        for y in range(y_start, y_end, step):
+            for x in range(x_start, x_end, step):
+                left = previous.getpixel((x, y))
+                right = current.getpixel((x, y))
+                if max(left[3], right[3]) <= 26:
+                    continue
+                pixel_diff = sum(abs(a - b) for a, b in zip(left, right)) / 255.0
+                if pixel_diff >= 0.20:
+                    changed += 1
+                sampled += 1
+    return changed / sampled if sampled else 0.0
 
 
 def min_ratio(
@@ -504,146 +539,106 @@ def acquire(url: str, temp_dir: Path, label: str) -> Path:
     raise ValueError(f"{label}: failed to download {url}: {last_error}")
 
 
-def exported_run_motion(sprite_dir: Path, weapon: str) -> dict:
+def _runtime_run_row(
+    sprite_dir: Path,
+    weapon: str,
+    row: int,
+    label: str,
+) -> tuple[list[Image.Image], list[dict]]:
+    images: list[Image.Image] = []
     frames: list[dict] = []
     for col in range(IDLE_COLUMNS):
         path = (
             sprite_dir
             / weapon
             / "frames"
-            / f"matthias_{weapon}_r02_c{col:02d}.png"
+            / f"matthias_{weapon}_r{row:02d}_c{col:02d}.png"
         )
         if not path.is_file():
-            raise ValueError(f"missing exported full-bank run frame: {path}")
+            raise ValueError(f"missing exported {label} frame: {path}")
         image = Image.open(path).convert("RGBA")
-        frames.append(
-            {
-                "_lowerBodySignature": lower_body_signature(
-                    image, f"{weapon} full-bank run c{col}"
-                )
-            }
+        frame = frame_metrics(image, f"{weapon} {label} c{col}")
+        frame["_lowerBodySignature"] = lower_body_signature(
+            image, f"{weapon} {label} c{col}"
         )
-    return validate_lower_body_motion(frames, f"{weapon} full-bank run")
+        if frame["componentCount"] != 1:
+            raise ValueError(
+                f"{weapon} {label} c{col}: detached opaque components are "
+                f"forbidden: {frame['detachedAreas']}"
+            )
+        images.append(image)
+        frames.append(frame)
+    return images, frames
 
 
 def validate_run(gdscript: Path, sprite_dir: Path) -> dict:
     text = gdscript.read_text(encoding="utf-8")
-    urls = parse_string_dict(text, "RUN12_ATLAS_URLS")
-    columns = parse_int_dict(text, "RUN_OVERLAY_COLUMNS")
+    if "const RUN12_RUNTIME_PROMOTION_ENABLED := false" not in text:
+        raise ValueError(
+            "run12/run13 overlays must stay candidate-only until their "
+            "game-scale leg motion beats the full-bank runtime stride"
+        )
+
     by_weapon: dict[str, dict] = {}
-
-    with tempfile.TemporaryDirectory(prefix="matthias-run-continuity-") as tmp:
-        temp_dir = Path(tmp)
-        for weapon in WEAPONS:
-            cols = columns[weapon]
-            atlas_path = acquire(urls[weapon], temp_dir, f"{weapon} run")
-            atlas = Image.open(atlas_path).convert("RGBA")
-            expected = (cols * CELL, CELL)
-            if atlas.size != expected:
-                raise ValueError(
-                    f"{weapon} run: atlas {atlas.size}, expected {expected}"
-                )
-
-            frames = []
-            for col in range(cols):
-                image = atlas.crop((col * CELL, 0, (col + 1) * CELL, CELL))
-                frame = frame_metrics(image, f"{weapon} run c{col}")
-                frame["_lowerBodySignature"] = lower_body_signature(
-                    image, f"{weapon} run c{col}"
-                )
-                if frame["componentCount"] != 1:
-                    raise ValueError(
-                        f"{weapon} run c{col}: detached opaque components are "
-                        f"forbidden: {frame['detachedAreas']}"
-                    )
-                frames.append(frame)
-
-            motion = validate_lower_body_motion(frames, f"{weapon} run")
-            by_weapon[weapon] = {
-                "url": urls[weapon],
-                "columns": cols,
-                "lowerBodyMotion": motion,
-                "medianWidth": float(
-                    statistics.median(frame["width"] for frame in frames)
-                ),
-                "medianHeight": float(
-                    statistics.median(frame["height"] for frame in frames)
-                ),
-                "medianFootY": float(
-                    statistics.median(frame["footY"] for frame in frames)
-                ),
-                "medianCenterX": float(
-                    statistics.median(frame["centerX"] for frame in frames)
-                ),
-            }
-
-    full_motion = {
-        weapon: exported_run_motion(sprite_dir, weapon)
-        for weapon in WEAPONS
-    }
+    for weapon in WEAPONS:
+        walk_images, walk_frames = _runtime_run_row(sprite_dir, weapon, 1, "walk")
+        run_images, run_frames = _runtime_run_row(sprite_dir, weapon, 2, "run")
+        walk_score = raw_lower_body_motion_score(walk_images)
+        run_score = raw_lower_body_motion_score(run_images)
+        use_walk = (
+            walk_score > run_score + RUN_SOURCE_MIN_DIFF
+            and (
+                walk_score > run_score * RUN_SOURCE_RELATIVE_GAIN
+                or run_score < RUN_SOURCE_MIN_SCORE
+            )
+        )
+        selected = walk_frames if use_walk else run_frames
+        motion = validate_lower_body_motion(
+            selected, f"{weapon} selected runtime run"
+        )
+        unique_phases = unique_lower_body_phases(selected)
+        if unique_phases < RUN_UNIQUE_PHASES_MIN:
+            raise ValueError(
+                f"{weapon} selected runtime run: only {unique_phases} meaningful "
+                f"lower-body phases; need >= {RUN_UNIQUE_PHASES_MIN}"
+            )
+        by_weapon[weapon] = {
+            "selectedRow": 1 if use_walk else 2,
+            "selectedSource": "walk" if use_walk else "run",
+            "walkRawMotionScore": round(walk_score, 6),
+            "runRawMotionScore": round(run_score, 6),
+            "lowerBodyMotion": motion,
+            "uniqueLowerBodyPhases": unique_phases,
+            "medianHeight": float(
+                statistics.median(frame["height"] for frame in selected)
+            ),
+            "medianFootY": float(
+                statistics.median(frame["footY"] for frame in selected)
+            ),
+            "medianCenterX": float(
+                statistics.median(frame["centerX"] for frame in selected)
+            ),
+        }
 
     pistol = by_weapon["pistol"]
-    for weapon in WEAPONS:
-        item = by_weapon[weapon]
-        motion = item["lowerBodyMotion"]
-        reference_motion = full_motion[weapon]
-        item["fullBankLowerBodyMotion"] = reference_motion
-        if motion["medianDelta"] < RUN_RUNTIME_MEDIAN_DELTA_MIN:
-            raise ValueError(
-                f"{weapon} runtime run: median lower-body delta "
-                f"{motion['medianDelta']:.4f} < {RUN_RUNTIME_MEDIAN_DELTA_MIN:.4f}"
-            )
-        if motion["maxDelta"] < RUN_RUNTIME_MAX_DELTA_MIN:
-            raise ValueError(
-                f"{weapon} runtime run: peak lower-body delta "
-                f"{motion['maxDelta']:.4f} < {RUN_RUNTIME_MAX_DELTA_MIN:.4f}"
-            )
-        item["overlayVsFullMedianMotionRatio"] = round(
-            min_ratio(
-                motion["medianDelta"],
-                reference_motion["medianDelta"],
-                RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN,
-                f"{weapon} run overlay/full median motion",
-            ),
-            6,
-        )
-        item["overlayVsFullMaxMotionRatio"] = round(
-            min_ratio(
-                motion["maxDelta"],
-                reference_motion["maxDelta"],
-                RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN,
-                f"{weapon} run overlay/full peak motion",
-            ),
-            6,
-        )
-
     for weapon in WEAPONS[1:]:
         item = by_weapon[weapon]
-        item["widthRatio"] = round(
-            ratio_in(
-                item["medianWidth"],
-                pistol["medianWidth"],
-                RUN_WIDTH_RATIO,
-                f"{weapon} run median width",
-            ),
-            6,
-        )
         item["heightRatio"] = round(
             ratio_in(
                 item["medianHeight"],
                 pistol["medianHeight"],
                 RUN_HEIGHT_RATIO,
-                f"{weapon} run median height",
+                f"{weapon} selected runtime run median height",
             ),
             6,
         )
         if abs(item["medianFootY"] - pistol["medianFootY"]) > FOOT_TOLERANCE_PX:
-            raise ValueError(f"{weapon} run: median footline drift")
+            raise ValueError(f"{weapon} selected runtime run: median footline drift")
         if (
             abs(item["medianCenterX"] - pistol["medianCenterX"])
             > CENTER_TOLERANCE_PX
         ):
-            raise ValueError(f"{weapon} run: median center drift")
+            raise ValueError(f"{weapon} selected runtime run: median center drift")
     return by_weapon
 
 
@@ -704,6 +699,7 @@ def self_test() -> None:
                 image.putpixel((x, y), (255, 255, 255, 255))
         moving.append({"_lowerBodySignature": lower_body_signature(image, "moving")})
     validate_lower_body_motion(moving, "moving self-test")
+    assert unique_lower_body_phases(moving) >= 3
 
     frozen = [moving[0], moving[0], moving[0], moving[0]]
     try:
@@ -743,10 +739,10 @@ def main() -> int:
             "lowerBodyOpaqueFractionMaxDelta": LOWER_BODY_OPAQUE_FRACTION_MAX_DELTA,
             "runLowerBodyMedianDeltaMin": RUN_LOWER_BODY_MEDIAN_DELTA_MIN,
             "runLowerBodyMaxDeltaMin": RUN_LOWER_BODY_MAX_DELTA_MIN,
-            "runRuntimeMedianDeltaMin": RUN_RUNTIME_MEDIAN_DELTA_MIN,
-            "runRuntimeMaxDeltaMin": RUN_RUNTIME_MAX_DELTA_MIN,
-            "runOverlayVsFullMedianRatioMin": RUN_OVERLAY_VS_FULL_MEDIAN_RATIO_MIN,
-            "runOverlayVsFullMaxRatioMin": RUN_OVERLAY_VS_FULL_MAX_RATIO_MIN,
+            "runSourceMinDiff": RUN_SOURCE_MIN_DIFF,
+            "runSourceRelativeGain": RUN_SOURCE_RELATIVE_GAIN,
+            "runSourceMinScore": RUN_SOURCE_MIN_SCORE,
+            "runUniquePhasesMin": RUN_UNIQUE_PHASES_MIN,
             "airborneFailClosedWeapons": AIRBORNE_FAIL_CLOSED_WEAPONS,
         },
     }
