@@ -163,10 +163,10 @@ jobs:
           import sys
 
           data = json.load(open(sys.argv[1], encoding="utf-8"))
-          print("### Matthias reload/die temporal audit")
+          print("### Matthias temporal sprite audit")
           print("| Action | Weapon | Status | Height step | Foot step | Centroid step |")
           print("|---|---|---:|---:|---:|---:|")
-          for action in ("reload", "die"):
+          for action in ("crouch", "crouch_walk", "reload", "die"):
               action_data = data.get("temporal", {}).get(action, {})
               for weapon, item in action_data.get("weapons", {}).items():
                   print(
@@ -182,6 +182,28 @@ jobs:
                           f"heightPair={item['maxHeightStepPair']}; "
                           f"footPair={item['maxFootStepPair']}; "
                           f"centroidPair={item['maxCentroidStepPair']}"
+                      )
+
+          transition = data.get("temporal", {}).get(
+              "crouchToCrouchWalk", {}
+          )
+          if transition:
+              print("")
+              print("#### Crouch → crouch-walk entry")
+              print("| Weapon | Status | Height snap | Foot snap | Centroid snap |")
+              print("|---|---:|---:|---:|---:|")
+              for weapon, item in transition.get("weapons", {}).items():
+                  print(
+                      f"| {weapon} | {item['status']} | "
+                      f"{item['heightSnapRatio']:.3f} | "
+                      f"{item['footSnapRatio']:.3f} | "
+                      f"{item['centroidSnapRatio']:.3f} |"
+                  )
+                  if item["status"] == "review":
+                      print(
+                          f"Review crouch transition/{weapon}: "
+                          f"reasons={','.join(item['reasons'])}; "
+                          f"source={item['sourcePair']}"
                       )
           PY
 
