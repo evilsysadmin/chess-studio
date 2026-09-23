@@ -18,10 +18,10 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # scale; Godot consumes them directly with no runtime rescale or repack.
 const STRICT_RUNTIME_GENERATION := "canonical-continuity-v6"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/crouch-continuity-v1/pistol/full/pistol-crouch-continuity-v1-17eb2d13f327de7f.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/hurt-alpha-v3/machinegun/full/machinegun-hurt-alpha-v3-b4af66a11ebd1267.png",
-    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/stabilized-v1/shotgun/full/shotgun-stabilized-v1-7b7dab8a9e3acb31.png",
-    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/stabilized-v1/panzerfaust/full/panzerfaust-stabilized-v1-c2b491e9a409f8db.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/pistol/full/matthias-pistol-pose-semantics-v1-2000f78183cea6f5.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-e52ce4a2bd2472a4.png",
+    "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/shotgun/full/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png",
+    "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/panzerfaust/full/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png",
 }
 
 # v22 keeps the stable 18x8 full banks and overlays only the run cycle with

@@ -87,6 +87,8 @@ def idle_target_top(root: Path, weapon: str) -> int:
 def lower_upper_without_scale(image: Image.Image, target_top: int) -> Image.Image:
     rgba = image.convert("RGBA")
     box = body_bbox(rgba)
+    if box[1] >= target_top:
+        return rgba.copy()
     dy = max(0, target_top - box[1])
     out = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
     # Legs and grounded footline stay exactly where authored.
