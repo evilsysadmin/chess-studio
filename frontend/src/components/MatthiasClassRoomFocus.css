@@ -21,6 +21,9 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
     max(.55rem, env(safe-area-inset-left));
   gap: .42rem;
   overflow: hidden;
+  justify-content: stretch;
+  justify-items: stretch;
+  align-content: stretch;
   background:
     radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--ui-panel) 88%, #18202a 12%), #080a0d 72%);
 }
