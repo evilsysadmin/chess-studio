@@ -37,10 +37,17 @@ def _import_module(module: str, *, unset=(), **overrides):
     )
 
 
-def _request(*, peer="172.17.0.1", cf_ip="203.0.113.9"):
+def _request(*, peer="172.17.0.1", cf_ip="203.0.113.9", xff=None, cf_ray="test-ray-FRA"):
+    headers = {}
+    if cf_ray is not None:
+        headers["cf-ray"] = cf_ray
+    if cf_ip is not None:
+        headers["cf-connecting-ip"] = cf_ip
+    if xff is not None:
+        headers["x-forwarded-for"] = xff
     return SimpleNamespace(
         state=SimpleNamespace(),
-        headers={"cf-ray": "test-ray-FRA", "cf-connecting-ip": cf_ip},
+        headers=headers,
         client=SimpleNamespace(host=peer),
     )
 
@@ -114,3 +121,42 @@ def test_staging_emits_hsts(monkeypatch):
     response = TestClient(main_module.app).get("/api/health")
     assert response.status_code == 200
     assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
+def test_observability_uses_public_xff_only_when_tunnel_is_trusted(monkeypatch):
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "staging")
+    monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "true")
+    request = _request(
+        peer="172.17.0.1",
+        cf_ip=None,
+        cf_ray=None,
+        xff="8.8.8.8, 172.17.0.1",
+    )
+
+    client_ip, country, peer_ip, xff = main_module._request_network_log_fields(request)
+
+    assert client_ip == "8.8.8.8"
+    assert country is None
+    assert peer_ip == "172.17.0.1"
+    assert xff == ["8.8.8.8", "172.17.0.1"]
+    # Security identity must remain fail-closed on the ASGI peer; XFF is only
+    # an observability/GeoIP fallback.
+    assert main_module.rate_limit_key(request) == "ip:172.17.0.1"
+
+
+def test_observability_does_not_trust_xff_outside_tunnel(monkeypatch):
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "production")
+    monkeypatch.setenv("TRUST_CLOUDFLARE_CLIENT_IP", "false")
+    request = _request(
+        peer="172.17.0.1",
+        cf_ip=None,
+        cf_ray=None,
+        xff="8.8.8.8",
+    )
+
+    client_ip, country, peer_ip, xff = main_module._request_network_log_fields(request)
+
+    assert client_ip == "172.17.0.1"
+    assert country is None
+    assert peer_ip == "172.17.0.1"
+    assert xff == ["8.8.8.8"]

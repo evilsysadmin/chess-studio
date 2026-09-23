@@ -179,9 +179,34 @@ def _client_network(request: Request) -> tuple[str | None, str | None]:
 
 
 def _request_network_log_fields(request: Request) -> tuple[str | None, str | None, str | None, list[str]]:
+    """Network fields for observability only.
+
+    Security identity continues to use _client_network()/auth guards. In the
+    tunnel-only runtime, if Cloudflare's primary client header is unavailable
+    and ASGI only sees a private proxy peer, X-Forwarded-For may still carry
+    the public client address. Use that only for logs/GeoIP, never for auth or
+    rate-limit identity.
+    """
     client_ip, client_country = _client_network(request)
     peer_ip = sanitize_ip(str(request.client.host or "")) if request.client else None
     xff = sanitize_forwarded_for(request.headers.get("x-forwarded-for"))
+
+    primary_public = False
+    if client_ip:
+        try:
+            primary_public = ipaddress.ip_address(client_ip).is_global
+        except ValueError:
+            primary_public = False
+
+    if _trust_cloudflare_client_ip() and not primary_public:
+        for candidate in xff:
+            try:
+                if ipaddress.ip_address(candidate).is_global:
+                    client_ip = candidate
+                    break
+            except ValueError:
+                continue
+
     return client_ip, client_country, peer_ip, xff
 
 
