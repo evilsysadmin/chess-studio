@@ -8,7 +8,6 @@ import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
-import './WarRoomMatthiasDiegetic.css';
 import './WarRoomDesktopChrome.css';
 import './WarRoomAppearanceMenu.css';
 import './WarRoomAndroidDensity.css';
