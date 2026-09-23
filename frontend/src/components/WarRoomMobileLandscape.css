@@ -113,7 +113,7 @@
    * of letting display:contents expose every child as one wide flex row. The
    * !important padding also beats WarRoomAppearanceMenu's generic 2.55rem menu
    * reservation, which was the remaining 21px document overflow at 844×390. */
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-layout-3d .game-3d-turn-pill {
     grid-area: pill;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 30px !important;
