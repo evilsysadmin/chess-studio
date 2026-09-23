@@ -78,8 +78,11 @@ def test_failed_login_emits_safe_bot_forensics(caplog):
     assert attempted_password not in "\n".join(record.getMessage() for record in caplog.records)
 
 
-def _signed_staging_smoke_headers(username: str, secret: str) -> dict[str, str]:
-    source = "staging-smoke-cleanup"
+def _signed_staging_smoke_headers(
+    username: str,
+    secret: str,
+    source: str = "staging-smoke-cleanup",
+) -> dict[str, str]:
     message = f"chess-studio:synthetic:{source}\x00{username}".encode("utf-8")
     return {
         "User-Agent": "chess-studio-staging-smoke-cleanup/3",
@@ -126,6 +129,47 @@ def test_signed_staging_janitor_does_not_pollute_bruteforce_guards(monkeypatch, 
     http_event = next(row for row in payloads if row.get("event") == "http_request")
     assert auth_event["synthetic_source"] == "staging-smoke-cleanup"
     assert http_event["synthetic_source"] == "staging-smoke-cleanup"
+
+
+def test_signed_staging_browser_probe_is_trusted_without_polluting_guards(monkeypatch, caplog):
+    import main as main_module
+
+    username = "ci_smoke_1111222233334444"
+    secret = "staging-synthetic-test-secret"
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "staging")
+    monkeypatch.setattr(main_module, "_STAGING_SYNTHETIC_SECRET", secret)
+
+    async def guard_must_not_run(*_args, **_kwargs):
+        raise AssertionError("signed staging browser smoke must not touch brute-force guards")
+
+    monkeypatch.setattr(main_module.auth_ip_guard, "retry_after", guard_must_not_run)
+    monkeypatch.setattr(main_module.auth_ip_guard, "record_failure", guard_must_not_run)
+    monkeypatch.setattr(main_module.auth_login_guard, "retry_after", guard_must_not_run)
+    monkeypatch.setattr(main_module.auth_login_guard, "record_failure", guard_must_not_run)
+
+    caplog.set_level(logging.INFO, logger=main_module.access_logger.name)
+    response = raw_client.post(
+        "/api/auth/login",
+        json={"username": username, "password": "CS!browser-smoke-probe"},
+        headers=_signed_staging_smoke_headers(
+            username,
+            secret,
+            source="staging-browser-smoke",
+        ),
+    )
+
+    assert response.status_code == 401
+    assert response.headers["X-Chess-Auth-Failure"] == "unknown_user"
+    payloads = []
+    for record in caplog.records:
+        try:
+            payloads.append(json.loads(record.getMessage()))
+        except (TypeError, json.JSONDecodeError):
+            continue
+    auth_event = next(row for row in payloads if row.get("event") == "auth_login_failed")
+    http_event = next(row for row in payloads if row.get("event") == "http_request")
+    assert auth_event["synthetic_source"] == "staging-browser-smoke"
+    assert http_event["synthetic_source"] == "staging-browser-smoke"
 
 
 def test_forged_staging_janitor_marker_cannot_hide_failed_login(monkeypatch):

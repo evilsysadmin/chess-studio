@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText } from './helpers.js';
+import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
 const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
@@ -12,9 +13,10 @@ function requiredEnv(name) {
 }
 
 async function authenticateOrCreate(request, username, password, inviteCode) {
+  const synthetic = stagingSyntheticHeaders(username);
   const login = await request.post(`${STAGING_API_URL}/auth/login`, {
     data: { username, password },
-    headers: { 'Cache-Control': 'no-cache' },
+    headers: { 'Cache-Control': 'no-cache', ...synthetic },
   });
   if (login.ok()) return login.json();
 
@@ -29,14 +31,14 @@ async function authenticateOrCreate(request, username, password, inviteCode) {
       email: `${username}@example.invalid`,
       invite_code: inviteCode,
     },
-    headers: { 'Cache-Control': 'no-cache' },
+    headers: { 'Cache-Control': 'no-cache', ...synthetic },
   });
   if (register.status() === 201) return register.json();
 
   if (register.status() === 409) {
     const retry = await request.post(`${STAGING_API_URL}/auth/login`, {
       data: { username, password },
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: { 'Cache-Control': 'no-cache', ...synthetic },
     });
     if (retry.ok()) return retry.json();
   }

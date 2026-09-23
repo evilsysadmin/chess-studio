@@ -170,7 +170,8 @@ def main() -> int:
         "Auth IP bans · 15 min",
         "Auth identity blocks · 15 min",
         "Presión de tráfico · requests/s vs baseline 1 h",
-        "Biggest offenders · 401/403/429",
+        "Biggest auth offenders · failed logins",
+        "Top países · auth offenders",
         "Auth forensics reciente · sin contraseñas",
     }
     missing_security_titles = sorted(required_security_titles - security_titles)
@@ -191,10 +192,11 @@ def main() -> int:
         'status=~"401|403|429"',
         'cloudflare_zone_firewall_events_total',
         'cloudflare_zone_colocation_requests_total',
-        'cloudflare_zone_requests_status_country_host_total',
         'client_ip',
-        'synthetic_source!="staging-smoke-cleanup"',
+        'synthetic_source!~"staging-(smoke-cleanup|browser-smoke)"',
         'user_agent!="chess-studio-staging-smoke-cleanup/2"',
+        'username_attempted!~"ci_smoke_[0-9a-f]{16}"',
+        'client_country',
     ):
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")

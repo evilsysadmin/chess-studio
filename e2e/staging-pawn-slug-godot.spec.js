@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
 const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
@@ -11,9 +12,10 @@ function requiredEnv(name) {
 }
 
 async function authenticateOrCreate(request, username, password, inviteCode) {
+  const synthetic = stagingSyntheticHeaders(username);
   const login = await request.post(`${STAGING_API_URL}/auth/login`, {
     data: { username, password },
-    headers: { 'Cache-Control': 'no-cache' },
+    headers: { 'Cache-Control': 'no-cache', ...synthetic },
   });
   if (login.ok()) return login.json();
   if (![401, 404].includes(login.status())) {
@@ -27,14 +29,14 @@ async function authenticateOrCreate(request, username, password, inviteCode) {
       email: `${username}@example.invalid`,
       invite_code: inviteCode,
     },
-    headers: { 'Cache-Control': 'no-cache' },
+    headers: { 'Cache-Control': 'no-cache', ...synthetic },
   });
   if (register.status() === 201) return register.json();
 
   if (register.status() === 409) {
     const retry = await request.post(`${STAGING_API_URL}/auth/login`, {
       data: { username, password },
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: { 'Cache-Control': 'no-cache', ...synthetic },
     });
     if (retry.ok()) return retry.json();
   }
@@ -104,7 +106,7 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
 
   if (EXPECTED_SHA) {
     const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: { 'Cache-Control': 'no-cache', ...synthetic },
     });
     expect(releaseResponse.status()).toBe(200);
     const release = await releaseResponse.json();
