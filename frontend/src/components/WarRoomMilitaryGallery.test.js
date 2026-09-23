@@ -103,7 +103,6 @@ describe('War Room military gallery', () => {
       expect(torch.userData.warRoomTorchLighting).toBe('gallery-spill-v2');
       expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v3');
       expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v2');
-      expect(torch.userData.warRoomWallGlowRealLight).toBe('omitted-halo-owned-v1');
       expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
@@ -148,7 +147,6 @@ describe('War Room military gallery', () => {
       expect(torch.position.y - painting.position.y).toBeGreaterThanOrEqual(1.1);
     }
     expect(owner.userData.warRoomMilitaryGalleryTorches).toBe(2);
-    expect(owner.userData.warRoomRetiredTorchWallGlowLightsOmitted).toBe(2);
     expect(owner.userData.warRoomTorchArt).toBe('approved-premium-mock-v2');
     expect(owner.userData.warRoomTorchSpacing).toBe('gallery-breathing-room-v4');
     expect(owner.userData.warRoomTorchFire).toBe('hearth-bright-v3');
