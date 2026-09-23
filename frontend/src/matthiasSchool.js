@@ -4,12 +4,32 @@ import { setProfileStorageItem } from './profileKeys.js';
 
 export const MATTHIAS_SCHOOL_KEY = 'chess-study-matthias-school-v1';
 
+export const MATTHIAS_SCHOOL_REFERENCES = Object.freeze({
+  'capablanca-fundamentals': Object.freeze({
+    label: 'José Raúl Capablanca · Chess Fundamentals',
+    kind: 'public-domain',
+    note: 'Principios y técnica de finales reautorizados como microlecciones interactivas.',
+  }),
+  'lasker-strategy': Object.freeze({
+    label: 'Edward Lasker · Chess Strategy',
+    kind: 'public-domain',
+    note: 'Movilidad, desarrollo, estructura y toma de decisiones reautorizados para la Class Room.',
+  }),
+  'practice-taxonomy': Object.freeze({
+    label: 'Taxonomía pública de práctica táctica',
+    kind: 'open-reference',
+    note: 'Nombres de motivos usados sólo como clasificación; posiciones y textos son propios de Chess Studio.',
+  }),
+});
+
 export const MATTHIAS_SCHOOL_COURSES = Object.freeze([
   { id: 'basic', label: 'Básico', shortLabel: 'Básico', rank: 1, description: 'Cómo se mueven las piezas, capturas, rey seguro y mate elemental.' },
   { id: 'basic-medium', label: 'Básico-medio', shortLabel: 'Básico-medio', rank: 2, description: 'Desarrollo, centro, tempos y primeras secuencias de varias jugadas.' },
   { id: 'medium', label: 'Medio', shortLabel: 'Medio', rank: 3, description: 'Patrones tácticos, promoción y coordinación para rematar.' },
   { id: 'medium-advanced', label: 'Medio-avanzado', shortLabel: 'Medio-avanzado', rank: 4, description: 'Cálculo de líneas forzadas, redes de mate y coordinación multipieza.' },
   { id: 'advanced', label: 'Avanzado', shortLabel: 'Avanzado', rank: 5, description: 'Sacrificios justificados, desviación y cálculo preciso sin red de seguridad.' },
+  { id: 'strategy', label: 'Estrategia', shortLabel: 'Estrategia', rank: 6, description: 'Planes: actividad, casillas fuertes, columnas abiertas, rupturas, simplificación y profilaxis.' },
+  { id: 'endgames', label: 'Finales', shortLabel: 'Finales', rank: 7, description: 'Rey activo, peones pasados y técnica de conversión antes de entrar en finales de torre teóricos.' },
 ]);
 
 const human = (from, to, note = null) => ({ from, to, auto: false, note });
@@ -223,6 +243,116 @@ export const MATTHIAS_SCHOOL_LESSONS = Object.freeze([
     explanation: 'La geometría está reflejada respecto a una lección anterior. Si entendiste la coordinación en lugar de memorizar casillas, la solución sigue siendo visible.',
     success: 'Aprobado. Curso Avanzado completado. Puedes seguir cometiendo errores, por supuesto; ahora serán errores con formación reglada.',
   },
+  // ── ESTRATEGIA ──────────────────────────────────────────────────────────
+  {
+    id: 'open-file-tempo', courseId: 'strategy', eyebrow: 'Estrategia · 1', title: 'Ocupa la columna con tempo', piece: 'torre',
+    discipline: 'strategy', concept: 'open-file', referenceId: 'lasker-strategy',
+    fen: '6k1/4q3/8/8/8/8/8/R5K1 w - - 0 1', line: [human('a1', 'e1')],
+    objective: 'Lleva la torre a la columna e y gana actividad atacando la dama negra.',
+    explanation: 'Una columna abierta vale más cuando la torre entra con una amenaza concreta. Re1 mejora la pieza y obliga a la dama a reaccionar.',
+    hint: 'Busca una casilla de la primera fila desde la que la torre vea directamente e7.',
+    success: 'Re1. Actividad con tempo: una mejora propia y un problema ajeno en la misma jugada. Ajedrez con economía administrativa.',
+  },
+  {
+    id: 'knight-outpost', courseId: 'strategy', eyebrow: 'Estrategia · 2', title: 'Instala un caballo en un puesto fuerte', piece: 'caballo',
+    discipline: 'strategy', concept: 'outpost', referenceId: 'lasker-strategy',
+    fen: '6k1/pp3ppp/8/8/8/2N5/PP3PPP/6K1 w - - 0 1', line: [human('c3', 'd5')],
+    objective: 'Centraliza el caballo en d5, una casilla que los peones negros no pueden expulsar.',
+    explanation: 'Un puesto fuerte combina actividad y estabilidad. En d5 el caballo mejora su radio de acción y no existe un peón negro en c6 o e6 capaz de echarlo.',
+    hint: 'Desde c3, busca la casilla central d5.',
+    success: 'Nd5. Un caballo central que no puede ser pateado por peones deja de ser caballo y empieza a cobrar alquiler.',
+  },
+  {
+    id: 'space-fix-pawn', courseId: 'strategy', eyebrow: 'Estrategia · 3', title: 'Gana espacio y fija una debilidad', piece: 'peón',
+    discipline: 'strategy', concept: 'space', referenceId: 'lasker-strategy',
+    fen: '6k1/8/3p4/8/2P5/8/8/6K1 w - - 0 1', line: [human('c4', 'c5')],
+    objective: 'Avanza c4-c5 para ganar espacio y fijar el peón de d6 como objetivo.',
+    explanation: 'El avance c5 restringe casillas y deja el peón d6 menos móvil. La estrategia empieza muchas veces cambiando la geometría antes de atacar nada.',
+    hint: 'Empuja el peón de c4 una casilla.',
+    success: 'c5. No has capturado nada y, sin embargo, el tablero negro es un poco más pequeño. Esa es la gracia.',
+  },
+  {
+    id: 'queen-trade-ahead', courseId: 'strategy', eyebrow: 'Estrategia · 4', title: 'Simplifica cuando te conviene', piece: 'dama',
+    discipline: 'strategy', concept: 'simplification', referenceId: 'capablanca-fundamentals',
+    fen: '3qk3/8/8/8/8/8/3Q4/R3K3 w - - 0 1', line: [human('d2', 'd8'), reply('e8', 'd8')],
+    objective: 'Cambia damas con Qxd8+ y entra en un final donde tu torre extra pesa mucho más.',
+    explanation: 'Cuando tienes ventaja material, reducir contrajuego suele aumentar el valor práctico de esa ventaja. El cambio de damas elimina la pieza más peligrosa del rival.',
+    hint: 'Las damas comparten la columna d y no hay piezas entre ellas.',
+    success: 'Cambio de damas completado. Menos fuegos artificiales, más torre extra. Capablanca habría aprobado la contabilidad.',
+  },
+  {
+    id: 'create-luft', courseId: 'strategy', eyebrow: 'Estrategia · 5', title: 'Hazle una puerta al rey', piece: 'peón',
+    discipline: 'strategy', concept: 'prophylaxis', referenceId: 'lasker-strategy',
+    fen: '6k1/8/8/8/8/8/5PPP/4R1K1 w - - 0 1', line: [human('h2', 'h3')],
+    objective: 'Juega h3 para crear una casilla de escape y reducir futuros mates de pasillo.',
+    explanation: 'La profilaxis resuelve problemas antes de que sean amenazas concretas. Un pequeño luft en h2-h3 puede cambiar por completo la seguridad de la primera fila.',
+    hint: 'Mueve el peón h una casilla: no buscas atacar, buscas aire.',
+    success: 'h3. Una jugada pequeña que evita una muerte muy estúpida. La prevención también puntúa.',
+  },
+  {
+    id: 'strategy-exam', courseId: 'strategy', eyebrow: 'Estrategia · EXAMEN', title: 'Examen de estrategia · mejora con amenaza', piece: 'torre', exam: true, maxMistakes: 1,
+    discipline: 'strategy', concept: 'activity-with-tempo', referenceId: 'lasker-strategy',
+    fen: '6k1/4qppp/8/8/8/8/8/R5K1 w - - 0 1', line: [human('a1', 'e1'), reply('e7', 'd6'), human('e1', 'e8')],
+    objective: 'Sin pista: activa la torre con tempo y, tras la retirada de la dama, invade la octava fila con jaque.',
+    explanation: 'La secuencia encadena dos principios: mejorar la peor pieza con amenaza y usar el tiempo ganado para penetrar en territorio rival.',
+    success: 'Aprobado. Dos jugadas de torre y ninguna fue “porque sí”. Ya estás pensando en planes, no sólo en golpes.',
+  },
+
+  // ── FINALES ─────────────────────────────────────────────────────────────
+  {
+    id: 'king-before-pawn', courseId: 'endgames', eyebrow: 'Finales · 1', title: 'El rey va delante', piece: 'rey',
+    discipline: 'endgame', concept: 'king-activity', referenceId: 'capablanca-fundamentals',
+    fen: '8/8/8/4K3/4P3/8/8/7k w - - 0 1', line: [human('e5', 'f6')],
+    objective: 'Activa el rey con Kf6 antes de empujar el peón.',
+    explanation: 'En finales de peones el rey deja de esconderse y se convierte en la pieza principal. Avanzar el rey primero suele asegurar las casillas que el peón necesitará después.',
+    hint: 'Acerca el rey blanco a la zona de promoción: e5-f6.',
+    success: 'Kf6. En el final el rey deja de ser porcelana y empieza a trabajar. Ya era hora.',
+  },
+  {
+    id: 'passed-pawn-push', courseId: 'endgames', eyebrow: 'Finales · 2', title: 'Empuja el peón pasado', piece: 'peón',
+    discipline: 'endgame', concept: 'passed-pawn', referenceId: 'capablanca-fundamentals',
+    fen: '7k/8/8/8/3P4/8/8/6K1 w - - 0 1', line: [human('d4', 'd5')],
+    objective: 'Avanza el peón pasado de d4 a d5.',
+    explanation: 'Un peón pasado no tiene peones enemigos en su columna ni en las adyacentes capaces de frenarlo. Su fuerza crece con cada paso hacia la promoción.',
+    hint: 'El peón de d4 no tiene oposición de peones: avánzalo una casilla.',
+    success: 'd5. Un peón pasado es un funcionario con expediente de ascenso. Conviene empujarlo.',
+  },
+  {
+    id: 'rook-behind-passer', courseId: 'endgames', eyebrow: 'Finales · 3', title: 'La torre detrás del pasado', piece: 'torre',
+    discipline: 'endgame', concept: 'rook-behind-passer', referenceId: 'capablanca-fundamentals',
+    fen: '7k/8/8/P7/8/8/6K1/7R w - - 0 1', line: [human('h1', 'a1')],
+    objective: 'Coloca la torre detrás del peón pasado de a5.',
+    explanation: 'La torre detrás del peón mantiene libertad para empujarlo y aumenta su apoyo a medida que el peón avanza.',
+    hint: 'Lleva la torre de h1 a a1 por la primera fila.',
+    success: 'Ra1. La torre empuja desde atrás y el peón puede avanzar sin convertirla en una niñera torpe.',
+  },
+  {
+    id: 'rook-attacks-pawn-from-behind', courseId: 'endgames', eyebrow: 'Finales · 4', title: 'Activa la torre contra el pasado', piece: 'torre',
+    discipline: 'endgame', concept: 'active-rook', referenceId: 'capablanca-fundamentals',
+    fen: '7k/8/p7/8/8/8/6K1/7R w - - 0 1', line: [human('h1', 'a1')],
+    objective: 'Activa la torre en a1 para atacar desde detrás el peón negro de a6.',
+    explanation: 'Las torres odian la pasividad. Atacar el peón pasado desde detrás obliga al rival a defenderlo mientras tu torre conserva movilidad.',
+    hint: 'La columna a está libre entre tu torre y el peón negro.',
+    success: 'Ra1. Misma geometría, intención opuesta: ahora la torre acosa el pasado enemigo. Las torres son criaturas coherentes.',
+  },
+  {
+    id: 'king-shoulders-pawn', courseId: 'endgames', eyebrow: 'Finales · 5', title: 'El rey escolta al peón', piece: 'rey',
+    discipline: 'endgame', concept: 'king-escort', referenceId: 'capablanca-fundamentals',
+    fen: '8/8/4k3/P1K5/8/8/8/8 w - - 0 1', line: [human('c5', 'b6')],
+    objective: 'Juega Kb6 para acercar el rey al peón de a5 y preparar su avance.',
+    explanation: 'Un peón pasado lejos de promocionar necesita al rey cerca. Kb6 mejora el control de las casillas que el peón usará en su carrera.',
+    hint: 'Acerca el rey al peón: de c5 a b6.',
+    success: 'Kb6. El rey y el peón ya viajan en convoy. Mucho más sano que mandar al peón solo a morir.',
+  },
+  {
+    id: 'endgames-exam', courseId: 'endgames', eyebrow: 'Finales · EXAMEN', title: 'Examen de finales · escolta hasta coronar', piece: 'pieza', exam: true, maxMistakes: 1,
+    discipline: 'endgame', concept: 'promotion-technique', referenceId: 'capablanca-fundamentals',
+    fen: '7k/8/1PK5/8/8/8/8/8 w - - 0 1', line: [human('c6', 'c7'), reply('h8', 'g8'), human('b6', 'b7'), reply('g8', 'h7'), human('b7', 'b8')],
+    objective: 'Sin pistas: mejora el rey, avanza el peón y corona sin perder la coordinación.',
+    explanation: 'La técnica básica de conversión coordina rey y peón: el rey gana espacio, el peón avanza cuando está respaldado y la promoción llega sin carreras absurdas.',
+    success: 'Aprobado. Rey activo, peón acompañado y promoción. Los finales dejan de parecer magia cuando el orden de trabajo es correcto.',
+  },
+
 ]);
 
 export function schoolLessonById(id) {
@@ -231,6 +361,29 @@ export function schoolLessonById(id) {
 
 export function schoolCourseById(id) {
   return MATTHIAS_SCHOOL_COURSES.find((course) => course.id === id) || null;
+}
+
+const COURSE_DISCIPLINE = Object.freeze({
+  basic: 'fundamentals',
+  'basic-medium': 'opening',
+  medium: 'tactics',
+  'medium-advanced': 'calculation',
+  advanced: 'calculation',
+  strategy: 'strategy',
+  endgames: 'endgame',
+});
+
+export function schoolLessonMetadata(lesson) {
+  if (!lesson) return null;
+  const course = schoolCourseById(lesson.courseId);
+  const referenceId = lesson.referenceId || null;
+  return {
+    difficulty: Number(course?.rank || 1),
+    discipline: lesson.discipline || COURSE_DISCIPLINE[lesson.courseId] || 'general',
+    concept: lesson.concept || null,
+    referenceId,
+    reference: referenceId ? MATTHIAS_SCHOOL_REFERENCES[referenceId] || null : null,
+  };
 }
 
 export function schoolLessonsForCourse(courseId) {
