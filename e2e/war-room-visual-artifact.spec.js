@@ -216,26 +216,30 @@ async function captureViewportPng(context, page, path) {
   // CDP + headless SwiftShader can omit WebGL compositor layers even when the
   // canvas is visibly rendered. Visual-artifact builds preserve the drawing
   // buffer, so rasterize that canvas into a temporary DOM image and let the
-  // viewport screenshot capture scene + HUD together.
+  // viewport screenshot capture scene + HUD together. Keep the raster inside
+  // the 3D shell when possible: immersive mode creates a high-z stacking
+  // context, so a body-level fallback image would sit behind the room.
   const staged = await page.evaluate(() => {
     const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
     return canvases.map((canvas, index) => {
       const rect = canvas.getBoundingClientRect();
+      const shell = canvas.closest('.board3d-main-shell');
+      const shellRect = shell?.getBoundingClientRect();
       const image = document.createElement('img');
       image.src = canvas.toDataURL('image/png');
       image.alt = '';
       image.dataset.warRoomWebglCapture = String(index);
       Object.assign(image.style, {
-        position: 'fixed',
-        left: `${rect.left}px`,
-        top: `${rect.top}px`,
+        position: shell ? 'absolute' : 'fixed',
+        left: `${shellRect ? rect.left - shellRect.left : rect.left}px`,
+        top: `${shellRect ? rect.top - shellRect.top : rect.top}px`,
         width: `${rect.width}px`,
         height: `${rect.height}px`,
         zIndex: '1',
         pointerEvents: 'none',
         objectFit: 'fill',
       });
-      document.body.appendChild(image);
+      (shell || document.body).appendChild(image);
       return image.dataset.warRoomWebglCapture;
     });
   });
