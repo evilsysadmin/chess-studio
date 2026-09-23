@@ -1875,8 +1875,7 @@ def add_bookshelf(materials):
         materials["book_tobacco"], materials["book_vellum"],
     )
     # Lying stacks sit directly on a shelf board; standing books keep clear of them.
-    lying_stacks = {1: (x - 0.86, 0.34), 3: (x - 0.06, 0.30), 5: (x - 0.38, 0.28)}
-    armillary_rows = {3, 4}
+    lying_stacks = {1: (x - 0.86, 0.34), 3: (x + 0.30, 0.30), 5: (x - 0.38, 0.28)}
     for row, shelf_z in enumerate(shelf_tops):
         base_z = shelf_z + 0.086
         cursor = x - 1.20
@@ -1899,10 +1898,6 @@ def add_bookshelf(materials):
             cursor = bx + hw + 0.004
             stack = lying_stacks.get(row)
             if stack and abs(bx - stack[0]) < stack[1] + hw:
-                continue
-            if row in armillary_rows and x + 0.34 < bx < x + 1.10:
-                continue
-            if row == 3 and x - 1.00 < bx < x - 0.38:
                 continue
             gap = _hash01(row, idx, 953)
             leaning = gap > 0.93
@@ -1955,18 +1950,6 @@ def add_bookshelf(materials):
             bevel=0.010,
         )
 
-    armillary_center = (x + 0.72, y - 0.58, 3.38)
-    sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
-    curve_tube(
-        "HOME_PROP_library_armillary_ring",
-        [
-            (armillary_center[0] + 0.34 * math.cos(i * math.tau / 24), armillary_center[1], armillary_center[2] + 0.34 * math.sin(i * math.tau / 24))
-            for i in range(25)
-        ],
-        0.025,
-        brass,
-    )
-    cylinder("HOME_PROP_library_armillary_stand", (armillary_center[0], armillary_center[1], 2.96), 0.055, 0.52, brass, vertices=18)
     cube("HOME_PROP_library_crown", (x, y - 0.32, 4.92), (1.62, 0.18, 0.12), wood, bevel=0.04)
     for side in (-1, 1):
         sphere(f"HOME_PROP_library_finial_{side}", (x + side * 1.28, y - 0.46, 5.08), (0.10, 0.07, 0.10), brass)
@@ -2068,7 +2051,10 @@ def add_armor(materials):
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.35, 0.24, 0.18), steel, bevel=0.08)
     # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
-    cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.34, 0.48, 0.72, steel, vertices=28)
+    cone("HOME_PROP_armor_cuirass", (x, y, 1.98), 0.30, 0.40, 0.42, steel, vertices=28)
+    chest = sphere("HOME_PROP_armor_chest_barrel", (x, y - 0.01, 2.32), (0.44, 0.27, 0.34), steel)
+    for idx, lame_z in enumerate((2.02, 2.10)):
+        cylinder(f"HOME_PROP_armor_waist_lame_{idx}", (x, y - 0.01, lame_z), 0.33 + idx * 0.02, 0.030, materials["brass_dark"], vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
     # Flattened plate pauldrons instead of round balls: a sphere silhouette is
@@ -2116,14 +2102,14 @@ def add_armor(materials):
     # the same layered-plate-plus-trim technique as the table banner border,
     # reused here for the shield the armour was missing entirely.
     heraldry = materials["heraldry_gold"]
-    shield_x, shield_y, shield_z = wrists[-1][0] - 0.06, wrists[-1][1] - 0.03, wrists[-1][2] - 0.16
+    shield_x, shield_y, shield_z = wrists[-1][0] - 0.06, wrists[-1][1] - 0.09, wrists[-1][2] - 0.16
     # Heater shield: rectangular upper field plus a pyramid point, gold-banded
     # cross and a blazon, like the painted statue reference.
     cube("HOME_PROP_armor_shield_back", (shield_x, shield_y + 0.024, shield_z + 0.16), (0.250, 0.020, 0.155), materials["brass_dark"], bevel=0.030)
-    cube("HOME_PROP_armor_shield_face", (shield_x, shield_y, shield_z + 0.16), (0.232, 0.022, 0.150), materials["steel"], bevel=0.026)
+    cube("HOME_PROP_armor_shield_face", (shield_x, shield_y, shield_z + 0.16), (0.232, 0.022, 0.150), steel, bevel=0.026)
     point_back = cone("HOME_PROP_armor_shield_point_back", (shield_x, shield_y + 0.024, shield_z - 0.135), 0.250, 0.001, 0.320, materials["brass_dark"], vertices=4)
     point_back.scale.y = 0.020 / 0.250
-    point = cone("HOME_PROP_armor_shield_point", (shield_x, shield_y, shield_z - 0.135), 0.232, 0.001, 0.310, materials["steel"], vertices=4)
+    point = cone("HOME_PROP_armor_shield_point", (shield_x, shield_y, shield_z - 0.135), 0.232, 0.001, 0.310, steel, vertices=4)
     point.scale.y = 0.022 / 0.232
     outline = [
         (-0.238, 0.312), (0.238, 0.312), (0.238, 0.012), (0.0, -0.300), (-0.238, 0.012), (-0.238, 0.312),
@@ -2276,16 +2262,23 @@ def add_armor(materials):
 
 def add_trophy(materials):
     brass = materials["brass"]
-    wood = materials["wood"]
-    x, y = -3.45, 5.76
-    cube("HOME_PROP_trophy_shelf", (x, y, 2.78), (0.56, 0.22, 0.08), wood, bevel=0.025)
-    cylinder("HOME_PROP_trophy_stem", (x, y - 0.18, 3.05), 0.07, 0.34, brass)
-    cylinder("HOME_PROP_trophy_foot", (x, y - 0.18, 2.90), 0.18, 0.08, materials["brass_dark"], vertices=20)
-    cone("HOME_PROP_trophy_cup", (x, y - 0.18, 3.34), 0.18, 0.30, 0.30, brass, vertices=28)
-    cylinder("HOME_PROP_trophy_rim", (x, y - 0.18, 3.50), 0.32, 0.045, materials["gold"], vertices=28)
-    sphere("HOME_PROP_trophy_finial", (x, y - 0.18, 3.56), (0.055, 0.045, 0.045), materials["gold"])
-    curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.18, y - 0.18, 3.42), (x - 0.34, y - 0.18, 3.33), (x - 0.23, y - 0.18, 3.18)], 0.035, brass)
-    curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.18, y - 0.18, 3.42), (x + 0.34, y - 0.18, 3.33), (x + 0.23, y - 0.18, 3.18)], 0.035, brass)
+    stone = materials["stone"]
+    x, y = -4.92, 5.50
+    # Stone plinth: stepped base, shaft, moulded capital and a gilt plate.
+    cube("HOME_PROP_pedestal_trophy_base", (x, y, 0.09), (0.34, 0.34, 0.09), stone, bevel=0.030)
+    cube("HOME_PROP_pedestal_trophy_plinth", (x, y, 0.26), (0.27, 0.27, 0.09), stone, bevel=0.030)
+    cube("HOME_PROP_pedestal_trophy_shaft", (x, y, 1.17), (0.20, 0.20, 0.82), stone, bevel=0.030)
+    cube("HOME_PROP_pedestal_trophy_capital", (x, y, 2.06), (0.28, 0.28, 0.07), stone, bevel=0.030)
+    cube("HOME_PROP_pedestal_trophy_top", (x, y, 2.16), (0.32, 0.32, 0.035), stone, bevel=0.020)
+    cube("HOME_PROP_pedestal_trophy_plate", (x, y - 0.205, 1.20), (0.10, 0.008, 0.06), materials["gold"], bevel=0.004)
+    z0 = 2.195
+    cylinder("HOME_PROP_trophy_foot", (x, y, z0 + 0.04), 0.20, 0.08, materials["brass_dark"], vertices=24)
+    cylinder("HOME_PROP_trophy_stem", (x, y, z0 + 0.25), 0.06, 0.34, brass)
+    cone("HOME_PROP_trophy_cup", (x, y, z0 + 0.62), 0.16, 0.30, 0.42, brass, vertices=28)
+    cylinder("HOME_PROP_trophy_rim", (x, y, z0 + 0.84), 0.30, 0.045, materials["gold"], vertices=28)
+    sphere("HOME_PROP_trophy_finial", (x, y, z0 + 0.90), (0.055, 0.055, 0.055), materials["gold"])
+    curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.17, y, z0 + 0.74), (x - 0.34, y, z0 + 0.66), (x - 0.22, y, z0 + 0.46)], 0.032, brass)
+    curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.17, y, z0 + 0.74), (x + 0.34, y, z0 + 0.66), (x + 0.22, y, z0 + 0.46)], 0.032, brass)
 
 
 def add_side_furnishings(materials):
@@ -2910,9 +2903,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
-            (0.330, 0.350, 0.390, 1),
-            roughness=0.38,
-            metallic=0.82,
+            (0.440, 0.460, 0.500, 1),
+            roughness=0.42,
+            metallic=0.52,
             variation=0.10,
             variation_scale=5.4,
         texture_profile="metal"),
@@ -4103,9 +4096,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         curve_tube(
             f"HOME_PROP_armor_greave_ridge_{side}",
             [(cx, 5.635, 0.63), (cx, 5.625, 1.18), (cx, 5.620, 1.30)],
-            0.012,
-            materials["brass_dark"],
+            0.016,
+            materials["heraldry_gold"],
         )
+        curve_tube(
+            f"HOME_PROP_armor_shin_trim_{side}",
+            [(cx - 0.090, 5.640, 0.56), (cx - 0.105, 5.640, 1.13), (cx - 0.065, 5.640, 1.30), (cx, 5.640, 1.36),
+             (cx + 0.065, 5.640, 1.30), (cx + 0.105, 5.640, 1.13), (cx + 0.090, 5.640, 0.56)],
+            0.008,
+            materials["heraldry_gold"],
+        )
+        curve_tube(
+            f"HOME_PROP_armor_pauldron_trim_{side}",
+            [(1.55 + side * 0.20, 5.545, 2.47), (1.55 + side * 0.44, 5.545, 2.47), (1.55 + side * 0.52, 5.545, 2.36),
+             (1.55 + side * 0.44, 5.545, 2.26), (1.55 + side * 0.22, 5.545, 2.28)],
+            0.010,
+            materials["heraldry_gold"],
+        )
+        cube(f"HOME_PROP_armor_knee_cop_{side}", (cx, 5.665, 1.32), (0.075, 0.014, 0.040), materials["heraldry_gold"], bevel=0.010)
 
     curve_tube(
         "HOME_PROP_armor_chest_v_left",
