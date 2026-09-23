@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { addMesh, buildWarRoom } from './Board3DScene.js';
-import { isWarRoomVariantSelectable, loadWarRoomVariant } from './WarRoomVariant.js';
+import {
+  isClassicWarRoomVariant,
+  isWarRoomVariantSelectable,
+  loadWarRoomVariant,
+  loadWarRoomVariantInstaller,
+} from './WarRoomVariant.js';
 
-export function shouldShowClassicWarRoomShell({ selectable = false, variant = 'classic' } = {}) {
-  return !selectable || !['v2', 'v3'].includes(variant);
+export function shouldShowClassicWarRoomShell(options = {}) {
+  return isClassicWarRoomVariant(options);
 }
 
 export function buildClassicWarRoomShell({
@@ -149,10 +154,7 @@ export function startWarRoomVariantScene({
   scene.userData.warRoomRenderedVariant = `${variant}-loading`;
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
-  const installer = variant === 'v3'
-    ? import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell)
-    : import('./WarRoomV2Shell.js').then(({ installWarRoomV2Shell }) => installWarRoomV2Shell);
-  void installer
+  void loadWarRoomVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: renderLite,
