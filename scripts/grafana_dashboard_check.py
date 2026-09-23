@@ -545,9 +545,17 @@ def main() -> int:
     if '${selector:raw}' not in infra_logs:
         fail("dashboard logs debe interpolar selector LogQL con ${selector:raw}")
 
-    for token in ('chess-studio-backend-staging', 'chess-studio-oci-backend-staging-stdout', 'chess-studio-oci-backend-production-stdout', '"type": "custom"', '"label": "Entorno"', 'production : {service_name=', 'staging : {service_name=', 'production OCI stdout : {service_name=', 'staging OCI stdout : {service_name=', 'OCI stdout · staging + production', 'multi-environment'):
+    for token in (
+        'chess-studio-backend',
+        'chess-studio-oci-backend-staging-stdout',
+        '"type": "custom"',
+        '"label": "Entorno"',
+        'production : {service_name=',
+        'staging : {service_name=',
+        'chess-studio-(backend|oci-backend-staging-stdout)',
+    ):
         if token not in infra_logs:
-            fail(f"Loki debe permitir separar producción/staging: {token}")
+            fail(f"Loki debe usar fuentes canónicas por entorno: {token}")
 
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
