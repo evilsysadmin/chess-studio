@@ -3,6 +3,13 @@
    This file is deliberately scoped to the School surface so War Room v1/v2/v3
    keep their own layout and renderer styling. */
 
+
+/* Class Room is a board-first surface. Music keeps playing, but the global
+   dock stays out of the teaching viewport; media keys remain available. */
+body:has(.matthias-school-shell[data-school-section="school"]) .global-music-dock {
+  display: none !important;
+}
+
 body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: none;
 }
@@ -540,4 +547,38 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     height: clamp(400px, 115vw, 500px);
     min-height: 400px;
   }
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker {
+  display: grid;
+  gap: .35rem;
+  margin-top: .22rem;
+  padding-top: .4rem;
+  border-top: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker > span {
+  color: color-mix(in srgb, var(--brass) 72%, var(--parchment));
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .24rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker button {
+  min-width: 0;
+  padding-inline: .38rem;
+  text-align: center;
+  font-size: .62rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-scene-picker button.active {
+  background: color-mix(in srgb, var(--brass) 18%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--brass) 46%, transparent);
 }
