@@ -45,6 +45,13 @@ function rewardWasClaimed(claimedRewards, candidateId) {
   ));
 }
 
+function milestoneWasClaimed(claimedRewards, milestoneId) {
+  const prefix = `reward-choice:${milestoneId}:`;
+  return (claimedRewards || []).some((claimId) => (
+    typeof claimId === 'string' && claimId.startsWith(prefix)
+  ));
+}
+
 function legalSkillCandidates(progression) {
   const current = normalizeChroniclesProgression(progression);
   return HERO_IDS.flatMap((memberId) => {
@@ -121,6 +128,7 @@ export function chroniclesRewardDraft({
   const safeMilestone = String(milestoneId || '').trim();
   const safeLimit = Math.max(1, Math.min(DEFAULT_LIMIT, Math.floor(Number(limit) || DEFAULT_LIMIT)));
   if (!safeMilestone || !Number.isFinite(Number(seed))) return Object.freeze([]);
+  if (milestoneWasClaimed(claimedRewards, safeMilestone)) return Object.freeze([]);
 
   const runChoices = rankedCandidates(
     CHRONICLES_RUN_REWARD_DEFINITIONS,
