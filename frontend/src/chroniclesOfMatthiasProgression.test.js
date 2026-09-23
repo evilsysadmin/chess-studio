@@ -15,9 +15,12 @@ import {
   finishChroniclesTacticsRun,
   grantChroniclesXp,
   loadChroniclesProgression,
+  reconcileChroniclesProgressionInTacticsState,
   renewChroniclesTacticsRun,
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
+  spendChroniclesAttributePoint,
+  unlockChroniclesSkill,
 } from './chroniclesOfMatthiasProgression.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 
@@ -97,6 +100,64 @@ describe('Chronicles Tactics · progression', () => {
     clearStorageMemoryFallback();
     localStorage.clear();
     localStorage.setItem('chess-study-auth-username', 'alice');
+  });
+
+  it('applies spent progression to the live tactical state without healing existing damage', () => {
+    const leveled = grantChroniclesXp(
+      createChroniclesProgression(),
+      'rook',
+      chroniclesXpThresholdForLevel(2),
+      'fixture:live-vigor',
+    ).progression;
+    const initial = applyChroniclesProgressionToTacticsState(tacticsState(), leveled);
+    const rookIndex = initial.party.findIndex((member) => member.id === 'rook');
+    const wounded = {
+      ...initial,
+      party: initial.party.map((member, index) => (
+        index === rookIndex ? { ...member, hp: Math.max(0, member.hp - 2) } : member
+      )),
+    };
+    const before = wounded.party[rookIndex];
+    const spent = spendChroniclesAttributePoint(leveled, 'rook', 'vigor');
+
+    expect(spent.spent).toBe(true);
+    const reconciled = reconcileChroniclesProgressionInTacticsState(wounded, spent.progression);
+    const after = reconciled.party[rookIndex];
+
+    expect(after.maxHp).toBe(before.maxHp + 1);
+    expect(after.hp).toBe(before.hp);
+    expect(reconciled.rpgModifiers.rook.bonusMaxHp).toBe(initial.rpgModifiers.rook.bonusMaxHp + 1);
+  });
+
+  it('adds newly unlocked ability capacity without refilling charges already spent', () => {
+    const base = createChroniclesProgression();
+    const veteran = {
+      ...base,
+      heroes: {
+        ...base.heroes,
+        rook: {
+          ...base.heroes.rook,
+          xp: chroniclesXpThresholdForLevel(6),
+          skillPoints: 1,
+        },
+      },
+    };
+    const initial = applyChroniclesProgressionToTacticsState(tacticsState(), veteran);
+    const spentState = {
+      ...initial,
+      classAbilityCharges: {
+        ...initial.classAbilityCharges,
+        rook: 0,
+      },
+    };
+    const learned = unlockChroniclesSkill(veteran, 'rook', 'rook-reserve-hammer');
+
+    expect(learned.unlocked).toBe(true);
+    const reconciled = reconcileChroniclesProgressionInTacticsState(spentState, learned.progression);
+
+    expect(initial.rpgModifiers.rook.abilityCharges).toBe(1);
+    expect(reconciled.rpgModifiers.rook.abilityCharges).toBe(2);
+    expect(reconciled.classAbilityCharges.rook).toBe(1);
   });
 
   it('turns XP into bounded levels, attribute points and skill points', () => {
