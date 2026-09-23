@@ -1,0 +1,710 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Edge / Cloudflare",
+      "type": "link",
+      "url": "/d/chess-studio-edge/chess-studio-edge",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Logs accionables",
+      "type": "link",
+      "url": "/d/chess-studio-logs/chess-studio-logs",
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Log Explorer",
+      "type": "link",
+      "url": "/d/chess-studio-log-explorer/chess-studio-log-explorer",
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Qué significa una señal",
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Security** correlaciona señales objetivas ya observadas por Chess Studio y Cloudflare. Un pico **no se etiqueta automáticamente como ataque**: mira bans de auth, 401/403/429, acciones WAF, presión de tráfico, país y logs antes de concluir. Las IP de aplicación usan `CF-Connecting-IP` cuando la petición llega autenticada desde Cloudflare; `X-Forwarded-For` no se usa como identidad de seguridad."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Auth IP bans · 15 min",
+      "description": "Bloqueos activados por el guard real del backend: 10 fallos en 10 min → 15 min de bloqueo.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} |= \"auth_ip_ban_activated\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Auth identity blocks · 15 min",
+      "description": "Bloqueos activados por el guard distribuido por identidad: 20 fallos sobre la misma identidad en 10 min → 5 min de bloqueo.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} |= \"auth_login_identity_ban_activated\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "401/403/429 · 15 min",
+      "description": "Respuestas de rechazo/limitación vistas por el backend en el entorno seleccionado.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403|429\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "WAF / firewall actions · 15 min",
+      "description": "Eventos sobre los que Cloudflare/WAF ha actuado para el hostname público.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[15m])) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Presión de tráfico · requests/s vs baseline 1 h",
+      "description": "Compara requests/s a 5 min con la media a 1 h. Un multiplicador alto es una señal a investigar, no una clasificación automática de DoS.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[5m]))",
+          "legendFormat": "actual · 5m",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[1h]))",
+          "legendFormat": "baseline · 1h",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "WAF / firewall · acciones",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum by (action) (rate(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))",
+          "legendFormat": "{{action}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Auth failures y bloqueos · evolución",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" [$__interval]))",
+          "legendFormat": "login failures",
+          "refId": "A",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} |= \"auth_ip_ban_activated\" [$__interval]))",
+          "legendFormat": "IP bans",
+          "refId": "B",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} |= \"auth_login_identity_ban_activated\" [$__interval]))",
+          "legendFormat": "identity blocks",
+          "refId": "C",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "401 / 403 / 429 · evolución",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"401\" [$__interval]))",
+          "legendFormat": "401",
+          "refId": "A",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"403\" [$__interval]))",
+          "legendFormat": "403",
+          "refId": "B",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=\"429\" [$__interval]))",
+          "legendFormat": "429",
+          "refId": "C",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Biggest offenders · 401/403/429",
+      "description": "Top client_ip por respuestas de rechazo/limitación. La IP está saneada por el backend.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(15, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"401|403|429\" | client_ip != \"\" [$__range])))",
+          "legendFormat": "{{client_ip}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Top países · requests",
+      "description": "Distribución geográfica del tráfico público en el rango seleccionado; bots y scanners también cuentan.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "topk(12, sum by (country) (increase(cloudflare_zone_requests_status_country_host_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{country}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "logs",
+      "title": "Auth forensics reciente · sin contraseñas",
+      "description": "Eventos auth_login_failed estructurados para correlacionar IP, usuario intentado, huella/longitud/clases de contraseña y user-agent sin registrar la contraseña.",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "chess-studio",
+    "security",
+    "cloudflare",
+    "loki",
+    "prometheus",
+    "sre"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "selector",
+        "label": "Entorno backend",
+        "type": "custom",
+        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
+        "current": {
+          "text": "production",
+          "value": "{service_name=\"chess-studio-backend\"}"
+        },
+        "hide": 0,
+        "skipUrlSync": false,
+        "includeAll": true,
+        "allValue": "{service_name=~\"chess-studio-(backend(-staging)?|oci-backend-(production|staging)-stdout)\"}",
+        "multi": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Chess Studio · Security",
+  "uid": "chess-studio-security",
+  "version": 1,
+  "weekStart": "monday"
+}

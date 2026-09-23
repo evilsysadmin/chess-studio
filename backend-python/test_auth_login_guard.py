@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import asyncio
+import json
 
 import auth_login_guard as guard
 
@@ -62,3 +63,30 @@ def test_memory_guard_blocks_and_success_clear_removes_identity(monkeypatch):
     asyncio.run(guard.clear(identity))
     assert asyncio.run(guard.retry_after(identity)) == 0
     assert identity not in guard._memory
+
+
+def test_memory_guard_logs_identity_block_once_without_clear_username(monkeypatch):
+    messages = []
+
+    class FakeLogger:
+        def warning(self, message):
+            messages.append(message)
+
+    async def no_collection():
+        return None
+
+    monkeypatch.setattr(guard, "_get_collection", no_collection)
+    monkeypatch.setattr(guard, "_logger", FakeLogger())
+    identity = guard.identity_key("Distributed_Target", "secret")
+
+    for _ in range(guard.FAILURE_LIMIT + 2):
+        asyncio.run(guard.record_failure(identity))
+
+    assert len(messages) == 1
+    payload = json.loads(messages[0])
+    assert payload["event"] == "auth_login_identity_ban_activated"
+    assert payload["identity_fingerprint"] == identity
+    assert payload["failure_limit"] == guard.FAILURE_LIMIT
+    assert payload["window_seconds"] == guard.WINDOW_SECONDS
+    assert payload["block_seconds"] == guard.BLOCK_SECONDS
+    assert "distributed_target" not in messages[0].lower()

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
+import json
+import logging
 import math
 from typing import Any
 
@@ -21,6 +23,7 @@ CAS_ATTEMPTS = 8
 
 _memory: dict[str, dict[str, Any]] = {}
 _index_ready = False
+_logger = logging.getLogger("uvicorn.error")
 
 
 def identity_key(username: str, secret: str) -> str:
@@ -119,6 +122,29 @@ async def _ensure_index(col) -> None:
     _index_ready = True
 
 
+def _log_block_activation(
+    identity: str,
+    previous: dict[str, Any] | None,
+    current: dict[str, Any] | None,
+) -> None:
+    """Emit one privacy-safe event when distributed identity protection blocks."""
+    if retry_after_seconds(previous) or not retry_after_seconds(current):
+        return
+    _logger.warning(
+        json.dumps(
+            {
+                "event": "auth_login_identity_ban_activated",
+                "identity_fingerprint": str(identity)[:64],
+                "failure_limit": FAILURE_LIMIT,
+                "window_seconds": WINDOW_SECONDS,
+                "block_seconds": BLOCK_SECONDS,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    )
+
+
 async def retry_after(identity: str) -> int:
     col = await _get_collection()
     if col is not None:
@@ -150,8 +176,10 @@ async def retry_after(identity: str) -> int:
 async def record_failure(identity: str) -> int:
     col = await _get_collection()
     if col is None:
-        next_state = state_after_failure(_memory.get(identity))
+        previous = _memory.get(identity)
+        next_state = state_after_failure(previous)
         _memory[identity] = next_state
+        _log_block_activation(identity, previous, next_state)
         return retry_after_seconds(next_state)
 
     await _ensure_index(col)
@@ -171,6 +199,7 @@ async def record_failure(identity: str) -> int:
                     "_guard_version": 1,
                     **next_state,
                 })
+                _log_block_activation(identity, None, next_state)
                 return retry_after_seconds(next_state)
             except DuplicateKeyError:
                 continue
@@ -201,6 +230,7 @@ async def record_failure(identity: str) -> int:
                 "No se pudo registrar el fallo de login."
             ) from exc
         if result.matched_count == 1:
+            _log_block_activation(identity, current, next_state)
             return retry_after_seconds(next_state)
 
     raise PersistentStorageUnavailable(

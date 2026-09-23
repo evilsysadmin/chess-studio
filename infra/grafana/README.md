@@ -1,11 +1,14 @@
 # Grafana Cloud · dashboards as code
 
-Chess Studio publica cuatro dashboards versionados bajo la carpeta **Chess Studio** mediante la **Grafana HTTP API**:
+Chess Studio publica siete dashboards versionados bajo la carpeta **Chess Studio** mediante la **Grafana HTTP API**:
 
 - `chess-studio-api-overview` · salud operativa rápida.
 - `chess-studio-logs` · 404, 5xx, p95, release, `request_id` y `trace_id` accionables.
+- `chess-studio-log-explorer` · exploración Loki multi-entorno sin escribir LogQL.
 - `chess-studio-traces` · Tempo/TraceQL para latencia y errores.
 - `chess-studio-edge` · tráfico, errores, países, seguridad y Workers vistos desde Cloudflare.
+- `chess-studio-security` · brute force, bloqueos, 401/403/429, WAF y presión de tráfico correlacionados sin clasificar automáticamente un pico como ataque.
+- `chess-studio-oci-host` · salud del host OCI staging.
 
 El publisher es `scripts/grafana_publish.py`. Es idempotente, usa sólo la biblioteca estándar de Python y hace:
 
@@ -15,7 +18,7 @@ El publisher es `scripts/grafana_publish.py`. Es idempotente, usa sólo la bibli
 4. `POST /api/dashboards/db` con `overwrite=true`;
 5. `GET /api/dashboards/uid/<uid>` para verificar cada publicación.
 
-No hay Terraform, provider downloads, state remoto/local, imports ni `plan/apply` para dashboards. Para cuatro documentos JSON, la API de Grafana es el contrato operativo más pequeño y observable.
+No hay Terraform, provider downloads, state remoto/local, imports ni `plan/apply` para dashboards. Para siete documentos JSON, la API de Grafana es el contrato operativo más pequeño y observable.
 
 El workflow `.github/workflows/grafana-dashboards.yml` se ejecuta únicamente cuando cambian dashboards, publisher/contrato o el propio workflow, además de `workflow_dispatch` manual.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Idempotently publish Chess Studio Grafana dashboards via the Grafana HTTP API.
 
-This deliberately avoids Terraform/state for six versioned dashboard JSON files.
+This deliberately avoids Terraform/state for seven versioned dashboard JSON files.
 The publisher is standard-library only so CI does not need a package/provider download.
 """
 from __future__ import annotations
@@ -24,6 +24,7 @@ DASHBOARDS = (
     "chess-studio-log-explorer.json",
     "chess-studio-traces.json",
     "chess-studio-edge.json",
+    "chess-studio-security.json",
     "chess-studio-oci-host.json",
 )
 
