@@ -38,13 +38,14 @@ function stableHash(text) {
   return hash >>> 0;
 }
 
-function rewardWasClaimed(claimedRewards, candidateId) {
-  const suffix = `:${candidateId}`;
-  return (claimedRewards || []).some((claimId) => (
-    typeof claimId === 'string'
-    && claimId.startsWith('reward-choice:')
-    && claimId.endsWith(suffix)
-  ));
+function recentRewardCandidateIds(claimedRewards) {
+  const latestClaim = [...(claimedRewards || [])]
+    .reverse()
+    .find((claimId) => typeof claimId === 'string' && claimId.startsWith('reward-choice:'));
+  if (!latestClaim) return new Set();
+  const separator = latestClaim.lastIndexOf(':');
+  if (separator < 0 || separator === latestClaim.length - 1) return new Set();
+  return new Set([latestClaim.slice(separator + 1)]);
 }
 
 function milestoneWasClaimed(claimedRewards, milestoneId) {
@@ -99,8 +100,9 @@ function rank(seed, milestoneId, candidate) {
 }
 
 function rankedCandidates(candidates, seed, milestoneId, claimedRewards) {
+  const recentCandidates = recentRewardCandidateIds(claimedRewards);
   return candidates
-    .filter((candidate) => !rewardWasClaimed(claimedRewards, candidate.id))
+    .filter((candidate) => !recentCandidates.has(candidate.id))
     .map((candidate) => ({ candidate, score: rank(seed, milestoneId, candidate) }))
     .sort((left, right) => left.score - right.score || left.candidate.id.localeCompare(right.candidate.id))
     .map(({ candidate }) => candidate);
