@@ -2030,6 +2030,29 @@ def add_armor(materials):
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
         ], 0.062, materials["brass_dark"])
         cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.072, 0.062, 0.058), steel, bevel=0.020)
+        # A bare block reads as a mannequin fist, which is exactly the note
+        # this armour keeps getting. Three brass knuckle-ridge bars across the
+        # camera-facing side (the armour is viewed from -Y) plus an angled
+        # thumb on the inward side break the block into a hand actually
+        # gripping the sword/shield next to it, without a full per-finger rig
+        # this low-poly background figure doesn't need.
+        knuckle_y = wrist[1] - 0.062 - 0.006
+        for row, dz in enumerate((-0.028, 0.0, 0.028)):
+            cube(
+                f"HOME_PROP_armor_knuckle_{side}_{row}",
+                (wrist[0], knuckle_y, wrist[2] + dz),
+                (0.058, 0.006, 0.010),
+                materials["brass_dark"],
+                bevel=0.004,
+            )
+        thumb = cube(
+            f"HOME_PROP_armor_thumb_{side}",
+            (wrist[0] - side * 0.078, wrist[1] - 0.022, wrist[2] - 0.020),
+            (0.024, 0.036, 0.020),
+            steel,
+            bevel=0.010,
+        )
+        thumb.rotation_euler[2] = side * math.radians(28.0)
 
     # Heater shield in the left hand: brass backing plate behind a slightly
     # smaller steel face, a gold rim, corner rivets and a plain cross boss --
@@ -2807,12 +2830,19 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
+        # Polished plate, not brushed/matte -- but this figure sits in a dim
+        # archway with no reflection probe nearby, and a fully metallic BSDF
+        # only shows anything where a direct light actually hits it: pushed
+        # too far (0.22 roughness / 0.86 metallic) the whole suit went black,
+        # the opposite of "polished". Keep enough metallic-diffuse hybrid
+        # response to still read in ambient/GI light, with tighter highlights
+        # and less surface variation than the old worked-tool-steel finish.
         "armor_steel": material(
             "HOME_MAT_armor_steel",
-            (0.190, 0.202, 0.225, 1),
-            roughness=0.54,
-            metallic=0.68,
-            variation=0.10,
+            (0.205, 0.218, 0.240, 1),
+            roughness=0.34,
+            metallic=0.74,
+            variation=0.06,
             variation_scale=5.4,
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
