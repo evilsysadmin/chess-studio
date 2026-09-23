@@ -31,9 +31,7 @@ export function isWarRoomVariantSelectable({
   env = import.meta.env,
   location = globalThis?.location,
 } = {}) {
-  const explicit = String(
-    env?.VITE_WAR_ROOM_VARIANTS_ENABLE || env?.VITE_WAR_ROOM_V2_ENABLE || '',
-  ).trim().toLowerCase();
+  const explicit = String(env?.VITE_WAR_ROOM_VARIANTS_ENABLE || '').trim().toLowerCase();
   if (explicit === '1' || explicit === 'true') return true;
   const hostname = String(location?.hostname || '').trim().toLowerCase();
   const apiUrl = String(env?.VITE_API_URL || '').trim().toLowerCase();
@@ -64,8 +62,6 @@ export function warRoomVariantDomData(variant, status) {
   return {
     'data-board3d-variant': normalizeWarRoomVariant(variant),
     'data-board3d-variant-status': status,
-    // Transitional alias for staging/live probes that predate generic variants.
-    'data-board3d-v2-status': status,
   };
 }
 
