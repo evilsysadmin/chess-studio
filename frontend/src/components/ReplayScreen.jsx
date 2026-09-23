@@ -6,8 +6,8 @@ import { toPGN, downloadPGN } from '../pgn.js';
 import { analyzeGame } from '../gameReport.js';
 import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
+import ReplayTimelineControls from './ReplayTimelineControls.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { buildStandardReplayTimeline } from '../replayTimeline.js';
@@ -131,8 +131,6 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     setStep(Math.max(0, Math.min(positions.length - 1, i)));
   }
 
-  useArrowKeyNav(() => goTo(step - 1), () => goTo(step + 1));
-
   useEffect(() => {
     setMatthiasPosition(null);
     setMatthiasPositionStatus('idle');
@@ -247,13 +245,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
             mistakeMove={mistakeMove}
             orientation={record.humanColor === 'b' ? 'black' : 'white'}
           />
-          <div className="game-controls">
-            <button className="secondary-btn" onClick={() => goTo(0)} disabled={step === 0}>⏮ Inicio</button>
-            <button className="secondary-btn" onClick={() => goTo(step - 1)} disabled={step === 0}>← Anterior</button>
-            <button className="secondary-btn" onClick={() => goTo(step + 1)} disabled={step === positions.length - 1}>Siguiente →</button>
-            <button className="secondary-btn" onClick={() => goTo(positions.length - 1)} disabled={step === positions.length - 1}>Final ⏭</button>
-          </div>
-          <p className="hint-text replay-key-hint">← → del teclado también navegan</p>
+          <ReplayTimelineControls step={step} frameCount={positions.length} onStepChange={goTo} />
           {crimeMode && pinnedReport && (
             <button className="secondary-btn crime-rewind-btn" onClick={() => goTo(Math.max(0, pinnedReport.index))}>
               ↶ Volver a antes del crimen
