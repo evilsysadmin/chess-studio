@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import math
+import statistics
 import sys
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -526,6 +527,155 @@ def normalize_fixed_scale_frame(
 
 
 @dataclass(frozen=True)
+class BodyParityContract:
+    family: str
+    reference_weapon: str
+    animations: tuple[str, ...]
+    core_x_min_ratio: float = 0.34
+    core_x_max_ratio: float = 0.64
+    min_core_height_ratio: float = 0.95
+    max_core_height_ratio: float = 1.05
+    min_core_area_ratio: float = 0.88
+    max_core_area_ratio: float = 1.18
+    max_spread_extra: float = 0.04
+
+
+@dataclass(frozen=True)
+class BodyParityResult:
+    ok: bool
+    errors: tuple[str, ...]
+    comparisons: dict[str, dict[str, float]]
+
+
+def _frame_body_profile(
+    image: Image.Image,
+    contract: BodyParityContract,
+    alpha_threshold: int = 8,
+) -> tuple[float, float, float] | None:
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    bbox = _foreground_bbox(rgba, alpha_threshold)
+    if bbox is None:
+        return None
+    width, height = rgba.size
+    core_left = max(0, min(width - 1, int(math.floor(width * contract.core_x_min_ratio))))
+    core_right = max(core_left + 1, min(width, int(math.ceil(width * contract.core_x_max_ratio))))
+    pixels = alpha.load()
+    core_min_y = height
+    core_max_y = -1
+    core_area = 0
+    for y in range(height):
+        for x in range(core_left, core_right):
+            if pixels[x, y] < alpha_threshold:
+                continue
+            core_area += 1
+            core_min_y = min(core_min_y, y)
+            core_max_y = max(core_max_y, y)
+    core_height = float(core_max_y - core_min_y + 1) if core_max_y >= core_min_y else 0.0
+    return float(bbox[3] - bbox[1]), core_height, float(core_area)
+
+
+def body_animation_profile(
+    frames: list[Image.Image],
+    contract: BodyParityContract,
+    alpha_threshold: int = 8,
+) -> dict[str, float]:
+    samples = [
+        sample
+        for frame in frames
+        if (sample := _frame_body_profile(frame, contract, alpha_threshold)) is not None
+    ]
+    if not samples:
+        raise GeometryError("body-profile-empty")
+    bbox_heights = sorted(sample[0] for sample in samples)
+    core_heights = sorted(sample[1] for sample in samples)
+    core_areas = sorted(sample[2] for sample in samples)
+    return {
+        "frames": float(len(samples)),
+        "bbox_height_median": float(statistics.median(bbox_heights)),
+        "bbox_height_min": float(bbox_heights[0]),
+        "bbox_height_max": float(bbox_heights[-1]),
+        "core_height_median": float(statistics.median(core_heights)),
+        "core_height_min": float(core_heights[0]),
+        "core_height_max": float(core_heights[-1]),
+        "core_area_median": float(statistics.median(core_areas)),
+        "core_area_min": float(core_areas[0]),
+        "core_area_max": float(core_areas[-1]),
+    }
+
+
+def _profile_spread(profile: dict, key: str) -> float:
+    median = float(profile[f"{key}_median"])
+    if median <= 0:
+        return math.inf
+    return (
+        float(profile[f"{key}_max"]) - float(profile[f"{key}_min"])
+    ) / median
+
+
+def validate_body_parity(reference_manifest: dict, candidate_manifest: dict) -> BodyParityResult:
+    reference_policy = reference_manifest.get("body_parity")
+    candidate_policy = candidate_manifest.get("body_parity")
+    if not isinstance(reference_policy, dict) or not isinstance(candidate_policy, dict):
+        return BodyParityResult(False, ("body-parity-policy-missing",), {})
+    if reference_policy.get("family") != candidate_policy.get("family"):
+        return BodyParityResult(False, ("body-parity-family-mismatch",), {})
+    if reference_manifest.get("weapon") != reference_policy.get("reference_weapon"):
+        return BodyParityResult(False, ("body-parity-reference-weapon-mismatch",), {})
+
+    contract = BodyParityContract(
+        family=str(candidate_policy["family"]),
+        reference_weapon=str(candidate_policy["reference_weapon"]),
+        animations=tuple(candidate_policy["animations"]),
+        core_x_min_ratio=float(candidate_policy["core_x_min_ratio"]),
+        core_x_max_ratio=float(candidate_policy["core_x_max_ratio"]),
+        min_core_height_ratio=float(candidate_policy["min_core_height_ratio"]),
+        max_core_height_ratio=float(candidate_policy["max_core_height_ratio"]),
+        min_core_area_ratio=float(candidate_policy["min_core_area_ratio"]),
+        max_core_area_ratio=float(candidate_policy["max_core_area_ratio"]),
+        max_spread_extra=float(candidate_policy["max_spread_extra"]),
+    )
+    reference_animations = {
+        item["name"]: item for item in reference_manifest.get("animations", [])
+    }
+    candidate_animations = {
+        item["name"]: item for item in candidate_manifest.get("animations", [])
+    }
+    errors: list[str] = []
+    comparisons: dict[str, dict[str, float]] = {}
+    for animation in contract.animations:
+        reference = reference_animations.get(animation, {}).get("body_profile")
+        candidate = candidate_animations.get(animation, {}).get("body_profile")
+        if not isinstance(reference, dict) or not isinstance(candidate, dict):
+            errors.append(f"body-profile-missing:{animation}")
+            continue
+        reference_height = float(reference["core_height_median"])
+        reference_area = float(reference["core_area_median"])
+        if reference_height <= 0 or reference_area <= 0:
+            errors.append(f"body-profile-invalid-reference:{animation}")
+            continue
+        height_ratio = float(candidate["core_height_median"]) / reference_height
+        area_ratio = float(candidate["core_area_median"]) / reference_area
+        candidate_spread = _profile_spread(candidate, "core_height")
+        reference_spread = _profile_spread(reference, "core_height")
+        allowed_spread = max(0.10, reference_spread + contract.max_spread_extra)
+        comparisons[animation] = {
+            "core_height_ratio": height_ratio,
+            "core_area_ratio": area_ratio,
+            "candidate_core_height_spread": candidate_spread,
+            "reference_core_height_spread": reference_spread,
+            "allowed_core_height_spread": allowed_spread,
+        }
+        if not contract.min_core_height_ratio <= height_ratio <= contract.max_core_height_ratio:
+            errors.append(f"body-height-ratio:{animation}:{height_ratio:.4f}")
+        if not contract.min_core_area_ratio <= area_ratio <= contract.max_core_area_ratio:
+            errors.append(f"body-area-ratio:{animation}:{area_ratio:.4f}")
+        if candidate_spread > allowed_spread:
+            errors.append(f"body-height-spread:{animation}:{candidate_spread:.4f}>{allowed_spread:.4f}")
+    return BodyParityResult(not errors, tuple(errors), comparisons)
+
+
+@dataclass(frozen=True)
 class TemporalContract:
     expected_frames: int
     max_foot_delta_px: float = 6.0
@@ -802,6 +952,78 @@ def _validate_bank_contract(data: object) -> dict:
             "composition must be integrated, socketed-body or weapon-layer"
         )
 
+    body_parity_data = data.get("body_parity")
+    body_parity = None
+    if body_parity_data is not None:
+        if composition != "integrated":
+            raise BankContractError("body_parity is only valid for integrated banks")
+        if not isinstance(body_parity_data, dict):
+            raise BankContractError("body_parity must be an object")
+        family = body_parity_data.get("family")
+        reference_weapon = body_parity_data.get("reference_weapon")
+        animations_value = body_parity_data.get("animations")
+        if not isinstance(family, str) or not family:
+            raise BankContractError("body_parity.family must be a non-empty string")
+        if not isinstance(reference_weapon, str) or not reference_weapon:
+            raise BankContractError("body_parity.reference_weapon must be a non-empty string")
+        if (
+            not isinstance(animations_value, list)
+            or not animations_value
+            or any(not isinstance(name, str) or not name for name in animations_value)
+        ):
+            raise BankContractError("body_parity.animations must be non-empty strings")
+        core_min = _require_number(
+            body_parity_data.get("core_x_min_ratio", 0.34),
+            "body_parity.core_x_min_ratio",
+        )
+        core_max = _require_number(
+            body_parity_data.get("core_x_max_ratio", 0.64),
+            "body_parity.core_x_max_ratio",
+            strict=True,
+        )
+        if not 0.0 <= core_min < core_max <= 1.0:
+            raise BankContractError("body_parity core band must satisfy 0 <= min < max <= 1")
+        min_height = _require_number(
+            body_parity_data.get("min_core_height_ratio", 0.95),
+            "body_parity.min_core_height_ratio",
+            strict=True,
+        )
+        max_height = _require_number(
+            body_parity_data.get("max_core_height_ratio", 1.05),
+            "body_parity.max_core_height_ratio",
+            strict=True,
+        )
+        min_area = _require_number(
+            body_parity_data.get("min_core_area_ratio", 0.88),
+            "body_parity.min_core_area_ratio",
+            strict=True,
+        )
+        max_area = _require_number(
+            body_parity_data.get("max_core_area_ratio", 1.18),
+            "body_parity.max_core_area_ratio",
+            strict=True,
+        )
+        if min_height > 1.0 or max_height < 1.0 or min_height >= max_height:
+            raise BankContractError("body_parity height ratios must bracket 1.0")
+        if min_area > 1.0 or max_area < 1.0 or min_area >= max_area:
+            raise BankContractError("body_parity area ratios must bracket 1.0")
+        body_parity = asdict(BodyParityContract(
+            family=family,
+            reference_weapon=reference_weapon,
+            animations=tuple(animations_value),
+            core_x_min_ratio=core_min,
+            core_x_max_ratio=core_max,
+            min_core_height_ratio=min_height,
+            max_core_height_ratio=max_height,
+            min_core_area_ratio=min_area,
+            max_core_area_ratio=max_area,
+            max_spread_extra=_require_number(
+                body_parity_data.get("max_spread_extra", 0.04),
+                "body_parity.max_spread_extra",
+            ),
+        ))
+        body_parity["animations"] = list(body_parity["animations"])
+
     socket_quality_data = data.get("socket_quality", {})
     if not isinstance(socket_quality_data, dict):
         raise BankContractError("socket_quality must be an object")
@@ -1026,6 +1248,15 @@ def _validate_bank_contract(data: object) -> dict:
             }
         )
 
+    if body_parity is not None:
+        missing_body_animations = sorted(
+            set(body_parity["animations"]) - {animation["name"] for animation in normalized_animations}
+        )
+        if missing_body_animations:
+            raise BankContractError(
+                "body_parity references missing animations: " + ",".join(missing_body_animations)
+            )
+
     return {
         "schema": 1,
         "quality_contract": data["quality_contract"],
@@ -1033,6 +1264,7 @@ def _validate_bank_contract(data: object) -> dict:
         "weapon": data["weapon"],
         "composition": composition,
         "socket_quality": asdict(socket_quality),
+        "body_parity": body_parity,
         "cell": {"width": width, "height": height},
         "parts": normalized_parts,
         "animations": normalized_animations,
@@ -1125,6 +1357,26 @@ def build_bank(
                 "stored_frames": len(animation["slots"]),
                 "slots": animation["slots"],
                 "source_sha256": source_hashes,
+                "body_profile": (
+                    body_animation_profile(
+                        [authored_frames[source_index] for source_index in animation["slots"]],
+                        BodyParityContract(
+                            family=contract["body_parity"]["family"],
+                            reference_weapon=contract["body_parity"]["reference_weapon"],
+                            animations=tuple(contract["body_parity"]["animations"]),
+                            core_x_min_ratio=contract["body_parity"]["core_x_min_ratio"],
+                            core_x_max_ratio=contract["body_parity"]["core_x_max_ratio"],
+                            min_core_height_ratio=contract["body_parity"]["min_core_height_ratio"],
+                            max_core_height_ratio=contract["body_parity"]["max_core_height_ratio"],
+                            min_core_area_ratio=contract["body_parity"]["min_core_area_ratio"],
+                            max_core_area_ratio=contract["body_parity"]["max_core_area_ratio"],
+                            max_spread_extra=contract["body_parity"]["max_spread_extra"],
+                        ),
+                    )
+                    if contract["body_parity"] is not None
+                    and animation["name"] in contract["body_parity"]["animations"]
+                    else None
+                ),
                 "regions": regions,
                 "sockets": (
                     [animation["sockets"][source_index] for source_index in animation["slots"]]
@@ -1157,6 +1409,7 @@ def build_bank(
         "weapon": contract["weapon"],
         "composition": contract["composition"],
         "socket_quality": contract["socket_quality"],
+        "body_parity": contract["body_parity"],
         "cell": contract["cell"],
         "contract_sha256": _sha256_file(contract_path),
         "parts": manifest_parts,
@@ -1171,7 +1424,7 @@ def build_bank(
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
-    if raw and raw[0] not in {"lint", "build"}:
+    if raw and raw[0] not in {"lint", "build", "compare-body"}:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
@@ -1192,11 +1445,35 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     build.add_argument("contract", type=Path)
     build.add_argument("frames_root", type=Path)
     build.add_argument("output_dir", type=Path)
+
+    compare_body = sub.add_parser(
+        "compare-body",
+        help="compare one compiled body bank against its canonical weapon reference",
+    )
+    compare_body.add_argument("reference_manifest", type=Path)
+    compare_body.add_argument("candidate_manifest", type=Path)
+    compare_body.add_argument("--report", type=Path)
     return parser.parse_args(raw)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    if args.command == "compare-body":
+        reference = json.loads(args.reference_manifest.read_text(encoding="utf-8"))
+        candidate = json.loads(args.candidate_manifest.read_text(encoding="utf-8"))
+        result = validate_body_parity(reference, candidate)
+        payload = {
+            "ok": result.ok,
+            "errors": list(result.errors),
+            "comparisons": result.comparisons,
+        }
+        rendered = json.dumps(payload, indent=2, sort_keys=True)
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(rendered + "\n", encoding="utf-8")
+        print(rendered)
+        return 0 if result.ok else 1
+
     if args.command == "build":
         manifest = build_bank(args.contract, args.frames_root, args.output_dir)
         print(json.dumps(

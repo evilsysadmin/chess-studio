@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,7 @@ from PIL import Image, ImageDraw
 
 from sprite_forge import (
     BankContractError,
+    BodyParityContract,
     FixedScaleContract,
     GeometryContract,
     GeometryError,
@@ -25,7 +27,9 @@ from sprite_forge import (
     validate_geometry,
     validate_sequence,
     validate_socket_sequence,
+    body_animation_profile,
     build_bank,
+    validate_body_parity,
 )
 
 
@@ -462,6 +466,110 @@ class SpriteForgeTemporalTests(unittest.TestCase):
             ),
             result.errors,
         )
+
+
+class SpriteForgeBodyParityTests(unittest.TestCase):
+    def contract(self) -> BodyParityContract:
+        return BodyParityContract(
+            family="matthias-v1",
+            reference_weapon="pistol",
+            animations=("idle", "run", "crouch"),
+        )
+
+    def frame(self, *, body_height: int = 48, body_width: int = 24, weapon_width: int = 0) -> Image.Image:
+        image = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        left = 36
+        top = 80 - body_height
+        draw.rectangle(
+            (left, top, left + body_width - 1, 79),
+            fill=(180, 120, 80, 255),
+        )
+        if weapon_width:
+            # Connected weapon footprint changes global bbox but stays outside
+            # the canonical central body band.
+            draw.rectangle(
+                (left + body_width - 1, top + 18, left + body_width + weapon_width, top + 23),
+                fill=(120, 120, 120, 255),
+            )
+        return image
+
+    def manifest(self, weapon: str, profiles: dict[str, dict]) -> dict:
+        policy = asdict(self.contract())
+        policy["animations"] = list(policy["animations"])
+        return {
+            "weapon": weapon,
+            "body_parity": policy,
+            "animations": [
+                {"name": name, "body_profile": profile}
+                for name, profile in profiles.items()
+            ],
+        }
+
+    def test_profile_ignores_long_weapon_bbox_when_body_scale_matches(self) -> None:
+        reference = [
+            self.frame(body_height=48, body_width=24)
+            for _ in range(4)
+        ]
+        armed = [
+            self.frame(body_height=48, body_width=24, weapon_width=28)
+            for _ in range(4)
+        ]
+        left = body_animation_profile(reference, self.contract())
+        right = body_animation_profile(armed, self.contract())
+        self.assertAlmostEqual(
+            right["core_height_median"] / left["core_height_median"],
+            1.0,
+            places=4,
+        )
+        area_ratio = right["core_area_median"] / left["core_area_median"]
+        self.assertGreaterEqual(area_ratio, 0.98)
+        self.assertLessEqual(area_ratio, 1.05)
+        self.assertGreater(right["bbox_height_median"], 0)
+
+    def test_same_footline_but_smaller_body_fails_closed(self) -> None:
+        reference_profile = body_animation_profile(
+            [self.frame(body_height=48) for _ in range(4)],
+            self.contract(),
+        )
+        small_profile = body_animation_profile(
+            [self.frame(body_height=40) for _ in range(4)],
+            self.contract(),
+        )
+        reference = self.manifest(
+            "pistol",
+            {name: reference_profile for name in ("idle", "run", "crouch")},
+        )
+        candidate = self.manifest(
+            "shotgun",
+            {name: small_profile for name in ("idle", "run", "crouch")},
+        )
+        result = validate_body_parity(reference, candidate)
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(error.startswith("body-height-ratio:") for error in result.errors),
+            result.errors,
+        )
+
+    def test_matching_family_passes_across_weapon_footprints(self) -> None:
+        reference_profile = body_animation_profile(
+            [self.frame(body_height=48) for _ in range(4)],
+            self.contract(),
+        )
+        armed_profile = body_animation_profile(
+            [self.frame(body_height=48, weapon_width=24) for _ in range(4)],
+            self.contract(),
+        )
+        reference = self.manifest(
+            "pistol",
+            {name: reference_profile for name in ("idle", "run", "crouch")},
+        )
+        candidate = self.manifest(
+            "machinegun",
+            {name: armed_profile for name in ("idle", "run", "crouch")},
+        )
+        result = validate_body_parity(reference, candidate)
+        self.assertTrue(result.ok, result.errors)
 
 
 class SpriteForgeCompilerTests(unittest.TestCase):
