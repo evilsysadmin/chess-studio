@@ -125,6 +125,14 @@ class MatthiasPromptContractTests(unittest.TestCase):
             self.assertTrue(any(item["check"] == "body_height_vs_idle" for item in failures))
             self.assertGreater(report["summary"]["hardFailures"], 0)
 
+    def test_temporal_ratio_allows_only_contracted_raster_slack(self) -> None:
+        self.assertTrue(
+            mpc._within_ratio_with_pixel_slack(60.0, 170.0, 0.35, 1.0)
+        )
+        self.assertFalse(
+            mpc._within_ratio_with_pixel_slack(61.0, 170.0, 0.35, 1.0)
+        )
+
     def test_semantic_audit_accepts_real_crouch_height_and_motion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             smoke = self._smoke_fixture(Path(tmp), bad_crouch=False)
