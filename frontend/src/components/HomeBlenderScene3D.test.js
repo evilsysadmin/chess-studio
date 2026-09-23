@@ -99,6 +99,12 @@ describe('HomeBlenderScene3D live flame animation', () => {
     expect(homeBlenderFireKind('HOME_PROP_fireplace_left_log_a')).toBeNull();
   });
 
+  it('classifies the coffee mug steam wisps as steam, sharing the fire rig on purpose', () => {
+    expect(homeBlenderFireKind('HOME_PROP_table_mug_steam_0')).toBe('steam');
+    expect(homeBlenderFireKind('HOME_PROP_table_mug_steam_1')).toBe('steam');
+    expect(homeBlenderFireKind('HOME_PROP_table_mug_body')).toBeNull();
+  });
+
   it('keeps every live flame motion restrained around the authored silhouette', () => {
     for (const kind of ['flame', 'hot', 'ember', 'candle']) {
       for (let timeMs = 0; timeMs < 20000; timeMs += 137) {
@@ -152,6 +158,34 @@ describe('HomeBlenderScene3D live flame animation', () => {
         previous = current;
       }
     }
+  });
+
+  it('sways the coffee steam gently instead of flickering like a flame', () => {
+    for (let timeMs = 0; timeMs < 20000; timeMs += 137) {
+      const motion = homeBlenderFireMotion({ timeMs, phase: 0.9, kind: 'steam' });
+      expect(motion.scaleX).toBeGreaterThan(0.94);
+      expect(motion.scaleX).toBeLessThan(1.06);
+      expect(motion.scaleY).toBeGreaterThan(0.86);
+      expect(motion.scaleY).toBeLessThan(1.14);
+      expect(motion.scaleZ).toBeGreaterThan(0.94);
+      expect(motion.scaleZ).toBeLessThan(1.06);
+      expect(Math.abs(motion.lean)).toBeLessThan(0.17);
+      expect(motion.emission).toBe(1);
+    }
+
+    let previous = homeBlenderFireMotion({ timeMs: 0, phase: 1.5, kind: 'steam' });
+    for (let timeMs = 42; timeMs < 8000; timeMs += 42) {
+      const current = homeBlenderFireMotion({ timeMs, phase: 1.5, kind: 'steam' });
+      expect(Math.abs(current.scaleY - previous.scaleY)).toBeLessThan(0.06);
+      expect(Math.abs(current.lean - previous.lean)).toBeLessThan(0.05);
+      previous = current;
+    }
+
+    const heights = [];
+    for (let timeMs = 0; timeMs < 30000; timeMs += 250) {
+      heights.push(homeBlenderFireMotion({ timeMs, phase: 0.4, kind: 'steam' }).scaleY);
+    }
+    expect(new Set(heights.map((value) => value.toFixed(3))).size).toBeGreaterThan(60);
   });
 
   it('shares one slow draught so a hearth leans together', () => {

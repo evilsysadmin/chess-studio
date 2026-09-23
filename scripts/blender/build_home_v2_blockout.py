@@ -1313,30 +1313,6 @@ def add_table_and_board(materials):
             cylinder(f"HOME_PROP_table_leg_collar_{x}_{y}", (x, y, 0.93), 0.20, 0.10, metal, vertices=18)
             cylinder(f"HOME_PROP_table_leg_foot_{x}_{y}", (x, y, 0.14), 0.22, 0.12, wood, vertices=20)
     for side in (-1, 1):
-        panel_x = side * 2.58
-        cube(f"HOME_PROP_table_front_panel_{side}", (panel_x, -0.70, 0.76), (0.48, 0.055, 0.30), materials["wood"], bevel=0.055)
-        cube(
-            f"HOME_PROP_table_front_panel_inset_{side}",
-            (panel_x, -0.765, 0.76),
-            (0.37, 0.014, 0.205),
-            materials["dark"],
-            bevel=0.032,
-        )
-        cube(
-            f"HOME_PROP_table_front_panel_trim_top_{side}",
-            (panel_x, -0.784, 0.985),
-            (0.39, 0.010, 0.018),
-            materials["brass_dark"],
-            bevel=0.008,
-        )
-        cube(
-            f"HOME_PROP_table_front_panel_trim_bottom_{side}",
-            (panel_x, -0.784, 0.535),
-            (0.39, 0.010, 0.018),
-            materials["brass_dark"],
-            bevel=0.008,
-        )
-        sphere(f"HOME_PROP_table_front_rosette_{side}", (panel_x, -0.80, 0.77), (0.082, 0.022, 0.082), materials["gold"])
         leg_x = side * 3.12
         cube(f"HOME_PROP_table_front_leg_plinth_{side}", (leg_x, -0.40, 0.24), (0.26, 0.28, 0.18), wood, bevel=0.045)
         cube(f"HOME_PROP_table_front_leg_shaft_{side}", (leg_x, -0.40, 0.58), (0.18, 0.20, 0.28), wood, bevel=0.05)
@@ -1545,71 +1521,82 @@ def add_table_and_board(materials):
 
     # Coffee pot + steaming mug: the right side of the table opened up once
     # the board shrank (`square` above). Mirrors the candle/books cluster on
-    # the left without duplicating it.
+    # the left without duplicating it. Was nearly invisible against the
+    # fireplace glow at the original scale -- scaled up from the table-surface
+    # anchor and pulled forward, away from the brightest firelight.
     ceramic = materials["ceramic"]
     steam = materials["steam"]
     top = table_z + 0.18
-    pot_x, pot_y = 2.55, 1.85
-    cylinder("HOME_PROP_table_pot_foot", (pot_x, pot_y, top + 0.035), 0.115, 0.035, materials["brass_dark"], vertices=22)
+    coffee_scale = 1.55
+    pot_x, pot_y = 2.35, 1.55
+    cylinder("HOME_PROP_table_pot_foot", (pot_x, pot_y, top + 0.035 * coffee_scale), 0.115 * coffee_scale, 0.035 * coffee_scale, materials["brass_dark"], vertices=22)
     pot_body = cone(
         "HOME_PROP_table_pot_body",
-        (pot_x, pot_y, top + 0.18),
-        0.105,
-        0.078,
-        0.22,
+        (pot_x, pot_y, top + 0.18 * coffee_scale),
+        0.105 * coffee_scale,
+        0.078 * coffee_scale,
+        0.22 * coffee_scale,
         materials["brass_dark"],
         vertices=22,
     )
-    cylinder("HOME_PROP_table_pot_neck", (pot_x, pot_y, top + 0.315), 0.052, 0.025, metal, vertices=20)
-    cylinder("HOME_PROP_table_pot_lid", (pot_x, pot_y, top + 0.349), 0.060, 0.009, materials["brass_dark"], vertices=20)
-    sphere("HOME_PROP_table_pot_knob", (pot_x, pot_y, top + 0.378), (0.020, 0.020, 0.020), materials["gold"])
+    cylinder("HOME_PROP_table_pot_neck", (pot_x, pot_y, top + 0.315 * coffee_scale), 0.052 * coffee_scale, 0.025 * coffee_scale, metal, vertices=20)
+    cylinder("HOME_PROP_table_pot_lid", (pot_x, pot_y, top + 0.349 * coffee_scale), 0.060 * coffee_scale, 0.009 * coffee_scale, materials["brass_dark"], vertices=20)
+    sphere("HOME_PROP_table_pot_knob", (pot_x, pot_y, top + 0.378 * coffee_scale), (0.020 * coffee_scale, 0.020 * coffee_scale, 0.020 * coffee_scale), materials["gold"])
     pot_spout = cone(
         "HOME_PROP_table_pot_spout",
-        (pot_x - 0.14, pot_y, top + 0.24),
-        0.026,
-        0.009,
-        0.16,
+        (pot_x - 0.14 * coffee_scale, pot_y, top + 0.24 * coffee_scale),
+        0.026 * coffee_scale,
+        0.009 * coffee_scale,
+        0.16 * coffee_scale,
         materials["brass_dark"],
         vertices=14,
     )
     pot_spout.rotation_euler[1] = math.radians(58.0)
     curve_tube(
         "HOME_PROP_table_pot_handle",
-        [(pot_x + 0.11, pot_y, top + 0.30), (pot_x + 0.20, pot_y, top + 0.22), (pot_x + 0.12, pot_y, top + 0.14)],
-        0.018,
+        [
+            (pot_x + 0.11 * coffee_scale, pot_y, top + 0.30 * coffee_scale),
+            (pot_x + 0.20 * coffee_scale, pot_y, top + 0.22 * coffee_scale),
+            (pot_x + 0.12 * coffee_scale, pot_y, top + 0.14 * coffee_scale),
+        ],
+        0.018 * coffee_scale,
         metal,
     )
 
-    mug_x, mug_y = 3.05, 1.55
-    cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.045), 0.062, 0.045, ceramic, vertices=24)
-    cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.094), 0.067, 0.004, ceramic, vertices=24)
-    cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.086), 0.054, 0.003, materials["dark"], vertices=24)
+    mug_x, mug_y = 2.85, 1.30
+    cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.045 * coffee_scale), 0.062 * coffee_scale, 0.045 * coffee_scale, ceramic, vertices=24)
+    cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.094 * coffee_scale), 0.067 * coffee_scale, 0.004 * coffee_scale, ceramic, vertices=24)
+    cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.086 * coffee_scale), 0.054 * coffee_scale, 0.003 * coffee_scale, materials["dark"], vertices=24)
     curve_tube(
         "HOME_PROP_table_mug_handle",
-        [(mug_x + 0.062, mug_y, top + 0.075), (mug_x + 0.11, mug_y, top + 0.05), (mug_x + 0.062, mug_y, top + 0.025)],
-        0.014,
+        [
+            (mug_x + 0.062 * coffee_scale, mug_y, top + 0.075 * coffee_scale),
+            (mug_x + 0.11 * coffee_scale, mug_y, top + 0.05 * coffee_scale),
+            (mug_x + 0.062 * coffee_scale, mug_y, top + 0.025 * coffee_scale),
+        ],
+        0.014 * coffee_scale,
         ceramic,
     )
     curve_tube(
         "HOME_PROP_table_mug_steam_0",
         [
-            (mug_x - 0.015, mug_y, top + 0.090),
-            (mug_x + 0.010, mug_y, top + 0.160),
-            (mug_x - 0.020, mug_y, top + 0.240),
-            (mug_x + 0.015, mug_y, top + 0.320),
+            (mug_x - 0.015 * coffee_scale, mug_y, top + 0.090 * coffee_scale),
+            (mug_x + 0.010 * coffee_scale, mug_y, top + 0.160 * coffee_scale),
+            (mug_x - 0.020 * coffee_scale, mug_y, top + 0.240 * coffee_scale),
+            (mug_x + 0.015 * coffee_scale, mug_y, top + 0.320 * coffee_scale),
         ],
-        0.010,
+        0.010 * coffee_scale,
         steam,
     )
     curve_tube(
         "HOME_PROP_table_mug_steam_1",
         [
-            (mug_x + 0.020, mug_y + 0.01, top + 0.090),
-            (mug_x - 0.010, mug_y + 0.01, top + 0.150),
-            (mug_x + 0.025, mug_y + 0.01, top + 0.210),
-            (mug_x - 0.005, mug_y + 0.01, top + 0.270),
+            (mug_x + 0.020 * coffee_scale, mug_y + 0.01, top + 0.090 * coffee_scale),
+            (mug_x - 0.010 * coffee_scale, mug_y + 0.01, top + 0.150 * coffee_scale),
+            (mug_x + 0.025 * coffee_scale, mug_y + 0.01, top + 0.210 * coffee_scale),
+            (mug_x - 0.005 * coffee_scale, mug_y + 0.01, top + 0.270 * coffee_scale),
         ],
-        0.008,
+        0.008 * coffee_scale,
         steam,
     )
 
@@ -1900,18 +1887,6 @@ def add_bookshelf(materials):
             bevel=0.010,
         )
 
-    armillary_center = (x + 0.72, y - 0.58, 3.38)
-    sphere("HOME_PROP_library_armillary_core", armillary_center, (0.16, 0.09, 0.16), brass)
-    curve_tube(
-        "HOME_PROP_library_armillary_ring",
-        [
-            (armillary_center[0] + 0.34 * math.cos(i * math.tau / 24), armillary_center[1], armillary_center[2] + 0.34 * math.sin(i * math.tau / 24))
-            for i in range(25)
-        ],
-        0.025,
-        brass,
-    )
-    cylinder("HOME_PROP_library_armillary_stand", (armillary_center[0], armillary_center[1], 2.96), 0.055, 0.52, brass, vertices=18)
     cube("HOME_PROP_library_crown", (x, y - 0.32, 4.92), (1.62, 0.18, 0.12), wood, bevel=0.04)
     for side in (-1, 1):
         sphere(f"HOME_PROP_library_finial_{side}", (x + side * 1.28, y - 0.46, 5.08), (0.10, 0.07, 0.10), brass)
@@ -2210,20 +2185,6 @@ def add_armor(materials):
             brass if idx % 2 == 0 else steel,
             bevel=0.008,
         )
-
-
-def add_trophy(materials):
-    brass = materials["brass"]
-    wood = materials["wood"]
-    x, y = -3.45, 5.76
-    cube("HOME_PROP_trophy_shelf", (x, y, 2.78), (0.56, 0.22, 0.08), wood, bevel=0.025)
-    cylinder("HOME_PROP_trophy_stem", (x, y - 0.18, 3.05), 0.07, 0.34, brass)
-    cylinder("HOME_PROP_trophy_foot", (x, y - 0.18, 2.90), 0.18, 0.08, materials["brass_dark"], vertices=20)
-    cone("HOME_PROP_trophy_cup", (x, y - 0.18, 3.34), 0.18, 0.30, 0.30, brass, vertices=28)
-    cylinder("HOME_PROP_trophy_rim", (x, y - 0.18, 3.50), 0.32, 0.045, materials["gold"], vertices=28)
-    sphere("HOME_PROP_trophy_finial", (x, y - 0.18, 3.56), (0.055, 0.045, 0.045), materials["gold"])
-    curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.18, y - 0.18, 3.42), (x - 0.34, y - 0.18, 3.33), (x - 0.23, y - 0.18, 3.18)], 0.035, brass)
-    curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.18, y - 0.18, 3.42), (x + 0.34, y - 0.18, 3.33), (x + 0.23, y - 0.18, 3.18)], 0.035, brass)
 
 
 def add_side_furnishings(materials):
@@ -4044,7 +4005,6 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.012,
         materials["armor_steel"],
     )
-    add_trophy(materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 

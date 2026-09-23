@@ -96,6 +96,13 @@ export function homeBlenderFireKind(name = '') {
     || normalized.includes('_candle_flame')
     || normalized.includes('home_prop_torch_flame_')
   ) return 'candle';
+  // Not fire, but the coffee steam wisps ride the same rig on purpose: it
+  // already solves pivot-rebase (they're curve_tube geometry authored at the
+  // world origin, same as the fireplace flat-panel flames), the
+  // prefers-reduced-motion gate and the software-renderer render budget.
+  // Building a second parallel animation loop for one small prop wasn't worth
+  // it.
+  if (normalized.includes('_mug_steam_')) return 'steam';
   if (!normalized.includes('home_prop_fireplace_')) return null;
   if (normalized.includes('ember')) return 'ember';
   if (normalized.includes('_hot_') || normalized.endsWith('_hot')) return 'hot';
@@ -162,6 +169,19 @@ export function homeBlenderFireMotion({
       lean: 0,
       emission: 0.93 + glow * 0.06 + flick * 0.02,
       light: 0.97 + glow * 0.03,
+    };
+  }
+  if (kind === 'steam') {
+    // A rising wisp curls and sways, it does not flicker: slow, gust-free rates.
+    const sway = fireNoise(seconds, 0.22, seed + 701) * 0.65 + fireNoise(seconds, 0.55, seed + 809) * 0.35;
+    const rise = fireNoise(seconds, 0.30, seed + 907);
+    return {
+      scaleX: 1 - rise * 0.04,
+      scaleY: 1 + rise * 0.12,
+      scaleZ: 1 - rise * 0.04,
+      lean: sway * 0.16,
+      emission: 1,
+      light: 1,
     };
   }
 
@@ -334,7 +354,9 @@ function prepareRuntimeFireRig(root) {
     const kind = homeBlenderFireKind(object.name);
     if (!kind) return;
     object.castShadow = false;
-    if (kind === 'flame' || kind === 'hot') rebaseFlameToPivot(object);
+    // Steam is curve_tube geometry authored at the world origin, exactly like the
+    // fireplace's flat-panel flames, so it needs the same pivot rebase.
+    if (kind === 'flame' || kind === 'hot' || kind === 'steam') rebaseFlameToPivot(object);
 
     if (Array.isArray(object.material)) {
       object.material = object.material.map((material) => material?.clone?.() || material);
@@ -342,9 +364,13 @@ function prepareRuntimeFireRig(root) {
       object.material = object.material.clone();
     }
 
-    for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
-      if (kind !== 'ember') applyFlameLook(material, kind);
-      if (kind !== 'ember') applyFlameGradient(material, flameHeightRange(object.geometry));
+    // The flame look/gradient recolor a surface into a saturated fire emitter;
+    // steam keeps its own authored pale material, only its motion is shared.
+    if (kind === 'flame' || kind === 'hot' || kind === 'candle') {
+      for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
+        applyFlameLook(material, kind);
+        applyFlameGradient(material, flameHeightRange(object.geometry));
+      }
     }
 
     const materials = (Array.isArray(object.material) ? object.material : [object.material])
