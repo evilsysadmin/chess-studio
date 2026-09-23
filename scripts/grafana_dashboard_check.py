@@ -38,12 +38,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "IPs únicas · tráfico aceptado por país"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"'):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"', 'status=~"2..|3.."', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []
@@ -67,16 +67,17 @@ def main() -> int:
             fail(f"{filename}: UID esperado {uid}")
     logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
     logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
-    if "Biggest offenders · 401/403" not in logs_titles:
-        fail("logs dashboard perdió ranking 401/403")
+    for required_logs_title in ("Biggest offenders · 401/403", "IPs únicas · tráfico aceptado por país"):
+        if required_logs_title not in logs_titles:
+            fail(f"logs dashboard perdió panel: {required_logs_title}")
     logs_exprs = "\n".join(
         str(target.get("expr") or "")
         for panel in (logs_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
-    for token in ('status=~"401|403"', "client_ip"):
+    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'username!~"ci_smoke_[0-9a-f]{16}"', 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in logs_exprs:
-            fail(f"logs dashboard perdió ranking 401/403: {token}")
+            fail(f"logs dashboard perdió señal accionable: {token}")
 
     explorer_data = load_json(INFRA / "dashboards" / "chess-studio-log-explorer.json")
     explorer_variables = {str(row.get("name") or "") for row in ((explorer_data.get("templating") or {}).get("list") or [])}

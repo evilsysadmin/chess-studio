@@ -177,11 +177,11 @@ def _client_network(request: Request) -> tuple[str | None, str | None]:
     return client_ip, country
 
 
-def _request_network_log_fields(request: Request) -> tuple[str | None, str | None, list[str]]:
-    client_ip, _ = _client_network(request)
+def _request_network_log_fields(request: Request) -> tuple[str | None, str | None, str | None, list[str]]:
+    client_ip, client_country = _client_network(request)
     peer_ip = sanitize_ip(str(request.client.host or "")) if request.client else None
     xff = sanitize_forwarded_for(request.headers.get("x-forwarded-for"))
-    return client_ip, peer_ip, xff
+    return client_ip, client_country, peer_ip, xff
 
 
 def rate_limit_key(request: Request) -> str:
@@ -232,7 +232,7 @@ async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
     request_id = _request_id(request)
     client_release = _client_release(request)
-    client_ip, peer_ip, x_forwarded_for = _request_network_log_fields(request)
+    client_ip, client_country, peer_ip, x_forwarded_for = _request_network_log_fields(request)
     inflight = request_enter()
     status_code = 500
     raised = False
@@ -296,6 +296,7 @@ async def log_request_with_user(request: Request, call_next):
             client_ip=client_ip,
             peer_ip=peer_ip,
             x_forwarded_for=x_forwarded_for,
+            client_country=client_country,
             synthetic_source=getattr(request.state, "synthetic_source", None),
         )
         # El detalle técnico completo queda en el traceback del servidor; al
@@ -332,6 +333,7 @@ async def log_request_with_user(request: Request, call_next):
                 client_ip=client_ip,
                 peer_ip=peer_ip,
                 x_forwarded_for=x_forwarded_for,
+                client_country=client_country,
                 synthetic_source=getattr(request.state, "synthetic_source", None),
             )
 

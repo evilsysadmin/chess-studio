@@ -30,6 +30,13 @@ def sanitize_ip(value: str | None) -> str | None:
         return None
 
 
+def sanitize_country(value: str | None) -> str | None:
+    country = _clean_log_text(value, max_length=2).upper()
+    if not re.fullmatch(r"[A-Z]{2}", country or "") or country in {"XX", "T1"}:
+        return None
+    return country
+
+
 def sanitize_forwarded_for(value: str | None, *, max_entries: int = 8) -> list[str]:
     """Return only syntactically valid IPs from X-Forwarded-For.
 
@@ -145,8 +152,8 @@ def emit_auth_login_failed(
         payload["peer_ip"] = clean_peer_ip
     if clean_xff:
         payload["x_forwarded_for"] = clean_xff[:8]
-    country = _clean_log_text(client_country, max_length=2).upper()
-    if re.fullmatch(r"[A-Z]{2}", country or ""):
+    country = sanitize_country(client_country)
+    if country:
         payload["client_country"] = country
     clean_ua = _clean_log_text(user_agent, max_length=240)
     if clean_ua:
@@ -173,6 +180,7 @@ def emit_http_event(
     client_ip: str | None = None,
     peer_ip: str | None = None,
     x_forwarded_for: list[str] | None = None,
+    client_country: str | None = None,
     synthetic_source: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
@@ -216,6 +224,9 @@ def emit_http_event(
         payload["peer_ip"] = clean_peer_ip
     if clean_xff:
         payload["x_forwarded_for"] = clean_xff[:8]
+    country = sanitize_country(client_country)
+    if country:
+        payload["client_country"] = country
     message = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
     if exception:
         logger.exception(message)
