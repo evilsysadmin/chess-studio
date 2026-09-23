@@ -156,20 +156,21 @@ jobs:
             --pass-scale-delta 0.04 \
             --max-auto-scale-delta 0.12
 
-      - name: Build Matthias stabilization v1 batch
+      - name: Build Matthias SMG hurt alpha v2 candidate
         if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 scripts/art/sprite_forge.py repair-hurt-batch \
+          mkdir -p "$LAB"
+          python3 scripts/art/sprite_forge.py repair-machinegun-hurt-alpha \
             /tmp/pawn-slug-sprite-smoke/matthias \
             "$LAB" \
             --actor matthias \
             --columns 8 \
             --cell-size 416 \
-            --max-auto-scale-delta 0.12 \
-            --min-standing-height-ratio 0.80
-      - name: Publish Matthias stabilization v1 to R2
+            --min-coverage 0.985
+
+      - name: Publish Matthias SMG hurt alpha v2 to R2
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -180,27 +181,14 @@ jobs:
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-
           python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/machinegun-stabilized-v1.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.stabilizedV1 \
-            --prefix pawn-slug-godot/matthias/stabilized-v1/machinegun/full \
-            --manifest "$LAB/machinegun-r2-manifest.json"
+            "$LAB/machinegun-hurt-alpha-v2.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.hurtAlphaV2 \
+            --prefix pawn-slug-godot/matthias/hurt-alpha-v2/machinegun/full \
+            --manifest "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json"
+          cat "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
 
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/shotgun-stabilized-v1.png" \
-            --logical-id pawnSlug.godot.matthias.shotgun.stabilizedV1 \
-            --prefix pawn-slug-godot/matthias/stabilized-v1/shotgun/full \
-            --manifest "$LAB/shotgun-r2-manifest.json"
-
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/panzerfaust-stabilized-v1.png" \
-            --logical-id pawnSlug.godot.matthias.panzerfaust.stabilizedV1 \
-            --prefix pawn-slug-godot/matthias/stabilized-v1/panzerfaust/full \
-            --manifest "$LAB/panzerfaust-r2-manifest.json"
-
-          cat "$LAB/"*-r2-manifest.json >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify published Matthias stabilization v1
+      - name: Verify published Matthias SMG hurt alpha v2
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -208,34 +196,21 @@ jobs:
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 - "$LAB" <<'PY' > "$LAB/published-assets.tsv"
+          readarray -t asset < <(python3 - "$LAB/machinegun-hurt-alpha-v2-r2-manifest.json" <<'PY'
           import json
-          import pathlib
           import sys
-
-          root = pathlib.Path(sys.argv[1])
-          specs = (
-              ("machinegun", "pawnSlug.godot.matthias.machinegun.stabilizedV1"),
-              ("shotgun", "pawnSlug.godot.matthias.shotgun.stabilizedV1"),
-              ("panzerfaust", "pawnSlug.godot.matthias.panzerfaust.stabilizedV1"),
-          )
-          for weapon, logical_id in specs:
-              data = json.loads(
-                  (root / f"{weapon}-r2-manifest.json").read_text(
-                      encoding="utf-8"
-                  )
-              )
-              item = data["assets"][logical_id]
-              print(f"{weapon}\t{item['url']}\t{item['sha256']}")
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          item = data["assets"]["pawnSlug.godot.matthias.machinegun.hurtAlphaV2"]
+          print(item["url"])
+          print(item["sha256"])
           PY
+          )
+          curl --fail --silent --show-error --location --max-time 20 \
+            "${asset[0]}" -o "$LAB/published-machinegun-hurt-alpha-v2.png"
+          actual="$(sha256sum "$LAB/published-machinegun-hurt-alpha-v2.png" | awk '{print $1}')"
+          test "$actual" = "${asset[1]}"
+          echo "Published Matthias SMG hurt alpha v2 verified: ${asset[0]}"
 
-          while IFS=$'\t' read -r weapon url expected; do
-            curl --fail --silent --show-error --location --max-time 20 \
-              "$url" -o "$LAB/published-$weapon.png"
-            actual="$(sha256sum "$LAB/published-$weapon.png" | awk '{print $1}')"
-            test "$actual" = "$expected"
-            echo "Published Matthias $weapon stabilization verified: $url"
-          done < "$LAB/published-assets.tsv"
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'
         run: |
