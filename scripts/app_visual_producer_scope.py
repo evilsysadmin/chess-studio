@@ -33,8 +33,13 @@ WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
 WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/gamewarroomcommandcolumn.jsx",
     "frontend/src/components/warroomscenevariant.js",
+    "frontend/src/components/warroomsharedviewport.css",
+    "frontend/src/components/warroomclassicshell.js",
+    "frontend/src/components/warroomblendershellruntime.js",
+    "frontend/src/components/warroomblendermaterials.js",
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
+    "frontend/src/components/warroomv3fire.js",
     "frontend/src/components/warroomvariant.js",
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}

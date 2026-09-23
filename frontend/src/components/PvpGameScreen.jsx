@@ -20,7 +20,6 @@ import {
   uniqueLegalTargets,
 } from '../pvpGameModel.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
-import './WarRoomCompositionPolish.css';
 import './WarRoomMobileLandscape.css';
 import './PvpGameScreen.css';
 

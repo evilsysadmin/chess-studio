@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import './WarRoomCompositionPolish.css';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -248,15 +247,7 @@ function addFireplaceInterior(group, towardBoard) {
   return 4;
 }
 
-function refineMasonryAndLightingTargets(group, { wallZ, towardBoard }) {
-  let retiredJoints = 0;
-  group.traverse?.((object) => {
-    if (object?.name !== 'war-room-teutonic-mortar-joint') return;
-    object.visible = false;
-    object.userData.warRoomJointRetired = 'flat-ashlar-texture-v10';
-    retiredJoints += 1;
-  });
-
+function alignLightingTargets(group, { wallZ, towardBoard }) {
   for (const [targetName, side] of [
     ['war-room-museum-side-target-left', -1],
     ['war-room-museum-side-target-right', 1],
@@ -265,10 +256,6 @@ function refineMasonryAndLightingTargets(group, { wallZ, towardBoard }) {
     if (!target) continue;
     target.position.set(side * 6.05, 2.58, wallZ + towardBoard * 2.7);
   }
-
-  group.userData.warRoomRetiredMortarJoints = retiredJoints;
-  group.userData.warRoomCompositionLayoutWritesRetired = true;
-  return retiredJoints;
 }
 
 export function applyWarRoomCompositionPolish(group, {
@@ -279,14 +266,13 @@ export function applyWarRoomCompositionPolish(group, {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
   if (group.userData.warRoomCompositionPolishVersion === 'v10') return 0;
 
-  const masonryCount = refineMasonryAndLightingTargets(group, { wallZ, towardBoard });
+  alignLightingTargets(group, { wallZ, towardBoard });
   const paintingCount = installGalleryLandscapes(group);
   const fireplaceMeshCount = addFireplaceInterior(group, towardBoard);
 
   group.userData.warRoomCompositionPolishVersion = 'v10';
   group.userData.warRoomCompositionArmorCount = 0;
-  group.userData.warRoomCompositionMasonryCount = masonryCount;
   group.userData.warRoomCompositionPaintingCount = paintingCount;
   group.userData.warRoomCompositionFireplaceMeshCount = fireplaceMeshCount;
-  return masonryCount + paintingCount + fireplaceMeshCount;
+  return paintingCount + fireplaceMeshCount;
 }

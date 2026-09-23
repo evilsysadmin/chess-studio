@@ -44,7 +44,7 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('no recoloca armaduras y todavía retira juntas legacy inyectadas por compatibilidad', () => {
+  it('no recoloca armaduras ni reanima compatibilidad con juntas que el builder ya omite', () => {
     const room = new THREE.Group();
     const leftArmor = new THREE.Group();
     leftArmor.name = 'war-room-teutonic-armor-left';
@@ -54,9 +54,7 @@ describe('WarRoomCompositionPolish', () => {
     rightArmor.name = 'war-room-teutonic-armor-right';
     rightArmor.position.set(8.2, .12, -1.6);
     rightArmor.rotation.y = -1.47;
-    const mortar = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
-    mortar.name = 'war-room-teutonic-mortar-joint';
-    room.add(leftArmor, rightArmor, mortar);
+    room.add(leftArmor, rightArmor);
     const before = {
       leftPosition: leftArmor.position.toArray(),
       leftRotationY: leftArmor.rotation.y,
@@ -64,15 +62,14 @@ describe('WarRoomCompositionPolish', () => {
       rightRotationY: rightArmor.rotation.y,
     };
 
-    expect(applyWarRoomCompositionPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+    expect(applyWarRoomCompositionPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBe(0);
 
     expect(leftArmor.position.toArray()).toEqual(before.leftPosition);
     expect(leftArmor.rotation.y).toBe(before.leftRotationY);
     expect(rightArmor.position.toArray()).toEqual(before.rightPosition);
     expect(rightArmor.rotation.y).toBe(before.rightRotationY);
-    expect(mortar.visible).toBe(false);
-    expect(room.userData.warRoomRetiredMortarJoints).toBe(1);
-    expect(room.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
+    expect(room.userData.warRoomRetiredMortarJoints).toBeUndefined();
+    expect(room.userData.warRoomCompositionLayoutWritesRetired).toBeUndefined();
     expect(room.userData.warRoomCompositionArmorCount).toBe(0);
     dispose(room);
   });
@@ -107,8 +104,8 @@ describe('WarRoomCompositionPolish', () => {
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(masonry.userData.warRoomRetiredMortarJointsOmitted).toBe(78);
     expect(room.getObjectByName('war-room-teutonic-mortar-joint')).toBeUndefined();
-    expect(owner.userData.warRoomRetiredMortarJoints).toBe(0);
-    expect(owner.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
+    expect(owner.userData.warRoomRetiredMortarJoints).toBeUndefined();
+    expect(owner.userData.warRoomCompositionLayoutWritesRetired).toBeUndefined();
 
     const diagonalBraces = [];
     room.traverse((object) => {

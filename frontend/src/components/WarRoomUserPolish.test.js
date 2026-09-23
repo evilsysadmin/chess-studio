@@ -44,19 +44,6 @@ function makeRoom() {
   ]) room.add(namedGroup(name));
   room.add(painting(0), painting(1), fireplace());
 
-  for (let index = 0; index < 6; index += 1) {
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(1.92, .16, .16), new THREE.MeshBasicMaterial());
-    brace.name = 'war-room-hammerbeam-brace';
-    brace.rotation.z = index % 2 ? .58 : -.58;
-    brace.position.y = 5.02;
-    room.add(brace);
-  }
-  for (let index = 0; index < 4; index += 1) {
-    const arch = new THREE.Mesh(new THREE.BoxGeometry(.1, 1.36, .1), new THREE.MeshBasicMaterial());
-    arch.name = 'war-room-armor-alcove-pointed-arch';
-    arch.rotation.x = index % 2 ? .79 : -.79;
-    room.add(arch);
-  }
   return room;
 }
 
@@ -103,21 +90,6 @@ describe('War Room user polish', () => {
     expect(room.userData.warRoomUserPolishLayoutWritesRetired).toBe(true);
     expect(room.userData.warRoomFurnitureGap).toBeUndefined();
     expect(room.userData.warRoomFurnitureOrder).toBeUndefined();
-    dispose(room);
-  });
-
-  it('elimina por completo cualquier tirante o arco diagonal heredado que lea como M', () => {
-    const room = makeRoom();
-    applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 });
-    const diagonals = [];
-    room.traverse((object) => {
-      if (['war-room-hammerbeam-brace', 'war-room-armor-alcove-pointed-arch'].includes(object.name)) diagonals.push(object);
-    });
-    expect(diagonals).toHaveLength(10);
-    expect(diagonals.every((object) => object.visible === false)).toBe(true);
-    expect(diagonals.every((object) => object.userData.warRoomBraceStyle === 'retired-no-monogram-v24')).toBe(true);
-    expect(room.userData.warRoomDiagonalMonogramsRetired).toBe(10);
-    expect(room.userData.warRoomMonogramFree).toBe(true);
     dispose(room);
   });
 

@@ -31,11 +31,12 @@ import {
   buildBoard3DLegalMap,
 } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
-import { createClassicWarRoomShellController, shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
+import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
-
+import './WarRoomSharedViewport.css';
 const BOARD3D_PLAY_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
 const BOARD3D_INSPECT_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Inspección activa. Usa flechas para mover la cámara, Inicio para centrarla y Escape para volver a jugar.';
 const BOARD3D_INSPECT_SHORTCUTS = 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape';
@@ -106,7 +107,7 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
-  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, status: warRoomV2Status, setStatus: setWarRoomV2Status } = useWarRoomVariant();
+  const { selectable: warRoomVariantSelectable, variant: warRoomVariant, domData: warRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -730,13 +731,13 @@ function Board3DCanvas({
       whiteSide: state.whiteSide,
       renderLite: state.renderLite,
       canvas: state.renderer.domElement,
-      onStatus: setWarRoomV2Status,
+      onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
     });
   }, [
     warRoomVariant,
     warRoomVariantSelectable,
-    setWarRoomV2Status,
+    setWarRoomVariantStatus,
     effectiveThemeId,
     orientation,
     showCoordinates,
@@ -1177,8 +1178,7 @@ function Board3DCanvas({
     <div
       className="board3d-main-shell"
       data-board3d-war-room="true"
-      data-board3d-variant={warRoomVariant}
-      data-board3d-v2-status={warRoomV2Status}
+      {...warRoomVariantDomData}
       data-board3d-scene="premium"
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
