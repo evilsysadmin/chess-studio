@@ -104,6 +104,8 @@ export function chroniclesActiveEnemies(state) {
 }
 
 export function chroniclesEnemyPosition(state, enemy) {
+  const runtime = state?.enemyPositions?.[enemy.id];
+  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
   const keyed = enemy.positionKey && enemy.positions ? enemy.positions[state?.[enemy.positionKey]] : null;
   return keyed || { x: enemy.x, y: enemy.y };
 }
