@@ -1779,9 +1779,461 @@ def repair_sprite_parity(
     return report
 
 
+
+MATTHIAS_HURT_STANDING_SLOTS = (0, 1, 2, 2, 1, 0, 0, 0)
+MATTHIAS_MACHINEGUN_HURT_DONOR_COLUMN = 3
+MATTHIAS_MACHINEGUN_HURT_DX = (-2, 7, 4, 0, -2, -18, -18, -18)
+MATTHIAS_MACHINEGUN_HURT_PATCH = (90, 116, 279, 210)
+MATTHIAS_MACHINEGUN_HURT_MAX_RGB_MEAN = 165.0
+
+
+def _fill_transparent_from_shifted_patch(
+    target: Image.Image,
+    donor: Image.Image,
+    *,
+    dx: int,
+    patch: tuple[int, int, int, int],
+    max_rgb_mean: float,
+) -> tuple[Image.Image, int, tuple[int, int, int, int] | None]:
+    out = target.convert("RGBA").copy()
+    source = donor.convert("RGBA")
+    target_pixels = out.load()
+    source_pixels = source.load()
+    x0, y0, x1, y1 = patch
+
+    if not (
+        0 <= x0 < x1 <= source.width
+        and 0 <= y0 < y1 <= source.height
+        and out.size == source.size
+    ):
+        raise GeometryError("invalid-shifted-patch")
+
+    added = 0
+    changed_x: list[int] = []
+    changed_y: list[int] = []
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            target_x = x + dx
+            if target_x < 0 or target_x >= out.width:
+                continue
+            r, g, b, a = source_pixels[x, y]
+            if a == 0:
+                continue
+            if (r + g + b) / 3.0 > max_rgb_mean:
+                continue
+            if target_pixels[target_x, y][3] != 0:
+                continue
+            target_pixels[target_x, y] = (r, g, b, a)
+            added += 1
+            changed_x.append(target_x)
+            changed_y.append(y)
+
+    changed_bbox = None
+    if changed_x:
+        changed_bbox = (
+            min(changed_x),
+            min(changed_y),
+            max(changed_x) + 1,
+            max(changed_y) + 1,
+        )
+    return out, added, changed_bbox
+
+
+def _prove_untouched_batch_rows(
+    current: Image.Image,
+    candidate: Image.Image,
+    *,
+    rows: int,
+    columns: int,
+    cell_size: int,
+    changed_rows: set[int],
+) -> None:
+    for row in range(rows):
+        if row in changed_rows:
+            continue
+        bounds = (
+            0,
+            row * cell_size,
+            columns * cell_size,
+            (row + 1) * cell_size,
+        )
+        if current.crop(bounds).tobytes() != candidate.crop(bounds).tobytes():
+            raise GeometryError(f"untouched-row-drift:{row}")
+
+
+def repair_matthias_stabilization_batch(
+    frames_root: Path,
+    output_dir: Path,
+    *,
+    actor: str = "matthias",
+    actions: tuple[str, ...] = DEFAULT_MATTHIAS_ACTIONS,
+    canon_weapons: tuple[str, ...] = ("pistol", "machinegun"),
+    columns: int = 8,
+    cell_size: int = 416,
+    max_auto_scale_delta: float = 0.12,
+    min_standing_height_ratio: float = 0.80,
+    hurt_slots: tuple[int, ...] = MATTHIAS_HURT_STANDING_SLOTS,
+    machinegun_donor_column: int = MATTHIAS_MACHINEGUN_HURT_DONOR_COLUMN,
+    machinegun_dx: tuple[int, ...] = MATTHIAS_MACHINEGUN_HURT_DX,
+    machinegun_patch: tuple[int, int, int, int] = MATTHIAS_MACHINEGUN_HURT_PATCH,
+    machinegun_max_rgb_mean: float = MATTHIAS_MACHINEGUN_HURT_MAX_RGB_MEAN,
+    alpha_threshold: int = 8,
+) -> dict:
+    if "jump" not in actions or "hurt" not in actions:
+        raise BankContractError("stabilization batch requires jump and hurt actions")
+    if columns != len(hurt_slots) or columns != len(machinegun_dx):
+        raise BankContractError("stabilization slot/dx count must match columns")
+    if machinegun_donor_column < 0 or machinegun_donor_column >= columns:
+        raise BankContractError("machinegun hurt donor column outside batch")
+    if not 0.0 < min_standing_height_ratio <= 1.0:
+        raise BankContractError("min standing height ratio must be in (0,1]")
+
+    jump_row = actions.index("jump")
+    hurt_row = actions.index("hurt")
+    rows = len(actions)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    current_atlases = {
+        weapon: _assemble_batch_atlas(
+            frames_root,
+            actor=actor,
+            weapon=weapon,
+            rows=rows,
+            columns=columns,
+            cell_size=cell_size,
+            replacements={},
+        )
+        for weapon in ("machinegun", "shotgun", "panzerfaust")
+    }
+
+    # SMG hurt: preserve the existing pose/weapon pixel-for-pixel and fill only
+    # transparent cap holes from the one clean hurt frame.
+    machinegun_frames = [
+        _load_batch_frame(
+            frames_root,
+            actor,
+            "machinegun",
+            hurt_row,
+            column,
+        )
+        for column in range(columns)
+    ]
+    donor = machinegun_frames[machinegun_donor_column]
+    machinegun_replacements: dict[tuple[int, int], Image.Image] = {}
+    machinegun_health: list[dict] = []
+    for column, current in enumerate(machinegun_frames):
+        before = batch_frame_metrics(current, alpha_threshold)
+        if column == machinegun_donor_column:
+            repaired = current.copy()
+            added = 0
+            changed_bbox = None
+        else:
+            repaired, added, changed_bbox = _fill_transparent_from_shifted_patch(
+                current,
+                donor,
+                dx=machinegun_dx[column],
+                patch=machinegun_patch,
+                max_rgb_mean=machinegun_max_rgb_mean,
+            )
+
+        before_pixels = current.load()
+        after_pixels = repaired.load()
+        for y in range(current.height):
+            for x in range(current.width):
+                if before_pixels[x, y][3] != 0 and before_pixels[x, y] != after_pixels[x, y]:
+                    raise GeometryError(
+                        f"machinegun-hurt-overwrite:c{column}:{x},{y}"
+                    )
+
+        after = batch_frame_metrics(repaired, alpha_threshold)
+        if after.height != before.height or after.foot_y != before.foot_y:
+            raise GeometryError(
+                f"machinegun-hurt-geometry-drift:c{column}"
+            )
+        machinegun_replacements[(hurt_row, column)] = repaired
+        machinegun_health.append(
+            {
+                "column": column,
+                "dx": machinegun_dx[column],
+                "addedPixels": added,
+                "changedBbox": changed_bbox,
+                "donorColumn": machinegun_donor_column,
+                "beforeHeight": before.height,
+                "afterHeight": after.height,
+            }
+        )
+
+    machinegun_candidate = _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon="machinegun",
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements=machinegun_replacements,
+    )
+    _prove_untouched_batch_rows(
+        current_atlases["machinegun"],
+        machinegun_candidate,
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        changed_rows={hurt_row},
+    )
+
+    # Shotgun: preserve the reviewed safe jump parity normalization and replace
+    # the broken prone tail of hurt with deliberate holds of its three standing
+    # flinch poses.
+    shotgun_replacements: dict[tuple[int, int], Image.Image] = {}
+    shotgun_jump_health: list[dict] = []
+    for column in range(columns):
+        current = _load_batch_frame(
+            frames_root,
+            actor,
+            "shotgun",
+            jump_row,
+            column,
+        )
+        current_metrics = batch_frame_metrics(current, alpha_threshold)
+        canonical_heights = [
+            batch_frame_metrics(
+                _load_batch_frame(
+                    frames_root,
+                    actor,
+                    weapon,
+                    jump_row,
+                    column,
+                ),
+                alpha_threshold,
+            ).height
+            for weapon in canon_weapons
+        ]
+        target_height = round(statistics.median(canonical_heights))
+        scale_y = target_height / current_metrics.height
+        if abs(scale_y - 1.0) > max_auto_scale_delta:
+            raise GeometryError(
+                "needs-authored-source:"
+                f"shotgun:jump:c{column}:"
+                f"scaleY={scale_y:.6f}>"
+                f"limit={max_auto_scale_delta:.6f}"
+            )
+        repaired = _normalize_batch_frame_y(
+            current,
+            target_height=target_height,
+            alpha_threshold=alpha_threshold,
+        )
+        shotgun_replacements[(jump_row, column)] = repaired
+        shotgun_jump_health.append(
+            {
+                "column": column,
+                "sourceHeight": current_metrics.height,
+                "targetHeight": target_height,
+                "scaleY": round(scale_y, 6),
+                "footY": current_metrics.foot_y,
+            }
+        )
+
+    standing_health: dict[str, dict] = {}
+    for weapon in ("shotgun", "panzerfaust"):
+        source_ratios: list[float] = []
+        for source_column in sorted(set(hurt_slots)):
+            source_height = batch_frame_metrics(
+                _load_batch_frame(
+                    frames_root,
+                    actor,
+                    weapon,
+                    hurt_row,
+                    source_column,
+                ),
+                alpha_threshold,
+            ).height
+            canonical_height = statistics.median(
+                [
+                    batch_frame_metrics(
+                        _load_batch_frame(
+                            frames_root,
+                            actor,
+                            canon_weapon,
+                            hurt_row,
+                            source_column,
+                        ),
+                        alpha_threshold,
+                    ).height
+                    for canon_weapon in canon_weapons
+                ]
+            )
+            ratio = source_height / canonical_height
+            if ratio < min_standing_height_ratio:
+                raise GeometryError(
+                    "needs-authored-source:"
+                    f"{weapon}:hurt:c{source_column}:"
+                    f"standingRatio={ratio:.6f}<"
+                    f"limit={min_standing_height_ratio:.6f}"
+                )
+            source_ratios.append(round(ratio, 4))
+        standing_health[weapon] = {
+            "strategy": "standing-flinch-resequence",
+            "sourceColumns": sorted(set(hurt_slots)),
+            "slots": list(hurt_slots),
+            "sourceHeightRatios": source_ratios,
+            "discardedProneColumns": [
+                column
+                for column in range(columns)
+                if column not in set(hurt_slots)
+            ],
+        }
+
+    for column, source_column in enumerate(hurt_slots):
+        shotgun_replacements[(hurt_row, column)] = _load_batch_frame(
+            frames_root,
+            actor,
+            "shotgun",
+            hurt_row,
+            source_column,
+        )
+
+    shotgun_candidate = _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon="shotgun",
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements=shotgun_replacements,
+    )
+    _prove_untouched_batch_rows(
+        current_atlases["shotgun"],
+        shotgun_candidate,
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        changed_rows={jump_row, hurt_row},
+    )
+
+    panzer_replacements = {
+        (hurt_row, column): _load_batch_frame(
+            frames_root,
+            actor,
+            "panzerfaust",
+            hurt_row,
+            source_column,
+        )
+        for column, source_column in enumerate(hurt_slots)
+    }
+    panzer_candidate = _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon="panzerfaust",
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements=panzer_replacements,
+    )
+    _prove_untouched_batch_rows(
+        current_atlases["panzerfaust"],
+        panzer_candidate,
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        changed_rows={hurt_row},
+    )
+
+    outputs = {
+        "machinegun": (
+            machinegun_candidate,
+            output_dir / "machinegun-stabilized-v1.png",
+        ),
+        "shotgun": (
+            shotgun_candidate,
+            output_dir / "shotgun-stabilized-v1.png",
+        ),
+        "panzerfaust": (
+            panzer_candidate,
+            output_dir / "panzerfaust-stabilized-v1.png",
+        ),
+    }
+    hashes: dict[str, str] = {}
+    for weapon, (candidate, output_path) in outputs.items():
+        _save_png_deterministic(candidate, output_path)
+        hashes[weapon] = _sha256_file(output_path)
+
+    _render_batch_review(
+        current_atlases["machinegun"],
+        machinegun_candidate,
+        row=hurt_row,
+        weapon="machinegun",
+        action="hurt",
+        columns=columns,
+        cell_size=cell_size,
+        output=output_dir / "machinegun-hurt-review.png",
+    )
+    _render_batch_review(
+        current_atlases["shotgun"],
+        shotgun_candidate,
+        row=jump_row,
+        weapon="shotgun",
+        action="jump",
+        columns=columns,
+        cell_size=cell_size,
+        output=output_dir / "shotgun-jump-review.png",
+    )
+    _render_batch_review(
+        current_atlases["shotgun"],
+        shotgun_candidate,
+        row=hurt_row,
+        weapon="shotgun",
+        action="hurt",
+        columns=columns,
+        cell_size=cell_size,
+        output=output_dir / "shotgun-hurt-review.png",
+    )
+    _render_batch_review(
+        current_atlases["panzerfaust"],
+        panzer_candidate,
+        row=hurt_row,
+        weapon="panzerfaust",
+        action="hurt",
+        columns=columns,
+        cell_size=cell_size,
+        output=output_dir / "panzerfaust-hurt-review.png",
+    )
+
+    report = {
+        "schema": 1,
+        "kind": "matthias-stabilization-v1",
+        "actor": actor,
+        "jumpRow": jump_row,
+        "hurtRow": hurt_row,
+        "untouchedRowsPixelIdentical": True,
+        "weapons": {
+            "machinegun": {
+                "strategy": "fill-transparent-cap-holes",
+                "frames": machinegun_health,
+                "sha256": hashes["machinegun"],
+            },
+            "shotgun": {
+                **standing_health["shotgun"],
+                "jumpParity": shotgun_jump_health,
+                "changedRows": [jump_row, hurt_row],
+                "sha256": hashes["shotgun"],
+            },
+            "panzerfaust": {
+                **standing_health["panzerfaust"],
+                "changedRows": [hurt_row],
+                "sha256": hashes["panzerfaust"],
+            },
+        },
+    }
+    (output_dir / "stabilization-v1-health.json").write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return report
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
-    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity"}:
+    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity", "repair-hurt-batch"}:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
@@ -1865,6 +2317,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.12,
     )
+
+
+    repair_hurt_batch = sub.add_parser(
+        "repair-hurt-batch",
+        help="build the reviewed Matthias jump/hurt stabilization batch",
+    )
+    repair_hurt_batch.add_argument("frames_root", type=Path)
+    repair_hurt_batch.add_argument("output_dir", type=Path)
+    repair_hurt_batch.add_argument("--actor", default="matthias")
+    repair_hurt_batch.add_argument("--columns", type=int, default=8)
+    repair_hurt_batch.add_argument("--cell-size", type=int, default=416)
+    repair_hurt_batch.add_argument(
+        "--max-auto-scale-delta",
+        type=float,
+        default=0.12,
+    )
+    repair_hurt_batch.add_argument(
+        "--min-standing-height-ratio",
+        type=float,
+        default=0.80,
+    )
     return parser.parse_args(raw)
 
 
@@ -1888,6 +2361,30 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
         print(args.report)
+        return 0
+
+    if args.command == "repair-hurt-batch":
+        report = repair_matthias_stabilization_batch(
+            args.frames_root,
+            args.output_dir,
+            actor=args.actor,
+            columns=args.columns,
+            cell_size=args.cell_size,
+            max_auto_scale_delta=args.max_auto_scale_delta,
+            min_standing_height_ratio=args.min_standing_height_ratio,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "sha256": {
+                        weapon: details["sha256"]
+                        for weapon, details in report["weapons"].items()
+                    },
+                },
+                sort_keys=True,
+            )
+        )
         return 0
 
     if args.command == "repair-parity":
