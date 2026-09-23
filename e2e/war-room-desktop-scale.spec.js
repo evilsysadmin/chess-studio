@@ -1,11 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
-
-async function activateSetupControl(locator) {
-  await expect(locator).toBeVisible({ timeout: 45_000 });
-  await expect(locator).toBeEnabled();
-  await locator.dispatchEvent('click', undefined, { timeout: 45_000 });
-}
+import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 async function openDesktopWarRoom(page) {
   await page.setViewportSize({ width: 1440, height: 960 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -59,17 +59,6 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
 async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
   const point = projectWarRoomSquare(rect, square, worldY);
   await page.mouse.click(point.x, point.y);
-}
-
-// These controls are setup only. React may remount the command chrome while
-// CPU/renderer state settles, so avoid keeping a stale element between the
-// visibility check and the setup click. dispatchEvent re-resolves the locator
-// and still invokes the same click handler without actionability/stability waits.
-// The test's actual board interaction continues to use real pointer input.
-async function activateSetupControl(locator, timeout = WAR_ROOM_READY_TIMEOUT) {
-  await expect(locator).toBeVisible({ timeout });
-  await expect(locator).toBeEnabled();
-  await locator.dispatchEvent('click', undefined, { timeout });
 }
 
 async function setRendererViaAppearance(page, renderer) {
