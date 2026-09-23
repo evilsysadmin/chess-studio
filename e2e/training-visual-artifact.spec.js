@@ -68,6 +68,8 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
   await expect(shell).toBeVisible();
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
+  await expect(page.locator('.global-music-dock')).toBeHidden();
+  await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
   await capture(page, 'school');
   await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
