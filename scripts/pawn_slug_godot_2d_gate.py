@@ -697,24 +697,25 @@ def validate_matthias_muzzle_action_contract(
         text,
         flags=re.DOTALL,
     )
-    selector = selector_match.group(0) if selector_match else ""
-    missing_runtime = sorted(
-        action for action in active if f'"{action}"' not in selector
-    )
-    accidentally_live = sorted(
-        action for action in reserved if f'return "{action}"' in selector
-    )
-    if missing_runtime:
-        violations.append(
-            "matthias_art.gd runtime shoot selector misses active actions: "
-            + ",".join(missing_runtime)
+    if selector_match is not None:
+        selector = selector_match.group(0)
+        missing_runtime = sorted(
+            action for action in active if f'"{action}"' not in selector
         )
-    if accidentally_live:
-        violations.append(
-            "matthias_art.gd reserved shoot actions became runtime-reachable "
-            "without an authored contract: "
-            + ",".join(accidentally_live)
+        accidentally_live = sorted(
+            action for action in reserved if f'return "{action}"' in selector
         )
+        if missing_runtime:
+            violations.append(
+                "matthias_art.gd runtime shoot selector misses active actions: "
+                + ",".join(missing_runtime)
+            )
+        if accidentally_live:
+            violations.append(
+                "matthias_art.gd reserved shoot actions became runtime-reachable "
+                "without an authored contract: "
+                + ",".join(accidentally_live)
+            )
 
 
 def validate() -> None:
