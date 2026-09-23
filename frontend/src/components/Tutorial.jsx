@@ -286,8 +286,8 @@ export default function Tutorial({ onExit }) {
 
           <div className="matthias-school-focusbar">
             <div>
-              <span>${courseSummary.course?.label || ''}</span>
-              <strong>${lesson.title}</strong>
+              <span>{courseSummary.course?.label || ''}</span>
+              <strong>{lesson.title}</strong>
             </div>
             <button
               type="button"
