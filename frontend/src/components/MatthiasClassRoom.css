@@ -3,6 +3,13 @@
    This file is deliberately scoped to the School surface so War Room v1/v2/v3
    keep their own layout and renderer styling. */
 
+
+/* Class Room is a board-first surface. Music keeps playing, but the global
+   dock stays out of the teaching viewport; media keys remain available. */
+body:has(.matthias-school-shell[data-school-section="school"]) .global-music-dock {
+  display: none !important;
+}
+
 body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: none;
 }
