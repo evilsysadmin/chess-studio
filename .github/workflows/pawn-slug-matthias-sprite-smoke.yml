@@ -52,6 +52,7 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -155,24 +156,20 @@ jobs:
             --pass-scale-delta 0.04 \
             --max-auto-scale-delta 0.12
 
-      - name: Build safe shotgun jump parity candidate
+      - name: Build Matthias stabilization v1 batch
         if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 scripts/art/sprite_forge.py repair-parity \
+          python3 scripts/art/sprite_forge.py repair-hurt-batch \
             /tmp/pawn-slug-sprite-smoke/matthias \
-            shotgun jump \
-            "$LAB/shotgun-jump-parity-v1.png" \
-            "$LAB/shotgun-jump-parity-v1-health.json" \
-            "$LAB/shotgun-jump-parity-v1-review.png" \
+            "$LAB" \
             --actor matthias \
-            --canon-weapons pistol,machinegun \
             --columns 8 \
             --cell-size 416 \
-            --max-auto-scale-delta 0.12
-
-      - name: Publish Sprite Lab shotgun jump candidate to R2
+            --max-auto-scale-delta 0.12 \
+            --min-standing-height-ratio 0.80
+      - name: Publish Matthias stabilization v1 to R2
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -183,14 +180,27 @@ jobs:
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$LAB/shotgun-jump-parity-v1.png" \
-            --logical-id pawnSlug.godot.matthias.shotgun.jumpParityV1 \
-            --prefix pawn-slug-godot/matthias/sprite-lab-v1/shotgun/full \
-            --manifest "$LAB/r2-manifest.json"
-          cat "$LAB/r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify published Sprite Lab shotgun jump candidate
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$LAB/machinegun-stabilized-v1.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.stabilizedV1 \
+            --prefix pawn-slug-godot/matthias/stabilized-v1/machinegun/full \
+            --manifest "$LAB/machinegun-r2-manifest.json"
+
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$LAB/shotgun-stabilized-v1.png" \
+            --logical-id pawnSlug.godot.matthias.shotgun.stabilizedV1 \
+            --prefix pawn-slug-godot/matthias/stabilized-v1/shotgun/full \
+            --manifest "$LAB/shotgun-r2-manifest.json"
+
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$LAB/panzerfaust-stabilized-v1.png" \
+            --logical-id pawnSlug.godot.matthias.panzerfaust.stabilizedV1 \
+            --prefix pawn-slug-godot/matthias/stabilized-v1/panzerfaust/full \
+            --manifest "$LAB/panzerfaust-r2-manifest.json"
+
+          cat "$LAB/"*-r2-manifest.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify published Matthias stabilization v1
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -198,19 +208,34 @@ jobs:
         run: |
           set -euo pipefail
           LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
-          readarray -t asset < <(python3 - "$LAB/r2-manifest.json" <<'PY'
-          import json, sys
-          data = json.load(open(sys.argv[1], encoding="utf-8"))
-          item = data["assets"]["pawnSlug.godot.matthias.shotgun.jumpParityV1"]
-          print(item["url"])
-          print(item["sha256"])
-          PY
-          )
-          curl --fail --silent --show-error --location --max-time 20 "${asset[0]}" -o "$LAB/published.png"
-          actual="$(sha256sum "$LAB/published.png" | awk '{print $1}')"
-          test "$actual" = "${asset[1]}"
-          echo "Published Sprite Lab shotgun jump candidate verified: ${asset[0]}"
+          python3 - "$LAB" <<'PY' > "$LAB/published-assets.tsv"
+          import json
+          import pathlib
+          import sys
 
+          root = pathlib.Path(sys.argv[1])
+          specs = (
+              ("machinegun", "pawnSlug.godot.matthias.machinegun.stabilizedV1"),
+              ("shotgun", "pawnSlug.godot.matthias.shotgun.stabilizedV1"),
+              ("panzerfaust", "pawnSlug.godot.matthias.panzerfaust.stabilizedV1"),
+          )
+          for weapon, logical_id in specs:
+              data = json.loads(
+                  (root / f"{weapon}-r2-manifest.json").read_text(
+                      encoding="utf-8"
+                  )
+              )
+              item = data["assets"][logical_id]
+              print(f"{weapon}\t{item['url']}\t{item['sha256']}")
+          PY
+
+          while IFS=$'\t' read -r weapon url expected; do
+            curl --fail --silent --show-error --location --max-time 20 \
+              "$url" -o "$LAB/published-$weapon.png"
+            actual="$(sha256sum "$LAB/published-$weapon.png" | awk '{print $1}')"
+            test "$actual" = "$expected"
+            echo "Published Matthias $weapon stabilization verified: $url"
+          done < "$LAB/published-assets.tsv"
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'
         run: |
@@ -246,81 +271,3 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-
-  repair-machinegun-continuity:
-    name: Candidate · Matthias SMG continuity v4
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    env:
-      OUT: /tmp/pawn-slug-machinegun-continuity-v4
-      PISTOL_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png
-      MACHINEGUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/machinegun/full/candidate-full-1346bf6b3e465e64.png
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install pinned Pillow
-        run: |
-          python3 -m pip install --disable-pip-version-check --no-deps \
-            --only-binary=:all: 'Pillow==12.3.0'
-
-      - name: Self-test SMG continuity v4 repair
-        run: python3 scripts/art/repair_matthias_machinegun_continuity.py --self-test
-
-      - name: Build deterministic SMG continuity v4 candidate
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$OUT"
-          curl -fL --retry 3 "$PISTOL_URL" -o "$OUT/pistol-reference.png"
-          curl -fL --retry 3 "$MACHINEGUN_URL" -o "$OUT/machinegun-current.png"
-          python3 scripts/art/repair_matthias_machinegun_continuity.py \
-            --source "$OUT/machinegun-current.png" \
-            --reference "$OUT/pistol-reference.png" \
-            --output "$OUT/machinegun-continuity-v4.png" \
-            --report "$OUT/repair-health.json" \
-            --preview "$OUT/repair-preview.png"
-          sha256sum "$OUT/machinegun-continuity-v4.png" | tee "$OUT/sha256.txt"
-
-      - name: Upload SMG continuity v4 evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pawn-slug-machinegun-continuity-v4-${{ github.sha }}
-          path: /tmp/pawn-slug-machinegun-continuity-v4/
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-
-      - name: Publish SMG continuity v4 to R2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -S scripts/r2_asset_publish.py publish \
-            "$OUT/machinegun-continuity-v4.png" \
-            --logical-id pawnSlug.godot.matthias.machinegun.fullContinuityV4 \
-            --prefix pawn-slug-godot/matthias/continuity-v4/machinegun/full \
-            --manifest "$OUT/r2-manifest.json"
-          cat "$OUT/r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Verify published SMG continuity v4
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          set -euo pipefail
-          readarray -t asset < <(python3 - "$OUT/r2-manifest.json" <<'PY'
-          import json, sys
-          data = json.load(open(sys.argv[1], encoding="utf-8"))
-          item = data["assets"]["pawnSlug.godot.matthias.machinegun.fullContinuityV4"]
-          print(item["url"])
-          print(item["sha256"])
-          PY
-          )
-          curl --fail --silent --show-error --location --max-time 20 "${asset[0]}" -o "$OUT/published.png"
-          actual="$(sha256sum "$OUT/published.png" | awk '{print $1}')"
-          test "$actual" = "${asset[1]}"
-          echo "Published SMG continuity v4 verified: ${asset[0]}"
