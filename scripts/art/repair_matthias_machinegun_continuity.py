@@ -2,8 +2,9 @@
 """Deterministic Matthias SMG idle/airborne continuity repair.
 
 Never invents poses. It reuses the existing 8x18 SMG atlas, normalizes only
-idle/jump/fall/land against homologous canonical pistol geometry, drops only
-bounded detached technical components, and preserves every other row bytewise.
+idle/jump/fall/land against homologous canonical pistol geometry, restores the
+idle lower-body silhouette from the same-frame pistol canon, drops only bounded
+detached technical components, and preserves every other row bytewise.
 """
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ MIN_IDLE_Y_SCALE = 0.92
 MAX_IDLE_Y_SCALE = 1.12
 MIN_AIRBORNE_SCALE = 0.75
 MAX_AIRBORNE_SCALE = 1.35
+IDLE_CANONICAL_LOWER_BODY_START_FRACTION = 0.64
 
 
 def parse_args() -> argparse.Namespace:
@@ -167,6 +169,28 @@ def place_scaled(
     return repaired, repaired_components[0]
 
 
+def transplant_idle_lower_body(
+    repaired: Image.Image,
+    reference_cell: Image.Image,
+    target_main: dict,
+    label: str,
+) -> tuple[Image.Image, dict, int]:
+    _, top, _, bottom = target_main["bbox"]
+    start_y = round(
+        top
+        + (bottom - top) * IDLE_CANONICAL_LOWER_BODY_START_FRACTION
+    )
+    polished = repaired.copy()
+    canonical_lower = reference_cell.crop((0, start_y, CELL, CELL))
+    polished.paste(canonical_lower, (0, start_y))
+    polished_components = components(polished)
+    if len(polished_components) != 1:
+        raise ValueError(
+            f"{label}: canonical lower-body transplant broke connectivity"
+        )
+    return polished, polished_components[0], start_y
+
+
 def repair_idle(
     source: Image.Image,
     reference: Image.Image,
@@ -206,6 +230,12 @@ def repair_idle(
             scale_y=scale_y,
             label=f"machinegun idle c{col}",
         )
+        repaired, repaired_main, canonical_start_y = transplant_idle_lower_body(
+            repaired,
+            cell(reference, IDLE_ROW, col),
+            target,
+            f"machinegun idle c{col}",
+        )
         output.paste(repaired, (col * CELL, IDLE_ROW * CELL))
         reports.append(
             {
@@ -216,6 +246,7 @@ def repair_idle(
                 "scaleX": round(scale_x, 6),
                 "scaleY": round(scale_y, 6),
                 "outputMainBbox": list(repaired_main["bbox"]),
+                "canonicalLowerBodyStartY": canonical_start_y,
                 "removedDetached": [
                     {"area": int(item["area"]), "bbox": list(item["bbox"])}
                     for item in detached
@@ -318,8 +349,9 @@ def repair(
             raise ValueError(f"repair modified untouched row {row}")
     return output, {
         "schema": 1,
-        "scope": "pawn-slug-matthias-machinegun-continuity-v3",
+        "scope": "pawn-slug-matthias-machinegun-continuity-v4",
         "repairedRows": list(REPAIRED_ROWS),
+        "idleCanonicalLowerBodyStartFraction": IDLE_CANONICAL_LOWER_BODY_START_FRACTION,
         "untouchedRowsPixelIdentical": True,
         "idleFrames": idle_frames,
         "airborneFrames": airborne_frames,
@@ -462,7 +494,7 @@ def self_test() -> None:
                 target["bbox"][0] + target["bbox"][2]
             ) / 2.0
             assert abs(repaired_center - target_center) <= 1
-    print("Matthias SMG continuity v3 self-test: OK")
+    print("Matthias SMG continuity v4 self-test: OK")
 
 
 def main() -> int:
