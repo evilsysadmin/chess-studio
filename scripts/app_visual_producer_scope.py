@@ -35,6 +35,7 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomscenevariant.js",
     "frontend/src/components/warroomclassicshell.js",
     "frontend/src/components/warroomblendershellruntime.js",
+    "frontend/src/components/warroomblendermaterials.js",
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
     "frontend/src/components/warroomvariant.js",
