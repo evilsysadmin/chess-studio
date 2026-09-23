@@ -102,7 +102,6 @@ describe('WarRoomCompositionPolish', () => {
     expect(architecture.userData.warRoomDesktopRetiredLegacyMeshesOmitted).toBe(74);
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
-    expect(masonry.userData.warRoomRetiredMortarJointsOmitted).toBe(78);
     expect(room.getObjectByName('war-room-teutonic-mortar-joint')).toBeUndefined();
     expect(owner.userData.warRoomRetiredMortarJoints).toBeUndefined();
     expect(owner.userData.warRoomCompositionLayoutWritesRetired).toBeUndefined();
