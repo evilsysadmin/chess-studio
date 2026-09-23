@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/oci-readiness.yml").read_text(encoding="utf-8")
+lab = (ROOT / ".github/workflows/oci-staging-lab.yml").read_text(encoding="utf-8")
 service = (ROOT / ".github/workflows/oci-staging-service.yml").read_text(encoding="utf-8")
 makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 probe = (ROOT / "scripts/oci_k3s_bundle_probe.py").read_text(encoding="utf-8")
@@ -23,8 +24,14 @@ unit = (ROOT / "infra/oci/k3s/k3s.service").read_bytes()
 backend_dockerfile = (ROOT / "backend-python/Dockerfile").read_text(encoding="utf-8")
 install_source = probe.split("\ndef install_command", 1)[1].split("\ndef _run", 1)[0]
 
-assert workflow.count("'infra/oci/k3s/**'") >= 1, "K3s infra must participate in PR readiness"
-assert workflow.count("'scripts/oci_k3s_*'") >= 1, "K3s scripts must participate in PR readiness"
+assert "'infra/oci/k3s/**'" not in workflow, "K3s HOLD must not trigger canonical OCI readiness"
+assert "'scripts/oci_k3s_*'" not in workflow, "K3s HOLD scripts must not trigger canonical OCI readiness"
+assert "'infra/oci/k3s/**'" in lab, "K3s infra changes must stay validated by the lab workflow"
+assert "'scripts/oci_k3s_*'" in lab, "K3s script changes must stay validated by the lab workflow"
+assert "if: github.event_name == 'pull_request'" in lab
+assert "python3 scripts/oci_k3s_readiness_contract.py" in lab
+assert "github.event_name == 'workflow_dispatch' && !startsWith(inputs.operation, 'k3s-')" in lab
+assert "github.event_name == 'workflow_dispatch' && startsWith(inputs.operation, 'k3s-')" in lab
 assert "\n  push:\n" not in workflow, "OCI readiness must remain validation-only on repository events"
 assert "\n  publish-k3s:\n" not in workflow, "K3s publication must not live in the readiness workflow"
 
@@ -139,7 +146,8 @@ root_self_test_command = (
     "python3 -S scripts/oci_k3s_staging2_root.py self-test "
     "infra/oci/gitops/staging2/backend.yaml.tmpl"
 )
-assert root_self_test_command in workflow
+assert root_self_test_command not in workflow
+assert root_self_test_command in lab
 assert root_self_test_command in makefile
 assert "python3 -S \"$controller\" self-test" in provision
 assert "python3 -S \"$status_probe\" self-test" in provision

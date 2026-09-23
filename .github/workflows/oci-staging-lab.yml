@@ -23,6 +23,17 @@ on:
         type: string
         required: false
 
+  pull_request:
+    paths:
+      - 'backend-python/Dockerfile'
+      - 'infra/oci/k3s/**'
+      - 'infra/oci/gitops/staging2/**'
+      - 'infra/oci/runtime/ocarun.sudoers'
+      - 'scripts/oci_k3s_*'
+      - 'scripts/oci_k3s_readiness_contract.py'
+      - '.github/workflows/oci-staging-lab.yml'
+      - 'Makefile'
+
 permissions:
   contents: read
 
@@ -31,8 +42,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  k3s-contract:
+    if: github.event_name == 'pull_request'
+    name: OCI K3s lab · contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate dormant K3s lab contract
+        run: |
+          python3 scripts/oci_k3s_readiness_contract.py
+          python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
+
   terraform:
-    if: ${{ !startsWith(inputs.operation, 'k3s-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && !startsWith(inputs.operation, 'k3s-') }}
     name: OCI staging · ${{ inputs.operation }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -63,7 +85,7 @@ jobs:
 
 
   k3s:
-    if: ${{ startsWith(inputs.operation, 'k3s-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && startsWith(inputs.operation, 'k3s-') }}
     name: OCI K3s lab · ${{ inputs.operation }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
