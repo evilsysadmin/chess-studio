@@ -1445,6 +1445,16 @@ def audit_sprite_batch(
         payload["parity"][action] = action_payload
 
     temporal_thresholds = {
+        "crouch": {
+            "maxHeightStepRatio": 0.10,
+            "maxFootStepRatio": 0.05,
+            "maxCentroidStepRatio": 0.10,
+        },
+        "crouch_walk": {
+            "maxHeightStepRatio": 0.12,
+            "maxFootStepRatio": 0.05,
+            "maxCentroidStepRatio": 0.12,
+        },
         "reload": {
             "maxHeightStepRatio": 0.18,
             "maxFootStepRatio": 0.08,
@@ -1523,6 +1533,64 @@ def audit_sprite_batch(
                 "maxCentroidStepPair": centroid_pair,
             }
         payload["temporal"][action] = action_payload
+
+    if "crouch" in actions and "crouch_walk" in actions:
+        transition_payload = {"weapons": {}}
+        for weapon in weapons:
+            crouch_frames = payload["weapons"][weapon]["crouch"]["frames"]
+            walk_frames = payload["weapons"][weapon]["crouch_walk"]["frames"]
+            crouch_frame = crouch_frames[0]
+            walk_frame = walk_frames[0]
+            reference_height = max(
+                1.0,
+                (
+                    float(crouch_frame["height"])
+                    + float(walk_frame["height"])
+                )
+                / 2.0,
+            )
+            height_ratio = (
+                abs(
+                    float(walk_frame["height"])
+                    - float(crouch_frame["height"])
+                )
+                / reference_height
+            )
+            foot_ratio = (
+                abs(
+                    float(walk_frame["foot_y"])
+                    - float(crouch_frame["foot_y"])
+                )
+                / reference_height
+            )
+            centroid_dx = (
+                float(walk_frame["centroid_x"])
+                - float(crouch_frame["centroid_x"])
+            )
+            centroid_dy = (
+                float(walk_frame["centroid_y"])
+                - float(crouch_frame["centroid_y"])
+            )
+            centroid_ratio = (
+                (centroid_dx * centroid_dx + centroid_dy * centroid_dy) ** 0.5
+                / reference_height
+            )
+            reasons = []
+            if height_ratio > 0.12:
+                reasons.append("heightSnapRatio")
+            if foot_ratio > 0.05:
+                reasons.append("footSnapRatio")
+            if centroid_ratio > 0.12:
+                reasons.append("centroidSnapRatio")
+            transition_payload["weapons"][weapon] = {
+                "status": "review" if reasons else "pass",
+                "reasons": reasons,
+                "heightSnapRatio": round(height_ratio, 6),
+                "footSnapRatio": round(foot_ratio, 6),
+                "centroidSnapRatio": round(centroid_ratio, 6),
+                "sourcePair": ["crouch:c0", "crouch_walk:c0"],
+            }
+        payload["temporal"]["crouchToCrouchWalk"] = transition_payload
 
     return payload
 
