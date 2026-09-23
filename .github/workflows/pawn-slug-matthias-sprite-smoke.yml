@@ -158,6 +158,33 @@ jobs:
             --pass-scale-delta 0.04 \
             --max-auto-scale-delta 0.12
 
+          python3 - "$LAB/batch-audit.json" <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          import sys
+
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          print("### Matthias reload/die temporal audit")
+          print("| Action | Weapon | Status | Height step | Foot step | Centroid step |")
+          print("|---|---|---:|---:|---:|---:|")
+          for action in ("reload", "die"):
+              action_data = data.get("temporal", {}).get(action, {})
+              for weapon, item in action_data.get("weapons", {}).items():
+                  print(
+                      f"| {action} | {weapon} | {item['status']} | "
+                      f"{item['maxHeightStepRatio']:.3f} | "
+                      f"{item['maxFootStepRatio']:.3f} | "
+                      f"{item['maxCentroidStepRatio']:.3f} |"
+                  )
+                  if item["status"] == "review":
+                      print(
+                          f"Review {action}/{weapon}: "
+                          f"reasons={','.join(item['reasons'])}; "
+                          f"heightPair={item['maxHeightStepPair']}; "
+                          f"footPair={item['maxFootStepPair']}; "
+                          f"centroidPair={item['maxCentroidStepPair']}"
+                      )
+          PY
+
       - name: Build Matthias SMG hurt alpha v2 candidate
         if: steps.scope.outputs.matthias == 'true'
         run: |
