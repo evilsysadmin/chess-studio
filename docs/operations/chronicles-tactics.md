@@ -45,6 +45,17 @@ Una vez creada la run, la posición runtime actual de cada entidad es la única 
 - En mapas random/procedurales, toda casilla no transitable debe explicarse por topología visible, obstáculo explícito u ocupación runtime. Un blocker invisible o una celda fantasma es una regresión aunque el mapa global siga conectado.
 - Los gates de generación deben conservar conectividad entre entradas/salidas y regiones obligatorias, además de validar que scenery y props no alteran la walkability lógica.
 
+## Autoridad de progresión RPG
+
+XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics pertenecen al **perfil persistente del usuario**, no al documento de una run.
+
+- `chess-study-chronicles-progression-v1` es una clave registrada de progreso de perfil.
+- Mongo, a través de `/api/profile`, es la fuente persistente de verdad; `localStorage` es sólo la caché síncrona de trabajo.
+- `saveChroniclesProgression()` debe escribir mediante `setProfileStorageItem()`, quedando dirty para el PATCH versionado/revisionado del perfil.
+- La sincronización de perfil debe conservar protección de identidad, revisión optimista y recuperación de conflictos 409. No crear un endpoint paralelo de “Chronicles progression” ni guardar progresión permanente dentro de `chronicles_runs`.
+- El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
+- Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
+
 ## Checkpoints durables de run
 
 El estado persistente de una run se hidrata antes del primer frame jugable y se escribe sólo en checkpoints semánticos.
@@ -80,6 +91,7 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 - colisión, targeting, IA y escena comparten las posiciones runtime actuales, sin blockers fantasma de spawns antiguos;
 - mapas procedurales no contienen celdas invisiblemente bloqueadas y mantienen conectividad exigida;
 - checkpoints durables hidratan antes del primer frame y escriben con CAS/versionado sólo en hitos semánticos;
+- progresión RPG permanente se rehidrata desde el perfil Mongo y no se duplica dentro del documento de run;
 - builds muestran sólo efectos reales;
 - mapas grandes mantienen scenery fuera del battlefield;
 - cambios visuales tienen PNG desktop/móvil cuando procede;
