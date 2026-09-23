@@ -228,16 +228,6 @@
   }
 }
 
-/* On compact 3D layouts the desktop-only matchup wrappers dissolve, while the
-   utility menu remains available as the canonical Appearance entry point. */
-@media (max-width: 1080px) {
-  .game-3d-matchup,
-  .game-3d-turn-state {
-    display: contents;
-  }
-
-}
-
 /* Canonical desktop pill details. The former cinematic override has been
    folded into the primary desktop rules above so there is one owner per value. */
 @media (min-width: 1081px) {
@@ -302,8 +292,3 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .game-screen .game-3d-turn-pill {
-    transition: none !important;
-  }
-}
