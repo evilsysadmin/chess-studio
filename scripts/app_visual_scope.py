@@ -118,8 +118,21 @@ def _surface_groups(path: str) -> set[str] | None:
     }:
         return {"warroom"}
     if lower in {
+        ".github/workflows/home-blender-v2-runtime.yml",
+        "scripts/promote_home_scene_runtime.py",
+    }:
+        return {"home"}
+    if lower in {
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
+        "e2e/png-pixels.js",
+        # The manifest fans out across every domain (Home, Pawn Slug sprites,
+        # Chronicles...), so it can't be mapped to one group by path alone,
+        # and a promotion-only change to it doesn't add new visual code --
+        # whatever object it now points at was already validated by the
+        # dedicated gate that ran before promoting (see
+        # home-blender-v2-runtime.yml's gate/promote jobs).
+        "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
     if (
@@ -138,6 +151,7 @@ def _surface_groups(path: str) -> set[str] | None:
             "app-visual-artifact.spec.js",
             "matthias-home-visual-artifact.spec.js",
             "home-3d-focus-visual.spec.js",
+            "home-scene-runtime-gate.spec.js",
         }:
             return {"home"}
         if name in {
