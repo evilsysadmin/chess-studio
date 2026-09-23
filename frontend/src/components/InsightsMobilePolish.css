@@ -1,0 +1,82 @@
+/* Mobile coaching: the user should see the current task, not wrestle a
+ * horizontally scrolling mini-dashboard. Desktop keeps the richer labels. */
+@media (max-width: 760px) {
+  .insights-coach-workspace {
+    gap: .52rem;
+  }
+
+  .insights-workspace-header {
+    padding: .68rem .72rem .72rem;
+  }
+
+  .insights-workspace-back {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: .35rem;
+    touch-action: manipulation;
+  }
+
+  .insights-workspace-title-row h2 {
+    font-size: clamp(1.42rem, 7vw, 1.72rem);
+  }
+
+  .insights-workspace-lead {
+    margin: .28rem 0 .5rem;
+    font-size: .84rem;
+    line-height: 1.38;
+  }
+
+  .insights-workspace-primary-tabs {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 11px;
+  }
+
+  .insights-workspace-primary-tabs > button {
+    min-height: 44px;
+    padding: .48rem .5rem;
+    touch-action: manipulation;
+  }
+
+  .insights-workspace-nav {
+    top: max(.35rem, env(safe-area-inset-top));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-flow: initial;
+    grid-auto-columns: initial;
+    gap: .25rem;
+    overflow: visible;
+    padding: .3rem;
+  }
+
+  .insights-workspace-nav > button {
+    min-height: 48px;
+    padding: .45rem .25rem;
+    place-items: center;
+    text-align: center;
+    touch-action: manipulation;
+  }
+
+  .insights-workspace-nav > button small {
+    display: none;
+  }
+
+  .insights-workspace-nav > button strong {
+    font-size: .82rem;
+    line-height: 1.15;
+  }
+}
+
+@media (max-width: 390px) {
+  .insights-workspace-header {
+    padding-inline: .64rem;
+  }
+
+  .insights-workspace-primary-tabs > button {
+    font-size: .83rem;
+  }
+
+  .insights-workspace-nav > button strong {
+    font-size: .76rem;
+  }
+}

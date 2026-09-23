@@ -52,6 +52,7 @@ async function capture(page, label) {
 }
 
 test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas y Mi progreso', async ({ page }) => {
+  test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -133,6 +134,10 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
   await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
