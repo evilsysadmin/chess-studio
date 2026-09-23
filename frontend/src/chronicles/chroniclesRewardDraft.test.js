@@ -76,23 +76,34 @@ describe('Chronicles seeded reward drafts', () => {
     expect(afterClaim).toEqual([]);
   });
 
-  it('does not continuously repeat choices already claimed in earlier milestones', () => {
-    const progression = levelTwoWithSkillPoint();
+  it('cools down only the most recent choice instead of exhausting the pool forever', () => {
+    const progression = createChroniclesProgression();
     const first = chroniclesRewardDraft({
       seed: 733,
       milestoneId: 'menagerie-cleared',
       progression,
     });
-    const claimedRewards = first.map((choice) => choice.choiceId);
+    const firstChoice = first[0];
 
-    const later = chroniclesRewardDraft({
+    const second = chroniclesRewardDraft({
       seed: 733,
       milestoneId: 'archive-cleared',
       progression,
-      claimedRewards,
+      claimedRewards: [firstChoice.choiceId],
+    });
+    expect(second.some((choice) => choice.id === firstChoice.id)).toBe(false);
+    expect(second.length).toBeGreaterThan(0);
+
+    const secondChoice = second[0];
+    const third = chroniclesRewardDraft({
+      seed: 733,
+      milestoneId: 'foundry-cleared',
+      progression,
+      claimedRewards: [firstChoice.choiceId, secondChoice.choiceId],
     });
 
-    expect(later.every((choice) => !first.some((old) => old.id === choice.id))).toBe(true);
+    expect(third.some((choice) => choice.id === secondChoice.id)).toBe(false);
+    expect(third.some((choice) => choice.id === firstChoice.id)).toBe(true);
   });
 
   it('applies a legal progression choice before claiming it', () => {
