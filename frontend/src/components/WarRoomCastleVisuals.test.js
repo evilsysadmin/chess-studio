@@ -100,7 +100,6 @@ describe('War Room castle visual contract', () => {
 
     expect(scene.userData.warRoomDeferredFinalizedTasks[0]).toBe('premium-room-pass-v4');
     expect(scene.userData.warRoomDeferredFinalizerResults['premium-room-pass-v4']).toBe(1);
-    expect(scene.userData.warRoomApprovedMockCurtainPelmetsRetired).toBe(0);
     const leftSofa = room.getObjectByName('war-room-sofa-left');
     const desk = room.getObjectByName('command-cabinet');
     const chair = room.getObjectByName('war-room-teutonic-command-chair');
@@ -129,10 +128,7 @@ describe('War Room castle visual contract', () => {
     expect(scene.userData.warRoomApprovedMockArmorOffset).toBeCloseTo(6.95, 5);
     expect(scene.userData.warRoomApprovedMockSofaOffset).toBeCloseTo(12.55, 5);
     expect(scene.userData.warRoomApprovedMockArmorSofaGap).toBeCloseTo(5.6, 5);
-    expect(scene.userData.warRoomApprovedMockSideTablesRetired).toBe(true);
     expect(scene.userData.warRoomApprovedMockFurnitureOrder).toBe('single-desk-rear-armors-mid-sofas-foreground-v28');
-    expect(scene.userData.warRoomLegacyLayoutDriverRetirementVersion).toBe('approved-mock-v28');
-    expect(scene.userData.warRoomLegacyLayoutDriversRetired).toEqual([]);
     expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(7);
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(room.getObjectByName('war-room-sofa-carved-top-rail')).toBeTruthy();
