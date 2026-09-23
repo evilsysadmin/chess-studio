@@ -216,20 +216,11 @@
     margin-left: auto;
   }
 
+}
+
+@media (min-width: 821px) and (max-width: 1080px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: clamp(560px, calc(100dvh - 8.6rem), 840px);
-  }
-}
-
-@media (min-width: 1081px) and (max-height: 900px) {
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(520px, calc(100dvh - 11rem), 735px);
-  }
-}
-
-@media (min-width: 1081px) and (max-height: 780px) {
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(470px, calc(100dvh - 9.6rem), 620px);
   }
 }
 
