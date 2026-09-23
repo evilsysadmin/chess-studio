@@ -83,7 +83,7 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/pose-semantics-v1/pistol/full/matthias-pistol-pose-semantics-v1-2000f78183cea6f5.png",
-    "/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-e52ce4a2bd2472a4.png",
+    "/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-769398f427278c03.png",
     "/pawn-slug-godot/matthias/pose-semantics-v1/shotgun/full/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png",
     "/pawn-slug-godot/matthias/pose-semantics-v1/panzerfaust/full/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",

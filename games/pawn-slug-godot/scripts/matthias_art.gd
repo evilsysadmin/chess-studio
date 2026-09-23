@@ -19,7 +19,7 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 const STRICT_RUNTIME_GENERATION := "pose-semantics-v1"
 const FULL_ATLAS_URLS := {
     "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/pistol/full/matthias-pistol-pose-semantics-v1-2000f78183cea6f5.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-e52ce4a2bd2472a4.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-769398f427278c03.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/shotgun/full/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/panzerfaust/full/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png",
 }
