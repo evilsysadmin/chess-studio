@@ -149,28 +149,8 @@
   font-size: .58rem;
 }
 
-/* Turn state floats over the room instead of consuming its own row. */
 .game-layout-3d .board-column {
   position: relative;
-}
-
-.game-layout-3d .status-line {
-  position: absolute;
-  z-index: 18;
-  top: .86rem;
-  left: 50%;
-  width: max-content;
-  max-width: min(44vw, 430px);
-  min-height: 27px !important;
-  margin: 0;
-  padding: .34rem .72rem;
-  border: 1px solid color-mix(in srgb, var(--brass) 48%, rgba(53,42,28,.78));
-  border-radius: 999px;
-  background: rgba(8,12,18,.9);
-  box-shadow: 0 8px 24px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.035);
-  backdrop-filter: blur(9px);
-  transform: translateX(-50%);
-  pointer-events: none;
 }
 
 /* Footer real de la mesa: identidad del jugador + acciones en una sola línea.
@@ -258,17 +238,6 @@
     min-height: 38px;
   }
 
-  .game-layout-3d .status-line {
-    position: sticky;
-    top: max(.3rem, env(safe-area-inset-top));
-    left: auto;
-    width: 100%;
-    max-width: none;
-    min-height: 28px !important;
-    transform: none;
-    pointer-events: auto;
-  }
-
   .game-board-stack-3d > .matthias-board-bubble {
     top: 38%;
     width: min(18rem, 76%);
@@ -282,8 +251,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-board-stack-3d > .matthias-board-bubble,
-  .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-character {
+  .game-board-stack-3d > .matthias-board-bubble {
     animation: none !important;
   }
 }
