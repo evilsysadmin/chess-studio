@@ -9,6 +9,8 @@ on:
       - scripts/art/export_matthias_sprite_smoke.py
       - scripts/art/validate_matthias_sprite_continuity.py
       - scripts/art/repair_matthias_machinegun_continuity.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
       - scripts/pawn_slug_sprite_smoke_scope.py
@@ -25,6 +27,8 @@ on:
     branches: [main]
     paths:
       - scripts/art/repair_matthias_machinegun_continuity.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/test_sprite_forge.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
@@ -133,6 +137,79 @@ jobs:
             --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
             --sprite-smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
             --output /tmp/pawn-slug-sprite-smoke/matthias/continuity-health.json
+
+      - name: Audit Matthias batch parity with Sprite Forge
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          mkdir -p "$LAB"
+          python3 scripts/art/sprite_forge.py audit-batch \
+            /tmp/pawn-slug-sprite-smoke/matthias \
+            "$LAB/batch-audit.json" \
+            --actor matthias \
+            --weapons pistol,machinegun,shotgun,panzerfaust \
+            --canon-weapons pistol,machinegun \
+            --parity-actions jump,fall \
+            --columns 8 \
+            --pass-scale-delta 0.04 \
+            --max-auto-scale-delta 0.12
+
+      - name: Build safe shotgun jump parity candidate
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          python3 scripts/art/sprite_forge.py repair-parity \
+            /tmp/pawn-slug-sprite-smoke/matthias \
+            shotgun jump \
+            "$LAB/shotgun-jump-parity-v1.png" \
+            "$LAB/shotgun-jump-parity-v1-health.json" \
+            "$LAB/shotgun-jump-parity-v1-review.png" \
+            --actor matthias \
+            --canon-weapons pistol,machinegun \
+            --columns 8 \
+            --cell-size 416 \
+            --max-auto-scale-delta 0.12
+
+      - name: Publish Sprite Lab shotgun jump candidate to R2
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          steps.scope.outputs.matthias == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$LAB/shotgun-jump-parity-v1.png" \
+            --logical-id pawnSlug.godot.matthias.shotgun.jumpParityV1 \
+            --prefix pawn-slug-godot/matthias/sprite-lab-v1/shotgun/full \
+            --manifest "$LAB/r2-manifest.json"
+          cat "$LAB/r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify published Sprite Lab shotgun jump candidate
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          LAB=/tmp/pawn-slug-sprite-smoke/matthias/sprite-lab
+          readarray -t asset < <(python3 - "$LAB/r2-manifest.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          item = data["assets"]["pawnSlug.godot.matthias.shotgun.jumpParityV1"]
+          print(item["url"])
+          print(item["sha256"])
+          PY
+          )
+          curl --fail --silent --show-error --location --max-time 20 "${asset[0]}" -o "$LAB/published.png"
+          actual="$(sha256sum "$LAB/published.png" | awk '{print $1}')"
+          test "$actual" = "${asset[1]}"
+          echo "Published Sprite Lab shotgun jump candidate verified: ${asset[0]}"
 
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'

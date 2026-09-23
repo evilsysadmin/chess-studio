@@ -120,6 +120,34 @@ Responsabilidades:
 
 Mismo input + mismo toolchain fijado = mismo output byte a byte. La versión pertenece al manifest/quality contract, no a scripts `pack_*_vNN.py` nuevos.
 
+### 8.1. Cadencia de iteración visual local por lotes
+
+Para trabajo visual intensivo —especialmente Matthias y sus bancos por arma— la unidad de trabajo **no es un microdefecto ni una PR por frame**. La unidad es una tanda coherente de estabilización.
+
+Flujo obligatorio:
+
+1. Descargar o reutilizar localmente los atlases runtime y artifacts ya disponibles. No volver a consultar GitHub/R2 para cada frame si el input canónico no ha cambiado.
+2. Extraer el banco completo y ejecutar un audit local de todas las armas/animaciones afectadas: bbox, altura, anchura, masa alpha, centroides, footline, componentes y variación temporal.
+3. Clasificar los hallazgos por señal objetiva. Un frame o fila que “parece raro” pero no demuestra una regresión clara se conserva; no generar trabajo por intuición.
+4. Reparar localmente **todos los outliers coherentes de la tanda** con transformaciones deterministas y mínimas. Preservar byte-for-byte cualquier frame, fila o región que ya sea válida.
+5. Generar PNGs de revisión antes/después, contact strips y overview del lote. Revisar visualmente localmente antes de hacer escrituras en GitHub.
+6. Repetir `audit -> repair -> review -> validate` localmente hasta que el lote sea coherente. GitHub no se usa como bucle interactivo de authoring.
+7. Sólo entonces abrir una **PR de candidato** que incluya herramientas/contratos/reparaciones reproducibles y artifacts CI. Una tanda puede arreglar varios frames, filas o armas si comparten el mismo objetivo de estabilización.
+8. Tras revisión visual y CI verde, mergear el candidato para publicar assets immutable/content-addressed.
+9. Hacer como máximo una **PR de promoción runtime** para consumir los assets ya revisados y publicados, seguida de smoke/staging.
+10. Mantener un baseline visual golden/versionado por hashes para que futuras iteraciones detecten regresiones sin redescubrir manualmente los mismos defectos.
+
+Reglas de eficiencia:
+
+- evitar una PR por píxel, frame o microdefecto;
+- evitar polling repetitivo de CI: usar automerge cuando los checks requeridos ya expresan el contrato;
+- no volver a descargar assets grandes si ya están en la cache/área local de trabajo;
+- agrupar las lecturas/escrituras de GitHub y dejar commit/PR/CI para el final de la tanda;
+- si una prueba local demuestra que una reparación no mejora claramente el artifact visual, descartarla antes de GitHub;
+- no mezclar una tanda de estabilización visual con cambios de gameplay ajenos.
+
+Objetivo operativo: poder corregir y revisar varios defectos de un banco completo en una sesión local, mientras GitHub actúa como gate y sistema de entrega, **no como editor de sprites**.
+
 ## 9. Manifest runtime
 
 Debe describir al menos:

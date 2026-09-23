@@ -26,6 +26,8 @@ from sprite_forge import (
     validate_sequence,
     validate_socket_sequence,
     build_bank,
+    audit_sprite_batch,
+    repair_sprite_parity,
 )
 
 
@@ -754,6 +756,215 @@ class SpriteForgeSocketQualityTests(unittest.TestCase):
         from sprite_forge import _validate_bank_contract
         with self.assertRaisesRegex(BankContractError, "socket quality failed"):
             _validate_bank_contract(data)
+
+
+class SpriteForgeBatchLabTests(unittest.TestCase):
+    ACTIONS = ["jump", "fall"]
+    WEAPONS = ["pistol", "machinegun", "shotgun", "panzerfaust"]
+    CELL = 64
+    COLUMNS = 2
+
+    def _frame(
+        self,
+        *,
+        height: int,
+        column: int,
+        foot_y: int = 56,
+    ) -> Image.Image:
+        image = Image.new(
+            "RGBA",
+            (self.CELL, self.CELL),
+            (0, 0, 0, 0),
+        )
+        left = 20 + column
+        top = foot_y - height
+        ImageDraw.Draw(image).rectangle(
+            (left, top, left + 15, foot_y - 1),
+            fill=(180, 120, 80, 255),
+        )
+        return image
+
+    def _write_frame(
+        self,
+        root: Path,
+        weapon: str,
+        row: int,
+        column: int,
+        height: int,
+    ) -> None:
+        directory = root / weapon / "frames"
+        directory.mkdir(parents=True, exist_ok=True)
+        self._frame(
+            height=height,
+            column=column,
+        ).save(
+            directory
+            / (
+                f"matthias_{weapon}_"
+                f"r{row:02d}_c{column:02d}.png"
+            )
+        )
+
+    def _build_fixture(self, root: Path) -> None:
+        heights = {
+            "pistol": {
+                "jump": [30, 36],
+                "fall": [34, 28],
+            },
+            "machinegun": {
+                "jump": [30, 36],
+                "fall": [34, 28],
+            },
+            "shotgun": {
+                "jump": [28, 34],
+                "fall": [25, 22],
+            },
+            "panzerfaust": {
+                "jump": [20, 25],
+                "fall": [24, 20],
+            },
+        }
+        for weapon in self.WEAPONS:
+            for row, action in enumerate(self.ACTIONS):
+                for column, height in enumerate(
+                    heights[weapon][action]
+                ):
+                    self._write_frame(
+                        root,
+                        weapon,
+                        row,
+                        column,
+                        height,
+                    )
+
+    def test_batch_audit_classifies_safe_vs_authored_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_fixture(root)
+            result = audit_sprite_batch(
+                root,
+                actor="matthias",
+                weapons=self.WEAPONS,
+                actions=self.ACTIONS,
+                canon_weapons=["pistol", "machinegun"],
+                parity_actions={"jump", "fall"},
+                columns=self.COLUMNS,
+                pass_scale_delta=0.04,
+                max_auto_scale_delta=0.12,
+            )
+            self.assertEqual(
+                result["parity"]["jump"]["weapons"]["shotgun"][
+                    "status"
+                ],
+                "safe-normalization",
+            )
+            self.assertEqual(
+                result["parity"]["jump"]["weapons"]["panzerfaust"][
+                    "status"
+                ],
+                "needs-authored-source",
+            )
+            self.assertEqual(
+                result["parity"]["fall"]["weapons"]["shotgun"][
+                    "status"
+                ],
+                "needs-authored-source",
+            )
+
+    def test_parity_repair_preserves_unmodified_rows_and_footline(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_fixture(root)
+            out = root / "candidate.png"
+            report_path = root / "health.json"
+            preview = root / "review.png"
+            report = repair_sprite_parity(
+                root,
+                actor="matthias",
+                target_weapon="shotgun",
+                action="jump",
+                actions=self.ACTIONS,
+                canon_weapons=["pistol", "machinegun"],
+                output_atlas=out,
+                report_path=report_path,
+                preview_path=preview,
+                columns=self.COLUMNS,
+                cell_size=self.CELL,
+                max_auto_scale_delta=0.12,
+            )
+
+            self.assertTrue(
+                report["untouchedRowsPixelIdentical"]
+            )
+            self.assertTrue(out.is_file())
+            self.assertTrue(report_path.is_file())
+            self.assertTrue(preview.is_file())
+
+            atlas = Image.open(out).convert("RGBA")
+            for column in range(self.COLUMNS):
+                repaired = atlas.crop(
+                    (
+                        column * self.CELL,
+                        0,
+                        (column + 1) * self.CELL,
+                        self.CELL,
+                    )
+                )
+                metrics = geometry_metrics(repaired)
+                self.assertIsNotNone(metrics)
+                assert metrics is not None
+                self.assertEqual(
+                    metrics.body_height,
+                    [30, 36][column],
+                )
+                self.assertEqual(metrics.foot_y, 56.0)
+
+                original_fall = Image.open(
+                    root
+                    / "shotgun"
+                    / "frames"
+                    / (
+                        "matthias_shotgun_"
+                        f"r01_c{column:02d}.png"
+                    )
+                ).convert("RGBA")
+                stored_fall = atlas.crop(
+                    (
+                        column * self.CELL,
+                        self.CELL,
+                        (column + 1) * self.CELL,
+                        self.CELL * 2,
+                    )
+                )
+                self.assertEqual(
+                    stored_fall.tobytes(),
+                    original_fall.tobytes(),
+                )
+
+    def test_parity_repair_rejects_unsafe_scale(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_fixture(root)
+            with self.assertRaisesRegex(
+                GeometryError,
+                "needs-authored-source",
+            ):
+                repair_sprite_parity(
+                    root,
+                    actor="matthias",
+                    target_weapon="panzerfaust",
+                    action="jump",
+                    actions=self.ACTIONS,
+                    canon_weapons=["pistol", "machinegun"],
+                    output_atlas=root / "candidate.png",
+                    report_path=root / "health.json",
+                    preview_path=root / "review.png",
+                    columns=self.COLUMNS,
+                    cell_size=self.CELL,
+                    max_auto_scale_delta=0.12,
+                )
 
 
 if __name__ == "__main__":
