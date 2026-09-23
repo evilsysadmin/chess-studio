@@ -4,17 +4,24 @@
 
 @media (min-width: 1261px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(802px, 1fr) minmax(204px, 220px) !important;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 208px) !important;
   }
 }
 
 @media (min-width: 1081px) and (max-width: 1260px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(620px, 1fr) minmax(196px, 210px) !important;
+    grid-template-columns: minmax(0, 1fr) minmax(184px, 200px) !important;
   }
 }
 
 @media (min-width: 1081px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    gap: clamp(.28rem, .36vw, .4rem) !important;
+    padding: clamp(.28rem, .34vw, .38rem) !important;
+    margin-bottom: 0;
+    padding-bottom: clamp(.28rem, .34vw, .38rem) !important;
+  }
+
   .game-screen .game-side-column.game-side-column-3d {
     display: contents !important;
     border: 0 !important;
