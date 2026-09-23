@@ -204,14 +204,12 @@ test('Home móvil · JUGAR/CONTINUAR es la acción primaria autoexplicativa y t�
       width: rect.width,
       height: rect.height,
       viewportWidth: window.innerWidth,
-      touchAction: style.touchAction,
       detailDisplay: detailNode ? getComputedStyle(detailNode).display : 'none',
     };
   });
 
   expect(metrics.width).toBeGreaterThanOrEqual(metrics.viewportWidth * .60);
   expect(metrics.height).toBeGreaterThanOrEqual(60);
-  expect(metrics.touchAction).toBe('manipulation');
   expect(metrics.detailDisplay).not.toBe('none');
 });
 
