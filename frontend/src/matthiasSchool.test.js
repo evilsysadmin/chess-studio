@@ -4,6 +4,7 @@ import {
   MATTHIAS_SCHOOL_COURSES,
   MATTHIAS_SCHOOL_KEY,
   MATTHIAS_SCHOOL_LESSONS,
+  MATTHIAS_SCHOOL_REFERENCES,
   isSchoolCourseUnlocked,
   isSchoolLessonUnlocked,
   loadMatthiasSchoolProgress,
@@ -13,6 +14,7 @@ import {
   schoolExamForCourse,
   schoolLessonsForCourse,
   schoolBoardGuideMove,
+  schoolLessonMetadata,
   schoolLineForLesson,
   validateMatthiasSchoolMove,
 } from './matthiasSchool.js';
@@ -20,15 +22,30 @@ import {
 describe('Escuela de Matthias', () => {
   beforeEach(() => localStorage.clear());
 
-  it('organiza cinco cursos progresivos y cada uno termina en examen', () => {
-    expect(MATTHIAS_SCHOOL_COURSES.map((course) => course.label)).toEqual(['Básico', 'Básico-medio', 'Medio', 'Medio-avanzado', 'Avanzado']);
-    expect(MATTHIAS_SCHOOL_LESSONS.length).toBeGreaterThanOrEqual(20);
+  it('organiza siete cursos progresivos y cada uno termina en examen', () => {
+    expect(MATTHIAS_SCHOOL_COURSES.map((course) => course.label)).toEqual(['Básico', 'Básico-medio', 'Medio', 'Medio-avanzado', 'Avanzado', 'Estrategia', 'Finales']);
+    expect(MATTHIAS_SCHOOL_LESSONS.length).toBeGreaterThanOrEqual(35);
     for (const course of MATTHIAS_SCHOOL_COURSES) {
       const lessons = schoolLessonsForCourse(course.id);
       expect(lessons.length, course.id).toBeGreaterThanOrEqual(3);
       expect(lessons.at(-1)?.exam, `${course.id} debe acabar en examen`).toBe(true);
       expect(schoolExamForCourse(course.id)?.maxMistakes).toBeGreaterThanOrEqual(0);
     }
+  });
+
+
+  it('expone metadatos pedagógicos y referencias sin copiar contenido externo', () => {
+    const strategy = MATTHIAS_SCHOOL_LESSONS.find((lesson) => lesson.id === 'open-file-tempo');
+    expect(schoolLessonMetadata(strategy)).toMatchObject({
+      difficulty: 6,
+      discipline: 'strategy',
+      concept: 'open-file',
+      referenceId: 'lasker-strategy',
+    });
+    expect(MATTHIAS_SCHOOL_REFERENCES['capablanca-fundamentals']).toMatchObject({ kind: 'public-domain' });
+    expect(MATTHIAS_SCHOOL_REFERENCES['lasker-strategy']).toMatchObject({ kind: 'public-domain' });
+    expect(schoolLessonsForCourse('strategy')).toHaveLength(6);
+    expect(schoolLessonsForCourse('endgames')).toHaveLength(6);
   });
 
   it('todas las secuencias de enseñanza son legales completas, incluidas respuestas automáticas', () => {
