@@ -175,16 +175,16 @@ jobs:
             REQ="$OUT/repair-requests"
             mkdir -p "$REQ"
             python3 - "$OUT/matthias-semantic-audit.json" <<'PY' > "$REQ/crouch-weapons.txt"
-import json
-import sys
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-weapons = sorted({
-    item["weapon"]
-    for item in data.get("checks", [])
-    if item.get("action") == "crouch" and item.get("status") == "fail"
-})
-print("\n".join(weapons))
-PY
+          import json
+          import sys
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          weapons = sorted({
+              item["weapon"]
+              for item in data.get("checks", [])
+              if item.get("action") == "crouch" and item.get("status") == "fail"
+          })
+          print("\n".join(weapons))
+          PY
             while IFS= read -r weapon; do
               [[ -z "$weapon" ]] && continue
               DEST="$REQ/$weapon/crouch-frame0"
