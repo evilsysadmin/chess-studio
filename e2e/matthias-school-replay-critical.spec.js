@@ -147,3 +147,49 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   }
 });
+
+
+test('Escuela de Matthias · recomienda entrenamiento sólo desde reincidencia personal real', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await page.evaluate(() => {
+    const common = {
+      kind: 'personal',
+      source: 'test',
+      createdAt: '2026-09-23T18:00:00.000Z',
+      attempts: 0,
+      solves: 0,
+      cleanSolves: 0,
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+    };
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      {
+        ...common,
+        id: 'school-rec-1',
+        fen: '7k/8/8/8/8/8/4P3/K7 w - - 0 1',
+        solution: ['e4'],
+        loss: 240,
+        sourceGameId: 'game-a',
+      },
+      {
+        ...common,
+        id: 'school-rec-2',
+        fen: '7k/8/8/8/8/8/3P4/K7 w - - 0 1',
+        solution: ['d4'],
+        loss: 310,
+        sourceGameId: 'game-b',
+      },
+    ]));
+  });
+
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  const recommendation = page.getByRole('complementary', { name: 'Recomendación de Matthias' });
+  await expect(recommendation).toContainText('Horquillas de caballo sufridas');
+  await expect(recommendation).toContainText('2 posiciones reales');
+  await expect(recommendation).toContainText('2 pendientes');
+
+  await recommendation.getByRole('button', { name: 'Entrenar este patrón', exact: true }).click();
+  await expect(page.locator('.puzzle-screen-personal')).toBeVisible();
+});
+
