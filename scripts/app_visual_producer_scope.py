@@ -33,6 +33,7 @@ WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
 WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/gamewarroomcommandcolumn.jsx",
     "frontend/src/components/warroomscenevariant.js",
+    "frontend/src/components/warroomclassicshell.js",
     "frontend/src/components/warroomblendershellruntime.js",
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
