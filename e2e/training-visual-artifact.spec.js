@@ -78,6 +78,16 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
   await capture(page, 'school');
+
+  await shell.getByRole('button', { name: 'Expandir tablero', exact: true }).click();
+  await expect(shell).toHaveAttribute('data-school-focus', 'board');
+  await capture(page, 'school-board-mode');
+  await captureAt(page, 'school-board-mode', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.keyboard.press('Escape');
+  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
+  await settle(page);
+
   const resources = shell.getByText('Recursos', { exact: true });
   await resources.click();
   const v2Scene = shell.getByRole('button', { name: 'War Room v2', exact: true });
