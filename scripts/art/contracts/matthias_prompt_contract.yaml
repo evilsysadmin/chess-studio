@@ -694,5 +694,15 @@
     "single_isolated_frame": true,
     "candidate_state": "quarantined",
     "note": "Authoring caller must request one transparent candidate image; acceptance never trusts generator intent."
+  },
+  "candidate_audit": {
+    "alpha_threshold": 32,
+    "head_anchor_height_ratio": 0.32,
+    "min_head_anchor_width_px": 8,
+    "min_primary_alpha_fraction": 0.9,
+    "min_weapon_width_ratio_vs_reference": 0.82,
+    "max_weapon_width_ratio_vs_reference": 1.18,
+    "max_body_height_ratio_vs_idle_for_crouch": 0.86,
+    "min_body_top_drop_ratio_vs_idle_for_crouch": 0.1
   }
 }
