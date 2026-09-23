@@ -12,6 +12,7 @@ MATTHIAS_PATHS = {
     "scripts/art/export_matthias_sprite_smoke.py",
     "scripts/art/validate_matthias_sprite_continuity.py",
     "scripts/art/repair_matthias_machinegun_continuity.py",
+    "scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py",
 }
 
 ENEMY_PATHS = {
@@ -87,6 +88,7 @@ def self_test() -> None:
     assert classify(["scripts/art/export_matthias_sprite_smoke.py"]) == Scope(True, False)
     assert classify(["scripts/art/validate_matthias_sprite_continuity.py"]) == Scope(True, False)
     assert classify(["scripts/art/repair_matthias_machinegun_continuity.py"]) == Scope(True, False)
+    assert classify(["scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py"]) == Scope(True, False)
     assert classify(["games/pawn-slug-godot/scripts/enemy_visual.gd"]) == Scope(False, True)
     assert classify(["scripts/art/derive_pawn_slug_enemy_queen_v2.py"]) == Scope(False, True)
     assert classify(["scripts/art/png_contract.py"]) == full_scope()
