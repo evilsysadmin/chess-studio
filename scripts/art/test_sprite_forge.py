@@ -1000,10 +1000,12 @@ class SpriteForgeHurtBatchTests(unittest.TestCase):
             (24, top, 39, self.FOOT_Y - 1),
             fill=(72, 62, 52, 255),
         )
-        draw.rectangle(
-            (25, max(top, 20), 38, 30),
-            fill=(176, 128, 92, 255),
-        )
+        face_top = max(top, 20)
+        if face_top <= 30:
+            draw.rectangle(
+                (25, face_top, 38, 30),
+                fill=(176, 128, 92, 255),
+            )
         if weapon == "machinegun":
             if not damaged_cap:
                 draw.rectangle(
