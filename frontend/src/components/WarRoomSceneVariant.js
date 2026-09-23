@@ -18,8 +18,9 @@ export function startWarRoomVariantScene({
   const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
-      canvas.dataset.warRoomV2Status = status;
       canvas.dataset.warRoomVariantStatus = status;
+      // Transitional staging/live probe alias from the original v2-only rollout.
+      canvas.dataset.warRoomV2Status = status;
       if (renderedVariant) canvas.dataset.warRoomVariant = renderedVariant;
       if (status !== 'fallback') delete canvas.dataset.warRoomVariantError;
     }
