@@ -61,13 +61,22 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
   await page.mouse.click(point.x, point.y);
 }
 
+// These controls are setup only. Three.js/CSS can keep their boxes moving while
+// the scene settles, which makes Playwright actionability wait even though the
+// control is already visible and enabled. Invoke the same DOM click handler
+// directly here; the test's actual board interaction still uses real pointer input.
+async function activateSetupControl(locator, timeout = WAR_ROOM_READY_TIMEOUT) {
+  await expect(locator).toBeVisible({ timeout });
+  await expect(locator).toBeEnabled();
+  await locator.evaluate((element) => element.click());
+}
+
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
   let button;
   if (await warRoom.count()) {
     const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-    await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-    await utilityMenu.click();
+    await activateSetupControl(utilityMenu);
     button = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
   } else {
     button = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
@@ -176,7 +185,7 @@ async function openQuickGameWarRoom(page, requestLog = [], { afterMockApi = null
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   // Product contract: quick games now enter War Room directly. Renderer
   // switching remains a parity/fallback feature, not a prerequisite for 3D.
@@ -196,7 +205,7 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await mockApi(page, { requestLog });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
 
   // Este caso es específicamente un contrato 2D→3D. Primero acreditamos que
   // la nueva casa 3D ha montado y sólo entonces optamos por el fallback 2D.
