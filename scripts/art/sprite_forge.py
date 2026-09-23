@@ -1349,6 +1349,7 @@ def audit_sprite_batch(
         },
         "weapons": {},
         "parity": {},
+        "temporal": {},
     }
 
     for weapon in weapons:
@@ -1442,6 +1443,86 @@ def audit_sprite_batch(
                 ),
             }
         payload["parity"][action] = action_payload
+
+    temporal_thresholds = {
+        "reload": {
+            "maxHeightStepRatio": 0.18,
+            "maxFootStepRatio": 0.08,
+            "maxCentroidStepRatio": 0.15,
+        },
+        "die": {
+            "maxHeightStepRatio": 0.35,
+            "maxFootStepRatio": 0.18,
+            "maxCentroidStepRatio": 0.30,
+        },
+    }
+    for action, thresholds in temporal_thresholds.items():
+        if action not in actions:
+            continue
+        action_payload = {"row": actions.index(action), "weapons": {}}
+        for weapon in weapons:
+            row_payload = payload["weapons"][weapon][action]
+            frames = row_payload["frames"]
+            median_height = max(1.0, float(row_payload["medianHeight"]))
+
+            height_steps = [
+                abs(frames[index + 1]["height"] - frames[index]["height"])
+                for index in range(len(frames) - 1)
+            ]
+            foot_steps = [
+                abs(frames[index + 1]["foot_y"] - frames[index]["foot_y"])
+                for index in range(len(frames) - 1)
+            ]
+            centroid_steps = [
+                (
+                    (
+                        frames[index + 1]["centroid_x"]
+                        - frames[index]["centroid_x"]
+                    )
+                    ** 2
+                    + (
+                        frames[index + 1]["centroid_y"]
+                        - frames[index]["centroid_y"]
+                    )
+                    ** 2
+                )
+                ** 0.5
+                for index in range(len(frames) - 1)
+            ]
+
+            def step_report(values: list[float]) -> tuple[float, list[int] | None]:
+                if not values:
+                    return 0.0, None
+                value = max(values)
+                index = values.index(value)
+                return float(value), [index, index + 1]
+
+            height_step, height_pair = step_report(height_steps)
+            foot_step, foot_pair = step_report(foot_steps)
+            centroid_step, centroid_pair = step_report(centroid_steps)
+            ratios = {
+                "maxHeightStepRatio": height_step / median_height,
+                "maxFootStepRatio": foot_step / median_height,
+                "maxCentroidStepRatio": centroid_step / median_height,
+            }
+            reasons = [
+                key
+                for key, value in ratios.items()
+                if value > float(thresholds[key])
+            ]
+            action_payload["weapons"][weapon] = {
+                "status": "review" if reasons else "pass",
+                "reasons": reasons,
+                "maxHeightStepRatio": round(ratios["maxHeightStepRatio"], 6),
+                "maxHeightStepPair": height_pair,
+                "maxFootStepRatio": round(ratios["maxFootStepRatio"], 6),
+                "maxFootStepPair": foot_pair,
+                "maxCentroidStepRatio": round(
+                    ratios["maxCentroidStepRatio"], 6
+                ),
+                "maxCentroidStepPair": centroid_pair,
+            }
+        payload["temporal"][action] = action_payload
 
     return payload
 
