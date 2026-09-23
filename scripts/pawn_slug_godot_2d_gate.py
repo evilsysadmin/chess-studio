@@ -83,7 +83,7 @@ REQUIRED_MATTHIAS = (
     "V9_ATLAS_CELL_SIZE := 416",
     "V9_ATLAS_SIZE := Vector2i(",
     "/pawn-slug-godot/matthias/crouch-continuity-v1/pistol/full/pistol-crouch-continuity-v1-17eb2d13f327de7f.png",
-    "/pawn-slug-godot/matthias/hurt-alpha-v2/machinegun/full/machinegun-hurt-alpha-v2-55e21e6e1cb45528.png",
+    "/pawn-slug-godot/matthias/hurt-alpha-v3/machinegun/full/machinegun-hurt-alpha-v3-b4af66a11ebd1267.png",
     "/pawn-slug-godot/matthias/stabilized-v1/shotgun/full/shotgun-stabilized-v1-7b7dab8a9e3acb31.png",
     "/pawn-slug-godot/matthias/stabilized-v1/panzerfaust/full/panzerfaust-stabilized-v1-c2b491e9a409f8db.png",
     "/pawn-slug-godot/matthias/run12-v22/pistol/v22-07d2a11a2249989b.png",
