@@ -557,6 +557,19 @@ def main() -> int:
         if token not in infra_logs:
             fail(f"Loki debe usar fuentes canónicas por entorno: {token}")
 
+    for cloudflare_pages_script in (
+        ROOT / "scripts" / "cloudflare_staging_pages.py",
+        ROOT / "scripts" / "cloudflare_production_pages.py",
+    ):
+        cloudflare_pages = cloudflare_pages_script.read_text(encoding="utf-8")
+        for token in (
+            "/settings/ip_geolocation",
+            '{"value": "on"}',
+            "ensure_ip_geolocation(zone_id)",
+        ):
+            if token not in cloudflare_pages:
+                fail(f"{cloudflare_pages_script.name} no garantiza CF-IPCountry: {token}")
+
     oci_compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
     oci_alloy = (ROOT / "infra" / "oci" / "runtime" / "alloy.alloy").read_text(encoding="utf-8")
     oci_deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="utf-8")
