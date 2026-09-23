@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import './WarRoomCompositionPolish.css';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
