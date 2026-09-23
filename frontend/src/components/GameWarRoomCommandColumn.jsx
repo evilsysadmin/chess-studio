@@ -213,7 +213,7 @@ function CompactWarRoomPill({ game, signal, board, controls, zenMode }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill game-3d-matthias-card is-${signal.tone}`}
+        className={`game-3d-turn-pill is-${signal.tone}`}
         data-matthias-war-room-presence="king-piece"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
@@ -295,7 +295,7 @@ export default function GameWarRoomCommandColumn({
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill game-3d-matthias-card is-${signal.tone}`}
+        className={`game-3d-turn-pill is-${signal.tone}`}
         data-matthias-war-room-presence="king-piece"
       >
         <span className="game-3d-matchup">
