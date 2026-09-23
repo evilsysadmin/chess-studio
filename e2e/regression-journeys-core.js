@@ -449,6 +449,31 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']?.completed)).toBe(true);
 });
 
+test('Escuela de Matthias · estudio libre abre material experto sin falsear la ruta guiada', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+
+  await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  const finales = page.getByRole('button', { name: /Finales/ });
+  await expect(finales).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Estudio libre', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Estudio libre', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(finales).toBeEnabled();
+  await finales.click();
+  await expect(page.getByRole('heading', { name: 'El rey va delante', exact: true })).toBeVisible();
+
+  await clickBoardMove(page, 'e5', 'f6');
+  await expect(page.getByText('✓ dominado', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  await page.getByRole('button', { name: 'Ruta guiada', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Finales/ })).toBeDisabled();
+});
+
 test('Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar', async ({ page }) => {
   const basicCourseProgress = JSON.stringify({
     'pawn-double-step': { completed: true },
