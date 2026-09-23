@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -150,15 +151,44 @@ def main() -> int:
         if token not in trace_dash:
             fail(f"dashboard Tempo no permite separar producción/staging: {token}")
 
-    edge_dash = (INFRA / "dashboards" / "chess-studio-edge.json").read_text(encoding="utf-8")
-    for token in (
-        '${metrics_datasource_uid}',
-        'chess-studio.shadowops.dpdns.org',
-        'cloudflare_worker_requests_total',
-        'requests ≠ humanos' if 'requests ≠ humanos' in edge_dash else 'Un request no equivale a una persona',
-    ):
-        if token not in edge_dash:
-            fail(f"dashboard Edge no cubre {token}")
+    edge_path = INFRA / "dashboards" / "chess-studio-edge.json"
+    edge_dash = edge_path.read_text(encoding="utf-8")
+    edge_data = load_json(edge_path)
+    edge_titles = {str(row.get("title") or "") for row in (edge_data.get("panels") or [])}
+    required_edge_titles = {
+        "Exporter Cloudflare · up",
+        "Zonas Free · analytics omitidas",
+        "Exporter errors · 1 h",
+        "Workers · requests/s",
+        "Workers · errors/s",
+        "Certificados · estado",
+    }
+    missing_edge_titles = sorted(required_edge_titles - edge_titles)
+    if missing_edge_titles:
+        fail(f"dashboard Cloudflare Free perdió paneles: {', '.join(missing_edge_titles)}")
+    edge_exprs = "\n".join(
+        str(target.get("expr") or "")
+        for panel in (edge_data.get("panels") or [])
+        for target in (panel.get("targets") or [])
+    )
+    allowed_cloudflare_metrics = {
+        "cloudflare_exporter_up",
+        "cloudflare_exporter_errors_total",
+        "cloudflare_zones_skipped_free_tier",
+        "cloudflare_worker_requests_total",
+        "cloudflare_worker_errors_total",
+        "cloudflare_zone_certificate_validation_status",
+    }
+    used_cloudflare_metrics = set(re.findall(r"\\bcloudflare_[A-Za-z0-9_]+\\b", edge_exprs))
+    forbidden_cloudflare_metrics = sorted(used_cloudflare_metrics - allowed_cloudflare_metrics)
+    if forbidden_cloudflare_metrics:
+        fail(
+            "dashboard Cloudflare Free usa métricas fuera de allowlist: "
+            + ", ".join(forbidden_cloudflare_metrics)
+        )
+    for token in ('${metrics_datasource_uid}', *sorted(allowed_cloudflare_metrics)):
+        if token not in edge_dash and token not in edge_exprs:
+            fail(f"dashboard Cloudflare Free no cubre {token}")
 
     security_path = INFRA / "dashboards" / "chess-studio-security.json"
     security_raw = security_path.read_text(encoding="utf-8")
@@ -169,7 +199,6 @@ def main() -> int:
         "Auth identity blocks · 15 min",
         "Requests backend · 15 min",
         "Presión backend · requests/s vs baseline 1 h",
-        "Cloudflare WAF · visibilidad",
         "Biggest auth offenders · failed logins",
         "IPs ofensivas únicas · por país",
         "Auth forensics reciente · sin contraseñas",
@@ -201,8 +230,7 @@ def main() -> int:
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")
     for forbidden_security_expr in (
-        'cloudflare_zone_colocation_requests_total',
-        'cloudflare_zone_firewall_events_total',
+        'cloudflare_',
         '${selector:raw}',
     ):
         if forbidden_security_expr in security_exprs:
@@ -348,14 +376,19 @@ def main() -> int:
     for token in (
         'DISABLE_UI',
         'DISABLE_CONFIG_API',
-        'HOST_METRICS_ALLOWLIST',
-        'chess-studio.shadowops.dpdns.org',
-        'staging.chess-studio.shadowops.dpdns.org',
-        'CF_HTTP_STATUS_GROUP',
+        'CF_FREE_TIER_ACCOUNTS',
         'workers_dev',
     ):
         if token not in exporter_config:
             fail(f"config exporter Cloudflare incompleta: {token}")
+    for forbidden_assignment in (
+        '"HOST_METRICS_ALLOWLIST":',
+        '"CF_HTTP_STATUS_GROUP":',
+    ):
+        if forbidden_assignment in exporter_config:
+            fail(f"exporter Cloudflare resucita configuración de métricas de pago: {forbidden_assignment}")
+    if 'CLOUDFLARE_EXPORTER_FREE_TIER' in exporter_config or 'CLOUDFLARE_EXPORTER_FREE_TIER' in exporter_workflow:
+        fail("exporter Cloudflare resucita toggle de métricas de pago")
     for token in (
         'attempts: int = 60',
         'delay_seconds: float = 5',

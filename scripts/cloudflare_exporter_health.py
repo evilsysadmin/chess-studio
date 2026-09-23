@@ -164,7 +164,8 @@ def append_summary(base_url: str, upstream_sha: str) -> None:
             f"- Endpoint: `{base_url}/metrics`\n"
             "- Protección: `HTTP Basic Auth`\n"
             "- UI/config API: `disabled`\n"
-            "- Host metrics: `production + staging`\n"
+            "- Modo: `Cloudflare Free only`\n"
+            "- Dashboards: `exporter + Workers + certificados`\n"
         )
 
 

@@ -6,8 +6,8 @@ Chess Studio publica siete dashboards versionados bajo la carpeta **Chess Studio
 - `chess-studio-logs` · 404, 5xx, p95, release, `request_id` y `trace_id` accionables.
 - `chess-studio-log-explorer` · exploración Loki multi-entorno sin escribir LogQL.
 - `chess-studio-traces` · Tempo/TraceQL para latencia y errores.
-- `chess-studio-edge` · tráfico, errores, países, seguridad y Workers vistos desde Cloudflare.
-- `chess-studio-security` · brute force, bloqueos, 401/403/429, WAF y presión de tráfico correlacionados sin clasificar automáticamente un pico como ataque.
+- `chess-studio-edge` · Cloudflare Free: salud del exporter, Workers y certificados; sin Analytics/WAF de pago.
+- `chess-studio-security` · brute force, bloqueos, 401/403/429, presión de tráfico, IPs y países usando OTEL/Loki; sin métricas Cloudflare de pago.
 - `chess-studio-oci-host` · salud del host OCI staging.
 
 El publisher es `scripts/grafana_publish.py`. Es idempotente, usa sólo la biblioteca estándar de Python y hace:
@@ -58,26 +58,18 @@ Los exporters reciben también `OTEL_EXPORTER_OTLP_HEADERS` de forma explícita 
 
 Chess Studio prepara el **exporter oficial de Cloudflare** desde `.github/workflows/cloudflare-prometheus-exporter.yml`. El workflow no copia ni mantiene un fork del exporter: hace checkout de `cloudflare/cloudflare-prometheus-exporter` fijado a un SHA revisable, ejecuta sus tests/typecheck, aplica sólo la configuración de Chess Studio y lo despliega como Worker en `metrics.shadowops.dpdns.org`.
 
-El exporter expone métricas Prometheus de Cloudflare cuando el plan/API correspondiente las permite. Está protegido con HTTP Basic Auth, tiene la UI y API de configuración deshabilitadas y filtra el scope al account de Chess Studio. En **Cloudflare Free**, el exporter omite datasets GraphQL avanzados no disponibles para la zona (por ejemplo varias series de tráfico detallado, país y WAF/firewall); un panel vacío de esas familias significa **telemetría no disponible**, no cero tráfico ni cero ataques. Las métricas por hostname se habilitan para:
-
-- `chess-studio.shadowops.dpdns.org`
-- `staging.chess-studio.shadowops.dpdns.org`
+El exporter queda fijado deliberadamente a **Cloudflare Free**. Chess Studio no configura hostname analytics ni consulta en sus dashboards métricas de Zone Analytics/GraphQL de pago. La allowlist visual se limita a salud del exporter, Workers account-level y estado de certificados. El propio exporter marca las zonas Free omitidas mediante `cloudflare_zones_skipped_free_tier`.
 
 ### Secretos del exporter
 
-No reutilices `CLOUDFLARE_API_TOKEN` como token runtime del exporter. Ese token de CI puede escribir infraestructura y sería un privilegio innecesario en un Worker que sólo necesita observar.
+No reutilices `CLOUDFLARE_API_TOKEN` como token runtime del exporter. El runtime usa `CLOUDFLARE_EXPORTER_API_TOKEN`, dedicado y de sólo lectura. Conserva los permisos mínimos que exige el exporter oficial (`Zone > Analytics: Read`, `Account > Account Analytics: Read`, `Account > Workers Scripts: Read`) y `Zone > SSL and Certificates: Read` para el panel de certificados. No hacen falta permisos opcionales de Firewall Services, Load Balancers, Logs o Magic Transit para los dashboards de Chess Studio.
 
-Añade en GitHub:
+También necesita:
 
-- `CLOUDFLARE_EXPORTER_API_TOKEN` · token Cloudflare dedicado de **sólo lectura**. Como mínimo necesita `Zone > Analytics: Read`, `Account > Account Analytics: Read` y `Account > Workers Scripts: Read`. Permisos opcionales (SSL, Firewall Services, Load Balancers, Account Logs, etc.) sólo si quieres las métricas correspondientes.
-- `CLOUDFLARE_EXPORTER_BASIC_AUTH_USER` · usuario aleatorio para proteger `/metrics` y `/health`.
-- `CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD` · contraseña larga y aleatoria.
+- `CLOUDFLARE_EXPORTER_BASIC_AUTH_USER`
+- `CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD`
 
-Variable opcional:
-
-- `CLOUDFLARE_EXPORTER_FREE_TIER` · por defecto `true`. Hace que el exporter omita datasets que no están disponibles en cuentas Free. Cámbiala a `false` sólo si el plan de Cloudflare se amplía.
-
-Si faltan estas credenciales, el workflow termina correctamente pero **no despliega** un exporter inseguro; deja en el summary cuáles faltan.
+No existe un interruptor para habilitar métricas de pago: `CF_FREE_TIER_ACCOUNTS` se fuerza en la configuración generada.
 
 ### Scrape desde Grafana Alloy
 
@@ -94,11 +86,10 @@ Añádelo al Alloy que ya contiene `prometheus.remote_write.metrics_service` y e
 
 El scrape recomendado es cada 60 s. El exporter oficial refresca sus datos en background y las consultas de Prometheus leen el estado cacheado, así que no hace una consulta Cloudflare completa por cada scrape.
 
-### Humanos vs ruido de Internet
+### Cloudflare Free vs telemetría de aplicación
 
-El dashboard `Chess Studio · Edge / Cloudflare` muestra las familias que el exporter pueda obtener del plan actual. **Un request no equivale a una persona**: crawlers, scanners y bots también cuentan. El dashboard `Chess Studio · Security` no usa las series Cloudflare Free ausentes para inferir “cero”: tráfico/presión salen de OTEL del backend y auth/offenders de Loki; la visibilidad WAF avanzada se marca explícitamente como no disponible mientras siga el plan Free.
+El dashboard `Chess Studio · Cloudflare Free` sólo muestra métricas incluidas en la allowlist Free. Para tráfico real, errores, presión y seguridad de la aplicación usa OTEL/Loki en `Chess Studio · Salud operativa` y `Chess Studio · Security`. Para popularidad humana del frontend, Cloudflare Web Analytics/RUM puede seguir usándose como producto gratuito separado cuando esté habilitado.
 
-Para medir popularidad humana (visitantes, pageviews y navegación SPA), usa **Cloudflare Web Analytics/RUM** sobre el hostname de producción. `scripts/cloudflare_production_pages.py` intenta activarlo durante el cutover de Pages; si el token de CI no tiene permisos `Account Settings`, la migración no falla y el workflow lo deja como aviso para configurarlo aparte.
 
 
 ## Costes P0 · OCI + Cloudflare

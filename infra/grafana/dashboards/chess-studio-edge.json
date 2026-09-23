@@ -12,145 +12,345 @@
       "id": 1,
       "type": "text",
       "title": "Qué mide este dashboard",
-      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "options": {
         "mode": "markdown",
-        "content": "**Edge/Cloudflare** mide tráfico HTTP, errores, países, seguridad y Workers desde el exporter oficial. Puede incluir bots. **Un request no equivale a una persona.** Para popularidad humana exacta (visitantes/pageviews RUM), usa **Cloudflare Web Analytics**."
+        "content": "**Cloudflare Free, sin métricas de pago.** Este dashboard sólo usa familias que mantenemos explícitamente en la allowlist Free de Chess Studio: salud del exporter, zonas Free omitidas de Analytics, Workers y estado de certificados. Las métricas de Zone Analytics/GraphQL (requests por zona/host, países, HTTP status, WAF/firewall, cache, colocation, hostname analytics, etc.) están deliberadamente fuera. Tráfico y seguridad reales viven en los dashboards de OTEL/Loki."
       }
     },
     {
       "id": 2,
       "type": "stat",
-      "title": "Requests producción · 24 h",
-      "description": "Requests del hostname público de Chess Studio vistos en los colos de Cloudflare.",
-      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 4},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "title": "Exporter Cloudflare · up",
+      "description": "Salud del exporter Prometheus protegido. SIN DATOS significa scrape/exporter no observable.",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "SIN DATOS",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "max(cloudflare_exporter_up)",
+          "refId": "A"
+        }
       ]
     },
     {
       "id": 3,
       "type": "stat",
-      "title": "Security events · 24 h",
-      "description": "Eventos sobre los que Cloudflare/WAF ha actuado para el hostname de producción.",
-      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 4},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "title": "Zonas Free · analytics omitidas",
+      "description": "Número de zonas Free que el exporter omite deliberadamente de Cloudflare GraphQL Analytics.",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "SIN DATOS"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "max(cloudflare_zones_skipped_free_tier)",
+          "refId": "A"
+        }
       ]
     },
     {
       "id": 4,
       "type": "stat",
-      "title": "4xx producción · 24 h",
-      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 4},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "title": "Exporter errors · 1 h",
+      "description": "Errores del exporter Cloudflare durante la última hora.",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_customer_error_4xx_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum(increase(cloudflare_exporter_errors_total[1h])) or vector(0)",
+          "refId": "A"
+        }
       ]
     },
     {
       "id": 5,
-      "type": "stat",
-      "title": "5xx producción · 24 h",
-      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 4},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "type": "timeseries",
+      "title": "Workers · requests/s",
+      "description": "Requests de Workers por script. Métrica account-level; no depende de Zone Analytics de pago.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_customer_error_5xx_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum by (script_name) (rate(cloudflare_worker_requests_total[$__rate_interval]))",
+          "legendFormat": "{{script_name}}",
+          "refId": "A"
+        }
       ]
     },
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Requests/s · producción",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
-      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "title": "Workers · errors/s",
+      "description": "Errores de Workers por script.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))", "legendFormat": "requests/s", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum by (script_name) (rate(cloudflare_worker_errors_total[$__rate_interval]))",
+          "legendFormat": "{{script_name}}",
+          "refId": "A"
+        }
       ]
     },
     {
       "id": 7,
-      "type": "timeseries",
-      "title": "HTTP status · producción",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
-      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "type": "bargauge",
+      "title": "Certificados · estado",
+      "description": "Estado de validación de certificados de zona. Requiere permiso read-only SSL and Certificates, disponible sin contratar Analytics de pago.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics_datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum by (edge_status) (rate(cloudflare_zone_requests_status_country_host_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))", "legendFormat": "{{edge_status}}", "refId": "A"}
-      ]
-    },
-    {
-      "id": 8,
-      "type": "barchart",
-      "title": "Top países · requests 24 h",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "orientation": "auto", "showValue": "auto", "stacking": "none", "xTickLabelRotation": 0, "xTickLabelSpacing": 0},
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "topk(10, sum by (country) (increase(cloudflare_zone_requests_status_country_host_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])))", "format": "time_series", "instant": true, "legendFormat": "{{country}}", "refId": "A"}
-      ]
-    },
-    {
-      "id": 9,
-      "type": "barchart",
-      "title": "WAF / firewall · acciones 24 h",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
-      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "orientation": "auto", "showValue": "auto", "stacking": "none", "xTickLabelRotation": 0, "xTickLabelSpacing": 0},
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum by (action) (increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h]))", "instant": true, "legendFormat": "{{action}}", "refId": "A"}
-      ]
-    },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "Workers AI · requests y errores",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 25},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
-      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_worker_requests_total{script_name=\"chess-studio-narrative-ai\"}[$__rate_interval]))", "legendFormat": "requests/s", "refId": "A"},
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_worker_errors_total{script_name=\"chess-studio-narrative-ai\"}[$__rate_interval]))", "legendFormat": "errors/s", "refId": "B"}
-      ]
-    },
-    {
-      "id": 11,
-      "type": "timeseries",
-      "title": "Cache hit ratio · zona",
-      "description": "Métrica de zona, no exclusiva de Chess Studio si shadowops.dpdns.org aloja otros hostnames.",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 25},
-      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
-      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}, "overrides": []},
-      "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "cloudflare_zone_cache_hit_ratio{zone=\"shadowops.dpdns.org\"}", "legendFormat": "cache hit", "refId": "A"}
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
+          },
+          "expr": "sum by (status) (cloudflare_zone_certificate_validation_status)",
+          "legendFormat": "{{status}}",
+          "refId": "A",
+          "instant": true
+        }
       ]
     }
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": ["chess-studio", "cloudflare", "edge", "prometheus"],
-  "templating": {"list": []},
-  "time": {"from": "now-24h", "to": "now"},
+  "tags": [
+    "chess-studio",
+    "cloudflare",
+    "free-tier",
+    "prometheus"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Chess Studio · Edge / Cloudflare",
+  "title": "Chess Studio · Cloudflare Free",
   "uid": "chess-studio-edge",
   "version": 1,
   "weekStart": ""

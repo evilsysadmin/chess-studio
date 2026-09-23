@@ -8,7 +8,7 @@
   "id": null,
   "links": [
     {
-      "title": "Edge / Cloudflare",
+      "title": "Cloudflare Free",
       "type": "link",
       "url": "/d/chess-studio-edge/chess-studio-edge",
       "includeVars": false,
@@ -45,7 +45,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Security** usa fuentes que significan exactamente lo que muestran: tráfico y presión desde métricas OTEL del backend; auth/offenders desde Loki; y Cloudflare sólo donde el plan realmente expone telemetría. Los smokes firmados (`staging-smoke-cleanup`, `staging-browser-smoke`) y el namespace legacy `ci_smoke_<16hex>` quedan fuera de rankings/forensics auth pero siguen en Log Explorer. Cloudflare Free no expone las series GraphQL avanzadas de WAF/edge usadas por el exporter: **ausencia de serie no significa cero ataques**. El ranking por IP muestra quién insiste más; `IPs ofensivas únicas · por país` deduplica por `(client_country, client_ip)`."
+        "content": "**Security** se apoya en señales que sí tenemos en el stack gratuito: tráfico/presión desde OTEL del backend y auth/offenders desde Loki. Los smokes firmados (`staging-smoke-cleanup`, `staging-browser-smoke`) y el namespace legacy `ci_smoke_<16hex>` quedan fuera de rankings/forensics auth pero siguen en Log Explorer. El ranking por IP muestra quién insiste más; `IPs ofensivas únicas · por país` deduplica por `(client_country, client_ip)`. Las métricas Cloudflare de Analytics/WAF de pago están deliberadamente fuera de este dashboard."
       }
     },
     {
@@ -301,7 +301,7 @@
       "description": "Requests/s reales del backend vía OTEL: compara la tasa a 5 min con la media a 1 h. Un multiplicador alto es una señal a investigar, no una clasificación automática de DoS.",
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 9
       },
@@ -350,22 +350,6 @@
           "refId": "B"
         }
       ]
-    },
-    {
-      "id": 7,
-      "type": "text",
-      "title": "Cloudflare WAF · visibilidad",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 9
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### No disponible con Cloudflare Free\nEl exporter está sano, pero Cloudflare Free no expone las series GraphQL avanzadas de WAF/firewall/edge que alimentarían este panel. **`No data` no equivale a 0 acciones WAF.**\n\nSecurity usa mientras tanto señales observables reales: OTEL para tráfico/errores y Loki para auth, IP y país. El dashboard **Edge / Cloudflare** conserva las métricas que sí estén disponibles si el plan cambia."
-      },
-      "description": "Limitación conocida del plan Cloudflare Free."
     },
     {
       "id": 8,
