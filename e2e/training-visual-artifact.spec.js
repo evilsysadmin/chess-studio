@@ -69,6 +69,9 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(shell).toBeVisible();
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
   await capture(page, 'school');
+  await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
 
   await shell.getByRole('button', { name: 'Glosario' }).click();
   await expect(shell.locator('.chess-glossary')).toBeVisible();
