@@ -99,9 +99,12 @@ jobs:
           assert 'WR3_OBS_celestial_window' in source_names
           assert 'WR3_OBS_table_drum' in source_names
           assert 'WR3_OBS_stove_body' in source_names
-          assert 'WR3_OBS_drafting_top' in source_names
+          assert 'WR3_OBS_telescope_tube' in source_names
+          assert 'WR3_OBS_entry_door' in source_names
           assert not any(name.startswith('WR_ARCH_') for name in source_names)
           assert not any(name.startswith('WR_CANON_') for name in source_names)
+          assert not any(name.startswith('WR3_OBS_drafting_') for name in source_names)
+          assert not any(name.startswith('WR3_OBS_map_') for name in source_names)
           PY
 
       - name: Publish War Room v3 shell
