@@ -448,8 +448,10 @@ def self_test() -> None:
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
     board3d_core = classify(["frontend/src/components/Board3DCore.jsx"])
-    assert board3d_core.capture_groups == "warroom" and not board3d_core.hans
+    assert board3d_core.capture_groups == "training,warroom" and not board3d_core.hans
     assert not board3d_core.warroom_revision_required
+    board3d_scene = classify(["frontend/src/components/Board3DScene.js"])
+    assert board3d_scene.capture_groups == "training,warroom" and not board3d_scene.hans
     game_board = classify(["frontend/src/components/GameBoardView.jsx"])
     assert game_board.capture_groups == "warroom" and game_board.hans
     ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
