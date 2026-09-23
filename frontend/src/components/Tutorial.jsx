@@ -19,7 +19,6 @@ import {
   incrementMatthiasSchoolAttempt,
   isSchoolCourseAccessible,
   isSchoolLessonAccessible,
-  isSchoolLessonUnlocked,
   loadMatthiasSchoolProgress,
   markMatthiasSchoolLessonComplete,
   matthiasSchoolCourseSummary,
@@ -97,7 +96,6 @@ export default function Tutorial({ onExit }) {
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
   const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
   const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
-  const lessonUnlocked = isSchoolLessonUnlocked(schoolProgress, lesson.id) || lessonComplete;
   const lessonAccessible = isSchoolLessonAccessible(schoolProgress, lesson.id, { freeStudy });
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
