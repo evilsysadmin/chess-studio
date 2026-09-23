@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -637,6 +638,60 @@ def validate_stage_geometry(violations: list[str]) -> None:
                     f"({platform.get('kind', '?')} @ {platform.get('x')},{platform.get('y')})"
                 )
 
+def _const_dictionary_keys(text: str, const_name: str) -> set[str]:
+    match = re.search(
+        rf"^const {re.escape(const_name)} := \\{{(.*?)^\\}}",
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if match is None:
+        return set()
+    return set(
+        re.findall(
+            r'^\\s*"([^"]+)"\\s*:',
+            match.group(1),
+            flags=re.MULTILINE,
+        )
+    )
+
+
+def validate_matthias_muzzle_action_contract(
+    text: str,
+    violations: list[str],
+) -> None:
+    expected = {
+        "shoot",
+        "shoot_up",
+        "shoot_down",
+        "shoot_diag_up",
+        "shoot_diag_up_alt",
+        "shoot_diag_down",
+        "shoot_crouch",
+    }
+    action_keys = {
+        key
+        for key in _const_dictionary_keys(text, "V9_ACTIONS")
+        if key.startswith("shoot")
+    }
+    aim_keys = _const_dictionary_keys(text, "V9_MUZZLE_ACTION_AIM")
+
+    if action_keys != expected:
+        missing = sorted(expected - action_keys)
+        unexpected = sorted(action_keys - expected)
+        violations.append(
+            "matthias_art.gd directional shoot action contract drift: "
+            f"missing={missing}, unexpected={unexpected}"
+        )
+
+    missing_aim = sorted(action_keys - aim_keys)
+    unexpected_aim = sorted(aim_keys - action_keys)
+    if missing_aim or unexpected_aim:
+        violations.append(
+            "matthias_art.gd muzzle aim map does not match shoot actions: "
+            f"missing={missing_aim}, unexpected={unexpected_aim}"
+        )
+
+
 def validate() -> None:
     if not GODOT_ROOT.is_dir():
         raise GateError(f"No existe Pawn Slug Godot: {GODOT_ROOT}")
@@ -650,6 +705,10 @@ def validate() -> None:
                 violations.append(f"{path.relative_to(ROOT)}: token prohibido {token!r}")
 
     validate_contract(MATTHIAS, "matthias_art.gd", REQUIRED_MATTHIAS, violations)
+    validate_matthias_muzzle_action_contract(
+        MATTHIAS.read_text(encoding="utf-8"),
+        violations,
+    )
     validate_contract(MATTHIAS_MOTION, "matthias_motion.gd", REQUIRED_MATTHIAS_MOTION, violations)
     validate_contract(ENEMIES, "enemy_visual.gd", REQUIRED_ENEMIES, violations)
     validate_contract(ENVIRONMENT, "environment_visual.gd", REQUIRED_ENVIRONMENT, violations)
@@ -687,6 +746,43 @@ def validate() -> None:
 
 
 def self_test() -> None:
+    synthetic_actions = """const V9_ACTIONS := {
+    "shoot": {"row": 8},
+    "shoot_up": {"row": 9},
+    "shoot_down": {"row": 10},
+    "shoot_diag_up": {"row": 11},
+    "shoot_diag_up_alt": {"row": 12},
+    "shoot_diag_down": {"row": 13},
+    "shoot_crouch": {"row": 14},
+}
+const V9_MUZZLE_ACTION_AIM := {
+    "shoot": Vector2(1.0, 0.0),
+    "shoot_up": Vector2(0.0, -1.0),
+    "shoot_down": Vector2(0.0, 1.0),
+    "shoot_diag_up": Vector2(1.0, -1.0),
+    "shoot_diag_up_alt": Vector2(1.0, -1.0),
+    "shoot_diag_down": Vector2(1.0, 1.0),
+    "shoot_crouch": Vector2(1.0, 0.0),
+}
+"""
+    muzzle_violations: list[str] = []
+    validate_matthias_muzzle_action_contract(
+        synthetic_actions,
+        muzzle_violations,
+    )
+    assert muzzle_violations == []
+
+    missing_alt = synthetic_actions.replace(
+        '    "shoot_diag_up_alt": Vector2(1.0, -1.0),\n',
+        "",
+    )
+    muzzle_violations = []
+    validate_matthias_muzzle_action_contract(
+        missing_alt,
+        muzzle_violations,
+    )
+    assert any("missing=['shoot_diag_up_alt']" in item for item in muzzle_violations)
+
     assert "blender" in FORBIDDEN
     assert "node3d" in FORBIDDEN
     assert "AnimatedSprite2D" in REQUIRED_MATTHIAS
