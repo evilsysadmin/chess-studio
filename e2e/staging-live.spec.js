@@ -144,6 +144,7 @@ async function seedStableSmokeProfile(request, token) {
     'combat-intelligence': { seen: true },
     'combat-deployment': { seen: true },
     'quick-match-rules': { seen: true },
+    'war-room': { seen: true },
     tournament: { seen: true },
     practice: { seen: true },
     puzzles: { seen: true },
