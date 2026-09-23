@@ -143,6 +143,10 @@
   }
 
   .game-screen .game-layout-3d .game-3d-utility-menu > summary {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     pointer-events: auto;
     touch-action: manipulation;
   }
@@ -200,7 +204,7 @@
   }
 
   .game-screen .game-layout-3d .game-3d-utility-popover button {
-    min-height: 42px;
+    min-height: 44px;
     pointer-events: auto;
   }
 }
