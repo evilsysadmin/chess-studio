@@ -331,7 +331,7 @@ async function captureWarRoomHealth(page, label) {
     const root = document.documentElement;
     const canvas = document.querySelector('canvas.board3d-main-canvas');
     const board = box('[data-board3d-war-room="true"]');
-    const hud = box('.game-3d-matthias-card');
+    const hud = box('.game-3d-turn-pill');
     const human = box('.game-board-stack-3d .game-player-rail.is-human');
     const music = box('.game-side-column-3d .game-side-music .music-deck-collapsed');
     const notation = box('.game-side-column-3d .game-notation-disclosure');
@@ -424,7 +424,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-  await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
+  await expect(page.locator('.game-3d-turn-pill')).toBeVisible();
 
   const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
   if (await tutorial.isVisible().catch(() => false)) {
