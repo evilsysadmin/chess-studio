@@ -1,5 +1,5 @@
-/* Desktop War Room: there is no footer.
-   The room owns the full lower edge; secondary information and music live in
+/* Desktop War Room chrome: the room owns the lower edge.
+   Secondary information and music live in
    the right rail, while match actions live in the central pill overflow. */
 
 @media (min-width: 1081px) {

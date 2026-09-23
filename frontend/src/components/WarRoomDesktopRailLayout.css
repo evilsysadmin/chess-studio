@@ -1,5 +1,5 @@
 /* Desktop War Room column sizing and secondary-rail layout.
-   WarRoomFloatingFooter.css owns the current status/chrome placement; this
+   WarRoomDesktopChrome.css owns the current status/chrome placement; this
    sheet only owns responsive column widths plus music/chat rail sizing. */
 
 @media (min-width: 1261px) {

@@ -22,7 +22,7 @@
     z-index: 220 !important;
   }
 
-  /* Compact War Room owns the utility menu here; FloatingFooter no longer
+  /* Compact War Room owns the utility menu here; DesktopChrome no longer
      hides it, so this layer only positions and sizes the canonical entry point. */
   .game-screen .game-layout-3d .game-3d-utility-menu {
     position: absolute;

@@ -9,7 +9,7 @@ import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
-import './WarRoomFloatingFooter.css';
+import './WarRoomDesktopChrome.css';
 import './WarRoomAppearanceMenu.css';
 import './WarRoomAndroidDensity.css';
 import './WarRoomGuideHelp.css';
