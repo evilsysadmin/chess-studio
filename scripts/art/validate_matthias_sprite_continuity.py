@@ -817,7 +817,7 @@ def main() -> int:
             "runUniquePhasesMin": RUN_UNIQUE_PHASES_MIN,
             "airborneFailClosedWeapons": AIRBORNE_FAIL_CLOSED_WEAPONS,
             "hurtStandingMinRatio": HURT_STANDING_MIN_RATIO,
-            "machinegunHurtCapMinCoverage": MACHINEGUN_HURT_MIN_COVERAGE,
+            "hurtRecoveryTailDistinct": True,
         },
     }
     failures: list[str] = []
