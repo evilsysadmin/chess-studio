@@ -226,13 +226,13 @@ def build_character():
     root += [
         cyl('Classic plinth lower',(0,0,.060),.620,.120,navy,verts=132,bevel=.023), cyl('Classic plinth brass edge',(0,0,.126),.604,.014,brass,verts=128,bevel=.003),
         cyl('Classic plinth upper',(0,0,.180),.570,.082,navy,verts=128,bevel=.016), cyl('Classic plinth upper brass edge',(0,0,.222),.552,.012,brass,verts=124,bevel=.003), cyl('Classic plinth shoulder',(0,0,.258),.520,.048,navy,verts=124,bevel=.012),
-        revolve_profile('Classic lower pawn',[(.526,.250),(.516,.290),(.500,.332),(.476,.380),(.447,.430),(.418,.485),(.394,.542),(.378,.598),(.365,.650),(.355,.700),(.348,.750),(.342,.800),(.336,.845),(.330,.886),(.322,.925),(.314,.960),(.306,.995),(.298,1.025),(.290,1.048),(.282,1.064)],navy,136,.009),
+        revolve_profile('Classic lower pawn',[(.440,.250),(.430,.290),(.415,.332),(.400,.380),(.385,.430),(.372,.485),(.360,.542),(.352,.598),(.346,.650),(.340,.700),(.334,.750),(.328,.800),(.322,.845),(.316,.886),(.310,.925),(.306,.960),(.303,.995),(.301,1.025),(.300,1.048),(.300,1.064)],navy,136,.009),
         cyl('Classic lower brass line',(0,0,.350),.495,.014,brass,verts=116,bevel=.003), cyl('Classic service brass line',(0,0,.610),.395,.012,brass,verts=108,bevel=.003),
     ]
 
     cross_brass=front_prism('Classic chest cross brass',(0,-.345,.850),iron_cross_points(.150),.014,brass,.006); cross_inset=front_prism('Classic chest cross inset',(0,-.354,.850),iron_cross_points(.118),.010,leather,.004)
     spine += [
-        revolve_profile('Classic navy tunic',[(.380,.655),(.370,.710),(.360,.765),(.350,.815),(.340,.858),(.330,.895),(.320,.930),(.310,.965),(.300,.998),(.292,1.026),(.284,1.048),(.276,1.064)],navy_soft,120,.006),
+        revolve_profile('Classic navy tunic',[(.370,.655),(.369,.710),(.368,.765),(.366,.815),(.362,.858),(.357,.895),(.351,.930),(.344,.965),(.338,.998),(.332,1.026),(.326,1.048),(.320,1.064)],navy_soft,120,.006),
         cyl('Classic waist service ring',(0,0,.660),.390,.019,brass,verts=108,bevel=.004), cyl('Classic neck plinth',(0,0,1.082),.330,.046,navy,verts=116,bevel=.009), cyl('Classic brass collar line',(0,0,1.108),.336,.011,brass,verts=116,bevel=.003),
         cross_brass,cross_inset,
     ]
