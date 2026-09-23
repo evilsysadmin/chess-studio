@@ -56,6 +56,7 @@ export default function Tutorial({ onExit }) {
   const [hintActive, setHintActive] = useState(false);
   const [dangerSquares, setDangerSquares] = useState([]);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
+  const [boardFocusMode, setBoardFocusMode] = useState(false);
   const classRoomVariantSelectable = isClassRoomVariantSelectable();
   const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
@@ -64,7 +65,9 @@ export default function Tutorial({ onExit }) {
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
   const schoolRenderer = getSchoolBoardRenderer();
 
-  useEscapeToClose(section === 'school' ? onExit : () => setSection('school'));
+  useEscapeToClose(boardFocusMode
+    ? () => setBoardFocusMode(false)
+    : section === 'school' ? onExit : () => setSection('school'));
 
   const mechanic = MECHANIC_TUTORIALS.find((item) => item.id === mechanicId) || MECHANIC_TUTORIALS[0];
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
@@ -239,7 +242,12 @@ export default function Tutorial({ onExit }) {
   const courseSummary = matthiasSchoolCourseSummary(lesson.courseId, schoolProgress);
 
   return (
-    <div className="tutorial-shell matthias-school-shell" data-school-section={section} data-school-curriculum={curriculumOpen ? 'open' : 'closed'}>
+    <div
+      className="tutorial-shell matthias-school-shell"
+      data-school-section={section}
+      data-school-curriculum={curriculumOpen ? 'open' : 'closed'}
+      data-school-focus={boardFocusMode ? 'board' : 'normal'}
+    >
       <div className="matthias-school-toolbar">
         <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
           ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
@@ -305,6 +313,16 @@ export default function Tutorial({ onExit }) {
         </div>
       ) : (
         <>
+          {boardFocusMode && (
+            <div className="matthias-school-focus-mode-bar" role="region" aria-label="Modo tablero">
+              <div>
+                <span>{lesson.exam ? 'EXAMEN' : lesson.eyebrow}</span>
+                <strong>{lesson.objective}</strong>
+                <em>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</em>
+              </div>
+              <button type="button" className="secondary-btn" onClick={() => setBoardFocusMode(false)}>Salir del modo tablero</button>
+            </div>
+          )}
           <div className="matthias-school-focusbar">
             <div>
               <span>{courseSummary.course?.label || ''}</span>
@@ -384,6 +402,15 @@ export default function Tutorial({ onExit }) {
                 <div className="matthias-school-board-actions">
                   <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
                   {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                  {!boardFocusMode && (
+                    <button
+                      type="button"
+                      className="secondary-btn matthias-school-expand-board"
+                      onClick={() => { setCurriculumOpen(false); setBoardFocusMode(true); }}
+                    >
+                      Expandir tablero
+                    </button>
+                  )}
                 </div>
               </div>
 
