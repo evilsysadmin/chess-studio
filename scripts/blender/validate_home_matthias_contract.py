@@ -49,6 +49,8 @@ from home_matthias_contract import (  # noqa: E402
     REST_ARM_MIN_Y,
     TUNIC_TO_HEAD_WIDTH,
     NECK_TO_HEAD_WIDTH,
+    PAWN_BODY_FLARE,
+    TUNIC_FLARE,
 )
 
 
@@ -230,7 +232,9 @@ def main():
     )
 
     flare = ring_radius_ratio(body)
-    assert flare >= 1.45, f"pawn body insufficiently flared: {flare:.3f}"
+    tunic_flare = ring_radius_ratio(tunic)
+    assert_range("pawn body flare", flare, PAWN_BODY_FLARE)
+    assert_range("visible tunic flare", tunic_flare, TUNIC_FLARE)
 
     assert base_luma(body) <= DARK_BODY_MAX_LUMA, base_luma(body)
     assert base_luma(tunic) <= DARK_BODY_MAX_LUMA, base_luma(tunic)
@@ -306,7 +310,7 @@ def main():
     print(
         "Home Matthias HARD canonical contract OK | "
         f"reference={CANONICAL_REFERENCE_SHA256[:12]} "
-        f"flare={flare:.3f} head/base={head_width/base_width:.3f} "
+        f"flare={flare:.3f} tunic_flare={tunic_flare:.3f} head/base={head_width/base_width:.3f} "
         f"height/base={total_height/base_width:.3f}"
     )
 
