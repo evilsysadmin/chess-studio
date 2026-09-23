@@ -154,8 +154,6 @@ def main() -> int:
     for token in (
         '${metrics_datasource_uid}',
         'chess-studio.shadowops.dpdns.org',
-        'cloudflare_zone_colocation_requests_total',
-        'cloudflare_zone_firewall_events_total',
         'cloudflare_worker_requests_total',
         'requests ≠ humanos' if 'requests ≠ humanos' in edge_dash else 'Un request no equivale a una persona',
     ):
@@ -169,7 +167,9 @@ def main() -> int:
     required_security_titles = {
         "Auth IP bans · 15 min",
         "Auth identity blocks · 15 min",
-        "Presión de tráfico · requests/s vs baseline 1 h",
+        "Requests backend · 15 min",
+        "Presión backend · requests/s vs baseline 1 h",
+        "Cloudflare WAF · visibilidad",
         "Biggest auth offenders · failed logins",
         "IPs ofensivas únicas · por país",
         "Auth forensics reciente · sin contraseñas",
@@ -185,13 +185,12 @@ def main() -> int:
     for token in (
         '${metrics_datasource_uid}',
         '${logs_datasource_uid}',
-        '${selector:raw}',
         'auth_ip_ban_activated',
         'auth_login_identity_ban_activated',
         'auth_login_failed',
         'status=~"401|403|429"',
-        'cloudflare_zone_firewall_events_total',
-        'cloudflare_zone_colocation_requests_total',
+        '${backend_service:raw}',
+        'chess_studio_http_server_requests_total',
         'client_ip',
         'synthetic_source!~"staging-(smoke-cleanup|browser-smoke)"',
         'user_agent!="chess-studio-staging-smoke-cleanup/2"',
@@ -201,6 +200,13 @@ def main() -> int:
     ):
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")
+    for forbidden_security_expr in (
+        'cloudflare_zone_colocation_requests_total',
+        'cloudflare_zone_firewall_events_total',
+        '${selector:raw}',
+    ):
+        if forbidden_security_expr in security_exprs:
+            fail(f"dashboard Security usa telemetría engañosa/legacy: {forbidden_security_expr}")
     if '{{.password}}' in security_raw:
         fail("dashboard Security no debe renderizar contraseñas")
 
