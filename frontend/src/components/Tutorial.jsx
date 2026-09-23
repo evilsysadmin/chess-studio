@@ -4,6 +4,7 @@ import './MatthiasClassRoom.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
+import { classRoomEntryRecommendation } from './ClassRoomRecommendation.js';
 import {
   advanceSchoolCoachContext,
   schoolCoachHintMessage,
@@ -15,6 +16,9 @@ import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { loadPersonalPuzzles } from '../personalPuzzles.js';
+import { loadCleanGameRecords } from '../cleanGames.js';
+import { buildPlayerModel } from '../playerModel.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import {
@@ -50,7 +54,7 @@ function humanMoveCount(lesson) {
   return schoolLineForLesson(lesson).filter((step) => !step.auto).length;
 }
 
-export default function Tutorial({ onExit }) {
+export default function Tutorial({ onExit, onOpenPuzzles }) {
   const [section, setSection] = useState('school');
   const [schoolProgress, setSchoolProgress] = useState(() => loadMatthiasSchoolProgress());
   const [index, setIndex] = useState(() => firstSchoolIndex(loadMatthiasSchoolProgress()));
@@ -71,6 +75,14 @@ export default function Tutorial({ onExit }) {
   const [mechanicStep, setMechanicStep] = useState(0);
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
   const schoolRenderer = getSchoolBoardRenderer();
+  const entryRecommendation = useMemo(() => {
+    const personalPuzzles = loadPersonalPuzzles();
+    const playerModel = buildPlayerModel({
+      personalPuzzles,
+      cleanGameRecords: loadCleanGameRecords(),
+    });
+    return classRoomEntryRecommendation(playerModel);
+  }, []);
 
   useEscapeToClose(section === 'school' ? onExit : () => setSection('school'));
 
@@ -342,6 +354,27 @@ export default function Tutorial({ onExit }) {
         </div>
       ) : (
         <>
+          {entryRecommendation && onOpenPuzzles ? (
+            <aside className="matthias-school-recommendation" aria-label="Recomendación de Matthias">
+              <div>
+                <span>Matthias recomienda</span>
+                <strong>{entryRecommendation.label}</strong>
+                <small>
+                  {entryRecommendation.positions} posiciones reales
+                  {entryRecommendation.sourceGames > 0 ? ` · ${entryRecommendation.sourceGames} ${entryRecommendation.sourceGames === 1 ? 'partida fuente' : 'partidas fuente'}` : ''}
+                  {entryRecommendation.pending > 0 ? ` · ${entryRecommendation.pending} pendientes` : ''}
+                </small>
+              </div>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => onOpenPuzzles('personal', false, entryRecommendation.filter)}
+              >
+                Entrenar este patrón
+              </button>
+            </aside>
+          ) : null}
+
           <div className="matthias-school-focusbar">
             <div>
               <span>{courseSummary.course?.label || ''}</span>
