@@ -249,7 +249,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
     return rect ? rect.width / Math.max(1, rect.height) : 0;
   }).toBeGreaterThan(1.14);
 
-  const matthiasCard = page.locator('.game-3d-matthias-card');
+  const turnPill = page.locator('.game-3d-turn-pill');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
@@ -257,7 +257,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
   const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
   const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
-  await expect(matthiasCard).toBeVisible();
+  await expect(turnPill).toBeVisible();
   await expect(focusButton).toBeVisible();
   await expect(abandonButton).toBeVisible();
   await expect(appearanceButton).toBeHidden();
@@ -266,7 +266,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(musicRail).toBeVisible();
   await expect(notationDisclosure).toBeVisible();
 
-  const matthiasRect = await matthiasCard.boundingBox();
+  const matthiasRect = await turnPill.boundingBox();
   const boardRect = await board3d.boundingBox();
   const focusRect = await focusButton.boundingBox();
   const utilityRect = await utilityButton.boundingBox();
