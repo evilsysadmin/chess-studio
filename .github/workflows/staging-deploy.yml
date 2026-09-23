@@ -463,11 +463,16 @@ jobs:
           import oci
           from oci_runtime_bundle import read_private_runtime_value
           invite = read_private_runtime_value(oci, 'INVITE_CODE')
+          synthetic_secret = read_private_runtime_value(oci, 'CHESS_AI_SHARED_SECRET')
           if not invite:
               raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
+          if not synthetic_secret:
+              raise SystemExit('CHESS_AI_SHARED_SECRET de staging falta en el bundle privado de OCI')
           print(f'::add-mask::{invite}')
+          print(f'::add-mask::{synthetic_secret}')
           with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
               handle.write(f'STAGING_INVITE_CODE={invite}\n')
+              handle.write(f'STAGING_SYNTHETIC_SECRET={synthetic_secret}\n')
           PY
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'

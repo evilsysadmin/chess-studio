@@ -108,6 +108,7 @@ def emit_auth_login_failed(
     client_country: str | None = None,
     user_agent: str | None = None,
     client_release: str | None = None,
+    synthetic_source: str | None = None,
 ) -> None:
     """Emit bot-forensics metadata for a failed login without logging credentials.
 
@@ -132,6 +133,9 @@ def emit_auth_login_failed(
         payload["password_fingerprint"] = fingerprint
     if client_release:
         payload["client_release"] = str(client_release)[:40]
+    clean_synthetic_source = _clean_log_text(synthetic_source, max_length=64)
+    if clean_synthetic_source:
+        payload["synthetic_source"] = clean_synthetic_source
     clean_client_ip = sanitize_ip(client_ip)
     clean_peer_ip = sanitize_ip(peer_ip)
     clean_xff = [clean for ip in (x_forwarded_for or []) if (clean := sanitize_ip(ip))]
@@ -147,7 +151,11 @@ def emit_auth_login_failed(
     clean_ua = _clean_log_text(user_agent, max_length=240)
     if clean_ua:
         payload["user_agent"] = clean_ua
-    logger.warning(json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True))
+    message = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    if clean_synthetic_source:
+        logger.info(message)
+    else:
+        logger.warning(message)
 
 
 def emit_http_event(
@@ -165,6 +173,7 @@ def emit_http_event(
     client_ip: str | None = None,
     peer_ip: str | None = None,
     x_forwarded_for: list[str] | None = None,
+    synthetic_source: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "event": "http_request",
@@ -176,6 +185,9 @@ def emit_http_event(
     }
     if client_release:
         payload["client_release"] = str(client_release)[:40]
+    clean_synthetic_source = _clean_log_text(synthetic_source, max_length=64)
+    if clean_synthetic_source:
+        payload["synthetic_source"] = clean_synthetic_source
     try:
         from tracing import current_trace_id, current_trace_sampled
         trace_id = current_trace_id()
