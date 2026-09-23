@@ -12,6 +12,7 @@ import WarRoomHansMopDialogue from './WarRoomHansMopDialogue.jsx';
 import WarRoomHansServiceDialogue from './WarRoomHansServiceDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
+import useWarRoomImmersive from './useWarRoomImmersive.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
@@ -26,6 +27,7 @@ import { warRoomHansPresentationPolicy } from './WarRoomHansPresentationPolicy.j
 import { formatLongMove } from '../notation.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import './Matthias3DBubbleAnchor.css';
+import './WarRoomImmersive.css';
 
 
 export default function GameBoardView({
@@ -57,6 +59,10 @@ export default function GameBoardView({
     enterFocus: activateFocus,
     exitFocus: deactivateFocus,
   } = useGameMobileFocus(game.id);
+  const {
+    immersive: warRoomImmersive,
+    toggleImmersive: toggleWarRoomImmersive,
+  } = useWarRoomImmersive({ enabled: isThreeD, focusActive });
   const {
     activeBoardBubble,
     activeMatthiasKey,
@@ -160,7 +166,7 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'}>
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}>
       <div className="board-column">
         <GameStatusStrips
           game={game}
@@ -179,6 +185,8 @@ export default function GameBoardView({
               compactViewport={compactViewport}
               zenMode={zenMode}
               controls={controls}
+              immersive={warRoomImmersive}
+              onToggleImmersive={toggleWarRoomImmersive}
             />
           )}
 
