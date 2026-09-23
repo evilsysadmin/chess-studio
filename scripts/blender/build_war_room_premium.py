@@ -2147,7 +2147,8 @@ def collapse_runtime_static_shell():
         # Preserve authored crest node names as a runtime/QA contract. The
         # heraldry is small, visually important, and deliberately exempt from
         # batching so semantic validation cannot be erased by an optimization.
-        if obj.name.startswith("WR_CREST_"):
+        # Explicit dynamic nodes also stay independent for runtime animation.
+        if obj.name.startswith("WR_CREST_") or obj.get("war_room_runtime_dynamic"):
             continue
         material_signature = tuple(
             material.name if material else ""
