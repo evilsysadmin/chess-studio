@@ -20,6 +20,7 @@ async function startQuickGame2D(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(dialog).toBeVisible();
+  await dialog.locator('details.quick-match-settings > summary').click();
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
   const twoD = renderer.getByRole('button', { name: '2D', exact: true });
   if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();
