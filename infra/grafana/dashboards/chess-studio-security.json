@@ -45,7 +45,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Security** correlaciona señales objetivas de Chess Studio y Cloudflare. Los smokes firmados de staging (`staging-smoke-cleanup` y `staging-browser-smoke`) se excluyen por defecto; el namespace técnico legacy `ci_smoke_<16hex>` también queda fuera de los rankings/forensics auth y sigue disponible en Log Explorer. Un pico **no se etiqueta automáticamente como ataque**: correlaciona bans, 401/403/429, WAF, presión de tráfico, IP y país. El ranking por IP muestra quién insiste más; `IPs ofensivas únicas · por país` deduplica primero por `(client_country, client_ip)` para contar cuántas IPs distintas atacan desde cada país. Ambos usan `auth_login_failed` y respetan `Entorno backend`."
+        "content": "**Security** usa fuentes que significan exactamente lo que muestran: tráfico y presión desde métricas OTEL del backend; auth/offenders desde Loki; y Cloudflare sólo donde el plan realmente expone telemetría. Los smokes firmados (`staging-smoke-cleanup`, `staging-browser-smoke`) y el namespace legacy `ci_smoke_<16hex>` quedan fuera de rankings/forensics auth pero siguen en Log Explorer. Cloudflare Free no expone las series GraphQL avanzadas de WAF/edge usadas por el exporter: **ausencia de serie no significa cero ataques**. El ranking por IP muestra quién insiste más; `IPs ofensivas únicas · por país` deduplica por `(client_country, client_ip)`."
       }
     },
     {
@@ -108,7 +108,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} |= \"auth_ip_ban_activated\" [15m]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} |= \"auth_ip_ban_activated\" [15m]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -174,7 +174,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} |= \"auth_login_identity_ban_activated\" [15m]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} |= \"auth_login_identity_ban_activated\" [15m]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -240,7 +240,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=~\"401|403|429\" [15m]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=~\"401|403|429\" [15m]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -249,8 +249,8 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "WAF / firewall actions · 15 min",
-      "description": "Eventos sobre los que Cloudflare/WAF ha actuado para el hostname público.",
+      "title": "Requests backend · 15 min",
+      "description": "Requests reales observadas por el backend vía OTEL en el entorno seleccionado. No depende de Cloudflare Analytics.",
       "gridPos": {
         "h": 5,
         "w": 6,
@@ -264,23 +264,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 20
-              }
-            ]
-          }
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -305,7 +289,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[15m])) or vector(0)",
+          "expr": "sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:raw}\"}[15m])) or vector(0)",
           "refId": "A"
         }
       ]
@@ -313,8 +297,8 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Presión de tráfico · requests/s vs baseline 1 h",
-      "description": "Compara requests/s a 5 min con la media a 1 h. Un multiplicador alto es una señal a investigar, no una clasificación automática de DoS.",
+      "title": "Presión backend · requests/s vs baseline 1 h",
+      "description": "Requests/s reales del backend vía OTEL: compara la tasa a 5 min con la media a 1 h. Un multiplicador alto es una señal a investigar, no una clasificación automática de DoS.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -352,7 +336,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[5m]))",
+          "expr": "sum(rate(chess_studio_http_server_requests_total{service_name=~\"${backend_service:raw}\"}[5m])) or vector(0)",
           "legendFormat": "actual · 5m",
           "refId": "A"
         },
@@ -361,7 +345,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[1h]))",
+          "expr": "sum(rate(chess_studio_http_server_requests_total{service_name=~\"${backend_service:raw}\"}[1h])) or vector(0)",
           "legendFormat": "baseline · 1h",
           "refId": "B"
         }
@@ -369,50 +353,19 @@
     },
     {
       "id": 7,
-      "type": "timeseries",
-      "title": "WAF / firewall · acciones",
+      "type": "text",
+      "title": "Cloudflare WAF · visibilidad",
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
         "y": 9
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${metrics_datasource_uid}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops"
-        },
-        "overrides": []
-      },
       "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "mode": "markdown",
+        "content": "### No disponible con Cloudflare Free\nEl exporter está sano, pero Cloudflare Free no expone las series GraphQL avanzadas de WAF/firewall/edge que alimentarían este panel. **`No data` no equivale a 0 acciones WAF.**\n\nSecurity usa mientras tanto señales observables reales: OTEL para tráfico/errores y Loki para auth, IP y país. El dashboard **Edge / Cloudflare** conserva las métricas que sí estén disponibles si el plan cambia."
       },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${metrics_datasource_uid}"
-          },
-          "expr": "sum by (action) (rate(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))",
-          "legendFormat": "{{action}}",
-          "refId": "A"
-        }
-      ]
+      "description": "Limitación conocida del plan Cloudflare Free."
     },
     {
       "id": 8,
@@ -455,7 +408,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" [$__interval]))",
           "legendFormat": "login failures",
           "refId": "A",
           "queryType": "range"
@@ -465,7 +418,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} |= \"auth_ip_ban_activated\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} |= \"auth_ip_ban_activated\" [$__interval]))",
           "legendFormat": "IP bans",
           "refId": "B",
           "queryType": "range"
@@ -475,7 +428,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} |= \"auth_login_identity_ban_activated\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} |= \"auth_login_identity_ban_activated\" [$__interval]))",
           "legendFormat": "identity blocks",
           "refId": "C",
           "queryType": "range"
@@ -523,7 +476,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"401\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"401\" [$__interval]))",
           "legendFormat": "401",
           "refId": "A",
           "queryType": "range"
@@ -533,7 +486,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"403\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"403\" [$__interval]))",
           "legendFormat": "403",
           "refId": "B",
           "queryType": "range"
@@ -543,7 +496,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"429\" [$__interval]))",
+          "expr": "sum(count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"http_request\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | status=\"429\" [$__interval]))",
           "legendFormat": "429",
           "refId": "C",
           "queryType": "range"
@@ -582,7 +535,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(15, sum by (client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_ip != \"\" [$__range])))",
+          "expr": "topk(15, sum by (client_ip) (count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_ip != \"\" [$__range])))",
           "legendFormat": "{{client_ip}}",
           "refId": "A",
           "queryType": "instant"
@@ -628,7 +581,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
+          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time({service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
           "instant": true,
           "legendFormat": "{{client_country}}",
           "refId": "A",
@@ -657,7 +610,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "${selector:raw} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\"",
+          "expr": "{service_name=~\"${backend_service:raw}\"} | json | __error__=\"\" | event=\"auth_login_failed\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | user_agent!=\"chess-studio-staging-smoke-cleanup/2\" | username_attempted!~\"ci_smoke_[0-9a-f]{16}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -689,18 +642,18 @@
   "templating": {
     "list": [
       {
-        "name": "selector",
+        "name": "backend_service",
         "label": "Entorno backend",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
+        "query": "production : chess-studio-(backend|oci-backend-production-stdout),staging : chess-studio-(backend-staging|oci-backend-staging-stdout)",
         "current": {
           "text": "production",
-          "value": "{service_name=\"chess-studio-backend\"}"
+          "value": "chess-studio-(backend|oci-backend-production-stdout)"
         },
         "hide": 0,
         "skipUrlSync": false,
         "includeAll": true,
-        "allValue": "{service_name=~\"chess-studio-(backend(-staging)?|oci-backend-(production|staging)-stdout)\"}",
+        "allValue": "chess-studio-(backend(-staging)?|oci-backend-(production|staging)-stdout)",
         "multi": false
       }
     ]

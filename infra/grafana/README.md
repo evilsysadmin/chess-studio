@@ -58,7 +58,7 @@ Los exporters reciben también `OTEL_EXPORTER_OTLP_HEADERS` de forma explícita 
 
 Chess Studio prepara el **exporter oficial de Cloudflare** desde `.github/workflows/cloudflare-prometheus-exporter.yml`. El workflow no copia ni mantiene un fork del exporter: hace checkout de `cloudflare/cloudflare-prometheus-exporter` fijado a un SHA revisable, ejecuta sus tests/typecheck, aplica sólo la configuración de Chess Studio y lo despliega como Worker en `metrics.shadowops.dpdns.org`.
 
-El exporter expone métricas Prometheus de Cloudflare (requests, bandwidth, países, errores, firewall/security events, Workers, cache, etc.). Está protegido con HTTP Basic Auth, tiene la UI y API de configuración deshabilitadas y filtra el scope al account de Chess Studio. Las métricas por hostname se habilitan para:
+El exporter expone métricas Prometheus de Cloudflare cuando el plan/API correspondiente las permite. Está protegido con HTTP Basic Auth, tiene la UI y API de configuración deshabilitadas y filtra el scope al account de Chess Studio. En **Cloudflare Free**, el exporter omite datasets GraphQL avanzados no disponibles para la zona (por ejemplo varias series de tráfico detallado, país y WAF/firewall); un panel vacío de esas familias significa **telemetría no disponible**, no cero tráfico ni cero ataques. Las métricas por hostname se habilitan para:
 
 - `chess-studio.shadowops.dpdns.org`
 - `staging.chess-studio.shadowops.dpdns.org`
@@ -96,7 +96,7 @@ El scrape recomendado es cada 60 s. El exporter oficial refresca sus datos en ba
 
 ### Humanos vs ruido de Internet
 
-El dashboard `Chess Studio · Edge / Cloudflare` responde a preguntas operativas: requests, 4xx/5xx, países, acciones WAF/firewall, Workers AI y cache. **Un request no equivale a una persona**: crawlers, scanners y bots también cuentan.
+El dashboard `Chess Studio · Edge / Cloudflare` muestra las familias que el exporter pueda obtener del plan actual. **Un request no equivale a una persona**: crawlers, scanners y bots también cuentan. El dashboard `Chess Studio · Security` no usa las series Cloudflare Free ausentes para inferir “cero”: tráfico/presión salen de OTEL del backend y auth/offenders de Loki; la visibilidad WAF avanzada se marca explícitamente como no disponible mientras siga el plan Free.
 
 Para medir popularidad humana (visitantes, pageviews y navegación SPA), usa **Cloudflare Web Analytics/RUM** sobre el hostname de producción. `scripts/cloudflare_production_pages.py` intenta activarlo durante el cutover de Pages; si el token de CI no tiene permisos `Account Settings`, la migración no falla y el workflow lo deja como aviso para configurarlo aparte.
 
