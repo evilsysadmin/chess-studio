@@ -36,7 +36,10 @@
      previous short-screen safety cap was visibly leaving a second black moat
      under the diorama on ordinary 800-900px desktop viewports. */
   .game-screen .game-board-stack-3d .board3d-main-shell {
+    min-height: 0;
+    height: clamp(650px, calc(100vh - 4.35rem), 940px) !important;
     height: clamp(650px, calc(100dvh - 4.35rem), 940px) !important;
+    aspect-ratio: auto;
   }
 
   /* First mount used to expose the direct-light frame and then visibly pop when
@@ -51,12 +54,14 @@
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(610px, calc(100vh - 5rem), 835px) !important;
     height: clamp(610px, calc(100dvh - 5rem), 835px) !important;
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(535px, calc(100vh - 4.75rem), 700px) !important;
     height: clamp(535px, calc(100dvh - 4.75rem), 700px) !important;
   }
 }
