@@ -12,6 +12,9 @@ on:
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
+      - scripts/art/matthias_prompt_contract.py
+      - scripts/art/contracts/matthias_prompt_contract.yaml
+      - scripts/art/test_matthias_prompt_contract.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
       - scripts/pawn_slug_sprite_smoke_scope.py
@@ -31,6 +34,9 @@ on:
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
+      - scripts/art/matthias_prompt_contract.py
+      - scripts/art/contracts/matthias_prompt_contract.yaml
+      - scripts/art/test_matthias_prompt_contract.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
@@ -109,6 +115,13 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
 
+      - name: Validate Matthias prompt contract suite
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/art/matthias_prompt_contract.py self-test-contract
+          python3 scripts/art/test_matthias_prompt_contract.py
+
       - name: Validate enemy worksheet intake contract
         if: steps.scope.outputs.enemy == 'true'
         run: |
@@ -140,6 +153,22 @@ jobs:
             --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
             --sprite-smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
             --output /tmp/pawn-slug-sprite-smoke/matthias/continuity-health.json
+
+      - name: Audit Matthias semantic pose contract
+        if: steps.scope.outputs.matthias == 'true'
+        run: |
+          set -euo pipefail
+          OUT=/tmp/pawn-slug-sprite-smoke/matthias/semantic-contract
+          mkdir -p "$OUT"
+          status=0
+          python3 scripts/art/matthias_prompt_contract.py audit-smoke \
+            --smoke-dir /tmp/pawn-slug-sprite-smoke/matthias \
+            --output "$OUT/matthias-semantic-audit.json" \
+            --review-png "$OUT/matthias-semantic-review.png" \
+            --summary-output "$OUT/matthias-semantic-summary.md" \
+            --fail-on-hard || status=$?
+          cat "$OUT/matthias-semantic-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: Audit Matthias batch parity with Sprite Forge
         if: steps.scope.outputs.matthias == 'true'
