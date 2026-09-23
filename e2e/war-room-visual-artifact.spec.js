@@ -485,7 +485,7 @@ function expectImmersiveHealth(health) {
   expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
   expect(health.gameLayout?.height, 'immersive shell must span the viewport height').toBeGreaterThanOrEqual(health.viewport.height - 2);
-  expect(health.boardViewportFill, 'immersive scene should dominate viewport height').toBeGreaterThanOrEqual(0.82);
+  expect(health.boardViewportFill, 'immersive scene should use nearly the full viewport height').toBeGreaterThanOrEqual(0.97);
 }
 
 function expectLandscapeHealth(health) {
