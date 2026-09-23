@@ -3,6 +3,7 @@ import './TutorialRoute.css';
 import './MatthiasClassRoom.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
+import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
@@ -53,6 +54,7 @@ export default function Tutorial({ onExit }) {
   const [mistakes, setMistakes] = useState(0);
   const [attemptEpoch, setAttemptEpoch] = useState(0);
   const [hintActive, setHintActive] = useState(false);
+  const [dangerSquares, setDangerSquares] = useState([]);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
   const classRoomVariantSelectable = isClassRoomVariantSelectable();
   const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
@@ -72,6 +74,7 @@ export default function Tutorial({ onExit }) {
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
   const boardGuideMove = useMemo(() => schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive]);
+  const teachingLayers = useMemo(() => buildSchoolTeachingLayers({ guideMove: boardGuideMove, dangerSquares }), [boardGuideMove, dangerSquares]);
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
   const totalHumanMoves = humanMoveCount(lesson);
   const runComplete = lineIndex >= line.length;
@@ -88,6 +91,7 @@ export default function Tutorial({ onExit }) {
     setLineIndex(0);
     setMistakes(0);
     setHintActive(false);
+    setDangerSquares([]);
     setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
@@ -105,12 +109,13 @@ export default function Tutorial({ onExit }) {
     }
   }, [selected, practiceFen, examFailed, runComplete]);
 
-  function recordMiss(text) {
+  function recordMiss(text, { danger = [] } = {}) {
     setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
     const nextMistakes = mistakes + 1;
     setMistakes(nextMistakes);
     setSelected(null);
     setHintActive(false);
+    setDangerSquares(danger);
     if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
       setCoach({ tone: 'retry', text: `Suspendido. ${text} Has agotado el margen del examen. Repite cuando quieras; prefiero eso a promocionarte por lástima.` });
       return;
@@ -123,6 +128,7 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setLineIndex(0);
     setHintActive(false);
+    setDangerSquares([]);
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
     if (!keepCoach) {
@@ -137,6 +143,7 @@ export default function Tutorial({ onExit }) {
     setPracticeFen(finalFen);
     setSelected(null);
     setHintActive(false);
+    setDangerSquares([]);
     setLineIndex(line.length);
     setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
     setCoach({ tone: 'success', text: lesson.success });
@@ -176,6 +183,7 @@ export default function Tutorial({ onExit }) {
     setLineIndex(cursor);
     setSelected(null);
     setHintActive(false);
+    setDangerSquares([]);
     const next = nextHumanSchoolStep(lesson, cursor);
     const done = line.slice(0, cursor).filter((step) => !step.auto).length;
     setCoach({
@@ -192,14 +200,15 @@ export default function Tutorial({ onExit }) {
 
     if (!selected) {
       if (!piece) {
-        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Busca la pieza que debe iniciar este paso.`);
+        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Busca la pieza que debe iniciar este paso.`, { danger: [square] });
         return;
       }
       if (square !== expected.from) {
-        recordMiss(`Esa pieza existe, sí. Pero la secuencia pide empezar este paso desde ${expected.from}. Mira la posición, no mi paciencia.`);
+        recordMiss(`Esa pieza existe, sí. Pero la secuencia pide empezar este paso desde ${expected.from}. Mira la posición, no mi paciencia.`, { danger: [square] });
         return;
       }
       setSelected(square);
+      setDangerSquares([]);
       setCoach({ tone: 'neutral', text: `${square} seleccionado. Las casillas iluminadas son sus destinos legales. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
       return;
     }
@@ -212,12 +221,12 @@ export default function Tutorial({ onExit }) {
 
     const target = legalTargets.find((move) => move.to === square);
     if (!target) {
-      recordMiss(`La pieza no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`);
+      recordMiss(`La pieza no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`, { danger: [square] });
       return;
     }
 
     if (selected !== expected.from || square !== expected.to) {
-      recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`);
+      recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`, { danger: [square] });
       return;
     }
 
@@ -371,10 +380,10 @@ export default function Tutorial({ onExit }) {
                 data-school-attempt={attemptEpoch}
                 data-school-renderer={schoolRenderer}
               >
-                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} hintMove={boardGuideMove} warRoomVariantOverride={classRoomVariant} />
+                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} teachingLayers={teachingLayers} warRoomVariantOverride={classRoomVariant} />
                 <div className="matthias-school-board-actions">
                   <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
                 </div>
               </div>
 
