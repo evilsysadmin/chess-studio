@@ -28,6 +28,13 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/lablaunchintent.js",
 }
 
+TRAINING_VISUAL_SURFACES = {
+    "frontend/src/components/puzzlescreen.jsx",
+    "frontend/src/components/puzzlemobilepolish.css",
+    "frontend/src/components/tournamentscreen.jsx",
+    "frontend/src/components/tournamentmobilepolish.css",
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -106,6 +113,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower in TRAINING_VISUAL_SURFACES:
+        return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments"}
     if lower in {
@@ -363,6 +372,15 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    mobile_training = classify([
+        "frontend/src/components/PuzzleScreen.jsx",
+        "frontend/src/components/PuzzleMobilePolish.css",
+        "frontend/src/components/TournamentScreen.jsx",
+        "frontend/src/components/TournamentMobilePolish.css",
+    ])
+    assert mobile_training.capture_groups == "training"
+    assert not mobile_training.hans and not mobile_training.chesscom
+
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
     lab_visual = classify([
