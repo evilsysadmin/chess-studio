@@ -612,6 +612,7 @@ export async function installWarRoomV2Shell(
     variant = 'v2',
     rootName = `war-room-${variant}-blender-shell`,
     runtimeFinish = 'gltf-pbr-cinematic-gothic-v11',
+    installRuntimeEffects,
   } = {},
 ) {
   if (!scene?.add) throw new Error(`War Room ${variant} requires a Three.js scene`);
@@ -674,6 +675,7 @@ export async function installWarRoomV2Shell(
   root.userData.warRoomV2RuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
   root.userData.warRoomV2ShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
   root.userData.warRoomV2ShadowCasterCount = 0;
+  const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
 
   const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomV2AfterFirstPaint(() => {
@@ -686,6 +688,7 @@ export async function installWarRoomV2Shell(
 
   return () => {
     cancelShadowWarmup();
+    disposeRuntimeEffects();
     root.removeFromParent();
     disposeShell(root);
   };
