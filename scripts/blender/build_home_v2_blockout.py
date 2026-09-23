@@ -1814,7 +1814,13 @@ def add_bookshelf(materials):
             else:
                 h = 0.18 + _hash01(row, col, 907) * 0.085
                 w = 0.062 + _hash01(col, row, 911) * 0.028
-            depth = 0.062 + _hash01(row, col, 947) * 0.024
+            # This was the flattest dimension of the book (0.062-0.086), sitting
+            # nearly flush with the shelf lip -- barely any of the spine actually
+            # protruded, so neighbouring books cast almost no shadow on each
+            # other and the whole row read as painted stickers rather than
+            # bound volumes. Roughly doubled so spines genuinely stick out past
+            # the lip and pick up real occlusion between books.
+            depth = 0.100 + _hash01(row, col, 947) * 0.055
             by = y - 0.47 + (_hash01(row, col, 919) - 0.5) * 0.055
             bz = base_z + h
             tone = book_colors[(row + col * 2) % len(book_colors)]
@@ -1824,7 +1830,7 @@ def add_bookshelf(materials):
                 (bx, by, bz),
                 (w, depth, h),
                 tone,
-                bevel=min(0.022, w * 0.42),
+                bevel=min(0.030, min(w, depth) * 0.34),
             )
             lean = math.radians((_hash01(col, row, 929) - 0.5) * 9.0)
             book.rotation_euler[1] = lean
