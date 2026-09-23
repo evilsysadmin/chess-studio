@@ -234,7 +234,7 @@ function createWarRoomBlenderStoneTexture({ mode = 'albedo', size = 32 } = {}) {
   }
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-stone-${mode}`;
+  texture.name = `war-room-blender-stone-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 0.86 : 1.8, mode === 'albedo' ? 0.78 : 1.6);
@@ -277,7 +277,7 @@ function createWarRoomBlenderFabricTexture({ mode = 'albedo', size = 48 } = {}) 
   }
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-fabric-${mode}`;
+  texture.name = `war-room-blender-fabric-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 4.2 : 5.6, mode === 'albedo' ? 4.8 : 6.4);
@@ -319,7 +319,7 @@ function createWarRoomBlenderLeatherTexture({ mode = 'albedo', size = 48 } = {})
   }
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-leather-${mode}`;
+  texture.name = `war-room-blender-leather-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 2.8 : 4.2, mode === 'albedo' ? 2.8 : 4.2);
@@ -361,7 +361,7 @@ function createWarRoomBlenderMetalTexture({ mode = 'albedo', size = 48 } = {}) {
   }
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-metal-${mode}`;
+  texture.name = `war-room-blender-metal-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 1.25 : 1.8, mode === 'albedo' ? 5.4 : 7.2);
@@ -403,7 +403,7 @@ function createWarRoomBlenderWoodTexture({ mode = 'albedo', size = 48 } = {}) {
   }
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = `war-room-v2-wood-${mode}`;
+  texture.name = `war-room-blender-wood-${mode}`;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(mode === 'albedo' ? 2.4 : 3.2, mode === 'albedo' ? 0.82 : 1.1);
@@ -534,10 +534,10 @@ function installRuntimeStoneSurface(material, sharedTextures, { coarsePointer = 
 function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   const profile = warRoomBlenderPracticalLightProfile({ coarsePointer });
   const entries = [
-    ['WR_ANCHOR_fireplace_practical', 'war-room-v2-fire-practical', profile.fire],
-    ['WR_ANCHOR_right_fireplace_practical', 'war-room-v2-right-fire-practical', profile.rightFire],
-    ['WR_ANCHOR_chandelier_practical', 'war-room-v2-chandelier-practical', profile.chandelier],
-    ['WR_ANCHOR_window_moonlight', 'war-room-v2-moon-practical', profile.moon],
+    ['WR_ANCHOR_fireplace_practical', 'war-room-blender-fire-practical', profile.fire],
+    ['WR_ANCHOR_right_fireplace_practical', 'war-room-blender-right-fire-practical', profile.rightFire],
+    ['WR_ANCHOR_chandelier_practical', 'war-room-blender-chandelier-practical', profile.chandelier],
+    ['WR_ANCHOR_window_moonlight', 'war-room-blender-moon-practical', profile.moon],
   ];
 
   let installed = 0;
