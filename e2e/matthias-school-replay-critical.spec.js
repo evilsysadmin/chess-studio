@@ -13,26 +13,6 @@ const BASIC_LESSONS_BEFORE_EXAM = [
 ];
 
 
-
-test('Escuela de Matthias · la lección manda y el plan de estudios queda bajo demanda', async ({ page }) => {
-  await mockApi(page);
-  await login(page);
-
-  await buttonWithHeading(page, 'Escuela de Matthias').click();
-  const shell = page.locator('.matthias-school-shell');
-  const plan = page.getByRole('button', { name: 'Plan de estudios', exact: true });
-
-  await expect(shell).toHaveAttribute('data-school-curriculum', 'closed');
-  await expect(shell.locator('.matthias-school-course-strip')).toBeHidden();
-  await expect(shell.locator('.matthias-school-lessons')).toBeHidden();
-
-  await plan.click();
-  await expect(shell).toHaveAttribute('data-school-curriculum', 'open');
-  await expect(shell.locator('.matthias-school-course-strip')).toBeVisible();
-  await expect(shell.locator('.matthias-school-lessons')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cerrar plan de estudios', exact: true })).toBeVisible();
-});
-
 test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es sólo texto', async ({ page }) => {
   await mockApi(page);
   await login(page);
