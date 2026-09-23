@@ -1,0 +1,404 @@
+{
+  "schema": 1,
+  "quality_contract": "chess-football-field-player-v1",
+  "domain": "chess-football",
+  "actor": "pawn-field-player",
+  "variant": "four-direction-poc",
+  "composition": "integrated",
+  "cell": {
+    "width": 192,
+    "height": 192
+  },
+  "parts": {
+    "main": {
+      "columns": 8,
+      "rows": 20
+    }
+  },
+  "animations": [
+    {
+      "name": "idle_down",
+      "part": "main",
+      "row": 0,
+      "fps": 8,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        2,
+        1,
+        0,
+        1
+      ],
+      "source_dir": "idle/down",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "run_down",
+      "part": "main",
+      "row": 1,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "run/down",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "pass_down",
+      "part": "main",
+      "row": 2,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "pass/down",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_down",
+      "part": "main",
+      "row": 3,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "shoot/down",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "tackle_down",
+      "part": "main",
+      "row": 4,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "tackle/down",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_left",
+      "part": "main",
+      "row": 5,
+      "fps": 8,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        2,
+        1,
+        0,
+        1
+      ],
+      "source_dir": "idle/left",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "run_left",
+      "part": "main",
+      "row": 6,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "run/left",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "pass_left",
+      "part": "main",
+      "row": 7,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "pass/left",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_left",
+      "part": "main",
+      "row": 8,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "shoot/left",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "tackle_left",
+      "part": "main",
+      "row": 9,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "tackle/left",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_right",
+      "part": "main",
+      "row": 10,
+      "fps": 8,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        2,
+        1,
+        0,
+        1
+      ],
+      "source_dir": "idle/right",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "run_right",
+      "part": "main",
+      "row": 11,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "run/right",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "pass_right",
+      "part": "main",
+      "row": 12,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "pass/right",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_right",
+      "part": "main",
+      "row": 13,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "shoot/right",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "tackle_right",
+      "part": "main",
+      "row": 14,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "tackle/right",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_up",
+      "part": "main",
+      "row": 15,
+      "fps": 8,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        2,
+        1,
+        0,
+        1
+      ],
+      "source_dir": "idle/up",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "run_up",
+      "part": "main",
+      "row": 16,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "run/up",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "pass_up",
+      "part": "main",
+      "row": 17,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "pass/up",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_up",
+      "part": "main",
+      "row": 18,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "shoot/up",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "tackle_up",
+      "part": "main",
+      "row": 19,
+      "fps": 14,
+      "loop": false,
+      "authored_frames": 6,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_dir": "tackle/up",
+      "allowed_detached_components": 0
+    }
+  ]
+}

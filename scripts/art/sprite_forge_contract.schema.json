@@ -1,14 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://chess-studio.local/schemas/pawn-slug-sprite-forge-contract-v1.json",
-  "title": "Pawn Slug Sprite Forge bank contract",
+  "title": "Sprite Forge bank contract",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema",
     "quality_contract",
     "actor",
-    "weapon",
     "cell",
     "parts",
     "animations",
@@ -211,6 +210,14 @@
           "minimum": 0
         }
       }
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "variant": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "$defs": {
@@ -222,5 +229,17 @@
         "type": "number"
       }
     }
-  }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "weapon"
+      ]
+    },
+    {
+      "required": [
+        "variant"
+      ]
+    }
+  ]
 }
