@@ -178,12 +178,15 @@
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
     top: 42.2% !important;
-    left: 21% !important;
-    width: 58% !important;
-    min-height: 56px !important;
+    left: 19% !important;
+    width: 62% !important;
+    min-height: 60px !important;
     border-color: rgba(236, 186, 88, .28) !important;
     background: linear-gradient(180deg, rgba(61, 31, 13, .78), rgba(25, 12, 7, .70)) !important;
     box-shadow: 0 8px 20px rgba(0, 0, 0, .18) !important;
+  }
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play > span {
+    display: block !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--history {
@@ -261,8 +264,8 @@
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
-    left: 18% !important;
-    width: 64% !important;
+    left: 16% !important;
+    width: 68% !important;
   }
 }
 
