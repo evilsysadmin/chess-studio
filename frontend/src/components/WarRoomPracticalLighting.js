@@ -308,19 +308,12 @@ export function applyWarRoomPracticalLighting(group, {
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-left'));
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-right'));
 
-  // The former museum side SpotLights were immediately retired by the desktop
-  // performance budget. Their apparent contribution is already represented by
-  // the global key plus torch emissive/halo layers, so do not construct them.
-  const lightCount = 0;
-  if (!coarsePointer) group.userData.warRoomMuseumSideKeysOmitted = 2;
-
   const performanceBudget = applyWarRoomPerformanceBudget(group, { coarsePointer });
   group.userData.warRoomPerformancePointLightsKept = performanceBudget.pointLightsKept;
   group.userData.warRoomPerformancePointLightsCulled = performanceBudget.pointLightsCulled;
   group.userData.warRoomPerformanceSpotLightsCulled = performanceBudget.spotLightsCulled;
 
   group.userData.warRoomPracticalLightingVersion = 'museum-v4';
-  group.userData.warRoomPracticalLightCount = lightCount;
   group.userData.warRoomPracticalMaterialsTuned = tunedMaterials;
-  return lightCount;
+  return 0;
 }
