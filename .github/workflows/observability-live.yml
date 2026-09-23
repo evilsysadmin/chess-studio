@@ -68,7 +68,6 @@ jobs:
             echo "::notice title=Observability deploy superseded::$EXPECTED_STAGING_SHA is not the live staging backend generation; Grafana live check skipped."
           fi
       - name: Warm production + staging telemetry
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Deploy to staging' || steps.generation.outputs.live == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -81,7 +80,8 @@ jobs:
           done
           sleep 12
       - name: Query Grafana from the read side
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Deploy to staging' || steps.generation.outputs.live == 'true'
+        env:
+          EXPECTED_STAGING_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy to staging' && steps.generation.outputs.live == 'true' && github.event.workflow_run.head_sha || '' }}
         run: python3 -S scripts/grafana_live_check.py
       - name: Summary
         if: always()
@@ -93,7 +93,8 @@ jobs:
             echo '- OCI staging host metrics + scoped backend stdout logs: queried from Grafana'
             echo '- Alloy self-telemetry + deterministic filelog probe distinguish transport from backend capture failures'
             echo "- Deploy-triggered checks pin telemetry to: ${EXPECTED_STAGING_SHA:-scheduled/current}"
-            echo "- Superseded deploy trigger queried: ${{ steps.generation.outputs.live || 'n/a' }}"
+            echo "- Deploy trigger still live: ${{ steps.generation.outputs.live || 'n/a' }}"
+            echo '- Superseded deploys still query current staging, without pinning the stale SHA'
             echo '- Backend metrics/logs/traces: production + staging queried from Grafana'
             echo '- Environment isolation: Tempo service/environment mismatches must stay empty'
             echo "- Guardrail 5xx: ≤ '${GRAFANA_SLO_MAX_5XX_PERCENT}%' over 15m when sample ≥ '${GRAFANA_SLO_MIN_REQUESTS_15M}'"
