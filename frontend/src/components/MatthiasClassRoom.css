@@ -1,0 +1,411 @@
+/* Matthias Class Room
+   Board-first visual composition for the existing School route.
+   This file is deliberately scoped to the School surface so War Room v1/v2/v3
+   keep their own layout and renderer styling. */
+
+body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
+  display: none;
+}
+
+.app-shell:has(.matthias-school-shell[data-school-section="school"]) {
+  width: 100%;
+  max-width: none;
+  padding:
+    max(.55rem, env(safe-area-inset-top))
+    max(.7rem, env(safe-area-inset-right))
+    max(.8rem, env(safe-area-inset-bottom))
+    max(.7rem, env(safe-area-inset-left));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] {
+  --classroom-board-max: 860px;
+  width: min(100%, 1780px);
+  max-width: 1780px;
+  margin: 0 auto;
+  gap: .62rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] > .back-link {
+  margin-bottom: -.08rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .tutorial-section-tabs {
+  width: min(100%, 520px);
+  justify-self: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .32rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .tutorial-section-tabs button {
+  min-height: 34px;
+  padding: .38rem .55rem;
+  font-size: .72rem;
+}
+
+/* The old route opened with a large dashboard hero. In Class Room it becomes
+   a compact teacher plaque: Matthias remains present, but the board owns space. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero {
+  grid-template-columns: 96px minmax(0, 1fr) minmax(160px, 205px);
+  gap: .8rem;
+  padding: .62rem .78rem;
+  min-height: 104px;
+  align-items: center;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
+  width: 88px;
+  height: 104px;
+  object-fit: cover;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero h1 {
+  margin: .12rem 0 0;
+  font-size: clamp(1.18rem, 1.35vw, 1.55rem);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero p {
+  margin: .22rem 0 0;
+  max-width: 72ch;
+  font-size: .76rem;
+  line-height: 1.35;
+  opacity: .72;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-progress {
+  padding: .48rem .56rem;
+}
+
+/* Courses are navigation, not content. Keep them readable but stop letting five
+   cards compete with the lesson itself. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
+  gap: .34rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip button {
+  min-height: 44px;
+  padding: .38rem .5rem;
+  border-radius: 9px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip button > span {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip small {
+  font-size: .62rem;
+}
+
+/* A thin lesson rail + a large demonstration table. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-layout {
+  grid-template-columns: minmax(148px, 176px) minmax(0, 1fr);
+  gap: .72rem;
+  align-items: start;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons {
+  gap: .28rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-intro {
+  padding: .5rem .56rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-intro p {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons button {
+  min-height: 46px;
+  padding: .42rem .48rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons button > span {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons button small {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons button strong {
+  font-size: .72rem;
+  line-height: 1.18;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
+  grid-template-columns: minmax(520px, var(--classroom-board-max)) minmax(286px, 340px);
+  gap: .78rem;
+  justify-content: center;
+  align-items: start;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board {
+  width: min(100%, var(--classroom-board-max));
+  max-width: var(--classroom-board-max);
+  justify-self: center;
+  padding: .42rem;
+  border-radius: 13px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board-wrap,
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board-grid {
+  width: 100%;
+  max-width: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board-grid {
+  aspect-ratio: 1;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
+  height: clamp(560px, 72dvh, var(--classroom-board-max));
+  min-height: 520px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
+  display: flex;
+  justify-content: center;
+  gap: .4rem;
+  margin-top: .34rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions button {
+  min-height: 34px;
+  padding: .38rem .62rem;
+}
+
+/* Matthias is the HUD. Objective, feedback and the next action live beside him. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach {
+  position: sticky;
+  top: max(.65rem, env(safe-area-inset-top));
+  gap: .58rem;
+  padding: .72rem;
+  border-radius: 13px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading {
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: .62rem;
+  align-items: end;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading img {
+  width: 94px;
+  height: 118px;
+  object-fit: cover;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading > .matthias-school-complete-badge {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading h2 {
+  font-size: 1.04rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-objective {
+  padding: .58rem .64rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-objective p {
+  margin: .14rem 0 0;
+  font-size: .78rem;
+  line-height: 1.4;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-sequence-status {
+  min-height: 32px;
+  padding: .34rem .48rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback {
+  position: relative;
+  padding: .7rem .72rem;
+  border-radius: 12px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: -7px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border-left: 1px solid color-mix(in srgb, var(--brass) 24%, var(--ui-border));
+  border-top: 1px solid color-mix(in srgb, var(--brass) 24%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-panel) 88%, #080a0d 12%);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback p {
+  font-size: .84rem;
+  line-height: 1.48;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-explanation {
+  font-size: .72rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav {
+  grid-template-columns: auto 1fr auto;
+  gap: .36rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav button {
+  min-height: 34px;
+  padding: .38rem .55rem;
+  font-size: .7rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav .tutorial-progress {
+  font-size: .64rem;
+  opacity: .68;
+}
+
+@media (min-width: 1500px) and (min-height: 860px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] {
+    --classroom-board-max: 920px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
+    grid-template-columns: minmax(600px, var(--classroom-board-max)) minmax(300px, 350px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] {
+    --classroom-board-max: 760px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-intro {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
+    grid-template-columns: minmax(480px, 1fr) minmax(270px, 320px);
+  }
+}
+
+@media (max-width: 860px) {
+  body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
+    display: block;
+  }
+
+  .app-shell:has(.matthias-school-shell[data-school-section="school"]) {
+    padding: var(--app-shell-padding, .75rem);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
+    width: 68px;
+    height: 84px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero p {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-progress {
+    grid-column: 1 / -1;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
+    overflow-x: auto;
+    grid-template-columns: repeat(5, minmax(128px, 1fr));
+    scrollbar-width: thin;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach {
+    position: static;
+    order: -1;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading {
+    grid-template-columns: 74px minmax(0, 1fr) auto;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading img {
+    width: 70px;
+    height: 88px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
+    height: clamp(430px, 72dvh, 720px);
+    min-height: 430px;
+  }
+}
+
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .tutorial-section-tabs {
+    width: 100%;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .tutorial-section-tabs button {
+    padding-inline: .28rem;
+    font-size: .64rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero {
+    min-height: 0;
+    padding: .5rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
+    width: 58px;
+    height: 72px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero h1 {
+    font-size: 1.02rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-course-strip {
+    grid-template-columns: repeat(5, minmax(112px, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-lessons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board {
+    padding: .28rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
+    height: min(76dvh, 620px);
+    min-height: 390px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback p {
+    font-size: .8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] *,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] *::before,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] *::after {
+    scroll-behavior: auto !important;
+  }
+}
