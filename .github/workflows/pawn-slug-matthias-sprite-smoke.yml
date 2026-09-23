@@ -13,6 +13,7 @@ on:
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
+      - scripts/art/matthias_candidate_grinder.py
       - scripts/art/contracts/matthias_prompt_contract.yaml
       - scripts/art/test_matthias_prompt_contract.py
       - scripts/art/export_enemy_sprite_smoke.py
@@ -35,6 +36,7 @@ on:
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
+      - scripts/art/matthias_candidate_grinder.py
       - scripts/art/contracts/matthias_prompt_contract.yaml
       - scripts/art/test_matthias_prompt_contract.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
@@ -168,6 +170,38 @@ jobs:
             --summary-output "$OUT/matthias-semantic-summary.md" \
             --fail-on-hard || status=$?
           cat "$OUT/matthias-semantic-summary.md" | tee -a "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$status" != "0" ]]; then
+            REQ="$OUT/repair-requests"
+            mkdir -p "$REQ"
+            python3 - "$OUT/matthias-semantic-audit.json" <<'PY' > "$REQ/crouch-weapons.txt"
+import json
+import sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+weapons = sorted({
+    item["weapon"]
+    for item in data.get("checks", [])
+    if item.get("action") == "crouch" and item.get("status") == "fail"
+})
+print("\n".join(weapons))
+PY
+            while IFS= read -r weapon; do
+              [[ -z "$weapon" ]] && continue
+              DEST="$REQ/$weapon/crouch-frame0"
+              mkdir -p "$DEST"
+              python3 scripts/art/matthias_candidate_grinder.py compile-request \
+                --weapon "$weapon" \
+                --action crouch \
+                --frame-index 0 \
+                --reference identity=/tmp/pawn-slug-sprite-smoke/matthias/pistol/frames/matthias_pistol_r00_c00.png \
+                --reference weapon="/tmp/pawn-slug-sprite-smoke/matthias/$weapon/frames/matthias_${weapon}_r00_c00.png" \
+                --output "$DEST/request.json" \
+                --prompt-output "$DEST/prompt.txt"
+            done < "$REQ/crouch-weapons.txt"
+            echo "Compiled crouch repair requests:" | tee -a "$GITHUB_STEP_SUMMARY"
+            sed 's/^/- /' "$REQ/crouch-weapons.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
           exit "$status"
 
       - name: Audit Matthias batch parity with Sprite Forge

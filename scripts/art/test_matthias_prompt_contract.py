@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 import matthias_prompt_contract as mpc
+import matthias_candidate_grinder as mcg
 
 
 class MatthiasPromptContractTests(unittest.TestCase):
@@ -139,6 +140,81 @@ class MatthiasPromptContractTests(unittest.TestCase):
             report = mpc.audit_smoke(self.contract, smoke)
             crouch_failures = [item for item in report["checks"] if item["status"] == "fail" and item["action"] in {"crouch", "crouch_walk", "shoot_crouch"}]
             self.assertEqual(crouch_failures, [], json.dumps(crouch_failures, indent=2))
+
+
+class MatthiasCandidateGrinderTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.contract = mpc.load_contract(Path(__file__).with_name("contracts") / "matthias_prompt_contract.yaml")
+
+    @staticmethod
+    def _actor(path: Path, *, crouched: bool, weapon_extra: int = 0) -> None:
+        image = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        # Large beret/head anchor kept invariant across poses.
+        top = 52 if not crouched else 78
+        draw.rectangle((72, top, 132, top + 20), fill=(255, 255, 255, 255))
+        draw.rectangle((80, top + 20, 126, top + 44), fill=(255, 255, 255, 255))
+        torso_bottom = 188 if not crouched else 190
+        draw.rectangle((76, top + 44, 136, torso_bottom - 28), fill=(255, 255, 255, 255))
+        draw.rectangle((78, torso_bottom - 28, 96, torso_bottom), fill=(255, 255, 255, 255))
+        draw.rectangle((112, torso_bottom - 28, 130, torso_bottom), fill=(255, 255, 255, 255))
+        # Horizontal weapon, canonical unless weapon_extra intentionally bloats it.
+        draw.rectangle((128, top + 52, 182 + weapon_extra, top + 62), fill=(255, 255, 255, 255))
+        image.save(path)
+
+    def test_request_bundle_contains_full_prompt_hashes_and_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            identity = root / "identity.png"
+            weapon = root / "weapon.png"
+            self._actor(identity, crouched=False)
+            self._actor(weapon, crouched=False)
+            bundle = mcg.build_request_bundle(
+                self.contract,
+                weapon="shotgun",
+                action="crouch",
+                frame_index=0,
+                refs={"identity": identity, "weapon": weapon},
+            )
+            self.assertEqual(bundle["state"], "awaiting_generation")
+            self.assertIn("Near-standing pose", bundle["prompt"])
+            self.assertIn("Crouch body-height ratio", bundle["prompt"])
+            self.assertEqual(len(bundle["promptSha256"]), 64)
+            self.assertEqual(bundle["references"]["weapon"]["sha256"], mpc.sha256_file(weapon))
+
+    def test_candidate_grinder_rejects_near_standing_crouch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            identity = root / "identity.png"
+            weapon = root / "weapon.png"
+            candidate = root / "candidate.png"
+            self._actor(identity, crouched=False)
+            self._actor(weapon, crouched=False)
+            self._actor(candidate, crouched=False)
+            report = mcg.audit_candidate(
+                self.contract, candidate=candidate, weapon="shotgun", action="crouch",
+                refs={"identity": identity, "weapon": weapon},
+            )
+            self.assertEqual(report["summary"]["status"], "fail")
+            failed = {item["check"] for item in report["checks"] if item["status"] == "fail"}
+            self.assertIn("head_normalized_height_vs_idle", failed)
+
+    def test_candidate_grinder_rejects_oversized_weapon(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            identity = root / "identity.png"
+            weapon = root / "weapon.png"
+            candidate = root / "candidate.png"
+            self._actor(identity, crouched=False)
+            self._actor(weapon, crouched=False)
+            self._actor(candidate, crouched=True, weapon_extra=55)
+            report = mcg.audit_candidate(
+                self.contract, candidate=candidate, weapon="shotgun", action="crouch",
+                refs={"identity": identity, "weapon": weapon},
+            )
+            failed = {item["check"] for item in report["checks"] if item["status"] == "fail"}
+            self.assertIn("weapon_body_width_vs_reference", failed)
+
 
 
 if __name__ == "__main__":
