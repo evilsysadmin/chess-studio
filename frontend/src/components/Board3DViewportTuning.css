@@ -161,12 +161,6 @@
     box-shadow: inset 0 1px rgba(235,208,155,.025), 0 10px 24px rgba(0,0,0,.16);
   }
 
-  .game-screen .game-3d-command-column blockquote {
-    margin-top: .1rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
   .game-screen .game-side-column-3d .game-side-music {
     grid-area: music;
     align-self: start;
@@ -292,7 +286,7 @@
   border-color: color-mix(in srgb, var(--war-room-brass) 44%, rgba(255,255,255,.06));
 }
 
-.game-screen :where(.game-3d-warroom-message, .game-side-column-3d .game-chat) {
+.game-screen .game-side-column-3d .game-chat {
   box-shadow:
     inset 2px 0 0 color-mix(in srgb, var(--castle-velvet) 54%, transparent),
     inset 0 1px rgba(255,255,255,.03),
@@ -305,16 +299,16 @@
     linear-gradient(90deg, color-mix(in srgb, var(--castle-oak-800) 74%, var(--castle-stone-900)), color-mix(in srgb, var(--castle-stone-950) 90%, var(--castle-oak-900)));
 }
 
-.game-screen :where(.game-3d-warroom-status, .game-3d-warroom-controls, .game-side-column-3d .game-side-music) {
+.game-screen .game-side-column-3d .game-side-music {
   color: var(--war-room-text-dim);
 }
 
-.game-screen :where(.game-chat, .game-notation-disclosure, .game-3d-warroom-message) :where(h2, h3, strong, summary) {
+.game-screen :where(.game-chat, .game-notation-disclosure) :where(h2, h3, strong, summary) {
   color: var(--war-room-text);
 }
 
-.game-screen :where(.game-3d-warroom-controls, .game-side-column-3d .game-side-music) button:not(:disabled):hover,
-.game-screen :where(.game-3d-warroom-controls, .game-side-column-3d .game-side-music) button:not(:disabled):focus-visible {
+.game-screen .game-side-column-3d .game-side-music button:not(:disabled):hover,
+.game-screen .game-side-column-3d .game-side-music button:not(:disabled):focus-visible {
   border-color: color-mix(in srgb, var(--war-room-brass) 55%, rgba(255,255,255,.08));
   box-shadow: inset 0 1px rgba(255,255,255,.045), 0 8px 20px rgba(0,0,0,.2);
 }
