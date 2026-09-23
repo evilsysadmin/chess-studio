@@ -8,6 +8,7 @@ on:
       - games/pawn-slug-godot/art/enemies-v2-worksheet.json
       - scripts/art/export_matthias_sprite_smoke.py
       - scripts/art/validate_matthias_sprite_continuity.py
+      - scripts/art/repair_matthias_machinegun_continuity.py
       - scripts/art/export_enemy_sprite_smoke.py
       - scripts/art/png_contract.py
       - scripts/pawn_slug_sprite_smoke_scope.py
@@ -19,6 +20,11 @@ on:
       - scripts/art/test_pawn_slug_enemy_queen_v2.py
       - scripts/art/derive_pawn_slug_enemy_scout_v2.py
       - scripts/art/test_pawn_slug_enemy_scout_v2.py
+      - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/art/repair_matthias_machinegun_continuity.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
   workflow_run:
     workflows:
@@ -163,3 +169,81 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  repair-machinegun-continuity:
+    name: Candidate · Matthias SMG continuity v3
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      OUT: /tmp/pawn-slug-machinegun-continuity-v3
+      PISTOL_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/strict-v21/pistol/v21-24640d861efc3087.png
+      MACHINEGUN_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/canonical-scale/machinegun/full/candidate-full-1346bf6b3e465e64.png
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned Pillow
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-deps \
+            --only-binary=:all: 'Pillow==12.3.0'
+
+      - name: Self-test SMG continuity v3 repair
+        run: python3 scripts/art/repair_matthias_machinegun_continuity.py --self-test
+
+      - name: Build deterministic SMG continuity v3 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          curl -fL --retry 3 "$PISTOL_URL" -o "$OUT/pistol-reference.png"
+          curl -fL --retry 3 "$MACHINEGUN_URL" -o "$OUT/machinegun-current.png"
+          python3 scripts/art/repair_matthias_machinegun_continuity.py \
+            --source "$OUT/machinegun-current.png" \
+            --reference "$OUT/pistol-reference.png" \
+            --output "$OUT/machinegun-continuity-v3.png" \
+            --report "$OUT/repair-health.json" \
+            --preview "$OUT/repair-preview.png"
+          sha256sum "$OUT/machinegun-continuity-v3.png" | tee "$OUT/sha256.txt"
+
+      - name: Upload SMG continuity v3 evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-machinegun-continuity-v3-${{ github.sha }}
+          path: /tmp/pawn-slug-machinegun-continuity-v3/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Publish SMG continuity v3 to R2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            "$OUT/machinegun-continuity-v3.png" \
+            --logical-id pawnSlug.godot.matthias.machinegun.fullContinuityV3 \
+            --prefix pawn-slug-godot/matthias/continuity-v3/machinegun/full \
+            --manifest "$OUT/r2-manifest.json"
+          cat "$OUT/r2-manifest.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify published SMG continuity v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          readarray -t asset < <(python3 - "$OUT/r2-manifest.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          item = data["assets"]["pawnSlug.godot.matthias.machinegun.fullContinuityV3"]
+          print(item["url"])
+          print(item["sha256"])
+          PY
+          )
+          curl --fail --silent --show-error --location --max-time 20 "${asset[0]}" -o "$OUT/published.png"
+          actual="$(sha256sum "$OUT/published.png" | awk '{print $1}')"
+          test "$actual" = "${asset[1]}"
+          echo "Published SMG continuity v3 verified: ${asset[0]}"
