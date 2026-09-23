@@ -36,9 +36,11 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomPremiumFinishVersion).toBe('museum-gothic-v3');
     expect(group.userData.warRoomPremiumFinishedObjects).toBe(4);
     expect(group.userData.warRoomPracticalLightingVersion).toBe('museum-v4');
-    expect(group.userData.warRoomPracticalLightCount).toBe(0);
-    expect(group.userData.warRoomMuseumSideKeysOmitted).toBe(2);
     expect(group.userData.warRoomPracticalMaterialsTuned).toBeGreaterThan(0);
+    expect(group.getObjectByName('war-room-museum-side-key-left')).toBeUndefined();
+    expect(group.getObjectByName('war-room-museum-side-key-right')).toBeUndefined();
+    expect(group.getObjectByName('war-room-museum-side-target-left')).toBeUndefined();
+    expect(group.getObjectByName('war-room-museum-side-target-right')).toBeUndefined();
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
@@ -153,7 +155,6 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomPremiumPaintings).toBeUndefined();
     expect(group.userData.warRoomPremiumFinishVersion).toBeUndefined();
     expect(group.userData.warRoomPracticalLightingVersion).toBeUndefined();
-    expect(group.userData.warRoomPracticalLightCount).toBeUndefined();
     expect(group.userData.warRoomTeutonicArmorCount).toBeUndefined();
     expect(group.userData.warRoomCompositionPolishVersion).toBeUndefined();
     expect(group.userData.warRoomUserPolishVersion).toBeUndefined();
