@@ -147,6 +147,7 @@ async function seedStableSmokeProfile(request, token) {
     'combat-intelligence': { seen: true },
     'combat-deployment': { seen: true },
     'quick-match-rules': { seen: true },
+    'war-room': { seen: true },
     tournament: { seen: true },
     practice: { seen: true },
     puzzles: { seen: true },
@@ -170,10 +171,86 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · login real → War Room → chunk 3D fallido recupera → jugada real', async ({ page, request }) => {
+function attachUxAuditProbe(page) {
+  const runtime = { consoleErrors: [], pageErrors: [], serverErrors: [] };
+  page.on('console', (message) => {
+    if (message.type() === 'error') runtime.consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => runtime.pageErrors.push(String(error?.message || error)));
+  page.on('response', (response) => {
+    if (response.status() >= 500) runtime.serverErrors.push({
+      status: response.status(),
+      method: response.request().method(),
+      url: response.url(),
+    });
+  });
+  return runtime;
+}
+
+async function captureUxCheckpoint(page, testInfo, report, name) {
+  await page.waitForTimeout(350);
+  const metrics = await page.evaluate(() => {
+    const visible = (node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const label = (node) => String(node.innerText || node.getAttribute('aria-label') || '')
+      .replace(/\s+/g, ' ').trim().slice(0, 120);
+    const actions = [...document.querySelectorAll('button,a[href],[role="button"],[role="menuitem"],[role="tab"]')]
+      .filter(visible)
+      .map((node) => {
+        const rect = node.getBoundingClientRect();
+        return { label: label(node), width: Math.round(rect.width), height: Math.round(rect.height), aboveFold: rect.top >= 0 && rect.top < innerHeight };
+      })
+      .filter((row) => row.label);
+    const counts = new Map();
+    for (const row of actions) counts.set(row.label, (counts.get(row.label) || 0) + 1);
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
+      horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      verticalScreens: Number((document.documentElement.scrollHeight / Math.max(innerHeight, 1)).toFixed(2)),
+      headings: [...document.querySelectorAll('h1,h2,h3,[role="heading"]')].filter(visible).map(label).filter(Boolean).slice(0, 20),
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].filter(visible).map(label).filter(Boolean).slice(0, 10),
+      visibleActions: actions.length,
+      aboveFoldActions: actions.filter((row) => row.aboveFold).length,
+      duplicateActions: [...counts.entries()].filter(([, count]) => count > 1).map(([text, count]) => ({ text, count })).slice(0, 20),
+      compactTargets: actions.filter((row) => row.width < 32 || row.height < 32).slice(0, 20),
+    };
+  });
+  await page.screenshot({ path: testInfo.outputPath(`ux-${name}.png`), fullPage: true });
+  report.checkpoints.push({ name, ...metrics });
+  return metrics;
+}
+
+async function leaveCurrentGameThroughUi(page) {
+  const direct = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+  if (await direct.isVisible().catch(() => false)) {
+    await direct.click();
+  } else {
+    const more = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(more).toBeVisible();
+    await more.click();
+    await page.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+  }
+  const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(dialog).toBeVisible();
+  const exit = dialog.getByRole('button', { name: /Cancelar sin penalización|Abandonar y asumir resultado/ });
+  await expect(exit).toBeVisible();
+  await exit.click();
+}
+
+
+test('staging live · login real → War Room → chunk 3D fallido recupera → jugada real', async ({ page, request }, testInfo) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
+  const synthetic = stagingSyntheticHeaders(username);
+  const uxRuntime = attachUxAuditProbe(page);
+  const uxReport = { schema: 1, viewport: 'desktop-1440x900', checkpoints: [], runtime: uxRuntime };
+  test.setTimeout(210_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   if (EXPECTED_SHA) {
     const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {
@@ -216,6 +293,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
 
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
+    await captureUxCheckpoint(page, testInfo, uxReport, '01-home');
 
     // La Escuela sirve de canario del rollout 3D antes de crear una partida real.
     await buttonWithHeading(page, 'Escuela de Matthias').click();
@@ -230,6 +308,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
 
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible();
+    await captureUxCheckpoint(page, testInfo, uxReport, '02-quick-config');
     const settings = dialog.locator('details.quick-match-settings');
     if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
     await dialog.getByRole('radio', { name: 'Blancas', exact: true }).click();
@@ -284,6 +363,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(warRoomSignal).toContainText('Matthias');
     await expect(warRoomSignal).not.toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
+    await captureUxCheckpoint(page, testInfo, uxReport, '03-quick-war-room');
 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
     // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
@@ -390,6 +470,59 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     expect(Array.isArray(moved.history)).toBe(true);
     expect(moved.history.length).toBeGreaterThanOrEqual(1);
     await expect(gameStatus(page)).toBeVisible();
+
+    await captureUxCheckpoint(page, testInfo, uxReport, '04-quick-after-e4');
+    await leaveCurrentGameThroughUi(page);
+    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
+    await captureUxCheckpoint(page, testInfo, uxReport, '05-home-after-quick');
+
+    await buttonWithHeading(page, 'Torneo').click();
+    await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+    await captureUxCheckpoint(page, testInfo, uxReport, '06-tournament-lobby');
+    const tournamentWhite = page.getByRole('radio', { name: 'Blancas', exact: true });
+    if (await tournamentWhite.isVisible().catch(() => false)) await tournamentWhite.click();
+
+    const tournamentCreate = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'POST' && url.origin + url.pathname === `${STAGING_API_URL}/games`;
+    }, { timeout: 60_000 });
+    await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
+    const tournamentCreatedResponse = await tournamentCreate;
+    expect(tournamentCreatedResponse.status()).toBe(201);
+    const tournamentCreated = await tournamentCreatedResponse.json();
+    gameId = tournamentCreated.id || gameId;
+    await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+    await captureUxCheckpoint(page, testInfo, uxReport, '07-tournament-war-room');
+    await clickBoardMove(page, 'e2', 'e4');
+    await page.waitForTimeout(1_200);
+    await captureUxCheckpoint(page, testInfo, uxReport, '08-tournament-after-e4');
+
+    await leaveCurrentGameThroughUi(page);
+    await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible({ timeout: 30_000 });
+    await captureUxCheckpoint(page, testInfo, uxReport, '09-tournament-return');
+    await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+
+    const matthias = page.getByRole('complementary', { name: 'Rincón de Matthias' })
+      .getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+    await expect(matthias).toBeVisible();
+    await matthias.click();
+    await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+    await captureUxCheckpoint(page, testInfo, uxReport, '10-insights-overview');
+    const errorsTab = page.getByRole('tab', { name: /Errores/ });
+    if (await errorsTab.isVisible().catch(() => false)) {
+      await errorsTab.click();
+      await captureUxCheckpoint(page, testInfo, uxReport, '11-insights-errors');
+    }
+
+    await testInfo.attach('golden-path-ux-report', {
+      body: Buffer.from(`${JSON.stringify(uxReport, null, 2)}\n`, 'utf8'),
+      contentType: 'application/json',
+    });
+
+    const overflow = uxReport.checkpoints.filter((checkpoint) => checkpoint.horizontalOverflow).map((checkpoint) => checkpoint.name);
+    expect(overflow, `Overflow horizontal: ${overflow.join(', ')}`).toEqual([]);
+    expect(uxRuntime.serverErrors, JSON.stringify(uxRuntime.serverErrors, null, 2)).toEqual([]);
   } finally {
     if (gameId && session.token) {
       const cleanup = await request.delete(`${STAGING_API_URL}/games/${encodeURIComponent(gameId)}`, {
