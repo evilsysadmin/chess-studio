@@ -167,6 +167,28 @@ def place_scaled(
     return repaired, repaired_components[0]
 
 
+def transplant_idle_lower_body(
+    repaired: Image.Image,
+    reference_cell: Image.Image,
+    target_main: dict,
+    label: str,
+) -> tuple[Image.Image, dict, int]:
+    _, top, _, bottom = target_main["bbox"]
+    start_y = round(
+        top
+        + (bottom - top) * IDLE_CANONICAL_LOWER_BODY_START_FRACTION
+    )
+    polished = repaired.copy()
+    canonical_lower = reference_cell.crop((0, start_y, CELL, CELL))
+    polished.paste(canonical_lower, (0, start_y))
+    polished_components = components(polished)
+    if len(polished_components) != 1:
+        raise ValueError(
+            f"{label}: canonical lower-body transplant broke connectivity"
+        )
+    return polished, polished_components[0], start_y
+
+
 def repair_idle(
     source: Image.Image,
     reference: Image.Image,
