@@ -131,6 +131,29 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect([state.x, state.y]).toEqual([3, 5]);
   });
 
+  it('uses the enemy runtime position for collision and targeting after it moves', () => {
+    const base = createChroniclesState();
+    const moved = {
+      ...base,
+      x: 2,
+      y: 5,
+      direction: 1,
+      enemyPositions: {
+        ...(base.enemyPositions || {}),
+        'corrupted-pawn': { x: 5, y: 5 },
+      },
+    };
+
+    const throughOldSpawn = chroniclesReduce(moved, 'forward');
+    expect([throughOldSpawn.x, throughOldSpawn.y]).toEqual([3, 5]);
+    expect(chroniclesEnemyDistanceAhead(throughOldSpawn, 2)).toBe(2);
+
+    const beforeRuntimeCell = { ...throughOldSpawn, x: 4, y: 5 };
+    const blocked = chroniclesReduce(beforeRuntimeCell, 'forward');
+    expect([blocked.x, blocked.y]).toEqual([4, 5]);
+    expect(blocked.message).toMatch(/bloquea el paso/i);
+  });
+
   it('wakes the gate encounter and an optional spectral chapel only after the sigil is activated', () => {
     let state = createChroniclesState();
     expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['corrupted-pawn']);
