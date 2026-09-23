@@ -1,28 +1,5 @@
 import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
-import { pruneWarRoomRetiredSceneObjects } from './WarRoomScenePruning.js';
-
-const NOOP_RENDER_HOOK = () => {};
-
-function attachCanonicalScenePrune(driver) {
-  if (!driver || driver.userData.warRoomCanonicalPruneDriver) return;
-
-  const previousAfterRender = driver.onAfterRender;
-  let completed = false;
-  driver.userData.warRoomCanonicalPruneDriver = true;
-
-  driver.onAfterRender = (...args) => {
-    previousAfterRender?.(...args);
-    if (completed) return;
-    completed = true;
-
-    const stats = pruneWarRoomRetiredSceneObjects(driver);
-    driver.userData.warRoomCanonicalPruneCompleted = true;
-    driver.userData.warRoomCanonicalPrunedRoots = stats.removedRoots;
-    driver.userData.warRoomCanonicalPrunedNodes = stats.removedNodes;
-    driver.onAfterRender = previousAfterRender || NOOP_RENDER_HOOK;
-  };
-}
 
 export function attachWarRoomCompositionRootDriver(group, {
   wallZ,
@@ -43,7 +20,6 @@ export function attachWarRoomCompositionRootDriver(group, {
   });
   if (!registered) return false;
 
-  attachCanonicalScenePrune(driver);
   driver.userData.warRoomCompositionRootDriver = true;
   return true;
 }
