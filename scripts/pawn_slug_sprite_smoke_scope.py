@@ -13,6 +13,7 @@ MATTHIAS_PATHS = {
     "scripts/art/validate_matthias_sprite_continuity.py",
     "scripts/art/repair_matthias_machinegun_continuity.py",
     "scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py",
+    "scripts/art/repair_matthias_pose_semantics_v1.py",
     "scripts/art/matthias_prompt_contract.py",
     "scripts/art/matthias_candidate_grinder.py",
     "scripts/art/contracts/matthias_prompt_contract.yaml",
@@ -93,6 +94,7 @@ def self_test() -> None:
     assert classify(["scripts/art/validate_matthias_sprite_continuity.py"]) == Scope(True, False)
     assert classify(["scripts/art/repair_matthias_machinegun_continuity.py"]) == Scope(True, False)
     assert classify(["scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py"]) == Scope(True, False)
+    assert classify(["scripts/art/repair_matthias_pose_semantics_v1.py"]) == Scope(True, False)
     assert classify(["scripts/art/matthias_prompt_contract.py"]) == Scope(True, False)
     assert classify(["scripts/art/matthias_candidate_grinder.py"]) == Scope(True, False)
     assert classify(["scripts/art/contracts/matthias_prompt_contract.yaml"]) == Scope(True, False)
