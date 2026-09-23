@@ -64,6 +64,11 @@ ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip()
 NEW_PASSWORD_MIN_LENGTH = 8
 _STAGING_SYNTHETIC_SECRET = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
 _STAGING_SMOKE_SYNTHETIC_SOURCE = "staging-smoke-cleanup"
+_STAGING_BROWSER_SYNTHETIC_SOURCE = "staging-browser-smoke"
+_STAGING_SYNTHETIC_SOURCES = frozenset({
+    _STAGING_SMOKE_SYNTHETIC_SOURCE,
+    _STAGING_BROWSER_SYNTHETIC_SOURCE,
+})
 _STAGING_SMOKE_USER_RE = re.compile(r"^ci_smoke_[0-9a-f]{16}$")
 
 
@@ -111,9 +116,9 @@ def _client_release(request: Request) -> str | None:
     return sanitize_client_release(request.headers.get("x-client-release"))
 
 
-def _staging_smoke_signature(identity: str, secret: str) -> str:
+def _staging_smoke_signature(identity: str, secret: str, source: str = _STAGING_SMOKE_SYNTHETIC_SOURCE) -> str:
     message = (
-        f"chess-studio:synthetic:{_STAGING_SMOKE_SYNTHETIC_SOURCE}\x00{identity}"
+        f"chess-studio:synthetic:{source}\x00{identity}"
     ).encode("utf-8")
     return hmac.new(str(secret or "").encode("utf-8"), message, hashlib.sha256).hexdigest()
 
@@ -125,9 +130,9 @@ def _trusted_staging_smoke_request(request: Request) -> tuple[str, str] | None:
     source = (request.headers.get("x-chess-synthetic-source") or "").strip()
     identity = (request.headers.get("x-chess-synthetic-identity") or "").strip().lower()
     signature = (request.headers.get("x-chess-synthetic-signature") or "").strip().lower()
-    if source != _STAGING_SMOKE_SYNTHETIC_SOURCE or not _STAGING_SMOKE_USER_RE.fullmatch(identity):
+    if source not in _STAGING_SYNTHETIC_SOURCES or not _STAGING_SMOKE_USER_RE.fullmatch(identity):
         return None
-    expected = _staging_smoke_signature(identity, _STAGING_SYNTHETIC_SECRET)
+    expected = _staging_smoke_signature(identity, _STAGING_SYNTHETIC_SECRET, source)
     if not signature or not hmac.compare_digest(signature, expected):
         return None
     return source, identity
@@ -668,7 +673,7 @@ async def login(body: LoginRequest, request: Request):
     synthetic_source = getattr(request.state, "synthetic_source", None)
     synthetic_identity = getattr(request.state, "synthetic_identity", None)
     trusted_synthetic = (
-        synthetic_source == _STAGING_SMOKE_SYNTHETIC_SOURCE
+        synthetic_source in _STAGING_SYNTHETIC_SOURCES
         and synthetic_identity == username
     )
     if synthetic_source and not trusted_synthetic:
