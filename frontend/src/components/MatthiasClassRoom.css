@@ -18,7 +18,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] {
-  --classroom-board-max: 860px;
+  --classroom-board-max: 960px;
   width: min(100%, 1780px);
   max-width: 1780px;
   margin: 0 auto;
@@ -45,17 +45,11 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 /* The old route opened with a large dashboard hero. In Class Room it becomes
    a compact teacher plaque: Matthias remains present, but the board owns space. */
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero {
-  grid-template-columns: 96px minmax(0, 1fr) minmax(160px, 205px);
-  gap: .8rem;
-  padding: .62rem .78rem;
-  min-height: 104px;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 205px);
+  gap: .7rem;
+  padding: .48rem .72rem;
+  min-height: 72px;
   align-items: center;
-}
-
-.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
-  width: 88px;
-  height: 104px;
-  object-fit: cover;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero h1 {
@@ -162,8 +156,8 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
-  height: clamp(560px, 72dvh, var(--classroom-board-max));
-  min-height: 520px;
+  height: clamp(620px, 78dvh, var(--classroom-board-max));
+  min-height: 560px;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
@@ -269,7 +263,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
 @media (min-width: 1500px) and (min-height: 860px) {
   .tutorial-shell.matthias-school-shell[data-school-section="school"] {
-    --classroom-board-max: 920px;
+    --classroom-board-max: 1020px;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
@@ -279,7 +273,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
 @media (max-width: 1180px) {
   .tutorial-shell.matthias-school-shell[data-school-section="school"] {
-    --classroom-board-max: 760px;
+    --classroom-board-max: 800px;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-layout {
@@ -309,12 +303,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero {
-    grid-template-columns: 74px minmax(0, 1fr);
-  }
-
-  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
-    width: 68px;
-    height: 84px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero p {
@@ -350,7 +339,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
-    height: clamp(430px, 72dvh, 720px);
+    height: clamp(460px, 74dvh, 760px);
     min-height: 430px;
   }
 }
@@ -371,11 +360,6 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     padding: .5rem;
   }
 
-  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero > img {
-    width: 58px;
-    height: 72px;
-  }
-
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-hero h1 {
     font-size: 1.02rem;
   }
@@ -393,7 +377,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
-    height: min(76dvh, 620px);
+    height: min(78dvh, 660px);
     min-height: 390px;
   }
 
@@ -505,7 +489,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
    viewport. The teacher stays present in the compact hero; the detailed coach
    follows the board instead of pushing it below the fold. */
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero {
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-progress {
@@ -526,13 +510,8 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero {
-    grid-template-columns: 66px minmax(0, 1fr);
-    min-height: 82px;
-  }
-
-  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-hero > img {
-    width: 62px;
-    height: 76px;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 64px;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-coach {
