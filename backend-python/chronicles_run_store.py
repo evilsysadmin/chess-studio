@@ -67,6 +67,8 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "consumedContentIds": list(row.get("consumedContentIds") or []),
         "claimedRewards": list(row.get("claimedRewards") or []),
         "worldFlags": deepcopy(row.get("worldFlags") or {}),
+        "inventory": deepcopy(row.get("inventory") or {}),
+        "quests": deepcopy(row.get("quests") or {}),
         "createdAt": row.get("createdAt"),
         "updatedAt": row.get("updatedAt"),
     }
@@ -102,6 +104,8 @@ async def create_or_replay_run(
         "consumedContentIds": [],
         "claimedRewards": [],
         "worldFlags": {},
+        "inventory": {},
+        "quests": {},
         "createdAt": now,
         "updatedAt": now,
         "createFingerprint": create_fingerprint,
@@ -173,6 +177,8 @@ async def checkpoint_run(
     content_version: int,
     manifest_revision: str,
     world_flags: dict[str, Any],
+    inventory: dict[str, Any],
+    quests: dict[str, Any],
     consumed_content_ids: list[str],
     claimed_rewards: list[str],
 ) -> dict[str, Any] | None:
@@ -196,6 +202,8 @@ async def checkpoint_run(
             row["contentVersion"] = int(content_version)
             row["manifestRevision"] = manifest_revision
             row["worldFlags"] = deepcopy(world_flags)
+            row["inventory"] = deepcopy(inventory)
+            row["quests"] = deepcopy(quests)
             row["consumedContentIds"] = list(dict.fromkeys([
                 *(row.get("consumedContentIds") or []),
                 *consumed_content_ids,
@@ -215,6 +223,8 @@ async def checkpoint_run(
                 "contentVersion": int(content_version),
                 "manifestRevision": manifest_revision,
                 "worldFlags": deepcopy(world_flags),
+                "inventory": deepcopy(inventory),
+                "quests": deepcopy(quests),
                 "updatedAt": now,
             },
             "$inc": {"worldVersion": 1},
