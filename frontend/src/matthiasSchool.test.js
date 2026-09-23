@@ -12,6 +12,7 @@ import {
   matthiasSchoolSummary,
   schoolExamForCourse,
   schoolLessonsForCourse,
+  schoolBoardGuideMove,
   schoolLineForLesson,
   validateMatthiasSchoolMove,
 } from './matthiasSchool.js';
@@ -49,6 +50,17 @@ describe('Escuela de Matthias', () => {
       expect(lesson.success.length).toBeGreaterThan(12);
       if (!lesson.exam) expect(lesson.hint?.length || 0).toBeGreaterThan(12);
     }
+  });
+
+
+  it('guía sobre el tablero sin regalar respuestas en los exámenes', () => {
+    const lesson = MATTHIAS_SCHOOL_LESSONS.find((item) => item.id === 'pawn-double-step');
+    const expected = { from: 'e2', to: 'e4' };
+    expect(schoolBoardGuideMove(lesson, expected)).toEqual({ from: 'e2' });
+    expect(schoolBoardGuideMove(lesson, expected, { hintActive: true })).toEqual({ from: 'e2', to: 'e4' });
+
+    const exam = MATTHIAS_SCHOOL_LESSONS.find((item) => item.id === 'mate-one');
+    expect(schoolBoardGuideMove(exam, { from: 'f7', to: 'g7' }, { hintActive: true })).toBeNull();
   });
 
   it('el enroque corto guiado mueve rey y torre y conserva O-O como jugada legal', () => {
