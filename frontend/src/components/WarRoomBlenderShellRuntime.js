@@ -8,27 +8,7 @@ import {
   installRuntimeStoneSurface,
   installRuntimeWoodSurface,
   tuneRuntimeMaterial,
-  warRoomBlenderEnvMapIntensity,
-  warRoomBlenderFabricSurfaceProfile,
-  warRoomBlenderLeatherSurfaceProfile,
-  warRoomBlenderMaterialFinishProfile,
-  warRoomBlenderMetalSurfaceProfile,
-  warRoomBlenderRuntimeSurfaceKind,
-  warRoomBlenderStoneSurfaceProfile,
-  warRoomBlenderWoodSurfaceProfile,
 } from './WarRoomBlenderMaterials.js';
-
-export {
-  warRoomBlenderEnvMapIntensity,
-  warRoomBlenderFabricSurfaceProfile,
-  warRoomBlenderLeatherSurfaceProfile,
-  warRoomBlenderMaterialFinishProfile,
-  warRoomBlenderMetalSurfaceProfile,
-  warRoomBlenderRuntimeSurfaceKind,
-  warRoomBlenderStoneSurfaceProfile,
-  warRoomBlenderWoodSurfaceProfile,
-};
-
 
 export const WAR_ROOM_BLENDER_BOARD_ANCHOR_Y = 1.12;
 
