@@ -7,9 +7,9 @@ The War Room v1 remains the rollback baseline until the Blender variants have pa
 ## Variant ownership
 
 - `build_war_room_premium.py` owns the v2 room.
-- `build_war_room_v3.py` owns the v3 Cartographer's Chamber and may reuse the v2 structural foundation, while retaining an independent art contract, publisher, R2 prefix and Blender gate.
-- v3 has one fireplace. The opposite bay belongs to the campaign-map archive; a second hearth or its practical-light anchor is a regression.
-- v3 differentiates itself through warmer limestone, walnut, oxblood and bottle-green materials, cooler window contrast and smoother hero curves on the lancet arch and globe.
+- `build_war_room_v3.py` owns the v3 Celestial Observatory. It reuses only the proven board anchor and camera profile; visible v2 architecture is forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
+- v3 has one cylindrical cast-iron stove/fireplace. Its right bay belongs to the angled drafting station and map-tube carousel; a second hearth or its practical-light anchor is a regression.
+- v3 differentiates itself structurally through a curved tower apse, radial slate floor, circular command table, celestial rose window, patinated-copper canopy ribs and suspended armillary light. Its teal, travertine, copper and celestial-blue palette must not collapse back into v2's rectangular walnut hall.
 - Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 
 ## Ownership boundary

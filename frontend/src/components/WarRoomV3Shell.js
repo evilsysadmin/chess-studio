@@ -29,7 +29,7 @@ export function installWarRoomV3Shell(
     url,
     onRefine,
     variant: 'v3',
-    rootName: 'war-room-v3-cartographers-shell',
-    runtimeFinish: 'gltf-pbr-cartographers-v1',
+    rootName: 'war-room-v3-celestial-observatory-shell',
+    runtimeFinish: 'gltf-pbr-celestial-observatory-v1',
   });
 }
