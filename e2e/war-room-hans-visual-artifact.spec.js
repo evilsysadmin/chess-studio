@@ -80,23 +80,30 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
 
     await buttonWithVisibleText(page, 'Partida rápida').click();
     await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-    await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
-
+    const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
-    await expect(canvas).toBeVisible({ timeout: 45_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 12_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 60_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: 20_000 });
-
-    // Capture Hans himself, not a dialogue card covering his head and torso.
-    // Observe the real narrative phase so copy/aria-label changes cannot make
-    // this canary silently capture the acknowledgement bubble again.
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
     const hansBubble = page.locator('.warroom-fire-call-bubble-hans');
-    await expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 5_000 });
-    await expect(fireOverlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 8_000 });
+
+    // Observe the transient Hans phase from the start instead of waiting for
+    // every readiness marker serially and checking the phase after it vanished.
+    // These conditions describe one concurrent scene transition, so waiting in
+    // parallel keeps the 120 s canary budget meaningful on software WebGL.
+    await Promise.all([
+      expect(warRoom).toBeVisible({ timeout: 45_000 }),
+      expect(canvas).toBeVisible({ timeout: 45_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 60_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: 60_000 }),
+      expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 75_000 }),
+    ]);
+
+    // Capture Hans himself, not a dialogue card covering his head and torso.
+    // Copy/aria-label changes must not make this canary silently capture the
+    // acknowledgement bubble again.
+    await expect(fireOverlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 12_000 });
     await expect(hansBubble).toHaveCount(0, { timeout: 2_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
     await page.waitForTimeout(120);
