@@ -2,7 +2,6 @@ import * as THREE from 'three';
 
 const ARCHITECTURAL_DEPTH_VERSION = 'v7-canonical-gallery';
 const ARCHITECTURAL_DEPTH_MESH_BUDGET = 8;
-const RETIRED_MESHES_OMITTED = 16;
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -108,19 +107,13 @@ export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, co
   const layer = new THREE.Group();
   layer.name = 'war-room-architectural-depth';
   layer.userData.warRoomArchitecturalDepth = ARCHITECTURAL_DEPTH_VERSION;
-  layer.userData.warRoomArchitecturalDepthMeshBudget = ARCHITECTURAL_DEPTH_MESH_BUDGET;
-  layer.userData.warRoomRetiredArchitectureOmitted = true;
-  layer.userData.warRoomRetiredArchitectureMeshCount = RETIRED_MESHES_OMITTED;
-  layer.userData.warRoomMonogramFree = true;
+  layer.userData.warRoomArchitecturalDepthMeshBudget = ARCHITECTURAL_DEPTH_MESH_BUDGET;  layer.userData.warRoomMonogramFree = true;
 
   addCommandCarpet(layer, materials);
   addCanonicalWallSkirting(layer, wallZ, towardBoard, materials.darkStone);
 
   group.add(layer);
   group.userData.warRoomArchitecturalDepth = ARCHITECTURAL_DEPTH_VERSION;
-  group.userData.warRoomArchitecturalDepthMeshBudget = ARCHITECTURAL_DEPTH_MESH_BUDGET;
-  group.userData.warRoomRetiredArchitectureOmitted = true;
-  group.userData.warRoomRetiredArchitectureMeshCount = RETIRED_MESHES_OMITTED;
-  group.userData.warRoomMonogramFree = true;
+  group.userData.warRoomArchitecturalDepthMeshBudget = ARCHITECTURAL_DEPTH_MESH_BUDGET;  group.userData.warRoomMonogramFree = true;
   return ARCHITECTURAL_DEPTH_MESH_BUDGET;
 }
