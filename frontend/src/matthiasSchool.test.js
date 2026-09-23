@@ -47,7 +47,16 @@ describe('Escuela de Matthias', () => {
     expect(MATTHIAS_SCHOOL_REFERENCES['capablanca-fundamentals']).toMatchObject({ kind: 'public-domain' });
     expect(MATTHIAS_SCHOOL_REFERENCES['lasker-strategy']).toMatchObject({ kind: 'public-domain' });
     expect(schoolLessonsForCourse('strategy')).toHaveLength(6);
-    expect(schoolLessonsForCourse('endgames')).toHaveLength(6);
+    expect(schoolLessonsForCourse('endgames')).toHaveLength(11);
+  });
+
+  it('incluye técnica teórica de finales y una Lucena completa, no sólo movimientos sueltos', () => {
+    const lucena = MATTHIAS_SCHOOL_LESSONS.find((lesson) => lesson.id === 'lucena-bridge');
+    const philidor = MATTHIAS_SCHOOL_LESSONS.find((lesson) => lesson.id === 'philidor-fence');
+    expect(schoolLessonMetadata(lucena)).toMatchObject({ discipline: 'endgame', concept: 'lucena' });
+    expect(schoolLineForLesson(lucena).filter((step) => !step.auto)).toHaveLength(7);
+    expect(new Chess(philidor.fen).turn()).toBe('b');
+    expect(schoolLineForLesson(philidor)[0]).toMatchObject({ from: 'a6', to: 'c6', auto: false });
   });
 
   it('todas las secuencias de enseñanza son legales completas, incluidas respuestas automáticas', () => {

@@ -59,12 +59,18 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(matthias.locator('.illustrated-home__matthias-copy')).toHaveCSS('display', 'none');
   const quietAffordance = await matthias.evaluate((node) => ({
     content: getComputedStyle(node, '::after').content,
+    display: getComputedStyle(node, '::after').display,
     opacity: getComputedStyle(node, '::after').opacity,
+    speaking: node.classList.contains('is-speaking'),
   }));
   expect(quietAffordance.content).toContain('Matthias');
-  expect(quietAffordance.opacity).toBe('0');
-  await matthias.hover();
-  await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
+  if (quietAffordance.speaking) {
+    expect(quietAffordance.display).toBe('none');
+  } else {
+    expect(quietAffordance.opacity).toBe('0');
+    await matthias.hover();
+    await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
+  }
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
