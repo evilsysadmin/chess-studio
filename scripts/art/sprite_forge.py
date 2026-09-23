@@ -1779,9 +1779,555 @@ def repair_sprite_parity(
     return report
 
 
+
+HURT_STANDING_SLOTS = (0, 1, 2, 2, 1, 0, 0, 0)
+
+
+def _scaled_px(value: int, cell_size: int) -> int:
+    return round(value * cell_size / 416.0)
+
+
+def _atlas_frame(
+    atlas: Image.Image,
+    *,
+    row: int,
+    column: int,
+    cell_size: int,
+) -> Image.Image:
+    return atlas.crop(
+        (
+            column * cell_size,
+            row * cell_size,
+            (column + 1) * cell_size,
+            (row + 1) * cell_size,
+        )
+    ).convert("RGBA")
+
+
+def _load_batch_base_atlas(
+    path: Path,
+    *,
+    rows: int,
+    columns: int,
+    cell_size: int,
+) -> Image.Image:
+    atlas = Image.open(path).convert("RGBA")
+    expected = (columns * cell_size, rows * cell_size)
+    if atlas.size != expected:
+        raise BankContractError(
+            f"base atlas {path} size {atlas.size} != {expected}"
+        )
+    return atlas
+
+
+def _batch_source_frame(
+    frames_root: Path,
+    *,
+    actor: str,
+    weapon: str,
+    row: int,
+    column: int,
+    cell_size: int,
+    base_atlas: Image.Image | None,
+) -> Image.Image:
+    if base_atlas is not None:
+        return _atlas_frame(
+            base_atlas,
+            row=row,
+            column=column,
+            cell_size=cell_size,
+        )
+    return _load_batch_frame(
+        frames_root,
+        actor,
+        weapon,
+        row,
+        column,
+    )
+
+
+def _assemble_batch_source_atlas(
+    frames_root: Path,
+    *,
+    actor: str,
+    weapon: str,
+    rows: int,
+    columns: int,
+    cell_size: int,
+    base_atlas: Image.Image | None,
+    replacements: dict[tuple[int, int], Image.Image],
+) -> Image.Image:
+    if base_atlas is not None:
+        atlas = base_atlas.copy()
+        for (row, column), frame in replacements.items():
+            if frame.size != (cell_size, cell_size):
+                raise BankContractError(
+                    f"replacement size {frame.size} != "
+                    f"{(cell_size, cell_size)}"
+                )
+            atlas.paste(
+                (0, 0, 0, 0),
+                (
+                    column * cell_size,
+                    row * cell_size,
+                    (column + 1) * cell_size,
+                    (row + 1) * cell_size,
+                ),
+            )
+            atlas.alpha_composite(
+                frame,
+                (column * cell_size, row * cell_size),
+            )
+        return atlas
+
+    return _assemble_batch_atlas(
+        frames_root,
+        actor=actor,
+        weapon=weapon,
+        rows=rows,
+        columns=columns,
+        cell_size=cell_size,
+        replacements=replacements,
+    )
+
+
+def _head_band_center(
+    image: Image.Image,
+    *,
+    cell_size: int,
+    alpha_threshold: int,
+) -> float:
+    region = (
+        _scaled_px(50, cell_size),
+        _scaled_px(110, cell_size),
+        _scaled_px(280, cell_size),
+        _scaled_px(190, cell_size),
+    )
+    alpha = image.convert("RGBA").getchannel("A")
+    bbox = alpha.crop(region).point(
+        lambda value: 255 if value >= alpha_threshold else 0
+    ).getbbox()
+    if bbox is None:
+        raise GeometryError("machinegun-hurt-head-band-empty")
+    left = bbox[0] + region[0]
+    right = bbox[2] + region[0]
+    return (left + right) / 2.0
+
+
+def _machinegun_cap_donor_pixel(
+    pixel: tuple[int, int, int, int],
+    *,
+    alpha_threshold: int,
+) -> bool:
+    r, g, b, a = pixel
+    if a <= alpha_threshold:
+        return False
+    dark_cap = max(r, g, b) <= 115
+    gold_insignia = (
+        r >= 80
+        and g >= 40
+        and g <= r
+        and b <= 65
+        and r >= g * 1.2
+    )
+    return dark_cap or gold_insignia
+
+
+def _repair_machinegun_hurt_frame(
+    target: Image.Image,
+    donor: Image.Image,
+    *,
+    cell_size: int,
+    alpha_threshold: int,
+) -> tuple[Image.Image, dict]:
+    target = target.convert("RGBA")
+    donor = donor.convert("RGBA")
+    if target.size != (cell_size, cell_size):
+        raise GeometryError("machinegun-hurt-target-size")
+    if donor.size != target.size:
+        raise GeometryError("machinegun-hurt-donor-size")
+
+    target_center = _head_band_center(
+        target,
+        cell_size=cell_size,
+        alpha_threshold=alpha_threshold,
+    )
+    donor_center = _head_band_center(
+        donor,
+        cell_size=cell_size,
+        alpha_threshold=alpha_threshold,
+    )
+    dx = round(target_center - donor_center)
+
+    output = target.copy()
+    target_pixels = output.load()
+    donor_pixels = donor.load()
+    half_width = _scaled_px(105, cell_size)
+    x0 = max(0, round(target_center - half_width))
+    x1 = min(cell_size, round(target_center + half_width))
+    y0 = _scaled_px(110, cell_size)
+    y1 = min(cell_size, _scaled_px(210, cell_size))
+    changed: list[tuple[int, int]] = []
+
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if target_pixels[x, y][3] > alpha_threshold:
+                continue
+            donor_x = x - dx
+            if not 0 <= donor_x < cell_size:
+                continue
+            pixel = donor_pixels[donor_x, y]
+            if not _machinegun_cap_donor_pixel(
+                pixel,
+                alpha_threshold=alpha_threshold,
+            ):
+                continue
+            target_pixels[x, y] = pixel
+            changed.append((x, y))
+
+    before = batch_frame_metrics(target, alpha_threshold)
+    after = batch_frame_metrics(output, alpha_threshold)
+    if after.foot_y != before.foot_y:
+        raise GeometryError(
+            f"machinegun-hurt-foot-drift:"
+            f"{after.foot_y}!={before.foot_y}"
+        )
+    if after.height != before.height:
+        raise GeometryError(
+            f"machinegun-hurt-height-drift:"
+            f"{after.height}!={before.height}"
+        )
+    max_width_gain = max(1, _scaled_px(8, cell_size))
+    if after.width - before.width > max_width_gain:
+        raise GeometryError(
+            "machinegun-hurt-width-gain:"
+            f"{after.width-before.width}>{max_width_gain}"
+        )
+
+    changed_bbox = None
+    if changed:
+        changed_bbox = [
+            min(x for x, _ in changed),
+            min(y for _, y in changed),
+            max(x for x, _ in changed) + 1,
+            max(y for _, y in changed) + 1,
+        ]
+    return output, {
+        "dx": dx,
+        "addedPixels": len(changed),
+        "changedBbox": changed_bbox,
+        "beforeHeight": before.height,
+        "afterHeight": after.height,
+    }
+
+
+def _standing_hurt_resequence(
+    source_frames: list[Image.Image],
+    *,
+    canonical_height: float,
+    weapon: str,
+    alpha_threshold: int,
+) -> tuple[list[Image.Image], dict]:
+    if len(source_frames) != 8:
+        raise GeometryError(
+            f"{weapon}-hurt-source-count:{len(source_frames)}!=8"
+        )
+    source_metrics = [
+        batch_frame_metrics(frame, alpha_threshold)
+        for frame in source_frames
+    ]
+    standing_ratios = [
+        source_metrics[index].height / canonical_height
+        for index in range(3)
+    ]
+    if min(standing_ratios) < 0.80:
+        raise GeometryError(
+            f"{weapon}-hurt-needs-authored-source:"
+            f"standing-ratio={min(standing_ratios):.4f}"
+        )
+
+    tail_ratios = [
+        source_metrics[index].height / canonical_height
+        for index in range(3, 8)
+    ]
+    prone_columns = [
+        index + 3
+        for index, ratio in enumerate(tail_ratios)
+        if ratio < 0.75
+    ]
+    if not prone_columns:
+        raise GeometryError(
+            f"{weapon}-hurt-no-prone-regression-proven"
+        )
+
+    repaired = [
+        source_frames[source_index].copy()
+        for source_index in HURT_STANDING_SLOTS
+    ]
+    return repaired, {
+        "strategy": "standing-flinch-resequence",
+        "sourceColumns": [0, 1, 2],
+        "slots": list(HURT_STANDING_SLOTS),
+        "sourceHeightRatios": [
+            round(value, 4)
+            for value in standing_ratios
+        ],
+        "discardedProneColumns": prone_columns,
+    }
+
+
+def _parse_base_atlas_specs(
+    specs: list[str],
+) -> dict[str, Path]:
+    parsed: dict[str, Path] = {}
+    for spec in specs:
+        if "=" not in spec:
+            raise BankContractError(
+                f"invalid --base-atlas {spec!r}; expected WEAPON=PATH"
+            )
+        weapon, raw_path = spec.split("=", 1)
+        weapon = weapon.strip()
+        raw_path = raw_path.strip()
+        if not weapon or not raw_path:
+            raise BankContractError(
+                f"invalid --base-atlas {spec!r}"
+            )
+        if weapon in parsed:
+            raise BankContractError(
+                f"duplicate base atlas for {weapon}"
+            )
+        parsed[weapon] = Path(raw_path)
+    return parsed
+
+
+def repair_matthias_hurt_batch(
+    frames_root: Path,
+    output_dir: Path,
+    *,
+    actor: str,
+    actions: list[str],
+    base_atlas_paths: dict[str, Path] | None = None,
+    columns: int = 8,
+    cell_size: int = 416,
+    alpha_threshold: int = 8,
+) -> dict:
+    if "hurt" not in actions:
+        raise BankContractError("hurt action missing from batch contract")
+    if columns != 8:
+        raise BankContractError(
+            "Matthias hurt standing batch requires 8 columns"
+        )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    row = actions.index("hurt")
+    rows = len(actions)
+    base_atlas_paths = base_atlas_paths or {}
+    supported = {"machinegun", "shotgun", "panzerfaust"}
+    unknown = sorted(set(base_atlas_paths) - supported)
+    if unknown:
+        raise BankContractError(
+            "unsupported hurt base atlas weapon: "
+            + ",".join(unknown)
+        )
+
+    base_atlases: dict[str, Image.Image] = {}
+    for weapon, path in base_atlas_paths.items():
+        base_atlases[weapon] = _load_batch_base_atlas(
+            path,
+            rows=rows,
+            columns=columns,
+            cell_size=cell_size,
+        )
+
+    pistol_frames = [
+        _batch_source_frame(
+            frames_root,
+            actor=actor,
+            weapon="pistol",
+            row=row,
+            column=column,
+            cell_size=cell_size,
+            base_atlas=None,
+        )
+        for column in range(columns)
+    ]
+    canonical_height = float(
+        statistics.median(
+            [
+                batch_frame_metrics(
+                    frame,
+                    alpha_threshold,
+                ).height
+                for frame in pistol_frames
+            ]
+        )
+    )
+    if canonical_height <= 0:
+        raise GeometryError("invalid-canonical-hurt-height")
+
+    report: dict = {
+        "schema": 1,
+        "kind": "pawn-slug-matthias-hurt-standing-v1",
+        "actor": actor,
+        "row": row,
+        "canonicalWeapon": "pistol",
+        "canonicalMedianHeight": canonical_height,
+        "weapons": {},
+    }
+
+    for weapon in ("machinegun", "shotgun", "panzerfaust"):
+        base_atlas = base_atlases.get(weapon)
+        source_frames = [
+            _batch_source_frame(
+                frames_root,
+                actor=actor,
+                weapon=weapon,
+                row=row,
+                column=column,
+                cell_size=cell_size,
+                base_atlas=base_atlas,
+            )
+            for column in range(columns)
+        ]
+        replacements: dict[tuple[int, int], Image.Image] = {}
+        weapon_report: dict
+
+        if weapon == "machinegun":
+            donor_column = 3
+            donor = source_frames[donor_column]
+            frame_reports: list[dict] = []
+            for column, target in enumerate(source_frames):
+                if column == donor_column:
+                    repaired = target.copy()
+                    details = {
+                        "dx": 0,
+                        "addedPixels": 0,
+                        "changedBbox": None,
+                        "beforeHeight": batch_frame_metrics(
+                            target,
+                            alpha_threshold,
+                        ).height,
+                        "afterHeight": batch_frame_metrics(
+                            target,
+                            alpha_threshold,
+                        ).height,
+                    }
+                else:
+                    repaired, details = _repair_machinegun_hurt_frame(
+                        target,
+                        donor,
+                        cell_size=cell_size,
+                        alpha_threshold=alpha_threshold,
+                    )
+                replacements[(row, column)] = repaired
+                frame_reports.append(
+                    {
+                        "column": column,
+                        "donorColumn": donor_column,
+                        **details,
+                    }
+                )
+            weapon_report = {
+                "strategy": "fill-transparent-cap-holes",
+                "cleanDonorColumn": donor_column,
+                "frames": frame_reports,
+            }
+        else:
+            repaired_frames, weapon_report = (
+                _standing_hurt_resequence(
+                    source_frames,
+                    canonical_height=canonical_height,
+                    weapon=weapon,
+                    alpha_threshold=alpha_threshold,
+                )
+            )
+            for column, repaired in enumerate(repaired_frames):
+                replacements[(row, column)] = repaired
+
+        current_atlas = _assemble_batch_source_atlas(
+            frames_root,
+            actor=actor,
+            weapon=weapon,
+            rows=rows,
+            columns=columns,
+            cell_size=cell_size,
+            base_atlas=base_atlas,
+            replacements={},
+        )
+        candidate = _assemble_batch_source_atlas(
+            frames_root,
+            actor=actor,
+            weapon=weapon,
+            rows=rows,
+            columns=columns,
+            cell_size=cell_size,
+            base_atlas=base_atlas,
+            replacements=replacements,
+        )
+
+        for check_row in range(rows):
+            if check_row == row:
+                continue
+            top = check_row * cell_size
+            bounds = (
+                0,
+                top,
+                columns * cell_size,
+                top + cell_size,
+            )
+            if (
+                candidate.crop(bounds).tobytes()
+                != current_atlas.crop(bounds).tobytes()
+            ):
+                raise GeometryError(
+                    f"{weapon}-hurt-untouched-row-drift:"
+                    f"{check_row}"
+                )
+
+        filename = (
+            "shotgun-stabilized-v1.png"
+            if weapon == "shotgun"
+            else f"{weapon}-hurt-standing-v1.png"
+        )
+        output_path = output_dir / filename
+        _save_png_deterministic(candidate, output_path)
+        review_path = output_dir / (
+            f"{weapon}-hurt-standing-v1-review.png"
+        )
+        _render_batch_review(
+            current_atlas,
+            candidate,
+            row=row,
+            weapon=weapon,
+            action="hurt",
+            columns=columns,
+            cell_size=cell_size,
+            output=review_path,
+        )
+
+        weapon_report["baseAtlas"] = (
+            {
+                "path": str(base_atlas_paths[weapon]),
+                "sha256": _sha256_file(base_atlas_paths[weapon]),
+            }
+            if weapon in base_atlas_paths
+            else None
+        )
+        weapon_report["untouchedRowsPixelIdentical"] = True
+        weapon_report["filename"] = filename
+        weapon_report["sha256"] = _sha256_file(output_path)
+        report["weapons"][weapon] = weapon_report
+
+    report_path = output_dir / "hurt-standing-v1-health.json"
+    report_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return report
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw = list(sys.argv[1:] if argv is None else argv)
-    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity"}:
+    if raw and raw[0] not in {"lint", "build", "audit-batch", "repair-parity", "repair-hurt-batch"}:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
@@ -1865,6 +2411,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.12,
     )
+
+
+    repair_hurt = sub.add_parser(
+        "repair-hurt-batch",
+        help="repair Matthias standing hurt semantics across supported weapons",
+    )
+    repair_hurt.add_argument("frames_root", type=Path)
+    repair_hurt.add_argument("output_dir", type=Path)
+    repair_hurt.add_argument("--actor", default="matthias")
+    repair_hurt.add_argument(
+        "--actions",
+        default=",".join(DEFAULT_MATTHIAS_ACTIONS),
+    )
+    repair_hurt.add_argument("--columns", type=int, default=8)
+    repair_hurt.add_argument("--cell-size", type=int, default=416)
+    repair_hurt.add_argument(
+        "--base-atlas",
+        action="append",
+        default=[],
+        metavar="WEAPON=PATH",
+    )
     return parser.parse_args(raw)
 
 
@@ -1910,6 +2477,32 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "status": "ok",
                     "sha256": report["sha256"],
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "repair-hurt-batch":
+        report = repair_matthias_hurt_batch(
+            args.frames_root,
+            args.output_dir,
+            actor=args.actor,
+            actions=_csv_values(args.actions),
+            base_atlas_paths=_parse_base_atlas_specs(
+                args.base_atlas
+            ),
+            columns=args.columns,
+            cell_size=args.cell_size,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "weapons": {
+                        weapon: value["sha256"]
+                        for weapon, value in report["weapons"].items()
+                    },
                 },
                 sort_keys=True,
             )
