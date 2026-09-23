@@ -194,6 +194,7 @@ def main() -> int:
         'cloudflare_zone_requests_status_country_host_total',
         'client_ip',
         'synthetic_source!="staging-smoke-cleanup"',
+        'user_agent!="chess-studio-staging-smoke-cleanup/2"',
     ):
         if token not in security_raw and token not in security_exprs:
             fail(f"dashboard Security no cubre {token}")
