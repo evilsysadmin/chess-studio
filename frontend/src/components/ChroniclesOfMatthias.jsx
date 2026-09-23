@@ -281,7 +281,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     void loadChroniclesFirstPersonRenderer()
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
-        engine = createChroniclesOfMatthiasGame(host);
+        engine = createChroniclesOfMatthiasGame(host, { initialState: stateRef.current });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
       })
