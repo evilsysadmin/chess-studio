@@ -19,8 +19,7 @@
     pointer-events: none;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-layout-3d .game-3d-turn-pill {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 8px max-content 92px 44px !important;
     align-items: center;
@@ -210,8 +209,7 @@
 }
 
 @media (max-width: 390px) {
-  .game-screen .game-layout-3d .game-3d-turn-pill,
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-layout-3d .game-3d-turn-pill {
     grid-template-columns: minmax(0, 1fr) 7px max-content 92px 44px !important;
     gap: .22rem;
     padding: .2rem .28rem !important;
