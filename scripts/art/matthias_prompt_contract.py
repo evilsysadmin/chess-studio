@@ -314,14 +314,25 @@ def _action_summary(frames: list[FrameMetrics]) -> dict:
 
 
 def _internal_steps(frames: list[FrameMetrics], reference_height: float) -> dict:
-    height = [abs(b.body_height - a.body_height) / reference_height for a, b in zip(frames, frames[1:])]
-    foot = [abs(b.body_bottom - a.body_bottom) / reference_height for a, b in zip(frames, frames[1:])]
-    top = [abs(b.body_top - a.body_top) / reference_height for a, b in zip(frames, frames[1:])]
+    height_px = [abs(b.body_height - a.body_height) for a, b in zip(frames, frames[1:])]
+    foot_px = [abs(b.body_bottom - a.body_bottom) for a, b in zip(frames, frames[1:])]
+    top_px = [abs(b.body_top - a.body_top) for a, b in zip(frames, frames[1:])]
     return {
-        "maxHeightStepRatio": round(max(height, default=0.0), 6),
-        "maxFootStepRatio": round(max(foot, default=0.0), 6),
-        "maxTopStepRatio": round(max(top, default=0.0), 6),
+        "maxHeightStepPx": max(height_px, default=0.0),
+        "maxHeightStepRatio": round(max(height_px, default=0.0) / reference_height, 6),
+        "maxFootStepPx": max(foot_px, default=0.0),
+        "maxFootStepRatio": round(max(foot_px, default=0.0) / reference_height, 6),
+        "maxTopStepPx": max(top_px, default=0.0),
+        "maxTopStepRatio": round(max(top_px, default=0.0) / reference_height, 6),
     }
+
+
+def _within_ratio_with_pixel_slack(actual_px: float, reference_height: float, ratio_limit: float, pixel_slack: float) -> bool:
+    # Raster geometry is integer-valued. A ratio threshold that lands between
+    # pixels (for example 0.35 * 170 == 59.5 px) must not turn a coherent 60 px
+    # transition into a hard failure. The semantic limit remains unchanged; only
+    # one explicitly contracted pixel of quantization slack is permitted.
+    return actual_px <= ratio_limit * reference_height + pixel_slack
 
 
 def _trailing_near_duplicate_count(frames: list[FrameMetrics], threshold: float = 0.01) -> int:
@@ -419,9 +430,23 @@ def audit_smoke(contract: dict, smoke_dir: Path) -> dict:
             summary = summaries[weapon].get(action_name, {})
             if not frames or not summary.get("medianBodyHeight"):
                 continue
-            steps = _internal_steps(frames, max(1.0, float(summary["medianBodyHeight"])))
-            _record(checks, action=action_name, weapon=weapon, enforcement=spec["enforcement"], ok=steps["maxHeightStepRatio"] <= spec["max_height_step_ratio"], check="temporal_height_step", actual=steps["maxHeightStepRatio"], expected=f"<= {spec['max_height_step_ratio']}")
-            _record(checks, action=action_name, weapon=weapon, enforcement=spec["enforcement"], ok=steps["maxFootStepRatio"] <= spec["max_foot_step_ratio"], check="temporal_foot_step", actual=steps["maxFootStepRatio"], expected=f"<= {spec['max_foot_step_ratio']}")
+            reference_height = max(1.0, float(summary["medianBodyHeight"]))
+            steps = _internal_steps(frames, reference_height)
+            pixel_slack = float(contract["runtime"].get("temporal_pixel_slack", 0.0))
+            height_ok = _within_ratio_with_pixel_slack(
+                float(steps["maxHeightStepPx"]),
+                reference_height,
+                float(spec["max_height_step_ratio"]),
+                pixel_slack,
+            )
+            foot_ok = _within_ratio_with_pixel_slack(
+                float(steps["maxFootStepPx"]),
+                reference_height,
+                float(spec["max_foot_step_ratio"]),
+                pixel_slack,
+            )
+            _record(checks, action=action_name, weapon=weapon, enforcement=spec["enforcement"], ok=height_ok, check="temporal_height_step", actual=steps["maxHeightStepRatio"], expected=f"<= {spec['max_height_step_ratio']} (+ {pixel_slack:g}px raster slack)")
+            _record(checks, action=action_name, weapon=weapon, enforcement=spec["enforcement"], ok=foot_ok, check="temporal_foot_step", actual=steps["maxFootStepRatio"], expected=f"<= {spec['max_foot_step_ratio']} (+ {pixel_slack:g}px raster slack)")
             if "min_distinct_frame_count" in spec:
                 _record(checks, action=action_name, weapon=weapon, enforcement=spec["enforcement"], ok=int(summary.get("distinctFrameCount",0)) >= int(spec["min_distinct_frame_count"]), check="distinct_frames", actual=summary.get("distinctFrameCount",0), expected=f">= {spec['min_distinct_frame_count']}")
             if "max_trailing_near_duplicate_frames" in spec:
