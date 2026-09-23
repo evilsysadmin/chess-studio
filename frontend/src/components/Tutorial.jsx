@@ -6,6 +6,7 @@ import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
+import { buildSchoolExplanationDemo, schoolExplanationFrameLabel } from './SchoolExplanationDemo.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
@@ -62,6 +63,9 @@ export default function Tutorial({ onExit }) {
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [boardAnimation, setBoardAnimation] = useState(null);
   const [playbackActive, setPlaybackActive] = useState(false);
+  const [explanationOpen, setExplanationOpen] = useState(false);
+  const [explanationStep, setExplanationStep] = useState(0);
+  const [explanationAnimation, setExplanationAnimation] = useState(null);
   const animationSeqRef = useRef(0);
   const playbackTokenRef = useRef(0);
   const playbackAbortRef = useRef(null);
@@ -73,9 +77,11 @@ export default function Tutorial({ onExit }) {
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
   const schoolRenderer = getSchoolBoardRenderer();
 
-  useEscapeToClose(boardFocusMode
-    ? () => setBoardFocusMode(false)
-    : section === 'school' ? onExit : () => setSection('school'));
+  useEscapeToClose(explanationOpen
+    ? () => closeExplanation()
+    : boardFocusMode
+      ? () => setBoardFocusMode(false)
+      : section === 'school' ? onExit : () => setSection('school'));
 
   useEffect(() => () => {
     playbackTokenRef.current += 1;
@@ -90,12 +96,19 @@ export default function Tutorial({ onExit }) {
     setBoardAnimation(null);
   }
 
+  function closeExplanation() {
+    setExplanationOpen(false);
+    setExplanationStep(0);
+    setExplanationAnimation(null);
+  }
+
   const mechanic = MECHANIC_TUTORIALS.find((item) => item.id === mechanicId) || MECHANIC_TUTORIALS[0];
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
   const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
   const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
   const lessonUnlocked = isSchoolLessonUnlocked(schoolProgress, lesson.id) || lessonComplete;
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
+  const explanationDemo = useMemo(() => buildSchoolExplanationDemo({ fen: lesson.fen, line }), [lesson, line]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
   const boardGuideMove = useMemo(() => schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive]);
   const teachingLayers = useMemo(() => buildSchoolTeachingLayers({ guideMove: boardGuideMove, dangerSquares }), [boardGuideMove, dangerSquares]);
@@ -103,12 +116,23 @@ export default function Tutorial({ onExit }) {
   const totalHumanMoves = humanMoveCount(lesson);
   const runComplete = lineIndex >= line.length;
   const examFailed = Boolean(lesson.exam && mistakes > Number(lesson.maxMistakes || 0));
+  const explanationAvailable = !lesson.exam || lessonComplete;
+  const explanationFrame = explanationDemo.ok ? explanationDemo.frames[explanationStep] || explanationDemo.frames[0] : null;
+  const explanationGuideMove = explanationOpen
+    ? (explanationFrame?.animate || (explanationStep === 0 ? explanationDemo.frames?.[1]?.animate : null))
+    : null;
+  const displayFen = explanationOpen && explanationFrame ? explanationFrame.fen : practiceFen;
+  const displayAnimation = explanationOpen ? explanationAnimation : boardAnimation;
+  const displayTeachingLayers = explanationOpen
+    ? buildSchoolTeachingLayers({ guideMove: explanationGuideMove, dangerSquares: [] })
+    : teachingLayers;
 
   function goTo(newIndex) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
     const next = MATTHIAS_SCHOOL_LESSONS[clamped];
     const unlocked = isSchoolLessonUnlocked(schoolProgress, next.id) || schoolProgress?.[next.id]?.completed === true;
     if (!unlocked) return;
+    closeExplanation();
     cancelPlayback();
     setIndex(clamped);
     setPracticeFen(next.fen);
@@ -149,6 +173,7 @@ export default function Tutorial({ onExit }) {
   }
 
   function resetLesson({ keepCoach = false, clearFailure = true, announce = false } = {}) {
+    closeExplanation();
     cancelPlayback();
     setPracticeFen(lesson.fen);
     setSelected(null);
@@ -237,8 +262,36 @@ export default function Tutorial({ onExit }) {
     });
   }
 
+  function openExplanation() {
+    if (!explanationAvailable) return;
+    if (!explanationDemo.ok) {
+      setCoach({ tone: 'retry', text: 'La demostración no es legal en esta posición. No voy a enseñarte una fantasía por rellenar espacio.' });
+      return;
+    }
+    cancelPlayback();
+    setExplanationStep(0);
+    setExplanationAnimation(null);
+    setExplanationOpen(true);
+  }
+
+  function showExplanationStep(nextStep, { animateForward = true } = {}) {
+    if (!explanationDemo.ok) return;
+    const clamped = Math.max(0, Math.min(explanationDemo.finalIndex, Number(nextStep) || 0));
+    const frame = explanationDemo.frames[clamped];
+    setExplanationStep(clamped);
+    if (animateForward && frame?.animate) {
+      animationSeqRef.current += 1;
+      setExplanationAnimation({
+        ...frame.animate,
+        seq: animationSeqRef.current,
+      });
+    } else {
+      setExplanationAnimation(null);
+    }
+  }
+
   function handleSquareClick(square) {
-    if (playbackActive || runComplete || examFailed || !lessonUnlocked || !expected) return;
+    if (explanationOpen || playbackActive || runComplete || examFailed || !lessonUnlocked || !expected) return;
     let board;
     try { board = new Chess(practiceFen); } catch { return; }
     const piece = board.get(square);
@@ -358,9 +411,9 @@ export default function Tutorial({ onExit }) {
           {boardFocusMode && (
             <div className="matthias-school-focus-mode-bar" role="region" aria-label="Modo tablero">
               <div>
-                <span>{lesson.exam ? 'EXAMEN' : lesson.eyebrow}</span>
-                <strong>{lesson.objective}</strong>
-                <em>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</em>
+                <span>{explanationOpen ? 'DEMO' : lesson.exam ? 'EXAMEN' : lesson.eyebrow}</span>
+                <strong>{explanationOpen ? `Por qué funciona · ${schoolExplanationFrameLabel(explanationFrame)}` : lesson.objective}</strong>
+                <em>{explanationOpen ? `${explanationStep}/${explanationDemo.finalIndex}` : `${runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/${totalHumanMoves}`}</em>
               </div>
               <button type="button" className="secondary-btn" onClick={() => setBoardFocusMode(false)}>Salir del modo tablero</button>
             </div>
@@ -440,19 +493,62 @@ export default function Tutorial({ onExit }) {
                 data-school-attempt={attemptEpoch}
                 data-school-renderer={schoolRenderer}
                 data-school-playback={playbackActive ? 'moving' : 'idle'}
+                data-school-explanation={explanationOpen ? 'demo' : 'practice'}
               >
-                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} teachingLayers={teachingLayers} animate={boardAnimation} warRoomVariantOverride={classRoomVariant} />
-                <div className="matthias-school-board-actions">
-                  <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                  {!lesson.exam && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
-                  {!boardFocusMode && (
-                    <button
-                      type="button"
-                      className="secondary-btn matthias-school-expand-board"
-                      onClick={() => { setCurriculumOpen(false); setBoardFocusMode(true); }}
-                    >
-                      Expandir tablero
-                    </button>
+                <SchoolBoard
+                  fen={displayFen}
+                  onSquareClick={handleSquareClick}
+                  selectedSquare={explanationOpen ? null : selected}
+                  legalTargets={explanationOpen ? [] : legalTargets}
+                  teachingLayers={displayTeachingLayers}
+                  animate={displayAnimation}
+                  warRoomVariantOverride={classRoomVariant}
+                />
+                <div className={`matthias-school-board-actions${explanationOpen ? ' is-explanation' : ''}`}>
+                  {explanationOpen ? (
+                    <>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        disabled={explanationStep === 0}
+                        onClick={() => showExplanationStep(explanationStep - 1, { animateForward: false })}
+                      >
+                        ← Paso anterior
+                      </button>
+                      {explanationStep < explanationDemo.finalIndex ? (
+                        <button
+                          type="button"
+                          className="primary-btn"
+                          onClick={() => showExplanationStep(explanationStep + 1)}
+                        >
+                          Siguiente paso
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="primary-btn"
+                          onClick={() => showExplanationStep(0, { animateForward: false })}
+                        >
+                          Repetir explicación
+                        </button>
+                      )}
+                      <button type="button" className="secondary-btn" onClick={closeExplanation}>Volver a practicar</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
+                      {!lesson.exam && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                      {explanationAvailable && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={openExplanation}>Por qué funciona</button>}
+                      {!boardFocusMode && (
+                        <button
+                          type="button"
+                          className="secondary-btn matthias-school-expand-board"
+                          onClick={() => { setCurriculumOpen(false); setBoardFocusMode(true); }}
+                        >
+                          Expandir tablero
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -464,16 +560,28 @@ export default function Tutorial({ onExit }) {
                   {lessonComplete && <span className="matthias-school-complete-badge">✓ {lesson.exam ? 'aprobado' : 'dominado'}</span>}
                 </div>
                 <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Tu misión'}</b><p>{lesson.objective}</p></div>
-                <div className="matthias-school-sequence-status" aria-label={`Secuencia ${Math.min(completedHumanMoves + (runComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}>
-                  <span>Secuencia</span><b>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
-                  {lesson.exam && <em>{Number(lesson.maxMistakes || 0) > 0 ? `Errores ${mistakes}/${lesson.maxMistakes}` : mistakes > 0 ? 'Suspendido' : 'Sin margen de error'}</em>}
+                <div
+                  className="matthias-school-sequence-status"
+                  aria-label={explanationOpen
+                    ? `Demostración ${explanationStep} de ${explanationDemo.finalIndex}`
+                    : `Secuencia ${Math.min(completedHumanMoves + (runComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}
+                >
+                  {explanationOpen ? (
+                    <>
+                      <span>Demostración</span><b>{explanationStep}/{explanationDemo.finalIndex}</b>
+                      <em>{schoolExplanationFrameLabel(explanationFrame)}</em>
+                    </>
+                  ) : (
+                    <>
+                      <span>Secuencia</span><b>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
+                      {lesson.exam && <em>{Number(lesson.maxMistakes || 0) > 0 ? `Errores ${mistakes}/${lesson.maxMistakes}` : mistakes > 0 ? 'Suspendido' : 'Sin margen de error'}</em>}
+                    </>
+                  )}
                 </div>
-                <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite"><b>Matthias</b><p>{coach.text}</p></div>
-                {(!lesson.exam || lessonComplete) && (
-                  <details className="friendly-disclosure matthias-school-explanation">
-                    <summary>Por qué funciona</summary><p>{lesson.explanation}</p>
-                  </details>
-                )}
+                <div className={`matthias-school-feedback is-${explanationOpen ? 'explain' : coach.tone}`} role="status" aria-live="polite">
+                  <b>{explanationOpen ? 'Matthias · demostración' : 'Matthias'}</b>
+                  <p>{explanationOpen ? lesson.explanation : coach.text}</p>
+                </div>
                 <div className="tutorial-nav matthias-school-nav">
                   <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>Anterior</button>
                   <span className="tutorial-progress">{courseSummary.course?.label} · {courseSummary.completed}/{courseSummary.total}</span>
