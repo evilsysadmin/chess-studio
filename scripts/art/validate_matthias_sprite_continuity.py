@@ -43,6 +43,13 @@ RUN_SOURCE_RELATIVE_GAIN = 1.08
 RUN_SOURCE_MIN_SCORE = 0.045
 RUN_UNIQUE_PHASES_MIN = 6
 AIR_ACTION_ROWS = {"jump": 3, "fall": 4, "land": 5}
+HURT_ROW = 16
+HURT_STANDING_MIN_RATIO = 0.80
+MACHINEGUN_HURT_DONOR_COLUMN = 4
+MACHINEGUN_HURT_DX = (0, 13, 6, 2, 0, -17, -17, -17)
+MACHINEGUN_HURT_PATCH = (80, 110, 305, 220)
+MACHINEGUN_HURT_MAX_RGB_MEAN = 165.0
+MACHINEGUN_HURT_MIN_COVERAGE = 0.985
 AIRBORNE_FAIL_CLOSED_WEAPONS = ("machinegun",)
 
 
@@ -515,6 +522,118 @@ def validate_airborne(sprite_dir: Path) -> dict:
     return by_action
 
 
+def _hurt_dark_support(image: Image.Image) -> list[tuple[int, int]]:
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    x0, y0, x1, y1 = MACHINEGUN_HURT_PATCH
+    support: list[tuple[int, int]] = []
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            r, g, b, a = pixels[x, y]
+            if a < ALPHA_THRESHOLD:
+                continue
+            if (r + g + b) / 3.0 > MACHINEGUN_HURT_MAX_RGB_MEAN:
+                continue
+            support.append((x, y))
+    if not support:
+        raise ValueError("machinegun hurt donor has no dark cap support")
+    return support
+
+
+def _hurt_support_coverage(
+    image: Image.Image,
+    support: list[tuple[int, int]],
+    dx: int,
+) -> float:
+    alpha = image.convert("RGBA").getchannel("A")
+    total = 0
+    covered = 0
+    for x, y in support:
+        target_x = x + dx
+        if target_x < 0 or target_x >= alpha.width:
+            continue
+        total += 1
+        if alpha.getpixel((target_x, y)) >= ALPHA_THRESHOLD:
+            covered += 1
+    if total <= 0:
+        raise ValueError("machinegun hurt translated cap support is empty")
+    return covered / total
+
+
+def validate_hurt(sprite_dir: Path) -> dict:
+    frames_by_weapon: dict[str, list[dict]] = {}
+    images_by_weapon: dict[str, list[Image.Image]] = {}
+    violations: list[str] = []
+    for weapon in WEAPONS:
+        images: list[Image.Image] = []
+        frames: list[dict] = []
+        for col in range(IDLE_COLUMNS):
+            path = (
+                sprite_dir
+                / weapon
+                / "frames"
+                / f"matthias_{weapon}_r{HURT_ROW:02d}_c{col:02d}.png"
+            )
+            if not path.is_file():
+                raise ValueError(f"missing exported hurt frame: {path}")
+            image = Image.open(path).convert("RGBA")
+            frame = frame_metrics(image, f"{weapon} hurt c{col}")
+            if frame["componentCount"] != 1:
+                violations.append(
+                    f"{weapon} hurt c{col}: detached opaque components are "
+                    f"forbidden: {frame['detachedAreas']}"
+                )
+            images.append(image)
+            frames.append(frame)
+        images_by_weapon[weapon] = images
+        frames_by_weapon[weapon] = frames
+
+    pistol = frames_by_weapon["pistol"]
+    report: dict[str, list[dict] | dict] = {"pistol": pistol}
+    for weapon in WEAPONS[1:]:
+        validated: list[dict] = []
+        for col, frame in enumerate(frames_by_weapon[weapon]):
+            ref = pistol[col]
+            ratio = frame["height"] / ref["height"] if ref["height"] else 0.0
+            if ratio < HURT_STANDING_MIN_RATIO:
+                violations.append(
+                    f"{weapon} hurt c{col}: standing height ratio "
+                    f"{ratio:.4f} < {HURT_STANDING_MIN_RATIO:.2f}"
+                )
+            validated.append({**frame, "standingHeightRatio": round(ratio, 6)})
+        report[weapon] = validated
+
+    donor = images_by_weapon["machinegun"][MACHINEGUN_HURT_DONOR_COLUMN]
+    support = _hurt_dark_support(donor)
+    cap_frames: list[dict] = []
+    for col, image in enumerate(images_by_weapon["machinegun"]):
+        coverage = _hurt_support_coverage(
+            image,
+            support,
+            MACHINEGUN_HURT_DX[col],
+        )
+        if coverage < MACHINEGUN_HURT_MIN_COVERAGE:
+            violations.append(
+                f"machinegun hurt c{col}: cap alpha coverage "
+                f"{coverage:.4f} < {MACHINEGUN_HURT_MIN_COVERAGE:.3f}"
+            )
+        cap_frames.append(
+            {
+                "column": col,
+                "dx": MACHINEGUN_HURT_DX[col],
+                "coverage": round(coverage, 6),
+            }
+        )
+    report["machinegunCapAlpha"] = {
+        "donorColumn": MACHINEGUN_HURT_DONOR_COLUMN,
+        "minCoverage": MACHINEGUN_HURT_MIN_COVERAGE,
+        "frames": cap_frames,
+    }
+    if violations:
+        raise ValueError("hurt continuity violations:\n- " + "\n- ".join(violations))
+    return report
+
+
 def acquire(url: str, temp_dir: Path, label: str) -> Path:
     parsed = urllib.parse.urlparse(url)
     target = temp_dir / (Path(parsed.path).name or f"{label}.png")
@@ -747,12 +866,15 @@ def main() -> int:
             "runSourceMinScore": RUN_SOURCE_MIN_SCORE,
             "runUniquePhasesMin": RUN_UNIQUE_PHASES_MIN,
             "airborneFailClosedWeapons": AIRBORNE_FAIL_CLOSED_WEAPONS,
+            "hurtStandingMinRatio": HURT_STANDING_MIN_RATIO,
+            "machinegunHurtCapMinCoverage": MACHINEGUN_HURT_MIN_COVERAGE,
         },
     }
     failures: list[str] = []
     for label, check in (
         ("idle", lambda: validate_idle(cfg.sprite_smoke_dir)),
         ("airborne", lambda: validate_airborne(cfg.sprite_smoke_dir)),
+        ("hurt", lambda: validate_hurt(cfg.sprite_smoke_dir)),
         ("run", lambda: validate_run(cfg.gdscript, cfg.sprite_smoke_dir)),
     ):
         try:
@@ -770,8 +892,8 @@ def main() -> int:
             "Matthias continuity gate failed:\n- " + "\n- ".join(failures)
         )
     print(
-        "OK Matthias continuity gate: idle opacity + airborne scale + run "
-        "lower-body motion stay inside canonical envelope"
+        "OK Matthias continuity gate: idle opacity + airborne scale + hurt integrity + "
+        "run lower-body motion stay inside canonical envelope"
     )
     return 0
 
