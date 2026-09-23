@@ -79,6 +79,11 @@ func _run() -> void:
     await physics_frame
     _expect(player.can_stand_probe(), "Matthias vuelve a poder levantarse al liberar el techo")
 
+    _expect(
+        float(player.DEATH_PAUSE_SECONDS) >= (8.0 / 12.0),
+        "respawn espera a que terminen los 8 frames de die a 12 fps",
+    )
+
     var aim_cases := [
         [Vector2(1.0, 0.0), Vector2.RIGHT, "derecha"],
         [Vector2(1.0, -1.0), Vector2(1.0, -1.0).normalized(), "diagonal superior derecha"],
