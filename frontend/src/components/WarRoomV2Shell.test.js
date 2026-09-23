@@ -15,10 +15,8 @@ import {
   warRoomV2FabricSurfaceProfile,
   warRoomV2LeatherSurfaceProfile,
 } from './WarRoomV2Shell.js';
-import {
-  createWarRoomClassicShellController,
-  shouldShowClassicWarRoomShell,
-} from './WarRoomSceneVariant.js';
+import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
+import { shouldShowClassicWarRoomShell } from './WarRoomSceneVariant.js';
 
 describe('War Room v2 runtime asset URL', () => {
   it('registers the bundled Meshopt decoder on the v2 GLTF loader', () => {
