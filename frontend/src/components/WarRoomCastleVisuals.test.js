@@ -8,7 +8,7 @@ const theme = {
 };
 
 describe('War Room castle visual contract', () => {
-  it('omite el atrezzo retirado del tablero y las antiguas consolas desktop', () => {
+  it('omite en origen el atrezzo retirado del tablero y las antiguas consolas desktop', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const table = buildPremiumTableLayer(theme, false);
@@ -39,7 +39,7 @@ describe('War Room castle visual contract', () => {
     expect(typeof driver?.onBeforeRender).toBe('function');
     driver.onBeforeRender();
 
-    expect(scene.userData.warRoomTableClutterRetired).toBe(true);
+    expect(scene.userData.warRoomTableClutterRetired).toBeUndefined();
     for (const name of [
       'war-table-field-folio',
       'war-table-map-pencil',
