@@ -9,6 +9,7 @@ import {
   normalizeWarRoomVariant,
   saveWarRoomVariant,
   warRoomVariantDefinition,
+  warRoomVariantDomData,
 } from './WarRoomVariant.js';
 
 describe('War Room staging variant', () => {
@@ -59,6 +60,14 @@ describe('War Room staging variant', () => {
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'classic' })).toBe(true);
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'v2' })).toBe(false);
     expect(isClassicWarRoomVariant({ selectable: false, variant: 'v3' })).toBe(true);
+  });
+
+  it('owns generic and compatibility DOM diagnostics in the variant layer', () => {
+    expect(warRoomVariantDomData('v3', 'loading')).toEqual({
+      'data-board3d-variant': 'v3',
+      'data-board3d-variant-status': 'loading',
+      'data-board3d-v2-status': 'loading',
+    });
   });
 
   it('normalizes unknown variants back to the classic room', () => {
