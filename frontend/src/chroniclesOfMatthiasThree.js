@@ -36,6 +36,17 @@ function worldForCell(x, y) {
   return new THREE.Vector3((x - 3) * CELL, CAMERA_Y, (y - 3) * CELL);
 }
 
+// Enemy art is authored facing local +Z. Point that axis at the party instead
+// of inheriting the old fixed chess-piece yaw: asymmetric fantasy enemies
+// (especially the ash goblin) otherwise become a near-invisible side profile
+// while still legitimately blocking their runtime cell.
+export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
+  const dx = Number(partyCell?.x) - Number(enemyCell?.x);
+  const dy = Number(partyCell?.y) - Number(enemyCell?.y);
+  if (!Number.isFinite(dx) || !Number.isFinite(dy) || (dx === 0 && dy === 0)) return 0;
+  return Math.atan2(dx, dy);
+}
+
 export function chroniclesTorchTransform(x, y, side) {
   const cell = worldForCell(x, y);
   const faces = {
@@ -352,6 +363,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       const target = worldForCell(currentCell.x, currentCell.y);
       target.y = 0;
       enemy.userData.chroniclesTargetPosition = target;
+      enemy.userData.chroniclesBaseYaw = chroniclesEnemyFacingYaw(currentCell, { x: state.x, y: state.y });
       if (reducedMotion) enemy.position.copy(target);
       enemy.visible = active && (hp > 0 || (!reducedMotion && deathStartedAt != null));
       const enemyGlow = enemy.userData.chroniclesGlowMaterials || [];
