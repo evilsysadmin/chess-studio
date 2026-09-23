@@ -10,7 +10,7 @@
    turn label collapse to zero width on narrow Android layouts. Keep the
    historical pill padding; the menu remains anchored at the right edge. */
 @media (max-width: 1080px) {
-  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  .game-screen .game-layout-3d .game-3d-turn-pill {
     padding-right: 2.55rem !important;
   }
 
