@@ -786,7 +786,7 @@ def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
     r1, r2, depth, head, height = profiles[kind]
     # Scaled down to match the smaller board square (add_table_and_board);
     # keep this proportional to `square` so pieces don't crowd their square.
-    piece_scale = 0.82
+    piece_scale = 0.625
     r1 *= piece_scale
     r2 *= piece_scale
     depth *= piece_scale
@@ -1345,9 +1345,9 @@ def add_table_and_board(materials):
 
     # Earlier passes kept escalating this (0.31 -> 0.47 -> 0.50 -> 0.54) to
     # avoid a "travel set" read, but that overshot: board+pieces ended up
-    # dominating the table with no room for lived-in props. Pull back to a
-    # size that still reads as a real board without eating the whole table.
-    square = 0.42
+    # dominating the table with no room for lived-in props. 0.42 was still
+    # judged too large in-app; pull back further.
+    square = 0.32
     board_half = square * 4 + 0.12
     start_x = -4 * square + square / 2
     start_y = table_y - 4 * square + square / 2
@@ -2016,32 +2016,76 @@ def add_armor(materials):
     cone("HOME_PROP_armor_cuirass", (x, y, 2.14), 0.34, 0.48, 0.72, steel, vertices=28)
     cube("HOME_PROP_armor_belt", (x, y - 0.03, 1.84), (0.40, 0.25, 0.07), brass, bevel=0.03)
 
-    sphere("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.36), (0.220, 0.120, 0.080), steel)
-    sphere("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.31), (0.220, 0.120, 0.080), steel)
-    # Ceremonial pose: elbows bend forward and in, both hands meet at the sword hilt in
-    # front of the belt instead of hanging at the sides. All coordinates below are in the
-    # same pre-transform space as the rest of add_armor: the caller's global rescale
-    # (0.78/0.92/1.14 about the pedestal) applies to these objects automatically because
-    # they share the HOME_PROP_armor_ prefix.
+    # Flattened plate pauldrons instead of round balls: a sphere silhouette is
+    # the single biggest "toy soldier" tell a shoulder can have.
+    cube("HOME_PROP_armor_shoulder_l", (x - 0.50, y - 0.010, 2.34), (0.195, 0.145, 0.105), steel, bevel=0.045)
+    cube("HOME_PROP_armor_shoulder_r", (x + 0.50, y - 0.022, 2.34), (0.195, 0.145, 0.105), steel, bevel=0.045)
+    # Heraldic stance: shield up in the left hand, sword held low and
+    # point-down in the right -- the reference silhouette this armour is
+    # meant to read as -- instead of both hands clasped on one hilt at the
+    # belt. All coordinates below are in the same pre-transform space as the
+    # rest of add_armor: the caller's global rescale (0.78/0.92/1.14 about the
+    # pedestal) applies to these objects automatically because they share the
+    # HOME_PROP_armor_ prefix.
     # The armour is viewed from -Y (camera side), and the chest/fauld/tasset flat
     # panels sit at y in [5.47, 5.60] AFTER the global rescale, i.e. close to the front
-    # face. The hilt/hands must land in front of (smaller post-transform y than) those
+    # face. Hands/props must land in front of (smaller post-transform y than) those
     # panels or they render fully hidden behind them, which is what happened first try.
-    hilt_x, hilt_y, hilt_z = x, y - 0.62, 1.90
+    shoulders = {-1: (x - 0.50, y - 0.010, 2.32), 1: (x + 0.50, y - 0.022, 2.32)}
+    elbows = {-1: (x - 0.40, y - 0.38, 1.98), 1: (x + 0.34, y - 0.34, 2.08)}
+    # Left wrist holds the shield up near chest height; right wrist holds the
+    # sword hilt around waist height, matching a relaxed heraldic guard
+    # stance. Kept higher than hip height on purpose: the table in front of
+    # this background figure already occludes everything below roughly
+    # waist height from the camera, so a lower hilt just hid the blade
+    # entirely behind the table instead of showing it "resting near the
+    # ground".
+    wrists = {-1: (x - 0.40, y - 0.60, 2.00), 1: (x + 0.42, y - 0.55, 1.92)}
     for side in (-1, 1):
-        shoulder = (x + side * 0.50, y - 0.01, 2.32)
-        elbow = (x + side * 0.30, y - 0.42, 2.02)
-        wrist = (hilt_x + side * 0.075, hilt_y, hilt_z + 0.06)
+        shoulder = shoulders[side]
+        elbow = elbows[side]
+        wrist = wrists[side]
         curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.062, steel)
-        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.088, 0.082, 0.078), steel)
+        # Flattened elbow cops and boxy gauntlets read as plate; the previous
+        # spheres read as ball-and-socket action-figure joints.
+        cube(f"HOME_PROP_armor_couter_{side}", elbow, (0.078, 0.072, 0.055), steel, bevel=0.022)
         curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.052, steel)
         curve_tube(f"HOME_PROP_armor_cuff_{side}", [
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
         ], 0.062, materials["brass_dark"])
-        sphere(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.082, 0.070, 0.062), steel)
+        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.072, 0.062, 0.058), steel, bevel=0.020)
 
-    # Ceremonial two-handed sword, point down, hilt held at the belt.
+    # Heater shield in the left hand: brass backing plate behind a slightly
+    # smaller steel face, a gold rim, corner rivets and a plain cross boss --
+    # the same layered-plate-plus-trim technique as the table banner border,
+    # reused here for the shield the armour was missing entirely.
+    heraldry = materials["heraldry_gold"]
+    shield_x, shield_y, shield_z = wrists[-1][0] - 0.06, wrists[-1][1] - 0.03, wrists[-1][2] - 0.10
+    cube("HOME_PROP_armor_shield_back", (shield_x, shield_y + 0.018, shield_z), (0.205, 0.022, 0.285), materials["brass_dark"], bevel=0.03)
+    cube("HOME_PROP_armor_shield_face", (shield_x, shield_y, shield_z), (0.180, 0.020, 0.260), steel, bevel=0.028)
+    curve_tube(
+        "HOME_PROP_armor_shield_rim",
+        [
+            (shield_x, shield_y - 0.021, shield_z + 0.260),
+            (shield_x - 0.180, shield_y - 0.021, shield_z + 0.130),
+            (shield_x - 0.180, shield_y - 0.021, shield_z - 0.130),
+            (shield_x, shield_y - 0.021, shield_z - 0.260),
+            (shield_x + 0.180, shield_y - 0.021, shield_z - 0.130),
+            (shield_x + 0.180, shield_y - 0.021, shield_z + 0.130),
+            (shield_x, shield_y - 0.021, shield_z + 0.260),
+        ],
+        0.016,
+        heraldry,
+    )
+    for rivet_idx, (rx, rz) in enumerate(((-0.130, 0.180), (0.130, 0.180), (-0.130, -0.180), (0.130, -0.180))):
+        sphere(f"HOME_PROP_armor_shield_rivet_{rivet_idx}", (shield_x + rx, shield_y - 0.022, shield_z + rz), (0.018, 0.012, 0.018), heraldry)
+    cube("HOME_PROP_armor_shield_cross_v", (shield_x, shield_y - 0.023, shield_z), (0.024, 0.010, 0.150), heraldry, bevel=0.008)
+    cube("HOME_PROP_armor_shield_cross_h", (shield_x, shield_y - 0.023, shield_z + 0.030), (0.110, 0.010, 0.024), heraldry, bevel=0.008)
+
+    # Sword held low in the right hand, point down toward the pedestal --
+    # a resting guard stance instead of a two-handed ceremonial clasp.
+    hilt_x, hilt_y, hilt_z = wrists[1][0], wrists[1][1], wrists[1][2] - 0.04
     cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, hilt_z), 0.034, 0.20, materials["dark"], vertices=16)
     for ring_z in (hilt_z - 0.075, hilt_z + 0.075):
         cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.040, 0.012, brass, vertices=16)
@@ -2049,18 +2093,24 @@ def add_armor(materials):
     cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, hilt_z + 0.115), (0.230, 0.026, 0.024), brass, bevel=0.010)
     for side in (-1, 1):
         sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.245, hilt_y, hilt_z + 0.115), (0.040, 0.040, 0.040), brass)
-    blade_base_z, blade_tip_z = hilt_z + 0.15, 0.36
+    blade_base_z, blade_tip_z = hilt_z + 0.15, hilt_z - 1.05
+    # Bare polished steel (brighter/more metallic than the matte armor_steel
+    # body) so the blade actually reads against the body and the archway
+    # shadow behind it, instead of disappearing into both.
+    blade_steel = materials["steel"]
     cube("HOME_PROP_armor_sword_blade", (hilt_x, hilt_y, (blade_base_z + blade_tip_z) / 2),
-         (0.052, 0.014, (blade_base_z - blade_tip_z) / 2), steel, bevel=0.006)
+         (0.062, 0.016, (blade_base_z - blade_tip_z) / 2), blade_steel, bevel=0.007)
     # cone() puts radius1 at the bottom (-Z) and radius2 at the top (+Z); the point
     # must be the bottom (lowest z) so the blade tapers down to a tip, not up.
-    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.07), 0.001, 0.052, 0.14, steel, vertices=4)
+    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.07), 0.001, 0.062, 0.14, blade_steel, vertices=4)
     tip.scale.y = 0.27
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
-    # of armour silhouette than a round pawn head.
+    # of armour silhouette than a round pawn head. A great-helm reads as
+    # plate because it has flat faces and edges; a sphere never will no
+    # matter how much trim is glued onto it, so the head is a bevelled box.
     cylinder("HOME_PROP_armor_neck", (x, y, 2.58), 0.15, 0.20, dark, vertices=20)
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.85), (0.27, 0.245, 0.34), steel)
+    cube("HOME_PROP_armor_helmet", (x, y, 2.85), (0.235, 0.215, 0.295), steel, bevel=0.05)
     cube("HOME_PROP_armor_visor", (x, y - 0.265, 2.82), (0.205, 0.040, 0.042), dark, bevel=0.012)
     for slot, sx in enumerate((-0.11, -0.055, 0.0, 0.055, 0.11)):
         cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.308, 2.82), (0.012, 0.008, 0.018), dark, bevel=0.004)
@@ -2837,10 +2887,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "ash": material("HOME_MAT_ash", (0.082, 0.072, 0.062, 1), roughness=1.0, bump_scale=10.0, bump_strength=0.20, variation=0.22, variation_scale=7.0, texture_profile="stone"),
         "charcoal": material("HOME_MAT_charcoal", (0.012, 0.010, 0.009, 1), roughness=0.98, bump_scale=8.0, bump_strength=0.12, variation=0.10, variation_scale=6.5),
         "stone_grime": material("HOME_MAT_stone_grime", (0.034, 0.028, 0.024, 1), roughness=0.985, bump_scale=6.0, bump_strength=0.06, variation=0.06, variation_scale=3.5, texture_profile="stone"),
-        "book_green": material("HOME_MAT_book_green", (0.045, 0.165, 0.072, 1), roughness=0.91, texture_profile="leather"),
-        "book_brown": material("HOME_MAT_book_brown", (0.235, 0.098, 0.038, 1), roughness=0.91, texture_profile="leather"),
-        "book_red": material("HOME_MAT_book_red", (0.290, 0.030, 0.028, 1), roughness=0.91, texture_profile="leather"),
-        "book_olive": material("HOME_MAT_book_olive", (0.190, 0.160, 0.048, 1), roughness=0.91, texture_profile="leather"),
+        # Plain flat colour with no bump/variation read as printed stickers on
+        # the shelf, not bound leather -- these four never had either param set.
+        # First pass (bump_scale=16, variation=0.16) barely moved the needle
+        # in-render for the same reason the first stone-material pass didn't:
+        # this room's AgX look + low ambient crush subtle variation almost
+        # completely, and books also bake at a small 96-128px texture, so a
+        # fine bump_scale just isn't visible at all. Bigger, blunter blotches.
+        "book_green": material("HOME_MAT_book_green", (0.045, 0.165, 0.072, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
+        "book_brown": material("HOME_MAT_book_brown", (0.235, 0.098, 0.038, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
+        "book_red": material("HOME_MAT_book_red", (0.290, 0.030, 0.028, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
+        "book_olive": material("HOME_MAT_book_olive", (0.190, 0.160, 0.048, 1), roughness=0.80, bump_scale=5.0, bump_strength=0.16, variation=0.32, variation_scale=3.0, texture_profile="leather"),
         "piece_light": material(
             "HOME_MAT_piece_light",
             (0.38, 0.30, 0.22, 1),
