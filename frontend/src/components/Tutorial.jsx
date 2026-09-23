@@ -3,6 +3,8 @@ import './TutorialRoute.css';
 import './MatthiasClassRoom.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
+import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
+import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
@@ -52,6 +54,8 @@ export default function Tutorial({ onExit }) {
   const [attemptEpoch, setAttemptEpoch] = useState(0);
   const [hintActive, setHintActive] = useState(false);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
+  const classRoomVariantSelectable = isClassRoomVariantSelectable();
+  const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
@@ -237,6 +241,24 @@ export default function Tutorial({ onExit }) {
           <div className="matthias-school-resources-menu">
             <button type="button" onClick={() => setSection('glossary')}>Glosario</button>
             <button type="button" onClick={() => setSection('mechanics')}>Modos especiales</button>
+            {schoolRenderer === '3d' && classRoomVariantSelectable ? (
+              <div className="matthias-school-scene-picker" role="group" aria-label="Escena de clase">
+                <span>Escena de clase</span>
+                <div>
+                  {WAR_ROOM_VARIANTS.map(({ id, label }) => (
+                    <button
+                      type="button"
+                      key={id}
+                      aria-pressed={classRoomVariant === id}
+                      className={classRoomVariant === id ? 'active' : ''}
+                      onClick={() => setClassRoomVariant(saveClassRoomVariant(id))}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </details>
       </div>
@@ -349,7 +371,7 @@ export default function Tutorial({ onExit }) {
                 data-school-attempt={attemptEpoch}
                 data-school-renderer={schoolRenderer}
               >
-                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} hintMove={boardGuideMove} />
+                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} hintMove={boardGuideMove} warRoomVariantOverride={classRoomVariant} />
                 <div className="matthias-school-board-actions">
                   <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
                   {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => { setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
