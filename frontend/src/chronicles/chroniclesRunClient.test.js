@@ -91,6 +91,8 @@ describe('Chronicles run transport', () => {
     expect(JSON.parse(options.body)).toEqual({
       expectedWorldVersion: 7,
       currentMapId: 'gallery-of-forks',
+      inventory: {},
+      quests: {},
       worldFlags: {
         galleryLeverPulled: true,
         '__chrRuntime.version': 1,
