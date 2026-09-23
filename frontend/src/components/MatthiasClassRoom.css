@@ -88,7 +88,8 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: grid;
   gap: .28rem;
   width: max-content;
-  min-width: 170px;
+  min-width: 240px;
+  max-width: min(286px, calc(100vw - 1rem));
   padding: .38rem;
   border: 1px solid color-mix(in srgb, var(--brass) 28%, var(--ui-border));
   border-radius: 10px;
