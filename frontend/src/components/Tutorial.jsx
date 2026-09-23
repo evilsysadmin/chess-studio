@@ -227,15 +227,19 @@ export default function Tutorial({ onExit }) {
 
   return (
     <div className="tutorial-shell matthias-school-shell" data-school-section={section} data-school-curriculum={curriculumOpen ? 'open' : 'closed'}>
-      <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
-        ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
-      </button>
-
-      <nav className="tutorial-section-tabs" aria-label="Aprendizaje">
-        <button type="button" className={section === 'school' ? 'active' : ''} onClick={() => setSection('school')}>Escuela de Matthias</button>
-        <button type="button" className={section === 'glossary' ? 'active' : ''} onClick={() => setSection('glossary')}>Glosario</button>
-        <button type="button" className={section === 'mechanics' ? 'active' : ''} onClick={() => setSection('mechanics')}>Modos especiales</button>
-      </nav>
+      <div className="matthias-school-toolbar">
+        <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
+          ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
+        </button>
+        <span className="matthias-school-room-label">CLASS ROOM</span>
+        <details key={section} className="matthias-school-resources">
+          <summary>Recursos</summary>
+          <div className="matthias-school-resources-menu">
+            <button type="button" onClick={() => setSection('glossary')}>Glosario</button>
+            <button type="button" onClick={() => setSection('mechanics')}>Modos especiales</button>
+          </div>
+        </details>
+      </div>
 
       {section === 'glossary' ? (
         <ChessGlossary />
@@ -270,23 +274,16 @@ export default function Tutorial({ onExit }) {
         </div>
       ) : (
         <>
-          <header className="matthias-school-hero">
-            <div>
-              <span className="section-label">CLASS ROOM · ESCUELA DE MATTHIAS</span>
-              <h1>El tablero habla primero.</h1>
-              <p>Yo pongo la posición y señalo lo imprescindible. Tú demuestras que lo has entendido sobre el tablero.</p>
-            </div>
-            <div className="matthias-school-progress" aria-label={`${schoolSummary.passedCourses} de ${schoolSummary.totalCourses} cursos aprobados; ${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}>
-              <strong>{schoolSummary.passedCourses}/{schoolSummary.totalCourses}</strong>
-              <span>{schoolSummary.complete ? 'Escuela completada' : `Curso actual · ${schoolSummary.currentCourseLabel}`}</span>
-              <i><b style={{ width: `${schoolSummary.total ? (schoolSummary.completed / schoolSummary.total) * 100 : 0}%` }} /></i>
-            </div>
-          </header>
-
           <div className="matthias-school-focusbar">
             <div>
               <span>{courseSummary.course?.label || ''}</span>
               <strong>{lesson.title}</strong>
+              <small
+                className="matthias-school-focus-progress"
+                aria-label={`${schoolSummary.passedCourses} de ${schoolSummary.totalCourses} cursos aprobados; ${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}
+              >
+                {schoolSummary.passedCourses}/{schoolSummary.totalCourses} cursos · {schoolSummary.completed}/{schoolSummary.total} lecciones
+              </small>
             </div>
             <button
               type="button"
