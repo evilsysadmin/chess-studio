@@ -106,6 +106,8 @@ body.war-room-immersive-active {
 
   .game-layout-immersive .game-board-stack-3d {
     align-self: stretch !important;
+    height: 100% !important;
+    min-height: 0 !important;
   }
 
   .game-layout-immersive .game-side-column.game-side-column-3d {
