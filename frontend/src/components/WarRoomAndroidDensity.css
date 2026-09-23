@@ -22,7 +22,7 @@
   .game-screen .game-layout-3d .game-3d-turn-pill,
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 8px max-content 60px 34px !important;
+    grid-template-columns: minmax(0, 1fr) 8px max-content 92px 44px !important;
     align-items: center;
     justify-content: stretch;
     width: 100%;
@@ -76,8 +76,8 @@
     font-size: .59rem;
   }
 
-  /* Focus and resign remain one-tap actions, but live as two quiet 28px tools
-     inside the tactical HUD instead of a full-width command bar. */
+  /* Focus and resign remain quiet one-tap actions inside the tactical HUD,
+     but their real touch rectangles stay at the 44px mobile target. */
   .game-screen .game-layout-3d .game-3d-compact-actions {
     position: relative;
     z-index: 4;
@@ -85,7 +85,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: .2rem;
-    width: 60px;
+    width: 92px;
     transform: none;
     pointer-events: auto;
   }
@@ -95,10 +95,10 @@
     z-index: 5;
     display: grid;
     place-items: center;
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     padding: 0;
     border: 1px solid rgba(190, 164, 109, .18);
     border-radius: 8px;
@@ -136,8 +136,8 @@
     z-index: 6;
     top: auto;
     right: auto;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     transform: none;
     pointer-events: auto;
   }
@@ -208,26 +208,22 @@
 @media (max-width: 390px) {
   .game-screen .game-layout-3d .game-3d-turn-pill,
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    grid-template-columns: minmax(0, 1fr) 7px max-content 56px 32px !important;
+    grid-template-columns: minmax(0, 1fr) 7px max-content 92px 44px !important;
     gap: .22rem;
     padding: .2rem .28rem !important;
   }
 
   .game-screen .game-layout-3d .game-3d-compact-actions {
-    width: 56px;
-    gap: .16rem;
+    width: 92px;
+    gap: .25rem;
   }
 
-  .game-screen .game-layout-3d .game-3d-compact-action {
-    width: 27px;
-    min-width: 27px;
-    height: 27px;
-    min-height: 27px;
-  }
-
+  .game-screen .game-layout-3d .game-3d-compact-action,
   .game-screen .game-layout-3d .game-3d-utility-menu,
   .game-screen .game-layout-3d .game-3d-utility-menu > summary {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
