@@ -609,3 +609,66 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     outline-offset: -4px;
   }
 }
+
+
+/* Guided progression is the default; free study only appears after the user
+   explicitly opens the curriculum. This keeps the board-first surface quiet. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr);
+  align-items: center;
+  gap: .55rem .75rem;
+  padding: .36rem .48rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 20%, var(--ui-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-panel) 95%, transparent);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode > div {
+  display: flex;
+  align-items: center;
+  gap: .28rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode span {
+  margin-right: .2rem;
+  color: color-mix(in srgb, var(--brass) 72%, var(--parchment));
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode button {
+  min-height: 31px;
+  padding: .3rem .52rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--parchment-dim);
+  cursor: pointer;
+  font-size: .66rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode button.active {
+  border-color: color-mix(in srgb, var(--brass) 54%, var(--ui-border));
+  background: color-mix(in srgb, var(--brass) 11%, transparent);
+  color: var(--parchment);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode small {
+  color: color-mix(in srgb, var(--parchment) 64%, transparent);
+  font-size: .62rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 620px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode {
+    grid-template-columns: 1fr;
+    gap: .3rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode > div {
+    flex-wrap: wrap;
+  }
+}

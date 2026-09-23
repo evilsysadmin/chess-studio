@@ -5,7 +5,9 @@ import {
   MATTHIAS_SCHOOL_KEY,
   MATTHIAS_SCHOOL_LESSONS,
   MATTHIAS_SCHOOL_REFERENCES,
+  isSchoolCourseAccessible,
   isSchoolCourseUnlocked,
+  isSchoolLessonAccessible,
   isSchoolLessonUnlocked,
   loadMatthiasSchoolProgress,
   markMatthiasSchoolLessonComplete,
@@ -104,6 +106,20 @@ describe('Escuela de Matthias', () => {
   it('distingue una jugada legal que no resuelve el paso esperado', () => {
     const lesson = MATTHIAS_SCHOOL_LESSONS.find((item) => item.id === 'pawn-double-step');
     expect(validateMatthiasSchoolMove(lesson, 'e2', 'e3')).toMatchObject({ ok: false, reason: 'legal-wrong' });
+  });
+
+  it('mantiene la ruta guiada estricta aunque el estudio libre complete material posterior', () => {
+    let progress = loadMatthiasSchoolProgress();
+    const strategyExam = schoolExamForCourse('strategy');
+
+    expect(isSchoolCourseAccessible(progress, 'strategy')).toBe(false);
+    expect(isSchoolCourseAccessible(progress, 'strategy', { freeStudy: true })).toBe(true);
+    expect(isSchoolLessonAccessible(progress, schoolLessonsForCourse('endgames')[0].id)).toBe(false);
+    expect(isSchoolLessonAccessible(progress, schoolLessonsForCourse('endgames')[0].id, { freeStudy: true })).toBe(true);
+
+    progress = markMatthiasSchoolLessonComplete(strategyExam.id, new Date('2026-09-24T00:00:00Z'));
+    expect(isSchoolCourseUnlocked(progress, 'endgames')).toBe(false);
+    expect(isSchoolCourseAccessible(progress, 'endgames', { freeStudy: true })).toBe(true);
   });
 
   it('bloquea cursos y lecciones hasta aprobar el examen anterior', () => {

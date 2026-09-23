@@ -79,6 +79,14 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
   await capture(page, 'school');
 
+  await shell.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  await expect(shell.getByRole('group', { name: 'Modo de estudio' })).toBeVisible();
+  await capture(page, 'school-curriculum');
+  await captureAt(page, 'school-curriculum', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
+  await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
+
   await shell.getByRole('button', { name: 'Expandir tablero', exact: true }).click();
   await expect(shell).toHaveAttribute('data-school-focus', 'board');
   await capture(page, 'school-board-mode');

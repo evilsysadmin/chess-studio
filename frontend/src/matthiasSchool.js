@@ -411,7 +411,11 @@ export function isSchoolCoursePassed(progress, courseId) {
 export function isSchoolCourseUnlocked(progress, courseId) {
   const index = MATTHIAS_SCHOOL_COURSES.findIndex((course) => course.id === courseId);
   if (index <= 0) return index === 0;
-  return isSchoolCoursePassed(progress, MATTHIAS_SCHOOL_COURSES[index - 1].id);
+  return MATTHIAS_SCHOOL_COURSES.slice(0, index).every((course) => isSchoolCoursePassed(progress, course.id));
+}
+
+export function isSchoolCourseAccessible(progress, courseId, { freeStudy = false } = {}) {
+  return freeStudy ? Boolean(schoolCourseById(courseId)) : isSchoolCourseUnlocked(progress, courseId);
 }
 
 export function isSchoolLessonUnlocked(progress, lessonId) {
@@ -421,6 +425,12 @@ export function isSchoolLessonUnlocked(progress, lessonId) {
   const index = lessons.findIndex((item) => item.id === lesson.id);
   if (index <= 0) return index === 0;
   return lessons.slice(0, index).every((item) => progress?.[item.id]?.completed === true);
+}
+
+export function isSchoolLessonAccessible(progress, lessonId, { freeStudy = false } = {}) {
+  const lesson = schoolLessonById(lessonId);
+  if (!lesson) return false;
+  return freeStudy || isSchoolLessonUnlocked(progress, lessonId) || progress?.[lessonId]?.completed === true;
 }
 
 export function markMatthiasSchoolLessonComplete(id, now = new Date()) {

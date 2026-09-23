@@ -17,7 +17,8 @@ import {
   MATTHIAS_SCHOOL_COURSES,
   MATTHIAS_SCHOOL_LESSONS,
   incrementMatthiasSchoolAttempt,
-  isSchoolLessonUnlocked,
+  isSchoolCourseAccessible,
+  isSchoolLessonAccessible,
   loadMatthiasSchoolProgress,
   markMatthiasSchoolLessonComplete,
   matthiasSchoolCourseSummary,
@@ -59,6 +60,7 @@ export default function Tutorial({ onExit }) {
   const [hintActive, setHintActive] = useState(false);
   const [dangerSquares, setDangerSquares] = useState([]);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
+  const [freeStudy, setFreeStudy] = useState(false);
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [boardAnimation, setBoardAnimation] = useState(null);
   const [playbackActive, setPlaybackActive] = useState(false);
@@ -94,7 +96,7 @@ export default function Tutorial({ onExit }) {
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
   const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
   const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
-  const lessonUnlocked = isSchoolLessonUnlocked(schoolProgress, lesson.id) || lessonComplete;
+  const lessonAccessible = isSchoolLessonAccessible(schoolProgress, lesson.id, { freeStudy });
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
   const boardGuideMove = useMemo(() => schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive]);
@@ -104,11 +106,10 @@ export default function Tutorial({ onExit }) {
   const runComplete = lineIndex >= line.length;
   const examFailed = Boolean(lesson.exam && mistakes > Number(lesson.maxMistakes || 0));
 
-  function goTo(newIndex) {
+  function goTo(newIndex, { freeAccess = freeStudy, closeCurriculum = true } = {}) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
     const next = MATTHIAS_SCHOOL_LESSONS[clamped];
-    const unlocked = isSchoolLessonUnlocked(schoolProgress, next.id) || schoolProgress?.[next.id]?.completed === true;
-    if (!unlocked) return;
+    if (!isSchoolLessonAccessible(schoolProgress, next.id, { freeStudy: freeAccess })) return;
     cancelPlayback();
     setIndex(clamped);
     setPracticeFen(next.fen);
@@ -117,7 +118,7 @@ export default function Tutorial({ onExit }) {
     setMistakes(0);
     setHintActive(false);
     setDangerSquares([]);
-    setCurriculumOpen(false);
+    if (closeCurriculum) setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
@@ -133,6 +134,15 @@ export default function Tutorial({ onExit }) {
       return [];
     }
   }, [selected, practiceFen, examFailed, runComplete, playbackActive]);
+
+  function setStudyMode(nextFreeStudy) {
+    const enabled = Boolean(nextFreeStudy);
+    if (enabled === freeStudy) return;
+    setFreeStudy(enabled);
+    if (!enabled && !isSchoolLessonAccessible(schoolProgress, lesson.id)) {
+      goTo(firstSchoolIndex(schoolProgress), { freeAccess: false, closeCurriculum: false });
+    }
+  }
 
   function recordMiss(text, { danger = [] } = {}) {
     setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
@@ -238,7 +248,7 @@ export default function Tutorial({ onExit }) {
   }
 
   function handleSquareClick(square) {
-    if (playbackActive || runComplete || examFailed || !lessonUnlocked || !expected) return;
+    if (playbackActive || runComplete || examFailed || !lessonAccessible || !expected) return;
     let board;
     try { board = new Chess(practiceFen); } catch { return; }
     const piece = board.get(square);
@@ -280,7 +290,7 @@ export default function Tutorial({ onExit }) {
 
   const nextIndex = index + 1;
   const nextLesson = MATTHIAS_SCHOOL_LESSONS[nextIndex] || null;
-  const nextUnlocked = nextLesson ? isSchoolLessonUnlocked(schoolProgress, nextLesson.id) || schoolProgress?.[nextLesson.id]?.completed === true : false;
+  const nextUnlocked = nextLesson ? isSchoolLessonAccessible(schoolProgress, nextLesson.id, { freeStudy }) : false;
   const courseSummary = matthiasSchoolCourseSummary(lesson.courseId, schoolProgress);
 
   return (
@@ -288,6 +298,7 @@ export default function Tutorial({ onExit }) {
       className="tutorial-shell matthias-school-shell"
       data-school-section={section}
       data-school-curriculum={curriculumOpen ? 'open' : 'closed'}
+      data-school-study-mode={freeStudy ? 'free' : 'guided'}
       data-school-focus={boardFocusMode ? 'board' : 'normal'}
     >
       <div className="matthias-school-toolbar">
@@ -387,6 +398,17 @@ export default function Tutorial({ onExit }) {
             </button>
           </div>
 
+          {curriculumOpen && (
+            <div className="matthias-school-study-mode" role="group" aria-label="Modo de estudio">
+              <div>
+                <span>Acceso</span>
+                <button type="button" className={!freeStudy ? 'active' : ''} aria-pressed={!freeStudy} onClick={() => setStudyMode(false)}>Ruta guiada</button>
+                <button type="button" className={freeStudy ? 'active' : ''} aria-pressed={freeStudy} onClick={() => setStudyMode(true)}>Estudio libre</button>
+              </div>
+              <small>{freeStudy ? 'Entra directamente en cualquier curso. Tu progreso se guarda sin saltarse los requisitos de la ruta guiada.' : 'Matthias abre cada curso cuando apruebas el anterior.'}</small>
+            </div>
+          )}
+
           <div id="matthias-school-curriculum" className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
             {MATTHIAS_SCHOOL_COURSES.map((course) => {
               const summary = matthiasSchoolCourseSummary(course.id, schoolProgress);
@@ -395,14 +417,16 @@ export default function Tutorial({ onExit }) {
                   type="button"
                   key={course.id}
                   className={`${course.id === lesson.courseId ? 'active' : ''}${summary.passed ? ' passed' : ''}`}
-                  disabled={!summary.unlocked}
+                  disabled={!isSchoolCourseAccessible(schoolProgress, course.id, { freeStudy })}
                   onClick={() => {
-                    const first = schoolLessonsForCourse(course.id).find((item) => isSchoolLessonUnlocked(schoolProgress, item.id) && schoolProgress?.[item.id]?.completed !== true)
-                      || schoolLessonsForCourse(course.id)[0];
+                    const lessons = schoolLessonsForCourse(course.id);
+                    const first = freeStudy
+                      ? lessons.find((item) => schoolProgress?.[item.id]?.completed !== true) || lessons[0]
+                      : lessons.find((item) => isSchoolLessonAccessible(schoolProgress, item.id) && schoolProgress?.[item.id]?.completed !== true) || lessons[0];
                     goTo(MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === first.id));
                   }}
                 >
-                  <span>{summary.passed ? '✓' : course.rank}</span><div><b>{course.label}</b><small>{summary.unlocked ? `${summary.completed}/${summary.total}` : 'Bloqueado · aprueba el anterior'}</small></div>
+                  <span>{summary.passed ? '✓' : course.rank}</span><div><b>{course.label}</b><small>{freeStudy || summary.unlocked ? `${summary.completed}/${summary.total}` : 'Bloqueado · aprueba el anterior'}</small></div>
                 </button>
               );
             })}
@@ -417,7 +441,7 @@ export default function Tutorial({ onExit }) {
               {schoolLessonsForCourse(lesson.courseId).map((item) => {
                 const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((candidate) => candidate.id === item.id);
                 const complete = schoolProgress?.[item.id]?.completed === true;
-                const unlocked = isSchoolLessonUnlocked(schoolProgress, item.id) || complete;
+                const unlocked = isSchoolLessonAccessible(schoolProgress, item.id, { freeStudy });
                 return (
                   <button
                     type="button"
