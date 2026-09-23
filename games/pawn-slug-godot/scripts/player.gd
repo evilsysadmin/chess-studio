@@ -54,7 +54,9 @@ const STARTING_LIVES := 3
 const STARTING_GRENADES := 4
 const HIT_INVULN_SECONDS := 0.85
 const HURT_VISUAL_SECONDS := 0.18
-const DEATH_PAUSE_SECONDS := 0.55
+# Keep respawn behind Matthias' authored die one-shot (8 frames @ 12 fps = 0.667 s).
+# The small tail margin lets the final pose read instead of cutting directly to respawn.
+const DEATH_PAUSE_SECONDS := 0.72
 const RESPAWN_INVULN_SECONDS := 1.8
 const DEFAULT_CHECKPOINT_X := [110.0, 1480.0, 2980.0, 4140.0]
 const WEAPON_ORDER := ["pistol", "machinegun", "shotgun", "panzerfaust"]
