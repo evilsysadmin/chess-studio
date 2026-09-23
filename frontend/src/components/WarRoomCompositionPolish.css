@@ -39,16 +39,6 @@
     height: clamp(650px, calc(100dvh - 4.35rem), 940px) !important;
   }
 
-  /* Keep the command rail useful, but stop charging the board twenty-plus
-     pixels of dead chrome on each side. The board gets the recovered width. */
-  .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 208px) !important;
-    gap: clamp(.28rem, .36vw, .4rem) !important;
-    padding: clamp(.28rem, .34vw, .38rem) !important;
-    margin-bottom: 0;
-    padding-bottom: clamp(.28rem, .34vw, .38rem) !important;
-  }
-
   /* First mount used to expose the direct-light frame and then visibly pop when
      the deferred RoomEnvironment/PMREM arrived. Keep the canvas behind the warm
      shell for a fraction of a second and reveal the already-settling scene as a
@@ -56,12 +46,6 @@
   .game-screen .game-board-stack-3d .board3d-main-canvas {
     opacity: 0;
     animation: war-room-first-lit-reveal .36s cubic-bezier(.2, .72, .2, 1) .34s forwards;
-  }
-}
-
-@media (min-width: 1081px) and (max-width: 1260px) {
-  .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(0, 1fr) minmax(184px, 200px) !important;
   }
 }
 
