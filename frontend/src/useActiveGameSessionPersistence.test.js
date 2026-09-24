@@ -3,6 +3,7 @@ import { SAVE_STATUS } from './saveStatus.js';
 import {
   activeSessionPersistenceDescriptor,
   persistenceStateAfterSnapshot,
+  stageActiveSessionSnapshot,
 } from './useActiveGameSessionPersistence.js';
 
 describe('persistencia de sesión activa · política de guardado', () => {
@@ -46,5 +47,19 @@ describe('persistencia de sesión activa · política de guardado', () => {
     expect(persistenceStateAfterSnapshot({ descriptor, persisted: true })).toBe(SAVE_STATUS.SAVED);
     expect(persistenceStateAfterSnapshot({ descriptor, persisted: false })).toBe(SAVE_STATUS.ERROR);
     expect(persistenceStateAfterSnapshot({ descriptor: null, persisted: false })).toBeNull();
+  });
+
+  it('marca una partida recién creada como pendiente antes de publicarla', () => {
+    const transitions = [];
+    const game = { id: 'g-new' };
+    stageActiveSessionSnapshot(
+      (state) => transitions.push(['persistence', state]),
+      (current) => transitions.push(['game', current]),
+      game,
+    );
+    expect(transitions).toEqual([
+      ['persistence', SAVE_STATUS.SAVING],
+      ['game', game],
+    ]);
   });
 });
