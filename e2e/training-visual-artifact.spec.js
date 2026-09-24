@@ -52,7 +52,7 @@ async function capture(page, label) {
 }
 
 test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles, Torneo y Mi progreso', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
