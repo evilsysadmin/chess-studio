@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithHeading, login, mockApi } from './helpers.js';
 
+// On desktop the 1 vs 1 entry lives inside the JUGAR "Más formas de jugar" menu.
+async function openPlayMenu(page) {
+  const more = page.getByRole('button', { name: /Más formas de jugar/ });
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+}
+
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function matchPayload({ status = 'active', startsAt = null, ...overrides } = {}) {
@@ -123,6 +129,7 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
 
   await login(page);
 
+  await openPlayMenu(page);
   const rosterLink = page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' });
   await rosterLink.click();
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
@@ -130,6 +137,7 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await expect(lobby.getByText('DISPONIBLE PARA RETOS', { exact: true })).toBeVisible();
   await lobby.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
+  await openPlayMenu(page);
   await expect(rosterLink.getByText('Rivales disponibles', { exact: true })).toBeVisible();
   await expect(rosterLink.getByText('ELEGIR', { exact: true })).toBeVisible();
   challengeReady = true;
