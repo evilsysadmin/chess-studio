@@ -282,3 +282,35 @@
     box-shadow: none;
   }
 }
+
+
+/* Desktop (>= 1000px): the 1 vs 1 entry lives inside the JUGAR "Más formas de jugar"
+ * menu (variant="menu"), so the floating card is hidden there (display:none also
+ * removes it from the accessibility tree, leaving exactly one control per viewport).
+ * Below 1000px the card stays as the always-visible entry. */
+@media (min-width: 1000px) {
+  .home-pvp-roster-link:not(.home-pvp-roster-link--menu) {
+    display: none;
+  }
+}
+
+.home-pvp-roster-link.home-pvp-roster-link--menu {
+  position: static;
+  z-index: auto;
+  left: auto;
+  bottom: auto;
+  transform: none !important;
+  width: 100%;
+  min-height: 0;
+  padding: .55rem .7rem;
+  border-radius: 10px;
+  box-shadow: none;
+  backdrop-filter: none;
+  background: rgba(255, 220, 150, .06);
+  text-align: left;
+}
+
+.home-pvp-roster-link.home-pvp-roster-link--menu:is(:hover, :focus-visible) {
+  background: rgba(255, 200, 110, .16);
+  border-color: rgba(255, 213, 138, .95);
+}

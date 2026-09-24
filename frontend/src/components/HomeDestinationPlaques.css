@@ -358,3 +358,126 @@
     .illustrated-home__quickbar-list { animation: none; }
   }
 }
+
+/* ---- JUGAR "Más formas de jugar" (>= 1000px) ---------------------------------
+ * Sits where the play detail line used to be, centred under the big JUGAR title on
+ * the table banner (stage coordinates in cqw, measured at a 1877px stage). Below
+ * 1000px it is hidden and the floating 1 vs 1 card / explicit labels take over. */
+.illustrated-home__play-more-wrap {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .illustrated-home__play-more-wrap {
+    display: block;
+    position: absolute;
+    z-index: 15;
+    left: 50%;
+    top: 33.4cqw;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .illustrated-home__play-more {
+    display: inline-flex;
+    align-items: center;
+    gap: .4cqw;
+    padding: .34cqw .85cqw;
+    border: 1px solid rgba(218, 166, 78, .6);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(58, 33, 16, .9), rgba(24, 13, 7, .93));
+    color: #f3d9a0;
+    font: 600 max(11px, .74cqw)/1 Georgia, serif;
+    letter-spacing: .07em;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 226, 160, .18), 0 .25cqw .8cqw rgba(0, 0, 0, .5);
+    transition: border-color .18s ease, box-shadow .22s ease;
+  }
+
+  .illustrated-home__play-more i {
+    font-style: normal;
+    font-size: .9em;
+    color: #d9b165;
+  }
+
+  .illustrated-home__play-more:is(:hover, :focus-visible),
+  .illustrated-home__play-more-wrap.is-open .illustrated-home__play-more {
+    border-color: rgba(255, 213, 138, .95);
+    box-shadow: inset 0 1px 0 rgba(255, 236, 190, .3), 0 0 1.1cqw rgba(255, 165, 55, .45), 0 .25cqw .8cqw rgba(0, 0, 0, .5);
+  }
+
+  .illustrated-home__play-more:disabled {
+    opacity: .55;
+    cursor: default;
+  }
+
+  .illustrated-home__play-menu {
+    position: absolute;
+    top: calc(100% + .5cqw);
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    gap: .4cqw;
+    width: max(24cqw, 340px);
+    padding: .55cqw;
+    border: 1px solid rgba(218, 166, 78, .55);
+    border-radius: .6cqw;
+    background: linear-gradient(180deg, rgba(48, 27, 13, .96), rgba(20, 11, 6, .97));
+    box-shadow: inset 0 1px 0 rgba(255, 226, 160, .16), 0 .6cqw 1.6cqw rgba(0, 0, 0, .6);
+    text-align: left;
+    animation: home-play-menu-in .18s ease-out;
+  }
+
+  .illustrated-home__play-menu-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: .7cqw;
+    padding: .5cqw .7cqw;
+    border: 1px solid rgba(218, 166, 78, .4);
+    border-radius: 10px;
+    background: rgba(255, 220, 150, .06);
+    color: #f0d9a8;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease;
+  }
+
+  .illustrated-home__play-menu-item svg {
+    width: max(18px, 1.3cqw);
+    height: max(18px, 1.3cqw);
+    color: #e6bf70;
+  }
+
+  .illustrated-home__play-menu-item strong {
+    display: block;
+    font: 700 max(12px, .82cqw)/1.2 Georgia, serif;
+    letter-spacing: .04em;
+  }
+
+  .illustrated-home__play-menu-item small {
+    display: block;
+    margin-top: .15cqw;
+    font: 500 max(11px, .68cqw)/1.3 Arial, sans-serif;
+    color: #cdb98f;
+  }
+
+  .illustrated-home__play-menu-item:is(:hover, :focus-visible) {
+    background: rgba(255, 200, 110, .16);
+    border-color: rgba(255, 213, 138, .95);
+  }
+
+  .illustrated-home__play-menu-item:disabled {
+    opacity: .55;
+    cursor: default;
+  }
+
+  @keyframes home-play-menu-in {
+    from { opacity: 0; transform: translate(-50%, -.4cqw); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .illustrated-home__play-menu { animation: none; }
+  }
+}

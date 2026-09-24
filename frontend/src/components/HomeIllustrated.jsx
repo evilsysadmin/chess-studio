@@ -42,9 +42,10 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pvpSlot, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [playMenuOpen, setPlayMenuOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
@@ -90,6 +91,21 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     else if (destination === 'combat') onCombat();
     else if (destination === 'play') (hasSavedGame ? onContinue : onPlay)();
   };
+
+  // The "Más formas de jugar" menu closes on Escape and on any press outside it.
+  useEffect(() => {
+    if (!playMenuOpen) return undefined;
+    const onKeyDown = (event) => { if (event.key === 'Escape') setPlayMenuOpen(false); };
+    const onPointerDown = (event) => {
+      if (!event.target?.closest?.('.illustrated-home__play-more-wrap')) setPlayMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [playMenuOpen]);
 
   useEffect(() => {
     const refresh = () => setReducedMotion(currentReducedMotion());
@@ -147,7 +163,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['combat', 'COMBAT CHESS', 'Recluta tu ejército', IconSword, onCombat],
     ['daily', 'DESAFÍO DIARIO', 'Un nuevo reto cada día', Flame, onDaily],
     ['history', 'HISTORIA', 'Descubre el legado', IconBook, onHistory],
-    ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
+    ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
   const matthiasZone = matthiasVisual?.zone || matthiasHomeZone(matthiasVisual?.key);
@@ -212,6 +228,42 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </Fragment>
           ))}
         </nav>
+        {/* JUGAR is one tap for the common case (quick game, or CONTINUAR with a saved
+            game); every other way to start a game lives one click away in this menu. */}
+        <div className={`illustrated-home__play-more-wrap${playMenuOpen ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className="illustrated-home__play-more"
+            aria-expanded={playMenuOpen}
+            aria-controls="illustrated-home-play-menu"
+            onClick={() => setPlayMenuOpen((open) => !open)}
+            disabled={loading}
+          >
+            <span>Más formas de jugar</span>
+            <i aria-hidden="true">{playMenuOpen ? '▴' : '▾'}</i>
+          </button>
+          {playMenuOpen && (
+            <div
+              id="illustrated-home-play-menu"
+              className="illustrated-home__play-menu"
+              role="group"
+              aria-label="Más formas de jugar"
+              onClick={(event) => { if (event.target?.closest?.('button')) setPlayMenuOpen(false); }}
+            >
+              {hasSavedGame && (
+                <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
+                  <IconSword aria-hidden="true" />
+                  <span><strong>Nueva partida rápida</strong><small>Empieza otra sin perder la guardada</small></span>
+                </button>
+              )}
+              {pvpSlot}
+              <button type="button" className="illustrated-home__play-menu-item" onClick={onPractice} disabled={loading}>
+                <IconBook aria-hidden="true" />
+                <span><strong>Partida de práctica</strong><small>Entrena sin jugarte el rating</small></span>
+              </button>
+            </div>
+          )}
+        </div>
         {/* Collapsed by default so it never competes with the scene; the chips are
             the same actions as the destination buttons, JUGAR/CONTINUAR first. Hovering
             or focusing a chip highlights the matching prop in the room. */}

@@ -7,6 +7,7 @@ export default function HomePvpRosterLink({
   rivalCount = 0,
   incomingCount = 0,
   activeMatch = null,
+  variant = 'card',
 }) {
   const active = Boolean(activeMatch);
   const challenged = Number(incomingCount) > 0;
@@ -38,7 +39,7 @@ export default function HomePvpRosterLink({
   return (
     <button
       type="button"
-      className={`home-pvp-roster-link${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}`}
+      className={`home-pvp-roster-link${variant === 'menu' ? ' home-pvp-roster-link--menu' : ''}${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}`}
       onClick={onOpen}
       disabled={disabled}
       aria-label="Abrir rivales 1 contra 1 de War Room"

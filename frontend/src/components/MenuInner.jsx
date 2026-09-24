@@ -173,6 +173,27 @@ export default function Menu({
     setShowQuickMatch(true);
   }
 
+  const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
+  // One 1 vs 1 entry, two homes: the floating card below 1000px, and a row inside the
+  // JUGAR "Más formas de jugar" menu on desktop (CSS shows exactly one of them).
+  const renderPvpRosterLink = (variant) => (
+    <HomePvpRosterLink
+      variant={variant}
+      onOpen={() => {
+        if (pvpFlow?.activeMatch) {
+          pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
+          return;
+        }
+        setShowPvpLobby(true);
+      }}
+      disabled={loading}
+      enrolled={Boolean(pvpFlow?.enrolled)}
+      rivalCount={Number(pvpFlow?.rivalCount || 0)}
+      incomingCount={Number(pvpFlow?.incomingCount || 0)}
+      activeMatch={pvpFlow?.activeMatch || null}
+    />
+  );
+
   return (
     <div className="menu menu-illustrated">
       <HomeIllustrated
@@ -181,6 +202,8 @@ export default function Menu({
         error={showQuickMatch || showPracticeMatch || showPvpLobby ? null : error}
         onPlay={() => setShowQuickMatch(true)}
         onContinue={onContinue}
+        onPractice={() => setShowPracticeMatch(true)}
+        pvpSlot={pvpEntryVisible ? renderPvpRosterLink('menu') : null}
         onTournament={onTournament}
         onTrain={onTutorial}
         onCombat={onCombatRoguelike}
@@ -203,22 +226,7 @@ export default function Menu({
         ]}
       />
 
-      {!showQuickMatch && !showPracticeMatch && !showPvpLobby && (
-        <HomePvpRosterLink
-          onOpen={() => {
-            if (pvpFlow?.activeMatch) {
-              pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
-              return;
-            }
-            setShowPvpLobby(true);
-          }}
-          disabled={loading}
-          enrolled={Boolean(pvpFlow?.enrolled)}
-          rivalCount={Number(pvpFlow?.rivalCount || 0)}
-          incomingCount={Number(pvpFlow?.incomingCount || 0)}
-          activeMatch={pvpFlow?.activeMatch || null}
-        />
-      )}
+      {pvpEntryVisible && renderPvpRosterLink('card')}
 
       {showQuickMatch && (
         <QuickMatchModal

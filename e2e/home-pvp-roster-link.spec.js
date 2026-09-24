@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
+// On desktop the 1 vs 1 entry lives inside the JUGAR "Más formas de jugar" menu.
+async function openPlayMenu(page) {
+  const more = page.getByRole('button', { name: /Más formas de jugar/ });
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+}
+
 test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page }) => {
   await mockApi(page);
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
@@ -16,6 +22,7 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 
   await login(page);
 
+  await openPlayMenu(page);
   const rosterLink = page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' });
   await expect(rosterLink).toBeVisible();
   await rosterLink.click();
@@ -34,6 +41,7 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
+  await openPlayMenu(page);
   await expect(rosterLink).toBeVisible();
   await expect(rosterLink.getByText('Esperando rival', { exact: true })).toBeVisible();
   await expect(rosterLink.getByText('VER SALA', { exact: true })).toBeVisible();
