@@ -2542,22 +2542,22 @@ def add_armor(materials):
     # Humanoid stance: two distinct greaves instead of the old single pawn-like
     # cylinder, plus pelvis, tapered cuirass and articulated limbs.
     for side in (-1, 1):
-        lx = x + side * 0.20
-        cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.16, 0.24, 0.12), steel, bevel=0.05)
-        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.17, 0.12, 0.70, steel, vertices=24)
-        sphere(f"HOME_PROP_armor_calf_{side}", (lx, y + 0.02, 1.08), (0.165, 0.150, 0.230), steel)
-        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.165, 0.125, 0.115), steel)
-        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.21, 0.26, 0.48, steel, vertices=24)
+        lx = x + side * 0.27
+        cube(f"HOME_PROP_armor_boot_{side}", (lx, y - 0.05, 0.58), (0.23, 0.29, 0.13), steel, bevel=0.06)
+        cone(f"HOME_PROP_armor_greave_{side}", (lx, y, 0.98), 0.25, 0.18, 0.70, steel, vertices=28)
+        sphere(f"HOME_PROP_armor_calf_{side}", (lx, y + 0.02, 1.08), (0.235, 0.205, 0.245), steel)
+        sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.235, 0.17, 0.135), steel)
+        cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.31, 0.37, 0.48, steel, vertices=28)
         # Gold bands separate the plates; without them the whole leg read as one tube.
         for tag, band_z, band_r, band_ry in (
-            ("cuisse_top", 1.765, 0.262, 0.262), ("cuisse_bottom", 1.36, 0.218, 0.218),
-            ("poleyn", 1.30, 0.168, 0.125), ("greave_top", 1.25, 0.128, 0.128),
-            ("greave_mid", 0.98, 0.150, 0.150), ("greave_bottom", 0.70, 0.166, 0.166),
+            ("cuisse_top", 1.765, 0.375, 0.375), ("cuisse_bottom", 1.36, 0.315, 0.315),
+            ("poleyn", 1.30, 0.245, 0.175), ("greave_top", 1.25, 0.19, 0.19),
+            ("greave_mid", 0.98, 0.22, 0.22), ("greave_bottom", 0.70, 0.24, 0.24),
         ):
             ring = cylinder(f"HOME_PROP_armor_leg_band_{tag}_{side}", (lx, y - (0.01 if tag == "poleyn" else 0.0), band_z), band_r, 0.026, materials["armor_gold"], vertices=28)
             ring.scale.y = band_ry / band_r
 
-    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.40, 0.26, 0.18), steel, bevel=0.08)
+    cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.46, 0.28, 0.18), steel, bevel=0.08)
     # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
     cone("HOME_PROP_armor_cuirass", (x, y, 1.98), 0.26, 0.40, 0.42, steel, vertices=28)
     chest = sphere("HOME_PROP_armor_chest_barrel", (x, y - 0.01, 2.32), (0.52, 0.30, 0.37), steel)
@@ -2597,7 +2597,7 @@ def add_armor(materials):
     # waist height from the camera, so a lower hilt just hid the blade
     # entirely behind the table instead of showing it "resting near the
     # ground".
-    wrists = {-1: (x - 0.46, y - 0.60, 2.00), 1: (x + 0.06, y - 0.42, 1.95)}
+    wrists = {-1: (x - 0.46, y - 0.60, 2.00), 1: (x + 0.24, y - 0.50, 1.95)}
     for side in (-1, 1):
         shoulder = shoulders[side]
         elbow = elbows[side]
@@ -2613,7 +2613,12 @@ def add_armor(materials):
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
         ], 0.062, materials["brass_dark"])
-        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.092, 0.080, 0.075), steel, bevel=0.024)
+        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.112, 0.098, 0.090), steel, bevel=0.028)
+        if side == 1:
+            # Fingers wrapped round the grip in front, thumb across: the hand visibly holds the sword.
+            for k in range(4):
+                cube(f"HOME_PROP_armor_finger_{k}", (wrist[0], wrist[1] - 0.085, wrist[2] + 0.062 - k * 0.042), (0.075, 0.030, 0.017), steel, bevel=0.008)
+            cube("HOME_PROP_armor_thumb", (wrist[0] + 0.070, wrist[1] - 0.070, wrist[2] + 0.030), (0.020, 0.030, 0.060), steel, bevel=0.008)
 
     # Heater shield in the left hand: brass backing plate behind a slightly
     # smaller steel face, a gold rim, corner rivets and a plain cross boss --
