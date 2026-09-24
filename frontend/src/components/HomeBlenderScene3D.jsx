@@ -710,6 +710,17 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     // and the reading light at the library desk. Positions map Blender (x, y, z) to
     // three (x, z, -y). Kept modest: the chandelier hangs right over the board, whose
     // colours must stay honest.
+    // A narrow warm spot under the chandelier, aimed at the board. The broad point light below
+    // lifts everything and, pushed hard, flattens the board's contrast; a cone leaves a visible
+    // pool of light on the table (which is what candlelight from a chandelier actually does)
+    // and falls off into shadow around it. It wavers with the candles like the other flames.
+    const boardPool = new THREE.SpotLight(0xffb26a, 30, 8, 0.36, 0.9, 2);
+    boardPool.position.set(0, 4.5, -2.2);
+    boardPool.target.position.set(0, 1.3, -1.05);
+    boardPool.castShadow = false;
+    scene.add(boardPool.target);
+    torches.push(boardPool);
+
     for (const [color, intensity, distance, x, y, z, glowSize] of [
       // The chandelier is the natural light over the board. At 3.6 it barely reached the
       // pieces (about 0.27 at the board after inverse-square falloff from 3.65 m up), so they
@@ -813,8 +824,8 @@ function disposeRuntimeScene(root) {
 // no light for, so the pieces get a small warm emissive lift instead (light pieces more than
 // dark ones). The squares are left alone: their colours must stay honest.
 export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
-  light: Object.freeze({ color: 0x2e1f0f, intensity: 1 }),
-  dark: Object.freeze({ color: 0x120a04, intensity: 1 }),
+  light: Object.freeze({ color: 0x7c5a2c, intensity: 1 }),
+  dark: Object.freeze({ color: 0x2e1c0d, intensity: 1 }),
 });
 
 export function applyHomeBlenderPieceLift(root) {
