@@ -44,4 +44,17 @@ describe('Board3D bootstrap boundary', () => {
 
     expect(installWarRoomPointerCapture).toHaveBeenCalledTimes(1);
   });
+
+  it('shares one in-flight 3D preload between quick-match warmup and the lazy mount', async () => {
+    const module = await import('./Board3DRegistration.js');
+    const registeredRenderer = registerBoard3D.mock.calls[0]?.[0];
+
+    await Promise.all([
+      module.preloadBoard3D(),
+      module.preloadBoard3D(),
+      registeredRenderer.loader(),
+    ]);
+
+    expect(installWarRoomPointerCapture).toHaveBeenCalledTimes(1);
+  });
 });
