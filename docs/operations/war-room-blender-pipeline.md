@@ -2,7 +2,7 @@
 
 War Room v2 and v3 use deterministic Blender generators for their static room shells. Each regenerates an editable `.blend`, runtime `.glb`, review PNG and JSON manifest from source code, keeping large generated blobs out of normal Git history.
 
-The War Room v1 remains the rollback baseline until the Blender variants have passed visual, mobile, performance and real-runtime validation. Variant work must not irreversibly delete or entangle that rollback lane. The in-game scene selector exposes v1, v2 and v3 as separate rooms and persists only their stable IDs (`classic`, `v2`, `v3`).
+**War Room v2 is the default variant** wherever variants are enabled (staging and production builds set `VITE_WAR_ROOM_VARIANTS_ENABLE`); a player's explicit pick in the War Room «…» menu is stored per device and always wins. The War Room v1 remains the rollback baseline: removing that flag from the production build workflows returns everyone to v1 (builds without the flag, such as local dev and the plain e2e build, stay on v1 too). If the v2 shell fails to load, the scene falls back to the classic room on its own. Variant work must not irreversibly delete or entangle that rollback lane. The in-game scene selector exposes v1, v2 and v3 as separate rooms and persists only their stable IDs (`classic`, `v2`, `v3`).
 
 ## Variant ownership
 

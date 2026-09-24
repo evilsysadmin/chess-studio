@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
+  DEFAULT_WAR_ROOM_VARIANT,
   WAR_ROOM_VARIANT_STORAGE_KEY,
   WAR_ROOM_VARIANTS,
   isClassicWarRoomVariant,
@@ -38,6 +39,32 @@ describe('War Room staging variant', () => {
     expect(loadWarRoomVariant(options)).toBe('v2');
     expect(saveWarRoomVariant('v3', options)).toBe('v3');
     expect(loadWarRoomVariant(options)).toBe('v3');
+  });
+
+  it('defaults to v2 when variants are enabled and nothing was chosen', () => {
+    const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
+    expect(DEFAULT_WAR_ROOM_VARIANT).toBe('v2');
+    expect(loadWarRoomVariant(options)).toBe('v2');
+  });
+
+  it('keeps an explicit choice, including v1 and v3, instead of the default', () => {
+    const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
+    for (const choice of ['classic', 'v3', 'v2']) {
+      expect(saveWarRoomVariant(choice, options)).toBe(choice);
+      expect(loadWarRoomVariant(options)).toBe(choice);
+    }
+  });
+
+  it('falls back to the default when the stored value is corrupt', () => {
+    const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
+    localStorage.setItem(WAR_ROOM_VARIANT_STORAGE_KEY, 'war-room-3000');
+    expect(loadWarRoomVariant(options)).toBe('v2');
+  });
+
+  it('stays on the classic room when variants are not enabled (local dev, plain e2e, rollback)', () => {
+    const options = { env: {}, location: { hostname: 'localhost' } };
+    expect(isWarRoomVariantSelectable(options)).toBe(false);
+    expect(loadWarRoomVariant(options)).toBe('classic');
   });
 
   it('supports the generic variants flag outside canonical staging', () => {
