@@ -4522,8 +4522,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     add_trophy(materials)
-    # The shield that hung beside the right hearth now flanks the trophy, mirroring the arch.
-    add_heraldic_shield("HOME_PROP_trophy_shield", -7.07, 3.22, 5.98, 1.0, materials)
+    # The heraldic shield stays beside the right hearth (behind the left arch's stone it was hidden).
+    add_heraldic_shield("HOME_PROP_fireplace_right_shield", 5.37, 3.22, 5.08, -1.0, materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 
