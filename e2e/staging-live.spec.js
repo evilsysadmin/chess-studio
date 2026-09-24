@@ -219,7 +219,7 @@ async function captureUxCheckpoint(page, testInfo, report, name) {
       compactTargets: actions.filter((row) => row.width < 32 || row.height < 32).slice(0, 20),
     };
   });
-  await page.screenshot({ path: testInfo.outputPath(`ux-${name}.png`), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`ux-${name}.png`), fullPage: true, timeout: 60_000 });
   report.checkpoints.push({ name, ...metrics });
   return metrics;
 }
