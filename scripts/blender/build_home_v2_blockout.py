@@ -1345,6 +1345,65 @@ def add_stair_lantern(idx, px, py, pz, materials):
 
 
 
+def floor_panel(name, points_xy, z, thickness, mat):
+    """Extrude a flat silhouette (XY) into a thin slab lying on the floor, top face up."""
+    area = 0.0
+    for i, (x0, y0) in enumerate(points_xy):
+        x1, y1 = points_xy[(i + 1) % len(points_xy)]
+        area += x0 * y1 - x1 * y0
+    pts = list(points_xy) if area > 0 else list(reversed(points_xy))
+    count = len(pts)
+    half = thickness / 2.0
+    vertices = [(x, y, z - half) for x, y in pts] + [(x, y, z + half) for x, y in pts]
+    faces = [tuple(range(count, 2 * count)), tuple(reversed(range(count)))]
+    for index in range(count):
+        nxt = (index + 1) % count
+        faces.append((index, nxt, count + nxt, count + index))
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    layer = mesh.uv_layers.new(name="UVMap")
+    for polygon in mesh.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
+            layer.data[loop_index].uv = (vertex.co.x / 1.6, vertex.co.y / 1.6)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    apply_material(obj, mat)
+    return obj
+
+
+def add_rug_knight_tapestry(materials):
+    """Heraldic pair of chess knights woven into the visible strip of the rug, stretched
+    across it like a tapestry (the rug is seen at a low angle, so the drawing is wider than tall
+    on purpose). Gold thread over a dark outline; the pair faces the centre."""
+    thread = materials["rug_thread"]
+    outline = materials["stone_dark"]
+    smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    depth_start, depth_span = -2.16, 1.30  # y of the base line and depth of the drawing (the strip is about 1.4 deep)
+    # Mild stretch only: the room camera sees the rug from a low angle (depth is squashed to about
+    # half), and at 2.5x wide the pair read as two reclining seals, not knights.
+    sx, sy = 1.15, depth_span / 0.76
+    for tag, cx, facing in (("left", -1.30, -1.0), ("right", 1.30, 1.0)):
+        def world(u, v, grow=1.0):
+            return (cx + facing * u * sx * grow, depth_start + (v - 0.12) * sy * grow - (grow - 1.0) * 0.30)
+        floor_panel(f"HOME_PROP_rug_knight_{tag}_outline", [world(u, v, 1.09) for u, v in smooth], 0.060, 0.010, outline)
+        floor_panel(f"HOME_PROP_rug_knight_{tag}", [world(u, v) for u, v in smooth], 0.068, 0.012, thread)
+        # plinth bar the knight stands on, like the medallion knight
+        cube(
+            f"HOME_PROP_rug_knight_{tag}_base",
+            (cx, depth_start - 0.055, 0.066),
+            (0.34 * sx * 0.95, 0.045, 0.007),
+            thread,
+            bevel=0.004,
+        )
+    # centre: a stretched diamond chain between the pair, echoing the medallion above it
+    for idx, (x, size) in enumerate(((-0.55, 0.06), (0.0, 0.10), (0.55, 0.06))):
+        motif = cube(f"HOME_PROP_rug_tapestry_diamond_{idx}", (x, -1.55, 0.066), (size * 1.9, size, 0.008), thread)
+        motif.rotation_euler[2] = math.radians(45)
+        motif.scale.x *= 1.0
+
+
 def add_castle_chair(name, cx, cy, side, materials):
     """Carved high-back chair of a Teutonic hall, back towards the wall side (+side*x)."""
     wood = materials["table_wood"]
@@ -3053,9 +3112,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
-        "rug": material("HOME_MAT_rug", (0.155, 0.017, 0.022, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
-        "rug_worn": material("HOME_MAT_rug_worn", (0.118, 0.016, 0.019, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
-        "rug_thread": material("HOME_MAT_rug_thread", (0.26, 0.145, 0.040, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
+        "rug": material("HOME_MAT_rug", (0.235, 0.040, 0.026, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
+        "rug_worn": material("HOME_MAT_rug_worn", (0.182, 0.034, 0.024, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug_thread": material("HOME_MAT_rug_thread", (0.44, 0.255, 0.075, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
         # Richer weave contrast so the drape reads as a heraldic banner rather
         # than a flat dark blob under the CONTINUAR label.
         "banner": material("HOME_MAT_banner", (0.165, 0.018, 0.024, 1), roughness=0.80, bump_scale=20.0, bump_strength=0.075, variation=0.16, variation_scale=7.4, texture_profile="textile"),
@@ -3382,13 +3441,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.010,
             materials["brass_dark"],
         )
-    for idx, x in enumerate((-2.95, -2.25, -1.55, -0.85, 0.0, 0.85, 1.55, 2.25, 2.95)):
-        motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.12, 0.066), (0.085, 0.085, 0.010), rug_border)
+    for idx, x in enumerate((-2.95, -2.50, -2.05, -1.60, -1.15, -0.70, -0.25, 0.25, 0.70, 1.15, 1.60, 2.05, 2.50, 2.95)):
+        motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.22, 0.066), (0.040, 0.040, 0.008), rug_border)
         motif.rotation_euler[2] = math.radians(45)
-    for idx, x in enumerate((-2.70, -1.80, -0.90, 0.0, 0.90, 1.80, 2.70)):
-        motif = cube(f"HOME_PROP_rug_inner_motif_{idx}", (x, -1.72, 0.062), (0.050, 0.050, 0.009), materials["stone_dark"])
-        motif.rotation_euler[2] = math.radians(45)
-    for row, y in enumerate((-1.18, -0.42, 0.34)):
+    add_rug_knight_tapestry(materials)
+    for row, y in enumerate((-0.42, 0.34)):
         for col, x in enumerate((-2.55, -1.70, -0.85, 0.0, 0.85, 1.70, 2.55)):
             motif = cube(
                 f"HOME_PROP_rug_medallion_{row}_{col}",
@@ -3397,10 +3454,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 materials["rug_thread"] if (row + col) % 3 == 0 else materials["stone_dark"],
             )
             motif.rotation_euler[2] = math.radians(45)
-    cube("HOME_PROP_rug_inner_front", (0, -1.42, 0.064), (2.86, 0.022, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_front", (0, -0.86, 0.064), (2.86, 0.022, 0.008), materials["rug_thread"])
     cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
     cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_front_2", (0, -1.78, 0.065), (2.45, 0.018, 0.008), materials["rug_thread"])
+    cube("HOME_PROP_rug_inner_front_2", (0, -2.16, 0.065), (2.86, 0.018, 0.008), materials["rug_thread"])
     cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
     cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
     rug_medallion_outer = cube(
