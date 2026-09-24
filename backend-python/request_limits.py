@@ -1,8 +1,9 @@
-"""ASGI middleware pequeño para limitar el cuerpo real de cada petición.
+"""ASGI middleware pequeño para limitar y sanear cuerpos HTTP.
 
 No confía únicamente en Content-Length: también cuenta los bytes recibidos por
-chunks, de modo que Transfer-Encoding: chunked o un Content-Length ausente no
-puedan saltarse el límite y provocar consumo de memoria arbitrario.
+chunks. Rechaza además framing ambiguo (Transfer-Encoding + Content-Length o
+Content-Length contradictorios) antes de que distintos proxies puedan
+interpretar la misma petición de forma diferente.
 """
 from __future__ import annotations
 
@@ -27,10 +28,24 @@ class RequestBodyLimitMiddleware:
         request_limit = self.path_limits.get(str(scope.get("path") or ""), self.max_bytes)
         header_pairs = [(bytes(k).lower(), bytes(v)) for k, v in scope.get("headers", [])]
         content_lengths = [value for key, value in header_pairs if key == b"content-length"]
+        transfer_encodings = [value for key, value in header_pairs if key == b"transfer-encoding"]
+
+        # Dos mecanismos de framing simultáneos son ambiguos entre proxies y
+        # backends. Fallar cerrado evita variantes CL.TE / TE.CL de smuggling.
+        if content_lengths and transfer_encodings:
+            await self._reject(
+                scope,
+                receive,
+                send,
+                400,
+                "Transfer-Encoding y Content-Length no pueden combinarse.",
+            )
+            return
+
         if content_lengths:
-            # Cabeceras Content-Length contradictorias son un patrón clásico de
-            # request smuggling: distintos proxies pueden elegir valores distintos.
-            # Aceptamos duplicados idénticos, pero cualquier discrepancia falla cerrado.
+            # Cabeceras Content-Length contradictorias son otro patrón clásico
+            # de request smuggling. Duplicados idénticos se toleran; valores
+            # distintos fallan cerrado.
             if len(set(content_lengths)) > 1:
                 await self._reject(scope, receive, send, 400, "Content-Length contradictorio.")
                 return
