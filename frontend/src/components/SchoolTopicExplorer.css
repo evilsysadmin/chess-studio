@@ -1,0 +1,124 @@
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer {
+  border: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-panel) 94%, transparent);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  min-height: 38px;
+  padding: .38rem .56rem;
+  color: var(--parchment);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer > summary span {
+  font-size: .69rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer > summary small {
+  color: color-mix(in srgb, var(--parchment) 60%, transparent);
+  font-size: .61rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+  padding: 0 .5rem .52rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-filter {
+  display: grid;
+  gap: .18rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-filter label {
+  color: color-mix(in srgb, var(--brass) 72%, var(--parchment));
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-filter select {
+  min-height: 34px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-panel) 97%, #080a0d 3%);
+  color: var(--parchment);
+  padding: .32rem .42rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: .32rem;
+  max-height: 196px;
+  overflow: auto;
+  padding-top: .12rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button {
+  display: grid;
+  gap: .12rem;
+  min-height: 58px;
+  padding: .42rem .48rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--parchment);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button.active {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--ui-border));
+  background: color-mix(in srgb, var(--brass) 10%, transparent);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button span,
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button small {
+  color: color-mix(in srgb, var(--parchment) 60%, transparent);
+  font-size: .57rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button strong {
+  font-size: .68rem;
+  line-height: 1.18;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results p {
+  grid-column: 1 / -1;
+  margin: .25rem;
+  color: color-mix(in srgb, var(--parchment) 62%, transparent);
+  font-size: .66rem;
+}
+
+@media (max-width: 620px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer-body {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+    max-height: 220px;
+  }
+}
