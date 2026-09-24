@@ -54,3 +54,11 @@ export function homeCastle3DRenderPolicy({
     powerPreference: lod === 'full' ? 'high-performance' : 'low-power',
   });
 }
+
+// A cap only ever tightens: full -> lite -> 2d, never back.
+export function tighterRuntimeLodCap(current, next) {
+  if (current === '2d' || next === current) return current;
+  if (next === '2d') return '2d';
+  if (next === 'lite' && current == null) return 'lite';
+  return current;
+}

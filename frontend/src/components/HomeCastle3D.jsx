@@ -7,7 +7,7 @@ import {
 } from './HomeCastle3DGeometry.js';
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
-import { homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
+import { homeCastle3DRenderPolicy, tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
 import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 import {
@@ -79,13 +79,6 @@ function sameRenderPolicy(a, b) {
     && a.geometrySegments.height === b.geometrySegments.height
     && a.antialias === b.antialias
     && a.powerPreference === b.powerPreference;
-}
-
-function tighterRuntimeLodCap(current, next) {
-  if (current === '2d' || next === current) return current;
-  if (next === '2d') return '2d';
-  if (next === 'lite' && current == null) return 'lite';
-  return current;
 }
 
 function addLightRig(scene, profile) {
