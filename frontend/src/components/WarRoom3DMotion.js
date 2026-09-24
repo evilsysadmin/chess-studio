@@ -12,6 +12,11 @@ import {
   shadowRefreshInterval,
   shouldRefreshShadowMap,
 } from './WarRoomRenderBudget.js';
+import {
+  applyWarRoomQualityTier,
+  createWarRoomQualityGovernor,
+  warRoomShadowIntervalFactor,
+} from './WarRoomQualityGovernor.js';
 
 export {
   adaptiveRenderScale,
@@ -509,6 +514,9 @@ function installWarRoomRenderDiscipline() {
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
     const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
     state.lastRenderAt = now;
+    if (!state.governor) state.governor = createWarRoomQualityGovernor({ coarsePointer });
+    const nextTier = state.governor.observe(frameMs);
+    if (nextTier) applyWarRoomQualityTier(this, scene, nextTier, { coarsePointer });
 
     if (shouldRunWarRoomMaterialGrade(scene)) {
       const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
@@ -545,6 +553,7 @@ function installWarRoomRenderDiscipline() {
       lastShadowAt: state.lastShadowAt,
       coarsePointer,
       activeMotion,
+      factor: warRoomShadowIntervalFactor(state.governor.tier),
     })) {
       this.shadowMap.needsUpdate = true;
       state.lastShadowAt = now;
