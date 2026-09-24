@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
+const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
+const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
+
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -69,9 +72,26 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
   // El tablero puede pintar antes de que React persista el sobre de sesión y
-  // su marcador de ruta. Esperar la confirmación durable evita que el reload
-  // compita con ese efecto y convierta este contrato en una carrera.
-  await expect(page.getByText('Guardado', { exact: true })).toBeVisible();
+  // su marcador de ruta. Esperar ambos datos durables evita que el reload
+  // compita con ese efecto y convierte este contrato en una comprobación real
+  // de recuperación, sin depender del estado inicial del indicador visual.
+  await expect.poll(() => page.evaluate(({ sessionKey, visibleRouteKey }) => {
+    const rawSnapshot = window.localStorage.getItem(sessionKey);
+    const visibleRoute = window.sessionStorage.getItem(visibleRouteKey);
+    if (!rawSnapshot) return false;
+    try {
+      const snapshot = JSON.parse(rawSnapshot);
+      return snapshot?.route === 'game'
+        && typeof snapshot?.gameId === 'string'
+        && snapshot.gameId.length > 0
+        && visibleRoute === snapshot.route;
+    } catch {
+      return false;
+    }
+  }, {
+    sessionKey: ACTIVE_GAME_SESSION_KEY,
+    visibleRouteKey: ACTIVE_GAME_VISIBLE_ROUTE_KEY,
+  })).toBe(true);
 
   // Arm the failures only after the game is fully mounted. Supplying GET
   // failures to mockApi up front lets an eager post-create reconciliation

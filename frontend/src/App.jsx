@@ -58,7 +58,7 @@ import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun
 import { loadActiveGameChat } from './gameChat.js';
 import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
 import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';
-import { stageActiveSessionSnapshot, useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
+import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
 import { LEARNING_STORAGE_KEY, hasRecoverableCombatState, useActiveSessionRestore } from './useActiveSessionRestore.js';
@@ -357,7 +357,7 @@ function AppInner({ isAdminUser }) {
         setActiveSeries(null);
       }
 
-      stageActiveSessionSnapshot(setGameSaveState, setGame, created);
+      setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
       return true;
@@ -525,7 +525,7 @@ function AppInner({ isAdminUser }) {
       setActiveSeries(updatedSeries);
       setLearningMode(false);
       setActiveTimeControl(timeControlById(updatedSeries.timeControlId));
-      stageActiveSessionSnapshot(setGameSaveState, setGame, created);
+      setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
@@ -580,7 +580,7 @@ function AppInner({ isAdminUser }) {
       setGameContext(nextContext);
       setLearningMode(true);
       setActiveTimeControl(null);
-      stageActiveSessionSnapshot(setGameSaveState, setGame, created);
+      setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
@@ -618,7 +618,7 @@ function AppInner({ isAdminUser }) {
       setGameContext({ runMode: run.mode });
       setLearningMode(false);
       setActiveTimeControl(timeControlById('5+0'));
-      stageActiveSessionSnapshot(setGameSaveState, setGame, created);
+      setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
@@ -652,7 +652,7 @@ function AppInner({ isAdminUser }) {
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
-      stageActiveSessionSnapshot(setGameSaveState, setTournamentGame, created);
+      setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
       if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));

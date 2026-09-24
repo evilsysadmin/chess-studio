@@ -2,11 +2,6 @@ import { useEffect } from 'react';
 import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { SAVE_STATUS } from './saveStatus.js';
 
-export function stageActiveSessionSnapshot(setPersistenceState, setCurrentGame, game) {
-  setPersistenceState(SAVE_STATUS.SAVING);
-  setCurrentGame(game);
-}
-
 export function activeSessionPersistenceDescriptor({
   view,
   game,
