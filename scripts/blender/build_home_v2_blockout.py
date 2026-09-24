@@ -3023,30 +3023,37 @@ def add_side_furnishings(materials):
         materials["brass_dark"],
     )
 
-    # Plant and ceramic pot mark the stair edge in the master.
-    cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
-    cylinder("HOME_PROP_plant_pot_rim", (5.10, 1.70, 0.775), 0.38, 0.085, ceramic, vertices=28)
-    cylinder("HOME_PROP_plant_pot_soil", (5.10, 1.70, 0.818), 0.295, 0.018, materials["dark"], vertices=28)
-    cylinder("HOME_PROP_plant_pot_foot", (5.10, 1.70, 0.275), 0.29, 0.055, materials["ceramic"], vertices=28)
+    # The potted cactus used to stand behind the right chair and the stair newel, where the
+    # camera never saw it. It now sits on the moonlit window sill, against the night glass.
+    k = 0.62
+    px0, py0, pz0 = 7.50, 6.20, 1.95  # sill top
+
+    def at(x, y, z):
+        return (px0 + (x - 5.10) * k, py0 + (y - 1.70) * k, pz0 + (z - 0.2475) * k)
+
+    cylinder("HOME_PROP_plant_pot", at(5.10, 1.70, 0.52), 0.34 * k, 0.48 * k, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_rim", at(5.10, 1.70, 0.775), 0.38 * k, 0.085 * k, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_soil", at(5.10, 1.70, 0.818), 0.295 * k, 0.018 * k, materials["dark"], vertices=28)
+    cylinder("HOME_PROP_plant_pot_foot", at(5.10, 1.70, 0.275), 0.29 * k, 0.055 * k, materials["ceramic"], vertices=28)
     for idx, (dx, dy) in enumerate(((-0.25, 0.05), (0.22, 0.02), (-0.12, 0.18), (0.10, -0.10), (0.30, 0.15))):
         curve_tube(
             f"HOME_PROP_plant_leaf_{idx}",
-            [(5.10, 1.70, 0.76), (5.10 + dx * 0.55, 1.70 + dy, 1.13), (5.10 + dx, 1.70 + dy * 1.7, 1.46)],
-            0.040,
+            [at(5.10, 1.70, 0.76), at(5.10 + dx * 0.55, 1.70 + dy, 1.13), at(5.10 + dx, 1.70 + dy * 1.7, 1.46)],
+            0.040 * k,
             plant,
         )
         blade = sphere(
             f"HOME_PROP_plant_leaf_blade_{idx}",
-            (5.10 + dx * 0.78, 1.70 + dy * 1.30, 1.31),
-            (0.105, 0.038, 0.265),
+            at(5.10 + dx * 0.78, 1.70 + dy * 1.30, 1.31),
+            (0.105 * k, 0.038 * k, 0.265 * k),
             plant,
         )
         blade.rotation_euler[0] = math.radians(dy * 55.0)
         blade.rotation_euler[1] = math.radians(-dx * 85.0)
     center_leaf = sphere(
         "HOME_PROP_plant_leaf_blade_center",
-        (5.10, 1.70, 1.28),
-        (0.095, 0.035, 0.30),
+        at(5.10, 1.70, 1.28),
+        (0.095 * k, 0.035 * k, 0.30 * k),
         plant,
     )
     center_leaf.rotation_euler[1] = math.radians(4.0)
