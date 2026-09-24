@@ -26,6 +26,7 @@ import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from 
 import { recordGameActivity } from './gameActivity.js';
 import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
+import { buildGameSessionDescriptor } from './gameSessionDescriptor.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
@@ -196,6 +197,8 @@ function AppInner({ isAdminUser }) {
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
   useProfileSyncLifecycle(view);
+  const standardGameSession = buildGameSessionDescriptor({ kind: 'standard', learningMode, gameContext, timeControl: activeTimeControl, seriesState: activeSeries, activeContract, runState: specialRun && gameContext.runMode ? specialRun : null, postGameFeedbackEnabled: featureFlags.postGameFeedback });
+  const tournamentGameSession = buildGameSessionDescriptor({ kind: 'tournament', tournamentLevel: levelForPoints(tournament.progressPoints || 0), points: tournament.points, postGameFeedbackEnabled: featureFlags.postGameFeedback });
 
   useEffect(() => {
     let active = true;
@@ -949,22 +952,16 @@ function AppInner({ isAdminUser }) {
             onPersistenceState={setGameSaveState}
             onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
+            session={standardGameSession}
             resultSummary={casualResult?.gameId === game.id ? casualResult : null}
-            abandonRatingPreview={!learningMode && !gameContext.lab && !gameContext.rescue && !gameContext.suddenDeath ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
+            abandonRatingPreview={standardGameSession.ratingPreviewEnabled ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
             onChatUpdate={handleGameChatUpdate}
-            hintMode={learningMode ? 'free' : 'off'}
-            timeControl={activeTimeControl}
-            seriesState={activeSeries}
             onNextSeriesGame={handleNextSeriesGame}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
-            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : learningMode ? 'practice' : 'casual', meta?.outcome)}
-            activeContract={activeContract}
-            runState={specialRun && gameContext.runMode ? specialRun : null}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, standardGameSession.shareMode, standardGameSession.seriesState))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, standardGameSession.shareMode, standardGameSession.seriesState), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, standardGameSession.crimeMode, meta?.outcome)}
             onNextRunGame={() => handleContinueRun(specialRun)}
-            memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
-            postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
 
@@ -1085,18 +1082,15 @@ function AppInner({ isAdminUser }) {
             onExit={handleExitTournamentGame}
             onError={setError}
             onPersistenceState={setGameSaveState}
+            session={tournamentGameSession}
             onGameEnd={handleTournamentGameEnd}
-            abandonRatingPreview={(() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })()}
+            abandonRatingPreview={tournamentGameSession.ratingPreviewEnabled ? (() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
             onChatUpdate={handleGameChatUpdate}
-            hintMode="paid"
-            tournamentLevel={levelForPoints(tournament.progressPoints || 0)}
-            points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
-            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
-            postGameFeedbackEnabled={featureFlags.postGameFeedback}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, tournamentGameSession.shareMode, tournamentGameSession.seriesState))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, tournamentGameSession.shareMode, tournamentGameSession.seriesState), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, tournamentGameSession.crimeMode, meta?.outcome)}
           />
         )}
 

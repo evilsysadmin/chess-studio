@@ -60,32 +60,25 @@ function isSeriousHumanIncident(comment) { return !!comment?.event?.type && HUMA
 export default function GameScreen({
   game,
   setGame,
+  session = null,
   onExit,
   onError,
   onGameEnd,
   resultSummary = null,
   abandonRatingPreview = null,
-  hintMode = 'off',
-  tournamentLevel = 1,
-  points = 0,
   onSpendPoints,
   onCapturePoints,
   onOpenCrimeScene,
   onShareResult,
   onShareIncident,
-  seriesState = null,
   onNextSeriesGame,
-  timeControl = null, // { initial, increment } en segundos, o null/sin reloj
-  activeContract = null,
-  runState = null,
   onNextRunGame,
-  memoryContext = {},
   onTrainPersonal,
   onChatUpdate,
   onPersistenceState,
   onCustomize,
-  postGameFeedbackEnabled = true,
 }) {
+  const { hintMode = 'off', tournamentLevel = 1, points = 0, seriesState = null, timeControl = null, activeContract = null, runState = null, memoryContext = {}, postGameFeedbackEnabled = true } = session || {};
   const humanColor = game.humanColor || 'w';
   const rivalryRecord = useMemo(() => loadRivalry().record || {}, [game.id, game.status]);
   const [selected, setSelected] = useState(null);
