@@ -1,9 +1,7 @@
-"""auth.py — Hasheo de contraseñas (bcrypt) y tokens de sesión (JWT).
+"""auth.py — Password hashing and signed JWT helpers.
 
-Las sesiones siguen siendo JWT firmados y transportados por el navegador, pero
-cada token incluye una versión de sesión. El backend compara esa versión con la
-cuenta para poder revocar credenciales antiguas tras cambiar la contraseña sin
-mantener una tabla de sesiones por dispositivo.
+New password hashes use Argon2id. Existing bcrypt hashes remain verifiable so
+legacy accounts keep working until their password is changed or reset.
 """
 
 import hashlib
@@ -14,34 +12,30 @@ from typing import Optional
 
 import bcrypt
 import jwt
+from argon2 import PasswordHasher, Type
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
-# En desarrollo local, sin configurar nada, usa una clave fija — no es un
-# problema de seguridad real para correr esto en tu propia máquina, pero
-# para un despliegue real hace falta configurar JWT_SECRET en el entorno
-# (si no, cualquiera que lea el código fuente podría firmar tokens él mismo).
 _DEV_JWT_SECRET = "dev-secret-cambiar-en-produccion"
 JWT_SECRET = os.environ.get("JWT_SECRET", _DEV_JWT_SECRET)
 JWT_ALGORITHM = "HS256"
-TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
+TOKEN_EXPIRY_DAYS = 30
 PASSWORD_RESET_MINUTES = 30
 
-# La request autenticada y la carga de la cuenta comparten estas dos piezas de
-# contexto sin globals mutables por usuario. ContextVar queda aislado por task
-# ASGI, así que dos requests concurrentes no pueden pisarse la versión.
 _session_version_claim: ContextVar[int | None] = ContextVar("session_version_claim", default=None)
 _account_session_version: ContextVar[int | None] = ContextVar("account_session_version", default=None)
 
-# Coste bcrypt de producción. Los tests lo bajan temporalmente a 4 mediante
-# monkeypatch para conservar hashing real sin pagar el coste CPU de 12 rounds
-# en cada alta/login de la suite.
-try:
-    BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
-except ValueError:
-    BCRYPT_ROUNDS = 12
-BCRYPT_ROUNDS = max(4, min(BCRYPT_ROUNDS, 16))
+# OWASP's resource-conscious Argon2id baseline: 19 MiB, t=2, p=1.
+# Parameters stay explicit so security-cost changes are deliberate/reviewable.
+_ARGON2 = PasswordHasher(
+    time_cost=2,
+    memory_cost=19_456,
+    parallelism=1,
+    hash_len=32,
+    salt_len=16,
+    type=Type.ID,
+)
+_BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 
-# Fallar cerrado en Internet. Es preferible que Render marque el deploy como
-# fallido a arrancar con una clave conocida por cualquiera que vea el repo.
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 _DEPLOYED_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
 if _ENVIRONMENT in _DEPLOYED_ENVIRONMENTS and (
@@ -51,19 +45,37 @@ if _ENVIRONMENT in _DEPLOYED_ENVIRONMENTS and (
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode("utf-8")
+    """Hash newly-created or changed passwords with Argon2id."""
+    return _ARGON2.hash(password)
+
+
+def is_legacy_bcrypt_hash(password_hash: str) -> bool:
+    return isinstance(password_hash, str) and password_hash.startswith(_BCRYPT_PREFIXES)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
-    except ValueError:
-        return False  # hash corrupto/con formato inválido — no revienta, solo no valida
+    """Verify Argon2id hashes while preserving read compatibility with bcrypt."""
+    if not isinstance(password_hash, str) or not password_hash:
+        return False
+
+    if password_hash.startswith("$argon2"):
+        try:
+            return bool(_ARGON2.verify(password_hash, password))
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            return False
+
+    if is_legacy_bcrypt_hash(password_hash):
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        except (ValueError, TypeError):
+            return False
+
+    return False
 
 
 def _normalized_session_version(value) -> int | None:
     if value is None:
-        return 0  # rollout compatible: JWT legacy sin `sv` pertenece a versión 0
+        return 0
     if isinstance(value, bool):
         return None
     try:
@@ -74,13 +86,11 @@ def _normalized_session_version(value) -> int | None:
 
 
 def remember_account_session_version(value) -> None:
-    """Anota la versión autoritativa cargada por users_store para esta task."""
     version = _normalized_session_version(value)
     _account_session_version.set(version)
 
 
 def current_session_version_claim() -> int | None:
-    """Versión declarada por el JWT que se está autenticando, si existe."""
     return _session_version_claim.get()
 
 
@@ -100,12 +110,6 @@ def create_token(username: str, session_version: int | None = None) -> str:
 
 
 def verify_session_token(token: str) -> Optional[tuple[str, int]]:
-    """Devuelve ``(username, session_version)`` para un JWT de sesión válido.
-
-    Los tokens legacy sin ``purpose``/``sv`` siguen siendo versión 0 durante el
-    rollout. En cuanto la cuenta avance de versión por un cambio de contraseña,
-    esos tokens dejan de coincidir y quedan revocados.
-    """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("purpose") not in (None, "session"):
@@ -121,7 +125,6 @@ def verify_session_token(token: str) -> Optional[tuple[str, int]]:
 
 
 def verify_token(token: str) -> Optional[str]:
-    """Compatibilidad para logging/rate-limit: devuelve sólo el username."""
     verified = verify_session_token(token)
     return verified[0] if verified else None
 
