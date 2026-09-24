@@ -46,8 +46,8 @@ describe('Escuela de Matthias', () => {
     });
     expect(MATTHIAS_SCHOOL_REFERENCES['capablanca-fundamentals']).toMatchObject({ kind: 'public-domain' });
     expect(MATTHIAS_SCHOOL_REFERENCES['lasker-strategy']).toMatchObject({ kind: 'public-domain' });
-    expect(schoolLessonsForCourse('strategy')).toHaveLength(6);
-    expect(schoolLessonsForCourse('endgames')).toHaveLength(11);
+    expect(schoolLessonsForCourse('strategy')).toHaveLength(9);
+    expect(schoolLessonsForCourse('endgames')).toHaveLength(14);
   });
 
   it('incluye técnica teórica de finales y una Lucena completa, no sólo movimientos sueltos', () => {
