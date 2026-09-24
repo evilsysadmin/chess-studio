@@ -74,6 +74,7 @@ export default function Tutorial({ onExit }) {
   const [curriculumOpen, setCurriculumOpen] = useState(false);
   const [freeStudy, setFreeStudy] = useState(false);
   const [boardFocusMode, setBoardFocusMode] = useState(false);
+  const [boardFocusRailCollapsed, setBoardFocusRailCollapsed] = useState(false);
   const [boardAnimation, setBoardAnimation] = useState(null);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [masteryReplay, setMasteryReplay] = useState('idle');
@@ -126,10 +127,21 @@ export default function Tutorial({ onExit }) {
     cancelPlayback,
   });
 
+  function exitBoardFocusMode() {
+    setBoardFocusMode(false);
+    setBoardFocusRailCollapsed(false);
+  }
+
+  function enterBoardFocusMode() {
+    setCurriculumOpen(false);
+    setBoardFocusRailCollapsed(false);
+    setBoardFocusMode(true);
+  }
+
   useEscapeToClose(explanation.open
     ? explanation.close
     : boardFocusMode
-      ? () => setBoardFocusMode(false)
+      ? exitBoardFocusMode
       : section === 'school' ? onExit : () => setSection('school'));
 
   function goTo(newIndex, { freeAccess = freeStudy, closeCurriculum = true } = {}) {
@@ -385,6 +397,7 @@ export default function Tutorial({ onExit }) {
       data-school-curriculum={curriculumOpen ? 'open' : 'closed'}
       data-school-study-mode={freeStudy ? 'free' : 'guided'}
       data-school-focus={boardFocusMode ? 'board' : 'normal'}
+      data-school-focus-rail={boardFocusRailCollapsed ? 'collapsed' : 'visible'}
     >
       <div className="matthias-school-toolbar">
         <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
@@ -458,7 +471,17 @@ export default function Tutorial({ onExit }) {
                 <strong>{explanation.open ? `Por qué funciona · ${explanation.label}` : lesson.objective}</strong>
                 <em>{explanation.open ? `${explanation.step}/${explanation.demo.finalIndex}` : `${runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/${totalHumanMoves}`}</em>
               </div>
-              <button type="button" className="secondary-btn" onClick={() => setBoardFocusMode(false)}>Salir del modo tablero</button>
+              <div className="matthias-school-focus-mode-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  aria-pressed={boardFocusRailCollapsed}
+                  onClick={() => setBoardFocusRailCollapsed((collapsed) => !collapsed)}
+                >
+                  {boardFocusRailCollapsed ? 'Mostrar Matthias' : 'Solo tablero'}
+                </button>
+                <button type="button" className="secondary-btn" onClick={exitBoardFocusMode}>Salir de pantalla completa</button>
+              </div>
             </div>
           )}
           <div className="matthias-school-focusbar">
@@ -607,9 +630,9 @@ export default function Tutorial({ onExit }) {
                         <button
                           type="button"
                           className="secondary-btn matthias-school-expand-board"
-                          onClick={() => { setCurriculumOpen(false); setBoardFocusMode(true); }}
+                          onClick={enterBoardFocusMode}
                         >
-                          Expandir tablero
+                          <span aria-hidden="true">⛶</span> Pantalla completa
                         </button>
                       )}
                     </>

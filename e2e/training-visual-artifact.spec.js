@@ -98,9 +98,15 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await settle(page);
   await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
 
-  await shell.getByRole('button', { name: 'Expandir tablero', exact: true }).click();
+  await shell.getByRole('button', { name: 'Pantalla completa', exact: true }).click();
   await expect(shell).toHaveAttribute('data-school-focus', 'board');
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
   await capture(page, 'school-board-mode');
+  await shell.getByRole('button', { name: 'Solo tablero', exact: true }).click();
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'collapsed');
+  await capture(page, 'school-board-solo');
+  await shell.getByRole('button', { name: 'Mostrar Matthias', exact: true }).click();
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
   await captureAt(page, 'school-board-mode', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.keyboard.press('Escape');
