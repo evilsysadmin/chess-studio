@@ -9,6 +9,8 @@ import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
 import useSchoolExplanationDemo from './useSchoolExplanationDemo.js';
 import { SchoolExplanationActions, SchoolExplanationStatus } from './SchoolExplanationView.jsx';
+import SchoolTopicExplorer from './SchoolTopicExplorer.jsx';
+import './SchoolTopicExplorer.css';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
@@ -443,14 +445,25 @@ export default function Tutorial({ onExit }) {
           </div>
 
           {curriculumOpen && (
-            <div className="matthias-school-study-mode" role="group" aria-label="Modo de estudio">
-              <div>
-                <span>Acceso</span>
-                <button type="button" className={!freeStudy ? 'active' : ''} aria-pressed={!freeStudy} onClick={() => setStudyMode(false)}>Ruta guiada</button>
-                <button type="button" className={freeStudy ? 'active' : ''} aria-pressed={freeStudy} onClick={() => setStudyMode(true)}>Estudio libre</button>
+            <>
+              <div className="matthias-school-study-mode" role="group" aria-label="Modo de estudio">
+                <div>
+                  <span>Acceso</span>
+                  <button type="button" className={!freeStudy ? 'active' : ''} aria-pressed={!freeStudy} onClick={() => setStudyMode(false)}>Ruta guiada</button>
+                  <button type="button" className={freeStudy ? 'active' : ''} aria-pressed={freeStudy} onClick={() => setStudyMode(true)}>Estudio libre</button>
+                </div>
+                <small>{freeStudy ? 'Entra directamente en cualquier curso. Tu progreso se guarda sin saltarse los requisitos de la ruta guiada.' : 'Matthias abre cada curso cuando apruebas el anterior.'}</small>
               </div>
-              <small>{freeStudy ? 'Entra directamente en cualquier curso. Tu progreso se guarda sin saltarse los requisitos de la ruta guiada.' : 'Matthias abre cada curso cuando apruebas el anterior.'}</small>
-            </div>
+              <SchoolTopicExplorer
+                progress={schoolProgress}
+                freeStudy={freeStudy}
+                currentLessonId={lesson.id}
+                onOpenLesson={(lessonId) => {
+                  const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === lessonId);
+                  if (lessonIndex >= 0) goTo(lessonIndex);
+                }}
+              />
+            </>
           )}
 
           <div id="matthias-school-curriculum" className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
