@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -103,19 +104,34 @@ def convert_curves_to_meshes() -> int:
     return converted
 
 
-def consolidate_static_architecture() -> tuple[int, int]:
-    """Batch HOME_ARCH meshes by material for browser draw-call efficiency.
+# Props the runtime drives by node name (see homeBlenderFireKind / the moon in
+# HomeBlenderScene3D.jsx): fire, candle flames, coffee steam and the moon must keep
+# their own node, mesh and pivot. Everything else is static set dressing.
+ANIMATED_PROP_NAME = re.compile(r"(flame|tongue|front_base|ember|_hot|steam|moon)", re.IGNORECASE)
 
-    Runtime Home interaction is owned by DOM/UI overlays, while animated fire
-    and authored props retain their individual HOME_PROP names. Only static
-    architecture is eligible for consolidation.
+
+def _is_static_batchable(name: str) -> bool:
+    if name.startswith("HOME_ARCH_"):
+        return True
+    return name.startswith("HOME_PROP_") and not ANIMATED_PROP_NAME.search(name)
+
+
+def consolidate_static_architecture() -> tuple[int, int, int, int]:
+    """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
+
+    The scene ships ~2000 individual props (books, chairs, armour, board...). Each
+    one is a draw call, which is what made the Home slow to become ready on
+    software-rendered browsers. Runtime interaction is owned by DOM/UI overlays and
+    only the animated nodes (ANIMATED_PROP_NAME) are looked up by name, so static
+    meshes are merged per material and the animated ones are left untouched.
     """
     candidates = [
         obj for obj in bpy.context.scene.objects
-        if obj.type == "MESH" and obj.name.startswith("HOME_ARCH_")
+        if obj.type == "MESH" and _is_static_batchable(obj.name)
     ]
-    original_count = len(candidates)
-    groups: dict[tuple[str, ...], list] = {}
+    arch_before = sum(1 for obj in candidates if obj.name.startswith("HOME_ARCH_"))
+    prop_before = len(candidates) - arch_before
+    groups: dict[tuple[str, tuple[str, ...]], list] = {}
 
     for obj in candidates:
         # Joining would otherwise discard non-active modifiers. Converting a
@@ -126,10 +142,11 @@ def consolidate_static_architecture() -> tuple[int, int]:
         if obj.modifiers:
             bpy.ops.object.convert(target="MESH")
         signature = tuple(mat.name if mat else "" for mat in obj.data.materials)
-        groups.setdefault(signature, []).append(obj)
+        kind = "ARCH" if obj.name.startswith("HOME_ARCH_") else "PROP"
+        groups.setdefault((kind, signature), []).append(obj)
 
     batch_index = 0
-    for signature, group in groups.items():
+    for (kind, signature), group in groups.items():
         live = [obj for obj in group if obj.name in bpy.context.scene.objects]
         if len(live) < 2:
             continue
@@ -140,14 +157,18 @@ def consolidate_static_architecture() -> tuple[int, int]:
         bpy.context.view_layer.objects.active = active
         bpy.ops.object.join()
         material_label = signature[0].replace("HOME_MAT_", "").lower() if signature else "mixed"
-        active.name = f"HOME_ARCH_BATCH_{batch_index}_{material_label}"
+        active.name = f"HOME_{kind}_BATCH_{batch_index}_{material_label}"
         batch_index += 1
 
-    remaining = sum(
+    arch_after = sum(
         1 for obj in bpy.context.scene.objects
         if obj.type == "MESH" and obj.name.startswith("HOME_ARCH_")
     )
-    return original_count, remaining
+    prop_after = sum(
+        1 for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and obj.name.startswith("HOME_PROP_")
+    )
+    return arch_before, arch_after, prop_before, prop_after
 
 
 def select_runtime_geometry() -> int:
@@ -214,7 +235,7 @@ def main() -> None:
 
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
-    architecture_meshes_before, architecture_meshes_after = consolidate_static_architecture()
+    architecture_meshes_before, architecture_meshes_after, prop_meshes_before, prop_meshes_after = consolidate_static_architecture()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
         raise SystemExit(f"Refusing suspicious Home runtime export with only {mesh_count} meshes")
@@ -260,6 +281,8 @@ def main() -> None:
         "converted_curves": converted_curves,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
+        "static_prop_meshes_before": prop_meshes_before,
+        "prop_meshes_after": prop_meshes_after,
         "materials": len(bpy.data.materials),
         "bytes": glb_path.stat().st_size,
         "meshopt": meshopt,

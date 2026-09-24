@@ -90,6 +90,7 @@ function stableFirePhase(name = '') {
 
 export function homeBlenderFireKind(name = '') {
   const normalized = String(name).toLowerCase();
+  if (normalized.includes('home_prop_table_mug_steam')) return 'steam';
   if (
     normalized.includes('home_prop_chandelier_flame_')
     || normalized.includes('_mantel_flame_')
@@ -174,6 +175,27 @@ export function homeBlenderFireMotion({
     lean: fireNoise(seconds, 3.4, seed + 503) * (hot ? 0.030 : 0.045) + gust * (hot ? 0.020 : 0.035),
     emission: 0.95 + flick * 0.05 + body * 0.035,
     light: 0.95 + body * 0.05 + flick * 0.03 + drift * 0.02,
+  };
+}
+
+// Coffee steam: each wisp loops (fade in, rise, swell, sway, fade out) on its own
+// phase so the cup never pulses in unison. `height` is the wisp's own height, so
+// the motion scales with whatever size the GLB ships.
+export function homeBlenderSteamMotion({ timeMs = 0, phase = 0, height = 0.4 } = {}) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const offset = ((Number(phase) || 0) / (Math.PI * 2)) % 1;
+  const period = 4.2 + offset * 1.6;
+  const progress = ((seconds / period) + offset + 1) % 1;
+  const envelope = Math.sin(Math.PI * progress) ** 1.25;
+  return {
+    progress,
+    opacity: 0.30 * envelope,
+    rise: progress * height * 0.55,
+    swayX: Math.sin((seconds * 1.15) + (Number(phase) || 0)) * height * 0.055 * (0.4 + progress),
+    swayZ: Math.cos((seconds * 0.9) + (Number(phase) || 0) * 1.7) * height * 0.035,
+    // The authored wisp is a thin tube; it swells into a soft plume as it rises.
+    scaleXZ: 1.8 + progress * 3.2,
+    scaleY: 0.85 + progress * 0.30,
   };
 }
 
@@ -334,7 +356,7 @@ function prepareRuntimeFireRig(root) {
     const kind = homeBlenderFireKind(object.name);
     if (!kind) return;
     object.castShadow = false;
-    if (kind === 'flame' || kind === 'hot') rebaseFlameToPivot(object);
+    if (kind === 'flame' || kind === 'hot' || kind === 'steam') rebaseFlameToPivot(object);
 
     if (Array.isArray(object.material)) {
       object.material = object.material.map((material) => material?.clone?.() || material);
@@ -343,6 +365,13 @@ function prepareRuntimeFireRig(root) {
     }
 
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
+      if (kind === 'steam') {
+        material.transparent = true;
+        material.depthWrite = false;
+        material.opacity = 0;
+        material.needsUpdate = true;
+        continue;
+      }
       if (kind !== 'ember') applyFlameLook(material, kind);
       if (kind !== 'ember') applyFlameGradient(material, flameHeightRange(object.geometry));
     }
@@ -355,9 +384,13 @@ function prepareRuntimeFireRig(root) {
       }));
 
     const lowered = object.name.toLowerCase();
+    object.geometry?.computeBoundingBox?.();
+    const wispBox = object.geometry?.boundingBox;
     nodes.push({
       object,
       kind,
+      basePosition: object.position.clone(),
+      height: wispBox ? Math.max(0.05, wispBox.max.y - wispBox.min.y) : 0.4,
       hearth: lowered.includes('fireplace_left') ? 'left' : lowered.includes('fireplace_right') ? 'right' : null,
       phase: stableFirePhase(object.name),
       baseScale: object.scale.clone(),
@@ -371,6 +404,21 @@ function prepareRuntimeFireRig(root) {
 function applyRuntimeFireMotion(nodes, timeMs) {
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
+    if (node.kind === 'steam') {
+      const steam = homeBlenderSteamMotion({ timeMs, phase: node.phase, height: node.height });
+      node.object.position.set(
+        node.basePosition.x + steam.swayX,
+        node.basePosition.y + steam.rise,
+        node.basePosition.z + steam.swayZ,
+      );
+      node.object.scale.set(
+        node.baseScale.x * steam.scaleXZ,
+        node.baseScale.y * steam.scaleY,
+        node.baseScale.z * steam.scaleXZ,
+      );
+      for (const { material } of node.materials) material.opacity = steam.opacity;
+      continue;
+    }
     const motion = homeBlenderFireMotion({
       timeMs,
       phase: node.phase,
