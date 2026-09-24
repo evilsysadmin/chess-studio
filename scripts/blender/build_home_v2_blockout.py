@@ -1381,8 +1381,9 @@ def add_rug_knight_tapestry(materials):
     outline = materials["stone_dark"]
     smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
     depth_start, depth_span = -2.06, 1.06  # y of the base line and depth of the drawing
-    sx, sy = 2.55, depth_span / 0.76
-    for tag, cx, facing in (("left", -1.62, -1.0), ("right", 1.62, 1.0)):
+    # Moderate stretch: at 2.5x the pair read as two reclining seals, not knights.
+    sx, sy = 1.45, depth_span / 0.76
+    for tag, cx, facing in (("left", -1.35, -1.0), ("right", 1.35, 1.0)):
         def world(u, v, grow=1.0):
             return (cx + facing * u * sx * grow, depth_start + (v - 0.12) * sy * grow - (grow - 1.0) * 0.30)
         floor_panel(f"HOME_PROP_rug_knight_{tag}_outline", [world(u, v, 1.09) for u, v in smooth], 0.060, 0.010, outline)
