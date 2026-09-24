@@ -38,12 +38,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "IPs únicas · tráfico legítimo por país"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "Tráfico legítimo por país · hits"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"', 'status=~"2..|3.."', 'username != ""', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'route!~"/api/(ready|health|release|internal/.*)"'):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry", "auth_ip_ban_activated", "client_ip", 'status=~"401|403"', 'status=~"2..|3.."', 'username != ""', "client_country", "sum by (client_country) (count_over_time", 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []
@@ -77,7 +77,7 @@ def main() -> int:
     if 'staging OCI stdout :' in logs_raw:
         fail("logs dashboard no debe usar stdout OCI como fuente canónica")
     logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
-    for required_logs_title in ("Biggest offenders · 401/403", "IPs únicas · tráfico legítimo por país"):
+    for required_logs_title in ("Biggest offenders · 401/403", "Tráfico legítimo por país · hits"):
         if required_logs_title not in logs_titles:
             fail(f"logs dashboard perdió panel: {required_logs_title}")
     logs_exprs = "\n".join(
@@ -85,7 +85,7 @@ def main() -> int:
         for panel in (logs_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
-    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', 'username != ""', "client_country", "count by (client_country) (sum by (client_country, client_ip)", 'username!~"ci_smoke_[0-9a-f]{16}"', 'route!~"/api/(ready|health|release|internal/.*)"'):
+    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', 'username != ""', "client_country", "sum by (client_country) (count_over_time", 'username!~"ci_smoke_[0-9a-f]{16}"', 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in logs_exprs:
             fail(f"logs dashboard perdió señal accionable: {token}")
 
@@ -247,7 +247,7 @@ def main() -> int:
         if forbidden_security_expr in security_exprs:
             fail(f"dashboard Security usa telemetría engañosa/legacy: {forbidden_security_expr}")
     for dashboard_data, title in (
-        (logs_data, "IPs únicas · tráfico legítimo por país"),
+        (logs_data, "Tráfico legítimo por país · hits"),
         (security_data, "IPs ofensivas únicas · por país"),
     ):
         panel = next((row for row in (dashboard_data.get("panels") or []) if row.get("title") == title), None)
@@ -258,6 +258,11 @@ def main() -> int:
         options = panel.get("options") or {}
         if options.get("orientation") != "horizontal" or options.get("showUnfilled") is not False:
             fail(f"panel geográfico perdió presentación compacta horizontal: {title}")
+        if title == "Tráfico legítimo por país · hits":
+            if options.get("namePlacement") != "left" or options.get("valueMode") != "text":
+                fail("panel de tráfico legítimo debe mostrar país a la izquierda y hits visibles")
+            if options.get("sizing") != "manual" or options.get("maxVizHeight") != 32:
+                fail("panel de tráfico legítimo debe mantener filas compactas aunque haya un solo país")
         defaults = (panel.get("fieldConfig") or {}).get("defaults") or {}
         if (defaults.get("color") or {}).get("mode") != "palette-classic":
             fail(f"panel geográfico perdió paleta por país: {title}")

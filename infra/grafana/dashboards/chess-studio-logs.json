@@ -631,9 +631,9 @@
     },
     {
       "id": 18,
-      "title": "IPs únicas · tráfico legítimo por país",
+      "title": "Tráfico legítimo por país · hits",
       "type": "bargauge",
-      "description": "Ranking de IPs cliente distintas con tráfico autenticado 2xx/3xx, agrupadas por país. Una IP no equivale necesariamente a una persona; se excluyen CI, smokes y probes.",
+      "description": "Ranking de requests autenticadas 2xx/3xx por país. Muestra el código ISO a la izquierda y el número de hits a la derecha; se excluyen CI, smokes y probes.",
       "datasource": {
         "type": "loki",
         "uid": "${logs_datasource_uid}"
@@ -650,7 +650,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(12, count by (client_country) (sum by (client_country, client_ip) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"2..|3..\" | username != \"\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | client_country != \"\" | client_ip != \"\" [$__range]))))",
+          "expr": "topk(12, sum by (client_country) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"2..|3..\" | username != \"\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | client_country != \"\" | client_ip != \"\" [$__range])))",
           "legendFormat": "{{client_country}}",
           "refId": "A",
           "queryType": "instant"
@@ -668,9 +668,21 @@
         "overrides": []
       },
       "options": {
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "orientation": "horizontal",
-        "showUnfilled": false
+        "showUnfilled": false,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "manual",
+        "minVizHeight": 28,
+        "maxVizHeight": 32,
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
       }
     }
   ],
