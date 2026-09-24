@@ -2,9 +2,11 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeScene3D from './HomeScene3D.jsx';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
+import HomeDungeonPanel from './HomeDungeonPanel.jsx';
+import { buildDungeonMenu } from '../homeDungeonMenu.js';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
-import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
+import { currentDailyStreak, dailyChallengeBrief, dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
@@ -108,6 +110,19 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     requestLabLaunch('pawnslug');
     experimentsAction();
   };
+  // Read the daily-challenge state only while Mazmorras is open, so "Hoy te toca" is fresh.
+  const dungeonMenu = useMemo(() => {
+    if (!toolsOpen) return null;
+    return buildDungeonMenu({
+      tools,
+      extras: experimentsAction ? [['Pawn Slug', openPawnSlug]] : [],
+      dailyBrief: dailyChallengeBrief(currentDailyStreak(new Date())),
+      matthiasAction: matthiasModel?.action || null,
+      onDaily,
+    });
+    // openPawnSlug only closes over experimentsAction, already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolsOpen, tools, experimentsAction, matthiasModel?.action, onDaily]);
 
   const activateSceneDestination = (destination) => {
     if (loading) return;
@@ -417,10 +432,9 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             <span className="illustrated-home__dungeon-copy"><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></span>
             <span className="illustrated-home__dungeon-chevron" aria-hidden="true">{toolsOpen ? '↑' : '↓'}</span>
           </button>
-          {toolsOpen && <nav id="illustrated-home-tools" className="illustrated-home__dungeon-panel" aria-label="Más modos y herramientas">
+          {toolsOpen && dungeonMenu && <nav id="illustrated-home-tools" className="illustrated-home__dungeon-panel is-grouped" aria-label="Más modos y herramientas">
             <header><span>BAJO EL CASTILLO</span><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></header>
-            {tools.map(([label, action]) => <button type="button" key={label} aria-label={label} onClick={() => { setToolsOpen(false); action(); }}>{label}</button>)}
-            {experimentsAction && <button type="button" aria-label="Abrir Pawn Slug directamente" onClick={() => { setToolsOpen(false); openPawnSlug(); }}>Pawn Slug</button>}
+            <HomeDungeonPanel menu={dungeonMenu} disabled={loading} onRun={(action) => { setToolsOpen(false); action(); }} />
           </nav>}
         </div>
       </div>
