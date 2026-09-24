@@ -149,6 +149,10 @@ async function startScenario(page, scenario, requestLog) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(dialog).toBeVisible();
+  const settings = dialog.locator('details.quick-match-settings');
+  if (!(await settings.evaluate((node) => node.open))) {
+    await settings.locator(':scope > summary').click();
+  }
   const twoD = dialog.getByRole('group', { name: 'Tipo de tablero' }).getByRole('button', { name: '2D', exact: true });
   if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();
   await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
