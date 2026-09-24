@@ -955,7 +955,7 @@ function disposeRuntimeScene(root) {
 // dark ones). The squares are left alone: their colours must stay honest.
 export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
   light: Object.freeze({ color: 0x7c5a2c, intensity: 1 }),
-  dark: Object.freeze({ color: 0x2e1c0d, intensity: 1 }),
+  dark: Object.freeze({ color: 0x0e0e12, intensity: 1 }),
 });
 
 export function applyHomeBlenderPieceLift(root) {
