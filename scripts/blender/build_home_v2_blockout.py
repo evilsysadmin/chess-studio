@@ -4224,7 +4224,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # The exterior seen through the glass, built as thin layers just behind the mullions:
     # night sky (the panes), stars and the moon, far hills, a tree line, then a lawn with
     # hedge, path and flowers. The moon used to sit on the wall beside the window.
-    moon_x, moon_y, moon_z = 7.46, 6.575, 4.52
+    moon_x, moon_y, moon_z = 7.46, 6.530, 4.52
     sphere("HOME_PROP_window_moon", (moon_x, moon_y, moon_z), (0.20, 0.022, 0.20), materials["moon"])
     for idx, (dx, dz, rx, rz) in enumerate((
         (-0.065, 0.055, 0.065, 0.046),
@@ -4241,11 +4241,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         sz = 4.55 + _hash01(idx, 1, 2111) * 0.85
         if math.hypot(sx - moon_x, sz - moon_z) < 0.36:
             continue
-        sphere(f"HOME_PROP_window_moon_star_{idx}", (sx, 6.60, sz), (0.011, 0.006, 0.011), materials["moon"])
+        sphere(f"HOME_PROP_window_moon_star_{idx}", (sx, 6.535, sz), (0.011, 0.006, 0.011), materials["moon"])
 
     hill_pts = [(6.95 + 0.29 * k, 2.42 + 0.30 * math.sin(k * 0.9 + 0.6) + 0.10 * math.sin(k * 2.3)) for k in range(7)]
     hill_pts = [(6.95, 1.98)] + hill_pts + [(8.69, hill_pts[-1][1]), (8.69, 1.98)]
-    flat_panel("HOME_PROP_window_garden_hills", hill_pts, 6.56, 0.03, materials["garden_far"], bevel=0.004)
+    flat_panel("HOME_PROP_window_garden_hills", hill_pts, 6.525, 0.02, materials["garden_far"], bevel=0.004)
     for idx, (tx, crown_z, crown_r) in enumerate(((7.08, 2.95, 0.28), (7.48, 3.12, 0.34), (7.86, 2.92, 0.30), (8.30, 2.90, 0.30))):
         cylinder(f"HOME_PROP_window_garden_trunk_{idx}", (tx, 6.53, crown_z - 0.42), 0.030, 0.52, materials["garden_far"], vertices=8)
         sphere(f"HOME_PROP_window_garden_crown_{idx}", (tx, 6.53, crown_z), (crown_r, 0.08, crown_r * 0.92), materials["garden_mid"])
