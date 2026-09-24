@@ -8,7 +8,9 @@ import { FIRE_SPRITE_DEFAULTS, createFireSprites, disposeFireSprites, fireSprite
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
+  tighterRuntimeLodCap,
 } from './HomeCastle3DRenderPolicy.js';
+import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
 
 export const HOME_BLENDER_RUNTIME_LOGICAL_ID = 'home.scene.runtime';
 export const HOME_BLENDER_RUNTIME_MIN_WIDTH = HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH;
@@ -666,19 +668,22 @@ export function homeBlenderRuntimePolicy({
   viewportWidth = 0,
   devicePixelRatio = 1,
   hardwareConcurrency = 4,
+  runtimeLodCap = null,
 } = {}) {
   return homeCastle3DRenderPolicy({
     viewportWidth,
     devicePixelRatio,
     hardwareConcurrency,
+    runtimeLodCap,
   });
 }
 
-function browserPolicy() {
+function browserPolicy(runtimeLodCap = null) {
   if (typeof window === 'undefined') {
-    return homeBlenderRuntimePolicy();
+    return homeBlenderRuntimePolicy({ runtimeLodCap });
   }
   return homeBlenderRuntimePolicy({
+    runtimeLodCap,
     viewportWidth: window.innerWidth,
     devicePixelRatio: window.devicePixelRatio || 1,
     hardwareConcurrency: typeof navigator !== 'undefined'
@@ -1026,6 +1031,11 @@ export default function HomeBlenderScene3D({
   useEffect(() => {
     const canvas = canvasRef.current;
     const initialPolicy = browserPolicy();
+    // Same governor and cap as the legacy Home: sustained jank tightens full -> lite -> 2d.
+    // The Blender scene decided its LOD once at mount and never degraded before this.
+    let lodCap = null;
+    let performanceGovernor = createHomeCastle3DPerformanceGovernor(initialPolicy.lod);
+    const effectsAllowed = () => lodCap == null && initialPolicy.lod === 'full';
     if (!canvas || !homeBlenderRuntimeEligible()) {
       onUnavailable?.();
       return undefined;
@@ -1229,9 +1239,36 @@ export default function HomeBlenderScene3D({
     let fireFrameGapMs = 0;
     let fireRafCount = 0;
     let lastFireRafAt = null;
+    // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
+    // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
+    const applyLodCap = (next) => {
+      lodCap = tighterRuntimeLodCap(lodCap, next);
+      if (lodCap === '2d') {
+        failToFallback(true);
+        return;
+      }
+      if (lodCap === 'lite') {
+        for (const points of fireParticles.splice(0)) {
+          scene.remove(points);
+          points.geometry.dispose();
+          points.material.dispose();
+        }
+        if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.map?.dispose(); dust.material.dispose(); dust = null; }
+        if (shaft) { scene.remove(shaft); shaft.geometry.dispose(); shaft.material.dispose(); shaft = null; }
+        renderer.shadowMap.enabled = false;
+        performanceGovernor = createHomeCastle3DPerformanceGovernor('lite');
+        canvas.dataset.homeCastleLod = 'lite';
+        resize();
+      }
+    };
     const animateFire = (timestamp) => {
       fireFrame = null;
       if (disposed || !model || document.hidden) return;
+      const degradeTo = performanceGovernor.observe(timestamp);
+      if (degradeTo) {
+        applyLodCap(degradeTo);
+        if (lodCap === '2d') return;
+      }
       if (lastFireRafAt !== null) {
         fireRafCount += 1;
         // Ignore the warm-up: decoding the scene legitimately delays the first frames.
@@ -1298,10 +1335,12 @@ export default function HomeBlenderScene3D({
       if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
-      ensureDust();
-      ensureMoonShaft();
-      ensureFireParticles();
-      ensureCandleParticles();
+      if (effectsAllowed()) {
+        ensureDust();
+        ensureMoonShaft();
+        ensureFireParticles();
+        ensureCandleParticles();
+      }
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1319,7 +1358,7 @@ export default function HomeBlenderScene3D({
     const resize = () => {
       const width = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 1);
       const height = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 1);
-      const policy = browserPolicy();
+      const policy = browserPolicy(lodCap);
       canvas.dataset.homeCastleLod = policy.lod;
       if (homeBlenderPolicyNeedsFallback(policy)) {
         failToFallback(true);

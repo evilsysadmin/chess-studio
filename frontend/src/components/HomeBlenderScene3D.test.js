@@ -38,6 +38,7 @@ import {
   homeBlenderCandleAttributes,
   HOME_BLENDER_CANDLE_PARTICLES,
 } from './HomeBlenderScene3D.jsx';
+import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
   it('allows the canonical Blender Home from 360px on capable Android-class hardware', () => {
@@ -721,5 +722,25 @@ describe('home candle particles', () => {
     expect(attrs.base).toHaveLength(attrs.count * 3);
     expect(attrs.seed).toHaveLength(attrs.count * 4);
     expect(Array.from(attrs.base.slice(0, 3))).toEqual([1, 2, -3]);
+  });
+});
+
+describe('home blender runtime LOD cap', () => {
+  const desktop = { viewportWidth: 1920, devicePixelRatio: 2, hardwareConcurrency: 8 };
+
+  it('is full by default and tightens to lite then 2d with the shared cap', () => {
+    expect(homeBlenderRuntimePolicy(desktop).lod).toBe('full');
+    const lite = homeBlenderRuntimePolicy({ ...desktop, runtimeLodCap: 'lite' });
+    expect(lite.lod).toBe('lite');
+    expect(lite.pixelRatio).toBeLessThanOrEqual(1.25);
+    expect(homeBlenderPolicyNeedsFallback(lite)).toBe(false);
+    expect(homeBlenderPolicyNeedsFallback(homeBlenderRuntimePolicy({ ...desktop, runtimeLodCap: '2d' }))).toBe(true);
+  });
+
+  it('never loosens a cap', () => {
+    expect(tighterRuntimeLodCap(null, 'lite')).toBe('lite');
+    expect(tighterRuntimeLodCap('lite', '2d')).toBe('2d');
+    expect(tighterRuntimeLodCap('2d', 'lite')).toBe('2d');
+    expect(tighterRuntimeLodCap('lite', null)).toBe('lite');
   });
 });
