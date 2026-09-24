@@ -57,6 +57,8 @@ GATES = (
             "scripts/blender/refine_chronicles_party_tailoring.py",
             "scripts/blender/refine_chronicles_party_anatomy.py",
             "scripts/blender/render_chronicles_party_preview.py",
+            "scripts/blender/render_chronicles_dungeon_mock.py",
+            "scripts/blender/render_chronicles_tactics_dungeon_v3.py",
             ".github/workflows/chronicles-party-blender-art.yml",
         }),
     ),
@@ -136,6 +138,12 @@ def self_test() -> None:
         "blender-setup-smoke.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/refine_chronicles_party_anatomy.py"])] == [
+        "chronicles-party-blender-art.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/render_chronicles_dungeon_mock.py"])] == [
+        "chronicles-party-blender-art.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/render_chronicles_tactics_dungeon_v3.py"])] == [
         "chronicles-party-blender-art.yml"
     ]
     # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender
