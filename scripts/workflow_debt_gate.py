@@ -48,6 +48,7 @@ INVENTORY = {
     'pawn-slug-matthias-sprite-smoke.yml': 'visual-staging-evidence',
     'pawn-slug-pistol-crouch-candidate.yml': 'visual-staging-evidence',
     'production-promote.yml': 'delivery-production',
+    'production-frontend-watchdog.yml': 'delivery-production-health',
     'production-rollback.yml': 'delivery-rollback',
     'production-target-smoke.yml': 'delivery-observability',
     'r2-assets-infra.yml': 'infra-assets',
