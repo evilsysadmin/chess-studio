@@ -3023,30 +3023,37 @@ def add_side_furnishings(materials):
         materials["brass_dark"],
     )
 
-    # Plant and ceramic pot mark the stair edge in the master.
-    cylinder("HOME_PROP_plant_pot", (5.10, 1.70, 0.52), 0.34, 0.48, ceramic, vertices=28)
-    cylinder("HOME_PROP_plant_pot_rim", (5.10, 1.70, 0.775), 0.38, 0.085, ceramic, vertices=28)
-    cylinder("HOME_PROP_plant_pot_soil", (5.10, 1.70, 0.818), 0.295, 0.018, materials["dark"], vertices=28)
-    cylinder("HOME_PROP_plant_pot_foot", (5.10, 1.70, 0.275), 0.29, 0.055, materials["ceramic"], vertices=28)
+    # The potted cactus used to stand behind the right chair and the stair newel, where the
+    # camera never saw it. It now sits on the moonlit window sill, against the night glass.
+    k = 0.62
+    px0, py0, pz0 = 7.50, 6.20, 1.95  # sill top
+
+    def at(x, y, z):
+        return (px0 + (x - 5.10) * k, py0 + (y - 1.70) * k, pz0 + (z - 0.2475) * k)
+
+    cylinder("HOME_PROP_plant_pot", at(5.10, 1.70, 0.52), 0.34 * k, 0.48 * k, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_rim", at(5.10, 1.70, 0.775), 0.38 * k, 0.085 * k, ceramic, vertices=28)
+    cylinder("HOME_PROP_plant_pot_soil", at(5.10, 1.70, 0.818), 0.295 * k, 0.018 * k, materials["dark"], vertices=28)
+    cylinder("HOME_PROP_plant_pot_foot", at(5.10, 1.70, 0.275), 0.29 * k, 0.055 * k, materials["ceramic"], vertices=28)
     for idx, (dx, dy) in enumerate(((-0.25, 0.05), (0.22, 0.02), (-0.12, 0.18), (0.10, -0.10), (0.30, 0.15))):
         curve_tube(
             f"HOME_PROP_plant_leaf_{idx}",
-            [(5.10, 1.70, 0.76), (5.10 + dx * 0.55, 1.70 + dy, 1.13), (5.10 + dx, 1.70 + dy * 1.7, 1.46)],
-            0.040,
+            [at(5.10, 1.70, 0.76), at(5.10 + dx * 0.55, 1.70 + dy, 1.13), at(5.10 + dx, 1.70 + dy * 1.7, 1.46)],
+            0.040 * k,
             plant,
         )
         blade = sphere(
             f"HOME_PROP_plant_leaf_blade_{idx}",
-            (5.10 + dx * 0.78, 1.70 + dy * 1.30, 1.31),
-            (0.105, 0.038, 0.265),
+            at(5.10 + dx * 0.78, 1.70 + dy * 1.30, 1.31),
+            (0.105 * k, 0.038 * k, 0.265 * k),
             plant,
         )
         blade.rotation_euler[0] = math.radians(dy * 55.0)
         blade.rotation_euler[1] = math.radians(-dx * 85.0)
     center_leaf = sphere(
         "HOME_PROP_plant_leaf_blade_center",
-        (5.10, 1.70, 1.28),
-        (0.095, 0.035, 0.30),
+        at(5.10, 1.70, 1.28),
+        (0.095 * k, 0.035 * k, 0.30 * k),
         plant,
     )
     center_leaf.rotation_euler[1] = math.radians(4.0)
@@ -3245,7 +3252,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         # A waxed, well-kept oak read (lower roughness, richer grain contrast)
         # instead of the flatter dark plank the table used to share with wall wood.
-        "table_wood": material("HOME_MAT_table_wood", (0.098, 0.038, 0.016, 1), roughness=0.50, bump_scale=5.4, bump_strength=0.17, variation=0.34, variation_scale=2.0, grain=True, texture_profile="wood"),
+        "table_wood": material("HOME_MAT_table_wood", (0.052, 0.027, 0.019, 1), roughness=0.50, bump_scale=5.4, bump_strength=0.17, variation=0.34, variation_scale=2.0, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
@@ -3302,7 +3309,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steam": material("HOME_MAT_steam", (0.62, 0.58, 0.52, 1), roughness=0.85, emission=(0.085, 0.078, 0.066, 1), emission_strength=0.05),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
-            (0.056, 0.005, 0.007, 1),
+            (0.012, 0.012, 0.018, 1),
             roughness=0.95,
             bump_scale=22.0,
             bump_strength=0.055,
@@ -3350,8 +3357,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "piece_dark": material(
             "HOME_MAT_piece_dark",
-            (0.052, 0.040, 0.030, 1),
-            roughness=0.58,
+            (0.013, 0.013, 0.016, 1),
+            roughness=0.42,
             metallic=0.0,
             variation=0.045,
             variation_scale=6.4,
@@ -3368,8 +3375,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "piece_dark_alt": material(
             "HOME_MAT_piece_dark_alt",
-            (0.045, 0.034, 0.026, 1),
-            roughness=0.61,
+            (0.011, 0.011, 0.014, 1),
+            roughness=0.46,
             metallic=0.0,
             variation=0.042,
             variation_scale=6.6,
