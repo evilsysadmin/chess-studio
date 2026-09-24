@@ -2155,6 +2155,14 @@ def add_armor(materials):
     # the single biggest "toy soldier" tell a shoulder can have.
     sphere("HOME_PROP_armor_shoulder_l", (x - 0.58, y - 0.010, 2.36), (0.250, 0.190, 0.160), steel)
     sphere("HOME_PROP_armor_shoulder_r", (x + 0.58, y - 0.022, 2.36), (0.250, 0.190, 0.160), steel)
+    # Articulated pauldrons: overlapping lames under the dome with a gold band between.
+    for side in (-1, 1):
+        sx = x + side * 0.58
+        sphere(f"HOME_PROP_armor_pauldron_lame_a_{side}", (sx, y - 0.015, 2.20), (0.262, 0.200, 0.055), steel)
+        sphere(f"HOME_PROP_armor_pauldron_lame_b_{side}", (sx, y - 0.015, 2.11), (0.238, 0.182, 0.050), steel)
+        band = cylinder(f"HOME_PROP_armor_pauldron_band_{side}", (sx, y - 0.015, 2.252), 0.235, 0.022, materials["armor_gold"], vertices=28)
+        band.scale.x = 0.262 / 0.235
+        band.scale.y = 0.200 / 0.235
     # Heraldic stance: shield up in the left hand, sword held low and
     # point-down in the right -- the reference silhouette this armour is
     # meant to read as -- instead of both hands clasped on one hilt at the
@@ -2184,7 +2192,7 @@ def add_armor(materials):
         sphere(f"HOME_PROP_armor_bicep_{side}", ((shoulder[0] + elbow[0]) / 2, (shoulder[1] + elbow[1]) / 2 - 0.02, (shoulder[2] + elbow[2]) / 2 + 0.03), (0.125, 0.120, 0.170), steel)
         # Flattened elbow cops and boxy gauntlets read as plate; the previous
         # spheres read as ball-and-socket action-figure joints.
-        cube(f"HOME_PROP_armor_couter_{side}", elbow, (0.078, 0.072, 0.055), steel, bevel=0.022)
+        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.125, 0.115, 0.115), steel)
         curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.080, steel)
         sphere(f"HOME_PROP_armor_forearm_bulge_{side}", (elbow[0] * 0.66 + wrist[0] * 0.34, elbow[1] * 0.66 + wrist[1] * 0.34, elbow[2] * 0.66 + wrist[2] * 0.34), (0.095, 0.095, 0.130), steel)
         curve_tube(f"HOME_PROP_armor_cuff_{side}", [
@@ -2256,13 +2264,20 @@ def add_armor(materials):
     # Round humanoid armet: a skull dome, a muzzle-and-chin face guard, a dark eye
     # slit and a gold comb. Radii are pre-rescale; the caller's 0.78 / 0.92 / 1.14
     # squeeze is compensated here so the head still reads round, not oval.
-    sphere("HOME_PROP_armor_helmet", (x, y, 2.87), (0.300, 0.255, 0.235), steel)
-    sphere("HOME_PROP_armor_visor", (x, y - 0.115, 2.71), (0.190, 0.120, 0.120), steel)
-    cube("HOME_PROP_armor_brow", (x, y - 0.238, 2.895), (0.190, 0.030, 0.020), dark, bevel=0.008)
-    cube("HOME_PROP_armor_helmet_crest", (x, y + 0.02, 3.10), (0.020, 0.200, 0.032), heraldry_helm, bevel=0.010)
-    cube("HOME_PROP_armor_visor_edge", (x, y - 0.238, 2.735), (0.014, 0.012, 0.095), heraldry_helm, bevel=0.005)
+    sphere("HOME_PROP_armor_helmet", (x, y, 2.90), (0.290, 0.250, 0.275), steel)
+    sphere("HOME_PROP_armor_visor", (x, y - 0.135, 2.735), (0.205, 0.170, 0.130), steel)
+    cube("HOME_PROP_armor_brow", (x, y - 0.238, 2.925), (0.185, 0.030, 0.020), dark, bevel=0.008)
+    # Crimson plume arching over the crown, like a knight's crest.
+    curve_tube(
+        "HOME_PROP_armor_plume",
+        [(x, y - 0.10, 3.14), (x, y + 0.03, 3.30), (x, y + 0.20, 3.24), (x, y + 0.34, 3.05), (x, y + 0.38, 2.86)],
+        0.055,
+        materials["banner"],
+    )
+    cube("HOME_PROP_armor_helmet_crest", (x, y + 0.00, 3.15), (0.020, 0.190, 0.028), heraldry_helm, bevel=0.010)
+    cube("HOME_PROP_armor_visor_edge", (x, y - 0.300, 2.745), (0.014, 0.014, 0.100), heraldry_helm, bevel=0.005)
     for slot, (sx, sz) in enumerate(((-0.11, 2.74), (-0.11, 2.68), (-0.11, 2.62), (0.11, 2.74), (0.11, 2.68), (0.11, 2.62))):
-        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.222, sz), (0.022, 0.010, 0.008), dark, bevel=0.003)
+        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.290, sz), (0.022, 0.010, 0.008), dark, bevel=0.003)
     cylinder("HOME_PROP_armor_helmet_rim", (x, y, 2.63), 0.235, 0.030, heraldry_helm, vertices=28)
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.58), 0.29, 0.105, steel, vertices=28)
@@ -4092,7 +4107,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["armor_gold"],
     )
     # Two narrow fauld lames instead of the old bright three-bar robot belt.
-    for idx, (z, half_w) in enumerate(((1.92, 0.36), (1.82, 0.385))):
+    for idx, (z, half_w) in enumerate(((1.92, 0.36), (1.82, 0.385), (1.72, 0.37), (1.62, 0.34), (1.52, 0.30))):
         cube(
             f"HOME_PROP_armor_fauld_{idx}",
             (1.55, 5.47, z),
@@ -4172,7 +4187,6 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.016,
             materials["armor_gold"],
         )
-        cube(f"HOME_PROP_armor_knee_cop_{side}", (cx, 5.665, 1.32), (0.075, 0.014, 0.040), materials["armor_gold"], bevel=0.010)
 
     add_trophy(materials)
     add_side_furnishings(materials)
