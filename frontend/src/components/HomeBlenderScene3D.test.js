@@ -31,6 +31,9 @@ import {
   HOME_BLENDER_DUST,
   homeBlenderMoonShaftPose,
   HOME_BLENDER_MOON_SHAFT,
+  homeBlenderFireSeeds,
+  homeBlenderFireHearthBases,
+  HOME_BLENDER_FIRE_PARTICLES,
 } from './HomeBlenderScene3D.jsx';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
@@ -669,5 +672,33 @@ describe('home moon shaft', () => {
     expect(pose.length).toBeGreaterThan(4);
     expect(pose.center.y).toBeLessThan(HOME_BLENDER_MOON_SHAFT.from[1]);
     expect(pose.center.y).toBeGreaterThan(HOME_BLENDER_MOON_SHAFT.to[1]);
+  });
+});
+
+describe('home fire particles', () => {
+  it('seeds deterministically and differently per hearth', () => {
+    const left = homeBlenderFireSeeds(HOME_BLENDER_FIRE_PARTICLES.count, 1);
+    expect(left).toEqual(homeBlenderFireSeeds(HOME_BLENDER_FIRE_PARTICLES.count, 1));
+    expect(left).not.toEqual(homeBlenderFireSeeds(HOME_BLENDER_FIRE_PARTICLES.count, 2));
+    expect(left).toHaveLength(HOME_BLENDER_FIRE_PARTICLES.count);
+    for (const seed of left) expect(Math.abs(seed.x)).toBeLessThanOrEqual(HOME_BLENDER_FIRE_PARTICLES.spreadX);
+  });
+
+  it('finds one base per hearth from the flame nodes', () => {
+    const mk = (x) => {
+      const object = new THREE.Object3D();
+      object.position.set(x, 0.5, -5.7);
+      object.updateMatrixWorld(true);
+      return object;
+    };
+    const bases = homeBlenderFireHearthBases([
+      { hearth: 'left', kind: 'flame', object: mk(-6.2) },
+      { hearth: 'left', kind: 'hot', object: mk(-6.1) },
+      { hearth: 'right', kind: 'flame', object: mk(4.4) },
+      { hearth: 'right', kind: 'candle', object: mk(9) },
+    ]);
+    expect(bases.map((b) => b.hearth)).toEqual(['left', 'right']);
+    expect(bases[0].base[0]).toBeCloseTo(-6.15, 2);
+    expect(bases[1].base[0]).toBeCloseTo(4.4, 2);
   });
 });

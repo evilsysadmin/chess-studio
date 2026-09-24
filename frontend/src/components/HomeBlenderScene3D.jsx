@@ -167,6 +167,69 @@ export function homeBlenderMoonShaftPose(shaft = HOME_BLENDER_MOON_SHAFT) {
   };
 }
 
+// GPU fire: soft additive sprites rising from each hearth, fading orange -> red. The baked
+// flame meshes are hard-edged tongues; these particles add the soft licking glow on top.
+export const HOME_BLENDER_FIRE_PARTICLES = { count: 72, height: 1.15, spreadX: 0.45, spreadZ: 0.10, size: 0.38 };
+
+export function homeBlenderFireSeeds(count = HOME_BLENDER_FIRE_PARTICLES.count, salt = 1) {
+  let state = (0x51ed270b ^ Math.imul(salt, 0x9e3779b9)) >>> 0;
+  const next = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const box = HOME_BLENDER_FIRE_PARTICLES;
+  return Array.from({ length: count }, () => ({
+    x: (next() * 2 - 1) * box.spreadX,
+    z: (next() * 2 - 1) * box.spreadZ,
+    speed: 0.32 + next() * 0.38,
+    phase: next(),
+  }));
+}
+
+const FIRE_PARTICLE_VERTEX = `
+attribute vec4 aSeed;
+uniform float uTime; uniform float uHeight; uniform float uSize; uniform float uViewportH; uniform vec3 uBase;
+varying float vLife;
+void main() {
+  float life = fract(aSeed.w + uTime * aSeed.z);
+  vec3 p = uBase + vec3(aSeed.x * (1.0 - life * 0.55) + sin(uTime * 2.3 + aSeed.w * 31.0) * 0.05 * life,
+    life * uHeight, aSeed.y * (1.0 - life * 0.4));
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = max(1.0, uSize * (1.0 - life * 0.55) * projectionMatrix[1][1] * uViewportH * 0.5 / -mv.z);
+  vLife = life;
+}`;
+
+const FIRE_PARTICLE_FRAGMENT = `
+uniform float uOpacity; varying float vLife;
+void main() {
+  float d = length(gl_PointCoord - 0.5);
+  float a = smoothstep(0.5, 0.05, d);
+  vec3 col = mix(vec3(1.0, 0.86, 0.42), vec3(0.85, 0.20, 0.04), smoothstep(0.0, 1.0, vLife));
+  float alpha = a * (1.0 - vLife) * smoothstep(0.0, 0.10, vLife) * uOpacity;
+  gl_FragColor = vec4(col, alpha);
+}`;
+
+export function homeBlenderFireHearthBases(nodes) {
+  const groups = { left: [], right: [] };
+  for (const node of nodes || []) {
+    if (!node.hearth || (node.kind !== 'flame' && node.kind !== 'hot')) continue;
+    const pos = new THREE.Vector3();
+    node.object.getWorldPosition(pos);
+    groups[node.hearth].push(pos);
+  }
+  return Object.entries(groups)
+    .filter(([, list]) => list.length)
+    .map(([hearth, list]) => ({
+      hearth,
+      base: [
+        list.reduce((sum, v) => sum + v.x, 0) / list.length,
+        Math.min(...list.map((v) => v.y)),
+        list.reduce((sum, v) => sum + v.z, 0) / list.length,
+      ],
+    }));
+}
+
 export function homeBlenderFireKind(name = '') {
   const normalized = String(name).toLowerCase();
   if (normalized.includes('home_prop_table_mug_steam')) return 'steam';
@@ -965,6 +1028,49 @@ export default function HomeBlenderScene3D({
     let fireRig = [];
     let dust = null;
     let shaft = null;
+    const fireParticles = [];
+    const ensureFireParticles = () => {
+      if (fireParticles.length || !fireRig.length) return;
+      const cfg = HOME_BLENDER_FIRE_PARTICLES;
+      // The baked tongues are hard-edged: let the soft particles show through them.
+      for (const node of fireRig) {
+        if (node.kind !== 'flame' && node.kind !== 'hot') continue;
+        for (const { material } of node.materials) {
+          material.transparent = true;
+          material.opacity = 0.62;
+          material.depthWrite = false;
+          material.needsUpdate = true;
+        }
+      }
+      for (const { hearth, base } of homeBlenderFireHearthBases(fireRig)) {
+        const seeds = homeBlenderFireSeeds(cfg.count, hearth === 'left' ? 1 : 2);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(seeds.length * 3), 3));
+        geometry.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds.flatMap((sd) => [sd.x, sd.z, sd.speed, sd.phase])), 4));
+        const material = new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          uniforms: {
+            uTime: { value: 0 }, uHeight: { value: cfg.height }, uSize: { value: cfg.size },
+            uViewportH: { value: canvas.height || 900 }, uBase: { value: new THREE.Vector3(...base) }, uOpacity: { value: 0.95 },
+          },
+          vertexShader: FIRE_PARTICLE_VERTEX,
+          fragmentShader: FIRE_PARTICLE_FRAGMENT,
+        });
+        const points = new THREE.Points(geometry, material);
+        points.frustumCulled = false;
+        points.renderOrder = 6;
+        scene.add(points);
+        fireParticles.push(points);
+      }
+    };
+    const moveFireParticles = (timestamp) => {
+      for (const points of fireParticles) {
+        points.material.uniforms.uTime.value = timestamp / 1000;
+        points.material.uniforms.uViewportH.value = canvas.height || 900;
+      }
+    };
     const ensureMoonShaft = () => {
       if (shaft || !homeBlenderTimeOfDayLook(ambient).moon) return;
       const cfg = HOME_BLENDER_MOON_SHAFT;
@@ -1105,6 +1211,7 @@ export default function HomeBlenderScene3D({
       lastFireRafAt = timestamp;
       if (timestamp - lastFireRenderedAt >= fireIntervalMs) {
         moveDust(timestamp);
+        moveFireParticles(timestamp);
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
@@ -1161,6 +1268,7 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeFireMotion = 'live';
       ensureDust();
       ensureMoonShaft();
+      ensureFireParticles();
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1269,6 +1377,11 @@ export default function HomeBlenderScene3D({
       if (model) {
         scene.remove(model);
         disposeRuntimeScene(model);
+      }
+      for (const points of fireParticles) {
+        scene.remove(points);
+        points.geometry.dispose();
+        points.material.dispose();
       }
       if (shaft) {
         scene.remove(shaft);
