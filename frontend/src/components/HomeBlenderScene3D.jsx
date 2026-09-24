@@ -147,6 +147,26 @@ export function homeBlenderDustPosition(seed, timeMs = 0) {
   ];
 }
 
+// Blender window (7.02, 6.50, 4.56) -> three (7.02, 4.56, -6.50); the moon light lands near (4.35, 1.25, -1.85).
+export const HOME_BLENDER_MOON_SHAFT = {
+  from: [7.02, 4.56, -6.4],
+  to: [4.1, 0.15, -1.6],
+  radiusTop: 0.42,
+  radiusBottom: 1.25,
+  opacity: 0.32,
+};
+
+export function homeBlenderMoonShaftPose(shaft = HOME_BLENDER_MOON_SHAFT) {
+  const from = new THREE.Vector3(...shaft.from);
+  const to = new THREE.Vector3(...shaft.to);
+  const dir = to.clone().sub(from);
+  return {
+    length: dir.length(),
+    center: from.clone().add(to).multiplyScalar(0.5),
+    quaternion: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize()),
+  };
+}
+
 export function homeBlenderFireKind(name = '') {
   const normalized = String(name).toLowerCase();
   if (normalized.includes('home_prop_table_mug_steam')) return 'steam';
@@ -944,6 +964,27 @@ export default function HomeBlenderScene3D({
     let model = null;
     let fireRig = [];
     let dust = null;
+    let shaft = null;
+    const ensureMoonShaft = () => {
+      if (shaft || !homeBlenderTimeOfDayLook(ambient).moon) return;
+      const cfg = HOME_BLENDER_MOON_SHAFT;
+      const pose = homeBlenderMoonShaftPose(cfg);
+      const material = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uColor: { value: new THREE.Color(0x8fb2ee) }, uOpacity: { value: cfg.opacity } },
+        vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float along = pow(vUv.y, 1.1); float edge = pow(abs(dot(normalize(vN), normalize(vV))), 1.6); gl_FragColor = vec4(uColor, along * edge * uOpacity); }',
+      });
+      shaft = new THREE.Mesh(new THREE.CylinderGeometry(cfg.radiusTop, cfg.radiusBottom, pose.length, 24, 1, true), material);
+      shaft.position.copy(pose.center);
+      shaft.quaternion.copy(pose.quaternion);
+      shaft.frustumCulled = false;
+      shaft.renderOrder = 5;
+      scene.add(shaft);
+    };
     const dustSeeds = homeBlenderDustSeeds();
     const ensureDust = () => {
       if (dust) return;
@@ -1119,6 +1160,7 @@ export default function HomeBlenderScene3D({
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       ensureDust();
+      ensureMoonShaft();
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1227,6 +1269,11 @@ export default function HomeBlenderScene3D({
       if (model) {
         scene.remove(model);
         disposeRuntimeScene(model);
+      }
+      if (shaft) {
+        scene.remove(shaft);
+        shaft.geometry.dispose();
+        shaft.material.dispose();
       }
       if (dust) {
         scene.remove(dust);
