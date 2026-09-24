@@ -40,8 +40,6 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
-// Loaded on demand: the modal reads the daily-challenge state and its own stylesheet, which
-// the entry bundle (hard-budgeted) should not carry just to render a header button.
 const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
 import FeedbackModal from './components/FeedbackModal.jsx';
 import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
@@ -79,7 +77,7 @@ import { userFacingError } from './userFacingError.js';
 import { isAbortError } from './asyncControl.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 import { APP_RELEASE } from './release.js';
-import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
+import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
@@ -892,15 +890,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal
-          onClose={() => setShowGlobalReleaseNotes(false)}
-          onAction={(to) => {
-            setShowGlobalReleaseNotes(false);
-            if (to === 'daily') navigateTo('dailyChallenges');
-            else if (to === 'history') navigateTo('history');
-            else if (to === 'progress') { setInsightsLandingSection('career'); navigateTo('insights'); }
-          }}
-        /></React.Suspense>}
+        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, setInsightsLandingSection }); }} /></React.Suspense>}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>

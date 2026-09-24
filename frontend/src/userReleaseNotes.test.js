@@ -40,3 +40,17 @@ describe('novedades para jugadores', () => {
     expect(copy).not.toMatch(JARGON);
   });
 });
+
+describe('atajos de novedades', () => {
+  it('cada acción navega a su destino y cerrar no navega', async () => {
+    const { openReleaseNoteTarget } = await import('./userReleaseNotes.js');
+    const calls = [];
+    const helpers = { navigateTo: (to) => calls.push(['nav', to]), setInsightsLandingSection: (s) => calls.push(['section', s]) };
+    openReleaseNoteTarget('daily', helpers);
+    openReleaseNoteTarget('history', helpers);
+    openReleaseNoteTarget('progress', helpers);
+    openReleaseNoteTarget('close', helpers);
+    openReleaseNoteTarget(undefined, helpers);
+    expect(calls).toEqual([['nav', 'dailyChallenges'], ['nav', 'history'], ['section', 'career'], ['nav', 'insights']]);
+  });
+});
