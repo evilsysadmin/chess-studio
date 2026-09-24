@@ -9,6 +9,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentation.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
+import { preloadBoard3D } from './Board3DRegistration.js';
 
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
@@ -58,6 +59,29 @@ export default function QuickMatchModal({
       controller.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedRenderer !== '3d') return undefined;
+
+    let cancelled = false;
+    const warmRenderer = () => {
+      if (!cancelled) void preloadBoard3D().catch(() => {});
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(warmRenderer, { timeout: 350 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback?.(idleId);
+      };
+    }
+
+    const timerId = setTimeout(warmRenderer, 180);
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+    };
+  }, [selectedRenderer]);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
