@@ -85,6 +85,7 @@ def build_actions(rig):
             (2, None, None, show('prop_book')),
             (26, {'head': (d(10), d(-3), d(1)), 'spine': (d(3.5), 0, 0), 'forearm.L': (d(-26), d(3), d(8)), 'forearm.R': (d(-26), d(-3), d(-8))}, None),
             (56, {'head': (d(12), d(2), d(-1)), 'spine': (d(4), 0, 0)}, None),
+            (82, None, None, show('prop_book')),
             (84, None, None, hide('prop_book')),
         ]),
         'Write': (72, [
@@ -92,12 +93,14 @@ def build_actions(rig):
             (18, {'head': (d(11), d(-5), d(1)), 'spine': (d(5), 0, d(-1)), 'forearm.R': (d(-38), d(-5), d(-12))}, None),
             (36, {'forearm.R': (d(-28), d(-3), d(-7))}, None),
             (54, {'forearm.R': (d(-40), d(-6), d(-13))}, None),
+            (66, None, None, {**show('prop_book'), **show('prop_pen')}),
             (68, None, None, {**hide('prop_book'), **hide('prop_pen')}),
         ]),
         'Dossier': (80, [
             (2, None, None, show('prop_book')),
             (22, {'head': (d(11), d(5), d(-2)), 'spine': (d(4), 0, d(1)), 'forearm.L': (d(-28), 0, d(8))}, None),
             (52, {'head': (d(8), d(-5), d(2)), 'forearm.R': (d(-24), 0, d(-7))}, None),
+            (74, None, None, show('prop_book')),
             (76, None, None, hide('prop_book')),
         ]),
         'Sip': (72, [
@@ -105,6 +108,7 @@ def build_actions(rig):
             (18, {'forearm.R': (d(-46), d(-6), d(-16)), 'head': (d(-3), d(3), d(-1))}, None),
             (34, {'forearm.R': (d(-62), d(-8), d(-20)), 'head': (d(-2), d(2), d(-1))}, None),
             (52, {'forearm.R': (d(-15), 0, d(-6))}, None),
+            (66, None, None, show('prop_cup')),
             (68, None, None, hide('prop_cup')),
         ]),
         'Bite': (74, [
@@ -112,6 +116,7 @@ def build_actions(rig):
             (18, {'forearm.L': (d(-42), d(6), d(14)), 'head': (d(-4), d(-4), d(1))}, None),
             (36, {'forearm.L': (d(-58), d(8), d(18)), 'head': (d(2), d(-2), d(1))}, None),
             (54, {'forearm.L': (d(-12), 0, d(4))}, None),
+            (68, None, None, show('prop_bite')),
             (70, None, None, hide('prop_bite')),
         ]),
         'Sleep': (104, [

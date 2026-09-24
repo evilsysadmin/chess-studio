@@ -194,10 +194,13 @@ def build_character():
     # The Home portrait is small enough that mirror-like highlights erase the
     # pawn silhouette. Keep the ivory ceramic, midnight enamel, leather and aged
     # brass materially distinct without turning Matthias into a plastic toy.
-    ivory=mat('classic warm ivory',(.58,.48,.34),.58,.00); ivory_hi=mat('classic ivory highlight',(.76,.64,.46),.52,.00)
+    # Match the approved pawn portrait: a pale, nearly spherical ceramic face.
+    # The former brown ivory collapsed into the hall's warm grade and made the
+    # head read as a block instead of the canonical cream pawn globe.
+    ivory=mat('classic warm ivory',(.70,.60,.44),.60,.00); ivory_hi=mat('classic ivory highlight',(.80,.69,.52),.56,.00)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
     leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v18'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v19'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
@@ -218,11 +221,11 @@ def build_character():
     cap_top=loft_ellipse('Classic cap top',[(.408,.292,1.811,.080,-.036),(.431,.300,1.830,.098,-.047),(.454,.309,1.850,.120,-.059),(.460,.312,1.869,.140,-.070),(.450,.306,1.884,.153,-.078),(.428,.294,1.895,.160,-.084)],navy,124,.008)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.327,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.334,1.705),.027,.034,.008,leather,36,.002)
-    mouth_l=box('Mouth.L',(-.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(-9),0),.003); mouth_r=box('Mouth.R',(.052,-.342,1.246),(.066,.005,.0085),black,(0,math.radians(9),0),.003)
+    mouth_l=box('Mouth.L',(-.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(-12),0),.002); mouth_r=box('Mouth.R',(.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(12),0),.002)
     head += [
-        sphere('Head',(0,-.012,1.345),(.340,.325,.352),ivory,96),
-        front_ellipse('Eye.L',(-.104,-.345,1.376),.026,.048,.010,black,40,.002), front_ellipse('Eye.R',(.104,-.345,1.376),.026,.048,.010,black,40,.002),
-        box('Brow.L',(-.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(24),0),.004), box('Brow.R',(.106,-.356,1.440),(.080,.009,.018),black,(0,math.radians(-24),0),.004),
+        sphere('Head',(0,-.012,1.345),(.350,.335,.350),ivory,96),
+        front_ellipse('Eye.L',(-.105,-.357,1.382),.027,.036,.009,black,44,.002), front_ellipse('Eye.R',(.105,-.357,1.382),.027,.036,.009,black,44,.002),
+        box('Brow.L',(-.110,-.365,1.452),(.083,.008,.017),black,(0,math.radians(27),0),.004), box('Brow.R',(.110,-.365,1.452),(.083,.008,.017),black,(0,math.radians(-27),0),.004),
         cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.004,1.615),.364,.082,.84,cap_red,(math.radians(-2),0,0),116,.010), elliptic_cyl('Classic cap brass line',(0,-.010,1.573),.360,.013,.84,brass,(math.radians(-2),0,0),116,.003), visor, cap_badge,cap_badge_inset,
         box('Classic cap badge wing.L',(-.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(-12),math.radians(12)),.003), box('Classic cap badge wing.R',(.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(12),math.radians(-12)),.003),
     ]
@@ -240,7 +243,7 @@ def build_character():
     book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
     # crosses the mouth reads as a replacement face instead of a short routine.
-    sandwich_bread=box('RoutineSandwichBread',(-.255,-.435,1.150),(.145,.038,.055),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.018); sandwich_filling=box('RoutineSandwichFilling',(-.255,-.477,1.145),(.128,.013,.043),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.008); sandwich_hand=sphere('RoutineSandwichHand',(-.205,-.448,1.075),(.038,.028,.043),ivory,24)
+    sandwich_bread=box('RoutineSandwichBread',(-.292,-.435,1.085),(.132,.038,.049),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.016); sandwich_filling=box('RoutineSandwichFilling',(-.292,-.477,1.080),(.117,.013,.037),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.007); sandwich_hand=sphere('RoutineSandwichHand',(-.230,-.448,1.015),(.036,.027,.040),ivory,24)
 
     for obj in root: parent_bone(obj,rig,'root')
     for obj in spine: parent_bone(obj,rig,'spine')
