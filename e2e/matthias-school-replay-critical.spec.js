@@ -89,6 +89,30 @@ test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es s�
   await expect(target).toHaveClass(/legal-move/);
 });
 
+test('Escuela de Matthias · Por qué funciona demuestra sin pisar el intento', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  const board = page.locator('.matthias-school-board');
+
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await expect(board.getByRole('button', { name: /Casilla e2, peón blanco, seleccionada/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Por qué funciona', exact: true }).click();
+  await expect(board).toHaveAttribute('data-school-explanation', 'demo');
+  await expect(page.getByRole('status')).toContainText('Desde su casilla inicial');
+
+  await page.getByRole('button', { name: 'Siguiente paso', exact: true }).click();
+  await expect(board.getByRole('button', { name: /^Casilla e4, peón blanco/ })).toBeVisible();
+  await expect(page.getByText('Jugada clave', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Volver a practicar', exact: true }).click();
+  await expect(board).toHaveAttribute('data-school-explanation', 'practice');
+  await expect(board.getByRole('button', { name: /Casilla e2, peón blanco, seleccionada/ })).toBeVisible();
+  await expect(page.getByText('✓ dominado', { exact: true })).toHaveCount(0);
+});
+
 test('Escuela de Matthias · una lección dominada se puede repetir de verdad', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -128,6 +152,7 @@ test('Escuela de Matthias · suspender un examen reinicia un intento real y perm
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   await expect(page.getByRole('heading', { name: 'Examen básico · mate en una', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Por qué funciona', exact: true })).toHaveCount(0);
 
   const schoolBoard = page.locator('.matthias-school-board');
   await expect(schoolBoard).toHaveAttribute('data-school-attempt', '0');
