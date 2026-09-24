@@ -3003,117 +3003,89 @@ def add_stairs(materials):
     cylinder("HOME_ARCH_dungeon_post", (4.72, 1.90, 1.33), 0.19, 1.78, stone, vertices=32)
     sphere("HOME_PROP_dungeon_finial", (4.72, 1.90, 2.30), (0.16, 0.16, 0.16), materials["stone_dark"])
 
+    # Profile stair: the flight runs left -> right across the frame and descends, so the
+    # camera reads every tread as a step in silhouette (the old diagonal flight ran into
+    # the depth of the room and looked like a stone ramp). Each step is a solid masonry
+    # block down to the lower floor; the front rail follows the slope.
     steps = 11
+    x_start, dx = 5.05, 0.27
+    z_start, dz = 0.66, -0.158
+    stair_y, half_depth = 0.80, 0.50
+    floor_top = -1.37
 
-    def step_center(index):
-        tt = index / (steps - 1)
-        return 5.28 + 2.45 * tt, 1.45 - 2.28 * tt, 0.68 - 1.58 * tt
-
-    # The treads were isolated boxes: each one sits only ~0.008 above the next tread's
-    # top, a gap that vanishes at the tread's own edges (rounded off by the bevel) but
-    # opens into a real gap between consecutive treads everywhere else, letting the
-    # Dungeon firelight below leak straight through the flight in a grazing camera view.
-    # A generously oversized bridging mass between every pair of consecutive tread
-    # centres (axis-aligned, deliberately overshooting rather than fitted tight) closes
-    # that gap without needing to model an exact sloped stringer.
-    for i in range(steps - 1):
-        x0, y0, z0 = step_center(i)
-        x1, y1, z1 = step_center(i + 1)
-        bridge_top = z0 - 0.075 + 0.03
-        bridge_bottom = z1 - 0.075 - 0.22
-        cube(
-            f"HOME_ARCH_dungeon_step_bridge_{i}",
-            ((x0 + x1) / 2.0, (y0 + y1) / 2.0, (bridge_top + bridge_bottom) / 2.0),
-            (0.62, 0.50, (bridge_top - bridge_bottom) / 2.0),
-            stone,
-            bevel=0.02,
-        )
+    def tread_top(index):
+        return z_start + dz * index
 
     for i in range(steps):
-        t = i / (steps - 1)
-        x = 5.28 + 2.45 * t
-        y = 1.45 - 2.28 * t
-        z = 0.68 - 1.58 * t
-        depth_jitter = (_hash01(i, 0, 1031) - 0.5) * 0.026
-        width_jitter = (_hash01(i, 1, 1039) - 0.5) * 0.045
-        height_jitter = (_hash01(i, 2, 1049) - 0.5) * 0.012
-        step_depth = 0.33 + depth_jitter
-        step_width = 0.61 + width_jitter
-        step_z = z + height_jitter
+        x = x_start + dx * i
+        top = tread_top(i)
+        block_h = (top - floor_top) / 2.0
+        depth_jitter = (_hash01(i, 0, 1031) - 0.5) * 0.030
         cube(
             f"HOME_ARCH_dungeon_step_{i}",
-            (x, y, step_z),
-            (step_width, step_depth, 0.075),
+            (x, stair_y + depth_jitter, floor_top + block_h),
+            (dx / 2.0 + 0.012, half_depth, block_h),
             stone,
-            bevel=0.025 + _hash01(i, 3, 1051) * 0.008,
+            bevel=0.022 + _hash01(i, 3, 1051) * 0.006,
         )
         cube(
             f"HOME_PROP_dungeon_step_nosing_{i}",
-            (x, y - step_depth + 0.022, step_z + 0.080),
-            (step_width - 0.020, 0.026 + _hash01(i, 4, 1061) * 0.006, 0.018),
+            (x, stair_y - half_depth + 0.020, top + 0.012),
+            (dx / 2.0 + 0.004, 0.026, 0.020),
             materials["stone_dark"],
-            bevel=0.009,
+            bevel=0.008,
         )
-        # Oxblood runner down the flight with a brass nosing rod on every tread:
-        # it turns a plain stone ramp into a stair that leads somewhere.
+        # Oxblood runner down the middle of every tread with a brass rod at its lip.
         cube(
             f"HOME_PROP_dungeon_step_runner_{i}",
-            (x, y - 0.01, step_z + 0.080),
-            (0.36, step_depth * 0.90, 0.010),
+            (x, stair_y - 0.02, top + 0.010),
+            (dx / 2.0 - 0.015, half_depth * 0.74, 0.008),
             materials["leather"],
             bevel=0.004,
         )
         cube(
             f"HOME_PROP_dungeon_step_rod_{i}",
-            (x, y - step_depth + 0.010, step_z + 0.094),
-            (0.30, 0.010, 0.010),
+            (x, stair_y - half_depth + 0.075, top + 0.022),
+            (dx / 2.0 - 0.012, 0.010, 0.010),
             brass,
             bevel=0.004,
         )
         if i in (1, 4, 7, 9):
             cube(
                 f"HOME_PROP_dungeon_step_wear_{i}",
-                (x + (_hash01(i, 5, 1069) - 0.5) * 0.16, y - step_depth * 0.35, step_z + 0.078),
-                (step_width * 0.52, 0.10, 0.004),
+                (x + (_hash01(i, 5, 1069) - 0.5) * 0.06, stair_y - 0.10, top + 0.012),
+                (dx * 0.36, 0.16, 0.004),
                 materials["stone_grime"],
-                bevel=0.018,
+                bevel=0.010,
             )
 
-    stair_rail_points = [(4.66, 1.62, 2.03), (5.58, 0.84, 1.42), (6.62, -0.04, 0.74), (7.55, -0.82, 0.12)]
-    curve_tube(
-        "HOME_ARCH_dungeon_stone_rail",
-        stair_rail_points,
-        0.060,
-        stone,
-    )
-    curve_tube(
-        "HOME_PROP_dungeon_gold_rail",
-        [(x, y - 0.02, z + 0.11) for x, y, z in stair_rail_points],
-        0.024,
-        materials["brass_dark"],
-    )
+    rail_y = stair_y - half_depth + 0.06
+
+    def rail_z(xx, lift):
+        return z_start + dz * (xx - x_start) / dx + lift
+
+    x_end = x_start + dx * (steps - 1)
+    top_rail = [(xx, rail_y, rail_z(xx, 1.02)) for xx in (x_start - 0.15, (x_start + x_end) / 2.0, x_end + 0.15)]
+    curve_tube("HOME_ARCH_dungeon_stone_rail", top_rail, 0.060, stone)
+    curve_tube("HOME_PROP_dungeon_gold_rail", [(a, b - 0.02, c + 0.11) for a, b, c in top_rail], 0.024, materials["brass_dark"])
     curve_tube(
         "HOME_ARCH_dungeon_lower_stone_rail",
-        [(4.66, 1.62, 1.72), (5.58, 0.84, 1.11), (6.62, -0.04, 0.43), (7.55, -0.82, -0.19)],
+        [(xx, rail_y, rail_z(xx, 0.56)) for xx in (x_start - 0.15, (x_start + x_end) / 2.0, x_end + 0.15)],
         0.038,
         stone,
     )
-    for idx in range(6):
-        t = idx / 5.0
-        px = 4.78 + 2.55 * t
-        py = 1.48 - 2.10 * t
-        pz = 1.72 - 1.62 * t
-        cylinder(f"HOME_PROP_dungeon_stair_baluster_{idx}", (px, py, pz), 0.040, 0.48, stone, vertices=16)
-        sphere(f"HOME_PROP_dungeon_stair_baluster_cap_{idx}", (px, py, pz + 0.27), (0.065, 0.065, 0.065), materials["stone_dark"])
-    for name, (px, py, pz) in {
-        "top": (4.66, 1.62, 1.80),
-        "bottom": (7.55, -0.82, -0.10),
-    }.items():
-        cube(f"HOME_ARCH_dungeon_newel_{name}", (px, py, pz), (0.105, 0.105, 0.48), stone, bevel=0.036)
-        sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, py, pz + 0.60), (0.115, 0.115, 0.115), materials["stone_dark"])
-        sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.050, 0.050, 0.050), materials["brass_dark"])
-    for idx, (px, py, pz) in enumerate(((5.35, 0.95, 1.18), (6.35, 0.10, 0.53), (7.25, -0.65, -0.06))):
-        add_stair_lantern(idx, px, py, pz, materials)
+    for idx in range(7):
+        px = x_start + 0.12 + (x_end - x_start - 0.10) * idx / 6.0
+        pz = rail_z(px, 0.52)
+        cylinder(f"HOME_PROP_dungeon_stair_baluster_{idx}", (px, rail_y, pz), 0.040, 0.52, stone, vertices=16)
+        sphere(f"HOME_PROP_dungeon_stair_baluster_cap_{idx}", (px, rail_y, pz + 0.29), (0.065, 0.065, 0.065), materials["stone_dark"])
+    for name, px in {"top": x_start - 0.15, "bottom": x_end + 0.15}.items():
+        pz = rail_z(px, 0.55)
+        cube(f"HOME_ARCH_dungeon_newel_{name}", (px, rail_y, pz), (0.105, 0.105, 0.55), stone, bevel=0.036)
+        sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, rail_y, pz + 0.68), (0.115, 0.115, 0.115), materials["stone_dark"])
+        sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, rail_y - 0.02, pz + 0.69), (0.050, 0.050, 0.050), materials["brass_dark"])
+    for idx, px in enumerate((x_start + dx * 2.0, x_start + dx * 5.0, x_start + dx * 8.0)):
+        add_stair_lantern(idx, px, rail_y - 0.02, rail_z(px, 0.52) + 0.04, materials)
     cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 

@@ -778,11 +778,11 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
       [0xffa050, 16, 6.8, 0, 4.5, -2.2, 0],
       [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55],
       [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55],
-      // The three candles on the Dungeon balustrade: they give the step treads (in
-      // shadow otherwise) a raking warm light, one per flight of the stair.
-      [0xff7a30, 3.0, 3.2, 5.35, 1.40, -0.91, 0.5],
-      [0xff7a30, 3.0, 3.2, 6.35, 0.75, -0.06, 0.5],
-      [0xff7a30, 3.0, 3.2, 7.25, 0.16, 0.69, 0.5],
+      // The three lanterns on the profile stair's front rail: they give the step treads (in
+      // shadow otherwise) a raking warm light, one per third of the flight.
+      [0xff7a30, 3.0, 3.2, 5.59, 1.00, -0.28, 0.5],
+      [0xff7a30, 3.0, 3.2, 6.40, 0.53, -0.28, 0.5],
+      [0xff7a30, 3.0, 3.2, 7.21, 0.06, -0.28, 0.5],
     ]) {
       const light = new THREE.PointLight(color, intensity, distance, 2);
       light.position.set(x, y, z);
