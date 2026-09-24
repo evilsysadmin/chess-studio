@@ -632,8 +632,8 @@
     {
       "id": 18,
       "title": "Tráfico legítimo por país · hits",
-      "type": "bargauge",
-      "description": "Ranking de requests autenticadas 2xx/3xx por país. El código ISO se materializa como columna de texto para etiquetar cada barra y los hits quedan visibles a la derecha; se excluyen CI, smokes y probes.",
+      "type": "table",
+      "description": "Ranking de requests autenticadas 2xx/3xx por país. Cada fila muestra el código ISO y una barra horizontal de hits con el valor numérico visible; se excluyen CI, smokes y probes.",
       "datasource": {
         "type": "loki",
         "uid": "${logs_datasource_uid}"
@@ -659,31 +659,99 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "min": 0,
-          "color": {
-            "mode": "palette-classic"
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": false
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "País"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 84
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Hits"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "palette-classic"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "showUnfilled": false,
-        "namePlacement": "left",
-        "valueMode": "text",
-        "sizing": "manual",
-        "minVizHeight": 28,
-        "maxVizHeight": 32,
-        "reduceOptions": {
-          "values": true,
-          "calcs": [
-            "lastNotNull"
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Hits",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false,
+          "countRows": false,
+          "reducer": [
+            "sum"
           ],
-          "fields": "",
-          "limit": 12
+          "fields": ""
         }
       },
       "transformations": [
@@ -691,6 +759,25 @@
           "id": "labelsToFields",
           "options": {
             "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "client_country": 0,
+              "Value": 1,
+              "Value #A": 1
+            },
+            "renameByName": {
+              "client_country": "País",
+              "Value": "Hits",
+              "Value #A": "Hits"
+            }
           }
         }
       ]
