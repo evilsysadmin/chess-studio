@@ -1283,6 +1283,68 @@ def configure_cinematic_compositor(scene) -> None:
         scene.render.use_compositing = True
 
 
+KNIGHT_SILHOUETTE = (
+    (-0.12, 0.88), (-0.06, 0.79), (0.03, 0.77), (0.12, 0.68), (0.19, 0.56), (0.24, 0.42), (0.25, 0.26), (0.24, 0.12),
+    (-0.24, 0.12), (-0.24, 0.22), (-0.19, 0.32), (-0.10, 0.38), (-0.20, 0.45), (-0.31, 0.51), (-0.39, 0.56),
+    (-0.415, 0.61), (-0.385, 0.67), (-0.31, 0.69), (-0.22, 0.74), (-0.17, 0.81),
+)
+
+
+def add_knight_statuette(prefix, cx, cy, base_z, height, materials):
+    """Small gilt chess-knight statuette on a brass plinth, facing left (towards -X)."""
+    scale = height / 0.88
+    smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    flat_panel(
+        f"{prefix}_knight",
+        [(cx + u * scale, base_z + 0.07 + v * scale) for u, v in smooth],
+        cy,
+        0.085,
+        materials["gold"],
+        bevel=0.008,
+    )
+    cube(f"{prefix}_plinth", (cx, cy, base_z + 0.035), (0.30 * scale, 0.075, 0.035), materials["brass_dark"], bevel=0.012)
+    cube(f"{prefix}_plinth_top", (cx, cy, base_z + 0.078), (0.25 * scale, 0.062, 0.012), materials["brass"], bevel=0.006)
+
+
+def add_library_sconces(materials):
+    """Two brass candle sconces on the bookcase posts, projecting into the room: the
+    library's visible reading light. They stand in front of the post column, so they
+    never cover a book (the first pass hid them behind the post's front face)."""
+    brass = materials["brass"]
+    dark_brass = materials["brass_dark"]
+    for idx, post_x in enumerate((-3.99, -1.31)):
+        z = 3.62
+        cube(f"HOME_PROP_library_sconce_plate_{idx}", (post_x, 5.755, z), (0.05, 0.02, 0.16), dark_brass, bevel=0.010)
+        curve_tube(
+            f"HOME_PROP_library_sconce_arm_{idx}",
+            [(post_x, 5.74, z - 0.02), (post_x, 5.62, z - 0.07), (post_x, 5.50, z - 0.04)],
+            0.016,
+            brass,
+        )
+        cylinder(f"HOME_PROP_library_sconce_cup_{idx}", (post_x, 5.50, z - 0.02), 0.052, 0.03, brass, vertices=18)
+        cylinder(f"HOME_PROP_library_sconce_candle_{idx}", (post_x, 5.50, z + 0.105), 0.028, 0.20, materials["wax"], vertices=14)
+        cone(f"HOME_PROP_library_sconce_candle_flame_{idx}", (post_x, 5.50, z + 0.245), 0.028, 0.005, 0.10, materials["fire_hot"], vertices=12)
+        add_point_light(f"HOME_LIGHT_library_sconce_{idx}", (post_x, 5.36, z + 0.30), 70, (1.0, 0.48, 0.20), radius=0.26)
+
+
+def add_stair_lantern(idx, px, py, pz, materials):
+    """Enclosed brass lantern: an open flame beside a wooden handrail was a fire hazard."""
+    brass = materials["brass"]
+    dark_brass = materials["brass_dark"]
+    cylinder(f"HOME_PROP_dungeon_lantern_base_{idx}", (px, py, pz - 0.105), 0.095, 0.03, brass, vertices=20)
+    for corner, (dx, dy) in enumerate(((-0.065, -0.065), (0.065, -0.065), (-0.065, 0.065), (0.065, 0.065))):
+        cube(f"HOME_PROP_dungeon_lantern_post_{idx}_{corner}", (px + dx, py + dy, pz + 0.10), (0.011, 0.011, 0.21), dark_brass, bevel=0.004)
+    for ring_z, tag in ((pz - 0.07, "low"), (pz + 0.27, "high")):
+        cube(f"HOME_PROP_dungeon_lantern_ring_{idx}_{tag}", (px, py, ring_z), (0.08, 0.08, 0.010), dark_brass, bevel=0.004)
+    roof = cone(f"HOME_PROP_dungeon_lantern_roof_{idx}", (px, py, pz + 0.345), 0.115, 0.012, 0.14, brass, vertices=8)
+    sphere(f"HOME_PROP_dungeon_lantern_finial_{idx}", (px, py, pz + 0.43), (0.022, 0.022, 0.022), brass)
+    cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["wax"], vertices=12)
+    cone(f"HOME_PROP_dungeon_candle_flame_{idx}", (px, py, pz + 0.18), 0.040, 0.008, 0.12, materials["fire_hot"], vertices=10)
+    add_point_light(f"HOME_LIGHT_dungeon_candle_{idx}", (px, py - 0.04, pz + 0.22), 22, (1.0, 0.40, 0.12), radius=0.20)
+
+
+
+
 def add_castle_chair(name, cx, cy, side, materials):
     """Carved high-back chair of a Teutonic hall, back towards the wall side (+side*x)."""
     wood = materials["table_wood"]
@@ -2535,32 +2597,7 @@ def add_side_furnishings(materials):
         materials["fire_hot"],
         vertices=10,
     )
-    sphere("HOME_PROP_left_horse_body", (-6.45, 2.42, 1.58), (0.30, 0.16, 0.19), materials["gold"])
-    curve_tube(
-        "HOME_PROP_left_horse_neck",
-        [(-6.58, 2.42, 1.62), (-6.74, 2.42, 1.82), (-6.86, 2.42, 1.96)],
-        0.065,
-        materials["gold"],
-    )
-    sphere("HOME_PROP_left_horse_head", (-6.94, 2.42, 1.99), (0.12, 0.07, 0.10), materials["gold"])
-    for idx, (hx, hy, lean) in enumerate((
-        (-6.62, 2.34, -0.04),
-        (-6.35, 2.34, 0.03),
-        (-6.61, 2.50, 0.04),
-        (-6.34, 2.50, -0.03),
-    )):
-        curve_tube(
-            f"HOME_PROP_left_horse_leg_{idx}",
-            [(hx, hy, 1.47), (hx + lean, hy, 1.18)],
-            0.029,
-            materials["gold"],
-        )
-    curve_tube(
-        "HOME_PROP_left_horse_tail",
-        [(-6.18, 2.42, 1.62), (-6.07, 2.43, 1.51), (-6.12, 2.43, 1.34)],
-        0.030,
-        materials["gold"],
-    )
+    add_knight_statuette("HOME_PROP_left_statuette", -6.80, 2.30, 1.16, 0.50, materials)
     for idx, cx in enumerate((-6.90, -6.62, -6.34)):
         cylinder(f"HOME_PROP_left_candelabra_stem_{idx}", (cx, 2.70, 1.26), 0.035, 0.24, materials["brass_dark"], vertices=12)
         cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["wax"], bevel=0.012)
@@ -2926,9 +2963,7 @@ def add_stairs(materials):
         sphere(f"HOME_PROP_dungeon_newel_finial_{name}", (px, py, pz + 0.60), (0.115, 0.115, 0.115), materials["stone_dark"])
         sphere(f"HOME_PROP_dungeon_newel_gold_{name}", (px, py - 0.02, pz + 0.61), (0.050, 0.050, 0.050), materials["brass_dark"])
     for idx, (px, py, pz) in enumerate(((5.35, 0.95, 1.18), (6.35, 0.10, 0.53), (7.25, -0.65, -0.06))):
-        cylinder(f"HOME_PROP_dungeon_candle_{idx}", (px, py, pz), 0.038, 0.18, materials["wax"], vertices=12)
-        cone(f"HOME_PROP_dungeon_candle_flame_{idx}", (px, py, pz + 0.18), 0.040, 0.008, 0.12, materials["fire_hot"], vertices=10)
-        add_point_light(f"HOME_LIGHT_dungeon_candle_{idx}", (px, py - 0.04, pz + 0.22), 22, (1.0, 0.40, 0.12), radius=0.20)
+        add_stair_lantern(idx, px, py, pz, materials)
     cube("HOME_ARCH_dungeon_lower_floor", (6.55, -0.52, -1.46), (1.64, 1.55, 0.09), dark, bevel=0.02)
 
 
@@ -3620,6 +3655,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )
 
     add_bookshelf(materials)
+    add_library_sconces(materials)
     # The canon's library is a deep architectural bay, not a flat shelf wall.
     # Add a restrained carved surround without moving the shelf contents.
     for side in (-1, 1):
@@ -3810,12 +3846,26 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["stone_dark"],
         bevel=0.055,
     )
-    sphere(
-        "HOME_PROP_fireplace_right_canon_crest_emblem",
-        (4.45, 5.005, 3.08),
-        (0.085, 0.022, 0.085),
-        materials["gold"],
-    )
+    # "Reto del día": a parchment pinned to the crest plaque, rolled at both ends, sealed
+    # with red wax and tied with a gold ribbon.
+    scroll = cube("HOME_PROP_fireplace_right_daily_scroll", (4.45, 5.005, 3.07), (0.20, 0.010, 0.145), materials["paper"], bevel=0.004)
+    scroll.rotation_euler[1] = math.radians(1.5)
+    for tag, sz in (("top", 3.07 + 0.150), ("bottom", 3.07 - 0.150)):
+        roll = cylinder(f"HOME_PROP_fireplace_right_daily_roll_{tag}", (4.45, 5.000, sz), 0.028, 0.46, materials["paper"], vertices=16)
+        roll.rotation_euler[1] = math.radians(90.0)
+    for line, lz in enumerate((3.14, 3.09, 3.04, 3.00)):
+        cube(f"HOME_PROP_fireplace_right_daily_line_{line}", (4.45 - 0.02 * (line % 2), 4.992, lz), (0.13 - 0.03 * (line % 3), 0.003, 0.004), materials["dark"], bevel=0.001)
+    seal = cylinder("HOME_PROP_fireplace_right_daily_seal", (4.45, 4.985, 2.945), 0.048, 0.014, materials["plume_red"], vertices=20)
+    seal.rotation_euler[0] = math.radians(90.0)
+    seal_ring = cylinder("HOME_PROP_fireplace_right_daily_seal_ring", (4.45, 4.980, 2.945), 0.036, 0.008, materials["gold"], vertices=20)
+    seal_ring.rotation_euler[0] = math.radians(90.0)
+    for side in (-1, 1):
+        curve_tube(
+            f"HOME_PROP_fireplace_right_daily_ribbon_{side}",
+            [(4.45, 4.98, 2.92), (4.45 + side * 0.04, 4.98, 2.85), (4.45 + side * 0.08, 4.98, 2.78)],
+            0.010,
+            materials["gold"],
+        )
     shield_points = [
         (5.10, 3.56),
         (5.64, 3.56),

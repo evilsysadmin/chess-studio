@@ -23,8 +23,8 @@ export const HOME_BLENDER_BEACON_ANCHORS = Object.freeze({
   tournament: Object.freeze([-6.15, 5.83, 3.45]), // trophy on the left chimney ledge
   train: Object.freeze([-2.65, 5.7, 2.75]), // library
   combat: Object.freeze([1.55, 5.83, 4.0]), // suit of armour, above the plume
-  daily: Object.freeze([4.45, 5.8, 1.9]), // right hearth
-  history: Object.freeze([-6.55, 2.33, 1.95]), // study corner: telescope, globe, kettle
+  daily: Object.freeze([4.45, 5.0, 3.62]), // "reto del día" scroll pinned above the right hearth
+  history: Object.freeze([-6.65, 2.3, 2.05]), // study corner: gilt knight statuette and helmet
   dungeon: Object.freeze([6.3, 2.2, 2.2]), // stairs down, right
 });
 
