@@ -1510,12 +1510,9 @@ def add_royal_cat(materials):
             tuft(f"{prefix}_{n}", tuple(c + p * 0.985), tuple(axis + jitter), length * (0.8 + _hash01(n, 5, seed) * 0.5), radius * (0.8 + _hash01(n, 6, seed) * 0.4), fur if n % 3 else materials["cat_fur"])
 
     # Undercoat: slightly shaded, smooth and high-resolution so the tufts sit on a real form.
-    blob("HOME_PROP_cat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), (0, 0, 8), shade, (56, 28))
-    blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10), shade, (48, 24))
-    blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12), shade, (48, 24))
-    coat("HOME_PROP_cat_coat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), 64, 4101, phi_range=(0.10, 1.25))
-    coat("HOME_PROP_cat_coat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), 24, 4111, along=(1.0, 0.3, 0.0), length=0.11, radius=0.026)
-    coat("HOME_PROP_cat_coat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), 26, 4121, along=(-0.4, -1.0, -0.2), length=0.10, radius=0.024, theta_range=(-3.14159, 0.6))
+    blob("HOME_PROP_cat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), (0, 0, 8), fur, (56, 28))
+    blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10), fur, (48, 24))
+    blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12), fur, (48, 24))
 
     # Head resting on the front paws, turned to the camera.
     hx, hy, hz = cx - 0.22, cy - 0.22, top + 0.085
@@ -1524,12 +1521,6 @@ def add_royal_cat(materials):
     blob("HOME_PROP_cat_cheek_r", (hx + 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
     blob("HOME_PROP_cat_muzzle", (hx, hy - 0.088, hz - 0.030), (0.042, 0.030, 0.028), (0, 0, 0), fur, fine)
     blob("HOME_PROP_cat_chin", (hx, hy - 0.070, hz - 0.066), (0.030, 0.024, 0.020), (0, 0, 0), fur, (24, 12))
-    # cheek fluff radiating around the face
-    for n, ang in enumerate(range(-80, 261, 24)):
-        a = math.radians(ang)
-        direction = (math.sin(a) * 0.9, -0.35, math.cos(a) * 0.6)
-        base = (hx + math.sin(a) * 0.105, hy - 0.052 - abs(math.sin(a)) * 0.010, hz - 0.028 + math.cos(a) * 0.070)
-        tuft(f"HOME_PROP_cat_ruff_{n}", base, direction, 0.075, 0.018)
     for side, tag in ((-1, "l"), (1, "r")):
         # Ears: flat rounded triangles leaning outward (a cone read as a party hat).
         ex = hx + side * 0.072
@@ -1538,8 +1529,6 @@ def add_royal_cat(materials):
         flat_panel(f"HOME_PROP_cat_ear_{tag}", outer, hy - 0.004, 0.030, fur, bevel=0.010)
         inner_pts = [(ex - 0.028, ez + 0.010), (ex + 0.028, ez + 0.010), (ex + side * 0.020 + 0.003, ez + 0.070)]
         flat_panel(f"HOME_PROP_cat_ear_inner_{tag}", inner_pts, hy - 0.022, 0.014, pink, bevel=0.004)
-        for k in range(2):
-            tuft(f"HOME_PROP_cat_ear_fluff_{tag}_{k}", (ex + (k - 0.5) * 0.030, hy - 0.030, ez + 0.010), (side * 0.2, -0.2, 0.9), 0.040, 0.010)
         # Matthias's cat: asleep, but scowling. The eye is a narrow slit slanting down toward the
         # nose (inner end lowest), under a heavy brow furrowed into a V, like the pawn's glare.
         curve_tube(
@@ -1588,12 +1577,7 @@ def add_royal_cat(materials):
         t = i / 15.0
         ang = math.radians(20 + t * 250)
         tail.append((cx + 0.02 + 0.29 * math.cos(ang), cy + 0.02 - 0.235 * math.sin(ang) - 0.01, top + 0.034 + 0.014 * math.sin(t * math.pi)))
-    curve_tube("HOME_PROP_cat_tail", tail, 0.038, shade)
-    for i in range(1, len(tail) - 1):
-        along = (Vector(tail[i + 1]) - Vector(tail[i - 1])).normalized()
-        for side in (-1, 1):
-            side_vec = Vector((-along.y, along.x, 0.0)).normalized()
-            tuft(f"HOME_PROP_cat_tail_fur_{i}_{side}", tuple(Vector(tail[i]) + side_vec * 0.030 * side + Vector((0, 0, 0.010))), tuple(along * 0.9 + side_vec * side * 0.35 + Vector((0, 0, 0.12))), 0.085, 0.022)
+    curve_tube("HOME_PROP_cat_tail", tail, 0.040, fur)
     sphere("HOME_PROP_cat_tail_tip", tail[-1], (0.044, 0.044, 0.038), fur, detail=(32, 16))
 
 
