@@ -16,6 +16,12 @@ function scopeEnabled(scope) {
   return TRAINING_SCOPE.has('all') || TRAINING_SCOPE.has(scope);
 }
 
+function scopedTest(scope, title, body) {
+  if (scopeEnabled(scope)) {
+    test(title, body);
+  }
+}
+
 async function settle(page) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(120);
@@ -81,8 +87,7 @@ async function openDungeon(page) {
   await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
 }
 
-test('Entrenar · Escuela, Glosario y Modos especiales', async ({ page }) => {
-  test.skip(!scopeEnabled('school'), 'school visual scope not selected');
+scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async ({ page }) => {
   test.setTimeout(110_000);
   await prepare(page);
 
@@ -169,8 +174,7 @@ test('Entrenar · Escuela, Glosario y Modos especiales', async ({ page }) => {
   await capture(page, 'special-modes');
 });
 
-test('Entrenar · Aperturas', async ({ page }) => {
-  test.skip(!scopeEnabled('openings'), 'openings visual scope not selected');
+scopedTest('openings', 'Entrenar · Aperturas', async ({ page }) => {
   test.setTimeout(45_000);
   await prepare(page);
   await openDungeon(page);
@@ -185,8 +189,7 @@ test('Entrenar · Aperturas', async ({ page }) => {
   await expect(page.locator('.masthead:not(.masthead-game-compact) .masthead-text')).toBeHidden();
 });
 
-test('Entrenar · Puzzles', async ({ page }) => {
-  test.skip(!scopeEnabled('puzzles'), 'puzzles visual scope not selected');
+scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
   test.setTimeout(45_000);
   await prepare(page);
   await openDungeon(page);
@@ -198,8 +201,7 @@ test('Entrenar · Puzzles', async ({ page }) => {
   await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
 });
 
-test('Entrenar · Torneo', async ({ page }) => {
-  test.skip(!scopeEnabled('tournament'), 'tournament visual scope not selected');
+scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
   test.setTimeout(45_000);
   await prepare(page);
 
@@ -210,8 +212,7 @@ test('Entrenar · Torneo', async ({ page }) => {
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
 });
 
-test('Entrenar · Así juegas y Mi progreso', async ({ page }) => {
-  test.skip(!scopeEnabled('progress'), 'progress visual scope not selected');
+scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
   test.setTimeout(70_000);
   await prepare(page);
 
