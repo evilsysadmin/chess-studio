@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FIRE_SPRITE_DEFAULTS, createFireSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
+import { FIRE_SPRITE_DEFAULTS, STEAM_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { WAR_ROOM_V2_FIRE_ANCHORS, hideBakedHearthFlames, installWarRoomV2FireSprites, installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
 
 describe('fireSprites', () => {
@@ -103,5 +103,18 @@ describe('baked hearth flames', () => {
     restore();
     expect(single.visible).toBe(true);
     expect(mixed.material).toBe(original);
+  });
+});
+
+describe('steam sprites', () => {
+  it('builds a normal-blended, self-driving soft plume', () => {
+    const steam = createSteamSprites({ base: [1, 1, -2] });
+    expect(steam.isPoints).toBe(true);
+    expect(steam.geometry.getAttribute('aSeed').count).toBe(STEAM_SPRITE_DEFAULTS.count);
+    expect(steam.material.blending).toBe(THREE.NormalBlending);
+    expect(steam.material.uniforms.uOpacity.value).toBeLessThanOrEqual(0.6);
+    steam.onBeforeRender({ userData: { board3DMotionNowMs: 2000 }, domElement: { height: 800 } });
+    expect(steam.material.uniforms.uTime.value).toBe(2);
+    expect(steam.material.uniforms.uBase.value.toArray()).toEqual([1, 1, -2]);
   });
 });
