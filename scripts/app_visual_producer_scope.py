@@ -34,6 +34,38 @@ PRODUCER_ORDER = (
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
 WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
+WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
+WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
+WARROOM_CLASSIC_VARIANT_FILES = {
+    "frontend/src/components/warroomclassicshell.js",
+    "frontend/src/components/premiumwarroomscene.js",
+    "frontend/src/components/warroomcastlearchitecture.js",
+    "frontend/src/components/warroompremiumpaintings.js",
+}
+WARROOM_V2_VARIANT_FILES = {
+    "frontend/src/components/warroomv2shell.js",
+    "frontend/src/components/warroomfiresprites.js",
+    "scripts/blender/publish_war_room_v2_staging.py",
+    ".github/workflows/war-room-blender-art.yml",
+}
+WARROOM_V3_VARIANT_FILES = {
+    "frontend/src/components/warroomv3shell.js",
+    "frontend/src/components/warroomv3fire.js",
+    "scripts/blender/build_war_room_v3.py",
+    "scripts/blender/publish_war_room_v3.py",
+    ".github/workflows/war-room-v3-blender-art.yml",
+}
+WARROOM_BLENDER_SHARED_VARIANT_FILES = {
+    "frontend/src/components/warroomblendershellruntime.js",
+    "frontend/src/components/warroomblendermaterials.js",
+    "scripts/blender/build_war_room_premium.py",
+}
+WARROOM_SHARED_VARIANT_FILES = {
+    "frontend/src/components/gamewarroomcommandcolumn.jsx",
+    "frontend/src/components/warroomscenevariant.js",
+    "frontend/src/components/warroomsharedviewport.css",
+    "frontend/src/components/warroomvariant.js",
+}
 WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/gamewarroomcommandcolumn.jsx",
     "frontend/src/components/warroomscenevariant.js",
@@ -251,6 +283,45 @@ def classify_path(path: str) -> set[str] | None:
     return None
 
 
+
+def _variant_csv(values: set[str]) -> str:
+    return ",".join(item for item in WARROOM_VARIANT_ORDER if item in values)
+
+
+def _warroom_variant_ownership(path: str) -> set[str]:
+    lower = path.lower().replace("\\", "/")
+    if lower in WARROOM_CLASSIC_VARIANT_FILES:
+        return {"classic"}
+    if lower in WARROOM_V2_VARIANT_FILES:
+        return {"v2"}
+    if lower in WARROOM_V3_VARIANT_FILES:
+        return {"v3"}
+    if lower in WARROOM_BLENDER_SHARED_VARIANT_FILES:
+        return {"v2", "v3"}
+    if lower in WARROOM_SHARED_VARIANT_FILES:
+        return set(WARROOM_VARIANT_ALL)
+    if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
+        return set(WARROOM_VARIANT_ALL)
+    return set()
+
+
+def classify_warroom_variants(paths: list[str]) -> str:
+    cleaned = [path.strip() for path in paths if path.strip()]
+    if not cleaned:
+        return _variant_csv(WARROOM_VARIANT_ALL)
+    variants: set[str] = set()
+    for path in cleaned:
+        owned = _warroom_variant_ownership(path)
+        if owned == WARROOM_VARIANT_ALL:
+            return _variant_csv(WARROOM_VARIANT_ALL)
+        if owned:
+            variants.update(owned)
+            continue
+        producer_owner = classify_path(path)
+        if producer_owner is None or "warroom-core" in producer_owner:
+            return _variant_csv(WARROOM_VARIANT_ALL)
+    return _variant_csv(variants or WARROOM_VARIANT_ALL)
+
 def classify(paths: list[str]) -> str:
     cleaned = [path.strip() for path in paths if path.strip()]
     if not cleaned:
@@ -265,6 +336,18 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
+    assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomV3Shell.js"]) == "v3"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomBlenderShellRuntime.js"]) == "v2,v3"
+    assert classify_warroom_variants(["scripts/blender/build_war_room_premium.py"]) == "v2,v3"
+    assert classify_warroom_variants(["frontend/src/components/Board3DScene.js"]) == "classic,v2,v3"
+    assert classify_warroom_variants([
+        "frontend/src/components/WarRoomClassicShell.js",
+        "frontend/src/components/WarRoomV3Shell.js",
+    ]) == "classic,v3"
+    assert classify_warroom_variants(["frontend/src/components/PuzzleScreen.jsx"]) == "classic,v2,v3"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
@@ -349,12 +432,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.self_test:
         self_test()
         return 0
-    result = "all" if args.all else classify(sys.stdin.read().splitlines())
+    paths = [] if args.all else sys.stdin.read().splitlines()
+    result = "all" if args.all else classify(paths)
+    warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as handle:
             handle.write(f"producer_scope={result}\n")
+            handle.write(f"warroom_variants={warroom_variants}\n")
     else:
         print(f"producer_scope={result}")
+        print(f"warroom_variants={warroom_variants}")
     return 0
 
 

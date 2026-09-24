@@ -102,6 +102,7 @@ runs:
       env:
         APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ steps.scope.outputs.warroom_revision_required == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) || '' }}
         APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION: ${{ steps.scope.outputs.warroom_v3_revision_required == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) || '' }}
+        APP_VISUAL_WARROOM_VARIANTS: ${{ steps.scope.outputs.warroom_variants }}
       shell: bash
       run: |
         set -euo pipefail

@@ -15,6 +15,12 @@ const WAR_ROOM_V2_REVISION_BASE =
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
+const WAR_ROOM_VISUAL_VARIANTS = new Set(
+  (process.env.APP_VISUAL_WARROOM_VARIANTS || 'classic,v2,v3')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 function expectedWarRoomV2Revision() {
   return String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '').trim();
@@ -191,6 +197,9 @@ const CAPTURE_PROFILES = Object.freeze([
     variant: 'v3',
   }),
 ]);
+const ACTIVE_CAPTURE_PROFILES = Object.freeze(
+  CAPTURE_PROFILES.filter((profile) => WAR_ROOM_VISUAL_VARIANTS.has(profile.variant || 'classic')),
+);
 
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
@@ -508,7 +517,7 @@ function expectLandscapeHealth(health) {
   expect(health.human?.bottom, 'Android landscape player rail must stay inside the viewport').toBeLessThanOrEqual(health.viewport.height + 1);
 }
 
-for (const profile of CAPTURE_PROFILES) {
+for (const profile of ACTIVE_CAPTURE_PROFILES) {
   test(`War Room · captura visual canónica ${profile.title}`, async () => {
     test.setTimeout(120_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
