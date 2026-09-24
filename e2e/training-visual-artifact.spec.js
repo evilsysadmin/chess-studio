@@ -104,8 +104,15 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await capture(page, 'school-board-mode');
   await shell.getByRole('button', { name: 'Solo tablero', exact: true }).click();
   await expect(shell).toHaveAttribute('data-school-focus-rail', 'collapsed');
+  const showMatthias = shell.getByRole('button', { name: 'Mostrar Matthias', exact: true });
+  await expect(showMatthias).toBeVisible();
+  expect(await showMatthias.evaluate((button) => {
+    const rect = button.getBoundingClientRect();
+    const topmost = document.elementFromPoint(rect.left + (rect.width / 2), rect.top + (rect.height / 2));
+    return topmost === button || button.contains(topmost);
+  })).toBe(true);
   await capture(page, 'school-board-solo');
-  await shell.getByRole('button', { name: 'Mostrar Matthias', exact: true }).click();
+  await showMatthias.click();
   await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
   await captureAt(page, 'school-board-mode', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
