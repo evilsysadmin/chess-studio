@@ -8,6 +8,7 @@ async function openQuickMatch(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(dialog).toBeVisible();
+  await dialog.locator('details.quick-match-settings > summary').click();
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
   await expect(renderer.getByRole('button', { name: '3D', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'false');

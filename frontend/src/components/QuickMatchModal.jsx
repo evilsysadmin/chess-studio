@@ -67,14 +67,6 @@ export default function QuickMatchModal({
         <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text friendly-lead">Matthias está disponible. Los humanos, lamentablemente, también.</p>
 
-        {onOpenPvp && (
-          <button type="button" className="adaptive-difficulty-choice" onClick={onOpenPvp} disabled={loading}>
-            <span aria-hidden="true">♙♟</span>
-            <span><b>Jugar contra una persona</b><small>Ponte disponible, elige rival y pulsa Retar. Si alguien te reta primero, te avisaremos.</small></span>
-            <i>1 vs 1</i>
-          </button>
-        )}
-
         {matthiasBriefing && (
           <aside className="matthias-quick-briefing" aria-label="Briefing de Matthias">
             <img src={matthiasVisual.avatar} alt="" aria-hidden="true" />
@@ -117,7 +109,7 @@ export default function QuickMatchModal({
           </details>
         )}
 
-        {autoDifficulty && <button type="button" className="text-action adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
+        {autoDifficulty && <button type="button" className="secondary-btn adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
 
         {!autoDifficulty && handicap && (
           <p className="hint-text friendly-inline-note">
@@ -127,42 +119,6 @@ export default function QuickMatchModal({
 
         {error && <p className="quick-match-error" role="alert">{error}</p>}
 
-        <div
-          role="group"
-          aria-label="Tipo de tablero"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.35rem', marginTop: '.65rem' }}
-        >
-          <span className="hint-text" style={{ margin: '0 .15rem 0 0' }}>Tablero</span>
-          {[
-            ['3d', '3D', 'War Room 3D'],
-            ['2d', '2D', 'Tablero 2D ligero · pixel art por defecto'],
-          ].map(([value, label, title]) => {
-            const selected = selectedRenderer === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                className="secondary-btn"
-                disabled={loading}
-                aria-pressed={selected}
-                title={title}
-                onClick={() => setSelectedRenderer(value)}
-                style={{
-                  minWidth: 48,
-                  minHeight: 44,
-                  padding: '.28rem .55rem',
-                  fontSize: '.75rem',
-                  opacity: selected ? 1 : .58,
-                  borderColor: selected ? 'var(--brass)' : undefined,
-                  color: selected ? 'var(--parchment)' : undefined,
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
         <button
           type="button"
           className="primary-btn friendly-main-cta"
@@ -171,6 +127,12 @@ export default function QuickMatchModal({
         >
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
+
+        {onOpenPvp && (
+          <button type="button" className="secondary-btn quick-match-pvp-link" onClick={onOpenPvp} disabled={loading}>
+            Jugar contra una persona · 1 vs 1
+          </button>
+        )}
 
         <details className="friendly-disclosure quick-match-settings">
           <summary>
@@ -197,6 +159,42 @@ export default function QuickMatchModal({
               >
                 {SERIES_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
+            </div>
+
+            <div
+              role="group"
+              aria-label="Tipo de tablero"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.35rem', marginTop: '.65rem' }}
+            >
+              <span className="hint-text" style={{ margin: '0 .15rem 0 0' }}>Tablero</span>
+              {[
+                ['3d', '3D', 'War Room 3D'],
+                ['2d', '2D', 'Tablero 2D ligero · pixel art por defecto'],
+              ].map(([value, label, title]) => {
+                const selected = selectedRenderer === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className="secondary-btn"
+                    disabled={loading}
+                    aria-pressed={selected}
+                    title={title}
+                    onClick={() => setSelectedRenderer(value)}
+                    style={{
+                      minWidth: 48,
+                      minHeight: 44,
+                      padding: '.28rem .55rem',
+                      fontSize: '.75rem',
+                      opacity: selected ? 1 : .58,
+                      borderColor: selected ? 'var(--brass)' : undefined,
+                      color: selected ? 'var(--parchment)' : undefined,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             {seriesBestOf > 1 && (
               <p className="hint-text" style={{ marginTop: '0.65rem' }}>

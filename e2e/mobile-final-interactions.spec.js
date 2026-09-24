@@ -348,6 +348,7 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await quickMatch.locator('details.quick-match-settings > summary').click();
   await expect(quickMatch.getByRole('button', { name: '3D', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await quickMatch.getByRole('button', { name: '2D', exact: true }).click();
   await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
