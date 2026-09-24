@@ -138,6 +138,55 @@ test('Escuela de Matthias · una lección dominada se puede repetir de verdad', 
   await completeLesson();
 });
 
+test('Escuela de Matthias · repetir sin ayudas no infla progreso ni intentos', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  const board = page.locator('.matthias-school-board');
+  const origin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
+  const target = board.getByRole('button', { name: /^Casilla e4, vacía/ });
+
+  await origin.click();
+  await target.click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await expect(page.getByRole('button', { name: 'Ahora sin ayudas', exact: true })).toBeVisible();
+
+  const persistedAfterGuided = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']
+  ));
+  expect(persistedAfterGuided?.completed).toBe(true);
+  expect(persistedAfterGuided?.attempts).toBeGreaterThanOrEqual(1);
+
+  await page.getByRole('button', { name: 'Ahora sin ayudas', exact: true }).click();
+  await expect(board).toHaveAttribute('data-school-mastery', 'active');
+  const masteryOrigin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
+  const masteryTarget = board.getByRole('button', { name: /^Casilla e4, vacía/ });
+  await expect(masteryOrigin).not.toHaveClass(/hint-move/);
+  await expect(masteryOrigin).not.toHaveClass(/classroom-focus/);
+  await expect(masteryTarget).not.toHaveClass(/hint-move/);
+  await expect(page.getByRole('button', { name: 'Dame una pista', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Por qué funciona', exact: true })).toHaveCount(0);
+
+  await board.getByRole('button', { name: /^Casilla a3, vacía/ }).click();
+  const persistedAfterMiss = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']
+  ));
+  expect(persistedAfterMiss?.attempts).toBe(persistedAfterGuided.attempts);
+  expect(persistedAfterMiss?.completedAt).toBe(persistedAfterGuided.completedAt);
+
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-mastery', 'complete');
+  await expect(page.getByText('✓ Dominado sin ayudas', { exact: true })).toBeVisible();
+
+  const persistedAfterMastery = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']
+  ));
+  expect(persistedAfterMastery?.attempts).toBe(persistedAfterGuided.attempts);
+  expect(persistedAfterMastery?.completedAt).toBe(persistedAfterGuided.completedAt);
+});
+
 test('Escuela de Matthias · suspender un examen reinicia un intento real y permite aprobarlo', async ({ page }) => {
   const schoolProgress = Object.fromEntries(BASIC_LESSONS_BEFORE_EXAM.map((id) => [
     id,

@@ -672,3 +672,16 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     flex-wrap: wrap;
   }
 }
+
+.tutorial-shell.matthias-school-shell .matthias-school-mastery-chip {
+  align-self: center;
+  padding: .34rem .55rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ui-border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--brass) 78%, var(--parchment));
+  background: color-mix(in srgb, var(--brass) 10%, transparent);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
