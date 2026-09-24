@@ -142,7 +142,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('id="insights-view-errors"');
     expect(html).toContain('data-recurring-errors="true"');
     expect(html).toContain('No vuelvas a hacer esto');
-    expect(html).toContain('data-insights-dashboard="diagnosis"');
+    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
@@ -155,6 +155,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-view-dossier');
     expect(html).toContain('data-clean-games="true"');
+    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
