@@ -251,6 +251,11 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
   const uxReport = { schema: 1, viewport: 'desktop-1440x900', checkpoints: [], runtime: uxRuntime };
   test.setTimeout(210_000);
   await page.setViewportSize({ width: 1440, height: 900 });
+  // v2 is the product default, but this smoke runs on software GL where the
+  // Blender shell starves screenshots; pin v1 and exercise v2 explicitly below.
+  await page.addInitScript(() => {
+    try { window.localStorage.setItem('chess-study-war-room-variant-v1', 'classic'); } catch { /* ignore */ }
+  });
 
   if (EXPECTED_SHA) {
     const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {
@@ -347,13 +352,16 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
-    // v2 is the default; v1 stays selectable as the rollback lever.
-    await expect(v2WarRoomItem).toHaveAttribute('aria-checked', 'true');
+    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
+    await v2WarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
-    await classicWarRoomItem.click();
+    await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
+    await variantUtilityMenu.click();
+    await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'idle');
+    await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
 
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
     await expect(warRoomSignal).toBeVisible();
