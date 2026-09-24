@@ -471,3 +471,153 @@
     .illustrated-home__play-menu { animation: none; }
   }
 }
+
+/* ---- Projected beacons (>= 1000px) ------------------------------------------------
+ * When the Blender scene reports where each 3D object lands on screen
+ * (data-home-beacons="projected"), the beacon is a real element placed at that point,
+ * so it stays on its object at every window size. The older label-anchored beacon
+ * (icon circle, ring, plaque drawn from the destination button) is switched off; the
+ * destination buttons stay as the accessible, keyboard controls and the hit boxes. */
+.illustrated-home__beacon {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__destination:not(.illustrated-home__destination--play) > svg,
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__destination:not(.illustrated-home__destination--play) > i {
+    opacity: 0 !important;
+  }
+
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__destination:not(.illustrated-home__destination--play)::before,
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
+    display: none !important;
+  }
+
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__destination:not(.illustrated-home__destination--play) > :is(strong, span) {
+    opacity: 0 !important;
+  }
+
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__dungeon-copy,
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__dungeon-chevron {
+    opacity: 0 !important;
+  }
+
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__utilities > .illustrated-home__dungeon-trigger::before {
+    display: none;
+  }
+
+  .illustrated-home__beacon {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    z-index: 9;
+    box-sizing: border-box;
+    width: max(2.4cqw, 38px);
+    height: max(2.4cqw, 38px);
+    padding: 0;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(240, 190, 98, .85);
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 28%, #7a4a22 0%, #2f190b 78%);
+    color: #ffe4a6;
+    box-shadow: 0 0 .9cqw rgba(255, 176, 66, .55), inset 0 0 0 1px rgba(0, 0, 0, .4);
+    cursor: pointer;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .illustrated-home__beacon > svg {
+    width: 54%;
+    height: 54%;
+  }
+
+  /* Static ring at rest; it only pulses on a live GPU (below). */
+  .illustrated-home__beacon::after {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 196, 100, .75);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: .5;
+    transform: scale(1.05);
+  }
+
+  .illustrated-home__beacon-label {
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + .55cqw);
+    left: 50%;
+    display: grid;
+    gap: .15cqw;
+    min-width: max-content;
+    padding: .5cqw .95cqw;
+    border: 1px solid rgba(218, 166, 78, .58);
+    border-radius: .32cqw;
+    background: linear-gradient(180deg, rgba(66, 39, 19, .94), rgba(27, 15, 8, .96));
+    box-shadow: inset 0 .1cqw 0 rgba(255, 226, 160, .2), 0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -.3cqw);
+    transition: opacity .16s ease, transform .18s ease;
+  }
+
+  .illustrated-home__beacon-label strong {
+    color: #f7e0a6;
+    font: 700 max(13px, .95cqw)/1 Georgia, serif;
+    letter-spacing: .08em;
+  }
+
+  .illustrated-home__beacon-label small {
+    color: #dfcaa2;
+    font: 500 max(11px, .72cqw)/1.2 Arial, sans-serif;
+  }
+
+  /* Beacons near the edges must not push their label off screen. */
+  .illustrated-home__beacon--history .illustrated-home__beacon-label {
+    left: 0;
+    transform: translate(0, -.3cqw);
+  }
+
+  .illustrated-home__beacon--dungeon .illustrated-home__beacon-label {
+    left: auto;
+    right: 0;
+    transform: translate(0, -.3cqw);
+  }
+
+  .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) {
+    border-color: #ffd58a;
+    box-shadow: 0 0 1.5cqw rgba(255, 180, 70, .9), inset 0 0 0 1px rgba(0, 0, 0, .4);
+  }
+
+  .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .illustrated-home__beacon--history:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label,
+  .illustrated-home__beacon--dungeon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
+    transform: translate(0, 0);
+  }
+
+  .illustrated-home__beacon:disabled {
+    opacity: .55;
+    cursor: default;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports selector(:has(*)) {
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon:not(:hover):not(.is-active)::after {
+        animation: home-beacon-ring 3s ease-out infinite;
+      }
+
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--tournament::after { animation-delay: 0s; }
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--train::after { animation-delay: .5s; }
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--combat::after { animation-delay: 1s; }
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--daily::after { animation-delay: 1.5s; }
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--history::after { animation-delay: 2s; }
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live']) .illustrated-home__beacon--dungeon::after { animation-delay: 2.5s; }
+    }
+  }
+}

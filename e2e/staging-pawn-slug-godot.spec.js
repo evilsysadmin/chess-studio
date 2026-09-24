@@ -131,6 +131,10 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
 
   await browserLogin(page, username, password);
 
+  // Pawn Slug lives in the Mazmorras panel (the floating Home chip was retired).
+  const dungeon = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await dungeon.focus();
+  await page.keyboard.press('Enter');
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible();
   // Match the canonical Pawn Slug visual proof: keyboard activation avoids
