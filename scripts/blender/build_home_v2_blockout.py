@@ -3059,8 +3059,8 @@ def add_stairs(materials):
         cube(
             f"HOME_PROP_dungeon_step_runner_{i}",
             (x, y - 0.01, step_z + 0.080),
-            (0.25, step_depth * 0.86, 0.007),
-            materials["banner"],
+            (0.36, step_depth * 0.90, 0.010),
+            materials["leather"],
             bevel=0.004,
         )
         cube(
