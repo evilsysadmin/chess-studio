@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeScene3D from './HomeScene3D.jsx';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
@@ -18,7 +18,6 @@ import './HomeIllustratedMobileCanonical.css';
 import './HomeCastleLife.css';
 import './HomeCastle3D.css';
 import './HomeIllustratedTallTouch.css';
-import './HomePawnSlugEntity.css';
 import './HomeMatthiasRoutine.css';
 import './HomeDestinationPlaques.css';
 
@@ -26,6 +25,24 @@ const PRIMARY_DIEGETIC_DESTINATIONS = new Set(['tournament', 'combat', 'play']);
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
+}
+
+function IconStairs(props) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M4 20h4v-4h4v-4h4V8h4" /><path d="M4 20h16" /></svg>;
+}
+
+function IconScroll(props) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 4h11a2 2 0 0 1 2 2v1H9V6a2 2 0 0 0-2-2Zm0 0a2 2 0 0 0-2 2v11a3 3 0 0 0 3 3h9a2 2 0 0 0 2-2v-1" /><path d="M9 11h7M9 15h5" /></svg>;
+}
+
+// Positions differ by a few hundredths of a percent between resizes; ignore that noise so
+// the beacons do not re-render on every frame of a window drag.
+function sameAnchorLayout(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ids = Object.keys(a);
+  if (ids.length !== Object.keys(b).length) return false;
+  return ids.every((id) => b[id] && Math.abs(a[id].x - b[id].x) < 0.0005 && Math.abs(a[id].y - b[id].y) < 0.0005);
 }
 
 function Flame() {
@@ -46,6 +63,13 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
+  // Screen positions (0..1 of the stage) of each destination's 3D object, projected by the
+  // scene's own camera. null until the Blender scene reports them (and again if it falls
+  // back to the legacy hall), in which case the static label layout is used.
+  const [anchors, setAnchors] = useState(null);
+  const handleAnchorLayout = useCallback((next) => {
+    setAnchors((current) => (sameAnchorLayout(current, next) ? current : next));
+  }, []);
   const [activeRoom, setActiveRoom] = useState(null);
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
@@ -162,9 +186,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['train', 'ENTRENAR', 'Mejora tu juego', IconBook, onTrain],
     ['combat', 'COMBAT CHESS', 'Recluta tu ejército', IconSword, onCombat],
     ['daily', 'DESAFÍO DIARIO', 'Un nuevo reto cada día', Flame, onDaily],
-    ['history', 'HISTORIA', 'Descubre el legado', IconBook, onHistory],
+    ['history', 'HISTORIA', 'Descubre el legado', IconScroll, onHistory],
     ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
+  const beacons = anchors
+    ? [
+      ...rooms.filter(([id]) => id !== 'play').map(([id, title, detail, Icon, action]) => ({ id, title, detail, Icon, action })),
+      { id: 'dungeon', title: 'MAZMORRAS', detail: 'Modos y herramientas', Icon: IconStairs, action: () => setToolsOpen((open) => !open) },
+    ].filter((beacon) => anchors[beacon.id])
+    : [];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
   const matthiasZone = matthiasVisual?.zone || matthiasHomeZone(matthiasVisual?.key);
   const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
@@ -176,6 +206,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-memory={memories.map((memory) => memory.kind).join(' ') || 'none'}
         data-home-castle-rare={castleLife.rareSighting || 'none'}
         data-home-castle-focus={activeRoom || 'none'}
+        data-home-beacons={anchors ? 'projected' : 'static'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
         <HomeScene3D
@@ -184,6 +215,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           activeRoom={activeRoom}
           onDestinationHover={setActiveRoom}
           onDestinationActivate={activateSceneDestination}
+          onAnchorLayout={handleAnchorLayout}
         />
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         {castleLife.rareSighting && (
@@ -228,6 +260,25 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </Fragment>
           ))}
         </nav>
+        {/* Beacons sit on the projected position of each 3D object. They repeat the
+            destination buttons for the mouse only (those stay the accessible controls). */}
+        {beacons.map(({ id, title, detail, Icon, action }) => (
+          <button
+            key={id}
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            className={`illustrated-home__beacon illustrated-home__beacon--${id}${activeRoom === id ? ' is-active' : ''}`}
+            style={{ left: `${anchors[id].x * 100}%`, top: `${anchors[id].y * 100}%` }}
+            onClick={action}
+            onPointerEnter={() => setActiveRoom(id)}
+            onPointerLeave={() => setActiveRoom(null)}
+            disabled={loading}
+          >
+            <Icon aria-hidden="true" />
+            <span className="illustrated-home__beacon-label"><strong>{title}</strong><small>{detail}</small></span>
+          </button>
+        ))}
         {/* JUGAR is one tap for the common case (quick game, or CONTINUAR with a saved
             game); every other way to start a game lives one click away in this menu. */}
         <div className={`illustrated-home__play-more-wrap${playMenuOpen ? ' is-open' : ''}`}>
@@ -305,20 +356,6 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </nav>
           )}
         </div>
-        <button
-          className="illustrated-home__pawn-slug"
-          type="button"
-          onClick={openPawnSlug}
-          onPointerEnter={() => setActiveRoom('pawnslug')}
-          onPointerLeave={() => setActiveRoom(null)}
-          onFocus={() => setActiveRoom('pawnslug')}
-          onBlur={() => setActiveRoom(null)}
-          disabled={loading || !experimentsAction}
-          aria-label="Abrir Pawn Slug directamente"
-        >
-          <strong>PAWN SLUG</strong>
-          <small>Operación activa</small>
-        </button>
         <aside className="illustrated-home__resident" aria-label="Rincón de Matthias">
         {matthiasSpeaking && <section className="illustrated-home__speech" aria-label="Mensaje de Matthias" aria-live="polite">
           <strong>{matthiasModel.eyebrow}</strong><p>{matthiasModel.text}</p>
@@ -383,6 +420,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           {toolsOpen && <nav id="illustrated-home-tools" className="illustrated-home__dungeon-panel" aria-label="Más modos y herramientas">
             <header><span>BAJO EL CASTILLO</span><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></header>
             {tools.map(([label, action]) => <button type="button" key={label} aria-label={label} onClick={() => { setToolsOpen(false); action(); }}>{label}</button>)}
+            {experimentsAction && <button type="button" aria-label="Abrir Pawn Slug directamente" onClick={() => { setToolsOpen(false); openPawnSlug(); }}>Pawn Slug</button>}
           </nav>}
         </div>
       </div>

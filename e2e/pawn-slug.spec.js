@@ -76,6 +76,10 @@ async function requestGodotExit(page) {
 test('Pawn Slug · Home abre Godot directamente sin pasar por el Hub', async ({ page }) => {
   await authenticate(page);
 
+  // Pawn Slug lives in the Mazmorras panel (the floating Home chip was retired).
+  const dungeon = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await dungeon.focus();
+  await page.keyboard.press('Enter');
   const direct = page.getByRole('button', { name: 'Abrir Pawn Slug directamente', exact: true });
   await expect(direct).toBeVisible();
   await direct.focus();

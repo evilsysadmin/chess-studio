@@ -4,6 +4,8 @@ import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
+  homeBlenderProjectAnchors,
+  HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
@@ -561,5 +563,46 @@ describe('HomeBlenderScene3D flame flutter shader', () => {
     expect(shader.vertexShader).not.toContain('flameTip');
     expect(material.userData.flameTime).toBeUndefined();
     expect(material.customProgramCacheKey()).toBe('home-flame-gradient');
+  });
+});
+
+describe('HomeBlenderScene3D beacon anchors', () => {
+  const canonicalCamera = (aspect) => {
+    const camera = new THREE.PerspectiveCamera(22.9, aspect, 0.1, 80);
+    camera.position.set(0, 4.85, 16);
+    camera.lookAt(0, 1.55, -2.3);
+    return camera;
+  };
+
+  it('projects every destination into the canvas, left to right in room order', () => {
+    const layout = homeBlenderProjectAnchors(canonicalCamera(1870 / 852));
+    for (const id of Object.keys(HOME_BLENDER_BEACON_ANCHORS)) {
+      expect(layout[id].x).toBeGreaterThan(0);
+      expect(layout[id].x).toBeLessThan(1);
+      expect(layout[id].y).toBeGreaterThan(0);
+      expect(layout[id].y).toBeLessThan(1);
+    }
+    expect(layout.history.x).toBeLessThan(layout.tournament.x);
+    expect(layout.tournament.x).toBeLessThan(layout.train.x);
+    expect(layout.train.x).toBeLessThan(layout.combat.x);
+    expect(layout.combat.x).toBeLessThan(layout.daily.x);
+    expect(layout.daily.x).toBeLessThan(layout.dungeon.x);
+    // The armour stands on the room's centre line, above the table.
+    expect(layout.combat.x).toBeGreaterThan(0.5);
+    expect(layout.combat.x).toBeLessThan(0.62);
+    expect(layout.combat.y).toBeLessThan(layout.daily.y);
+  });
+
+  it('follows the canvas aspect: the field of view is vertical, so a wider stage pulls side beacons towards the centre', () => {
+    const wide = homeBlenderProjectAnchors(canonicalCamera(2.6));
+    const narrow = homeBlenderProjectAnchors(canonicalCamera(1.8));
+    expect(wide.tournament.x).toBeGreaterThan(narrow.tournament.x);
+    expect(wide.daily.x).toBeLessThan(narrow.daily.x);
+    // Vertical position does not depend on the aspect.
+    expect(wide.combat.y).toBeCloseTo(narrow.combat.y, 3);
+  });
+
+  it('returns null without a camera', () => {
+    expect(homeBlenderProjectAnchors(null)).toBeNull();
   });
 });

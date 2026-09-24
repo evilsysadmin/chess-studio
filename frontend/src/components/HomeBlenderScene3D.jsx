@@ -16,6 +16,35 @@ export const HOME_BLENDER_CAMERA_FOV = 22.9;
 const CAMERA_BASE = Object.freeze({ x: 0, y: 4.85, z: 16 });
 const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
+// Where each destination beacon floats, in the authored Blender frame (x right, y depth
+// away from the camera, z up). The runtime scene is exported Y-up, so Blender (x, y, z)
+// becomes three (x, z, -y). Beacons sit just above their object so they never hide it.
+export const HOME_BLENDER_BEACON_ANCHORS = Object.freeze({
+  tournament: Object.freeze([-6.15, 5.83, 3.45]), // trophy on the left chimney ledge
+  train: Object.freeze([-2.65, 5.7, 2.75]), // library
+  combat: Object.freeze([1.55, 5.83, 4.0]), // suit of armour, above the plume
+  daily: Object.freeze([4.45, 5.8, 1.9]), // right hearth
+  history: Object.freeze([-6.55, 2.33, 1.95]), // study corner: telescope, globe, kettle
+  dungeon: Object.freeze([6.3, 2.2, 2.2]), // stairs down, right
+});
+
+// Projects the beacon anchors through the live camera into fractions (0..1) of the
+// canvas, so a beacon stays on its object whatever the stage aspect ratio is.
+export function homeBlenderProjectAnchors(camera, anchors = HOME_BLENDER_BEACON_ANCHORS) {
+  if (!camera) return null;
+  camera.updateMatrixWorld?.(true);
+  const layout = {};
+  for (const [id, [bx, by, bz]] of Object.entries(anchors)) {
+    const point = new THREE.Vector3(bx, bz, -by).project(camera);
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.z > 1) continue;
+    layout[id] = {
+      x: Math.round((point.x * 0.5 + 0.5) * 10000) / 10000,
+      y: Math.round((1 - (point.y * 0.5 + 0.5)) * 10000) / 10000,
+    };
+  }
+  return layout;
+}
+
 
 const EXPOSURE = Object.freeze({
   dawn: 1.27,
@@ -822,6 +851,7 @@ function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
 export default function HomeBlenderScene3D({
   ambient = 'day',
   onUnavailable = null,
+  onAnchorLayout = null,
 }) {
   const canvasRef = useRef(null);
   const renderRequestRef = useRef(null);
@@ -1010,6 +1040,11 @@ export default function HomeBlenderScene3D({
       camera.fov = homeBlenderCameraFovForAspect(camera.aspect);
       canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
       camera.updateProjectionMatrix();
+      if (onAnchorLayout) {
+        camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
+        camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
+        onAnchorLayout(homeBlenderProjectAnchors(camera));
+      }
       requestRender();
     };
 
