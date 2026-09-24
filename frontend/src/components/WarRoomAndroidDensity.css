@@ -153,15 +153,15 @@
   /* Keep the app masthead functional, but make it a thin utility rail instead
      of a desktop header compressed into portrait. */
   .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
-    min-height: 34px;
-    margin: 0 0 .16rem;
-    padding: .08rem .32rem;
+    min-height: 44px;
+    margin: 0 0 .12rem;
+    padding: 0 .24rem;
     border-bottom: 0;
     background: transparent;
   }
 
   .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-top-row {
-    min-height: 32px;
+    min-height: 44px;
     padding: 0;
   }
 
@@ -172,19 +172,20 @@
 
   .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-actions {
     width: 100%;
-    min-height: 32px;
+    min-height: 44px;
     margin: 0;
-    gap: .24rem;
+    gap: .12rem;
     justify-content: flex-end;
   }
 
   .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger,
   .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
-    min-height: 30px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     padding: 0;
+    touch-action: manipulation;
   }
 
   .app-shell-board-game:has(.game-layout-3d) .save-status-badge {

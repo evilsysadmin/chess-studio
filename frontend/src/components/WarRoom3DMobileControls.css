@@ -79,7 +79,7 @@
   /* The collapsed RetroPlayer should be a rail, not a second dashboard card. */
   .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed {
     min-height: 50px !important;
-    grid-template-columns: minmax(0, 1fr) 40px !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
   }
 
   .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
@@ -88,10 +88,12 @@
   }
 
   .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     margin: auto .18rem auto 0;
+    touch-action: manipulation;
   }
 
   /* Keep king speech centred even on narrow screens; only the vertical anchor
@@ -172,14 +174,16 @@
   }
 
   .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
-    min-height: 42px;
+    min-height: 44px;
     padding: .24rem .42rem;
+    touch-action: manipulation;
   }
 
   .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
-    width: 34px;
-    height: 34px;
-    min-height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     margin-right: .12rem;
   }
 
