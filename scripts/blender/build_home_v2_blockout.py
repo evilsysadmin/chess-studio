@@ -2636,33 +2636,8 @@ def add_side_furnishings(materials):
     )
     cube("HOME_PROP_library_desk_leg_l", (-4.55, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
     cube("HOME_PROP_library_desk_leg_r", (-2.35, 4.05, 0.42), (0.10, 0.10, 0.42), wood, bevel=0.025)
-    cube("HOME_PROP_library_chair_seat", (-4.65, 3.25, 0.48), (0.44, 0.42, 0.12), leather, bevel=0.06)
-    cube("HOME_PROP_library_chair_back", (-4.65, 3.60, 0.98), (0.42, 0.10, 0.55), leather, bevel=0.06)
-    for idx, (cx, cy) in enumerate((
-        (-4.98, 2.94),
-        (-4.32, 2.94),
-        (-4.98, 3.54),
-        (-4.32, 3.54),
-    )):
-        cube(
-            f"HOME_PROP_library_chair_leg_{idx}",
-            (cx, cy, 0.22),
-            (0.055, 0.055, 0.22),
-            wood,
-            bevel=0.018,
-        )
-    cube(
-        "HOME_PROP_library_chair_stretcher",
-        (-4.65, 3.54, 0.28),
-        (0.34, 0.045, 0.040),
-        wood,
-        bevel=0.014,
-    )
-    rotate_group_about_z(
-        "HOME_PROP_library_chair_",
-        (-4.65, 3.25),
-        -4.2,
-    )
+    # The library's leather reading chair used to show its backrest behind the left table chair
+    # like a stray piece of sofa, so it is gone (the desk keeps its lamp).
     cylinder("HOME_PROP_library_lamp_base", (-3.10, 3.92, 0.99), 0.13, 0.12, brass, vertices=20)
     cylinder("HOME_PROP_library_lamp_stem", (-3.10, 3.92, 1.13), 0.030, 0.20, materials["brass_dark"], vertices=16)
     cone(
