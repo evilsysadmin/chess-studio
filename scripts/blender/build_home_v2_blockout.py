@@ -2419,7 +2419,7 @@ def add_banner(name: str, x: float, materials):
         f"HOME_PROP_banner_hem_{name}",
         [(x - 0.48, 5.755, 3.84), (x, 5.755, 3.44), (x + 0.48, 5.755, 3.84)],
         0.013,
-        gold,
+        materials["gold"],
     )
     cube(f"HOME_PROP_banner_bar_{name}", (x, 5.72, 5.70), (0.60, 0.07, 0.045), brass, bevel=0.015)
     for side in (-1, 1):
@@ -2448,11 +2448,34 @@ def add_banner(name: str, x: float, materials):
             bevel=0.008,
         )
 
+    gilt = materials["gold"]
     emblem(1.08, relief_y + 0.006, 0.030, materials["velvet_dark"], "shadow")
-    emblem(1.0, relief_y, 0.036, gold, "gold")
-    cube(f"HOME_PROP_banner_knight_base_{name}", (x, relief_y - 0.004, 3.945), (0.26, 0.020, 0.018), gold, bevel=0.006)
-    cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), gold, bevel=0.01)
-    cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), gold, bevel=0.01)
+    emblem(1.0, relief_y, 0.036, gilt, "gold")
+    cube(f"HOME_PROP_banner_knight_base_{name}", (x, relief_y - 0.004, 3.945), (0.26, 0.020, 0.018), gilt, bevel=0.006)
+    # Finished heraldic cloth: gilt side trim, a chief band with studs, a medallion ring round
+    # the knight and a cord with a tassel at the point, so the dark ink cloth reads as a
+    # ceremonial banner instead of a rough dark rectangle.
+    for side in (-1, 1):
+        cube(f"HOME_PROP_banner_trim_{name}_{side}", (x + side * 0.468, 5.752, (5.62 + 3.84) / 2.0), (0.012, 0.010, (5.62 - 3.84) / 2.0), gilt, bevel=0.004)
+    cube(f"HOME_PROP_banner_chief_{name}", (x, 5.752, 5.36), (0.46, 0.010, 0.030), gilt, bevel=0.005)
+    for idx, sx in enumerate((-0.34, -0.17, 0.0, 0.17, 0.34)):
+        sphere(f"HOME_PROP_banner_chief_stud_{name}_{idx}", (x + sx, 5.744, 5.36), (0.014, 0.008, 0.014), materials["brass_dark"])
+    ring_r = 0.43
+    curve_tube(
+        f"HOME_PROP_banner_medallion_{name}",
+        [(x + ring_r * math.cos(i * math.tau / 40), 5.750, 4.36 + ring_r * math.sin(i * math.tau / 40)) for i in range(41)],
+        0.012,
+        gilt,
+    )
+    curve_tube(
+        f"HOME_PROP_banner_medallion_inner_{name}",
+        [(x + (ring_r - 0.05) * math.cos(i * math.tau / 40), 5.752, 4.36 + (ring_r - 0.05) * math.sin(i * math.tau / 40)) for i in range(41)],
+        0.005,
+        materials["brass_dark"],
+    )
+    curve_tube(f"HOME_PROP_banner_cord_{name}", [(x, 5.750, 3.44), (x, 5.748, 3.36)], 0.010, gilt)
+    sphere(f"HOME_PROP_banner_tassel_knot_{name}", (x, 5.748, 3.335), (0.030, 0.026, 0.030), gilt)
+    cone(f"HOME_PROP_banner_tassel_{name}", (x, 5.748, 3.235), 0.036, 0.014, 0.16, gilt, vertices=12)
 
 
 def add_armor(materials):
@@ -2718,6 +2741,50 @@ def add_armor(materials):
             brass if idx % 2 == 0 else steel,
             bevel=0.008,
         )
+
+
+def add_heraldic_shield(prefix, cx, cz, wall_y, facing, materials):
+    """Burgundy heater shield with a thick gilt border and inner line, a gold chief band with studs,
+    crossed swords reaching past the outline, a big gilt knight (facing the room's centre) and a
+    small crown. `wall_y` is the wall plane it hangs on; `facing` is -1 (knight looks left) or 1."""
+    pts = [(-0.34, 0.38), (0.34, 0.38), (0.34, 0.12), (0.25, -0.12), (0.0, -0.38), (-0.25, -0.12), (-0.34, 0.12)]
+    shield_points = [(cx + dx, cz + dz) for dx, dz in pts]
+    flat_panel(f"{prefix}", shield_points, wall_y, 0.10, materials["banner"], bevel=0.045)
+    outline = [(x, wall_y - 0.070, z) for x, z in shield_points + [shield_points[0]]]
+    curve_tube(f"{prefix}_border", outline, 0.028, materials["gold"])
+    inset = [(cx + (x - cx) * 0.86, wall_y - 0.068, cz + (z - cz) * 0.86) for x, _, z in outline]
+    curve_tube(f"{prefix}_inner_line", inset, 0.009, materials["brass_dark"])
+    cube(f"{prefix}_chief", (cx, wall_y - 0.072, cz + 0.27), (0.29, 0.010, 0.040), materials["gold"], bevel=0.006)
+    for idx, sx in enumerate((-0.20, -0.10, 0.0, 0.10, 0.20)):
+        sphere(f"{prefix}_stud_{idx}", (cx + sx, wall_y - 0.080, cz + 0.27), (0.014, 0.008, 0.014), materials["brass_dark"])
+    for side in (-1, 1):
+        ang = math.radians(44.0 * side)
+        blade = cube(f"{prefix}_sword_{side}", (cx, wall_y - 0.085, cz), (0.030, 0.010, 0.60), materials["steel"], bevel=0.006)
+        blade.rotation_euler[1] = ang
+        edge = cube(f"{prefix}_sword_fuller_{side}", (cx, wall_y - 0.092, cz), (0.008, 0.006, 0.54), materials["armor_steel"], bevel=0.003)
+        edge.rotation_euler[1] = ang
+        guard = cube(f"{prefix}_sword_guard_{side}", (cx - math.sin(ang) * 0.36, wall_y - 0.092, cz - math.cos(ang) * 0.36), (0.110, 0.014, 0.018), materials["gold"], bevel=0.006)
+        guard.rotation_euler[1] = ang
+        cylinder(f"{prefix}_sword_grip_{side}", (cx - math.sin(ang) * 0.46, wall_y - 0.090, cz - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
+        sphere(f"{prefix}_sword_pommel_{side}", (cx - math.sin(ang) * 0.56, wall_y - 0.090, cz - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
+    knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    for tag, grow, dy, mat in (("shadow", 1.09, 0.102, materials["velvet_dark"]), ("gold", 1.0, 0.112, materials["gold"])):
+        flat_panel(
+            f"{prefix}_knight_{tag}",
+            [(cx - facing * (u + 0.08) * 0.50 * grow, cz - 0.02 + (v - 0.50) * 0.50 * grow) for u, v in knight],
+            wall_y - dy,
+            0.026,
+            mat,
+            bevel=0.006,
+        )
+    flat_panel(
+        f"{prefix}_crown",
+        [(cx - 0.16, cz + 0.41), (cx - 0.16, cz + 0.50), (cx - 0.08, cz + 0.45), (cx, cz + 0.55), (cx + 0.08, cz + 0.45), (cx + 0.16, cz + 0.50), (cx + 0.16, cz + 0.41)],
+        wall_y - 0.050,
+        0.030,
+        materials["gold"],
+        bevel=0.006,
+    )
 
 
 def add_trophy(materials):
@@ -4064,54 +4131,6 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.010,
             materials["gold"],
         )
-    # Heraldic shield over the right hearth: burgundy field, thick gilt border and inner line,
-    # a gold chief band with studs, crossed swords reaching past the outline, a big gilt knight
-    # and a small crown. (The old dark wooden plaque with tiny marks read as a keyhole.)
-    shield_points = [
-        (5.03, 3.60),
-        (5.71, 3.60),
-        (5.71, 3.34),
-        (5.62, 3.10),
-        (5.37, 2.84),
-        (5.12, 3.10),
-        (5.03, 3.34),
-    ]
-    flat_panel("HOME_PROP_fireplace_right_shield", shield_points, 5.08, 0.10, materials["banner"], bevel=0.045)
-    outline = [(x, 5.010, z) for x, z in shield_points + [shield_points[0]]]
-    curve_tube("HOME_PROP_fireplace_right_shield_border", outline, 0.028, materials["gold"])
-    inset = [(5.37 + (x - 5.37) * 0.86, 5.012, 3.24 + (z - 3.24) * 0.86) for x, _, z in outline]
-    curve_tube("HOME_PROP_fireplace_right_shield_inner_line", inset, 0.009, materials["brass_dark"])
-    cube("HOME_PROP_fireplace_right_shield_chief", (5.37, 5.008, 3.49), (0.29, 0.010, 0.040), materials["gold"], bevel=0.006)
-    for idx, sx in enumerate((-0.20, -0.10, 0.0, 0.10, 0.20)):
-        sphere(f"HOME_PROP_fireplace_right_shield_stud_{idx}", (5.37 + sx, 5.000, 3.49), (0.014, 0.008, 0.014), materials["brass_dark"])
-    for side in (-1, 1):
-        ang = math.radians(44.0 * side)
-        blade = cube(f"HOME_PROP_fireplace_right_shield_sword_{side}", (5.37, 4.995, 3.22), (0.030, 0.010, 0.60), materials["steel"], bevel=0.006)
-        blade.rotation_euler[1] = ang
-        edge = cube(f"HOME_PROP_fireplace_right_shield_sword_fuller_{side}", (5.37, 4.988, 3.22), (0.008, 0.006, 0.54), materials["armor_steel"], bevel=0.003)
-        edge.rotation_euler[1] = ang
-        guard = cube(f"HOME_PROP_fireplace_right_shield_sword_guard_{side}", (5.37 - math.sin(ang) * 0.36, 4.988, 3.22 - math.cos(ang) * 0.36), (0.110, 0.014, 0.018), materials["gold"], bevel=0.006)
-        guard.rotation_euler[1] = ang
-        cylinder(f"HOME_PROP_fireplace_right_shield_sword_grip_{side}", (5.37 - math.sin(ang) * 0.46, 4.990, 3.22 - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
-        sphere(f"HOME_PROP_fireplace_right_shield_sword_pommel_{side}", (5.37 - math.sin(ang) * 0.56, 4.990, 3.22 - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
-    knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
-    for tag, grow, yy, mat in (("shadow", 1.09, 4.978, materials["velvet_dark"]), ("gold", 1.0, 4.968, materials["gold"])):
-        flat_panel(
-            f"HOME_PROP_fireplace_right_shield_knight_{tag}",
-            [(5.37 + (u + 0.08) * 0.50 * grow, 3.20 + (v - 0.50) * 0.50 * grow) for u, v in knight],
-            yy,
-            0.026,
-            mat,
-            bevel=0.006,
-        )
-    flat_panel(
-        "HOME_PROP_fireplace_right_shield_crown",
-        [(5.21, 3.63), (5.21, 3.72), (5.29, 3.67), (5.37, 3.77), (5.45, 3.67), (5.53, 3.72), (5.53, 3.63)],
-        5.030,
-        0.030,
-        materials["gold"],
-        bevel=0.006,
-    )
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
@@ -4503,6 +4522,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     add_trophy(materials)
+    # The heraldic shield stays beside the right hearth (behind the left arch's stone it was hidden).
+    add_heraldic_shield("HOME_PROP_fireplace_right_shield", 5.37, 3.22, 5.08, -1.0, materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 
