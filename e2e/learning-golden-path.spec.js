@@ -29,6 +29,35 @@ async function startQuickGame2D(page) {
   await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
 }
 
+async function expectTouchTarget(locator) {
+  await expect(locator).toBeVisible();
+  const bounds = await locator.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.height).toBeGreaterThanOrEqual(44);
+}
+
+async function expectPersonalTrainingMobileContract(page, width) {
+  await page.setViewportSize({ width, height: 844 });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  const sourceButtons = page.getByRole('group', { name: 'Tipo de puzzle' }).getByRole('button');
+  await expect(sourceButtons).toHaveCount(3);
+  for (let index = 0; index < 3; index += 1) await expectTouchTarget(sourceButtons.nth(index));
+
+  for (const target of [
+    page.locator('.puzzle-screen > .back-link'),
+    page.getByRole('button', { name: 'Entrenar esta deuda →', exact: true }),
+    page.locator('.personal-puzzle-history > summary'),
+    page.locator('.puzzle-progress-details > summary'),
+    page.getByRole('button', { name: 'Ver solución', exact: true }),
+    page.getByRole('button', { name: 'Siguiente puzzle', exact: true }),
+  ]) {
+    await expectTouchTarget(target);
+  }
+}
+
 function recurringTrainingDebtProfileValue() {
   return JSON.stringify([
     {
@@ -121,6 +150,8 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
 
   await expect(page.getByRole('heading', { name: 'Horquilla pendiente golden path', exact: true })).toBeVisible();
+  for (const width of [360, 390, 430]) await expectPersonalTrainingMobileContract(page, width);
+  await page.setViewportSize({ width: 390, height: 844 });
   await clickBoardMove(page, 'a1', 'a8');
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
 

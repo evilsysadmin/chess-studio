@@ -72,6 +72,17 @@
     margin-left: .75rem;
     margin-right: .75rem;
   }
+
+  /* Personal training lives below the board on phones. Its debt/review actions
+   * are real next-step controls, so they keep the same 44px touch contract as
+   * the source tabs instead of inheriting the desktop-oriented 42px default. */
+  .puzzle-screen .personal-puzzle-training-panel :is(button, summary),
+  .puzzle-screen .puzzle-progress-details > summary {
+    min-height: 44px;
+    max-width: 100%;
+    white-space: normal;
+    touch-action: manipulation;
+  }
 }
 
 @media (max-width: 390px) {
