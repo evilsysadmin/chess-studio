@@ -45,6 +45,7 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
+          HOME_PREVIEW_TEXTURE_SCALE: ${{ github.event_name == 'pull_request' && '0.5' || '1' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-blender-v2
@@ -89,6 +90,8 @@ jobs:
           metadata = json.loads(metadata_path.read_text())
           assert metadata['contract'] == 'home-blender-canon-20260918-v1'
           assert metadata['reference_contract'] == 'user-approved-home-canon-2026-09-18'
+          expected_texture_scale = 0.5 if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else 1.0
+          assert metadata['texture_scale'] == expected_texture_scale, metadata['texture_scale']
           assert metadata['reference_size'] == list(reference.size)
           assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
           assert clay.size == preview.size, (clay.size, preview.size)

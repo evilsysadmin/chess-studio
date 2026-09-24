@@ -12,6 +12,7 @@ import argparse
 import base64
 import json
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -421,6 +422,15 @@ def _packed_surface_images(
     return tuple(images)
 
 
+def preview_texture_scale() -> float:
+    raw = str(os.environ.get("HOME_PREVIEW_TEXTURE_SCALE", "1") or "1").strip()
+    try:
+        scale = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"Invalid HOME_PREVIEW_TEXTURE_SCALE: {raw!r}") from exc
+    return max(0.25, min(1.0, scale))
+
+
 def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile) -> None:
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -453,7 +463,9 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         texture_size = base_size
         if not material_key.startswith(("book_", "soot_", "stone_dark", "stone_grime", "ash")):
             texture_size = {"textile": 160, "leather": 160, "metal": 160, "wood": 160}.get(profile, base_size)
-    texture_size = max(texture_size, base_size)
+    texture_scale = preview_texture_scale()
+    base_size = max(48, round(base_size * texture_scale))
+    texture_size = max(base_size, round(texture_size * texture_scale))
     base_image, rough_image, normal_image = _packed_surface_images(
         name,
         color,
@@ -4904,6 +4916,7 @@ def main() -> None:
         "contract": CONTRACT,
         "reference": args.reference,
         "reference_contract": "user-approved-home-canon-2026-09-18",
+        "texture_scale": preview_texture_scale(),
         "reference_size": [width, height],
         "render_size": [render_width, render_height],
         "canon_full_size": [1672, 941],
