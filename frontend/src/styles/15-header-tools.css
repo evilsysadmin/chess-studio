@@ -11,6 +11,13 @@
 .global-music-dock:has(.music-deck-collapsed) { width: min(290px, calc(100vw - 1.5rem)); }
 .global-music-dock .music-deck { box-shadow: 0 10px 30px rgba(0,0,0,.24); }
 .global-music-dock .live-service-status { margin: .34rem 0 0; }
+/* The pill is nowrap, but 04-operations-career capped it at the (collapsed, narrow)
+   dock width, so its border ended before "· Backend UP · NNN ms". Size it to its
+   content instead, limited only by the viewport. Narrow-phone rules below still win. */
+.global-music-dock .live-service-status {
+  width: max-content;
+  max-width: calc(100vw - 1.5rem);
+}
 .live-service-online-compact,
 .live-service-backend-compact { display: none; }
 
