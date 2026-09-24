@@ -1270,12 +1270,9 @@ export default function HomeBlenderScene3D({
         return;
       }
       if (lodCap === 'lite') {
-        for (const node of fireRig) if (node.kind === 'steam') node.object.visible = true;
-        for (const points of fireParticles.splice(0)) {
-          scene.remove(points);
-          points.geometry.dispose();
-          points.material.dispose();
-        }
+        // Only the costly full-screen effects go. The soft fire, candle and steam sprites are a
+        // handful of points and are what keeps the hall from snapping back to the hard baked
+        // flames and the vertical steam strands (a jarring regression a few seconds in).
         if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.map?.dispose(); dust.material.dispose(); dust = null; }
         if (shaft) { scene.remove(shaft); shaft.geometry.dispose(); shaft.material.dispose(); shaft = null; }
         renderer.shadowMap.enabled = false;
@@ -1361,10 +1358,10 @@ export default function HomeBlenderScene3D({
       if (effectsAllowed()) {
         ensureDust();
         ensureMoonShaft();
-        ensureFireParticles();
-        ensureCandleParticles();
-        ensureSteamSprites();
       }
+      ensureFireParticles();
+      ensureCandleParticles();
+      ensureSteamSprites();
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
