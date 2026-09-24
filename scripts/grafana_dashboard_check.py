@@ -246,35 +246,57 @@ def main() -> int:
     ):
         if forbidden_security_expr in security_exprs:
             fail(f"dashboard Security usa telemetría engañosa/legacy: {forbidden_security_expr}")
-    for dashboard_data, title in (
-        (logs_data, "Tráfico legítimo por país · hits"),
-        (security_data, "IPs ofensivas únicas · por país"),
+    legit_panel = next(
+        (row for row in (logs_data.get("panels") or []) if row.get("title") == "Tráfico legítimo por país · hits"),
+        None,
+    )
+    if not legit_panel:
+        fail("logs dashboard perdió panel geográfico de tráfico legítimo")
+    if legit_panel.get("type") != "table":
+        fail("tráfico legítimo por país debe usar tabla con gauge por fila para mostrar siempre país + hits")
+    legit_transforms = legit_panel.get("transformations") or []
+    if not any(
+        row.get("id") == "labelsToFields" and (row.get("options") or {}).get("mode") == "columns"
+        for row in legit_transforms
     ):
-        panel = next((row for row in (dashboard_data.get("panels") or []) if row.get("title") == title), None)
-        if not panel:
-            fail(f"dashboard perdió panel geográfico: {title}")
-        if panel.get("type") != "bargauge":
-            fail(f"panel geográfico debe ser bargauge horizontal: {title}")
-        options = panel.get("options") or {}
-        defaults = (panel.get("fieldConfig") or {}).get("defaults") or {}
-        if options.get("orientation") != "horizontal" or options.get("showUnfilled") is not False:
-            fail(f"panel geográfico perdió presentación compacta horizontal: {title}")
-        if title == "Tráfico legítimo por país · hits":
-            transformations = panel.get("transformations") or []
-            if not any(
-                row.get("id") == "labelsToFields" and (row.get("options") or {}).get("mode") == "columns"
-                for row in transformations
-            ):
-                fail("panel de tráfico legítimo debe materializar client_country como columna para etiquetar filas")
-            reduce_options = options.get("reduceOptions") or {}
-            if reduce_options.get("values") is not True or reduce_options.get("limit") != 12:
-                fail("panel de tráfico legítimo debe renderizar todos los países devueltos, hasta top 12")
-            if options.get("namePlacement") != "left" or options.get("valueMode") != "text":
-                fail("panel de tráfico legítimo debe mostrar país a la izquierda y hits visibles")
-            if options.get("sizing") != "manual" or options.get("maxVizHeight") != 32:
-                fail("panel de tráfico legítimo debe mantener filas compactas aunque haya un solo país")
-        if (defaults.get("color") or {}).get("mode") != "palette-classic":
-            fail(f"panel geográfico perdió paleta por país: {title}")
+        fail("tráfico legítimo por país debe materializar client_country como columna")
+    organize = next((row for row in legit_transforms if row.get("id") == "organize"), None)
+    rename = ((organize or {}).get("options") or {}).get("renameByName") or {}
+    if rename.get("client_country") != "País" or (
+        rename.get("Value") != "Hits" and rename.get("Value #A") != "Hits"
+    ):
+        fail("tráfico legítimo por país debe exponer columnas País + Hits")
+    legit_overrides = (legit_panel.get("fieldConfig") or {}).get("overrides") or []
+    hits_override = next(
+        (
+            row for row in legit_overrides
+            if ((row.get("matcher") or {}).get("id") == "byName"
+                and (row.get("matcher") or {}).get("options") == "Hits")
+        ),
+        None,
+    )
+    hits_props = {
+        row.get("id"): row.get("value")
+        for row in ((hits_override or {}).get("properties") or [])
+    }
+    hit_cell = hits_props.get("custom.cellOptions") or {}
+    if hit_cell.get("type") != "gauge" or hit_cell.get("valueDisplayMode") != "text":
+        fail("columna Hits debe renderizar barra horizontal con número visible")
+
+    security_panel = next(
+        (row for row in (security_data.get("panels") or []) if row.get("title") == "IPs ofensivas únicas · por país"),
+        None,
+    )
+    if not security_panel:
+        fail("dashboard perdió panel geográfico: IPs ofensivas únicas · por país")
+    if security_panel.get("type") != "bargauge":
+        fail("panel geográfico Security debe seguir siendo bargauge horizontal")
+    security_options = security_panel.get("options") or {}
+    if security_options.get("orientation") != "horizontal" or security_options.get("showUnfilled") is not False:
+        fail("panel geográfico Security perdió presentación compacta horizontal")
+    security_defaults = (security_panel.get("fieldConfig") or {}).get("defaults") or {}
+    if (security_defaults.get("color") or {}).get("mode") != "palette-classic":
+        fail("panel geográfico Security perdió paleta por país")
 
     if '{{.password}}' in security_raw:
         fail("dashboard Security no debe renderizar contraseñas")
