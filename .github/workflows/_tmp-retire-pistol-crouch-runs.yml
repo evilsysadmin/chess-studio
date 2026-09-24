@@ -1,0 +1,38 @@
+name: Temporary · retire pistol crouch workflow runs
+
+on:
+  push:
+    branches:
+      - chore/retire-pistol-crouch-workflow
+    paths:
+      - .github/workflows/_tmp-retire-pistol-crouch-runs.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Delete retired candidate runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for run_id in 35846384173 35846558734; do
+            if gh api --method DELETE "repos/$GH_REPO/actions/runs/$run_id"; then
+              echo "Deleted run $run_id"
+            else
+              echo "Run $run_id already absent or deletion unavailable"
+            fi
+          done
+
+      - name: Delete this temporary cleanup run
+        if: always()
+        shell: bash
+        run: |
+          gh api --method DELETE "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID" || true
