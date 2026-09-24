@@ -1,3 +1,5 @@
+import { installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
+
 export function warRoomV3FireFrame({
   elapsedMs = 0,
   coarsePointer = false,
@@ -49,6 +51,7 @@ export function installWarRoomV3FireAnimation(
     ?.getObjectByProperty?.('isPointLight', true);
   const practicalBase = practical?.intensity;
   const practicalColorBase = practical?.color?.clone?.();
+  const disposeSprites = installWarRoomV3StoveFireSprites(flames, { coarsePointer, reducedMotion });
   const driver = flames[0];
   const previous = driver.onBeforeRender;
 
@@ -93,6 +96,7 @@ export function installWarRoomV3FireAnimation(
   root.userData.warRoomV3FireAnimation = reducedMotion ? 'static-reduced-motion' : 'authored-flicker-v1';
 
   return () => {
+    disposeSprites();
     driver.onBeforeRender = previous;
     delete driver.userData.warRoomV3FireDriver;
     flames.forEach((flame, index) => {
