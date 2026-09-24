@@ -711,7 +711,10 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     // three (x, z, -y). Kept modest: the chandelier hangs right over the board, whose
     // colours must stay honest.
     for (const [color, intensity, distance, x, y, z, glowSize] of [
-      [0xffa050, 3.6, 5.5, 0, 5.0, -2.2, 0],
+      // The chandelier is the natural light over the board. At 3.6 it barely reached the
+      // pieces (about 0.27 at the board after inverse-square falloff from 3.65 m up), so they
+      // read dull; this level lifts them while its warm colour keeps the squares honest.
+      [0xffa050, 16, 6.8, 0, 4.5, -2.2, 0],
       [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55],
       [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55],
       // The three candles on the Dungeon balustrade: they give the step treads (in
@@ -802,6 +805,34 @@ function disposeRuntimeScene(root) {
     if (Array.isArray(object.material)) object.material.forEach(disposeMaterial);
     else disposeMaterial(object.material);
   });
+}
+
+// The chandelier lights the board from above, so it lifts the squares and the tops of the pieces
+// but not the sides the camera sees, and raising it further only flattens the board's contrast.
+// Candle light also bounces off the table onto the pieces from every side, which the runtime has
+// no light for, so the pieces get a small warm emissive lift instead (light pieces more than
+// dark ones). The squares are left alone: their colours must stay honest.
+export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
+  light: Object.freeze({ color: 0x2e1f0f, intensity: 1 }),
+  dark: Object.freeze({ color: 0x120a04, intensity: 1 }),
+});
+
+export function applyHomeBlenderPieceLift(root) {
+  let lifted = 0;
+  root?.traverse?.((object) => {
+    if (!object?.isMesh) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      const match = /piece_(light|dark)/i.exec(String(material?.name || ''));
+      if (!match || !material.emissive) continue;
+      const lift = HOME_BLENDER_PIECE_LIFT[match[1].toLowerCase()];
+      material.emissive.setHex(lift.color);
+      material.emissiveIntensity = lift.intensity;
+      material.needsUpdate = true;
+      lifted += 1;
+    }
+  });
+  return lifted;
 }
 
 function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
@@ -1078,6 +1109,7 @@ export default function HomeBlenderScene3D({
       }
       model = root;
       prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
+      applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
       scene.add(model);
