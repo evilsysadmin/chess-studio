@@ -85,7 +85,10 @@ body.war-room-immersive-active {
   min-height: 0;
 }
 
-.game-layout-immersive .board3d-main-shell {
+/* Beat the deferred shared desktop viewport caps (835px/700px). Board3D's
+ * stylesheet lands after this file, so immersive needs the stronger selector
+ * as well as !important to truly own the full viewport height. */
+.game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
   height: 100% !important;
   min-height: 0 !important;
   max-height: none !important;

@@ -296,18 +296,6 @@ function CompactWarRoomPill({
           )}
         </span>
 
-        {immersive && typeof onToggleRail === 'function' && (
-          <button
-            type="button"
-            className="game-3d-rail-toggle"
-            aria-label={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            title={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            aria-pressed={railCollapsed}
-            onClick={onToggleRail}
-          >
-            <span aria-hidden="true">{railCollapsed ? '▥' : '▤'}</span>
-          </button>
-        )}
         <WarRoomGuideHelp />
         <WarRoomUtilityMenu
           game={game}
@@ -393,6 +381,18 @@ export default function GameWarRoomCommandColumn({
         >
           <span aria-hidden="true">⛶</span>
         </button>
+        {immersive && typeof onToggleRail === 'function' && (
+          <button
+            type="button"
+            className="game-3d-rail-toggle"
+            aria-label={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+            title={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+            aria-pressed={railCollapsed}
+            onClick={onToggleRail}
+          >
+            <span aria-hidden="true">{railCollapsed ? '▥' : '▤'}</span>
+          </button>
+        )}
         <WarRoomGuideHelp />
         <WarRoomUtilityMenu
           game={game}
