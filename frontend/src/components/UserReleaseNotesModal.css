@@ -96,7 +96,6 @@
   flex: none;
   color: var(--parchment-dim, #cdb98f);
   font: 500 11px/1 var(--font-mono, monospace);
-  text-transform: capitalize;
 }
 
 .release-note ul,
