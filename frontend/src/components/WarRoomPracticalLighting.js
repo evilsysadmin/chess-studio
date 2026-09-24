@@ -272,7 +272,7 @@ export function applyWarRoomPracticalLighting(group, {
   towardBoard,
   coarsePointer = false,
 } = {}) {
-  if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+  if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return;
 
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
@@ -298,7 +298,7 @@ export function applyWarRoomPracticalLighting(group, {
     coarsePointer,
   });
 
-  if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
+  if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return;
 
   let tunedMaterials = 0;
   tunedMaterials += tuneArmorMaterials(group.getObjectByName('war-room-teutonic-armor-left'));
@@ -315,5 +315,4 @@ export function applyWarRoomPracticalLighting(group, {
 
   group.userData.warRoomPracticalLightingVersion = 'museum-v4';
   group.userData.warRoomPracticalMaterialsTuned = tunedMaterials;
-  return 0;
 }
