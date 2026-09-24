@@ -37,12 +37,18 @@ if (fs.existsSync(manifestPath)) {
   console.log(`release-check INFO · ${jsRelease} · RELEASE.txt ausente (manifiesto opcional)`);
 }
 
+// Las novedades ya no van atadas a la release de compilación: son una lista corta y curada, y
+// el aviso «Nuevo» sigue a la entrada más reciente. El contrato es que LATEST_USER_NOTE_ID (que
+// el shell lee sin descargar las notas) coincida con la primera entrada del fichero de datos.
 if (!fs.existsSync(userReleaseNotesPath)) fail('frontend/src/userReleaseNotesData.js no existe');
 const userReleaseNotesText = fs.readFileSync(userReleaseNotesPath, 'utf8');
-const releaseNoteEntries = [...userReleaseNotesText.matchAll(/release\s*:\s*['"]([^'"]+)['"]/gi)].map((match) => match[1]);
-const currentReleaseNoteCount = releaseNoteEntries.filter((release) => release === jsRelease).length;
-if (currentReleaseNoteCount !== 1) {
-  fail(`frontend/src/userReleaseNotesData.js debe contener exactamente una entrada para ${jsRelease}; encontradas ${currentReleaseNoteCount}`);
+const noteIds = [...userReleaseNotesText.matchAll(/^\s{4}id\s*:\s*['"]([^'"]+)['"]/gim)].map((match) => match[1]);
+if (noteIds.length === 0) fail('frontend/src/userReleaseNotesData.js no contiene entradas con id');
+if (new Set(noteIds).size !== noteIds.length) fail('frontend/src/userReleaseNotesData.js tiene ids de novedades repetidos');
+const userReleaseNotesShellPath = path.join(root, 'frontend', 'src', 'userReleaseNotes.js');
+const latestNoteId = fs.readFileSync(userReleaseNotesShellPath, 'utf8').match(/LATEST_USER_NOTE_ID\s*=\s*['"]([^'"]+)['"]/)?.[1] || null;
+if (latestNoteId !== noteIds[0]) {
+  fail(`LATEST_USER_NOTE_ID=${latestNoteId || 'sin definir'} (frontend/src/userReleaseNotes.js) debe coincidir con la primera entrada de novedades: ${noteIds[0]}`);
 }
 
 if (!fs.existsSync(publicManifestPath)) fail('frontend/public/release.json no existe');
