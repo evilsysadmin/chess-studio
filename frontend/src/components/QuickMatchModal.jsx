@@ -9,6 +9,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentation.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
+import './QuickMatchMobilePolish.css';
 
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
@@ -74,7 +75,7 @@ export default function QuickMatchModal({
           </aside>
         )}
 
-        <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
+        <button type="button" className={`adaptive-difficulty-choice quick-match-cpu-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
           <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>{adaptive.choiceCopy}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
@@ -164,6 +165,7 @@ export default function QuickMatchModal({
             <div
               role="group"
               aria-label="Tipo de tablero"
+              className="quick-match-renderer-choice"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.35rem', marginTop: '.65rem' }}
             >
               <span className="hint-text" style={{ margin: '0 .15rem 0 0' }}>Tablero</span>
