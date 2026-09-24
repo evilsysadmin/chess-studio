@@ -255,7 +255,7 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
     expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);
     const buttonRect = await reportButton.boundingBox();
     expect(buttonRect).not.toBeNull();
-    expect(buttonRect.height).toBeGreaterThanOrEqual(40);
+    expect(buttonRect.height).toBeGreaterThanOrEqual(44);
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -270,6 +270,7 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
   await expect(examIntro).not.toContainText('g3');
 
   const close = report.getByRole('button', { name: 'Cerrar', exact: true });
+  const startExam = examIntro.getByRole('button', { name: 'Hacer examen', exact: true });
   const fullAutopsy = report.locator('details.autopsy-full-details');
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -280,15 +281,17 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
     expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);
     const closeRect = await close.boundingBox();
     expect(closeRect).not.toBeNull();
-    expect(closeRect.width).toBeGreaterThanOrEqual(40);
-    expect(closeRect.height).toBeGreaterThanOrEqual(40);
+    expect(closeRect.width).toBeGreaterThanOrEqual(44);
+    expect(closeRect.height).toBeGreaterThanOrEqual(44);
+    const startExamRect = await startExam.boundingBox();
+    expect(startExamRect).not.toBeNull();
+    expect(startExamRect.height).toBeGreaterThanOrEqual(44);
   }
 
   await fullAutopsy.locator('summary').click();
   await expect(fullAutopsy).toHaveAttribute('open', '');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  const startExam = examIntro.getByRole('button', { name: 'Hacer examen', exact: true });
   await startExam.click();
   const activeExam = report.locator('[data-post-game-exam="active"]');
   await expect(activeExam).toBeVisible();
@@ -311,10 +314,19 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
   await expect(activeExam.getByText('✓ Correcto.', { exact: true })).toBeVisible();
   await expect(activeExam).toContainText('En la partida jugaste g4');
   await expect(activeExam).toContainText('La alternativa era g3');
+  const explainButton = activeExam.getByRole('button', { name: 'No entiendo qué pasó', exact: true });
+  const counterfactualButton = activeExam.getByRole('button', { name: 'Ver línea corta del motor', exact: true });
   const resultButton = activeExam.getByRole('button', { name: 'Ver resultado', exact: true });
-  const resultRect = await resultButton.boundingBox();
-  expect(resultRect).not.toBeNull();
-  expect(resultRect.height).toBeGreaterThanOrEqual(40);
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    for (const control of [explainButton, counterfactualButton, resultButton]) {
+      const controlRect = await control.boundingBox();
+      expect(controlRect).not.toBeNull();
+      expect(controlRect.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   await resultButton.click();
   await expect(report.locator('[data-post-game-exam="finished"]')).toContainText('1/1 a la primera');
 

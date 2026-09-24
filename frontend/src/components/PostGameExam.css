@@ -209,12 +209,18 @@
 
 .post-game-counterfactual .secondary-btn {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.post-game-exam-result > .secondary-btn,
+.post-game-exam-result .primary-btn {
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .post-game-exam-result .primary-btn {
   width: 100%;
-  min-height: 42px;
   margin-top: .15rem;
 }
 
