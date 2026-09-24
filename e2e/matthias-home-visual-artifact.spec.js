@@ -169,10 +169,12 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
 
       try {
         const home = await openDeterministicHome(page);
-        const speech = page.getByRole('region', { name:'Mensaje de Matthias', exact:true });
-        if (await speech.isVisible().catch(() => false)) {
-          await speech.getByRole('button', { name:'Cerrar comentario de Matthias', exact:true }).evaluate((button) => button.click());
-        }
+        // The greeting can expire between a visibility probe and a locator
+        // action on slow software rendering. Dismiss it atomically if it still
+        // exists; the quiet artifact does not need to wait for a vanished node.
+        await page.evaluate(() => {
+          document.querySelector('button[aria-label="Cerrar comentario de Matthias"]')?.click();
+        });
         const renderer = await page.evaluate(() => {
           const gl = document.createElement('canvas').getContext('webgl2');
           const debug = gl?.getExtension('WEBGL_debug_renderer_info');
