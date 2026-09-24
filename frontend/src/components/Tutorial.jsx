@@ -9,6 +9,13 @@ import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
 import useSchoolExplanationDemo from './useSchoolExplanationDemo.js';
 import { SchoolExplanationActions, SchoolExplanationStatus } from './SchoolExplanationView.jsx';
+import {
+  advanceSchoolCoachContext,
+  schoolCoachHintMessage,
+  schoolCoachMissMessage,
+  schoolCoachSelectionMessage,
+  schoolCoachStepMessage,
+} from './SchoolCoach.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
@@ -71,6 +78,7 @@ export default function Tutorial({ onExit }) {
   const animationSeqRef = useRef(0);
   const playbackTokenRef = useRef(0);
   const playbackAbortRef = useRef(null);
+  const coachIncidentRef = useRef({ kind: null, count: 0 });
   const classRoomVariantSelectable = isClassRoomVariantSelectable();
   const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
@@ -129,6 +137,7 @@ export default function Tutorial({ onExit }) {
     explanation.close();
     cancelPlayback();
     setMasteryReplay('idle');
+    coachIncidentRef.current = { kind: null, count: 0 };
     setIndex(clamped);
     setPracticeFen(next.fen);
     setSelected(null);
@@ -162,9 +171,20 @@ export default function Tutorial({ onExit }) {
     }
   }
 
-  function recordMiss(text, { danger = [] } = {}) {
+  function recordMiss(kind, { danger = [], square = null, selectedSquare = selected } = {}) {
     if (masteryReplay !== 'active') setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
     const nextMistakes = mistakes + 1;
+    const nextContext = advanceSchoolCoachContext(coachIncidentRef.current, kind);
+    const text = schoolCoachMissMessage({
+      lesson,
+      kind,
+      square,
+      selected: selectedSquare,
+      expected,
+      repeatCount: nextContext.count,
+      revealExpected: !lesson.exam && masteryReplay !== 'active',
+    });
+    coachIncidentRef.current = nextContext;
     setMistakes(nextMistakes);
     setSelected(null);
     setHintActive(false);
@@ -179,6 +199,7 @@ export default function Tutorial({ onExit }) {
   function resetLesson({ keepCoach = false, clearFailure = true, announce = false, keepMastery = false } = {}) {
     explanation.close();
     cancelPlayback();
+    coachIncidentRef.current = { kind: null, count: 0 };
     if (!keepMastery) setMasteryReplay('idle');
     setPracticeFen(lesson.fen);
     setSelected(null);
@@ -203,6 +224,7 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares([]);
     setLineIndex(line.length);
+    coachIncidentRef.current = { kind: null, count: 0 };
 
     if (masteryReplay === 'active') {
       setMasteryReplay('complete');
@@ -219,6 +241,7 @@ export default function Tutorial({ onExit }) {
     explanation.close();
     cancelPlayback();
     setMasteryReplay('active');
+    coachIncidentRef.current = { kind: null, count: 0 };
     setPracticeFen(lesson.fen);
     setSelected(null);
     setLineIndex(0);
@@ -285,9 +308,17 @@ export default function Tutorial({ onExit }) {
 
     const next = nextHumanSchoolStep(lesson, playback.cursor);
     const done = line.slice(0, playback.cursor).filter((step) => !step.auto).length;
+    const recovered = Boolean(coachIncidentRef.current?.kind);
+    coachIncidentRef.current = { kind: null, count: 0 };
     setCoach({
       tone: 'neutral',
-      text: `${playback.autoReplies ? 'Bien. El rival ha respondido. ' : 'Bien. '}${next?.note || `Sigue con la secuencia: movimiento ${done + 1} de ${totalHumanMoves}.`} No improvises una ópera todavía.`,
+      text: schoolCoachStepMessage({
+        autoReplies: playback.autoReplies,
+        note: next?.note,
+        recovered,
+        nextStep: done + 1,
+        totalMoves: totalHumanMoves,
+      }),
     });
   }
 
@@ -299,16 +330,24 @@ export default function Tutorial({ onExit }) {
 
     if (!selected) {
       if (!piece) {
-        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Busca la pieza que debe iniciar este paso.`, { danger: [square] });
+        recordMiss('empty-square', { danger: [square], square });
         return;
       }
       if (square !== expected.from) {
-        recordMiss(`Esa pieza existe, sí. Pero la secuencia pide empezar este paso desde ${expected.from}. Mira la posición, no mi paciencia.`, { danger: [square] });
+        recordMiss('wrong-piece', { danger: [square], square });
         return;
       }
       setSelected(square);
       setDangerSquares([]);
-      setCoach({ tone: 'neutral', text: `${square} seleccionado. Las casillas iluminadas son sus destinos legales. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
+      setCoach({
+        tone: 'neutral',
+        text: schoolCoachSelectionMessage({
+          square,
+          hadRecentMiss: Boolean(coachIncidentRef.current?.kind),
+          step: completedHumanMoves + 1,
+          totalMoves: totalHumanMoves,
+        }),
+      });
       return;
     }
 
@@ -320,12 +359,12 @@ export default function Tutorial({ onExit }) {
 
     const target = legalTargets.find((move) => move.to === square);
     if (!target) {
-      recordMiss(`La pieza no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`, { danger: [square] });
+      recordMiss('illegal-target', { danger: [square], square, selectedSquare: selected });
       return;
     }
 
     if (selected !== expected.from || square !== expected.to) {
-      recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`, { danger: [square] });
+      recordMiss('off-objective', { danger: [square], square, selectedSquare: selected });
       return;
     }
 
@@ -532,7 +571,7 @@ export default function Tutorial({ onExit }) {
                       >
                         {examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}
                       </button>
-                      {!lesson.exam && masteryReplay !== 'active' && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                      {!lesson.exam && masteryReplay !== 'active' && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: schoolCoachHintMessage(lesson) }); }}>Dame una pista</button>}
                       {runComplete && !lesson.exam && masteryReplay === 'idle' && (
                         <button type="button" className="primary-btn" onClick={startMasteryReplay}>Ahora sin ayudas</button>
                       )}
