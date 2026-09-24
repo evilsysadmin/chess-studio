@@ -3,6 +3,7 @@ import {
   MATTHIAS_BASE_AVATAR,
   matthiasAmbientVisual,
   matthiasAmbientVisuals,
+  matthiasHomeStation,
   matthiasHomeZone,
   matthiasMoodAvatar,
   matthiasRoutineDwellMs,
@@ -103,5 +104,16 @@ describe('Matthias visual identity', () => {
     expect(matthiasHomeZone('time-chess-weekly')).toBe('library');
     expect(matthiasHomeZone('time-late-sleep')).toBe('rest');
     expect(matthiasHomeZone('base')).toBe('watch');
+  });
+
+  it('ancla cada rutina junto al mueble que explica la actividad', () => {
+    expect(matthiasHomeStation('time-chess-inception')).toBe('chess-chair');
+    expect(matthiasHomeStation('moment-solo-board-inception')).toBe('chess-chair');
+    expect(matthiasHomeStation('time-morning-coffee')).toBe('refreshment-table');
+    expect(matthiasHomeStation('time-lunch-bocata')).toBe('dining-table');
+    expect(matthiasHomeStation('time-strategy-book')).toBe('library-chair');
+    expect(matthiasHomeStation('moment-loss-dossier')).toBe('writing-desk');
+    expect(matthiasHomeStation('time-late-sleep')).toBe('rest');
+    expect(matthiasHomeStation('base')).toBe('watch-post');
   });
 });

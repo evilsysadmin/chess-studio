@@ -10,7 +10,7 @@ import { currentDailyStreak, dailyChallengeBrief, dailyChallengeStats, loadDaily
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
-import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
+import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeStation, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
@@ -212,6 +212,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     : [];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
   const matthiasZone = matthiasVisual?.zone || matthiasHomeZone(matthiasVisual?.key);
+  const matthiasStation = matthiasHomeStation(matthiasVisual?.key);
   const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">
@@ -403,6 +404,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           data-home-matthias-scene={matthiasSceneKey}
           data-home-matthias-activity={matthiasActivity}
           data-home-matthias-zone={matthiasZone}
+          data-home-matthias-station={matthiasStation}
           data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
           data-home-matthias-dwell-ms={matthiasDwellMs}
         >
