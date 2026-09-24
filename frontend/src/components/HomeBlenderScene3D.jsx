@@ -26,7 +26,7 @@ export const HOME_BLENDER_BEACON_ANCHORS = Object.freeze({
   combat: Object.freeze([1.55, 5.83, 4.0]), // suit of armour, above the plume
   daily: Object.freeze([4.45, 5.0, 3.62]), // "reto del día" scroll pinned above the right hearth
   history: Object.freeze([-6.65, 2.3, 2.05]), // study corner: gilt knight statuette and helmet
-  dungeon: Object.freeze([6.3, 2.2, 2.2]), // stairs down, right
+  dungeon: Object.freeze([6.6, 0.8, 1.9]), // above the profile stair, over the front rail
 });
 
 // Projects the beacon anchors through the live camera into fractions (0..1) of the

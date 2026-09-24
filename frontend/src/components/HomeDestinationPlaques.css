@@ -574,12 +574,14 @@
     font: 500 max(11px, .72cqw)/1.2 Arial, sans-serif;
   }
 
-  /* The label opens to the side so it never covers the object under the beacon; the
-   * dungeon beacon is on the right edge, so its label opens to the left. */
+  /* The dungeon beacon hangs over the stair, so its label sits above it, centred, instead
+   * of covering the plant and chair to its left; right-aligned so it stays inside the canvas. */
   .illustrated-home__beacon--dungeon .illustrated-home__beacon-label {
+    top: auto;
     left: auto;
-    right: calc(100% + .9cqw);
-    transform: translate(.3cqw, -50%);
+    right: -.5cqw;
+    bottom: calc(100% + .7cqw);
+    transform: translate(0, .3cqw);
   }
 
   .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) {
@@ -590,6 +592,10 @@
   .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
     opacity: 1;
     transform: translate(0, -50%);
+  }
+
+  .illustrated-home__beacon--dungeon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
+    transform: translate(0, 0);
   }
 
   .illustrated-home__beacon:disabled {
