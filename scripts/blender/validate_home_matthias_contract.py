@@ -12,6 +12,8 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 from home_matthias_contract import (  # noqa: E402
+    AGED_BRASS_METALLIC,
+    AGED_BRASS_ROUGHNESS,
     BODY_HEIGHT_TO_BASE_WIDTH,
     BITE_PROP_FACE_CLEARANCE_MIN,
     BRASS_MIN_METALLIC,
@@ -34,6 +36,8 @@ from home_matthias_contract import (  # noqa: E402
     IVORY_HEAD_MIN_LUMA,
     MAX_BROW_TILT_DEGREES,
     MIN_BROW_TILT_DEGREES,
+    PAWN_FINISH_METALLIC,
+    PAWN_FINISH_ROUGHNESS,
     REQUIRED_ACTIONS,
     REQUIRED_OBJECTS,
     REST_ARM_MIN_Y,
@@ -61,6 +65,10 @@ def base_luma(obj):
 
 def metallic(obj):
     return float(material_bsdf(obj).inputs["Metallic"].default_value)
+
+
+def roughness(obj):
+    return float(material_bsdf(obj).inputs["Roughness"].default_value)
 
 
 def world_bounds(obj):
@@ -118,6 +126,9 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v18", (
+        rig.get("matthias_asset_version")
+    )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
     assert rig.get("canonical_reference_sha256") == CANONICAL_REFERENCE_SHA256, (
         rig.get("canonical_reference_sha256"),
@@ -198,6 +209,13 @@ def main():
     assert base_luma(tunic) <= DARK_BODY_MAX_LUMA, base_luma(tunic)
     assert base_luma(head) >= IVORY_HEAD_MIN_LUMA, base_luma(head)
     assert metallic(objects["Classic plinth brass edge"]) >= BRASS_MIN_METALLIC
+    assert_range("midnight pawn roughness", roughness(body), PAWN_FINISH_ROUGHNESS)
+    assert_range("midnight pawn metallic", metallic(body), PAWN_FINISH_METALLIC)
+    assert_range("navy cloth roughness", roughness(tunic), PAWN_FINISH_ROUGHNESS)
+    assert_range("navy cloth metallic", metallic(tunic), PAWN_FINISH_METALLIC)
+    brass_edge = objects["Classic plinth brass edge"]
+    assert_range("aged brass roughness", roughness(brass_edge), AGED_BRASS_ROUGHNESS)
+    assert_range("aged brass metallic", metallic(brass_edge), AGED_BRASS_METALLIC)
 
     light_body_offenders = []
     for obj in bpy.data.objects:

@@ -5,6 +5,7 @@ import {
   homeMatthiasClipForProfile,
   homeMatthiasClipStartTime,
   homeMatthiasFrontDirectionFromPoints,
+  homeMatthiasGroundingSpec,
   homeMatthiasIsFrontGeometryName,
   homeMatthiasMotionPhase,
   homeMatthiasMotionProfile,
@@ -141,6 +142,21 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasCanonicalFallbackDataUrl('UklGAAAA')).toBe('data:image/webp;base64,UklGAAAA');
     expect(homeMatthiasCanonicalFallbackDataUrl(' nope ')).toBe('');
     expect(homeMatthiasCanonicalFallbackDataUrl()).toBe('');
+  });
+
+  it('grounds the pawn at its authored footline without changing portrait framing', () => {
+    expect(homeMatthiasGroundingSpec({
+      minY: -0.02,
+      centerX: 0.1,
+      centerZ: -0.3,
+      width: 1.2,
+    })).toEqual({
+      x: 0.1,
+      y: -0.014,
+      z: -0.3,
+      width: 1.416,
+      depth: 0.6,
+    });
   });
 
   it('uses a sane forward fallback only when facial anchors collapse', () => {

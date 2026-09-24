@@ -18,6 +18,13 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference', profil
   return home;
 }
 
+async function dismissHomeSpeech(home) {
+  const speech = home.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+  if (!await speech.isVisible().catch(() => false)) return;
+  await speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true }).click();
+  await expect(speech).toBeHidden();
+}
+
 function matthiasRig(matthias) {
   const avatar = matthias.locator('.illustrated-home__matthias-portrait [data-home-matthias-3d]');
   return {
@@ -35,6 +42,8 @@ async function expectBlenderRigReady(avatar, canvas) {
   await expect(canvas).toHaveCSS('opacity', '1');
   await expect(canvas).toHaveAttribute('data-matthias-camera-facing', 'visible-front-geometry');
   await expect(canvas).toHaveAttribute('data-matthias-camera-distance', /^\d+\.\d{3}$/);
+  await expect(canvas).toHaveAttribute('data-matthias-grounding', 'soft-contact-shadow');
+  await expect(canvas).toHaveAttribute('data-matthias-lighting', 'hall-warm-cool-v1');
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
@@ -93,6 +102,7 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   const home = await openCanonicalHome(page, {
     profileSeed: { 'chess-study-cpu-rivalry': JSON.stringify(rivalry) },
   });
+  await dismissHomeSpeech(home);
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, canvas } = matthiasRig(matthias);
 
@@ -115,6 +125,7 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   });
 
   const home = await openCanonicalHome(page);
+  await dismissHomeSpeech(home);
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, canvas } = matthiasRig(matthias);
 
@@ -137,6 +148,7 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   });
 
   const home = await openCanonicalHome(page);
+  await dismissHomeSpeech(home);
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, canvas } = matthiasRig(matthias);
 

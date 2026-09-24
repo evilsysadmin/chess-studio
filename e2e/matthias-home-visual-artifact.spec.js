@@ -79,6 +79,8 @@ async function expectLiveMatthiasArt(home) {
   await expect(canvas).toHaveAttribute('data-matthias-camera-face-x', '0.0000');
   await expect(canvas).toHaveAttribute('data-matthias-camera-face-z', '1.0000');
   await expect(canvas).toHaveAttribute('data-matthias-front-geometry-count', '10');
+  await expect(canvas).toHaveAttribute('data-matthias-grounding', 'soft-contact-shadow');
+  await expect(canvas).toHaveAttribute('data-matthias-lighting', 'hall-warm-cool-v1');
   return { avatar, image, canvas };
 }
 

@@ -191,10 +191,13 @@ def build_rig():
 
 
 def build_character():
-    ivory=mat('classic warm ivory',(.58,.48,.34),.50,.02); ivory_hi=mat('classic ivory highlight',(.76,.64,.46),.40,.02)
-    navy=mat('classic midnight pawn',(.0025,.0035,.0055),.20,.26); navy_soft=mat('classic navy cloth',(.006,.008,.012),.30,.14)
-    leather=mat('classic black leather',(.006,.004,.003),.30,.18); brass=mat('classic aged brass',(.50,.27,.055),.20,.93); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.38,.06); black=mat('classic brow eye mouth',(.0015,.002,.003),.48); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.32,.55); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v17'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    # The Home portrait is small enough that mirror-like highlights erase the
+    # pawn silhouette. Keep the ivory ceramic, midnight enamel, leather and aged
+    # brass materially distinct without turning Matthias into a plastic toy.
+    ivory=mat('classic warm ivory',(.58,.48,.34),.58,.00); ivory_hi=mat('classic ivory highlight',(.76,.64,.46),.52,.00)
+    navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
+    leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v18'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
