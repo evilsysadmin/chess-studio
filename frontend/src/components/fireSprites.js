@@ -90,3 +90,59 @@ export function disposeFireSprites(points) {
   points?.geometry?.dispose?.();
   points?.material?.dispose?.();
 }
+
+// Coffee steam: a few large, very faint puffs that drift up, swell and dissolve (normal
+// blending, gaussian falloff), replacing the hard-edged baked wisp mesh.
+export const STEAM_SPRITE_DEFAULTS = Object.freeze({
+  count: 14, height: 0.50, spread: 0.030, size: 0.22, opacity: 0.50,
+});
+
+const STEAM_VERTEX = `
+attribute vec4 aSeed;
+uniform float uTime; uniform float uHeight; uniform float uSize; uniform float uViewportH; uniform vec3 uBase;
+varying float vLife;
+void main() {
+  float life = fract(aSeed.w + uTime * aSeed.z * 0.30);
+  float sway = sin(uTime * 0.9 + aSeed.w * 6.2831) * 0.05 * (0.3 + life) + sin(uTime * 0.47 + aSeed.x * 40.0) * 0.03 * life;
+  vec3 p = uBase + vec3(aSeed.x + sway, life * uHeight, aSeed.y + cos(uTime * 0.7 + aSeed.w * 5.0) * 0.02 * life);
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = max(1.0, uSize * (0.55 + life * 1.7) * projectionMatrix[1][1] * uViewportH * 0.5 / -mv.z);
+  vLife = life;
+}`;
+
+const STEAM_FRAGMENT = `
+uniform float uOpacity; varying float vLife;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float a = exp(-dot(c, c) * 14.0);
+  float fade = smoothstep(0.0, 0.16, vLife) * (1.0 - smoothstep(0.50, 1.0, vLife));
+  gl_FragColor = vec4(vec3(0.95, 0.93, 0.90), a * fade * uOpacity);
+}`;
+
+export function createSteamSprites({ base = [0, 0, 0], salt = 1, name = 'steam-sprites', ...overrides } = {}) {
+  const cfg = { ...STEAM_SPRITE_DEFAULTS, ...overrides };
+  const seeds = fireSpriteSeeds(cfg.count, salt, cfg.spread, cfg.spread);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cfg.count * 3), 3));
+  geometry.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds.flatMap((sd) => [sd.x, sd.z, sd.speed, sd.phase])), 4));
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 }, uHeight: { value: cfg.height }, uSize: { value: cfg.size },
+      uViewportH: { value: 900 }, uBase: { value: new THREE.Vector3(...base) }, uOpacity: { value: cfg.opacity },
+    },
+    vertexShader: STEAM_VERTEX,
+    fragmentShader: STEAM_FRAGMENT,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.name = name;
+  points.frustumCulled = false;
+  points.renderOrder = 7;
+  points.onBeforeRender = (renderer) => {
+    material.uniforms.uTime.value = nowSeconds(renderer);
+    material.uniforms.uViewportH.value = renderer?.domElement?.height || 900;
+  };
+  return points;
+}

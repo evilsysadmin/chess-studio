@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
-import { FIRE_SPRITE_DEFAULTS, createFireSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
+import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
@@ -223,6 +223,17 @@ void main() {
   vec3 col = mix(vec3(1.0, 0.80, 0.36), vec3(0.95, 0.42, 0.08), smoothstep(0.0, 1.0, vLife));
   gl_FragColor = vec4(col, a * a * (1.0 - vLife) * smoothstep(0.0, 0.12, vLife) * uOpacity);
 }`;
+
+export function homeBlenderSteamBase(nodes) {
+  const steam = (nodes || []).filter((node) => node.kind === 'steam');
+  if (!steam.length) return null;
+  const pos = steam.map((node) => node.object.getWorldPosition(new THREE.Vector3()));
+  return [
+    pos.reduce((sum, v) => sum + v.x, 0) / pos.length,
+    Math.min(...pos.map((v) => v.y)) - 0.12, // the baked wisp starts above the rim; root the puffs on it
+    pos.reduce((sum, v) => sum + v.z, 0) / pos.length,
+  ];
+}
 
 export function homeBlenderFireHearthBases(nodes) {
   const groups = { left: [], right: [] };
@@ -1051,6 +1062,17 @@ export default function HomeBlenderScene3D({
     let dust = null;
     let shaft = null;
     const fireParticles = [];
+    const ensureSteamSprites = () => {
+      if (fireParticles.some((points) => points.userData.steam) || !fireRig.length) return;
+      const base = homeBlenderSteamBase(fireRig);
+      if (!base) return;
+      const points = createSteamSprites({ base, salt: 5, name: 'home-coffee-steam' });
+      points.userData.steam = true;
+      scene.add(points);
+      fireParticles.push(points);
+      // The baked wisp is a hard-edged ribbon; the soft puffs replace it while they run.
+      for (const node of fireRig) if (node.kind === 'steam') node.object.visible = false;
+    };
     const ensureCandleParticles = () => {
       if (fireParticles.some((points) => points.userData.candles) || !fireRig.length) return;
       for (const node of fireRig) {
@@ -1248,6 +1270,7 @@ export default function HomeBlenderScene3D({
         return;
       }
       if (lodCap === 'lite') {
+        for (const node of fireRig) if (node.kind === 'steam') node.object.visible = true;
         for (const points of fireParticles.splice(0)) {
           scene.remove(points);
           points.geometry.dispose();
@@ -1340,6 +1363,7 @@ export default function HomeBlenderScene3D({
         ensureMoonShaft();
         ensureFireParticles();
         ensureCandleParticles();
+        ensureSteamSprites();
       }
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
