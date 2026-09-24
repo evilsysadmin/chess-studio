@@ -924,9 +924,7 @@ function AppInner({ isAdminUser }) {
             onTrainPersonal={() => openPuzzleMode('personal', false)}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
-            onCombatRoguelike={() => navigateTo('roguelike')}
-            specialRun={specialRun}
-            onContinueRun={() => handleContinueRun(specialRun)}
+            onCombatRoguelike={() => navigateTo('roguelike')} onContinueRun={() => handleContinueRun()}
             onHistory={() => navigateTo('history')}
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}

@@ -9,6 +9,7 @@ import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFE
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
 import { buildPendingModes, loadPendingCampaignFlag } from '../homePendingModes.js';
+import { loadSpecialRun } from '../career.js';
 import {
   buildMatthiasHomeCardModel,
   buildMatthiasHomeVisit,
@@ -38,7 +39,6 @@ export default function Menu({
   onTrainPersonal,
   onCombat,
   onCombatRoguelike,
-  specialRun = null,
   onContinueRun = null,
   onSpectator,
   onHistory,
@@ -65,10 +65,10 @@ export default function Menu({
   // Other modes the player left half-way (Combat campaign, special run): shown in the JUGAR menu.
   const pendingModes = useMemo(() => buildPendingModes({
     campaign: loadPendingCampaignFlag(),
-    specialRun,
+    specialRun: loadSpecialRun(),
     onContinueCampaign: onCombatRoguelike,
     onContinueRun,
-  }), [specialRun, onCombatRoguelike, onContinueRun]);
+  }), [onCombatRoguelike, onContinueRun]);
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
