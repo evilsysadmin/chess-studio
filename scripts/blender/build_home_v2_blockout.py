@@ -3330,6 +3330,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation=0.08,
             variation_scale=5.2,
         ),
+        "garden_far": material("HOME_MAT_garden_far", (0.010, 0.026, 0.050, 1), roughness=0.9, emission=(0.012, 0.032, 0.064, 1), emission_strength=0.10),
+        "garden_mid": material("HOME_MAT_garden_mid", (0.012, 0.050, 0.032, 1), roughness=0.9, emission=(0.012, 0.055, 0.035, 1), emission_strength=0.12),
+        "garden_near": material("HOME_MAT_garden_near", (0.030, 0.085, 0.040, 1), roughness=0.9, emission=(0.030, 0.090, 0.045, 1), emission_strength=0.14),
+        "garden_path": material("HOME_MAT_garden_path", (0.30, 0.31, 0.30, 1), roughness=0.8, emission=(0.22, 0.24, 0.30, 1), emission_strength=0.16),
         "moon": material(
             "HOME_MAT_moon",
             (0.42, 0.43, 0.40, 1),
@@ -4217,30 +4221,47 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             materials["brass_dark"],
         )
     cube("HOME_PROP_window_sill", (7.82, 6.20, 1.84), (1.10, 0.26, 0.11), materials["stone"], bevel=0.04)
-    sphere(
-        "HOME_PROP_window_moon",
-        (7.02, 6.50, 4.56),
-        (0.27, 0.026, 0.27),
-        materials["moon"],
-    )
-    # A single pale disc reads as a plate on the wall. Darker maria (a few
-    # overlapping blotches, offset from the centre and slightly different in size)
-    # make it a moon; they sit just proud of the flattened sphere surface.
+    # The exterior seen through the glass, built as thin layers just behind the mullions:
+    # night sky (the panes), stars and the moon, far hills, a tree line, then a lawn with
+    # hedge, path and flowers. The moon used to sit on the wall beside the window.
+    moon_x, moon_y, moon_z = 8.28, 6.575, 4.50
+    sphere("HOME_PROP_window_moon", (moon_x, moon_y, moon_z), (0.20, 0.022, 0.20), materials["moon"])
     for idx, (dx, dz, rx, rz) in enumerate((
-        (-0.085, 0.070, 0.085, 0.060),
-        (0.060, 0.115, 0.055, 0.045),
-        (0.020, -0.040, 0.075, 0.090),
-        (0.115, -0.070, 0.045, 0.040),
-        (-0.110, -0.095, 0.040, 0.055),
+        (-0.065, 0.055, 0.065, 0.046),
+        (0.045, 0.088, 0.042, 0.034),
+        (0.015, -0.030, 0.058, 0.068),
+        (0.088, -0.052, 0.034, 0.030),
+        (-0.085, -0.072, 0.030, 0.042),
     )):
         rho = math.hypot(dx, dz)
-        surface_y = 6.50 - 0.026 * math.sqrt(max(0.0, 1.0 - (rho / 0.27) ** 2))
-        sphere(
-            f"HOME_PROP_window_moon_mare_{idx}",
-            (7.02 + dx, surface_y + 0.001, 4.56 + dz),
-            (rx, 0.006, rz),
-            materials["moon_mare"],
-        )
+        surface_y = moon_y - 0.022 * math.sqrt(max(0.0, 1.0 - (rho / 0.20) ** 2))
+        sphere(f"HOME_PROP_window_moon_mare_{idx}", (moon_x + dx, surface_y + 0.001, moon_z + dz), (rx, 0.005, rz), materials["moon_mare"])
+    for idx in range(16):
+        sx = 7.05 + _hash01(idx, 0, 2101) * 1.55
+        sz = 4.55 + _hash01(idx, 1, 2111) * 0.85
+        if math.hypot(sx - moon_x, sz - moon_z) < 0.36:
+            continue
+        sphere(f"HOME_PROP_window_moon_star_{idx}", (sx, 6.60, sz), (0.011, 0.006, 0.011), materials["moon"])
+
+    hill_pts = [(6.95 + 0.29 * k, 2.42 + 0.30 * math.sin(k * 0.9 + 0.6) + 0.10 * math.sin(k * 2.3)) for k in range(7)]
+    hill_pts = [(6.95, 1.98)] + hill_pts + [(8.69, hill_pts[-1][1]), (8.69, 1.98)]
+    flat_panel("HOME_PROP_window_garden_hills", hill_pts, 6.56, 0.03, materials["garden_far"], bevel=0.004)
+    for idx, (tx, crown_z, crown_r) in enumerate(((7.10, 2.95, 0.30), (7.52, 3.10, 0.36), (8.36, 2.98, 0.33), (8.62, 2.82, 0.26))):
+        cylinder(f"HOME_PROP_window_garden_trunk_{idx}", (tx, 6.53, crown_z - 0.42), 0.030, 0.52, materials["garden_far"], vertices=8)
+        sphere(f"HOME_PROP_window_garden_crown_{idx}", (tx, 6.53, crown_z), (crown_r, 0.08, crown_r * 0.92), materials["garden_mid"])
+        sphere(f"HOME_PROP_window_garden_crown_hi_{idx}", (tx + crown_r * 0.18, 6.515, crown_z + crown_r * 0.22), (crown_r * 0.55, 0.05, crown_r * 0.50), materials["garden_near"])
+    for idx, cx in enumerate((7.78, 7.98)):
+        cone(f"HOME_PROP_window_garden_cypress_{idx}", (cx, 6.53, 2.95 + idx * 0.10), 0.10, 0.012, 0.95 + idx * 0.12, materials["garden_mid"], vertices=10)
+    lawn_pts = [(6.95, 1.98)] + [(6.95 + 0.29 * k, 2.30 + 0.05 * math.sin(k * 1.7)) for k in range(7)] + [(8.69, 2.28), (8.69, 1.98)]
+    flat_panel("HOME_PROP_window_garden_lawn", lawn_pts, 6.48, 0.03, materials["garden_near"], bevel=0.004)
+    flat_panel("HOME_PROP_window_garden_path", [(7.72, 1.98), (7.96, 2.30), (8.16, 2.30), (8.46, 1.98)], 6.47, 0.02, materials["garden_path"], bevel=0.003)
+    for idx, hx in enumerate((7.05, 7.30, 7.55, 8.55)):
+        sphere(f"HOME_PROP_window_garden_hedge_{idx}", (hx, 6.465, 2.22), (0.14, 0.06, 0.11), materials["garden_mid"])
+    for idx in range(9):
+        fx = 7.00 + _hash01(idx, 2, 2131) * 1.65
+        if 7.7 < fx < 8.5:
+            continue
+        sphere(f"HOME_PROP_window_garden_flower_{idx}", (fx, 6.455, 2.08 + _hash01(idx, 3, 2141) * 0.14), (0.020, 0.010, 0.020), materials["plume_red"] if idx % 2 else materials["gold"])
 
     for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
         add_banner(name, x, materials)

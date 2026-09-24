@@ -147,9 +147,9 @@ export function homeBlenderDustPosition(seed, timeMs = 0) {
   ];
 }
 
-// Blender window (7.02, 6.50, 4.56) -> three (7.02, 4.56, -6.50); the moon light lands near (4.35, 1.25, -1.85).
+// Blender window centre (7.82, 6.5, 4.3) -> three (7.82, 4.3, -6.5); the moon light lands near (4.35, 1.25, -1.85).
 export const HOME_BLENDER_MOON_SHAFT = {
-  from: [7.02, 4.56, -6.4],
+  from: [7.9, 4.3, -6.35],
   to: [4.1, 0.15, -1.6],
   radiusTop: 0.42,
   radiusBottom: 1.25,
