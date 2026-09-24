@@ -418,7 +418,9 @@ function replaceConeFireWithLicks(fireCore, coarsePointer) {
       flame.material.transparent = true;
       flame.material.depthWrite = false;
       flame.material.blending = THREE.AdditiveBlending;
-      flame.material.opacity = Math.min(flame.material.opacity ?? 0.82, index % 2 ? 0.72 : 0.8);
+      // The soft GPU sprites (fireSprites.js) are the visible fire now; the licks stay in the
+      // scene, transparent, because their onBeforeRender drives the flicker and the hearth light.
+      flame.material.opacity = 0;
       flame.material.needsUpdate = true;
     }
   });
