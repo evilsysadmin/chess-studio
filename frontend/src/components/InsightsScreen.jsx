@@ -154,14 +154,16 @@ export default function InsightsScreen(props) {
         ) : null}
         {!isCareer && diagnosisView === 'dossier' ? <InsightsCleanGames playerModel={playerModel} /> : null}
         {isCareer ? <CareerActivityCalendar history={props.gameHistory || []} /> : null}
-        <InsightsDashboardContent
-          key={section}
-          {...props}
-          initialSection={section}
-          playerModel={playerModel}
-          personalPuzzles={personalPuzzles}
-          cleanGameRecords={cleanGameRecords}
-        />
+        {isCareer || diagnosisView === 'now' ? (
+          <InsightsDashboardContent
+            key={section}
+            {...props}
+            initialSection={section}
+            playerModel={playerModel}
+            personalPuzzles={personalPuzzles}
+            cleanGameRecords={cleanGameRecords}
+          />
+        ) : null}
       </div>
 
       {!isCareer && diagnosisView === 'now' ? <InsightsMatthiasMotion /> : null}
