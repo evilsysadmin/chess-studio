@@ -34,6 +34,9 @@ import {
   homeBlenderFireSeeds,
   homeBlenderFireHearthBases,
   HOME_BLENDER_FIRE_PARTICLES,
+  homeBlenderCandleBases,
+  homeBlenderCandleAttributes,
+  HOME_BLENDER_CANDLE_PARTICLES,
 } from './HomeBlenderScene3D.jsx';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
@@ -700,5 +703,23 @@ describe('home fire particles', () => {
     expect(bases.map((b) => b.hearth)).toEqual(['left', 'right']);
     expect(bases[0].base[0]).toBeCloseTo(-6.15, 2);
     expect(bases[1].base[0]).toBeCloseTo(4.4, 2);
+  });
+});
+
+describe('home candle particles', () => {
+  it('builds per-flame bases and matching attribute sizes', () => {
+    const mk = (x, kind) => {
+      const object = new THREE.Object3D();
+      object.position.set(x, 2, -3);
+      object.updateMatrixWorld(true);
+      return { kind, object };
+    };
+    const bases = homeBlenderCandleBases([mk(1, 'candle'), mk(2, 'flame'), mk(3, 'candle')]);
+    expect(bases).toEqual([[1, 2, -3], [3, 2, -3]]);
+    const attrs = homeBlenderCandleAttributes(bases);
+    expect(attrs.count).toBe(bases.length * HOME_BLENDER_CANDLE_PARTICLES.perFlame);
+    expect(attrs.base).toHaveLength(attrs.count * 3);
+    expect(attrs.seed).toHaveLength(attrs.count * 4);
+    expect(Array.from(attrs.base.slice(0, 3))).toEqual([1, 2, -3]);
   });
 });

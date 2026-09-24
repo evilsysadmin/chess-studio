@@ -210,6 +210,56 @@ void main() {
   gl_FragColor = vec4(col, alpha);
 }`;
 
+// Candles and torches: one Points draw call for every small flame. Each flame owns a few
+// sprites that rise a hand's breadth, warm yellow at the wick turning amber, so the flame
+// glows and licks instead of being a static teardrop.
+export const HOME_BLENDER_CANDLE_PARTICLES = { perFlame: 8, height: 0.20, size: 0.15, spread: 0.012 };
+
+export function homeBlenderCandleBases(nodes) {
+  const out = [];
+  for (const node of nodes || []) {
+    if (node.kind !== 'candle') continue;
+    const pos = new THREE.Vector3();
+    node.object.getWorldPosition(pos);
+    out.push([pos.x, pos.y, pos.z]);
+  }
+  return out;
+}
+
+export function homeBlenderCandleAttributes(bases, cfg = HOME_BLENDER_CANDLE_PARTICLES) {
+  const seeds = homeBlenderFireSeeds(bases.length * cfg.perFlame, 7);
+  const base = new Float32Array(seeds.length * 3);
+  const seed = new Float32Array(seeds.length * 4);
+  seeds.forEach((sd, i) => {
+    const b = bases[Math.floor(i / cfg.perFlame)];
+    base.set(b, i * 3);
+    seed.set([sd.x / HOME_BLENDER_FIRE_PARTICLES.spreadX * cfg.spread, sd.z / HOME_BLENDER_FIRE_PARTICLES.spreadZ * cfg.spread, sd.speed * 1.4, sd.phase], i * 4);
+  });
+  return { base, seed, count: seeds.length };
+}
+
+const CANDLE_PARTICLE_VERTEX = `
+attribute vec4 aSeed; attribute vec3 aBase;
+uniform float uTime; uniform float uHeight; uniform float uSize; uniform float uViewportH;
+varying float vLife;
+void main() {
+  float life = fract(aSeed.w + uTime * aSeed.z);
+  vec3 p = aBase + vec3(aSeed.x * (1.0 - life) + sin(uTime * 3.1 + aSeed.w * 40.0) * 0.006 * life, life * uHeight, aSeed.y * (1.0 - life));
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = max(1.0, uSize * (1.0 - life * 0.6) * projectionMatrix[1][1] * uViewportH * 0.5 / -mv.z);
+  vLife = life;
+}`;
+
+const CANDLE_PARTICLE_FRAGMENT = `
+uniform float uOpacity; varying float vLife;
+void main() {
+  float d = length(gl_PointCoord - 0.5);
+  float a = smoothstep(0.5, 0.0, d);
+  vec3 col = mix(vec3(1.0, 0.80, 0.36), vec3(0.95, 0.42, 0.08), smoothstep(0.0, 1.0, vLife));
+  gl_FragColor = vec4(col, a * a * (1.0 - vLife) * smoothstep(0.0, 0.12, vLife) * uOpacity);
+}`;
+
 export function homeBlenderFireHearthBases(nodes) {
   const groups = { left: [], right: [] };
   for (const node of nodes || []) {
@@ -1029,6 +1079,43 @@ export default function HomeBlenderScene3D({
     let dust = null;
     let shaft = null;
     const fireParticles = [];
+    const ensureCandleParticles = () => {
+      if (fireParticles.some((points) => points.userData.candles) || !fireRig.length) return;
+      for (const node of fireRig) {
+        if (node.kind !== 'candle') continue;
+        for (const { material } of node.materials) {
+          material.transparent = true;
+          material.opacity = 0.7;
+          material.depthWrite = false;
+          material.needsUpdate = true;
+        }
+      }
+      const bases = homeBlenderCandleBases(fireRig);
+      if (!bases.length) return;
+      const cfg = HOME_BLENDER_CANDLE_PARTICLES;
+      const attrs = homeBlenderCandleAttributes(bases, cfg);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(attrs.count * 3), 3));
+      geometry.setAttribute('aBase', new THREE.BufferAttribute(attrs.base, 3));
+      geometry.setAttribute('aSeed', new THREE.BufferAttribute(attrs.seed, 4));
+      const material = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uTime: { value: 0 }, uHeight: { value: cfg.height }, uSize: { value: cfg.size },
+          uViewportH: { value: canvas.height || 900 }, uOpacity: { value: 1.0 },
+        },
+        vertexShader: CANDLE_PARTICLE_VERTEX,
+        fragmentShader: CANDLE_PARTICLE_FRAGMENT,
+      });
+      const points = new THREE.Points(geometry, material);
+      points.frustumCulled = false;
+      points.renderOrder = 6;
+      points.userData.candles = true;
+      scene.add(points);
+      fireParticles.push(points);
+    };
     const ensureFireParticles = () => {
       if (fireParticles.length || !fireRig.length) return;
       const cfg = HOME_BLENDER_FIRE_PARTICLES;
@@ -1269,6 +1356,7 @@ export default function HomeBlenderScene3D({
       ensureDust();
       ensureMoonShaft();
       ensureFireParticles();
+      ensureCandleParticles();
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
