@@ -3,8 +3,18 @@ import { mkdir } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const TRAINING_SCOPE = new Set(
+  (process.env.APP_VISUAL_TRAINING_SCOPE || 'all')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 test.use({ viewport: { width: 1440, height: 900 } });
+
+function scopeEnabled(scope) {
+  return TRAINING_SCOPE.has('all') || TRAINING_SCOPE.has(scope);
+}
 
 async function settle(page) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -51,8 +61,7 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles, Torneo y Mi progreso', async ({ page }) => {
-  test.setTimeout(150_000);
+async function prepare(page) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -65,6 +74,17 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
     localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
     localStorage.removeItem('chess-study-class-room-variant-v1');
   });
+}
+
+async function openDungeon(page) {
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+}
+
+test('Entrenar · Escuela, Glosario y Modos especiales', async ({ page }) => {
+  test.skip(!scopeEnabled('school'), 'school visual scope not selected');
+  test.setTimeout(110_000);
+  await prepare(page);
 
   const train = page.locator('.illustrated-home__destination--train');
   await expect(train).toBeVisible();
@@ -147,11 +167,13 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await settle(page);
   await assertSpecialModesDensity(shell);
   await capture(page, 'special-modes');
+});
 
-  await page.getByRole('button', { name: '← Volver a la Escuela', exact: true }).click();
-  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.locator('.illustrated-home')).toBeVisible();
-  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+test('Entrenar · Aperturas', async ({ page }) => {
+  test.skip(!scopeEnabled('openings'), 'openings visual scope not selected');
+  test.setTimeout(45_000);
+  await prepare(page);
+  await openDungeon(page);
   await page.getByRole('button', { name: 'Aperturas', exact: true }).click();
 
   const openings = page.locator('.openings-library-screen');
@@ -161,26 +183,37 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await capture(page, 'openings');
   await captureAt(page, 'openings', { width: 390, height: 844, variant: 'mobile' });
   await expect(page.locator('.masthead:not(.masthead-game-compact) .masthead-text')).toBeHidden();
+});
 
-  await openings.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.locator('.illustrated-home')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+test('Entrenar · Puzzles', async ({ page }) => {
+  test.skip(!scopeEnabled('puzzles'), 'puzzles visual scope not selected');
+  test.setTimeout(45_000);
+  await prepare(page);
+  await openDungeon(page);
   await page.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
+
   const puzzles = page.locator('.puzzle-screen');
   await expect(puzzles).toBeVisible();
   await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
   await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
-  await puzzles.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.locator('.illustrated-home')).toBeVisible();
+});
+
+test('Entrenar · Torneo', async ({ page }) => {
+  test.skip(!scopeEnabled('tournament'), 'tournament visual scope not selected');
+  test.setTimeout(45_000);
+  await prepare(page);
 
   await page.locator('.illustrated-home__destination--tournament').click();
   const tournament = page.locator('.tournament-panel');
   await expect(tournament).toBeVisible();
   await expect(tournament.getByRole('button', { name: 'Jugar siguiente partida', exact: true })).toBeVisible();
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
-  await tournament.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.locator('.illustrated-home')).toBeVisible();
+});
+
+test('Entrenar · Así juegas y Mi progreso', async ({ page }) => {
+  test.skip(!scopeEnabled('progress'), 'progress visual scope not selected');
+  test.setTimeout(70_000);
+  await prepare(page);
 
   await page.evaluate(() => {
     localStorage.setItem('chess-study-career', JSON.stringify({
@@ -191,7 +224,6 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
       },
     }));
   });
-  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();

@@ -58,8 +58,17 @@ case "$mode" in
         specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
     fi
-    if has_group training && has_producer training; then
-      specs+=(training-visual-artifact.spec.js)
+    training_scopes=()
+    if has_group training; then
+      has_producer training-school && training_scopes+=(school)
+      has_producer training-openings && training_scopes+=(openings)
+      has_producer training-puzzles && training_scopes+=(puzzles)
+      has_producer training-tournament && training_scopes+=(tournament)
+      has_producer training-progress && training_scopes+=(progress)
+      if (( ${#training_scopes[@]} > 0 )); then
+        specs+=(training-visual-artifact.spec.js)
+        export APP_VISUAL_TRAINING_SCOPE="$(IFS=,; echo "${training_scopes[*]}")"
+      fi
     fi
     if has_group warroom; then
       has_producer warroom-core && specs+=(war-room-visual-artifact.spec.js)
@@ -97,6 +106,9 @@ case "$mode" in
     export APP_VISUAL_EXPERIMENTS_SCOPE="$playwright_experiments_scope"
     echo "App visual capture groups: $groups"
     echo "App visual producers: $producer_scope"
+    if has_group training && [[ -n "${APP_VISUAL_TRAINING_SCOPE:-}" ]]; then
+      echo "Training visual subscopes: $APP_VISUAL_TRAINING_SCOPE"
+    fi
     if has_group experiments; then
       echo "Experiments visual subscopes: $experiments_scope"
       if [[ "$playwright_experiments_scope" != "$experiments_scope" ]]; then
