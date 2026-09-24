@@ -1192,6 +1192,7 @@ export default function HomeBlenderScene3D({
     let lastFireRenderedAt = Number.NEGATIVE_INFINITY;
     let frame = null;
     let loadTimer = null;
+    let contextRecoveryTimer = null;
 
     let renderer;
     try {
@@ -1444,9 +1445,30 @@ export default function HomeBlenderScene3D({
 
     const onContextLost = (event) => {
       event.preventDefault();
-      failToFallback(true);
+      canvas.classList.remove('is-ready');
+      canvas.dataset.homeBlenderRuntime = 'recovering';
+      stopFireAnimation();
+      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
+      contextRecoveryTimer = window.setTimeout(() => {
+        contextRecoveryTimer = null;
+        failToFallback(true);
+      }, 8_000);
+    };
+    const onContextRestored = () => {
+      if (disposed || fallbackRequested) return;
+      if (contextRecoveryTimer !== null) {
+        window.clearTimeout(contextRecoveryTimer);
+        contextRecoveryTimer = null;
+      }
+      resize();
+      renderer.shadowMap.needsUpdate = true;
+      renderFrame();
+      canvas.dataset.homeBlenderRuntime = 'ready';
+      canvas.classList.add('is-ready');
+      startFireAnimation();
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
+    canvas.addEventListener('webglcontextrestored', onContextRestored);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -1462,10 +1484,12 @@ export default function HomeBlenderScene3D({
       if (frame !== null) window.cancelAnimationFrame(frame);
       stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
+      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextRestored);
       canvas.classList.remove('is-ready');
       if (model) {
         scene.remove(model);
