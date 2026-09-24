@@ -10,21 +10,38 @@ export function shouldExitWarRoomImmersive({ enabled, focusActive }) {
 
 export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
   const [immersive, setImmersive] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
 
   const exitImmersive = useCallback(() => {
     setImmersive(false);
+    setRailCollapsed(false);
   }, []);
 
   const toggleImmersive = useCallback(() => {
-    setImmersive((current) => (
-      enabled && !focusActive ? !current : false
-    ));
+    if (!enabled || focusActive) {
+      setImmersive(false);
+      setRailCollapsed(false);
+      return;
+    }
+    setImmersive((current) => {
+      if (current) setRailCollapsed(false);
+      return !current;
+    });
   }, [enabled, focusActive]);
+
+  const toggleRail = useCallback(() => {
+    if (!immersive) {
+      setRailCollapsed(false);
+      return;
+    }
+    setRailCollapsed((current) => !current);
+  }, [immersive]);
 
   useEffect(() => {
     if (!immersive) return;
     if (shouldExitWarRoomImmersive({ enabled, focusActive })) {
       setImmersive(false);
+      setRailCollapsed(false);
     }
   }, [enabled, focusActive, immersive]);
 
@@ -49,7 +66,9 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
 
   return {
     immersive,
+    railCollapsed,
     toggleImmersive,
+    toggleRail,
     exitImmersive,
   };
 }

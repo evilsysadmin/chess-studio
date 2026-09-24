@@ -3,7 +3,8 @@ body.war-room-immersive-active {
   overscroll-behavior: none;
 }
 
-.game-3d-immersive-toggle {
+.game-3d-immersive-toggle,
+.game-3d-rail-toggle {
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -22,7 +23,10 @@ body.war-room-immersive-active {
 
 .game-3d-immersive-toggle:hover,
 .game-3d-immersive-toggle:focus-visible,
-.game-3d-immersive-toggle[aria-pressed='true'] {
+.game-3d-immersive-toggle[aria-pressed='true'],
+.game-3d-rail-toggle:hover,
+.game-3d-rail-toggle:focus-visible,
+.game-3d-rail-toggle[aria-pressed='true'] {
   border-color: rgba(201, 162, 39, .52);
   background: rgba(14, 18, 26, .94);
   color: var(--cream);
@@ -81,7 +85,10 @@ body.war-room-immersive-active {
   min-height: 0;
 }
 
-.game-layout-immersive .board3d-main-shell {
+/* Beat the deferred shared desktop viewport caps (835px/700px). Board3D's
+ * stylesheet lands after this file, so immersive needs the stronger selector
+ * as well as !important to truly own the full viewport height. */
+.game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
   height: 100% !important;
   min-height: 0 !important;
   max-height: none !important;
@@ -112,6 +119,32 @@ body.war-room-immersive-active {
 
   .game-layout-immersive .game-side-column.game-side-column-3d {
     min-height: 0;
+  }
+
+  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: 'board' !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-side-column.game-side-column-3d {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-3d-command-column {
+    position: absolute !important;
+    z-index: 40 !important;
+    inset: 0 0 auto !important;
+    width: 100% !important;
+    height: 0 !important;
+    margin: 0 !important;
+    pointer-events: none;
+  }
+
+  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-3d-turn-pill {
+    left: 50% !important;
+    max-width: min(34rem, calc(100% - 2rem));
+    pointer-events: auto;
   }
 }
 
@@ -148,7 +181,8 @@ body.war-room-immersive-active {
     animation: none;
   }
 
-  .game-3d-immersive-toggle {
+  .game-3d-immersive-toggle,
+  .game-3d-rail-toggle {
     transition: none !important;
   }
 }

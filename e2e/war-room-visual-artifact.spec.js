@@ -126,6 +126,17 @@ const CAPTURE_PROFILES = Object.freeze([
     variant: 'classic',
   }),
   Object.freeze({
+    label: 'war-room-immersive-clean-desktop-1440x900',
+    title: 'Immersive clean castle desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+    landscapeContract: false,
+    immersive: true,
+    collapseRail: true,
+    variant: 'classic',
+  }),
+  Object.freeze({
     label: 'war-room-v2-android-390x844',
     title: 'War Room v2 Android portrait',
     viewport: Object.freeze({ width: 390, height: 844 }),
@@ -571,6 +582,14 @@ for (const profile of CAPTURE_PROFILES) {
         await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
         await expect(page.locator('.game-layout-immersive')).toBeVisible();
+        if (profile.collapseRail) {
+          const collapseRail = page.getByRole('button', { name: 'Ocultar panel lateral', exact: true }).first();
+          await expect(collapseRail).toBeVisible();
+          await collapseRail.click();
+          await expect(page.locator('.game-layout-immersive')).toHaveAttribute('data-war-room-rail-collapsed', 'true');
+          await expect(page.locator('.game-side-column-3d')).toBeHidden();
+          await expect(page.getByRole('button', { name: 'Mostrar panel lateral', exact: true }).first()).toBeVisible();
+        }
       }
 
       if (profile.portraitContract) {
@@ -599,6 +618,9 @@ for (const profile of CAPTURE_PROFILES) {
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
       if (profile.immersive) expectImmersiveHealth(health);
+      if (profile.collapseRail) {
+        expect(health.boardWidthFill, 'collapsed immersive castle should spend almost the full viewport width on the scene').toBeGreaterThanOrEqual(0.97);
+      }
 
       await freezeVisualFrame(page);
       await captureViewportPng(
