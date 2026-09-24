@@ -6,6 +6,10 @@ import {
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
+// What a player gets when variants are enabled and they have not picked one. A pick made in
+// the War Room «…» menu is stored per device and always wins; only an absent (or corrupt)
+// value falls back to this. v1 ("classic") stays available there as the rollback baseline.
+export const DEFAULT_WAR_ROOM_VARIANT = 'v2';
 export const WAR_ROOM_VARIANTS = Object.freeze([
   Object.freeze({ id: 'classic', label: 'War Room v1', shell: 'procedural' }),
   Object.freeze({
@@ -66,8 +70,12 @@ export function warRoomVariantDomData(variant, status) {
 }
 
 export function loadWarRoomVariant(options = {}) {
+  // Variants disabled (no VITE_WAR_ROOM_VARIANTS_ENABLE, not staging): the classic room, so a
+  // local dev build and the plain e2e build stay deterministic. Production and staging builds
+  // set the flag, and this is also the rollback lever: unset it and everyone is back on v1.
   if (!isWarRoomVariantSelectable(options)) return 'classic';
-  return normalizeWarRoomVariant(getStorageItem(STORAGE_LOCAL, WAR_ROOM_VARIANT_STORAGE_KEY));
+  const stored = getStorageItem(STORAGE_LOCAL, WAR_ROOM_VARIANT_STORAGE_KEY);
+  return VALID_VARIANTS.has(stored) ? stored : DEFAULT_WAR_ROOM_VARIANT;
 }
 
 export function saveWarRoomVariant(value, options = {}) {
