@@ -40,7 +40,7 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
-import UserReleaseNotesModal from './components/UserReleaseNotesModal.jsx';
+const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
 import FeedbackModal from './components/FeedbackModal.jsx';
 import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
 import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
@@ -77,7 +77,7 @@ import { userFacingError } from './userFacingError.js';
 import { isAbortError } from './asyncControl.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 import { APP_RELEASE } from './release.js';
-import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
+import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
@@ -185,7 +185,7 @@ function AppInner({ isAdminUser }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
   const [showGlobalReleaseNotes, setShowGlobalReleaseNotes] = useState(false);
-  const [releaseNotesSeen, setReleaseNotesSeen] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
+  const [releaseNotesSeen, setReleaseNotesSeen] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === LATEST_USER_NOTE_ID);
   const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
@@ -846,7 +846,7 @@ function AppInner({ isAdminUser }) {
                 <button
                   type="button"
                   className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
-                  onClick={() => { setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}
+                  onClick={() => { setProfileStorageItem(USER_RELEASE_NOTES_KEY, LATEST_USER_NOTE_ID); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}
                   aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
                 >
                   <span aria-hidden="true">✦</span>
@@ -890,7 +890,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalReleaseNotes && <UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} />}
+        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, setInsightsLandingSection }); }} /></React.Suspense>}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>

@@ -1,0 +1,129 @@
+/* Novedades: today's card, latest notes, tips, archive. The dialog shell and base list styles
+ * come from styles/21-home-command.css (.release-notes-modal). */
+.release-notes-modal {
+  overflow-y: auto;
+}
+
+.release-notes-modal .release-heading {
+  margin: 18px 0 8px;
+  color: var(--brass, #d9b165);
+  font: 700 12px/1 var(--font-mono, monospace);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.release-today {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brass, #d9b165) 70%, transparent);
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 6% 50%, rgba(255, 190, 86, .16), transparent 48%),
+    color-mix(in srgb, var(--ink-2, #1b1510) 88%, transparent);
+}
+
+.release-today__eyebrow {
+  color: var(--brass, #d9b165);
+  font: 700 10px/1 var(--font-mono, monospace);
+  letter-spacing: .18em;
+}
+
+.release-today strong {
+  color: var(--parchment, #f3e6c8);
+  font-size: 1.05rem;
+}
+
+.release-today p {
+  margin: 0;
+  color: var(--parchment-dim, #cdb98f);
+  font-size: .85rem;
+  line-height: 1.4;
+}
+
+.release-today__go,
+.release-note__go {
+  justify-self: start;
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--brass, #d9b165) 60%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--parchment, #f3e6c8);
+  font-size: .82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.release-today__go,
+.release-note__go.is-primary {
+  background: linear-gradient(180deg, #d9a244, #a36a1c);
+  border-color: #f0c979;
+  color: #26140a;
+}
+
+.release-today__go:is(:hover, :focus-visible),
+.release-note__go:is(:hover, :focus-visible) {
+  filter: brightness(1.12);
+}
+
+.release-note {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink-3, #3a2d21) 80%, transparent);
+}
+
+.release-note:first-child {
+  border-top: 0;
+}
+
+.release-note header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.release-note header b {
+  color: var(--parchment, #f3e6c8);
+  font-size: .98rem;
+}
+
+.release-note header time {
+  flex: none;
+  color: var(--parchment-dim, #cdb98f);
+  font: 500 11px/1 var(--font-mono, monospace);
+}
+
+.release-note ul,
+.release-tips {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--parchment-dim, #cdb98f);
+  font-size: .85rem;
+  line-height: 1.45;
+}
+
+.release-tips li + li,
+.release-note li + li {
+  margin-top: 3px;
+}
+
+.release-archive {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ink-3, #3a2d21) 80%, transparent);
+}
+
+.release-archive > summary {
+  color: var(--parchment-dim, #cdb98f);
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.release-archive__entry {
+  margin: 8px 0 0 8px;
+}
