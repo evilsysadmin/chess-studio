@@ -77,6 +77,8 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
+| `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
+| `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
 | `war-room-blender-art.yml` | Genera, valida y publica el shell Blender de War Room v2 en su canal R2 propio. |
 | `war-room-v3-blender-art.yml` | Genera, valida y publica la sala cartográfica de War Room v3 sin reemplazar v1/v2. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
