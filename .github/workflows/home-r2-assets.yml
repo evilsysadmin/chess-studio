@@ -3,17 +3,14 @@ name: Home · publish 3D assets to R2
 on:
   pull_request:
     paths:
+      # Generic publisher plumbing is owned by r2-assets-infra.yml.
       - .github/workflows/home-r2-assets.yml
       - frontend/src/assets/home3d/**
-      - scripts/r2_asset_publish.py
-      - scripts/r2_asset_publisher.py
   push:
     branches: [main]
     paths:
       - .github/workflows/home-r2-assets.yml
       - frontend/src/assets/home3d/**
-      - scripts/r2_asset_publish.py
-      - scripts/r2_asset_publisher.py
   workflow_dispatch:
 
 permissions:
