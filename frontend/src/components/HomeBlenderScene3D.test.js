@@ -29,6 +29,8 @@ import {
   homeBlenderDustSeeds,
   homeBlenderDustPosition,
   HOME_BLENDER_DUST,
+  homeBlenderMoonShaftPose,
+  HOME_BLENDER_MOON_SHAFT,
 } from './HomeBlenderScene3D.jsx';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
@@ -658,5 +660,14 @@ describe('home dust motes', () => {
       expect(y).toBeLessThanOrEqual(HOME_BLENDER_DUST.yMax);
       expect(Math.abs(x - seed.x)).toBeLessThanOrEqual(0.23);
     }
+  });
+});
+
+describe('home moon shaft', () => {
+  it('points from the window down toward the floor', () => {
+    const pose = homeBlenderMoonShaftPose();
+    expect(pose.length).toBeGreaterThan(4);
+    expect(pose.center.y).toBeLessThan(HOME_BLENDER_MOON_SHAFT.from[1]);
+    expect(pose.center.y).toBeGreaterThan(HOME_BLENDER_MOON_SHAFT.to[1]);
   });
 });
