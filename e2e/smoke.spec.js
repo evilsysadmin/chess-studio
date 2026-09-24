@@ -68,6 +68,10 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+  // El tablero puede pintar antes de que React persista el sobre de sesión y
+  // su marcador de ruta. Esperar la confirmación durable evita que el reload
+  // compita con ese efecto y convierta este contrato en una carrera.
+  await expect(page.getByText('Guardado', { exact: true })).toBeVisible();
 
   // Arm the failures only after the game is fully mounted. Supplying GET
   // failures to mockApi up front lets an eager post-create reconciliation

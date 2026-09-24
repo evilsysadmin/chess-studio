@@ -357,6 +357,7 @@ function AppInner({ isAdminUser }) {
         setActiveSeries(null);
       }
 
+      setGameSaveState(SAVE_STATUS.SAVING);
       setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
@@ -525,6 +526,7 @@ function AppInner({ isAdminUser }) {
       setActiveSeries(updatedSeries);
       setLearningMode(false);
       setActiveTimeControl(timeControlById(updatedSeries.timeControlId));
+      setGameSaveState(SAVE_STATUS.SAVING);
       setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
@@ -580,6 +582,7 @@ function AppInner({ isAdminUser }) {
       setGameContext(nextContext);
       setLearningMode(true);
       setActiveTimeControl(null);
+      setGameSaveState(SAVE_STATUS.SAVING);
       setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
@@ -618,6 +621,7 @@ function AppInner({ isAdminUser }) {
       setGameContext({ runMode: run.mode });
       setLearningMode(false);
       setActiveTimeControl(timeControlById('5+0'));
+      setGameSaveState(SAVE_STATUS.SAVING);
       setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
@@ -652,6 +656,7 @@ function AppInner({ isAdminUser }) {
       if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
+      setGameSaveState(SAVE_STATUS.SAVING);
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
