@@ -41,7 +41,7 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
-          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '32' }}
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '16' }}
         run: |
           set -euo pipefail
           blender --background -noaudio \
@@ -53,7 +53,7 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
-          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '96' || '48' }}
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '96' || '24' }}
         run: |
           set -euo pipefail
           blender --background -noaudio \
