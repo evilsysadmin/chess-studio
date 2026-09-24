@@ -246,6 +246,22 @@ def main() -> int:
     ):
         if forbidden_security_expr in security_exprs:
             fail(f"dashboard Security usa telemetría engañosa/legacy: {forbidden_security_expr}")
+    for dashboard_data, title in (
+        (logs_data, "IPs únicas · tráfico legítimo por país"),
+        (security_data, "IPs ofensivas únicas · por país"),
+    ):
+        panel = next((row for row in (dashboard_data.get("panels") or []) if row.get("title") == title), None)
+        if not panel:
+            fail(f"dashboard perdió panel geográfico: {title}")
+        if panel.get("type") != "bargauge":
+            fail(f"panel geográfico debe ser bargauge horizontal: {title}")
+        options = panel.get("options") or {}
+        if options.get("orientation") != "horizontal" or options.get("showUnfilled") is not False:
+            fail(f"panel geográfico perdió presentación compacta horizontal: {title}")
+        defaults = (panel.get("fieldConfig") or {}).get("defaults") or {}
+        if (defaults.get("color") or {}).get("mode") != "palette-classic":
+            fail(f"panel geográfico perdió paleta por país: {title}")
+
     if '{{.password}}' in security_raw:
         fail("dashboard Security no debe renderizar contraseñas")
 

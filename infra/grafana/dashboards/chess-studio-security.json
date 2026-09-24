@@ -528,11 +528,11 @@
     },
     {
       "id": 11,
-      "type": "barchart",
+      "type": "bargauge",
       "title": "IPs ofensivas únicas · por país",
-      "description": "Número de client_ip distintas con fallos reales de login, agrupadas por client_country en el rango seleccionado. Respeta Entorno backend y excluye CI/smokes.",
+      "description": "Ranking de IPs cliente distintas con fallos reales de login, agrupadas por país en el rango seleccionado. Respeta Entorno backend y excluye CI/smokes.",
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 12,
         "y": 25
@@ -543,21 +543,19 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "always",
-        "stacking": "none",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": false
       },
       "targets": [
         {
