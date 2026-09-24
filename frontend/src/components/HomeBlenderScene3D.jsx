@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
+import { FIRE_SPRITE_DEFAULTS, createFireSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
@@ -167,48 +168,9 @@ export function homeBlenderMoonShaftPose(shaft = HOME_BLENDER_MOON_SHAFT) {
   };
 }
 
-// GPU fire: soft additive sprites rising from each hearth, fading orange -> red. The baked
-// flame meshes are hard-edged tongues; these particles add the soft licking glow on top.
-export const HOME_BLENDER_FIRE_PARTICLES = { count: 72, height: 1.15, spreadX: 0.45, spreadZ: 0.10, size: 0.38 };
-
-export function homeBlenderFireSeeds(count = HOME_BLENDER_FIRE_PARTICLES.count, salt = 1) {
-  let state = (0x51ed270b ^ Math.imul(salt, 0x9e3779b9)) >>> 0;
-  const next = () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-  const box = HOME_BLENDER_FIRE_PARTICLES;
-  return Array.from({ length: count }, () => ({
-    x: (next() * 2 - 1) * box.spreadX,
-    z: (next() * 2 - 1) * box.spreadZ,
-    speed: 0.32 + next() * 0.38,
-    phase: next(),
-  }));
-}
-
-const FIRE_PARTICLE_VERTEX = `
-attribute vec4 aSeed;
-uniform float uTime; uniform float uHeight; uniform float uSize; uniform float uViewportH; uniform vec3 uBase;
-varying float vLife;
-void main() {
-  float life = fract(aSeed.w + uTime * aSeed.z);
-  vec3 p = uBase + vec3(aSeed.x * (1.0 - life * 0.55) + sin(uTime * 2.3 + aSeed.w * 31.0) * 0.05 * life,
-    life * uHeight, aSeed.y * (1.0 - life * 0.4));
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_Position = projectionMatrix * mv;
-  gl_PointSize = max(1.0, uSize * (1.0 - life * 0.55) * projectionMatrix[1][1] * uViewportH * 0.5 / -mv.z);
-  vLife = life;
-}`;
-
-const FIRE_PARTICLE_FRAGMENT = `
-uniform float uOpacity; varying float vLife;
-void main() {
-  float d = length(gl_PointCoord - 0.5);
-  float a = smoothstep(0.5, 0.05, d);
-  vec3 col = mix(vec3(1.0, 0.86, 0.42), vec3(0.85, 0.20, 0.04), smoothstep(0.0, 1.0, vLife));
-  float alpha = a * (1.0 - vLife) * smoothstep(0.0, 0.10, vLife) * uOpacity;
-  gl_FragColor = vec4(col, alpha);
-}`;
+// GPU fire lives in fireSprites.js (shared with the War Room); these keep the Home API.
+export const HOME_BLENDER_FIRE_PARTICLES = FIRE_SPRITE_DEFAULTS;
+export const homeBlenderFireSeeds = (count = FIRE_SPRITE_DEFAULTS.count, salt = 1) => fireSpriteSeeds(count, salt);
 
 // Candles and torches: one Points draw call for every small flame. Each flame owns a few
 // sprites that rise a hand's breadth, warm yellow at the wick turning amber, so the flame
@@ -1130,24 +1092,7 @@ export default function HomeBlenderScene3D({
         }
       }
       for (const { hearth, base } of homeBlenderFireHearthBases(fireRig)) {
-        const seeds = homeBlenderFireSeeds(cfg.count, hearth === 'left' ? 1 : 2);
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(seeds.length * 3), 3));
-        geometry.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds.flatMap((sd) => [sd.x, sd.z, sd.speed, sd.phase])), 4));
-        const material = new THREE.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-          uniforms: {
-            uTime: { value: 0 }, uHeight: { value: cfg.height }, uSize: { value: cfg.size },
-            uViewportH: { value: canvas.height || 900 }, uBase: { value: new THREE.Vector3(...base) }, uOpacity: { value: 0.95 },
-          },
-          vertexShader: FIRE_PARTICLE_VERTEX,
-          fragmentShader: FIRE_PARTICLE_FRAGMENT,
-        });
-        const points = new THREE.Points(geometry, material);
-        points.frustumCulled = false;
-        points.renderOrder = 6;
+        const points = createFireSprites({ base, salt: hearth === 'left' ? 1 : 2, name: `home-fire-${hearth}` });
         scene.add(points);
         fireParticles.push(points);
       }
@@ -1467,9 +1412,13 @@ export default function HomeBlenderScene3D({
         disposeRuntimeScene(model);
       }
       for (const points of fireParticles) {
-        scene.remove(points);
-        points.geometry.dispose();
-        points.material.dispose();
+        if (points.userData.candles) {
+          scene.remove(points);
+          points.geometry.dispose();
+          points.material.dispose();
+        } else {
+          disposeFireSprites(points);
+        }
       }
       if (shaft) {
         scene.remove(shaft);

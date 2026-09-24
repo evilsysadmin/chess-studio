@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createFireSprites } from './fireSprites.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { applyCastleFurnitureLayout, buildCastleArchitectureLayer } from './WarRoomCastleArchitecture.js';
 
@@ -472,7 +473,7 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
       emissive: index % 2 ? 0xff511a : 0xff7b22,
       emissiveIntensity: 2.05,
       clearcoat: 0.02,
-      opacity: 0.82,
+      opacity: 0.6,
       depthWrite: false,
     });
     const outer = addMesh(
@@ -508,6 +509,11 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
       flames.push(inner);
     }
   }
+  // Soft sprites over the hard cones: same shared GPU fire as the Home hearths.
+  fireCore.add(createFireSprites({
+    base: [0, 0.30, towardBoard * 0.34], salt: 3, name: 'war-room-fire-sprites', coarsePointer,
+    height: 0.95, spreadX: 0.42, spreadZ: 0.05, size: 0.30,
+  }));
   fireplace.add(fireCore);
 
   const baseIntensity = coarsePointer ? 2.8 : 4.55;
