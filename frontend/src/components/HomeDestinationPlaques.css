@@ -209,6 +209,24 @@
     50% { opacity: 1; transform: scale(1.09); }
   }
 
+  /* ---- Software rendering: the scene already turns its own motion off
+   * (data-home-fire-motion="off-software"); the beacon pulses follow it, so a
+   * machine that cannot afford WebGL animation is not also asked to animate DOM. */
+  @supports selector(:has(*)) {
+    .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='off-software'])
+      .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
+      animation: none;
+      opacity: .5;
+      transform: scale(1.25);
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='off-software'])
+      .illustrated-home__destination--play::after {
+      animation: none;
+      opacity: .85;
+    }
+  }
+
   /* ---- Reduced motion: keep the signal, drop the pulse ---------------------- */
   @media (prefers-reduced-motion: reduce) {
     .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
