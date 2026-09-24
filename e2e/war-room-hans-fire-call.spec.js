@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi, scheduleDomClick } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 import { WAR_ROOM_HANS_COMPLETED_GAMES_KEY } from '../frontend/src/components/WarRoomHansPerGame.js';
 
@@ -37,7 +37,7 @@ async function openFireGame(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
-  await scheduleDomClick(quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }));
+  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
   await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const canvas = page.locator('.board3d-main-canvas');
