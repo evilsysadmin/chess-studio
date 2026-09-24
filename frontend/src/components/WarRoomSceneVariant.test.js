@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
-import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import {
+  shouldShowClassicWarRoomShell,
+  startWarRoomVariantScene,
+  warRoomVariantShellCoarsePointer,
+} from './WarRoomSceneVariant.js';
 
 describe('War Room shared scene variants', () => {
   it('never paints classic first when persisted v2 is available', () => {
@@ -9,6 +13,12 @@ describe('War Room shared scene variants', () => {
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v3' })).toBe(false);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'classic' })).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: false, variant: 'v2' })).toBe(true);
+  });
+
+  it('treats real coarse-pointer devices as the cheap Blender-shell profile', () => {
+    expect(warRoomVariantShellCoarsePointer({ coarsePointer: true, renderLite: false })).toBe(true);
+    expect(warRoomVariantShellCoarsePointer({ coarsePointer: false, renderLite: true })).toBe(true);
+    expect(warRoomVariantShellCoarsePointer({ coarsePointer: false, renderLite: false })).toBe(false);
   });
 
   it('does not construct the classic room for persisted v2 until fallback needs it', () => {
