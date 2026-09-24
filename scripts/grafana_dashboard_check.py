@@ -256,6 +256,7 @@ def main() -> int:
         if panel.get("type") != "bargauge":
             fail(f"panel geográfico debe ser bargauge horizontal: {title}")
         options = panel.get("options") or {}
+        defaults = (panel.get("fieldConfig") or {}).get("defaults") or {}
         if options.get("orientation") != "horizontal" or options.get("showUnfilled") is not False:
             fail(f"panel geográfico perdió presentación compacta horizontal: {title}")
         if title == "Tráfico legítimo por país · hits":
@@ -265,7 +266,6 @@ def main() -> int:
                 fail("panel de tráfico legítimo debe mostrar país a la izquierda y hits visibles")
             if options.get("sizing") != "manual" or options.get("maxVizHeight") != 32:
                 fail("panel de tráfico legítimo debe mantener filas compactas aunque haya un solo país")
-        defaults = (panel.get("fieldConfig") or {}).get("defaults") or {}
         if (defaults.get("color") or {}).get("mode") != "palette-classic":
             fail(f"panel geográfico perdió paleta por país: {title}")
 
