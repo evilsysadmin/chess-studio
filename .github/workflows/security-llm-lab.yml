@@ -1,0 +1,113 @@
+name: Security · LLM lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: OpenAI-compatible model id
+        type: string
+        default: glm-5.2
+        required: true
+      base_url:
+        description: OpenAI-compatible API base URL (without /chat/completions)
+        type: string
+        default: https://api.z.ai/api/paas/v4
+        required: true
+      max_files:
+        description: Hard cap on source files sent to the model
+        type: number
+        default: 180
+        required: true
+      shard_chars:
+        description: Approximate characters per discovery shard
+        type: number
+        default: 150000
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-llm-lab-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Experimental backend review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SECURITY_LLM_BASE_URL: ${{ inputs.base_url }}
+      SECURITY_LLM_MODEL: ${{ inputs.model }}
+      SECURITY_LLM_API_KEY: ${{ secrets.SECURITY_LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Validate harness and show bounded scope
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/security_llm_harness.py
+          python3 scripts/security_llm_harness.py \
+            --dry-run \
+            --max-files '${{ inputs.max_files }}' \
+            --shard-chars '${{ inputs.shard_chars }}'
+
+      - name: Require explicit lab credential
+        run: |
+          set -euo pipefail
+          if [[ -z "${SECURITY_LLM_API_KEY:-}" ]]; then
+            echo '::error::Repository secret SECURITY_LLM_API_KEY is required for the manual LLM security lab.'
+            exit 2
+          fi
+
+      - name: Run bounded discovery + validation
+        run: |
+          set -euo pipefail
+          python3 scripts/security_llm_harness.py \
+            --max-files '${{ inputs.max_files }}' \
+            --shard-chars '${{ inputs.shard_chars }}' \
+            --output .security/llm-security-report.json
+
+      - name: Summarize report
+        if: always()
+        run: |
+          if [[ ! -s .security/llm-security-report.json ]]; then
+            echo 'No report was produced.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import json, pathlib, os
+          p = pathlib.Path('.security/llm-security-report.json')
+          d = json.loads(p.read_text())
+          v = d.get('validation', {})
+          findings = v.get('findings', []) if isinstance(v, dict) else []
+          rejected = v.get('rejected', []) if isinstance(v, dict) else []
+          lines = [
+              '# Experimental LLM security review',
+              '',
+              f"Model: `{d.get('inventory', {}).get('model')}`",
+              f"Files reviewed: **{d.get('inventory', {}).get('files', 0)}**",
+              f"Discovery candidates: **{d.get('candidate_count', 0)}**",
+              f"Validated/likely findings: **{len(findings)}**",
+              f"Rejected candidates: **{len(rejected)}**",
+              '',
+              '> Informative experiment only. Findings require human verification and do not block merges.',
+          ]
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write('\n'.join(lines) + '\n')
+          PY
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: llm-security-report-${{ github.sha }}
+          path: .security/llm-security-report.json
+          if-no-files-found: ignore
+          retention-days: 7
