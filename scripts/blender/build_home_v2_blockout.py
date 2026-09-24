@@ -1442,27 +1442,44 @@ def floor_panel(name, points_xy, z, thickness, mat):
     return obj
 
 
+# Angular heraldic knight for the rug: a sharp, unsmoothed polygon (spiked mane, pricked ear,
+# strong muzzle) facing left like KNIGHT_SILHOUETTE. Smoothing it made a plush toy.
+KNIGHT_HERALDIC = (
+    (0.27, 0.12), (0.28, 0.30), (0.23, 0.40), (0.36, 0.44), (0.24, 0.51), (0.35, 0.58), (0.22, 0.61),
+    (0.31, 0.71), (0.16, 0.69), (0.19, 0.82), (0.07, 0.75), (0.02, 0.90), (-0.05, 0.77),
+    (-0.15, 0.78), (-0.25, 0.71), (-0.35, 0.60), (-0.445, 0.56), (-0.45, 0.51), (-0.40, 0.46),
+    (-0.31, 0.44), (-0.22, 0.47), (-0.16, 0.39), (-0.23, 0.29), (-0.31, 0.19), (-0.30, 0.12),
+)
+KNIGHT_HERALDIC_CUTS = (
+    ((-0.185, 0.685), (-0.095, 0.715), (-0.115, 0.665)),
+    ((-0.425, 0.545), (-0.385, 0.565), (-0.395, 0.525)),
+    ((-0.33, 0.475), (-0.14, 0.535), (-0.13, 0.515), (-0.32, 0.455)),
+    ((0.14, 0.67), (0.02, 0.56), (0.0, 0.45), (0.03, 0.45), (0.05, 0.55), (0.16, 0.65)),
+)
+
+
 def add_rug_knight_tapestry(materials):
     """Heraldic pair of chess knights woven into the visible strip of the rug, stretched
     across it like a tapestry (the rug is seen at a low angle, so the drawing is wider than tall
     on purpose). Gold thread over a dark outline; the pair faces the centre."""
     thread = materials["rug_thread"]
     outline = materials["stone_dark"]
-    smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
     depth_start, depth_span = -2.16, 1.30  # y of the base line and depth of the drawing (the strip is about 1.4 deep)
     # Mild stretch only: the room camera sees the rug from a low angle (depth is squashed to about
     # half), and at 2.5x wide the pair read as two reclining seals, not knights.
-    sx, sy = 1.15, depth_span / 0.76
+    sx, sy = 1.15, depth_span / 0.78
     for tag, cx, facing in (("left", -1.30, -1.0), ("right", 1.30, 1.0)):
         def world(u, v, grow=1.0):
             return (cx + facing * u * sx * grow, depth_start + (v - 0.12) * sy * grow - (grow - 1.0) * 0.30)
-        floor_panel(f"HOME_PROP_rug_knight_{tag}_outline", [world(u, v, 1.09) for u, v in smooth], 0.060, 0.010, outline)
-        floor_panel(f"HOME_PROP_rug_knight_{tag}", [world(u, v) for u, v in smooth], 0.068, 0.012, thread)
+        floor_panel(f"HOME_PROP_rug_knight_{tag}_outline", [world(u, v, 1.07) for u, v in KNIGHT_HERALDIC], 0.060, 0.010, outline)
+        floor_panel(f"HOME_PROP_rug_knight_{tag}", [world(u, v) for u, v in KNIGHT_HERALDIC], 0.068, 0.012, thread)
+        for cut, pts in enumerate(KNIGHT_HERALDIC_CUTS):
+            floor_panel(f"HOME_PROP_rug_knight_{tag}_cut_{cut}", [world(u, v) for u, v in pts], 0.0765, 0.004, outline)
         # plinth bar the knight stands on, like the medallion knight
         cube(
             f"HOME_PROP_rug_knight_{tag}_base",
             (cx, depth_start - 0.055, 0.066),
-            (0.34 * sx * 0.95, 0.045, 0.007),
+            (0.36 * sx * 0.95, 0.045, 0.007),
             thread,
             bevel=0.004,
         )
