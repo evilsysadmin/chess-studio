@@ -4,6 +4,7 @@ import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import './TournamentMobilePolish.css';
 import {
   TITLES,
   PIECE_SKINS,

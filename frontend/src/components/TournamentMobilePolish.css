@@ -1,0 +1,64 @@
+/* Mobile tournament: one obvious next action in the first viewport.
+ * Desktop keeps the existing progressive-disclosure composition. */
+@media (max-width: 680px) {
+  .menu.tournament-panel {
+    max-width: 100%;
+    padding: .68rem .72rem max(1rem, env(safe-area-inset-bottom));
+    gap: .55rem;
+  }
+
+  .tournament-panel > .back-link {
+    min-height: 44px;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: -.08rem;
+    touch-action: manipulation;
+  }
+
+  .tournament-panel .tournament-next-card {
+    width: 100%;
+    padding: .78rem .82rem .82rem;
+  }
+
+  .tournament-panel .level-heading {
+    font-size: clamp(1.32rem, 7vw, 1.58rem);
+  }
+
+  .tournament-panel .friendly-big-summary {
+    margin: .24rem 0 .42rem;
+    font-size: .92rem;
+  }
+
+  .tournament-panel .friendly-inline-note {
+    margin-top: .38rem;
+  }
+
+  .tournament-panel .tournament-color-choice {
+    margin-top: .4rem;
+  }
+
+  .tournament-panel .tournament-color-choice > summary,
+  .tournament-panel .tournament-more > summary {
+    min-height: 44px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  .tournament-panel .friendly-main-cta {
+    min-height: 52px;
+    margin-top: .52rem;
+    font-size: 1rem;
+    touch-action: manipulation;
+  }
+
+  .tournament-panel .tournament-result {
+    margin-block: .05rem;
+  }
+
+  .tournament-panel .tournament-more {
+    margin-top: .1rem;
+  }
+}

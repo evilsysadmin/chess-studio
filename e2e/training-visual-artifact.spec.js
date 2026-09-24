@@ -51,7 +51,7 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles y Mi progreso', async ({ page }) => {
+test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas, Puzzles, Torneo y Mi progreso', async ({ page }) => {
   test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
@@ -148,6 +148,14 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
   await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
   await puzzles.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+
+  await page.locator('.illustrated-home__destination--tournament').click();
+  const tournament = page.locator('.tournament-panel');
+  await expect(tournament).toBeVisible();
+  await expect(tournament.getByRole('button', { name: 'Jugar siguiente partida', exact: true })).toBeVisible();
+  await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
+  await tournament.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.locator('.illustrated-home')).toBeVisible();
 
   await page.evaluate(() => {
