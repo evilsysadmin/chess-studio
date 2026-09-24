@@ -1834,6 +1834,127 @@ def add_table_candelabra(materials, x, y, z0):
     add_point_light("HOME_LIGHT_table_candle", (x, y - 0.10, z0 + 1.02), 160, (1.0, 0.52, 0.24), radius=0.42)
 
 
+def add_gentleman_desk_set(materials, table_z):
+    """The right end of the table, for a classical gentleman: Matthias's leather notepad open on
+    a page of handwriting with a gilt fountain pen, his VADEMECUM (burgundy leather, gilt border
+    and knight), and a folding leather campaign chess set mid-game."""
+    top = table_z + 0.18
+    gold = materials["gold"]
+    dark = materials["dark"]
+    paper = materials["paper"]
+
+    # -- Notepad, open, with handwriting ----------------------------------------------------
+    nx, ny = 2.46, 0.50
+    pre = "HOME_PROP_table_notepad"
+    cube(f"{pre}_cover", (nx, ny, top + 0.010), (0.31, 0.215, 0.010), materials["book_black"], bevel=0.006)
+    cube(f"{pre}_cover_trim", (nx, ny, top + 0.0195), (0.312, 0.217, 0.0015), gold, bevel=0.001)
+    for side, tag in ((-1, "l"), (1, "r")):
+        px = nx + side * 0.142
+        cube(f"{pre}_page_{tag}", (px, ny, top + 0.027), (0.136, 0.188, 0.008), paper, bevel=0.004)
+        # ruled handwriting: uneven ink lines, a heavier heading on the left page
+        for line in range(10):
+            ly = ny + 0.150 - line * 0.030
+            reach = 0.088 * (0.50 + 0.50 * _hash01(line, 1 if side < 0 else 2, 5301))
+            if side < 0 and line == 0:
+                reach, thick = 0.070, 0.0042
+            else:
+                thick = 0.0024
+            cube(f"{pre}_ink_{tag}_{line}", (px - 0.106 + reach, ly, top + 0.0353), (reach, thick, 0.0007), dark)
+    cube(f"{pre}_gutter", (nx, ny, top + 0.030), (0.006, 0.192, 0.010), materials["book_oxblood"])
+    curve_tube(f"{pre}_ribbon", [(nx + 0.02, ny + 0.19, top + 0.034), (nx + 0.03, ny - 0.20, top + 0.030), (nx + 0.035, ny - 0.27, top + 0.022)], 0.006, materials["plume_red"])
+    rotate_group_about_z(pre, (nx, ny), -7.0)
+
+    # -- Gilt fountain pen lying across the right page ----------------------------------------
+    ang = math.radians(28.0)
+    d = (math.cos(ang), math.sin(ang))
+    pen_c = (nx + 0.19, ny + 0.04)
+    pz = top + 0.036 + 0.010
+
+    def along(t):
+        return (pen_c[0] + d[0] * t, pen_c[1] + d[1] * t, pz)
+
+    def barrel(name, t, length, radius, mat):
+        obj = cylinder(name, along(t), radius, length, mat, vertices=16)
+        obj.rotation_euler = (0.0, math.radians(90.0), ang)
+        return obj
+
+    barrel("HOME_PROP_table_pen_barrel", -0.020, 0.150, 0.0105, materials["book_black"])
+    barrel("HOME_PROP_table_pen_band", 0.060, 0.012, 0.0112, gold)
+    barrel("HOME_PROP_table_pen_grip", 0.086, 0.040, 0.0088, materials["book_black"])
+    barrel("HOME_PROP_table_pen_cap_band", -0.092, 0.010, 0.0112, gold)
+    barrel("HOME_PROP_table_pen_end", -0.104, 0.014, 0.0095, gold)
+    nib = cone("HOME_PROP_table_pen_nib", along(0.128), 0.0068, 0.0008, 0.034, gold, vertices=8)
+    nib.rotation_euler = (0.0, math.radians(90.0), ang)
+    clip = cube("HOME_PROP_table_pen_clip", (pen_c[0] + d[0] * -0.055, pen_c[1] + d[1] * -0.055 - 0.010, pz + 0.007), (0.052, 0.0026, 0.0026), gold, bevel=0.001)
+    clip.rotation_euler[2] = ang
+
+    # -- VADEMECUM: burgundy leather, gilt border, title plate and the gilt knight -------------
+    vx, vy = 3.30, 0.62
+    vpre = "HOME_PROP_table_vademecum"
+    cube(f"{vpre}_block", (vx, vy, top + 0.036), (0.205, 0.148, 0.036), paper, bevel=0.008)
+    cube(f"{vpre}_cover_bottom", (vx, vy, top + 0.006), (0.212, 0.154, 0.006), materials["book_oxblood"], bevel=0.005)
+    cube(f"{vpre}_cover_top", (vx, vy, top + 0.073), (0.212, 0.154, 0.006), materials["book_oxblood"], bevel=0.005)
+    cube(f"{vpre}_spine", (vx - 0.208, vy, top + 0.040), (0.010, 0.154, 0.040), materials["book_oxblood"], bevel=0.006)
+    for k in range(3):
+        cube(f"{vpre}_spine_band_{k}", (vx - 0.2185, vy, top + 0.014 + k * 0.028), (0.002, 0.155, 0.004), gold)
+    for sy in (-1, 1):
+        cube(f"{vpre}_border_{sy}", (vx, vy + sy * 0.135, top + 0.0795), (0.192, 0.0022, 0.0010), gold)
+    for sx in (-1, 1):
+        cube(f"{vpre}_border_x_{sx}", (vx + sx * 0.194, vy, top + 0.0795), (0.0022, 0.136, 0.0010), gold)
+    cube(f"{vpre}_title", (vx, vy + 0.085, top + 0.0800), (0.110, 0.019, 0.0010), gold)
+    for k in range(4):
+        cube(f"{vpre}_title_ink_{k}", (vx - 0.070 + k * 0.047, vy + 0.085, top + 0.0812), (0.018, 0.0060, 0.0006), materials["book_black"])
+    knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    floor_panel(f"{vpre}_knight", [(vx + (u + 0.08) * 0.13, vy - 0.030 + (v - 0.50) * 0.13) for u, v in knight], top + 0.0810, 0.0012, gold)
+    curve_tube(f"{vpre}_ribbon", [(vx + 0.10, vy - 0.14, top + 0.072), (vx + 0.11, vy - 0.20, top + 0.060), (vx + 0.13, vy - 0.24, top + 0.040)], 0.006, materials["plume_red"])
+    rotate_group_about_z(vpre, (vx, vy), 14.0)
+
+    # -- Folding campaign chess set, mid-game ------------------------------------------------
+    cx, cy = 2.60, 1.28
+    cpre = "HOME_PROP_table_campaign"
+    cube(f"{cpre}_case", (cx, cy, top + 0.010), (0.300, 0.300, 0.010), materials["book_tobacco"], bevel=0.008)
+    cube(f"{cpre}_light", (cx, cy, top + 0.0215), (0.250, 0.250, 0.0018), materials["board_light"])
+    sq = 0.0625
+    for row in range(8):
+        for col in range(8):
+            if (row + col) % 2 == 0:
+                continue
+            cube(f"{cpre}_sq_{row}_{col}", (cx - 0.21875 + col * sq, cy - 0.21875 + row * sq, top + 0.0238), (sq / 2.0, sq / 2.0, 0.0012), materials["board_dark"])
+    cube(f"{cpre}_hinge", (cx, cy, top + 0.0225), (0.253, 0.004, 0.0014), materials["stone_dark"])
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cube(f"{cpre}_corner_{sx}_{sy}", (cx + sx * 0.290, cy + sy * 0.290, top + 0.012), (0.024, 0.024, 0.012), gold, bevel=0.004)
+    board_top = top + 0.0252
+
+    def mini(name, col, row, kind, mat):
+        x = cx - 0.21875 + col * sq
+        y = cy - 0.21875 + row * sq
+        if kind == "pawn":
+            cone(f"{name}_body", (x, y, board_top + 0.020), 0.020, 0.010, 0.040, mat, vertices=12)
+            sphere(f"{name}_head", (x, y, board_top + 0.050), (0.013, 0.013, 0.013), mat)
+        elif kind == "rook":
+            cylinder(f"{name}_body", (x, y, board_top + 0.032), 0.020, 0.064, mat, vertices=12)
+            cylinder(f"{name}_top", (x, y, board_top + 0.068), 0.026, 0.012, mat, vertices=12)
+        elif kind == "knight":
+            cone(f"{name}_body", (x, y, board_top + 0.028), 0.022, 0.014, 0.056, mat, vertices=12)
+            head = cube(f"{name}_head", (x - 0.008, y, board_top + 0.064), (0.022, 0.011, 0.016), mat, bevel=0.005)
+            head.rotation_euler[1] = math.radians(-24.0)
+        else:
+            cone(f"{name}_body", (x, y, board_top + 0.036), 0.024, 0.012, 0.072, mat, vertices=12)
+            if kind == "king":
+                cube(f"{name}_cross_v", (x, y, board_top + 0.088), (0.004, 0.004, 0.014), gold)
+                cube(f"{name}_cross_h", (x, y, board_top + 0.090), (0.011, 0.004, 0.004), gold)
+            else:
+                sphere(f"{name}_crown", (x, y, board_top + 0.080), (0.014, 0.014, 0.014), gold)
+
+    light, dark_piece = materials["piece_light"], materials["piece_dark"]
+    for idx, (col, row, kind) in enumerate(((0, 0, "rook"), (4, 0, "king"), (3, 0, "queen"), (2, 2, "knight"), (3, 3, "pawn"), (4, 3, "pawn"), (0, 1, "pawn"), (5, 1, "pawn"))):
+        mini(f"{cpre}_w{idx}", col, row, kind, light)
+    for idx, (col, row, kind) in enumerate(((6, 7, "king"), (5, 7, "rook"), (3, 6, "queen"), (5, 5, "knight"), (3, 4, "pawn"), (4, 5, "pawn"), (1, 6, "pawn"))):
+        mini(f"{cpre}_b{idx}", col, row, kind, dark_piece)
+    rotate_group_about_z(cpre, (cx, cy), -8.0)
+
+
 def add_table_and_board(materials):
     wood = materials["table_wood"]
     dark = materials["board_dark"]
@@ -1971,33 +2092,7 @@ def add_table_and_board(materials):
         )
     add_table_candelabra(materials, -2.72, 1.60, 1.36)
 
-    table_folio = cube("HOME_PROP_table_folio", (2.72, 0.35, 1.37), (0.38, 0.28, 0.045), materials["book_brown"], bevel=0.030)
-    table_folio_pages = cube(
-        "HOME_PROP_table_folio_pages",
-        (2.72, 0.315, 1.405),
-        (0.32, 0.235, 0.015),
-        materials["paper"],
-        bevel=0.018,
-    )
-    table_folio_spine = cube(
-        "HOME_PROP_table_folio_spine",
-        (2.37, 0.35, 1.39),
-        (0.035, 0.26, 0.050),
-        materials["brass_dark"],
-        bevel=0.012,
-    )
-    cube(
-        "HOME_PROP_table_folio_clasp",
-        (2.95, 0.055, 1.415),
-        (0.055, 0.020, 0.022),
-        materials["brass"],
-        bevel=0.008,
-    )
-    rotate_group_about_z(
-        "HOME_PROP_table_folio",
-        (2.72, 0.35),
-        3.2,
-    )
+    add_gentleman_desk_set(materials, table_z)
     cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
     cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
     sphere(
@@ -2071,7 +2166,7 @@ def add_table_and_board(materials):
         metal,
     )
 
-    mug_x, mug_y = 3.05, 1.55
+    mug_x, mug_y = 3.22, 1.40
     cylinder("HOME_PROP_table_mug_saucer", (mug_x, mug_y, top + 0.008), 0.175, 0.016, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.095), 0.108, 0.150, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.172), 0.115, 0.008, ceramic, vertices=32)
@@ -3101,46 +3196,7 @@ def add_side_furnishings(materials):
             (0.045, 0.022, 0.045),
             brass,
         )
-    cylinder("HOME_PROP_globe_stand", (gx, gy, 1.16), 0.11, 0.72, brass, vertices=24)
-    cylinder("HOME_PROP_globe_base_upper", (gx, gy, 0.80), 0.28, 0.10, brass, vertices=28)
-    cylinder("HOME_PROP_globe_base_lower", (gx, gy, 0.735), 0.38, 0.055, materials["brass_dark"], vertices=28)
-    for idx, angle in enumerate((0.0, math.tau / 3.0, math.tau * 2.0 / 3.0)):
-        fx = gx + 0.31 * math.cos(angle)
-        fy = gy + 0.31 * math.sin(angle)
-        sphere(
-            f"HOME_PROP_globe_base_foot_{idx}",
-            (fx, fy, 0.70),
-            (0.085, 0.060, 0.050),
-            materials["brass_dark"],
-        )
-    sphere("HOME_PROP_globe", (gx, gy, 1.86), (0.56, 0.56, 0.56), globe)
-    curve_tube(
-        "HOME_PROP_globe_meridian",
-        [
-            (gx + 0.64 * math.cos(i * math.pi / 16), gy, 1.86 + 0.64 * math.sin(i * math.pi / 16))
-            for i in range(17)
-        ],
-        0.025,
-        brass,
-    )
-    curve_tube(
-        "HOME_PROP_globe_equator",
-        [
-            (gx + 0.60 * math.cos(i * math.tau / 24), gy + 0.60 * math.sin(i * math.tau / 24), 1.86)
-            for i in range(25)
-        ],
-        0.018,
-        materials["brass_dark"],
-    )
-    curve_tube(
-        "HOME_PROP_globe_meridian_cross",
-        [
-            (gx, gy + 0.60 * math.cos(i * math.tau / 24), 1.86 + 0.60 * math.sin(i * math.tau / 24))
-            for i in range(25)
-        ],
-        0.018,
-        materials["brass_dark"],
-    )
+    # (The study globe that stood here was removed: it added little to the Home.)
 
     # The potted cactus used to stand behind the right chair and the stair newel, where the
     # camera never saw it. It now sits on the moonlit window sill, against the night glass.
