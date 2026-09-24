@@ -308,10 +308,7 @@ export function applyWarRoomPracticalLighting(group, {
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-left'));
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-right'));
 
-  const performanceBudget = applyWarRoomPerformanceBudget(group, { coarsePointer });
-  group.userData.warRoomPerformancePointLightsKept = performanceBudget.pointLightsKept;
-  group.userData.warRoomPerformancePointLightsCulled = performanceBudget.pointLightsCulled;
-  group.userData.warRoomPerformanceSpotLightsCulled = performanceBudget.spotLightsCulled;
+  applyWarRoomPerformanceBudget(group, { coarsePointer });
 
   group.userData.warRoomPracticalLightingVersion = 'museum-v4';
   group.userData.warRoomPracticalMaterialsTuned = tunedMaterials;
