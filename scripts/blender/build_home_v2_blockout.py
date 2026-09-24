@@ -2739,23 +2739,6 @@ def add_trophy(materials):
     sphere("HOME_PROP_trophy_finial", (x, y, z0 + 0.90), (0.055, 0.055, 0.055), materials["gold"])
     curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.17, y, z0 + 0.74), (x - 0.34, y, z0 + 0.66), (x - 0.22, y, z0 + 0.46)], 0.032, brass)
     curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.17, y, z0 + 0.74), (x + 0.34, y, z0 + 0.66), (x + 0.22, y, z0 + 0.46)], 0.032, brass)
-    # Gilt laurel wreath on the wall behind the cup, tied with a red ribbon: a crowned
-    # trophy corner instead of a bare cup on a dark breast.
-    wreath_y, wreath_z, wreath_r = y + 0.16, 2.95, 0.64
-    arc = [math.radians(-58.0 + i * (296.0 / 36.0)) for i in range(37)]
-    curve_tube("HOME_PROP_trophy_wreath_ring", [(x + wreath_r * math.sin(t), wreath_y, wreath_z - wreath_r * math.cos(t)) for t in arc], 0.018, materials["gold"])
-    for idx, t in enumerate(arc[1:-1:2]):
-        for tag, shift in (("o", 0.045), ("i", -0.045)):
-            leaf = sphere(
-                f"HOME_PROP_trophy_wreath_leaf_{idx}_{tag}",
-                (x + (wreath_r + shift) * math.sin(t), wreath_y - 0.010, wreath_z - (wreath_r + shift) * math.cos(t)),
-                (0.052, 0.012, 0.022),
-                materials["gold"],
-            )
-            leaf.rotation_euler[1] = -t + math.radians(90.0) + (0.5 if tag == "o" else -0.5)
-    for side in (-1, 1):
-        curve_tube(f"HOME_PROP_trophy_wreath_ribbon_{side}", [(x, wreath_y - 0.02, wreath_z - wreath_r), (x + side * 0.10, wreath_y - 0.02, wreath_z - wreath_r - 0.10), (x + side * 0.16, wreath_y - 0.02, wreath_z - wreath_r - 0.22)], 0.020, materials["plume_red"])
-    sphere("HOME_PROP_trophy_wreath_knot", (x, wreath_y - 0.025, wreath_z - wreath_r), (0.045, 0.030, 0.045), materials["plume_red"])
 
 
 def add_side_furnishings(materials):
