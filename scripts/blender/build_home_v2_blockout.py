@@ -3245,7 +3245,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "wood": material("HOME_MAT_wood", (0.060, 0.018, 0.007, 1), roughness=0.64, bump_scale=5.0, bump_strength=0.13, variation=0.29, variation_scale=2.2, grain=True, texture_profile="wood"),
         # A waxed, well-kept oak read (lower roughness, richer grain contrast)
         # instead of the flatter dark plank the table used to share with wall wood.
-        "table_wood": material("HOME_MAT_table_wood", (0.098, 0.038, 0.016, 1), roughness=0.50, bump_scale=5.4, bump_strength=0.17, variation=0.34, variation_scale=2.0, grain=True, texture_profile="wood"),
+        "table_wood": material("HOME_MAT_table_wood", (0.052, 0.027, 0.019, 1), roughness=0.50, bump_scale=5.4, bump_strength=0.17, variation=0.34, variation_scale=2.0, grain=True, texture_profile="wood"),
         "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
