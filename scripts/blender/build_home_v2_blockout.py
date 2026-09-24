@@ -4138,9 +4138,23 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "HOME_PROP_fireplace_right_inner_firebox",
         (4.45, 5.91, 1.18),
         (0.61, 0.055, 0.68),
-        materials["dark"],
+        materials["soot_stone"],
         bevel=0.035,
     )
+    # Back wall of solid brick, like the left hearth: ten mortar courses and running-bond joints
+    # (the smooth dark box used to wash out to a flat orange behind the fire).
+    brick_h = 0.135
+    course_z = [0.56 + i * brick_h for i in range(10)]
+    for i, z in enumerate(course_z):
+        cube(f"HOME_PROP_fireplace_right_brick_course_{i}", (4.45, 5.846, z), (0.585, 0.010, 0.0055), materials["dark"])
+    for i in range(len(course_z) - 1):
+        start = -0.585 + (0.15 if i % 2 else 0.0)
+        joint = start + 0.30
+        j = 0
+        while joint < 0.585:
+            cube(f"HOME_PROP_fireplace_right_brick_joint_{i}_{j}", (4.45 + joint, 5.846, course_z[i] + brick_h / 2.0), (0.0055, 0.010, brick_h / 2.0), materials["dark"])
+            joint += 0.30
+            j += 1
     gothic_arch(
         "HOME_ARCH_fireplace_right_canon_hood",
         4.45,
