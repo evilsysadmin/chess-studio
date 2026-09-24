@@ -189,11 +189,12 @@ export function homeBlenderSteamMotion({ timeMs = 0, phase = 0, height = 0.4 } =
   const envelope = Math.sin(Math.PI * progress) ** 1.25;
   return {
     progress,
-    opacity: 0.62 * envelope,
-    rise: progress * height * 0.85,
+    opacity: 0.30 * envelope,
+    rise: progress * height * 0.55,
     swayX: Math.sin((seconds * 1.15) + (Number(phase) || 0)) * height * 0.055 * (0.4 + progress),
     swayZ: Math.cos((seconds * 0.9) + (Number(phase) || 0) * 1.7) * height * 0.035,
-    scaleXZ: 0.75 + progress * 0.95,
+    // The authored wisp is a thin tube; it swells into a soft plume as it rises.
+    scaleXZ: 1.8 + progress * 3.2,
     scaleY: 0.85 + progress * 0.30,
   };
 }

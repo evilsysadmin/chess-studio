@@ -509,14 +509,14 @@ describe('HomeBlenderScene3D table candelabra and coffee steam', () => {
     for (let ms = 0; ms <= 12000; ms += 250) {
       const motion = homeBlenderSteamMotion({ timeMs: ms, phase: 1.3, height });
       expect(motion.opacity).toBeGreaterThanOrEqual(0);
-      expect(motion.opacity).toBeLessThanOrEqual(0.62 + 1e-9);
+      expect(motion.opacity).toBeLessThanOrEqual(0.30 + 1e-9);
       expect(motion.rise).toBeGreaterThanOrEqual(0);
-      expect(motion.rise).toBeLessThanOrEqual(height * 0.85 + 1e-9);
-      expect(motion.scaleXZ).toBeGreaterThanOrEqual(0.75);
-      expect(motion.scaleXZ).toBeLessThanOrEqual(1.7 + 1e-9);
+      expect(motion.rise).toBeLessThanOrEqual(height * 0.55 + 1e-9);
+      expect(motion.scaleXZ).toBeGreaterThanOrEqual(1.8);
+      expect(motion.scaleXZ).toBeLessThanOrEqual(5.0 + 1e-9);
       peak = Math.max(peak, motion.opacity);
     }
-    expect(peak).toBeGreaterThan(0.4);
+    expect(peak).toBeGreaterThan(0.2);
     // A wisp is invisible when it is born at the rim.
     const born = homeBlenderSteamMotion({ timeMs: 0, phase: 0, height });
     expect(born.progress).toBe(0);
