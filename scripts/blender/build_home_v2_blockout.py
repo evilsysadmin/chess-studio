@@ -1729,7 +1729,7 @@ def add_table_and_board(materials):
         )
 
     for side in (-1, 1):
-        for chair_idx, chair_y in enumerate((0.42, 1.68)):
+        for chair_idx, chair_y in enumerate((1.05,)):
             add_castle_chair(f"HOME_PROP_chair_{side}_{chair_idx}", side * 4.14, chair_y, side, materials)
 
     piece_light = materials["piece_light"]
@@ -2142,6 +2142,14 @@ def add_armor(materials):
         sphere(f"HOME_PROP_armor_calf_{side}", (lx, y + 0.02, 1.08), (0.165, 0.150, 0.230), steel)
         sphere(f"HOME_PROP_armor_knee_{side}", (lx, y - 0.01, 1.30), (0.165, 0.125, 0.115), steel)
         cone(f"HOME_PROP_armor_thigh_{side}", (lx, y, 1.55), 0.21, 0.26, 0.48, steel, vertices=24)
+        # Gold bands separate the plates; without them the whole leg read as one tube.
+        for tag, band_z, band_r, band_ry in (
+            ("cuisse_top", 1.765, 0.262, 0.262), ("cuisse_bottom", 1.36, 0.218, 0.218),
+            ("poleyn", 1.30, 0.168, 0.125), ("greave_top", 1.25, 0.128, 0.128),
+            ("greave_mid", 0.98, 0.150, 0.150), ("greave_bottom", 0.70, 0.166, 0.166),
+        ):
+            ring = cylinder(f"HOME_PROP_armor_leg_band_{tag}_{side}", (lx, y - (0.01 if tag == "poleyn" else 0.0), band_z), band_r, 0.026, materials["armor_gold"], vertices=28)
+            ring.scale.y = band_ry / band_r
 
     cube("HOME_PROP_armor_pelvis", (x, y, 1.78), (0.40, 0.26, 0.18), steel, bevel=0.08)
     # Wide at the chest, narrow at the waist: the previous 0.50 -> 0.37 taper made a pear.
@@ -2272,7 +2280,7 @@ def add_armor(materials):
         "HOME_PROP_armor_plume",
         [(x, y - 0.12, 3.15), (x, y + 0.02, 3.42), (x, y + 0.22, 3.40), (x, y + 0.38, 3.16), (x, y + 0.42, 2.90)],
         0.085,
-        materials["banner"],
+        materials["plume_red"],
     )
     cube("HOME_PROP_armor_helmet_crest", (x, y + 0.00, 3.15), (0.020, 0.190, 0.028), heraldry_helm, bevel=0.010)
     cube("HOME_PROP_armor_visor_edge", (x, y - 0.238, 2.775), (0.016, 0.014, 0.085), heraldry_helm, bevel=0.005)
@@ -3013,6 +3021,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.16,
             texture_profile="metal",
         ),
+        "plume_red": material("HOME_MAT_plume_red", (0.62, 0.035, 0.045, 1), roughness=0.72, bump_scale=14.0, bump_strength=0.05, variation=0.10, variation_scale=6.0, texture_profile="textile"),
         "armor_gold": material(
             "HOME_MAT_armor_gold",
             (0.74, 0.53, 0.14, 1),
@@ -4106,14 +4115,24 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.013,
         materials["armor_gold"],
     )
-    # Two narrow fauld lames instead of the old bright three-bar robot belt.
-    for idx, (z, half_w) in enumerate(((1.92, 0.36), (1.82, 0.385), (1.72, 0.37), (1.62, 0.34), (1.52, 0.30))):
+    # Belt lames: three overlapping plates, each with a gold hem, over a dark backing so
+    # the gaps read as separate pieces instead of one solid skirt. Below the belt the
+    # legs are dressed by two separate tassets with a dark gap between them.
+    cube("HOME_PROP_armor_fauld_backing", (1.55, 5.53, 1.74), (0.40, 0.020, 0.30), materials["velvet_dark"], bevel=0.012)
+    for idx, (z, half_w) in enumerate(((1.92, 0.36), (1.82, 0.385), (1.72, 0.37))):
         cube(
             f"HOME_PROP_armor_fauld_{idx}",
             (1.55, 5.47, z),
-            (half_w, 0.030, 0.058),
+            (half_w, 0.030, 0.046),
             materials["armor_steel"],
             bevel=0.018,
+        )
+        cube(
+            f"HOME_PROP_armor_fauld_hem_{idx}",
+            (1.55, 5.44, z - 0.048),
+            (half_w * 0.98, 0.012, 0.007),
+            materials["armor_gold"],
+            bevel=0.004,
         )
 
     for side in (-1, 1):
@@ -4179,6 +4198,15 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.032,
             materials["armor_steel"],
             bevel=0.025,
+        )
+        tasset_outline = [
+            (tx - 0.125, 1.82), (tx + 0.125, 1.82), (tx + 0.105, 1.52), (tx, 1.42), (tx - 0.105, 1.52), (tx - 0.125, 1.82),
+        ]
+        curve_tube(
+            f"HOME_PROP_armor_tasset_trim_{side}",
+            [(1.55 + (px_ - 1.55) * 0.90, 5.552, pz_) for px_, pz_ in tasset_outline],
+            0.010,
+            materials["armor_gold"],
         )
 
         curve_tube(

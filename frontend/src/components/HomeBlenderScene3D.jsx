@@ -318,15 +318,44 @@ export function flameHeightRange(geometry) {
   return max - min > 1e-5 ? { min, max } : null;
 }
 
-export function applyFlameGradient(material, range) {
+// Rigid scale-and-lean made every flame read as a solid cut-out. With `flutter`, the
+// vertex shader also waves the flame the way a real one moves: the base stays put and
+// the tip whips sideways (with the tip weighted by height squared), on a few unrelated
+// frequencies per flame. `material.userData.flameTime` is the uniform to advance.
+export function applyFlameGradient(material, range, flutter = null) {
   if (!material || !range) return false;
   const { base, tip, from, to } = HOME_BLENDER_FLAME_GRADIENT;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFlameMin = { value: range.min };
     shader.uniforms.uFlameMax = { value: range.max };
-    shader.vertexShader = shader.vertexShader
+    let vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying float vFlameY;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlameY = position.y;');
+    if (flutter) {
+      shader.uniforms.uFlameTime = { value: 0 };
+      shader.uniforms.uFlutterAmp = { value: flutter.amp };
+      shader.uniforms.uFlutterPhase = { value: flutter.phase };
+      material.userData.flameTime = shader.uniforms.uFlameTime;
+      vertexShader = vertexShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nuniform float uFlameMin;\nuniform float uFlameMax;\nuniform float uFlameTime;\nuniform float uFlutterAmp;\nuniform float uFlutterPhase;',
+        )
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          float flameH = max(uFlameMax - uFlameMin, 1e-4);
+          float flameLift = clamp((position.y - uFlameMin) / flameH, 0.0, 1.0);
+          float flameTip = flameLift * flameLift;
+          float wA = sin(uFlameTime * 3.3 + uFlutterPhase + flameLift * 5.0);
+          float wB = sin(uFlameTime * 5.9 + uFlutterPhase * 1.7 + flameLift * 9.0 + position.x * 7.0);
+          float wC = sin(uFlameTime * 1.7 + uFlutterPhase * 0.6);
+          transformed.x += (wA * 0.55 + wB * 0.25 + wC * 0.40) * uFlutterAmp * flameH * flameTip;
+          transformed.z += (wB * 0.40 + wA * 0.20 - wC * 0.30) * uFlutterAmp * flameH * flameTip;
+          transformed.y -= abs(wA * wB) * 0.06 * flameH * flameTip;`,
+        );
+    }
+    shader.vertexShader = vertexShader;
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
@@ -344,7 +373,7 @@ export function applyFlameGradient(material, range) {
           flameT);`,
       );
   };
-  material.customProgramCacheKey = () => 'home-flame-gradient';
+  material.customProgramCacheKey = () => (flutter ? 'home-flame-gradient-flutter' : 'home-flame-gradient');
   material.needsUpdate = true;
   return true;
 }
@@ -373,7 +402,12 @@ function prepareRuntimeFireRig(root) {
         continue;
       }
       if (kind !== 'ember') applyFlameLook(material, kind);
-      if (kind !== 'ember') applyFlameGradient(material, flameHeightRange(object.geometry));
+      if (kind !== 'ember') {
+        applyFlameGradient(material, flameHeightRange(object.geometry), {
+          amp: kind === 'candle' ? 0.055 : 0.15,
+          phase: stableFirePhase(object.name),
+        });
+      }
     }
 
     const materials = (Array.isArray(object.material) ? object.material : [object.material])
@@ -430,6 +464,10 @@ function applyRuntimeFireMotion(nodes, timeMs) {
       node.baseScale.z * motion.scaleZ,
     );
     node.object.rotation.z = node.baseRotationZ + motion.lean;
+    const seconds = timeMs / 1000;
+    for (const { material } of node.materials) {
+      if (material.userData?.flameTime) material.userData.flameTime.value = seconds;
+    }
     for (const { material, emissiveIntensity } of node.materials) {
       if ('emissiveIntensity' in material) {
         material.emissiveIntensity = emissiveIntensity * motion.emission;

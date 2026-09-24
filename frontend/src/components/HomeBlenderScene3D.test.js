@@ -530,3 +530,36 @@ describe('HomeBlenderScene3D table candelabra and coffee steam', () => {
     expect(homeBlenderSteamMotion({ timeMs: 3000, phase: 0.4 })).toEqual(a);
   });
 });
+
+describe('HomeBlenderScene3D flame flutter shader', () => {
+  const compile = (material) => {
+    const shader = {
+      uniforms: {},
+      vertexShader: '#include <common>\nvoid main(){\n#include <begin_vertex>\n}',
+      fragmentShader: '#include <common>\nvoid main(){\n#include <emissivemap_fragment>\n}',
+    };
+    material.onBeforeCompile(shader);
+    return shader;
+  };
+
+  it('adds a tip-weighted vertex flutter with an advanceable clock when asked', () => {
+    const material = new THREE.MeshStandardMaterial();
+    expect(applyFlameGradient(material, { min: 0, max: 0.4 }, { amp: 0.15, phase: 1.2 })).toBe(true);
+    const shader = compile(material);
+    expect(shader.vertexShader).toContain('flameTip');
+    expect(shader.vertexShader).toContain('uniform float uFlameTime');
+    expect(shader.uniforms.uFlutterAmp.value).toBe(0.15);
+    expect(shader.uniforms.uFlutterPhase.value).toBe(1.2);
+    expect(material.userData.flameTime).toBe(shader.uniforms.uFlameTime);
+    expect(material.customProgramCacheKey()).toBe('home-flame-gradient-flutter');
+  });
+
+  it('keeps the plain gradient program for flames without flutter', () => {
+    const material = new THREE.MeshStandardMaterial();
+    applyFlameGradient(material, { min: 0, max: 0.4 });
+    const shader = compile(material);
+    expect(shader.vertexShader).not.toContain('flameTip');
+    expect(material.userData.flameTime).toBeUndefined();
+    expect(material.customProgramCacheKey()).toBe('home-flame-gradient');
+  });
+});
