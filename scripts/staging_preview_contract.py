@@ -129,7 +129,6 @@ def main() -> int:
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
         ("for attempt in {1..76}; do", "generation watcher patience budget"),
         ("attempt % 8 == 0", "generation watcher periodic stale-generation probe"),
-        ("OCI watcher superseded", "generation watcher stale short-circuit marker"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
         ("OCI fallback avoided", "late watcher completion re-check"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),

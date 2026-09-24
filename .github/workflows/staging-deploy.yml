@@ -56,7 +56,7 @@ jobs:
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Esta generación termina antes de cualquier mutación."
+            echo "::notice title=Staging superseded::$DEPLOY_SHA != main $current_main; sin mutación."
             {
               echo '### Staging superseded por un main más nuevo'
               echo
@@ -69,7 +69,7 @@ jobs:
             exit 0
           fi
           echo 'admitted=true' >> "$GITHUB_OUTPUT"
-          echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
+          echo "Staging admission OK: $DEPLOY_SHA"
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -99,7 +99,6 @@ jobs:
         run: |
           set -euo pipefail
           converged=false
-          superseded_hint=false
           for attempt in {1..76}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
@@ -117,22 +116,15 @@ jobs:
             fi
             if (( attempt % 8 == 0 )); then
               current_main="$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
-              if [[ "$current_main" =~ ^[0-9a-f]{40}$ && "$current_main" != "$DEPLOY_SHA" ]]; then
-                superseded_hint=true
-                echo "::notice title=OCI watcher superseded::$DEPLOY_SHA ya no es main ($current_main); se corta la espera antes del fallback."
-                break
-              fi
+              [[ ! "$current_main" =~ ^[0-9a-f]{40}$ || "$current_main" == "$DEPLOY_SHA" ]] || break
             fi
             [[ "$attempt" -eq 76 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
-          echo "superseded_hint=$superseded_hint" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
-            echo "::notice title=OCI zero-cost fast-path::La A1 aplicó $DEPLOY_SHA mediante el watcher saliente."
-          elif [[ "$superseded_hint" == true ]]; then
-            echo "::notice title=OCI watcher stale::La espera terminó pronto; el guard de fallback confirmará el main actual."
+            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA aplicado por watcher."
           else
-            echo "::warning title=OCI fallback::El watcher no convergió; se usa un único Run Command de deploy."
+            echo "::warning title=OCI fallback::Watcher no convergió; uso Run Command."
           fi
       - name: Re-check main before OCI fallback
         id: fallback_admission
@@ -144,7 +136,7 @@ jobs:
           [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main antes del fallback OCI"; exit 1; }
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo 'superseded=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=OCI fallback superseded::$DEPLOY_SHA ya no es main ($current_main); no se envía Run Command."
+            echo "::notice title=OCI fallback superseded::$DEPLOY_SHA != main $current_main; skip Run Command."
           else
             echo 'superseded=false' >> "$GITHUB_OUTPUT"
           fi
@@ -184,7 +176,7 @@ jobs:
           raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
           PY
           then
-            echo "::notice title=OCI fallback avoided::La A1 terminó $DEPLOY_SHA durante el setup; no se envía Run Command."
+            echo "::notice title=OCI fallback avoided::A1 terminó $DEPLOY_SHA; skip Run Command."
             exit 0
           fi
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
@@ -192,7 +184,7 @@ jobs:
           [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main después del fallback OCI"; exit 1; }
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo 'superseded=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=OCI deploy superseded::$DEPLOY_SHA dejó de ser main durante Run Command ($current_main)."
+            echo "::notice title=OCI deploy superseded::$DEPLOY_SHA != main $current_main."
           else
             echo 'superseded=false' >> "$GITHUB_OUTPUT"
           fi
@@ -258,10 +250,10 @@ jobs:
           PY
           then
             hit=true
-            echo "::notice title=Frontend fast-path::Reutilizando dist precompilado para $DEPLOY_SHA."
+            echo "::notice title=Frontend fast-path::Reuso dist de $DEPLOY_SHA."
           else
             rm -rf frontend/dist
-            echo "::notice title=Frontend fallback::Artifact exacto ausente o inválido; se recompilará en staging."
+            echo "::notice title=Frontend fallback::Artifact ausente/inválido; recompilo."
           fi
           echo "hit=$hit" >> "$GITHUB_OUTPUT"
       - name: CF auth guard
