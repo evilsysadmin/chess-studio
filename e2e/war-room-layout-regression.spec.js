@@ -36,6 +36,35 @@ async function expectNoHorizontalOverflow(page) {
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
 }
 
+async function expectMobileTouchTarget(locator, label) {
+  await expect(locator, `${label} visible`).toBeVisible();
+  const target = await box(locator);
+  expect(target.width, `${label} width`).toBeGreaterThanOrEqual(44);
+  expect(target.height, `${label} height`).toBeGreaterThanOrEqual(44);
+}
+
+async function expectMobileWarRoomContract(page, shell, width) {
+  await page.setViewportSize({ width, height: 844 });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expectNoHorizontalOverflow(page);
+
+  const mobileShell = await box(shell);
+  expect(mobileShell.x).toBeGreaterThanOrEqual(-1);
+  expect(mobileShell.x + mobileShell.width).toBeLessThanOrEqual(width + 1);
+  expect(mobileShell.width).toBeGreaterThanOrEqual(width * 0.9);
+
+  for (const [label, locator] of [
+    ['feedback', page.locator('.masthead-feedback-trigger')],
+    ['cuenta', page.locator('.masthead-account-trigger')],
+    ['música', page.locator('.game-side-music .music-deck-expand')],
+    ['play', page.locator('.game-side-music .music-deck-collapsed-play')],
+    ['zen', page.locator('.game-3d-compact-action').first()],
+    ['más acciones', page.locator('.game-3d-utility-menu > summary')],
+  ]) {
+    await expectMobileTouchTarget(locator, label);
+  }
+}
+
 async function expectDesktopChromeContract(page, shell) {
   const status = page.locator('.game-3d-turn-pill');
   const inspect = page.getByRole('button', { name: 'Inspeccionar', exact: true });
@@ -104,12 +133,9 @@ test('War Room · chrome crítico no invade el tablero y sobrevive post-paint, 1
   expect(shortDesktop.shellBox.y + shortDesktop.shellBox.height).toBeLessThanOrEqual(768 + 1);
   expect(shortDesktop.statusBox.y + shortDesktop.statusBox.height).toBeLessThanOrEqual(768 + 1);
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await expectNoHorizontalOverflow(page);
-  const mobileShell = await box(shell);
-  expect(mobileShell.x).toBeGreaterThanOrEqual(-1);
-  expect(mobileShell.x + mobileShell.width).toBeLessThanOrEqual(391);
+  for (const width of [360, 390, 430]) {
+    await expectMobileWarRoomContract(page, shell, width);
+  }
 
   // F5 must restore the same active War Room instead of falling back to Home/2D
   // or losing the compact Matthias/turn status after the deferred renderer remount.
