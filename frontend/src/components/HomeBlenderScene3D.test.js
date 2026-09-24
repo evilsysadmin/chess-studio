@@ -26,6 +26,9 @@ import {
   HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
   homeBlenderPolicyNeedsFallback,
   homeBlenderRuntimePolicy,
+  homeBlenderDustSeeds,
+  homeBlenderDustPosition,
+  HOME_BLENDER_DUST,
 } from './HomeBlenderScene3D.jsx';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
@@ -633,5 +636,27 @@ describe('HomeBlenderScene3D chess piece lift', () => {
   it('is safe on an empty or missing scene', () => {
     expect(applyHomeBlenderPieceLift(null)).toBe(0);
     expect(applyHomeBlenderPieceLift(new THREE.Group())).toBe(0);
+  });
+});
+
+describe('home dust motes', () => {
+  it('seeds deterministically inside the light volume', () => {
+    const a = homeBlenderDustSeeds();
+    expect(a).toEqual(homeBlenderDustSeeds());
+    expect(a).toHaveLength(HOME_BLENDER_DUST.count);
+    for (const seed of a) {
+      expect(seed.y).toBeGreaterThanOrEqual(HOME_BLENDER_DUST.yMin);
+      expect(seed.y).toBeLessThanOrEqual(HOME_BLENDER_DUST.yMax);
+    }
+  });
+
+  it('drifts slowly and wraps vertically', () => {
+    const [seed] = homeBlenderDustSeeds(1);
+    for (const t of [0, 5000, 90000, 1e7]) {
+      const [x, y] = homeBlenderDustPosition(seed, t);
+      expect(y).toBeGreaterThanOrEqual(HOME_BLENDER_DUST.yMin);
+      expect(y).toBeLessThanOrEqual(HOME_BLENDER_DUST.yMax);
+      expect(Math.abs(x - seed.x)).toBeLessThanOrEqual(0.23);
+    }
   });
 });

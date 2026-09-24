@@ -117,6 +117,36 @@ function stableFirePhase(name = '') {
   return ((hash >>> 0) % 1000) / 1000 * Math.PI * 2;
 }
 
+export const HOME_BLENDER_DUST = { count: 140, x: 3.2, yMin: 1.6, yMax: 5.2, zMin: -4.6, zMax: 0.4 };
+
+export function homeBlenderDustSeeds(count = HOME_BLENDER_DUST.count) {
+  let state = 0x9e3779b9;
+  const next = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const box = HOME_BLENDER_DUST;
+  return Array.from({ length: count }, () => ({
+    x: (next() * 2 - 1) * box.x,
+    y: box.yMin + next() * (box.yMax - box.yMin),
+    z: box.zMin + next() * (box.zMax - box.zMin),
+    phase: next() * Math.PI * 2,
+    speed: 0.04 + next() * 0.05,
+  }));
+}
+
+export function homeBlenderDustPosition(seed, timeMs = 0) {
+  const box = HOME_BLENDER_DUST;
+  const t = timeMs / 1000;
+  const span = box.yMax - box.yMin;
+  const fall = ((seed.y - box.yMin - seed.speed * t) % span + span) % span;
+  return [
+    seed.x + Math.sin(t * 0.21 + seed.phase) * 0.22,
+    box.yMin + fall,
+    seed.z + Math.cos(t * 0.17 + seed.phase * 1.3) * 0.18,
+  ];
+}
+
 export function homeBlenderFireKind(name = '') {
   const normalized = String(name).toLowerCase();
   if (normalized.includes('home_prop_table_mug_steam')) return 'steam';
@@ -913,6 +943,40 @@ export default function HomeBlenderScene3D({
     let fallbackRequested = false;
     let model = null;
     let fireRig = [];
+    let dust = null;
+    const dustSeeds = homeBlenderDustSeeds();
+    const ensureDust = () => {
+      if (dust) return;
+      const size = 32;
+      const swatch = document.createElement('canvas');
+      swatch.width = size;
+      swatch.height = size;
+      const ctx = swatch.getContext('2d');
+      const grad = ctx?.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      if (!ctx || !grad) return;
+      grad.addColorStop(0, 'rgba(255,225,170,1)');
+      grad.addColorStop(1, 'rgba(255,225,170,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dustSeeds.length * 3), 3));
+      const material = new THREE.PointsMaterial({
+        size: 0.05, map: new THREE.CanvasTexture(swatch), color: 0xffd9a0, transparent: true,
+        opacity: 0.38, depthWrite: false, blending: THREE.AdditiveBlending,
+      });
+      dust = new THREE.Points(geometry, material);
+      dust.frustumCulled = false;
+      scene.add(dust);
+    };
+    const moveDust = (timestamp) => {
+      if (!dust) return;
+      const attr = dust.geometry.getAttribute('position');
+      dustSeeds.forEach((seed, i) => {
+        const [x, y, z] = homeBlenderDustPosition(seed, timestamp);
+        attr.setXYZ(i, x, y, z);
+      });
+      attr.needsUpdate = true;
+    };
     let fireFrame = null;
     let lastFireRenderedAt = Number.NEGATIVE_INFINITY;
     let frame = null;
@@ -999,6 +1063,7 @@ export default function HomeBlenderScene3D({
       }
       lastFireRafAt = timestamp;
       if (timestamp - lastFireRenderedAt >= fireIntervalMs) {
+        moveDust(timestamp);
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
@@ -1053,6 +1118,7 @@ export default function HomeBlenderScene3D({
       if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
+      ensureDust();
       lastFireRafAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1161,6 +1227,12 @@ export default function HomeBlenderScene3D({
       if (model) {
         scene.remove(model);
         disposeRuntimeScene(model);
+      }
+      if (dust) {
+        scene.remove(dust);
+        dust.geometry.dispose();
+        dust.material.map?.dispose();
+        dust.material.dispose();
       }
       runtimeLights.disposeGlows?.();
       releaseEnvironment();
