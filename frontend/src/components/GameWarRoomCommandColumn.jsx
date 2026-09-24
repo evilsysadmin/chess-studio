@@ -76,7 +76,9 @@ export function WarRoomUtilityMenu({
   showAppearance = true,
   showZen = true,
   immersive = false,
+  railCollapsed = false,
   onToggleImmersive,
+  onToggleRail,
 }) {
   const {
     selectable: warRoomVariantSelectable,
@@ -92,6 +94,7 @@ export function WarRoomUtilityMenu({
     || (compactViewport && showRendererToggle)
     || hasAppearance
     || typeof onToggleImmersive === 'function'
+    || (!compactViewport && immersive && typeof onToggleRail === 'function')
     || warRoomVariantSelectable
     || (showZen && typeof controls.onToggleZen === 'function');
 
@@ -168,6 +171,19 @@ export function WarRoomUtilityMenu({
             {immersive ? 'Salir de inmersión' : 'Modo inmersión'}
           </button>
         )}
+        {!compactViewport && immersive && typeof onToggleRail === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            aria-pressed={railCollapsed}
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              onToggleRail();
+            }}
+          >
+            {railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+          </button>
+        )}
         {warRoomVariantSelectable && (
           <>
             <span className="game-3d-utility-separator" role="separator" />
@@ -225,7 +241,17 @@ export function WarRoomUtilityMenu({
   );
 }
 
-function CompactWarRoomPill({ game, signal, board, controls, zenMode, immersive, onToggleImmersive }) {
+function CompactWarRoomPill({
+  game,
+  signal,
+  board,
+  controls,
+  zenMode,
+  immersive,
+  railCollapsed,
+  onToggleImmersive,
+  onToggleRail,
+}) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -270,6 +296,18 @@ function CompactWarRoomPill({ game, signal, board, controls, zenMode, immersive,
           )}
         </span>
 
+        {immersive && typeof onToggleRail === 'function' && (
+          <button
+            type="button"
+            className="game-3d-rail-toggle"
+            aria-label={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+            title={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+            aria-pressed={railCollapsed}
+            onClick={onToggleRail}
+          >
+            <span aria-hidden="true">{railCollapsed ? '▥' : '▤'}</span>
+          </button>
+        )}
         <WarRoomGuideHelp />
         <WarRoomUtilityMenu
           game={game}
@@ -278,7 +316,9 @@ function CompactWarRoomPill({ game, signal, board, controls, zenMode, immersive,
           zenMode={zenMode}
           compactViewport
           immersive={immersive}
+          railCollapsed={railCollapsed}
           onToggleImmersive={onToggleImmersive}
+          onToggleRail={onToggleRail}
         />
       </div>
     </aside>
@@ -293,7 +333,9 @@ export default function GameWarRoomCommandColumn({
   controls = {},
   compactViewport = false,
   immersive = false,
+  railCollapsed = false,
   onToggleImmersive,
+  onToggleRail,
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
@@ -309,7 +351,9 @@ export default function GameWarRoomCommandColumn({
         controls={controls}
         zenMode={zenMode}
         immersive={immersive}
+        railCollapsed={railCollapsed}
         onToggleImmersive={onToggleImmersive}
+        onToggleRail={onToggleRail}
       />
     );
   }
@@ -356,7 +400,9 @@ export default function GameWarRoomCommandColumn({
           controls={controls}
           zenMode={zenMode}
           immersive={immersive}
+          railCollapsed={railCollapsed}
           onToggleImmersive={onToggleImmersive}
+          onToggleRail={onToggleRail}
         />
       </div>
     </aside>
