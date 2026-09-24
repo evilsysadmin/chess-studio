@@ -4021,48 +4021,54 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             0.010,
             materials["gold"],
         )
+    # Heraldic shield over the right hearth: burgundy field, thick gilt border and inner line,
+    # a gold chief band with studs, crossed swords reaching past the outline, a big gilt knight
+    # and a small crown. (The old dark wooden plaque with tiny marks read as a keyhole.)
     shield_points = [
-        (5.10, 3.56),
-        (5.64, 3.56),
-        (5.64, 3.31),
-        (5.55, 3.08),
-        (5.37, 2.93),
-        (5.19, 3.08),
-        (5.10, 3.31),
+        (5.03, 3.60),
+        (5.71, 3.60),
+        (5.71, 3.34),
+        (5.62, 3.10),
+        (5.37, 2.84),
+        (5.12, 3.10),
+        (5.03, 3.34),
     ]
-    flat_panel(
-        "HOME_PROP_fireplace_right_shield",
-        shield_points,
-        5.08,
-        0.10,
-        materials["wood"],
-        bevel=0.045,
-    )
-    curve_tube(
-        "HOME_PROP_fireplace_right_shield_border",
-        [(x, 5.015, z) for x, z in shield_points + [shield_points[0]]],
-        0.018,
-        materials["brass_dark"],
-    )
-    # Crossed swords behind a gilt knight: the shield reads as a trophy of arms instead of
-    # a dark plaque with a keyhole.
+    flat_panel("HOME_PROP_fireplace_right_shield", shield_points, 5.08, 0.10, materials["banner"], bevel=0.045)
+    outline = [(x, 5.010, z) for x, z in shield_points + [shield_points[0]]]
+    curve_tube("HOME_PROP_fireplace_right_shield_border", outline, 0.028, materials["gold"])
+    inset = [(5.37 + (x - 5.37) * 0.86, 5.012, 3.24 + (z - 3.24) * 0.86) for x, _, z in outline]
+    curve_tube("HOME_PROP_fireplace_right_shield_inner_line", inset, 0.009, materials["brass_dark"])
+    cube("HOME_PROP_fireplace_right_shield_chief", (5.37, 5.008, 3.49), (0.29, 0.010, 0.040), materials["gold"], bevel=0.006)
+    for idx, sx in enumerate((-0.20, -0.10, 0.0, 0.10, 0.20)):
+        sphere(f"HOME_PROP_fireplace_right_shield_stud_{idx}", (5.37 + sx, 5.000, 3.49), (0.014, 0.008, 0.014), materials["brass_dark"])
     for side in (-1, 1):
-        ang = math.radians(38.0 * side)
-        blade = cube(f"HOME_PROP_fireplace_right_shield_sword_{side}", (5.37, 5.005, 3.28), (0.026, 0.010, 0.50), materials["steel"], bevel=0.006)
+        ang = math.radians(44.0 * side)
+        blade = cube(f"HOME_PROP_fireplace_right_shield_sword_{side}", (5.37, 4.995, 3.22), (0.030, 0.010, 0.60), materials["steel"], bevel=0.006)
         blade.rotation_euler[1] = ang
-        guard = cube(f"HOME_PROP_fireplace_right_shield_sword_guard_{side}", (5.37 - math.sin(ang) * 0.30, 5.000, 3.28 - math.cos(ang) * 0.30), (0.085, 0.012, 0.014), materials["gold"], bevel=0.005)
+        edge = cube(f"HOME_PROP_fireplace_right_shield_sword_fuller_{side}", (5.37, 4.988, 3.22), (0.008, 0.006, 0.54), materials["armor_steel"], bevel=0.003)
+        edge.rotation_euler[1] = ang
+        guard = cube(f"HOME_PROP_fireplace_right_shield_sword_guard_{side}", (5.37 - math.sin(ang) * 0.36, 4.988, 3.22 - math.cos(ang) * 0.36), (0.110, 0.014, 0.018), materials["gold"], bevel=0.006)
         guard.rotation_euler[1] = ang
-        sphere(f"HOME_PROP_fireplace_right_shield_sword_pommel_{side}", (5.37 - math.sin(ang) * 0.47, 5.000, 3.28 - math.cos(ang) * 0.47), (0.030, 0.020, 0.030), materials["gold"])
+        cylinder(f"HOME_PROP_fireplace_right_shield_sword_grip_{side}", (5.37 - math.sin(ang) * 0.46, 4.990, 3.22 - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
+        sphere(f"HOME_PROP_fireplace_right_shield_sword_pommel_{side}", (5.37 - math.sin(ang) * 0.56, 4.990, 3.22 - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
     knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
-    for tag, grow, yy, mat in (("shadow", 1.10, 4.986, materials["dark"]), ("gold", 1.0, 4.978, materials["gold"])):
+    for tag, grow, yy, mat in (("shadow", 1.09, 4.978, materials["velvet_dark"]), ("gold", 1.0, 4.968, materials["gold"])):
         flat_panel(
             f"HOME_PROP_fireplace_right_shield_knight_{tag}",
-            [(5.37 + (u + 0.08) * 0.36 * grow, 3.29 + (v - 0.50) * 0.36 * grow) for u, v in knight],
+            [(5.37 + (u + 0.08) * 0.50 * grow, 3.20 + (v - 0.50) * 0.50 * grow) for u, v in knight],
             yy,
-            0.022,
+            0.026,
             mat,
-            bevel=0.005,
+            bevel=0.006,
         )
+    flat_panel(
+        "HOME_PROP_fireplace_right_shield_crown",
+        [(5.21, 3.63), (5.21, 3.72), (5.29, 3.67), (5.37, 3.77), (5.45, 3.67), (5.53, 3.72), (5.53, 3.63)],
+        5.030,
+        0.030,
+        materials["gold"],
+        bevel=0.006,
+    )
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
