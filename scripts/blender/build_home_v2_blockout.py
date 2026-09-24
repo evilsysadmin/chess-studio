@@ -4146,6 +4146,22 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
         tongue.rotation_euler[1] = math.radians(tilt)
 
+    # Front grate, mirroring the left hearth: the shared helper's grate sits behind the
+    # flames (y 5.56) and vanishes, so the right fire looked unguarded.
+    for idx, gx in enumerate((4.45 - 0.51, 4.45 - 0.255, 4.45, 4.45 + 0.255, 4.45 + 0.51)):
+        curve_tube(
+            f"HOME_PROP_fireplace_right_grate_front_bar_{idx}",
+            [(gx, 5.30, 0.47), (gx, 5.30, 1.04)],
+            0.018,
+            materials["brass_dark"],
+        )
+    curve_tube(
+        "HOME_PROP_fireplace_right_grate_front_top",
+        [(4.45 - 0.58, 5.30, 0.96), (4.45, 5.28, 1.07), (4.45 + 0.58, 5.30, 0.96)],
+        0.024,
+        materials["brass_dark"],
+    )
+
     for pane_index, (offset, half_width, z_shift, mat_name) in enumerate((
         (-0.64, 0.25, -0.015, "window_dim"),
         (-0.19, 0.145, 0.010, "window"),
