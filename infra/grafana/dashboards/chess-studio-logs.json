@@ -632,8 +632,8 @@
     {
       "id": 18,
       "title": "IPs únicas · tráfico legítimo por país",
-      "type": "barchart",
-      "description": "IPs cliente distintas de tráfico autenticado 2xx/3xx, agrupadas por país. Excluye CI, smokes y probes; una IP no equivale necesariamente a una persona.",
+      "type": "bargauge",
+      "description": "Ranking de IPs cliente distintas con tráfico autenticado 2xx/3xx, agrupadas por país. Una IP no equivale necesariamente a una persona; se excluyen CI, smokes y probes.",
       "datasource": {
         "type": "loki",
         "uid": "${logs_datasource_uid}"
@@ -642,7 +642,7 @@
         "x": 0,
         "y": 64,
         "w": 24,
-        "h": 8
+        "h": 9
       },
       "targets": [
         {
@@ -658,21 +658,19 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "always",
-        "stacking": "none",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": false
       }
     }
   ],
