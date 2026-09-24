@@ -2434,7 +2434,7 @@ def add_armor(materials):
     # waist height from the camera, so a lower hilt just hid the blade
     # entirely behind the table instead of showing it "resting near the
     # ground".
-    wrists = {-1: (x - 0.46, y - 0.60, 2.00), 1: (x + 0.48, y - 0.55, 2.05)}
+    wrists = {-1: (x - 0.46, y - 0.60, 2.00), 1: (x + 0.06, y - 0.42, 1.95)}
     for side in (-1, 1):
         shoulder = shoulders[side]
         elbow = elbows[side]
@@ -2499,7 +2499,8 @@ def add_armor(materials):
     cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, hilt_z + 0.125), (0.320, 0.034, 0.032), brass, bevel=0.012)
     for side in (-1, 1):
         sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.335, hilt_y, hilt_z + 0.125), (0.052, 0.052, 0.052), brass)
-    blade_base_z, blade_tip_z = hilt_z + 0.15, hilt_z - 1.05
+    # Planted sword: centred in front of the figure, point resting on the pedestal top (z 0.48).
+    blade_base_z, blade_tip_z = hilt_z + 0.15, 0.66
     # Bare polished steel (brighter/more metallic than the matte armor_steel
     # body) so the blade actually reads against the body and the archway
     # shadow behind it, instead of disappearing into both.
@@ -2650,6 +2651,23 @@ def add_trophy(materials):
     sphere("HOME_PROP_trophy_finial", (x, y, z0 + 0.90), (0.055, 0.055, 0.055), materials["gold"])
     curve_tube("HOME_PROP_trophy_handle_l", [(x - 0.17, y, z0 + 0.74), (x - 0.34, y, z0 + 0.66), (x - 0.22, y, z0 + 0.46)], 0.032, brass)
     curve_tube("HOME_PROP_trophy_handle_r", [(x + 0.17, y, z0 + 0.74), (x + 0.34, y, z0 + 0.66), (x + 0.22, y, z0 + 0.46)], 0.032, brass)
+    # Gilt laurel wreath on the wall behind the cup, tied with a red ribbon: a crowned
+    # trophy corner instead of a bare cup on a dark breast.
+    wreath_y, wreath_z, wreath_r = y + 0.16, 2.95, 0.64
+    arc = [math.radians(-58.0 + i * (296.0 / 36.0)) for i in range(37)]
+    curve_tube("HOME_PROP_trophy_wreath_ring", [(x + wreath_r * math.sin(t), wreath_y, wreath_z - wreath_r * math.cos(t)) for t in arc], 0.018, materials["gold"])
+    for idx, t in enumerate(arc[1:-1:2]):
+        for tag, shift in (("o", 0.045), ("i", -0.045)):
+            leaf = sphere(
+                f"HOME_PROP_trophy_wreath_leaf_{idx}_{tag}",
+                (x + (wreath_r + shift) * math.sin(t), wreath_y - 0.010, wreath_z - (wreath_r + shift) * math.cos(t)),
+                (0.052, 0.012, 0.022),
+                materials["gold"],
+            )
+            leaf.rotation_euler[1] = -t + math.radians(90.0) + (0.5 if tag == "o" else -0.5)
+    for side in (-1, 1):
+        curve_tube(f"HOME_PROP_trophy_wreath_ribbon_{side}", [(x, wreath_y - 0.02, wreath_z - wreath_r), (x + side * 0.10, wreath_y - 0.02, wreath_z - wreath_r - 0.10), (x + side * 0.16, wreath_y - 0.02, wreath_z - wreath_r - 0.22)], 0.020, materials["plume_red"])
+    sphere("HOME_PROP_trophy_wreath_knot", (x, wreath_y - 0.025, wreath_z - wreath_r), (0.045, 0.030, 0.045), materials["plume_red"])
 
 
 def add_side_furnishings(materials):
@@ -4037,26 +4055,25 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.018,
         materials["brass_dark"],
     )
-    sphere(
-        "HOME_PROP_fireplace_right_shield_emblem",
-        (5.37, 5.000, 3.28),
-        (0.070, 0.018, 0.070),
-        materials["brass_dark"],
-    )
-    cube(
-        "HOME_PROP_fireplace_right_shield_mark_v",
-        (5.37, 4.985, 3.23),
-        (0.020, 0.012, 0.095),
-        materials["brass_dark"],
-        bevel=0.007,
-    )
-    cube(
-        "HOME_PROP_fireplace_right_shield_mark_h",
-        (5.37, 4.985, 3.27),
-        (0.070, 0.012, 0.020),
-        materials["brass_dark"],
-        bevel=0.007,
-    )
+    # Crossed swords behind a gilt knight: the shield reads as a trophy of arms instead of
+    # a dark plaque with a keyhole.
+    for side in (-1, 1):
+        ang = math.radians(38.0 * side)
+        blade = cube(f"HOME_PROP_fireplace_right_shield_sword_{side}", (5.37, 5.005, 3.28), (0.026, 0.010, 0.50), materials["steel"], bevel=0.006)
+        blade.rotation_euler[1] = ang
+        guard = cube(f"HOME_PROP_fireplace_right_shield_sword_guard_{side}", (5.37 - math.sin(ang) * 0.30, 5.000, 3.28 - math.cos(ang) * 0.30), (0.085, 0.012, 0.014), materials["gold"], bevel=0.005)
+        guard.rotation_euler[1] = ang
+        sphere(f"HOME_PROP_fireplace_right_shield_sword_pommel_{side}", (5.37 - math.sin(ang) * 0.47, 5.000, 3.28 - math.cos(ang) * 0.47), (0.030, 0.020, 0.030), materials["gold"])
+    knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    for tag, grow, yy, mat in (("shadow", 1.10, 4.986, materials["dark"]), ("gold", 1.0, 4.978, materials["gold"])):
+        flat_panel(
+            f"HOME_PROP_fireplace_right_shield_knight_{tag}",
+            [(5.37 + (u + 0.08) * 0.36 * grow, 3.29 + (v - 0.50) * 0.36 * grow) for u, v in knight],
+            yy,
+            0.022,
+            mat,
+            bevel=0.005,
+        )
     log_a = cube("HOME_PROP_fireplace_right_log_a", (4.24, 5.72, 0.57), (0.46, 0.10, 0.07), materials["wood"], bevel=0.035)
     log_a.rotation_euler[2] = math.radians(10)
     log_b = cube("HOME_PROP_fireplace_right_log_b", (4.66, 5.74, 0.60), (0.42, 0.10, 0.07), materials["wood"], bevel=0.035)
