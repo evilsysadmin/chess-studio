@@ -40,7 +40,9 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
-import UserReleaseNotesModal from './components/UserReleaseNotesModal.jsx';
+// Loaded on demand: the modal reads the daily-challenge state and its own stylesheet, which
+// the entry bundle (hard-budgeted) should not carry just to render a header button.
+const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
 import FeedbackModal from './components/FeedbackModal.jsx';
 import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
 import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
@@ -890,7 +892,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalReleaseNotes && <UserReleaseNotesModal
+        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal
           onClose={() => setShowGlobalReleaseNotes(false)}
           onAction={(to) => {
             setShowGlobalReleaseNotes(false);
@@ -898,7 +900,7 @@ function AppInner({ isAdminUser }) {
             else if (to === 'history') navigateTo('history');
             else if (to === 'progress') { setInsightsLandingSection('career'); navigateTo('insights'); }
           }}
-        />}
+        /></React.Suspense>}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
