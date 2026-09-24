@@ -40,11 +40,18 @@ test('Escuela de Matthias · modo tablero ocupa el viewport y Escape sólo lo co
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   const shell = page.locator('.matthias-school-shell');
-  await page.getByRole('button', { name: 'Expandir tablero', exact: true }).click();
+  await page.getByRole('button', { name: 'Pantalla completa', exact: true }).click();
 
   await expect(shell).toHaveAttribute('data-school-focus', 'board');
-  await expect(page.getByRole('button', { name: 'Salir del modo tablero', exact: true })).toBeVisible();
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
+  await expect(page.getByRole('button', { name: 'Salir de pantalla completa', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Solo tablero', exact: true }).click();
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'collapsed');
+  await expect(shell.locator('.matthias-school-coach')).toBeHidden();
+  await page.getByRole('button', { name: 'Mostrar Matthias', exact: true }).click();
+  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
 
   const desktopBoardRatio = await page.locator('.matthias-school-board').evaluate((node) => (
     node.getBoundingClientRect().width / window.innerWidth

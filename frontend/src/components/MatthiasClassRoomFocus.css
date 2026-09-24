@@ -84,10 +84,18 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
   white-space: nowrap;
 }
 
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .32rem;
+}
+
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-bar button {
   min-height: 32px;
   padding: .32rem .58rem;
   font-size: .66rem;
+  white-space: nowrap;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-layout {
@@ -104,6 +112,14 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
   min-height: 0;
   gap: .58rem;
   align-items: stretch;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"][data-school-focus-rail="collapsed"] .matthias-school-stage {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"][data-school-focus-rail="collapsed"] .matthias-school-coach {
+  display: none;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-board {
@@ -215,6 +231,10 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-bar {
     grid-template-columns: minmax(0, 1fr) auto;
     padding-left: .46rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-actions {
+    gap: .24rem;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-bar > div {
