@@ -8,6 +8,8 @@ import HomePvpRosterLink from './HomePvpRosterLink.jsx';
 import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
+import { buildPendingModes, loadPendingCampaignFlag } from '../homePendingModes.js';
+import { loadSpecialRun } from '../career.js';
 import {
   buildMatthiasHomeCardModel,
   buildMatthiasHomeVisit,
@@ -37,6 +39,7 @@ export default function Menu({
   onTrainPersonal,
   onCombat,
   onCombatRoguelike,
+  onContinueRun = null,
   onSpectator,
   onHistory,
   onInsights,
@@ -59,6 +62,13 @@ export default function Menu({
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showPvpLobby, setShowPvpLobby] = useState(false);
   const pvpFlow = usePvpRuntime();
+  // Other modes the player left half-way (Combat campaign, special run): shown in the JUGAR menu.
+  const pendingModes = useMemo(() => buildPendingModes({
+    campaign: loadPendingCampaignFlag(),
+    specialRun: loadSpecialRun(),
+    onContinueCampaign: onCombatRoguelike,
+    onContinueRun,
+  }), [onCombatRoguelike, onContinueRun]);
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
@@ -203,6 +213,7 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
         onContinue={onContinue}
         onPractice={() => setShowPracticeMatch(true)}
+        pendingModes={pendingModes}
         pvpSlot={pvpEntryVisible ? renderPvpRosterLink('menu') : null}
         onTournament={onTournament}
         onTrain={onTutorial}
