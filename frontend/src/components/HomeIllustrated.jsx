@@ -10,8 +10,9 @@ import { currentDailyStreak, dailyChallengeBrief, dailyChallengeStats, loadDaily
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
-import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeStation, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
+import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { matthiasHomeStation } from './HomeMatthiasStations.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeDiegeticObjects.css';

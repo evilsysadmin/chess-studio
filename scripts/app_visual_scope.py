@@ -202,7 +202,7 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if _is_noncanonical_admin_surface(path):
         return set()
-    if lower.startswith("frontend/src/components/homematthias3d."):
+    if lower.startswith("frontend/src/components/homematthias"):
         return {"home"}
 
     groups: set[str] = set()
@@ -491,6 +491,8 @@ def self_test() -> None:
 
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]).capture_groups == "home"
+    assert classify(["frontend/src/components/HomeMatthiasRoutine.css"]).capture_groups == "home"
+    assert classify(["frontend/src/components/HomeMatthiasStations.js"]).capture_groups == "home"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
