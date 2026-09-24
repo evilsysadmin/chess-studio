@@ -236,7 +236,11 @@ test('Home canónica · móvil usa la escena a pantalla completa sin cementerio 
   expect(stageBox.height).toBeGreaterThanOrEqual(842);
   expect(artBox.height).toBeGreaterThanOrEqual(842);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
-  await expect(home.locator('.home-matthias-3d canvas')).toHaveCSS('filter', 'none');
+  const mobileAvatar = home.locator('.home-matthias-3d');
+  await expect(mobileAvatar).toHaveCSS('isolation', 'auto');
+  await expect(mobileAvatar.locator('img')).toHaveCSS('filter', 'none');
+  await expect(mobileAvatar.locator('canvas')).toHaveCSS('filter', 'none');
+  expect(await mobileAvatar.evaluate((node) => getComputedStyle(node, '::before').display)).toBe('none');
 
   for (const selector of [
     '.illustrated-home__destination--tournament',

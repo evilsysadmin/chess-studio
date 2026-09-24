@@ -4,6 +4,7 @@ import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const LOCAL_GPU_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_GPU === '1';
+const LOCAL_SWIFTSHADER_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_SWIFTSHADER === '1';
 const CAPTURE_BASE_URL = process.env.HOME_MATTHIAS_BASE_URL;
 const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 };
 const CAPTURES = [
@@ -57,6 +58,9 @@ async function openDeterministicHome(page) {
   const home = page.getByRole('region', { name:'Modos principales' });
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
+  const hallArt = home.locator('.illustrated-home__art');
+  await expect(hallArt).toHaveJSProperty('complete', true);
+  await expect.poll(() => hallArt.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
   if (LOCAL_GPU_CAPTURE) {
     await expect(home.locator('[data-home-castle-compositor="blender-runtime"]'))
       .toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:30_000 });
@@ -151,7 +155,9 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
     headless:true,
     args:LOCAL_GPU_CAPTURE
       ? ['--use-angle=gl', '--use-gl=angle', '--ignore-gpu-blocklist', '--enable-gpu-rasterization']
-      : [],
+      : LOCAL_SWIFTSHADER_CAPTURE
+        ? ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader']
+        : [],
     env:LOCAL_GPU_CAPTURE
       ? { ...process.env, __NV_PRIME_RENDER_OFFLOAD:'1', __GLX_VENDOR_LIBRARY_NAME:'nvidia' }
       : process.env,
@@ -184,9 +190,14 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
           expect(renderer).toMatch(/NVIDIA/i);
           expect(renderer).not.toMatch(/SwiftShader/i);
         }
+        if (LOCAL_SWIFTSHADER_CAPTURE) expect(renderer).toMatch(/SwiftShader/i);
         await writeFile(
           `${ARTIFACT_DIR}/home-matthias-${capture.label}-renderer.json`,
-          `${JSON.stringify({ renderer, localGpuRequired:LOCAL_GPU_CAPTURE }, null, 2)}\n`,
+          `${JSON.stringify({
+            renderer,
+            localGpuRequired:LOCAL_GPU_CAPTURE,
+            localSwiftShaderRequired:LOCAL_SWIFTSHADER_CAPTURE,
+          }, null, 2)}\n`,
         );
         const matthias = home.locator('.illustrated-home__matthias');
         const copy = matthias.locator('.illustrated-home__matthias-copy');
