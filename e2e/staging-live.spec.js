@@ -347,16 +347,13 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
-    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
-    await v2WarRoomItem.click();
+    // v2 is the default; v1 stays selectable as the rollback lever.
+    await expect(v2WarRoomItem).toHaveAttribute('aria-checked', 'true');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
-    await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
-    await variantUtilityMenu.click();
-    await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
+    await classicWarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'idle');
-    await expect(warRoomCanvas).toHaveAttribute('data-board3d-piece-built', initialPieceBuildCount);
 
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
     await expect(warRoomSignal).toBeVisible();
