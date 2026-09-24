@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useEscapeToClose } from '../useEscapeToClose.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
@@ -42,6 +43,7 @@ export function InsightsOptionalPlans({ children }) {
 }
 
 export default function InsightsScreen(props) {
+  useEscapeToClose(props.onExit);
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
   const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
   const isCareer = section === 'career';
