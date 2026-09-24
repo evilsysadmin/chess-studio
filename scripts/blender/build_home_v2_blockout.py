@@ -2265,19 +2265,19 @@ def add_armor(materials):
     # slit and a gold comb. Radii are pre-rescale; the caller's 0.78 / 0.92 / 1.14
     # squeeze is compensated here so the head still reads round, not oval.
     sphere("HOME_PROP_armor_helmet", (x, y, 2.90), (0.290, 0.250, 0.275), steel)
-    sphere("HOME_PROP_armor_visor", (x, y - 0.135, 2.735), (0.205, 0.170, 0.130), steel)
+    sphere("HOME_PROP_armor_visor", (x, y - 0.075, 2.655), (0.215, 0.140, 0.100), steel)
     cube("HOME_PROP_armor_brow", (x, y - 0.238, 2.925), (0.185, 0.030, 0.020), dark, bevel=0.008)
     # Crimson plume arching over the crown, like a knight's crest.
     curve_tube(
         "HOME_PROP_armor_plume",
-        [(x, y - 0.10, 3.14), (x, y + 0.03, 3.30), (x, y + 0.20, 3.24), (x, y + 0.34, 3.05), (x, y + 0.38, 2.86)],
-        0.055,
+        [(x, y - 0.12, 3.15), (x, y + 0.02, 3.42), (x, y + 0.22, 3.40), (x, y + 0.38, 3.16), (x, y + 0.42, 2.90)],
+        0.085,
         materials["banner"],
     )
     cube("HOME_PROP_armor_helmet_crest", (x, y + 0.00, 3.15), (0.020, 0.190, 0.028), heraldry_helm, bevel=0.010)
-    cube("HOME_PROP_armor_visor_edge", (x, y - 0.300, 2.745), (0.014, 0.014, 0.100), heraldry_helm, bevel=0.005)
-    for slot, (sx, sz) in enumerate(((-0.11, 2.74), (-0.11, 2.68), (-0.11, 2.62), (0.11, 2.74), (0.11, 2.68), (0.11, 2.62))):
-        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.290, sz), (0.022, 0.010, 0.008), dark, bevel=0.003)
+    cube("HOME_PROP_armor_visor_edge", (x, y - 0.238, 2.775), (0.016, 0.014, 0.085), heraldry_helm, bevel=0.005)
+    for slot, (sx, sz) in enumerate(((-0.13, 2.665), (-0.065, 2.665), (0.065, 2.665), (0.13, 2.665))):
+        cube(f"HOME_PROP_armor_visor_slot_{slot}", (x + sx, y - 0.208, sz), (0.008, 0.012, 0.032), dark, bevel=0.002)
     cylinder("HOME_PROP_armor_helmet_rim", (x, y, 2.63), 0.235, 0.030, heraldry_helm, vertices=28)
     # Layered Gothic plate details stop the focal suit reading as a silver robot.
     cylinder("HOME_PROP_armor_gorget", (x, y - 0.015, 2.58), 0.29, 0.105, steel, vertices=28)
@@ -4111,7 +4111,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         cube(
             f"HOME_PROP_armor_fauld_{idx}",
             (1.55, 5.47, z),
-            (half_w, 0.022, 0.030),
+            (half_w, 0.030, 0.058),
             materials["armor_steel"],
             bevel=0.018,
         )
