@@ -94,6 +94,16 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           path: repair-source
 
+      - name: Apply current Pages SPA delivery guard
+        if: steps.probe.outputs.needs_repair == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f repair-source/frontend/public/404.html
+          mkdir -p repair-source/frontend/functions
+          cp frontend/functions/_middleware.js repair-source/frontend/functions/_middleware.js
+          echo 'Delivery overlay applied: SPA fallback enabled; HTML-as-asset blocked.'
+
       - name: Setup Node.js
         if: steps.probe.outputs.needs_repair == 'true'
         uses: actions/setup-node@v7
