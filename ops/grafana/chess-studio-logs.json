@@ -625,7 +625,8 @@
           "expr": "topk(12, sum by (client_country) (count_over_time(${selector:raw} | json | __error__=\"\" | event=\"http_request\" | status=~\"2..|3..\" | username != \"\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | client_country != \"\" | client_ip != \"\" [$__range])))",
           "legendFormat": "{{client_country}}",
           "refId": "A",
-          "queryType": "instant"
+          "queryType": "instant",
+          "instant": true
         }
       ],
       "fieldConfig": {
@@ -635,7 +636,8 @@
           "min": 0,
           "color": {
             "mode": "palette-classic"
-          }
+          },
+          "displayName": "${__field.labels.client_country}"
         },
         "overrides": []
       },
