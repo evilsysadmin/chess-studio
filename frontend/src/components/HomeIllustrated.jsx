@@ -163,7 +163,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['combat', 'COMBAT CHESS', 'Recluta tu ejército', IconSword, onCombat],
     ['daily', 'DESAFÍO DIARIO', 'Un nuevo reto cada día', Flame, onDaily],
     ['history', 'HISTORIA', 'Descubre el legado', IconBook, onHistory],
-    ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida', IconSword, hasSavedGame ? onContinue : onPlay],
+    ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
   const matthiasZone = matthiasVisual?.zone || matthiasHomeZone(matthiasVisual?.key);

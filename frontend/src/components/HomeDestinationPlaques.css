@@ -360,8 +360,7 @@
 }
 
 /* ---- JUGAR "Más formas de jugar" (>= 1000px) ---------------------------------
- * Sits where the play detail line used to be, centred under the big JUGAR title on
- * the table banner (stage coordinates in cqw, measured at a 1877px stage). Below
+ * Sits just under the JUGAR hit box, centred on the table banner (stage coordinates in cqw, measured at a 1877px stage). Below
  * 1000px it is hidden and the floating 1 vs 1 card / explicit labels take over. */
 .illustrated-home__play-more-wrap {
   display: none;
@@ -373,7 +372,9 @@
     position: absolute;
     z-index: 15;
     left: 50%;
-    top: 33.4cqw;
+    /* Just below the play button's hit box (bottom edge = 37.7cqw): sitting on it
+     * would intercept the click that lands on the button's centre. */
+    top: 38.2cqw;
     transform: translateX(-50%);
     text-align: center;
   }
