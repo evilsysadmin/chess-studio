@@ -13,4 +13,16 @@ const loadBoard3D = async () => {
   return renderer;
 };
 
-registerBoard3D(lazy(loadBoard3D));
+let board3DLoadPromise = null;
+
+export function preloadBoard3D() {
+  if (!board3DLoadPromise) {
+    board3DLoadPromise = loadBoard3D().catch((error) => {
+      board3DLoadPromise = null;
+      throw error;
+    });
+  }
+  return board3DLoadPromise;
+}
+
+registerBoard3D(lazy(preloadBoard3D));
