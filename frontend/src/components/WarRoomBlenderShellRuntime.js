@@ -118,6 +118,50 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   return installed;
 }
 
+export const WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT = 32;
+
+function warRoomBlenderShadowCasterScore(node) {
+  if (!node?.isMesh || !node.geometry) return Number.NEGATIVE_INFINITY;
+
+  if (!node.geometry.boundingSphere) node.geometry.computeBoundingSphere?.();
+  const radiusLocal = Math.max(0.05, Number(node.geometry.boundingSphere?.radius) || 0.25);
+  const position = new THREE.Vector3();
+  const scale = new THREE.Vector3(1, 1, 1);
+  node.getWorldPosition?.(position);
+  node.getWorldScale?.(scale);
+
+  const radius = radiusLocal * Math.max(
+    Math.abs(scale.x) || 1,
+    Math.abs(scale.y) || 1,
+    Math.abs(scale.z) || 1,
+  );
+  const boardDistance = Math.hypot(position.x, position.z);
+  const sizeScore = 0.5 + Math.min(radius, 2.5);
+  const proximity = 1 / (1 + boardDistance * 0.18);
+  const nearBoardBoost = boardDistance <= 8 ? 1.6 : 1;
+  const elevatedBoost = position.y >= 0.25 ? 1.15 : 0.8;
+  const materials = (Array.isArray(node.material) ? node.material : [node.material]).filter(Boolean);
+  const translucent = materials.some((material) => material.transparent && Number(material.opacity) < 0.9);
+  const transparencyPenalty = translucent ? 0.35 : 1;
+
+  return sizeScore * proximity * nearBoardBoost * elevatedBoost * transparencyPenalty;
+}
+
+export function selectWarRoomBlenderShadowCasters(
+  meshes,
+  { limit = WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT } = {},
+) {
+  const maxCasters = Math.max(0, Math.floor(Number(limit) || 0));
+  if (!maxCasters) return [];
+
+  return (meshes || [])
+    .map((node, index) => ({ node, index, score: warRoomBlenderShadowCasterScore(node) }))
+    .filter((entry) => Number.isFinite(entry.score))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, maxCasters)
+    .map((entry) => entry.node);
+}
+
 function disposeShell(root) {
   const geometries = new Set();
   const materials = new Set();
@@ -241,15 +285,19 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeLeatherMaterials = runtimeLeatherMaterials;
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
   root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
+  root.userData.warRoomBlenderShadowCasterBudget = coarsePointer ? 0 : WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT;
+  root.userData.warRoomBlenderShadowCasterCandidates = deferredShadowMeshes.length;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
 
   const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
     if (!root.parent) return;
-    deferredShadowMeshes.forEach((node) => { node.castShadow = true; });
-    root.userData.warRoomBlenderShadowWarmup = 'ready';
-    root.userData.warRoomBlenderShadowCasterCount = deferredShadowMeshes.length;
+    root.updateMatrixWorld?.(true);
+    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(deferredShadowMeshes);
+    selectedShadowCasters.forEach((node) => { node.castShadow = true; });
+    root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
+    root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
     onRefine?.();
   });
 
