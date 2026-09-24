@@ -76,6 +76,7 @@ def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
+        "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
@@ -104,6 +105,7 @@ def classify_path(path: str) -> set[str] | None:
     if lower.endswith(".md"):
         return set()
     if lower in {
+        "scripts/app_visual_changed_files.py",
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
     }:
@@ -211,6 +213,9 @@ def classify_path(path: str) -> set[str] | None:
             return {"warroom-decor"}
         return set(WARROOM_ALL)
 
+    if lower.startswith("frontend/src/components/homematthias3d."):
+        return {"home-matthias"}
+
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         return set(HOME_ALL)
 
@@ -242,6 +247,7 @@ def classify(paths: list[str]) -> str:
 def self_test() -> None:
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
+    assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "chronicles-tactics"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
@@ -292,6 +298,8 @@ def self_test() -> None:
     assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "chronicles-tactics"
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
+    assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
+    assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
     assert classify([
         "frontend/src/chroniclesOfMatthiasIsometric.js",

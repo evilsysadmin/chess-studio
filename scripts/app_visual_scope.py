@@ -132,6 +132,7 @@ def _surface_groups(path: str) -> set[str] | None:
     }:
         return {"home"}
     if lower in {
+        "scripts/app_visual_changed_files.py",
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
         "e2e/png-pixels.js",
@@ -159,6 +160,7 @@ def _surface_groups(path: str) -> set[str] | None:
         if name in {
             "app-visual-artifact.spec.js",
             "matthias-home-visual-artifact.spec.js",
+            "matthias-home-visual-critical.spec.js",
             "home-3d-focus-visual.spec.js",
             "home-scene-runtime-gate.spec.js",
         }:
@@ -200,6 +202,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if _is_noncanonical_admin_surface(path):
         return set()
+    if lower.startswith("frontend/src/components/homematthias3d."):
+        return {"home"}
 
     groups: set[str] = set()
     if any(token in lower for token in ("experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade")):
@@ -486,6 +490,8 @@ def self_test() -> None:
     assert hans_routines.hans
 
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
+    assert classify(["frontend/src/components/HomeMatthias3D.jsx"]).capture_groups == "home"
+    assert classify(["e2e/matthias-home-visual-critical.spec.js"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]).capture_groups == "training"
@@ -566,6 +572,9 @@ def self_test() -> None:
     visual_scope = classify(["scripts/app_visual_scope.py"])
     assert visual_scope.capture_groups == "none"
     assert not visual_scope.hans and not visual_scope.chesscom
+    changed_files = classify(["scripts/app_visual_changed_files.py"])
+    assert changed_files.capture_groups == "none"
+    assert not changed_files.hans and not changed_files.chesscom
     producer_scope = classify(["scripts/app_visual_producer_scope.py"])
     assert producer_scope.capture_groups == "none"
     assert not producer_scope.hans and not producer_scope.chesscom

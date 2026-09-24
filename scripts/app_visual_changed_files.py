@@ -28,6 +28,7 @@ def _is_matthias_canonical_owner(path: str) -> bool:
         lower == MATTHIAS_MODEL
         or lower == MATTHIAS_BLEND
         or lower == "scripts/blender/build_home_matthias.py"
+        or lower == "scripts/blender/validate_home_matthias_contract.py"
         or lower.startswith("scripts/blender/home_matthias_")
     )
 
@@ -94,6 +95,7 @@ def self_test() -> None:
         "scripts/blender/build_home_matthias.py",
         "scripts/blender/home_matthias_parts.py",
         "scripts/blender/home_matthias_animations.py",
+        "scripts/blender/validate_home_matthias_contract.py",
     ]
     assert normalize(matthias_sources) == [MATTHIAS_MODEL, MATTHIAS_CHRONICLES_CONSUMER]
     assert normalize(["frontend/src/App.css", *matthias_sources]) == [
