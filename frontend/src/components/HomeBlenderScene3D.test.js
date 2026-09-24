@@ -4,6 +4,7 @@ import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
+  applyHomeBlenderPieceLift,
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
@@ -604,5 +605,33 @@ describe('HomeBlenderScene3D beacon anchors', () => {
 
   it('returns null without a camera', () => {
     expect(homeBlenderProjectAnchors(null)).toBeNull();
+  });
+});
+
+describe('HomeBlenderScene3D chess piece lift', () => {
+  const mesh = (materialName) => {
+    const material = new THREE.MeshStandardMaterial();
+    material.name = materialName;
+    return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+  };
+
+  it('warms the light and dark pieces but leaves the board squares and everything else alone', () => {
+    const root = new THREE.Group();
+    const light = mesh('HOME_MAT_piece_light');
+    const lightAlt = mesh('HOME_MAT_piece_light_alt');
+    const dark = mesh('HOME_MAT_piece_dark');
+    const square = mesh('HOME_MAT_board_light');
+    const wall = mesh('HOME_MAT_stone');
+    root.add(light, lightAlt, dark, square, wall);
+    expect(applyHomeBlenderPieceLift(root)).toBe(3);
+    expect(light.material.emissive.getHex()).toBeGreaterThan(dark.material.emissive.getHex());
+    expect(lightAlt.material.emissive.getHex()).toBe(light.material.emissive.getHex());
+    expect(square.material.emissive.getHex()).toBe(0);
+    expect(wall.material.emissive.getHex()).toBe(0);
+  });
+
+  it('is safe on an empty or missing scene', () => {
+    expect(applyHomeBlenderPieceLift(null)).toBe(0);
+    expect(applyHomeBlenderPieceLift(new THREE.Group())).toBe(0);
   });
 });
