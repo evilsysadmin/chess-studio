@@ -455,6 +455,14 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           path: release-source
 
+      - name: Apply current Pages SPA delivery guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f release-source/frontend/public/404.html
+          mkdir -p release-source/frontend/functions
+          cp frontend/functions/_middleware.js release-source/frontend/functions/_middleware.js
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
