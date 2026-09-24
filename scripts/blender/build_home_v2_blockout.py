@@ -2482,6 +2482,12 @@ def add_armor(materials):
     sphere("HOME_PROP_armor_shield_boss", (shield_x, shield_y - 0.052, shield_z + 0.18 * S), (0.085, 0.034, 0.085), heraldry)
     for rivet_idx, (rx, rz) in enumerate(((-0.180, 0.260), (0.180, 0.260), (-0.180, 0.070), (0.180, 0.070), (0.0, -0.120))):
         sphere(f"HOME_PROP_armor_shield_rivet_{rivet_idx}", (shield_x + rx * S, shield_y - 0.044, shield_z + rz * S), (0.026, 0.016, 0.026), brass)
+    # Guige strap: a leather baldric from the left shoulder to the shield's upper rivet,
+    # so the big shield hangs from the figure instead of floating beside it.
+    strap_end = (shield_x - 0.180 * S, shield_y - 0.056, shield_z + 0.260 * S)
+    strap_mid = ((shoulders[-1][0] + strap_end[0]) / 2.0 - 0.02, shoulders[-1][1] - 0.30, (shoulders[-1][2] + strap_end[2]) / 2.0 + 0.02)
+    curve_tube("HOME_PROP_armor_shield_strap", [(shoulders[-1][0], shoulders[-1][1] - 0.10, shoulders[-1][2] + 0.02), strap_mid, strap_end], 0.026, materials["leather"])
+    sphere("HOME_PROP_armor_shield_buckle", strap_end, (0.040, 0.020, 0.040), brass)
 
     # Sword held low in the right hand, point down toward the pedestal --
     # a resting guard stance instead of a two-handed ceremonial clasp.
