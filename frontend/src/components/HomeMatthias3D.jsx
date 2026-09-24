@@ -177,6 +177,48 @@ export function homeMatthiasCanonicalFallbackDataUrl(payload = '') {
   return normalized.startsWith('UklG') ? `data:image/webp;base64,${normalized}` : '';
 }
 
+export function homeMatthiasGroundingSpec({ minY = 0, centerX = 0, centerZ = 0, width = 1.24 } = {}) {
+  const safeWidth = Math.max(0.8, Number(width) || 0);
+  return {
+    x: Number(centerX) || 0,
+    y: (Number(minY) || 0) + 0.006,
+    z: Number(centerZ) || 0,
+    width: safeWidth * 1.18,
+    depth: safeWidth * 0.50,
+  };
+}
+
+function createContactShadow(spec) {
+  const textureCanvas = document.createElement('canvas');
+  textureCanvas.width = 128;
+  textureCanvas.height = 128;
+  const context = textureCanvas.getContext('2d');
+  if (!context) return null;
+
+  const gradient = context.createRadialGradient(64, 64, 4, 64, 64, 62);
+  gradient.addColorStop(0, 'rgba(10, 6, 3, .72)');
+  gradient.addColorStop(0.48, 'rgba(10, 6, 3, .45)');
+  gradient.addColorStop(1, 'rgba(10, 6, 3, 0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+
+  const texture = new THREE.CanvasTexture(textureCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    opacity: 0.76,
+    toneMapped: false,
+  });
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(spec.width, spec.depth), material);
+  shadow.name = 'Matthias contact shadow';
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(spec.x, spec.y, spec.z);
+  shadow.renderOrder = -1;
+  return shadow;
+}
+
 function visibleGeometryCenter(node) {
   if (!node) return null;
   const bounds = new THREE.Box3().setFromObject(node);
@@ -312,7 +354,7 @@ export default function HomeMatthias3D({
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.02;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.2 : 1.5));
 
     const threeScene = new THREE.Scene();
@@ -320,14 +362,15 @@ export default function HomeMatthias3D({
     camera.position.set(0, 1.46, 4.6);
     camera.lookAt(0, 1.46, 0);
 
-    const hemi = new THREE.HemisphereLight(0xffe6bd, 0x18202a, 1.65);
-    const key = new THREE.DirectionalLight(0xffe0ad, 3.1);
-    const fill = new THREE.DirectionalLight(0x91b7d2, 1.25);
-    const rim = new THREE.DirectionalLight(0xd69d59, 1.5);
+    const hemi = new THREE.HemisphereLight(0xffdfb2, 0x151d27, 1.42);
+    const key = new THREE.DirectionalLight(0xffd39a, 2.45);
+    const fill = new THREE.DirectionalLight(0x789db8, 0.92);
+    const rim = new THREE.DirectionalLight(0xc78345, 1.12);
     threeScene.add(hemi, key, fill, rim, key.target, fill.target, rim.target);
 
     const clock = new THREE.Clock();
     let model = null;
+    let grounding = null;
     let mixer = null;
     let currentAction = null;
     let currentProfile = 'idle';
@@ -484,6 +527,18 @@ export default function HomeMatthias3D({
         canvas.dataset.matthiasCameraFaceZ = cameraPose.faceZ.toFixed(4);
         canvas.dataset.matthiasCameraDistance = cameraPose.distance.toFixed(3);
         canvas.dataset.matthiasFrontGeometryCount = String(visibleFront.count);
+        const groundingSpec = homeMatthiasGroundingSpec({
+          minY: bounds.min.y,
+          centerX: center.x,
+          centerZ: center.z,
+          width: bounds.max.x - bounds.min.x,
+        });
+        grounding = createContactShadow(groundingSpec);
+        if (grounding) {
+          threeScene.add(grounding);
+          canvas.dataset.matthiasGrounding = 'soft-contact-shadow';
+        }
+        canvas.dataset.matthiasLighting = 'hall-warm-cool-v1';
 
         model.traverse((node) => {
           if (node.isMesh) {
@@ -557,6 +612,10 @@ export default function HomeMatthias3D({
       if (model) {
         threeScene.remove(model);
         disposeModel(model);
+      }
+      if (grounding) {
+        threeScene.remove(grounding);
+        disposeModel(grounding);
       }
       renderer.dispose();
       renderer.forceContextLoss?.();
