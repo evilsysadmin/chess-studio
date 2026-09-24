@@ -925,6 +925,8 @@ function AppInner({ isAdminUser }) {
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
             onCombatRoguelike={() => navigateTo('roguelike')}
+            specialRun={specialRun}
+            onContinueRun={() => handleContinueRun(specialRun)}
             onHistory={() => navigateTo('history')}
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}

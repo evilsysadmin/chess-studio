@@ -59,7 +59,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pvpSlot, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pendingModes = [], pvpSlot, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -291,6 +291,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             disabled={loading}
           >
             <span>Más formas de jugar</span>
+            {pendingModes.length > 0 && <b className="illustrated-home__play-more-dot" aria-hidden="true" />}
             <i aria-hidden="true">{playMenuOpen ? '▴' : '▾'}</i>
           </button>
           {playMenuOpen && (
@@ -301,6 +302,17 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
               aria-label="Más formas de jugar"
               onClick={(event) => { if (event.target?.closest?.('button')) setPlayMenuOpen(false); }}
             >
+              {pendingModes.length > 0 && (
+                <div className="illustrated-home__play-pending" role="group" aria-label="A medias">
+                  <span className="illustrated-home__play-pending-label">A MEDIAS</span>
+                  {pendingModes.map((item) => (
+                    <button key={item.key} type="button" className="illustrated-home__play-menu-item is-pending" onClick={item.action} disabled={loading}>
+                      <IconSword aria-hidden="true" />
+                      <span><strong>Continuar · {item.title}</strong><small>{item.detail}</small></span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {hasSavedGame && (
                 <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
                   <IconSword aria-hidden="true" />

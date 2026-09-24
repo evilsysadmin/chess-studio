@@ -612,3 +612,29 @@
     }
   }
 }
+
+/* ---- "A medias" in the JUGAR menu ------------------------------------------------ */
+.illustrated-home__play-pending {
+  display: grid;
+  gap: .4cqw;
+}
+
+.illustrated-home__play-pending-label {
+  color: #d9b165;
+  font: 700 max(10px, .6cqw)/1 Georgia, serif;
+  letter-spacing: .18em;
+}
+
+.illustrated-home__play-menu-item.is-pending {
+  border-color: rgba(255, 213, 138, .8);
+  background: linear-gradient(180deg, rgba(74, 47, 22, .85), rgba(34, 21, 11, .9));
+}
+
+.illustrated-home__play-more-dot {
+  width: .55em;
+  height: .55em;
+  margin-left: .1em;
+  border-radius: 50%;
+  background: #ffcf7a;
+  box-shadow: 0 0 .6em rgba(255, 190, 86, .9);
+}
