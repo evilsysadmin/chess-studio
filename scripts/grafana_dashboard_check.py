@@ -210,7 +210,7 @@ def main() -> int:
         "Auth identity blocks · 15 min",
         "Requests backend · 15 min",
         "Presión backend · requests/s vs baseline 1 h",
-        "Biggest auth offenders · failed logins",
+        "Tráfico chungo por IP · hits",
         "IPs ofensivas únicas · por país",
         "Auth forensics reciente · sin contraseñas",
     }
@@ -282,6 +282,55 @@ def main() -> int:
     hit_cell = hits_props.get("custom.cellOptions") or {}
     if hit_cell.get("type") != "gauge" or hit_cell.get("valueDisplayMode") != "text":
         fail("columna Hits debe renderizar barra horizontal con número visible")
+
+    hostile_panel = next(
+        (row for row in (security_data.get("panels") or []) if row.get("title") == "Tráfico chungo por IP · hits"),
+        None,
+    )
+    if not hostile_panel:
+        fail("dashboard Security perdió tabla de hits por IP")
+    if hostile_panel.get("type") != "table":
+        fail("tráfico chungo por IP debe renderizarse como tabla")
+    hostile_exprs = "\n".join(
+        str(target.get("expr") or "") for target in (hostile_panel.get("targets") or [])
+    )
+    for token in (
+        "auth_login_failed",
+        "sum by (client_ip)",
+        'client_ip != ""',
+        'synthetic_source!~"staging-(smoke-cleanup|browser-smoke)"',
+        'username_attempted!~"ci_smoke_[0-9a-f]{16}"',
+    ):
+        if token not in hostile_exprs:
+            fail(f"tráfico chungo por IP perdió filtro/señal: {token}")
+    hostile_transformations = hostile_panel.get("transformations") or []
+    if not hostile_transformations or hostile_transformations[0].get("id") != "labelsToFields":
+        fail("tráfico chungo por IP debe materializar client_ip como columna")
+    hostile_organize = next(
+        (row for row in hostile_transformations if row.get("id") == "organize"),
+        None,
+    )
+    hostile_rename = ((hostile_organize or {}).get("options") or {}).get("renameByName") or {}
+    if hostile_rename.get("client_ip") != "IP" or (
+        hostile_rename.get("Value") != "Hits" and hostile_rename.get("Value #A") != "Hits"
+    ):
+        fail("tráfico chungo por IP debe exponer columnas IP + Hits")
+    hostile_overrides = (hostile_panel.get("fieldConfig") or {}).get("overrides") or []
+    hostile_hits_override = next(
+        (
+            row for row in hostile_overrides
+            if ((row.get("matcher") or {}).get("id") == "byName"
+                and (row.get("matcher") or {}).get("options") == "Hits")
+        ),
+        None,
+    )
+    hostile_hits_props = {
+        row.get("id"): row.get("value")
+        for row in ((hostile_hits_override or {}).get("properties") or [])
+    }
+    hostile_hit_cell = hostile_hits_props.get("custom.cellOptions") or {}
+    if hostile_hit_cell.get("type") != "gauge" or hostile_hit_cell.get("valueDisplayMode") != "text":
+        fail("Security Hits debe renderizar barra horizontal con número visible")
 
     security_panel = next(
         (row for row in (security_data.get("panels") or []) if row.get("title") == "IPs ofensivas únicas · por país"),
