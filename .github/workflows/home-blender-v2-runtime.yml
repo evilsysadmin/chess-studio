@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
+      # Generic R2 publisher changes are validated by r2-assets-infra.yml;
+      # rebuilding a non-deterministic Home GLB here would only create churn.
       - 'scripts/blender/build_home_v2_blockout.py'
       - 'scripts/blender/export_home_v2_runtime.py'
       - 'scripts/blender/references/home_canon_20260918.webp.b64'
-      - 'scripts/r2_asset_publish.py'
-      - 'scripts/r2_asset_publisher.py'
       - '.github/workflows/home-blender-v2-runtime.yml'
   workflow_dispatch:
 
