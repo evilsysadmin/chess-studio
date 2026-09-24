@@ -546,8 +546,8 @@
   .illustrated-home__beacon-label {
     position: absolute;
     z-index: 2;
-    top: calc(100% + .55cqw);
-    left: 50%;
+    top: 50%;
+    left: calc(100% + .9cqw);
     display: grid;
     gap: .15cqw;
     min-width: max-content;
@@ -559,7 +559,7 @@
     text-align: center;
     pointer-events: none;
     opacity: 0;
-    transform: translate(-50%, -.3cqw);
+    transform: translate(-.3cqw, -50%);
     transition: opacity .16s ease, transform .18s ease;
   }
 
@@ -574,16 +574,12 @@
     font: 500 max(11px, .72cqw)/1.2 Arial, sans-serif;
   }
 
-  /* Beacons near the edges must not push their label off screen. */
-  .illustrated-home__beacon--history .illustrated-home__beacon-label {
-    left: 0;
-    transform: translate(0, -.3cqw);
-  }
-
+  /* The label opens to the side so it never covers the object under the beacon; the
+   * dungeon beacon is on the right edge, so its label opens to the left. */
   .illustrated-home__beacon--dungeon .illustrated-home__beacon-label {
     left: auto;
-    right: 0;
-    transform: translate(0, -.3cqw);
+    right: calc(100% + .9cqw);
+    transform: translate(.3cqw, -50%);
   }
 
   .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) {
@@ -593,12 +589,7 @@
 
   .illustrated-home__beacon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
     opacity: 1;
-    transform: translate(-50%, 0);
-  }
-
-  .illustrated-home__beacon--history:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label,
-  .illustrated-home__beacon--dungeon:is(:hover, :focus-visible, .is-active) .illustrated-home__beacon-label {
-    transform: translate(0, 0);
+    transform: translate(0, -50%);
   }
 
   .illustrated-home__beacon:disabled {
