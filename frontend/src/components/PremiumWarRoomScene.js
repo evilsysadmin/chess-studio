@@ -23,6 +23,25 @@ const COLORS = Object.freeze({
   stoneLight: 0xa69780,
 });
 
+
+const BOX_GEOMETRY_CACHES = new WeakMap();
+
+function sharedBoxGeometry(group, size) {
+  if (!group || !Array.isArray(size)) return new THREE.BoxGeometry(...size);
+  let cache = BOX_GEOMETRY_CACHES.get(group);
+  if (!cache) {
+    cache = new Map();
+    BOX_GEOMETRY_CACHES.set(group, cache);
+  }
+  const key = size.join('|');
+  let geometry = cache.get(key);
+  if (!geometry) {
+    geometry = new THREE.BoxGeometry(...size);
+    cache.set(key, geometry);
+  }
+  return geometry;
+}
+
 function material(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -58,7 +77,7 @@ function addMesh(group, geometry, mat, position, rotation = [0, 0, 0], scale = n
 function addBox(group, size, color, position, options = {}) {
   const mesh = addMesh(
     group,
-    new THREE.BoxGeometry(...size),
+    sharedBoxGeometry(group, size),
     material(color, options),
     position,
     options.rotation || [0, 0, 0],
