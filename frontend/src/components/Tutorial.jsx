@@ -67,6 +67,7 @@ export default function Tutorial({ onExit }) {
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [boardAnimation, setBoardAnimation] = useState(null);
   const [playbackActive, setPlaybackActive] = useState(false);
+  const [masteryReplay, setMasteryReplay] = useState('idle');
   const animationSeqRef = useRef(0);
   const playbackTokenRef = useRef(0);
   const playbackAbortRef = useRef(null);
@@ -98,7 +99,7 @@ export default function Tutorial({ onExit }) {
   const lessonAccessible = isSchoolLessonAccessible(schoolProgress, lesson.id, { freeStudy });
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
-  const boardGuideMove = useMemo(() => schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive]);
+  const boardGuideMove = useMemo(() => masteryReplay === 'active' ? null : schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive, masteryReplay]);
   const teachingLayers = useMemo(() => buildSchoolTeachingLayers({ guideMove: boardGuideMove, dangerSquares }), [boardGuideMove, dangerSquares]);
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
   const totalHumanMoves = humanMoveCount(lesson);
@@ -127,6 +128,7 @@ export default function Tutorial({ onExit }) {
     if (!isSchoolLessonAccessible(schoolProgress, next.id, { freeStudy: freeAccess })) return;
     explanation.close();
     cancelPlayback();
+    setMasteryReplay('idle');
     setIndex(clamped);
     setPracticeFen(next.fen);
     setSelected(null);
@@ -161,7 +163,7 @@ export default function Tutorial({ onExit }) {
   }
 
   function recordMiss(text, { danger = [] } = {}) {
-    setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
+    if (masteryReplay !== 'active') setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
     const nextMistakes = mistakes + 1;
     setMistakes(nextMistakes);
     setSelected(null);
@@ -174,9 +176,10 @@ export default function Tutorial({ onExit }) {
     setCoach({ tone: 'retry', text });
   }
 
-  function resetLesson({ keepCoach = false, clearFailure = true, announce = false } = {}) {
+  function resetLesson({ keepCoach = false, clearFailure = true, announce = false, keepMastery = false } = {}) {
     explanation.close();
     cancelPlayback();
+    if (!keepMastery) setMasteryReplay('idle');
     setPracticeFen(lesson.fen);
     setSelected(null);
     setLineIndex(0);
@@ -185,9 +188,11 @@ export default function Tutorial({ onExit }) {
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
     if (!keepCoach) {
-      const resetText = lesson.exam
-        ? `Examen reiniciado. Errores a cero y posición inicial restaurada. ${lesson.objective}`
-        : `Lección reiniciada. Volvemos a la posición inicial. ${lesson.objective}`;
+      const resetText = masteryReplay === 'active' && keepMastery
+        ? 'Otra vez desde el principio y sin luces. Tú contra la posición.'
+        : lesson.exam
+          ? `Examen reiniciado. Errores a cero y posición inicial restaurada. ${lesson.objective}`
+          : `Lección reiniciada. Volvemos a la posición inicial. ${lesson.objective}`;
       setCoach({ tone: 'neutral', text: announce ? resetText : initialCoachText(lesson) });
     }
   }
@@ -198,8 +203,30 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares([]);
     setLineIndex(line.length);
+
+    if (masteryReplay === 'active') {
+      setMasteryReplay('complete');
+      setCoach({ tone: 'success', text: 'Ahora sí. La misma posición, sin luces ni ruedines. Eso ya cuenta como entenderla.' });
+      return;
+    }
+
     setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
     setCoach({ tone: 'success', text: lesson.success });
+  }
+
+  function startMasteryReplay() {
+    if (lesson.exam || !lessonComplete) return;
+    explanation.close();
+    cancelPlayback();
+    setMasteryReplay('active');
+    setPracticeFen(lesson.fen);
+    setSelected(null);
+    setLineIndex(0);
+    setMistakes(0);
+    setHintActive(false);
+    setDangerSquares([]);
+    setAttemptEpoch((current) => current + 1);
+    setCoach({ tone: 'neutral', text: 'Bien. Ahora otra vez sin que te lleve de la mano. Mis luces se apagan; tu cerebro, idealmente no.' });
   }
 
   async function applyCorrectHumanMove(from, to) {
@@ -386,7 +413,7 @@ export default function Tutorial({ onExit }) {
           {boardFocusMode && (
             <div className="matthias-school-focus-mode-bar" role="region" aria-label="Modo tablero">
               <div>
-                <span>{explanation.open ? 'DEMO' : lesson.exam ? 'EXAMEN' : lesson.eyebrow}</span>
+                <span>{explanation.open ? 'DEMO' : masteryReplay === 'active' ? 'SIN AYUDAS' : lesson.exam ? 'EXAMEN' : lesson.eyebrow}</span>
                 <strong>{explanation.open ? `Por qué funciona · ${explanation.label}` : lesson.objective}</strong>
                 <em>{explanation.open ? `${explanation.step}/${explanation.demo.finalIndex}` : `${runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/${totalHumanMoves}`}</em>
               </div>
@@ -482,6 +509,7 @@ export default function Tutorial({ onExit }) {
                 data-school-renderer={schoolRenderer}
                 data-school-playback={playbackActive ? 'moving' : 'idle'}
                 data-school-explanation={explanation.open ? 'demo' : 'practice'}
+                data-school-mastery={masteryReplay}
               >
                 <SchoolBoard
                   fen={explanation.displayFen}
@@ -497,9 +525,19 @@ export default function Tutorial({ onExit }) {
                     <SchoolExplanationActions explanation={explanation} />
                   ) : (
                     <>
-                      <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                      {!lesson.exam && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
-                      {explanation.available && (
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => resetLesson({ announce: true, keepMastery: masteryReplay === 'active' })}
+                      >
+                        {examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}
+                      </button>
+                      {!lesson.exam && masteryReplay !== 'active' && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: `${lesson.hint} Te lo marco en el tablero; procura no acostumbrarte.` }); }}>Dame una pista</button>}
+                      {runComplete && !lesson.exam && masteryReplay === 'idle' && (
+                        <button type="button" className="primary-btn" onClick={startMasteryReplay}>Ahora sin ayudas</button>
+                      )}
+                      {masteryReplay === 'complete' && <span className="matthias-school-mastery-chip">✓ Dominado sin ayudas</span>}
+                      {masteryReplay !== 'active' && explanation.available && (
                         <button
                           type="button"
                           className="secondary-btn"
