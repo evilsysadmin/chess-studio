@@ -119,6 +119,9 @@ case "$mode" in
     printf ' - %s\n' "${specs[@]}"
 
     playwright_args=(--workers=1 --retries=0)
+    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+      playwright_args+=(--max-failures=1)
+    fi
     if has_group warroom && has_producer warroom-core && has_producer warroom-decor; then
       # Core already proves the canonical 844x390 Android landscape surface.
       # Keep decor's expensive focused landscape session for decor-only changes,
