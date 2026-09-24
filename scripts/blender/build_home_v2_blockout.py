@@ -2583,12 +2583,12 @@ def add_banner(name: str, x: float, materials):
     relief_y = 5.73
     scale = 1.02
     facing = 1.0 if x >= 0.0 else -1.0
-    smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
+    scale = 0.92  # the angular heraldic knight is wider than the old smoothed one
 
     def emblem(grow, y, depth, mat, tag):
         flat_panel(
             f"HOME_PROP_banner_knight_{tag}_{name}",
-            [(x + facing * (u + 0.067) * scale * grow, 3.98 + (v - 0.12) * scale * grow - (grow - 1.0) * 0.30) for u, v in smooth],
+            [(x + facing * (u + 0.045) * scale * grow, 3.98 + (v - 0.12) * scale * grow - (grow - 1.0) * 0.30) for u, v in KNIGHT_HERALDIC],
             y,
             depth,
             mat,
@@ -2598,6 +2598,17 @@ def add_banner(name: str, x: float, materials):
     gilt = materials["gold"]
     emblem(1.08, relief_y + 0.006, 0.030, materials["velvet_dark"], "shadow")
     emblem(1.0, relief_y, 0.036, gilt, "gold")
+    # Eye, nostril, jaw and neck cuts inlaid in dark: the angular, fierce heraldic knight
+    # (the smoothed silhouette read as an embroidered plush toy).
+    for cut, pts in enumerate(KNIGHT_HERALDIC_CUTS):
+        flat_panel(
+            f"HOME_PROP_banner_knight_cut_{cut}_{name}",
+            [(x + facing * (u + 0.045) * scale, 3.98 + (v - 0.12) * scale) for u, v in pts],
+            relief_y - 0.020,
+            0.012,
+            materials["velvet_dark"],
+            bevel=0.002,
+        )
     cube(f"HOME_PROP_banner_knight_base_{name}", (x, relief_y - 0.004, 3.945), (0.26, 0.020, 0.018), gilt, bevel=0.006)
     # Finished heraldic cloth: gilt side trim, a chief band with studs, a medallion ring round
     # the knight and a cord with a tassel at the point, so the dark ink cloth reads as a
@@ -2919,15 +2930,23 @@ def add_heraldic_shield(prefix, cx, cz, wall_y, facing, materials):
         guard.rotation_euler[1] = ang
         cylinder(f"{prefix}_sword_grip_{side}", (cx - math.sin(ang) * 0.46, wall_y - 0.090, cz - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
         sphere(f"{prefix}_sword_pommel_{side}", (cx - math.sin(ang) * 0.56, wall_y - 0.090, cz - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
-    knight = _smooth_closed(list(KNIGHT_SILHOUETTE))
     for tag, grow, dy, mat in (("shadow", 1.09, 0.102, materials["velvet_dark"]), ("gold", 1.0, 0.112, materials["gold"])):
         flat_panel(
             f"{prefix}_knight_{tag}",
-            [(cx - facing * (u + 0.08) * 0.50 * grow, cz - 0.02 + (v - 0.50) * 0.50 * grow) for u, v in knight],
+            [(cx - facing * (u + 0.045) * 0.48 * grow, cz - 0.02 + (v - 0.50) * 0.48 * grow) for u, v in KNIGHT_HERALDIC],
             wall_y - dy,
             0.026,
             mat,
             bevel=0.006,
+        )
+    for cut, pts in enumerate(KNIGHT_HERALDIC_CUTS):
+        flat_panel(
+            f"{prefix}_knight_cut_{cut}",
+            [(cx - facing * (u + 0.045) * 0.48, cz - 0.02 + (v - 0.50) * 0.48) for u, v in pts],
+            wall_y - 0.126,
+            0.014,
+            materials["velvet_dark"],
+            bevel=0.002,
         )
     flat_panel(
         f"{prefix}_crown",
