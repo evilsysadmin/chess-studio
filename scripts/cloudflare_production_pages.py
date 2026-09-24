@@ -324,6 +324,13 @@ def purge_pages_html_cache(zone_id: str) -> str:
         f"/zones/{zone_id}/purge_cache",
         {"files": files},
     )
+    if status in {401, 403}:
+        print(
+            "AVISO: no se pudo purgar el HTML mutable de producción; "
+            "el token de Cloudflare necesita Cache Purge. El deploy continúa "
+            "y la salud pública posterior sigue siendo autoritativa."
+        )
+        return "permission-missing"
     result_or_die(status, body, context="Purgar HTML mutable de Pages production")
     return "purged"
 

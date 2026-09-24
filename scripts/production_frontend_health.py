@@ -18,6 +18,7 @@ import urllib.request
 from frontend_asset_convergence import check_frontend_assets_once, frontend_entry_assets
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+SPA_PROBE_PATH = "/__chess_studio_spa_probe__/nested/view"
 EMERGENCY_404_MARKERS = (
     "<title>404 · Chess Studio</title>",
     "Recurso no encontrado.",
@@ -67,6 +68,13 @@ def root_problem(status: int, content_type: str, raw: bytes, base_url: str) -> s
     return None
 
 
+def spa_problem(status: int, content_type: str, raw: bytes, base_url: str) -> str | None:
+    problem = root_problem(status, content_type, raw, base_url)
+    if problem:
+        return problem.replace("root", "deep-link SPA", 1)
+    return None
+
+
 def release_problem(status: int, content_type: str, raw: bytes, expected_sha: str) -> str | None:
     if status != 200:
         return f"release.json HTTP {status}"
@@ -94,6 +102,17 @@ def check_once(base_url: str, *, expected_sha: str = "", token: str) -> str | No
     except (OSError, urllib.error.URLError) as exc:
         return f"root sin respuesta: {exc}"
     problem = root_problem(root_status, root_type, root_raw, base)
+    if problem:
+        return problem
+
+    try:
+        spa_status, spa_type, spa_raw = fetch(
+            cache_busted(base + SPA_PROBE_PATH, f"{token}-spa"),
+            accept="text/html,application/xhtml+xml",
+        )
+    except (OSError, urllib.error.URLError) as exc:
+        return f"deep-link SPA sin respuesta: {exc}"
+    problem = spa_problem(spa_status, spa_type, spa_raw, base)
     if problem:
         return problem
 
@@ -139,13 +158,16 @@ def self_test() -> None:
     assert root_problem(200, "text/html", good_html, "https://example.test") is None
     assert "404 de emergencia" in str(root_problem(200, "text/html", bad_html, "https://example.test"))
     assert "HTTP 404" in str(root_problem(404, "text/html", bad_html, "https://example.test"))
+    assert spa_problem(200, "text/html", good_html, "https://example.test") is None
+    assert "deep-link SPA HTTP 404" in str(spa_problem(404, "text/html", bad_html, "https://example.test"))
     payload = json.dumps({"build": "a" * 40}).encode()
     assert release_problem(200, "application/json", payload, "a" * 40) is None
     assert "esperaba" in str(release_problem(200, "application/json", payload, "b" * 40))
     assert "build inválido" in str(
         release_problem(200, "application/json", json.dumps({"build": "main"}).encode(), "")
     )
-    print("production_frontend_health self-test OK")
+    assert SPA_PROBE_PATH.startswith("/") and "/nested/" in SPA_PROBE_PATH
+    print("production_frontend_health self-test OK · root + deep-link SPA + assets + release")
 
 
 def main() -> int:

@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { FRONTEND_CSP, applyFrontendCsp } from './apply_frontend_csp.mjs';
 import { onRequest as moduleRecoveryFallback, onRequestPost as moduleRecoveryPost } from '../frontend/functions/__cs_recover.js';
+import { onRequest as pagesMiddleware, isStaticAssetPath } from '../frontend/functions/_middleware.js';
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../frontend/public/manifest.webmanifest', import.meta.url), 'utf8'));
 const html = fs.readFileSync(new URL('../frontend/index.html', import.meta.url), 'utf8');
 const frontendPackage = JSON.parse(fs.readFileSync(new URL('../frontend/package.json', import.meta.url), 'utf8'));
-const notFound = fs.readFileSync(new URL('../frontend/public/404.html', import.meta.url), 'utf8');
 const main = fs.readFileSync(new URL('../frontend/src/main.jsx', import.meta.url), 'utf8');
 const pwaInstall = fs.readFileSync(new URL('../frontend/src/pwaInstall.js', import.meta.url), 'utf8');
 const worker = fs.readFileSync(new URL('../frontend/public/sw.js', import.meta.url), 'utf8');
@@ -69,7 +69,9 @@ assert(!/https?:\/\//.test(chesscomBabylon), 'Chesscom intenta cargar scripts re
 let inlineRejected = false;
 try { applyFrontendCsp('<meta charset="UTF-8"><script>alert(1)</script>'); } catch { inlineRejected = true; }
 assert(inlineRejected, 'el transform de producción acepta JavaScript inline');
-assert(notFound.includes('<title>404 · Chess Studio</title>'), 'falta 404.html top-level para impedir el fallback SPA sobre assets inexistentes');
+assert(!fs.existsSync(new URL('../frontend/public/404.html', import.meta.url)), 'un 404.html top-level desactiva el fallback SPA de Cloudflare Pages');
+assert(isStaticAssetPath('/assets/app-deadbeef.js') && isStaticAssetPath('/models/piece.glb'), 'el guard no reconoce assets estáticos');
+assert(!isStaticAssetPath('/classroom/full-screen'), 'el guard confunde una ruta SPA con un asset');
 assert(main.includes('installChessStudioPwa()'), 'la app no registra la experiencia PWA');
 assert(pwaInstall.includes('APP_BUILD_ID') && pwaInstall.includes('sw.js?build='), 'el registro del worker no cambia por build');
 assert(worker.includes("request.mode === 'navigate'") && worker.includes("fetch(request, { cache: 'no-store' })"), 'la navegación PWA no exige shell fresco de red');
@@ -119,5 +121,24 @@ const crossOriginRecovery = await moduleRecoveryPost({
 });
 assert(crossOriginRecovery.status === 403, 'el recovery POST acepta orígenes ajenos');
 assert(moduleRecoveryFallback().status === 405, 'el endpoint de recovery acepta métodos distintos de POST');
+
+const guardedAsset = await pagesMiddleware({
+  request: new Request(`${recoveryOrigin}/assets/missing-deadbeef.js`),
+  next: async () => new Response('<!doctype html><html><body>SPA shell</body></html>', {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  }),
+});
+assert(guardedAsset.status === 404, 'un asset inexistente puede recibir el shell HTML de la SPA');
+assert(guardedAsset.headers.get('x-chess-studio-asset-guard') === 'html-fallback-blocked', 'el 404 de asset no acredita el guard');
+
+const spaFallback = await pagesMiddleware({
+  request: new Request(`${recoveryOrigin}/classroom/full-screen`),
+  next: async () => new Response('<!doctype html><html><body>SPA shell</body></html>', {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  }),
+});
+assert(spaFallback.status === 200, 'el middleware bloquea una navegación SPA válida');
 
 console.log('pwa-check OK · CSP estricta + headers Pages + navegación sin shell stale + recovery POST con URL limpia + API/assets/terceros fuera del cache PWA');
