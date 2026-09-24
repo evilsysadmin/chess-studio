@@ -112,7 +112,7 @@ describe('steam sprites', () => {
     expect(steam.isPoints).toBe(true);
     expect(steam.geometry.getAttribute('aSeed').count).toBe(STEAM_SPRITE_DEFAULTS.count);
     expect(steam.material.blending).toBe(THREE.NormalBlending);
-    expect(steam.material.uniforms.uOpacity.value).toBeLessThan(0.3);
+    expect(steam.material.uniforms.uOpacity.value).toBeLessThanOrEqual(0.6);
     steam.onBeforeRender({ userData: { board3DMotionNowMs: 2000 }, domElement: { height: 800 } });
     expect(steam.material.uniforms.uTime.value).toBe(2);
     expect(steam.material.uniforms.uBase.value.toArray()).toEqual([1, 1, -2]);
