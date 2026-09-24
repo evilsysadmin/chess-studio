@@ -190,9 +190,9 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        await expect(matthias).toHaveAttribute('data-home-matthias-station', capture.station);
         const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
+        await expect(avatar).toHaveAttribute('data-home-matthias-station', capture.station);
         await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
         await expect(avatar).toHaveAttribute('data-home-matthias-profile', capture.profile, { timeout:15_000 });
         await expect(image).toHaveAttribute('src', capture.avatar);

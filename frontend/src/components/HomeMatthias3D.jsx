@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { request } from '../http.js';
 import { createThreeRenderer } from '../threeRenderer.js';
+import { matthiasHomeStation } from './HomeMatthiasStations.js';
 import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
@@ -306,6 +307,7 @@ export default function HomeMatthias3D({
     [activity, scene, speaking],
   );
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
+  const station = useMemo(() => matthiasHomeStation(scene), [scene]);
   const [modelState, setModelState] = useState('loading');
   const [fallbackSrc, setFallbackSrc] = useState(fallbackAvatar);
 
@@ -651,6 +653,7 @@ export default function HomeMatthias3D({
       data-matthias-identity="canonical-blender-rig"
       data-matthias-render-source={modelState === 'ready' ? 'blender-glb' : 'bundled-scene-art-fallback'}
       data-home-matthias-profile={profile}
+      data-home-matthias-station={station}
       data-motion={reducedMotion ? 'still-rigged-model' : 'rigged-gltf-clips'}
       aria-hidden="true"
     >
