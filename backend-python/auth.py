@@ -36,6 +36,15 @@ _ARGON2 = PasswordHasher(
 )
 _BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 
+# Compatibility contract for the existing test harness, which monkeypatches
+# this symbol while exercising legacy bcrypt fixtures. New password writes do
+# not use it; production hashing is always Argon2id.
+try:
+    BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+except ValueError:
+    BCRYPT_ROUNDS = 12
+BCRYPT_ROUNDS = max(4, min(BCRYPT_ROUNDS, 16))
+
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 _DEPLOYED_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
 if _ENVIRONMENT in _DEPLOYED_ENVIRONMENTS and (
