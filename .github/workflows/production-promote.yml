@@ -437,16 +437,82 @@ jobs:
           [[ "$health_ok" == true ]] || { echo '::error::Production AI no quedó healthy'; exit 1; }
           python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
 
+  pages_build:
+    name: Production · frontend build
+    needs: gate
+    if: needs.gate.outputs.should_deploy == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+    steps:
+      - name: Checkout production orchestrator
+        uses: actions/checkout@v7
+
+      - name: Checkout staging-accredited frontend source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          path: release-source
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: release-source/frontend/package-lock.json
+
+      - name: Restore exact production frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: release-source/frontend
+          lockfile: release-source/frontend/package-lock.json
+          node-version: '22'
+
+      - name: Build production frontend
+        working-directory: release-source/frontend
+        env:
+          VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Verify prebuilt frontend identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('release-source/frontend/dist/release.json').read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[1].lower()
+          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
+          PY
+
+      - name: Upload prebuilt production frontend
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-frontend-${{ env.DEPLOY_SHA }}
+          path: release-source/frontend/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Production service lanes: backend and Worker start in parallel from the immutable gate.
   backend:
     name: Production · backend target
-    needs: [gate, cloudflare]
+    needs: gate
+    if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       deploy_sha: ${{ steps.provenance.outputs.deploy_sha }}
       deploy_target: ${{ steps.provenance.outputs.deploy_target }}
     env:
-      DEPLOY_SHA: ${{ needs.cloudflare.outputs.deploy_sha }}
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
       DEPLOY_TARGET: ${{ needs.gate.outputs.deploy_target }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -536,11 +602,11 @@ jobs:
 
   pages:
     name: Production · Cloudflare Pages
-    needs: backend
+    needs: [gate, cloudflare, backend, pages_build]
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      DEPLOY_SHA: ${{ needs.backend.outputs.deploy_sha }}
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
       DEPLOY_TARGET: ${{ needs.backend.outputs.deploy_target }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -549,25 +615,10 @@ jobs:
       - name: Checkout production orchestrator
         uses: actions/checkout@v7
 
-      - name: Checkout staging-accredited frontend source
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-          path: release-source
-
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: release-source/frontend/package-lock.json
-
-      - name: Restore exact production frontend dependencies
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: release-source/frontend
-          lockfile: release-source/frontend/package-lock.json
-          node-version: '22'
 
       - name: Restore cached Wrangler toolchain
         uses: ./.github/actions/setup-wrangler
@@ -575,24 +626,18 @@ jobs:
           version: '4.127.1'
           node-version: '22'
 
+      - name: Download prebuilt production frontend
+        uses: actions/download-artifact@v6
+        with:
+          name: production-frontend-${{ env.DEPLOY_SHA }}
+          path: release-source/frontend/dist
+
       - name: Validate and prepare Cloudflare Pages project
         shell: bash
         run: |
           set -euo pipefail
           python3 -S scripts/cloudflare_production_pages.py --self-test
           python3 scripts/cloudflare_production_pages.py prepare
-
-      - name: Build production frontend
-        working-directory: release-source/frontend
-        env:
-          VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
-          VITE_PUBLIC_BASE: /
-          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
-          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
-          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
-          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
-          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
-        run: npm run build
 
       - name: Verify artifact identity before publishing
         shell: bash
@@ -605,7 +650,6 @@ jobs:
           expected = sys.argv[1].lower()
           raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
           PY
-
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: release-source/frontend
         shell: bash
