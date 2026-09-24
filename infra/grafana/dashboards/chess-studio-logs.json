@@ -633,7 +633,7 @@
       "id": 18,
       "title": "Tráfico legítimo por país · hits",
       "type": "bargauge",
-      "description": "Ranking de requests autenticadas 2xx/3xx por país. Muestra el código ISO a la izquierda y el número de hits a la derecha; se excluyen CI, smokes y probes.",
+      "description": "Ranking de requests autenticadas 2xx/3xx por país. El código ISO se materializa como columna de texto para etiquetar cada barra y los hits quedan visibles a la derecha; se excluyen CI, smokes y probes.",
       "datasource": {
         "type": "loki",
         "uid": "${logs_datasource_uid}"
@@ -664,8 +664,7 @@
           "min": 0,
           "color": {
             "mode": "palette-classic"
-          },
-          "displayName": "${__field.labels.client_country}"
+          }
         },
         "overrides": []
       },
@@ -679,13 +678,22 @@
         "minVizHeight": 28,
         "maxVizHeight": 32,
         "reduceOptions": {
-          "values": false,
+          "values": true,
           "calcs": [
             "lastNotNull"
           ],
-          "fields": ""
+          "fields": "",
+          "limit": 12
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        }
+      ]
     }
   ],
   "refresh": "30s",
