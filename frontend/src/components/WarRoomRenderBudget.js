@@ -1,6 +1,6 @@
-export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
-  if (activeMotion) return coarsePointer ? 180 : 120;
-  return coarsePointer ? 540 : 360;
+export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false, factor = 1 } = {}) {
+  const base = activeMotion ? (coarsePointer ? 180 : 120) : (coarsePointer ? 540 : 360);
+  return base * (Number.isFinite(factor) && factor > 0 ? factor : 1);
 }
 
 export function shouldRefreshShadowMap({
@@ -8,12 +8,13 @@ export function shouldRefreshShadowMap({
   lastShadowAt = Number.NEGATIVE_INFINITY,
   coarsePointer = false,
   activeMotion = false,
+  factor = 1,
 } = {}) {
   const current = Number(now);
   const previous = Number(lastShadowAt);
   if (!Number.isFinite(previous)) return true;
   if (!Number.isFinite(current)) return false;
-  return current - previous >= shadowRefreshInterval({ coarsePointer, activeMotion });
+  return current - previous >= shadowRefreshInterval({ coarsePointer, activeMotion, factor });
 }
 
 export function nextRuntimeRenderScale({
