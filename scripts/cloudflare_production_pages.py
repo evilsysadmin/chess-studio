@@ -32,6 +32,7 @@ PAGES_HOSTNAME = "chess-studio.shadowops.dpdns.org"
 PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
 DOMAIN_ACTIVE_TIMEOUT_S = 600
 DOMAIN_ACTIVE_POLL_S = 5
+CACHE_PURGE_PATHS = ("/", "/index.html", "/release.json", "/404.html")
 
 
 def required(name: str) -> str:
@@ -311,6 +312,22 @@ def ensure_pages_cname(zone_id: str) -> str:
     return "updated"
 
 
+def purge_pages_html_cache(zone_id: str) -> str:
+    """Purge mutable production HTML/metadata after Pages activation.
+
+    A stale branded 404 at the edge is a production outage. Do not let an
+    activation report green if the deployment token cannot evict these paths.
+    """
+    files = [f"https://{PAGES_HOSTNAME}{path}" for path in CACHE_PURGE_PATHS]
+    status, body = request_json(
+        "POST",
+        f"/zones/{zone_id}/purge_cache",
+        {"files": files},
+    )
+    result_or_die(status, body, context="Purgar HTML mutable de Pages production")
+    return "purged"
+
+
 def ensure_web_analytics(zone_id: str) -> str:
     """Best-effort RUM enablement; hosting never depends on extra RUM permission."""
 
@@ -380,6 +397,7 @@ def self_test() -> None:
     assert PAGES_TARGET == "chess-studio-production.pages.dev"
     assert PAGES_HOSTNAME == "chess-studio.shadowops.dpdns.org"
     assert PAGES_HOSTNAME != PAGES_TARGET
+    assert CACHE_PURGE_PATHS == ("/", "/index.html", "/release.json", "/404.html")
     assert DOMAIN_ACTIVE_TIMEOUT_S >= 300
     assert 1 <= DOMAIN_ACTIVE_POLL_S <= 30
     assert "/settings/ip_geolocation" in ensure_ip_geolocation.__code__.co_consts
@@ -422,6 +440,7 @@ def main() -> None:
     domain = ensure_pages_domain()
     dns = ensure_pages_cname(zone_id)
     domain_status = wait_pages_domain_active()
+    cache_purge = purge_pages_html_cache(zone_id)
 
     # The custom domain has its own edge propagation window. Prove that the
     # public hostname serves a coherent index + hashed JS/CSS before declaring
@@ -440,14 +459,15 @@ def main() -> None:
         domain=domain,
         dns=dns,
         domain_status=domain_status,
+        cache_purge=cache_purge,
         analytics=analytics,
         ip_geolocation=ip_geolocation,
     )
     print(
         "Cloudflare Pages production activado: "
         f"project={project}, domain={domain}, DNS={dns}, "
-        f"domain_status={domain_status}, Web Analytics={analytics}, "
-        f"IP Geolocation={ip_geolocation}"
+        f"domain_status={domain_status}, cache_purge={cache_purge}, "
+        f"Web Analytics={analytics}, IP Geolocation={ip_geolocation}"
     )
 
 
