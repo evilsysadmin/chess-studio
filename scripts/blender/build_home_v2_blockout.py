@@ -17,7 +17,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 CONTRACT = "home-blender-canon-20260918-v1"
@@ -774,136 +774,183 @@ def cone(name: str, location, radius1: float, radius2: float, depth: float, mat,
     return obj
 
 
-def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str):
-    """Build a readable stylised tournament piece at Home-camera distance."""
-    profiles = {
-        "pawn": (0.085, 0.055, 0.20, 0.085, 0.26),
-        "rook": (0.10, 0.075, 0.27, 0.10, 0.30),
-        "knight": (0.10, 0.055, 0.29, 0.105, 0.33),
-        "bishop": (0.09, 0.045, 0.32, 0.09, 0.36),
-        "queen": (0.105, 0.055, 0.38, 0.11, 0.43),
-        "king": (0.11, 0.06, 0.42, 0.11, 0.47),
-    }
-    r1, r2, depth, head, height = profiles[kind]
-    # Scaled down to match the smaller board square (add_table_and_board);
-    # keep this proportional to `square` so pieces don't crowd their square.
-    piece_scale = 0.625
-    r1 *= piece_scale
-    r2 *= piece_scale
-    depth *= piece_scale
-    head *= piece_scale
-    height *= piece_scale
+def lathe(name, profile, center, mat, *, segments=40):
+    """Turn a (radius, height) profile, listed bottom to top, into a smooth solid of revolution.
+    A profile that starts or ends at radius 0 is closed with a triangle fan. Hard steps in the
+    profile stay crisp (edge split), curved runs stay smooth."""
+    cx, cy, cz = center
+    rings = [(r, h) for r, h in profile if r > 1e-6]
+    closed_bottom = profile[0][0] <= 1e-6
+    closed_top = profile[-1][0] <= 1e-6
+    vertices = [(cx + r * math.cos(i * math.tau / segments), cy + r * math.sin(i * math.tau / segments), cz + h)
+                for r, h in rings for i in range(segments)]
+    faces, uvs = [], []
+    ring_count = len(rings)
+    top_h = max(h for _, h in profile) or 1.0
+    for j in range(ring_count - 1):
+        v0, v1 = rings[j][1] / top_h, rings[j + 1][1] / top_h
+        for i in range(segments):
+            a_, b_ = j * segments + i, j * segments + (i + 1) % segments
+            c_, d_ = (j + 1) * segments + (i + 1) % segments, (j + 1) * segments + i
+            faces.append((a_, b_, c_, d_))
+            uvs.append([(i / segments, v0), ((i + 1) / segments, v0), ((i + 1) / segments, v1), (i / segments, v1)])
+    if closed_bottom:
+        vertices.append((cx, cy, cz + profile[0][1]))
+        centre = len(vertices) - 1
+        for i in range(segments):
+            faces.append((centre, (i + 1) % segments, i))
+            uvs.append([(0.5, 0.5), (0.5, 0.5), (0.5, 0.5)])
+    if closed_top:
+        vertices.append((cx, cy, cz + profile[-1][1]))
+        centre = len(vertices) - 1
+        base = (ring_count - 1) * segments
+        for i in range(segments):
+            faces.append((centre, base + i, base + (i + 1) % segments))
+            uvs.append([(0.5, 0.5), (0.5, 0.5), (0.5, 0.5)])
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    layer = mesh.uv_layers.new(name="UVMap")
+    loop = 0
+    for face_uvs in uvs:
+        for uv in face_uvs:
+            layer.data[loop].uv = uv
+            loop += 1
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    split = obj.modifiers.new("Hard steps", "EDGE_SPLIT")
+    split.use_edge_angle = True
+    split.split_angle = math.radians(38.0)
+    split.use_edge_sharp = False
+    apply_material(obj, mat)
+    return obj
 
-    # Shared turned base. Two stepped rings give every piece a deliberate
-    # carved silhouette instead of the old cone+sphere placeholder.
-    cylinder(f"{name}_foot", (x, y, z + 0.025), r1 * 1.28, 0.050, mat, vertices=28)
-    cylinder(f"{name}_base", (x, y, z + 0.066), r1 * 1.12, 0.045, mat, vertices=28)
-    cone(f"{name}_body", (x, y, z + depth / 2 + 0.075), r1, r2, depth, mat, vertices=28)
-    cylinder(f"{name}_collar", (x, y, z + depth + 0.080), r2 * 1.34, 0.038, mat, vertices=24)
+
+PIECE_SCALE = 0.92
+
+
+def add_simple_piece(name: str, x: float, y: float, z: float, mat, kind: str, *, trim=None):
+    """Turned, Teutonic-flavoured tournament piece, readable at Home-camera distance: a stepped
+    plinth, a lathed body per kind and gold trim. `trim` is the gold material; `mat` is the
+    body (ivory or ebony). Sizes are metres before PIECE_SCALE; the board square is 0.32."""
+    trim = trim or mat
+    k = PIECE_SCALE
+    base_radius = {"pawn": 0.088, "rook": 0.100, "knight": 0.100, "bishop": 0.096, "queen": 0.104, "king": 0.108}[kind]
+
+    def scaled(points):
+        return [(r * k, h * k) for r, h in points]
+
+    def gold_ring(tag, height, radius, thick=0.008):
+        cylinder(f"{name}_{tag}", (x, y, z + height * k), radius * k, thick, trim, vertices=36)
+
+    rb = base_radius
+    plinth = [
+        (0.0, 0.0), (rb, 0.0), (rb, 0.012), (rb * 0.955, 0.019), (rb * 0.955, 0.030),
+        (rb * 0.78, 0.040), (rb * 0.66, 0.052),
+    ]
+    facing_mult = 1.0 if x >= 0.0 else -1.0
 
     if kind == "pawn":
-        sphere(f"{name}_head", (x, y, z + height + 0.025), (head, head, head), mat)
+        body = plinth[:-1] + [
+            (0.050, 0.052), (0.040, 0.078), (0.034, 0.108), (0.034, 0.124), (0.052, 0.130), (0.052, 0.138),
+            (0.036, 0.146), (0.030, 0.152), (0.040, 0.158), (0.048, 0.166), (0.050, 0.176), (0.048, 0.186),
+            (0.040, 0.195), (0.028, 0.201), (0.012, 0.204), (0.0, 0.205),
+        ]
+        lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+        gold_ring("collar", 0.134, 0.054)
+        gold_ring("plinth", 0.024, rb * 0.965, 0.007)
         return
 
     if kind == "rook":
-        crown_z = z + height + 0.050
-        cylinder(f"{name}_crown", (x, y, crown_z), head * 1.16, 0.105, mat, vertices=20)
-        for idx, (dx, dy) in enumerate((
-            (-head * 0.74, -head * 0.74),
-            (head * 0.74, -head * 0.74),
-            (-head * 0.74, head * 0.74),
-            (head * 0.74, head * 0.74),
-        )):
-            cube(
+        body = plinth[:-1] + [
+            (0.058, 0.056), (0.050, 0.090), (0.046, 0.130), (0.046, 0.170), (0.056, 0.185), (0.056, 0.193),
+            (0.072, 0.198), (0.072, 0.232), (0.060, 0.232), (0.060, 0.222), (0.0, 0.222),
+        ]
+        lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+        gold_ring("waist", 0.195, 0.058)
+        gold_ring("plinth", 0.024, rb * 0.965, 0.007)
+        for idx in range(6):
+            angle = idx * math.tau / 6.0
+            merlon = cube(
                 f"{name}_merlon_{idx}",
-                (x + dx, y + dy, crown_z + 0.075),
-                (head * 0.28, head * 0.28, 0.055),
+                (x + math.cos(angle) * 0.066 * k, y + math.sin(angle) * 0.066 * k, z + 0.246 * k),
+                (0.017 * k, 0.017 * k, 0.014 * k),
                 mat,
-                bevel=0.012,
+                bevel=0.004,
             )
+            merlon.rotation_euler[2] = angle
         return
 
     if kind == "knight":
-        # Side-profile horse heads are intentionally oriented toward board
-        # centre so their silhouette survives the fixed frontal Home camera.
-        facing = -1.0 if x >= 0.0 else 1.0
-        neck = cone(
-            f"{name}_neck",
-            (x, y, z + height - 0.010),
-            head * 0.72,
-            head * 0.48,
-            0.23,
-            mat,
-            vertices=22,
-        )
-        neck.rotation_euler[1] = math.radians(18.0 * facing)
-        sphere(
+        body = plinth[:-1] + [(0.050, 0.058), (0.043, 0.084), (0.043, 0.098), (0.056, 0.100), (0.0, 0.100)]
+        lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+        gold_ring("collar", 0.100, 0.054)
+        gold_ring("plinth", 0.024, rb * 0.965, 0.007)
+        # The head is the same silhouette as the JUGAR knight, thickened, facing the board centre
+        # and square-on to the Home camera so it reads at a glance.
+        su = 0.30 * k
+        sv = 0.26 * k / 0.76
+        smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
+        flat_panel(
             f"{name}_head",
-            (x + facing * head * 0.38, y, z + height + 0.105),
-            (head * 0.92, head * 0.70, head * 0.78),
+            [(x + facing_mult * (u + 0.067) * su, z + 0.098 * k + (v - 0.12) * sv) for u, v in smooth],
+            y,
+            0.072 * k,
             mat,
+            bevel=0.010,
         )
-        sphere(
-            f"{name}_muzzle",
-            (x + facing * head * 1.12, y, z + height + 0.055),
-            (head * 0.72, head * 0.54, head * 0.42),
-            mat,
-        )
-        for ear_idx, ex in enumerate((-0.30, 0.18)):
-            ear = cone(
-                f"{name}_ear_{ear_idx}",
-                (x + facing * head * ex, y, z + height + 0.225),
-                head * 0.22,
-                0.006,
-                0.105,
-                mat,
-                vertices=12,
-            )
-            ear.rotation_euler[1] = math.radians(-8.0 * facing)
         return
 
     if kind == "bishop":
-        sphere(
-            f"{name}_head",
-            (x, y, z + height + 0.010),
-            (head * 0.76, head * 0.76, head * 0.92),
-            mat,
-        )
-        mitre = cone(
-            f"{name}_mitre",
-            (x, y, z + height + 0.105),
-            head * 0.50,
-            0.008,
-            0.155,
-            mat,
-            vertices=20,
-        )
-        mitre.rotation_euler[1] = math.radians(7.0)
+        body = plinth[:-1] + [
+            (0.050, 0.060), (0.040, 0.100), (0.031, 0.140), (0.030, 0.180), (0.046, 0.190), (0.046, 0.198),
+            (0.030, 0.206), (0.036, 0.222), (0.042, 0.240), (0.042, 0.258), (0.034, 0.276), (0.022, 0.292),
+            (0.010, 0.304), (0.0, 0.308),
+        ]
+        lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+        gold_ring("collar", 0.194, 0.048)
+        gold_ring("plinth", 0.024, rb * 0.965, 0.007)
+        sphere(f"{name}_finial", (x, y, z + 0.318 * k), (0.013 * k, 0.013 * k, 0.013 * k), trim)
+        slit = cube(f"{name}_slit", (x, y - 0.040 * k, z + 0.252 * k), (0.030 * k, 0.004 * k, 0.006 * k), trim, bevel=0.002)
+        slit.rotation_euler[1] = math.radians(-38.0)
         return
 
     if kind == "queen":
-        crown_z = z + height + 0.010
-        sphere(f"{name}_head", (x, y, crown_z), (head * 0.76, head * 0.76, head * 0.76), mat)
-        cylinder(f"{name}_crown_ring", (x, y, crown_z + 0.090), head * 1.02, 0.040, mat, vertices=20)
-        for idx in range(6):
-            angle = idx * math.tau / 6.0
-            sphere(
-                f"{name}_crown_bead_{idx}",
-                (
-                    x + math.cos(angle) * head * 0.78,
-                    y + math.sin(angle) * head * 0.78,
-                    crown_z + 0.135,
-                ),
-                (head * 0.18, head * 0.18, head * 0.18),
-                mat,
-            )
-        sphere(f"{name}_finial", (x, y, crown_z + 0.175), (head * 0.22, head * 0.22, head * 0.22), mat)
+        body = plinth[:-1] + [
+            (0.056, 0.060), (0.044, 0.100), (0.035, 0.150), (0.032, 0.200), (0.036, 0.235), (0.056, 0.245),
+            (0.056, 0.255), (0.038, 0.262), (0.040, 0.275), (0.052, 0.292), (0.060, 0.312), (0.062, 0.324),
+            (0.052, 0.328), (0.030, 0.322), (0.0, 0.320),
+        ]
+        lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+        gold_ring("collar", 0.250, 0.058)
+        gold_ring("waist", 0.292, 0.054)
+        gold_ring("plinth", 0.024, rb * 0.965, 0.007)
+        for idx in range(8):
+            angle = idx * math.tau / 8.0 + math.radians(22.5)
+            px, py = x + math.cos(angle) * 0.055 * k, y + math.sin(angle) * 0.055 * k
+            cone(f"{name}_point_{idx}", (px, py, z + 0.344 * k), 0.011 * k, 0.002, 0.038 * k, mat, vertices=10)
+            sphere(f"{name}_bead_{idx}", (px, py, z + 0.366 * k), (0.008 * k, 0.008 * k, 0.008 * k), trim)
+        sphere(f"{name}_orb", (x, y, z + 0.336 * k), (0.019 * k, 0.019 * k, 0.019 * k), trim)
         return
 
-    # King: compact orb plus a crisp cross, visibly taller than the queen.
-    sphere(f"{name}_head", (x, y, z + height), (head * 0.72, head * 0.72, head * 0.72), mat)
-    cube(f"{name}_cross_v", (x, y, z + height + 0.145), (0.023, 0.023, 0.105), mat, bevel=0.010)
-    cube(f"{name}_cross_h", (x, y, z + height + 0.175), (0.073, 0.023, 0.023), mat, bevel=0.010)
+    # king: taller than the queen, crowned by a Teutonic cross pattée in gold
+    body = plinth[:-1] + [
+        (0.058, 0.060), (0.046, 0.100), (0.036, 0.150), (0.033, 0.210), (0.037, 0.250), (0.058, 0.262),
+        (0.058, 0.272), (0.040, 0.280), (0.044, 0.300), (0.054, 0.320), (0.056, 0.340), (0.046, 0.356),
+        (0.030, 0.366), (0.010, 0.370), (0.0, 0.371),
+    ]
+    lathe(f"{name}_body", scaled(body), (x, y, z), mat)
+    gold_ring("collar", 0.266, 0.060)
+    gold_ring("crown", 0.338, 0.058)
+    gold_ring("plinth", 0.024, rb * 0.965, 0.007)
+    cube(f"{name}_cross_v", (x, y, z + 0.418 * k), (0.011 * k, 0.011 * k, 0.040 * k), trim, bevel=0.003)
+    cube(f"{name}_cross_h", (x, y, z + 0.404 * k), (0.036 * k, 0.011 * k, 0.011 * k), trim, bevel=0.003)
+    for tag, (cx_e, cz_e, hx, hz) in {
+        "top": (0.0, 0.462, 0.020, 0.008), "left": (-0.036, 0.404, 0.008, 0.019), "right": (0.036, 0.404, 0.008, 0.019),
+    }.items():
+        cube(f"{name}_cross_end_{tag}", (x + cx_e * k, y, z + cz_e * k), (hx * k, 0.011 * k, hz * k), trim, bevel=0.002)
 
 
 def curve_tube(name: str, points, bevel_depth: float, mat):
@@ -1404,6 +1451,50 @@ def add_rug_knight_tapestry(materials):
         motif.scale.x *= 1.0
 
 
+def add_chronicle_lectern(prefix, cx, cy, table_z, materials):
+    """Open book of chronicles on a slanted wooden lectern, with an inkwell and a quill.
+    It is the HISTORIA object: a book of the castle's legacy, readable at a glance (the black
+    helmet that stood here read as a cooking pot and hid the statuette behind it)."""
+    wood = materials["wood"]
+    tilt = math.radians(46.0)
+    rot = Matrix.Rotation(tilt, 3, "X")
+    board_c = Vector((cx, cy, table_z + 0.21))
+
+    def on_board(lx, ly, lz):
+        return board_c + rot @ Vector((lx, ly, lz))
+
+    def tilted(name, local, half, mat, *, roll=0.0, bevel=0.0):
+        obj = cube(name, tuple(on_board(*local)), half, mat, bevel=bevel)
+        obj.rotation_euler = (tilt, math.radians(roll), 0.0)
+        return obj
+
+    # stand: slanted reading board, front lip, rear legs
+    tilted(f"{prefix}_board", (0, 0, 0), (0.33, 0.22, 0.018), wood, bevel=0.010)
+    tilted(f"{prefix}_lip", (0, -0.205, 0.035), (0.33, 0.014, 0.030), wood, bevel=0.008)
+    for side in (-1, 1):
+        cube(f"{prefix}_leg_rear_{side}", (cx + side * 0.27, cy + 0.17, table_z + 0.11), (0.022, 0.022, 0.11), wood, bevel=0.008)
+        cube(f"{prefix}_leg_front_{side}", (cx + side * 0.27, cy - 0.10, table_z + 0.045), (0.022, 0.022, 0.045), wood, bevel=0.008)
+    # the open book: leather covers, two page blocks, gilt edges, corner caps, ribbon
+    tilted(f"{prefix}_cover", (0, 0, 0.030), (0.29, 0.19, 0.012), materials["book_oxblood"], bevel=0.006)
+    for side, tag in ((-1, "l"), (1, "r")):
+        tilted(f"{prefix}_pages_{tag}", (side * 0.135, 0, 0.052), (0.128, 0.165, 0.022), materials["paper"], roll=-side * 4.0, bevel=0.004)
+        tilted(f"{prefix}_gilt_{tag}", (side * 0.135, 0, 0.076), (0.128, 0.166, 0.003), materials["gold"], roll=-side * 4.0)
+        for line, ly in enumerate((0.11, 0.075, 0.04, 0.005, -0.03, -0.065, -0.10)):
+            tilted(f"{prefix}_text_{tag}_{line}", (side * 0.135 + side * 0.008 * (line % 2), ly, 0.081), (0.085 - 0.012 * (line % 3), 0.004, 0.0015), materials["dark"], roll=-side * 4.0)
+    tilted(f"{prefix}_spine", (0, 0, 0.060), (0.012, 0.18, 0.020), materials["brass_dark"], bevel=0.004)
+    for cx_l, cy_l in ((-0.29, 0.19), (0.29, 0.19), (-0.29, -0.19), (0.29, -0.19)):
+        tilted(f"{prefix}_corner_{cx_l}_{cy_l}", (cx_l, cy_l, 0.032), (0.028, 0.028, 0.014), materials["brass"], bevel=0.006)
+    tilted(f"{prefix}_ribbon", (0.05, -0.215, 0.050), (0.012, 0.045, 0.004), materials["plume_red"])
+    # inkwell and quill on the table, to the right of the lectern
+    ink = (cx + 0.43, cy - 0.12)
+    cylinder(f"{prefix}_inkwell", (ink[0], ink[1], table_z + 0.035), 0.045, 0.07, materials["dark"], vertices=20)
+    cylinder(f"{prefix}_inkwell_rim", (ink[0], ink[1], table_z + 0.074), 0.050, 0.010, materials["brass"], vertices=20)
+    curve_tube(f"{prefix}_quill", [(ink[0], ink[1], table_z + 0.06), (ink[0] + 0.05, ink[1] - 0.03, table_z + 0.22), (ink[0] + 0.085, ink[1] - 0.05, table_z + 0.34)], 0.006, materials["brass_dark"])
+    feather = cone(f"{prefix}_quill_feather", (ink[0] + 0.07, ink[1] - 0.04, table_z + 0.29), 0.022, 0.004, 0.17, materials["paper"], vertices=10)
+    feather.rotation_euler = (math.radians(-12.0), math.radians(24.0), 0.0)
+    feather.scale.y = 0.35
+
+
 def add_castle_chair(name, cx, cy, side, materials):
     """Carved high-back chair of a Teutonic hall, back towards the wall side (+side*x)."""
     wood = materials["table_wood"]
@@ -1865,10 +1956,10 @@ def add_table_and_board(materials):
         black_back_mat = piece_dark_alt if col in (0, 3, 6) else piece_dark
         white_pawn_mat = piece_light_alt if col in (0, 4, 6) else piece_light
         black_pawn_mat = piece_dark_alt if col in (2, 5, 7) else piece_dark
-        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, white_back_mat, kind)
-        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, black_back_mat, kind)
-        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, white_pawn_mat, "pawn")
-        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, black_pawn_mat, "pawn")
+        add_simple_piece(f"HOME_PROP_white_back_{col}", px, start_y + 0.5 * square, board_z, white_back_mat, kind, trim=materials["gold"])
+        add_simple_piece(f"HOME_PROP_black_back_{col}", px, start_y + 6.5 * square, board_z, black_back_mat, kind, trim=materials["gold"])
+        add_simple_piece(f"HOME_PROP_white_pawn_{col}", px, start_y + 1.5 * square, board_z, white_pawn_mat, "pawn", trim=materials["gold"])
+        add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, black_pawn_mat, "pawn", trim=materials["gold"])
 
 
 def add_fireplace(name: str, x: float, materials):
@@ -2627,36 +2718,8 @@ def add_side_furnishings(materials):
     cylinder("HOME_PROP_left_side_table_pedestal", (-6.35, 2.35, 0.56), 0.16, 0.80, wood, vertices=24)
     cylinder("HOME_PROP_left_side_table_base", (-6.35, 2.35, 0.16), 0.42, 0.16, wood, vertices=28)
     cylinder("HOME_PROP_left_side_table_foot", (-6.35, 2.35, 0.06), 0.48, 0.08, materials["dark"], vertices=28)
-    sphere("HOME_PROP_left_helmet", (-6.35, 2.35, 1.34), (0.30, 0.25, 0.25), steel)
-    cylinder("HOME_PROP_left_helmet_brim", (-6.35, 2.35, 1.18), 0.31, 0.055, materials["brass_dark"], vertices=24)
-    cube(
-        "HOME_PROP_left_helmet_visor",
-        (-6.35, 2.10, 1.35),
-        (0.20, 0.028, 0.040),
-        materials["dark"],
-        bevel=0.012,
-    )
-    cone(
-        "HOME_PROP_left_helmet_crest",
-        (-6.35, 2.36, 1.62),
-        0.060,
-        0.010,
-        0.17,
-        materials["brass_dark"],
-        vertices=14,
-    )
-    cylinder("HOME_PROP_left_candle_base", (-6.55, 2.33, 1.19), 0.085, 0.045, brass, vertices=18)
-    cylinder("HOME_PROP_left_candle", (-6.55, 2.33, 1.31), 0.038, 0.22, paper, vertices=16)
-    cone(
-        "HOME_PROP_left_candle_flame",
-        (-6.55, 2.33, 1.47),
-        0.028,
-        0.006,
-        0.085,
-        materials["fire_hot"],
-        vertices=10,
-    )
-    add_knight_statuette("HOME_PROP_left_statuette", -6.80, 2.30, 1.16, 0.50, materials)
+    add_chronicle_lectern("HOME_PROP_left_chronicle", -6.16, 2.42, 1.16, materials)
+    add_knight_statuette("HOME_PROP_left_statuette", -6.74, 2.12, 1.16, 0.46, materials)
     for idx, cx in enumerate((-6.90, -6.62, -6.34)):
         cylinder(f"HOME_PROP_left_candelabra_stem_{idx}", (cx, 2.70, 1.26), 0.035, 0.24, materials["brass_dark"], vertices=12)
         cube(f"HOME_PROP_left_candelabra_candle_{idx}", (cx, 2.70, 1.49), (0.035, 0.035, 0.15), materials["wax"], bevel=0.012)
