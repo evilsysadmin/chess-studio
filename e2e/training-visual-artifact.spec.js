@@ -79,6 +79,17 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
   await capture(page, 'school');
 
+  await shell.getByRole('button', { name: 'Por qué funciona', exact: true }).click();
+  await expect(shell.locator('.matthias-school-board')).toHaveAttribute('data-school-explanation', 'demo');
+  await shell.getByRole('button', { name: 'Siguiente paso', exact: true }).click();
+  await settle(page);
+  await capture(page, 'school-explanation');
+  await captureAt(page, 'school-explanation', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await shell.getByRole('button', { name: 'Volver a practicar', exact: true }).click();
+  await expect(shell.locator('.matthias-school-board')).toHaveAttribute('data-school-explanation', 'practice');
+  await settle(page);
+
   await shell.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
   await expect(shell.getByRole('group', { name: 'Modo de estudio' })).toBeVisible();
   await capture(page, 'school-curriculum');
