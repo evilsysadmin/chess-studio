@@ -40,6 +40,8 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-bar {
+  position: relative;
+  z-index: 30;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -99,6 +101,8 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-layout {
+  position: relative;
+  z-index: 0;
   display: block;
   min-height: 0;
   height: 100%;
