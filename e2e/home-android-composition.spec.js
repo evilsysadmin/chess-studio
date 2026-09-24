@@ -15,6 +15,7 @@ async function openHome(page) {
 }
 
 for (const viewport of [
+  { width: 430, height: 932, label: '430x932' },
   { width: 390, height: 844, label: '390x844' },
   { width: 360, height: 740, label: '360x740' },
 ]) {
@@ -83,9 +84,31 @@ for (const viewport of [
 
     const accountCenter = accountBox.x + accountBox.width / 2;
     expect(Math.abs(accountCenter - viewport.width / 2)).toBeLessThanOrEqual(3);
-    expect(accountBox.width).toBeLessThanOrEqual(38);
-    expect(feedbackBox.width).toBeLessThanOrEqual(32);
-    expect(releaseBox.width).toBeLessThanOrEqual(32);
+
+    for (const [label, box] of [
+      ['account', accountBox],
+      ['feedback', feedbackBox],
+      ['releases', releaseBox],
+    ]) {
+      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
+      expect(box.width, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
+      expect(box.height, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
+    }
+
+    const homeTargets = [
+      ...Object.entries(selectors)
+        .filter(([name]) => name !== 'utilities')
+        .map(([name, selector]) => [name, home.locator(selector)]),
+      ['dungeon', home.locator('.illustrated-home__dungeon-trigger')],
+    ];
+    for (const [label, target] of homeTargets) {
+      const box = await target.boundingBox();
+      expect(box, `${label}: touch box`).not.toBeNull();
+      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
+    }
+
     expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(feedbackBox.x + 1);
     expect(feedbackBox.x + feedbackBox.width).toBeLessThanOrEqual(viewport.width + 1);
 
