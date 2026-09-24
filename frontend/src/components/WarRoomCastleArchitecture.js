@@ -17,6 +17,25 @@ const CASTLE = Object.freeze({
 
 const WARM_FIRE_STATES = new WeakMap();
 
+const BOX_GEOMETRY_CACHES = new WeakMap();
+
+function sharedBoxGeometry(group, size) {
+  if (!group || !Array.isArray(size)) return new THREE.BoxGeometry(...size);
+  let cache = BOX_GEOMETRY_CACHES.get(group);
+  if (!cache) {
+    cache = new Map();
+    BOX_GEOMETRY_CACHES.set(group, cache);
+  }
+  const key = size.join('|');
+  let geometry = cache.get(key);
+  if (!geometry) {
+    geometry = new THREE.BoxGeometry(...size);
+    cache.set(key, geometry);
+  }
+  return geometry;
+}
+
+
 function material(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -42,7 +61,7 @@ function addMesh(group, geometry, mat, position, rotation = [0, 0, 0], name = ''
 }
 
 function addBox(group, size, mat, position, name = '') {
-  return addMesh(group, new THREE.BoxGeometry(...size), mat, position, [0, 0, 0], name);
+  return addMesh(group, sharedBoxGeometry(group, size), mat, position, [0, 0, 0], name);
 }
 
 function addTiledFloor(group, wallZ, towardBoard, coarsePointer) {
