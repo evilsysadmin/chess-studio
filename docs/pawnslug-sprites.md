@@ -219,7 +219,7 @@ La migración se hace por cortes pequeños y reversibles:
 4. migrar P99/SMG/shotgun/panzerfaust y bootstrap;
 5. retirar del camino activo la arqueología `v17..v23`; después aplicar el mismo contrato a enemigos.
 
-Los scripts históricos pueden permanecer temporalmente como fixtures/migradores, pero dejan de ser autoridades paralelas.
+Los scripts y assets históricos pueden permanecer temporalmente como fixtures/migradores/rollback, pero dejan de ser autoridades paralelas. Sus workflows especializados `*-v2` se retiran del CI activo: cambiar un derivador legacy no publica automáticamente runtime ni crea una segunda ruta de aceptación.
 
 Durante la migración, `scripts/art/migrate_matthias_legacy_bank.py` puede reconstruir filas concretas de un atlas legacy contra los anchors canónicos de P99. El migrador calcula por fila la altura corporal mediana, centro corporal y footline del banco de referencia, reescala cada frame mediante las primitivas fail-closed de Sprite Forge y rechaza clipping, huérfanos alpha o escalas fuera de un rango razonable. Es una herramienta de transición; no introduce rescale/repack en runtime y debe retirarse cuando los cuatro bancos estén ya en el compiler único.
 
