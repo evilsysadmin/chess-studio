@@ -3302,7 +3302,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "steam": material("HOME_MAT_steam", (0.62, 0.58, 0.52, 1), roughness=0.85, emission=(0.085, 0.078, 0.066, 1), emission_strength=0.05),
         "wall_banner": material(
             "HOME_MAT_wall_banner",
-            (0.056, 0.005, 0.007, 1),
+            (0.012, 0.012, 0.018, 1),
             roughness=0.95,
             bump_scale=22.0,
             bump_strength=0.055,
@@ -3350,8 +3350,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "piece_dark": material(
             "HOME_MAT_piece_dark",
-            (0.052, 0.040, 0.030, 1),
-            roughness=0.58,
+            (0.013, 0.013, 0.016, 1),
+            roughness=0.42,
             metallic=0.0,
             variation=0.045,
             variation_scale=6.4,
@@ -3368,8 +3368,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "piece_dark_alt": material(
             "HOME_MAT_piece_dark_alt",
-            (0.045, 0.034, 0.026, 1),
-            roughness=0.61,
+            (0.011, 0.011, 0.014, 1),
+            roughness=0.46,
             metallic=0.0,
             variation=0.042,
             variation_scale=6.6,
