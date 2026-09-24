@@ -4,6 +4,25 @@ import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
 
+
+const BOX_GEOMETRY_CACHES = new WeakMap();
+
+function sharedBoxGeometry(group, size) {
+  if (!group || !Array.isArray(size)) return new THREE.BoxGeometry(...size);
+  let cache = BOX_GEOMETRY_CACHES.get(group);
+  if (!cache) {
+    cache = new Map();
+    BOX_GEOMETRY_CACHES.set(group, cache);
+  }
+  const key = size.join('|');
+  let geometry = cache.get(key);
+  if (!geometry) {
+    geometry = new THREE.BoxGeometry(...size);
+    cache.set(key, geometry);
+  }
+  return geometry;
+}
+
 export function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
@@ -44,7 +63,7 @@ function addBox(group, size, color, position, options = {}) {
     transparent: options.opacity != null && options.opacity < 1,
     opacity: options.opacity ?? 1,
   });
-  const mesh = addMesh(group, new THREE.BoxGeometry(...size), material, position, options.rotation || [0, 0, 0]);
+  const mesh = addMesh(group, sharedBoxGeometry(group, size), material, position, options.rotation || [0, 0, 0]);
   mesh.castShadow = options.castShadow ?? true;
   mesh.receiveShadow = options.receiveShadow ?? true;
   return mesh;
