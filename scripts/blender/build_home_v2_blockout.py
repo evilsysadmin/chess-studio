@@ -12,6 +12,7 @@ import argparse
 import base64
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -723,7 +724,27 @@ def cube(name: str, location, scale, mat, *, bevel=0.0):
     return obj
 
 
-def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=48):
+_ANIMATED_DETAIL = re.compile(r"(flame|tongue|front_base|ember|_hot|steam|moon)", re.I)
+
+
+def _adaptive_sphere_detail(name: str, extent: float, thin: float = 1.0):
+    """Segments/rings scaled to the on-screen size: tiny studs must not cost 760 tris."""
+    if _ANIMATED_DETAIL.search(name):
+        return 40, 20
+    if extent >= 0.12 and thin < 0.03:
+        return 24, 8  # flattened decals (grime, mare): outline matters, poles do not
+    if extent < 0.06:
+        return 12, 6
+    if extent < 0.12:
+        return 16, 8
+    if extent < 0.30:
+        return 28, 14
+    return 40, 20
+
+
+def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=None):
+    if vertices is None:
+        vertices = 12 if radius < 0.04 else 20 if radius < 0.09 else 48
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
@@ -749,7 +770,8 @@ def rotate_group_about_z(prefix: str, origin_xy, angle_degrees: float) -> None:
 
 
 def sphere(name: str, location, scale, mat):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=20, location=location)
+    segments, rings = _adaptive_sphere_detail(name, max(abs(float(v)) for v in scale), min(abs(float(v)) for v in scale))
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
@@ -2435,7 +2457,7 @@ def add_armor(materials):
     # the same layered-plate-plus-trim technique as the table banner border,
     # reused here for the shield the armour was missing entirely.
     heraldry = materials["armor_gold"]
-    shield_scale = 1.5
+    shield_scale = 1.95
     S = shield_scale
     shield_x, shield_y, shield_z = wrists[-1][0] - 0.10, wrists[-1][1] - 0.10, wrists[-1][2] - 0.30
     # Big heater shield: rectangular upper field plus a pyramid point, heavy gold
@@ -3025,6 +3047,22 @@ def add_stairs(materials):
             (step_width - 0.020, 0.026 + _hash01(i, 4, 1061) * 0.006, 0.018),
             materials["stone_dark"],
             bevel=0.009,
+        )
+        # Oxblood runner down the flight with a brass nosing rod on every tread:
+        # it turns a plain stone ramp into a stair that leads somewhere.
+        cube(
+            f"HOME_PROP_dungeon_step_runner_{i}",
+            (x, y - 0.01, step_z + 0.080),
+            (0.25, step_depth * 0.86, 0.007),
+            materials["banner"],
+            bevel=0.004,
+        )
+        cube(
+            f"HOME_PROP_dungeon_step_rod_{i}",
+            (x, y - step_depth + 0.010, step_z + 0.094),
+            (0.30, 0.010, 0.010),
+            brass,
+            bevel=0.004,
         )
         if i in (1, 4, 7, 9):
             cube(
