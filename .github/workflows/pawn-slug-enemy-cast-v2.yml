@@ -7,12 +7,15 @@ on:
       - frontend/src/assets/r2-assets-manifest.json
       - scripts/art/build_pawn_slug_enemy_cast_v2.py
       - scripts/art/derive_pawn_slug_enemy_commando_v2.py
+      - scripts/art/test_pawn_slug_enemy_commando_v2.py
       - scripts/art/derive_pawn_slug_enemy_grenadier_v2.py
+      - scripts/art/test_pawn_slug_enemy_grenadier_v2.py
       - scripts/art/derive_pawn_slug_enemy_knight_v2.py
       - scripts/art/derive_pawn_slug_enemy_queen_v2.py
       - scripts/art/derive_pawn_slug_enemy_rook_v2.py
       - scripts/art/derive_pawn_slug_enemy_scout_v2.py
       - scripts/art/derive_pawn_slug_enemy_shield_v2.py
+      - scripts/art/test_pawn_slug_enemy_shield_v2.py
       - .github/workflows/pawn-slug-enemy-cast-v2.yml
   push:
     branches: [main]
@@ -41,6 +44,12 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check --no-deps \
             --only-binary=:all: 'Pillow==12.3.0'
+      - name: Validate derived enemy contracts
+        run: |
+          set -euo pipefail
+          python3 scripts/art/test_pawn_slug_enemy_commando_v2.py
+          python3 scripts/art/test_pawn_slug_enemy_grenadier_v2.py
+          python3 scripts/art/test_pawn_slug_enemy_shield_v2.py
       - name: Build deterministic 8-row enemy cast
         run: |
           set -euo pipefail
