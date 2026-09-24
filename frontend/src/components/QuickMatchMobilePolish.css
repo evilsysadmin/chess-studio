@@ -1,0 +1,75 @@
+/* Mobile quick match: preserve the current product flow, but make the
+ * default CPU path short, thumb-safe and visually dominant. */
+@media (max-width: 620px) {
+  .friendly-modal[aria-label="Configurar partida rápida"] {
+    width: calc(100vw - .7rem);
+    max-width: none !important;
+    max-height: calc(100dvh - .7rem);
+    padding: .82rem .78rem max(.82rem, env(safe-area-inset-bottom));
+    gap: .5rem;
+    overflow: auto;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] .piece-info-close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] .combat-heading-row h3 {
+    margin-block: .12rem;
+    font-size: 1.12rem;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] > .friendly-lead {
+    margin: .15rem 2.5rem .2rem 0;
+    font-size: .82rem;
+    line-height: 1.35;
+  }
+
+  .quick-match-cpu-choice {
+    min-height: 58px;
+    margin-top: .15rem;
+    touch-action: manipulation;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] > .friendly-main-cta {
+    min-height: 52px;
+    margin-top: .5rem;
+    font-size: 1rem;
+    touch-action: manipulation;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] .quick-match-pvp-link {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] .quick-match-settings {
+    margin-top: .4rem;
+  }
+
+  .friendly-modal[aria-label="Configurar partida rápida"] .quick-match-settings > summary,
+  .friendly-modal[aria-label="Configurar partida rápida"] .friendly-subdisclosure > summary {
+    min-height: 44px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  .quick-match-renderer-choice > button {
+    min-height: 44px !important;
+    min-width: 52px !important;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 390px) {
+  .friendly-modal[aria-label="Configurar partida rápida"] {
+    padding-inline: .68rem;
+  }
+
+  .quick-match-cpu-choice small {
+    line-height: 1.22;
+  }
+}
