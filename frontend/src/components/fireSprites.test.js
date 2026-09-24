@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
-import { WAR_ROOM_V2_FIRE_ANCHORS, installWarRoomV2FireSprites, installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
+import { WAR_ROOM_V2_FIRE_ANCHORS, hideBakedHearthFlames, installWarRoomV2FireSprites, installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
 
 describe('fireSprites', () => {
   it('seeds deterministically per salt inside the spread', () => {
@@ -68,5 +68,40 @@ describe('War Room fire sprites', () => {
     expect(points.material.uniforms.uBase.value.y).toBeCloseTo(1.45, 2);
     dispose();
     expect(parent.children.some((child) => child.isPoints)).toBe(false);
+  });
+});
+
+describe('baked hearth flames', () => {
+  const build = () => {
+    const root = new THREE.Group();
+    const anchor = new THREE.Object3D();
+    anchor.name = 'WR_ANCHOR_fireplace_practical';
+    anchor.position.set(-4.55, 1.92, -5.05);
+    root.add(anchor);
+    const mat = (name) => Object.assign(new THREE.MeshBasicMaterial(), { name });
+    const single = new THREE.Mesh(new THREE.BoxGeometry(), mat('WR_MAT_fire'));
+    single.position.set(-4.55, 1.36, -5.5);
+    const mixed = new THREE.Mesh(new THREE.BoxGeometry(), [mat('WR_MAT_stone'), mat('WR_MAT_fire')]);
+    mixed.position.set(-4.6, 1.5, -6);
+    const chandelier = new THREE.Mesh(new THREE.BoxGeometry(), mat('WR_MAT_fire_core'));
+    chandelier.position.set(-4.5, 6.7, -3);
+    const farCandle = new THREE.Mesh(new THREE.BoxGeometry(), mat('WR_MAT_fire_core'));
+    farCandle.position.set(2.9, 2.0, -5.7);
+    root.add(single, mixed, chandelier, farCandle);
+    return { root, anchor, single, mixed, chandelier, farCandle };
+  };
+
+  it('hides only the hearth flames and restores them', () => {
+    const { root, anchor, single, mixed, chandelier, farCandle } = build();
+    const original = mixed.material;
+    const restore = hideBakedHearthFlames(root, [anchor]);
+    expect(single.visible).toBe(false);
+    expect(mixed.material[0].visible).toBe(true);
+    expect(mixed.material[1].visible).toBe(false);
+    expect(chandelier.visible).toBe(true);
+    expect(farCandle.visible).toBe(true);
+    restore();
+    expect(single.visible).toBe(true);
+    expect(mixed.material).toBe(original);
   });
 });

@@ -473,7 +473,7 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
       emissive: index % 2 ? 0xff511a : 0xff7b22,
       emissiveIntensity: 2.05,
       clearcoat: 0.02,
-      opacity: 0.6,
+      opacity: 0,
       depthWrite: false,
     });
     const outer = addMesh(
@@ -494,7 +494,7 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
         emissive: 0xffa331,
         emissiveIntensity: 2.4,
         clearcoat: 0,
-        opacity: 0.88,
+        opacity: 0,
         depthWrite: false,
       });
       const inner = addMesh(
