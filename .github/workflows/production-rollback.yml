@@ -341,6 +341,14 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           path: rollback-source
 
+      - name: Apply current Pages SPA delivery guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f rollback-source/frontend/public/404.html
+          mkdir -p rollback-source/frontend/functions
+          cp frontend/functions/_middleware.js rollback-source/frontend/functions/_middleware.js
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
