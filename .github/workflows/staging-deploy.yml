@@ -99,6 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           converged=false
+          superseded_hint=false
           for attempt in {1..76}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
@@ -114,11 +115,22 @@ jobs:
               converged=true
               break
             fi
+            if (( attempt % 8 == 0 )); then
+              current_main="$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
+              if [[ "$current_main" =~ ^[0-9a-f]{40}$ && "$current_main" != "$DEPLOY_SHA" ]]; then
+                superseded_hint=true
+                echo "::notice title=OCI watcher superseded::$DEPLOY_SHA ya no es main ($current_main); se corta la espera antes del fallback."
+                break
+              fi
+            fi
             [[ "$attempt" -eq 76 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
+          echo "superseded_hint=$superseded_hint" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
             echo "::notice title=OCI zero-cost fast-path::La A1 aplicó $DEPLOY_SHA mediante el watcher saliente."
+          elif [[ "$superseded_hint" == true ]]; then
+            echo "::notice title=OCI watcher stale::La espera terminó pronto; el guard de fallback confirmará el main actual."
           else
             echo "::warning title=OCI fallback::El watcher no convergió; se usa un único Run Command de deploy."
           fi
