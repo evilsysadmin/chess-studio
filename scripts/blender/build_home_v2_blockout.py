@@ -1307,23 +1307,24 @@ def add_knight_statuette(prefix, cx, cy, base_z, height, materials):
 
 
 def add_library_sconces(materials):
-    """Two brass candle sconces on the bookcase's outer posts: the room's visible reading light."""
+    """Two brass candle sconces on the bookcase posts, projecting into the room: the
+    library's visible reading light. They stand in front of the post column, so they
+    never cover a book (the first pass hid them behind the post's front face)."""
     brass = materials["brass"]
     dark_brass = materials["brass_dark"]
-    for idx, (post_x, out) in enumerate(((-4.10, -1), (-1.20, 1))):
-        y, z = 5.92, 3.45
-        cx = post_x + out * 0.24
-        cube(f"HOME_PROP_library_sconce_plate_{idx}", (post_x + out * 0.02, y, z), (0.03, 0.06, 0.15), dark_brass, bevel=0.010)
+    for idx, post_x in enumerate((-3.99, -1.31)):
+        z = 3.62
+        cube(f"HOME_PROP_library_sconce_plate_{idx}", (post_x, 5.755, z), (0.05, 0.02, 0.16), dark_brass, bevel=0.010)
         curve_tube(
             f"HOME_PROP_library_sconce_arm_{idx}",
-            [(post_x + out * 0.03, y, z - 0.02), (post_x + out * 0.13, y, z - 0.07), (cx, y, z - 0.04)],
+            [(post_x, 5.74, z - 0.02), (post_x, 5.62, z - 0.07), (post_x, 5.50, z - 0.04)],
             0.016,
             brass,
         )
-        cylinder(f"HOME_PROP_library_sconce_cup_{idx}", (cx, y, z - 0.02), 0.052, 0.03, brass, vertices=18)
-        cylinder(f"HOME_PROP_library_sconce_candle_{idx}", (cx, y, z + 0.105), 0.028, 0.20, materials["wax"], vertices=14)
-        cone(f"HOME_PROP_library_sconce_candle_flame_{idx}", (cx, y, z + 0.245), 0.028, 0.005, 0.10, materials["fire_hot"], vertices=12)
-        add_point_light(f"HOME_LIGHT_library_sconce_{idx}", (cx, y - 0.16, z + 0.30), 70, (1.0, 0.48, 0.20), radius=0.26)
+        cylinder(f"HOME_PROP_library_sconce_cup_{idx}", (post_x, 5.50, z - 0.02), 0.052, 0.03, brass, vertices=18)
+        cylinder(f"HOME_PROP_library_sconce_candle_{idx}", (post_x, 5.50, z + 0.105), 0.028, 0.20, materials["wax"], vertices=14)
+        cone(f"HOME_PROP_library_sconce_candle_flame_{idx}", (post_x, 5.50, z + 0.245), 0.028, 0.005, 0.10, materials["fire_hot"], vertices=12)
+        add_point_light(f"HOME_LIGHT_library_sconce_{idx}", (post_x, 5.36, z + 0.30), 70, (1.0, 0.48, 0.20), radius=0.26)
 
 
 def add_stair_lantern(idx, px, py, pz, materials):
