@@ -25,6 +25,7 @@ INVENTORY = {
     'chronicles-party-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'cicd.yml': 'quality-required',
+    'security-llm-lab.yml': 'security-experimental',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
