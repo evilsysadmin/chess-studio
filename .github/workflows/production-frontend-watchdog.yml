@@ -1,0 +1,183 @@
+name: Production · frontend watchdog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/production-frontend-watchdog.yml
+      - scripts/production_frontend_health.py
+      - scripts/cloudflare_production_pages.py
+      - frontend/public/_headers
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_repair:
+        description: Fuerza redeploy + purge del SHA que producción sirve ahora
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-production-promote
+  cancel-in-progress: false
+
+env:
+  PRODUCTION_URL: https://chess-studio.shadowops.dpdns.org
+  PRODUCTION_API_URL: https://api.chess-studio.shadowops.dpdns.org/api
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  watchdog:
+    name: Public frontend health + bounded self-heal
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout watchdog orchestrator
+        uses: actions/checkout@v7
+
+      - name: Validate watchdog probe
+        run: python3 -S scripts/production_frontend_health.py --self-test
+
+      - name: Probe public production frontend
+        id: probe
+        shell: bash
+        env:
+          FORCE_REPAIR: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.force_repair) }}
+        run: |
+          set -euo pipefail
+          if [[ "$FORCE_REPAIR" == true ]]; then
+            echo 'needs_repair=true' >> "$GITHUB_OUTPUT"
+            echo '::warning title=Forced production frontend repair::P0 rollout/manual request forces exact-SHA redeploy + cache purge.'
+            exit 0
+          fi
+
+          if python3 scripts/production_frontend_health.py             --base-url "$PRODUCTION_URL"             --attempts 2             --poll-seconds 3; then
+            echo 'needs_repair=false' >> "$GITHUB_OUTPUT"
+            echo 'Production frontend healthy; no mutation.'
+          else
+            echo 'needs_repair=true' >> "$GITHUB_OUTPUT"
+            echo '::error title=Production frontend unhealthy::Activating bounded exact-SHA Pages self-heal.'
+          fi
+
+      - name: Resolve authoritative production SHA
+        if: steps.probe.outputs.needs_repair == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/production-release.json"
+          status="$(curl --silent --show-error --connect-timeout 5 --max-time 15             --output "$body" --write-out '%{http_code}'             -H 'Accept: application/json' -H 'Cache-Control: no-cache, no-store'             "$PRODUCTION_API_URL/release" || true)"
+          [[ "$status" == 200 ]] || {
+            echo "::error::No puedo resolver el SHA autoritativo de producción (HTTP ${status:-curl-error})."
+            exit 1
+          }
+          sha="$(python3 - "$body" <<'PY'
+          import json, pathlib, re, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          sha = str(payload.get('build') or '').strip().lower()
+          if not re.fullmatch(r'[0-9a-f]{40}', sha):
+              raise SystemExit(f'production release build inválido: {sha!r}')
+          print(sha)
+          PY
+          )"
+          echo "DEPLOY_SHA=$sha" >> "$GITHUB_ENV"
+          echo "Repair authority: production backend currently serves $sha"
+
+      - name: Checkout exact production frontend source
+        if: steps.probe.outputs.needs_repair == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          path: repair-source
+
+      - name: Setup Node.js
+        if: steps.probe.outputs.needs_repair == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: repair-source/frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        if: steps.probe.outputs.needs_repair == 'true'
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: repair-source/frontend
+          lockfile: repair-source/frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore pinned Wrangler toolchain
+        if: steps.probe.outputs.needs_repair == 'true'
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
+
+      - name: Build exact production SHA
+        if: steps.probe.outputs.needs_repair == 'true'
+        working-directory: repair-source/frontend
+        env:
+          VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
+          VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Verify rebuilt artifact identity
+        if: steps.probe.outputs.needs_repair == 'true'
+        shell: bash
+        run: |
+          python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('repair-source/frontend/dist/release.json').read_text(encoding='utf-8'))
+          expected = sys.argv[1].lower()
+          actual = str(payload.get('build') or '').lower()
+          raise SystemExit(0 if actual == expected else f'rebuilt frontend={actual!r}, expected={expected}')
+          PY
+
+      - name: Prepare production Pages project
+        if: steps.probe.outputs.needs_repair == 'true'
+        run: python3 scripts/cloudflare_production_pages.py prepare
+
+      - name: Redeploy exact production frontend
+        if: steps.probe.outputs.needs_repair == 'true'
+        working-directory: repair-source/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$WRANGLER_BIN" pages deploy dist             --project-name chess-studio-production             --branch main             --commit-hash "$DEPLOY_SHA"             --commit-dirty=false
+
+      - name: Reconcile domain + purge mutable production HTML
+        if: steps.probe.outputs.needs_repair == 'true'
+        run: python3 scripts/cloudflare_production_pages.py activate
+
+      - name: Prove public frontend recovered exact SHA
+        if: steps.probe.outputs.needs_repair == 'true'
+        run: >-
+          python3 scripts/production_frontend_health.py
+          --base-url "$PRODUCTION_URL"
+          --expected-sha "$DEPLOY_SHA"
+          --attempts 30
+          --poll-seconds 2
+
+      - name: Watchdog summary
+        shell: bash
+        run: |
+          {
+            echo '### Production frontend watchdog'
+            echo "- Repair requested: ${{ steps.probe.outputs.needs_repair }}"
+            if [[ "${{ steps.probe.outputs.needs_repair }}" == true ]]; then
+              echo "- Exact SHA: $DEPLOY_SHA"
+              echo '- Action: rebuild exact SHA -> Pages deploy -> custom-domain reconcile -> HTML purge -> public proof'
+            else
+              echo '- Action: none'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
