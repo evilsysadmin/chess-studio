@@ -145,9 +145,8 @@
     border: 2px solid rgba(255, 196, 100, .75);
     border-radius: 50%;
     pointer-events: none;
-    opacity: 0;
-    transform: scale(.7);
-    animation: home-beacon-ring 3s ease-out var(--beacon-delay) infinite;
+    opacity: .5;
+    transform: scale(1.25);
   }
 
   @keyframes home-beacon-ring {
@@ -200,8 +199,8 @@
     margin: -3.1cqw 0 0 -8.5cqw;
     border-radius: 50%;
     pointer-events: none;
+    opacity: .85;
     background: radial-gradient(ellipse at center, rgba(255, 196, 96, .42) 0%, rgba(214, 128, 40, .16) 48%, transparent 74%);
-    animation: home-play-breathe 3.6s ease-in-out infinite;
   }
 
   @keyframes home-play-breathe {
@@ -209,35 +208,25 @@
     50% { opacity: 1; transform: scale(1.09); }
   }
 
-  /* ---- Software rendering: the scene already turns its own motion off
-   * (data-home-fire-motion="off-software"); the beacon pulses follow it, so a
-   * machine that cannot afford WebGL animation is not also asked to animate DOM. */
-  @supports selector(:has(*)) {
-    .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='off-software'])
-      .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
-      animation: none;
-      opacity: .5;
-      transform: scale(1.25);
-    }
+  /* ---- Motion is opt-in ------------------------------------------------------
+   * The pulses are infinite animations, and on a machine that rasterises WebGL in
+   * software they compete with the scene for the same CPU (CI e2e timed out). So the
+   * rest state is a static ring and glow, and the pulses only run once the scene has
+   * declared a real GPU (data-home-fire-motion="live") and the user has not asked for
+   * reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports selector(:has(*)) {
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live'])
+        .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
+        opacity: 0;
+        transform: scale(.7);
+        animation: home-beacon-ring 3s ease-out var(--beacon-delay) infinite;
+      }
 
-    .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='off-software'])
-      .illustrated-home__destination--play::after {
-      animation: none;
-      opacity: .85;
-    }
-  }
-
-  /* ---- Reduced motion: keep the signal, drop the pulse ---------------------- */
-  @media (prefers-reduced-motion: reduce) {
-    .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
-      animation: none;
-      opacity: .5;
-      transform: scale(1.25);
-    }
-
-    .illustrated-home .illustrated-home__destination--play::after {
-      animation: none;
-      opacity: .85;
+      .illustrated-home__stage:has(.illustrated-home__castle-3d[data-home-fire-motion='live'])
+        .illustrated-home__destination--play::after {
+        animation: home-play-breathe 3.6s ease-in-out infinite;
+      }
     }
   }
 }
