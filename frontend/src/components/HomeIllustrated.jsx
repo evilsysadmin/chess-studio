@@ -44,6 +44,7 @@ function currentReducedMotion() {
 
 export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
@@ -211,6 +212,47 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </Fragment>
           ))}
         </nav>
+        {/* Collapsed by default so it never competes with the scene; the chips are
+            the same actions as the destination buttons, JUGAR/CONTINUAR first. Hovering
+            or focusing a chip highlights the matching prop in the room. */}
+        <div className={`illustrated-home__quickbar${quickOpen ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className="illustrated-home__quickbar-toggle"
+            aria-expanded={quickOpen}
+            aria-controls="illustrated-home-quickbar"
+            onClick={() => setQuickOpen((open) => !open)}
+            onKeyDown={(event) => { if (event.key === 'Escape') setQuickOpen(false); }}
+          >
+            <span>Accesos rápidos</span>
+            <i aria-hidden="true">{quickOpen ? '▴' : '▾'}</i>
+          </button>
+          {quickOpen && (
+            <nav
+              id="illustrated-home-quickbar"
+              className="illustrated-home__quickbar-list"
+              aria-label="Accesos rápidos"
+              onKeyDown={(event) => { if (event.key === 'Escape') setQuickOpen(false); }}
+            >
+              {[rooms[5], rooms[0], rooms[1], rooms[2], rooms[3], rooms[4]].map(([id, title, , Icon, action]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${activeRoom === id ? ' is-active' : ''}`}
+                  onClick={() => { setQuickOpen(false); action(); }}
+                  onPointerEnter={() => setActiveRoom(id)}
+                  onPointerLeave={() => setActiveRoom(null)}
+                  onFocus={() => setActiveRoom(id)}
+                  onBlur={() => setActiveRoom(null)}
+                  disabled={loading}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{title}</span>
+                </button>
+              ))}
+            </nav>
+          )}
+        </div>
         <button
           className="illustrated-home__pawn-slug"
           type="button"

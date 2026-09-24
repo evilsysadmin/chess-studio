@@ -1,6 +1,13 @@
-/* Diegetic destination plaques (desktop, fine pointer).
+/* Diegetic destination controls (desktop, fine pointer).
  *
- * The destination labels used to be bare text floating over a busy scene, so
+ * Rest state: the scene stays clean. Each secondary destination is a small brass
+ * beacon (its icon in a medallion with a soft pulsing ring) sitting on its object;
+ * JUGAR / CONTINUAR is the one large call to action on the table banner. The name
+ * and detail appear on a nameplate only on hover / keyboard focus / quick-bar
+ * highlight. The quick-access bar (top centre, collapsed by default) repeats every
+ * action as real buttons for discoverability, keyboard and screen readers.
+ *
+ * Originally the labels were bare text floating over a busy scene, so
  * they read as a caption instead of a control and lost contrast over books,
  * fire and armour. Each one now sits on a small wood-and-brass plaque, like a
  * nameplate screwed to the hall. The button keeps its canonical hit box and
@@ -38,10 +45,10 @@
     box-sizing: border-box;
     border: 1px solid rgba(218, 166, 78, .58);
     border-radius: .32cqw;
-    opacity: .94;
+    opacity: 0;
     pointer-events: none;
     filter: none;
-    transform: none;
+    transform: scale(.94);
     background:
       radial-gradient(circle at .42cqw .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
       radial-gradient(circle at calc(100% - .42cqw) .42cqw, #e9bd6c 0 .13cqw, transparent .16cqw),
@@ -52,11 +59,12 @@
       inset 0 .1cqw 0 rgba(255, 226, 160, .20),
       inset 0 0 0 .2cqw rgba(0, 0, 0, .34),
       0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
-    transition: border-color .18s ease, box-shadow .22s ease, opacity .18s ease;
+    transition: border-color .18s ease, box-shadow .22s ease, opacity .18s ease, transform .2s ease;
   }
 
   .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play):is(:hover, :focus-visible, .is-active)::before {
     opacity: 1;
+    transform: scale(1);
     border-color: rgba(255, 213, 138, .95);
     box-shadow:
       inset 0 .1cqw 0 rgba(255, 236, 190, .34),
@@ -102,5 +110,233 @@
       inset 0 0 0 .2cqw rgba(0, 0, 0, .28),
       0 0 1.5cqw rgba(255, 165, 55, .50),
       0 .45cqw 1.1cqw rgba(0, 0, 0, .58);
+  }
+
+  /* ---- Rest state: beacons -------------------------------------------------- */
+  .illustrated-home .illustrated-home__destination--tournament { --beacon-x: 7.62cqw; --beacon-y: 5.06cqw; --beacon-delay: 0s; }
+  .illustrated-home .illustrated-home__destination--train { --beacon-x: 5.59cqw; --beacon-y: 3.52cqw; --beacon-delay: .55s; }
+  .illustrated-home .illustrated-home__destination--combat { --beacon-x: 7.78cqw; --beacon-y: 6.5cqw; --beacon-delay: 1.1s; }
+  .illustrated-home .illustrated-home__destination--daily { --beacon-x: 7.14cqw; --beacon-y: 3.52cqw; --beacon-delay: 1.65s; }
+  .illustrated-home .illustrated-home__destination--history { --beacon-x: 2.77cqw; --beacon-y: 1.76cqw; --beacon-delay: 2.2s; }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play) > svg {
+    box-sizing: border-box;
+    padding: 7px;
+    border-radius: 50%;
+    color: #ffe4a6;
+    background: radial-gradient(circle at 34% 28%, #7a4a22 0%, #2f190b 78%);
+    border: 1px solid rgba(240, 190, 98, .85);
+    box-shadow: 0 0 .9cqw rgba(255, 176, 66, .55), inset 0 0 0 1px rgba(0, 0, 0, .4);
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
+    width: max(2.6cqw, 40px);
+    height: max(2.6cqw, 40px);
+    left: calc(var(--beacon-x) - max(1.3cqw, 20px));
+    top: calc(var(--beacon-y) - max(1.3cqw, 20px));
+    border: 2px solid rgba(255, 196, 100, .75);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(.7);
+    animation: home-beacon-ring 3s ease-out var(--beacon-delay) infinite;
+  }
+
+  @keyframes home-beacon-ring {
+    0% { opacity: .75; transform: scale(.72); }
+    70% { opacity: 0; transform: scale(1.75); }
+    100% { opacity: 0; transform: scale(1.75); }
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play):is(:hover, :focus-visible, .is-active) > svg {
+    border-color: #ffd58a;
+    box-shadow: 0 0 1.4cqw rgba(255, 180, 70, .85), inset 0 0 0 1px rgba(0, 0, 0, .4);
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play):is(:hover, :focus-visible, .is-active)::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Names live on the plaque and only show on interaction. They stay in the DOM
+   * (and in the accessibility tree), so the buttons keep their accessible names. */
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play):not(:hover):not(:focus-visible):not(.is-active) > :is(strong, span) {
+    opacity: 0 !important;
+    transform: translateY(.3cqw) !important;
+  }
+
+  .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play) > i {
+    opacity: 0 !important;
+  }
+
+  /* ---- JUGAR / CONTINUAR: the one big call to action ------------------------- */
+  .illustrated-home .illustrated-home__destination--play {
+    isolation: isolate;
+  }
+
+  .illustrated-home .illustrated-home__destination--play > strong {
+    font-size: max(34px, 3.3cqw) !important;
+    letter-spacing: .07em;
+    color: #fff1c4;
+    text-shadow: 0 2px 6px #080401, 0 0 1.4cqw rgba(255, 186, 84, .7);
+  }
+
+  .illustrated-home .illustrated-home__destination--play::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 4.4cqw;
+    width: 17cqw;
+    height: 6.2cqw;
+    margin: -3.1cqw 0 0 -8.5cqw;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255, 196, 96, .42) 0%, rgba(214, 128, 40, .16) 48%, transparent 74%);
+    animation: home-play-breathe 3.6s ease-in-out infinite;
+  }
+
+  @keyframes home-play-breathe {
+    0%, 100% { opacity: .6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.09); }
+  }
+
+  /* ---- Reduced motion: keep the signal, drop the pulse ---------------------- */
+  @media (prefers-reduced-motion: reduce) {
+    .illustrated-home .illustrated-home__destination:not(.illustrated-home__destination--play)::after {
+      animation: none;
+      opacity: .5;
+      transform: scale(1.25);
+    }
+
+    .illustrated-home .illustrated-home__destination--play::after {
+      animation: none;
+      opacity: .85;
+    }
+  }
+}
+
+/* ---- Quick-access bar (any viewport >= 1000px, collapsed by default) --------- */
+.illustrated-home__quickbar {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .illustrated-home__quickbar {
+    display: block;
+    position: absolute;
+    z-index: 14;
+    top: max(.9cqw, 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .illustrated-home__quickbar-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .5cqw;
+    padding: .42cqw 1cqw;
+    border: 1px solid rgba(218, 166, 78, .6);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(58, 33, 16, .92), rgba(24, 13, 7, .94));
+    color: #f3d9a0;
+    font: 600 max(12px, .8cqw)/1 Georgia, serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 226, 160, .18), 0 .3cqw .9cqw rgba(0, 0, 0, .5);
+    transition: border-color .18s ease, box-shadow .22s ease;
+  }
+
+  .illustrated-home__quickbar-toggle:is(:hover, :focus-visible),
+  .illustrated-home__quickbar.is-open .illustrated-home__quickbar-toggle {
+    border-color: rgba(255, 213, 138, .95);
+    box-shadow: inset 0 1px 0 rgba(255, 236, 190, .3), 0 0 1.2cqw rgba(255, 165, 55, .45), 0 .3cqw .9cqw rgba(0, 0, 0, .5);
+  }
+
+  .illustrated-home__quickbar-toggle i {
+    font-style: normal;
+    font-size: .9em;
+    color: #d9b165;
+  }
+
+  .illustrated-home__quickbar-list {
+    position: absolute;
+    top: calc(100% + .5cqw);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .45cqw;
+    width: max-content;
+    max-width: 90cqw;
+    padding: .55cqw;
+    border: 1px solid rgba(218, 166, 78, .55);
+    border-radius: .6cqw;
+    background: linear-gradient(180deg, rgba(48, 27, 13, .95), rgba(20, 11, 6, .96));
+    box-shadow: inset 0 1px 0 rgba(255, 226, 160, .16), 0 .6cqw 1.6cqw rgba(0, 0, 0, .6);
+    animation: home-quickbar-in .18s ease-out;
+  }
+
+  .illustrated-home__quickbar-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45cqw;
+    padding: .45cqw .8cqw;
+    border: 1px solid rgba(218, 166, 78, .4);
+    border-radius: .4cqw;
+    background: rgba(255, 220, 150, .05);
+    color: #f0d9a8;
+    font: 600 max(11px, .72cqw)/1 Georgia, serif;
+    letter-spacing: .07em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease, box-shadow .2s ease;
+  }
+
+  .illustrated-home__quickbar-chip svg {
+    width: max(15px, 1.05cqw);
+    height: max(15px, 1.05cqw);
+    color: #e6bf70;
+  }
+
+  .illustrated-home__quickbar-chip:is(:hover, :focus-visible, .is-active) {
+    border-color: rgba(255, 213, 138, .95);
+    background: rgba(255, 200, 110, .16);
+    box-shadow: 0 0 1cqw rgba(255, 165, 55, .4);
+  }
+
+  .illustrated-home__quickbar-chip--play {
+    border-color: rgba(255, 213, 138, .9);
+    background: linear-gradient(180deg, #d9a244, #a36a1c);
+    color: #26140a;
+  }
+
+  .illustrated-home__quickbar-chip--play svg {
+    color: #26140a;
+  }
+
+  .illustrated-home__quickbar-chip:disabled {
+    opacity: .55;
+    cursor: default;
+  }
+
+  @keyframes home-quickbar-in {
+    from { opacity: 0; transform: translate(-50%, -.4cqw); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .illustrated-home__quickbar-list { animation: none; }
   }
 }
