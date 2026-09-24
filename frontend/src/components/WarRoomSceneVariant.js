@@ -9,6 +9,13 @@ export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
 }
 
+export function warRoomVariantShellCoarsePointer({
+  renderLite = false,
+  coarsePointer = globalThis.matchMedia?.('(pointer: coarse)')?.matches || false,
+} = {}) {
+  return Boolean(renderLite || coarsePointer);
+}
+
 function setClassicShellVisible(objects, visible) {
   for (const object of objects || []) {
     if (object) object.visible = visible;
@@ -48,10 +55,11 @@ export function startWarRoomVariantScene({
   scene.userData.warRoomRenderedVariant = `${variant}-loading`;
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
+  const shellCoarsePointer = warRoomVariantShellCoarsePointer({ renderLite });
   void loadWarRoomVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
-      coarsePointer: renderLite,
+      coarsePointer: shellCoarsePointer,
       onRefine: onPaint,
     }))
     .then((release) => {

@@ -3,6 +3,8 @@ import {
   configureWarRoomBlenderLoader,
   createWarRoomBlenderVariantShell,
   scheduleWarRoomAfterFirstPaint,
+  selectWarRoomBlenderShadowCasters,
+  WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT,
   warRoomBlenderPracticalLightProfile,
 } from './WarRoomBlenderShellRuntime.js';
 
@@ -89,6 +91,33 @@ describe('War Room shared Blender runtime', () => {
     release();
     frame();
     expect(refinements).toBe(0);
+  });
+
+  it('caps decorative Blender-shell shadow casters and prioritizes useful nearby geometry', () => {
+    const makeMesh = ({ x, y = 1, z = 0, radius = 0.5, opacity = 1 } = {}) => ({
+      isMesh: true,
+      geometry: { boundingSphere: { radius } },
+      material: { transparent: opacity < 1, opacity },
+      getWorldPosition(target) {
+        target.set(x, y, z);
+        return target;
+      },
+      getWorldScale(target) {
+        target.set(1, 1, 1);
+        return target;
+      },
+    });
+    const meshes = Array.from({ length: 64 }, (_, index) => makeMesh({
+      x: index * 0.45,
+      radius: index === 0 ? 1.1 : 0.45,
+    }));
+
+    const selected = selectWarRoomBlenderShadowCasters(meshes);
+    expect(WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT).toBe(32);
+    expect(selected).toHaveLength(32);
+    expect(selected).toContain(meshes[0]);
+    expect(selected).not.toContain(meshes[63]);
+    expect(selectWarRoomBlenderShadowCasters(meshes, { limit: 0 })).toEqual([]);
   });
 
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
