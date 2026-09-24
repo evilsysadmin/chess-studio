@@ -135,7 +135,7 @@ def wait_healthy(
 def self_test() -> None:
     good_html = b"""<!doctype html><html><head><link rel="stylesheet" href="/assets/app-a.css"></head>
     <body><div id="root"></div><script type="module" src="/assets/app-a.js"></script></body></html>"""
-    bad_html = b"<!doctype html><title>404 Â· Chess Studio</title><p>Recurso no encontrado.</p>"
+    bad_html = "<!doctype html><title>404 · Chess Studio</title><p>Recurso no encontrado.</p>".encode("utf-8")
     assert root_problem(200, "text/html", good_html, "https://example.test") is None
     assert "404 de emergencia" in str(root_problem(200, "text/html", bad_html, "https://example.test"))
     assert "HTTP 404" in str(root_problem(404, "text/html", bad_html, "https://example.test"))
