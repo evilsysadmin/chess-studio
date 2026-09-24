@@ -20,7 +20,11 @@ PRODUCER_ORDER = (
     "chronicles-tactics",
     "chronicles-gameplay",
     "chronicles-avatar",
-    "training",
+    "training-school",
+    "training-openings",
+    "training-puzzles",
+    "training-tournament",
+    "training-progress",
     "warroom-core",
     "warroom-decor",
     "warroom-armor",
@@ -44,11 +48,18 @@ WARROOM_VARIANT_CORE_FILES = {
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
 CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
-TRAINING_VISUAL_SURFACES = {
-    "frontend/src/components/puzzlescreen.jsx",
-    "frontend/src/components/puzzlemobilepolish.css",
-    "frontend/src/components/tournamentscreen.jsx",
-    "frontend/src/components/tournamentmobilepolish.css",
+TRAINING_ALL = {
+    "training-school",
+    "training-openings",
+    "training-puzzles",
+    "training-tournament",
+    "training-progress",
+}
+TRAINING_EXACT_PRODUCERS = {
+    "frontend/src/components/puzzlescreen.jsx": {"training-puzzles"},
+    "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
+    "frontend/src/components/tournamentscreen.jsx": {"training-tournament"},
+    "frontend/src/components/tournamentmobilepolish.css": {"training-tournament"},
 }
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -83,7 +94,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
-        "training-visual-artifact.spec.js": {"training"},
+        "training-visual-artifact.spec.js": set(TRAINING_ALL),
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
@@ -172,8 +183,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
-    if lower in TRAINING_VISUAL_SURFACES:
-        return {"training"}
+    if lower in TRAINING_EXACT_PRODUCERS:
+        return set(TRAINING_EXACT_PRODUCERS[lower])
 
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
@@ -200,7 +211,7 @@ def classify_path(path: str) -> set[str] | None:
         # Class Room renders through Board3D too. Shared Board3D changes must
         # therefore produce both training proof and the existing War Room proof.
         if "board3d" in lower:
-            return {"training", *WARROOM_RENDERER_SHARED}
+            return {"training-school", *WARROOM_RENDERER_SHARED}
         if any(token in lower for token in ("warroom3d", "gameboardview", "game3d")):
             return set(WARROOM_RENDERER_SHARED)
         if "armor" in lower or "armour" in lower:
@@ -222,11 +233,20 @@ def classify_path(path: str) -> set[str] | None:
     if "matthias" in lower and "school" not in lower:
         return {"home-matthias", "warroom-core"}
 
-    if any(token in lower for token in (
-        "training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen",
-        "insights", "career-dossier", "careerscreen", "rivalrydossier",
-    )):
-        return {"training"}
+    if "openingsscreen" in lower:
+        return {"training-openings"}
+    if any(token in lower for token in ("puzzle", "puzzles")):
+        return {"training-puzzles"}
+    if "tournament" in lower:
+        return {"training-tournament"}
+    if any(token in lower for token in ("insights", "career-dossier", "careerscreen", "rivalrydossier")):
+        return {"training-progress"}
+    if any(token in lower for token in ("tutorial", "glossary", "school", "mechanic-library")):
+        return {"training-school"}
+    if "training" in lower:
+        # Generic/shared training code may affect several destinations. Keep the
+        # fallback fail-closed while still letting well-owned surfaces stay cheap.
+        return set(TRAINING_ALL)
 
     return None
 
@@ -258,9 +278,17 @@ def self_test() -> None:
     assert classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
+    ]) == "training-puzzles"
+    assert classify([
         "frontend/src/components/TournamentScreen.jsx",
         "frontend/src/components/TournamentMobilePolish.css",
-    ]) == "training"
+    ]) == "training-tournament"
+    assert classify(["frontend/src/components/OpeningsScreen.jsx"]) == "training-openings"
+    assert classify(["frontend/src/components/CareerScreen.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/MatthiasSchool.jsx"]) == "training-school"
+    assert classify(["e2e/training-visual-artifact.spec.js"]) == (
+        "training-school,training-openings,training-puzzles,training-tournament,training-progress"
+    )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
@@ -279,8 +307,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
-    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training,warroom-core,warroom-hans"
-    assert classify(["frontend/src/components/Board3DScene.js"]) == "training,warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training-school,warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/Board3DScene.js"]) == "training-school,warroom-core,warroom-hans"
     assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core,warroom-hans"
     assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core,warroom-hans"
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
