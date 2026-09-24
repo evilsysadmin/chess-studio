@@ -2229,18 +2229,27 @@ def add_banner(name: str, x: float, materials):
             materials["brass_dark"],
         )
 
+    # The same clean gilt knight as the JUGAR medallion and the rug, facing the room's centre,
+    # over a dark under-layer so it stands off the cloth. (The earlier sphere-and-cone "horse"
+    # did not read as a horse.)
     relief_y = 5.73
-    sphere(f"HOME_PROP_banner_horse_head_{name}", (x - 0.06, relief_y, 4.77), (0.20, 0.040, 0.17), gold)
-    cube(f"HOME_PROP_banner_horse_muzzle_{name}", (x - 0.19, relief_y, 4.72), (0.09, 0.028, 0.045), gold, bevel=0.018)
-    curve_tube(
-        f"HOME_PROP_banner_horse_neck_{name}",
-        [(x + 0.01, relief_y, 4.69), (x + 0.10, relief_y, 4.48), (x + 0.04, relief_y, 4.29)],
-        0.070,
-        gold,
-    )
-    cone(f"HOME_PROP_banner_horse_ear_{name}", (x - 0.09, relief_y, 4.95), 0.045, 0.012, 0.18, gold, vertices=12)
-    for idx, (mx, mz) in enumerate(((x + 0.01, 4.82), (x + 0.06, 4.68), (x + 0.09, 4.54))):
-        cone(f"HOME_PROP_banner_horse_mane_{name}_{idx}", (mx, relief_y, mz), 0.040, 0.008, 0.12, gold, vertices=10)
+    scale = 1.02
+    facing = 1.0 if x >= 0.0 else -1.0
+    smooth = _smooth_closed(list(KNIGHT_SILHOUETTE))
+
+    def emblem(grow, y, depth, mat, tag):
+        flat_panel(
+            f"HOME_PROP_banner_knight_{tag}_{name}",
+            [(x + facing * (u + 0.067) * scale * grow, 3.98 + (v - 0.12) * scale * grow - (grow - 1.0) * 0.30) for u, v in smooth],
+            y,
+            depth,
+            mat,
+            bevel=0.008,
+        )
+
+    emblem(1.08, relief_y + 0.006, 0.030, materials["velvet_dark"], "shadow")
+    emblem(1.0, relief_y, 0.036, gold, "gold")
+    cube(f"HOME_PROP_banner_knight_base_{name}", (x, relief_y - 0.004, 3.945), (0.26, 0.020, 0.018), gold, bevel=0.006)
     cube(f"HOME_PROP_banner_mark_v_{name}", (x, relief_y, 3.84), (0.035, 0.022, 0.18), gold, bevel=0.01)
     cube(f"HOME_PROP_banner_mark_h_{name}", (x, relief_y, 3.91), (0.12, 0.022, 0.035), gold, bevel=0.01)
 
