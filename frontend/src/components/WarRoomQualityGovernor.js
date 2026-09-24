@@ -2,9 +2,7 @@
 // build time from touch / software rendering, and at runtime could shave the pixel ratio a
 // little (never below 0.9 on desktop). A slow desktop GPU therefore kept every effect.
 // The governor watches contiguous frame cadence and tightens full -> reduced -> lite;
-// it never loosens, so a hot device does not flap between tiers.
-export const WAR_ROOM_QUALITY_TIERS = Object.freeze(['full', 'reduced', 'lite']);
-
+// it never loosens, so a hot device does not flap between tiers. Tiers: full, reduced, lite.
 const PROFILES = Object.freeze({
   desktop: Object.freeze({
     warmup: 45, sample: 90, slowMs: 26, slowRatio: 0.30,
