@@ -110,6 +110,13 @@
 
 @media (max-width: 999px) {
   .illustrated-home__matthias .home-matthias-3d { display: block; }
+
+  /* Chromium's software compositor can flatten a filtered transparent WebGL
+     canvas onto an opaque rectangle. The GL scene already owns its contact
+     shadow, so mobile does not need a second CSS drop-shadow layer. */
+  .illustrated-home__matthias .home-matthias-3d canvas {
+    filter: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

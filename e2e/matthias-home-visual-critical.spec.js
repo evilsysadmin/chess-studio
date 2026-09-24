@@ -236,6 +236,7 @@ test('Home canónica · móvil usa la escena a pantalla completa sin cementerio 
   expect(stageBox.height).toBeGreaterThanOrEqual(842);
   expect(artBox.height).toBeGreaterThanOrEqual(842);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
+  await expect(home.locator('.home-matthias-3d canvas')).toHaveCSS('filter', 'none');
 
   for (const selector of [
     '.illustrated-home__destination--tournament',
