@@ -1458,6 +1458,77 @@ KNIGHT_HERALDIC_CUTS = (
 )
 
 
+def add_royal_cat(materials):
+    """A white cat asleep on a crimson velvet cushion beside the rug: smooth overlapping
+    ellipsoids (body, haunch, chest, head, paws), pricked ears with pink inners, closed eyes,
+    whiskers, a curled tail and a gilt collar with a sapphire. Head toward the camera."""
+    fur = materials["cat_fur"]
+    pink = materials["cat_pink"]
+    dark = materials["cat_dark"]
+    gold = materials["gold"]
+    cx, cy = 4.32, -1.50
+    top = 0.094
+
+    # Royal cushion: rounded velvet slab, gilt piping and four tassels.
+    cube("HOME_PROP_cat_cushion", (cx, cy, 0.052), (0.42, 0.34, 0.040), materials["banner"], bevel=0.030)
+    cube("HOME_PROP_cat_cushion_piping", (cx, cy, 0.093), (0.425, 0.345, 0.008), gold, bevel=0.006)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            sphere(f"HOME_PROP_cat_tassel_knob_{sx}_{sy}", (cx + sx * 0.435, cy + sy * 0.350, 0.062), (0.026, 0.026, 0.026), gold)
+            cone(f"HOME_PROP_cat_tassel_{sx}_{sy}", (cx + sx * 0.455, cy + sy * 0.370, 0.030), 0.024, 0.008, 0.06, gold, vertices=10)
+
+    def blob(name, loc, scale, rot=(0.0, 0.0, 0.0), mat=fur):
+        obj = sphere(name, loc, scale, mat)
+        obj.rotation_euler = tuple(math.radians(v) for v in rot)
+        return obj
+
+    # Body curled into a loaf, with a raised haunch and a fluffy chest.
+    blob("HOME_PROP_cat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), (0, 0, 8))
+    blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10))
+    blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12))
+    # Head resting on the front paws, turned to the camera.
+    hx, hy, hz = cx - 0.22, cy - 0.22, top + 0.085
+    blob("HOME_PROP_cat_head", (hx, hy, hz), (0.115, 0.105, 0.092), (8, 0, -10))
+    blob("HOME_PROP_cat_cheek_l", (hx - 0.055, hy - 0.045, hz - 0.030), (0.052, 0.045, 0.040))
+    blob("HOME_PROP_cat_cheek_r", (hx + 0.055, hy - 0.045, hz - 0.030), (0.052, 0.045, 0.040))
+    blob("HOME_PROP_cat_paw_l", (hx - 0.06, hy - 0.085, top + 0.032), (0.052, 0.075, 0.030))
+    blob("HOME_PROP_cat_paw_r", (hx + 0.075, hy - 0.075, top + 0.032), (0.052, 0.075, 0.030))
+    for side, tag in ((-1, "l"), (1, "r")):
+        ear = cone(f"HOME_PROP_cat_ear_{tag}", (hx + side * 0.075, hy + 0.012, hz + 0.105), 0.048, 0.008, 0.085, fur, vertices=16)
+        ear.rotation_euler = (math.radians(-8), math.radians(side * 12), 0)
+        inner = cone(f"HOME_PROP_cat_ear_inner_{tag}", (hx + side * 0.075, hy - 0.002, hz + 0.100), 0.030, 0.006, 0.062, pink, vertices=12)
+        inner.rotation_euler = (math.radians(-8), math.radians(side * 12), 0)
+        # closed eye: a dark sleepy crescent
+        eye = blob(f"HOME_PROP_cat_eye_{tag}", (hx + side * 0.048, hy - 0.098, hz + 0.018), (0.024, 0.005, 0.007), (0, side * 14, 0), dark)
+        for k in (-1, 1):
+            curve_tube(
+                f"HOME_PROP_cat_whisker_{tag}_{k}",
+                [(hx + side * 0.05, hy - 0.098, hz - 0.030 + k * 0.012), (hx + side * 0.13, hy - 0.115, hz - 0.028 + k * 0.026), (hx + side * 0.21, hy - 0.105, hz - 0.030 + k * 0.040)],
+                0.0016,
+                fur,
+            )
+    blob("HOME_PROP_cat_nose", (hx, hy - 0.104, hz - 0.012), (0.014, 0.008, 0.010), (0, 0, 0), pink)
+    blob("HOME_PROP_cat_muzzle", (hx, hy - 0.086, hz - 0.030), (0.038, 0.028, 0.026))
+
+    # Gilt collar with a sapphire pendant.
+    curve_tube(
+        "HOME_PROP_cat_collar",
+        [(hx - 0.085, hy - 0.052, hz - 0.070), (hx - 0.04, hy - 0.092, hz - 0.086), (hx + 0.04, hy - 0.092, hz - 0.086), (hx + 0.09, hy - 0.052, hz - 0.070)],
+        0.011,
+        gold,
+    )
+    sphere("HOME_PROP_cat_pendant", (hx, hy - 0.100, hz - 0.098), (0.022, 0.014, 0.022), materials["sapphire"])
+
+    # Tail curled around the front of the body, tip resting by the paws.
+    tail = []
+    for i in range(14):
+        t = i / 13.0
+        ang = math.radians(20 + t * 250)
+        tail.append((cx + 0.02 + 0.29 * math.cos(ang), cy + 0.02 - 0.235 * math.sin(ang) - 0.01, top + 0.030 + 0.012 * math.sin(t * math.pi)))
+    curve_tube("HOME_PROP_cat_tail", tail, 0.036, fur)
+    sphere("HOME_PROP_cat_tail_tip", tail[-1], (0.040, 0.040, 0.036), fur)
+
+
 def add_rug_knight_tapestry(materials):
     """Heraldic pair of chess knights woven into the visible strip of the rug, stretched
     across it like a tapestry (the rug is seen at a low angle, so the drawing is wider than tall
@@ -3213,6 +3284,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.16,
             texture_profile="metal",
         ),
+        "cat_fur": material("HOME_MAT_cat_fur", (0.86, 0.84, 0.80, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.10, bump_scale=70.0, bump_strength=0.06, variation=0.05, variation_scale=14.0, texture_profile="textile"),
+        "cat_pink": material("HOME_MAT_cat_pink", (0.72, 0.36, 0.40, 1), roughness=0.7),
+        "cat_dark": material("HOME_MAT_cat_dark", (0.03, 0.02, 0.02, 1), roughness=0.5),
+        "sapphire": material("HOME_MAT_sapphire", (0.03, 0.12, 0.55, 1), roughness=0.18, emission=(0.03, 0.10, 0.50, 1), emission_strength=0.35),
         "plume_red": material("HOME_MAT_plume_red", (0.62, 0.035, 0.045, 1), roughness=0.72, bump_scale=14.0, bump_strength=0.05, variation=0.10, variation_scale=6.0, texture_profile="textile"),
         "armor_gold": material(
             "HOME_MAT_armor_gold",
@@ -3568,6 +3643,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.22, 0.066), (0.040, 0.040, 0.008), rug_border)
         motif.rotation_euler[2] = math.radians(45)
     add_rug_knight_tapestry(materials)
+    add_royal_cat(materials)
     for row, y in enumerate((-0.42, 0.34)):
         for col, x in enumerate((-2.55, -1.70, -0.85, 0.0, 0.85, 1.70, 2.55)):
             motif = cube(
