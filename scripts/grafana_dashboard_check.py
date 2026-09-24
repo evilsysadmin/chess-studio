@@ -259,6 +259,8 @@ def main() -> int:
         if options.get("orientation") != "horizontal" or options.get("showUnfilled") is not False:
             fail(f"panel geográfico perdió presentación compacta horizontal: {title}")
         if title == "Tráfico legítimo por país · hits":
+            if defaults.get("displayName") != "${__field.labels.client_country}":
+                fail("panel de tráfico legítimo debe forzar el código de país como display name")
             if options.get("namePlacement") != "left" or options.get("valueMode") != "text":
                 fail("panel de tráfico legítimo debe mostrar país a la izquierda y hits visibles")
             if options.get("sizing") != "manual" or options.get("maxVizHeight") != 32:
