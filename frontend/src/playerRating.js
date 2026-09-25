@@ -20,8 +20,8 @@ const RATING_HISTORY_KEY = 'chess-study-rating-history';
 const MAX_HISTORY_POINTS = 200;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
-const PROVISIONAL_K_FACTOR = 48;
-export const PROVISIONAL_GAMES = 12;
+const PROVISIONAL_K_FACTOR = 56;
+export const PROVISIONAL_GAMES = 5;
 
 // La forma reciente sólo afecta a la SIGUIENTE partida automática: jamás
 // hacemos rubber-banding dentro de una partida ya empezada.
