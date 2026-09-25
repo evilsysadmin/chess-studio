@@ -40,14 +40,14 @@ function finish(root, id, silhouette, glowMaterials = [], baseGlow = 0) {
 }
 
 export function buildAshGoblin({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 10 : 18;
+  const segments = coarsePointer ? 14 : 28;
   const root = new THREE.Group();
   root.name = 'chronicles-ash-goblin';
 
-  const skin = material(0x6f6d48, { roughness: 0.88 });
-  const ash = material(0x343330, { roughness: 0.94 });
+  const skin = material(0x87905b, { roughness: 0.78, clearcoat: 0.08 });
+  const ash = material(0x26282a, { roughness: 0.84, metalness: 0.08 });
   const leather = material(0x4a3023, { roughness: 0.86 });
-  const iron = material(0x44494a, { metalness: 0.5, roughness: 0.48 });
+  const iron = material(0x596164, { metalness: 0.68, roughness: 0.34 });
   const ember = material(0xe0924e, { emissive: 0xb84418, emissiveIntensity: 1.75, roughness: 0.3 });
 
   add(root, new THREE.CylinderGeometry(0.58, 0.7, 0.16, segments), ash, [0, 0.08, 0], [], null, 'ash-goblin-plinth');
@@ -60,17 +60,22 @@ export function buildAshGoblin({ coarsePointer = false } = {}) {
   add(root, new THREE.BoxGeometry(0.82, 0.18, 0.36), ash, [0, 0.88, 0.02], [0.08, 0, 0], null, 'ash-goblin-rag-armour');
   add(root, new THREE.BoxGeometry(0.12, 0.64, 0.12), leather, [0.48, 0.7, 0.02], [0, 0, -0.34], null, 'ash-goblin-cleaver-arm');
   add(root, new THREE.BoxGeometry(0.34, 0.46, 0.08), iron, [0.6, 0.98, 0.04], [0, 0, -0.28], null, 'ash-goblin-cleaver');
+  add(root, new THREE.ConeGeometry(0.22, 0.34, 5), ash, [0, 1.57, -0.03], [0, 0, Math.PI], null, 'ash-goblin-hood');
+  add(root, new THREE.TorusGeometry(0.37, 0.055, 8, segments), iron, [0, 1.34, -0.02], [Math.PI / 2, 0, 0], null, 'ash-goblin-iron-collar');
+  add(root, new THREE.BoxGeometry(0.09, 0.76, 0.09), leather, [-0.46, 0.78, -0.03], [0, 0, 0.5], null, 'ash-goblin-off-arm');
+  add(root, new THREE.ConeGeometry(0.16, 0.42, 6), iron, [-0.58, 0.98, 0.02], [0, 0, -1.1], null, 'ash-goblin-hook');
+  add(root, new THREE.ConeGeometry(0.08, 0.28, 6), ember, [0, 1.8, -0.03], [0, 0, 0], null, 'ash-goblin-ember-plume');
 
   return finish(root, 'ash-goblin', 'squat-eared-cleaver', [ember], 1.75);
 }
 
 export function buildCryptSpider({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 10 : 16;
+  const segments = coarsePointer ? 14 : 26;
   const root = new THREE.Group();
   root.name = 'chronicles-crypt-spider';
 
-  const chitin = material(0x302b2a, { roughness: 0.76, clearcoat: 0.12 });
-  const bone = material(0x756a59, { roughness: 0.84 });
+  const chitin = material(0x241d26, { roughness: 0.48, clearcoat: 0.32, metalness: 0.06 });
+  const bone = material(0x9b8d72, { roughness: 0.72 });
   const eye = material(0xc85c36, { emissive: 0x922b18, emissiveIntensity: 2.1, roughness: 0.24 });
 
   add(root, new THREE.SphereGeometry(0.44, segments, Math.max(8, segments / 2)), chitin, [0, 0.48, -0.18], [], [1.15, 0.7, 1.35], 'crypt-spider-abdomen');
@@ -80,6 +85,12 @@ export function buildCryptSpider({ coarsePointer = false } = {}) {
   [-0.16, -0.055, 0.055, 0.16].forEach((x, index) => {
     add(thorax, new THREE.SphereGeometry(0.035, 8, 6), eye, [x, 0.08 + Math.abs(x) * 0.12, 0.31], [], null, `crypt-spider-eye-${index}`);
   });
+
+  add(root, new THREE.SphereGeometry(0.3, segments, Math.max(8, segments / 2)), chitin, [0, 0.61, -0.47], [], [1.25, 0.42, 1.1], 'crypt-spider-carapace-crown');
+  [-0.26, 0, 0.26].forEach((x, index) => {
+    add(root, new THREE.ConeGeometry(0.055, 0.3 + index * 0.05, 7), bone, [x, 0.82, -0.42], [0.18, 0, x * 1.2], null, `crypt-spider-dorsal-spike-${index}`);
+  });
+  add(thorax, new THREE.BoxGeometry(0.44, 0.08, 0.08), bone, [0, -0.15, 0.4], [0.1, 0, 0], null, 'crypt-spider-mandible-bar');
 
   for (let side = -1; side <= 1; side += 2) {
     for (let index = 0; index < 4; index += 1) {
@@ -96,7 +107,7 @@ export function buildCryptSpider({ coarsePointer = false } = {}) {
 }
 
 export function buildEmberWisp({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 12 : 22;
+  const segments = coarsePointer ? 16 : 32;
   const root = new THREE.Group();
   root.name = 'chronicles-ember-wisp';
 
@@ -108,6 +119,12 @@ export function buildEmberWisp({ coarsePointer = false } = {}) {
   add(root, new THREE.TorusGeometry(0.42, 0.035, 7, segments), coal, [0, 0.9, 0], [Math.PI / 2, 0.2, 0], null, 'ember-wisp-ring');
   add(root, new THREE.ConeGeometry(0.28, 0.7, segments), haze, [0, 0.48, 0], [0, 0, Math.PI], null, 'ember-wisp-tail');
   add(root, new THREE.SphereGeometry(0.46, segments, Math.max(8, segments / 2)), haze, [0, 0.9, 0], [], [1, 1.18, 1], 'ember-wisp-aura');
+  add(root, new THREE.TorusKnotGeometry(0.33, 0.035, coarsePointer ? 48 : 88, 8, 2, 3), ember, [0, 0.92, 0], [Math.PI / 2, 0, 0], null, 'ember-wisp-rune-cage');
+  for (let i = 0; i < 3; i += 1) {
+    const angle = (Math.PI * 2 * i) / 3;
+    add(root, new THREE.OctahedronGeometry(0.09, 0), ember,
+      [Math.cos(angle) * 0.52, 0.92 + (i === 1 ? 0.18 : -0.08), Math.sin(angle) * 0.52], [], null, `ember-wisp-orbit-${i}`);
+  }
   const light = new THREE.PointLight(0xff7438, coarsePointer ? 0.8 : 1.3, 4.2, 2);
   light.position.set(0, 0.9, 0);
   root.add(light);
@@ -116,11 +133,11 @@ export function buildEmberWisp({ coarsePointer = false } = {}) {
 }
 
 export function buildBoneHound({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 10 : 18;
+  const segments = coarsePointer ? 14 : 28;
   const root = new THREE.Group();
   root.name = 'chronicles-bone-hound';
 
-  const bone = material(0xb1a58d, { roughness: 0.82 });
+  const bone = material(0xc6b99d, { roughness: 0.72, clearcoat: 0.05 });
   const darkBone = material(0x645b50, { roughness: 0.88 });
   const iron = material(0x3b3e3f, { metalness: 0.42, roughness: 0.5 });
   const eye = material(0x77c0c4, { emissive: 0x278b93, emissiveIntensity: 2.35, roughness: 0.22 });
@@ -143,6 +160,13 @@ export function buildBoneHound({ coarsePointer = false } = {}) {
     });
   });
   add(root, new THREE.CylinderGeometry(0.035, 0.055, 0.62, 7), darkBone, [0, 0.67, -0.75], [0.82, 0, 0], null, 'bone-hound-tail');
+  add(root, new THREE.BoxGeometry(0.62, 0.1, 0.74), iron, [0, 0.82, -0.08], [0.05, 0, 0], null, 'bone-hound-spine-armour');
+  for (let index = 0; index < 4; index += 1) {
+    add(root, new THREE.ConeGeometry(0.065, 0.34, 7), bone,
+      [0, 1.0, -0.38 + index * 0.23], [0.12, 0, 0], null, `bone-hound-spine-spike-${index}`);
+  }
+  add(head, new THREE.TorusGeometry(0.25, 0.035, 7, segments), iron, [0, 0.0, 0.08], [Math.PI / 2, 0, 0], null, 'bone-hound-iron-muzzle-ring');
+  add(head, new THREE.ConeGeometry(0.055, 0.22, 7), eye, [0, 0.18, 0.34], [Math.PI / 2, 0, 0], null, 'bone-hound-soul-horn');
 
   return finish(root, 'bone-hound', 'skeletal-ribbed-hound', [eye], 2.35);
 }
