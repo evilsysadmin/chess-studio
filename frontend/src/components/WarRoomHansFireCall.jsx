@@ -12,6 +12,7 @@ import {
   HANS_WORKING_REPLY_MS,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
+  clampHansNarrativeDeltaMs,
   MATTHIAS_FIRE_EPILOGUE_LINE,
   MATTHIAS_FIRE_EPILOGUE_MS,
   MATTHIAS_HANS_WORKING_LINE,
@@ -117,7 +118,7 @@ export default function WarRoomHansFireCall({
 
     const tick = (now) => {
       if (!live) return;
-      const delta = previousTime == null ? 0 : Math.max(0, now - previousTime);
+      const delta = previousTime == null ? 0 : clampHansNarrativeDeltaMs(now - previousTime);
       previousTime = now;
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       if (canvas) canvas.dataset.warRoomHansNarrativePhase = currentPhase || 'done';
