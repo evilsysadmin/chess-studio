@@ -1,4 +1,4 @@
-const BABYLON_VERSION = '9.25.0';
+const BABYLON_VERSION = 'local bundle';
 
 let babylonPromise;
 
