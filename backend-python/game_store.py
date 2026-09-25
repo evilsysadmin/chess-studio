@@ -83,6 +83,27 @@ async def get_game(game_id: str) -> Optional[dict]:
     return deepcopy(row) if row is not None else None
 
 
+async def get_game_for_owner(game_id: str, owner: str) -> Optional[dict]:
+    """Carga una partida propia sin materializar documentos de otras cuentas.
+
+    Owner null/missing se conserva únicamente para que game_api pueda devolver
+    el conflicto legacy explícito sin hacer una segunda query.
+    """
+    col = await _get_collection()
+    if col is not None:
+        try:
+            return await col.find_one({
+                "_id": game_id,
+                "$or": [{"owner": owner}, {"owner": None}],
+            })
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+    row = _memory_store.get(game_id)
+    if row is None or row.get("owner") not in {None, owner}:
+        return None
+    return deepcopy(row)
+
+
 async def update_game(game_id: str, data: dict) -> dict:
     doc = {"_id": game_id, **data, "updatedAt": datetime.now(timezone.utc)}
     col = await _get_collection()
@@ -118,6 +139,22 @@ async def update_game_if_moves(game_id: str, data: dict, expected_moves: list[st
     if current is None or list(current.get("moves") or []) != expected:
         return False
     _memory_store[game_id] = deepcopy(doc)
+    return True
+
+
+async def delete_game_for_owner(game_id: str, owner: str) -> bool:
+    """Borra una partida sólo si pertenece al usuario en la misma operación."""
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_one({"_id": game_id, "owner": owner})
+            return result.deleted_count > 0
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+    row = _memory_store.get(game_id)
+    if row is None or row.get("owner") != owner:
+        return False
+    del _memory_store[game_id]
     return True
 
 

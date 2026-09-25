@@ -330,6 +330,41 @@ async def update_password(username: str, password_hash: str) -> Optional[int]:
     return version
 
 
+USER_OVERVIEW_FIELDS = (
+    "created_at",
+    "current_activity",
+    "client_release",
+    "last_client_ip",
+    "last_client_country",
+    "last_activity",
+    "last_login",
+    "presence_online",
+    "is_foreground",
+    "foreground_updated_at",
+)
+
+
+def _user_overview(username: str, user: dict | None) -> dict:
+    source = user or {}
+    return {
+        "username": username,
+        **{field: source.get(field) for field in USER_OVERVIEW_FIELDS if field in source},
+    }
+
+
+async def list_user_overview() -> list[dict]:
+    """Carga en una sola query los campos que necesita el listado de Admin."""
+    col = await _get_collection()
+    if col is not None:
+        projection = {"_id": 1, **{field: 1 for field in USER_OVERVIEW_FIELDS}}
+        try:
+            cursor = col.find({}, projection)
+            return [_user_overview(str(doc.get("_id")), doc) async for doc in cursor]
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para listar usuarios.") from exc
+    return [_user_overview(username, user) for username, user in _memory_users.items()]
+
+
 async def list_usernames() -> list[str]:
     col = await _get_collection()
     if col is not None:

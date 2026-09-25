@@ -83,6 +83,55 @@ def test_admin_users_immediately_exposes_corrected_elo(monkeypatch):
     assert row["ratingGames"] == 7
 
 
+def test_admin_users_uses_batched_reads_and_never_waits_for_geoip(monkeypatch):
+    import admin_api
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"admin_rating"})
+    seed_users()
+
+    calls = {"users": 0, "profiles": 0, "scheduled": []}
+
+    async def batched_users():
+        calls["users"] += 1
+        return [{
+            "username": "elo_target",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "last_client_ip": "8.8.8.8",
+        }]
+
+    async def batched_profiles(usernames, keys):
+        calls["profiles"] += 1
+        assert usernames == ["elo_target"]
+        assert "chess-study-player-rating" in keys
+        return {
+            "elo_target": {
+                "data": {
+                    "chess-study-player-rating": json.dumps({"rating": 901, "games": 4}),
+                }
+            }
+        }
+
+    async def forbidden_single_read(*_args, **_kwargs):
+        raise AssertionError("Admin overview no debe hacer lecturas por usuario")
+
+    monkeypatch.setattr(admin_api.ustore, "list_user_overview", batched_users)
+    monkeypatch.setattr(admin_api.pstore, "get_profile_data_for_users", batched_profiles)
+    monkeypatch.setattr(admin_api.pstore, "get_profile", forbidden_single_read)
+    monkeypatch.setattr(admin_api, "cached_country_code", lambda _ip: None)
+    monkeypatch.setattr(admin_api, "schedule_country_resolution", lambda ip: calls["scheduled"].append(ip) or True)
+
+    listed = client.get("/api/admin/users", headers=auth("admin_rating"))
+
+    assert listed.status_code == 200
+    assert calls == {"users": 1, "profiles": 1, "scheduled": ["8.8.8.8"]}
+    row = listed.json()["users"][0]
+    assert row["username"] == "elo_target"
+    assert row["rating"] == 901
+    assert row["lastClientCountry"] is None
+    assert row["networkLocationStatus"] == "public"
+
+
 def test_non_admin_cannot_correct_elo(monkeypatch):
     monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_rating"})
     seed_users()
