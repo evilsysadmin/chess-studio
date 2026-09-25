@@ -75,33 +75,34 @@
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='refreshment-table']) {
-    /* Leave the bottom-right dungeon control a clean hit target at the
-       narrowest desktop width while Matthias remains beside the hearth table. */
-    --home-matthias-zone-left: 60.5%;
-    --home-matthias-zone-top: 45%;
+    /* Stand beside the hearth end of the table, on the floor. Keeping the pawn
+       plinth fully visible is intentional here: it must never read as an object
+       placed on top of the board. */
+    --home-matthias-zone-left: 64%;
+    --home-matthias-zone-top: 57%;
     --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
-    --home-matthias-occlusion: 22%;
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='dining-table']) {
-    --home-matthias-zone-left: 60.5%;
-    --home-matthias-zone-top: 45%;
+    --home-matthias-zone-left: 64%;
+    --home-matthias-zone-top: 57%;
     --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
-    --home-matthias-occlusion: 22%;
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='library-chair']) {
-    --home-matthias-zone-left: 28.2%;
-    --home-matthias-zone-top: 42.5%;
+    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-top: 43.5%;
     --home-matthias-zone-width: clamp(130px, 10.4cqw, 178px);
-    --home-matthias-occlusion: 18%;
+    --home-matthias-occlusion: 24%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='writing-desk']) {
-    --home-matthias-zone-left: 27.2%;
-    --home-matthias-zone-top: 45.5%;
+    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-top: 43.5%;
     --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
-    --home-matthias-occlusion: 20%;
+    --home-matthias-occlusion: 24%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) {
