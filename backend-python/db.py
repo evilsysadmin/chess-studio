@@ -19,7 +19,7 @@ import time
 from pymongo import AsyncMongoClient
 from pymongo.errors import PyMongoError
 
-MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.environ.get("MONGO_URL", "").strip()
 MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "chess_study")
 MONGO_RETRY_COOLDOWN_S = max(0.25, float(os.environ.get("MONGO_RETRY_COOLDOWN_S", "5")))
 
@@ -70,8 +70,9 @@ validate_mongo_environment()
 
 def persistent_storage_required() -> bool:
     # Se consulta el entorno en cada llamada para que tests/entornos que lo
-    # monkeypatchean no dependan del orden de imports.
-    return bool(os.environ.get("MONGO_URL"))
+    # monkeypatchean no dependan del orden de imports. Sin MONGO_URL explícita,
+    # desarrollo usa memoria inmediatamente: no tanteamos localhost durante 3 s.
+    return bool(str(os.environ.get("MONGO_URL") or "").strip())
 
 
 def _get_connect_lock() -> asyncio.Lock:
@@ -131,6 +132,9 @@ async def _ensure_runtime_indexes(database) -> None:
 
 async def get_db():
     global _db, _client, _warned, _retry_after_monotonic
+    mongo_url = str(os.environ.get("MONGO_URL") or "").strip()
+    if not mongo_url:
+        return None
     if _db is not None:
         return _db
     if _retry_is_cooling_down():
@@ -146,7 +150,7 @@ async def get_db():
 
         client = None
         try:
-            client = AsyncMongoClient(MONGO_URL, serverSelectionTimeoutMS=3000)
+            client = AsyncMongoClient(mongo_url, serverSelectionTimeoutMS=3000)
             await client.admin.command("ping")
             _client = client
             _db = client[MONGO_DB_NAME]
@@ -170,3 +174,39 @@ async def get_db():
             _db = None
             _retry_after_monotonic = _monotonic() + MONGO_RETRY_COOLDOWN_S
             return None
+
+
+
+async def database_ready() -> bool:
+    """Comprueba que la persistencia configurada responde ahora mismo.
+
+    La conexión inicial ya hace un ping dentro de get_db(). Una vez existe un
+    pool cacheado, readiness no puede limitarse a comprobar que el objeto siga
+    en memoria: Mongo puede haber caído después del arranque.
+    """
+    if not persistent_storage_required():
+        return True
+    if _db is None:
+        return await get_db() is not None
+    client = _client
+    if client is None:
+        return False
+    try:
+        await client.admin.command("ping")
+        return True
+    except Exception:
+        return False
+
+
+async def close_db() -> None:
+    """Cierra el cliente compartido y deja el módulo listo para otro lifecycle."""
+    global _db, _client, _connect_lock, _connect_lock_loop, _retry_after_monotonic, _warned
+    client = _client
+    _db = None
+    _client = None
+    _connect_lock = None
+    _connect_lock_loop = None
+    _retry_after_monotonic = 0.0
+    _warned = False
+    if client is not None:
+        await _close_client(client)
