@@ -723,7 +723,7 @@ function Board3DCanvas({
       renderLite: state.renderLite,
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
-      onPaint: state.render,
+      onPaint: () => { state.render(); state.ambientScheduler?.wake(); },
     });
   }, [
     warRoomVariant,
