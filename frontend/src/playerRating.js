@@ -352,7 +352,7 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0, 
 }
 
 // Traduce el rating a dificultad y añade dos correcciones deliberadamente
-// asimétricas: durante las 12 partidas provisionales ofrece una CPU algo más
+// asimétricas: durante las cinco partidas provisionales ofrece una CPU algo más
 // amable y reacciona antes a derrotas, pero sube despacio. Cuando producto no
 // pasa `games`, usamos el contador persistido del perfil; las llamadas de test
 // que pasan actividad explícita conservan el comportamiento histórico.
