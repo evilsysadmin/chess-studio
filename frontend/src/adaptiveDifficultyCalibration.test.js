@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { difficultyForRating, provisionalDifficultyRelief } from './playerRating.js';
+import { PROVISIONAL_GAMES, difficultyForRating, provisionalDifficultyRelief } from './playerRating.js';
 
 const finished = (outcome, difficulty, mode = 'casual') => ({
   state: 'finished', outcome, difficulty, mode,
@@ -8,14 +8,14 @@ const finished = (outcome, difficulty, mode = 'casual') => ({
 describe('calibración adaptativa para perfiles provisionales', () => {
   it('un usuario nuevo de ELO 400 no empieza contra la antigua CPU nivel 11', () => {
     expect(difficultyForRating(400, [], 0)).toBe(1);
-    expect(difficultyForRating(400, [], 12)).toBe(11);
+    expect(difficultyForRating(400, [], PROVISIONAL_GAMES)).toBe(11);
   });
 
-  it('el alivio inicial desaparece progresivamente al cerrar las 12 partidas provisionales', () => {
+  it('el alivio inicial desaparece progresivamente al cerrar las cinco partidas provisionales', () => {
     expect(provisionalDifficultyRelief(0)).toBe(10);
-    expect(provisionalDifficultyRelief(6)).toBe(5);
-    expect(provisionalDifficultyRelief(11)).toBe(1);
-    expect(provisionalDifficultyRelief(12)).toBe(0);
+    expect(provisionalDifficultyRelief(2)).toBe(6);
+    expect(provisionalDifficultyRelief(4)).toBe(2);
+    expect(provisionalDifficultyRelief(PROVISIONAL_GAMES)).toBe(0);
     expect(provisionalDifficultyRelief(30)).toBe(0);
   });
 
