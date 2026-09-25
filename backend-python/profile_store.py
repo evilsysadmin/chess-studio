@@ -97,6 +97,44 @@ async def get_profile(username: str) -> Optional[dict]:
     return _public_with_revisions(doc) if doc else None
 
 
+async def get_profile_data_for_users(usernames: list[str], keys) -> dict[str, dict]:
+    """Carga perfiles en lote proyectando sólo las claves de data solicitadas."""
+    names = list(dict.fromkeys(
+        str(username) for username in usernames if str(username or "").strip()
+    ))
+    wanted = {str(key) for key in keys if isinstance(key, str) and key}
+    if not names:
+        return {}
+
+    col = await _get_collection()
+    if col is not None:
+        projection = {"_id": 1, **{f"data.{key}": 1 for key in wanted}}
+        try:
+            cursor = col.find({"_id": {"$in": names}}, projection)
+            result: dict[str, dict] = {}
+            async for doc in cursor:
+                username = str(doc.get("_id"))
+                data = doc.get("data") if isinstance(doc.get("data"), dict) else {}
+                result[username] = {
+                    "data": {key: value for key, value in data.items() if key in wanted}
+                }
+            return result
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para cargar perfiles en lote.") from exc
+
+    result: dict[str, dict] = {}
+    for username in names:
+        doc = _memory_profiles.get(username)
+        if not doc:
+            continue
+        public = _public_payload(doc)
+        data = public.get("data") if isinstance(public.get("data"), dict) else {}
+        result[username] = {
+            "data": {key: value for key, value in data.items() if key in wanted}
+        }
+    return result
+
+
 async def save_profile(username: str, data: dict) -> dict:
     """PUT compatible: reemplaza el documento completo.
 
