@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_EVENTS,
@@ -214,8 +214,15 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').click();
-      await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      // Home/Quick Match controls live inside animated 3D surfaces. These are
+      // setup-only actions, so dispatch the click after visibility/enabled
+      // checks instead of waiting for Playwright's visual-stability heuristic.
+      await activateSetupControl(buttonWithVisibleText(page, 'Partida rápida'));
+      const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+      await expect(quickMatch).toBeVisible({ timeout: 30_000 });
+      await activateSetupControl(
+        quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }),
+      );
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
 
       const canvas = page.locator('.board3d-main-canvas');
