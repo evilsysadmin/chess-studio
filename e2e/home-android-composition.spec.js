@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
 async function openHome(page) {
@@ -157,6 +157,67 @@ test('Home Android desktop-site · el copy visible es el touch target real', asy
 
     await home.locator('.illustrated-home__destination--play strong').tap();
     await expect(page.getByRole('dialog')).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test('Home Android apaisada · el castillo conserva foco y chrome mínimo', async ({ browser }) => {
+  const context = await browser.newContext({
+    ...devices['Pixel 5'],
+    viewport: { width: 844, height: 390 },
+  });
+  const page = await context.newPage();
+
+  try {
+    const home = await openHome(page);
+    const stage = home.locator('.illustrated-home__stage');
+    const play = home.locator('.illustrated-home__destination--play');
+    const pvp = page.locator('.home-pvp-roster-link');
+    await expect(stage).toBeVisible();
+    await expect(play).toBeVisible();
+    await expect(pvp).toBeVisible();
+
+    const [stageBox, playBox, pvpBox] = await Promise.all([
+      stage.boundingBox(),
+      play.boundingBox(),
+      pvp.boundingBox(),
+    ]);
+    expect(stageBox).not.toBeNull();
+    expect(playBox).not.toBeNull();
+    expect(pvpBox).not.toBeNull();
+    expect(stageBox.width).toBeGreaterThanOrEqual(842);
+    expect(stageBox.y).toBeLessThanOrEqual(0);
+    expect(stageBox.y + stageBox.height).toBeGreaterThanOrEqual(389);
+    expect(playBox.width).toBeGreaterThanOrEqual(150);
+    expect(playBox.height).toBeGreaterThanOrEqual(58);
+    expect(Math.abs((playBox.x + playBox.width / 2) - 422)).toBeLessThanOrEqual(4);
+    expect(pvpBox.width).toBeLessThanOrEqual(240);
+    expect(pvpBox.height).toBeGreaterThanOrEqual(52);
+    expect(pvpBox.x + pvpBox.width).toBeLessThanOrEqual(835);
+    expect(pvpBox.y + pvpBox.height).toBeLessThanOrEqual(383);
+
+    for (const selector of [
+      '.music-deck-expand',
+      '.music-deck-collapsed-play',
+      '.masthead-account-trigger',
+      '.masthead-release-trigger',
+      '.masthead-feedback-trigger',
+    ]) {
+      const control = page.locator(selector);
+      await expect(control).toBeVisible();
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(844);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(390);
+    }
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    expect(await home.evaluate((node) => getComputedStyle(node).overflow)).toBe('hidden');
   } finally {
     await context.close();
   }

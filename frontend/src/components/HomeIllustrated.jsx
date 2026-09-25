@@ -22,6 +22,7 @@ import './HomeCastle3D.css';
 import './HomeIllustratedTallTouch.css';
 import './HomeMatthiasRoutine.css';
 import './HomeDestinationPlaques.css';
+import './HomeMobileLandscapePolish.css';
 
 const PRIMARY_DIEGETIC_DESTINATIONS = new Set(['tournament', 'combat', 'play']);
 
