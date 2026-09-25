@@ -55,6 +55,7 @@ class LaneCommand:
     spec: str
     args: tuple[str, ...] = ()
     additional_specs: tuple[str, ...] = ()
+    canonical_critical: bool = True
 
     def argv(self) -> list[str]:
         return [PLAYWRIGHT, 'test', self.spec, *self.additional_specs, *self.args]
@@ -118,6 +119,7 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand(
             'browser-runtime-health.spec.js',
             ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+            canonical_critical=False,
         ),
     ),
     'smoke': (
@@ -161,7 +163,7 @@ def critical_targets() -> list[tuple[str, str]]:
         for lane, commands in LANE_COMMANDS.items()
         if lane not in NARROW_ALIAS_LANES
         for command in commands
-        if command.grep is not None
+        if command.grep is not None and command.canonical_critical
     ]
 
 
@@ -182,7 +184,7 @@ def self_test() -> None:
         'app-boot', 'admin', 'tournament', 'combat', 'home', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
-    assert len(critical_targets()) == 4
+    assert len(critical_targets()) == 3
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
     assert LANE_COMMANDS['admin'][0].spec == 'regression-journeys.spec.js'
@@ -201,6 +203,7 @@ def self_test() -> None:
         'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
     assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][2].canonical_critical is False
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)
