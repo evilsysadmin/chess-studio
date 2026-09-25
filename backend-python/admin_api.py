@@ -20,6 +20,7 @@ import user_data_lifecycle
 import matthias_daily_store as matthias_daily_store
 import matthias_memory_store as matthias_memory_store
 from admin_insights import (
+    ADMIN_SUMMARY_PROFILE_KEYS,
     _extract_admin_insights_payload,
     _extract_summary_stats,
     _foreground_summary,
@@ -38,7 +39,7 @@ from api_models import (
 from observability import get_database_metrics, get_http_metrics
 from observability_history import get_history as get_observability_history
 from narrative_cloudflare import generate_narrative, get_ai_dependency_health
-from ip_geolocation import network_location_status, resolve_country_code
+from ip_geolocation import cached_country_code, network_location_status, schedule_country_resolution
 from resilience import pressure_state
 from deployment_annotations import ensure_current_deployment_annotation, list_deployment_annotations
 from shadow_evaluation import get_shadow_metrics
@@ -268,19 +269,22 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
 
     @router.get("/api/admin/users")
     async def admin_list_users(username: str = Depends(admin_dependency)):
+        user_rows = await ustore.list_user_overview()
+        usernames = [row["username"] for row in user_rows]
+        profiles = await pstore.get_profile_data_for_users(
+            usernames,
+            ADMIN_SUMMARY_PROFILE_KEYS,
+        )
 
-        usernames = await ustore.list_usernames()
         result = []
-        for uname in usernames:
-            user = await ustore.get_user(uname)
-            profile = await pstore.get_profile(uname)
-            user_doc = user or {}
+        for user_doc in user_rows:
+            uname = user_doc["username"]
             client_ip = user_doc.get("last_client_ip")
             client_country = user_doc.get("last_client_country")
             if not client_country and network_location_status(client_ip) == "public":
-                client_country = await resolve_country_code(client_ip)
-                if client_country:
-                    await ustore.update_client_country(uname, client_country)
+                client_country = cached_country_code(client_ip)
+                if not client_country:
+                    schedule_country_resolution(client_ip)
             # Cuentas heredadas podían no tener `last_activity`. El
             # login fuerza también `last_login`; mientras migran, created_at es
             # mejor fallback que mostrar “Sin actividad” como si nunca hubieran
@@ -296,7 +300,7 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 "networkLocationStatus": "resolved" if client_country else network_location_status(client_ip),
                 **_presence_summary(activity_anchor, user_doc.get("presence_online")),
                 **_foreground_summary(user_doc),
-                **_extract_summary_stats(profile),
+                **_extract_summary_stats(profiles.get(uname)),
             })
         return {"users": result}
 
