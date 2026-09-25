@@ -198,8 +198,8 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
 
   const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
-  const controller = createWarRoomHansWalkController(actor, { forward: 1 });
-  if (!runtime || !controller) return 0;
+  let controller = null;
+  if (!runtime) return 0;
 
   let gameId = '';
   let eventName = '';
@@ -265,6 +265,8 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
 
     if (!active) {
       if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
+      controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
+      if (!controller) return;
       chore = warRoomHansChoreForEvent(eventName);
       if (!chore || !assignWarRoomHansTask(runtime, {
         id: taskId,

@@ -152,9 +152,9 @@ export function installWarRoomHansMopRoutine(root) {
 
   const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
-  const props = ensureProps(actor);
-  const controller = createWarRoomHansWalkController(actor, { forward: 1 });
-  if (!runtime || !controller) return 0;
+  let props = null;
+  let controller = null;
+  if (!runtime) return 0;
 
   let gameId = '';
   let delayMs = 0;
@@ -219,6 +219,8 @@ export function installWarRoomHansMopRoutine(root) {
 
     if (!active) {
       if (!warRoomHansTaskAvailable(runtime, TASK_ID) || now - eligibleSince < delayMs) return;
+      controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
+      if (!controller) return;
       if (!assignWarRoomHansTask(runtime, {
         id: TASK_ID,
         kind: 'mop',
@@ -231,6 +233,7 @@ export function installWarRoomHansMopRoutine(root) {
         return;
       }
       home = service.point;
+      props ||= ensureProps(actor);
       resetWarRoomHansMopProps(props);
       placeWarRoomHansHorizontal(actor, home);
       setWarRoomHansTaskPresentation(runtime, {
