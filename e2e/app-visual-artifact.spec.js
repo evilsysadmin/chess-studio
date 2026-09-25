@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
@@ -267,7 +267,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         },
       });
       await login(quickMatchPage);
-      await quickMatchPage.getByRole('button', { name:'Partida rápida', exact:true }).click();
+      await buttonWithVisibleText(quickMatchPage, 'Partida rápida').click();
       const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
       await expect(quickMatch).toBeVisible();
       await quickMatchPage.waitForTimeout(120);
