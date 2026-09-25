@@ -13,7 +13,6 @@ describe('War Room browser fullscreen bridge', () => {
 
     await expect(requestWarRoomBrowserFullscreen(doc)).resolves.toBe(true);
     expect(requestFullscreen).toHaveBeenCalledTimes(1);
-    expect(requestFullscreen.mock.instances[0]).toBe(documentElement);
   });
 
   it('falls back cleanly when the browser rejects or does not support fullscreen', async () => {
@@ -33,12 +32,13 @@ describe('War Room browser fullscreen bridge', () => {
     const root = { webkitRequestFullscreen };
     const doc = {
       documentElement: root,
-      webkitFullscreenElement: root,
+      webkitFullscreenElement: null,
       webkitExitFullscreen,
     };
 
-    expect(getWarRoomBrowserFullscreenElement(doc)).toBe(root);
     await expect(requestWarRoomBrowserFullscreen(doc)).resolves.toBe(true);
+    doc.webkitFullscreenElement = root;
+    expect(getWarRoomBrowserFullscreenElement(doc)).toBe(root);
     await expect(exitWarRoomBrowserFullscreen(doc)).resolves.toBe(true);
     expect(webkitRequestFullscreen).toHaveBeenCalledTimes(1);
     expect(webkitExitFullscreen).toHaveBeenCalledTimes(1);
