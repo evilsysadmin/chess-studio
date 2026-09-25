@@ -127,7 +127,7 @@ def main() -> int:
         ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
-        ("for attempt in {1..76}; do", "generation watcher patience budget"),
+        ("for attempt in {1..48}; do", "generation watcher patience budget"),
         ("attempt % 8 == 0", "generation watcher periodic stale-generation probe"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
         ("OCI fallback avoided", "late watcher completion re-check"),
