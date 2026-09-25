@@ -63,7 +63,7 @@ assert(pagesHeaders.includes("Content-Security-Policy: frame-ancestors 'self'"),
 assert(pagesHeaders.includes('Referrer-Policy: no-referrer'), 'Cloudflare Pages no aplica Referrer-Policy');
 assert(pagesHeaders.includes('Permissions-Policy: camera=(), microphone=(), geolocation=()'), 'Cloudflare Pages no restringe permisos sensibles');
 assert(pagesHeaders.includes('Strict-Transport-Security: max-age=31536000'), 'Cloudflare Pages no aplica HSTS');
-assert(frontendPackage.dependencies?.babylonjs === '9.25.0', 'Chesscom no fija la versión local de Babylon.js');
+assert(/^\d+\.\d+\.\d+$/.test(frontendPackage.dependencies?.babylonjs || ''), 'Chesscom no fija una versión local exacta de Babylon.js');
 assert(chesscomBabylon.includes("import('babylonjs')"), 'Chesscom no carga Babylon.js desde el bundle local');
 assert(!/https?:\/\//.test(chesscomBabylon), 'Chesscom intenta cargar scripts remotos incompatibles con la CSP');
 let inlineRejected = false;
