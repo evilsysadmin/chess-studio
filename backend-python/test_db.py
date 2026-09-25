@@ -45,6 +45,7 @@ def test_staging_and_production_cannot_cross_databases():
 
 
 def _reset_db_state(monkeypatch, *, clock=100.0):
+    monkeypatch.setenv("MONGO_URL", "mongodb://cluster")
     if db._client is not None:
         asyncio.run(db._close_client(db._client))
     monkeypatch.setattr(db, "_db", None)
@@ -56,6 +57,71 @@ def _reset_db_state(monkeypatch, *, clock=100.0):
     now = [float(clock)]
     monkeypatch.setattr(db, "_monotonic", lambda: now[0])
     return now
+
+
+def test_memory_mode_skips_mongo_client_entirely(monkeypatch):
+    _reset_db_state(monkeypatch)
+    monkeypatch.delenv("MONGO_URL", raising=False)
+
+    class ExplodingClient:
+        def __init__(self, *_args, **_kwargs):
+            raise AssertionError("memory mode no debe construir AsyncMongoClient")
+
+    monkeypatch.setattr(db, "AsyncMongoClient", ExplodingClient)
+
+    assert asyncio.run(db.get_db()) is None
+    assert asyncio.run(db.database_ready()) is True
+
+
+def test_database_ready_repings_cached_client(monkeypatch):
+    _reset_db_state(monkeypatch)
+    calls = {"pings": 0}
+    healthy = [False]
+
+    class FakeAdmin:
+        async def command(self, name):
+            assert name == "ping"
+            calls["pings"] += 1
+            if not healthy[0]:
+                raise RuntimeError("mongo down")
+            return {"ok": 1}
+
+    class FakeClient:
+        def __init__(self):
+            self.admin = FakeAdmin()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(db, "_db", object())
+    monkeypatch.setattr(db, "_client", FakeClient())
+
+    assert asyncio.run(db.database_ready()) is False
+    healthy[0] = True
+    assert asyncio.run(db.database_ready()) is True
+    assert calls["pings"] == 2
+
+
+def test_close_db_closes_shared_client_and_resets_state(monkeypatch):
+    _reset_db_state(monkeypatch)
+    calls = {"closed": 0}
+
+    class FakeClient:
+        async def close(self):
+            calls["closed"] += 1
+
+    monkeypatch.setattr(db, "_db", object())
+    monkeypatch.setattr(db, "_client", FakeClient())
+    monkeypatch.setattr(db, "_retry_after_monotonic", 999.0)
+    monkeypatch.setattr(db, "_warned", True)
+
+    asyncio.run(db.close_db())
+
+    assert calls["closed"] == 1
+    assert db._db is None
+    assert db._client is None
+    assert db._retry_after_monotonic == 0.0
+    assert db._warned is False
 
 
 def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
