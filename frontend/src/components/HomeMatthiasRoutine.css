@@ -175,7 +175,7 @@
 @media (max-width: 999px) {
   /* Narrow layouts used to squeeze Matthias back into a tiny dashboard card.
    * Keep the resident diegetic and large enough for the face/pose to read. */
-  .illustrated-home__matthias {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias:has(.home-matthias-3d) {
     width: clamp(108px, 30vw, 148px) !important;
     min-width: 108px !important;
     min-height: 0 !important;
@@ -186,6 +186,7 @@
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
+    opacity: 1 !important;
   }
 
   .illustrated-home__matthias-portrait {

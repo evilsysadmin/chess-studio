@@ -238,6 +238,10 @@ test('Home canónica · móvil usa la escena a pantalla completa sin cementerio 
   expect(stageBox.height).toBeGreaterThanOrEqual(842);
   expect(artBox.height).toBeGreaterThanOrEqual(842);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
+  const mobileResident = home.locator('.illustrated-home__matthias');
+  await expect(mobileResident).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(mobileResident).toHaveCSS('border-top-width', '0px');
+  await expect(mobileResident).toHaveCSS('opacity', '1');
   const mobileAvatar = home.locator('.home-matthias-3d');
   await expect(mobileAvatar).toHaveCSS('isolation', 'auto');
   await expect(mobileAvatar.locator('img')).toHaveCSS('filter', 'none');
