@@ -846,6 +846,15 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
     base.manifest(manifest)
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
+    preview_size = os.environ.get("WAR_ROOM_V3_PREVIEW_SIZE", "1600x900").strip().lower()
+    try:
+        width_text, height_text = preview_size.split("x", 1)
+        width, height = int(width_text), int(height_text)
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(f"invalid WAR_ROOM_V3_PREVIEW_SIZE: {preview_size!r}") from exc
+    if width < 640 or height < 360:
+        raise RuntimeError(f"WAR_ROOM_V3_PREVIEW_SIZE too small: {width}x{height}")
+    base.PREVIEW_SIZE = (width, height)
     base.render(preview)
     export_shell_v3(glb)
     print(f"War Room v3 OK · {CONTRACT} · objects={len(bpy.context.scene.objects)}")

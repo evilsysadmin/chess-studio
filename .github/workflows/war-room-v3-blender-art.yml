@@ -43,6 +43,7 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
           BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || (github.event_name == 'pull_request' && '16' || '32') }}
+          WAR_ROOM_V3_PREVIEW_SIZE: ${{ github.event_name == 'pull_request' && '1280x720' || '1600x900' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/war-room-v3
@@ -60,6 +61,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import json
+          import os
           import struct
           from PIL import Image
 
@@ -91,7 +93,8 @@ jobs:
           assert 'WR3_OBS_stove_flame_0' in node_names
 
           image = Image.open(preview).convert('RGB')
-          assert image.size == (1600, 900), image.size
+          expected_size = (1280, 720) if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else (1600, 900)
+          assert image.size == expected_size, image.size
           assert max(channel[1] for channel in image.getextrema()) > 80
           data = json.loads(manifest.read_text())
           assert data['contract'] == 'war-room-celestial-observatory-v3'
