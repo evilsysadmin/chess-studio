@@ -137,15 +137,17 @@ case "$mode" in
       "${playwright_args[@]}"
     ;;
   hans)
+    hans_playwright_args=(--workers=2 --retries=0)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       # `fire` already has its own canonical visual canary above. Keep this
       # parallel lane focused on the ambient scheduler and order espresso last
       # so it runs with less SwiftShader contention after a worker frees up.
       export HANS_ROUTINE_EVENTS="mop,dust-board,espresso"
+      hans_playwright_args+=(--max-failures=1)
     fi
     ./node_modules/.bin/playwright test \
       war-room-hans-routines-visual.spec.js \
-      --workers=2 --retries=0
+      "${hans_playwright_args[@]}"
     node ../scripts/hans_visual_artifact_summary.mjs \
       ../.artifacts/app-visual/hans-routines
     ;;
