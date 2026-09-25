@@ -1,4 +1,6 @@
-const BABYLON_VERSION = 'local bundle';
+import babylonPackage from 'babylonjs/package.json';
+
+const BABYLON_VERSION = babylonPackage.version;
 
 let babylonPromise;
 
