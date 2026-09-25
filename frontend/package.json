@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "babylonjs": "9.25.0",
+    "babylonjs": "9.27.1",
     "chess.js": "^1.0.0-beta.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

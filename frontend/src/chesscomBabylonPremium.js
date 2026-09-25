@@ -1,4 +1,6 @@
-const BABYLON_VERSION = '9.25.0';
+import babylonPackage from 'babylonjs/package.json';
+
+const BABYLON_VERSION = babylonPackage.version;
 
 let babylonPromise;
 
