@@ -1,14 +1,16 @@
-name: Validate · Chess Football Godot POC
+name: Build · Chess Football Godot Web
 
 on:
   pull_request:
     paths:
       - games/chess-football-godot/**
+      - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   push:
     branches: [main]
     paths:
       - games/chess-football-godot/**
+      - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   workflow_dispatch:
 
@@ -22,7 +24,9 @@ concurrency:
 env:
   GODOT_VERSION: '4.7.2'
   GODOT_RELEASE: '4.7.2-stable'
+  GODOT_TEMPLATE_VERSION: '4.7.2.stable'
   GODOT_EDITOR_SHA256: 'cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4'
+  GODOT_TEMPLATES_SHA256: 'f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011'
 
 jobs:
   validate:
@@ -69,3 +73,106 @@ jobs:
         run: |
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           "$godot" --headless --path games/chess-football-godot --script res://tests/match_smoke.gd
+      - name: Web export contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'platform="Web"' games/chess-football-godot/export_presets.cfg
+          grep -q 'variant/thread_support=false' games/chess-football-godot/export_presets.cfg
+          grep -q 'renderer/rendering_method="gl_compatibility"' games/chess-football-godot/project.godot
+      - name: Bundle publisher self-test
+        run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
+
+
+  build_publish:
+    name: Export + publish · Chess Football Godot Web
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cache pinned Godot editor and Web templates
+        uses: actions/cache@v6
+        with:
+          path: |
+            .godot-ci/${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_debug.zip
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_VERSION }}/web_nothreads_release.zip
+          key: chess-football-godot-web-${{ runner.os }}-${{ runner.arch }}-${{ env.GODOT_RELEASE }}-nothreads-v1
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION"
+          godot="$tool_dir/godot"
+          if [[ ! -x "$godot" ]]; then
+            mkdir -p "$tool_dir"
+            archive="$RUNNER_TEMP/godot-editor.zip"
+            curl -fL --retry 3 \
+              "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" \
+              -o "$archive"
+            echo "$GODOT_EDITOR_SHA256  $archive" | sha256sum -c -
+            unzip -q "$archive" -d "$tool_dir"
+            mv "$tool_dir/Godot_v${GODOT_RELEASE}_linux.x86_64" "$godot"
+            chmod +x "$godot"
+          fi
+          "$godot" --version
+      - name: Install pinned Godot Web export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          template_dir="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_VERSION"
+          debug_template="$template_dir/web_nothreads_debug.zip"
+          release_template="$template_dir/web_nothreads_release.zip"
+          if [[ ! -f "$debug_template" || ! -f "$release_template" ]]; then
+            archive="$RUNNER_TEMP/godot-templates.tpz"
+            unpack="$RUNNER_TEMP/godot-templates"
+            rm -rf "$unpack"
+            curl -fL --retry 3 \
+              "https://github.com/godotengine/godot-builds/releases/download/$GODOT_RELEASE/Godot_v${GODOT_RELEASE}_export_templates.tpz" \
+              -o "$archive"
+            echo "$GODOT_TEMPLATES_SHA256  $archive" | sha256sum -c -
+            mkdir -p "$template_dir" "$unpack"
+            unzip -q "$archive" templates/web_nothreads_debug.zip templates/web_nothreads_release.zip -d "$unpack"
+            install -m 0644 "$unpack/templates/web_nothreads_debug.zip" "$debug_template"
+            install -m 0644 "$unpack/templates/web_nothreads_release.zip" "$release_template"
+          fi
+      - name: Export Godot Web release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf games/chess-football-godot/build/web
+          mkdir -p games/chess-football-godot/build/web
+          pushd games/chess-football-godot >/dev/null
+          "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless --export-release Web build/web/index.html
+          popd >/dev/null
+          python3 -S scripts/pawn_slug_godot_bundle.py check \
+            --build-dir games/chess-football-godot/build/web \
+            --prefix chess-football-godot
+      - name: Publish immutable R2 release + atomic pointer
+        run: |
+          python3 -S scripts/pawn_slug_godot_bundle.py publish \
+            --build-dir games/chess-football-godot/build/web \
+            --prefix chess-football-godot
+      - name: Public R2 smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          pointer='https://assets.chess-studio.shadowops.dpdns.org/chess-football-godot/current.json'
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS "$pointer?sha=$GITHUB_SHA&attempt=$attempt" -o "$RUNNER_TEMP/chess-football-current.json"; then
+              break
+            fi
+            sleep 2
+          done
+          index_url="$(python3 -S scripts/pawn_slug_godot_bundle.py verify-pointer \
+            "$RUNNER_TEMP/chess-football-current.json" \
+            --prefix chess-football-godot \
+            --expected-source-sha "$GITHUB_SHA")"
+          curl -fsS --retry 3 "$index_url" -o "$RUNNER_TEMP/chess-football-index.html"
+          test -s "$RUNNER_TEMP/chess-football-index.html"
+          echo "Chess Football Godot Web published: $index_url" >> "$GITHUB_STEP_SUMMARY"
