@@ -27,6 +27,7 @@ DEFAULT_REFERENCE = "scripts/blender/references/home_canon_20260918.webp.b64"
 
 _CUBE_TEMPLATE_MESH = None
 _SPHERE_TEMPLATE_MESHES = {}
+_CYLINDER_TEMPLATE_MESHES = {}
 
 
 def argv_after_double_dash() -> list[str]:
@@ -777,12 +778,29 @@ def _adaptive_sphere_detail(name: str, extent: float, thin: float = 1.0):
     return 40, 20
 
 
+def _new_unit_cylinder(name: str, location, vertices: int):
+    key = int(vertices)
+    template = _CYLINDER_TEMPLATE_MESHES.get(key)
+    if template is None:
+        bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=1.0, depth=2.0, location=location)
+        obj = bpy.context.object
+        template = obj.data.copy()
+        template.name = f"HOME_TEMPLATE_cylinder_{vertices}"
+        _CYLINDER_TEMPLATE_MESHES[key] = template
+    else:
+        mesh = template.copy()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location = location
+    obj.name = name
+    return obj
+
+
 def cylinder(name: str, location, radius: float, depth: float, mat, *, vertices=None):
     if vertices is None:
         vertices = 12 if radius < 0.04 else 20 if radius < 0.09 else 48
-    bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
-    obj = bpy.context.object
-    obj.name = name
+    obj = _new_unit_cylinder(name, location, vertices)
+    _bake_mesh_scale(obj, (radius, radius, depth / 2.0))
     smooth_curved_mesh(obj, keep_axial_caps_flat=True)
     apply_material(obj, mat)
     return obj
