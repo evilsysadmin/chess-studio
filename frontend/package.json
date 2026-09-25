@@ -23,9 +23,9 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.7.0",
-    "@vitest/coverage-v8": "^4.1.10",
-    "vite": "^6.4.3",
-    "vitest": "^4.1.10"
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.1",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }
