@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -34,6 +35,7 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id || '' }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -47,20 +49,43 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
 
-      - name: Admit exact staging generation
+      - name: Admit relevant exact staging generation
         id: admission
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           echo 'run=false' >> "$GITHUB_OUTPUT"
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
 
-          # Every coherent staging generation gets Pawn Slug Godot visual evidence.
-          # Looking only at the deployed commit's file list created false-green
-          # skips when a later unrelated merge superseded the Pawn Slug merge.
-          # The exact backend/frontend SHA checks below already prevent validating
-          # stale or mismatched staging generations.
+          # Manual runs stay fail-closed. Automatic runs compare this successful
+          # deploy with the previous successful staging generation, not merely
+          # HEAD^, so a Pawn Slug change cannot be hidden by a later unrelated
+          # merge that superseded its own deploy.
+          relevant=true
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_run' ]]; then
+            previous_sha="$(
+              gh run list --repo "$GITHUB_REPOSITORY"                 --workflow staging-deploy.yml --branch main --status success                 --limit 12 --json databaseId,headSha                 --jq ".[] | select(.databaseId != $UPSTREAM_RUN_ID) | .headSha"                 | head -n 1
+            )"
+            if [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              git fetch --no-tags --depth=1 origin "$previous_sha"
+              changed="$(git diff --name-only "$previous_sha" "$DEPLOY_SHA")"
+              scope="$(printf '%s\n' "$changed" | python3 -S scripts/quality_scope.py)"
+              if grep -Eq '^(run_pawn_slug_godot|run_pawn_slug_e2e)=true$' <<<"$scope" ||                  grep -Eq '^(e2e/staging-pawn-slug-godot\.spec\.js|\.github/workflows/staging-pawn-slug-visual\.yml)$' <<<"$changed"; then
+                echo "::notice title=Pawn Slug live visual::Relevant surface changed since $previous_sha."
+              else
+                relevant=false
+                echo "::notice title=Pawn Slug live visual skipped::No Pawn Slug runtime/integration change since previous successful staging generation $previous_sha."
+              fi
+            else
+              echo "::warning title=Pawn Slug visual fail-closed::No previous successful staging SHA found; live visual remains required."
+            fi
+          fi
 
+          [[ "$relevant" == true ]] || exit 0
+
+          # Only pay live identity/network checks when the visual surface changed.
           backend="$RUNNER_TEMP/pawnslug-backend-release.json"
           frontend="$RUNNER_TEMP/pawnslug-frontend-release.json"
           backend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$backend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
