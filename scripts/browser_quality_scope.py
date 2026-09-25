@@ -181,6 +181,7 @@ BROWSER_ACTION_PATHS = {
     ".github/actions/cache-node-modules/action.yml",
 }
 CICD_WORKFLOW = ".github/workflows/cicd.yml"
+BROWSER_SCOPE_PATH = "scripts/browser_quality_scope.py"
 
 
 def _clean_paths(paths: Iterable[str]) -> list[str]:
@@ -250,8 +251,12 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             pawn_slug = chesscom = trailblazer = matthias_priority = True
             matthias_home = matthias_insights = False
 
-        if path == CICD_WORKFLOW:
-            visual = quick_2d = pawn_slug = chesscom = trailblazer = matthias_priority = True
+        if path in {CICD_WORKFLOW, BROWSER_SCOPE_PATH}:
+            # Prove the specialized-browser orchestration with one representative
+            # canary. Actual product-surface changes above still add their own
+            # targeted lanes; generic CI/classifier edits must not wake every
+            # expensive browser family by default.
+            visual = True
 
     return BrowserScope(
         full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights,
@@ -615,12 +620,15 @@ def self_test() -> None:
     assert all_scope == BrowserScope.all()
     assert len(_ids(all_scope)) == 18
 
-    harness = classify([".github/workflows/cicd.yml"])
-    assert harness == BrowserScope(
-        visual=True, quick_2d=True, pawn_slug=True, chesscom=True,
-        trailblazer=True, matthias_priority=True,
-    )
-    assert _job_ids(harness) == ["desktop-scale", "quick-match-2d", "targeted-browser-smokes"]
+    harness = classify([CICD_WORKFLOW])
+    assert harness == BrowserScope(visual=True)
+    assert _job_ids(harness) == ["desktop-scale"]
+    classifier_harness = classify([BROWSER_SCOPE_PATH])
+    assert classifier_harness == BrowserScope(visual=True)
+    assert _job_ids(classifier_harness) == ["desktop-scale"]
+    mixed_harness = classify([CICD_WORKFLOW, "frontend/src/components/QuickMatchModal.jsx"])
+    assert mixed_harness == BrowserScope(visual=True, quick_2d=True)
+    assert _job_ids(mixed_harness) == ["desktop-scale", "quick-match-2d"]
 
     combined = classify([
         "frontend/src/components/GameBoardView.jsx",
