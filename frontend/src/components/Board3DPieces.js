@@ -55,10 +55,20 @@ const BASE_PROFILE = [
 ];
 
 const SHARED_PIECE_GEOMETRY = new Map();
+const SHARED_PIECE_GEOMETRY_BY_ROLE = new Map();
 
 function markSharedPieceGeometry(geometry, role) {
   geometry.userData.board3DSharedGeometry = true;
   geometry.userData.board3DSharedGeometryRole = role;
+  return geometry;
+}
+
+function sharedPieceGeometryByRole(coarsePointer, role, factory) {
+  const tier = coarsePointer ? 'lite' : 'full';
+  const key = `${tier}:${role}`;
+  if (SHARED_PIECE_GEOMETRY_BY_ROLE.has(key)) return SHARED_PIECE_GEOMETRY_BY_ROLE.get(key);
+  const geometry = markSharedPieceGeometry(factory(), key);
+  SHARED_PIECE_GEOMETRY_BY_ROLE.set(key, geometry);
   return geometry;
 }
 
@@ -242,11 +252,28 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   } else if (type === 'n') {
     addMesh(group, new THREE.TorusGeometry(0.145, 0.014, 8, 30), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'b') {
-    addMesh(group, new THREE.TorusGeometry(0.135, 0.011, 7, 28), accent, [0, 0.7, 0], [Math.PI / 2, 0, 0]);
+    addMesh(
+      group,
+      sharedPieceGeometryByRole(false, 'bishop-signature', () => new THREE.TorusGeometry(0.135, 0.011, 7, 28)),
+      accent,
+      [0, 0.7, 0],
+      [Math.PI / 2, 0, 0],
+    );
   } else if (type === 'r') {
-    addMesh(group, new THREE.TorusGeometry(0.255, 0.013, 7, 32), accent, [0, 0.845, 0], [Math.PI / 2, 0, 0]);
+    addMesh(
+      group,
+      sharedPieceGeometryByRole(false, 'rook-signature', () => new THREE.TorusGeometry(0.255, 0.013, 7, 32)),
+      accent,
+      [0, 0.845, 0],
+      [Math.PI / 2, 0, 0],
+    );
   } else if (type === 'q') {
-    addMesh(group, new THREE.SphereGeometry(0.052, 14, 9), accent, [0, 1.13, 0]);
+    addMesh(
+      group,
+      sharedPieceGeometryByRole(false, 'queen-signature', () => new THREE.SphereGeometry(0.052, 14, 9)),
+      accent,
+      [0, 1.13, 0],
+    );
   } else if (type === 'k') {
     addMesh(group, new THREE.TorusGeometry(0.155, 0.011, 7, 28), accent, [0, 0.89, 0], [Math.PI / 2, 0, 0]);
     addMesh(group, new THREE.SphereGeometry(0.032, 12, 8), accent, [0, 1.37, 0]);
@@ -356,13 +383,40 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v1' : 'staunton-mitre-v1';
       group.userData.board3DBishopHeightProfile = 'tall-123-v1';
       group.userData.board3DBishopSlashProfile = coarsePointer ? 'wide-diagonal-band-lite-v1' : 'wide-diagonal-band-v1';
-      addLathe(group, [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79]], main, 0, detail.lathe);
-      addMesh(group, new THREE.TorusGeometry(0.205, 0.025, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.79, 0], [Math.PI / 2, 0, 0]);
-      const mitre = addLathe(group, [[0.13, 0.78], [0.17, 0.84], [0.185, 0.92], [0.17, 1.0], [0.13, 1.1], [0.075, 1.18], [0.018, 1.23]], main, 0, coarsePointer ? 18 : 34);
+      addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'bishop-body', () => latheGeometry(
+          [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79]],
+          detail.lathe,
+        )),
+        main,
+      );
+      addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'bishop-collar', () => new THREE.TorusGeometry(0.205, 0.025, detail.torusRadial, coarsePointer ? 22 : 38)),
+        accent,
+        [0, 0.79, 0],
+        [Math.PI / 2, 0, 0],
+      );
+      const mitre = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'bishop-mitre', () => latheGeometry(
+          [[0.13, 0.78], [0.17, 0.84], [0.185, 0.92], [0.17, 1.0], [0.13, 1.1], [0.075, 1.18], [0.018, 1.23]],
+          coarsePointer ? 18 : 34,
+        )),
+        main,
+      );
       mitre.userData.bishopPart = 'mitre';
       const slash = addMesh(
         group,
-        new THREE.BoxGeometry(coarsePointer ? 0.055 : 0.06, coarsePointer ? 0.27 : 0.3, coarsePointer ? 0.24 : 0.27, 1, coarsePointer ? 2 : 4, 1),
+        sharedPieceGeometryByRole(coarsePointer, 'bishop-slash', () => new THREE.BoxGeometry(
+          coarsePointer ? 0.055 : 0.06,
+          coarsePointer ? 0.27 : 0.3,
+          coarsePointer ? 0.24 : 0.27,
+          1,
+          coarsePointer ? 2 : 4,
+          1,
+        )),
         accent,
         [0.035, 1.01, 0],
         [0, 0, 0.68],
@@ -374,43 +428,83 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       group.userData.board3DRookCrownProfile = 'six-wide-crenellations-v1';
       group.userData.board3DRookLuxuryBandProfile = coarsePointer ? 'fluted-band-8-v1' : 'fluted-band-16-v1';
 
-      const body = addLathe(
+      const body = addMesh(
         group,
-        [[0.245, 0.28], [0.26, 0.32], [0.242, 0.36], [0.215, 0.41], [0.185, 0.49], [0.158, 0.62], [0.15, 0.71], [0.165, 0.78], [0.205, 0.83], [0.247, 0.865]],
+        sharedPieceGeometryByRole(coarsePointer, 'rook-body', () => latheGeometry(
+          [[0.245, 0.28], [0.26, 0.32], [0.242, 0.36], [0.215, 0.41], [0.185, 0.49], [0.158, 0.62], [0.15, 0.71], [0.165, 0.78], [0.205, 0.83], [0.247, 0.865]],
+          detail.lathe,
+        )),
         main,
-        0,
-        detail.lathe,
       );
       body.userData.rookPart = 'body';
 
-      const lowerRing = addMesh(group, new THREE.TorusGeometry(0.268, 0.018, detail.torusRadial, coarsePointer ? 22 : 40), accent, [0, 0.315, 0], [Math.PI / 2, 0, 0]);
+      const lowerRing = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'rook-lower-ring', () => new THREE.TorusGeometry(0.268, 0.018, detail.torusRadial, coarsePointer ? 22 : 40)),
+        accent,
+        [0, 0.315, 0],
+        [Math.PI / 2, 0, 0],
+      );
       lowerRing.userData.rookPart = 'lower-ring';
-      const band = addMesh(group, new THREE.CylinderGeometry(0.252, 0.252, 0.055, detail.cylinder), accent, [0, 0.37, 0]);
+      const band = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'rook-ornamental-band', () => new THREE.CylinderGeometry(0.252, 0.252, 0.055, detail.cylinder)),
+        accent,
+        [0, 0.37, 0],
+      );
       band.userData.rookPart = 'ornamental-band';
       const fluteCount = coarsePointer ? 8 : 16;
       for (let index = 0; index < fluteCount; index += 1) {
         const angle = index * (Math.PI * 2 / fluteCount);
         const flute = addMesh(
           group,
-          new THREE.BoxGeometry(coarsePointer ? 0.036 : 0.026, 0.045, coarsePointer ? 0.052 : 0.045),
+          sharedPieceGeometryByRole(coarsePointer, 'rook-band-flute', () => new THREE.BoxGeometry(
+            coarsePointer ? 0.036 : 0.026,
+            0.045,
+            coarsePointer ? 0.052 : 0.045,
+          )),
           main,
           [Math.cos(angle) * 0.254, 0.37, Math.sin(angle) * 0.254],
           [0, -angle, 0],
         );
         flute.userData.rookPart = 'band-flute';
       }
-      const upperBaseRing = addMesh(group, new THREE.TorusGeometry(0.248, 0.014, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.415, 0], [Math.PI / 2, 0, 0]);
+      const upperBaseRing = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'rook-upper-base-ring', () => new THREE.TorusGeometry(0.248, 0.014, detail.torusRadial, coarsePointer ? 22 : 38)),
+        accent,
+        [0, 0.415, 0],
+        [Math.PI / 2, 0, 0],
+      );
       upperBaseRing.userData.rookPart = 'upper-base-ring';
 
-      const crownBase = addMesh(group, new THREE.CylinderGeometry(0.292, 0.263, 0.135, detail.cylinder), main, [0, 0.92, 0]);
+      const crownBase = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'rook-crown-base', () => new THREE.CylinderGeometry(0.292, 0.263, 0.135, detail.cylinder)),
+        main,
+        [0, 0.92, 0],
+      );
       crownBase.userData.rookPart = 'crown-base';
-      const crownLip = addMesh(group, new THREE.TorusGeometry(0.276, 0.018, detail.torusRadial, coarsePointer ? 22 : 40), accent, [0, 0.852, 0], [Math.PI / 2, 0, 0]);
+      const crownLip = addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'rook-crown-lip', () => new THREE.TorusGeometry(0.276, 0.018, detail.torusRadial, coarsePointer ? 22 : 40)),
+        accent,
+        [0, 0.852, 0],
+        [Math.PI / 2, 0, 0],
+      );
       crownLip.userData.rookPart = 'crown-lip';
       for (let index = 0; index < 6; index += 1) {
         const angle = index * Math.PI / 3;
         const battlement = addMesh(
           group,
-          new THREE.BoxGeometry(coarsePointer ? 0.16 : 0.17, 0.185, coarsePointer ? 0.16 : 0.17, 1, coarsePointer ? 1 : 2, 1),
+          sharedPieceGeometryByRole(coarsePointer, 'rook-battlement', () => new THREE.BoxGeometry(
+            coarsePointer ? 0.16 : 0.17,
+            0.185,
+            coarsePointer ? 0.16 : 0.17,
+            1,
+            coarsePointer ? 1 : 2,
+            1,
+          )),
           main,
           [Math.cos(angle) * 0.225, 1.045, Math.sin(angle) * 0.225],
           [0, -angle, 0],
@@ -418,12 +512,35 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         battlement.userData.rookPart = 'battlement';
       }
     } else if (type === 'q') {
-      addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main, 0, detail.lathe);
-      addMesh(group, new THREE.TorusGeometry(0.205, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
+      addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'queen-body', () => latheGeometry(
+          [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]],
+          detail.lathe,
+        )),
+        main,
+      );
+      addMesh(
+        group,
+        sharedPieceGeometryByRole(coarsePointer, 'queen-collar', () => new THREE.TorusGeometry(0.205, 0.028, detail.torusRadial, detail.torusTubular)),
+        accent,
+        [0, 0.84, 0],
+        [Math.PI / 2, 0, 0],
+      );
+      const crownConeGeometry = sharedPieceGeometryByRole(
+        coarsePointer,
+        'queen-crown-cone',
+        () => new THREE.ConeGeometry(0.055, 0.24, coarsePointer ? 10 : 16),
+      );
+      const crownOrbGeometry = sharedPieceGeometryByRole(
+        coarsePointer,
+        'queen-crown-orb',
+        () => new THREE.SphereGeometry(0.045, coarsePointer ? 10 : 14, coarsePointer ? 7 : 9),
+      );
       for (let index = 0; index < 7; index += 1) {
         const angle = index * (Math.PI * 2 / 7);
-        addMesh(group, new THREE.ConeGeometry(0.055, 0.24, coarsePointer ? 10 : 16), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
-        addMesh(group, new THREE.SphereGeometry(0.045, coarsePointer ? 10 : 14, coarsePointer ? 7 : 9), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
+        addMesh(group, crownConeGeometry, accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
+        addMesh(group, crownOrbGeometry, main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
       }
     } else if (type === 'k') {
       addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main, 0, detail.lathe);
