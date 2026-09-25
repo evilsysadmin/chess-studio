@@ -22,7 +22,7 @@ import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3D
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
-import { buildInitialBoard3DPieces } from './Board3DInitialPieces.js';
+import { buildBoard3DPieceMesh, buildInitialBoard3DPieces } from './Board3DInitialPieces.js';
 import { scheduleWarRoomAfterFirstPaint } from './WarRoomAfterFirstPaint.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
@@ -826,21 +826,9 @@ function Board3DCanvas({
     for (const square of buildSquares) {
       const piece = nextPieceBySquare.get(square);
       if (!piece || reconciledMeshes.has(square)) continue;
-      const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
-      const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
-        matthiasKing,
-        faceTowardCamera: orientation !== 'black',
+      const mesh = buildBoard3DPieceMesh({
+        state, piece, skinId, orientation, matthiasKingColor,
       });
-      const { x, z } = squarePosition(piece.square);
-      mesh.position.set(x, 0.1, z);
-      mesh.userData.square = piece.square;
-      mesh.userData.type = piece.type;
-      mesh.userData.color = piece.color;
-      mesh.userData.baseY = 0.1;
-      mesh.userData.baseScale = mesh.scale.clone();
-      if (matthiasKing) mesh.userData.matthiasKing = true;
-      mesh.traverse((object) => { object.userData.square = piece.square; });
-      addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
       state.pieceGroup.add(mesh);
       reconciledMeshes.set(piece.square, mesh);
     }
