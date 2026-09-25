@@ -126,6 +126,8 @@ jobs:
       - uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'false'
       - name: Fetch the just-published runtime GLB
         run: |
           set -euo pipefail
@@ -136,6 +138,7 @@ jobs:
         working-directory: e2e
         env:
           HOME_RUNTIME_GATE_GLB: /tmp/home-v2-runtime-candidate.glb
+          PLAYWRIGHT_SOURCE_SERVER: '1'
         run: ./node_modules/.bin/playwright test home-scene-runtime-gate.spec.js
       - uses: actions/upload-artifact@v7
         if: failure()
