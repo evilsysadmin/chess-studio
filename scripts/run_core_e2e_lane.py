@@ -55,6 +55,7 @@ class LaneCommand:
     spec: str
     args: tuple[str, ...] = ()
     additional_specs: tuple[str, ...] = ()
+    # False means required by a CI lane but intentionally outside Makefile critical-parity accounting.
     canonical_critical: bool = True
 
     def argv(self) -> list[str]:
