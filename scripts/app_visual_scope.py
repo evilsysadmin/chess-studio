@@ -152,10 +152,9 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
-    if (
-        lower == ".github/workflows/app-visual-artifact.yml"
-        or lower.startswith(".github/actions/app-visual-pipeline/")
-    ):
+    if lower == ".github/workflows/app-visual-artifact.yml":
+        return set()
+    if lower.startswith(".github/actions/app-visual-pipeline/"):
         return {"experiments"}
     if lower == "scripts/war_room_visual_freeze_check.mjs":
         return {"warroom"}
@@ -609,6 +608,9 @@ def self_test() -> None:
     assert global_css.capture_groups == ",".join(GROUP_ORDER)
     assert global_css.experiments_scope == ",".join(EXPERIMENT_ORDER)
     assert not global_css.hans and not global_css.chesscom
+    visual_workflow = classify([".github/workflows/app-visual-artifact.yml"])
+    assert visual_workflow.capture_groups == "none"
+    assert not visual_workflow.hans and not visual_workflow.chesscom
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
     assert visual_pipeline.capture_groups == "experiments"
     assert visual_pipeline.experiments_scope == "chronicles"

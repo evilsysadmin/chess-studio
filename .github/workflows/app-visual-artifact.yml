@@ -19,7 +19,6 @@ on:
       - e2e/browser-*-health.spec.js
       - scripts/*visual*
       - .github/actions/app-visual-pipeline/**
-      - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
 concurrency:
   group: ${{ github.ref }}
