@@ -48,6 +48,12 @@ class UpdateEmailRequest(BaseModel):
     password: str = Field(max_length=128)
 
 
+class UpdatePasswordRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    current_password: str = Field(alias="currentPassword", max_length=128)
+    new_password: str = Field(alias="newPassword", max_length=128)
+
+
 class AdminInsightsRequest(BaseModel):
     username: str = Field(max_length=64)
 
