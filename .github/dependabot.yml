@@ -3,7 +3,8 @@ version: 2
 # Keep dependency maintenance boring:
 # - weekly checks, in Europe/Madrid;
 # - patch/minor version updates grouped per ecosystem to reduce PR noise;
-# - major updates remain individual PRs and require deliberate review;
+# - coupled major stacks are grouped for one deliberate compatibility review;
+# - unrelated major updates remain individual PRs and require deliberate review;
 # - security updates remain ungrouped so an urgent fix is not coupled to unrelated changes.
 updates:
   - package-ecosystem: "npm"
@@ -17,6 +18,22 @@ updates:
     commit-message:
       prefix: "deps(frontend)"
     groups:
+      react-major:
+        applies-to: version-updates
+        patterns:
+          - "react"
+          - "react-dom"
+        update-types:
+          - "major"
+      vite-toolchain-major:
+        applies-to: version-updates
+        patterns:
+          - "vite"
+          - "@vitejs/plugin-react"
+          - "vitest"
+          - "@vitest/coverage-v8"
+        update-types:
+          - "major"
       routine-minor-patch:
         applies-to: version-updates
         patterns:
@@ -55,6 +72,14 @@ updates:
     commit-message:
       prefix: "deps(backend)"
     groups:
+      opentelemetry-stack:
+        applies-to: version-updates
+        patterns:
+          - "opentelemetry-*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       routine-minor-patch:
         applies-to: version-updates
         patterns:
