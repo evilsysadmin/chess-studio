@@ -125,12 +125,41 @@ enable_deploy_watcher() {
   : >"$marker_tmp"
   chmod 0644 "$marker_tmp"
   mv -f "$marker_tmp" "$deploy_watcher_enable_marker"
-  if systemctl enable --now chess-studio-deploy-watcher.service >/dev/null 2>&1; then
+  if systemctl enable --now chess-studio-deploy-watcher.service >/dev/null 2>&1 && \
+     systemctl is-active --quiet chess-studio-deploy-watcher.service; then
     echo 'OCI_DEPLOY_WATCHER state=enabled'
   else
     rm -f "$deploy_watcher_enable_marker"
     echo 'OCI_DEPLOY_WATCHER state=fallback-only' >&2
   fi
+}
+
+deploy_watcher_diag_summary() {
+  local active enabled marker restarts main_status metrics
+  active="$(systemctl is-active chess-studio-deploy-watcher.service 2>/dev/null || true)"
+  enabled="$(systemctl is-enabled chess-studio-deploy-watcher.service 2>/dev/null || true)"
+  restarts="$(systemctl show chess-studio-deploy-watcher.service -p NRestarts --value 2>/dev/null | tr -cd '0-9' || true)"
+  main_status="$(systemctl show chess-studio-deploy-watcher.service -p ExecMainStatus --value 2>/dev/null | tr -cd '0-9' || true)"
+  marker=0
+  if [[ -f "$deploy_watcher_enable_marker" && ! -L "$deploy_watcher_enable_marker" ]]; then
+    marker=1
+  fi
+  [[ -n "$active" ]] || active=unknown
+  [[ -n "$enabled" ]] || enabled=unknown
+  [[ -n "$restarts" ]] || restarts=unknown
+  [[ -n "$main_status" ]] || main_status=unknown
+  metrics="$(journalctl -u chess-studio-deploy-watcher.service -n 200 --no-pager -o cat 2>/dev/null | awk '
+    /OCI_DEPLOY_WATCH_ERROR/ { errors++ }
+    /OCI_DEPLOY_WATCH_IMAGE_PENDING/ { image_pending++ }
+    /OCI_DEPLOY_WATCH_TRIGGER/ { triggers++ }
+    /OCI_DEPLOY_WATCH_OK/ { ok++ }
+    /OCI_DEPLOY_WATCH_SUPERSEDED/ { superseded++ }
+    END {
+      printf "errors=%d image_pending=%d triggers=%d ok=%d superseded=%d", errors, image_pending, triggers, ok, superseded
+    }
+  ' || true)"
+  [[ -n "$metrics" ]] || metrics='errors=0 image_pending=0 triggers=0 ok=0 superseded=0'
+  echo "OCI_DEPLOY_WATCHER_DIAG active=$active enabled=$enabled marker=$marker restarts=$restarts main_status=$main_status $metrics"
 }
 
 image_available_for_rollback() {
@@ -639,6 +668,7 @@ for _ in $(seq 1 60); do
     start_observability_best_effort "$sha"
     if [[ "$target" == staging ]]; then
       enable_deploy_watcher
+      deploy_watcher_diag_summary
     fi
     agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
     phase_done total "$total_started_ms"
