@@ -1542,6 +1542,49 @@ def floor_panel(name, points_xy, z, thickness, mat):
     return obj
 
 
+# A more realistic heraldic horse bust for the banners and shield (facing left): long arched
+# neck, refined head with a concave nasal bridge, pricked ear, forelock and a mane of flowing
+# locks. Engraved cuts (dark) and a bright bridge highlight are layered over the gilt.
+KNIGHT_REAL = (
+    (-0.30, 0.10), (-0.27, 0.18), (-0.22, 0.27), (-0.15, 0.35), (-0.24, 0.26), (-0.33, 0.21), (-0.40, 0.20),
+    (-0.46, 0.24), (-0.49, 0.32), (-0.47, 0.40), (-0.42, 0.47), (-0.34, 0.57), (-0.26, 0.66), (-0.19, 0.75),
+    (-0.14, 0.82), (-0.10, 0.86), (-0.07, 0.99), (0.00, 0.88), (0.06, 0.91), (0.16, 0.95), (0.27, 0.99),
+    (0.20, 0.87), (0.33, 0.87), (0.25, 0.78), (0.39, 0.75), (0.30, 0.68), (0.42, 0.62), (0.33, 0.55),
+    (0.42, 0.47), (0.33, 0.40), (0.40, 0.32), (0.32, 0.25), (0.37, 0.16), (0.34, 0.10),
+)
+
+
+def _polyline_strip(points, width):
+    """Thin polygon around a polyline (for engraved lines)."""
+    left, right = [], []
+    for i, (x, z) in enumerate(points):
+        px, pz = points[max(0, i - 1)]
+        nx, nz = points[min(len(points) - 1, i + 1)]
+        dx, dz = nx - px, nz - pz
+        length = math.hypot(dx, dz) or 1.0
+        ox, oz = -dz / length * width / 2.0, dx / length * width / 2.0
+        left.append((x + ox, z + oz))
+        right.append((x - ox, z - oz))
+    return left + right[::-1]
+
+
+KNIGHT_REAL_CUTS = (
+    ((-0.215, 0.665), (-0.155, 0.700), (-0.105, 0.676), (-0.160, 0.652)),
+    ((-0.470, 0.345), (-0.440, 0.372), (-0.425, 0.340), (-0.452, 0.322)),
+    _polyline_strip([(-0.485, 0.262), (-0.430, 0.272), (-0.370, 0.262)], 0.012),
+    ((-0.075, 0.90), (-0.065, 0.965), (-0.020, 0.90)),
+    _polyline_strip([(-0.150, 0.600), (-0.190, 0.470), (-0.230, 0.350), (-0.180, 0.320)], 0.014),
+    _polyline_strip([(-0.050, 0.62), (0.000, 0.46), (-0.030, 0.30), (-0.060, 0.18)], 0.012),
+    _polyline_strip([(0.10, 0.86), (0.20, 0.72), (0.27, 0.58)], 0.012),
+    _polyline_strip([(0.12, 0.74), (0.24, 0.58), (0.30, 0.42)], 0.012),
+    _polyline_strip([(0.10, 0.62), (0.22, 0.44), (0.27, 0.28)], 0.012),
+)
+KNIGHT_REAL_HIGHLIGHTS = (
+    _polyline_strip([(-0.205, 0.735), (-0.300, 0.630), (-0.400, 0.505)], 0.020),
+    _polyline_strip([(0.10, 0.93), (0.28, 0.80), (0.36, 0.62)], 0.014),
+)
+
+
 # Angular heraldic knight for the rug: a sharp, unsmoothed polygon (spiked mane, pricked ear,
 # strong muzzle) facing left like KNIGHT_SILHOUETTE. Smoothing it made a plush toy.
 KNIGHT_HERALDIC = (
@@ -2700,34 +2743,20 @@ def add_banner(name: str, x: float, materials):
     # over a dark under-layer so it stands off the cloth. (The earlier sphere-and-cone "horse"
     # did not read as a horse.)
     relief_y = 5.73
-    scale = 1.02
     facing = 1.0 if x >= 0.0 else -1.0
-    scale = 0.92  # the angular heraldic knight is wider than the old smoothed one
-
-    def emblem(grow, y, depth, mat, tag):
-        flat_panel(
-            f"HOME_PROP_banner_knight_{tag}_{name}",
-            [(x + facing * (u + 0.045) * scale * grow, 3.98 + (v - 0.12) * scale * grow - (grow - 1.0) * 0.30) for u, v in KNIGHT_HERALDIC],
-            y,
-            depth,
-            mat,
-            bevel=0.008,
-        )
-
+    scale = 0.80  # fits the medallion ring (radius 0.43) centred at z 4.36
+    plain = materials["gilt_plain"]
     gilt = materials["gold"]
-    emblem(1.08, relief_y + 0.006, 0.030, materials["velvet_dark"], "shadow")
-    emblem(1.0, relief_y, 0.036, gilt, "gold")
-    # Eye, nostril, jaw and neck cuts inlaid in dark: the angular, fierce heraldic knight
-    # (the smoothed silhouette read as an embroidered plush toy).
-    for cut, pts in enumerate(KNIGHT_HERALDIC_CUTS):
-        flat_panel(
-            f"HOME_PROP_banner_knight_cut_{cut}_{name}",
-            [(x + facing * (u + 0.045) * scale, 3.98 + (v - 0.12) * scale) for u, v in pts],
-            relief_y - 0.020,
-            0.012,
-            materials["velvet_dark"],
-            bevel=0.002,
-        )
+
+    def place(pts, grow=1.0):
+        return [(x + facing * (u + 0.035) * scale * grow, 4.36 + (v - 0.545) * scale * grow) for u, v in pts]
+
+    flat_panel(f"HOME_PROP_banner_knight_shadow_{name}", place(KNIGHT_REAL, 1.07), relief_y + 0.006, 0.030, materials["velvet_dark"], bevel=0.008)
+    flat_panel(f"HOME_PROP_banner_knight_gold_{name}", place(KNIGHT_REAL), relief_y, 0.036, plain, bevel=0.008)
+    for cut, pts in enumerate(KNIGHT_REAL_CUTS):
+        flat_panel(f"HOME_PROP_banner_knight_cut_{cut}_{name}", place(pts), relief_y - 0.020, 0.012, materials["velvet_dark"], bevel=0.002)
+    for hl, pts in enumerate(KNIGHT_REAL_HIGHLIGHTS):
+        flat_panel(f"HOME_PROP_banner_knight_light_{hl}_{name}", place(pts), relief_y - 0.026, 0.010, materials["gilt_light"], bevel=0.002)
     cube(f"HOME_PROP_banner_knight_base_{name}", (x, relief_y - 0.004, 3.945), (0.26, 0.020, 0.018), gilt, bevel=0.006)
     # Finished heraldic cloth: gilt side trim, a chief band with studs, a medallion ring round
     # the knight and a cord with a tassel at the point, so the dark ink cloth reads as a
@@ -3049,24 +3078,15 @@ def add_heraldic_shield(prefix, cx, cz, wall_y, facing, materials):
         guard.rotation_euler[1] = ang
         cylinder(f"{prefix}_sword_grip_{side}", (cx - math.sin(ang) * 0.46, wall_y - 0.090, cz - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
         sphere(f"{prefix}_sword_pommel_{side}", (cx - math.sin(ang) * 0.56, wall_y - 0.090, cz - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
-    for tag, grow, dy, mat in (("shadow", 1.09, 0.102, materials["velvet_dark"]), ("gold", 1.0, 0.112, materials["gold"])):
-        flat_panel(
-            f"{prefix}_knight_{tag}",
-            [(cx - facing * (u + 0.045) * 0.48 * grow, cz - 0.02 + (v - 0.50) * 0.48 * grow) for u, v in KNIGHT_HERALDIC],
-            wall_y - dy,
-            0.026,
-            mat,
-            bevel=0.006,
-        )
-    for cut, pts in enumerate(KNIGHT_HERALDIC_CUTS):
-        flat_panel(
-            f"{prefix}_knight_cut_{cut}",
-            [(cx - facing * (u + 0.045) * 0.48, cz - 0.02 + (v - 0.50) * 0.48) for u, v in pts],
-            wall_y - 0.126,
-            0.014,
-            materials["velvet_dark"],
-            bevel=0.002,
-        )
+    def kp(pts, grow=1.0):
+        return [(cx - facing * (u + 0.035) * 0.44 * grow, cz - 0.02 + (v - 0.545) * 0.44 * grow) for u, v in pts]
+
+    flat_panel(f"{prefix}_knight_shadow", kp(KNIGHT_REAL, 1.08), wall_y - 0.102, 0.026, materials["velvet_dark"], bevel=0.006)
+    flat_panel(f"{prefix}_knight_gold", kp(KNIGHT_REAL), wall_y - 0.112, 0.026, materials["gilt_plain"], bevel=0.006)
+    for cut, pts in enumerate(KNIGHT_REAL_CUTS):
+        flat_panel(f"{prefix}_knight_cut_{cut}", kp(pts), wall_y - 0.126, 0.014, materials["velvet_dark"], bevel=0.002)
+    for hl, pts in enumerate(KNIGHT_REAL_HIGHLIGHTS):
+        flat_panel(f"{prefix}_knight_light_{hl}", kp(pts), wall_y - 0.132, 0.010, materials["gilt_light"], bevel=0.002)
     flat_panel(
         f"{prefix}_crown",
         [(cx - 0.16, cz + 0.41), (cx - 0.16, cz + 0.50), (cx - 0.08, cz + 0.45), (cx, cz + 0.55), (cx + 0.08, cz + 0.45), (cx + 0.16, cz + 0.50), (cx + 0.16, cz + 0.41)],
@@ -3594,6 +3614,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         ),
         "cat_fur": material("HOME_MAT_cat_fur", (0.90, 0.87, 0.82, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.04, variation=0.05, variation_scale=14.0),
         "cat_shade": material("HOME_MAT_cat_shade", (0.66, 0.64, 0.63, 1), roughness=0.96, emission=(0.035, 0.033, 0.032, 1), emission_strength=0.08),
+        "gilt_plain": material("HOME_MAT_gilt_plain", (0.50, 0.29, 0.045, 1), roughness=0.42, emission=(0.40, 0.20, 0.03, 1), emission_strength=0.05),
+        "gilt_light": material("HOME_MAT_gilt_light", (0.78, 0.52, 0.13, 1), roughness=0.34, emission=(0.55, 0.32, 0.06, 1), emission_strength=0.08),
         "cat_pink": material("HOME_MAT_cat_pink", (0.72, 0.36, 0.40, 1), roughness=0.7),
         "cat_dark": material("HOME_MAT_cat_dark", (0.03, 0.02, 0.02, 1), roughness=0.5),
         "sapphire": material("HOME_MAT_sapphire", (0.03, 0.12, 0.55, 1), roughness=0.18, emission=(0.03, 0.10, 0.50, 1), emission_strength=0.35),
@@ -4626,7 +4648,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             continue
         sphere(f"HOME_PROP_window_garden_flower_{idx}", (fx, 6.455, 2.08 + _hash01(idx, 3, 2141) * 0.14), (0.020, 0.010, 0.020), materials["plume_red"] if idx % 2 else materials["gold"])
 
-    for name, x in (("far_left", -8.05), ("left", -4.65), ("center", 0.0), ("right", 4.35), ("far_right", 8.0)):
+    # Two banners only (five were too many): numbering the original five from the left, keep 2
+    # (x -4.65, left of the shelf) and 4 (x 4.35, over the right hearth).
+    for name, x in (("left", -4.65), ("right", 4.35)):
         add_banner(name, x, materials)
 
     add_table_and_board(materials)
