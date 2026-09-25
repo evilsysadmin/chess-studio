@@ -193,8 +193,8 @@ export function installWarRoomHansServiceRoutine(root) {
 
   const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
-  const controller = createWarRoomHansWalkController(actor, { forward: 1 });
-  if (!runtime || !controller) return 0;
+  let controller = null;
+  if (!runtime) return 0;
   let props = null;
   const plant = ensureWarRoomHansPlant(root);
   let deliveredEspresso = null;
@@ -252,6 +252,8 @@ export function installWarRoomHansServiceRoutine(root) {
 
     if (!active) {
       if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
+      controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
+      if (!controller) return;
       if (!assignWarRoomHansTask(runtime, {
         id: taskId,
         kind: 'service',
