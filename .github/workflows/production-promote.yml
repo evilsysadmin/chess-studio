@@ -119,7 +119,7 @@ jobs:
 
       - name: Download immutable staging accreditation
         if: steps.source.outputs.found == 'true'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: staging-promotion-accreditation
           path: ${{ runner.temp }}/staging-accreditation
@@ -638,7 +638,7 @@ jobs:
           node-version: '22'
 
       - name: Download prebuilt production frontend
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: production-frontend-${{ env.DEPLOY_SHA }}
           path: release-source/frontend/dist
@@ -728,7 +728,7 @@ jobs:
             > "$RUNNER_TEMP/production-promotion-record.json"
 
       - name: Upload immutable production promotion record
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: production-promotion-record
           path: ${{ runner.temp }}/production-promotion-record.json

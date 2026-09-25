@@ -330,7 +330,7 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: quality-browser-frontend-${{ github.sha }}
           path: frontend/dist
@@ -363,7 +363,7 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
       - name: Download shared browser frontend
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: quality-browser-frontend-${{ github.sha }}
           path: frontend/dist
