@@ -65,6 +65,11 @@ describe('labLaunchIntent', () => {
     expect(loadRememberedLabMode()).toBeNull();
   });
 
+  it('remembers Chess Football across a browser refresh', () => {
+    expect(rememberLabMode('chess-football-godot')).toBe('chess-football-godot');
+    expect(loadRememberedLabMode()).toBe('chess-football-godot');
+  });
+
   it('remembers Pawn Slug Godot across a browser refresh without turning it into a one-shot intent', () => {
     expect(rememberLabMode('pawnslug-godot')).toBe('pawnslug-godot');
     expect(loadRememberedLabMode()).toBe('pawnslug-godot');
