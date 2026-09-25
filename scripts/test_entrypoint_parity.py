@@ -150,9 +150,9 @@ if sharded_playwright:
         raise SystemExit('CI volvió a duplicar el dispatch de lanes en YAML; usa run_core_e2e_lane.py')
 
     lane_commands = critical_targets()
-    if len(lane_commands) != 4:
+    if len(lane_commands) != 3:
         raise SystemExit(
-            f'runner core debe declarar exactamente cuatro comandos spec+grep críticos; encontrados: {len(lane_commands)}'
+            f'runner core debe declarar exactamente tres comandos spec+grep críticos; encontrados: {len(lane_commands)}'
         )
     lane_patterns = [pattern for _, pattern in lane_commands]
     sharded_critical = {
