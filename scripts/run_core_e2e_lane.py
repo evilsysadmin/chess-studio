@@ -42,6 +42,7 @@ HOME_GREP = (
     'Matthias · el briefing persistente aparece antes de una partida rápida'
 )
 HOME_MOBILE_GREP = 'Home · la experiencia canónica no cambia con el viewport'
+HOME_WEBGL_GREP = 'Browser WebGL · Home 3D recupera el contexto perdido'
 SMOKE_GREP = (
     'login → menú|Partida rápida · una partida activa|Torneo · una partida activa|'
     'Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|'
@@ -114,6 +115,10 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             'mobile-final-interactions.spec.js',
             ('--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
         ),
+        LaneCommand(
+            'browser-runtime-health.spec.js',
+            ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+        ),
     ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
@@ -183,10 +188,11 @@ def self_test() -> None:
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
     assert [command.spec for command in LANE_COMMANDS['home']] == [
-        'regression-journeys.spec.js', 'mobile-final-interactions.spec.js'
+        'regression-journeys.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
     assert LANE_COMMANDS['home'][0].grep == HOME_GREP
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
+    assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'mobile-final-interactions.spec.js'
     ]
@@ -232,6 +238,7 @@ def self_test() -> None:
     assert calls == [
         ([PLAYWRIGHT, 'test', 'regression-journeys.spec.js', '--grep', HOME_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'], E2E_DIR, True),
         ([PLAYWRIGHT, 'test', 'mobile-final-interactions.spec.js', '--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'browser-runtime-health.spec.js', '--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'], E2E_DIR, True),
     ]
 
     try:
