@@ -8,12 +8,14 @@ const LOCAL_SWIFTSHADER_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_SWIFTSHADER ==
 const CAPTURE_BASE_URL = process.env.HOME_MATTHIAS_BASE_URL;
 const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 };
 const CAPTURES = [
-  { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
-  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, hasTouch:true, expectCopy:false },
+  { label:'desktop-watch-post-1440x900', width:1440, height:900, hour:12, profile:'speak', clip:'Speak', station:'watch-post', support:'foreground-rug', supportBottomRange:[.92, 1.08], avatar:/lunch-bocata/i, keepGreeting:true, expectCopy:false },
+  { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
+  { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
+  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
+  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
+  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
+  { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .84], avatar:/late-sleep/i, expectCopy:false },
+  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.7, .8], avatar:/lunch-bocata/i, hasTouch:true, expectCopy:false },
 ];
 
 async function freezeClockAtRoutine(context, hour) {
@@ -44,6 +46,17 @@ async function freezeClockAtRoutine(context, hour) {
   }, { ...FIXED_LOCAL_DATE, hour });
 }
 
+async function holdLoginGreetingForCapture(context) {
+  await context.addInitScript(() => {
+    const schedule = globalThis.setTimeout.bind(globalThis);
+    globalThis.setTimeout = (callback, delay, ...args) => schedule(
+      callback,
+      Number(delay) === 7000 ? 120_000 : delay,
+      ...args,
+    );
+  });
+}
+
 async function openDeterministicHome(page) {
   // A still artifact must show the authored activity prop, not whichever frame
   // happened to be running when the heavier hall compositor finished loading.
@@ -62,13 +75,28 @@ async function openDeterministicHome(page) {
   const hallArt = home.locator('.illustrated-home__art');
   await expect(hallArt).toHaveJSProperty('complete', true);
   await expect.poll(() => hallArt.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+  const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
+  // A full-page visual artifact is only evidence once the hall has settled on
+  // an actual visible surface. Hosted SwiftShader can finish Matthias first,
+  // while the Home canvas is still an intentionally dark loading placeholder.
+  await expect.poll(async () => {
+    if (await hallRuntime.count() === 0) return 'fallback';
+    return hallRuntime.getAttribute('data-home-blender-runtime');
+  }, { timeout:30_000 }).toMatch(/^(ready|fallback)$/);
   if (LOCAL_GPU_CAPTURE) {
-    await expect(home.locator('[data-home-castle-compositor="blender-runtime"]'))
-      .toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:30_000 });
+    await expect(hallRuntime).toHaveAttribute('data-home-blender-runtime', 'ready');
   }
-  // The castle renderer may deliberately stay on its canonical 2D fallback on
-  // constrained/touch viewports. Matthias owns an independent WebGL contract,
-  // so his canary waits for his Blender model below instead of another surface.
+  if (await hallRuntime.count() > 0
+      && await hallRuntime.getAttribute('data-home-blender-runtime') === 'ready') {
+    await expect(hallRuntime).toBeVisible();
+    await expect(hallRuntime).toHaveCSS('opacity', '1');
+  } else {
+    await expect(hallArt).toBeVisible();
+    await expect(hallArt).toHaveCSS('opacity', '1');
+  }
+  // The castle renderer may deliberately settle on its canonical 2D fallback
+  // on constrained/touch viewports. Matthias owns an independent WebGL contract,
+  // so his canary still waits for his Blender model below.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
@@ -149,7 +177,7 @@ async function captureElementPng(context, page, locator, path) {
 }
 
 test('App visual artifact · Matthias Home deterministic full + crop', async () => {
-  test.setTimeout(150_000);
+  test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
@@ -172,6 +200,10 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         ...(CAPTURE_BASE_URL ? { baseURL:CAPTURE_BASE_URL } : {}),
       });
       await freezeClockAtRoutine(context, capture.hour);
+      // Hosted SwiftShader can need >7 s to mount both Home renderers. Keep the
+      // intentional speaking/watch-post frame alive until its PNG is captured;
+      // production retains the normal seven-second greeting lifetime.
+      if (capture.keepGreeting) await holdLoginGreetingForCapture(context);
       const page = await context.newPage();
 
       try {
@@ -179,9 +211,11 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         // The greeting can expire between a visibility probe and a locator
         // action on slow software rendering. Dismiss it atomically if it still
         // exists; the quiet artifact does not need to wait for a vanished node.
-        await page.evaluate(() => {
-          document.querySelector('button[aria-label="Cerrar comentario de Matthias"]')?.click();
-        });
+        if (!capture.keepGreeting) {
+          await page.evaluate(() => {
+            document.querySelector('button[aria-label="Cerrar comentario de Matthias"]')?.click();
+          });
+        }
         const renderer = await page.evaluate(() => {
           const gl = document.createElement('canvas').getContext('webgl2');
           const debug = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -207,6 +241,7 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
         await expect(avatar).toHaveAttribute('data-home-matthias-station', capture.station);
+        await expect(avatar).toHaveAttribute('data-home-matthias-support', capture.support);
         await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
         await expect(avatar).toHaveAttribute('data-home-matthias-profile', capture.profile, { timeout:15_000 });
         await expect(image).toHaveAttribute('src', capture.avatar);
@@ -221,6 +256,22 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
             getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
           ));
           expect(occlusion).toBe(0);
+        }
+
+        if (capture.supportBottomRange) {
+          const [stageBox, portraitBox, occlusion] = await Promise.all([
+            home.locator('.illustrated-home__stage').boundingBox(),
+            matthias.locator('.illustrated-home__matthias-portrait').boundingBox(),
+            matthias.evaluate((element) => Number.parseFloat(
+              getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
+            ) || 0),
+          ]);
+          expect(stageBox).not.toBeNull();
+          expect(portraitBox).not.toBeNull();
+          const visibleBottom = portraitBox.y + (portraitBox.height * (1 - (occlusion / 100)));
+          const supportBottomRatio = (visibleBottom - stageBox.y) / stageBox.height;
+          expect(supportBottomRatio).toBeGreaterThanOrEqual(capture.supportBottomRange[0]);
+          expect(supportBottomRatio).toBeLessThanOrEqual(capture.supportBottomRange[1]);
         }
 
         if (capture.minStageTopRatio) {
