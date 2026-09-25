@@ -218,17 +218,17 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 {
                     "id": "hans-fire-call",
                     "label": "War Room · Hans waits for the rendered call",
-                    "command": "./node_modules/.bin/playwright test war-room-hans-fire-call.spec.js --workers=1 --retries=0",
+                    "command": "./node_modules/.bin/playwright test war-room-hans-fire-call.spec.js --workers=1 --retries=0 --max-failures=1",
                 },
                 {
                     "id": "android-selection",
                     "label": "War Room · Android selection",
-                    "command": "./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0",
+                    "command": "./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0 --max-failures=1",
                 },
                 {
                     "id": "desktop-input",
                     "label": "War Room · desktop input",
-                    "command": "./node_modules/.bin/playwright test three-d-war-room.spec.js --grep \"War Room · desktop input mantiene cámara fija y juega e2→e4\" --workers=1 --retries=0 --timeout=75000",
+                    "command": "./node_modules/.bin/playwright test three-d-war-room.spec.js --grep \"War Room · desktop input mantiene cámara fija y juega e2→e4\" --workers=1 --retries=0 --max-failures=1 --timeout=75000",
                 },
             ]
         )
@@ -238,7 +238,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 {
                     "id": "special-surfaces",
                     "label": "3D parity · special surfaces",
-                    "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000",
+                    "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=90000",
                 },
                 {
                     "id": "special-state-canaries",
@@ -247,7 +247,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                     # endgame transition, promotion UI/piece replacement and WebGL
                     # lifecycle under repeated Android visibility/rotation changes.
                     # Check/castling/en-passant remain in the full browser sweep.
-                    "command": "./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --grep \"jaque mate|promoción 3D|sobrevive rotación\" --workers=1 --retries=0 --timeout=120000",
+                    "command": "./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --grep \"jaque mate|promoción 3D|sobrevive rotación\" --workers=1 --retries=0 --max-failures=1 --timeout=120000",
                 },
             ]
         )
@@ -256,7 +256,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "desktop-scale",
                 "label": "War Room · desktop board scale",
-                "command": "./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000",
+                "command": "./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
             }
         )
     if scope.focus:
@@ -264,7 +264,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "android-focus",
                 "label": "War Room · Android Focus",
-                "command": "./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000",
+                "command": "./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=30000",
             }
         )
     if scope.matthias:
@@ -273,17 +273,17 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 {
                     "id": "matthias-home-motion",
                     "label": "Matthias · Home motion",
-                    "command": "./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000",
+                    "command": "./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
                 },
                 {
                     "id": "matthias-war-room",
                     "label": "Matthias · War Room Android",
-                    "command": "./node_modules/.bin/playwright test matthias-war-room-android-motion.spec.js --workers=1 --retries=0",
+                    "command": "./node_modules/.bin/playwright test matthias-war-room-android-motion.spec.js --workers=1 --retries=0 --max-failures=1",
                 },
                 {
                     "id": "matthias-insights",
                     "label": "Matthias · Así juegas motion",
-                    "command": "./node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0",
+                    "command": "./node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0 --max-failures=1",
                 },
             ]
         )
@@ -292,7 +292,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "matthias-home-motion",
                 "label": "Matthias · Home motion",
-                "command": "./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000",
+                "command": "./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
             }
         )
     if scope.matthias_insights and not scope.matthias:
@@ -300,7 +300,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "matthias-insights",
                 "label": "Matthias · Así juegas motion",
-                "command": "./node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0",
+                "command": "./node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0 --max-failures=1",
             }
         )
     if scope.quick_2d:
@@ -308,7 +308,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "quick-match-2d",
                 "label": "Quick Match · mobile 2D continuity",
-                "command": "./node_modules/.bin/playwright test quick-match-2d.spec.js --workers=1 --retries=0 --timeout=75000",
+                "command": "./node_modules/.bin/playwright test quick-match-2d.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
             }
         )
     if scope.network_race:
@@ -316,7 +316,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "game-network-races",
                 "label": "Game network · reconnect and late response",
-                "command": "./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js late-move-response-exit.spec.js --workers=1 --retries=0 --timeout=75000",
+                "command": "./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js late-move-response-exit.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
             }
         )
     if scope.chronicles:
@@ -328,7 +328,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 # Tactics state transition. Progression, disclosure and responsive
                 # contracts remain in cheaper frontend/full-browser coverage; the
                 # required lane must still prove that Tactics can actually move.
-                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --timeout=90000",
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
     return {"include": cases}
@@ -510,6 +510,7 @@ def self_test() -> None:
     ):
         assert _ids(classify([chronicles_path])) == ["chronicles"]
 
+    assert all("--max-failures=1" in case["command"] for case in build_matrix(full)["include"])
     chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
     assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
     assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
