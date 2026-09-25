@@ -321,11 +321,11 @@ def test_health_is_liveness_and_does_not_touch_mongo(monkeypatch):
 
 
 def test_ready_memory_mode_does_not_touch_mongo(monkeypatch):
-    async def exploding_get_db():
+    async def exploding_database_ready():
         raise AssertionError("/ready no debe tocar Mongo si la persistencia no está configurada")
 
     monkeypatch.setattr("db.persistent_storage_required", lambda: False)
-    monkeypatch.setattr("db.get_db", exploding_get_db)
+    monkeypatch.setattr("db.database_ready", exploding_database_ready)
     r = client.get("/api/ready")
     assert r.status_code == 200
     assert r.json() == {"ok": True, "storage": "memory"}
@@ -333,10 +333,10 @@ def test_ready_memory_mode_does_not_touch_mongo(monkeypatch):
 
 def test_ready_returns_200_when_configured_mongo_is_available(monkeypatch):
     async def available_db():
-        return object()
+        return True
 
     monkeypatch.setattr("db.persistent_storage_required", lambda: True)
-    monkeypatch.setattr("db.get_db", available_db)
+    monkeypatch.setattr("db.database_ready", available_db)
     r = client.get("/api/ready")
     assert r.status_code == 200
     assert r.json() == {"ok": True, "storage": "mongo"}
@@ -345,9 +345,9 @@ def test_ready_returns_200_when_configured_mongo_is_available(monkeypatch):
 
 def test_ready_returns_503_when_configured_mongo_is_down(monkeypatch):
     async def unavailable_db():
-        return None
+        return False
 
     monkeypatch.setattr("db.persistent_storage_required", lambda: True)
-    monkeypatch.setattr("db.get_db", unavailable_db)
+    monkeypatch.setattr("db.database_ready", unavailable_db)
     r = client.get("/api/ready")
     assert r.status_code == 503
