@@ -29,13 +29,14 @@ class BrowserScope:
     quick_2d: bool = False
     network_race: bool = False
     chronicles: bool = False
+    tournament_mobile: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -130,6 +131,11 @@ CHRONICLES_PATTERNS = (
     "e2e/chronicles-of-matthias.spec.js",
     "e2e/chronicles-of-matthias-tactics.spec.js",
 )
+TOURNAMENT_MOBILE_PATTERNS = (
+    "frontend/src/components/TournamentScreen.jsx",
+    "frontend/src/components/TournamentMobilePolish.css",
+    "e2e/mobile-tournament-ux.spec.js",
+)
 NETWORK_RACE_PATTERNS = (
     "frontend/src/useGameReconnect.js",
     "frontend/src/gameReconnect.js",
@@ -162,7 +168,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -196,11 +202,14 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, NETWORK_RACE_PATTERNS):
             network_race = True
 
+        if _matches(path, TOURNAMENT_MOBILE_PATTERNS):
+            tournament_mobile = True
+
         if _matches(path, CHRONICLES_PATTERNS):
             chronicles = True
 
         if path in BROWSER_ACTION_PATHS:
-            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = True
+            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
             matthias_home = matthias_insights = False
 
         if path == CICD_WORKFLOW:
@@ -208,7 +217,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             quick_2d = True
 
     return BrowserScope(
-        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles
+        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles, tournament_mobile
     )
 
 
@@ -311,6 +320,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "id": "quick-match-2d",
                 "label": "Quick Match · mobile 2D continuity",
                 "command": "./node_modules/.bin/playwright test quick-match-2d.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
+            }
+        )
+    if scope.tournament_mobile:
+        cases.append(
+            {
+                "id": "tournament-mobile",
+                "label": "Tournament · mobile UX",
+                "command": "./node_modules/.bin/playwright test mobile-tournament-ux.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=45000",
             }
         )
     if scope.network_race:
@@ -427,6 +444,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Matthias Home-only: `{yn(scope.matthias_home)}`",
             f"- Matthias Insights-only: `{yn(scope.matthias_insights)}`",
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
+            f"- Tournament mobile UX: `{yn(scope.tournament_mobile)}`",
             f"- Game network races: `{yn(scope.network_race)}`",
             f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
@@ -494,6 +512,9 @@ def self_test() -> None:
     assert _ids(classify(["frontend/src/components/InsightsMatthiasMotion.jsx"])) == ["matthias-insights"]
     assert _ids(classify(["e2e/insights-matthias-motion.spec.js"])) == ["matthias-insights"]
     assert _ids(classify(["frontend/src/components/QuickMatchModal.jsx"])) == ["quick-match-2d"]
+    assert _ids(classify(["frontend/src/components/TournamentScreen.jsx"])) == ["tournament-mobile"]
+    assert _ids(classify(["frontend/src/components/TournamentMobilePolish.css"])) == ["tournament-mobile"]
+    assert _ids(classify(["e2e/mobile-tournament-ux.spec.js"])) == ["tournament-mobile"]
     assert _ids(classify(["frontend/src/useGameReconnect.js"])) == ["game-network-races"]
     assert _ids(classify(["frontend/src/components/GameScreen.jsx"])) == ["game-network-races"]
     assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
@@ -523,7 +544,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 13
+    assert len(_ids(all_scope)) == 14
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
@@ -547,6 +568,7 @@ def self_test() -> None:
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
     assert "Matthias Home-only: `true`" in render_summary(BrowserScope(matthias_home=True))
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
+    assert "Tournament mobile UX: `true`" in render_summary(BrowserScope(tournament_mobile=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
     assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
 
