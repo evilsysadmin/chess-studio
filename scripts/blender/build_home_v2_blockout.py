@@ -26,6 +26,7 @@ CONTRACT = "home-blender-canon-20260918-v1"
 DEFAULT_REFERENCE = "scripts/blender/references/home_canon_20260918.webp.b64"
 
 _CUBE_TEMPLATE_MESH = None
+_SPHERE_TEMPLATE_MESHES = {}
 
 
 def argv_after_double_dash() -> list[str]:
@@ -803,11 +804,27 @@ def rotate_group_about_z(prefix: str, origin_xy, angle_degrees: float) -> None:
         obj.rotation_euler[2] += angle
 
 
+def _new_unit_sphere(name: str, location, segments: int, rings: int):
+    key = (int(segments), int(rings))
+    template = _SPHERE_TEMPLATE_MESHES.get(key)
+    if template is None:
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
+        obj = bpy.context.object
+        template = obj.data.copy()
+        template.name = f"HOME_TEMPLATE_uv_sphere_{segments}_{rings}"
+        _SPHERE_TEMPLATE_MESHES[key] = template
+    else:
+        mesh = template.copy()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location = location
+    obj.name = name
+    return obj
+
+
 def sphere(name: str, location, scale, mat, *, detail=None):
     segments, rings = detail or _adaptive_sphere_detail(name, max(abs(float(v)) for v in scale), min(abs(float(v)) for v in scale))
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
-    obj = bpy.context.object
-    obj.name = name
+    obj = _new_unit_sphere(name, location, segments, rings)
     _bake_mesh_scale(obj, scale)
     smooth_curved_mesh(obj)
     apply_material(obj, mat)
