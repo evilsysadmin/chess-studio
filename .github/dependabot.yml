@@ -17,6 +17,10 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps(frontend)"
+    ignore:
+      - dependency-name: "babylonjs"
+        versions:
+          - ">=9.27.0 <9.28.0"
     groups:
       react-major:
         applies-to: version-updates
