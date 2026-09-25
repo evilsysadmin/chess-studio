@@ -95,6 +95,15 @@ def _is_noncanonical_admin_surface(path: str) -> bool:
     return name.startswith(("admin", "observability", "useadmin"))
 
 
+DEDICATED_WAR_ROOM_BLENDER_PATHS = {
+    "scripts/blender/build_war_room_premium.py",
+    "scripts/blender/publish_war_room_v2_staging.py",
+    ".github/workflows/war-room-blender-art.yml",
+    "scripts/blender/build_war_room_v3.py",
+    "scripts/blender/publish_war_room_v3.py",
+    ".github/workflows/war-room-v3-blender-art.yml",
+}
+
 def _surface_groups(path: str) -> set[str] | None:
     """Return explicit groups, empty set for optional-only, or None for full fallback."""
     lower = path.lower()
@@ -119,15 +128,11 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments"}
-    if lower in {
-        "scripts/blender/build_war_room_premium.py",
-        "scripts/blender/publish_war_room_v2_staging.py",
-        ".github/workflows/war-room-blender-art.yml",
-        "scripts/blender/build_war_room_v3.py",
-        "scripts/blender/publish_war_room_v3.py",
-        ".github/workflows/war-room-v3-blender-art.yml",
-    }:
-        return {"warroom"}
+    if lower in DEDICATED_WAR_ROOM_BLENDER_PATHS:
+        # Dedicated Blender workflows already build, render, validate, upload
+        # PNG evidence and publish the revisioned runtime shell. App visual only
+        # adds value when browser-owned War Room code changes in the same PR.
+        return set()
     if lower in {
         ".github/workflows/home-blender-v2-runtime.yml",
         "scripts/promote_home_scene_runtime.py",
@@ -326,8 +331,9 @@ def classify(paths: list[str]) -> Scope:
     hans = False
     chesscom = False
     chronicles_avatar = False
-    warroom_revision_required = any(_needs_warroom_revision(path) for path in cleaned)
-    warroom_v3_revision_required = any(_needs_warroom_v3_revision(path) for path in cleaned)
+    has_v2_revision_owner = any(_needs_warroom_revision(path) for path in cleaned)
+    has_v3_revision_owner = any(_needs_warroom_v3_revision(path) for path in cleaned)
+    browser_warroom = False
 
     for path in cleaned:
         lower = path.lower()
@@ -345,10 +351,12 @@ def classify(paths: list[str]) -> Scope:
                 chesscom=fallback.chesscom,
                 experiment_parts=fallback.experiment_parts,
                 chronicles_avatar=fallback.chronicles_avatar,
-                warroom_revision_required=warroom_revision_required,
-                warroom_v3_revision_required=warroom_v3_revision_required,
+                warroom_revision_required=has_v2_revision_owner,
+                warroom_v3_revision_required=has_v3_revision_owner,
             )
         groups.update(surface)
+        if "warroom" in surface:
+            browser_warroom = True
         if "experiments" in surface:
             parts = _experiment_parts(path)
             experiment_parts.update(parts)
@@ -363,8 +371,8 @@ def classify(paths: list[str]) -> Scope:
         chesscom=chesscom,
         experiment_parts=ordered_experiments,
         chronicles_avatar=chronicles_avatar,
-        warroom_revision_required=warroom_revision_required,
-        warroom_v3_revision_required=warroom_v3_revision_required,
+        warroom_revision_required=browser_warroom and has_v2_revision_owner,
+        warroom_v3_revision_required=browser_warroom and has_v3_revision_owner,
     )
 
 
@@ -458,12 +466,12 @@ def self_test() -> None:
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
-    assert blender_publish.capture_groups == "warroom" and not blender_publish.hans
-    assert blender_workflow.capture_groups == "warroom" and not blender_workflow.hans
-    assert blender_warroom.capture_groups == "warroom" and not blender_warroom.hans
-    assert blender_warroom.warroom_revision_required
-    assert blender_publish.warroom_revision_required
-    assert blender_workflow.warroom_revision_required
+    assert blender_publish.capture_groups == "none" and not blender_publish.hans
+    assert blender_workflow.capture_groups == "none" and not blender_workflow.hans
+    assert blender_warroom.capture_groups == "none" and not blender_warroom.hans
+    assert not blender_warroom.warroom_revision_required
+    assert not blender_publish.warroom_revision_required
+    assert not blender_workflow.warroom_revision_required
     assert classify(["docs/operations/war-room-blender-pipeline.md"]).capture_groups == "none"
     assert classify([".github/workflows/README.md"]).capture_groups == "none"
     assert classify(["scripts/blender_required_scope.py"]).capture_groups == "none"
@@ -471,11 +479,16 @@ def self_test() -> None:
     blender_v3 = classify(["scripts/blender/build_war_room_v3.py"])
     blender_v3_publish = classify(["scripts/blender/publish_war_room_v3.py"])
     blender_v3_workflow = classify([".github/workflows/war-room-v3-blender-art.yml"])
-    assert blender_v3.capture_groups == "warroom" and blender_v3.warroom_v3_revision_required
-    assert blender_v3_publish.capture_groups == "warroom" and blender_v3_publish.warroom_v3_revision_required
-    assert blender_v3_workflow.capture_groups == "warroom" and blender_v3_workflow.warroom_v3_revision_required
+    assert blender_v3.capture_groups == "none" and not blender_v3.warroom_v3_revision_required
+    assert blender_v3_publish.capture_groups == "none" and not blender_v3_publish.warroom_v3_revision_required
+    assert blender_v3_workflow.capture_groups == "none" and not blender_v3_workflow.warroom_v3_revision_required
     assert not blender_v3.warroom_revision_required
-    assert blender_warroom.warroom_v3_revision_required
+    assert not blender_warroom.warroom_v3_revision_required
+    mixed_v3 = classify([
+        "scripts/blender/build_war_room_v3.py",
+        "frontend/src/components/WarRoomV3Shell.js",
+    ])
+    assert mixed_v3.capture_groups == "warroom" and mixed_v3.warroom_v3_revision_required
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
