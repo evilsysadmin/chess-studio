@@ -119,6 +119,11 @@ MATTHIAS_HOME_RE = re.compile(r"^frontend/src/components/MatthiasPremiumHome3D\.
 LAB_SCREEN_PATH = "frontend/src/components/LabScreen.jsx"
 LAB_LAUNCH_INTENT_PATH = "frontend/src/labLaunchIntent.js"
 VISUAL_ARTIFACT_E2E_RE = re.compile(r"^e2e/.*visual-artifact\.spec\.js$")
+STAGING_ONLY_E2E = {
+    "e2e/staging-live.spec.js",
+    "e2e/staging-war-room-restore.spec.js",
+    "e2e/staging-pawn-slug-godot.spec.js",
+}
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
@@ -301,7 +306,7 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
 
         if path.startswith("e2e/"):
-            if VISUAL_ARTIFACT_E2E_RE.search(path):
+            if path in STAGING_ONLY_E2E or VISUAL_ARTIFACT_E2E_RE.search(path):
                 continue
             if path in E2E_SHARED:
                 _enable_core_e2e(scope)
@@ -423,6 +428,9 @@ def self_test() -> None:
         run_trailblazer_e2e=True,
     )
     _expect(["e2e/experiments-visual-artifact.spec.js"])
+    _expect(["e2e/staging-live.spec.js"])
+    _expect(["e2e/staging-war-room-restore.spec.js"])
+    _expect(["e2e/staging-pawn-slug-godot.spec.js"])
     _expect(["games/pawn-slug-godot/scripts/player.gd"], run_pawn_slug_godot=True)
     _expect(["scripts/pawn_slug_godot_2d_gate.py"], run_pawn_slug_godot=True)
     _expect(["scripts/pawn_slug_enemy_roster_gate.py"], run_pawn_slug_godot=True)
