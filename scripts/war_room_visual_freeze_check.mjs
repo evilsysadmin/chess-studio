@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const artifactDir = path.resolve('.artifacts/app-visual');
+const requestedVariants = String(process.env.APP_VISUAL_WARROOM_VARIANTS || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 const profiles = [
   {
@@ -32,9 +36,19 @@ function fail(label, message) {
 }
 
 for (const profile of profiles) {
-  const healthPath = path.join(artifactDir, `${profile.slug}-health.json`);
-  if (!fs.existsSync(healthPath)) {
-    fail(profile.label, `missing canonical health artifact ${path.relative(process.cwd(), healthPath)}`);
+  const candidateSlugs = [
+    profile.slug,
+    ...requestedVariants.map((variant) => profile.slug.replace(/^war-room-/, `war-room-${variant}-`)),
+  ];
+  const healthPath = candidateSlugs
+    .map((slug) => path.join(artifactDir, `${slug}-health.json`))
+    .find((candidate) => fs.existsSync(candidate));
+
+  if (!healthPath) {
+    const expected = candidateSlugs
+      .map((slug) => path.relative(process.cwd(), path.join(artifactDir, `${slug}-health.json`)))
+      .join(' or ');
+    fail(profile.label, `missing canonical health artifact ${expected}`);
     continue;
   }
 

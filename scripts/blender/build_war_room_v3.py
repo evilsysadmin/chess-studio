@@ -4,8 +4,8 @@
 V3 keeps only the live-board anchor and canonical camera from the v2 generator.
 Its authored room is rebuilt from an empty static collection: a curved tower
 apse, circular command table, celestial window, single cast-iron stove,
-brass telescope, tower entry and suspended armillary replace v2's rectangular
-hall.
+brass telescope, reading nook, chess-treatise shelf and grounded tower entry
+replace v2's rectangular hall.
 """
 from __future__ import annotations
 
@@ -103,8 +103,8 @@ def build_v3_palette():
             rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.032,
         ),
         "leather": base.material(
-            "WR3_MAT_saddle_leather", (0.29, 0.055, 0.018, 1),
-            rough=0.47, coat=0.19, sheen=0.10, texture="leather", scale=44, bump=0.070,
+            "WR3_MAT_saddle_leather", (0.115, 0.028, 0.012, 1),
+            rough=0.50, coat=0.14, sheen=0.08, texture="leather", scale=44, bump=0.060,
         ),
         "green_leather": base.material(
             "WR3_MAT_chart_green_leather", (0.008, 0.120, 0.058, 1),
@@ -380,31 +380,63 @@ def build_observatory_telescope(static, palette):
 
 
 def build_lounge_corner(static, palette):
-    """Premium leather reading chair and side table from the canonical mock."""
+    """Compact club chair and side table from the canonical mock."""
     x, y = -6.78, -0.10
 
-    # Rounded leather shell instead of a stack of box primitives.
-    base.cube("WR3_OBS_chair_seat", (x, y, 0.60), (0.72, 0.60, 0.14),
-              palette["walnut_dark"], static, bevel=0.18)
-    back = base.sphere("WR3_OBS_chair_back", (x, y + 0.52, 1.36), 0.72,
-                       palette["leather"], static, scale=(1.00, 0.34, 1.22))
-    back.rotation_euler.x = math.radians(-5)
-    base.sphere("WR3_OBS_chair_back_pad", (x, y + 0.34, 1.35), 0.62,
-                palette["leather"], static, scale=(0.88, 0.22, 1.03))
+    # Classic club-chair silhouette: padded cuboids read better at game camera
+    # distance than the previous bulbous sphere-based back and arms.
+    base.cube(
+        "WR3_OBS_chair_seat", (x, y, 0.58), (0.76, 0.60, 0.16),
+        palette["walnut_dark"], static, bevel=0.18,
+    )
+    back = base.cube(
+        "WR3_OBS_chair_back", (x, y + 0.50, 1.34), (0.73, 0.18, 0.72),
+        palette["leather"], static, bevel=0.30,
+    )
+    back.rotation_euler.x = math.radians(-7)
+    back_pad = base.cube(
+        "WR3_OBS_chair_back_pad", (x, y + 0.29, 1.34), (0.57, 0.11, 0.52),
+        palette["leather"], static, bevel=0.22,
+    )
+    back_pad.rotation_euler.x = math.radians(-7)
 
     for side in (-1, 1):
-        base.sphere(
-            f"WR3_OBS_chair_arm_{side}", (x + side * 0.78, y - 0.02, 0.91),
-            0.30, palette["leather"], static, scale=(0.55, 1.55, 0.58),
+        base.cube(
+            f"WR3_OBS_chair_wing_{side}", (x + side * 0.62, y + 0.40, 1.35),
+            (0.12, 0.22, 0.54), palette["leather"], static, bevel=0.16,
+        )
+        base.cube(
+            f"WR3_OBS_chair_arm_{side}", (x + side * 0.77, y - 0.03, 0.91),
+            (0.16, 0.53, 0.17), palette["leather"], static, bevel=0.16,
         )
         for front in (-1, 1):
+            leg_z = 0.28
             base.cylinder(
                 f"WR3_OBS_chair_leg_{side}_{front}",
-                (x + side * 0.57, y + front * 0.40, 0.27),
-                0.070, 0.34, palette["walnut_dark"], static, vertices=28,
+                (x + side * 0.57, y + front * 0.40, leg_z),
+                0.066, 0.34, palette["walnut_dark"], static, vertices=28,
             )
-    base.cube("WR3_OBS_chair_cushion", (x, y - 0.07, 0.81), (0.56, 0.47, 0.105),
-              palette["green_leather"], static, bevel=0.18)
+            base.cylinder(
+                f"WR3_OBS_chair_leg_tip_{side}_{front}",
+                (x + side * 0.57, y + front * 0.40, 0.095),
+                0.072, 0.045, palette["brass_dark"], static, vertices=28,
+            )
+        for stud_index, stud_y in enumerate((-0.34, -0.08, 0.18)):
+            base.sphere(
+                f"WR3_OBS_chair_stud_{side}_{stud_index}",
+                (x + side * 0.94, y + stud_y, 0.93),
+                0.026, palette["brass"], static,
+            )
+
+    base.cube(
+        "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.57, 0.47, 0.11),
+        palette["green_leather"], static, bevel=0.20,
+    )
+    pillow = base.cube(
+        "WR3_OBS_chair_pillow", (x, y + 0.17, 1.30), (0.37, 0.08, 0.34),
+        palette["green_leather"], static, bevel=0.14,
+    )
+    pillow.rotation_euler.x = math.radians(-7)
 
     tx, ty = -6.00, 2.22
     base.cylinder("WR3_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
@@ -422,45 +454,90 @@ def build_lounge_corner(static, palette):
 
 
 def build_bookshelf(static, palette):
-    """Small cabinet-style shelf for chess treatises, not a solid blockout."""
+    """Narrow cabinet-style shelf for chess treatises."""
     x, y = 6.48, 4.52
 
-    base.cube("WR3_OBS_bookshelf_frame", (x, y + 0.06, 1.80), (1.02, 0.10, 1.54),
-              palette["walnut"], static, bevel=0.05)
+    base.cube(
+        "WR3_OBS_bookshelf_frame", (x, y + 0.04, 1.72), (0.88, 0.085, 1.43),
+        palette["walnut"], static, bevel=0.045,
+    )
     for side in (-1, 1):
         base.cube(
-            f"WR3_OBS_bookshelf_post_{side}", (x + side * 1.03, y - 0.16, 1.78),
-            (0.11, 0.31, 1.68), palette["walnut_dark"], static, bevel=0.055,
+            f"WR3_OBS_bookshelf_post_{side}", (x + side * 0.91, y - 0.16, 1.71),
+            (0.09, 0.28, 1.56), palette["walnut_dark"], static, bevel=0.050,
         )
-    base.cube("WR3_OBS_bookshelf_crown", (x, y - 0.15, 3.50), (1.18, 0.37, 0.13),
-              palette["walnut_dark"], static, bevel=0.09)
-    base.cube("WR3_OBS_bookshelf_plinth", (x, y - 0.15, 0.16), (1.16, 0.39, 0.14),
-              palette["walnut_dark"], static, bevel=0.07)
+    base.cube(
+        "WR3_OBS_bookshelf_crown", (x, y - 0.15, 3.30), (1.03, 0.34, 0.11),
+        palette["walnut_dark"], static, bevel=0.08,
+    )
+    base.cube(
+        "WR3_OBS_bookshelf_plinth", (x, y - 0.15, 0.17), (1.02, 0.36, 0.13),
+        palette["walnut_dark"], static, bevel=0.07,
+    )
 
-    for row, z in enumerate((0.52, 1.12, 1.72, 2.32, 2.92)):
+    shelf_levels = (0.50, 1.08, 1.66, 2.24, 2.82)
+    for row, z in enumerate(shelf_levels):
         base.cube(
-            f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.24, z),
-            (1.02, 0.35, 0.050), palette["walnut"], static, bevel=0.025,
+            f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.23, z),
+            (0.90, 0.32, 0.045), palette["walnut"], static, bevel=0.022,
         )
 
     book_index = 0
-    for row, z in enumerate((0.83, 1.43, 2.03, 2.63)):
-        for col in range(6):
-            bx = x - 0.76 + col * 0.30
-            height = 0.22 + 0.025 * ((row + col) % 3)
+    for row, z in enumerate((0.79, 1.37, 1.95, 2.53)):
+        for col in range(5):
+            bx = x - 0.60 + col * 0.30
+            height = 0.20 + 0.032 * ((row + col) % 3)
             material = (
                 palette["book_red"], palette["book_blue"], palette["green_leather"]
             )[(row + col) % 3]
-            base.cube(
-                f"WR3_OBS_book_{book_index}", (bx, y - 0.60, z),
-                (0.10, 0.075, height), material, static, bevel=0.018,
+            book = base.cube(
+                f"WR3_OBS_book_{book_index}", (bx, y - 0.55, z),
+                (0.095, 0.070, height), material, static, bevel=0.016,
             )
+            book.rotation_euler.y = math.radians((-5, 0, 4, -3, 2)[col])
             book_index += 1
 
-    base.cube("WR3_OBS_bookshelf_top_cloth", (x - 0.30, y - 0.30, 3.69),
-              (0.34, 0.18, 0.035), palette["green_leather"], static, bevel=0.025)
-    base.sphere("WR3_OBS_bookshelf_knight_bust", (x + 0.55, y - 0.40, 3.82),
-                0.20, palette["ivory"], static, scale=(0.72, 0.52, 1.15))
+    for side in (-1, 1):
+        base.cube(
+            f"WR3_OBS_bookshelf_bookend_{side}",
+            (x + side * 0.74, y - 0.56, 1.38),
+            (0.055, 0.09, 0.22), palette["brass_dark"], static, bevel=0.025,
+        )
+
+    base.cube(
+        "WR3_OBS_bookshelf_top_cloth", (x - 0.26, y - 0.27, 3.44),
+        (0.30, 0.16, 0.030), palette["green_leather"], static, bevel=0.024,
+    )
+    base.sphere(
+        "WR3_OBS_bookshelf_knight_bust", (x + 0.48, y - 0.38, 3.56),
+        0.18, palette["ivory"], static, scale=(0.72, 0.52, 1.15),
+    )
+
+
+def build_celestial_globe(static, palette):
+    """Small navigation globe beside the telescope, as in the canonical mock."""
+    x, y = 6.00, 2.72
+    base.cylinder(
+        "WR3_OBS_globe_pedestal", (x, y, 0.54), 0.12, 0.76,
+        palette["walnut_dark"], static, vertices=32,
+    )
+    base.cylinder(
+        "WR3_OBS_globe_foot", (x, y, 0.14), 0.34, 0.09,
+        palette["brass_dark"], static, vertices=40,
+    )
+    center = (x, y, 1.20)
+    base.sphere(
+        "WR3_OBS_globe_sphere", center, 0.34, palette["night"], static,
+        scale=(1.0, 1.0, 1.0),
+    )
+    base.torus(
+        "WR3_OBS_globe_meridian", center, 0.39, 0.025,
+        palette["brass"], static, rotation=(math.pi / 2, 0, 0),
+    )
+    base.torus(
+        "WR3_OBS_globe_equator", center, 0.36, 0.018,
+        palette["brass_dark"], static,
+    )
 
 
 def build_wall_lanterns(static, palette):
@@ -607,6 +684,7 @@ def apply_v3_identity():
     build_observatory_telescope(static, palette)
     build_lounge_corner(static, palette)
     build_bookshelf(static, palette)
+    build_celestial_globe(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
     build_lighting(static)
@@ -636,6 +714,7 @@ def validate_v3():
         "WR3_OBS_telescope_tube",
         "WR3_OBS_chair_seat",
         "WR3_OBS_bookshelf_frame",
+        "WR3_OBS_globe_sphere",
         "WR3_OBS_entry_door",
         "WR3_OBS_entry_rug",
         "WR3_OBS_wall_lantern_left_glow",

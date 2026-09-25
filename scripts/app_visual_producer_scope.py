@@ -153,6 +153,8 @@ def classify_path(path: str) -> set[str] | None:
         "scripts/app_visual_producer_scope.py",
     }:
         return set()
+    if lower == "scripts/war_room_visual_freeze_check.mjs":
+        return {"warroom-core"}
     if (
         lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
@@ -377,6 +379,7 @@ def self_test() -> None:
     assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"
+    assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "warroom-core"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
