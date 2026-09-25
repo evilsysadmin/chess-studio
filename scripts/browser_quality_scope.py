@@ -63,6 +63,7 @@ FULL_LOGIC_PATTERNS = (
     "frontend/src/components/Board3D*.jsx",
     "frontend/src/components/Board3D*.js",
     "frontend/src/components/WarRoom3D*.js",
+    "frontend/src/components/WarRoomDeferredFinalizer.js",
     "frontend/src/components/GameBoardView.jsx",
     "frontend/src/components/GameCommandDeck.jsx",
     "frontend/src/components/GamePlayerRail.jsx",
@@ -458,6 +459,11 @@ def self_test() -> None:
     full = classify(["frontend/src/components/Board3DRenderer.js"])
     assert full == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
     assert classify(["frontend/src/components/Board3DCore.jsx"]) == full
+    assert classify(["frontend/src/components/WarRoomDeferredFinalizer.js"]) == BrowserScope(
+        full_logic=True,
+        visual=True,
+        focus=True,
+    )
     assert _ids(full) == [
         "hans-fire-call", "android-selection", "desktop-input",
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
