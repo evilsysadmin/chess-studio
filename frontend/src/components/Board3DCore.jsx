@@ -34,7 +34,7 @@ import {
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
-import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import { startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
