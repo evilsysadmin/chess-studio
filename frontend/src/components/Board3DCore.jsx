@@ -293,7 +293,6 @@ function Board3DCanvas({
 
     const classicShellController = createClassicWarRoomShellController(
       { scene, boardGroup, theme, whiteSide, renderLite },
-      shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
     );
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
