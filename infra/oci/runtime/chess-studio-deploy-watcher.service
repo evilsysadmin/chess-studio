@@ -6,7 +6,6 @@ After=network-online.target
 [Service]
 Type=simple
 User=ocarun
-Group=ocarun
 ExecStart=/usr/bin/python3 -S /usr/local/libexec/chess-studio-deploy-watcher
 Restart=always
 RestartSec=5
