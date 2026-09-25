@@ -12,7 +12,7 @@ BUDGETS = {
     "frontend/src/App.jsx": 1167,
     "frontend/src/useGameLaunchController.js": 95,
     "frontend/src/components/GameScreen.jsx": 866,
-    "frontend/src/components/Board3DCore.jsx": 1212,
+    "frontend/src/components/Board3DCore.jsx": 1210,
     "frontend/src/components/useCombatController.js": 1270,
     "backend-python/game_api.py": 386,
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
