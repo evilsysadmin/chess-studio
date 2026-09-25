@@ -16,11 +16,11 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "babylonjs": "9.25.0",
+    "babylonjs": "9.27.1",
     "chess.js": "^1.0.0-beta.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "three": "^0.185.1"
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
