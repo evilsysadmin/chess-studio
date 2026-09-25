@@ -312,6 +312,8 @@ assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
 assert "refs/heads/main" not in deploy_watcher
 assert "ls-remote" not in deploy_watcher
 assert "OCI_DEPLOY_WATCH_SUPERSEDED" in deploy_watcher
+assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
+assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher

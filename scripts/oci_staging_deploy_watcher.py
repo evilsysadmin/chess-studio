@@ -33,6 +33,10 @@ DEPLOY_WRAPPER = os.environ.get(
     "CHESS_STUDIO_DEPLOY_WRAPPER",
     "/usr/local/sbin/chess-studio-deploy",
 ).strip()
+BACKEND_IMAGE_PREFIX = os.environ.get(
+    "CHESS_STUDIO_BACKEND_IMAGE_PREFIX",
+    "ghcr.io/evilsysadmin/chess-studio-backend:oci-",
+).strip()
 POLL_SECONDS = 15
 ERROR_BACKOFF_SECONDS = 30
 HTTP_TIMEOUT_SECONDS = 8
@@ -79,6 +83,21 @@ def fetch_worker_build() -> str:
 
 
 
+def backend_image_ref(candidate: str) -> str:
+    return f"{BACKEND_IMAGE_PREFIX}{candidate}"
+
+
+def backend_image_available(candidate: str) -> bool:
+    result = subprocess.run(
+        ["docker", "manifest", "inspect", backend_image_ref(candidate)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+        timeout=HTTP_TIMEOUT_SECONDS,
+    )
+    return result.returncode == 0
+
+
 def deploy(candidate: str) -> None:
     subprocess.run(
         ["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate],
@@ -94,6 +113,9 @@ def iteration() -> str:
     candidate = fetch_worker_build()
     if candidate == read_deployed_sha():
         return "current"
+    if not backend_image_available(candidate):
+        print(f"OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref={candidate}", flush=True)
+        return "image-pending"
 
     print(f"OCI_DEPLOY_WATCH_TRIGGER repo_ref={candidate}", flush=True)
     deploy(candidate)
@@ -144,6 +166,8 @@ def self_test() -> None:
     assert ERROR_BACKOFF_SECONDS >= POLL_SECONDS
     assert HTTP_TIMEOUT_SECONDS < POLL_SECONDS
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
+    assert BACKEND_IMAGE_PREFIX.endswith(":oci-")
+    assert backend_image_ref(sample).endswith(sample)
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -160,6 +184,8 @@ def self_test() -> None:
     assert "refs/heads/" + "main" not in source
     assert "OCI_DEPLOY_WATCH_SUPERSEDED" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
+    assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in source
+    assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in source
     assert "ENABLE_MARKER.is_symlink()" in source
     print("OCI zero-cost deploy watcher self-test: OK")
 
