@@ -253,6 +253,42 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         await context.close();
       }
     }
+
+    const quickMatchContext = await visualBrowser.newContext({
+      viewport:{ width:390, height:844 },
+      hasTouch:true,
+    });
+    const quickMatchPage = await quickMatchContext.newPage();
+    try {
+      await mockApi(quickMatchPage, {
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await login(quickMatchPage);
+      await quickMatchPage.getByRole('button', { name:'Partida rápida', exact:true }).click();
+      const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
+      await expect(quickMatch).toBeVisible();
+      await quickMatchPage.waitForTimeout(120);
+      await captureViewportPng(
+        quickMatchContext,
+        quickMatchPage,
+        `${ARTIFACT_DIR}/quick-match-android-390x844.png`,
+      );
+
+      const settings = quickMatch.locator('details.quick-match-settings');
+      await settings.locator(':scope > summary').click();
+      await expect(settings).toHaveAttribute('open', '');
+      await quickMatchPage.waitForTimeout(120);
+      await captureViewportPng(
+        quickMatchContext,
+        quickMatchPage,
+        `${ARTIFACT_DIR}/quick-match-settings-android-390x844.png`,
+      );
+    } finally {
+      await quickMatchContext.close();
+    }
   } finally {
     await visualBrowser.close();
   }
