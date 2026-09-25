@@ -81,6 +81,7 @@ import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } fr
 import { setProfileStorageItem } from './profileKeys.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
+import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -103,6 +104,7 @@ function AppInner({ isAdminUser }) {
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
   const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
+  const { puzzleLaunch, quickMatchLaunchNonce, openPuzzleMode, openDailyChallengeSlot, returnToQuickMatchFromPersonalTraining } = usePuzzleLaunchFlow({ navigateTo, resetNavigation });
 
   usePresenceHeartbeat(view);
 
@@ -176,8 +178,6 @@ function AppInner({ isAdminUser }) {
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
-  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false, filter: null, dailySlot: 'tactic' });
-  const [quickMatchLaunchNonce, setQuickMatchLaunchNonce] = useState(0);
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
@@ -587,20 +587,6 @@ function AppInner({ isAdminUser }) {
     } catch (e) {
       if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));
     } finally { if (gameLaunch.owns(launch)) setLoading(false); gameLaunch.end(launch); }
-  }
-
-  function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic') {
-    setPuzzleLaunch({ source, rush, filter, dailySlot });
-    navigateTo('puzzle');
-  }
-
-  function openDailyChallengeSlot(slot = 'tactic') {
-    openPuzzleMode('daily', false, null, slot);
-  }
-
-  function returnToQuickMatchFromPersonalTraining() {
-    resetNavigation();
-    setQuickMatchLaunchNonce((current) => current + 1);
   }
 
   async function launchRun(run) {
