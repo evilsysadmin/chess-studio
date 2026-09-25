@@ -25,6 +25,8 @@ from mathutils import Matrix, Vector
 CONTRACT = "home-blender-canon-20260918-v1"
 DEFAULT_REFERENCE = "scripts/blender/references/home_canon_20260918.webp.b64"
 
+_CUBE_TEMPLATE_MESH = None
+
 
 def argv_after_double_dash() -> list[str]:
     if "--" not in sys.argv:
@@ -716,10 +718,24 @@ def _bake_mesh_scale(obj, scale) -> None:
     obj.data.update()
 
 
-def cube(name: str, location, scale, mat, *, bevel=0.0):
-    bpy.ops.mesh.primitive_cube_add(location=location)
-    obj = bpy.context.object
+def _new_unit_cube(name: str, location):
+    global _CUBE_TEMPLATE_MESH
+    if _CUBE_TEMPLATE_MESH is None:
+        bpy.ops.mesh.primitive_cube_add(location=location)
+        obj = bpy.context.object
+        _CUBE_TEMPLATE_MESH = obj.data.copy()
+        _CUBE_TEMPLATE_MESH.name = "HOME_TEMPLATE_unit_cube"
+    else:
+        mesh = _CUBE_TEMPLATE_MESH.copy()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location = location
     obj.name = name
+    return obj
+
+
+def cube(name: str, location, scale, mat, *, bevel=0.0):
+    obj = _new_unit_cube(name, location)
     _bake_mesh_scale(obj, scale)
 
     # Perfect razor edges are one of the strongest CGI tells in the Home.
