@@ -23,7 +23,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_war_room_premium as base  # noqa: E402
 
 
-CONTRACT = "war-room-celestial-observatory-v3"
+CONTRACT = "war-room-golden-observatory-v3"
 V3_WEATHER_MATERIALS = frozenset({
     "WR3_MAT_warm_travertine",
     "WR3_MAT_pale_travertine",
@@ -141,7 +141,7 @@ def build_curved_observatory(static, palette):
     base.cylinder("WR3_OBS_floor", (0, 0.0, -0.14), 9.05, 0.24,
                   palette["slate"], static, vertices=96)
 
-    # Canonical mock: cream/green marble checkerboard around the command rug.
+    # Golden observatory: ivory/green marble establishes the premium circular dais.
     tile_size = 1.08
     tile_half = 0.525
     tile_index = 0
@@ -181,12 +181,12 @@ def build_curved_observatory(static, palette):
         tangent = math.atan2(-math.sin(theta), math.cos(theta))
         lower = base.cube(
             f"WR3_OBS_apse_lower_{index}", (x, y, 1.48),
-            (half_length, 0.17, 1.48), palette["teal"], static, bevel=0.055,
+            (half_length, 0.20, 1.48), palette["walnut_dark"], static, bevel=0.055,
         )
         lower.rotation_euler.z = tangent
         upper = base.cube(
             f"WR3_OBS_apse_upper_{index}", (x, y, 4.72),
-            (half_length, 0.15, 1.76), palette["stone_light"], static, bevel=0.075,
+            (half_length, 0.18, 1.76), palette["walnut"], static, bevel=0.075,
         )
         upper.rotation_euler.z = tangent
         joints.append((theta - step / 2.0, index))
