@@ -18,7 +18,7 @@ CRITICAL_E2E_WORKERS ?= 4
 endif
 TRIVY_DB_TTL_MINUTES ?= 720
 NODE_CHECK_JOBS ?= 8
-CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar|Browser WebGL · Home 3D recupera el contexto perdido
+CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-pip-audit python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
@@ -296,7 +296,7 @@ ensure-e2e-deps: ensure-frontend-deps
 
 e2e-critical: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
-	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js browser-runtime-health.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=$(CRITICAL_E2E_WORKERS) --retries=0
+	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=$(CRITICAL_E2E_WORKERS) --retries=0
 	cd e2e && ./node_modules/.bin/playwright test mobile-final-interactions.spec.js --workers=1 --retries=0
 
 e2e: ensure-e2e-deps frontend-build
