@@ -195,9 +195,9 @@ export function installWarRoomHansServiceRoutine(root) {
   const previous = floor.onBeforeRender;
   const controller = createWarRoomHansWalkController(actor, { forward: 1 });
   if (!runtime || !controller) return 0;
-  const props = ensureCarriedProps(actor);
+  let props = null;
   const plant = ensureWarRoomHansPlant(root);
-  const deliveredEspresso = ensureDeliveredEspresso(root);
+  let deliveredEspresso = null;
 
   let eventName = '';
   let gameId = '';
@@ -237,6 +237,10 @@ export function installWarRoomHansServiceRoutine(root) {
       routeOut = [];
       routeIndex = 0;
       if (clearDeliveredArtifacts && deliveredEspresso) deliveredEspresso.visible = false;
+      const persisted = warRoomHansAmbientCompletionState(gameId, eventName);
+      if (persisted.completed && persisted.deliveryArtifact === 'espresso') {
+        deliveredEspresso ||= ensureDeliveredEspresso(root);
+      }
       if (restoreWarRoomHansPersistedServiceEffect(gameId, eventName, { deliveredEspresso, plant })) {
         completedGameId = gameId;
       }
@@ -277,6 +281,8 @@ export function installWarRoomHansServiceRoutine(root) {
         abortSetupForCurrentGame();
         return;
       }
+      props ||= ensureCarriedProps(actor);
+      if (eventName === 'espresso') deliveredEspresso ||= ensureDeliveredEspresso(root);
       resetWarRoomHansServiceProps(props);
       placeWarRoomHansHorizontal(actor, home);
       setWarRoomHansTaskPresentation(runtime, {
