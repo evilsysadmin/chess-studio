@@ -230,7 +230,6 @@ function Board3DCanvas({
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const squareMeshes = new Map();
     const highlightMeshes = new Map();
     const pieceMeshes = new Map();
     const terrainGroup = new THREE.Group();
@@ -298,6 +297,8 @@ function Board3DCanvas({
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
+    const tileGeometry = new THREE.BoxGeometry(0.984, 0.105, 0.984);
+    const highlightGeometry = new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE);
 
     for (let rank = 1; rank <= 8; rank += 1) {
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
@@ -305,7 +306,7 @@ function Board3DCanvas({
         const { x, z } = squarePosition(square);
         const light = isLightSquare(square);
         const tile = new THREE.Mesh(
-          new THREE.BoxGeometry(0.984, 0.105, 0.984),
+          tileGeometry,
           light ? lightTileMaterial : darkTileMaterial,
         );
         const tileSettling = ((fileIndex * 13 + rank * 7) % 5 - 2) * 0.0008;
@@ -313,11 +314,10 @@ function Board3DCanvas({
         tile.receiveShadow = true;
         tile.userData.square = square;
         boardGroup.add(tile);
-        squareMeshes.set(square, tile);
         pickTargets.push(tile);
 
         const marker = new THREE.Mesh(
-          new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
+          highlightGeometry,
           new THREE.MeshBasicMaterial({
             color: 0x9c8244,
             transparent: true,
