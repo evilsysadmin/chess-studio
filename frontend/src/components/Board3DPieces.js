@@ -54,6 +54,55 @@ const BASE_PROFILE = [
   [0.23, 0.21], [0.22, 0.26], [0.18, 0.29],
 ];
 
+const SHARED_PIECE_GEOMETRY = new Map();
+const KNIGHT_GEOMETRY_TEMPLATES = new Map();
+
+function markSharedPieceGeometry(geometry, role) {
+  geometry.userData.board3DSharedGeometry = true;
+  geometry.userData.board3DSharedGeometryRole = role;
+  return geometry;
+}
+
+function sharedPieceGeometrySet(coarsePointer = false) {
+  const key = coarsePointer ? 'lite' : 'full';
+  if (SHARED_PIECE_GEOMETRY.has(key)) return SHARED_PIECE_GEOMETRY.get(key);
+
+  const detail = pieceDetailProfile(coarsePointer);
+  const geometries = Object.freeze({
+    base: markSharedPieceGeometry(latheGeometry(BASE_PROFILE, detail.lathe), `${key}:base-lathe`),
+    baseRing: markSharedPieceGeometry(
+      new THREE.TorusGeometry(0.245, 0.022, detail.torusRadial, detail.torusTubular),
+      `${key}:base-ring`,
+    ),
+    pawnBody: markSharedPieceGeometry(
+      latheGeometry([[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], detail.lathe),
+      `${key}:pawn-body`,
+    ),
+    pawnHead: markSharedPieceGeometry(
+      new THREE.SphereGeometry(0.19, detail.sphereW, detail.sphereH),
+      `${key}:pawn-head`,
+    ),
+    pawnCollar: markSharedPieceGeometry(
+      new THREE.TorusGeometry(0.16, 0.025, detail.torusRadial, coarsePointer ? 20 : 36),
+      `${key}:pawn-collar`,
+    ),
+    pawnSignature: coarsePointer ? null : markSharedPieceGeometry(
+      new THREE.TorusGeometry(0.115, 0.009, 7, 24),
+      'full:pawn-signature',
+    ),
+    contactShadowInner: markSharedPieceGeometry(
+      new THREE.CircleGeometry(coarsePointer ? 0.34 : 0.31, coarsePointer ? 16 : 28),
+      `${key}:contact-shadow-inner`,
+    ),
+    contactShadowOuter: coarsePointer ? null : markSharedPieceGeometry(
+      new THREE.CircleGeometry(0.39, 28),
+      'full:contact-shadow-outer',
+    ),
+  });
+  SHARED_PIECE_GEOMETRY.set(key, geometries);
+  return geometries;
+}
+
 const KNIGHT_GEOMETRY_TEMPLATES = new Map();
 
 function markKnightTemplateGeometry(geometry, role) {
@@ -134,11 +183,13 @@ function addContactShadow(group, coarsePointer = false, side = 'b') {
     : (side === 'w'
       ? [[0.31, 0.24, 0.01], [0.39, 0.09, 0.008]]
       : [[0.31, 0.2, 0.01], [0.39, 0.075, 0.008]]);
-  const segments = coarsePointer ? 16 : 28;
+  const shared = sharedPieceGeometrySet(coarsePointer);
   const tier = coarsePointer ? 'lite-single-pass' : 'full-dual-pass';
-  for (const [radius, opacity, y] of shadowProfile) {
+  for (let index = 0; index < shadowProfile.length; index += 1) {
+    const [, opacity, y] = shadowProfile[index];
+    const geometry = index === 0 ? shared.contactShadowInner : shared.contactShadowOuter;
     const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(radius, segments),
+      geometry,
       new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: true,
@@ -188,7 +239,7 @@ export function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
 function addSignatureDetail(group, type, accent, coarsePointer = false) {
   if (coarsePointer) return;
   if (type === 'p') {
-    addMesh(group, new THREE.TorusGeometry(0.115, 0.009, 7, 24), accent, [0, 0.37, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, sharedPieceGeometrySet(false).pawnSignature, accent, [0, 0.37, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'n') {
     addMesh(group, new THREE.TorusGeometry(0.145, 0.014, 8, 30), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'b') {
@@ -294,13 +345,14 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
     }
 
     const group = new THREE.Group();
-    addLathe(group, BASE_PROFILE, main, 0, detail.lathe);
-    addMesh(group, new THREE.TorusGeometry(0.245, 0.022, detail.torusRadial, detail.torusTubular), accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
+    const shared = sharedPieceGeometrySet(coarsePointer);
+    addMesh(group, shared.base, main);
+    addMesh(group, shared.baseRing, accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
 
     if (type === 'p') {
-      addLathe(group, [[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], main, 0, detail.lathe);
-      addMesh(group, new THREE.SphereGeometry(0.19, detail.sphereW, detail.sphereH), main, [0, 0.73, 0]);
-      addMesh(group, new THREE.TorusGeometry(0.16, 0.025, detail.torusRadial, coarsePointer ? 20 : 36), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
+      addMesh(group, shared.pawnBody, main);
+      addMesh(group, shared.pawnHead, main, [0, 0.73, 0]);
+      addMesh(group, shared.pawnCollar, accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
     } else if (type === 'b') {
       group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v1' : 'staunton-mitre-v1';
       group.userData.board3DBishopHeightProfile = 'tall-123-v1';
