@@ -30,13 +30,17 @@ class BrowserScope:
     network_race: bool = False
     chronicles: bool = False
     tournament_mobile: bool = False
+    pawn_slug: bool = False
+    chesscom: bool = False
+    trailblazer: bool = False
+    matthias_priority: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -139,6 +143,31 @@ TOURNAMENT_MOBILE_PATTERNS = (
     "frontend/src/components/TournamentMobilePolish.css",
     "e2e/mobile-tournament-ux.spec.js",
 )
+PAWN_SLUG_PATTERNS = (
+    "frontend/src/pawnSlug*.js", "frontend/src/pawnSlug*.jsx",
+    "frontend/src/components/PawnSlug*.js", "frontend/src/components/PawnSlug*.jsx",
+    "frontend/src/components/PawnSlug*.css", "frontend/src/assets/pawnSlug/*",
+    "e2e/pawn-slug.spec.js",
+)
+CHESSCOM_PATTERNS = (
+    "frontend/src/chesscom*.js", "frontend/src/chesscom*.jsx",
+    "frontend/src/components/Chesscom*.js", "frontend/src/components/Chesscom*.jsx",
+    "frontend/src/components/Chesscom*.css", "frontend/public/chesscom/*",
+    "e2e/chesscom.spec.js",
+)
+TRAILBLAZER_PATTERNS = (
+    "frontend/src/pawnTrailblazer*.js", "frontend/src/pawnTrailblazer*.jsx",
+    "frontend/src/components/PawnTrailblazer*.js", "frontend/src/components/PawnTrailblazer*.jsx",
+    "frontend/src/components/PawnTrailblazer*.css", "frontend/src/assets/pawnTrailblazer/*",
+    "e2e/pawn-trailblazer.spec.js",
+)
+MATTHIAS_PRIORITY_PATTERNS = (
+    "frontend/src/components/MatthiasPremiumHome3D.js",
+    "e2e/matthias-home-priority.spec.js",
+)
+LAB_SCREEN_PATH = "frontend/src/components/LabScreen.jsx"
+LAB_LAUNCH_INTENT_PATH = "frontend/src/labLaunchIntent.js"
+
 NETWORK_RACE_PATTERNS = (
     "frontend/src/useGameReconnect.js",
     "frontend/src/gameReconnect.js",
@@ -171,7 +200,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -211,16 +240,23 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, CHRONICLES_PATTERNS):
             chronicles = True
 
+        pawn_slug = pawn_slug or _matches(path, PAWN_SLUG_PATTERNS) or path in {LAB_SCREEN_PATH, LAB_LAUNCH_INTENT_PATH}
+        chesscom = chesscom or _matches(path, CHESSCOM_PATTERNS) or path == LAB_SCREEN_PATH
+        trailblazer = trailblazer or _matches(path, TRAILBLAZER_PATTERNS) or path == LAB_SCREEN_PATH
+        matthias_priority = matthias_priority or _matches(path, MATTHIAS_PRIORITY_PATTERNS)
+
         if path in BROWSER_ACTION_PATHS:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
+            pawn_slug = chesscom = trailblazer = matthias_priority = True
             matthias_home = matthias_insights = False
 
         if path == CICD_WORKFLOW:
-            visual = True
-            quick_2d = True
+            visual = quick_2d = pawn_slug = chesscom = trailblazer = matthias_priority = True
 
     return BrowserScope(
-        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles, tournament_mobile
+        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights,
+        quick_2d, network_race, chronicles, tournament_mobile,
+        pawn_slug, chesscom, trailblazer, matthias_priority,
     )
 
 
@@ -353,6 +389,19 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
+    for enabled, case in (
+        (scope.pawn_slug, ("pawn-slug", "Pawn Slug · browser", "pawn-slug.spec.js")),
+        (scope.chesscom, ("chesscom", "Chesscom · browser", "chesscom.spec.js")),
+        (scope.trailblazer, ("trailblazer", "Pawn Trailblazer · browser", "pawn-trailblazer.spec.js")),
+        (scope.matthias_priority, ("matthias-priority", "Matthias · Home priority", "matthias-home-priority.spec.js")),
+    ):
+        if enabled:
+            case_id, label, spec = case
+            cases.append({
+                "id": case_id,
+                "label": label,
+                "command": f"./node_modules/.bin/playwright test {spec} --workers=1 --retries=0 --max-failures=1",
+            })
     return {"include": cases}
 
 
@@ -376,6 +425,11 @@ BROWSER_JOB_GROUPS = (
         "matthias-home-insights",
         "Matthias · Home + Así juegas motion",
         ("matthias-home-motion", "matthias-insights"),
+    ),
+    (
+        "targeted-browser-smokes",
+        "Targeted browser smokes",
+        ("pawn-slug", "chesscom", "trailblazer", "matthias-priority"),
     ),
 )
 
@@ -515,12 +569,17 @@ def self_test() -> None:
         "matthias-home-motion", "matthias-war-room", "matthias-insights",
     ]
     assert _job_ids(matthias_shared) == ["matthias-home-insights", "matthias-war-room"]
-    assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True)
-    assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion"]
+    assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True, matthias_priority=True)
+    assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion", "matthias-priority"]
     assert _ids(classify(["e2e/matthias-home-visual-critical.spec.js"])) == ["matthias-home-motion"]
     assert classify(["frontend/src/components/InsightsMatthiasMotion.jsx"]) == BrowserScope(matthias_insights=True)
     assert _ids(classify(["frontend/src/components/InsightsMatthiasMotion.jsx"])) == ["matthias-insights"]
     assert _ids(classify(["e2e/insights-matthias-motion.spec.js"])) == ["matthias-insights"]
+    assert _ids(classify(["frontend/src/PawnSlugLab.jsx"])) == ["pawn-slug"]
+    assert _ids(classify(["frontend/src/components/Chesscom.jsx"])) == ["chesscom"]
+    assert _ids(classify(["frontend/src/components/PawnTrailblazer.jsx"])) == ["trailblazer"]
+    assert _ids(classify(["e2e/matthias-home-priority.spec.js"])) == ["matthias-priority"]
+    assert _job_ids(classify([LAB_SCREEN_PATH])) == ["targeted-browser-smokes"]
     assert _ids(classify(["frontend/src/components/QuickMatchModal.jsx"])) == ["quick-match-2d"]
     assert _ids(classify(["frontend/src/components/TournamentScreen.jsx"])) == ["tournament-mobile"]
     assert _ids(classify(["frontend/src/components/TournamentMobilePolish.css"])) == ["tournament-mobile"]
@@ -554,11 +613,14 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 14
+    assert len(_ids(all_scope)) == 18
 
     harness = classify([".github/workflows/cicd.yml"])
-    assert harness == BrowserScope(visual=True, quick_2d=True)
-    assert _ids(harness) == ["desktop-scale", "quick-match-2d"]
+    assert harness == BrowserScope(
+        visual=True, quick_2d=True, pawn_slug=True, chesscom=True,
+        trailblazer=True, matthias_priority=True,
+    )
+    assert _job_ids(harness) == ["desktop-scale", "quick-match-2d", "targeted-browser-smokes"]
 
     combined = classify([
         "frontend/src/components/GameBoardView.jsx",
