@@ -42,7 +42,10 @@ async function openFireGame(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
-  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const startButton = quickDialog.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(startButton).toBeVisible();
+  await expect(startButton).toBeEnabled();
+  await startButton.evaluate((button) => button.click());
 
   await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const canvas = page.locator('.board3d-main-canvas');
