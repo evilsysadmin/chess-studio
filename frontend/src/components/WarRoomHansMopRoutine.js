@@ -152,7 +152,7 @@ export function installWarRoomHansMopRoutine(root) {
 
   const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
-  const props = ensureProps(actor);
+  let props = null;
   const controller = createWarRoomHansWalkController(actor, { forward: 1 });
   if (!runtime || !controller) return 0;
 
@@ -231,6 +231,7 @@ export function installWarRoomHansMopRoutine(root) {
         return;
       }
       home = service.point;
+      props ||= ensureProps(actor);
       resetWarRoomHansMopProps(props);
       placeWarRoomHansHorizontal(actor, home);
       setWarRoomHansTaskPresentation(runtime, {
