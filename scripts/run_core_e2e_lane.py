@@ -123,6 +123,10 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
         LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
+        LaneCommand(
+            'browser-runtime-health.spec.js',
+            ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+        ),
     ),
 }
 
@@ -178,7 +182,7 @@ def self_test() -> None:
         'app-boot', 'admin', 'tournament', 'combat', 'home', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
-    assert len(critical_targets()) == 3
+    assert len(critical_targets()) == 4
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
     assert LANE_COMMANDS['admin'][0].spec == 'regression-journeys.spec.js'
@@ -194,8 +198,9 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'mobile-final-interactions.spec.js'
+        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
+    assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)
