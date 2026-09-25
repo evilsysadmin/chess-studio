@@ -92,16 +92,16 @@ def flatten_runtime_materials() -> None:
 
 
 def convert_curves_to_meshes() -> int:
-    converted = 0
-    for obj in list(bpy.data.objects):
-        if obj.type != "CURVE":
-            continue
-        bpy.context.view_layer.objects.active = obj
+    curves = [obj for obj in list(bpy.data.objects) if obj.type == "CURVE"]
+    if not curves:
+        return 0
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in curves:
         obj.select_set(True)
-        bpy.ops.object.convert(target="MESH")
-        obj.select_set(False)
-        converted += 1
-    return converted
+    bpy.context.view_layer.objects.active = curves[0]
+    bpy.ops.object.convert(target="MESH")
+    bpy.ops.object.select_all(action="DESELECT")
+    return len(curves)
 
 
 # Props the runtime drives by node name (see homeBlenderFireKind / the moon in
@@ -131,26 +131,36 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
     ]
     arch_before = sum(1 for obj in candidates if obj.name.startswith("HOME_ARCH_"))
     prop_before = len(candidates) - arch_before
-    groups: dict[tuple[str, tuple[str, ...]], list] = {}
-
-    for obj in candidates:
-        # Joining would otherwise discard non-active modifiers. Converting a
-        # mesh to mesh bakes its bevel/solidify stack before batching.
+    # Joining would otherwise discard non-active modifiers. Bake every static
+    # modifier stack in one Blender operator instead of paying select/context
+    # invalidation once per ~2k object.
+    modifier_candidates = [obj for obj in candidates if obj.modifiers]
+    if modifier_candidates:
         bpy.ops.object.select_all(action="DESELECT")
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
-        if obj.modifiers:
-            bpy.ops.object.convert(target="MESH")
+        for obj in modifier_candidates:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = modifier_candidates[0]
+        bpy.ops.object.convert(target="MESH")
+        bpy.ops.object.select_all(action="DESELECT")
+
+    # Re-resolve after conversion so grouping never depends on stale object/data
+    # references if Blender replaces a datablock while applying modifiers.
+    candidates = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and _is_static_batchable(obj.name)
+    ]
+    groups: dict[tuple[str, tuple[str, ...]], list] = {}
+    for obj in candidates:
         signature = tuple(mat.name if mat else "" for mat in obj.data.materials)
         kind = "ARCH" if obj.name.startswith("HOME_ARCH_") else "PROP"
         groups.setdefault((kind, signature), []).append(obj)
 
     batch_index = 0
+    bpy.ops.object.select_all(action="DESELECT")
     for (kind, signature), group in groups.items():
         live = [obj for obj in group if obj.name in bpy.context.scene.objects]
         if len(live) < 2:
             continue
-        bpy.ops.object.select_all(action="DESELECT")
         for obj in live:
             obj.select_set(True)
         active = live[0]
@@ -158,6 +168,7 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
         bpy.ops.object.join()
         material_label = signature[0].replace("HOME_MAT_", "").lower() if signature else "mixed"
         active.name = f"HOME_{kind}_BATCH_{batch_index}_{material_label}"
+        active.select_set(False)
         batch_index += 1
 
     arch_after = sum(
