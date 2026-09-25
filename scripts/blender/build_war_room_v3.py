@@ -791,12 +791,14 @@ def validate_runtime_glb_v3(path, expected_factors):
             raise RuntimeError(f"War Room v3 material factor drift: {name}={factor} expected={expected}")
 
 
-def export_shell_v3(path):
+def export_shell_v3(path, batching=None):
     sanitized_links, runtime_textures, factors = base.sanitize_runtime_materials()
     scene = bpy.context.scene
     scene["war_room_runtime_material_links_removed"] = sanitized_links
     scene["war_room_runtime_texture_count"] = runtime_textures
-    source_meshes, batched_meshes, merged_away = base.collapse_runtime_static_shell()
+    if batching is None:
+        batching = base.collapse_runtime_static_shell()
+    source_meshes, batched_meshes, merged_away = batching
     base.WEATHER_MATERIALS = V3_WEATHER_MATERIALS
     base.strip_unused_weather_layers()
     print(f"War Room v3 runtime batching: {source_meshes} -> {batched_meshes} meshes ({merged_away} merged)")
@@ -846,8 +848,13 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
     base.manifest(manifest)
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
+    preview_batching = base.collapse_runtime_static_shell()
+    print(
+        f"War Room v3 preview batching: {preview_batching[0]} -> "
+        f"{preview_batching[1]} meshes ({preview_batching[2]} merged)"
+    )
     base.render(preview)
-    export_shell_v3(glb)
+    export_shell_v3(glb, preview_batching)
     print(f"War Room v3 OK · {CONTRACT} · objects={len(bpy.context.scene.objects)}")
     return 0
 
