@@ -42,6 +42,7 @@ HOME_GREP = (
     'Matthias · el briefing persistente aparece antes de una partida rápida'
 )
 HOME_MOBILE_GREP = 'Home · la experiencia canónica no cambia con el viewport'
+HOME_WEBGL_GREP = 'Browser WebGL · Home 3D recupera el contexto perdido'
 SMOKE_GREP = (
     'login → menú|Partida rápida · una partida activa|Torneo · una partida activa|'
     'Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|'
@@ -54,6 +55,8 @@ class LaneCommand:
     spec: str
     args: tuple[str, ...] = ()
     additional_specs: tuple[str, ...] = ()
+    # False means required by a CI lane but intentionally outside Makefile critical-parity accounting.
+    canonical_critical: bool = True
 
     def argv(self) -> list[str]:
         return [PLAYWRIGHT, 'test', self.spec, *self.additional_specs, *self.args]
@@ -114,10 +117,20 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             'mobile-final-interactions.spec.js',
             ('--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
         ),
+        LaneCommand(
+            'browser-runtime-health.spec.js',
+            ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+            canonical_critical=False,
+        ),
     ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
         LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
+        LaneCommand(
+            'browser-runtime-health.spec.js',
+            ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+            canonical_critical=False,
+        ),
     ),
 }
 
@@ -152,7 +165,7 @@ def critical_targets() -> list[tuple[str, str]]:
         for lane, commands in LANE_COMMANDS.items()
         if lane not in NARROW_ALIAS_LANES
         for command in commands
-        if command.grep is not None
+        if command.grep is not None and command.canonical_critical
     ]
 
 
@@ -183,13 +196,16 @@ def self_test() -> None:
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
     assert [command.spec for command in LANE_COMMANDS['home']] == [
-        'regression-journeys.spec.js', 'mobile-final-interactions.spec.js'
+        'regression-journeys.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
     assert LANE_COMMANDS['home'][0].grep == HOME_GREP
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
+    assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'mobile-final-interactions.spec.js'
+        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
+    assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][2].canonical_critical is False
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)
@@ -232,6 +248,7 @@ def self_test() -> None:
     assert calls == [
         ([PLAYWRIGHT, 'test', 'regression-journeys.spec.js', '--grep', HOME_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'], E2E_DIR, True),
         ([PLAYWRIGHT, 'test', 'mobile-final-interactions.spec.js', '--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'browser-runtime-health.spec.js', '--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'], E2E_DIR, True),
     ]
 
     try:

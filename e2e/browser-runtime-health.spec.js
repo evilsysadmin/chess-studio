@@ -181,7 +181,17 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
 });
 
 test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) => {
+  test.setTimeout(60_000);
   const { faults } = attachRuntimeErrorProbe(page);
+  // This gate validates WebGL lifecycle, not R2 latency. Serve a committed local
+  // GLB for the Home runtime so context loss/restore stays deterministic; the
+  // visual pipeline separately validates the real 10 MB Home scene from R2.
+  await page.route(/home-v2-runtime-[0-9a-f]+\.glb/, (route) => route.fulfill({
+    status:200,
+    contentType:'model/gltf-binary',
+    headers:{ 'access-control-allow-origin':'*' },
+    path:'../frontend/public/models/matthias-home-canonical.glb',
+  }));
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
       configurable:true,
@@ -194,7 +204,8 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   const home = page.getByRole('region', { name:'Modos principales' });
   const canvas = home.locator('.illustrated-home__castle-3d');
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:25_000 });
+  await expect(canvas).toHaveClass(/is-ready/, { timeout:25_000 });
 
   const canLoseContext = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
@@ -208,6 +219,7 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
 
   await expect(canvas).not.toHaveClass(/is-ready/);
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await settle(page);
 
