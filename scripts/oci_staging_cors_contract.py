@@ -319,6 +319,11 @@ assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watc
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
 assert "import oci" not in deploy_watcher
 assert "User=ocarun" in deploy_watcher_unit
+# Oracle Cloud Agent owns the ocarun account but does not guarantee a same-name
+# group. Let systemd use the account's real primary group; an explicit missing
+# Group=ocarun fails with status=216/GROUP and creates a restart storm.
+assert "Group=ocarun" not in deploy_watcher_unit
+assert "systemctl disable --now chess-studio-deploy-watcher.service" in deploy
 assert "PrivateTmp=true" in deploy_watcher_unit
 assert "ListenStream" not in deploy_watcher_unit
 
