@@ -1195,35 +1195,39 @@ export default function HomeBlenderScene3D({
     let contextRecoveryTimer = null;
     let contextRecoveryFrame = null;
 
+    const configureRenderer = (nextRenderer) => {
+      nextRenderer.outputColorSpace = THREE.SRGBColorSpace;
+      nextRenderer.shadowMap.enabled = initialPolicy.lod === 'full';
+      nextRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // The room is static and only emissive flames move, so the shadow map is
+      // computed once instead of re-rasterising every mesh on each animated frame.
+      nextRenderer.shadowMap.autoUpdate = false;
+      nextRenderer.toneMapping = THREE.AgXToneMapping;
+      // The lite LOD (phones, small windows) drops the IBL environment, the torch lights
+      // and shadows, so the same exposure leaves the room ~2.5x darker than on desktop.
+      nextRenderer.toneMappingExposure = (EXPOSURE[ambient] || EXPOSURE.day)
+        * (initialPolicy.lod === 'full' ? 1 : HOME_BLENDER_LITE_EXPOSURE_BOOST);
+      nextRenderer.setClearColor(0x000000, 0);
+      return nextRenderer;
+    };
+
+    const createRenderer = () => configureRenderer(new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: initialPolicy.antialias,
+      powerPreference: initialPolicy.powerPreference,
+    }));
+
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        alpha: true,
-        antialias: initialPolicy.antialias,
-        powerPreference: initialPolicy.powerPreference,
-      });
+      renderer = createRenderer();
     } catch {
       onUnavailable?.();
       return undefined;
     }
 
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = initialPolicy.lod === 'full';
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    // The room is static and only emissive flames move, so the shadow map is
-    // computed once instead of re-rasterising every mesh on each animated frame.
-    renderer.shadowMap.autoUpdate = false;
-    renderer.toneMapping = THREE.AgXToneMapping;
-    // The lite LOD (phones, small windows) drops the IBL environment, the torch lights
-    // and shadows, so the same exposure leaves the room ~2.5x darker than on desktop
-    // (measured on staging: luma 14.5 vs 35.7). Compensate with more exposure.
-    renderer.toneMappingExposure = (EXPOSURE[ambient] || EXPOSURE.day)
-      * (initialPolicy.lod === 'full' ? 1 : HOME_BLENDER_LITE_EXPOSURE_BOOST);
-    renderer.setClearColor(0x000000, 0);
-
     const scene = new THREE.Scene();
-    const releaseEnvironment = installHomeEnvironment(
+    let releaseEnvironment = installHomeEnvironment(
       renderer,
       scene,
       initialPolicy.lod === 'full',
@@ -1343,7 +1347,7 @@ export default function HomeBlenderScene3D({
     const prefersReducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
+    let softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
@@ -1453,13 +1457,25 @@ export default function HomeBlenderScene3D({
       contextRecoveryFrame = null;
       if (disposed || fallbackRequested) return;
       try {
+        // Rebuild the WebGLRenderer rather than trusting stale GPU state after
+        // WEBGL_lose_context. The Three scene stays in JS memory and lazily
+        // re-uploads geometry/textures into the fresh context.
+        releaseEnvironment();
+        renderer.dispose();
+        renderer = createRenderer();
+        releaseEnvironment = installHomeEnvironment(
+          renderer,
+          scene,
+          initialPolicy.lod === 'full',
+        );
+        softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
+        if (model) prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
         resize();
         renderer.shadowMap.needsUpdate = true;
         renderFrame();
       } catch {
-        // Chromium/SwiftShader may dispatch webglcontextrestored before Three can
-        // successfully submit the first restored frame. Keep the 2D master visible
-        // and retry on the next frame; the existing recovery timer fails closed.
+        // Some Chromium/SwiftShader restores need another animation frame before
+        // a new renderer can acquire and submit to the restored context.
         contextRecoveryFrame = window.requestAnimationFrame(finishContextRestore);
         return;
       }
