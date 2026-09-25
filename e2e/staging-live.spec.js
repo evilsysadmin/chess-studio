@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
@@ -242,7 +242,7 @@ async function leaveCurrentGameThroughUi(page) {
 }
 
 
-test('staging live · login real → War Room → chunk 3D fallido recupera → jugada real', async ({ page, request }, testInfo) => {
+test('staging live · auth real → War Room v2 → recovery 3D → jugada real', async ({ page, request }, testInfo) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
@@ -298,22 +298,11 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
 
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
-    await captureUxCheckpoint(page, testInfo, uxReport, '01-home');
-
-    // La Escuela sirve de canario del rollout 3D antes de crear una partida real.
-    await buttonWithHeading(page, 'Escuela de Matthias').click();
-    const schoolBoard = page.locator('.matthias-school-board');
-    await expect(schoolBoard).toHaveAttribute('data-school-renderer', '3d', { timeout: 30_000 });
-    await expect(schoolBoard.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
-    await page.getByRole('button', { name: /Volver al menú/ }).click();
-    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
 
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible();
-    await captureUxCheckpoint(page, testInfo, uxReport, '02-quick-config');
     const settings = dialog.locator('details.quick-match-settings');
     if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
     await dialog.getByRole('radio', { name: 'Blancas', exact: true }).click();
@@ -368,7 +357,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(warRoomSignal).toContainText('Matthias');
     await expect(warRoomSignal).not.toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
-    await captureUxCheckpoint(page, testInfo, uxReport, '03-quick-war-room');
+    await captureUxCheckpoint(page, testInfo, uxReport, '01-quick-war-room');
 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
     // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
@@ -476,50 +465,12 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     expect(moved.history.length).toBeGreaterThanOrEqual(1);
     await expect(gameStatus(page)).toBeVisible();
 
-    await captureUxCheckpoint(page, testInfo, uxReport, '04-quick-after-e4');
     await leaveCurrentGameThroughUi(page);
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
-    await captureUxCheckpoint(page, testInfo, uxReport, '05-home-after-quick');
 
-    await buttonWithHeading(page, 'Torneo').click();
-    await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
-    await captureUxCheckpoint(page, testInfo, uxReport, '06-tournament-lobby');
-    const tournamentWhite = page.getByRole('radio', { name: 'Blancas', exact: true });
-    if (await tournamentWhite.isVisible().catch(() => false)) await tournamentWhite.click();
-
-    const tournamentCreate = page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.request().method() === 'POST' && url.origin + url.pathname === `${STAGING_API_URL}/games`;
-    }, { timeout: 60_000 });
-    await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
-    const tournamentCreatedResponse = await tournamentCreate;
-    expect(tournamentCreatedResponse.status()).toBe(201);
-    const tournamentCreated = await tournamentCreatedResponse.json();
-    gameId = tournamentCreated.id || gameId;
-    await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
-    await captureUxCheckpoint(page, testInfo, uxReport, '07-tournament-war-room');
-    await clickBoardMove(page, 'e2', 'e4');
-    await page.waitForTimeout(1_200);
-    await captureUxCheckpoint(page, testInfo, uxReport, '08-tournament-after-e4');
-
-    await leaveCurrentGameThroughUi(page);
-    await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible({ timeout: 30_000 });
-    await captureUxCheckpoint(page, testInfo, uxReport, '09-tournament-return');
-    await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-
-    const matthias = page.getByRole('complementary', { name: 'Rincón de Matthias' })
-      .getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
-    await expect(matthias).toBeVisible();
-    await matthias.click();
-    await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
-    await captureUxCheckpoint(page, testInfo, uxReport, '10-insights-overview');
-    const errorsTab = page.getByRole('tab', { name: /Errores/ });
-    if (await errorsTab.isVisible().catch(() => false)) {
-      await errorsTab.click();
-      await captureUxCheckpoint(page, testInfo, uxReport, '11-insights-errors');
-    }
-
+    // Staging deploy admission stops here: tournament, insights and broader UX
+    // journeys stay in Quality/full-browser coverage instead of extending every
+    // coherent-generation deployment smoke.
     await testInfo.attach('golden-path-ux-report', {
       body: Buffer.from(`${JSON.stringify(uxReport, null, 2)}\n`, 'utf8'),
       contentType: 'application/json',
