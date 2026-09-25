@@ -178,6 +178,32 @@ def build_curved_observatory(static, palette):
     base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.92, 0.022,
                palette["brass"], static)
 
+    # Canonical mock: restrained gilt botanical rhythm around the outer rug.
+    for index in range(16):
+        angle = index * math.tau / 16.0
+        radius_motif = 6.12
+        x = math.cos(angle) * radius_motif
+        y = math.sin(angle) * radius_motif - 0.05
+        tangent = angle + math.pi / 2.0
+        stem = base.cube(
+            f"WR3_OBS_rug_motif_stem_{index}", (x, y, 0.128),
+            (0.18, 0.018, 0.012), palette["brass"], static, bevel=0.014,
+        )
+        stem.rotation_euler.z = tangent
+        for leaf_side in (-1, 1):
+            leaf_angle = tangent + leaf_side * 0.62
+            leaf = base.sphere(
+                f"WR3_OBS_rug_motif_leaf_{index}_{leaf_side}",
+                (x + math.cos(leaf_angle) * 0.16, y + math.sin(leaf_angle) * 0.16, 0.130),
+                0.085, palette["brass"], static, scale=(1.30, 0.42, 0.18),
+            )
+            leaf.rotation_euler.z = leaf_angle
+        base.sphere(
+            f"WR3_OBS_rug_motif_bud_{index}",
+            (x + math.cos(tangent) * 0.24, y + math.sin(tangent) * 0.24, 0.132),
+            0.050, palette["brass"], static, scale=(1.0, 0.55, 0.20),
+        )
+
     radius = 8.72
     center_y = -0.72
     segment_count = 15
@@ -594,10 +620,114 @@ def build_celestial_globe(static, palette):
     )
 
 
+def build_left_chess_art(static, palette):
+    """Framed chess diagram on the left wall, matching the canonical mock."""
+    theta = math.radians(-63)
+    radius = 8.72
+    center_y = -0.72
+    radial = Vector((math.sin(theta), math.cos(theta), 0.0))
+    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    center = Vector((radius * radial.x, center_y + radius * radial.y, 4.18))
+    angle = math.atan2(tangent.y, tangent.x)
+
+    frame = base.cube(
+        "WR3_OBS_chess_art_frame", center - radial * 0.22,
+        (0.86, 0.09, 0.98), palette["walnut_dark"], static, bevel=0.07,
+    )
+    frame.rotation_euler.z = angle
+    mount = base.cube(
+        "WR3_OBS_chess_art_mount", center - radial * 0.34,
+        (0.70, 0.035, 0.82), palette["stone_light"], static, bevel=0.035,
+    )
+    mount.rotation_euler.z = angle
+
+    tile = 0.145
+    board_origin = center - radial * 0.39 - tangent * (3.5 * tile) + Vector((0, 0, -3.5 * tile))
+    for rank in range(8):
+        for file_index in range(8):
+            point = board_origin + tangent * (file_index * tile) + Vector((0, 0, rank * tile))
+            square = base.cube(
+                f"WR3_OBS_chess_art_square_{rank}_{file_index}", point,
+                (tile * 0.47, 0.018, tile * 0.47),
+                palette["walnut"] if (rank + file_index) % 2 else palette["ivory"],
+                static, bevel=0.004,
+            )
+            square.rotation_euler.z = angle
+
+
+def build_room_plant(static, palette):
+    """Small brass planter beside the reading chair."""
+    x, y = -7.62, -0.92
+    base.cylinder("WR3_OBS_plant_pot", (x, y, 0.33), 0.34, 0.48,
+                  palette["brass_dark"], static, vertices=40)
+    base.torus("WR3_OBS_plant_pot_rim", (x, y, 0.58), 0.33, 0.045,
+               palette["brass"], static)
+    for index, (dx, dy, height, lean) in enumerate((
+        (-0.16, -0.04, 0.62, -0.18), (0.10, -0.02, 0.74, 0.14),
+        (-0.04, 0.12, 0.86, -0.05), (0.18, 0.10, 0.58, 0.24),
+        (-0.22, 0.12, 0.54, -0.28),
+    )):
+        stem_start = Vector((x, y, 0.58))
+        stem_end = Vector((x + dx, y + dy, 0.58 + height))
+        cylinder_between(
+            f"WR3_OBS_plant_stem_{index}", stem_start, stem_end, 0.020,
+            palette["green_leather"], static, vertices=12,
+        )
+        leaf = base.sphere(
+            f"WR3_OBS_plant_leaf_{index}", stem_end, 0.20,
+            palette["green_leather"], static, scale=(1.35, 0.55, 0.28),
+        )
+        leaf.rotation_euler.z = lean
+
+
+def build_coat_stand(static, palette):
+    """Slim coat stand and dark field coat near the entry door."""
+    x, y = 7.72, 0.25
+    base.cylinder("WR3_OBS_coat_stand_post", (x, y, 1.38), 0.055, 2.52,
+                  palette["walnut_dark"], static, vertices=24)
+    base.cylinder("WR3_OBS_coat_stand_foot", (x, y, 0.10), 0.38, 0.08,
+                  palette["brass_dark"], static, vertices=32)
+    for index, angle in enumerate((0.0, math.tau / 3.0, 2.0 * math.tau / 3.0)):
+        start = Vector((x, y, 2.45))
+        end = Vector((x + math.cos(angle) * 0.30, y + math.sin(angle) * 0.30, 2.58))
+        cylinder_between(
+            f"WR3_OBS_coat_stand_hook_{index}", start, end, 0.028,
+            palette["brass"], static, vertices=14,
+        )
+
+    coat = base.cube(
+        "WR3_OBS_entry_coat", (x - 0.18, y - 0.05, 1.52),
+        (0.42, 0.16, 0.74), palette["green_leather"], static, bevel=0.18,
+    )
+    coat.rotation_euler.z = math.radians(-6)
+    for side in (-1, 1):
+        sleeve = base.cube(
+            f"WR3_OBS_entry_coat_sleeve_{side}",
+            (x - 0.18 + side * 0.38, y - 0.03, 1.58),
+            (0.12, 0.13, 0.54), palette["green_leather"], static, bevel=0.12,
+        )
+        sleeve.rotation_euler.y = side * math.radians(12)
+    base.torus("WR3_OBS_entry_coat_collar", (x - 0.18, y - 0.18, 2.24),
+               0.20, 0.035, palette["brass_dark"], static,
+               rotation=(math.pi / 2, 0, 0))
+
+
 def build_wall_lanterns(static, palette):
     """Warm wall lanterns replace the suspended armillary and keep the ceiling open."""
     for side, x in (("left", -3.15), ("right", 3.15)):
         y, z = 7.30, 4.70
+        base.cube(
+            f"WR3_OBS_wall_lantern_{side}_banner", (x, y + 0.10, z),
+            (0.52, 0.045, 1.08), palette["green_leather"], static, bevel=0.045,
+        )
+        base.cube(
+            f"WR3_OBS_wall_lantern_{side}_banner_top", (x, y + 0.06, z + 1.12),
+            (0.58, 0.055, 0.045), palette["brass"], static, bevel=0.018,
+        )
+        base.cube(
+            f"WR3_OBS_wall_lantern_{side}_banner_bottom", (x, y + 0.06, z - 1.12),
+            (0.58, 0.055, 0.045), palette["brass_dark"], static, bevel=0.018,
+        )
         base.cube(
             f"WR3_OBS_wall_lantern_{side}_plate", (x, y, z),
             (0.24, 0.08, 0.45), palette["walnut_dark"], static, bevel=0.06,
@@ -753,6 +883,9 @@ def apply_v3_identity():
     build_lounge_corner(static, palette)
     build_bookshelf(static, palette)
     build_celestial_globe(static, palette)
+    build_left_chess_art(static, palette)
+    build_room_plant(static, palette)
+    build_coat_stand(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
     tune_v3_camera()
@@ -784,6 +917,9 @@ def validate_v3():
         "WR3_OBS_chair_seat",
         "WR3_OBS_bookshelf_frame",
         "WR3_OBS_globe_sphere",
+        "WR3_OBS_chess_art_frame",
+        "WR3_OBS_plant_pot",
+        "WR3_OBS_entry_coat",
         "WR3_OBS_entry_door",
         "WR3_OBS_entry_rug",
         "WR3_OBS_wall_lantern_left_glow",
