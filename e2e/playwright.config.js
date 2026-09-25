@@ -5,6 +5,7 @@ const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
 const traceDiagnostics = process.env.PLAYWRIGHT_TRACE === '1';
+const sourceServer = process.env.PLAYWRIGHT_SOURCE_SERVER === '1';
 const visualArtifactMode = Boolean(
   process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
 );
@@ -75,7 +76,9 @@ export default defineConfig({
     video: 'off',
   },
   webServer: {
-    command: 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',
+    command: sourceServer
+      ? 'npm --prefix ../frontend run dev -- --host 127.0.0.1 --port 4173 --base /chess-studio/'
+      : 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/chess-studio/',
     reuseExistingServer: !ciMode,
     timeout: 20_000,
