@@ -37,6 +37,13 @@ case "$mode" in
     fi
 
     specs=()
+    # Runtime/storage health should run in a fresh browser process before the
+    # heavyweight SwiftShader captures. This makes the gate fail fast and avoids
+    # measuring renderer exhaustion from earlier visual producers.
+    if has_group health; then
+      has_producer health-runtime && specs+=(browser-runtime-health.spec.js)
+      has_producer health-storage && specs+=(browser-storage-health.spec.js)
+    fi
     if has_group home; then
       has_producer home-base && specs+=(app-visual-artifact.spec.js)
       has_producer home-matthias && specs+=(matthias-home-visual-artifact.spec.js)
@@ -76,11 +83,6 @@ case "$mode" in
       has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
       has_producer warroom-hans && specs+=(war-room-hans-visual-artifact.spec.js)
     fi
-    if has_group health; then
-      has_producer health-runtime && specs+=(browser-runtime-health.spec.js)
-      has_producer health-storage && specs+=(browser-storage-health.spec.js)
-    fi
-
     if (( ${#specs[@]} == 0 )); then
       echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
       exit 0
