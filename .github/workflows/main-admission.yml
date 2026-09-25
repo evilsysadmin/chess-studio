@@ -115,14 +115,6 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
       - name: Admission logic self-test
         run: python3 -S scripts/main_ci_admission.py --self-test
 
@@ -142,15 +134,29 @@ jobs:
           MAIN_ADMISSION_WAIT_SECONDS: 12
         run: python3 -S scripts/main_ci_admission_wait.py
 
-      # Fast path: the immutable PR receipt proves that this final tree is the
-      # tested tree (or a file-disjoint concurrent main advance).
-      - name: Static preflight on final main SHA
-        if: steps.pr_admission.outcome == 'success'
+      # Exact-base receipts already include static-preflight + staging contract
+      # for the same source tree. Only a disjoint concurrent main advance needs
+      # those cheap integration contracts rerun on the composed final tree.
+      - uses: actions/setup-node@v7
+        if: steps.pr_admission.outcome == 'failure' || steps.pr_admission.outputs.concurrency_reused == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Static preflight on concurrent composed main SHA
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true'
         run: make static-preflight
 
-      - name: Staging preview isolation contract
-        if: steps.pr_admission.outcome == 'success'
+      - name: Staging preview isolation contract · concurrent composition
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true'
         run: python3 scripts/staging_preview_contract.py
+
+      - name: Exact PR receipt reused without duplicate static gate
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused != 'true'
+        run: echo 'Main exact-base tree already passed Quality static-preflight + staging-preview contract.'
 
       # Slow but safe path: if the PR receipt cannot be reused (for example two
       # concurrent PRs touched the same file), test the exact final main SHA

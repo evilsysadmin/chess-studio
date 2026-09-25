@@ -169,6 +169,15 @@ def print_admission_ok(result: admission.Admission) -> None:
     )
 
 
+def write_github_outputs(result: admission.Admission) -> None:
+    target = os.environ.get("GITHUB_OUTPUT", "").strip()
+    if not target:
+        return
+    with open(target, "a", encoding="utf-8") as handle:
+        handle.write(f"concurrency_reused={'true' if result.concurrency_reused else 'false'}\n")
+        handle.write(f"tested_merge_sha={result.tested_merge_sha}\n")
+
+
 def wait_for_admission() -> int:
     attempts = positive_int_env("MAIN_ADMISSION_WAIT_ATTEMPTS", DEFAULT_ATTEMPTS)
     sleep_seconds = positive_float_env("MAIN_ADMISSION_WAIT_SECONDS", DEFAULT_SLEEP_SECONDS)
@@ -208,6 +217,7 @@ def wait_for_admission() -> int:
             continue
 
         print_admission_ok(result)
+        write_github_outputs(result)
         return 0
 
     return 2
