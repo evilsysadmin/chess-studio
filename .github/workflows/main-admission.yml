@@ -146,7 +146,7 @@ jobs:
       # tested tree (or a file-disjoint concurrent main advance).
       - name: Static preflight on final main SHA
         if: steps.pr_admission.outcome == 'success'
-        run: make static-preflight
+        run: MAKEFLAGS=-j4 make static-preflight
 
       - name: Staging preview isolation contract
         if: steps.pr_admission.outcome == 'success'

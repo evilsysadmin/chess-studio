@@ -101,7 +101,7 @@ jobs:
       - name: Static preflight + CI wiring
         run: |
           set -euo pipefail
-          make static-preflight
+          MAKEFLAGS=-j4 make static-preflight
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/blender_required_scope.py --self-test

@@ -118,7 +118,7 @@ jobs:
 
       - name: Static preflight of target source
         working-directory: preview-source
-        run: make static-preflight
+        run: MAKEFLAGS=-j4 make static-preflight
 
       - name: Setup Node
         uses: actions/setup-node@v7
