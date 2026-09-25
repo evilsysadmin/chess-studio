@@ -16,12 +16,13 @@ import {
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
-import { resolveBoardTap, resolveCoarsePieceIntent } from './WarRoom3DTouch.js';
+import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
-import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
+import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
+import { resolveBoard3DPointerSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -228,7 +229,6 @@ function Board3DCanvas({
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
     const cameraOffsetProbe = new THREE.Vector3();
-    const coarsePieceProjection = new THREE.Vector3();
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -448,38 +448,16 @@ function Board3DCanvas({
     observer?.observe(host);
 
     function squareFromPointer(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects(pickTargets, true);
-      let directSquare = null;
-      for (const hit of intersections) {
-        const square = squareFromBoard3DIntersection(hit);
-        if (square) {
-          directSquare = square;
-          break;
-        }
-      }
-      if (!coarsePointer) return directSquare;
-
-      const projectedPieces = [];
-      for (const square of pieceMeshes.keys()) {
-        const { x, z } = squarePosition(square);
-        coarsePieceProjection.set(x, 0.58, z).project(camera);
-        projectedPieces.push({
-          square,
-          x:rect.left + ((coarsePieceProjection.x + 1) * rect.width / 2),
-          y:rect.top + ((1 - coarsePieceProjection.y) * rect.height / 2),
-        });
-      }
-      return resolveCoarsePieceIntent({
-        directSquare,
+      return resolveBoard3DPointerSquare({
+        event,
+        element:renderer.domElement,
+        camera,
+        raycaster,
+        pointer,
+        pickTargets,
+        coarsePointer,
+        pieceSquares:pieceMeshes.keys(),
         selectedSquare:latestPropsRef.current.selectedSquare,
-        pointer:{ x:event.clientX, y:event.clientY },
-        projectedPieces,
       });
     }
 
