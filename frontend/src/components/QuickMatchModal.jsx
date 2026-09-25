@@ -60,29 +60,6 @@ export default function QuickMatchModal({
     };
   }, []);
 
-  useEffect(() => {
-    if (selectedRenderer !== '3d') return undefined;
-
-    let cancelled = false;
-    const warmRenderer = () => {
-      if (!cancelled) void preloadBoard3D().catch(() => {});
-    };
-
-    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      const idleId = window.requestIdleCallback(warmRenderer, { timeout: 350 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback?.(idleId);
-      };
-    }
-
-    const timerId = setTimeout(warmRenderer, 180);
-    return () => {
-      cancelled = true;
-      clearTimeout(timerId);
-    };
-  }, [selectedRenderer]);
-
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card friendly-modal" role="dialog" aria-modal="true" aria-label="Configurar partida rápida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
@@ -147,7 +124,11 @@ export default function QuickMatchModal({
           type="button"
           className="primary-btn friendly-main-cta"
           disabled={loading}
-          onClick={() => onStart({ boardRenderer: selectedRenderer })}
+          onClick={() => {
+            const startResult = onStart({ boardRenderer: selectedRenderer });
+            if (selectedRenderer === '3d') void preloadBoard3D().catch(() => {});
+            return startResult;
+          }}
         >
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
