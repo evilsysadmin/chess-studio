@@ -11,6 +11,7 @@ import uuid
 import hmac
 import re
 import ipaddress
+from contextlib import asynccontextmanager
 from typing import Optional
 from urllib.parse import quote, urlsplit
 
@@ -30,6 +31,7 @@ import ip_geolocation
 import user_data_lifecycle
 import matthias_daily_store
 import matthias_memory_store
+import db
 from db import PersistentStorageUnavailable
 from auth import (
     JWT_SECRET,
@@ -87,11 +89,20 @@ def _trust_cloudflare_client_ip() -> bool:
 if ENVIRONMENT in _CLOUDFLARE_TUNNEL_ENVIRONMENTS and ALLOW_REGISTRATION and not INVITE_CODE:
     raise RuntimeError("INVITE_CODE es obligatorio en staging mientras el registro esté habilitado.")
 
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI):
+    try:
+        yield
+    finally:
+        await db.close_db()
+
+
 app = FastAPI(
     title="Estudio de Ajedrez API",
     docs_url="/docs" if EXPOSE_API_DOCS else None,
     redoc_url="/redoc" if EXPOSE_API_DOCS else None,
     openapi_url="/openapi.json" if EXPOSE_API_DOCS else None,
+    lifespan=app_lifespan,
 )
 
 # Logger operativo estructurado. Incluye username autenticado para poder ver uso
